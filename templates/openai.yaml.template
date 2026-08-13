@@ -1,0 +1,8 @@
+interface:
+  display_name: "技能顯示名稱"
+  short_description: "一句話簡短描述(給選單用)"
+
+# 若該技能是 user-invoked(對應 SKILL.md 的 disable-model-invocation: true),
+# 取消下面的註解,讓其他 harness 也知道這是人類專屬觸發:
+# policy:
+#   allow_implicit_invocation: false
