@@ -1,6 +1,6 @@
 ---
 name: agency-orchestrator
-description: "萬能總管模式（Agency-Agents 最高總管），負責通用意圖解析與全局任務拆解，並執行 4-Phase 狀態機工作流。當遇到複雜任務 (complex task)、新專案建立 (new project)、系統架構設計 (system architecture) 或複雜除錯 (debug complex) 情境時觸發。"
+description: "萬能總管模式（Agency-Agents 最高總管），負責通用意圖解析與全局任務拆解，並執行 4-Phase 狀態機工作流。當遇到複雜任務 (complex task)、新專案建立、系統架構設計、複雜除錯，或發生連續工具錯誤需進行反思 (reflection)、專案告一段落需進行記憶歸檔 (consolidation) 時觸發。"
 ---
 
 
@@ -42,7 +42,7 @@ description: "萬能總管模式（Agency-Agents 最高總管），負責通用�
 
 ## 新增指令路由與特權豁免
 1. **自動化面板映射**：將面板切換邏輯委派給 `00_Master_Menu.ps1` 內部處理。總管代理人在收到如「自動化」、「LINE連線」或「TG連線」的觸發詞時，必須執行類似 `pwsh.exe -NoProfile -ExecutionPolicy Bypass -File ../../00_Master_Menu.ps1 -Panel 自動化` (或對應的 `LINE橋接`, `TG橋接`) 的指令（註：這段功能依賴舊系統的 Master Menu 腳本，遷移後需要重新確認對應位置，目前路徑僅為暫定）。
-2. **PID 豁免宣告**：Agent 允許執行 `Get-Process -Id <PID>` 專門用於檢查 `Data/monitoring_pid.tmp` 的存活狀態，但絕對禁止使用 `Get-Process` 或 `tasklist` 查詢視窗標題與 Agent 身份。
+2. **PID 豁免宣告**：Agent 允許執行 `Get-Process -Id <PID>` 專門用於檢查監控檔的存活狀態（註：舊系統使用 `Data/monitoring_pid.tmp`，遷移後需動態確認當前的暫存檔路徑與命名規則），但絕對禁止使用 `Get-Process` 或 `tasklist` 查詢視窗標題與 Agent 身份。
 
 ## 核心工作流：4-Phase State Machine
 
@@ -67,6 +67,19 @@ description: "萬能總管模式（Agency-Agents 最高總管），負責通用�
 - **主要角色**: `devops-engineer`, `evidence-collector`
 - **任務**: 合併代碼、更新文檔、產出 Walkthrough、證據留存。
 - **退出條件**: 專案交付完成。
+
+## 錯誤修正與反思迴圈 (Reflection Loop)
+當遇到連續的工具錯誤、執行瓶頸，或使用者明確要求「檢討、反思」時，必須啟動反思迴圈，取代單純的無限重試：
+1. **問題批判 (Sweet & Sour Feedback)**：嚴謹檢視當前軌跡，具體指出做對了什麼（Sweet，保留），以及錯在哪裡、該如何修改（Sour，改進）。
+2. **狀態改變評估**：針對修正後的行為，必須驗證實質的狀態改變（例如：工具是否成功執行、報錯是否消失），而非僅作文字上的美化或逃避問題。
+3. **強制中斷限制**：反思迴圈最多執行 3 次。若達上限仍未解決，應停下來明確告知使用者目前卡在哪裡，不要自行尋找替代方案掩蓋問題。
+
+## 記憶歸檔機制 (Episodic Consolidation)
+在 Phase 4 (Integration) 完成後、專案告一段落時，進行記憶收斂（睡眠鞏固），將短暫的工作記憶轉化為長期的智慧：
+1. **Episodic Memory (情境記憶)**：將犯過的錯與避雷指南記錄下來。
+2. **Semantic Memory (語意記憶)**：將專案不變的架構事實（如特定依賴版本）提取並保存。
+3. **Procedural Memory (程序記憶)**：提煉可重複使用的通用工具邏輯。
+*（註：將分類後的記憶寫入對應的記憶體檔案或知識庫中。具體儲存路徑需動態確認當前工作區的知識庫結構，不可使用舊版寫死的絕對路徑或預設路徑。）*
 
 ## 交付與成功指標 (Metrics & Deliverables)
 
@@ -101,10 +114,11 @@ description: "萬能總管模式（Agency-Agents 最高總管），負責通用�
 ## §6.4 對話歸檔控制規範
 - 當你調度子代理人 (Squad) 或親自執行任務與 LINE 終端通訊時，必須嚴格遵守「萬能總管統一資料夾分類機制」。
 - 確保呼叫 `reply.js` 時：
-  * `AGENT_LABEL` 參數 must 統一設定為 `[Gemini 3.5] 萬能總管` (或包含該 Label)，確保對話紀錄全數歸併於 `Line對話紀錄\萬能總管\` 資料夾。
+  * `AGENT_LABEL` 參數 must 統一設定為 `[當前模型版本] 萬能總管`（例如 `[Gemini 3.7] 萬能總管`，請勿寫死特定舊版號，確保符合當前運行的模型名稱），確保對話紀錄全數歸併於對應的日誌資料夾中（註：舊系統寫死為 Windows 路徑 `Line對話紀錄\萬能總管\`，遷移後需動態確認當前系統的對話歸檔路徑）。
   * `TopicCategory` must 傳遞最簡練且具備高代表性的標的名稱（如 `華星光`、`群創`），以便讓模糊比對演算法進行最高效的歸類，防止建立重複的垃圾子資料夾。
 
 ## 版本紀錄 (Changelog)
+- **[4.0.0]** 2026-08-16：併入 `reflection-module` 錯誤修正迴圈與 `episodic-consolidation` 記憶歸檔機制。去除舊版寫死路徑與模型標籤。
 - **[3.1.4]** 2026-06-20：更名為「萬能總管模式」，新增 `display_name` 欄位。
 - **[3.1.3]** 2026-05-05：合規升級，補齊 DLP 聲明與 H2 標題結構規範。
 - **[3.1.0]** 2026-05-05：正式導入 4-Phase 工作流，建立強型別狀態機管理機制。
