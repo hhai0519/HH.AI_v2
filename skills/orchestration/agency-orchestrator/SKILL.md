@@ -1,7 +1,6 @@
 ---
 name: agency-orchestrator
-description: "萬能總管模式（Agency-Agents 最高總管），負責通用意圖解析與全局任務拆解，並執行 4-Phase 狀態機工作流。"
-type: orchestrator
+description: "萬能總管模式（Agency-Agents 最高總管），負責通用意圖解析與全局任務拆解，並執行 4-Phase 狀態機工作流。當遇到複雜任務 (complex task)、新專案建立 (new project)、系統架構設計 (system architecture) 或複雜除錯 (debug complex) 情境時觸發。"
 ---
 
 
@@ -15,23 +14,26 @@ type: orchestrator
 ## DLP 聲明 (Data Loss Prevention)
 本技能涉及全局協調與核心狀態管理，嚴禁將敏感配置、基礎架構憑證或機密對話紀錄外洩或上傳至未授權之外部日誌系統。
 
+## 協同技能 (Dependencies)
+本技能會依賴並呼叫 `subagent-collaboration-skill` 來進行多子代理人的協作，以及呼叫 `reality-checker` 來審核計畫的技術可行性與防範幻覺。
+
 
 ## 自動化指令攔截與詢問 (Automation Interception)
 
-當你收到使用者輸入 `$自動化$`（未帶特定後綴）時，必須主動跳出以下選項詢問：
+當你收到使用者輸入自動化指令（未帶特定後綴）時，必須主動跳出以下選項詢問：
 
 ```text
 收到自動化指令！請問您的需求屬於哪一類？
 
-🔬 選項 1：$自動化_微型模型$
+🔬 選項 1：微型模型調參
    → 微型 AI 模型的超參數自動調優（Learning Rate、Batch Size 等）
    → 適用：模型訓練效果不佳、想找到最佳模型配置
 
-🔁 選項 2：$自動化_通用研究$
+🔁 選項 2：通用遞迴研究
    → 通用遞迴研究框架（自動深度蒐集、彙整、分析任何主題）
    → 適用：需要對某議題進行多輪自動研究、生成深度調研報告
 
-📈 選項 3：$自動化_量化實驗$
+📈 選項 3：量化實驗
    → 量化金融策略自動驗證（回測、因子挖掘、策略優化）
    → 適用：驗證台股交易策略、測試量化因子有效性
 
@@ -39,7 +41,7 @@ type: orchestrator
 ```
 
 ## 新增指令路由與特權豁免
-1. **自動化面板映射**：將面板切換邏輯委派給 `00_Master_Menu.ps1` 內部處理。總管代理人在收到如 `$$自動化$$`、`$$LINE連線$$` 或 `$$TG連線$$` 的觸發詞時，必須執行類似 `pwsh.exe -NoProfile -ExecutionPolicy Bypass -File C:\Users\HH.AI_260806\Desktop\HH.AI_260806\00_Master_Menu.ps1 -Panel 自動化` (或對應的 `LINE橋接`, `TG橋接`) 的指令。
+1. **自動化面板映射**：將面板切換邏輯委派給 `00_Master_Menu.ps1` 內部處理。總管代理人在收到如「自動化」、「LINE連線」或「TG連線」的觸發詞時，必須執行類似 `pwsh.exe -NoProfile -ExecutionPolicy Bypass -File ../../00_Master_Menu.ps1 -Panel 自動化` (或對應的 `LINE橋接`, `TG橋接`) 的指令（註：這段功能依賴舊系統的 Master Menu 腳本，遷移後需要重新確認對應位置，目前路徑僅為暫定）。
 2. **PID 豁免宣告**：Agent 允許執行 `Get-Process -Id <PID>` 專門用於檢查 `Data/monitoring_pid.tmp` 的存活狀態，但絕對禁止使用 `Get-Process` 或 `tasklist` 查詢視窗標題與 Agent 身份。
 
 ## 核心工作流：4-Phase State Machine
@@ -82,13 +84,19 @@ type: orchestrator
 
 網路狀態： 本技能已強制接入總控通訊網路。
 
-接收協定 (Dynamic Payload)：
-`[SYSTEM-CALL: agency-orchestrator-skill | PAYLOAD: { objective: "<意圖>", current_phase: "<階段>", context_data: {} }]`
+接收協定 (Dynamic Payload)： 本文檔不再接收無結構的自然語言，必須處理封裝後的動態參數：
+`[SYSTEM-CALL: agency-orchestrator | PAYLOAD: { objective: "<核心意圖>", current_phase: "<階段>", target_audience: "<受眾>", strategic_constraints: "<策略限制/禁語>", tone_variables: "<語氣微調>", context_data: {} }]`
 
 > [!IMPORTANT]
 > **Payload 淨化規則 (§6.3)**：
-> - 作為 Orchestrator，你負責將戰略意圖封裝為 `Cognitive` 參數發送給下屬。
-> - 禁止直接向 `Execution` 工具發送自然語言。
+> - 若本技能為 `Cognitive` 型：接收戰略目標、語氣設定、情緒變數；拒絕 SQL/DOM/技術指令。
+> - 若本技能為 `Execution` 型：只接收 URL、DOM Selector、SQL、JSON Schema；拒絕認知參數。
+> - 作為 Orchestrator，你負責將戰略意圖封裝為 `Cognitive` 參數發送給下屬，禁止直接向 `Execution` 工具發送自然語言。
+
+發送協定 (Zero-Block Policy)： 執行中若遇能力不足或需要外部協作，應停下來明確告知使用者目前卡在哪裡，不要自行尋找替代方案掩蓋問題。必須主動封裝 Dynamic Payload 並發出：
+`[SYSTEM-CALL: 目標ID | PAYLOAD: { ... }]` 調閱其他技能。
+
+回傳協定： 任務終止時，必須且只能輸出 `[SYSTEM-RETURN: SUCCESS/FAILED | DATA: <結果>]`。
 
 ## §6.4 對話歸檔控制規範
 - 當你調度子代理人 (Squad) 或親自執行任務與 LINE 終端通訊時，必須嚴格遵守「萬能總管統一資料夾分類機制」。
@@ -101,21 +109,3 @@ type: orchestrator
 - **[3.1.3]** 2026-05-05：合規升級，補齊 DLP 聲明與 H2 標題結構規範。
 - **[3.1.0]** 2026-05-05：正式導入 4-Phase 工作流，建立強型別狀態機管理機制。
 - **[3.0.0]** 2026-05-04：移除冗餘前綴，符合 SOP §6.2。
-
----
-⚙️ 【系統通訊層宣告 (System Comms Layer)】
-
-網路狀態： 本技能已強制接入總控通訊網路。
-
-接收協定 (Dynamic Payload)： 本文檔不再接收無結構的自然語言，必須處理封裝後的動態參數：
-`[SYSTEM-CALL: agency-orchestrator-skill | PAYLOAD: { objective: "<核心意圖>", target_audience: "<受眾>", strategic_constraints: "<策略限制/禁語>", tone_variables: "<語氣微調>" }]`
-
-> [!IMPORTANT]
-> **Payload 淨化規則 (§6.3)**：
-> - 若本技能為 `Cognitive` 型：接收戰略目標、語氣設定、情緒變數；拒絕 SQL/DOM/技術指令。
-> - 若本技能為 `Execution` 型：只接收 URL、DOM Selector、SQL、JSON Schema；拒絕認知參數。
-
-發送協定 (Zero-Block Policy)： 執行中若遇能力不足或需外部協作，嚴禁中斷或詢問使用者。必須主動封裝 Dynamic Payload 並發出：
-`[SYSTEM-CALL: 目標ID | PAYLOAD: { ... }]` 調閱其他技能。
-
-回傳協定： 任務終止時，必須且只能輸出 `[SYSTEM-RETURN: SUCCESS/FAILED | DATA: <結果>]`。

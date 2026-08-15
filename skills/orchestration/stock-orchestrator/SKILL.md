@@ -1,7 +1,6 @@
 ---
 name: stock-orchestrator
 description: "股票與量化領域總管，負責拆解金融任務並調度 06 層級的子模組。"
-type: orchestrator
 ---
 
 

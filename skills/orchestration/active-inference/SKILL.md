@@ -1,7 +1,6 @@
 ---
 name: active-inference
 description: "系統的 System 2 大腦。負責將使用者的自然語言意圖轉化為決定論的狀態機 (SDLC/EARS 語法)，並執行主動推論 (Active Inference) 來預測並最小化專案失敗的風險 (Surprise)。"
-type: orchestrator
 ---
 
 
