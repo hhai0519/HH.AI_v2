@@ -38,3 +38,8 @@ python3 scripts/validate_skills.py
 - **[stock-orchestrator](./skills/orchestration/stock-orchestrator/SKILL.md)** (`orchestration`) — 股票與量化領域總管，負責拆解金融任務並調度 06 層級的子模組。
 - **[reality-checker](./skills/orchestration/reality-checker/SKILL.md)** (`orchestration`) — 品質保證與幻覺過濾器，負責審核計畫、架構與代碼的技術可行性。
 - **[skill-evolution-governor](./skills/meta/skill-evolution-governor/SKILL.md)** (`meta`) — 負責技能生態系統的生命週期管理、DLP 合規審計與系統自我進化。包含自動覆寫技能規範的修復能力。此技能涉及實體檔案變更，必須由使用者明確要求時才可觸發執行。
+
+- **[financial-analyst](./skills/analysis/financial-analyst/SKILL.md)** (`analysis`) — 財務分析師，負責估值建模、比率分析與財務風險評估。當需要 valuation (估值)、financial statement (財報分析)、ratio analysis (比率分析) 或 risk assessment (風險評估) 時觸發。
+- **[investment-researcher](./skills/analysis/investment-researcher/SKILL.md)** (`analysis`) — 投資研究員，負責台股產業研究、個股基本面與量化趨勢分析。當需要 sector analysis (產業分析)、company research (個股研究) 或 market trend (市場趨勢) 時觸發。
+- **[tech-analyzer](./skills/analysis/tech-analyzer/SKILL.md)** (`analysis`) — 專家級的價格形態、量能結構和趨勢指標技術分析。當需要分析技術走勢、支撐壓力位、K線型態、找買賣點、或進行量價背離分析時觸發。
+- **[pe-river-map](./skills/analysis/pe-river-map/SKILL.md)** (`analysis`) — 用於長期投資評估的互動式本益比河流圖（PE Band）估值視覺化。當詢問股票貴不貴、本益比河流圖、估值區間、或評估長線買點與目標價時觸發。
