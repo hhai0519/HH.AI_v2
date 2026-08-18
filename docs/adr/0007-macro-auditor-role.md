@@ -1,4 +1,3 @@
----
 # ADR-0007: 宏觀審計官角色定位
 
 - Status: Accepted
