@@ -84,9 +84,14 @@ description: 一句話說明「什麼情境下要用這個技能」，包含觸�
 ```yaml
 type: "cognitive" | "action"          # action 型代表會實際呼叫外部工具/API
 authorized_mcp_tools: [...]            # 白名單機制，action 型技能必須列出
-semantic_firewall: true                # 是否啟用語意防火牆檢查
+semantic_firewall: true 或 "路徑字串"　　# 語意防火牆，見下方說明
 ```
-這兩個欄位只用在 `skills/agents/`（RARV 執行型）與部分 `skills/platform/` 技能，其餘 bucket 不需要。
+這三個欄位只用在 `skills/agents/`（RARV 執行型）與部分 `skills/platform/` 技能，其餘 bucket 不需要。
+
+### semantic_firewall 有兩種寫法
+
+第一種，`semantic_firewall: true`，這是簡單開關，代表這個技能啟用語意防火牆檢查，但不限定具體範圍。
+第二種，`semantic_firewall: "/Domain/XXX/"` 這種字串路徑形式，明確限定這個技能的工作記憶／操作範圍只能存取該路徑對應的領域，例如 `"/Domain/Finance/TWSE/"` 代表只能存取台股財務相關 Schema，不能碰使用者個資或其他無關資料。這種寫法資訊量比純布林值更完整，優先使用這種寫法，只有在技能本身沒有明確可限定的領域範圍時，才用簡單的 `true`。
 
 ---
 
