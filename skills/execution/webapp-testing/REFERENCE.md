@@ -65,8 +65,7 @@ async def multi_device_screenshot(url: str):
 ## 🤝 協同技能
 
 - `playwright-automation`：完整 E2E 測試框架建立
-- `systematic-debugging-skill`：深層問題排障
-- `webapp-testing-skill`：臺股網站的進階測試流程
+- `systematic-debugging`：深層問題排障
 
 ---
 
@@ -94,3 +93,123 @@ async def multi_device_screenshot(url: str):
 `[SYSTEM-CALL: 目標ID | PAYLOAD: { ... }]` 調閱其他技能。
 
 回傳協定： 任務終止時，必須且只能輸出 `[SYSTEM-RETURN: SUCCESS/FAILED | DATA: <結果>]`。
+
+---
+
+## 🛠️ QuickWebTester 完整類別（複雜斷言與自訂邏輯）
+
+```python
+import asyncio
+from playwright.async_api import async_playwright
+from datetime import datetime
+import os
+
+class QuickWebTester:
+    """快速 Web 測試工具（無需測試框架）"""
+
+    def __init__(self, headless: bool = True):
+        self.headless = headless
+        self.browser = None
+        self.page = None
+        self.console_logs = []
+        self.js_errors = []
+
+    async def start(self, url: str, viewport: dict = None):
+        """啟動瀏覽器並導航到 URL"""
+        self.playwright = await async_playwright().start()
+        self.browser = await self.playwright.chromium.launch(headless=self.headless)
+
+        context = await self.browser.new_context(
+            viewport=viewport or {"width": 1440, "height": 900}
+        )
+        self.page = await context.new_page()
+
+        # 監聽控制臺輸出
+        self.page.on("console", lambda msg: self._on_console(msg))
+        self.page.on("pageerror", lambda err: self.js_errors.append(str(err)))
+
+        await self.page.goto(url, wait_until="networkidle")
+        print(f"✅ 已載入：{url}")
+        return self
+
+    def _on_console(self, msg):
+        self.console_logs.append({"type": msg.type, "text": msg.text})
+        if msg.type == "error":
+            print(f"🔴 JS Error: {msg.text}")
+
+    async def screenshot(self, filename: str = None, full_page: bool = True) -> str:
+        """截圖並保存"""
+        if not filename:
+            ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+            filename = f"screenshot_{ts}.png"
+
+        await self.page.screenshot(path=filename, full_page=full_page)
+        print(f"📸 截圖已保存：{filename}")
+        return filename
+
+    async def check_element(self, selector: str) -> dict:
+        """檢查元素狀態"""
+        element = self.page.locator(selector)
+        count = await element.count()
+
+        if count == 0:
+            return {"found": False, "selector": selector}
+
+        is_visible = await element.first.is_visible()
+        is_enabled = await element.first.is_enabled()
+        text = await element.first.inner_text() if is_visible else ""
+
+        result = {
+            "found": True,
+            "count": count,
+            "visible": is_visible,
+            "enabled": is_enabled,
+            "text_preview": text[:100]
+        }
+
+        status = "✅" if is_visible and is_enabled else "⚠️"
+        print(f"{status} [{selector}] count={count}, visible={is_visible}, text='{text[:50]}'")
+        return result
+
+    async def click_and_observe(self, selector: str, wait_ms: int = 1000):
+        """點擊元素並觀察變化"""
+        before_screenshot = await self.screenshot(f"before_click_{selector[:20]}.png")
+
+        await self.page.locator(selector).first.click()
+        await self.page.wait_for_timeout(wait_ms)
+
+        after_screenshot = await self.screenshot(f"after_click_{selector[:20]}.png")
+        print(f"✅ 點擊完成，截圖對比：{before_screenshot} → {after_screenshot}")
+
+    async def get_console_report(self) -> dict:
+        """輸出控制臺報告"""
+        errors = [l for l in self.console_logs if l["type"] == "error"]
+        warnings = [l for l in self.console_logs if l["type"] == "warning"]
+
+        report = {
+            "total_logs": len(self.console_logs),
+            "errors": len(errors),
+            "warnings": len(warnings),
+            "js_crashes": len(self.js_errors),
+            "error_messages": [e["text"] for e in errors[:5]],
+            "js_crash_messages": self.js_errors[:3]
+        }
+
+        print("\n=== 🔍 控制臺健康報告 ===")
+        print(f"  總日誌：{report['total_logs']} 條")
+        print(f"  錯誤：{report['errors']} 個")
+        print(f"  警告：{report['warnings']} 個")
+        print(f"  JS 崩潰：{report['js_crashes']} 個")
+
+        if errors:
+            print("\n主要錯誤：")
+            for e in errors[:3]:
+                print(f"  ❌ {e['text'][:120]}")
+
+        return report
+
+    async def close(self):
+        if self.browser:
+            await self.browser.close()
+        await self.playwright.stop()
+```
