@@ -47,3 +47,9 @@ python3 scripts/validate_skills.py
 - **[twse-data-analyst](./skills/agents/twse-data-analyst/SKILL.md)** (`agents`) — Loki Swarm 量化運算專家。專責處理 TWSE 歷史資料、技術指標與量化運算，嚴格受限於財務資料庫環境。user-invoked。
 - **[market-researcher](./skills/agents/market-researcher/SKILL.md)** (`agents`) — Loki Swarm 基本面研究員。專職閱讀財報、解析 PDF、收集市場新聞情緒，取代舊版脆弱的自動爬蟲腳本。
 - **[real-time-stream-orchestrator](./skills/orchestration/real-time-stream-orchestrator/SKILL.md)** (`orchestration`) — 即時串流總指揮。實作 Interactive ReAct 架構，支援非同步「邊想邊說、邊聽邊想」，透過 AG-UI 協定將推演過程即時投影至前端介面（目前為設計願景，尚未有對應實作）。
+- **[pdf](./skills/execution/pdf/SKILL.md)** (`execution`) — PDF 文件操作一站式工具箱，涵蓋文字提取、合併拆分、浮水印、加密、表單填寫、圖片提取與掃描 OCR。
+- **[xlsx](./skills/execution/xlsx/SKILL.md)** (`execution`) — 提供 Excel (XLSX) 檔案讀寫、多 Sheet 整合與格式化報表生成。
+- **[csv-data-summarizer](./skills/execution/csv-data-summarizer/SKILL.md)** (`execution`) — 全自動解析 CSV 或 TSV 資料並產出統計報告與視覺化圖表，支援離群值偵測、相關性熱力圖與時間序列分析。
+- **[artifacts-builder](./skills/execution/artifacts-builder/SKILL.md)** (`execution`) — 使用現代前端技術（React、Tailwind CSS、shadcn/ui）建立精細、多組件 HTML 互動原型。
+- **[changelog-generator](./skills/execution/changelog-generator/SKILL.md)** (`execution`) — 從 Git 提交紀錄自動生成面向使用者的版本日誌，將技術性 commit 訊息轉換為清晰的發佈說明。
+- **[systematic-debugging](./skills/execution/systematic-debugging/SKILL.md)** (`execution`) — 強制執行「先找根本原因、再提修正」的四階段除錯流程。適用於 MCP 連接失敗、工具載入錯誤、npm/pip 安裝失敗等本地環境問題。
