@@ -42,6 +42,7 @@ python3 scripts/validate_skills.py
 
 - **[connect-apps](./skills/platform/connect-apps/SKILL.md)** (`platform`) — 操控 Gmail、Slack、GitHub、Notion 等外部服務執行自動化任務。當使用者要求『在 Slack 發通知』、『建立 GitHub Issue』、『更新 Notion 頁面』、『發送郵件』或『跨系統資料同步』時使用。user-invoked。
 - **[postgres](./skills/platform/postgres/SKILL.md)** (`platform`) — 對多個 PostgreSQL 資料庫執行唯讀 SQL 查詢。支援結構探索、資料分析和品質檢查。為確保安全，封鎖所有寫入操作。user-invoked。
+- **[mcp-gateway](./skills/platform/mcp-gateway/SKILL.md)** (`platform`) — Zero-Trust 萬用執行閘道器。負責啟動並連接所有的 MCP 伺服器，目前為未實作的設計草案。user-invoked。
 - **[notebooklm-mcp](./skills/platform/notebooklm-mcp/SKILL.md)** (`platform`) — 操控 NotebookLM 建立知識庫、進行深度研究與生成報告音頻。當使用者要求『建立 NotebookLM 筆記本』、『製作 Podcast/Audio Overview』、『跨筆記本知識查詢』或『從 URL/PDF 建立知識庫』時使用。
 
 - **[financial-analyst](./skills/analysis/financial-analyst/SKILL.md)** (`analysis`) — 財務分析師，負責估值建模、比率分析與財務風險評估。當需要 valuation (估值)、financial statement (財報分析)、ratio analysis (比率分析) 或 risk assessment (風險評估) 時觸發。
@@ -50,6 +51,7 @@ python3 scripts/validate_skills.py
 - **[pe-river-map](./skills/analysis/pe-river-map/SKILL.md)** (`analysis`) — 用於長期投資評估的互動式本益比河流圖（PE Band）估值視覺化。當詢問股票貴不貴、本益比河流圖、估值區間、或評估長線買點與目標價時觸發。
 - **[investment-aggregator](./skills/agents/investment-aggregator/SKILL.md)** (`agents`) — Loki Swarm 決策統整專家。彙整 twse-data-analyst (量化) 與 market-researcher (質化) 的數據，產出最終投資報告與風險評估。user-invoked。
 - **[twse-data-analyst](./skills/agents/twse-data-analyst/SKILL.md)** (`agents`) — Loki Swarm 量化運算專家。專責處理 TWSE 歷史資料、技術指標與量化運算，嚴格受限於財務資料庫環境。user-invoked。
+- **[line-interaction-manager](./skills/agents/line-interaction-manager/SKILL.md)** (`agents`) — Loki Swarm: 第一線溝通總管。專門處理 LINE Bot 介面互動，確保回覆符合品牌語氣，並保護底層金融邏輯不外洩。user-invoked。
 - **[market-researcher](./skills/agents/market-researcher/SKILL.md)** (`agents`) — Loki Swarm 基本面研究員。專職閱讀財報、解析 PDF、收集市場新聞情緒，取代舊版脆弱的自動爬蟲腳本。
 - **[real-time-stream-orchestrator](./skills/orchestration/real-time-stream-orchestrator/SKILL.md)** (`orchestration`) — 即時串流總指揮。實作 Interactive ReAct 架構，支援非同步「邊想邊說、邊聽邊想」，透過 AG-UI 協定將推演過程即時投影至前端介面（目前為設計願景，尚未有對應實作）。
 - **[pdf](./skills/execution/pdf/SKILL.md)** (`execution`) — PDF 文件操作一站式工具箱，涵蓋文字提取、合併拆分、浮水印、加密、表單填寫、圖片提取與掃描 OCR。
