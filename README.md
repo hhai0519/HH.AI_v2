@@ -43,3 +43,7 @@ python3 scripts/validate_skills.py
 - **[investment-researcher](./skills/analysis/investment-researcher/SKILL.md)** (`analysis`) — 投資研究員，負責台股產業研究、個股基本面與量化趨勢分析。當需要 sector analysis (產業分析)、company research (個股研究) 或 market trend (市場趨勢) 時觸發。
 - **[tech-analyzer](./skills/analysis/tech-analyzer/SKILL.md)** (`analysis`) — 專家級的價格形態、量能結構和趨勢指標技術分析。當需要分析技術走勢、支撐壓力位、K線型態、找買賣點、或進行量價背離分析時觸發。
 - **[pe-river-map](./skills/analysis/pe-river-map/SKILL.md)** (`analysis`) — 用於長期投資評估的互動式本益比河流圖（PE Band）估值視覺化。當詢問股票貴不貴、本益比河流圖、估值區間、或評估長線買點與目標價時觸發。
+- **[investment-aggregator](./skills/agents/investment-aggregator/SKILL.md)** (`agents`) — Loki Swarm 決策統整專家。彙整 twse-data-analyst (量化) 與 market-researcher (質化) 的數據，產出最終投資報告與風險評估。user-invoked。
+- **[twse-data-analyst](./skills/agents/twse-data-analyst/SKILL.md)** (`agents`) — Loki Swarm 量化運算專家。專責處理 TWSE 歷史資料、技術指標與量化運算，嚴格受限於財務資料庫環境。user-invoked。
+- **[market-researcher](./skills/agents/market-researcher/SKILL.md)** (`agents`) — Loki Swarm 基本面研究員。專職閱讀財報、解析 PDF、收集市場新聞情緒，取代舊版脆弱的自動爬蟲腳本。
+- **[real-time-stream-orchestrator](./skills/orchestration/real-time-stream-orchestrator/SKILL.md)** (`orchestration`) — 即時串流總指揮。實作 Interactive ReAct 架構，支援非同步「邊想邊說、邊聽邊想」，透過 AG-UI 協定將推演過程即時投影至前端介面（目前為設計願景，尚未有對應實作）。

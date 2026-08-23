@@ -17,3 +17,4 @@ _(尚無技能，遷移時依 AGENTS.md 規則填入，格式：`- **[skill-name
 - **[security-auditor](./security-auditor/SKILL.md)** — 資訊安全與弱點掃描總監。在程式碼合併、API 串接或外部資料處理前，自動執行安全審查。掃描 SQL Injection、XSS、API 密鑰外洩、路徑穿越等高危漏洞。觸發關鍵字：安全掃描、資安審計、弱點掃描、密碼外洩、secret外洩、SQL注入、XSS。
 - **[stock-orchestrator](./stock-orchestrator/SKILL.md)** — 股票與量化領域總管，負責拆解金融任務並調度 06 層級的子模組。
 - **[reality-checker](./reality-checker/SKILL.md)** — 品質保證與幻覺過濾器，負責審核計畫、架構與代碼的技術可行性。
+- **[real-time-stream-orchestrator](./real-time-stream-orchestrator/SKILL.md)** — 即時串流總指揮。實作 Interactive ReAct 架構，支援非同步「邊想邊說、邊聽邊想」，透過 AG-UI 協定將推演過程即時投影至前端介面（目前為設計願景，尚未有對應實作程式碼）。

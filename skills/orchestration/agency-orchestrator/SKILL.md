@@ -49,8 +49,8 @@ description: "萬能總管模式（Agency-Agents 最高總管），負責通用�
 你必須強制任務依序經過以下四個階段，除非使用者明確跳過：
 
 ### Phase 1: Planning (戰略規劃)
-- **主要角色**: `investment-researcher`, `financial-analyst`
-- **任務**: 定義範圍、進行市場/技術調研、產出實作計畫 (Implementation Plan)。
+- **主要角色**: `investment-researcher`, `financial-analyst`, `market-researcher`, `twse-data-analyst`, `investment-aggregator`
+- **任務**: 定義範圍、進行市場/技術調研（含量化資料撈取與質化財報研究）、彙整分析結果、產出實作計畫 (Implementation Plan)。
 - **退出條件**: 使用者批准計畫。
 
 ### Phase 2: Architecture (架構設計)
