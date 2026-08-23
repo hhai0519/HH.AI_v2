@@ -1,0 +1,46 @@
+{
+  "_meta": {
+    "version": "2.1.0",
+    "description": "本檔案為 $$ 指令的唯一權威定義來源。技能文件只描述『收到指令後怎麼執行』，不重複定義『什麼指令會觸發』，避免同一指令在多份文件出現不一致的定義。",
+    "maintenance_note": "每次新增或修改 SOP 時，必須同步更新此索引對應的 tags。原先預計轉成 ADR 的 skill_lifecycle 與 command_center 兩個 tag 已暫時移除，待 ADR 實際建立且路由邏輯更新後再補回。目前 SOP/ 資料夾僅有本索引檔，12 份 SOP 實體檔案與 Modules/sop_router.js 尚未遷移，路由表中標記 PENDING_MIGRATION 的項目待對應技能遷移後更新為正式路徑。$$啟動LINE$$ 經查證為 line-bot-zero-delay 文件內部對 $$LINE連線$$ 的不一致寫法，非獨立指令，已排除；日後遷移該技能時應一併統一文件用詞。",
+    "last_updated": "2026-08-24",
+    "total_sop_files": 12
+  },
+  "tags": {
+    "runbook":            ["SOP_00_RUNBOOK.md"],
+    "prompt":             ["SOP_00_System_Prompt_Bootstrap.md"],
+    "automation":         ["SOP_01_Automation_Process.md"],
+    "security":           ["SOP_02_Security_Guidelines.md"],
+    "process_kill":       ["SOP_02_Security_Guidelines.md", "SOP_05_System_Policies.md"],
+    "data_cleanup":       ["SOP_04_Data_Cleanup.md"],
+    "system_policy":      ["SOP_05_System_Policies.md", "SOP_14_Rigorous_Verification_and_Audit_Protocol.md"],
+    "ipc":                ["SOP_05_System_Policies.md"],
+    "line_bot":           ["SOP_05_System_Policies.md"],
+    "pm2":                ["SOP_05_System_Policies.md", "SOP_14_Rigorous_Verification_and_Audit_Protocol.md"],
+    "tunnel":             ["SOP_05_System_Policies.md", "SOP_02_Security_Guidelines.md"],
+    "startup":            ["SOP_05_System_Policies.md"],
+    "watchdog":           ["SOP_05_System_Policies.md"],
+    "no_delete":          ["SOP_05_System_Policies.md"],
+    "git":                ["SOP_05_System_Policies.md", "SOP_14_Rigorous_Verification_and_Audit_Protocol.md"],
+    "encoding":           ["SOP_05_System_Policies.md"],
+    "handover":           ["SOP_06_Handover_Manual.md"],
+    "cpu_optimization":   ["SOP_09_AutoResearch_CPU.md"],
+    "reflection":         ["SOP_11_Task_Reflection_Protocol.md", "SOP_14_Rigorous_Verification_and_Audit_Protocol.md"],
+    "auth":               ["SOP_12_MCP_Auth_Recovery.md"],
+    "hyperparameter":     ["SOP_13_Hyperparameter_Training.md"],
+    "audit":              ["SOP_14_Rigorous_Verification_and_Audit_Protocol.md"]
+  },
+  "special_trigger_routes": {
+    "$$自動化$$": "skills/orchestration/agency-orchestrator/SKILL.md#自動化指令攔截與詢問-automation-interception",
+    "$$自動化_微型模型$$": "PENDING_MIGRATION:skills/orchestration/autoresearch-agent/SKILL.md",
+    "$$自動化_通用研究$$": "PENDING_MIGRATION:skills/orchestration/recursive-research-automation/SKILL.md",
+    "$$自動化_量化實驗$$": "PENDING_MIGRATION:skills/orchestration/quant-research-loop/SKILL.md",
+    "$$Line帳號$$": "PENDING_MIGRATION:skills/agents/bot-account-switcher/SKILL.md",
+    "$$TG帳號$$": "PENDING_MIGRATION:skills/agents/bot-account-switcher/SKILL.md",
+    "$$Allow All$$": "PENDING_MIGRATION:SOP/SOP_01_Automation_Process.md#24-強制授權協議-strong-authorization-protocol",
+    "$$allowall$$": "PENDING_MIGRATION:SOP/SOP_01_Automation_Process.md#24-強制授權協議-strong-authorization-protocol",
+    "$$LINE連線$$": "PENDING_MIGRATION:skills/platform/line-bot-zero-delay/SKILL.md",
+    "$$LINE連線: <自訂名稱>$$": "PENDING_MIGRATION:skills/platform/line-bot-zero-delay/SKILL.md",
+    "$$TG連線$$": "PENDING_MIGRATION:skills/platform/telegram-bot-cdp-bridge/SKILL.md"
+  }
+}
