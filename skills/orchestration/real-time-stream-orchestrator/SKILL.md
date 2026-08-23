@@ -1,7 +1,6 @@
 ---
 name: real-time-stream-orchestrator
 description: "即時串流總指揮。取代傳統的話術腳本與溝通風格包裝。實作 Interactive ReAct 架構，支援非同步的「邊想邊說、邊聽邊想」，並透過 AG-UI 協定將推演過程即時投影至前端介面（目前為設計願景，尚未有對應實作程式碼，不依賴任何 MCP）。"
-type: "action"
 ---
 
 # Real-Time Stream Orchestrator
