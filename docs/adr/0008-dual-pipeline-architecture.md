@@ -55,3 +55,11 @@ agency-orchestrator 的 Phase 角色分派、比對 dependencies 欄位），三
 - 這個雙系統架構本身沒有寫在任何單一技能文件裡，只存在於這份 ADR，
   如果之後 agency-orchestrator 或 investment-aggregator 的職責有變化，
   記得回來更新這份文件，避免它變成過時的錯誤參考。
+
+## 更新紀錄
+- 2026-08-24：本文件 Decision 章節提到 line-interaction-manager「尚未遷移」，
+  該技能後續已遷移至 skills/agents/line-interaction-manager/，
+  Loki Swarm 管線的四個環節目前狀態為：market-researcher（已遷移）、
+  twse-data-analyst（已遷移）、investment-aggregator（已遷移）、
+  line-interaction-manager（已遷移）。本註記僅更新事實狀態，
+  原始決策內容不變。

@@ -1,7 +1,6 @@
 ---
 name: connect-apps
 description: "操控 Gmail、Slack、GitHub、Notion 等外部服務執行自動化任務。當使用者要求『在 Slack 發通知』、『建立 GitHub Issue』、『更新 Notion 頁面』、『發送郵件』或『跨系統資料同步』時使用。"
-type: action
 disable-model-invocation: true
 ---
 

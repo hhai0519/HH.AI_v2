@@ -1,7 +1,6 @@
 ---
 name: twse-data-analyst
 description: "Loki Swarm: 量化運算專家。專責處理台灣證券交易所 (TWSE) 的歷史資料、技術指標與量化運算。嚴格受限於財務資料庫環境。"
-type: "action"
 disable-model-invocation: true
 semantic_firewall: "/Domain/Finance/TWSE/"
 authorized_mcp_tools: ["Persona Knowledge MCP", "Postgres MCP", "Data Analysis MCP"]

@@ -1,7 +1,6 @@
 ---
 name: notebooklm-mcp
 description: "操控 NotebookLM 建立知識庫、進行深度研究與生成報告音頻。當使用者要求『建立 NotebookLM 筆記本』、『製作 Podcast/Audio Overview』、『跨筆記本知識查詢』或『從 URL/PDF 建立知識庫』時使用。"
-type: action
 ---
 
 # NotebookLM 智庫整合 (NotebookLM MCP)

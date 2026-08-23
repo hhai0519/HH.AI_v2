@@ -1,7 +1,6 @@
 ---
 name: line-interaction-manager
 description: "Loki Swarm: 第一線溝通總管。專門處理 LINE Bot 介面互動，確保回覆符合品牌語氣，並保護底層金融邏輯不外洩。"
-type: action
 disable-model-invocation: true
 authorized_mcp_tools: []
 semantic_firewall: "/Domain/Social/LineBot/"

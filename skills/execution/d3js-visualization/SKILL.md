@@ -1,7 +1,6 @@
 ---
 name: d3js-visualization
 description: "使用 d3.js 建立互動式資料視覺化。適用於客製化圖表、網路圖、地理視覺化，或任何需要對視覺元素、過渡或互動進行精細控制的複雜 SVG 資料視覺化。"
-type: execution
 ---
 
 

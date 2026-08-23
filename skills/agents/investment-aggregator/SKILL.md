@@ -1,7 +1,6 @@
 ---
 name: investment-aggregator
 description: "Loki Swarm: 決策統整專家。負責彙整 twse-data-analyst (量化) 與 market-researcher (質化) 的數據，產出最終的投資報告與風險評估。"
-type: "action"
 disable-model-invocation: true
 semantic_firewall: "/Domain/Reporting/"
 authorized_mcp_tools: ["Persona Knowledge MCP", "File System MCP"]

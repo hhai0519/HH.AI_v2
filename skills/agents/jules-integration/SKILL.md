@@ -2,7 +2,6 @@
 name: jules-integration
 description: 將耗時長、Token 消耗大的重構或修復任務委派給雲端 Google Jules 代理人執行，並保持與本地 git 分支同步。當使用者提到「委派給 Jules」、「雲端重構」、「交給 Jules 處理」，或本地任務預估修改檔案數超過 5 個、預期耗時超過 10 分鐘時使用。
 disable-model-invocation: true
-type: "action"
 authorized_mcp_tools: ["antigravity-jules-bridge.sendToJules"]
 semantic_firewall: true
 ---

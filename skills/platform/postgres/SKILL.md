@@ -1,7 +1,6 @@
 ---
 name: postgres
 description: 對多個 PostgreSQL 資料庫執行唯讀 SQL 查詢。支援結構探索、資料分析和品質檢查。為確保安全，封鎖所有寫入操作。
-type: action
 disable-model-invocation: true
 ---
 

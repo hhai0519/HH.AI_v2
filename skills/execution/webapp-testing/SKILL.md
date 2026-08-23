@@ -1,7 +1,6 @@
 ---
 name: webapp-testing
 description: "使用 Playwright 互動和測試本地 Web 應用程式的工具包。支援驗證前端功能、偵錯 UI 行為、擷取瀏覽器螢幕截圖以及查看瀏覽器日誌。"
-type: execution
 ---
 
 

@@ -82,11 +82,12 @@ description: 一句話說明「什麼情境下要用這個技能」，包含觸�
 
 **本專案自訂擴充欄位**（mattpocock 架構沒有，但本專案沿用，因為涉及金融操作安全）：
 ```yaml
-type: "cognitive" | "action"          # action 型代表會實際呼叫外部工具/API
 authorized_mcp_tools: [...]            # 白名單機制，action 型技能必須列出
 semantic_firewall: true 或 "路徑字串"　　# 語意防火牆，見下方說明
 ```
-這三個欄位只用在 `skills/agents/`（RARV 執行型）與部分 `skills/platform/` 技能，其餘 bucket 不需要。
+這兩個欄位只用在 `skills/agents/`（RARV 執行型）與部分 `skills/platform/` 技能，其餘 bucket 不需要。
+
+type 欄位已於 2026-08-24 全面移除，副作用判斷改由 bucket 分類（agents/ 代表有真實副作用）與 disable-model-invocation 欄位表達。
 
 ### semantic_firewall 有兩種寫法
 

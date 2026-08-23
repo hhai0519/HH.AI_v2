@@ -45,7 +45,7 @@ MAX_LINES_BEFORE_WARNING = 150
 # 官方 Agent Skills 規格允許的 frontmatter 欄位
 OFFICIAL_ALLOWED_KEYS = {"name", "description", "license", "allowed-tools", "metadata", "compatibility"}
 # 本專案自訂擴充欄位（見 AGENTS.md 第 2 節），官方規格沒有但本專案沿用
-PROJECT_CUSTOM_KEYS = {"type", "authorized_mcp_tools", "semantic_firewall", "disable-model-invocation"}
+PROJECT_CUSTOM_KEYS = {"authorized_mcp_tools", "semantic_firewall", "disable-model-invocation"}
 ALLOWED_KEYS = OFFICIAL_ALLOWED_KEYS | PROJECT_CUSTOM_KEYS
 
 NAME_MAX_LEN = 64

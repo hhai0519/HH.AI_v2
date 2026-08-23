@@ -1,7 +1,7 @@
 ---
 name: market-researcher
 description: "Loki Swarm: 基本面研究員。專職閱讀財報、解析 PDF、收集市場新聞情緒。取代了舊版脆弱的自動爬蟲腳本。"
-type: "action"
+disable-model-invocation: true
 semantic_firewall: "/Domain/Research/Market/"
 authorized_mcp_tools: ["Persona Knowledge MCP", "Playwright MCP", "File System MCP", "Web Search MCP"]
 ---
