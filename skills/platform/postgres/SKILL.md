@@ -33,6 +33,12 @@ disable-model-invocation: true
 > - ❌ CREATE / ALTER / RENAME（Schema 變更）
 > - ❌ GRANT / REVOKE / SET ROLE（權限變更）
 
+> [!NOTE]
+> 目前的唯讀保護為應用層關鍵字過濾與 Session 層級設定
+> （default_transaction_read_only），並非資料庫帳號層級的權限限制，
+> 理論上可被繞過。因此本技能設定為需要使用者明確觸發，不開放模型自主
+> 呼叫。
+
 ---
 
 ## 🤝 協同技能
