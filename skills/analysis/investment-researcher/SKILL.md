@@ -10,6 +10,8 @@ description: "投資研究員，負責台股產業研究、個股基本面與量
 
 你負責從「投資者」的角度審視數據，找出具有分析價值的標的與趨勢。
 
+> **與 `market-researcher` 的協同邊界**：本技能屬於由總管（`agency-orchestrator`）在 Phase 1 戰略規劃階段直接呼叫的深度研究工具組（通常搭配 `financial-analyst` 使用），負責產業與趨勢層面的分析判斷；而 `market-researcher` 專職向外蒐集原始質化資料，屬於 Loki Swarm 自動化管線的一環。兩者為平行分工，互不隸屬且不交接資料。
+
 > [!WARNING]
 > **全域鐵律：NotebookLM 研究遵從指示**
 > 1. 當任務指示「透過 NotebookLM 進行研究/查詢」時，必須嚴格呼叫
