@@ -146,7 +146,6 @@ class SankeyChart extends D3Chart {
 
 ## 🤝 協同技能
 
-- `d3-viz-skill`：臺股 K 線圖的快速模板
 - `artifacts-builder`：D3 圖表嵌入 React 組件
 - `theme-factory`：標準化配色主題套用
 
