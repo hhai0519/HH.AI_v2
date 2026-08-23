@@ -122,7 +122,7 @@ await server.connect(transport);
 - ✅ 適用：建立新 MCP 伺服器、配置 settings.json、排錯 MCP 連線
 - ✅ 適用：整合第三方 API 為 MCP Tool（GitHub、Notion、資料庫等）
 - ❌ 不適用：MCP 閘道器多伺服器管理（請改用 `mcp-gateway` 技能）
-- ❌ 不適用：系統層級環境問題（請改用 `systematic-debugging-skill`）
+- ❌ 不適用：系統層級環境問題（請改用 `systematic-debugging`）
 
 ---
 

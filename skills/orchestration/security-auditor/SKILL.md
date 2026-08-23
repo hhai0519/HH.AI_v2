@@ -132,7 +132,7 @@ npm audit fix --dry-run
 ## 🤝 協同技能
 
 - `reality-checker`：邏輯可行性審查（本技能負責安全合規審查）
-- `systematic-debugging-skill`：異常排錯（本技能負責主動預防）
+- `systematic-debugging`：異常排錯（本技能負責主動預防）
 - `workspace-migration-recovery`：環境遷移後的架構合規掃描
 
 ---
