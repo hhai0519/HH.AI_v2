@@ -40,6 +40,10 @@ python3 scripts/validate_skills.py
 - **[skill-evolution-governor](./skills/meta/skill-evolution-governor/SKILL.md)** (`meta`) — 負責技能生態系統的生命週期管理、DLP 合規審計與系統自我進化。包含自動覆寫技能規範的修復能力。此技能涉及實體檔案變更，必須由使用者明確要求時才可觸發執行。
 - **[setup-hhai-skills](./skills/meta/setup-hhai-skills/SKILL.md)** (`meta`) — 一次性的專案初始化與交接設定指南。當接手現有專案、需要了解專案技術棧與目錄結構、或準備開始開發臺股網站功能時手動觸發閱讀。user-invoked。
 
+- **[connect-apps](./skills/platform/connect-apps/SKILL.md)** (`platform`) — 操控 Gmail、Slack、GitHub、Notion 等外部服務執行自動化任務。當使用者要求『在 Slack 發通知』、『建立 GitHub Issue』、『更新 Notion 頁面』、『發送郵件』或『跨系統資料同步』時使用。user-invoked。
+- **[postgres](./skills/platform/postgres/SKILL.md)** (`platform`) — 對多個 PostgreSQL 資料庫執行唯讀 SQL 查詢。支援結構探索、資料分析和品質檢查。為確保安全，封鎖所有寫入操作。user-invoked。
+- **[notebooklm-mcp](./skills/platform/notebooklm-mcp/SKILL.md)** (`platform`) — 操控 NotebookLM 建立知識庫、進行深度研究與生成報告音頻。當使用者要求『建立 NotebookLM 筆記本』、『製作 Podcast/Audio Overview』、『跨筆記本知識查詢』或『從 URL/PDF 建立知識庫』時使用。
+
 - **[financial-analyst](./skills/analysis/financial-analyst/SKILL.md)** (`analysis`) — 財務分析師，負責估值建模、比率分析與財務風險評估。當需要 valuation (估值)、financial statement (財報分析)、ratio analysis (比率分析) 或 risk assessment (風險評估) 時觸發。
 - **[investment-researcher](./skills/analysis/investment-researcher/SKILL.md)** (`analysis`) — 投資研究員，負責台股產業研究、個股基本面與量化趨勢分析。當需要 sector analysis (產業分析)、company research (個股研究) 或 market trend (市場趨勢) 時觸發。
 - **[tech-analyzer](./skills/analysis/tech-analyzer/SKILL.md)** (`analysis`) — 專家級的價格形態、量能結構和趨勢指標技術分析。當需要分析技術走勢、支撐壓力位、K線型態、找買賣點、或進行量價背離分析時觸發。
