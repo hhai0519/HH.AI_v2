@@ -163,7 +163,7 @@ def main():
                 else:
                     seen_names[name] = location
 
-            line_count = len(body.splitlines())
+            line_count = body.count("\n") + (1 if body and not body.endswith("\n") else 0)
             if line_count > MAX_LINES_BEFORE_WARNING:
                 ref = skill_dir / "REFERENCE.md"
                 if not ref.exists():
