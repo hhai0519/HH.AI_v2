@@ -4,3 +4,5 @@
 node_modules/
 pm2_before.json
 stress_test_result.json
+__pycache__/
+*.pyc
