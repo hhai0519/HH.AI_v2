@@ -14,6 +14,8 @@ Usage:
       -- python test.py
 """
 
+import os
+import shlex
 import subprocess
 import socket
 import time
@@ -30,6 +32,54 @@ def is_server_ready(port, timeout=30):
         except (socket.error, ConnectionRefusedError):
             time.sleep(0.5)
     return False
+
+
+def start_server_process(cmd_str):
+    """
+    Safely start a server process without using shell=True.
+    Parses chained commands (separated by && or ;) and tracks cd directory changes.
+    """
+    tokens = shlex.split(cmd_str)
+    subcmds = []
+    current = []
+    for token in tokens:
+        if token in ("&&", ";"):
+            if current:
+                subcmds.append(current)
+                current = []
+        else:
+            current.append(token)
+    if current:
+        subcmds.append(current)
+
+    if not subcmds:
+        raise ValueError(f"Invalid empty server command: {cmd_str}")
+
+    cwd = None
+    for i, subcmd in enumerate(subcmds):
+        if not subcmd:
+            continue
+        if subcmd[0] == "cd":
+            if len(subcmd) > 1:
+                target_dir = subcmd[1]
+                cwd = os.path.abspath(os.path.join(cwd, target_dir)) if cwd else os.path.abspath(target_dir)
+            continue
+
+        # If this is the last subcommand, launch in background via Popen
+        if i == len(subcmds) - 1:
+            return subprocess.Popen(
+                subcmd,
+                cwd=cwd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE
+            )
+        else:
+            # Synchronously run prerequisite commands before the server
+            res = subprocess.run(subcmd, cwd=cwd)
+            if res.returncode != 0:
+                raise RuntimeError(f"Command failed with return code {res.returncode}: {' '.join(subcmd)}")
+
+    raise ValueError(f"No executable command found in server command: {cmd_str}")
 
 
 def main():
@@ -65,13 +115,7 @@ def main():
         for i, server in enumerate(servers):
             print(f"Starting server {i+1}/{len(servers)}: {server['cmd']}")
 
-            # Use shell=True to support commands with cd and &&
-            process = subprocess.Popen(
-                server['cmd'],
-                shell=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE
-            )
+            process = start_server_process(server['cmd'])
             server_processes.append(process)
 
             # Wait for this server to be ready
