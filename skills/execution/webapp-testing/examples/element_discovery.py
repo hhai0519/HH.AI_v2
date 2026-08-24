@@ -10,11 +10,17 @@ with sync_playwright() as p:
     page.goto('http://localhost:5173')
     page.wait_for_load_state('networkidle')
 
-    # Discover all buttons on the page
-    buttons = page.locator('button').all()
-    print(f"Found {len(buttons)} buttons:")
-    for i, button in enumerate(buttons):
-        text = button.inner_text() if button.is_visible() else "[hidden]"
+    # Discover all buttons on the page using evaluate to eliminate N+1 roundtrips
+    button_texts = page.evaluate('''() => {
+        return Array.from(document.querySelectorAll('button')).map(b => {
+            const isVisible = typeof b.checkVisibility === 'function'
+                ? b.checkVisibility({ checkOpacity: false, checkVisibilityCSS: true })
+                : !!(b.offsetWidth || b.offsetHeight || b.getClientRects().length);
+            return isVisible ? (b.innerText || b.textContent) : "[hidden]";
+        });
+    }''')
+    print(f"Found {len(button_texts)} buttons:")
+    for i, text in enumerate(button_texts):
         print(f"  [{i}] {text}")
 
     # Discover links
