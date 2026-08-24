@@ -74,7 +74,8 @@ def main():
             )
             server_processes.append(process)
 
-            # Wait for this server to be ready
+        # Wait for all servers to be ready
+        for server in servers:
             print(f"Waiting for server on port {server['port']}...")
             if not is_server_ready(server['port'], timeout=args.timeout):
                 raise RuntimeError(f"Server failed to start on port {server['port']} within {args.timeout}s")
