@@ -28,8 +28,7 @@ disable-model-invocation: true
 |---|---|---|
 | **Gmail** | 讀取/發送/搜尋郵件、管理標籤 | OAuth2 |
 | **Slack** | 發送訊息、建立頻道、上傳檔案 | Bot Token |
-| **GitLab** | Issues/MR/Commits/CI-CD (新預設) | Personal Token |
-| **GitHub** | Issues/PR/Commits/Releases (受限) | Personal Token |
+| **GitHub** | Issues/PR/Commits/Releases | Personal Token |
 | **Notion** | 頁面讀寫、資料庫查詢 | Integration Token |
 | **Google Calendar** | 建立/讀取/修改事件 | OAuth2 |
 | **Discord** | 發送訊息、Webhook 觸發 | Webhook URL |

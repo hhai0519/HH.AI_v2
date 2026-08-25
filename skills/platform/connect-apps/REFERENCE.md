@@ -68,40 +68,7 @@ ALERT_BLOCK = [
 ]
 ```
 
-### GitLab 整合 (New Default)
-
-```python
-import requests
-
-class GitLabAPI:
-    BASE = "https://gitlab.com/api/v4"
-    
-    def __init__(self, token: str, project_id: str):
-        # project_id 可以是數字 ID 或 URL-encoded 的完整路徑 (如 "group%2Fproject")
-        self.headers = {
-            "Private-Token": token,
-            "Content-Type": "application/json"
-        }
-        self.project_id = project_id
-    
-    def create_issue(self, title: str, description: str, labels: str = "") -> dict:
-        resp = requests.post(
-            f"{self.BASE}/projects/{self.project_id}/issues",
-            headers=self.headers,
-            json={"title": title, "description": description, "labels": labels}
-        )
-        issue = resp.json()
-        return {"url": issue.get('web_url'), "id": issue.get('iid')}
-    
-    def list_issues(self, state: str = "opened") -> list:
-        resp = requests.get(
-            f"{self.BASE}/projects/{self.project_id}/issues?state={state}",
-            headers=self.headers
-        )
-        return [{"title": i['title'], "url": i['web_url']} for i in resp.json()]
-```
-
-### GitHub 整合 (Legacy)
+### GitHub 整合
 
 ```python
 import requests
@@ -136,7 +103,6 @@ import os
 
 CREDENTIALS = {
     "slack_token": os.environ.get("SLACK_BOT_TOKEN"),
-    "gitlab_token": os.environ.get("GITLAB_TOKEN"),
     "github_token": os.environ.get("GITHUB_TOKEN"),
     "notion_token": os.environ.get("NOTION_TOKEN"),
 }
