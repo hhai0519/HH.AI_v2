@@ -103,11 +103,11 @@ npx pm2 restart line-bridge
 
 **Agent 接管控制權（基建啟動後，由 Agent 執行）：**
 ```powershell
-# LINE 接管
-node skills/platform/line-bot-zero-delay/line-bot-project/start_line.js Antigravity-Master "AI_Master" true (尚未遷移至 HH.AI_v2，此為預計路徑)
+# LINE 接管（該技能尚未遷移至 HH.AI_v2，路徑為預計位置）
+node skills/platform/line-bot-zero-delay/line-bot-project/start_line.js Antigravity-Master "AI_Master" true
 
-# TG 接管
-node skills/platform/telegram-bot-cdp-bridge/telegram-bot-project/start_tg.js Antigravity-Master (尚未遷移至 HH.AI_v2，此為預計路徑)
+# TG 接管（該技能尚未遷移至 HH.AI_v2，路徑為預計位置）
+node skills/platform/telegram-bot-cdp-bridge/telegram-bot-project/start_tg.js Antigravity-Master
 ```
 
 **注意：LINE 與 TG 兩個橋接器完全獨立運行（Port 3000 vs Port 3001），可同時並行，不存在任何衝突。**
