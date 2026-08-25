@@ -15,8 +15,7 @@
 
 | 項目 | 數量 | 狀態 |
 |---|---|---|
-| 技能遷移 | 30 個（7 bucket） | ✅ |
-| ADR 決策留痕 | 13 份 | ✅ |
+| 技能遷移 | 31 個（7 bucket） | ✅ || `bot-account-switcher` | 已遷移至 `skills/agents/` | ✅ || ADR 決策留痕 | 13 份 | ✅ |
 | Workspace 規則（`.agents/rules/`） | 4 份 | ✅ |
 | SOP 遷移 | 10 份 + 索引 + README | ✅ |
 | `$$` 指令權威路由表 | 1 份（11 條有效路由） | ✅ |
@@ -33,7 +32,6 @@
 
 | 技能 | 舊位置 | 預計去向 | 備註 |
 |---|---|---|---|
-| `bot-account-switcher` | `.agents/skills/` | `skills/agents/` | 專案初期漏掉，`$$Line帳號$$`/`$$TG帳號$$` 靠它 |
 | `line-bot-zero-delay` | `03_Execution/` | `skills/platform/` | 文件遷移，程式碼留給 runtime 階段 |
 | `telegram-bot-cdp-bridge` | `03_Execution/` | `skills/platform/` | 同上，內含 vendored `remoat` 開源專案 |
 | `tool-executor` | `03_Execution/` | `skills/execution/` | 被多個技能引用 |
@@ -245,3 +243,6 @@ $$LINE連線$$ → agency-orchestrator 辨識
 
 5. **`nuwa-skill` 官方 15 個範例與本專案清單完全一致** — 代表當初是直接
    複製清單但沒帶內容。官方版本是 A 級品質（89-97 分），可直接採用。
+
+**更新紀錄**：
+- 2026-08-25: `bot-account-switcher` 遷移至 `skills/agents/` 完成。

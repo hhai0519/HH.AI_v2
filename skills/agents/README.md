@@ -13,3 +13,6 @@ RARV 執行型 agent（會實際呼叫工具、寫檔案、發送訊息等）。
 ## Model-invoked
 
 - **[market-researcher](./market-researcher/SKILL.md)** — Loki Swarm 基本面研究員。專職閱讀財報、解析 PDF、收集市場新聞情緒，取代舊版脆弱的自動爬蟲腳本。
+
+### User-invoked
+- [bot-account-switcher](./bot-account-switcher/SKILL.md): LINE & Telegram 官方帳號雙平台切換工具。
