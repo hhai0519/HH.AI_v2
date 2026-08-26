@@ -1,6 +1,6 @@
 ---
 name: subagent-collaboration
-description: "執行多步驟任務、執行計畫或複雜的單次操作時使用。同時具備「配方混合器 (Recipe Mixer)」職責，負責將使用者意圖封裝為動態參數，並精準調度對應的 Cognitive Personas。"
+description: "執行多步驟任務、執行計畫或複雜的單次操作時使用。同時具備「配方混合器 (Recipe Mixer)」職責，負責將使用者意圖封裝為動態參數，並精準調度對應的 persona 角色設定。"
 ---
 <!-- v1.1.0 - Integrated Recipe Mixer capabilities for Dynamic Payload Assembly -->
 <!-- v1.0.0 - Adapted from obra/superpowers subagent-driven-development for 本協作系統 -->
@@ -22,7 +22,7 @@ description: "執行多步驟任務、執行計畫或複雜的單次操作時使
 
 ## The Recipe Mixer (配方混合器) 職責
 
-當任務需要調用 `02_Cognitive` 領域的角色（如 Musk, Jobs, Taleb）時，本技能必須負責「意圖翻譯」與「參數裝配」：
+當任務需要調用 persona 角色（如 Musk, Jobs, Taleb）時，本技能必須負責「意圖翻譯」與「參數裝配」（註：persona 設定檔位於舊專案 Data/personas/，屬 Configuration Data 而非技能，尚未遷移至 HH.AI_v2）：
 
 1. **需求解析**：剖析使用者的模糊指令，提煉出核心的軟體工程或商業邏輯。
 2. **參數裝配 (Dynamic Payload Builder)**：嚴格依照 `Template_00_Universal_Skill.md` 的通訊協定，組裝以下參數：
@@ -44,8 +44,8 @@ description: "執行多步驟任務、執行計畫或複雜的單次操作時使
 
 | 目標層級 | 允許注入 | 嚴禁注入 |
 |---|---|---|
-| `02_Cognitive` (Persona / Analyst) | 戰略目標、語氣設定、情緒變數、自然語言約束 | SQL、DOM 路徑、raw URL、技術指令 |
-| `03_Execution` (Tool) | URL、DOM Selector、SQL Query、JSON Schema、檔案路徑 | 認知參數、語氣描述、角色設定、情緒變數 |
+| `analysis/`（分析與 Persona 層） | 戰略目標、語氣設定、情緒變數、自然語言約束 | SQL、DOM 路徑、raw URL、技術指令 |
+| `execution/` 與 `platform/`（工具與整合層） | URL、DOM Selector、SQL Query、JSON Schema、檔案路徑 | 認知參數、語氣描述、角色設定、情緒變數 |
 
 **執行流程**：
 1. 收到 Orchestrator 的原始指令後，**首先檢查旁路旗標**：
