@@ -44,7 +44,7 @@ PHASE 1: 計畫  →  PHASE 2: 實作  →  PHASE 3: 驗證  →  PHASE 4: 迭�
    (Plan)              (Build)           (Verify)          (Iterate)
 ```
 
-- **PHASE 1 (Plan)**: 拆解任務至 `task.md`，定義成功標準。若任務超過 5 步驟，可呼叫 `subagent-collaboration-skill` 派發子代理人。
+- **PHASE 1 (Plan)**: 拆解任務至 `task.md`，定義成功標準。若任務超過 5 步驟，可呼叫 `subagent-collaboration` 派發子代理人。
 - **PHASE 2 (Build)**: 實作程式碼。建議順序：HTML 骨架 → 假資料測試 → 串接真實 API → 互動功能。
 - **PHASE 3 (Verify)**: 使用 Playwright 截圖驗證。
 - **PHASE 4 (Iterate)**: 若遇錯誤阻塞，呼叫 `systematic-debugging` 進行排查。

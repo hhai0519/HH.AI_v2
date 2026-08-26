@@ -17,3 +17,8 @@ _(尚無技能)_
 - **[stock-orchestrator](./stock-orchestrator/SKILL.md)** — 股票與量化領域總管，負責拆解金融任務並調度 06 層級的子模組。
 - **[reality-checker](./reality-checker/SKILL.md)** — 品質保證與幻覺過濾器，負責審核計畫、架構與代碼的技術可行性。
 - **[real-time-stream-orchestrator](./real-time-stream-orchestrator/SKILL.md)** — 即時串流總指揮。實作 Interactive ReAct 架構，支援非同步「邊想邊說、邊聽邊想」，透過 AG-UI 協定將推演過程即時投影至前端介面（目前為設計願景，尚未有對應實作程式碼）。
+
+- **[cost-benefit-router](./cost-benefit-router/SKILL.md)**：在動態實驗或複雜研究中評估預算與成本，判斷是否繼續深入。
+- **[epistemic-state-governor](./epistemic-state-governor/SKILL.md)**：認知狀態管制官，監控推演健康度並在幻覺時強制介入。
+- **[recursive-research-automation](./recursive-research-automation/SKILL.md)**：執行遞迴式深度研究，涵蓋廣度掃描與深度收斂。
+- **[subagent-collaboration](./subagent-collaboration/SKILL.md)**：調用子代理人（Sub-Agent）協助完成專業領域分析或創作。

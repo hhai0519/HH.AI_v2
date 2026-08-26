@@ -15,7 +15,7 @@
 
 | 項目 | 數量 | 狀態 |
 |---|---|---|
-| 技能遷移 | 41 個（7 bucket） | ✅ |
+| 技能遷移 | 45 個（7 bucket） | ✅ |
 | ADR 決策留痕 | 15 份 | ✅ |
 | Workspace 規則（`.agents/rules/`） | 4 份 | ✅ |
 | SOP 遷移 | 10 份 + 索引 + README | ✅ |
@@ -44,13 +44,9 @@
 | `workspace-migration-recovery` | `03_Execution/` | `skills/meta/` | 可用來驗證本次遷移完整性 |
 | `sentiment-scout` | `02_Cognitive/` | `skills/analysis/` | frontmatter 有格式錯誤需修 |
 | `json-to-flex-renderer` | `02_Cognitive/` | `skills/platform/` | 與 `markdown_to_flex.js` 邏輯可能重疊 |
-| `epistemic-state-governor` | `02_Cognitive/` | `skills/orchestration/` | |
 | `dynamic-tool-synthesizer` | `02_Cognitive/` | `skills/meta/` | persona 呼叫鏈的關鍵環節 |
-| `subagent-collaboration-skill` | `01_Orchestrators/` | `skills/orchestration/` | 被 `agency-orchestrator` 引用 |
 | `autoresearch-agent` | `01_Orchestrators/` | `skills/agents/` | `$$自動化_微型模型$$` 路由目標 |
-| `recursive-research-automation` | `01_Orchestrators/` | `skills/orchestration/` | `$$自動化_通用研究$$` 路由目標 |
 | `quant-research-loop` | `01_Orchestrators/` | `skills/analysis/` | `$$自動化_量化實驗$$` 路由目標 |
-| `cost-benefit-router` | `01_Orchestrators/` | `skills/orchestration/` | 取代已廢的 `quota-monitor-skill` |
 | **`shared-bot-utils`** | `03_Execution/` | **待評估** | **本次新發現**：含 `textNormalizer.js`、`mediaDownloader.js`，是 LINE/TG 共用工具，可能該進 `shared/` 而非 `skills/` |
 
 #### A-2. 確定不遷移
@@ -58,7 +54,6 @@
 | 技能 | 原因 |
 |---|---|
 | `global-workspace` | 已被 `agency-orchestrator` 取代（標記 legacy_notice） |
-| `quota-monitor-skill` | 已被 `cost-benefit-router` 取代 |
 | `canvas-design` | 已被 `ui-prototype-builder` 取代 |
 | `optimization-status` | 動態實驗日誌偽裝成技能，非真正技能 |
 | `episodic-consolidation` | 已合併進 `agency-orchestrator`（ADR-0006） |
@@ -244,4 +239,5 @@ $$LINE連線$$ → agency-orchestrator 辨識
 - **2026-08-26**：6 個 analysis 型技能遷移完成
   （evidence-collector、software-architect、backend-architect、data-engineer、devops-engineer、twse-market-logic）
 - **2026-08-26**：4 個 execution 型技能遷移完成
-  （tool-executor、frontend-developer、declarative-visual-intent-generator、gemma-4-api）
+  （tool-executor、frontend-developer、declarative-visual-intent-generator、gemma-4-api）- **2026-08-26**：4 個 orchestration 型技能遷移完成- **2026-08-26**：4 個 orchestration 型技能遷移完成
+  （subagent-collaboration、recursive-research-automation、cost-benefit-router、epistemic-state-governor）

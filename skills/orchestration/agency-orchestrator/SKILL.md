@@ -15,7 +15,7 @@ description: "萬能總管模式（Agency-Agents 最高總管），負責通用�
 本技能涉及全局協調與核心狀態管理，嚴禁將敏感配置、基礎架構憑證或機密對話紀錄外洩或上傳至未授權之外部日誌系統。
 
 ## 協同技能 (Dependencies)
-本技能會依賴並呼叫 `subagent-collaboration-skill` 來進行多子代理人的協作，以及呼叫 `reality-checker` 來審核計畫的技術可行性與防範幻覺。
+本技能會依賴並呼叫 `subagent-collaboration` 來進行多子代理人的協作，以及呼叫 `reality-checker` 來審核計畫的技術可行性與防範幻覺。
 
 
 ## 自動化指令攔截與詢問 (Automation Interception)
