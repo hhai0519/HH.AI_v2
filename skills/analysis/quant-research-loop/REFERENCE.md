@@ -4,7 +4,7 @@
 
 - `tech-analyzer`：技術訊號的量化驗證
 - `chip-logic-expert`：籌碼策略的回測
-- `twse-market-logic-skill`：臺股特有市場邏輯整合
+- `twse-market-logic`：臺股特有市場邏輯整合
 
 ---
 

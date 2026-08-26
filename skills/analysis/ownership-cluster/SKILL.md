@@ -94,9 +94,9 @@ def calc_ci_index(foreign_ratio, trust_ratio, dealer_ratio, major_1000_ratio):
 ## 🤝 協同技能
 
 > 依 SOP §6.1 反死鎖協定：本技能採單向依賴，不直接引用同層的 `chip-logic-expert`。
-> 共用的籌碼邏輯框架已向下抽取至 `twse-market-logic-skill` 進行中轉。
+> 共用的籌碼邏輯框架已向下抽取至 `twse-market-logic` 進行中轉。
 
-- `twse-market-logic-skill`：系統級臺股市場邏輯框架（共用中樞，含 CI_INDEX 邏輯、融資維持率、軋空模型）
+- `twse-market-logic`：系統級臺股市場邏輯框架（共用中樞，含 CI_INDEX 邏輯、融資維持率、軋空模型）
 - `tech-analyzer`：籌碼面 + 技術面雙重確認
 
 ---

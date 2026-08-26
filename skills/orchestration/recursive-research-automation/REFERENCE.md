@@ -29,9 +29,9 @@
 
 ## 協同技能
 - `notebooklm-mcp`：核心研究工具。
-- `twse-market-logic-skill`：臺股研究時的邏輯參考。
+- `twse-market-logic`：臺股研究時的邏輯參考。
 - `quant-research-loop`：量化資料驗證。
-- `systematic-debugging-skill`：自動化中斷時的排障。
+- `systematic-debugging`：自動化中斷時的排障。
 
 ## 版本紀錄 (Changelog)
 - **[2.0.0]** 2026-05-04：V2.0.0 Orchestrator Alignment — 依生命週期 SOP 導入三維認知能力矩陣標籤 (logic_depth, strategic_focus, interaction_style)，完成 Manifest 全域補錄。

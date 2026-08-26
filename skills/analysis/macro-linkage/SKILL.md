@@ -99,7 +99,7 @@ ADR 溢價計算（即時）
 ## 🤝 協同技能
 
 - `tech-analyzer`：開盤方向確認後的技術面切入點
-- `twse-market-logic-skill`：系統級市場邏輯
+- `twse-market-logic`：系統級市場邏輯
 - `sentiment-scout`：市場情緒輔助確認
 
 ---

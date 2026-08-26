@@ -32,7 +32,7 @@ langsmith-fetch trace --run-id <RUN_ID> --format json > trace.json
 
 ## 🤝 協同技能
 
-- `systematic-debugging-skill`：更廣泛的環境除錯流程
+- `systematic-debugging`：更廣泛的環境除錯流程
 - `optimization-status`：Agent 性能優化追蹤
 
 ---

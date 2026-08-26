@@ -154,7 +154,7 @@ Invoke-WebRequest http://localhost:8888 -UseBasicParsing | Select StatusCode
 
 1. **翻譯覆蓋率要求**：每項 Skill 的說明必須確認 `SKILL.md` 的 YAML frontmatter 中已有完整的正體中文翻譯，填寫率須達 100%。
 2. **SKILL.md 語言規定**：`SKILL.md` 的觸發說明與描述必須使用**台灣正體中文**（允許保留英文技術術語）。
-3. **技能命名一致性**：實體目錄名稱須與技能唯一識別碼完全一致，例如 `twse-market-logic-skill` 禁止出現命名不一致的情況。
+3. **技能命名一致性**：實體目錄名稱須與技能唯一識別碼完全一致，例如 `twse-market-logic` 禁止出現命名不一致的情況。
 
 ---
 
