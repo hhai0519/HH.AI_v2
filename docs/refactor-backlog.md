@@ -227,8 +227,48 @@ $$LINE連線$$ → agency-orchestrator 辨識
 
 6. **全域 SKILL.md 掃描已完成** — 2026-08-26 執行全域搜尋確認，舊專案的技能只存在於以下位置：`skills/01_Orchestrators`、`02_Cognitive`、`03_Execution`、`Archive`、`.agents/skills/`（bot-account-switcher）、`Data/personas/`（15 個 persona），以及 `scratch/` 底下一個外部套件的內附文件（不遷移）。除此之外沒有其他藏在非標準位置的技能，遷移範圍已確定完整。
 
+## 三之二、Jules 自動化修正分支處理狀態
+
+Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修正
+分支，全部基於 commit 9615558（ADR-0012 那次）。處理狀態如下：
+
+### 已合併
+
+| 分支 | 內容 | 合併 commit |
+|---|---|---|
+| `fix/security-with-server-cmd-injection-...` | 修正 `with_server.py` 的 command injection 漏洞（移除 `shell=True`），附 5 個單元測試 | 886d891 |
+| `perf/parallelize-server-startup-...` | `with_server.py` 改為全部啟動後再統一等待，多 server 場景啟動時間由相加變為取較長者 | 97dafd6 |
+
+### 已評估，決定不採用
+
+| 分支 | 不採用理由 |
+|---|---|
+| `refactor-with-server-script-...` | 基於修正前的舊版做重構，其 `server_manager` 函式仍帶著 `shell=True`，合併會把已修好的 command injection 漏洞改回去。安全修正已新增 `start_server_process` 函式改善結構，不值得為進一步重構承擔風險。**分支保留在遠端，勿刪除，供日後查閱。** |
+
+### 待處理
+
+| 分支 | 內容 | 備註 |
+|---|---|---|
+| `fix-xss-d3js-tooltip-...` | 修正 `interactive-template.jsx` tooltip 的 XSS 漏洞 | 已初步評估，修法正確（HTML entity escaping），建議採用 |
+| `perf/optimize-line-counting-...` | 優化 `validate_skills.py` 的行數計算 | ⚠️ 與下一項同時修改 `validate_skills.py`，會衝突，需擇一或依序處理 |
+| `refactor-validate-skills-main-...` | 重構 `validate_skills.py` 的 main 函式 | ⚠️ 同上 |
+| `jules-...b431935b` | 優化 element discovery（`page.evaluate`） | 未評估 |
+| `remove-unused-usestate-import-...` | 移除 chart template 未使用的 `useState` import | 未評估 |
+| `test-is-server-ready-...` | `is_server_ready` 單元測試 | 未評估 |
+| `test-parse-frontmatter-...` | `parse_frontmatter` 單元測試 | 未評估 |
+| `test-validate-description-...` | `validate_description` 單元測試 | 未評估 |
+| `test-validate-name-function-...` | `validate_name` 單元測試 | 未評估 |
+
+> [!NOTE]
+> 所有分支均基於 `9615558`，落後 main 多個 commit，合併前需先 rebase。
+> 同時修改同一檔案的分支（如 `validate_skills.py` 的兩個分支）務必依序
+> 處理，不可平行合併。
+
+---
+
 ## 四、更新紀錄 (Update Log)
 - **2026-08-26**: 復活 `ownership-cluster` 與 `macro-linkage`，由 A-3 區塊移除並納入 `skills/analysis/`。
+- **2026-08-26**：合併 Jules 兩個 with_server.py 修正分支（command injection 安全修正 + 啟動平行化），引入 HH.AI_v2 首批自動化測試（5 個，全數通過），並建立 requirements.txt。
 - **2026-08-25**：`bot-account-switcher` 遷移至 `skills/agents/`
 - **2026-08-26**：6 個 analysis 型技能遷移完成
   （evidence-collector、software-architect、backend-architect、data-engineer、devops-engineer、twse-market-logic）
