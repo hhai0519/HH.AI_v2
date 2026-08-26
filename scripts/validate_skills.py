@@ -88,93 +88,94 @@ def validate_description(desc: str, errors: list, location: str):
         errors.append(f"[{location}] description 長度 {len(desc)} 超過官方上限 {DESCRIPTION_MAX_LEN} 字元")
 
 
-def main():
-    errors = []
-    warnings = []
-    seen_names = {}
+def validate_bucket_structure(bucket_dir: Path, errors: list, warnings: list) -> tuple[bool, str]:
+    """驗證 bucket 目錄合法性與基礎檔案（README.md / AGENTS.md），回傳 (是否合法 bucket, readme 內容)"""
+    bucket = bucket_dir.name
+    if bucket not in VALID_BUCKETS:
+        errors.append(f"未知的 bucket 分類：{bucket}（不在 AGENTS.md 定義的 7 種分類內）")
+        return False, ""
 
-    if not SKILLS_DIR.exists():
-        print(f"❌ 找不到 skills/ 目錄：{SKILLS_DIR}")
-        sys.exit(1)
+    readme = bucket_dir / "README.md"
+    if bucket != "deprecated" and not readme.exists():
+        warnings.append(f"[{bucket}] 缺少 README.md")
 
-    for bucket_dir in sorted(SKILLS_DIR.iterdir()):
-        if not bucket_dir.is_dir():
-            continue
-        bucket = bucket_dir.name
-        if bucket not in VALID_BUCKETS:
-            errors.append(f"未知的 bucket 分類：{bucket}（不在 AGENTS.md 定義的 7 種分類內）")
-            continue
+    bucket_agents_md = bucket_dir / "AGENTS.md"
+    if not bucket_agents_md.exists():
+        warnings.append(f"[{bucket}] 缺少範圍受限的 AGENTS.md（見根目錄 AGENTS.md 第 6a 節）")
 
-        readme = bucket_dir / "README.md"
-        if bucket != "deprecated" and not readme.exists():
-            warnings.append(f"[{bucket}] 缺少 README.md")
+    readme_text = readme.read_text(encoding="utf-8") if readme.exists() else ""
+    return True, readme_text
 
-        bucket_agents_md = bucket_dir / "AGENTS.md"
-        if not bucket_agents_md.exists():
-            warnings.append(f"[{bucket}] 缺少範圍受限的 AGENTS.md（見根目錄 AGENTS.md 第 6a 節）")
 
-        readme_text = readme.read_text(encoding="utf-8") if readme.exists() else ""
+def validate_skill(
+    bucket: str,
+    skill_dir: Path,
+    readme_text: str,
+    seen_names: dict,
+    errors: list,
+    warnings: list,
+):
+    """驗證單一技能資料夾內容與 SKILL.md 規範"""
+    skill_name = skill_dir.name
+    skill_md = skill_dir / "SKILL.md"
+    location = f"{bucket}/{skill_name}"
 
-        for skill_dir in sorted(bucket_dir.iterdir()):
-            if not skill_dir.is_dir():
-                continue
-            skill_name = skill_dir.name
-            skill_md = skill_dir / "SKILL.md"
-            location = f"{bucket}/{skill_name}"
+    if not skill_md.exists():
+        errors.append(f"[{location}] 缺少 SKILL.md")
+        return
 
-            if not skill_md.exists():
-                errors.append(f"[{location}] 缺少 SKILL.md")
-                continue
+    text = skill_md.read_text(encoding="utf-8")
+    fm, body = parse_frontmatter(text)
 
-            text = skill_md.read_text(encoding="utf-8")
-            fm, body = parse_frontmatter(text)
+    if fm is None:
+        errors.append(f"[{location}] SKILL.md 沒有合法的 YAML frontmatter（缺少開頭/結尾 ---）")
+        return
 
-            if fm is None:
-                errors.append(f"[{location}] SKILL.md 沒有合法的 YAML frontmatter（缺少開頭/結尾 ---）")
-                continue
+    # 官方規則：frontmatter 欄位白名單
+    unexpected_keys = set(fm.keys()) - ALLOWED_KEYS
+    if unexpected_keys:
+        errors.append(
+            f"[{location}] frontmatter 有不在允許清單內的欄位：{', '.join(sorted(unexpected_keys))}"
+        )
 
-            # 官方規則：frontmatter 欄位白名單
-            unexpected_keys = set(fm.keys()) - ALLOWED_KEYS
-            if unexpected_keys:
-                errors.append(
-                    f"[{location}] frontmatter 有不在允許清單內的欄位：{', '.join(sorted(unexpected_keys))}"
-                )
+    name = fm.get("name", "")
+    desc = fm.get("description", "")
 
-            name = fm.get("name", "")
-            desc = fm.get("description", "")
+    if not name:
+        errors.append(f"[{location}] frontmatter 缺少 name 欄位")
+    else:
+        if name != skill_name:
+            errors.append(f"[{location}] frontmatter 的 name（{name}）跟資料夾名稱不一致")
+        validate_name(name, errors, location)
 
-            if not name:
-                errors.append(f"[{location}] frontmatter 缺少 name 欄位")
-            else:
-                if name != skill_name:
-                    errors.append(f"[{location}] frontmatter 的 name（{name}）跟資料夾名稱不一致")
-                validate_name(name, errors, location)
+    if not desc:
+        errors.append(f"[{location}] description 欄位是空的 —— 此技能永遠不會被自動觸發")
+    else:
+        validate_description(desc, errors, location)
 
-            if not desc:
-                errors.append(f"[{location}] description 欄位是空的 —— 此技能永遠不會被自動觸發")
-            else:
-                validate_description(desc, errors, location)
+    if name:
+        if name in seen_names:
+            errors.append(
+                f"技能名稱重複：'{name}' 同時出現在 {seen_names[name]} 與 {location}"
+            )
+        else:
+            seen_names[name] = location
 
-            if name:
-                if name in seen_names:
-                    errors.append(
-                        f"技能名稱重複：'{name}' 同時出現在 {seen_names[name]} 與 {location}"
-                    )
-                else:
-                    seen_names[name] = location
+    line_count = len(body.splitlines())
+    if line_count > MAX_LINES_BEFORE_WARNING:
+        ref = skill_dir / "REFERENCE.md"
+        if not ref.exists():
+            warnings.append(
+                f"[{location}] SKILL.md 正文 {line_count} 行，超過 {MAX_LINES_BEFORE_WARNING} 行建議值，"
+                f"且沒有 REFERENCE.md，考慮拆分（漸進式揭露；官方硬上限是 500 行）"
+            )
 
-            line_count = len(body.splitlines())
-            if line_count > MAX_LINES_BEFORE_WARNING:
-                ref = skill_dir / "REFERENCE.md"
-                if not ref.exists():
-                    warnings.append(
-                        f"[{location}] SKILL.md 正文 {line_count} 行，超過 {MAX_LINES_BEFORE_WARNING} 行建議值，"
-                        f"且沒有 REFERENCE.md，考慮拆分（漸進式揭露；官方硬上限是 500 行）"
-                    )
+    if bucket != "deprecated" and skill_name not in readme_text:
+        warnings.append(f"[{location}] 未出現在 {bucket}/README.md 中，索引可能過期")
 
-            if bucket != "deprecated" and skill_name not in readme_text:
-                warnings.append(f"[{location}] 未出現在 {bucket}/README.md 中，索引可能過期")
 
+def report_results(seen_names: dict, errors: list, warnings: list):
+    """印出驗證結果並依據錯誤狀況以適當 exit code 離開"""
     print("=" * 60)
     print(f"檢查完成：{len(seen_names)} 個技能")
     print("=" * 60)
@@ -193,6 +194,37 @@ def main():
     else:
         print("\n✅ 沒有結構性錯誤。" + ("（但請留意上面的警告）" if warnings else ""))
         sys.exit(0)
+
+
+def main():
+    errors = []
+    warnings = []
+    seen_names = {}
+
+    if not SKILLS_DIR.exists():
+        print(f"❌ 找不到 skills/ 目錄：{SKILLS_DIR}")
+        sys.exit(1)
+
+    for bucket_dir in sorted(SKILLS_DIR.iterdir()):
+        if not bucket_dir.is_dir():
+            continue
+        is_valid, readme_text = validate_bucket_structure(bucket_dir, errors, warnings)
+        if not is_valid:
+            continue
+
+        for skill_dir in sorted(bucket_dir.iterdir()):
+            if not skill_dir.is_dir():
+                continue
+            validate_skill(
+                bucket_dir.name,
+                skill_dir,
+                readme_text,
+                seen_names,
+                errors,
+                warnings,
+            )
+
+    report_results(seen_names, errors, warnings)
 
 
 if __name__ == "__main__":
