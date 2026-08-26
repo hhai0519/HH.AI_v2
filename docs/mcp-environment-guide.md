@@ -84,3 +84,5 @@
       Enabled 狀態
 - [ ] 執行一次工具呼叫測試（例如透過 notebooklm 查詢、透過 github
       列出 repo）確認實際可用
+- [ ] 安裝 Python 相依套件：`pip install -r requirements.txt`
+      （pytest 測試框架、playwright 瀏覽器自動化，詳見 `requirements.txt`）

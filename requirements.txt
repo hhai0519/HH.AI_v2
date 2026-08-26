@@ -1,0 +1,9 @@
+# HH.AI_v2 Python 相依套件
+# 用途：環境重建時執行 pip install -r requirements.txt
+
+# 測試框架（skills/execution/webapp-testing/tests/ 需要）
+pytest>=9.0
+
+# Playwright 瀏覽器自動化（skills/execution/webapp-testing/examples/ 的示範腳本需要）
+# 安裝後另需執行：playwright install chromium
+playwright>=1.40
