@@ -86,11 +86,11 @@ async def multi_device_screenshot(url: str):
 
 > [!IMPORTANT]
 > **Payload 淨化規則 (§6.3)**：
-> - 若本技能為 `Cognitive` 型：接收戰略目標、語氣設定、情緒變數；拒絕 SQL/DOM/技術指令。
-> - 若本技能為 `Execution` 型：只接收 URL、DOM Selector、SQL、JSON Schema；拒絕認知參數。
+> - 若本技能屬於 analysis/ 或 orchestration/（無外部副作用）：接收戰略目標、語氣設定、情緒變數；拒絕 SQL/DOM/技術指令。
+> - 若本技能屬於 execution/ 或 platform/（工具與整合層）：只接收 URL、DOM Selector、SQL、JSON Schema；拒絕認知參數。
 
-發送協定 (Zero-Block Policy)： 執行中若遇能力不足或需外部協作，嚴禁中斷或詢問使用者。必須主動封裝 Dynamic Payload 並發出：
-`[SYSTEM-CALL: 目標ID | PAYLOAD: { ... }]` 調閱其他技能。
+發送協定：執行中若遇能力不足或需要外部協作，應停下來明確告知使用者目前卡在哪裡，不要自行尋找替代方案掩蓋問題。如需調閱其他技能，封裝 Dynamic Payload 並發出：
+`[SYSTEM-CALL: 目標ID | PAYLOAD: { ... }]`
 
 回傳協定： 任務終止時，必須且只能輸出 `[SYSTEM-RETURN: SUCCESS/FAILED | DATA: <結果>]`。
 

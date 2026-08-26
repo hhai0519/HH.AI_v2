@@ -102,11 +102,11 @@ description: "萬能總管模式（Agency-Agents 最高總管），負責通用�
 
 > [!IMPORTANT]
 > **Payload 淨化規則 (§6.3)**：
-> - 若本技能為 `Cognitive` 型：接收戰略目標、語氣設定、情緒變數；拒絕 SQL/DOM/技術指令。
-> - 若本技能為 `Execution` 型：只接收 URL、DOM Selector、SQL、JSON Schema；拒絕認知參數。
-> - 作為 Orchestrator，你負責將戰略意圖封裝為 `Cognitive` 參數發送給下屬，禁止直接向 `Execution` 工具發送自然語言。
+> - 若本技能屬於 analysis/ 或 orchestration/（無外部副作用）：接收戰略目標、語氣設定、情緒變數；拒絕 SQL/DOM/技術指令。
+> - 若本技能屬於 execution/ 或 platform/（工具與整合層）：只接收 URL、DOM Selector、SQL、JSON Schema；拒絕認知參數。
+> - 作為 Orchestrator，你負責將戰略意圖封裝為 `Cognitive` 參數發送給下屬，禁止直接向 execution/ 或 platform/ 層的技能發送自然語言。
 
-發送協定 (Zero-Block Policy)： 執行中若遇能力不足或需要外部協作，應停下來明確告知使用者目前卡在哪裡，不要自行尋找替代方案掩蓋問題。必須主動封裝 Dynamic Payload 並發出：
+發送協定： 執行中若遇能力不足或需要外部協作，應停下來明確告知使用者目前卡在哪裡，不要自行尋找替代方案掩蓋問題。必須主動封裝 Dynamic Payload 並發出：
 `[SYSTEM-CALL: 目標ID | PAYLOAD: { ... }]` 調閱其他技能。
 
 回傳協定： 任務終止時，必須且只能輸出 `[SYSTEM-RETURN: SUCCESS/FAILED | DATA: <結果>]`。
