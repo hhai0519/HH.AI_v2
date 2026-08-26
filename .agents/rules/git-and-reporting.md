@@ -37,9 +37,12 @@
   「本技能取代了 connect-apps」，實際查證後發現完全沒有對應實作。
   凡是「某某已被取代 / 已廢棄 / 已整合」這類陳述，都要用實際程式碼或
   檔案存在性驗證，不能只依據文件描述。
-- **改名或刪除引用時，要搜尋整個 repo**：不能只改當下看到的那個檔案。
-  曾發生 `d3-viz-skill` 的引用在 SKILL.md 刪掉了、REFERENCE.md 卻還留著；
-  以及 `systematic-debugging-skill` 改名後，另外兩個技能的引用沒有同步更新。
+- **改名、刪除引用、或移除違規規則時，要搜尋整個 repo**：不能只改當下看到的那個檔案。這個坑已經踩過三次：
+  1. `d3-viz-skill` 的引用在 SKILL.md 刪掉了、REFERENCE.md 卻還留著
+  2. `systematic-debugging-skill` 改名後，另外兩個技能的引用沒同步更新
+  3. 「Zero-Block Policy」在 agency-orchestrator 的 SKILL.md 修掉了，但同技能的 REFERENCE.md、以及另外四個技能都還留著
+- **一個技能有多個檔案**：`SKILL.md`、`REFERENCE.md`、`EXAMPLES.md`、`scripts/` 都要一起檢查，不要只改 SKILL.md 就當作處理完。
+- **區分「行為指令」與「歷史紀錄」**：Changelog 與 ADR 裡提到某條已廢除的規則（例如「修復 Zero-Block Policy 問題」）是歷史留痕，應保留；只有實際會被 agent 執行的行為指令才需要清除。清理前先判斷該處文字屬於哪一種，不要一律刪除。
 - **執行 `python3 scripts/validate_skills.py` 前先設定編碼**：
   `$env:PYTHONIOENCODING = "utf-8"`，避免 Windows cp950 終端機無法輸出
   emoji 而報錯。
