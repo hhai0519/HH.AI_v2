@@ -104,16 +104,24 @@ function InteractiveChart({ data }) {
           .attr("opacity", 1)
           .attr("stroke-width", 3);
         
+        // Helper to escape HTML to prevent XSS
+        const escapeHtml = (str) => String(str)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          .replace(/"/g, "&quot;")
+          .replace(/'/g, "&#039;");
+
         // Show tooltip
         tooltip
           .style("display", "block")
           .style("left", (event.pageX + 10) + "px")
           .style("top", (event.pageY - 10) + "px")
           .html(`
-            <strong>${d.label || 'Point'}</strong><br/>
+            <strong>${escapeHtml(d.label || 'Point')}</strong><br/>
             X: ${d.x.toFixed(2)}<br/>
             Y: ${d.y.toFixed(2)}<br/>
-            ${d.category ? `Category: ${d.category}<br/>` : ''}
+            ${d.category ? `Category: ${escapeHtml(d.category)}<br/>` : ''}
             ${d.size ? `Size: ${d.size.toFixed(2)}` : ''}
           `);
       })
