@@ -4,3 +4,14 @@
 node_modules/
 pm2_before.json
 stress_test_result.json
+
+# Agent 執行任務時產生的一次性暫存腳本
+# （遷移、批次替換、驗證用的臨時檔案，不進版控）
+batch*.py
+batch*.json
+check_*.py
+migrate_*.py
+update_*.py
+write_*.py
+*_temp.py
+*_tmp.py
