@@ -78,7 +78,7 @@
     "$$自動化$$": "skills/orchestration/agency-orchestrator/SKILL.md#自動化指令攔截與詢問-automation-interception",
     "$$自動化_微型模型$$": "PENDING_MIGRATION:skills/orchestration/autoresearch-agent/SKILL.md",
     "$$自動化_通用研究$$": "skills/orchestration/recursive-research-automation/SKILL.md",
-    "$$自動化_量化實驗$$": "PENDING_MIGRATION:skills/orchestration/quant-research-loop/SKILL.md",
+    "$$自動化_量化實驗$$": "skills/analysis/quant-research-loop/SKILL.md",
     "$$Line帳號$$": "skills/agents/bot-account-switcher/SKILL.md",
     "$$TG帳號$$": "skills/agents/bot-account-switcher/SKILL.md",
     "$$Allow All$$": "SOP/SOP_01_Automation_Process.md#24-強制授權協議-strong-authorization-protocol",

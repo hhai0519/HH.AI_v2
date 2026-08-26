@@ -48,6 +48,8 @@ python3 scripts/validate_skills.py
 - **[postgres](./skills/platform/postgres/SKILL.md)** (`platform`) — 對多個 PostgreSQL 資料庫執行唯讀 SQL 查詢。支援結構探索、資料分析和品質檢查。為確保安全，封鎖所有寫入操作。user-invoked。
 - **[mcp-gateway](./skills/platform/mcp-gateway/SKILL.md)** (`platform`) — Zero-Trust 萬用執行閘道器。負責啟動並連接所有的 MCP 伺服器，目前為未實作的設計草案。user-invoked。
 - **[notebooklm-mcp](./skills/platform/notebooklm-mcp/SKILL.md)** (`platform`) — 操控 NotebookLM 建立知識庫、進行深度研究與生成報告音頻。當使用者要求『建立 NotebookLM 筆記本』、『製作 Podcast/Audio Overview』、『跨筆記本知識查詢』或『從 URL/PDF 建立知識庫』時使用。
+- **[langsmith-fetch](./skills/platform/langsmith-fetch/SKILL.md)** (`platform`) — 從 LangSmith 獲取執行追蹤以偵錯 Agent 行為。
+- **[json-to-flex-renderer](./skills/platform/json-to-flex-renderer/SKILL.md)** (`platform`) — 將 JSON 分析報告純程式化轉換為 LINE Flex Message。
 
 - **[financial-analyst](./skills/analysis/financial-analyst/SKILL.md)** (`analysis`) — 財務分析師，負責估值建模、比率分析與財務風險評估。當需要 valuation (估值)、financial statement (財報分析)、ratio analysis (比率分析) 或 risk assessment (風險評估) 時觸發。
 - **[investment-researcher](./skills/analysis/investment-researcher/SKILL.md)** (`analysis`) — 投資研究員，負責台股產業研究、個股基本面與量化趨勢分析。當需要 sector analysis (產業分析)、company research (個股研究) 或 market trend (市場趨勢) 時觸發。
@@ -58,6 +60,8 @@ python3 scripts/validate_skills.py
 - **[backend-architect](./skills/analysis/backend-architect/SKILL.md)** (`analysis`) — 後端架構師，負責 API 設計、資料庫 Schema 與資料流最佳化。當需要 api design、database schema 或 data flow 時觸發。
 - **[data-engineer](./skills/analysis/data-engineer/SKILL.md)** (`analysis`) — 資料工程師，負責 ETL 流程、資料清洗與標準化。當需要 etl、data cleaning、normalization 或 market data 時觸發。
 - **[devops-engineer](./skills/analysis/devops-engineer/SKILL.md)** (`analysis`) — 運維工程師，負責環境配置、CI/CD、部署策略與系統監控。當需要 deploy、environment setup、ci/cd 或 monitoring 時觸發。
+- **[sentiment-scout](./skills/analysis/sentiment-scout/SKILL.md)** (`analysis`) — 透過新聞、論壇和機構報告對市場情緒進行非結構化資料分析。
+- **[quant-research-loop](./skills/analysis/quant-research-loop/SKILL.md)** (`analysis`) — 自動化金融實驗與策略驗證迴圈。
 - **[twse-market-logic](./skills/analysis/twse-market-logic/SKILL.md)** (`analysis`) — 臺股市場分析深度邏輯。包含恐慌指數 (VIX/VIXTWN) 閾值、分層確認模型 (Hierarchical Confirmation)、MSTL 網絡預測、以及籌碼面分析 (法人、融資維持率、大戶持股)。用於規劃分析功能、設定警報閾值、以及開發投資決策支援系統。Triggers on: '恐慌指數', 'Panic Index', '市場邏輯', '籌碼分析', '融資維持率', '千張大戶', '八大行庫'.
 - **[bot-account-switcher](./skills/agents/bot-account-switcher/SKILL.md)** (`agents`) — LINE & Telegram 官方帳號雙平台切換工具。user-invoked。
 - **[investment-aggregator](./skills/agents/investment-aggregator/SKILL.md)** (`agents`) — Loki Swarm 決策統整專家。彙整 twse-data-analyst (量化) 與 market-researcher (質化) 的數據，產出最終投資報告與風險評估。user-invoked。

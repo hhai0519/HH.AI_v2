@@ -11,3 +11,5 @@
 ## Model-invoked
 
 - **[notebooklm-mcp](./notebooklm-mcp/SKILL.md)** — 操控 NotebookLM 建立知識庫、進行深度研究與生成報告音頻。當使用者要求『建立 NotebookLM 筆記本』、『製作 Podcast/Audio Overview』、『跨筆記本知識查詢』或『從 URL/PDF 建立知識庫』時使用。
+- **[langsmith-fetch](./langsmith-fetch/SKILL.md)** — 從 LangSmith 獲取執行追蹤以偵錯 Agent 行為。
+- **[json-to-flex-renderer](./json-to-flex-renderer/SKILL.md)** — 將 JSON 分析報告純程式化轉換為 LINE Flex Message。

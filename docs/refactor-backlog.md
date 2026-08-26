@@ -15,7 +15,7 @@
 
 | 項目 | 數量 | 狀態 |
 |---|---|---|
-| 技能遷移 | 45 個（7 bucket） | ✅ |
+| 技能遷移 | 49 個（7 bucket） | ✅ |
 | ADR 決策留痕 | 15 份 | ✅ |
 | Workspace 規則（`.agents/rules/`） | 4 份 | ✅ |
 | SOP 遷移 | 10 份 + 索引 + README | ✅ |
@@ -39,14 +39,10 @@
 | `theme-factory` | `03_Execution/` | `skills/execution/` | |
 | `image-enhancer` | `03_Execution/` | `skills/execution/` | |
 | `ui-prototype-builder` | `03_Execution/` | `skills/execution/` | description 過長需拆 REFERENCE.md |
-| `langsmith-fetch` | `03_Execution/` | `skills/platform/` | |
 | `skill-creator` | `03_Execution/` | `skills/meta/` | 跟 `nuwa-skill` 職責可能重疊，需評估 |
 | `workspace-migration-recovery` | `03_Execution/` | `skills/meta/` | 可用來驗證本次遷移完整性 |
-| `sentiment-scout` | `02_Cognitive/` | `skills/analysis/` | frontmatter 有格式錯誤需修 |
-| `json-to-flex-renderer` | `02_Cognitive/` | `skills/platform/` | 與 `markdown_to_flex.js` 邏輯可能重疊 |
 | `dynamic-tool-synthesizer` | `02_Cognitive/` | `skills/meta/` | persona 呼叫鏈的關鍵環節 |
 | `autoresearch-agent` | `01_Orchestrators/` | `skills/agents/` | `$$自動化_微型模型$$` 路由目標 |
-| `quant-research-loop` | `01_Orchestrators/` | `skills/analysis/` | `$$自動化_量化實驗$$` 路由目標 |
 | **`shared-bot-utils`** | `03_Execution/` | **待評估** | **本次新發現**：含 `textNormalizer.js`、`mediaDownloader.js`，是 LINE/TG 共用工具，可能該進 `shared/` 而非 `skills/` |
 
 #### A-2. 確定不遷移
@@ -156,7 +152,6 @@ HH.AI_v2/
 - `Modules/shared/workspaceLoader.js`（已存在）
 - `skills/03_Execution/shared-bot-utils/`（本次新發現：`textNormalizer.js`、`mediaDownloader.js`）
 - `writeStateAtomic()`（`reply.js` 與 `reply_tg.js` 重複實作，應抽出）
-- Flex Message 格式化（`markdown_to_flex.js` + `json-to-flex-renderer` 可整併）
 - Redlock/AGENT_TRANSFER 控制權邏輯（`db_state_manager.js`，見 ADR-0012）
 
 ---
@@ -241,3 +236,5 @@ $$LINE連線$$ → agency-orchestrator 辨識
 - **2026-08-26**：4 個 execution 型技能遷移完成
   （tool-executor、frontend-developer、declarative-visual-intent-generator、gemma-4-api）- **2026-08-26**：4 個 orchestration 型技能遷移完成- **2026-08-26**：4 個 orchestration 型技能遷移完成
   （subagent-collaboration、recursive-research-automation、cost-benefit-router、epistemic-state-governor）
+
+- **2026-08-26**：遷移 4 個技能 (`sentiment-scout`, `quant-research-loop`, `langsmith-fetch`, `json-to-flex-renderer`) 至 `analysis/` 與 `platform/`，修正舊版 bucket 參照並分離出 REFERENCE.md，清查 `SKIP_LOCK` 繞過機制（未於 loop 內實作，留存記錄），完成環境指南的交叉引用。
