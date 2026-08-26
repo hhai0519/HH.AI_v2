@@ -43,12 +43,6 @@
 | `gemma-4-api` | `03_Execution/` | `skills/execution/` 或 `platform/` | description 已於初期修復 |
 | `skill-creator` | `03_Execution/` | `skills/meta/` | 跟 `nuwa-skill` 職責可能重疊，需評估 |
 | `workspace-migration-recovery` | `03_Execution/` | `skills/meta/` | 可用來驗證本次遷移完整性 |
-| `evidence-collector` | `02_Cognitive/` | `skills/analysis/` | 被 `reality-checker`、`financial-analyst` 依賴 |
-| `twse-market-logic-skill` | `02_Cognitive/` | `skills/analysis/` | 名稱需去 `-skill` 後綴 |
-| `software-architect` | `02_Cognitive/` | `skills/analysis/` | |
-| `backend-architect` | `02_Cognitive/` | `skills/analysis/` | |
-| `data-engineer` | `02_Cognitive/` | `skills/analysis/` | |
-| `devops-engineer` | `02_Cognitive/` | `skills/analysis/` | |
 | `frontend-developer` | `02_Cognitive/` | `skills/execution/` | |
 | `sentiment-scout` | `02_Cognitive/` | `skills/analysis/` | frontmatter 有格式錯誤需修 |
 | `declarative-visual-intent-generator` | `02_Cognitive/` | `skills/execution/` | |
@@ -246,3 +240,4 @@ $$LINE連線$$ → agency-orchestrator 辨識
 
 **更新紀錄**：
 - 2026-08-25: `bot-account-switcher` 遷移至 `skills/agents/` 完成。
+- 2026-08-26: evidence-collector 等 6 個 analysis 型技能遷移完成。
