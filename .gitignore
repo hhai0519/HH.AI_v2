@@ -16,3 +16,8 @@ update_*.py
 write_*.py
 *_temp.py
 *_tmp.py
+
+# Python 快取（pytest 執行後產生）
+__pycache__/
+*.pyc
+.pytest_cache/
