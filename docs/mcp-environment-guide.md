@@ -1,7 +1,7 @@
 # MCP 環境設定與重建指南
 
 > 建立日期：2026-08-26
-> 用途：記錄 Antigravity IDE 的 MCP 設定結構，供環境重建時還原。
+> 用途：記錄 Antigravity IDE 的 MCP 設定結構，供環境重建時還原。若需開發新 MCP 伺服器或排錯，請參閱 [`skills/execution/mcp-engineer`](../skills/execution/mcp-engineer/SKILL.md) 技能。
 > 背景：2026-07-26 曾發生系統崩潰需重建 OS 使用者帳號，當時 MCP 設定
 > 完全不在版控中，無從還原。本文件即為補上這個缺口。
 

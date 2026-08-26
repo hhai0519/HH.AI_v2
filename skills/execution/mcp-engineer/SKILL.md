@@ -67,7 +67,7 @@ await server.connect(transport);
 
 ### Phase 3：環境配置
 
-在 `.gemini/settings.json` 或 `claude_desktop_config.json` 中設定：
+在 `mcp_config.json`、`.gemini/settings.json` 或 `claude_desktop_config.json` 中設定：
 
 ```json
 {
@@ -118,7 +118,8 @@ await server.connect(transport);
 
 ## ⚠️ 邊界說明
 
-- ✅ 適用：建立新 MCP 伺服器、配置 settings.json、排錯 MCP 連線
+- ✅ 適用：建立新 MCP 伺服器、配置設定檔、排錯 MCP 連線
+- ℹ️ **專案現有環境重建**：有關 HH.AI_v2 目前實際部署的 5 個 MCP server（包含 GitHub、Notion、NotebookLM 等）與環境重建步驟，請參閱 [`docs/mcp-environment-guide.md`](../../../docs/mcp-environment-guide.md)。
 - ✅ 適用：整合第三方 API 為 MCP Tool（GitHub、Notion、資料庫等）
 - ❌ 不適用：MCP 閘道器多伺服器管理（請改用 `mcp-gateway` 技能）
 - ❌ 不適用：系統層級環境問題（請改用 `systematic-debugging`）
