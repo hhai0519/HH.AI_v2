@@ -64,8 +64,7 @@
 
 #### A-3. Archive 裡值得評估復活的
 
-`chip-logic-expert`（籌碼邏輯）、`macro-linkage`（總體聯動）、`ownership-cluster`（股權群聚）——
-這三個是現行技能樹沒有、但對台股分析可能有價值的分析維度，需要使用者決定。
+`chip-logic-expert`（進階籌碼）——已完成冗餘查證：與 ownership-cluster 有中度重疊（前者偏券商借券、融資維持率等動態博弈；後者偏機構持股結構與 CI_INDEX）。Agent 建議合併為單一技能，但考量合併不可逆、且 ownership-cluster 尚未實際使用，決定先維持獨立。待實際使用後若發現需經常同時呼叫，再評估合併。
 
 ---
 
@@ -228,13 +227,13 @@ $$LINE連線$$ → agency-orchestrator 辨識
 
 6. **全域 SKILL.md 掃描已完成** — 2026-08-26 執行全域搜尋確認，舊專案的技能只存在於以下位置：`skills/01_Orchestrators`、`02_Cognitive`、`03_Execution`、`Archive`、`.agents/skills/`（bot-account-switcher）、`Data/personas/`（15 個 persona），以及 `scratch/` 底下一個外部套件的內附文件（不遷移）。除此之外沒有其他藏在非標準位置的技能，遷移範圍已確定完整。
 
-## 四、更新紀錄
-
+## 四、更新紀錄 (Update Log)
+- **2026-08-26**: 復活 `ownership-cluster` 與 `macro-linkage`，由 A-3 區塊移除並納入 `skills/analysis/`。
 - **2026-08-25**：`bot-account-switcher` 遷移至 `skills/agents/`
 - **2026-08-26**：6 個 analysis 型技能遷移完成
   （evidence-collector、software-architect、backend-architect、data-engineer、devops-engineer、twse-market-logic）
 - **2026-08-26**：4 個 execution 型技能遷移完成
-  （tool-executor、frontend-developer、declarative-visual-intent-generator、gemma-4-api）- **2026-08-26**：4 個 orchestration 型技能遷移完成- **2026-08-26**：4 個 orchestration 型技能遷移完成
+  （tool-executor、frontend-developer、declarative-visual-intent-generator、gemma-4-api）
+- **2026-08-26**：4 個 orchestration 型技能遷移完成
   （subagent-collaboration、recursive-research-automation、cost-benefit-router、epistemic-state-governor）
-
 - **2026-08-26**：遷移 4 個技能 (`sentiment-scout`, `quant-research-loop`, `langsmith-fetch`, `json-to-flex-renderer`) 至 `analysis/` 與 `platform/`，修正舊版 bucket 參照並分離出 REFERENCE.md，清查 `SKIP_LOCK` 繞過機制（未於 loop 內實作，留存記錄），完成環境指南的交叉引用。

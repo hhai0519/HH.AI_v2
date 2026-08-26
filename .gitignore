@@ -9,6 +9,7 @@ stress_test_result.json
 # （遷移、批次替換、驗證用的臨時檔案，不進版控）
 batch*.py
 batch*.json
+fix_*.py
 check_*.py
 migrate_*.py
 update_*.py

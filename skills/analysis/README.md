@@ -23,3 +23,5 @@
 - **[twse-market-logic](./twse-market-logic/SKILL.md)** — 臺股市場分析深度邏輯。包含恐慌指數 (VIX/VIXTWN) 閾值、分層確認模型 (Hierarchical Confirmation)、MSTL 網絡預測、以及籌碼面分析 (法人、融資維持率、大戶持股)。用於規劃分析功能、設定警報閾值、以及開發投資決策支援系統。Triggers on: '恐慌指數', 'Panic Index', '市場邏輯', '籌碼分析', '融資維持率', '千張大戶', '八大行庫'.
 - **[sentiment-scout](./sentiment-scout/SKILL.md)** — 透過新聞、論壇和機構報告對市場情緒進行非結構化資料分析。
 - **[quant-research-loop](./quant-research-loop/SKILL.md)** — 自動化金融實驗與策略驗證迴圈。
+- **[ownership-cluster](./ownership-cluster/SKILL.md)** — 機構持股與籌碼集中度指數（CI_INDEX）分析。
+- **[macro-linkage](./macro-linkage/SKILL.md)** — 總體經濟數據與台股大盤聯動分析。

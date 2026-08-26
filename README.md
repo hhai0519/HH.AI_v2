@@ -62,6 +62,8 @@ python3 scripts/validate_skills.py
 - **[devops-engineer](./skills/analysis/devops-engineer/SKILL.md)** (`analysis`) — 運維工程師，負責環境配置、CI/CD、部署策略與系統監控。當需要 deploy、environment setup、ci/cd 或 monitoring 時觸發。
 - **[sentiment-scout](./skills/analysis/sentiment-scout/SKILL.md)** (`analysis`) — 透過新聞、論壇和機構報告對市場情緒進行非結構化資料分析。
 - **[quant-research-loop](./skills/analysis/quant-research-loop/SKILL.md)** (`analysis`) — 自動化金融實驗與策略驗證迴圈。
+- **[ownership-cluster](./skills/analysis/ownership-cluster/SKILL.md)** (`analysis`) — 機構持股與籌碼集中度指數（CI_INDEX）分析。
+- **[macro-linkage](./skills/analysis/macro-linkage/SKILL.md)** (`analysis`) — 總體經濟數據與台股大盤聯動分析。
 - **[twse-market-logic](./skills/analysis/twse-market-logic/SKILL.md)** (`analysis`) — 臺股市場分析深度邏輯。包含恐慌指數 (VIX/VIXTWN) 閾值、分層確認模型 (Hierarchical Confirmation)、MSTL 網絡預測、以及籌碼面分析 (法人、融資維持率、大戶持股)。用於規劃分析功能、設定警報閾值、以及開發投資決策支援系統。Triggers on: '恐慌指數', 'Panic Index', '市場邏輯', '籌碼分析', '融資維持率', '千張大戶', '八大行庫'.
 - **[bot-account-switcher](./skills/agents/bot-account-switcher/SKILL.md)** (`agents`) — LINE & Telegram 官方帳號雙平台切換工具。user-invoked。
 - **[investment-aggregator](./skills/agents/investment-aggregator/SKILL.md)** (`agents`) — Loki Swarm 決策統整專家。彙整 twse-data-analyst (量化) 與 market-researcher (質化) 的數據，產出最終投資報告與風險評估。user-invoked。
