@@ -5,7 +5,7 @@ import pytest
 from unittest.mock import patch, MagicMock
 
 # Import start_server_process from skills/execution/webapp-testing/scripts/with_server.py
-sys.path.insert(0, os.path.abspath('skills/execution/webapp-testing/scripts'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'scripts'))
 from with_server import start_server_process
 
 def test_start_server_simple_command():
