@@ -8,6 +8,11 @@ _(尚無技能)_
 
 ## Model-invoked
 
+- **[tool-executor](./tool-executor/SKILL.md)** — 萬用工具執行器。作為大腦層 (System 2) 與外部環境之間的唯一橋樑。將自然語言意圖轉換為嚴謹的 JSON-RPC 工具呼叫，並提供完整的 Audit Log 追蹤。
+- **[frontend-developer](./frontend-developer/SKILL.md)** — 前端開發工程師，負責 UI/UX 邏輯、元件實作與互動設計。當需要 ui design、frontend implementation 或 component build 時觸發。
+- **[declarative-visual-intent-generator](./declarative-visual-intent-generator/SKILL.md)** — 宣告式視覺意圖生成器。透過 A2UI 協定，將 Agent 的複雜推演結果轉換成結構化的宣告式 UI 意圖 (Intent)，而非生硬的 HTML/CSS。具備 Generative UI 能力，能根據使用者需求動態呼叫圖片或圖表生成工具來組合混合式介面。
+- **[gemma-4-api](./gemma-4-api/SKILL.md)** — 提供存取 Gemma 4 API 的標準作業流程、模型設定與防錯指南。當使用者要求『串接 Gemma 4 服務』、『建立 AI 助理』、『實作 Function Calling』或『處理 API Rate Limit (429) 錯誤』時使用。
+
 - **[d3js-visualization](./d3js-visualization/SKILL.md)** — 使用 d3.js 建立互動式資料視覺化。適用於客製化圖表、網路圖、地理視覺化，或任何需要對視覺元素、過渡或互動進行精細控制的複雜 SVG 資料視覺化。
 - **[webapp-testing](./webapp-testing/SKILL.md)** — 使用 Playwright 互動和測試本地 Web 應用程式的工具包。支援驗證前端功能、偵錯 UI 行為、擷取瀏覽器螢幕截圖以及查看瀏覽器日誌。
 - **[mcp-engineer](./mcp-engineer/SKILL.md)** — MCP 開發與環境配置完整生命週期工程師。整合 mcp-builder（建立高品質 MCP 伺服器的標準流程）與 mcp-setup（本地環境設定與排錯）為單一職責技能。觸發關鍵字：建立MCP、MCP伺服器、MCP配置、MCP環境、mcp-builder、mcp-setup。

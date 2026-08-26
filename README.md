@@ -67,3 +67,7 @@ python3 scripts/validate_skills.py
 - **[artifacts-builder](./skills/execution/artifacts-builder/SKILL.md)** (`execution`) — 使用現代前端技術（React、Tailwind CSS、shadcn/ui）建立精細、多組件 HTML 互動原型。
 - **[changelog-generator](./skills/execution/changelog-generator/SKILL.md)** (`execution`) — 從 Git 提交紀錄自動生成面向使用者的版本日誌，將技術性 commit 訊息轉換為清晰的發佈說明。
 - **[systematic-debugging](./skills/execution/systematic-debugging/SKILL.md)** (`execution`) — 強制執行「先找根本原因、再提修正」的四階段除錯流程。適用於 MCP 連接失敗、工具載入錯誤、npm/pip 安裝失敗等本地環境問題。
+- **[tool-executor](./skills/execution/tool-executor/SKILL.md)** (xecution) — 萬用工具執行器。作為大腦層 (System 2) 與外部環境之間的唯一橋樑。將自然語言意圖轉換為嚴謹的 JSON-RPC 工具呼叫，並提供完整的 Audit Log 追蹤。
+- **[frontend-developer](./skills/execution/frontend-developer/SKILL.md)** (xecution) — 前端開發工程師，負責 UI/UX 邏輯、元件實作與互動設計。當需要 ui design、frontend implementation 或 component build 時觸發。
+- **[declarative-visual-intent-generator](./skills/execution/declarative-visual-intent-generator/SKILL.md)** (xecution) — 宣告式視覺意圖生成器。透過 A2UI 協定，將 Agent 的複雜推演結果轉換成結構化的宣告式 UI 意圖 (Intent)，而非生硬的 HTML/CSS。具備 Generative UI 能力，能根據使用者需求動態呼叫圖片或圖表生成工具來組合混合式介面。
+- **[gemma-4-api](./skills/execution/gemma-4-api/SKILL.md)** (xecution) — 提供存取 Gemma 4 API 的標準作業流程、模型設定與防錯指南。當使用者要求『串接 Gemma 4 服務』、『建立 AI 助理』、『實作 Function Calling』或『處理 API Rate Limit (429) 錯誤』時使用。

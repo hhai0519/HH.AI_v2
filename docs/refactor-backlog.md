@@ -15,7 +15,7 @@
 
 | 項目 | 數量 | 狀態 |
 |---|---|---|
-| 技能遷移 | 31 個（7 bucket） | ✅ || `bot-account-switcher` | 已遷移至 `skills/agents/` | ✅ || ADR 決策留痕 | 13 份 | ✅ |
+| 技能遷移 | 35 個（7 bucket） | ✅ || `bot-account-switcher` | 已遷移至 `skills/agents/` | ✅ || ADR 決策留痕 | 13 份 | ✅ |
 | Workspace 規則（`.agents/rules/`） | 4 份 | ✅ |
 | SOP 遷移 | 10 份 + 索引 + README | ✅ |
 | `$$` 指令權威路由表 | 1 份（11 條有效路由） | ✅ |
@@ -34,18 +34,18 @@
 |---|---|---|---|
 | `line-bot-zero-delay` | `03_Execution/` | `skills/platform/` | 文件遷移，程式碼留給 runtime 階段 |
 | `telegram-bot-cdp-bridge` | `03_Execution/` | `skills/platform/` | 同上，內含 vendored `remoat` 開源專案 |
-| `tool-executor` | `03_Execution/` | `skills/execution/` | 被多個技能引用 |
+| ~~`tool-executor`~~ | ~~`03_Execution/`~~ | ~~`skills/execution/`~~ | ~~被多個技能引用~~ | ~~~~ | ✅ |
 | `playwright-automation` | `03_Execution/` | `skills/execution/` | |
 | `theme-factory` | `03_Execution/` | `skills/execution/` | |
 | `image-enhancer` | `03_Execution/` | `skills/execution/` | |
 | `ui-prototype-builder` | `03_Execution/` | `skills/execution/` | description 過長需拆 REFERENCE.md |
 | `langsmith-fetch` | `03_Execution/` | `skills/platform/` | |
-| `gemma-4-api` | `03_Execution/` | `skills/execution/` 或 `platform/` | description 已於初期修復 |
+| ~~`gemma-4-api`~~ | ~~`03_Execution/`~~ | ~~`skills/execution/` 或 `platform/`~~ | ~~description 已於初期修復~~ | ~~~~ | ✅ |
 | `skill-creator` | `03_Execution/` | `skills/meta/` | 跟 `nuwa-skill` 職責可能重疊，需評估 |
 | `workspace-migration-recovery` | `03_Execution/` | `skills/meta/` | 可用來驗證本次遷移完整性 |
-| `frontend-developer` | `02_Cognitive/` | `skills/execution/` | |
+| ~~`frontend-developer`~~ | ~~`02_Cognitive/`~~ | ~~`skills/execution/`~~ | ~~~~ | ~~~~ | ✅ |
 | `sentiment-scout` | `02_Cognitive/` | `skills/analysis/` | frontmatter 有格式錯誤需修 |
-| `declarative-visual-intent-generator` | `02_Cognitive/` | `skills/execution/` | |
+| ~~`declarative-visual-intent-generator`~~ | ~~`02_Cognitive/`~~ | ~~`skills/execution/`~~ | ~~~~ | ~~~~ | ✅ |
 | `json-to-flex-renderer` | `02_Cognitive/` | `skills/platform/` | 與 `markdown_to_flex.js` 邏輯可能重疊 |
 | `epistemic-state-governor` | `02_Cognitive/` | `skills/orchestration/` | |
 | `dynamic-tool-synthesizer` | `02_Cognitive/` | `skills/meta/` | persona 呼叫鏈的關鍵環節 |
@@ -241,3 +241,6 @@ $$LINE連線$$ → agency-orchestrator 辨識
 **更新紀錄**：
 - 2026-08-25: `bot-account-switcher` 遷移至 `skills/agents/` 完成。
 - 2026-08-26: evidence-collector 等 6 個 analysis 型技能遷移完成。
+
+## 五、 更新紀錄
+- **2026-08-26**：已遷移 4 個執行與前端相關技能 (	ool-executor, rontend-developer, declarative-visual-intent-generator, gemma-4-api) 至 skills/execution/。
