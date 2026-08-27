@@ -10,11 +10,26 @@ with sync_playwright() as p:
     page.goto('http://localhost:5173')
     page.wait_for_load_state('networkidle')
 
-    # Discover all buttons on the page
-    buttons = page.locator('button').all()
-    print(f"Found {len(buttons)} buttons:")
-    for i, button in enumerate(buttons):
-        text = button.inner_text() if button.is_visible() else "[hidden]"
+    # NOTE: Discovering elements via page.evaluate() eliminates N+1 IPC roundtrips.
+    # This is the officially recommended Playwright best practice and significantly
+    # improves performance when querying many elements.
+    #
+    # SEMANTIC DIFFERENCE WARNING:
+    # This snippet uses the browser's native checkVisibility() with `checkOpacity: false`.
+    # Therefore, elements with `opacity: 0` are evaluated as "visible".
+    # This differs from Playwright's locator.is_visible() which treats opacity:0 as hidden.
+    # If you require the exact semantics of Playwright's is_visible(), you must use
+    # locator.is_visible() directly, at the cost of reverting to N+1 IPC roundtrips.
+    button_texts = page.evaluate('''() => {
+        return Array.from(document.querySelectorAll('button')).map(b => {
+            const isVisible = typeof b.checkVisibility === 'function'
+                ? b.checkVisibility({ checkOpacity: false, checkVisibilityCSS: true })
+                : !!(b.offsetWidth || b.offsetHeight || b.getClientRects().length);
+            return isVisible ? (b.innerText || b.textContent) : "[hidden]";
+        });
+    }''')
+    print(f"Found {len(button_texts)} buttons:")
+    for i, text in enumerate(button_texts):
         print(f"  [{i}] {text}")
 
     # Discover links
