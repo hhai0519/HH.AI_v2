@@ -239,6 +239,8 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 | `fix/security-with-server-cmd-injection-...` | 修正 `with_server.py` 的 command injection 漏洞（移除 `shell=True`），附 5 個單元測試 | 886d891 |
 | `perf/parallelize-server-startup-...` | `with_server.py` 改為全部啟動後再統一等待，多 server 場景啟動時間由相加變為取較長者 | 97dafd6 |
 | `fix-xss-d3js-tooltip-...` | 修正 `interactive-template.jsx` tooltip 的 XSS 漏洞（HTML entity escaping） | b38e255 |
+| `refactor-validate-skills-main-...` | 將 `validate_skills.py` 的 `main()` 拆解為 `validate_bucket_structure`、`validate_skill`、`report_results` 三個函式，並附 5 個單元測試 | e9a382f |
+| `perf/optimize-line-counting-...` | 行數計算改用 `count("\n")` 取代 `splitlines()`，避免建立中間 list。**未經 rebase，因重構已將該行移至 `validate_skill()`，改為手動套用該行變更** | 499c98a |
 
 ### 已評估，決定不採用
 
@@ -250,8 +252,6 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 | 分支 | 內容 | 備註 |
 |---|---|---|
-| `perf/optimize-line-counting-...` | 優化 `validate_skills.py` 的行數計算 | ⚠️ 與下一項同時修改 `validate_skills.py`，會衝突，需擇一或依序處理 |
-| `refactor-validate-skills-main-...` | 重構 `validate_skills.py` 的 main 函式 | ⚠️ 同上 |
 | `jules-...b431935b` | 優化 element discovery（`page.evaluate`） | 未評估 |
 | `remove-unused-usestate-import-...` | 移除 chart template 未使用的 `useState` import | 未評估 |
 | `test-is-server-ready-...` | `is_server_ready` 單元測試 | 未評估 |
@@ -263,6 +263,10 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 > 所有分支均基於 `9615558`，落後 main 多個 commit，合併前需先 rebase。
 > 同時修改同一檔案的分支（如 `validate_skills.py` 的兩個分支）務必依序
 > 處理，不可平行合併。
+> 已合併的四個分支中，有三個夾帶了未在 commit message 中說明的
+> 額外檔案（根目錄 `tests/`、`.gitignore` 修改）。合併任何 Jules
+> 分支前，務必執行 `git diff origin/main --stat` 確認實際異動範圍，
+> 不可只依據分支名稱或 commit message 判斷。
 
 ---
 
@@ -270,6 +274,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 - **2026-08-26**: 復活 `ownership-cluster` 與 `macro-linkage`，由 A-3 區塊移除並納入 `skills/analysis/`。
 - **2026-08-26**：合併 Jules 兩個 with_server.py 修正分支（command injection 安全修正 + 啟動平行化），引入 HH.AI_v2 首批自動化測試（5 個，全數通過），並建立 requirements.txt。
 - **2026-08-26**：修正 stock-orchestrator 的舊分層編號路由（6 個 SYSTEM-CALL 路徑更新為 analysis/ 格式）；合併 Jules 的 d3js tooltip XSS 修正分支。
+- **2026-08-26**：合併 Jules 的 validate_skills.py 重構與行數計算優化；新增 ADR-0017（port 分配規範）；HH.AI_v2 自動化測試累積至 10 個（5 個測 with_server.py、5 個測 validate_skills.py）
 - **2026-08-25**：`bot-account-switcher` 遷移至 `skills/agents/`
 - **2026-08-26**：6 個 analysis 型技能遷移完成
   （evidence-collector、software-architect、backend-architect、data-engineer、devops-engineer、twse-market-logic）
