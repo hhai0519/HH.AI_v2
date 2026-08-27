@@ -2,11 +2,12 @@ import sys
 import os
 import subprocess
 import pytest
-from unittest.mock import patch, MagicMock
+import socket
+from unittest.mock import patch, MagicMock, call
 
 # Import start_server_process from skills/execution/webapp-testing/scripts/with_server.py
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'scripts'))
-from with_server import start_server_process
+from with_server import start_server_process, is_server_ready
 
 def test_start_server_simple_command():
     with patch("subprocess.Popen") as mock_popen:
@@ -83,3 +84,57 @@ def test_command_injection_prevention():
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE
         )
+
+def test_is_server_ready_success_immediately():
+    """Test is_server_ready returns True immediately when port is open."""
+    with patch("with_server.socket.create_connection") as mock_create_connection, \
+         patch("with_server.time.sleep") as mock_sleep:
+        
+        mock_conn = MagicMock()
+        mock_create_connection.return_value = mock_conn
+
+        result = is_server_ready(8080, timeout=30)
+
+        assert result is True
+        mock_create_connection.assert_called_once_with(('localhost', 8080), timeout=1)
+        mock_sleep.assert_not_called()
+
+def test_is_server_ready_success_after_retry():
+    """Test is_server_ready retries and returns True when port becomes ready."""
+    with patch("with_server.socket.create_connection") as mock_create_connection, \
+         patch("with_server.time.sleep") as mock_sleep:
+        
+        mock_conn = MagicMock()
+        mock_create_connection.side_effect = [
+            ConnectionRefusedError("Connection refused"),
+            socket.error("Socket error"),
+            mock_conn,
+        ]
+
+        result = is_server_ready(3000, timeout=10)
+
+        assert result is True
+        assert mock_create_connection.call_count == 3
+        mock_create_connection.assert_has_calls([
+            call(('localhost', 3000), timeout=1),
+            call(('localhost', 3000), timeout=1),
+            call(('localhost', 3000), timeout=1),
+        ])
+        assert mock_sleep.call_count == 2
+        mock_sleep.assert_has_calls([call(0.5), call(0.5)])
+
+def test_is_server_ready_timeout():
+    """Test is_server_ready returns False when connection times out."""
+    with patch("with_server.socket.create_connection") as mock_create_connection, \
+         patch("with_server.time.time") as mock_time, \
+         patch("with_server.time.sleep") as mock_sleep:
+        
+        mock_create_connection.side_effect = ConnectionRefusedError("Connection refused")
+        # Simulate time passing: start at 100, then loop iterations 105, 115, 125, 131
+        mock_time.side_effect = [100.0, 105.0, 115.0, 125.0, 131.0]
+
+        result = is_server_ready(5173, timeout=30)
+
+        assert result is False
+        assert mock_create_connection.call_count > 1
+        assert mock_sleep.called
