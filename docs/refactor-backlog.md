@@ -241,6 +241,10 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 | `fix-xss-d3js-tooltip-...` | 修正 `interactive-template.jsx` tooltip 的 XSS 漏洞（HTML entity escaping） | b38e255 |
 | `refactor-validate-skills-main-...` | 將 `validate_skills.py` 的 `main()` 拆解為 `validate_bucket_structure`、`validate_skill`、`report_results` 三個函式，並附 5 個單元測試 | e9a382f |
 | `perf/optimize-line-counting-...` | 行數計算改用 `count("\n")` 取代 `splitlines()`，避免建立中間 list。**未經 rebase，因重構已將該行移至 `validate_skill()`，改為手動套用該行變更** | 499c98a |
+| `test-parse-frontmatter-...`、`test-validate-name-function-...`、`test-validate-description-...` | 三個分支的測試整合進 `scripts/tests/test_validate_skills.py`，測試數由 5 個擴充至 22 個。**未經 rebase，因三個分支寫入同一檔案必然衝突且目標路徑已變更，改為手動整合並統一為 pytest 函式風格** | 3bb9b11 |
+| `test-is-server-ready-...` | 補上 `is_server_ready` 的 3 個測試（已合併版本完全未涵蓋此函式），並確認 socket 已正確 mock（實測執行 0.7 秒，若 mock 失效會等待 30 秒 timeout） | 7ce86a4 |
+| `remove-unused-usestate-import-...` | 移除 `chart-template.jsx` 未使用的 `useState` import | 7a08678 |
+| `jules-...b431935b` | `element_discovery.py` 改用單次 `page.evaluate` 取代 N+1 IPC 往返。**合併時額外加註語意差異說明**：該寫法用 `checkVisibility({checkOpacity: false})`，`opacity: 0` 的元素會被視為可見，與 Playwright `is_visible()` 語意不同 | 4ef1626 |
 
 ### 已評估，決定不採用
 
@@ -250,14 +254,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 待處理
 
-| 分支 | 內容 | 備註 |
-|---|---|---|
-| `jules-...b431935b` | 優化 element discovery（`page.evaluate`） | 未評估 |
-| `remove-unused-usestate-import-...` | 移除 chart template 未使用的 `useState` import | 未評估 |
-| `test-is-server-ready-...` | `is_server_ready` 單元測試 | 未評估 |
-| `test-parse-frontmatter-...` | `parse_frontmatter` 單元測試 | 未評估 |
-| `test-validate-description-...` | `validate_description` 單元測試 | 未評估 |
-| `test-validate-name-function-...` | `validate_name` 單元測試 | 未評估 |
+> 12 個分支已全數處理完畢（11 個合併、1 個評估後不採用）。
 
 > [!NOTE]
 > 所有分支均基於 `9615558`，落後 main 多個 commit，合併前需先 rebase。
@@ -275,6 +272,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 - **2026-08-26**：合併 Jules 兩個 with_server.py 修正分支（command injection 安全修正 + 啟動平行化），引入 HH.AI_v2 首批自動化測試（5 個，全數通過），並建立 requirements.txt。
 - **2026-08-26**：修正 stock-orchestrator 的舊分層編號路由（6 個 SYSTEM-CALL 路徑更新為 analysis/ 格式）；合併 Jules 的 d3js tooltip XSS 修正分支。
 - **2026-08-26**：合併 Jules 的 validate_skills.py 重構與行數計算優化；新增 ADR-0017（port 分配規範）；HH.AI_v2 自動化測試累積至 10 個（5 個測 with_server.py、5 個測 validate_skills.py）
+- **2026-08-26**：Jules 12 個分支全數處理完畢。合併 11 個（2 個安全修正、3 個效能優化、1 個重構、4 個測試分支、1 個清理），1 個評估後不採用。HH.AI_v2 自動化測試由 0 增至 30 個。
 - **2026-08-25**：`bot-account-switcher` 遷移至 `skills/agents/`
 - **2026-08-26**：6 個 analysis 型技能遷移完成
   （evidence-collector、software-architect、backend-architect、data-engineer、devops-engineer、twse-market-logic）
