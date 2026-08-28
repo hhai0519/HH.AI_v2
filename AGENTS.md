@@ -168,6 +168,11 @@ SKILL.md 本體只放：
 2. description 空白的技能，遷移時必須先補齊，不可原樣搬過來
 3. 標記 `legacy_notice` 的技能一律進 `skills/deprecated/`，不遷移進主要 bucket
 4. 遷移完成的技能，才能從舊資料夾刪除；遷移中請保留舊資料夾作為備份，直到全部驗證完成
+5. vendored 外部資產（技能實體是外部專案的副本，例如 `theme-factory`、
+   `playwright-automation`）遷移時：上游原始 `LICENSE` / `LICENSE.txt` 必須一併
+   搬入技能資料夾、`SKILL.md` frontmatter 補 `license` 欄位、上游 repo 網址與
+   採用版本記在該技能 `REFERENCE.md` 開頭。決策理由見
+   `docs/adr/0018-vendored-external-assets.md`。
 
 ---
 
