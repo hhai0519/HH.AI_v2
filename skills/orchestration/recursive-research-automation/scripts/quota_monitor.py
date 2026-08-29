@@ -52,10 +52,40 @@ def get_quota():
         cursor.execute("SELECT value FROM ItemTable WHERE key='本協作系統UnifiedStateSync.modelCredits'")
         row = cursor.fetchone()
         if row:
-            # TODO: 目前 modelCredits 為二進位加密/壓縮格式，暫僅標註偵測到鍵值
-            # 實際百分比解析需待通訊協定逆向，目前返回 None 觸發手動提示
+            raw_data = row[0]
             conn.close()
-            return None, "偵測到新版 modelCredits 鍵值，但目前無法直接解析二進位格式。請改用 current_quota.tmp 進行手動注入。"
+            try:
+                import zlib
+
+                # 若為字串則編碼為 bytes，若為 bytes 則直接使用
+                if isinstance(raw_data, str):
+                    raw_data = raw_data.encode('utf-8')
+
+                decompressed = zlib.decompress(raw_data)
+                data = json.loads(decompressed.decode('utf-8'))
+
+                # 遞迴搜尋 JSON 結構中的百分比數值
+                def find_percent(d):
+                    if isinstance(d, dict):
+                        for k, v in d.items():
+                            if k in ["remaining_percent", "remaining", "quota", "percent"]:
+                                if isinstance(v, (int, float)):
+                                    return float(v)
+                        for k, v in d.items():
+                            res = find_percent(v)
+                            if res is not None:
+                                return res
+                    return None
+
+                remaining = find_percent(data)
+
+                if remaining is not None:
+                    return remaining, "Source: modelCredits DB Cached (Decoded)"
+                else:
+                    return None, "偵測到新版 modelCredits，但 JSON 結構中找不到 remaining 欄位。"
+
+            except Exception as e:
+                return None, f"無法解析新版 modelCredits 的二進位格式: {e}。請改用 current_quota.tmp 進行手動注入。"
 
         conn.close()
     except Exception as e:
