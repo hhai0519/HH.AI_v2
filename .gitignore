@@ -31,6 +31,7 @@ temp_mcp.json
 
 # Agent 暫存輸出（實際發生過寫進 repo 根目錄的案例）
 scratch_out.txt
+git_files.txt
 process*.py
 verify*.py
 gather*.py

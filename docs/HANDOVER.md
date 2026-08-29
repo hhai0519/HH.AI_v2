@@ -731,11 +731,13 @@ ls docs/adr/                         # 20 份決策紀錄
 ### 12.2 優先處理順序（建議）
 
 1. **提醒使用者撤銷 `nlm_cookies.txt` 的 Google session**（最急，與重構無關）
-2. **請使用者裁決三個攔截項**（`theme-factory` 去向、
-   `playwright-automation` 重疊、runtime 架構選擇）
-3. 裁決完成後，繼續遷移剩餘 9 個技能
-4. persona 階段一（保全調研資料）
-5. runtime／shared 層（最大工程，需先完成第 2 項的架構決策）
+2. **請使用者裁決攔截項三**（runtime 層架構選擇，見 §5.2。
+   攔截項一與二已於 2026-08-29 裁決完畢）
+3. `jules-integration` 技能改寫（`authorized_mcp_tools` 與內文仍在描述
+   已停用的擴充套件路線，見 ADR-0019），需同步 `agency-orchestrator`
+4. 繼續遷移剩餘 7 個技能（見 §5.1）
+5. persona 階段一（保全調研資料）
+6. runtime／shared 層（最大工程，需先完成第 2 項的架構決策）
 
 ### 12.3 工作方法（不可省略）
 
