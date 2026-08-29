@@ -14,16 +14,16 @@
 
 ## 架構：兩層 MCP
 
-系統的 MCP 分為兩層，只看設定檔會誤以為只有 5 個：
+系統的 MCP 分為兩層，只看設定檔會誤以為只有 6 個：
 
-1. **直接設定層**（寫在 `mcp_config.json` 的 4 個）：
+1. **直接設定層**（寫在 `mcp_config.json` 的 5 個）：
    chrome-devtools-mcp、github-mcp-server、notion-mcp-server、notebooklm
 2. **Gateway 動態層**（透過 `docker mcp gateway run` 管理）：
    Docker 官方的 MCP Gateway，提供 mcp-add / mcp-find / mcp-exec /
    mcp-config-set 等 8 個管理工具，可在執行期動態載入其他 MCP server。
    透過它載入的 server 不會出現在 `mcp_config.json` 中。
 
-## 五個 MCP Server 的重建方式
+## 六個 MCP Server 的重建方式
 
 | Server | 啟動方式 | 前置需求 | 需要的環境變數 |
 |---|---|---|---|
@@ -53,7 +53,7 @@
 ### 2. notebooklm 的絕對路徑含 Python 版本號（中風險）
 
 目前設定為：
-`C:\Users\<USER>\AppData\Local\Python\pythoncore-3.14-64\Scripts\notebooklm-mcp.exe`
+`C:\Users\<USER>\AppData\Local\Python\pythoncore-3.14-64\Scripts\n| `google-jules` | `npx -y @google/jules-mcp@0.2.0` | 全域安裝 `@google/jules` 並完成 `jules login` | `JULES_API_KEY` |\notebooklm-mcp.exe`
 
 **風險**：Python 升級到 3.15 後此路徑失效；換電腦或換使用者名稱亦然。
 
@@ -76,11 +76,11 @@
 - [ ] 安裝 Docker Desktop（github-mcp-server、Gateway 需要）
 - [ ] `pip install notebooklm-mcp-cli`（notebooklm 需要）
 - [ ] 建立 `C:\Users\<USER>\.gemini\config\mcp_config.json`，依上表填入
-      五個 server 的設定
+      六個 server 的設定
 - [ ] 重新產生並填入憑證：GitHub PAT、Notion API Token、NLM User Agent
 - [ ] 確認 `.env.local` 的 `GITHUB_TOKEN` / `NOTION_TOKEN` 與
       `mcp_config.json` 的值一致
-- [ ] 在 Antigravity 的 Manage MCP servers 介面確認五個 server 皆為
+- [ ] 在 Antigravity 的 Manage MCP servers 介面確認六個 server 皆為
       Enabled 狀態
 - [ ] 執行一次工具呼叫測試（例如透過 notebooklm 查詢、透過 github
       列出 repo）確認實際可用

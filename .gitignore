@@ -21,3 +21,16 @@ write_*.py
 __pycache__/
 *.pyc
 .pytest_cache/
+
+# MCP 設定與憑證（ADR-0016、ADR-0019）
+# mcp_config.json 含明文 JULES_API_KEY 等金鑰，禁止進入本 repo
+mcp_config*.json
+temp_mcp.json
+.env.local
+.env.*.local
+
+# Agent 暫存輸出（實際發生過寫進 repo 根目錄的案例）
+scratch_out.txt
+process*.py
+verify*.py
+gather*.py

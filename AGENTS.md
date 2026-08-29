@@ -185,3 +185,16 @@ python3 scripts/validate_skills.py
 ```
 
 這個腳本會檢查：frontmatter 是否合法、description 是否為空、是否有重複技能名稱、README 索引是否跟實際技能資料夾一致、SKILL.md 是否過長未拆分。**驗證沒過不要視為完成。**
+
+執行自動化測試：
+
+```bash
+pip install -r requirements.txt
+python3 -m pytest scripts/tests/ -q
+python3 -m pytest skills/execution/webapp-testing/tests/ -q
+```
+
+本專案為 Python 專案，**沒有 `npm run test`**。唯一的 Node 相依是
+`skills/execution/playwright-automation/` 內的 vendored 套件，不參與專案測試。
+雲端代理（如 Google Jules）在獨立 VM 執行時只能依賴本節判斷如何驗證，
+變更測試方式時必須同步更新這裡。

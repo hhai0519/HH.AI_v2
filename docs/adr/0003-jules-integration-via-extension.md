@@ -1,6 +1,6 @@
-# ADR-0003: Jules 整合走官方擴充套件安裝，不 vendor 原始碼
+# ADR-0003: Jules 整合初期採用非官方 VSCode 擴充套件橋接方案
 
-- Status: Accepted
+- Status: Superseded by ADR-0019
 - Date: 2026-08-10
 
 ## Context
