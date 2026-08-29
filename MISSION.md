@@ -27,4 +27,4 @@ while redesigning how that knowledge is organized.
 - 新增一個技能時，是否能直接照著 `AGENTS.md` 的規範走，不用重新思考格式
 - `scripts/validate_skills.py` 是否通過
 
-詳細架構規範見 [AGENTS.md](./AGENTS.md)。
+決策與協作原則見 [PRINCIPLES.md](./PRINCIPLES.md)，詳細架構規範見 [AGENTS.md](./AGENTS.md)。

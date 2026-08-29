@@ -3,7 +3,9 @@
 本專案的技能（skills）架構參考並遵循 [mattpocock/skills](https://github.com/mattpocock/skills) 的組織方式。
 **任何 agent（包含 Antigravity）在新增、修改、遷移技能時，必須遵守本文件的規則，不得自行發明其他結構。**
 
-使命與優先序見 [MISSION.md](./MISSION.md)。
+使命與優先序見 [MISSION.md](./MISSION.md)，決策與協作原則見 [PRINCIPLES.md](./PRINCIPLES.md)。
+本文件第 0 節的工程紀律規則，優先於本文件其他章節；`PRINCIPLES.md` 的原則
+優先於本文件全部內容。
 
 ---
 
