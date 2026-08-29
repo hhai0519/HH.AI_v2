@@ -4,19 +4,27 @@
 
 ## 快速導覽索引
 
-- [Agents 執行型](#agents-執行型)
-- [Analysis 分析型](#analysis-分析型)
-- [Execution 工具型](#execution-工具型)
-- [Meta 治理型](#meta-治理型)
-- [Orchestration 調度型](#orchestration-調度型)
-- [Platform 平台整合](#platform-平台整合)
-- [Deprecated 已棄用](#deprecated-已棄用)
+- [skills/agents/ (執行型)](#skillsagents-執行型)
+- [skills/analysis/ (分析型)](#skillsanalysis-分析型)
+- [skills/execution/ (工具型)](#skillsexecution-工具型)
+- [skills/meta/ (治理型)](#skillsmeta-治理型)
+- [skills/orchestration/ (調度型)](#skillsorchestration-調度型)
+- [skills/platform/ (平台整合)](#skillsplatform-平台整合)
+- [skills/deprecated/ (已棄用)](#skillsdeprecated-已棄用)
 
 ## 目錄結構與分類說明
 
-### Agents 執行型
+根據各 Skill 的用途，本目錄分為以下主要類別：
 
-RARV 執行型 agent（會實際呼叫工具、寫檔案、發送訊息等）。
+- **`skills/agents/`**：RARV 執行型 agent（會實際呼叫工具、寫檔案、發送訊息等）。
+- **`skills/analysis/`**：台股分析、財務模型、技術分析（純分析型，不直接執行外部動作）。
+- **`skills/execution/`**：通用工具型技能（PDF/XLSX/D3/Playwright 等）。
+- **`skills/meta/`**：造技能的技能、治理類（skill-creator、setup-hhai-skills 等）。
+- **`skills/orchestration/`**：流程調度、任務路由、狀態機控制。
+- **`skills/platform/`**：平台整合（LINE/Telegram/MCP/Postgres 等外部串接）。
+- **`skills/deprecated/`**：已棄用，保留供參考，不再維護，不會被自動觸發。
+
+### skills/agents/ (執行型)
 
 | 技能名稱 (Skill ID) | 核心功能簡述 | 適用場景 / 觸發時機 |
 |---------------------|-------------|--------------------|
@@ -27,9 +35,7 @@ RARV 執行型 agent（會實際呼叫工具、寫檔案、發送訊息等）。
 | **[market-researcher](./agents/market-researcher/)** | Loki Swarm 基本面研究員。專職閱讀財報、解析 PDF、收集市場新聞情緒，取代舊版脆弱的自動爬蟲腳本。 | - |
 | **[twse-data-analyst](./agents/twse-data-analyst/)** | Loki Swarm 量化運算專家。專責處理 TWSE 歷史資料、技術指標與量化運算，嚴格受限於財務資料庫環境。 | - |
 
-### Analysis 分析型
-
-台股分析、財務模型、技術分析（純分析型，不直接執行外部動作）。
+### skills/analysis/ (分析型)
 
 | 技能名稱 (Skill ID) | 核心功能簡述 | 適用場景 / 觸發時機 |
 |---------------------|-------------|--------------------|
@@ -48,9 +54,7 @@ RARV 執行型 agent（會實際呼叫工具、寫檔案、發送訊息等）。
 | **[tech-analyzer](./analysis/tech-analyzer/)** | 專家級的價格形態、量能結構和趨勢指標技術分析 | 當需要分析技術走勢、支撐壓力位、K線型態、找買賣點、或進行量價背離分析時觸發 |
 | **[twse-market-logic](./analysis/twse-market-logic/)** | 臺股市場分析深度邏輯。包含恐慌指數 (VIX/VIXTWN) 閾值、分層確認模型 (Hierarchical Confirmation)、MSTL 網絡預測、以及籌碼面分析 (法人、融資維持率、大戶持股)。用於規劃分析功能、設定警報閾值、以及開發投資決策支援系統 | Triggers on: '恐慌指數', 'Panic Index', '市場邏輯', '籌碼分析', '融資維持率', '千張大戶', '八大行庫'. |
 
-### Execution 工具型
-
-通用工具型技能（PDF/XLSX/D3/Playwright 等）。
+### skills/execution/ (工具型)
 
 | 技能名稱 (Skill ID) | 核心功能簡述 | 適用場景 / 觸發時機 |
 |---------------------|-------------|--------------------|
@@ -71,18 +75,14 @@ RARV 執行型 agent（會實際呼叫工具、寫檔案、發送訊息等）。
 | **[webapp-testing](./execution/webapp-testing/)** | 使用 Playwright 互動和測試本地 Web 應用程式的工具包。支援驗證前端功能、偵錯 UI 行為、擷取瀏覽器螢幕截圖以及查看瀏覽器日誌。 | - |
 | **[xlsx](./execution/xlsx/)** | 提供 Excel (XLSX) 檔案讀寫、多 Sheet 整合與格式化報表生成。 | - |
 
-### Meta 治理型
-
-造技能的技能、治理類(skill-creator、setup-hhai-skills 等)。
+### skills/meta/ (治理型)
 
 | 技能名稱 (Skill ID) | 核心功能簡述 | 適用場景 / 觸發時機 |
 |---------------------|-------------|--------------------|
 | **[setup-hhai-skills](./meta/setup-hhai-skills/)** | 一次性的專案初始化與交接設定指南 | 當接手現有專案、需要了解專案技術棧與目錄結構、或準備開始開發臺股網站功能時手動觸發閱讀 |
 | **[skill-evolution-governor](./meta/skill-evolution-governor/)** | 負責技能生態系統的生命週期管理、DLP 合規審計與系統自我進化。包含自動覆寫技能規範的修復能力。此技能涉及實體檔案變更，必須由使用者明確要求時才可觸發執行。 | - |
 
-### Orchestration 調度型
-
-流程調度、任務路由、狀態機控制。
+### skills/orchestration/ (調度型)
 
 | 技能名稱 (Skill ID) | 核心功能簡述 | 適用場景 / 觸發時機 |
 |---------------------|-------------|--------------------|
@@ -97,9 +97,7 @@ RARV 執行型 agent（會實際呼叫工具、寫檔案、發送訊息等）。
 | **[stock-orchestrator](./orchestration/stock-orchestrator/)** | 股票與量化領域總管，負責拆解金融任務並調度 06 層級的子模組。 | - |
 | **[subagent-collaboration](./orchestration/subagent-collaboration/)** | 調用子代理人（Sub-Agent）協助完成專業領域分析或創作。 | - |
 
-### Platform 平台整合
-
-平台整合（LINE/Telegram/MCP/Postgres 等外部串接）。
+### skills/platform/ (平台整合)
 
 | 技能名稱 (Skill ID) | 核心功能簡述 | 適用場景 / 觸發時機 |
 |---------------------|-------------|--------------------|
@@ -110,9 +108,7 @@ RARV 執行型 agent（會實際呼叫工具、寫檔案、發送訊息等）。
 | **[notebooklm-mcp](./platform/notebooklm-mcp/)** | 操控 NotebookLM 建立知識庫、進行深度研究與生成報告音頻 | 當使用者要求『建立 NotebookLM 筆記本』、『製作 Podcast/Audio Overview』、『跨筆記本知識查詢』或『從 URL/PDF 建立知識庫』時使用 |
 | **[postgres](./platform/postgres/)** | 對多個 PostgreSQL 資料庫執行唯讀 SQL 查詢。支援結構探索、資料分析和品質檢查。為確保安全，封鎖所有寫入操作。 | - |
 
-### Deprecated 已棄用
-
-已棄用,保留供參考,不再維護,不會被自動觸發。
+### skills/deprecated/ (已棄用)
 
 _(尚無技能)_
 
