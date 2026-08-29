@@ -41,12 +41,16 @@ with sync_playwright() as p:
         print(f"  - {text} -> {href}")
 
     # Discover input fields
-    inputs = page.locator('input, textarea, select').all()
-    print(f"\nFound {len(inputs)} input fields:")
-    for input_elem in inputs:
-        name = input_elem.get_attribute('name') or input_elem.get_attribute('id') or "[unnamed]"
-        input_type = input_elem.get_attribute('type') or 'text'
-        print(f"  - {name} ({input_type})")
+    inputs_data = page.evaluate('''() => {
+        return Array.from(document.querySelectorAll('input, textarea, select')).map(el => {
+            const name = el.getAttribute('name') || el.getAttribute('id') || "[unnamed]";
+            const type = el.getAttribute('type') || 'text';
+            return { name, type };
+        });
+    }''')
+    print(f"\nFound {len(inputs_data)} input fields:")
+    for data in inputs_data:
+        print(f"  - {data['name']} ({data['type']})")
 
     # Take screenshot for visual reference
     page.screenshot(path='/tmp/page_discovery.png', full_page=True)
