@@ -11,6 +11,7 @@ from validate_skills import (
     validate_description,
     validate_bucket_structure,
     validate_skill,
+    report_results,
     NAME_MAX_LEN,
     DESCRIPTION_MAX_LEN
 )
@@ -316,3 +317,56 @@ def test_validate_skill(tmp_path):
     assert errors == []
     assert warnings == []
     assert seen_names["my-skill"] == "orchestration/my-skill"
+
+
+# ==========================================
+# report_results tests
+# ==========================================
+def test_report_results_success(capsys):
+    seen_names = {"skill-1": "bucket/skill-1"}
+    errors = []
+    warnings = []
+
+    with pytest.raises(SystemExit) as excinfo:
+        report_results(seen_names, errors, warnings)
+
+    assert excinfo.value.code == 0
+    captured = capsys.readouterr()
+    assert "檢查完成：1 個技能" in captured.out
+    assert "✅ 沒有結構性錯誤。" in captured.out
+    assert "⚠️  警告" not in captured.out
+
+
+def test_report_results_warnings(capsys):
+    seen_names = {"skill-1": "bucket/skill-1", "skill-2": "bucket/skill-2"}
+    errors = []
+    warnings = ["Some warning"]
+
+    with pytest.raises(SystemExit) as excinfo:
+        report_results(seen_names, errors, warnings)
+
+    assert excinfo.value.code == 0
+    captured = capsys.readouterr()
+    assert "檢查完成：2 個技能" in captured.out
+    assert "⚠️  警告（1）：" in captured.out
+    assert "  - Some warning" in captured.out
+    assert "✅ 沒有結構性錯誤。" in captured.out
+    assert "（但請留意上面的警告）" in captured.out
+
+
+def test_report_results_errors(capsys):
+    seen_names = {"skill-1": "bucket/skill-1"}
+    errors = ["Some error"]
+    warnings = ["Some warning"]
+
+    with pytest.raises(SystemExit) as excinfo:
+        report_results(seen_names, errors, warnings)
+
+    assert excinfo.value.code == 1
+    captured = capsys.readouterr()
+    assert "檢查完成：1 個技能" in captured.out
+    assert "⚠️  警告（1）：" in captured.out
+    assert "  - Some warning" in captured.out
+    assert "❌ 錯誤（1）：" in captured.out
+    assert "  - Some error" in captured.out
+    assert "驗證失敗，請修正上述錯誤後再視為完成。" in captured.out
