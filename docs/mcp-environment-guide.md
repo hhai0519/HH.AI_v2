@@ -32,10 +32,15 @@
 | `github-mcp-server` | `docker run -i --rm -e GITHUB_PERSONAL_ACCESS_TOKEN ghcr.io/github/github-mcp-server` | Docker | `GITHUB_PERSONAL_ACCESS_TOKEN` |
 | `notion-mcp-server` | `npx -y @notionhq/notion-mcp-server` | Node.js | `OPENAPI_MCP_HEADERS`、`NOTION_API_TOKEN` |
 | `docker`（Gateway） | `docker mcp gateway run` | Docker Desktop | 無 |
-| `notebooklm` | 本機執行檔 `notebooklm-mcp.exe` | `pip install notebooklm-mcp-cli` | `NLM_USER_AGENT` |
+| `notebooklm` | 本機執行檔 `notebooklm-mcp.exe` | `pip install notebooklm-mcp-cli`（v0.10.0）＋ `nlm login` 完成認證 | `NLM_USER_AGENT` |
 | `google-jules` | `npx -y @google/jules-mcp@0.2.0` | 全域安裝 `@google/jules` 並完成 `jules login` | `JULES_API_KEY` |
 
 > **註：google-jules 提供的 8 組工具**：create_session、list_sessions、get_session_state、get_bash_outputs、get_code_review_context、show_code_diff、send_reply_to_session、query_cache
+
+> **註：notebooklm 於 2026-08-29 升級至 v0.10.0**，提供 48 個工具
+> （14 個功能群組：auth／automation／chat／notebooks_manage／notebooks_read／
+> notes／organization／query_multi／research／server／sharing／sources_manage／
+> sources_read／studio）。可用 `server_info` 工具查詢實際版本與工具可見性。
 
 ## 金鑰存放方式（2026-08-29 起）
 
@@ -93,11 +98,50 @@
 
 **風險**：Python 升級到 3.15 後此路徑失效；換電腦或換使用者名稱亦然。
 
-**待改善**：評估改用 `notebooklm-mcp`（依賴 PATH 解析）或 `python -m`
-的呼叫方式，避免寫死版本號路徑。
+**2026-08-29 已評估，決定維持絕對路徑。**
 
-**2026-08-29 補充**：實測本機安裝版本僅提供 26 個工具，上游 v0.2.0 為 43 個，
-版本已落後。路徑改 PATH 解析與版本升級將於同一批處理。
+兩個替代方案都經實測否決：
+
+- **加入 PATH**：該 `Scripts` 目錄含 26 個執行檔，其中 `pytest.exe`、
+  `py.test.exe`、`uv.exe`、`uvx.exe`、`mcp.exe`、`fastmcp.exe`、`keyring.exe`
+  等都是通用開發工具。把它推進 PATH 等於讓某個 Python 3.14 環境搶佔全域
+  指令名稱，失效方式會從「找不到指令」變成「跑到錯的指令」，比原本的風險更糟。
+- **`python -m` 呼叫**：實測 `python -m notebooklm_tools` 回報
+  `'notebooklm_tools' is a package and cannot be directly executed`，
+  該套件沒有 `__main__`，不支援模組模式。
+
+因此 Python 升級到 3.15 時仍須手動更新此路徑，這是已知且已接受的成本。
+升級 Python 後若 notebooklm MCP 啟動失敗，第一個要檢查的就是這條路徑。
+
+### 認證重建：`nlm login` 的正確流程
+
+**執行 `nlm login` 前，必須完全關閉所有 Chromium 系列瀏覽器行程。**
+
+原因：`nlm login` 會啟動一個**專屬 profile** 的瀏覽器
+（`~/.notebooklm-mcp-cli/chrome-profiles/<name>/`），不是使用者日常使用的
+profile。若日常瀏覽器正在執行，新實例會被既有行程接手，CDP 連不上，
+指令會停在 `Waiting for sign-in in browser window` 直到 300 秒逾時。
+
+正確流程：
+
+1. 工作管理員確認 Edge（或設定的偏好瀏覽器）行程完全結束，含背景行程
+2. 執行 `nlm login`（本專案需用絕對路徑，見上方已知風險 2）
+3. 等一個**乾淨的**瀏覽器視窗跳出——沒有書籤、沒有擴充套件、未登入任何帳號
+4. 在**那個視窗**登入 Google 帳號並進入 Gemini Notebook
+5. 終端機出現 `Successfully authenticated!` 即完成
+
+★ 這一步無法交由 Agent 代跑 ★ —— 需要人在瀏覽器互動，Agent 執行只會等到逾時。
+
+**已知陷阱**：在自己日常的瀏覽器登入 NotebookLM 對此無效，
+CLI 讀的是它自己那個 profile。`nlm doctor` 顯示的
+`Headless auth: available (saved Google login)` 指的是「有這個機制可用」，
+不代表該 profile 目前的登入有效。
+
+憑證存放位置：`~/.notebooklm-mcp-cli/profiles/<name>/auth.json`。
+可用 `nlm login --check` 驗證，成功時會實際查詢並回報筆記本數量。
+
+**偏好瀏覽器**可用 `nlm config set auth.browser chrome` 指定
+（支援 chrome、edge、brave、chromium、vivaldi、opera），找不到會自動偵測。
 
 ### 3. Gateway 動態載入的 server 無紀錄（中風險）
 

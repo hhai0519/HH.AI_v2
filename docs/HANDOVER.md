@@ -591,7 +591,7 @@ bridge.js 啟動 Pinggy 取得新網址
 |---|---|
 | 記憶體 | 16GB DDR4（吃緊） |
 | Jules 額度 | 100 次/天（Google AI Pro/Ultra） |
-| MCP servers | 6 個、125 個工具（chrome-devtools 29、github 30、notebooklm 26、notion 24、docker gateway 8、google-jules 8） |
+| MCP servers | 6 個、161 個工具（notebooklm 48、github 44、chrome-devtools 29、notion 24、docker gateway 8、google-jules 8） |
 | Claude 訂閱 | 有使用量限制，長對話會快速消耗 |
 
 ---
