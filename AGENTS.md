@@ -157,7 +157,15 @@ SKILL.md 本體只放：
 - 專案根目錄的 `README.md` 也要同步收錄所有技能的索引。
 - `skills/deprecated/` 只需要一份扁平清單，不用分組。
 
-**新增/修改技能時，這兩層 README 必須同步更新，不能只改 SKILL.md。**
+**新增/修改技能時，這三層 README 必須同步更新，不能只改 SKILL.md。**
+
+> 三層的分工：`skills/README.md` 給要綜覽全部技能的人看（含觸發時機），
+> bucket README 給在該 bucket 內工作的人看（含 User/Model 分組），
+> 根目錄 README 是專案門面。三者格式刻意不同，不要互相套用。
+>
+> ⚠️ 同一份技能描述目前在三處各有一份手工副本，沒有機制保證一致。
+> 修改任一份時務必三處同步；已知漂移清單見 `docs/refactor-backlog.md`。
+
 
 ---
 
