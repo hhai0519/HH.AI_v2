@@ -240,8 +240,11 @@ C:\Users\HH.AI_260806\.gemini\config\mcp_config.json   （MCP 設定，不在版
 | `meta/` | 2 | skill-evolution-governor、setup-hhai-skills |
 | `deprecated/` | 0 | （尚無） |
 
-**完成度**：舊 repo 68 個現行技能中，51 個已遷移、11 個確定不遷移、
-6 個待遷移（另有 3 個為合併產生的新技能）。
+**完成度**：舊 repo 66 個現行技能中，49 個已遷移（含 5 個去除 `-skill`
+後綴的改名遷移）、10 個確定不遷移、7 個待遷移。新 repo 共 54 個技能
+＝ 49 個遷移自舊 repo ＋ 5 個新建／復活／合併產生
+（`jules-integration`、`macro-linkage`、`ownership-cluster`、
+`setup-hhai-skills`、`skill-evolution-governor`）。
 
 ### 4.2 ADR：20 份
 
@@ -264,6 +267,8 @@ C:\Users\HH.AI_260806\.gemini\config\mcp_config.json   （MCP 設定，不在版
 | 0015 | **LINE 隧道鏈路斷裂與雙平台失效點對照** |
 | 0016 | **憑證外洩的三道防線失效分析** |
 | 0017 | Port 分配規範 |
+| 0018 | vendored 外部資產保留 fork，並以三層方式標示 |
+| 0019 | **Jules 整合改採官方 CLI 與 MCP，取代 ADR-0003** |
 
 ### 4.3 Workspace 規則：4 份（`.agents/rules/`）
 
@@ -314,7 +319,7 @@ C:\Users\HH.AI_260806\.gemini\config\mcp_config.json   （MCP 設定，不在版
 
 ## 5. 未完成項目與細節
 
-### 5.1 待遷移技能：6 個
+### 5.1 待遷移技能：7 個
 
 | 技能 | 舊位置 | 預計去向 | 阻塞原因／注意事項 |
 |---|---|---|---|

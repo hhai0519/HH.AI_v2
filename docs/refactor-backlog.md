@@ -54,6 +54,7 @@
 | `self-improvement` | 已合併進 `skill-evolution-governor`（ADR-0006） |
 | `skill-governance-skill` | 已合併進 `skill-evolution-governor`（ADR-0006） |
 | `handover-manual-skill` | 已合併進 `setup-hhai-skills` |
+| `quota-monitor-skill` | 標記 `legacy_notice`，依 `AGENTS.md` §8.3 不遷入主要 bucket。2026-08-29 兩 repo 對帳時發現原清單漏列 |
 | `twse-dev-sop-skill` | 已合併進 `setup-hhai-skills` |
 | `temp_images` | 執行期暫存圖片，非技能 |
 | `skills/Archive/**` | 舊架構封存，逐一評估後只有少數值得復活（見 A-3） |
