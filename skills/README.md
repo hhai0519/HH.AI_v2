@@ -14,6 +14,12 @@
 - [**`skills/platform/`** (平台整合)](#skillsplatform-平台整合)：平台整合（LINE/Telegram/MCP/Postgres 等外部串接）。
 - [**`skills/deprecated/`** (已棄用)](#skillsdeprecated-已棄用)：已棄用，保留供參考，不再維護，不會被自動觸發。
 
+> **關於「適用場景 / 觸發時機」欄位的 `-`**：表示該技能的 `description`
+> 尚未依 `AGENTS.md` §2 補上觸發詞。模型是靠 `description` 判斷要不要載入技能，
+> 缺觸發詞的技能可能無法被自主觸發。已列入 `docs/refactor-backlog.md` 追蹤，
+> 待專批處理。**請勿在本檔案手動填寫這些格子**——正確的修法是補 `SKILL.md`
+> 的 `description`，在索引填空只會掩蓋問題。
+
 ### skills/agents/ (執行型)
 
 | 技能名稱 (Skill ID) | 核心功能簡述 | 適用場景 / 觸發時機 |
