@@ -121,7 +121,7 @@ def test_is_server_ready_success_after_retry():
             call(('localhost', 3000), timeout=1),
         ])
         assert mock_sleep.call_count == 2
-        mock_sleep.assert_has_calls([call(0.5), call(0.5)])
+        mock_sleep.assert_has_calls([call(0.05), call(0.1)])
 
 def test_is_server_ready_timeout():
     """Test is_server_ready returns False when connection times out."""
