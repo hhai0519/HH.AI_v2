@@ -7,7 +7,7 @@ from unittest.mock import patch, MagicMock, call
 
 # Import start_server_process from skills/execution/webapp-testing/scripts/with_server.py
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'scripts'))
-from with_server import start_server_process, is_server_ready
+from with_server import start_server_process, is_server_ready, main
 
 def test_start_server_simple_command():
     with patch("subprocess.Popen") as mock_popen:
@@ -138,3 +138,25 @@ def test_is_server_ready_timeout():
         assert result is False
         assert mock_create_connection.call_count > 1
         assert mock_sleep.called
+
+def test_main_server_cleanup_timeout():
+    """Test that main() handles TimeoutExpired correctly during server cleanup."""
+    with patch("with_server.sys.argv", ["with_server.py", "--server", "dummy", "--port", "8000", "--", "echo", "hello"]), \
+         patch("with_server.start_server_process") as mock_start, \
+         patch("with_server.is_server_ready") as mock_ready, \
+         patch("with_server.subprocess.run") as mock_run:
+
+        mock_proc = MagicMock()
+        mock_proc.wait.side_effect = [subprocess.TimeoutExpired(cmd="dummy", timeout=5), None]
+        mock_start.return_value = mock_proc
+        mock_ready.return_value = True
+        mock_run.return_value = MagicMock(returncode=0)
+
+        with pytest.raises(SystemExit) as exc:
+            main()
+
+        assert exc.value.code == 0
+        mock_proc.terminate.assert_called_once()
+        mock_proc.kill.assert_called_once()
+        assert mock_proc.wait.call_count == 2
+        mock_proc.wait.assert_has_calls([call(timeout=5), call()])
