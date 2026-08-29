@@ -39,7 +39,7 @@ python3 scripts/validate_skills.py
 - **[recursive-research-automation](./skills/orchestration/recursive-research-automation/SKILL.md)** (`orchestration`) — 執行遞迴式深度研究，涵蓋廣度掃描與深度收斂。
 - **[subagent-collaboration](./skills/orchestration/subagent-collaboration/SKILL.md)** (`orchestration`) — 調用子代理人（Sub-Agent）協助完成專業領域分析或創作。
 - **[security-auditor](./skills/orchestration/security-auditor/SKILL.md)** (`orchestration`) — 資訊安全與弱點掃描總監。在程式碼合併、API 串接或外部資料處理前，自動執行安全審查。掃描 SQL Injection、XSS、API 密鑰外洩、路徑穿越等高危漏洞。觸發關鍵字：安全掃描、資安審計、弱點掃描、密碼外洩、secret外洩、SQL注入、XSS。
-- **[stock-orchestrator](./skills/orchestration/stock-orchestrator/SKILL.md)** (`orchestration`) — 股票與量化領域總管，負責拆解金融任務並調度 06 層級的子模組。
+- **[stock-orchestrator](./skills/orchestration/stock-orchestrator/SKILL.md)** (`orchestration`) — 股票與量化領域總管，負責拆解金融任務並調度 analysis/ 層的專業技能。
 - **[reality-checker](./skills/orchestration/reality-checker/SKILL.md)** (`orchestration`) — 品質保證與幻覺過濾器，負責審核計畫、架構與代碼的技術可行性。
 - **[skill-evolution-governor](./skills/meta/skill-evolution-governor/SKILL.md)** (`meta`) — 負責技能生態系統的生命週期管理、DLP 合規審計與系統自我進化。包含自動覆寫技能規範的修復能力。此技能涉及實體檔案變更，必須由使用者明確要求時才可觸發執行。
 - **[setup-hhai-skills](./skills/meta/setup-hhai-skills/SKILL.md)** (`meta`) — 一次性的專案初始化與交接設定指南。當接手現有專案、需要了解專案技術棧與目錄結構、或準備開始開發臺股網站功能時手動觸發閱讀。user-invoked。

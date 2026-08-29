@@ -246,6 +246,56 @@ $$LINE連線$$ → agency-orchestrator 辨識
    `orchestration/subagent-collaboration/REFERENCE.md`、`platform/langsmith-fetch/REFERENCE.md`。
    本批只統一了新遷移的三個技能，其餘留待單獨一批收斂。
 
+9. **31 個技能的 description 缺少觸發詞（追蹤項）** — `AGENTS.md` §2 規定
+   description 要用「情境 + 觸發詞」撰寫，並明訂這是 agent 判斷是否載入技能的
+   唯一依據。2026-08-29 建立 `skills/README.md` 三欄索引時發現，54 個技能中有
+   31 個只有功能敘述、沒有觸發詞。`validate_skills.py` 只檢查 description 是否
+   為空，抓不到「有寫但沒觸發詞」，因此長期隱形。影響：這些技能可能永遠不會被
+   模型自主觸發。清單如下：
+   - skills/agents/ (執行型): **[investment-aggregator](./agents/investment-aggregator/)**
+   - skills/agents/ (執行型): **[line-interaction-manager](./agents/line-interaction-manager/)**
+   - skills/agents/ (執行型): **[market-researcher](./agents/market-researcher/)**
+   - skills/agents/ (執行型): **[twse-data-analyst](./agents/twse-data-analyst/)**
+   - skills/analysis/ (分析型): **[macro-linkage](./analysis/macro-linkage/)**
+   - skills/analysis/ (分析型): **[ownership-cluster](./analysis/ownership-cluster/)**
+   - skills/analysis/ (分析型): **[quant-research-loop](./analysis/quant-research-loop/)**
+   - skills/analysis/ (分析型): **[sentiment-scout](./analysis/sentiment-scout/)**
+   - skills/execution/ (工具型): **[artifacts-builder](./execution/artifacts-builder/)**
+   - skills/execution/ (工具型): **[changelog-generator](./execution/changelog-generator/)**
+   - skills/execution/ (工具型): **[csv-data-summarizer](./execution/csv-data-summarizer/)**
+   - skills/execution/ (工具型): **[d3js-visualization](./execution/d3js-visualization/)**
+   - skills/execution/ (工具型): **[declarative-visual-intent-generator](./execution/declarative-visual-intent-generator/)**
+   - skills/execution/ (工具型): **[pdf](./execution/pdf/)**
+   - skills/execution/ (工具型): **[systematic-debugging](./execution/systematic-debugging/)**
+   - skills/execution/ (工具型): **[tool-executor](./execution/tool-executor/)**
+   - skills/execution/ (工具型): **[webapp-testing](./execution/webapp-testing/)**
+   - skills/execution/ (工具型): **[xlsx](./execution/xlsx/)**
+   - skills/meta/ (治理型): **[skill-evolution-governor](./meta/skill-evolution-governor/)**
+   - skills/orchestration/ (調度型): **[active-inference](./orchestration/active-inference/)**
+   - skills/orchestration/ (調度型): **[cost-benefit-router](./orchestration/cost-benefit-router/)**
+   - skills/orchestration/ (調度型): **[epistemic-state-governor](./orchestration/epistemic-state-governor/)**
+   - skills/orchestration/ (調度型): **[real-time-stream-orchestrator](./orchestration/real-time-stream-orchestrator/)**
+   - skills/orchestration/ (調度型): **[reality-checker](./orchestration/reality-checker/)**
+   - skills/orchestration/ (調度型): **[recursive-research-automation](./orchestration/recursive-research-automation/)**
+   - skills/orchestration/ (調度型): **[stock-orchestrator](./orchestration/stock-orchestrator/)**
+   - skills/orchestration/ (調度型): **[subagent-collaboration](./orchestration/subagent-collaboration/)**
+   - skills/platform/ (平台整合): **[json-to-flex-renderer](./platform/json-to-flex-renderer/)**
+   - skills/platform/ (平台整合): **[langsmith-fetch](./platform/langsmith-fetch/)**
+   - skills/platform/ (平台整合): **[mcp-gateway](./platform/mcp-gateway/)**
+   - skills/platform/ (平台整合): **[postgres](./platform/postgres/)**
+   處理方式：修正上游各技能 `SKILL.md` 的 description，不可在索引檔手動填格。
+
+10. **三層索引的描述各有手工副本，已漂移 12 處（追蹤項）** — 同一份技能描述
+    存在於根目錄 `README.md`、bucket `README.md`、`skills/README.md` 三處，
+    共 54 × 3 = 162 條手維護字串，無任何一致性機制。2026-08-29 比對 bucket
+    README 與 `SKILL.md` 的 description，54 條中有 12 條前 12 字即不一致。
+    其中兩條是實質錯誤，已於本批修正：`agents/README.md` 的
+    「每日額度僅 5 次」（正確為 100 次，且被外部代理抄進新索引）、
+    `orchestration/README.md` 的「06 層級」（舊分層編號殘留）。
+    其餘 10 條為改寫差異，暫不處理。
+    **根本解法**：由 `SKILL.md` 的 frontmatter 產生下兩層索引，取消手工副本。
+    此任務機械性高、範圍明確、可平行，列為多代理委派（Jules）的候選首航任務。
+
 ## 三之二、Jules 自動化修正分支處理狀態
 
 Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修正
@@ -309,3 +359,4 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 - **2026-08-26**：4 個 orchestration 型技能遷移完成
   （subagent-collaboration、recursive-research-automation、cost-benefit-router、epistemic-state-governor）
 - **2026-08-26**：遷移 4 個技能 (`sentiment-scout`, `quant-research-loop`, `langsmith-fetch`, `json-to-flex-renderer`) 至 `analysis/` 與 `platform/`，修正舊版 bucket 參照並分離出 REFERENCE.md，清查 `SKIP_LOCK` 繞過機制（未於 loop 內實作，留存記錄），完成環境指南的交叉引用。
+ 

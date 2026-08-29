@@ -41,6 +41,15 @@
   1. `d3-viz-skill` 的引用在 SKILL.md 刪掉了、REFERENCE.md 卻還留著
   2. `systematic-debugging-skill` 改名後，另外兩個技能的引用沒同步更新
   3. 「Zero-Block Policy」在 agency-orchestrator 的 SKILL.md 修掉了，但同技能的 REFERENCE.md、以及另外四個技能都還留著
+  4. `jules-integration` 的額度資訊修正時搜尋「額度 5 次」，
+     但實際字串是「額度**僅** 5 次」，多一個字就漏掉，錯誤留在
+     `skills/agents/README.md` 直到 2026-08-29 被外部代理抄走才發現
+
+- **搜尋詞要用最短的核心片段，不要用完整句子**：驗證某個錯誤事實是否清除時，
+  搜尋「5 次」而不是「額度 5 次」，搜尋「06 層級」與 `0[1-9]_` 兩種形式而不是
+  只搜其中一種。搜尋詞越長，假陰性機率越高。命中太多再人工篩，
+  比漏掉一處好。**回報時要貼出實際命中的檔名與行號，不能只回報數量**——
+  數量為 0 可能代表已清除，也可能代表搜錯字串。
 - **一個技能有多個檔案**：`SKILL.md`、`REFERENCE.md`、`EXAMPLES.md`、`scripts/` 都要一起檢查，不要只改 SKILL.md 就當作處理完。
 - **區分「行為指令」與「歷史紀錄」**：Changelog 與 ADR 裡提到某條已廢除的規則（例如「修復 Zero-Block Policy 問題」）是歷史留痕，應保留；只有實際會被 agent 執行的行為指令才需要清除。清理前先判斷該處文字屬於哪一種，不要一律刪除。
 - **執行 `python3 scripts/validate_skills.py` 前先設定編碼**：
