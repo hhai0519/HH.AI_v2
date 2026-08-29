@@ -296,6 +296,20 @@ $$LINE連線$$ → agency-orchestrator 辨識
     **根本解法**：由 `SKILL.md` 的 frontmatter 產生下兩層索引，取消手工副本。
     此任務機械性高、範圍明確、可平行，列為多代理委派（Jules）的候選首航任務。
 
+11. **治理文件分類混雜，已排程專批審計（追蹤項）** — 2026-08-29 掃描
+    20 份 ADR 的行為指令密度（必須／嚴禁／一律／不得／禁止），發現多份 ADR
+    混雜了「決策留痕」與「可執行規範」兩種性質：ADR-0013（78 行 13 句指令）、
+    ADR-0016（81 行 6 句）、ADR-0012（39 行 5 句）、ADR-0017（81 行 5 句，
+    其「Next.js 應使用 3002」實為規範而非決策）。
+    ADR 應只記錄「為什麼這樣決定」，可執行的規範應放在 `.agents/rules/`
+    或 `SOP/`。
+    **排程**：於第二批 Jules 分支處理完畢後、剩餘技能遷移之前執行。
+    理由：Jules 分支有 rebase 時效性須優先；runtime 層將產生多份新 ADR，
+    須在該階段開始前立好分類慣例。
+    **執行方式**：先做純讀取的分類盤點（依 `AGENTS.md` §0.1 審計階段不動檔案），
+    逐份標記「純決策／純規範／混雜」，提清單交使用者裁決後才搬移，
+    並產出 ADR-0020 記錄分類標準。
+
 ## 三之二、Jules 自動化修正分支處理狀態
 
 Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修正
@@ -359,4 +373,3 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 - **2026-08-26**：4 個 orchestration 型技能遷移完成
   （subagent-collaboration、recursive-research-automation、cost-benefit-router、epistemic-state-governor）
 - **2026-08-26**：遷移 4 個技能 (`sentiment-scout`, `quant-research-loop`, `langsmith-fetch`, `json-to-flex-renderer`) 至 `analysis/` 與 `platform/`，修正舊版 bucket 參照並分離出 REFERENCE.md，清查 `SKIP_LOCK` 繞過機制（未於 loop 內實作，留存記錄），完成環境指南的交叉引用。
- 
