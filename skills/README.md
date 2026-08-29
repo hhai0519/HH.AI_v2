@@ -2,27 +2,17 @@
 
 本文件提供 `skills/` 目錄下的所有技能 (Skills) 的索引與分類，方便開發者閱讀、維護與管理。
 
-## 快速導覽索引
-
-- [skills/agents/ (執行型)](#skillsagents-執行型)
-- [skills/analysis/ (分析型)](#skillsanalysis-分析型)
-- [skills/execution/ (工具型)](#skillsexecution-工具型)
-- [skills/meta/ (治理型)](#skillsmeta-治理型)
-- [skills/orchestration/ (調度型)](#skillsorchestration-調度型)
-- [skills/platform/ (平台整合)](#skillsplatform-平台整合)
-- [skills/deprecated/ (已棄用)](#skillsdeprecated-已棄用)
-
-## 目錄結構與分類說明
+## 目錄結構與快速導覽
 
 根據各 Skill 的用途，本目錄分為以下主要類別：
 
-- **`skills/agents/`**：RARV 執行型 agent（會實際呼叫工具、寫檔案、發送訊息等）。
-- **`skills/analysis/`**：台股分析、財務模型、技術分析（純分析型，不直接執行外部動作）。
-- **`skills/execution/`**：通用工具型技能（PDF/XLSX/D3/Playwright 等）。
-- **`skills/meta/`**：造技能的技能、治理類（skill-creator、setup-hhai-skills 等）。
-- **`skills/orchestration/`**：流程調度、任務路由、狀態機控制。
-- **`skills/platform/`**：平台整合（LINE/Telegram/MCP/Postgres 等外部串接）。
-- **`skills/deprecated/`**：已棄用，保留供參考，不再維護，不會被自動觸發。
+- [**`skills/agents/`** (執行型)](#skillsagents-執行型)：RARV 執行型 agent（會實際呼叫工具、寫檔案、發送訊息等）。
+- [**`skills/analysis/`** (分析型)](#skillsanalysis-分析型)：台股分析、財務模型、技術分析（純分析型，不直接執行外部動作）。
+- [**`skills/execution/`** (工具型)](#skillsexecution-工具型)：通用工具型技能（PDF/XLSX/D3/Playwright 等）。
+- [**`skills/meta/`** (治理型)](#skillsmeta-治理型)：造技能的技能、治理類（skill-creator、setup-hhai-skills 等）。
+- [**`skills/orchestration/`** (調度型)](#skillsorchestration-調度型)：流程調度、任務路由、狀態機控制。
+- [**`skills/platform/`** (平台整合)](#skillsplatform-平台整合)：平台整合（LINE/Telegram/MCP/Postgres 等外部串接）。
+- [**`skills/deprecated/`** (已棄用)](#skillsdeprecated-已棄用)：已棄用，保留供參考，不再維護，不會被自動觸發。
 
 ### skills/agents/ (執行型)
 
