@@ -41,26 +41,10 @@ asyncio.run(quick_test())
 
 ---
 
-## 📊 響應式多裝置快速截圖
+## 📊 響應式多裝置截圖
 
-```python
-async def multi_device_screenshot(url: str):
-    """一次生成多裝置截圖"""
-    devices = [
-        ("mobile", 375, 812),
-        ("tablet", 768, 1024),
-        ("desktop", 1440, 900),
-    ]
-    
-    for name, w, h in devices:
-        tester = QuickWebTester()
-        await tester.start(url, viewport={"width": w, "height": h})
-        await tester.screenshot(f"check_{name}.png")
-        await tester.close()
-        print(f"✅ {name} ({w}×{h}) 截圖完成")
-```
-
----
+響應式多裝置截圖統一由 `playwright-automation` 提供（含水平捲軸斷言與 4K 檔位），
+本技能不重複實作，需要時請改呼叫該技能。
 
 ## 🤝 協同技能
 

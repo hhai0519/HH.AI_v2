@@ -35,9 +35,6 @@
 |---|---|---|---|
 | `line-bot-zero-delay` | `03_Execution/` | `skills/platform/` | 文件遷移，程式碼留給 runtime 階段 |
 | `telegram-bot-cdp-bridge` | `03_Execution/` | `skills/platform/` | 同上，內含 vendored `remoat` 開源專案 |
-| `playwright-automation` | `03_Execution/` | `skills/execution/` | |
-| `theme-factory` | `03_Execution/` | `skills/execution/` | |
-| `image-enhancer` | `03_Execution/` | `skills/execution/` | |
 | `ui-prototype-builder` | `03_Execution/` | `skills/execution/` | description 過長需拆 REFERENCE.md |
 | `skill-creator` | `03_Execution/` | `skills/meta/` | 跟 `nuwa-skill` 職責可能重疊，需評估 |
 | `workspace-migration-recovery` | `03_Execution/` | `skills/meta/` | 可用來驗證本次遷移完整性 |
@@ -227,6 +224,27 @@ $$LINE連線$$ → agency-orchestrator 辨識
 
 6. **全域 SKILL.md 掃描已完成** — 2026-08-26 執行全域搜尋確認，舊專案的技能只存在於以下位置：`skills/01_Orchestrators`、`02_Cognitive`、`03_Execution`、`Archive`、`.agents/skills/`（bot-account-switcher）、`Data/personas/`（15 個 persona），以及 `scratch/` 底下一個外部套件的內附文件（不遷移）。除此之外沒有其他藏在非標準位置的技能，遷移範圍已確定完整。
 
+7. **theme-factory 的 legacy 標記是誤貼，已更正** — 該技能原有
+   `legacy_notice: "[LEGACY - 請改用 ui-prototype-builder]"`，與 A-1「確定遷移」
+   衝突。2026-08-29 逐檔查證後推翻該標記：`ui-prototype-builder` 全文 693 行中
+   「主題」只出現 1 次且為無關語境，其 22 份 `references/` 內沒有任何具名主題
+   色板，並不具備 theme-factory 的 10 組預設主題與 CSS Design Token 生成器功能，
+   兩者定位也不同（前者從零做原型，後者為既有成品套主題）。該 legacy 字串與
+   `canvas-design` 的 frontmatter 一字不差，可判定為整批誤貼。此外新 repo 已有
+   三個已遷移技能依賴 theme-factory（`frontend-developer`、`artifacts-builder`、
+   `d3js-visualization`），進 `deprecated/` 會造成現役技能依賴棄用技能。
+   依 `.agents/rules/git-and-reporting.md` §3「文件自己的宣告不等於事實」，
+   移除 legacy_notice 並遷入 `skills/execution/`。`AGENTS.md` §8.3 規則本身維持不變。
+
+8. **Payload 淨化規則的詞彙全庫不一致（追蹤項）** — `[!IMPORTANT]` 區塊的
+   淨化規則有兩種寫法：舊分層詞彙（「若本技能為 `Cognitive` 型／`Execution` 型」）
+   與 bucket 詞彙（「若本技能屬於 analysis/ 或 orchestration/」）。2026-08-29
+   全庫掃描確認舊寫法尚存於 7 個檔案：`analysis/macro-linkage/SKILL.md`、
+   `analysis/ownership-cluster/SKILL.md`、`analysis/quant-research-loop/REFERENCE.md`、
+   `analysis/sentiment-scout/SKILL.md`、`orchestration/recursive-research-automation/REFERENCE.md`、
+   `orchestration/subagent-collaboration/REFERENCE.md`、`platform/langsmith-fetch/REFERENCE.md`。
+   本批只統一了新遷移的三個技能，其餘留待單獨一批收斂。
+
 ## 三之二、Jules 自動化修正分支處理狀態
 
 Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修正
@@ -268,6 +286,15 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 ---
 
 ## 四、更新紀錄 (Update Log)
+- **2026-08-29**：新增 ADR-0018（vendored 外部資產保留 fork 與三層標示）與
+  `AGENTS.md` §8.5；遷移 3 個 execution 技能（image-enhancer、theme-factory、
+  playwright-automation），三份均移除重複 type/version/capabilities 欄位、
+  改寫 Zero-Block Policy、拆出 REFERENCE.md、清除 canvas-design 等死引用；
+  收斂 `webapp-testing` 與 `playwright-automation` 的響應式截圖重疊；
+  修復根目錄 README.md 4 處 ESC 控制字元損毀。技能總數 51 → 54。
+  同批統一三個新技能的 Payload 淨化規則詞彙為 bucket 寫法、修正日文漢字
+  「適用対象」與簡繁誤譯「驗證已透過」，並修正根目錄 README 的 Jules
+  每日額度過時資訊（5 次 → 100 次）。
 - **2026-08-26**: 復活 `ownership-cluster` 與 `macro-linkage`，由 A-3 區塊移除並納入 `skills/analysis/`。
 - **2026-08-26**：合併 Jules 兩個 with_server.py 修正分支（command injection 安全修正 + 啟動平行化），引入 HH.AI_v2 首批自動化測試（5 個，全數通過），並建立 requirements.txt。
 - **2026-08-26**：修正 stock-orchestrator 的舊分層編號路由（6 個 SYSTEM-CALL 路徑更新為 analysis/ 格式）；合併 Jules 的 d3js tooltip XSS 修正分支。

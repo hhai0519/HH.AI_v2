@@ -22,4 +22,6 @@ _(尚無技能)_
 - **[artifacts-builder](./artifacts-builder/SKILL.md)** — 使用現代前端技術（React、Tailwind CSS、shadcn/ui）建立精細、多組件 HTML 互動原型。
 - **[changelog-generator](./changelog-generator/SKILL.md)** — 從 Git 提交紀錄自動生成面向使用者的版本日誌，將技術性 commit 訊息轉換為清晰的發佈說明。
 - **[systematic-debugging](./systematic-debugging/SKILL.md)** — 強制執行「先找根本原因、再提修正」的四階段除錯流程。適用於 MCP 連接失敗、工具載入錯誤、npm/pip 安裝失敗等本地環境問題。
-
+- **[image-enhancer](./image-enhancer/SKILL.md)** — 提升影像（特別是截圖）的解析度、銳利度與清晰度。當使用者要求『圖片增強』、『截圖變清晰』、『圖片放大』、『去除雜訊』，或需要為簡報、文件、社群貼文準備圖像時使用。
+- **[theme-factory](./theme-factory/SKILL.md)** — 為成品套用主題風格，適用於投影片、文件、報告、HTML 登陸頁面。內含 10 組預設主題色彩與字體，也可即時生成新主題。當使用者要求『套用主題』、『配色方案』、『設計 Token』、『統一視覺風格』時使用。
+- **[playwright-automation](./playwright-automation/SKILL.md)** — 使用 Playwright 建立完整的瀏覽器自動化測試框架。自動偵測開發伺服器、撰寫測試腳本、驗證響應式設計、填寫表單、測試登入流程、檢查連結並產出測試報告。當使用者要求『寫 E2E 測試』、『Playwright 測試腳本』、『跨瀏覽器測試』、『響應式設計測試』時使用。若只需快速截圖或查看瀏覽器日誌而不必建立測試套件，改用 webapp-testing。
