@@ -68,6 +68,39 @@ ADR-0016 的憑證外洩正是把該檔案複製成 `temp_mcp.json` 放進 repo 
 外部資產的版本鎖定原則矛盾。建議改為 `@google/jules-mcp@0.2.0`。
 此項需修改 `mcp_config.json`（在 repo 外），由使用者執行，不在本次 commit 範圍。
 
+## 2026-08-29 當日更正
+
+本 ADR 寫成後同日的實測推翻了上方兩處判斷，原文保留，更正記錄於此。
+
+**更正一：金鑰不必留在 `mcp_config.json`。**
+
+Decision 第二條依據「官方 MCP 套件的 `--help` 只提供 `config` 子指令設定金鑰，
+未載明支援從 OS 環境變數讀取」而決定維持現狀。實測 `doctor` 指令的錯誤訊息
+明白寫著 `Run 'jules-mcp config' or set JULES_API_KEY env var`，
+且在只有系統環境變數參與的情況下回報 `API Connection: ✓ Authenticated`。
+
+因此改採環境變數，並同批把 `github-mcp-server` 與 `notion-mcp-server` 的金鑰
+一併遷出。**`mcp_config.json` 現已不含任何明文金鑰**，ADR-0016 的
+「複製設定檔即洩漏」失效路徑就此消除。作法見
+`docs/mcp-environment-guide.md` 的「金鑰存放方式」一節。
+
+教訓：`--help` 沒寫不等於不支援，應直接跑 `doctor` 這類診斷指令看實際行為。
+
+**更正二：本套件並非「官方支援」產品。**
+
+本 ADR 通篇以「Google 官方 CLI 與 MCP」描述，措辭不準確。
+上游 README 明載 `This is not an officially supported Google product`，
+且不納入 Google 開源漏洞獎勵計畫。
+
+準確描述應為：由 Google 以 `@google` npm scope 發布、Apache-2.0 授權，
+但聲明為非官方支援產品。決策本身不變（8 組工具 vs 原方案單一指令，
+能力差距明確），但取代 ADR-0003 的理由不應建立在「官方 vs 非官方」
+這個對比上。
+
+另註：上游 README 只列 7 個工具且寫作 `send_reply`，
+本機實際暴露 8 個、名稱為 `send_reply_to_session`，並多一個 `get_bash_outputs`。
+本 ADR 的工具清單取自本機實測，較 README 準確，不需更正。
+
 ## Consequences
 
 - 取得 8 組 MCP 工具，Agent 可直接查詢 session 狀態、讀取 bash 輸出與 diff，

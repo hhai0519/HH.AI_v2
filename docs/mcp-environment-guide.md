@@ -17,7 +17,8 @@
 系統的 MCP 分為兩層，只看設定檔會誤以為只有 6 個：
 
 1. **直接設定層**（寫在 `mcp_config.json` 的 5 個）：
-   chrome-devtools-mcp、github-mcp-server、notion-mcp-server、notebooklm
+   chrome-devtools-mcp、github-mcp-server、notion-mcp-server、notebooklm、
+   google-jules
 2. **Gateway 動態層**（透過 `docker mcp gateway run` 管理）：
    Docker 官方的 MCP Gateway，提供 mcp-add / mcp-find / mcp-exec /
    mcp-config-set 等 8 個管理工具，可在執行期動態載入其他 MCP server。
@@ -25,7 +26,7 @@
 
 ## 六個 MCP Server 的重建方式
 
-| Server | 啟動方式 | 前置需求 | 需要的環境變數 |
+| Server | 啟動方式 | 前置需求 | 需要的環境變數（設在 Windows User 層級，不寫進設定檔） |
 |---|---|---|---|
 | `chrome-devtools-mcp` | `npx -y chrome-devtools-mcp@latest` | Node.js | 無 |
 | `github-mcp-server` | `docker run -i --rm -e GITHUB_PERSONAL_ACCESS_TOKEN ghcr.io/github/github-mcp-server` | Docker | `GITHUB_PERSONAL_ACCESS_TOKEN` |
@@ -35,6 +36,38 @@
 | `google-jules` | `npx -y @google/jules-mcp@0.2.0` | 全域安裝 `@google/jules` 並完成 `jules login` | `JULES_API_KEY` |
 
 > **註：google-jules 提供的 8 組工具**：create_session、list_sessions、get_session_state、get_bash_outputs、get_code_review_context、show_code_diff、send_reply_to_session、query_cache
+
+## 金鑰存放方式（2026-08-29 起）
+
+**所有 API 金鑰一律存放在 Windows User 層級環境變數，`mcp_config.json`
+內不得出現任何 `env` 區塊形式的明文金鑰。**
+
+目前以此方式存放的四個變數：
+
+| 變數名稱 | 使用者 |
+|---|---|
+| `JULES_API_KEY` | `google-jules` |
+| `GITHUB_PERSONAL_ACCESS_TOKEN` | `github-mcp-server` |
+| `NOTION_API_TOKEN` | `notion-mcp-server` |
+| `OPENAPI_MCP_HEADERS` | `notion-mcp-server` |
+
+（`notebooklm` 的 `NLM_USER_AGENT` 不是機密，仍留在設定檔內。）
+
+**設定方式**：PowerShell 執行
+`[Environment]::SetEnvironmentVariable(名稱, 值, 'User')`，
+設定後必須**完全關閉並重新開啟 Antigravity IDE**，僅重新載入視窗無效。
+
+**為什麼這樣做**：ADR-0016 的憑證外洩，是把含明文金鑰的 `mcp_config.json`
+複製成 `temp_mcp.json` 放進 repo 造成的。金鑰不在設定檔內，這條失效路徑
+就不存在。詳見 ADR-0019。
+
+**2026-08-29 重啟後實測結果**：六個 server 全部 Active；
+`google-jules`（list_sessions）、`github-mcp-server`（get_me）、
+`notion-mcp-server`（API-post-search）三個唯讀呼叫全部成功；
+`npx -y @google/jules-mcp@0.2.0 doctor` 回報 API Key ✓、API Connection ✓。
+其中 `github-mcp-server` 使用 `docker run -e GITHUB_PERSONAL_ACCESS_TOKEN`
+（只給變數名不給值），傳遞鏈最長，實測確認 Antigravity → docker → 容器
+可正確傳遞行程環境。
 
 ## 已知風險與待改善項目
 
@@ -62,6 +95,9 @@
 
 **待改善**：評估改用 `notebooklm-mcp`（依賴 PATH 解析）或 `python -m`
 的呼叫方式，避免寫死版本號路徑。
+
+**2026-08-29 補充**：實測本機安裝版本僅提供 26 個工具，上游 v0.2.0 為 43 個，
+版本已落後。路徑改 PATH 解析與版本升級將於同一批處理。
 
 ### 3. Gateway 動態載入的 server 無紀錄（中風險）
 

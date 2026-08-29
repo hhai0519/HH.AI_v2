@@ -478,6 +478,17 @@ C:\Users\HH.AI_260806\.gemini\config\mcp_config.json   （MCP 設定，不在版
 - **注意**：`refactor-backlog.md` F 節僅記載「憑證檔案，不該進版控」，
   但未標明它**已經實際外洩**
 
+**2026-08-29 處置結果**：
+- 使用者已於 Google 帳號執行「登出所有裝置」，並確認登入清單中無陌生裝置
+- 檔案已從舊 repo 的 HEAD 移除（commit `4729c04`），
+  舊 repo `.gitignore` 補上 `nlm_cookies.txt` 與 `*cookies*`
+- git 歷史仍保有該檔案（清歷史需 force push，違反
+  `.agents/rules/git-and-reporting.md`），該組 cookie 應永久視為已洩漏
+- 上游文件載明 cookie 生命週期約 2-4 週，該憑證早已自然過期；
+  實測 NotebookLM MCP 回報 `Authentication expired` 與此相符
+- 該檔案本非必要：上游正規憑證存放位置為 `~/.notebooklm-mcp-cli`，
+  執行 `nlm login` 即可，repo 內不需保留 cookie 檔
+
 ### 7.2 🔴 LINE 通道完全失效（根因已查明，未修復）
 
 **斷鏈位置**：
@@ -540,7 +551,7 @@ bridge.js 啟動 Pinggy 取得新網址
 |---|---|
 | `line-daemon` 缺 `autorestart` | 沙盒報告建議加上，但實際未執行（ADR-0014 記錄） |
 | Redis 未運行 | `bridge.js` 會自動降級為記憶體模式，代價是訊息佇列不持久化 |
-| MCP 憑證雙處存放 | `.env.local` 與 `mcp_config.json` 各有一份，變數名稱還不同（`GITHUB_TOKEN` vs `GITHUB_PERSONAL_ACCESS_TOKEN`），改一邊另一邊會靜默失效 |
+| MCP 憑證雙處存放 | `.env.local` 與系統環境變數各有一份，變數名稱還不同（`GITHUB_TOKEN` vs `GITHUB_PERSONAL_ACCESS_TOKEN`），改一邊另一邊會靜默失效。2026-08-29 已把 `mcp_config.json` 那一側完全移除，由三處縮為兩處，尚未根除。 |
 | `notebooklm` MCP 路徑含 Python 版本號 | `pythoncore-3.14-64`，Python 升級後路徑失效 |
 
 ---
@@ -580,7 +591,7 @@ bridge.js 啟動 Pinggy 取得新網址
 |---|---|
 | 記憶體 | 16GB DDR4（吃緊） |
 | Jules 額度 | 100 次/天（Google AI Pro/Ultra） |
-| MCP servers | 5 個、148 個工具（chrome-devtools、docker gateway、GitHub、notebooklm、Notion） |
+| MCP servers | 6 個、125 個工具（chrome-devtools 29、github 30、notebooklm 26、notion 24、docker gateway 8、google-jules 8） |
 | Claude 訂閱 | 有使用量限制，長對話會快速消耗 |
 
 ---
