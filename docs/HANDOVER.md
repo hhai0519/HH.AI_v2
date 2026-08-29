@@ -57,7 +57,7 @@ Antigravity 有本機權限但沒有獨立查證能力（它自己的回報不�
 | `orchestration/` | 流程調度、任務路由、狀態機（無副作用） |
 | `analysis/` | 分析與判斷（純分析，不執行外部動作） |
 | `agents/` | RARV 執行型，有真實副作用（發訊息／寫檔／下單）→ 需 `authorized_mcp_tools` + `disable-model-invocation: true` |
-| `execution/` | 通用工具（PDF／XLSX／D3／Playwright） |
+| `execution/` | 16 | d3js-visualization、webapp-testing、mcp-engineer、pdf、xlsx、csv-data-summarizer、artifacts-builder、changelog-generator、systematic-debugging、tool-executor、frontend-developer、declarative-visual-intent-generator、gemma-4-api、image-enhancer、theme-factory、playwright-automation |
 | `platform/` | 平台整合（LINE／Telegram／MCP／Postgres） |
 | `meta/` | 造技能的技能、治理類 |
 | `deprecated/` | 已棄用，不維護 |
@@ -93,7 +93,7 @@ C:\Users\HH.AI_260806\.gemini\config\mcp_config.json   （MCP 設定，不在版
 |---|---|
 | `HH.AI_v2/AGENTS.md` | 架構規範（七桶定義、SKILL.md 格式、frontmatter 規則） |
 | `HH.AI_v2/docs/refactor-backlog.md` | 進度與待辦清單（**接手必讀**） |
-| `HH.AI_v2/docs/adr/` | 17 份架構決策紀錄 |
+| `HH.AI_v2/docs/adr/` | 20 份架構決策紀錄 |
 | `HH.AI_v2/.agents/rules/` | 4 份 workspace 規則（Antigravity 自動載入） |
 | `HH.AI_v2/SOP/` | 10 份操作流程 + `SOP_00A_Master_Index.json`（`$$` 指令權威路由表） |
 | `HH.AI_v2/scripts/validate_skills.py` | 唯一的自動化驗證工具 |
@@ -120,7 +120,7 @@ C:\Users\HH.AI_260806\.gemini\config\mcp_config.json   （MCP 設定，不在版
 | **obra/superpowers** | `https://github.com/obra/superpowers` | ✅ 部分採用。task artifact 追蹤機制寫入遷移指令稿；觸發積極度分級記於 ADR-0002 |
 | **ImL1s/oh-my-agy** | `https://github.com/ImL1s/oh-my-agy` | ✅ 部分採用。per-folder `AGENTS.md` 模式、ADR 文件模式；未安裝整套 CLI |
 | **ImL1s/antigravity_for_loop** | `https://github.com/ImL1s/antigravity_for_loop` | ❌ 不採用。2026-08 已歸檔，Antigravity 2.0 移除其 CDP 依賴的 UI 介面 |
-| **Germain-L/Send2Jules**（= Antigravity Jules Bridge） | `https://github.com/Germain-L/Send2Jules` | ✅ 採用。透過 Extensions 市集安裝，金鑰存 OS Keychain，不 vendor 原始碼（ADR-0003） |
+| **Germain-L/Send2Jules**（= Antigravity Jules Bridge） | `https://github.com/Germain-L/Send2Jules` | ❌ **已停用**。原為 ADR-0003 採用方案，2026-08-29 改採 Google 官方 `@google/jules` CLI 與 `@google/jules-mcp`（ADR-0019 取代 ADR-0003） |
 | **sajidmahamud835/antigravity-jules-integration** | `https://github.com/sajidmahamud835/antigravity-jules-integration` | ❌ 不採用。手動 vendor 路線，金鑰會明文寫入 `mcp_config.json`（ADR-0003 決策理由） |
 | **jacob-bd/gemini-notebook-mcp-cli** | `https://github.com/jacob-bd/gemini-notebook-mcp-cli` | ✅ 使用中。即 `notebooklm-mcp-cli` pip 套件，對應 `platform/notebooklm-mcp` 技能 |
 | **alchaincyf/nuwa-skill** | `https://github.com/alchaincyf/nuwa-skill` | ⏳ **待採用**。「女媧造人」persona 生成技能。官方 `examples/` 有 15 個 A 級完整範例（429-541 行，保真度 89-97 分），與本專案 15 個 persona 清單**完全一致**，可直接採用官方版本填充 |
@@ -137,8 +137,6 @@ C:\Users\HH.AI_260806\.gemini\config\mcp_config.json   （MCP 設定，不在版
 
 | 技能 | 來源 | 授權 | 狀態 |
 |---|---|---|---|
-| `theme-factory` | Anthropic 官方範例技能 | Apache-2.0（未填 copyright holder） | 中文化 fork，內容與官方逐檔比對相同 |
-| `playwright-automation` | `lackeyjb/playwright-skill` v4.1.0 | MIT | 完整 vendored（含 `package.json`、`LICENSE`、`.claude-plugin/`） |
 | `telegram-bot-cdp-bridge` 內的 `telegram-bot-project` | `optimistengineer/remoat` v0.2.14 | — | 完整 vendored + 使用者自製腳本 |
 
 **遷移時應統一決定標示方式**，例如在 frontmatter 補 `license` 欄位
@@ -230,22 +228,22 @@ C:\Users\HH.AI_260806\.gemini\config\mcp_config.json   （MCP 設定，不在版
 
 ## 4. 已完成項目與細節
 
-### 4.1 技能遷移：51 個
+### 4.1 技能遷移：54 個
 
 | Bucket | 數量 | 技能清單 |
 |---|---|---|
 | `analysis/` | 14 | financial-analyst、investment-researcher、tech-analyzer、pe-river-map、evidence-collector、software-architect、backend-architect、data-engineer、devops-engineer、twse-market-logic、sentiment-scout、quant-research-loop、ownership-cluster、macro-linkage |
-| `execution/` | 13 | d3js-visualization、webapp-testing、mcp-engineer、pdf、xlsx、csv-data-summarizer、artifacts-builder、changelog-generator、systematic-debugging、tool-executor、frontend-developer、declarative-visual-intent-generator、gemma-4-api |
+| `execution/` | 16 | d3js-visualization、webapp-testing、mcp-engineer、pdf、xlsx、csv-data-summarizer、artifacts-builder、changelog-generator、systematic-debugging、tool-executor、frontend-developer、declarative-visual-intent-generator、gemma-4-api、image-enhancer、theme-factory、playwright-automation |
 | `orchestration/` | 10 | active-inference、agency-orchestrator、security-auditor、stock-orchestrator、reality-checker、real-time-stream-orchestrator、subagent-collaboration、recursive-research-automation、cost-benefit-router、epistemic-state-governor |
 | `agents/` | 6 | jules-integration、investment-aggregator、twse-data-analyst、market-researcher、line-interaction-manager、bot-account-switcher |
 | `platform/` | 6 | connect-apps、postgres、notebooklm-mcp、mcp-gateway、langsmith-fetch、json-to-flex-renderer |
 | `meta/` | 2 | skill-evolution-governor、setup-hhai-skills |
 | `deprecated/` | 0 | （尚無） |
 
-**完成度**：舊 repo 68 個現行技能中，48 個已遷移、11 個確定不遷移、
-9 個待遷移（另有 3 個為合併產生的新技能）。
+**完成度**：舊 repo 68 個現行技能中，51 個已遷移、11 個確定不遷移、
+6 個待遷移（另有 3 個為合併產生的新技能）。
 
-### 4.2 ADR：17 份
+### 4.2 ADR：20 份
 
 | 編號 | 主題 |
 |---|---|
@@ -316,15 +314,12 @@ C:\Users\HH.AI_260806\.gemini\config\mcp_config.json   （MCP 設定，不在版
 
 ## 5. 未完成項目與細節
 
-### 5.1 待遷移技能：9 個
+### 5.1 待遷移技能：6 個
 
 | 技能 | 舊位置 | 預計去向 | 阻塞原因／注意事項 |
 |---|---|---|---|
 | `line-bot-zero-delay` | `03_Execution/` | `platform/` | **等 runtime 架構決策**。內嵌 12 檔 Node.js 專案（`line-bot-project/`） |
 | `telegram-bot-cdp-bridge` | `03_Execution/` | `platform/` | **等 runtime 架構決策**。內嵌 vendored 開源專案 `remoat`（179 檔） |
-| `playwright-automation` | `03_Execution/` | `execution/` | **需裁決**：與已遷移的 `webapp-testing` 職責重疊 |
-| `theme-factory` | `03_Execution/` | `execution/`? | **需裁決**：帶 `legacy_notice`，與 backlog 衝突 |
-| `image-enhancer` | `03_Execution/` | `execution/` | 有 3 個技能引用需處理（`canvas-design` 是死引用） |
 | `ui-prototype-builder` | `03_Execution/` | `execution/` | 683 行、4 個子目錄，規模最大，建議獨立一批 |
 | `skill-creator` | `03_Execution/` | `meta/` | 與 `nuwa-skill` 職責可能重疊，需評估 |
 | `workspace-migration-recovery` | `03_Execution/` | `meta/` | 可用來驗證本次遷移完整性 |
@@ -333,23 +328,22 @@ C:\Users\HH.AI_260806\.gemini\config\mcp_config.json   （MCP 設定，不在版
 
 （另有 `shared-bot-utils` 待評估歸屬，可能該進 `shared/` 而非 `skills/`）
 
-### 5.2 三個攔截項（需使用者裁決）
+### 5.2 攔截項（兩項已裁決，一項待裁決）
 
-**攔截項一：`theme-factory` 的 legacy 衝突**
+**攔截項一：`theme-factory` 的 legacy 衝突 — ✅ 2026-08-29 已裁決**
 
-- 該技能 frontmatter 有 `legacy_notice: "[LEGACY - 請改用 ui-prototype-builder]"`
-- `AGENTS.md` §8.3：標記 `legacy_notice` 的技能一律進 `skills/deprecated/`
-- `refactor-backlog.md` A-1：列為「確定要遷移到 `skills/execution/`」
-- **兩份文件直接衝突，需裁決**
-- 補充：`ui-prototype-builder` 確實存在（尚未遷移），該 legacy 標記非空頭宣告
+裁決結果：移除 `legacy_notice`，遷入 `skills/execution/`。
+查證依據：`ui-prototype-builder` 全文 693 行中「主題」僅出現 1 次且為無關語境，
+不具備 theme-factory 的 10 組預設主題與 CSS Token 生成器；該 legacy 字串與
+`canvas-design` 一字不差，屬整批誤貼；且已有三個現役技能依賴 theme-factory。
+`AGENTS.md` §8.3 規則本身維持不變。詳見 `refactor-backlog.md` 三、第 7 點。
 
-**攔截項二：`playwright-automation` 與 `webapp-testing` 重疊**
+**攔截項二：`playwright-automation` 與 `webapp-testing` 重疊 — ✅ 2026-08-29 已裁決**
 
-- `webapp-testing` 已在 `skills/execution/`，description 為
-  「使用 Playwright 互動和測試本地 Web 應用程式的工具包」
-- `playwright-automation` 職責高度重合
-- 依 `AGENTS.md` §0.2「發現重複知識立刻停下來處理」，
-  須先決定合併、劃界或其一不遷
+裁決結果：劃界共存，不合併。`playwright-automation` 負責完整 E2E 測試框架，
+`webapp-testing` 負責快速即時調試。響應式多裝置截圖統一由前者提供，
+後者改為指向。不合併的硬性理由：`playwright-automation` 是 MIT 完整 vendored
+套件，合併會破壞上游可追溯性（ADR-0018）。
 
 **攔截項三：runtime 層架構選擇（ADR-0015）**
 
@@ -413,7 +407,7 @@ C:\Users\HH.AI_260806\.gemini\config\mcp_config.json   （MCP 設定，不在版
 | **舊 repo 1 個未推送 commit** | `968bb6d chore: purge runtime artifacts...`，等使用者換完金鑰才能推 |
 | **pre-commit hook** | ADR-0016 記錄的缺口，`HH.AI_v2` 目前無任何 commit 前憑證檢查 |
 | **LINE/TG 遠端免確認設定** | 遠端下指令時 MCP 授權會跳確認視窗，失去遠端操作意義 |
-| **Agent 操控 Jules** | 目前無法查詢 Jules 任務狀態，只能手動看 Dashboard |
+| ~~**Agent 操控 Jules**~~ | ✅ 2026-08-29 解除。官方 MCP 提供 `list_sessions`、`get_session_state` 等 8 組工具，可直接查詢（ADR-0019） |
 | **`ADR-0012` 補 `SKIP_LOCK`** | `autoresearch-agent` 用 `SKIP_LOCK=1` 繞過全域鎖，ADR-0012 未記載 |
 | **vendored 外部資產標示規則** | `theme-factory`（Anthropic 官方）、`remoat`（第三方）缺標示規範，`AGENTS.md` 無此條，可能要補 ADR |
 
@@ -721,7 +715,7 @@ cd HH.AI_v2
 cat docs/refactor-backlog.md        # 進度與待辦
 cat AGENTS.md                        # 架構規範
 cat .agents/rules/git-and-reporting.md   # 協作紀律
-ls docs/adr/                         # 17 份決策紀錄
+ls docs/adr/                         # 20 份決策紀錄
 ```
 
 **不需要請使用者貼終端機輸出**——兩個 repo 都是公開的，直接 clone。
@@ -782,6 +776,9 @@ print(sum(1 for l in t.splitlines() if l.strip().startswith('\`\`\`')))
 ```
 
 ---
+
+> 最後更新：2026-08-29（本階段完成 ADR-0018、ADR-0019、3 個 execution 技能遷移、
+> Jules 官方 CLI/MCP 整合留痕、`AGENTS.md` 測試指令與 `.gitignore` 憑證防呆）
 
 **手冊結束。**
 
