@@ -312,6 +312,26 @@ $$LINE連線$$ → agency-orchestrator 辨識
     分類判準採用 `PRINCIPLES.md` §1 的四個判別問句；
     審計過程若發現該判準不足以分類，回頭修訂 `PRINCIPLES.md`。
 
+
+> [!IMPORTANT]
+> **2026-08-29 更新：本節以下記載的是第一批 12 個分支。第二批 12 個分支已產出，
+> 尚未處理。** 第二批全部基於 `82ef1f7`。**落後量會隨 main 的每次 commit 增加，
+> 合併前務必以 `git rev-list --count $(git merge-base main origin/<branch>)..main`
+> 重新實測，不要引用本文件記載的數字。**
+> （2026-08-29 記錄當下為 1 個 commit，同日稍後即已增為 6 個。）
+> 依檔案交集分為五組，同組內必須依序合併，不可平行：
+>
+> | 組 | 目標檔案 | 分支 |
+> |---|---|---|
+> | 1 | `skills/README.md` | `feat/skills-readme-overview`（本批已合併） |
+> | 2 | `.../recursive-research-automation/scripts/quota_monitor.py` 及其測試 | `security-fix-quota-monitor-tmp-file`、`fix-model-credits-parsing`、`add-test-quota-monitor` |
+> | 3 | `scripts/tests/test_validate_skills.py` | `test-validate-skills-main`、`add-report-results-tests`、`code-health/remove-unused-pytest-import` |
+> | 4 | `.../webapp-testing/tests/test_with_server.py`、`scripts/with_server.py` | `test-main-with-server`、`add-timeout-test`、`optimize-server-polling` |
+> | 5 | `.../webapp-testing/examples/element_discovery.py` | `perf/optimize-input-discovery`、`perf-optimize-link-discovery` |
+>
+> **已知須攔截**：`perf-optimize-link-discovery` 在 repo 根目錄新增
+> `benchmark_element_discovery.py`，屬夾帶檔案，合併時不得納入。
+
 ## 三之二、Jules 自動化修正分支處理狀態
 
 Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修正
