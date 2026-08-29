@@ -32,6 +32,7 @@
 | `notion-mcp-server` | `npx -y @notionhq/notion-mcp-server` | Node.js | `OPENAPI_MCP_HEADERS`、`NOTION_API_TOKEN` |
 | `docker`（Gateway） | `docker mcp gateway run` | Docker Desktop | 無 |
 | `notebooklm` | 本機執行檔 `notebooklm-mcp.exe` | `pip install notebooklm-mcp-cli` | `NLM_USER_AGENT` |
+| `google-jules` | `npx -y @google/jules-mcp@0.2.0` | 全域安裝 `@google/jules` 並完成 `jules login` | `JULES_API_KEY` |
 
 ## 已知風險與待改善項目
 
@@ -53,7 +54,7 @@
 ### 2. notebooklm 的絕對路徑含 Python 版本號（中風險）
 
 目前設定為：
-`C:\Users\<USER>\AppData\Local\Python\pythoncore-3.14-64\Scripts\n| `google-jules` | `npx -y @google/jules-mcp@0.2.0` | 全域安裝 `@google/jules` 並完成 `jules login` | `JULES_API_KEY` |\notebooklm-mcp.exe`
+`C:\Users\<USER>\AppData\Local\Python\pythoncore-3.14-64\Scripts\notebooklm-mcp.exe`
 
 **風險**：Python 升級到 3.15 後此路徑失效；換電腦或換使用者名稱亦然。
 
