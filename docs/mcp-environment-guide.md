@@ -34,6 +34,8 @@
 | `notebooklm` | 本機執行檔 `notebooklm-mcp.exe` | `pip install notebooklm-mcp-cli` | `NLM_USER_AGENT` |
 | `google-jules` | `npx -y @google/jules-mcp@0.2.0` | 全域安裝 `@google/jules` 並完成 `jules login` | `JULES_API_KEY` |
 
+> **註：google-jules 提供的 8 組工具**：create_session、list_sessions、get_session_state、get_bash_outputs、get_code_review_context、show_code_diff、send_reply_to_session、query_cache
+
 ## 已知風險與待改善項目
 
 ### 1. 憑證雙處存放，且命名不一致（高風險）
