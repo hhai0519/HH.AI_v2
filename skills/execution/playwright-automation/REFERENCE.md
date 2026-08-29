@@ -178,8 +178,6 @@ async function check_all_links(page, base_url) {
 
 ---
 
-
-
 ## 📊 測試報告配置
 
 ```javascript
@@ -202,3 +200,4 @@ module.exports = {
 ```
 
 ---
+
