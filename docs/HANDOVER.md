@@ -410,6 +410,9 @@ C:\Users\HH.AI_260806\.gemini\config\mcp_config.json   （MCP 設定，不在版
 | ~~**Agent 操控 Jules**~~ | ✅ 2026-08-29 解除。官方 MCP 提供 `list_sessions`、`get_session_state` 等 8 組工具，可直接查詢（ADR-0019） |
 | **`ADR-0012` 補 `SKIP_LOCK`** | `autoresearch-agent` 用 `SKIP_LOCK=1` 繞過全域鎖，ADR-0012 未記載 |
 | **vendored 外部資產標示規則** | `theme-factory`（Anthropic 官方）、`remoat`（第三方）缺標示規範，`AGENTS.md` 無此條，可能要補 ADR |
+| **Payload 淨化規則詞彙不一致** | 舊分層詞彙（`Cognitive`／`Execution` 型）尚存 7 個檔案，新遷移的三個技能已統一為 bucket 寫法，其餘待單獨一批收斂。清單見 `refactor-backlog.md` 三、第 8 點 |
+| **DLP 安全宣告為裝飾性樣板** | 「✓ DLP 資料安全驗證已通過 \| 資料加密處理 \| 隱私保護協議」出現在 32 份 SKILL.md，但不對應任何實際驗證行為；`dlpSanitizer.js` 做的是遮蔽非加密，且只在 LINE/TG 寫對話紀錄時作用，不在 commit 路徑上。待改寫為行為指令，並在 runtime 層遷移時建立 pre-commit hook |
+| **`json-to-flex-renderer` 指向舊 repo 路徑** | SKILL.md 第 31 行引用 `skills/03_Execution/line-bot-zero-delay/`，屬合法註記（runtime 尚未遷移），但 runtime 遷移完成後必須回頭更新 |
 
 ---
 
