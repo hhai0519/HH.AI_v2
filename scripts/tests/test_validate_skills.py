@@ -316,3 +316,70 @@ def test_validate_skill(tmp_path):
     assert errors == []
     assert warnings == []
     assert seen_names["my-skill"] == "orchestration/my-skill"
+
+# ==========================================
+# main tests
+# ==========================================
+import validate_skills
+from validate_skills import main
+
+def test_main_missing_skills_dir(monkeypatch, capsys, tmp_path):
+    monkeypatch.setattr(validate_skills, 'SKILLS_DIR', tmp_path / "non_existent")
+    with pytest.raises(SystemExit) as excinfo:
+        main()
+    assert excinfo.value.code == 1
+    out, err = capsys.readouterr()
+    assert "找不到 skills/ 目錄" in out
+
+def test_main_valid_skills_dir(monkeypatch, capsys, tmp_path):
+    skills_dir = tmp_path / "skills"
+    skills_dir.mkdir()
+
+    bucket_dir = skills_dir / "orchestration"
+    bucket_dir.mkdir()
+    (bucket_dir / "README.md").write_text("my-skill", encoding="utf-8")
+    (bucket_dir / "AGENTS.md").write_text("AGENTS content", encoding="utf-8")
+
+    skill_dir = bucket_dir / "my-skill"
+    skill_dir.mkdir()
+    skill_md = skill_dir / "SKILL.md"
+    skill_md.write_text(
+        "---\nname: my-skill\ndescription: Test description\n---\nSkill content",
+        encoding="utf-8",
+    )
+
+    # Add a non-directory to bucket to test skip logic
+    (bucket_dir / "not-a-dir.txt").touch()
+
+    # Add a non-directory to skills to test skip logic
+    (skills_dir / "not-a-bucket.txt").touch()
+
+    monkeypatch.setattr(validate_skills, 'SKILLS_DIR', skills_dir)
+    with pytest.raises(SystemExit) as excinfo:
+        main()
+    assert excinfo.value.code == 0
+
+    out, err = capsys.readouterr()
+    assert "檢查完成：1 個技能" in out
+    assert "✅ 沒有結構性錯誤" in out
+
+def test_main_with_errors(monkeypatch, capsys, tmp_path):
+    skills_dir = tmp_path / "skills"
+    skills_dir.mkdir()
+
+    bucket_dir = skills_dir / "orchestration"
+    bucket_dir.mkdir()
+    (bucket_dir / "README.md").write_text("my-skill", encoding="utf-8")
+    (bucket_dir / "AGENTS.md").write_text("AGENTS content", encoding="utf-8")
+
+    skill_dir = bucket_dir / "my-skill"
+    skill_dir.mkdir()
+
+    monkeypatch.setattr(validate_skills, 'SKILLS_DIR', skills_dir)
+    with pytest.raises(SystemExit) as excinfo:
+        main()
+    assert excinfo.value.code == 1
+
+    out, err = capsys.readouterr()
+    assert "❌ 錯誤" in out
+    assert "缺少 SKILL.md" in out
