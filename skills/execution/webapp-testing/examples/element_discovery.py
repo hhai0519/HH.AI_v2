@@ -33,12 +33,15 @@ with sync_playwright() as p:
         print(f"  [{i}] {text}")
 
     # Discover links
-    links = page.locator('a[href]').all()
-    print(f"\nFound {len(links)} links:")
-    for link in links[:5]:  # Show first 5
-        text = link.inner_text().strip()
-        href = link.get_attribute('href')
-        print(f"  - {text} -> {href}")
+    links_data = page.evaluate('''() => {
+        return Array.from(document.querySelectorAll('a[href]')).map(a => ({
+            text: (a.innerText || a.textContent).trim(),
+            href: a.getAttribute('href')
+        }));
+    }''')
+    print(f"\nFound {len(links_data)} links:")
+    for link in links_data[:5]:  # Show first 5
+        print(f"  - {link['text']} -> {link['href']}")
 
     # Discover input fields
     inputs = page.locator('input, textarea, select').all()
