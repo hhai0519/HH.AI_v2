@@ -25,12 +25,15 @@ import argparse
 def is_server_ready(port, timeout=30):
     """Wait for server to be ready by polling the port."""
     start_time = time.time()
+    delay = 0.05
+    max_delay = 1.0
     while time.time() - start_time < timeout:
         try:
             with socket.create_connection(('localhost', port), timeout=1):
                 return True
         except (socket.error, ConnectionRefusedError):
-            time.sleep(0.5)
+            time.sleep(delay)
+            delay = min(delay * 2, max_delay)
     return False
 
 
