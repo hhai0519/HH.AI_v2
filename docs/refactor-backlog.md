@@ -463,6 +463,54 @@ $$LINE連線$$ → agency-orchestrator 辨識
     成因即問題一的忽略規則。歷史不改寫（依 `PRINCIPLES.md` §3.3），
     在此記錄以免日後查 `git log` 時誤判。
 
+16. **Gitleaks 偵測能力實測，與資安層級的定位（已裁決）**
+
+    2026-08-29 實測 gitleaks 8.30.1（`winget install Gitleaks.Gitleaks`），
+    以自行產生的假憑證測試六種本專案實際使用的樣式：
+
+    | 樣式 | 偵測結果 | RuleID |
+    |---|---|---|
+    | `ghp_` GitHub PAT | 命中 | `github-pat` |
+    | `ntn_` Notion Token | 命中 | `generic-api-key` |
+    | Jules API Key（39 碼隨機） | 命中 | `generic-api-key` |
+    | Google session cookie（`OSID=g.a000...`） | **未命中** | — |
+    | `NLM_SESSION` / `SID=` 長字串 | **未命中** | — |
+    | `postgresql://user:password@host` 連線字串 | **未命中** | — |
+
+    **關鍵結論**：對舊 repo 全歷史掃描，`nlm_cookies.txt`（commit `9552009`，
+    已確認存在於 `origin/main` 公開歷史）**完全沒有被偵測到**。
+    亦即本專案唯一真正外洩至公開 GitHub 的憑證，gitleaks 預設規則看不見。
+    即使當初就部署 gitleaks，該次外洩仍會發生。
+
+    **附帶查證：`.env.local` 的三筆命中並未外洩。**
+    掃描在 commit `f42bc43` 命中 `.env.local` 的 GitHub PAT、Notion Token 與 JWT，
+    另在 `61a5f93` 命中一筆。以完整 clone 驗證後確認，
+    **這兩個 commit 皆不存在於遠端**（遠端僅有 `main` 與
+    `autoresearch/20260613` 兩個分支），屬本機獨有，與 ADR-0016 記載的
+    「`git reset --soft` 退回、未推送」相符。
+
+    **已確認的誤報兩筆**（`generic-api-key` 依熵值判斷，易誤中）：
+    - `HH.AI_v2` 的 `skills/orchestration/security-auditor/SKILL.md`——
+      該處為資安技能自身的偵測範例字串
+    - 舊 repo 的 `scripts/sync_tunnel_url.js`——
+      經查該處僅為註解文字，無實際金鑰
+
+    **裁決（使用者，2026-08-29）**：不部署 gitleaks pre-commit hook，
+    不撰寫 `.gitleaks.toml` 自訂規則。理由：本專案自始使用測試帳號，
+    後續將全盤更換金鑰與 Google 帳號；使用者已親自驗證 Google 帳號
+    無他人登入紀錄。**資安實作層級定位為「記錄與人工審查」，不做自動化攔截。**
+
+    **若日後改變此定位，重啟的起點**：
+    - 必須撰寫 `.gitleaks.toml` 自訂規則，至少涵蓋 Google session cookie
+      （`OSID=`／`SID=` 加長隨機字串）、`NLM_` 前綴、
+      `postgresql://` 含密碼的連線字串、以及 `*cookies*` 類檔名樣式；
+      僅靠預設規則無法涵蓋本專案的實際風險
+    - 需以 allowlist 排除上述兩筆已知誤報，不得改為關閉整條規則
+    - `gitleaks` 經 winget 安裝後**不在 PATH 上**（與 `notebooklm-mcp` 同類問題），
+      hook 腳本必須使用完整路徑或先行偵測
+    - pre-commit hook 為本地機制，`git commit --no-verify` 可完全跳過。
+      此缺口本地無法彌補，僅有 CI 能堵住。任何文件不得宣稱高於此的保護等級
+
 ## 三之二、Jules 自動化修正分支處理狀態
 
 Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修正

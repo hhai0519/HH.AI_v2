@@ -489,6 +489,8 @@ C:\Users\HH.AI_260806\.gemini\config\mcp_config.json   （MCP 設定，不在版
   實測 NotebookLM MCP 回報 `Authentication expired` 與此相符
 - 該檔案本非必要：上游正規憑證存放位置為 `~/.notebooklm-mcp-cli`，
   執行 `nlm login` 即可，repo 內不需保留 cookie 檔
+- 使用者已親自檢視 Google 帳號登入紀錄，確認無他人登入；
+  並確認本專案自始使用測試帳號，後續將全盤更換金鑰與 Google 帳號
 
 ### 7.2 🔴 LINE 通道完全失效（根因已查明，未修復）
 
@@ -521,6 +523,15 @@ bridge.js 啟動 Pinggy 取得新網址
 | `security-auditor` 技能 | ✅ | model-invoked，需 Agent 主動想到才會用 |
 
 **`HH.AI_v2` 目前尚未建立 pre-commit hook**，憑證防護完全依賴人工審查。
+
+**2026-08-29 更新**：已實測 gitleaks 8.30.1 的偵測能力並由使用者裁決。
+結論為不部署自動化攔截，維持人工審查定位。
+實測數據與重啟條件見 `docs/refactor-backlog.md` 第 16 點。
+關鍵發現：gitleaks 預設規則**偵測不到**本專案唯一實際外洩的憑證
+（`nlm_cookies.txt` 的 Google session cookie），
+亦偵測不到 `postgresql://` 連線字串。
+因此「未部署 gitleaks」與「部署了 gitleaks」對本專案已發生的風險，
+差異小於直覺預期。
 
 ### 7.4 🟡 記憶體是被低估的失效因素
 
