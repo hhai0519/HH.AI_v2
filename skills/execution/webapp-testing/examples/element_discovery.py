@@ -33,20 +33,27 @@ with sync_playwright() as p:
         print(f"  [{i}] {text}")
 
     # Discover links
-    links = page.locator('a[href]').all()
-    print(f"\nFound {len(links)} links:")
-    for link in links[:5]:  # Show first 5
-        text = link.inner_text().strip()
-        href = link.get_attribute('href')
-        print(f"  - {text} -> {href}")
+    links_data = page.evaluate("""() => {
+        return Array.from(document.querySelectorAll('a[href]')).map(a => ({
+            text: (a.innerText || a.textContent).trim(),
+            href: a.getAttribute('href')
+        }));
+    }""")
+    print(f"\nFound {len(links_data)} links:")
+    for link in links_data[:5]:  # Show first 5
+        print(f"  - {link['text']} -> {link['href']}")
 
     # Discover input fields
-    inputs = page.locator('input, textarea, select').all()
-    print(f"\nFound {len(inputs)} input fields:")
-    for input_elem in inputs:
-        name = input_elem.get_attribute('name') or input_elem.get_attribute('id') or "[unnamed]"
-        input_type = input_elem.get_attribute('type') or 'text'
-        print(f"  - {name} ({input_type})")
+    inputs_data = page.evaluate('''() => {
+        return Array.from(document.querySelectorAll('input, textarea, select')).map(el => {
+            const name = el.getAttribute('name') || el.getAttribute('id') || "[unnamed]";
+            const type = el.getAttribute('type') || 'text';
+            return { name, type };
+        });
+    }''')
+    print(f"\nFound {len(inputs_data)} input fields:")
+    for data in inputs_data:
+        print(f"  - {data['name']} ({data['type']})")
 
     # Take screenshot for visual reference
     page.screenshot(path='/tmp/page_discovery.png', full_page=True)

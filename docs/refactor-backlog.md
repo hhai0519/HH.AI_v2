@@ -621,6 +621,51 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 > 本組合併後，`test_with_server.py` 由 8 個測試增至 13 個，
 > 專案測試總數由 36 增至 41。
 
+> [!NOTE]
+> **第二批第 5 組（`element_discovery.py` 兩個分支）— 2026-08-29 處置**
+>
+> | 分支 | 決定 | 理由 |
+> |---|---|---|
+> | `perf/optimize-input-discovery` | **已合併** | 輸入欄位改用單次 `page.evaluate`。讀取的是 `getAttribute('name')` 與 `getAttribute('type')`，屬性讀取不受 CSS 影響，與原本的 `input_elem.get_attribute()` 完全等價。**純效能改善，零語意變化** |
+> | `perf-optimize-link-discovery` | **部分合併** | 連結改用單次 `page.evaluate`。採用 `element_discovery.py` 的變更，**排除其在 repo 根目錄新增的 `benchmark_element_discovery.py`** |
+>
+> **兩者互補、行段不重疊**：現行檔案在第一批（`jules-...b431935b`，
+> commit `4ef1626`）已將「按鈕」段改為 `page.evaluate`。
+> 本組兩個分支分別補上「連結」與「輸入欄位」兩段，
+> 至此三段全部改為單次 evaluate，N+1 IPC 往返完全消除。
+>
+> **夾帶檔案：第四次同型事件**。`perf-optimize-link-discovery` 在 repo 根目錄
+> 新增 96 行的 `benchmark_element_discovery.py`。前三次為第一批分支夾帶的
+> 根目錄 `tests/`。合併時已明確排除。
+> **注意：現行 `.gitignore` 的 `/batch*.py`、`/check_*.py` 等樣式擋不住
+> `benchmark_` 這個檔名**，此類夾帶必須靠人工在 `git status` 閘門攔截，
+> 不可依賴忽略規則。
+>
+> **語意差異：連結文字擷取（已加註）**。
+> 連結文字改為在瀏覽器端以 `(a.innerText || a.textContent).trim()` 取得，
+> 與原本的 `link.inner_text().strip()` 有兩處行為差異：
+> （1）`innerText` 受 CSS 影響，隱藏元素回傳空字串，`|| textContent`
+> 的 fallback 會改為取得原始文字——**隱藏連結由「顯示空白」變成「顯示文字」**；
+> （2）JavaScript 的 `trim()` 與 Python 的 `strip()` 對 ASCII 空白一致，
+> 但對部分 Unicode 空白字元的定義不同。
+> 兩者對此示範腳本影響極小，但已比照第一批的處置方式，
+> 在檔案的 `SEMANTIC DIFFERENCE WARNING` 註記中補上說明（現分為 1/2 與 2/2 兩段）。
+>
+> **教訓：效能優化常夾帶語意變化**。本組與第一批的按鈕改動都是同一模式——
+> 把 Playwright 的 locator API 換成瀏覽器原生 API 以消除 IPC 往返，
+> 效能改善確實，但兩者的可見性與文字擷取語意並不等價。
+> **審查效能類分支時，除了確認速度改善，必須逐一比對被替換的 API 語意是否相同。**
+>
+> **本檔案位於 `examples/`，無測試覆蓋**，故本組合併後測試數維持 41。
+> 驗證方式為 `python3 -m py_compile` 語法檢查與括號配對檢查。
+>
+> ---
+>
+> **第二批 12 個分支至此全數處理完畢**：
+> 7 個合併（含 2 個部分合併）、5 個評估後不採用。
+> 專案測試由 30 增至 41。所有分支比照前例保留在遠端不刪除，
+> GitHub PR 關閉並留言說明。
+
 ---
 
 ## 四、更新紀錄 (Update Log)
