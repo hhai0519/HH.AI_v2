@@ -332,6 +332,58 @@ $$LINE連線$$ → agency-orchestrator 辨識
 > **已知須攔截**：`perf-optimize-link-discovery` 在 repo 根目錄新增
 > `benchmark_element_discovery.py`，屬夾帶檔案，合併時不得納入。
 
+> [!NOTE]
+> **第二批第 2 組（quota_monitor.py 相關三個分支）— 2026-08-29 評估後全數不採用**
+>
+> | 分支 | 不採用理由 |
+> |---|---|
+> | `security-fix-quota-monitor-tmp-file` | 修正方向正確（將暫存檔從 CWD 移至家目錄，符合本專案「暫存檔不寫入 repo」規則），但目標檔案已刪除 |
+> | `fix-model-credits-parsing` | **即使目標檔案未刪除也不應採用。** 它以推測（假設為 zlib 壓縮的 JSON）取代原本刻意保守的 TODO，且 `find_percent()` 會回傳第一個命中 `remaining`／`quota`／`percent` 等鍵名的數值，不驗證其是否為百分比。若該結構含 `quota: 5000` 之類的總點數，會被當成「剩餘 5000%」回傳，導致熔斷永遠不觸發。這是把安全失敗改成不安全失敗，違反 `PRINCIPLES.md` §2.6 |
+> | `add-test-quota-monitor` | 為已刪除的檔案新增 140 行測試，會把失效實作凍結進測試套件。且其測試寫死 `current_quota.tmp` 檔名（6 處），與同組的安全修正分支直接衝突 |
+>
+> 三個分支比照第一批 `refactor-with-server-script` 的處理方式：
+> **保留在遠端不刪除**，供日後查閱；GitHub PR 關閉並留言說明理由。
+
+12. **配額熔斷的錨定缺口，與 `quota_monitor.py` 的處置（追蹤項）**
+
+    **背景**：`$$自動化$$` 系列指令設計為無人值守的自主研究模式，
+    使用者休息時由 Agent 自行運作。10% 熔斷是防止 Agent 把週期性額度耗盡的
+    唯一煞車機制（`SOP_01` §2.2）。
+
+    **2026-08-29 查證發現，新舊兩套實作量測的不是同一件事：**
+
+    | | `quota_monitor.py`（舊） | `Modules/quota_manager.js`（新） |
+    |---|---|---|
+    | 量測對象 | Gemini 真實剩餘額度（讀 IDE 的 `state_copy.vscdb`） | 本 session 自我申報的累積消耗 |
+    | 起算點 | 外部真實值 | 從 0 開始 |
+    | 熔斷條件 | 剩餘 ≤ 10% 停止 | 本 session 用掉 > 10% 停止 |
+    | 讀不到時 | 回傳 `None`，要求人工注入（安全失敗） | 見下方 |
+
+    `SOP_01` §2.2 宣告的「全面廢棄舊實作」是一次**語意置換而非等價替換**。
+    新實作解決了 Race Condition，但捨棄了「錨定真實外部額度」的能力。
+    舊的 `current_quota.tmp` 人工注入（`echo 80 > current_quota.tmp`）
+    正是該錨定機制。
+
+    **未處理的風險**：`quota_manager.js` 第 98-106 行有降級放行邏輯——
+    `DATABASE_URL` 未設定或 Neon DB 不可用時，`check_and_consume_quota`
+    直接 `return { usedAfter: 0, status: 'OK' }`。有人值守時這是合理降級，
+    **無人值守時等同煞車失靈**，方向與舊實作相反。
+
+    **本次處置**：刪除 `quota_monitor.py`。理由：其解析路徑
+    （IDE sqlite 的 `本協作系統UnifiedStateSync.modelCredits` 鍵值）已因該值
+    改為二進位／壓縮格式而失效；且使用者回報 IDE 已改版，該機制是否仍存在
+    **未經驗證**。保留一份「可能可用也可能早已失效」的程式碼，會誤導後續
+    讀取者假設它可用。知識以本條記錄保存，程式碼不保留。
+
+    **待辦（runtime 層遷移時處理）**：
+    - `Modules/quota_manager.js` 為 `recursive-research-automation/REFERENCE.md`
+      的明文依賴，`Modules/` 遷移時不可遺漏
+    - 補上真實額度的錨定機制（至少恢復人工注入路徑）
+    - 檢討降級放行邏輯：無人值守模式下應改為安全失敗（拒絕執行並通報），
+      而非放行
+    - 若要重新嘗試自動讀取真實額度，起點為 IDE 的 `state_copy.vscdb`，
+      但需先確認新版 IDE 是否仍使用相同儲存機制
+
 ## 三之二、Jules 自動化修正分支處理狀態
 
 Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修正

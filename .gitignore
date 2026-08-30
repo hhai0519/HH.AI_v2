@@ -35,3 +35,4 @@ git_files.txt
 process*.py
 verify*.py
 gather*.py
+*.tmp
