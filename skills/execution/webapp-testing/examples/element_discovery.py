@@ -14,12 +14,23 @@ with sync_playwright() as p:
     # This is the officially recommended Playwright best practice and significantly
     # improves performance when querying many elements.
     #
-    # SEMANTIC DIFFERENCE WARNING:
+    # SEMANTIC DIFFERENCE WARNING (1/2) — button visibility:
     # This snippet uses the browser's native checkVisibility() with `checkOpacity: false`.
     # Therefore, elements with `opacity: 0` are evaluated as "visible".
     # This differs from Playwright's locator.is_visible() which treats opacity:0 as hidden.
     # If you require the exact semantics of Playwright's is_visible(), you must use
     # locator.is_visible() directly, at the cost of reverting to N+1 IPC roundtrips.
+    #
+    # SEMANTIC DIFFERENCE WARNING (2/2) — link text extraction:
+    # Link text is now read as `(a.innerText || a.textContent).trim()` inside the browser.
+    # Two behavioural differences from the previous `link.inner_text().strip()`:
+    #   1. innerText is CSS-aware and returns "" for hidden elements; the `|| textContent`
+    #      fallback then yields the raw text. The previous code returned "" in that case.
+    #      In short: hidden links now show their text instead of appearing blank.
+    #   2. JavaScript's String.prototype.trim() and Python's str.strip() agree on ASCII
+    #      whitespace but differ on some Unicode whitespace characters.
+    # Both are acceptable for this discovery example, but do not copy this pattern into
+    # code that relies on visibility semantics.
     button_texts = page.evaluate('''() => {
         return Array.from(document.querySelectorAll('button')).map(b => {
             const isVisible = typeof b.checkVisibility === 'function'
