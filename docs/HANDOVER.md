@@ -697,7 +697,7 @@ grep -rln "嚴禁中斷或詢問使用者\|Zero-Block Policy" skills/
 grep -rn "0[1-9]_[A-Za-z\u4e00-\u9fff]" skills/
 
 # 5. 拆分後的 code block 是否配對
-# （用逐行檢查，不要用 count("```")）
+# 正確算法：以 ``` 開頭的行數（見 .agents/rules/git-and-reporting.md §3）
 
 # 6. README 索引是否同步
 # 7. validate_skills.py 是否 0 錯誤
