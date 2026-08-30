@@ -216,7 +216,7 @@ C:\Users\HH.AI_260806\.gemini\config\mcp_config.json   （MCP 設定，不在版
 
 - 處理 Jules（Google 雲端 AI 代理）產出的 12 個分支
 - 11 個合併、1 個評估後不採用
-- 引入專案首批自動化測試：**0 → 30 個**
+- 引入專案首批自動化測試：**0 → 30 個**（第二批處理後累積至 41 個，見 §4.6）
 - 12 個 GitHub PR 全數關閉並留言說明
 
 ### 階段七：Port 規範與雜項
@@ -286,17 +286,21 @@ C:\Users\HH.AI_260806\.gemini\config\mcp_config.json   （MCP 設定，不在版
 另有 `SOP_00A_Master_Index.json`（`$$` 指令權威路由表，11 條有效路由）
 與 `SOP/README.md`（含 12 份淘汰／轉換 SOP 的去向紀錄）
 
-### 4.5 自動化測試：30 個（從 0 開始）
+### 4.5 自動化測試：41 個（從 0 開始）
 
 | 檔案 | 測試數 | 覆蓋 |
 |---|---|---|
-| `scripts/tests/test_validate_skills.py` | 22 | `parse_frontmatter`(8)、`validate_name`(5)、`validate_description`(7)、`validate_bucket_structure`(1)、`validate_skill`(1) |
-| `skills/execution/webapp-testing/tests/test_with_server.py` | 8 | `start_server_process`(4)、command injection 防護(1)、`is_server_ready`(3) |
+| `scripts/tests/test_validate_skills.py` | 28 | `parse_frontmatter`(8)、`validate_name`(5)、`validate_description`(7)、`validate_bucket_structure`(1)、`validate_skill`(1)、`main`(3)、`report_results`(3) |
+| `skills/execution/webapp-testing/tests/test_with_server.py` | 13 | `start_server_process`(4)、command injection 防護(1)、`is_server_ready`(3)、`main`(5) |
 
-**驗證方式**：Claude 曾獨立在自己環境執行全部 30 個測試，0.31 秒完成，
-全數通過。並用「故意失敗測試」確認驗證邏輯未在重構中失效。
+**驗證方式**：Claude 於每一批合併後獨立 clone 並在自身環境執行全部測試，
+不接受執行端的回報數字。並用「故意失敗測試」確認驗證邏輯未在重構中失效。
 
-### 4.6 Jules 分支整合：12 個全數處理
+**未受測試覆蓋的檔案**：`skills/execution/webapp-testing/examples/element_discovery.py`
+位於 `examples/`，無測試覆蓋，變更時以 `python3 -m py_compile` 與
+括號配對檢查驗證。
+
+### 4.6 Jules 分支整合：兩批共 24 個全數處理
 
 **已合併（11 個）**：
 - 2 個安全修正：`with_server.py` command injection、d3js tooltip XSS
@@ -309,6 +313,26 @@ C:\Users\HH.AI_260806\.gemini\config\mcp_config.json   （MCP 設定，不在版
 **分支保留在遠端不刪除**，供日後查閱。
 
 **12 個 PR 全數 closed**（非 merged），每個都留言說明處理方式。
+
+**第二批 12 個分支（2026-08-29 處理完畢）**
+
+依檔案交集分為五組，同組內依序合併。**7 個合併（含 3 個部分合併）、
+5 個評估後不採用**。測試由 30 增至 41。逐組的處置與理由見
+`docs/refactor-backlog.md`「三之二」章節。
+
+四條累積的審查教訓：
+
+1. **純刪除型分支最容易與同批新增型分支互斥**——移除未使用的 import
+   看似最安全，但被刪的項目可能正是別的分支即將使用的。
+   第 3 組的 `remove-unused-pytest-import` 即因此不採用。
+2. **行為改動與其斷言必須成對合併**——第 4 組的 `optimize-server-polling`
+   同時改了實作與對應斷言，只合其中一邊必定測試失敗。
+3. **效能優化常夾帶語意變化**——把 Playwright locator API 換成瀏覽器原生
+   API 可消除 IPC 往返，但可見性與文字擷取語意並不等價。
+   第 1 批的按鈕與第 5 組的連結都屬此類，皆已在程式碼中加註語意差異說明。
+4. **夾帶檔案已發生四次**（三次根目錄 `tests/`、一次根目錄
+   `benchmark_element_discovery.py`）。`.gitignore` 的樣式擋不住任意檔名，
+   **必須在 `git status` 閘門人工攔截**。
 
 ### 4.7 其他產出
 
@@ -688,7 +712,7 @@ bridge.js 啟動 Pinggy 取得新網址
 | **三層核對流程**（ADR-0005） | 高風險技能不接受摘要，要求完整內容 |
 | **`.agents/rules/git-and-reporting.md`** | 規則自動載入，不依賴每次口頭提醒 |
 | **`validate_skills.py`** | 自動化格式把關（但抓不到語意問題） |
-| **30 個自動化測試** | 保護 `validate_skills.py` 與 `with_server.py` |
+| **41 個自動化測試** | 保護 `validate_skills.py` 與 `with_server.py`。另有 `scripts/check_consistency.py` 做七項跨檔案一致性檢查 |
 
 ### 10.4 核對時的重點檢查項
 
