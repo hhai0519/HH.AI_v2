@@ -578,6 +578,49 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 > 本組合併後，`scripts/tests/test_validate_skills.py` 由 22 個測試增至 28 個，
 > 專案測試總數由 30 增至 36。
 
+> [!NOTE]
+> **第二批第 4 組（`test_with_server.py` 三個分支）— 2026-08-29 處置**
+>
+> | 分支 | 決定 | 理由 |
+> |---|---|---|
+> | `optimize-server-polling` | **已合併**（實作+測試成對） | 將 `is_server_ready()` 的固定 0.5 秒輪詢改為指數退避（0.05 起、倍增、上限 1.0）。伺服器啟動快時可省下最多 450ms，慢時退避至 1 秒也不比原本浪費 |
+> | `test-main-with-server` | **部分合併**（5 個測試取 4 個） | 為 `main()` 補測試。捨棄 `test_main_cleanup_timeout`，理由見下 |
+> | `add-timeout-test` | **已合併** | 補 `test_main_server_cleanup_timeout`，並將 `main` 加入檔頭 import |
+>
+> **安全確認**：`optimize-server-polling` 是本批唯一改動生產程式碼的分支。
+> 已逐行確認它**只碰 `is_server_ready()` 的 sleep 邏輯**，
+> `start_server_process()` 完全未被觸及——第一批修補 command injection
+> 所加入的 `shlex.split()` 與移除 `shell=True` 的寫法完好無損。
+> 第一批曾有分支（`refactor-with-server-script`）表面是重構、
+> 實際會回退該修正，因此凡是動到 `with_server.py` 的分支一律需做此確認。
+>
+> **教訓：行為改動與其斷言必須成對合併。**
+> `optimize-server-polling` 同時修改了實作與 `test_is_server_ready_success_after_retry`
+> 的斷言（`call(0.5), call(0.5)` → `call(0.05), call(0.1)`）。
+> 只合實作或只合測試，兩種情形都會使測試失敗。
+> 這與第 3 組 `import pytest` 的互斥是同一類問題的鏡像：
+> 第 3 組是「刪除的項目正被其他分支使用」，
+> 本組是「行為改變後，斷言必須同步」。
+> **審查同組分支時，除了檢查檔案交集，還要檢查行為與斷言的耦合。**
+>
+> **捨棄重複測試的理由**：`test_main_cleanup_timeout`（來自 `test_main-with-server`）
+> 與 `test_main_server_cleanup_timeout`（來自 `add-timeout-test`）
+> 測試同一情境——`terminate()` 逾時後改用 `kill()`。
+> 兩者函式名稱不同故不會靜默覆蓋，但保留兩份等於重複維護。
+> 保留後者，因其斷言更完整：額外驗證了兩次 `wait` 的參數
+> （`assert_has_calls([call(timeout=5), call()])`）與 exit code，
+> 前者僅檢查 `wait.call_count == 2`。
+>
+> **追蹤項：mock 風格分歧（暫不處理）**。
+> `test-main-with-server` 使用 `patch("sys.exit", side_effect=SystemExit)`
+> 搭配 `try/except`；`add-timeout-test` 與第 3 組合併的六個測試
+> 皆使用 `pytest.raises(SystemExit)`。後者為 pytest 慣例寫法。
+> 兩者皆可運作，本批不改寫——改寫他人測試邏輯的風險大於收益，
+> 且會使 diff 難以核對。日後若整理測試風格，此為起點。
+>
+> 本組合併後，`test_with_server.py` 由 8 個測試增至 13 個，
+> 專案測試總數由 36 增至 41。
+
 ---
 
 ## 四、更新紀錄 (Update Log)
