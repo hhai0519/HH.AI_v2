@@ -384,6 +384,66 @@ $$LINE連線$$ → agency-orchestrator 辨識
     - 若要重新嘗試自動讀取真實額度，起點為 IDE 的 `state_copy.vscdb`，
       但需先確認新版 IDE 是否仍使用相同儲存機制
 
+13. **多代理自治閉環（LOOP）正式立案（排程項）**
+
+    使用者的目標是建立兩層閉環，目前兩層都尚未完整運作。
+
+    **內層：`$$自動化$$` 無人值守自主研究**
+
+    使用者休息時啟動，由 Antigravity Agent 自行運作，消耗 Gemini 週期性額度，
+    以 10% 熔斷防止額度耗盡。現況：
+
+    | 元件 | 位置 | 狀態 |
+    |---|---|---|
+    | 指令路由（4 條） | `SOP/SOP_00A_Master_Index.json` | ✅ 已遷移 |
+    | 三選項模式選單 | `orchestration/agency-orchestrator/SKILL.md#自動化指令攔截` | ✅ 已遷移 |
+    | 授權協議 | `SOP_01` §2.4（`$$自動化$$`／`$$Allow All$$`） | ✅ 已遷移 |
+    | 10% 熔斷規範 | `SOP_01` §2.2 | ✅ 已遷移 |
+    | 10% 熔斷實作 | `Modules/quota_manager.js` | ❌ 未遷移，見第 12 點 |
+    | 模式 1：微型模型調參 | `autoresearch-agent`（舊 repo 9 檔） | ❌ 未遷移 |
+    | 模式 2：通用遞迴研究 | `orchestration/recursive-research-automation` | ✅ 已遷移 |
+    | 模式 3：量化實驗 | `analysis/quant-research-loop` | ✅ 已遷移 |
+    | `SKIP_LOCK` 繞過機制 | `train_cpu.py:240`、`auto_optimize_controller.py:221` | ❌ 未遷移，ADR-0012 未記載 |
+
+    **已知缺陷**：`$$自動化$$` 目前會跳出三個選項，但選項 1 會走到
+    `PENDING_MIGRATION` 死路（模式 1 尚未遷移）。使用者現在即可觸發此問題。
+
+    **外層：多代理委派閉環**
+
+    Claude 產出 Mission Brief → Antigravity 以 `google-jules` MCP 派發 →
+    Jules 雲端執行並開 PR → Claude 讀 PR diff 審查 → Antigravity 合併。
+    來源為 2026-08-29 使用者提供的「多代理自治協同閉環架構提案報告」（Gemini 撰寫）。
+    該提案的架構方向可採，但其中若干技術細節未經驗證，不可直接落地：
+    - `create_session` 的 `source`／`starting_branch`／`automation_mode` 參數未驗證
+      （已驗證的必填參數只有 `prompt`）
+    - 提案寫的 `send_message` 工具不存在，實際為 `send_reply_to_session`
+    - 「最多 15 個並行」無依據，CLI 的 `--parallel` 上限為 5
+    - 提案建議的 `SOP-0012` 命名與現有 `SOP_12` 撞號且分隔符不一致
+    - `.agents/workflows/` 目錄型態尚未存在，新增屬架構決策
+
+    **排程與理由**：
+    1. 剩餘技能遷移批 — `autoresearch-agent` 遷入 `agents/`，補 ADR 記載 `SKIP_LOCK`
+    2. runtime 層 — `Modules/quota_manager.js` 遷入，處理第 12 點的錨定缺口與降級放行
+    3. 內層 LOOP 可實際運作後，才建置外層
+
+    順序理由：兩層 LOOP 都在無人值守下運行，都依賴同一個煞車機制，
+    而該機制目前是壞的（第 12 點）。**先修煞車，再放車出去。**
+
+    **上游參考**：`karpathy/autoresearch`（MIT）。核心設計是
+    「人類迭代 `program.md`、agent 只修改 `train.py`」——單一可修改檔案讓範圍可控、
+    diff 可審查；固定時間預算讓實驗可互相比較。
+    本專案的 `program_cpu.md` 對應上游的 `program.md`，遷移時應視為技能文件
+    （人類調校介面），而非資料檔。
+    上游無配額熔斷概念（跑自有 GPU，成本是電費不是額度），
+    本專案的 10% 熔斷為自創需求，無上游解法可參照。
+
+14. **`karpathy` 其他專案的探勘（低優先，時間盒待辦）** — 使用者於 2026-08-29
+    指出 `karpathy` 的 GitHub 尚有其他可參考的專案。已確認相關的
+    `karpathy/autoresearch` 與其父專案 `karpathy/nanochat`（提供更廣的平台支援，
+    含 CPU 與其他裝置的解法）。
+    **排程**：技能遷移與 runtime 層收尾之後執行，且必須設定明確範圍與時間盒，
+    避免開啟無邊界的探索。**不在本階段展開。**
+
 ## 三之二、Jules 自動化修正分支處理狀態
 
 Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修正

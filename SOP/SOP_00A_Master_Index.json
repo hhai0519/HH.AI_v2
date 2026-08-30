@@ -3,7 +3,7 @@
     "version": "2.1.0",
     "description": "本檔案為 $$ 指令的唯一權威定義來源。技能文件只描述『收到指令後怎麼執行』，不重複定義『什麼指令會觸發』，避免同一指令在多份文件出現不一致的定義。",
     "maintenance_note": "每次新增或修改 SOP 時，必須同步更新此索引對應的 tags。10 份 SOP 已實際遷移至 HH.AI_v2/SOP/。SOP_00_RUNBOOK 與 SOP_00_System_Prompt_Bootstrap 已淘汰（前者內容被 ADR-0009 與 ADR-0012 涵蓋，後者被 AGENTS.md 與 .agents/rules/ 的原生載入機制取代）。SOP_00_Skill_Lifecycle 已拆分為 ADR-0013 與兩份 .agents/rules/ 規則。SOP_10 轉為 ADR-0012、SOP_15 轉為 ADR-0011。路由表中標記 PENDING_MIGRATION 的項目待對應技能遷移後更新為正式路徑。$$啟動LINE$$ 經查證為 line-bot-zero-delay 文件內部對 $$LINE連線$$ 的不一致寫法，非獨立指令，已排除；日後遷移該技能時應一併統一文件用詞。",
-    "last_updated": "2026-08-24",
+    "last_updated": "2026-08-29",
     "total_sop_files": 10
   },
   "tags": {
@@ -76,7 +76,7 @@
   },
   "special_trigger_routes": {
     "$$自動化$$": "skills/orchestration/agency-orchestrator/SKILL.md#自動化指令攔截與詢問-automation-interception",
-    "$$自動化_微型模型$$": "PENDING_MIGRATION:skills/orchestration/autoresearch-agent/SKILL.md",
+    "$$自動化_微型模型$$": "PENDING_MIGRATION:skills/agents/autoresearch-agent/SKILL.md",
     "$$自動化_通用研究$$": "skills/orchestration/recursive-research-automation/SKILL.md",
     "$$自動化_量化實驗$$": "skills/analysis/quant-research-loop/SKILL.md",
     "$$Line帳號$$": "skills/agents/bot-account-switcher/SKILL.md",

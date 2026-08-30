@@ -126,6 +126,7 @@ C:\Users\HH.AI_260806\.gemini\config\mcp_config.json   （MCP 設定，不在版
 | **alchaincyf/nuwa-skill** | `https://github.com/alchaincyf/nuwa-skill` | ⏳ **待採用**。「女媧造人」persona 生成技能。官方 `examples/` 有 15 個 A 級完整範例（429-541 行，保真度 89-97 分），與本專案 15 個 persona 清單**完全一致**，可直接採用官方版本填充 |
 | **optimistengineer/remoat**（= antigravity-telegram-remote） | `https://github.com/optimistengineer/remoat` | ⚠️ **已 vendored 在舊 repo**。`telegram-bot-cdp-bridge/telegram-bot-project/` 即此專案（179 檔）。使用者在其中加入自製的 `reply_tg.js` 等橋接腳本，故不能直接改用 npm 安裝 |
 | **lackeyjb/playwright-skill** | `https://github.com/lackeyjb/playwright-skill` | ⚠️ **已 vendored 在舊 repo**。即 `03_Execution/playwright-automation`，MIT 授權，author: lackeyjb |
+| **karpathy/autoresearch** | `https://github.com/karpathy/autoresearch` | ⚠️ **已 vendored 並改造**。舊 repo 的 `01_Orchestrators/autoresearch-agent` 即此專案的 CPU 移植版（上游僅支援單張 NVIDIA GPU，作者明示暫不支援 CPU）。`prepare_cpu.py`／`train_cpu.py`／`program_cpu.md` 對應上游三檔；`auto_optimize_controller.py` 與 `results.tsv` 為本專案自製的背景控制器與日誌，上游無對應物。MIT 授權，遷移時適用 ADR-0018 |
 | **frostant/awesome-claude-skills** | `https://github.com/frostant/awesome-claude-skills` | ❌ 不整合。半年未更新，僅作 bookmark |
 | **MIBlue119/claude-code-harness-blog** | `https://github.com/MIBlue119/claude-code-harness-blog` | ❌ 不整合。靜態文件站，閱讀參考用 |
 | **carvel-dev/secretgen-controller** | `https://github.com/carvel-dev/secretgen-controller` | ❌ 完全無關。K8s 工具，早期誤列 |
@@ -329,7 +330,7 @@ C:\Users\HH.AI_260806\.gemini\config\mcp_config.json   （MCP 設定，不在版
 | `skill-creator` | `03_Execution/` | `meta/` | 與 `nuwa-skill` 職責可能重疊，需評估 |
 | `workspace-migration-recovery` | `03_Execution/` | `meta/` | 可用來驗證本次遷移完整性 |
 | `dynamic-tool-synthesizer` | `02_Cognitive/` | `meta/` | persona 呼叫鏈的關鍵環節 |
-| `autoresearch-agent` | `01_Orchestrators/` | `agents/` | `$$自動化_微型模型$$` 路由目標。含 `SKIP_LOCK` 機制 |
+| `autoresearch-agent` | `01_Orchestrators/` | `agents/` | `$$自動化_微型模型$$` 路由目標。含 `SKIP_LOCK` 機制（ADR-0012 未記載）。遷移注意：`program_cpu.md` 是人類調校用的技能文件不是資料檔；`*.bak` 兩檔不遷移；為 `karpathy/autoresearch` 的 CPU 改造版，適用 ADR-0018 標示規則 |
 
 （另有 `shared-bot-utils` 待評估歸屬，可能該進 `shared/` 而非 `skills/`）
 
