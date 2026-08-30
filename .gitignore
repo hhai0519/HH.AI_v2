@@ -5,17 +5,19 @@ node_modules/
 pm2_before.json
 stress_test_result.json
 
-# Agent 執行任務時產生的一次性暫存腳本
-# （遷移、批次替換、驗證用的臨時檔案，不進版控）
-batch*.py
-batch*.json
-fix_*.py
-check_*.py
-migrate_*.py
-update_*.py
-write_*.py
-*_temp.py
-*_tmp.py
+# Agent 執行任務時產生的一次性暫存腳本（僅限 repo 根目錄）
+# 樣式一律加 / 前綴限定在根目錄，避免誤擋 scripts/ 底下的正式腳本。
+# 2026-08-29 曾因 check_*.py 為全域樣式，導致 scripts/check_consistency.py
+# 被靜默忽略，必須用 git add -f 才進得去版控。
+/batch*.py
+/batch*.json
+/fix_*.py
+/check_*.py
+/migrate_*.py
+/update_*.py
+/write_*.py
+/*_temp.py
+/*_tmp.py
 
 # Python 快取（pytest 執行後產生）
 __pycache__/
@@ -30,9 +32,10 @@ temp_mcp.json
 .env.*.local
 
 # Agent 暫存輸出（實際發生過寫進 repo 根目錄的案例）
-scratch_out.txt
-git_files.txt
-process*.py
-verify*.py
-gather*.py
+# 同樣以 / 前綴限定在根目錄，理由見上方說明。
+/scratch_out.txt
+/git_files.txt
+/process*.py
+/verify*.py
+/gather*.py
 *.tmp

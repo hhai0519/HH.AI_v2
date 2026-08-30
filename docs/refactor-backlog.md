@@ -444,6 +444,25 @@ $$LINE連線$$ → agency-orchestrator 辨識
     **排程**：技能遷移與 runtime 層收尾之後執行，且必須設定明確範圍與時間盒，
     避免開啟無邊界的探索。**不在本階段展開。**
 
+15. **`.gitignore` 的暫存樣式誤擋正式腳本，與一筆訊息不符的 commit（已處理）**
+
+    **問題一**：2026-08-29 新增 `scripts/check_consistency.py` 時，
+    該檔名命中 `.gitignore` 的 `check_*.py` 規則被靜默忽略，
+    必須以 `git add -f` 強制加入才進得了版控。
+    根因是「Agent 一次性暫存腳本」的忽略樣式原本只針對 repo 根目錄，
+    卻寫成了全域樣式，連帶會誤擋 `scripts/` 底下的
+    `check_*` / `update_*` / `fix_*` / `migrate_*` / `write_*` /
+    `batch*` / `process*` / `verify*` / `gather*` 等正式腳本。
+    失效方式是靜默的——`git status` 顯示乾淨，人以為已提交，實際沒有。
+    **處置**：所有暫存樣式加上 `/` 前綴限定於根目錄；
+    `*.tmp` 維持全域（執行期產物在任何目錄都不該進版控）。
+
+    **問題二**：commit `6177109` 的訊息為
+    `feat: add repo-wide consistency checker and downgrade hash to optional`，
+    但該 commit 實際只含兩個 `.md` 檔案，checker 本身在下一筆 `bb08df0`。
+    成因即問題一的忽略規則。歷史不改寫（依 `PRINCIPLES.md` §3.3），
+    在此記錄以免日後查 `git log` 時誤判。
+
 ## 三之二、Jules 自動化修正分支處理狀態
 
 Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修正
