@@ -12,7 +12,7 @@ semantic_firewall: "/Domain/Social/LineBot/"
 本技能實作了 CLAW (Content-LLM-Automation-Workflow) 架構中的內容管理邏輯。它不負責做金融分析，只負責「說話」。本技能透過原生 HTTP 直接呼叫 LINE Messaging API，不透過 MCP 工具層。
 
 ## 協同定位
-依據 [ADR-0008](../../docs/adr/0008-dual-pipeline-architecture.md) 定義，本技能是 **Loki Swarm 管線的最後一棒**。它接在 `investment-aggregator` 之後，負責把彙整後的最終投資報告轉換成 LINE 使用者看得懂的格式（如 Flex Message），並實際發送給真實使用者。
+依據 [ADR-0008](../../../docs/adr/0008-dual-pipeline-architecture.md) 定義，本技能是 **Loki Swarm 管線的最後一棒**。它接在 `investment-aggregator` 之後，負責把彙整後的最終投資報告轉換成 LINE 使用者看得懂的格式（如 Flex Message），並實際發送給真實使用者。
 
 ## 實作邏輯 (Implementation Logic)
 1. **Semantic Firewall (語意防火牆)**: 工作記憶區限定於 `/Domain/Social/LineBot/` 與使用者的對話紀錄。它被刻意「蒙住眼睛」，看不到複雜的財務資料庫 Schema 或爬蟲原始碼。

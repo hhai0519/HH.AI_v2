@@ -313,7 +313,7 @@ C:\Users\HH.AI_260806\.gemini\config\mcp_config.json   （MCP 設定，不在版
 ### 4.7 其他產出
 
 - `docs/refactor-backlog.md` — 逐項查證過的完整待辦清單
-- `docs/mcp-environment-guide.md` — 5 個 MCP server 的重建指南
+- `docs/mcp-environment-guide.md` — 6 個 MCP server 的重建指南
 - `requirements.txt` — Python 相依（pytest、playwright）
 
 ---

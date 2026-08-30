@@ -1,5 +1,20 @@
 # 貼給 Antigravity 的遷移啟動指令
 
+> [!CAUTION]
+> **本文件為歷史紀錄，任務已完成，請勿執行。**
+>
+> 產出於重構啟動階段，內容已全面過期，實際執行會導致錯誤：
+>
+> - 引用的 `HH.AI_260806_legacy/` 路徑不存在（5 處）
+> - 「69 個技能」與實際不符（舊 repo 現行技能為 66 個，
+>   對帳結果見 `docs/HANDOVER.md` §4.1 完成度）
+> - 大量 `03_Execution/` 等舊分層路徑，新架構為七桶分類（`AGENTS.md` §1）
+> - 所述的分批方式與驗證流程，已由 `AGENTS.md`、`PRINCIPLES.md`、
+>   `SOP_14` 與 `.agents/rules/` 取代
+>
+> 保留原文的目的是留存當時的判斷與作法，供回溯參考。
+> 當前的遷移狀態與待辦以 `docs/refactor-backlog.md` 為準。
+
 > 這份不是文件，是「腳本」——把下面整段貼進 Antigravity 的對話框，
 > 它會先讀 `AGENTS.md` 和 `MISSION.md`，再開始逐一遷移。不要一次貼完整個舊 repo
 > 要求「全部重構」，那樣 agent 沒有 checkpoint，出錯很難回溯。照下面分批次進行。
