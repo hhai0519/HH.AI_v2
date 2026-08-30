@@ -196,6 +196,17 @@ python3 scripts/validate_skills.py
 
 這個腳本會檢查：frontmatter 是否合法、description 是否為空、是否有重複技能名稱、README 索引是否跟實際技能資料夾一致、SKILL.md 是否過長未拆分。**驗證沒過不要視為完成。**
 
+執行全庫一致性檢查：
+
+```bash
+python3 scripts/check_consistency.py
+```
+
+這個腳本檢查七項：控制字元、Markdown 圍欄配對、相對連結有效性、
+三層 README 完整性、`SOP_00A` 路由目標存在性、`skills/` 底下的舊分層路徑殘留、
+技能數與索引條目數一致。與 `validate_skills.py` 互補——後者檢查單一技能的格式，
+前者檢查跨檔案的一致性。
+
 執行自動化測試：
 
 ```bash
