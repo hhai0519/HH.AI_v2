@@ -41,10 +41,11 @@
 
       import hashlib
       p = "PRINCIPLES.md"
-      raw = open(p, "rb").read()
-      text = raw.decode("utf-8")
+      text = open(p, encoding="utf-8").read()
       lines = text.splitlines()
-      print(p, hashlib.sha256(raw).hexdigest()[:12], len(lines))
+      # 正規化換行後再算雜湊，確保 Windows(CRLF) 與 Linux(LF) 得到相同結果
+      norm = "\n".join(lines).encode("utf-8")
+      print(p, hashlib.sha256(norm).hexdigest()[:12], len(lines))
       for i, l in enumerate(lines[start:end], start + 1):
           print(f"{i:4d} | {l}")
 
@@ -55,6 +56,13 @@
   （`git diff` 證實該區塊未被改動）。若審查者未逐行 diff 就相信回報，
   會下達「改回去」的指令，反而用虛構內容覆蓋一份正確的檔案。
   行號與雜湊讓審查者不必逐行閱讀即可判斷回報是否來自真實檔案。
+
+  **雜湊必須正規化換行後再計算。** 本機工作目錄為 CRLF，
+  審查者的 Linux clone 為 LF，同樣內容會得到不同的原始位元組雜湊。
+  2026-08-29 首次使用本機制時即發生此情形：雙方雜湊不同但內容逐字相符，
+  差異純由換行符造成。因此一律先 `"\n".join(text.splitlines())` 正規化，
+  再計算 SHA-256。**行號是主要的核對依據，雜湊是輔助**——
+  行號能證明內容來自真實檔案的真實位置，雜湊只能證明整檔一致。
 
 
 ## 3. 查證紀律
@@ -87,9 +95,15 @@
 
   更極端的實例：`PRINCIPLES.md` 與本規則檔兩份文件**完全沒有 code block**
   （以 ``` 開頭的行數皆為 0），但因內文大量引用 ``` 作說明，
-  `count('```')` 分別得到 4 與 6。若以 `count()` 判斷圍欄配對，
-  會誤判成「有 2 個與 3 個 code block」。**兩種算法的差距不固定，
-  不可用差距大小當作判斷依據**，必須直接使用正確算法。
+  `count('```')` 的結果皆大於 0。若以 `count()` 判斷圍欄配對，
+  會把這兩份沒有任何 code block 的文件誤判成含有數個 code block。
+  **兩種算法的差距不固定，不可用差距大小當作判斷依據**，
+  必須直接使用正確算法。
+
+  此處刻意不寫出 `count()` 的具體數值：原始版本寫的「分別得到 4 與 6」，
+  在寫入本段落的同一個 commit 就已失準（實際為 4 與 9），
+  因為本段落自身含有 ``` ，寫入動作改變了被描述的數字。
+  **凡是會被自身寫入行為改變的數字，不得寫進文件。**
 
 
 - **回報的數字與審查者實測不符時，不得任其並存**：任一方發現數字有出入，
