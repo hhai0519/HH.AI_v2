@@ -549,6 +549,35 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 > 分支前，務必執行 `git diff origin/main --stat` 確認實際異動範圍，
 > 不可只依據分支名稱或 commit message 判斷。
 
+> [!NOTE]
+> **第二批第 3 組（`test_validate_skills.py` 三個分支）— 2026-08-29 處置**
+>
+> | 分支 | 決定 | 理由 |
+> |---|---|---|
+> | `test-validate-skills-main` | **已合併** | 為 `main()` 補 3 個測試（原本 0 個）。斷言涵蓋 exit code、輸出訊息與具體錯誤字串；以 `monkeypatch.setattr` 改寫 `SKILLS_DIR` 並在 `tmp_path` 建檔，不污染真實 `skills/` |
+> | `add-report-results-tests` | **已合併** | 為 `report_results()` 補 3 個測試（原本 0 個）。涵蓋成功、含警告、含錯誤三種輸出路徑 |
+> | `code-health/remove-unused-pytest-import` | **不採用** | 見下方說明 |
+>
+> **不採用的完整理由**：該分支刪除檔案第 1 行的 `import pytest`。
+> 以合併前的 main 而言，該 import 確實未被任何程式碼使用，**判斷本身正確**。
+> 但同組另外兩個分支各使用 3 次 `pytest.raises`，合併後共 6 處依賴它。
+> 三個分支基於同一 base commit，Jules 在各自沙盒中無法看見彼此的變更。
+>
+> 關鍵在於**無論合併順序如何都會壞**：先合測試再刪 import，6 個測試
+> 拋出 `NameError`；先刪 import 再合測試，兩個測試分支的 diff 並未新增
+> import 行（它們的 base 已有該行），合併後檔案仍然缺少它，結果相同。
+> 這不是順序問題，是該分支與同組其他分支根本互斥。
+>
+> **一般化的教訓**：純刪除型的分支（移除未使用的 import、變數、函式）
+> 看似最安全，實際上最容易與同批的新增型分支互斥——
+> 它移除的東西可能正是別的分支即將開始使用的。
+> 審查時不能只看該分支自身的正確性，必須檢查同組其他分支是否會用到被刪除的項目。
+>
+> 分支比照前例**保留在遠端不刪除**，GitHub PR 關閉並留言說明。
+>
+> 本組合併後，`scripts/tests/test_validate_skills.py` 由 22 個測試增至 28 個，
+> 專案測試總數由 30 增至 36。
+
 ---
 
 ## 四、更新紀錄 (Update Log)
