@@ -41,7 +41,7 @@ python changelog_gen.py --version 1.3.0 --output CHANGELOG.md
 
 ## 🤝 協同技能
 
-- `handover-manual-skill`：版本交接文件整合
+- `setup-hhai-skills`：版本交接文件整合（原 `handover-manual-skill` 已併入此技能）
 - `notebooklm-mcp`：將 changelog 匯入知識庫存檔
 
 > [!NOTE]

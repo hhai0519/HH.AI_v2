@@ -29,7 +29,7 @@
 | `analysis/` 認知型技能 | 戰略目標、語氣設定、情緒變數、自然語言約束 | SQL 語句、DOM 路徑、raw URL、純技術指令 |
 | `execution/` 或 `platform/` 技術型技能 | URL、DOM Selector、SQL Query、JSON Schema、檔案絕對路徑 | 認知參數、語氣描述、角色設定、情緒變數 |
 
-*(註：原本作為淨化責任方的 `subagent-collaboration-skill` 目前處於待遷移狀態，但在手動或其他 Agent 發送 Payload 時，仍需遵守此淨化分層原則。)*
+*(註：淨化責任方為 `skills/orchestration/subagent-collaboration`，其 `SKILL.md` 的「分層 Payload 淨化機制」一節載有執行流程。由人工或其他 Agent 直接發送 Payload 時，同樣須遵守本節的淨化分層原則，不得因為未經該技能轉發而略過。)*
 
 ## 4. 統一歸檔與差異化刪除政策 (Unified Archive Policy)
 

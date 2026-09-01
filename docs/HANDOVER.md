@@ -440,7 +440,7 @@ C:\Users\HH.AI_260806\.gemini\config\mcp_config.json   （MCP 設定，不在版
 | ~~**Agent 操控 Jules**~~ | ✅ 2026-08-29 解除。官方 MCP 提供 `list_sessions`、`get_session_state` 等 8 組工具，可直接查詢（ADR-0019） |
 | **`ADR-0012` 補 `SKIP_LOCK`** | `autoresearch-agent` 用 `SKIP_LOCK=1` 繞過全域鎖，ADR-0012 未記載 |
 | **vendored 外部資產標示規則** | `theme-factory`（Anthropic 官方）、`remoat`（第三方）缺標示規範，`AGENTS.md` 無此條，可能要補 ADR |
-| **Payload 淨化規則詞彙不一致** | 舊分層詞彙（`Cognitive`／`Execution` 型）的**行為指令**尚存 **6 個檔案、12 行**，待單獨一批收斂，清單見 `refactor-backlog.md` 第 19 點。原記載的「7 個檔案」經 2026-09-01 實測在任何算法下皆不成立：以含反引號的模式搜尋得 8 個檔案，其中 2 個屬版本紀錄等歷史留痕（依 `.agents/rules/git-and-reporting.md` §3 應保留），扣除後為 6 個 |
+| ~~**Payload 淨化規則詞彙不一致**~~ | ✅ 2026-09-01 已收斂。6 個檔案 12 行的舊分層詞彙（`Cognitive`／`Execution` 型）已依各技能實際所在 bucket 改寫為確定敘述，並指向 `.agents/rules/skill-engineering-guardrails.md` §3 為規範本體。處理紀錄見 `refactor-backlog.md` 第 19、20 點 |
 | **DLP 安全宣告為裝飾性樣板** | 「✓ DLP 資料安全驗證已通過 \| 資料加密處理 \| 隱私保護協議」出現在 25 份 SKILL.md，但不對應任何實際驗證行為；`dlpSanitizer.js` 做的是遮蔽非加密，且只在 LINE/TG 寫對話紀錄時作用，不在 commit 路徑上。**源頭已於 2026-09-01 查明並斷源**：`skills/meta/skill-evolution-governor/SKILL.md` 原第 40-49 行要求每個技能加上該宣告，已改為指向 SOP_02 §1 與 guardrails §3。25 份存量待單獨一批清理，見 `refactor-backlog.md` 第 17 點 |
 | **`json-to-flex-renderer` 指向舊 repo 路徑** | SKILL.md 第 31 行引用 `skills/03_Execution/line-bot-zero-delay/`，屬合法註記（runtime 尚未遷移），但 runtime 遷移完成後必須回頭更新 |
 

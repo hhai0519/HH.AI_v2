@@ -619,6 +619,42 @@ $$LINE連線$$ → agency-orchestrator 辨識
     `skills/orchestration/agency-orchestrator/SKILL.md` 第 107 行
     （該行已是 bucket 寫法，只是句中出現 `Cognitive` 一詞）。
 
+20. **舊分層詞彙收斂與三處斷鏈清理（2026-09-01）**
+
+    **A. 舊分層詞彙（第 19 點的清單，已全數處理）**
+
+    六個檔案共十二行的樣板原寫「若本技能為 `Cognitive` 型⋯若本技能為
+    `Execution` 型⋯」。除了詞彙過期，這個寫法本身也不成立——每個技能的
+    bucket 是固定的，不存在「若是 A 型／若是 B 型」的二選一。因此改寫為
+    依各技能實際所在 bucket 的確定敘述，並指向
+    `.agents/rules/skill-engineering-guardrails.md` §3 為規範本體。
+    原引用的 `(§6.3)` 是已不存在的 `SOP_00_Skill_Lifecycle` 章節編號。
+
+    `skills/orchestration/subagent-collaboration/REFERENCE.md` 沿用的是
+    「目標在 X」的框架，與本批的「本技能位於 X」不同，**這是刻意的**：
+    前者是淨化責任方，判斷「要送給誰」；後者是被送達方，判斷「自己能收什麼」。
+    兩種框架並存正確，不是漂移。
+
+    **B. 三處死引用（宏觀審計維度一：拓撲斷鏈）**
+
+    | 位置 | 死引用 | 處置 |
+    |---|---|---|
+    | `skills/execution/changelog-generator/SKILL.md` | `handover-manual-skill`（已併入 `setup-hhai-skills`） | 改指向 `setup-hhai-skills` |
+    | `skills/platform/langsmith-fetch/REFERENCE.md` | `optimization-status`（判定不遷移，無替代） | 整行刪除 |
+    | `.agents/rules/skill-engineering-guardrails.md` | `subagent-collaboration-skill`（名稱多 `-skill` 後綴，且稱「待遷移」已失效） | 改為正確名稱與現況 |
+
+    第三項是**自動載入的規則檔**，每次任務都會被 Agent 讀到，
+    卻描述著兩個月前就完成的狀態，影響面最大。
+
+    **C. 本批未處理、已識別的兩項（待排程）**
+
+    - **`description` 引號寫法不一致**：54 個技能中 26 個加引號、28 個未加。
+      功能無影響（YAML 兩種寫法皆合法），但屬 ADR-0007 維度二明列的收斂對象；
+      `name` 欄位的同類問題正是 ADR-0007 成立的原始理由之一。
+    - **缺檔尾換行 18 個檔案**：會使 `wc -l` 與 `len(splitlines())` 對同一檔案
+      給出不同行數，而行號＋總行數是 `.agents/rules/git-and-reporting.md` §2
+      的主要核對依據。建議補入 `scripts/check_consistency.py` 作為 CHECK 8。
+
 ## 三之二、Jules 自動化修正分支處理狀態
 
 Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修正

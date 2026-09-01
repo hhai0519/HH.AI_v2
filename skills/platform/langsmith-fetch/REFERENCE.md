@@ -33,7 +33,6 @@ langsmith-fetch trace --run-id <RUN_ID> --format json > trace.json
 ## 🤝 協同技能
 
 - `systematic-debugging`：更廣泛的環境除錯流程
-- `optimization-status`：Agent 性能優化追蹤
 
 ---
 
@@ -53,9 +52,10 @@ langsmith-fetch trace --run-id <RUN_ID> --format json > trace.json
 `[SYSTEM-CALL: langsmith-fetch | PAYLOAD: { objective: "<核心意圖>", target_audience: "<受眾>", strategic_constraints: "<策略限制/禁語>", tone_variables: "<語氣微調>" }]`
 
 > [!IMPORTANT]
-> **Payload 淨化規則 (§6.3)**：
-> - 若本技能為 `Cognitive` 型：接收戰略目標、語氣設定、情緒變數；拒絕 SQL/DOM/技術指令。
-> - 若本技能為 `Execution` 型：只接收 URL、DOM Selector、SQL、JSON Schema；拒絕認知參數。
+> **Payload 淨化規則**（規範本體見 `.agents/rules/skill-engineering-guardrails.md` §3）：
+> 本技能位於 `platform/`，屬技術型技能，因此：
+> - 接收：URL、API Endpoint、SQL Query、JSON Schema、檔案絕對路徑
+> - 拒絕：認知參數、語氣描述、角色設定、情緒變數
 
 執行中若遇能力不足或需要外部協作，應停下來明確告知使用者目前卡在哪裡，不要自行尋找替代方案掩蓋問題。
 `[SYSTEM-CALL: 目標ID | PAYLOAD: { ... }]` 調閱其他技能。
