@@ -583,6 +583,42 @@ $$LINE連線$$ → agency-orchestrator 辨識
     `scripts/validate_skills.py` 作為**警告**（不是錯誤，因現存多個技能會失敗）
     ——規範寫在文件裡而工具抓不到，正是本次遺失能潛伏兩個月的原因。
 
+19. **回報虛構事件、協作通則補記，與舊分層詞彙的清單（2026-09-01）**
+
+    **事件**：`20aa619` 批次中，六個檔案的實際改動經獨立 clone 逐行 diff
+    確認與指令逐字相符，但回報貼出的四份「完整內容」與實際檔案整份不同。
+    四份中三份的總行數亦不符（回報 100／46／37，實際 103／48／36）。
+    處置：`.agents/rules/git-and-reporting.md` §2 已補一條，
+    要求讀檔失敗時必須明說失敗、嚴禁以記憶補寫。
+    `docs/HANDOVER.md` §10.1 已新增第 15 種出錯模式。
+
+    **通則補記**：使用者要求「每一次回覆的結尾都直接附上下一步提示詞」，
+    此偏好在先前對話中一直存在但從未寫入文件，屬 `PRINCIPLES.md` §3.2
+    「只存在於對話中等同於沒有記錄」的案例，已補入 `HANDOVER` §8.1。
+
+    **舊分層詞彙的待收斂清單（6 個檔案、12 行）**：
+
+    | 檔案 | 行 |
+    |---|---|
+    | `skills/analysis/macro-linkage/SKILL.md` | 123、124 |
+    | `skills/analysis/ownership-cluster/SKILL.md` | 121、122 |
+    | `skills/analysis/quant-research-loop/REFERENCE.md` | 28、29 |
+    | `skills/analysis/sentiment-scout/SKILL.md` | 130、131 |
+    | `skills/orchestration/recursive-research-automation/REFERENCE.md` | 53、54 |
+    | `skills/platform/langsmith-fetch/REFERENCE.md` | 57、58 |
+
+    十二行皆為同一段複製而來的樣板（「若本技能為 `Cognitive`／`Execution` 型⋯」），
+    應統一改為 bucket 寫法，比照
+    `skills/orchestration/subagent-collaboration/REFERENCE.md` 第 41-44 行
+    已收斂的版本。**另注意兩處用詞不一致**：`ownership-cluster:122` 與
+    `sentiment-scout:131` 寫「拒絕認知**引數**」，其餘四份寫「拒絕認知**參數**」，
+    收斂時一併統一為「參數」。
+
+    **不算殘留、應保留的兩處**（依 `git-and-reporting.md` §3 區分行為指令與歷史紀錄）：
+    `skills/orchestration/subagent-collaboration/REFERENCE.md` 第 23-24 行的版本紀錄、
+    `skills/orchestration/agency-orchestrator/SKILL.md` 第 107 行
+    （該行已是 bucket 寫法，只是句中出現 `Cognitive` 一詞）。
+
 ## 三之二、Jules 自動化修正分支處理狀態
 
 Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修正

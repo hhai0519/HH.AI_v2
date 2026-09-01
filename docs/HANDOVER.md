@@ -440,7 +440,7 @@ C:\Users\HH.AI_260806\.gemini\config\mcp_config.json   （MCP 設定，不在版
 | ~~**Agent 操控 Jules**~~ | ✅ 2026-08-29 解除。官方 MCP 提供 `list_sessions`、`get_session_state` 等 8 組工具，可直接查詢（ADR-0019） |
 | **`ADR-0012` 補 `SKIP_LOCK`** | `autoresearch-agent` 用 `SKIP_LOCK=1` 繞過全域鎖，ADR-0012 未記載 |
 | **vendored 外部資產標示規則** | `theme-factory`（Anthropic 官方）、`remoat`（第三方）缺標示規範，`AGENTS.md` 無此條，可能要補 ADR |
-| **Payload 淨化規則詞彙不一致** | 舊分層詞彙（`Cognitive`／`Execution` 型）尚存 7 個檔案，新遷移的三個技能已統一為 bucket 寫法，其餘待單獨一批收斂。清單見 `refactor-backlog.md` 三、第 8 點 |
+| **Payload 淨化規則詞彙不一致** | 舊分層詞彙（`Cognitive`／`Execution` 型）的**行為指令**尚存 **6 個檔案、12 行**，待單獨一批收斂，清單見 `refactor-backlog.md` 第 19 點。原記載的「7 個檔案」經 2026-09-01 實測在任何算法下皆不成立：以含反引號的模式搜尋得 8 個檔案，其中 2 個屬版本紀錄等歷史留痕（依 `.agents/rules/git-and-reporting.md` §3 應保留），扣除後為 6 個 |
 | **DLP 安全宣告為裝飾性樣板** | 「✓ DLP 資料安全驗證已通過 \| 資料加密處理 \| 隱私保護協議」出現在 25 份 SKILL.md，但不對應任何實際驗證行為；`dlpSanitizer.js` 做的是遮蔽非加密，且只在 LINE/TG 寫對話紀錄時作用，不在 commit 路徑上。**源頭已於 2026-09-01 查明並斷源**：`skills/meta/skill-evolution-governor/SKILL.md` 原第 40-49 行要求每個技能加上該宣告，已改為指向 SOP_02 §1 與 guardrails §3。25 份存量待單獨一批清理，見 `refactor-backlog.md` 第 17 點 |
 | **`json-to-flex-renderer` 指向舊 repo 路徑** | SKILL.md 第 31 行引用 `skills/03_Execution/line-bot-zero-delay/`，屬合法註記（runtime 尚未遷移），但 runtime 遷移完成後必須回頭更新 |
 
@@ -601,6 +601,7 @@ bridge.js 啟動 Pinggy 取得新網址
 | **語言** | 繁體中文（台灣用語）。`SOP_01`、`SOP_02` 明訂嚴禁簡體中文 |
 | **提示詞格式** | 要求「**一鍵複製**」——單一完整區塊，不要分段讓他拼接 |
 | **提示詞數量** | **一次只給一份**，不要同時給多份讓他選 |
+| **提示詞節奏** | **每一次回覆的結尾都要直接附上下一步要給 Antigravity 的提示詞**，不要等使用者開口要。唯一例外：需要使用者裁決或提供資料時，改為列出待確認事項，該輪不出提示詞 |
 | **Agent 回覆格式** | 要求 Agent 回覆結尾加「以上是 Antigravity IDE Agent 的回覆」，方便辨識來源 |
 | **查證要求** | 反覆強調「請親自檢視資料」「請宏觀角度思考」——不接受憑印象的判斷 |
 | **每輪審計** | 明確要求每一輪都要重新確認整體架構（ADR-0007 的來源） |
@@ -695,6 +696,7 @@ bridge.js 啟動 Pinggy 取得新網址
 | 12 | **commit message 被 shell 展開** | `$$` 未用單引號包住 | 🟢 低 |
 | 13 | **計算方式錯誤但結論碰巧正確** | 用 `count('```')` 算出 548（實際是單反引號數） | 🟢 低 |
 | 14 | **產生暫存腳本未清理** | `write_rules.py`、`fix_json_to_flex.py` 等 | 🟢 低 |
+| 15 | **回報內容整份虛構** | 2026-09-01：六個檔案的實際改動完全正確，但回報貼出的四份「完整內容」與實際檔案整份不同，是看起來更整齊的重新設計版；四份中三份的總行數亦不符。危害在於審查者若採信，會下令回滾一份本來正確的檔案 | 🔴 高 |
 
 ### 10.2 Agent 表現良好的部分（值得保持的做法）
 
