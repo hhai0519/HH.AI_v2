@@ -666,6 +666,31 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 > 專案測試由 30 增至 41。所有分支比照前例保留在遠端不刪除，
 > GitHub PR 關閉並留言說明。
 
+
+17. **`skill-evolution-governor` 的四處過期規範（2026-09-01 已修正）**
+
+    治理文件分類審計期間發現，`skills/meta/skill-evolution-governor/SKILL.md`
+    保留了四處已被現行架構取代的規範。該技能為 `disable-model-invocation: true`，
+    不會自動觸發，但一旦被使用者呼叫執行技能治理，會依錯誤規則行動。
+
+    | 位置 | 過期內容 | 處置 |
+    |---|---|---|
+    | 原 21-29 行 | 六大分類體系（domain/tools/mindset/governance/ux/automation） | 改為指向 `AGENTS.md` §1 七桶 |
+    | 原 31-38 行 | 舊版不刪除原則，未區分兩種刪除情境 | 改為指向 guardrails §4，保留安全邊界定位（ADR-0006） |
+    | 原 40-49 行 | 以「DLP 宣告行是否存在」作為合規判準 | 改為指向 SOP_02 §1 與 guardrails §3，明令廢止該判準 |
+    | 原 68-71 行 | 依賴已成死檔案的 `00_Skill_Manifest.json` | 改為 validate_skills + check_consistency + 三層 README |
+
+    **這是 HANDOVER §5.5「DLP 安全宣告為裝飾性樣板」的源頭。** 該追蹤項先前
+    只記錄了現象，未查出是哪份文件在要求。斷源已完成。
+
+    **未完成（存量）**：全庫仍有 25 份 `SKILL.md` 帶有該宣告行，待單獨一批清理。
+    清理時屬 guardrails §4 情況 B，可直接物理刪除，不需歸檔。
+
+    **數字更正**：HANDOVER §5.5 原記載「出現在 32 份 SKILL.md」。
+    2026-09-01 實測現行 HEAD，三種算法分別為：SKILL.md 檔案數 25、
+    含其他副檔名的檔案數 31、SKILL.md 內出現行數 33，無一等於 32。
+    正確值為 **25 份 SKILL.md**。32 的來源未查明，不作推測。
+
 ---
 
 ## 四、更新紀錄 (Update Log)
