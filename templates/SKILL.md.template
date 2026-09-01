@@ -11,8 +11,7 @@ description: 一句話說明「什麼情境下要用這個技能」，包含具�
 # compatibility: "..."                   # 官方欄位，選用，說明相依的工具/環境
 #
 # 以下為本專案自訂擴充欄位（官方規格沒有，見 AGENTS.md 第 2 節）：
-# type: "action"                         # 若會實際呼叫外部工具/API/發送訊息
-# authorized_mcp_tools: []                # action 型技能列出授權工具白名單
+# authorized_mcp_tools: []                # skills/agents/ 底下的技能必須列出授權工具白名單
 # semantic_firewall: true                 # 是否啟用語意防火牆檢查
 ---
 

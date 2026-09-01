@@ -511,6 +511,78 @@ $$LINE連線$$ → agency-orchestrator 辨識
     - pre-commit hook 為本地機制，`git commit --no-verify` 可完全跳過。
       此缺口本地無法彌補，僅有 CI 能堵住。任何文件不得宣稱高於此的保護等級
 
+17. **`skill-evolution-governor` 的四處過期規範（2026-09-01 已修正）**
+
+    治理文件分類審計期間發現，`skills/meta/skill-evolution-governor/SKILL.md`
+    保留了四處已被現行架構取代的規範。該技能為 `disable-model-invocation: true`，
+    不會自動觸發，但一旦被使用者呼叫執行技能治理，會依錯誤規則行動。
+
+    | 位置 | 過期內容 | 處置 |
+    |---|---|---|
+    | 原 21-29 行 | 六大分類體系（domain/tools/mindset/governance/ux/automation） | 改為指向 `AGENTS.md` §1 七桶 |
+    | 原 31-38 行 | 舊版不刪除原則，未區分兩種刪除情境 | 改為指向 guardrails §4，保留安全邊界定位（ADR-0006） |
+    | 原 40-49 行 | 以「DLP 宣告行是否存在」作為合規判準 | 改為指向 SOP_02 §1 與 guardrails §3，明令廢止該判準 |
+    | 原 68-71 行 | 依賴已成死檔案的 `00_Skill_Manifest.json` | 改為 validate_skills + check_consistency + 三層 README |
+
+    **這是 HANDOVER §5.5「DLP 安全宣告為裝飾性樣板」的源頭。** 該追蹤項先前
+    只記錄了現象，未查出是哪份文件在要求。斷源已完成。
+
+    **未完成（存量）**：全庫仍有 25 份 `SKILL.md` 帶有該宣告行，待單獨一批清理。
+    清理時屬 guardrails §4 情況 B，可直接物理刪除，不需歸檔。
+
+    **數字更正**：HANDOVER §5.5 原記載「出現在 32 份 SKILL.md」。
+    2026-09-01 實測現行 HEAD，三種算法分別為：SKILL.md 檔案數 25、
+    含其他副檔名的檔案數 31、SKILL.md 內出現行數 33，無一等於 32。
+    正確值為 **25 份 SKILL.md**。32 的來源未查明，不作推測。
+
+18. **SOP 遷移期的兩類缺失，與已知缺陷清理（2026-09-01）**
+
+    治理文件審計逐份比對舊 repo `SOP/` 的 21 份文件與 v2 的 10 份，
+    數量對得上（21 = 10 遷移 + 11 淘汰／轉換，與 `SOP/README.md` 一致），
+    但發現兩類共通缺失：
+
+    **缺失類型一：淘汰理由未逐項驗證「取代」是否成立。**
+    `SOP_03_Skills_Maintenance.md` 的淘汰理由寫「已被 `validate_skills.py`
+    與 `AGENTS.md` 取代」，但其 §4.2 品質驗證清單六項中，`validate_skills.py`
+    只涵蓋一項（`name` 非空）。其中「`description` 須包含觸發關鍵字說明」
+    這一條被丟棄後，兩個月後以「31 個技能 description 缺觸發詞、
+    `validate_skills.py` 抓不到」的形式被重新發現，記載於 `SOP_14` §6.1。
+    §4.3 的四條常見違規（含「禁止 `TODO` 佔位符留在正文」）亦全數遺失。
+
+    **缺失類型二：紀錄措辭以「轉為 X」概括了「一節轉為 X、其餘淘汰」。**
+    `SOP_00_Skill_Lifecycle_Management.md` 與 `SOP_10_AI_Command_Center.md`
+    兩處已於本日修正（見 `SOP/README.md`）。
+
+    查證結論：`SOP_07`、`SOP_08`、`SOP_10` 三份的淘汰處置正確，無實質遺失
+    （`SOP_08` §3 的 `$$自動化$$`／`$$Allow All$$` 授權參數已保全於
+    `SOP_01` §2.4、`SOP_00A` 路由表與 `SOP_06`）。`SOP_03` 的方向正確但有遺失。
+
+    **本日已清理的六處缺陷**：
+
+    | 缺陷 | 檔案 | 處置 |
+    |---|---|---|
+    | 範本示範 `type:` 但驗證器不接受 | `templates/SKILL.md.template` | 移除該行 |
+    | 漏改的節名交叉引用 | `skills/meta/skill-evolution-governor/SKILL.md` | 更新第 14 行 |
+    | 五個死依賴 | `skills/orchestration/subagent-collaboration/SKILL.md` | 見下 |
+    | 舊分層詞彙與失效節號 | 同技能 `REFERENCE.md` | 統一為 bucket 寫法 |
+    | 兩處紀錄措辭不精確 | `SOP/README.md` | 改為逐節列明 |
+    | 第 17 點位置錯置 | 本檔案 | 移回第三章節 |
+
+    `subagent-collaboration` 的五個死依賴為 `Template_00_Universal_Skill.md`
+    （不存在）、`SOP_00_New_Skill_Onboarding.md`（已淘汰）、
+    `Data/skill_translations.json`（不遷移）、技能 `type` 欄位（已移除）、
+    Neon DB 寫入（模組未遷移）。**同時移除兩條不安全失敗路徑**
+    （`is_onboarding_test` 旁路旗標與 `DEFAULT_FALLBACK` 回退），
+    兩者皆為「跳過安全淨化以避免死鎖」；改為 bucket 路徑直接判斷型別後，
+    死鎖前提已不存在，遇不明目標一律停下詢問。
+
+    **待辦**：`SOP_03` §4.2／§4.3 的品質驗證清單，與
+    `SOP_00_Skill_Lifecycle` §一至§四，兩者性質同屬技能生命週期治理，
+    規劃合併為一份新的 `SOP/SOP_03_Skill_Lifecycle_and_Quality.md`，
+    另批處理。同批應評估把「`description` 是否含觸發詞」加入
+    `scripts/validate_skills.py` 作為**警告**（不是錯誤，因現存多個技能會失敗）
+    ——規範寫在文件裡而工具抓不到，正是本次遺失能潛伏兩個月的原因。
+
 ## 三之二、Jules 自動化修正分支處理狀態
 
 Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修正
@@ -665,31 +737,6 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 > 7 個合併（含 2 個部分合併）、5 個評估後不採用。
 > 專案測試由 30 增至 41。所有分支比照前例保留在遠端不刪除，
 > GitHub PR 關閉並留言說明。
-
-
-17. **`skill-evolution-governor` 的四處過期規範（2026-09-01 已修正）**
-
-    治理文件分類審計期間發現，`skills/meta/skill-evolution-governor/SKILL.md`
-    保留了四處已被現行架構取代的規範。該技能為 `disable-model-invocation: true`，
-    不會自動觸發，但一旦被使用者呼叫執行技能治理，會依錯誤規則行動。
-
-    | 位置 | 過期內容 | 處置 |
-    |---|---|---|
-    | 原 21-29 行 | 六大分類體系（domain/tools/mindset/governance/ux/automation） | 改為指向 `AGENTS.md` §1 七桶 |
-    | 原 31-38 行 | 舊版不刪除原則，未區分兩種刪除情境 | 改為指向 guardrails §4，保留安全邊界定位（ADR-0006） |
-    | 原 40-49 行 | 以「DLP 宣告行是否存在」作為合規判準 | 改為指向 SOP_02 §1 與 guardrails §3，明令廢止該判準 |
-    | 原 68-71 行 | 依賴已成死檔案的 `00_Skill_Manifest.json` | 改為 validate_skills + check_consistency + 三層 README |
-
-    **這是 HANDOVER §5.5「DLP 安全宣告為裝飾性樣板」的源頭。** 該追蹤項先前
-    只記錄了現象，未查出是哪份文件在要求。斷源已完成。
-
-    **未完成（存量）**：全庫仍有 25 份 `SKILL.md` 帶有該宣告行，待單獨一批清理。
-    清理時屬 guardrails §4 情況 B，可直接物理刪除，不需歸檔。
-
-    **數字更正**：HANDOVER §5.5 原記載「出現在 32 份 SKILL.md」。
-    2026-09-01 實測現行 HEAD，三種算法分別為：SKILL.md 檔案數 25、
-    含其他副檔名的檔案數 31、SKILL.md 內出現行數 33，無一等於 32。
-    正確值為 **25 份 SKILL.md**。32 的來源未查明，不作推測。
 
 ---
 

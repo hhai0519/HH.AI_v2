@@ -25,7 +25,7 @@ description: "執行多步驟任務、執行計畫或複雜的單次操作時使
 當任務需要調用 persona 角色（如 Musk, Jobs, Taleb）時，本技能必須負責「意圖翻譯」與「參數裝配」（註：persona 設定檔位於舊專案 Data/personas/，屬 Configuration Data 而非技能，尚未遷移至 HH.AI_v2）：
 
 1. **需求解析**：剖析使用者的模糊指令，提煉出核心的軟體工程或商業邏輯。
-2. **參數裝配 (Dynamic Payload Builder)**：嚴格依照 `Template_00_Universal_Skill.md` 的通訊協定，組裝以下參數：
+2. **參數裝配 (Dynamic Payload Builder)**：依 `templates/SKILL.md.template` 定義的通訊協定，組裝以下參數：
    - `objective`：核心意圖
    - `target_audience`：受眾畫像
    - `strategic_constraints`：策略限制或禁語
@@ -37,7 +37,7 @@ description: "執行多步驟任務、執行計畫或複雜的單次操作時使
 
 ---
 
-## 分層 Payload 淨化機制 (§6.3 Payload Tiering Protocol)
+## 分層 Payload 淨化機制 (Payload Tiering Protocol)
 
 > [!IMPORTANT]
 > 本技能作為 Payload 淨化的**責任方**，在組裝 Dynamic Payload 前必須識別目標層級並執行型別淨化。
@@ -48,24 +48,17 @@ description: "執行多步驟任務、執行計畫或複雜的單次操作時使
 | `execution/` 與 `platform/`（工具與整合層） | URL、DOM Selector、SQL Query、JSON Schema、檔案路徑 | 認知參數、語氣描述、角色設定、情緒變數 |
 
 **執行流程**：
-1. 收到 Orchestrator 的原始指令後，**首先檢查旁路旗標**：
 
-   ```
-   // §5 CI/CD Onboarding Bypass (SOP_00_New_Skill_Onboarding.md §5.2)
-   IF (payload.is_onboarding_test == true) {
-     SKIP  skill_translations.json 強制查詢
-     SET   target_type = "PENDING_TYPE"
-      LOG   [SECURITY-WARN] 偵測到旁路測試參數，此操作僅限測試環境
-      LOG   異常事件至 Neon DB 佇列 (Priority: LOW)
-     GOTO  步驟 3（直接組裝 Payload，跳過型別淨化）
-   }
-   ```
-
-2. **正常流程**（無旁路旗標時）：識別目標技能的 `type`（查詢 `Data/skill_translations.json`）。
-   - **異常處理 (DEFAULT_FALLBACK)**：若在 `skill_translations.json` 找不到對應型別（可能為新建置中的技能），強制設定 `target_type = "DEFAULT_FALLBACK"`，跳過淨化程序以避免流程中斷死鎖，並將異常事件記錄至 Neon DB 的 watchdog_pending_optimizations 資料表。
-3. 依型別矩陣過濾 Payload 內容。
-4. 組裝淨化後的 Payload，執行 `[SYSTEM-CALL]`。
-5. 若目標層級不明（且不符合 FALLBACK 條件），優先詢問 Orchestrator，禁止猜測。
+1. **判斷目標層級**：由目標技能的路徑直接判定。技能一律位於
+   `skills/<bucket>/<skill-name>/`，`<bucket>` 即為層級。
+   不需要查詢任何映射表，也不需要讀取 frontmatter 欄位。
+2. **依上方型別矩陣過濾 Payload 內容**：
+   - 目標在 `analysis/` 或 `orchestration/` → 移除所有技術型參數
+   - 目標在 `execution/`、`platform/` 或 `agents/` → 移除所有認知型參數
+3. 組裝淨化後的 Payload，執行 `[SYSTEM-CALL]`。
+4. **若目標技能不存在、或所屬 bucket 無法判定：停下來詢問 Orchestrator，
+   禁止猜測。** 也禁止為了避免流程中斷而跳過淨化程序——淨化是安全邊界，
+   不是可選步驟。
 
 ## 任務派發與執行流程 (The Process)
 

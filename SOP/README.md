@@ -21,8 +21,8 @@
 為避免未來查找文件時以為資料遺失，以下列出 11 份舊版 SOP 文件的去向（3 份轉為 ADR/rules、8 份淘汰）：
 
 ### 轉為 ADR 或 Rules (3 份)
-- **`SOP_00_Skill_Lifecycle_Management.md`**：已拆分為 `ADR-0013` 與兩份 `.agents/rules/` 規則。
-- **`SOP_10_AI_Command_Center.md`**：已轉為 `ADR-0012`。
+- **`SOP_00_Skill_Lifecycle_Management.md`**：**部分拆分**。§五（Watchdog 巡檢與非同步錯誤暫存）→ `ADR-0013`；§六（三大架構防禦條款）→ `.agents/rules/skill-engineering-guardrails.md`；§七（跨平台編碼安全協定）→ `.agents/rules/powershell-encoding-protocol.md`。**§一至§四（防腐化過濾決策樹、技能生成規範、更版與 Changelog 規範、完工前自我審查與退版機制）當時未遷移亦未淘汰，2026-09-01 審計發現，補回作業見 `docs/refactor-backlog.md`。**
+- **`SOP_10_AI_Command_Center.md`**：**僅 §4（Agent 衝突治理／分散式悲觀鎖）轉為 `ADR-0012`**。§1 三層架構、§2 GitLab-First Policy（主張全面棄用 GitHub，與現況相反）、§3 Notion 指揮中心與 DORA 指標、§5 Docker 沙盒與 YOLO 模式（要求所有測試必須在 MicroVM 執行，與 `AGENTS.md` §9 直接衝突）、§6 合規性確認，五節皆已淘汰，2026-09-01 查證確認全部過時或與現行規範矛盾。
 - **`SOP_15_OmniChannel_Connection_Development_History.md`**：已轉為 `ADR-0011`。
 
 ### 已淘汰 (8 份)

@@ -20,6 +20,7 @@
 ---
 
 ## 版本紀錄 (Changelog)
+- **[3.2.0]** 2026-09-01：移除 `is_onboarding_test` 旁路旗標與 `DEFAULT_FALLBACK` 回退（兩者皆為跳過安全淨化的不安全失敗，且依賴已淘汰的 SOP 與不遷移的 `skill_translations.json`）；型別判斷改由 bucket 路徑直接決定；分層詞彙由 `Cognitive`／`Execution` 統一為 bucket 寫法。
 - **[3.1.0]** 2026-05-04：依 SOP_00_New_Skill_Onboarding §5.2 實裝 `is_onboarding_test` CI/CD 旁路旗標邏輯，徹底解除新技能報到死鎖。PENDING_TYPE 回退機制啟用。
 - **[3.0.0]** 2026-05-04：依 SOP §6.3 新增「分層 Payload 淨化機制」說明，實裝型別矩陣與淨化執行流程。版本躍升至 V3.0.0。
 - **[1.1.0]** 2026-05-XX：依據 SOP_00 升級，導入 Recipe Mixer 職責，支援 Dynamic Payload 參數裝配與精準 Persona 調度。
@@ -38,9 +39,9 @@
 `[SYSTEM-CALL: subagent-collaboration | PAYLOAD: { objective: "<核心意圖>", target_audience: "<受眾>", strategic_constraints: "<策略限制/禁語>", tone_variables: "<語氣微調>" }]`
 
 > [!IMPORTANT]
-> **Payload 淨化規則 (§6.3)**：
-> - 若本技能為 `Cognitive` 型：接收戰略目標、語氣設定、情緒變數；拒絕 SQL/DOM/技術指令。
-> - 若本技能為 `Execution` 型：只接收 URL、DOM Selector、SQL、JSON Schema；拒絕認知參數。
+> **Payload 淨化規則**（規範本體見 `.agents/rules/skill-engineering-guardrails.md` §3）：
+> - 目標在 `analysis/` 或 `orchestration/`：接收戰略目標、語氣設定、情緒變數；拒絕 SQL／DOM／技術指令。
+> - 目標在 `execution/`、`platform/` 或 `agents/`：只接收 URL、DOM Selector、SQL、JSON Schema；拒絕認知參數。
 
 發送協定：執行中若遇能力不足或需要外部協作，應停下來明確告知使用者目前卡在哪裡，不要自行尋找替代方案掩蓋問題。
 
