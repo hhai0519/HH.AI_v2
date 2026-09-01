@@ -94,7 +94,7 @@ C:\Users\HH.AI_260806\.gemini\config\mcp_config.json   （MCP 設定，不在版
 | `HH.AI_v2/AGENTS.md` | 架構規範（七桶定義、SKILL.md 格式、frontmatter 規則） |
 | `HH.AI_v2/docs/refactor-backlog.md` | 進度與待辦清單（**接手必讀**） |
 | `HH.AI_v2/docs/adr/` | 20 份架構決策紀錄 |
-| `HH.AI_v2/.agents/rules/` | 4 份 workspace 規則（Antigravity 自動載入） |
+| `HH.AI_v2/.agents/rules/` | 5 份 workspace 規則（Antigravity 自動載入） |
 | `HH.AI_v2/SOP/` | 10 份操作流程 + `SOP_00A_Master_Index.json`（`$$` 指令權威路由表） |
 | `HH.AI_v2/scripts/validate_skills.py` | 唯一的自動化驗證工具 |
 
@@ -271,7 +271,7 @@ C:\Users\HH.AI_260806\.gemini\config\mcp_config.json   （MCP 設定，不在版
 | 0018 | vendored 外部資產保留 fork，並以三層方式標示 |
 | 0019 | **Jules 整合改採官方 CLI 與 MCP，取代 ADR-0003** |
 
-### 4.3 Workspace 規則：4 份（`.agents/rules/`）
+### 4.3 Workspace 規則：5 份（`.agents/rules/`）
 
 | 檔案 | 內容 |
 |---|---|
@@ -279,6 +279,7 @@ C:\Users\HH.AI_260806\.gemini\config\mcp_config.json   （MCP 設定，不在版
 | `git-and-reporting.md` | **Git 操作與回報紀律**（含三次踩坑紀錄） |
 | `skill-engineering-guardrails.md` | 四大架構防禦條款 |
 | `powershell-encoding-protocol.md` | 跨平台編碼協定 |
+| `role-boundaries.md` | **角色邊界**：執行者身分不可切換、不屬於執行者的三類工作、以「照著做／決定要不要做」取代關鍵字判斷 |
 
 ### 4.4 SOP：10 份 + 索引
 

@@ -18,7 +18,7 @@ dependencies: [".agents/rules/skill-engineering-guardrails.md", "SOP_05_System_P
 - 任何涉及 `start_line.js`、`bridge.js`、`poll_inbox.js`、`skills/platform/telegram-bot-cdp-bridge` 或 `Start-TelegramBot.ps1` 的修改（註：telegram-bot-cdp-bridge 尚未遷移至 HH.AI_v2，路徑為預計位置）
 - 新增或刪除技能目錄
 - 在生產環境執行首次部署或架構重組
-- 使用者明確輸入「請進行審計」或「SOP14」關鍵字
+- 使用者明確輸入「請進行審計」或「SOP14」關鍵字（註：此處觸發的是本 SOP 的**聯席審計／任務內驗證**程序，不是宏觀審計。兩者的區分見 `PRINCIPLES.md` §0.3）
 
 ---
 
@@ -123,5 +123,8 @@ dependencies: [".agents/rules/skill-engineering-guardrails.md", "SOP_05_System_P
 - 第 3、4 點與 `.agents/rules/git-and-reporting.md` §3 查證紀律同源。
   差別在於那份規則規範「修改時要搜遍全庫」，本節規範「發現錯誤時的判斷順序」。
   前者防漏改，後者防誤判與治標。
-- 本節適用於所有審計角色，包含 ADR-0007 定義的宏觀審計官。
-  ADR-0007 記錄該角色「為什麼存在」，本節規範該角色「怎麼做」。
+- 本節的「根因處理順序」適用於任何發現錯誤的角色，包括執行者。
+  但**「宏觀審計官」是獨立於執行者的角色，只有 Claude 擔任**——
+  定義見 `PRINCIPLES.md` §0，理由見 `docs/adr/0007-macro-auditor-role.md`。
+  Antigravity IDE Agent 不得自任該角色，也不得以本節為據宣稱自己
+  完成了宏觀審計。**本節規範「發現錯誤之後怎麼判斷」，不授予任何人身分。**
