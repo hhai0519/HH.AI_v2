@@ -55,6 +55,7 @@ Google Jules 是非同步雲端編碼代理，由執行者透過 MCP 觸發，
 |---|---|---|
 | 最高層 | 本節 | 身分定義，雙方共讀 |
 | 第 1 層 | `.agents/rules/role-boundaries.md` | 執行者這一側的可執行細則 |
+| 第 1 層 | `.claude/rules/auditor-protocol.md` | 審計官這一側的作業協定 |
 | 第 3 層 | `docs/adr/0007-macro-auditor-role.md` | 為什麼需要這個分工（留痕） |
 
 **來源**：2026-09-01 使用者提出「Antigravity 本身已有審計機制，

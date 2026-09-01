@@ -95,6 +95,7 @@ C:\Users\HH.AI_260806\.gemini\config\mcp_config.json   （MCP 設定，不在版
 | `HH.AI_v2/docs/refactor-backlog.md` | 進度與待辦清單（**接手必讀**） |
 | `HH.AI_v2/docs/adr/` | 20 份架構決策紀錄 |
 | `HH.AI_v2/.agents/rules/` | 5 份 workspace 規則（Antigravity 自動載入） |
+| `HH.AI_v2/.claude/rules/` | 審計官作業協定（**Claude 專屬**，Antigravity 不執行）。開場時由審計官主動 clone 讀取 |
 | `HH.AI_v2/SOP/` | 10 份操作流程 + `SOP_00A_Master_Index.json`（`$$` 指令權威路由表） |
 | `HH.AI_v2/scripts/validate_skills.py` | 唯一的自動化驗證工具 |
 
