@@ -101,10 +101,14 @@ description: "萬能總管模式（Agency-Agents 最高總管），負責通用�
 `[SYSTEM-CALL: agency-orchestrator | PAYLOAD: { objective: "<核心意圖>", current_phase: "<階段>", target_audience: "<受眾>", strategic_constraints: "<策略限制/禁語>", tone_variables: "<語氣微調>", context_data: {} }]`
 
 > [!IMPORTANT]
-> **Payload 淨化規則 (§6.3)**：
-> - 若本技能屬於 analysis/ 或 orchestration/（無外部副作用）：接收戰略目標、語氣設定、情緒變數；拒絕 SQL/DOM/技術指令。
-> - 若本技能屬於 execution/ 或 platform/（工具與整合層）：只接收 URL、DOM Selector、SQL、JSON Schema；拒絕認知參數。
-> - 作為 Orchestrator，你負責將戰略意圖封裝為 `Cognitive` 參數發送給下屬，禁止直接向 execution/ 或 platform/ 層的技能發送自然語言。
+> **Payload 淨化規則**（規範本體見 `.agents/rules/skill-engineering-guardrails.md` §3）：
+> 本技能位於 `orchestration/`，屬認知型技能，因此：
+> - 接收：戰略目標、語氣設定、情緒變數、自然語言約束
+> - 拒絕：SQL 語句、DOM 路徑、raw URL、純技術指令
+>
+> 另因本技能是派發節點：向下屬派發 Payload 時，必須依目標技能所在的 bucket
+> 套用上述矩陣淨化，禁止直接向 `execution/` 或 `platform/` 層的技能發送
+> 未淨化的自然語言。淨化流程見 `skills/orchestration/subagent-collaboration`。
 
 發送協定： 執行中若遇能力不足或需要外部協作，應停下來明確告知使用者目前卡在哪裡，不要自行尋找替代方案掩蓋問題。必須主動封裝 Dynamic Payload 並發出：
 `[SYSTEM-CALL: 目標ID | PAYLOAD: { ... }]` 調閱其他技能。
