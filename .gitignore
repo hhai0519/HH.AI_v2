@@ -39,3 +39,4 @@ temp_mcp.json
 /verify*.py
 /gather*.py
 *.tmp
+/diff*.txt
