@@ -71,14 +71,7 @@
 
 ### 4. 沙盒先行驗證流程（Sandbox-First Validation）
 
-往後任何涉及 PM2 設定檔或常駐服務啟動路徑的變更，一律遵循：
-
-1. 先建立 `sandbox_*.config.js` 副本，不直接改動正式設定檔
-2. 在沙盒設定上執行修改與啟動測試
-3. 確認所有進程能正常啟動、無 `MODULE_NOT_FOUND` 或 `SyntaxError`
-4. 通過後才覆寫正式的 `ecosystem.config.js`
-5. 覆寫後執行壓力測試驗證穩定性（可用 `x-sop14-mock` 標頭阻斷外部
-   API，避免測試消耗真實配額）
+本節規範已移至 `SOP/SOP_14_Rigorous_Verification_and_Audit_Protocol.md` §2.1。
 
 ## Consequences
 
@@ -92,3 +85,9 @@
 - 本 ADR 與 ADR-0009（Windows Job Object 進程回收）、ADR-0010
   （PowerShell 參數傳遞陷阱）同屬雙平台連線的實戰教訓，遷移 runtime
   時應三份一起參照。
+
+## 2026-09-01 分層搬移
+
+依 `PRINCIPLES.md` §1，原 §4 的沙盒先行驗證五步驟屬可執行規範，
+已移至 `SOP/SOP_14_Rigorous_Verification_and_Audit_Protocol.md` §2.1。
+Context、§1 至 §3 與 Consequences 原文未變動。

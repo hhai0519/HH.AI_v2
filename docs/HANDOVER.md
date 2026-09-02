@@ -442,7 +442,7 @@ C:\Users\HH.AI_260806\.gemini\config\mcp_config.json   （MCP 設定，不在版
 | ~~**Agent 操控 Jules**~~ | ✅ 2026-08-29 解除。官方 MCP 提供 `list_sessions`、`get_session_state` 等 8 組工具，可直接查詢（ADR-0019） |
 | **`ADR-0012` 補 `SKIP_LOCK`** | `autoresearch-agent` 用 `SKIP_LOCK=1` 繞過全域鎖，ADR-0012 未記載 |
 | **vendored 外部資產標示規則** | `theme-factory`（Anthropic 官方）、`remoat`（第三方）缺標示規範，`AGENTS.md` 無此條，可能要補 ADR |
-| ~~**Payload 淨化規則詞彙不一致**~~ | ✅ 2026-09-01 已收斂。全庫共 **15 個檔案**帶有「Payload 淨化規則」樣板，分兩種變體：(a) 舊分層詞彙 `Cognitive`／`Execution` 型，6 個檔案；(b) 已用 bucket 名稱但保留失效的 `(§6.3)` 章節引用與「若…若…」條件式寫法，9 個檔案。兩批合計 15 個檔案已全數改寫為依實際 bucket 的確定敘述，規範本體統一指向 `.agents/rules/skill-engineering-guardrails.md` §3。處理紀錄見 `refactor-backlog.md` 第 19、20、25 點 |
+| ~~**Payload 淨化規則詞彙不一致**~~ | ✅ 2026-09-01 已收斂。全庫共 **16 個檔案**帶有「Payload 淨化規則」樣板，分兩種變體：(a) 舊分層詞彙 `Cognitive`／`Execution` 型，6 個檔案；(b) 已用 bucket 名稱但保留失效的 `(§6.3)` 章節引用與「若…若…」條件式寫法，9 個檔案。三批合計 16 個檔案已全數改寫為依實際 bucket 的確定敘述，規範本體統一指向 `.agents/rules/skill-engineering-guardrails.md` §3。處理紀錄見 `refactor-backlog.md` 第 19、20、25、26 點 |
 | **DLP 安全宣告為裝飾性樣板** | 「✓ DLP 資料安全驗證已通過 \| 資料加密處理 \| 隱私保護協議」出現在 25 份 SKILL.md，但不對應任何實際驗證行為；`dlpSanitizer.js` 做的是遮蔽非加密，且只在 LINE/TG 寫對話紀錄時作用，不在 commit 路徑上。**源頭已於 2026-09-01 查明並斷源**：`skills/meta/skill-evolution-governor/SKILL.md` 原第 40-49 行要求每個技能加上該宣告，已改為指向 SOP_02 §1 與 guardrails §3。25 份存量待單獨一批清理，見 `refactor-backlog.md` 第 17 點 |
 | **`json-to-flex-renderer` 指向舊 repo 路徑** | SKILL.md 第 31 行引用 `skills/03_Execution/line-bot-zero-delay/`，屬合法註記（runtime 尚未遷移），但 runtime 遷移完成後必須回頭更新 |
 

@@ -19,6 +19,7 @@ dependencies: [".agents/rules/skill-engineering-guardrails.md", "SOP_05_System_P
 - 新增或刪除技能目錄
 - 在生產環境執行首次部署或架構重組
 - 使用者明確輸入「請進行審計」或「SOP14」關鍵字（註：此處觸發的是本 SOP 的**聯席審計／任務內驗證**程序，不是宏觀審計。兩者的區分見 `PRINCIPLES.md` §0.3）
+- 任何 commit 或 push 操作前，若 staged 檔案中包含設定檔（`.json`、`.env`、`.yaml`）或非程式碼的資料檔（來源：`docs/adr/0016-credential-leak-defense-gap.md` §4）
 
 ---
 
@@ -50,6 +51,18 @@ dependencies: [".agents/rules/skill-engineering-guardrails.md", "SOP_05_System_P
 
 - **強約束**：禁止直接在工作區實際代碼上進行測試。
 - **執行方式**：建立獨立的模擬測試腳本（如 `sandbox_test.js`），在隔離的控制台環境運行參數解析與邏輯邊界測試，並將結果輸出為 `SIMULATION_TEST_REPORT.md`。
+
+### 2.1 PM2 設定檔與常駐服務的沙盒先行驗證
+
+涉及 PM2 設定檔或常駐服務啟動路徑的變更，一律遵循以下五步驟：
+
+1. 先建立 `sandbox_*.config.js` 副本，不直接改動正式設定檔
+2. 在沙盒設定上執行修改與啟動測試
+3. 確認所有進程能正常啟動、無 `MODULE_NOT_FOUND` 或 `SyntaxError`
+4. 通過後才覆寫正式的 `ecosystem.config.js`
+5. 覆寫後執行壓力測試驗證穩定性（可用 `x-sop14-mock` 標頭阻斷外部 API，避免測試消耗真實配額）
+
+決策背景與 2026-08-09 的實際事故，見 `docs/adr/0014-pm2-config-pitfalls-and-sandbox-validation.md`。
 
 ---
 
@@ -128,3 +141,35 @@ dependencies: [".agents/rules/skill-engineering-guardrails.md", "SOP_05_System_P
   定義見 `PRINCIPLES.md` §0，理由見 `docs/adr/0007-macro-auditor-role.md`。
   Antigravity IDE Agent 不得自任該角色，也不得以本節為據宣稱自己
   完成了宏觀審計。**本節規範「發現錯誤之後怎麼判斷」，不授予任何人身分。**
+
+---
+
+## 7. 高風險技能遷移的三層核對 (Three-Layer Review)
+
+§1 到 §5 規範一般任務的審計流程，本節規範「技能遷移」這個特定情境。
+
+### 7.1 適用範圍
+
+`orchestration/` 或 `agents/` bucket 底下的技能，尤其是總管／路由類、
+會被其他技能依賴的核心技能，一律套用本節流程。
+
+行數較短、無外部呼叫、無 legacy 特殊語法的單純技能，不需要套用，
+維持一般批次流程即可。
+
+### 7.2 三層核對
+
+1. 不接受純文字摘要形式的完成回報，要求貼出修改後的**完整檔案內容**
+   或該次 `git diff` 的原始輸出。
+2. 內容看過後，比對是否有：
+   - 牴觸本專案核心原則的規則（尤其「遇到不確定情況要不要問人」這類）
+   - 尚未處理的硬編碼符號／觸發詞
+   - 檔案內部自相矛盾或重複的區塊
+   - 遷移後失效的絕對路徑、外部引用
+3. 回報 push 完成後，直接 clone 遠端 repo 核對實體檔案內容，
+   不只依賴執行者自己的文字描述。
+
+### 7.3 與既有紀律的關係
+
+第 3 點的執行者是宏觀審計官（見 `PRINCIPLES.md` §0），不是執行遷移的
+Agent 自己。決策背景與 2026-08-13 的三輪來回事件，見
+`docs/adr/0005-high-risk-skill-three-layer-review.md`。

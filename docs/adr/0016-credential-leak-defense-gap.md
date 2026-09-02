@@ -67,6 +67,8 @@ pre-commit hook，無法被「忘記使用」。
 應新增一條：「任何 commit 或 push 操作前，若 staged 檔案中包含
 設定檔（`.json`、`.env`、`.yaml`）或非程式碼檔案」。
 
+**（2026-09-01 已落實：`SOP_14` §0 已新增此觸發條件。）**
+
 ## Consequences
 
 - HH.AI_v2 目前**尚未建立** pre-commit hook。在建立之前，憑證防護
@@ -79,3 +81,9 @@ pre-commit hook，無法被「忘記使用」。
 - 舊專案的 `.gitignore` 已於 2026-08-26 強化，新增 `temp_mcp.json`、
   `mcp_config*.json`、`temp_images/`、`bridge_state.json`、`*.tmp`
   等排除規則，並將已被追蹤的執行期產物以 `git rm --cached` 脫離版控。
+
+## 2026-09-01 落實紀錄
+
+Decision §4 要求 `SOP_14` 觸發條件新增「版控操作前」一條，已於本日落實，
+見 `SOP/SOP_14_Rigorous_Verification_and_Audit_Protocol.md` §0。
+§1 至 §3 的規範仍未落地（pre-commit hook 尚未建立），維持原狀。
