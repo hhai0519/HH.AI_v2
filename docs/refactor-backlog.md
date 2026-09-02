@@ -1104,3 +1104,19 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 - **2026-08-26**：4 個 orchestration 型技能遷移完成
   （subagent-collaboration、recursive-research-automation、cost-benefit-router、epistemic-state-governor）
 - **2026-08-26**：遷移 4 個技能 (`sentiment-scout`, `quant-research-loop`, `langsmith-fetch`, `json-to-flex-renderer`) 至 `analysis/` 與 `platform/`，修正舊版 bucket 參照並分離出 REFERENCE.md，清查 `SKIP_LOCK` 繞過機制（未於 loop 內實作，留存記錄），完成環境指南的交叉引用。
+
+---
+
+## 五、接手交接區（新對話接手時先讀這一段）
+
+### 5.1 上一批狀態
+（HEAD、批次做了什麼、核對結果）
+
+### 5.2 待辦（依優先序）
+（可直接執行、不需裁決的項目）
+
+### 5.3 待使用者裁決
+（每項附上選項與我的建議）
+
+### 5.4 進行中／等待回報
+（已發出提示詞、尚未收到回報的批次）
