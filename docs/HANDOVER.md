@@ -57,7 +57,7 @@ Antigravity 有本機權限但沒有獨立查證能力（它自己的回報不�
 | `orchestration/` | 流程調度、任務路由、狀態機（無副作用） |
 | `analysis/` | 分析與判斷（純分析，不執行外部動作） |
 | `agents/` | RARV 執行型，有真實副作用（發訊息／寫檔／下單）→ 需 `authorized_mcp_tools` + `disable-model-invocation: true` |
-| `execution/` | 16 | d3js-visualization、webapp-testing、mcp-engineer、pdf、xlsx、csv-data-summarizer、artifacts-builder、changelog-generator、systematic-debugging、tool-executor、frontend-developer、declarative-visual-intent-generator、gemma-4-api、image-enhancer、theme-factory、playwright-automation |
+| `execution/` | 工具與整合層，有明確輸入輸出的執行型技能（視覺化、測試、文件處理、API 呼叫） |
 | `platform/` | 平台整合（LINE／Telegram／MCP／Postgres） |
 | `meta/` | 造技能的技能、治理類 |
 | `deprecated/` | 已棄用，不維護 |
@@ -93,11 +93,11 @@ C:\Users\HH.AI_260806\.gemini\config\mcp_config.json   （MCP 設定，不在版
 |---|---|
 | `HH.AI_v2/AGENTS.md` | 架構規範（七桶定義、SKILL.md 格式、frontmatter 規則） |
 | `HH.AI_v2/docs/refactor-backlog.md` | 進度與待辦清單（**接手必讀**） |
-| `HH.AI_v2/docs/adr/` | 20 份架構決策紀錄 |
+| `HH.AI_v2/docs/adr/` | 19 份架構決策紀錄 ＋ 1 份範本（`0000-adr-template.md`），目錄下共 20 個 `.md` |
 | `HH.AI_v2/.agents/rules/` | 5 份 workspace 規則（Antigravity 自動載入） |
 | `HH.AI_v2/.claude/rules/` | 審計官作業協定（**Claude 專屬**，Antigravity 不執行）。開場時由審計官主動 clone 讀取 |
 | `HH.AI_v2/SOP/` | 10 份操作流程 + `SOP_00A_Master_Index.json`（`$$` 指令權威路由表） |
-| `HH.AI_v2/scripts/validate_skills.py` | 唯一的自動化驗證工具 |
+| `HH.AI_v2/scripts/validate_skills.py` | 技能結構驗證。另有 `scripts/check_consistency.py`（七項跨檔案一致性）與 `pytest`（41 個測試），三者合稱「驗證三項」 |
 
 ### 使用者提供的外部資料
 
@@ -134,7 +134,8 @@ C:\Users\HH.AI_260806\.gemini\config\mcp_config.json   （MCP 設定，不在版
 
 ### 已識別的 vendored 外部資產
 
-以下技能實際上是外部專案的副本，**尚無標示規則**（`AGENTS.md` 缺這條，
+以下技能實際上是外部專案的副本，標示規則已於 2026-08-29 建立
+（`docs/adr/0018-vendored-external-assets.md`，規則本體寫在 `AGENTS.md` §8）：
 可能需補 ADR）：
 
 | 技能 | 來源 | 授權 | 狀態 |
@@ -248,7 +249,7 @@ C:\Users\HH.AI_260806\.gemini\config\mcp_config.json   （MCP 設定，不在版
 （`jules-integration`、`macro-linkage`、`ownership-cluster`、
 `setup-hhai-skills`、`skill-evolution-governor`）。
 
-### 4.2 ADR：20 份
+### 4.2 ADR：19 份決策紀錄（＋ 1 份範本）
 
 | 編號 | 主題 |
 |---|---|
@@ -437,11 +438,11 @@ C:\Users\HH.AI_260806\.gemini\config\mcp_config.json   （MCP 設定，不在版
 | 項目 | 說明 |
 |---|---|
 | **舊 repo 1 個未推送 commit** | `968bb6d chore: purge runtime artifacts...`，等使用者換完金鑰才能推 |
-| **pre-commit hook** | ADR-0016 記錄的缺口，`HH.AI_v2` 目前無任何 commit 前憑證檢查 |
+| **pre-commit hook** | ADR-0016 記錄的缺口，`HH.AI_v2` 目前無任何 commit 前憑證檢查。**2026-08-29 已裁決**：gitleaks 實測後決定不部署自動化攔截，維持人工審查，理由見 `refactor-backlog.md` 第 16 點。ADR-0016 §4 要求的「版控操作前」觸發條件已於 2026-09-01 落實於 `SOP_14` §0 |
 | **LINE/TG 遠端免確認設定** | 遠端下指令時 MCP 授權會跳確認視窗，失去遠端操作意義 |
 | ~~**Agent 操控 Jules**~~ | ✅ 2026-08-29 解除。官方 MCP 提供 `list_sessions`、`get_session_state` 等 8 組工具，可直接查詢（ADR-0019） |
 | **`ADR-0012` 補 `SKIP_LOCK`** | `autoresearch-agent` 用 `SKIP_LOCK=1` 繞過全域鎖，ADR-0012 未記載 |
-| **vendored 外部資產標示規則** | `theme-factory`（Anthropic 官方）、`remoat`（第三方）缺標示規範，`AGENTS.md` 無此條，可能要補 ADR |
+| ~~**vendored 外部資產標示規則**~~ | ✅ 2026-08-29 已解決。`docs/adr/0018-vendored-external-assets.md` 建立三層標示規則，規則本體寫入 `AGENTS.md` §8 第 5 條，ADR 只留「為什麼」（此為分層搬移的正面範本） |
 | ~~**Payload 淨化規則詞彙不一致**~~ | ✅ 2026-09-01 已收斂。全庫共 **16 個檔案**帶有「Payload 淨化規則」樣板，分兩種變體：(a) 舊分層詞彙 `Cognitive`／`Execution` 型，6 個檔案；(b) 已用 bucket 名稱但保留失效的 `(§6.3)` 章節引用與「若…若…」條件式寫法，9 個檔案。三批合計 16 個檔案已全數改寫為依實際 bucket 的確定敘述，規範本體統一指向 `.agents/rules/skill-engineering-guardrails.md` §3。處理紀錄見 `refactor-backlog.md` 第 19、20、25、26 點 |
 | **DLP 安全宣告為裝飾性樣板** | 「✓ DLP 資料安全驗證已通過 \| 資料加密處理 \| 隱私保護協議」出現在 25 份 SKILL.md，但不對應任何實際驗證行為；`dlpSanitizer.js` 做的是遮蔽非加密，且只在 LINE/TG 寫對話紀錄時作用，不在 commit 路徑上。**源頭已於 2026-09-01 查明並斷源**：`skills/meta/skill-evolution-governor/SKILL.md` 原第 40-49 行要求每個技能加上該宣告，已改為指向 SOP_02 §1 與 guardrails §3。25 份存量待單獨一批清理，見 `refactor-backlog.md` 第 17 點 |
 | **`json-to-flex-renderer` 指向舊 repo 路徑** | SKILL.md 第 31 行引用 `skills/03_Execution/line-bot-zero-delay/`，屬合法註記（runtime 尚未遷移），但 runtime 遷移完成後必須回頭更新 |
@@ -492,7 +493,9 @@ C:\Users\HH.AI_260806\.gemini\config\mcp_config.json   （MCP 設定，不在版
 
 ## 7. 未處理的風險
 
-### 7.1 🔴 最高優先：`nlm_cookies.txt` 已推送至公開 repo
+### 7.1 ~~🔴 最高優先~~ ✅ 已處置：`nlm_cookies.txt` 已推送至公開 repo
+
+> **狀態：已處置。** 2026-08-29 使用者已執行 Google 帳號登出所有裝置，憑證已失效。本節保留為事件紀錄，不是待辦。
 
 - **檔案**：`HH.AI_260806/nlm_cookies.txt`
 - **內容**：Google session cookie（`OSID=g.a000BQlXn0CY...`，329 bytes）
@@ -761,6 +764,7 @@ grep -rn "0[1-9]_[A-Za-z\u4e00-\u9fff]" skills/
      那不是替他省成本，是在推開他 |
 | 9 | **交接不完整** | 以為建好 Project、上傳文件就是交接，實際上新對話第一件事就卡住
      （不知道自己可以 clone repo） |
+| 10 | **數字分歧用「不影響結果」結案** | 發現 Markdown 圍欄數 16 vs 14 的分歧時，以「應該是計數方式差異，兩者都是偶數不影響結果」結案，被使用者當場指出。`PRINCIPLES.md` §2.7「數字或事實出現分歧時必須收斂為單一答案」即由此事件而生 |
 
 ---
 
@@ -781,7 +785,7 @@ ls docs/adr/                         # 20 份決策紀錄
 
 ### 12.2 優先處理順序（建議）
 
-1. **提醒使用者撤銷 `nlm_cookies.txt` 的 Google session**（最急，與重構無關）
+1. ~~**提醒使用者撤銷 `nlm_cookies.txt` 的 Google session**~~ ✅ 2026-08-29 已完成，見 §7.1。**接手者不需要做這一項。**
 2. **請使用者裁決攔截項三**（runtime 層架構選擇，見 §5.2。
    攔截項一與二已於 2026-08-29 裁決完畢）
 3. `jules-integration` 技能改寫（`authorized_mcp_tools` 與內文仍在描述
@@ -845,3 +849,20 @@ print(sum(1 for l in t.splitlines() if l.strip().startswith('\`\`\`')))
 
 如需更新此手冊，建議放入 `HH.AI_v2/docs/HANDOVER.md`，
 並在每次重大階段完成後更新「已完成／未完成」兩節。
+
+---
+
+**2026-09-01 至 09-02 補記**：本檔案的十項過期與不一致已於 2026-09-02
+一次修正（`refactor-backlog.md` 第 33 點）。同期新增的治理層內容
+未反映在上方各節，以下列各檔為準：
+
+- `PRINCIPLES.md` §0 角色分工（Claude 審計官／Antigravity 執行者／Jules 雲端代理）
+- `.claude/rules/auditor-protocol.md`：審計官作業協定十節
+  （審計維度、Gatekeeping、報告格式、查證紀律、提示詞紀律、
+   自我審查、額度紀律、交接協定、任務板維護）
+- `.claude/rules/handover-selftest.md`：接手自檢清單
+- `.agents/rules/role-boundaries.md`：執行者的角色邊界規則
+- `docs/TASKBOARD.md`：41 項任務看板（五態流轉、含封存區）
+- `docs/ARCHIVE-INDEX.md`：五個歸檔層級的統一查詢入口
+
+**待辦一律以 `docs/TASKBOARD.md` 為準，不以本檔為準。**
