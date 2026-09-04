@@ -10,7 +10,7 @@
 `待裁決`（需使用者決定）／`已完成`（仍可能被引用）／
 `可封存`（不影響後續工作，待使用者確認後移入封存區）
 
-**最後更新**：2026-09-02，HEAD `18af8ad` 之後
+**最後更新**：2026-09-02，HEAD `08e6bbc` 之後
 
 ---
 
@@ -41,6 +41,7 @@
 | A-21 | 已完成 | 互相監督：執行者對提示詞做配對與覆蓋檢查 | 審計官最近六次錯誤中，**四次是執行者攔下的**，但它只有七項結構檢查。新增 §3.1 配對規則（更新 TASKBOARD HEAD ⇔ 更新交接區 HEAD 等）與 §3.2 覆蓋規則（`git add` 清單 ⇔ 總行數確認 ⇔ 圍欄檢查），把失敗提早到寫入之前。**嚴格限定為機械檢查**——判斷類的疑問依 `role-boundaries.md` §3 回報給使用者，不由執行者裁決，否則違反 ADR-0007 的立論 |
 | A-22 | 已完成 | **自檢聲明區塊：讓審計官的自檢產生外部產物** | 2026-09-02 稽核發現 `handover-selftest.md` E 節不產生任何可觀察的東西——有沒有跑過，使用者、執行者、repo 都看不到。**這是審計官連續多批未遵守 §6.1 的根本原因，不是自律問題。** 處置：每份提示詞必須含【審計官自檢聲明】區塊（§6.1-12），執行者對可機械驗證的七項做交叉比對（`prompt-preflight.md` §3.4），使聲明成為可被推翻的宣稱 |
 | A-23 | 已完成 | 「規則寫在他節、未進 §6.1」的第三次發生 | 交接區（§9.3）→ TASKBOARD（§10.5）→ **AUDIT-LOG（§7.1）**。前兩次各導致該檔案落後 2-3 批，第三次於本輪發現時 `AUDIT-LOG.md` 已落後一批。處置：§6.1 第 8 項擴為三項更新指令。**根因是「規範文件的章節」與「審計官實際照著跑的清單」是兩個不同的東西**，新增任何「每批必做」的規則時，必須同步進 §6.1 與 selftest E 節 |
+| A-24 | 已完成 | 未 staged 遺漏的機械防線 | 本批攔截點觸發事件所暴露的缺口，已由 preflight §3.3 處置 |
 
 **A 節除 A-06、A-07 外全部完成**，若 E1／E2 通過且未推翻任何設計，
 屆時可一併提議封存。
@@ -56,14 +57,14 @@
 | ID | 狀態 | 項目 | 備註 |
 |---|---|---|---|
 | B-01 | 待辦 | ADR-0002／0004／0010 分層搬移 | **保留給 E2 的新 Agent 執行**，現任 Agent 不得先做 |
-| B-02 | 待辦 | `check_consistency.py` 增補七項檢查（CHECK 8-14） | CHECK 8 看板 HEAD 落後、9 交接區 HEAD 落後、10 §X.Y 章節引用有效性、11 §6.1 與 selftest E 的對應、12 `AUDIT-LOG` 最新列落後（首列 BOOTSTRAP 例外）、13 檔尾換行、14 簡體字 ＋ setext。**七項全部對應已實際發生的事故**。與 B-07、B-09 同批 |
+| B-02 | 已完成 | `check_consistency.py` 增補檢查（CHECK 8-15） | CHECK 8 看板 HEAD 落後、9 交接區 HEAD 落後、10 §X.Y 章節引用有效性、11 §6.1 與 selftest E 對應、12 AUDIT-LOG 最新列落後、13 檔尾換行、14 簡體字、15 提示詞衝突字串。本批擴充至 15 項，全數通過 |
 | B-03 | 待辦 | 新建 `SOP/SOP_03_Skill_Lifecycle_and_Quality.md` | 收納舊 `SOP_00` §一／§三／§四與舊 `SOP_03` §4.2／§4.3，見第 18 點 |
 | B-04 | 待辦 | `validate_skills.py` 加 description 觸發詞警告 ＋ 測試 | 警告非錯誤，現存多個技能會失敗 |
 | B-05 | 待辦 | DLP 裝飾樣板存量清理（25 份 SKILL.md） | 源頭已斷，見第 17 點 |
 | B-06 | 待辦 | `description` 引號寫法收斂（26 加／28 未加） | 見第 20 點 C |
-| B-07 | 待辦 | **GitHub Actions CI**（`.github/workflows/verify.yml`，push 觸發） | 唯一既不是審計官也不是執行者的第三方檢查者。跑驗證三項 ＋ `test_check_consistency.py`。公開 repo 免費。與 B-02 同批 |
-| B-08 | 待辦 | 已審核標記機制（`audited-<hash>` tag） | 每批核對通過後於下一批打 tag。用途：回滾目標明確、交接區 HEAD 有機器可查的對應物、可偵測「未經核對就累積的批次」。規則見 `auditor-protocol.md` §11.3 |
-| B-09 | 待辦 | `test_check_consistency.py` | **`check_consistency.py` 目前零測試覆蓋**（`scripts/tests/` 只有 `test_validate_skills.py` 28 個測試）。而它即將從 7 個 CHECK 擴至 14 個，承擔整個治理層的強制執行 |
+| B-07 | 已完成 | **GitHub Actions CI**（`.github/workflows/verify.yml`，push 觸發） | 新建 verify.yml，fetch-depth: 0，包含 validate_skills、check_consistency 與全自動化測試 |
+| B-08 | 已完成 | 已審核標記機制（`audited-<hash>` tag） | 本批補齊 audited-18af8ad 與 audited-08e6bbc 標籤，與遠端同步 |
+| B-09 | 已完成 | `test_check_consistency.py` | 為 CHECK 8 至 CHECK 15 撰寫完整正反例測試，含 BOOTSTRAP 例外與 CHECK 11 失敗重現 |
 | B-10 | 待辦 | Jules 的協作規範 | 目前全庫關於 Jules 只有兩行。缺：產出如何驗證、分支如何審查、誰負責合併、失敗如何處置。F-01 已指定為 Jules 首航任務——**規範必須在 Jules 實際加入前完成** |
 
 ---

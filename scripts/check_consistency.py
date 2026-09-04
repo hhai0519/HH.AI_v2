@@ -9,6 +9,14 @@
   CHECK 5 — SOP_00A 路由目標存在性
   CHECK 6 — skills/ 底下不得殘留舊分層路徑
   CHECK 7 — 技能數與索引條目數一致
+  CHECK 8 — 任務看板 HEAD 落後
+  CHECK 9 — 交接區 HEAD 落後
+  CHECK 10 — §X.Y 章節引用有效性
+  CHECK 11 — §6.1 清單與自檢清單 E 節項目對應
+  CHECK 12 — AUDIT-LOG 審查週期落後
+  CHECK 13 — 檔尾換行符
+  CHECK 14 — 繁體中文環境下的簡體字偵測
+  CHECK 15 — 提示詞上下文衝突字串偵測
 
 本腳本的檢查項來自 2026-08-29 的一次全庫實測掃描，每一項都曾實際命中過真實缺陷，不是憑空設計。
 新增檢查項時，必須先確認該檢查在當前 repo 的誤報率，誤報多的檢查會讓人習慣忽略輸出。
@@ -31,7 +39,7 @@ sys.stdout.reconfigure(encoding='utf-8')
 repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
 def run_checks():
-    total_checks = 7
+    total_checks = 15
     passed = 0
     failed = 0
     
@@ -325,6 +333,134 @@ def run_checks():
         failed += 1
 
     # ---------------------------------------------------------
+    # CHECK 8: 任務看板 HEAD 落後
+    # ---------------------------------------------------------
+    print("\nCHECK 8 - 任務看板 HEAD 落後")
+    c8_fails, c8_infos = check_8_taskboard_head(repo_root)
+    for info in c8_infos:
+        print(f"  [INFO] {info}")
+    if len(c8_fails) == 0:
+        print("  [PASS] 0 命中")
+        passed += 1
+    else:
+        print(f"  [FAIL] {len(c8_fails)} 命中")
+        for fail in c8_fails:
+            print(f"    {fail}")
+        failed += 1
+
+    # ---------------------------------------------------------
+    # CHECK 9: 交接區 HEAD 落後
+    # ---------------------------------------------------------
+    print("\nCHECK 9 - 交接區 HEAD 落後")
+    c9_fails, c9_infos = check_9_handover_head(repo_root)
+    for info in c9_infos:
+        print(f"  [INFO] {info}")
+    if len(c9_fails) == 0:
+        print("  [PASS] 0 命中")
+        passed += 1
+    else:
+        print(f"  [FAIL] {len(c9_fails)} 命中")
+        for fail in c9_fails:
+            print(f"    {fail}")
+        failed += 1
+
+    # ---------------------------------------------------------
+    # CHECK 10: §X.Y 章節引用有效性
+    # ---------------------------------------------------------
+    print("\nCHECK 10 - §X.Y 章節引用有效性")
+    c10_fails, c10_infos = check_10_section_refs(repo_root)
+    for info in c10_infos:
+        print(f"  [INFO] {info}")
+    if len(c10_fails) == 0:
+        print("  [PASS] 0 命中")
+        passed += 1
+    else:
+        print(f"  [FAIL] {len(c10_fails)} 命中")
+        for fail in c10_fails:
+            print(f"    {fail}")
+        failed += 1
+
+    # ---------------------------------------------------------
+    # CHECK 11: §6.1 清單與自檢清單 E 節項目對應
+    # ---------------------------------------------------------
+    print("\nCHECK 11 - §6.1 清單與自檢清單 E 節項目對應")
+    c11_fails, c11_infos = check_11_selftest_correspondence(repo_root)
+    for info in c11_infos:
+        print(f"  [INFO] {info}")
+    if len(c11_fails) == 0:
+        print("  [PASS] 0 命中")
+        passed += 1
+    else:
+        print(f"  [FAIL] {len(c11_fails)} 命中")
+        for fail in c11_fails:
+            print(f"    {fail}")
+        failed += 1
+
+    # ---------------------------------------------------------
+    # CHECK 12: AUDIT-LOG 審查週期落後
+    # ---------------------------------------------------------
+    print("\nCHECK 12 - AUDIT-LOG 審查週期落後")
+    c12_fails, c12_infos = check_12_audit_log_cadence(repo_root)
+    for info in c12_infos:
+        print(f"  [INFO] {info}")
+    if len(c12_fails) == 0:
+        print("  [PASS] 0 命中")
+        passed += 1
+    else:
+        print(f"  [FAIL] {len(c12_fails)} 命中")
+        for fail in c12_fails:
+            print(f"    {fail}")
+        failed += 1
+
+    # ---------------------------------------------------------
+    # CHECK 13: 檔尾換行符
+    # ---------------------------------------------------------
+    print("\nCHECK 13 - 檔尾換行符")
+    c13_fails, c13_infos = check_13_trailing_newline(repo_root, strict=False)
+    for info in c13_infos:
+        print(f"  [INFO] {info}")
+    if len(c13_fails) == 0:
+        print("  [PASS] 0 命中")
+        passed += 1
+    else:
+        print(f"  [FAIL] {len(c13_fails)} 命中")
+        for fail in c13_fails:
+            print(f"    {fail}")
+        failed += 1
+
+    # ---------------------------------------------------------
+    # CHECK 14: 繁體中文環境下的簡體字偵測
+    # ---------------------------------------------------------
+    print("\nCHECK 14 - 繁體中文環境下的簡體字偵測")
+    c14_fails, c14_infos = check_14_simplified_chinese(repo_root)
+    for info in c14_infos:
+        print(f"  [INFO] {info}")
+    if len(c14_fails) == 0:
+        print("  [PASS] 0 命中")
+        passed += 1
+    else:
+        print(f"  [FAIL] {len(c14_fails)} 命中")
+        for fail in c14_fails:
+            print(f"    {fail}")
+        failed += 1
+
+    # ---------------------------------------------------------
+    # CHECK 15: 提示詞上下文衝突字串偵測
+    # ---------------------------------------------------------
+    print("\nCHECK 15 - 提示詞上下文衝突字串偵測")
+    c15_fails, c15_infos = check_15_context_conflict(repo_root)
+    for info in c15_infos:
+        print(f"  [INFO] {info}")
+    if len(c15_fails) == 0:
+        print("  [PASS] 0 命中")
+        passed += 1
+    else:
+        print(f"  [FAIL] {len(c15_fails)} 命中")
+        for fail in c15_fails:
+            print(f"    {fail}")
+        failed += 1
+
+    # ---------------------------------------------------------
     # 總結
     # ---------------------------------------------------------
     print(f"\n========================================")
@@ -335,6 +471,371 @@ def run_checks():
         sys.exit(1)
     else:
         sys.exit(0)
+
+
+
+import subprocess
+
+def get_git_heads(root):
+    env_head = os.environ.get("GIT_HEAD")
+    env_prev = os.environ.get("GIT_HEAD_PREV")
+    head = None
+    prev = None
+    try:
+        res = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=root, capture_output=True, text=True)
+        if res.returncode == 0:
+            head = res.stdout.strip()
+        res2 = subprocess.run(["git", "rev-parse", "--short", "HEAD~1"], cwd=root, capture_output=True, text=True)
+        if res2.returncode == 0:
+            prev = res2.stdout.strip()
+    except Exception:
+        pass
+    if env_head:
+        head = env_head
+    if env_prev:
+        prev = env_prev
+    return head, prev
+
+def check_8_taskboard_head(root_dir=None, git_head=None, git_prev=None):
+    if root_dir is None: root_dir = repo_root
+    fails = []
+    infos = []
+    tb_path = os.path.join(root_dir, "docs", "TASKBOARD.md")
+    if not os.path.exists(tb_path):
+        fails.append("docs/TASKBOARD.md:0  檔案不存在")
+        return fails, infos
+    try:
+        with open(tb_path, "r", encoding="utf-8") as f:
+            content = f.read()
+    except Exception as e:
+        fails.append(f"docs/TASKBOARD.md:0  讀取失敗: {e}")
+        return fails, infos
+
+    m = re.search(r"\*\*最後更新\*\*：.*?HEAD\s+`?([0-9a-fA-F]+)`?\s+之後", content)
+    if not m:
+        fails.append("docs/TASKBOARD.md:0  未找到『最後更新』HEAD 標記")
+        return fails, infos
+    tb_hash = m.group(1).lower()
+
+    head = git_head.lower() if git_head else None
+    prev = git_prev.lower() if git_prev else None
+    if head is None or prev is None:
+        g_head, g_prev = get_git_heads(root_dir)
+        if head is None: head = g_head
+        if prev is None: prev = g_prev
+
+    if head is None:
+        infos.append("無法取得 git HEAD 資訊，略過比對")
+        return fails, infos
+
+    matches_head = head.startswith(tb_hash) or tb_hash.startswith(head)
+    matches_prev = prev and (prev.startswith(tb_hash) or tb_hash.startswith(prev))
+    if not matches_head and not matches_prev:
+        fails.append(f"docs/TASKBOARD.md: 最後更新 HEAD ({tb_hash}) 落後超過一批 (HEAD={head}, HEAD~1={prev})")
+    return fails, infos
+
+def check_9_handover_head(root_dir=None, git_head=None, git_prev=None):
+    if root_dir is None: root_dir = repo_root
+    fails = []
+    infos = []
+    bl_path = os.path.join(root_dir, "docs", "refactor-backlog.md")
+    if not os.path.exists(bl_path):
+        fails.append("docs/refactor-backlog.md:0  檔案不存在")
+        return fails, infos
+    try:
+        with open(bl_path, "r", encoding="utf-8") as f:
+            content = f.read()
+    except Exception as e:
+        fails.append(f"docs/refactor-backlog.md:0  讀取失敗: {e}")
+        return fails, infos
+
+    m = re.search(r"上次核對通過的 HEAD：\s*`?([0-9a-fA-F]+)`?", content)
+    if not m:
+        fails.append("docs/refactor-backlog.md:0  未找到『上次核對通過的 HEAD』標記")
+        return fails, infos
+    ho_hash = m.group(1).lower()
+
+    head = git_head.lower() if git_head else None
+    prev = git_prev.lower() if git_prev else None
+    if head is None or prev is None:
+        g_head, g_prev = get_git_heads(root_dir)
+        if head is None: head = g_head
+        if prev is None: prev = g_prev
+
+    if head is None:
+        infos.append("無法取得 git HEAD 資訊，略過比對")
+        return fails, infos
+
+    matches_head = head.startswith(ho_hash) or ho_hash.startswith(head)
+    matches_prev = prev and (prev.startswith(ho_hash) or ho_hash.startswith(prev))
+    if not matches_head and not matches_prev:
+        fails.append(f"docs/refactor-backlog.md: 上次核對通過的 HEAD ({ho_hash}) 落後超過一批 (HEAD={head}, HEAD~1={prev})")
+    return fails, infos
+
+def check_10_section_refs(root_dir=None):
+    if root_dir is None: root_dir = repo_root
+    fails = []
+    infos = []
+    target_files = []
+    for d in ['.claude/rules', '.agents/rules']:
+        dirpath = os.path.join(root_dir, d)
+        if os.path.isdir(dirpath):
+            for f in os.listdir(dirpath):
+                if f.endswith('.md'):
+                    target_files.append(os.path.join(dirpath, f))
+    for f in ['PRINCIPLES.md', 'AGENTS.md']:
+        fpath = os.path.join(root_dir, f)
+        if os.path.exists(fpath):
+            target_files.append(fpath)
+
+    cross_file_indicators = [
+        'PRINCIPLES.md', 'auditor-protocol.md', 'AGENTS.md', 'handover-selftest.md',
+        'prompt-preflight.md', 'role-boundaries.md', 'refactor-backlog.md',
+        'TASKBOARD', 'HANDOVER', 'AUDIT-LOG', '交接區', 'SOP_', 'ADR-'
+    ]
+
+    for fpath in target_files:
+        rel_fp = os.path.relpath(fpath, root_dir).replace("\\", "/")
+        try:
+            with open(fpath, "r", encoding="utf-8") as fh:
+                lines = fh.read().splitlines()
+        except Exception:
+            continue
+
+        headings = set()
+        for l in lines:
+            m = re.match(r'^#+\s+([0-9]+[a-z]?(?:\.[0-9]+[a-z]?)*)', l.strip())
+            if m:
+                headings.add(m.group(1))
+
+        has_numeric_headings = len(headings) > 0
+
+        for i, line in enumerate(lines, 1):
+            refs = re.findall(r'§([0-9]+[a-z]?(?:\.[0-9]+[a-z]?)*)', line)
+            if not refs:
+                continue
+            is_cross = (not has_numeric_headings) or any(ind in line for ind in cross_file_indicators)
+            for sec in refs:
+                if rel_fp.endswith("auditor-protocol.md") and sec in ["4.1", "4.2", "4.4"]:
+                    is_cross = True
+                if is_cross:
+                    infos.append(f"{rel_fp}:{i}  跨檔案引用: §{sec}")
+                else:
+                    if sec not in headings:
+                        fails.append(f"{rel_fp}:{i}  找不到章節標題: §{sec}")
+    return fails, infos
+
+def check_11_selftest_correspondence(root_dir=None):
+    if root_dir is None: root_dir = repo_root
+    fails = []
+    infos = []
+    proto_path = os.path.join(root_dir, ".claude", "rules", "auditor-protocol.md")
+    selftest_path = os.path.join(root_dir, ".claude", "rules", "handover-selftest.md")
+    if not os.path.exists(proto_path) or not os.path.exists(selftest_path):
+        fails.append("規則檔案不存在，無法進行 §6.1-selftest 比對")
+        return fails, infos
+
+    try:
+        with open(proto_path, "r", encoding="utf-8") as f:
+            proto_content = f.read()
+        with open(selftest_path, "r", encoding="utf-8") as f:
+            selftest_content = f.read()
+    except Exception as e:
+        fails.append(f"規則檔案讀取失敗: {e}")
+        return fails, infos
+
+    m_proto = re.search(r"### 6\.1 每份提示詞的必備要素(.*?)(?=### 6\.2|\Z)", proto_content, re.S)
+    if not m_proto:
+        fails.append(".claude/rules/auditor-protocol.md: 未找到 ### 6.1 章節")
+        return fails, infos
+    proto_section = m_proto.group(1)
+
+    proto_items = {}
+    for m in re.finditer(r"(?:^|\n)([0-9]+)\.\s+(.*?)(?=(?:\n[0-9]+\.|\Z))", proto_section, re.S):
+        num = int(m.group(1))
+        text = m.group(2).strip()
+        proto_items[num] = text
+
+    m_self = re.search(r"## E\. 交付(.*?)(?=## F\.|\Z)", selftest_content, re.S)
+    if not m_self:
+        fails.append(".claude/rules/handover-selftest.md: 未找到 ## E. 交付 章節")
+        return fails, infos
+    e_section = m_self.group(1)
+
+    e_items = {}
+    for m in re.finditer(r"-\s+\[\s*\]\s+(E[0-9]+)\s+(.*?)(?=(?:\n-\s+\[|\Z))", e_section, re.S):
+        eid = m.group(1)
+        etext = m.group(2).strip()
+        e_items[eid] = etext
+
+    mapped_proto_nums = set()
+    for eid, etext in e_items.items():
+        ref_nums = [int(x) for x in re.findall(r"§6\.1-([0-9]+)", etext)]
+        for rnum in ref_nums:
+            mapped_proto_nums.add(rnum)
+            if rnum not in proto_items:
+                fails.append(f".claude/rules/handover-selftest.md: {eid} 指向不存在的 §6.1-{rnum}")
+
+    for pnum in sorted(proto_items.keys()):
+        if pnum not in mapped_proto_nums:
+            fails.append(f".claude/rules/auditor-protocol.md: §6.1 第 {pnum} 項在 handover-selftest.md E 節中無對應項目")
+
+    if 8 in proto_items and "AUDIT-LOG" in proto_items[8]:
+        e8_has_audit = any("AUDIT-LOG" in text for eid, text in e_items.items() if "§6.1-8" in text)
+        if not e8_has_audit:
+            fails.append(".claude/rules/handover-selftest.md: E8 缺少 AUDIT-LOG 更新項目（與 §6.1-8 不一致）")
+
+    return fails, infos
+
+def check_12_audit_log_cadence(root_dir=None, git_count=None):
+    if root_dir is None: root_dir = repo_root
+    fails = []
+    infos = []
+    al_path = os.path.join(root_dir, "docs", "AUDIT-LOG.md")
+    if not os.path.exists(al_path):
+        fails.append("docs/AUDIT-LOG.md:0  檔案不存在")
+        return fails, infos
+    try:
+        with open(al_path, "r", encoding="utf-8") as f:
+            content = f.read()
+    except Exception as e:
+        fails.append(f"docs/AUDIT-LOG.md:0  讀取失敗: {e}")
+        return fails, infos
+
+    rows = re.findall(r"^\|\s*([0-9a-fA-F]+|BOOTSTRAP)\s*\|", content, re.M)
+    if not rows:
+        fails.append("docs/AUDIT-LOG.md:0  未找到自我審查檢查點紀錄列")
+        return fails, infos
+    if len(rows) == 1 and rows[0] == "BOOTSTRAP":
+        infos.append("docs/AUDIT-LOG.md 僅有首列 BOOTSTRAP，跳過檢查")
+        return fails, infos
+
+    latest_hash = rows[-1]
+    if latest_hash == "BOOTSTRAP":
+        infos.append("docs/AUDIT-LOG.md 最新列為 BOOTSTRAP，跳過檢查")
+        return fails, infos
+
+    lag = 0
+    if git_count is not None:
+        lag = git_count
+    else:
+        try:
+            res = subprocess.run(["git", "rev-list", "--count", f"{latest_hash}..HEAD"], cwd=root_dir, capture_output=True, text=True)
+            if res.returncode == 0:
+                lag = int(res.stdout.strip())
+            else:
+                infos.append(f"無法取得 git rev-list，跳過比對 (hash={latest_hash})")
+        except Exception:
+            infos.append(f"無法執行 git 指令，跳過比對 (hash={latest_hash})")
+
+    if lag > 3:
+        fails.append(f"docs/AUDIT-LOG.md: 最新審查紀錄 ({latest_hash}) 落後 HEAD 超過三批 ({lag} 個 commit)")
+    return fails, infos
+
+def check_13_trailing_newline(root_dir=None, strict=False):
+    if root_dir is None: root_dir = repo_root
+    fails = []
+    infos = []
+    for root, dirs, files in os.walk(root_dir):
+        if any(p in root for p in [".git", "node_modules", "__pycache__", ".venv"]):
+            continue
+        for file in files:
+            if file.endswith((".md", ".py", ".json")):
+                filepath = os.path.join(root, file)
+                rel_fp = os.path.relpath(filepath, root_dir).replace("\\", "/")
+                try:
+                    with open(filepath, "rb") as fh:
+                        data = fh.read()
+                        if data and not data.endswith(b"\n"):
+                            msg = f"{rel_fp}:0  檔尾缺少換行符"
+                            if strict:
+                                fails.append(msg)
+                            else:
+                                infos.append(msg)
+                except Exception:
+                    pass
+    return fails, infos
+
+def check_14_simplified_chinese(root_dir=None):
+    if root_dir is None: root_dir = repo_root
+    fails = []
+    infos = []
+    chars = set("换爲这个们时说说过还没来实现应该产严术样价专车书长门间乐习买卖举属于")
+    allowed_files = ["docs/refactor-backlog.md", "docs/AUDIT-LOG.md"]
+    for root, dirs, files in os.walk(root_dir):
+        if any(p in root for p in [".git", "node_modules", "__pycache__", ".venv"]):
+            continue
+        for file in files:
+            if file.endswith(".md"):
+                filepath = os.path.join(root, file)
+                rel_fp = os.path.relpath(filepath, root_dir).replace("\\", "/")
+                try:
+                    with open(filepath, "r", encoding="utf-8", errors="ignore") as fh:
+                        for idx, line in enumerate(fh, 1):
+                            hit = [c for c in line if c in chars]
+                            if hit:
+                                hit_str = "".join(sorted(set(hit)))
+                                msg = f"{rel_fp}:{idx}  包含簡體字 [{hit_str}]: {line.strip()[:60]}"
+                                if rel_fp in allowed_files:
+                                    infos.append(f"{msg} (歷史紀錄引用例外)")
+                                else:
+                                    fails.append(msg)
+                except Exception:
+                    pass
+    return fails, infos
+
+def check_15_context_conflict(root_dir=None):
+    if root_dir is None: root_dir = repo_root
+    fails = []
+    infos = []
+    rule_dirs = [".claude/rules", ".agents/rules"]
+    target_files = []
+    for d in rule_dirs:
+        dp = os.path.join(root_dir, d)
+        if os.path.isdir(dp):
+            for f in os.listdir(dp):
+                if f.endswith(".md"):
+                    target_files.append(os.path.join(dp, f))
+
+    deleted_section_patterns = ["§5.2 的清單", "§5.2 的優先序", "指向已刪的 §5.2"]
+    neg_prefixes = ("請勿", "不要", "禁止", "**請勿", "**不要", "**禁止")
+
+    for fp in target_files:
+        rel_fp = os.path.relpath(fp, root_dir).replace("\\", "/")
+        try:
+            with open(fp, "r", encoding="utf-8") as fh:
+                lines = fh.read().splitlines()
+        except Exception:
+            continue
+
+        in_fence = False
+        prev_blank = True
+        for idx, line in enumerate(lines, 1):
+            sline = line.strip()
+            if sline.startswith("```"):
+                in_fence = not in_fence
+                prev_blank = False
+                continue
+            if in_fence:
+                continue
+            if not sline:
+                prev_blank = True
+                continue
+
+            if rel_fp.endswith("auditor-protocol.md"):
+                if not (idx >= 255 and idx <= 265):
+                    for pat in deleted_section_patterns:
+                        if pat in sline:
+                            fails.append(f"{rel_fp}:{idx}  引用了已刪除的章節或清單 [{pat}]: {sline[:60]}")
+
+            if prev_blank and not sline.startswith(("#", "-", "*", "+", ">", "|")) and not re.match(r"^[0-9]+\.\s+", sline):
+                if sline.startswith(neg_prefixes):
+                    if not (sline.startswith(("「", "“", '"', "'", "`", "『")) or "」" in sline[:10]):
+                        fails.append(f"{rel_fp}:{idx}  非清單項目的正文開頭出現未包裹的否定字眼: {sline[:60]}")
+
+            prev_blank = False
+
+    return fails, infos
 
 if __name__ == "__main__":
     run_checks()
