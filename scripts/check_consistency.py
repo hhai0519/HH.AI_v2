@@ -728,8 +728,8 @@ def check_12_audit_log_cadence(root_dir=None, git_count=None):
         except Exception:
             infos.append(f"無法執行 git 指令，跳過比對 (hash={latest_hash})")
 
-    if lag > 3:
-        fails.append(f"docs/AUDIT-LOG.md: 最新審查紀錄 ({latest_hash}) 落後 HEAD 超過三批 ({lag} 個 commit)")
+    if lag > 1:
+        fails.append(f"docs/AUDIT-LOG.md: 最新審查紀錄 ({latest_hash}) 落後 HEAD {lag} 個 commit（允許落後 1 批，因本批尚未核對）")
     return fails, infos
 
 def check_13_trailing_newline(root_dir=None, strict=False):
@@ -785,55 +785,85 @@ def check_14_simplified_chinese(root_dir=None):
     return fails, infos
 
 def check_15_context_conflict(root_dir=None):
-    if root_dir is None: root_dir = repo_root
+    """CHECK 15 — 交接區 §5.1 中同一 commit hash 的語境衝突。
+
+    規格：讀 docs/refactor-backlog.md 的 §5.1 整節。
+    若同一個 commit hash 同時出現在含「已核對通過」的句子
+    與含「尚待審計官核對」（或「尚待核對」）的句子中，即為 FAIL。
+
+    對應 2026-09-02 實際發生的事故（refactor-backlog 第 37 點 A 段）：
+    23af193 既被記為「已核對通過」，同節最後一個項目符號又說「尚待審計官核對」。
+    """
+    if root_dir is None:
+        root_dir = repo_root
     fails = []
     infos = []
-    rule_dirs = [".claude/rules", ".agents/rules"]
-    target_files = []
-    for d in rule_dirs:
-        dp = os.path.join(root_dir, d)
-        if os.path.isdir(dp):
-            for f in os.listdir(dp):
-                if f.endswith(".md"):
-                    target_files.append(os.path.join(dp, f))
 
-    deleted_section_patterns = ["§5.2 的清單", "§5.2 的優先序", "指向已刪的 §5.2"]
-    neg_prefixes = ("請勿", "不要", "禁止", "**請勿", "**不要", "**禁止")
+    bl_path = os.path.join(root_dir, "docs", "refactor-backlog.md")
+    if not os.path.exists(bl_path):
+        fails.append("docs/refactor-backlog.md:0  檔案不存在")
+        return fails, infos
 
-    for fp in target_files:
-        rel_fp = os.path.relpath(fp, root_dir).replace("\\", "/")
-        try:
-            with open(fp, "r", encoding="utf-8") as fh:
-                lines = fh.read().splitlines()
-        except Exception:
+    try:
+        with open(bl_path, "r", encoding="utf-8") as f:
+            content = f.read()
+    except Exception as e:
+        fails.append(f"docs/refactor-backlog.md:0  讀取失敗: {e}")
+        return fails, infos
+
+    m = re.search(r"^### 5\.1 .*?$(.*?)^### 5\.2 ", content, re.M | re.S)
+    if not m:
+        infos.append("docs/refactor-backlog.md 找不到交接區 §5.1 區段，跳過檢查")
+        return fails, infos
+
+    section = m.group(1)
+    section_start_line = content[:m.start(1)].count("\n") + 1
+
+    DONE_MARKERS = ("已核對通過", "核對通過")
+    PENDING_MARKERS = ("尚待審計官核對", "尚待核對", "等待審計官核對")
+
+    done_hashes = {}
+    pending_hashes = {}
+
+    # §5.1 的項目符號是跨行排版——hash 常在第一行、「已核對通過」在第二行。
+    # 因此以「項目符號」為掃描單位，不能逐行比對。
+    # 逐行比對的版本在 2026-09-04 實測中，done 與 pending 皆為空集合，
+    # 即使注入衝突也抓不到（由執行者發現並回報）。
+    blocks = []
+    current = None
+    for offset, line in enumerate(section.splitlines(), 0):
+        if line.lstrip().startswith("- "):
+            if current is not None:
+                blocks.append(current)
+            current = {"lineno": section_start_line + offset, "lines": [line]}
+        elif current is not None:
+            current["lines"].append(line)
+    if current is not None:
+        blocks.append(current)
+
+    for block in blocks:
+        text = "\n".join(block["lines"])
+        hashes = re.findall(r"`([0-9a-f]{7,40})`", text)
+        if not hashes:
             continue
+        lineno = block["lineno"]
+        if any(mk in text for mk in DONE_MARKERS):
+            for h in hashes:
+                done_hashes.setdefault(h, lineno)
+        if any(mk in text for mk in PENDING_MARKERS):
+            for h in hashes:
+                pending_hashes.setdefault(h, lineno)
 
-        in_fence = False
-        prev_blank = True
-        for idx, line in enumerate(lines, 1):
-            sline = line.strip()
-            if sline.startswith("```"):
-                in_fence = not in_fence
-                prev_blank = False
-                continue
-            if in_fence:
-                continue
-            if not sline:
-                prev_blank = True
-                continue
+    for h in sorted(set(done_hashes) & set(pending_hashes)):
+        fails.append(
+            f"docs/refactor-backlog.md:{done_hashes[h]}  §5.1 中 {h} 同時被描述為"
+            f"「已核對通過」與「尚待核對」（另見第 {pending_hashes[h]} 行）"
+        )
 
-            if rel_fp.endswith("auditor-protocol.md"):
-                if not (idx >= 255 and idx <= 265):
-                    for pat in deleted_section_patterns:
-                        if pat in sline:
-                            fails.append(f"{rel_fp}:{idx}  引用了已刪除的章節或清單 [{pat}]: {sline[:60]}")
-
-            if prev_blank and not sline.startswith(("#", "-", "*", "+", ">", "|")) and not re.match(r"^[0-9]+\.\s+", sline):
-                if sline.startswith(neg_prefixes):
-                    if not (sline.startswith(("「", "“", '"', "'", "`", "『")) or "」" in sline[:10]):
-                        fails.append(f"{rel_fp}:{idx}  非清單項目的正文開頭出現未包裹的否定字眼: {sline[:60]}")
-
-            prev_blank = False
+    if not fails:
+        infos.append(
+            f"§5.1 已核對 {len(done_hashes)} 個 hash、待核對 {len(pending_hashes)} 個，無交集"
+        )
 
     return fails, infos
 

@@ -157,7 +157,7 @@ def test_check_12_audit_log_cadence_pass(tmp_path):
     docs.mkdir()
     al = docs / "AUDIT-LOG.md"
     al.write_text("| 08e6bbc | 2026-09-02 | §4.1-1 | 通過 | 備註 |\n", encoding="utf-8")
-    fails, infos = check_12_audit_log_cadence(str(tmp_path), git_count=2)
+    fails, infos = check_12_audit_log_cadence(str(tmp_path), git_count=1)
     assert len(fails) == 0
 
 
@@ -166,9 +166,9 @@ def test_check_12_audit_log_cadence_fail(tmp_path):
     docs.mkdir()
     al = docs / "AUDIT-LOG.md"
     al.write_text("| 08e6bbc | 2026-09-02 | §4.1-1 | 通過 | 備註 |\n", encoding="utf-8")
-    fails, infos = check_12_audit_log_cadence(str(tmp_path), git_count=5)
+    fails, infos = check_12_audit_log_cadence(str(tmp_path), git_count=2)
     assert len(fails) == 1
-    assert "落後 HEAD 超過三批" in fails[0]
+    assert "落後 HEAD 2 個 commit" in fails[0]
 
 
 def test_check_12_audit_log_cadence_bootstrap(tmp_path):
@@ -231,29 +231,46 @@ def test_check_14_simplified_chinese_allowed_exception(tmp_path):
 
 
 def test_check_15_context_conflict_pass(tmp_path):
-    claude = tmp_path / ".claude" / "rules"
-    claude.mkdir(parents=True)
-    f = claude / "auditor-protocol.md"
-    f.write_text("# 規範\n\n正常指引。\n\n- 清單項目：請勿任意更動\n", encoding="utf-8")
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    bl = docs / "refactor-backlog.md"
+    bl.write_text(
+        "### 5.1 上一批狀態\n\n"
+        "- `0213568`（治理機械化：擴充至 15 項、63 個測試）\n"
+        "  已於 2026-09-04 由審計官核對通過：7 檔異動、零夾帶。\n"
+        "- `a1b2c3d`（下一批）已執行，\n"
+        "  **尚待審計官核對**，見 §5.4。\n\n"
+        "### 5.2 待辦\n",
+        encoding="utf-8",
+    )
     fails, infos = check_15_context_conflict(str(tmp_path))
     assert len(fails) == 0
+    assert any("無交集" in i for i in infos)
 
 
-def test_check_15_context_conflict_fail_deleted_section(tmp_path):
-    claude = tmp_path / ".claude" / "rules"
-    claude.mkdir(parents=True)
-    f = claude / "auditor-protocol.md"
-    f.write_text("# 規範\n\n新 Agent 依交接區 §5.2 的清單接手執行。\n", encoding="utf-8")
+def test_check_15_context_conflict_fail(tmp_path):
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    bl = docs / "refactor-backlog.md"
+    bl.write_text(
+        "### 5.1 上一批狀態\n\n"
+        "- `0213568`（治理機械化：擴充至 15 項、63 個測試）\n"
+        "  已於 2026-09-04 由審計官核對通過：7 檔異動、零夾帶。\n"
+        "- `0213568`（同一批）已執行，\n"
+        "  **尚待審計官核對**，見 §5.4。\n\n"
+        "### 5.2 待辦\n",
+        encoding="utf-8",
+    )
     fails, infos = check_15_context_conflict(str(tmp_path))
     assert len(fails) == 1
-    assert "引用了已刪除的章節或清單" in fails[0]
+    assert "同時被描述為「已核對通過」與「尚待核對」" in fails[0]
 
 
-def test_check_15_context_conflict_fail_neg_prefix(tmp_path):
-    agents = tmp_path / ".agents" / "rules"
-    agents.mkdir(parents=True)
-    f = agents / "test-rule.md"
-    f.write_text("# 規範\n\n不要做任何未經指示的操作。\n", encoding="utf-8")
+def test_check_15_context_conflict_boundary_no_section(tmp_path):
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    bl = docs / "refactor-backlog.md"
+    bl.write_text("# 標題\n\n無交接區內容\n", encoding="utf-8")
     fails, infos = check_15_context_conflict(str(tmp_path))
-    assert len(fails) == 1
-    assert "非清單項目的正文開頭出現未包裹的否定字眼" in fails[0]
+    assert len(fails) == 0
+    assert any("找不到交接區 §5.1 區段" in i for i in infos)
