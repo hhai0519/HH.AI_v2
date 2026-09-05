@@ -17,6 +17,7 @@
   CHECK 13 — 檔尾換行符
   CHECK 14 — 繁體中文環境下的簡體字偵測
   CHECK 15 — 交接區 §5.1 的 commit hash 語境衝突
+  CHECK 16 — 執行者檢查紀錄（EXEC-LOG）落後偵測
 
 本腳本的檢查項來自 2026-08-29 的一次全庫實測掃描，每一項都曾實際命中過真實缺陷，不是憑空設計。
 新增檢查項時，必須先確認該檢查在當前 repo 的誤報率，誤報多的檢查會讓人習慣忽略輸出。
@@ -39,7 +40,7 @@ sys.stdout.reconfigure(encoding='utf-8')
 repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
 def run_checks():
-    total_checks = 15
+    total_checks = 16
     passed = 0
     failed = 0
     
@@ -461,6 +462,22 @@ def run_checks():
         failed += 1
 
     # ---------------------------------------------------------
+    # CHECK 16: 執行者檢查紀錄落後
+    # ---------------------------------------------------------
+    print("\nCHECK 16 - 執行者檢查紀錄落後")
+    c16_fails, c16_infos = check_16_exec_log_cadence(repo_root)
+    for info in c16_infos:
+        print(f"  [INFO] {info}")
+    if len(c16_fails) == 0:
+        print("  [PASS] 0 命中")
+        passed += 1
+    else:
+        print(f"  [FAIL] {len(c16_fails)} 命中")
+        for fail in c16_fails:
+            print(f"    {fail}")
+        failed += 1
+
+    # ---------------------------------------------------------
     # 總結
     # ---------------------------------------------------------
     print(f"\n========================================")
@@ -866,6 +883,58 @@ def check_15_context_conflict(root_dir=None):
         )
 
     return fails, infos
+
+def check_16_exec_log_cadence(root_dir=None, git_count=None):
+    """CHECK 16 — 執行者檢查紀錄（EXEC-LOG）落後偵測。
+
+    規格：讀 docs/EXEC-LOG.md 最後一列的 commit 欄位。
+    若該值為 BOOTSTRAP 以外的 hash，且不等於 HEAD 也不等於 HEAD~1，即為 FAIL。
+    判準與 CHECK 12 對 AUDIT-LOG.md 的驗證相同。
+    """
+    if root_dir is None: root_dir = repo_root
+    fails = []
+    infos = []
+    el_path = os.path.join(root_dir, "docs", "EXEC-LOG.md")
+    if not os.path.exists(el_path):
+        fails.append("docs/EXEC-LOG.md:0  檔案不存在")
+        return fails, infos
+    try:
+        with open(el_path, "r", encoding="utf-8") as f:
+            content = f.read()
+    except Exception as e:
+        fails.append(f"docs/EXEC-LOG.md:0  讀取失敗: {e}")
+        return fails, infos
+
+    rows = re.findall(r"^\|\s*([0-9a-fA-F]+|BOOTSTRAP)\s*\|", content, re.M)
+    if not rows:
+        fails.append("docs/EXEC-LOG.md:0  未找到執行者檢查紀錄列")
+        return fails, infos
+    if len(rows) == 1 and rows[0] == "BOOTSTRAP":
+        infos.append("docs/EXEC-LOG.md 僅有首列 BOOTSTRAP，跳過檢查")
+        return fails, infos
+
+    latest_hash = rows[-1]
+    if latest_hash == "BOOTSTRAP":
+        infos.append("docs/EXEC-LOG.md 最新列為 BOOTSTRAP，跳過檢查")
+        return fails, infos
+
+    lag = 0
+    if git_count is not None:
+        lag = git_count
+    else:
+        try:
+            res = subprocess.run(["git", "rev-list", "--count", f"{latest_hash}..HEAD"], cwd=root_dir, capture_output=True, text=True)
+            if res.returncode == 0:
+                lag = int(res.stdout.strip())
+            else:
+                infos.append(f"無法取得 git rev-list，跳過比對 (hash={latest_hash})")
+        except Exception:
+            infos.append(f"無法執行 git 指令，跳過比對 (hash={latest_hash})")
+
+    if lag > 1:
+        fails.append(f"docs/EXEC-LOG.md: 最新檢查紀錄 ({latest_hash}) 落後 HEAD {lag} 個 commit（允許落後 1 批，因本批尚未核對）")
+    return fails, infos
+
 
 if __name__ == "__main__":
     run_checks()

@@ -14,6 +14,7 @@ from check_consistency import (
     check_13_trailing_newline,
     check_14_simplified_chinese,
     check_15_context_conflict,
+    check_16_exec_log_cadence,
 )
 
 
@@ -274,3 +275,30 @@ def test_check_15_context_conflict_boundary_no_section(tmp_path):
     fails, infos = check_15_context_conflict(str(tmp_path))
     assert len(fails) == 0
     assert any("找不到交接區 §5.1 區段" in i for i in infos)
+def test_check_16_exec_log_cadence_pass(tmp_path):
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    el = docs / "EXEC-LOG.md"
+    el.write_text("| 08e6bbc | 2026-09-02 | §3 | 通過 | 無 |\n", encoding="utf-8")
+    fails, infos = check_16_exec_log_cadence(str(tmp_path), git_count=1)
+    assert len(fails) == 0
+
+
+def test_check_16_exec_log_cadence_fail(tmp_path):
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    el = docs / "EXEC-LOG.md"
+    el.write_text("| 08e6bbc | 2026-09-02 | §3 | 通過 | 無 |\n", encoding="utf-8")
+    fails, infos = check_16_exec_log_cadence(str(tmp_path), git_count=2)
+    assert len(fails) == 1
+    assert "落後 HEAD 2 個 commit" in fails[0]
+
+
+def test_check_16_exec_log_cadence_bootstrap(tmp_path):
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    el = docs / "EXEC-LOG.md"
+    el.write_text("| BOOTSTRAP | 2026-09-05 | 初始 | 啟動 | 無 |\n", encoding="utf-8")
+    fails, infos = check_16_exec_log_cadence(str(tmp_path), git_count=10)
+    assert len(fails) == 0
+    assert any("BOOTSTRAP" in i for i in infos)
