@@ -16,7 +16,7 @@
   CHECK 12 — AUDIT-LOG 審查週期落後
   CHECK 13 — 檔尾換行符
   CHECK 14 — 繁體中文環境下的簡體字偵測
-  CHECK 15 — 提示詞上下文衝突字串偵測
+  CHECK 15 — 交接區 §5.1 的 commit hash 語境衝突
 
 本腳本的檢查項來自 2026-08-29 的一次全庫實測掃描，每一項都曾實際命中過真實缺陷，不是憑空設計。
 新增檢查項時，必須先確認該檢查在當前 repo 的誤報率，誤報多的檢查會讓人習慣忽略輸出。
@@ -445,9 +445,9 @@ def run_checks():
         failed += 1
 
     # ---------------------------------------------------------
-    # CHECK 15: 提示詞上下文衝突字串偵測
+    # CHECK 15: 交接區 §5.1 的 commit hash 語境衝突
     # ---------------------------------------------------------
-    print("\nCHECK 15 - 提示詞上下文衝突字串偵測")
+    print("\nCHECK 15 - 交接區 §5.1 的 commit hash 語境衝突")
     c15_fails, c15_infos = check_15_context_conflict(repo_root)
     for info in c15_infos:
         print(f"  [INFO] {info}")
