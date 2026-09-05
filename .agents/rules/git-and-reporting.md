@@ -178,6 +178,32 @@
 立刻用 `t.count(指定的新內容)` 確認為 1。為 0 即代表寫入內容與指令不符。
 規則見 `prompt-preflight.md` §4.1。
 
+## 2.3 commit 與 push 的狀態，必須以指令輸出為準
+
+回報 commit 或 push 是否執行時，**不得以敘述代替，必須貼出三條指令的實際輸出**：
+
+    git log -1 --format=%h
+    git rev-parse --short origin/main
+    git status --porcelain
+
+判準：
+
+- 兩個 hash **相同** → 已 commit 且已 push
+- 本機 hash **超前** → 已 commit 但未 push
+- 兩者相同但 `git status --porcelain` **有輸出** → 工作區有未提交的修改
+
+**同樣適用於「我回滾了」的宣告**：執行 `git restore` 或 `git checkout --`
+之後，必須貼出 `git status --porcelain` 證明工作區真的乾淨。
+
+**失效紀錄**：2026-09-05 連續兩輪發生。第一輪回報「本批次未執行 commit 與 push」，
+但遠端 HEAD 確為該批 commit、訊息完全相同、五項修改全數進版控。
+第二輪回報某段文字是交接區 §5.1 的實際內容，
+而審計官於遠端 clone 實測該字串 `count=0`——那段只存在於本機工作區。
+
+**這是回報與實際不符的第五類：動作狀態虛構。**
+前四類虛構的是檔案內容、行數與上下文行，會在審計官 clone 核對時被抓到；
+**動作狀態虛構若不主動查 `git log` 就看不見**。
+
 ## 3. 查證紀律
 
 - **文件自己的宣告不等於事實**：曾發生 `mcp-gateway` 的 SKILL.md 宣稱
