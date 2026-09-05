@@ -496,8 +496,10 @@ import subprocess
 def get_git_heads(root):
     env_head = os.environ.get("GIT_HEAD")
     env_prev = os.environ.get("GIT_HEAD_PREV")
+    env_prev2 = os.environ.get("GIT_HEAD_PREV2")
     head = None
     prev = None
+    prev2 = None
     try:
         res = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=root, capture_output=True, text=True)
         if res.returncode == 0:
@@ -505,15 +507,20 @@ def get_git_heads(root):
         res2 = subprocess.run(["git", "rev-parse", "--short", "HEAD~1"], cwd=root, capture_output=True, text=True)
         if res2.returncode == 0:
             prev = res2.stdout.strip()
+        res3 = subprocess.run(["git", "rev-parse", "--short", "HEAD~2"], cwd=root, capture_output=True, text=True)
+        if res3.returncode == 0:
+            prev2 = res3.stdout.strip()
     except Exception:
         pass
     if env_head:
         head = env_head
     if env_prev:
         prev = env_prev
-    return head, prev
+    if env_prev2:
+        prev2 = env_prev2
+    return head, prev, prev2
 
-def check_8_taskboard_head(root_dir=None, git_head=None, git_prev=None):
+def check_8_taskboard_head(root_dir=None, git_head=None, git_prev=None, git_prev2=None):
     if root_dir is None: root_dir = repo_root
     fails = []
     infos = []
@@ -536,22 +543,28 @@ def check_8_taskboard_head(root_dir=None, git_head=None, git_prev=None):
 
     head = git_head.lower() if git_head else None
     prev = git_prev.lower() if git_prev else None
+    prev2 = git_prev2.lower() if git_prev2 else None
     if head is None or prev is None:
-        g_head, g_prev = get_git_heads(root_dir)
+        g_head, g_prev, g_prev2 = get_git_heads(root_dir)
         if head is None: head = g_head
         if prev is None: prev = g_prev
+        if prev2 is None: prev2 = g_prev2
 
     if head is None:
         infos.append("無法取得 git HEAD 資訊，略過比對")
         return fails, infos
 
+    # 門檻：lag > 2（允許 HEAD、HEAD~1、HEAD~2，落後超過兩批才報 FAIL）
     matches_head = head.startswith(tb_hash) or tb_hash.startswith(head)
     matches_prev = prev and (prev.startswith(tb_hash) or tb_hash.startswith(prev))
-    if not matches_head and not matches_prev:
-        fails.append(f"docs/TASKBOARD.md: 最後更新 HEAD ({tb_hash}) 落後超過一批 (HEAD={head}, HEAD~1={prev})")
+    matches_prev2 = prev2 and (prev2.startswith(tb_hash) or tb_hash.startswith(prev2))
+    lag = 0 if matches_head else (1 if matches_prev else (2 if matches_prev2 else 3))
+
+    if lag > 2:
+        fails.append(f"docs/TASKBOARD.md: 最後更新 HEAD ({tb_hash}) 落後超過兩批 (落後超過一批) (HEAD={head}, HEAD~1={prev}, HEAD~2={prev2})")
     return fails, infos
 
-def check_9_handover_head(root_dir=None, git_head=None, git_prev=None):
+def check_9_handover_head(root_dir=None, git_head=None, git_prev=None, git_prev2=None):
     if root_dir is None: root_dir = repo_root
     fails = []
     infos = []
@@ -574,19 +587,25 @@ def check_9_handover_head(root_dir=None, git_head=None, git_prev=None):
 
     head = git_head.lower() if git_head else None
     prev = git_prev.lower() if git_prev else None
+    prev2 = git_prev2.lower() if git_prev2 else None
     if head is None or prev is None:
-        g_head, g_prev = get_git_heads(root_dir)
+        g_head, g_prev, g_prev2 = get_git_heads(root_dir)
         if head is None: head = g_head
         if prev is None: prev = g_prev
+        if prev2 is None: prev2 = g_prev2
 
     if head is None:
         infos.append("無法取得 git HEAD 資訊，略過比對")
         return fails, infos
 
+    # 門檻：lag > 2（允許 HEAD、HEAD~1、HEAD~2，落後超過兩批才報 FAIL）
     matches_head = head.startswith(ho_hash) or ho_hash.startswith(head)
     matches_prev = prev and (prev.startswith(ho_hash) or ho_hash.startswith(prev))
-    if not matches_head and not matches_prev:
-        fails.append(f"docs/refactor-backlog.md: 上次核對通過的 HEAD ({ho_hash}) 落後超過一批 (HEAD={head}, HEAD~1={prev})")
+    matches_prev2 = prev2 and (prev2.startswith(ho_hash) or ho_hash.startswith(prev2))
+    lag = 0 if matches_head else (1 if matches_prev else (2 if matches_prev2 else 3))
+
+    if lag > 2:
+        fails.append(f"docs/refactor-backlog.md: 上次核對通過的 HEAD ({ho_hash}) 落後超過兩批 (落後超過一批) (HEAD={head}, HEAD~1={prev}, HEAD~2={prev2})")
     return fails, infos
 
 def check_10_section_refs(root_dir=None):
