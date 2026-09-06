@@ -1,5 +1,5 @@
 {
-  "base_head": "2d76958",
+  "base_head": "3a85a30",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 0,
@@ -483,16 +483,16 @@
       "headings": [
         "# 自我審查檢查點紀錄"
       ],
-      "lines": 34,
-      "sha256": "32e377bf0c9519855cdc2348d58a771bac5543937d66f9e01c7de91cd351f5cb"
+      "lines": 36,
+      "sha256": "d7bbe93a15ca2564d03ecd80c389d7a98614c2cfffe11f84984cbb6edc041a1b"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 23,
-      "sha256": "430fa54a58898aa3d882cd3caef15b7c300ad2d58b33f2586aa8874089e559ba"
+      "lines": 24,
+      "sha256": "ef6001d37f866526979de3aa34a1a89a4cb6707a94663bcc91323138cc18cbdd"
     },
     "docs/HANDOVER.md": {
       "fences": 14,
@@ -601,8 +601,8 @@
         "## G. 舊 repo 未盤點區塊（2026-09-02 新發現）",
         "## 封存區"
       ],
-      "lines": 187,
-      "sha256": "07bc2aa28447868909404a09175aa3243fde705b242ccb95a38ae9895aa20326"
+      "lines": 194,
+      "sha256": "b7fe4453bdb06a930dcafe9fbcb1d502158165fea1e0cfdc8ce4916c58d34a6c"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -919,8 +919,8 @@
         "### 5.3 待使用者裁決",
         "### 5.4 進行中／等待回報"
       ],
-      "lines": 2412,
-      "sha256": "6581c390d762e0b54b4c7face7947520ff99066209f45e6c09fcfc8b5845a458"
+      "lines": 2501,
+      "sha256": "b0efe01ab274d972217f1fd711695970645a30e5e9fa26a20af7f80e353764c8"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1005,7 +1005,7 @@
       "sha256": "bc653c823579a59b1708f0fd17c01ed52b934252502ec2dcdfdb25d3e3e82da5"
     }
   },
-  "generated_at": "2026-09-06T05:05:25Z",
+  "generated_at": "2026-09-06T06:01:00Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {
