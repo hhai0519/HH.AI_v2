@@ -1,0 +1,6 @@
+# 統一換行：repo 內一律以 LF 儲存。
+# 2026-09-06：指紋機制的 sha256 因 Windows core.autocrlf 產生跨平台差異，
+# CI 上線首日即紅燈。修正的第一道是雜湊前正規化（scripts/fingerprint.py），
+# 本檔是第二道——讓 repo 本身的儲存格式不依賴任何人的 git 設定。
+# 見 docs/refactor-backlog.md 第 48 點。
+* text=auto eol=lf

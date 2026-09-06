@@ -79,6 +79,14 @@ def get_managed_files(root_dir=None):
 
 
 def compute_file_fingerprint(filepath):
+    """回傳單一檔案的四項指紋屬性。
+
+    sha256 在雜湊前先把 CRLF 正規化為 LF：Windows Git 的 `core.autocrlf`
+    預設會在 checkout 時把 LF 轉為 CRLF，若直接雜湊原始位元組，
+    同一個 commit 在 Windows 與 Linux 上會得到不同的雜湊值，
+    CI 必然紅燈（2026-09-06 實證，見 refactor-backlog.md 第 48 點）。
+    換行本身的差異改由獨立的 CRLF 偵測負責，不混進指紋。
+    """
     with io.open(filepath, "rb") as f:
         raw_bytes = f.read()
     raw_text = raw_bytes.decode("utf-8", errors="replace")
@@ -86,7 +94,8 @@ def compute_file_fingerprint(filepath):
 
     lines = len(lines_list)
     fences = sum(1 for l in lines_list if l.strip().startswith("```"))
-    sha256 = hashlib.sha256(raw_bytes).hexdigest()
+    normalized_bytes = raw_bytes.replace(b"\r\n", b"\n")
+    sha256 = hashlib.sha256(normalized_bytes).hexdigest()
     headings = [l for l in lines_list if re.match(r"^#{1,6}\s", l)]
 
     return {

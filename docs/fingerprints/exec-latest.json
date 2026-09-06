@@ -1,5 +1,5 @@
 {
-  "base_head": "7450c4a",
+  "base_head": "2d76958",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 0,
@@ -28,7 +28,7 @@
         "## 4. 腳本選用決策樹 (Decision Tree)"
       ],
       "lines": 57,
-      "sha256": "b8e5af81504da8905e0c36167f27d3f370e2edbfcb22a9bb793b107244604f33"
+      "sha256": "f84f800b79ba5187dcb6b85db55ae5b1e465b672d3377286d6330695705d6ccf"
     },
     ".agents/rules/prompt-preflight.md": {
       "fences": 0,
@@ -64,7 +64,7 @@
         "## 5. `.claude/` 目錄不是你的"
       ],
       "lines": 76,
-      "sha256": "4aded7e10545aaa752234e767e1366b92e997445527ae6c2406c315a58ac5d94"
+      "sha256": "6ac7625a84a5d0fe54e466d59a9086dfd45864071772bc4b7a31e3734245a894"
     },
     ".agents/rules/skill-engineering-guardrails.md": {
       "fences": 0,
@@ -78,7 +78,7 @@
         "### 情況 B：刪除技能內部的「錯誤/失效內容」 (內容清理)"
       ],
       "lines": 48,
-      "sha256": "7cc8411ce87dffd1f05efa666560278e4a0fe7a9b39e9f48684650fab73dd495"
+      "sha256": "b8eddf4d378366ab0c4648b153a04a0b369117069da43580f33c75967caabce7"
     },
     ".agents/rules/skills-architecture.md": {
       "fences": 0,
@@ -153,13 +153,13 @@
         "## F. 額度（每一輪回覆的開頭與結尾）"
       ],
       "lines": 92,
-      "sha256": "a2e14507ef69e17f02d1e48a43a8e04f32da59c80b375cdf38f397f76015e0ae"
+      "sha256": "9aa4e0994cc1ff8f4c58e8ed5d2eb99ee57ff6cb0e6b6cb4cd2786aea1cb9fc9"
     },
     ".github/workflows/verify.yml": {
       "fences": 0,
       "headings": [],
       "lines": 41,
-      "sha256": "577ca1d5661d29e23eafaf5bf2ce83139cbaec135ea32faf5d3d4ad628d7d6cb"
+      "sha256": "678c0a2dd706418633a74f9d7c26222ada5e6798393a95d31e299fd791a30fd6"
     },
     "AGENTS.md": {
       "fences": 14,
@@ -179,7 +179,7 @@
         "## 9. 驗證"
       ],
       "lines": 230,
-      "sha256": "fd668efcbc237e65d774bb491b1c532f961bbdbc004a90ee9586f386872d2f84"
+      "sha256": "4e52bfa801d540c6289c7f255d167d82d8d019cc901d63645f444c7c62b56522"
     },
     "MISSION.md": {
       "fences": 0,
@@ -190,7 +190,7 @@
         "## 完成的定義"
       ],
       "lines": 30,
-      "sha256": "72f12a97c9bb43feb2c73bac9a1c57dc319ae7517f10fa15dcbec03b5dcb87d7"
+      "sha256": "71e91a5689307a69396924ef5604fb9abde8ad66c12a90e1826bc400d63479d3"
     },
     "PRINCIPLES.md": {
       "fences": 0,
@@ -224,7 +224,7 @@
         "## 5. 更新紀錄"
       ],
       "lines": 281,
-      "sha256": "e8f50dcf9df118d61c8656627837b108d010ea705ea67eb21e9f1e5468e9a2f9"
+      "sha256": "655726e1029b063748522ef14550251779c22b0721443d184e42c39f3770f293"
     },
     "SOP/README.md": {
       "fences": 0,
@@ -237,7 +237,7 @@
         "### 已淘汰 (8 份)"
       ],
       "lines": 36,
-      "sha256": "41a8593b8eab8414d1e377710efa6d13acf1aa5f3626c1a9b0a86980ab1c2929"
+      "sha256": "499d16f1be9189c8175d6bf0d03d5ba9d6d500a519005d6f58b659f5e3e8d62b"
     },
     "SOP/SOP_01_Automation_Process.md": {
       "fences": 4,
@@ -263,7 +263,7 @@
         "### 6.3 合規要求"
       ],
       "lines": 160,
-      "sha256": "bf3faf94a5bf52e0326aa2c8fddf8d44610e9f0523408ebfe867fc8ba561265d"
+      "sha256": "dab28fbf6501c4e1a61e39498eea56ff45764131739dab040d4e04c41e68811b"
     },
     "SOP/SOP_02_Security_Guidelines.md": {
       "fences": 0,
@@ -281,7 +281,7 @@
         "### SOP 合規規範"
       ],
       "lines": 69,
-      "sha256": "634fec5b1170bac530f6d1d7e33d2a9699f75612c30f8164c43415f0bbd03cdd"
+      "sha256": "130b1b5c82324580a92709751174c4efdd44e2f850d07c59a58003610819aead"
     },
     "SOP/SOP_04_Data_Cleanup.md": {
       "fences": 10,
@@ -314,7 +314,7 @@
         "### 服務啟動確認步驟"
       ],
       "lines": 179,
-      "sha256": "16b51a274b28e390e0961b558c72dfb894ab5a20bdf54f5df083a331a1ab861f"
+      "sha256": "d4d3886bfd75a76cdf94a73a4986b28c5f08d73564f927716c5783260231c840"
     },
     "SOP/SOP_05_System_Policies.md": {
       "fences": 0,
@@ -337,7 +337,7 @@
         "## 7. 技能不刪除原則 (No-Delete Policy) [HIGHEST_PERMISSION]"
       ],
       "lines": 129,
-      "sha256": "a500ed0d65af9ccce681220e1a5672946a9acad1bdc743f8b801c4d495a25911"
+      "sha256": "6a95c02c38078c3c41727bcedddf860dfd799e0dd69cc57cea363064f7a655e0"
     },
     "SOP/SOP_06_Handover_Manual.md": {
       "fences": 10,
@@ -366,7 +366,7 @@
         "## 08. 溝通與語言標準 COMMUNICATION_LANGUAGE_STANDARDS"
       ],
       "lines": 207,
-      "sha256": "1cf4f518dbde003278d519a8d72e2d376cd105524815f382274e5cb31639c4a2"
+      "sha256": "9b15a5a3f4bd4d57b158d170c6c118e529e3cb8be5619f6cdb125a09ccd02a0d"
     },
     "SOP/SOP_09_AutoResearch_CPU.md": {
       "fences": 16,
@@ -388,7 +388,7 @@
         "## 六、合規備註"
       ],
       "lines": 133,
-      "sha256": "295c68b18773ed40d9bf0d6e575ac9176ca22ee97d2cc02a4c38d31886d1359d"
+      "sha256": "efbe1464ec76c80fa8fc87601cc3b0fc8689ef7620c0273a879d16d011782b49"
     },
     "SOP/SOP_11_Task_Reflection_Protocol.md": {
       "fences": 0,
@@ -399,7 +399,7 @@
         "## 3. 記憶庫提取 (Memory Retrieval)"
       ],
       "lines": 49,
-      "sha256": "b978f2a6cb36445a90432c6b7b3791daba771e7378c4283ec76f95f88d662f1a"
+      "sha256": "36e3ee79fbe40feee839da22bc204f17ce226825ed6ba0a5f472ad1be8d7eed5"
     },
     "SOP/SOP_12_MCP_Auth_Recovery.md": {
       "fences": 8,
@@ -421,7 +421,7 @@
         "## 6. 相關設定檔位置"
       ],
       "lines": 118,
-      "sha256": "4101ddd000588c60699d80643297ccc61a8751a48d8a19dc265aeb15053d33ea"
+      "sha256": "9c09162cd89814a2b8983668095beadc773320245bd845a3981c05da5904add6"
     },
     "SOP/SOP_13_Hyperparameter_Training.md": {
       "fences": 2,
@@ -437,7 +437,7 @@
         "## 三、異常處理 (Troubleshooting)"
       ],
       "lines": 50,
-      "sha256": "12f6bce5fb9c689145b9748e4ad2ec544b080c49e22e5a586113628f6713a3f9"
+      "sha256": "414cd5479936aef3c04e410bd9b7b61a988a75b038c3e83a5bdaa01c673f2709"
     },
     "SOP/SOP_14_Rigorous_Verification_and_Audit_Protocol.md": {
       "fences": 0,
@@ -464,7 +464,7 @@
         "### 7.3 與既有紀律的關係"
       ],
       "lines": 175,
-      "sha256": "6be577270392b57a23fc71b26cbfee5600d0da0650df9fe4cdae03bc0117f51a"
+      "sha256": "54a53f6ba7ae39f6c7e34b57d5cb26a56ecb173a06873ec721d3467a036b1c64"
     },
     "docs/ARCHIVE-INDEX.md": {
       "fences": 0,
@@ -476,7 +476,7 @@
         "## 四、已知缺口"
       ],
       "lines": 57,
-      "sha256": "14e8b39f68f99eca564c9aaffcd30aece17d51b6f4152b5cd68da9461e32e6dd"
+      "sha256": "d79241dafa63a27dcdd74a09a949836590f21336ba209b55a60bc6128fbbf68f"
     },
     "docs/AUDIT-LOG.md": {
       "fences": 0,
@@ -484,15 +484,15 @@
         "# 自我審查檢查點紀錄"
       ],
       "lines": 34,
-      "sha256": "5e5b2ac9fd0bd9c7a48ef52d92eb1fd22f80bea8b01f4cf63b33bbdf48d2aeb7"
+      "sha256": "32e377bf0c9519855cdc2348d58a771bac5543937d66f9e01c7de91cd351f5cb"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 22,
-      "sha256": "61ce7b89aa5cea9dc4b922d299150ad4d4a7ff36bf2397c193b41029cc9330f3"
+      "lines": 23,
+      "sha256": "430fa54a58898aa3d882cd3caef15b7c300ad2d58b33f2586aa8874089e559ba"
     },
     "docs/HANDOVER.md": {
       "fences": 14,
@@ -586,7 +586,7 @@
         "# code block 圍欄數（正確算法）"
       ],
       "lines": 868,
-      "sha256": "1006b035b26055dda4268071eb3a68a1141084d5c4af358220d269062212b257"
+      "sha256": "29413d77e522428a640f67fac9d6711d1e32c552c6689c69c82a15d5125b03bf"
     },
     "docs/TASKBOARD.md": {
       "fences": 0,
@@ -602,7 +602,7 @@
         "## 封存區"
       ],
       "lines": 187,
-      "sha256": "a90f99a0333c8d8f9ff79c78de76002aaa5f90f3bc366adba9c13bb22fc3862c"
+      "sha256": "07bc2aa28447868909404a09175aa3243fde705b242ccb95a38ae9895aa20326"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -646,7 +646,7 @@
         "## Consequences"
       ],
       "lines": 49,
-      "sha256": "e11fa4d41c466435d02455414f3e7f259f54b4335d3111059f9d6182e07f8307"
+      "sha256": "02271a360cd12b71a2fd711629ee2f2620c8c39d2fb3e62781fe5fe267b2c4ab"
     },
     "docs/adr/0004-notebooklm-fallback-rule-recovery.md": {
       "fences": 0,
@@ -669,7 +669,7 @@
         "## 2026-09-01 分層搬移"
       ],
       "lines": 51,
-      "sha256": "8acbf8b3c6003ed3bea092ddcdca4413052490f8fcc063f99adf852947e3234f"
+      "sha256": "d49850a57678964b41fda6550742aba36385702105527bdd020ba553a4408646"
     },
     "docs/adr/0006-merge-orchestration-skills.md": {
       "fences": 0,
@@ -680,7 +680,7 @@
         "## Consequences"
       ],
       "lines": 33,
-      "sha256": "9a303d945dbc03bfcf57f4864c8383c0a97a7a8b1aac9a82d544981697bca6b9"
+      "sha256": "f4a8c1c598a2e0b3e4dc71c8dbadc97d8cd706985060e74084a24e2fdbaec2c4"
     },
     "docs/adr/0007-macro-auditor-role.md": {
       "fences": 0,
@@ -694,7 +694,7 @@
         "## 2026-09-01 分層搬移"
       ],
       "lines": 55,
-      "sha256": "270b1225c2af0c1f8e450c7f725badb77a11b6d018910702102ec38569973976"
+      "sha256": "8cc0f1a7d8e45fe2cb36a0c2ea68f1c999e37a1a69c49930ad8f19e64227e249"
     },
     "docs/adr/0008-dual-pipeline-architecture.md": {
       "fences": 0,
@@ -768,7 +768,7 @@
         "## Consequences"
       ],
       "lines": 78,
-      "sha256": "e9b42cf83f022aadeeb4ece086041c94dc5b3bad1324230ede977dcd3bebaa8d"
+      "sha256": "f18687bde46d2bda605e5eb437ebeb6a20935d625ccf019ae255a7c527566c92"
     },
     "docs/adr/0014-pm2-config-pitfalls-and-sandbox-validation.md": {
       "fences": 0,
@@ -784,7 +784,7 @@
         "## 2026-09-01 分層搬移"
       ],
       "lines": 93,
-      "sha256": "bc5cb8de3328a63fa8194f372bbf005516f5f9e3a06cc4ff179459ecd105382d"
+      "sha256": "60fca12edc5c9f36b1bb99fa777b6cb1fb01d50b4701e55d0f614a877b537231"
     },
     "docs/adr/0015-line-tunnel-chain-failure.md": {
       "fences": 0,
@@ -801,7 +801,7 @@
         "## Consequences"
       ],
       "lines": 167,
-      "sha256": "b9c32163efe5a8583daff62363dfda214d67879e85694723fcf6d09614e9ab88"
+      "sha256": "8d67cecb5022bb732ff3c65feb2f586258d36e18a70e369d8421b0e894facc9d"
     },
     "docs/adr/0016-credential-leak-defense-gap.md": {
       "fences": 0,
@@ -818,7 +818,7 @@
         "## 2026-09-01 落實紀錄"
       ],
       "lines": 89,
-      "sha256": "a991516ac81d2db1ae251db4498ec99a4aa0064ac5928af1f028cdf61cc2e5cc"
+      "sha256": "5786ce4bf2cc35c3f266928637b0537b8d0b6c87f0ff0e0884045e28fa2fe8fc"
     },
     "docs/adr/0017-port-allocation.md": {
       "fences": 0,
@@ -829,7 +829,7 @@
         "## Consequences"
       ],
       "lines": 81,
-      "sha256": "3db47a9ee5588e9da0147e19e79fdfba38a92459a4e6734c7d18b46bed7ff2b7"
+      "sha256": "dfaf59fdfbbc6c611986e102cbc21257453712c18e0a64ae0482872171689fc8"
     },
     "docs/adr/0018-vendored-external-assets.md": {
       "fences": 0,
@@ -840,7 +840,7 @@
         "## Consequences"
       ],
       "lines": 52,
-      "sha256": "368b3b4d3c62502c6a36c6e73dda2822c1f48d114e6db121b2bd709f07fd2d33"
+      "sha256": "6659454954bc751216b88b6759e43c4f384f040713afc71d22d0f72143bb1ea9"
     },
     "docs/adr/0019-jules-official-cli-and-mcp.md": {
       "fences": 0,
@@ -852,7 +852,7 @@
         "## Consequences"
       ],
       "lines": 117,
-      "sha256": "8bc30c4224501ce9fa58d99894cb62a428b4c680953d2a44611db24c1d9d56a8"
+      "sha256": "df899180af4acaf413f1fcc23b2d4be928bbf79a581356e4063cbd9d2a8a1bb8"
     },
     "docs/mcp-environment-guide.md": {
       "fences": 0,
@@ -870,7 +870,7 @@
         "## 環境重建檢查清單"
       ],
       "lines": 171,
-      "sha256": "80a6a557d538d2ec2a928ec02b2bbe75eb54ac042a5e22389fa85bc77b6d80c3"
+      "sha256": "17e48d98b5628d593394c0af1290eab94fe2a4024275b331df994985c2bceacf"
     },
     "docs/migration-kickoff-prompt.md": {
       "fences": 12,
@@ -890,7 +890,7 @@
         "## 全部遷移完成後"
       ],
       "lines": 187,
-      "sha256": "24a3edcdb26775c048d44b5cd21ce09be899e115c3b907aa95252ddd5fd93ea8"
+      "sha256": "c09db8ecb2a111d5a2c33bbc9acc621b3d5e3ab0b64840e868abbf975a8c2231"
     },
     "docs/refactor-backlog.md": {
       "fences": 4,
@@ -920,7 +920,7 @@
         "### 5.4 進行中／等待回報"
       ],
       "lines": 2412,
-      "sha256": "44bf16c831601f00d9088627ff2e4755ca303e5c3f6a6a8a6956c8806b5b0025"
+      "sha256": "6581c390d762e0b54b4c7face7947520ff99066209f45e6c09fcfc8b5845a458"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -935,7 +935,7 @@
       "fences": 0,
       "headings": [],
       "lines": 959,
-      "sha256": "4a88dd8dfd17b4645be91157e283622115a8efa9e36ee6655d492c3845dcc4e1"
+      "sha256": "8e6f5b308d50999b7ddfe544a49572b7912d42d51f718d905d14ab204b3513db"
     },
     "scripts/fingerprint.py": {
       "fences": 0,
@@ -943,8 +943,8 @@
         "# -*- coding: utf-8 -*-",
         "# 確保在 Windows 下標準輸出編碼為 utf-8"
       ],
-      "lines": 265,
-      "sha256": "1bc82335c5a11354218240533845faf77c5d5a450e24aa52faee9d94561107ef"
+      "lines": 274,
+      "sha256": "c1796819a9d6b1539aea730ab118062300acfdf86a1740ab3c3709f7813cd6c3"
     },
     "scripts/tests/test_anchor.py": {
       "fences": 0,
@@ -958,13 +958,13 @@
         "# Ensure scripts dir is on sys.path"
       ],
       "lines": 322,
-      "sha256": "d6e81f99f809993b4ca4b64ccc8a0e788edd6c993537206bed63feea8dc83cf7"
+      "sha256": "f540d916b47b8dcea7ff8b9628e808a3859d9b1cccb7e1265aba5ad025065106"
     },
     "scripts/tests/test_fingerprint.py": {
       "fences": 0,
       "headings": [],
-      "lines": 98,
-      "sha256": "37003c5cbe7497a43d35697e9a7586ac8195e23d38aafbfaf8829cf903064b4d"
+      "lines": 119,
+      "sha256": "113e2d181ef5675c8ac30ac6b31eb100f82eb138c0532c663b975f1b1dd55b82"
     },
     "scripts/tests/test_validate_skills.py": {
       "fences": 0,
@@ -993,7 +993,7 @@
         "# =========================================="
       ],
       "lines": 437,
-      "sha256": "5246664fd91d3a964ffe55d414517fda4d9ba2cf7c3adea7a21e3f4cfc2120b0"
+      "sha256": "2dc3e09525f1c5d7a3d7e50c3fb9eb94fc05cf18b3532a0a54d8c4ea1d1507a2"
     },
     "scripts/validate_skills.py": {
       "fences": 0,
@@ -1002,10 +1002,10 @@
         "# 本專案自訂擴充欄位（見 AGENTS.md 第 2 節），官方規格沒有但本專案沿用"
       ],
       "lines": 231,
-      "sha256": "3bd2fe1c0589d9abe230ada46baddd2851f9a1f7e47c6334dbfb55f13534bd89"
+      "sha256": "bc653c823579a59b1708f0fd17c01ed52b934252502ec2dcdfdb25d3e3e82da5"
     }
   },
-  "generated_at": "2026-09-06T04:18:52Z",
+  "generated_at": "2026-09-06T05:05:25Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

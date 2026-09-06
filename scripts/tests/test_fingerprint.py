@@ -89,6 +89,27 @@ def test_fingerprint_ignore_metadata_diff(tmp_path):
     assert len(diffs) == 0
 
 
+def test_fingerprint_crlf_and_lf_same_sha(tmp_path):
+    """同一份內容以 LF 與 CRLF 寫入時，sha256 必須相同。
+
+    這是 CI 綠燈的守護測試：若有人把正規化拿掉，本測試會立刻紅。
+    """
+    content_lf = "# 標題\n第一行\n第二行\n"
+    lf_file = tmp_path / "lf.md"
+    crlf_file = tmp_path / "crlf.md"
+    with open(lf_file, "wb") as f:
+        f.write(content_lf.encode("utf-8"))
+    with open(crlf_file, "wb") as f:
+        f.write(content_lf.replace("\n", "\r\n").encode("utf-8"))
+
+    fp_lf = compute_file_fingerprint(str(lf_file))
+    fp_crlf = compute_file_fingerprint(str(crlf_file))
+
+    assert fp_lf["sha256"] == fp_crlf["sha256"]
+    assert fp_lf["lines"] == fp_crlf["lines"]
+    assert fp_lf["headings"] == fp_crlf["headings"]
+
+
 def test_fingerprint_fences_not_at_start(tmp_path):
     """6. fences 的計算：對一份內文含有 ``` 字樣但行首不是 ``` 的檔案，fences 必須為 0。"""
     f = tmp_path / "MISSION.md"
