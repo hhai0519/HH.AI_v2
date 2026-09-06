@@ -1,0 +1,1021 @@
+{
+  "base_head": "7450c4a",
+  "files": {
+    ".agents/rules/git-and-reporting.md": {
+      "fences": 0,
+      "headings": [
+        "# 規則：Git 操作與回報紀律",
+        "## 1. Git 操作",
+        "## 2. 回報紀律",
+        "## 2.1 撰寫測試時，依規格而非依實作",
+        "## 2.2 提示詞指定的寫入內容，逐字照抄",
+        "## 2.3 commit 與 push 的狀態，必須以指令輸出為準",
+        "## 3. 查證紀律"
+      ],
+      "lines": 257,
+      "sha256": "60e9156c65c0de9f925e3c8d849b067c9fa889da748cf9f8ed2d8b9ab302f759"
+    },
+    ".agents/rules/powershell-encoding-protocol.md": {
+      "fences": 6,
+      "headings": [
+        "# 規則：跨平台編碼安全協定 (Cross-Platform Encoding Protocol)",
+        "## 1. 物理寫入最高標準：PowerShell Here-String",
+        "# PowerShell Here-String 強制範例：多行 Markdown 寫入",
+        "# 標題",
+        "## 2. 禁止使用 Hex 拼湊法 (No Char-Code Concatenation)",
+        "## 3. PowerShell 強制 UTF-8 宣告 (PowerShell UTF-8 Lock)",
+        "# 強制 UTF-8 宣告 — 置於腳本第一行，禁止省略",
+        "## 4. 腳本選用決策樹 (Decision Tree)"
+      ],
+      "lines": 57,
+      "sha256": "b8e5af81504da8905e0c36167f27d3f370e2edbfcb22a9bb793b107244604f33"
+    },
+    ".agents/rules/prompt-preflight.md": {
+      "fences": 0,
+      "headings": [
+        "# 提示詞前置檢查",
+        "## 1. 為什麼有這一條",
+        "## 2. 這不是叫你評價提示詞",
+        "## 3. 必要結構元素（缺一即停）",
+        "## 3.1 配對規則（缺一即停）",
+        "## 3.2 覆蓋規則（缺一即停）",
+        "## 3.3 遇到疑問而非缺失時",
+        "## 3.4 審計官自檢聲明的交叉驗證",
+        "## 3.5 檢查結果只存在於回報中，這是已知缺口",
+        "## 3.6 新鮮 clone 證據區塊的交叉驗證",
+        "## 3.7 十八項全部可機械驗證，沒有例外",
+        "## 3.8 你的檢查結果必須留在 repo",
+        "## 4. 錨點唯一性驗證（動手前必做）",
+        "## 4.1 寫入後的原文驗證（動手後必做）",
+        "## 5. 例外",
+        "## 6. 這條規則保護的是誰"
+      ],
+      "lines": 297,
+      "sha256": "dce119b74389f9331c29a6f782b774e01e42e19571c568f1475e7fbd94c2e919"
+    },
+    ".agents/rules/role-boundaries.md": {
+      "fences": 0,
+      "headings": [
+        "# 角色邊界規則",
+        "## 1. 你的身分",
+        "## 2. 不屬於你的三類工作",
+        "## 3. 判斷方法：不要靠關鍵字",
+        "## 4. 這不是限制，是分工",
+        "## 5. `.claude/` 目錄不是你的"
+      ],
+      "lines": 76,
+      "sha256": "4aded7e10545aaa752234e767e1366b92e997445527ae6c2406c315a58ac5d94"
+    },
+    ".agents/rules/skill-engineering-guardrails.md": {
+      "fences": 0,
+      "headings": [
+        "# 規則：技能架構防禦與工程規範 (Skill Engineering Guardrails)",
+        "## 1. 反死鎖與單向依賴協定 (Anti-Deadlock & Uni-directional Flow)",
+        "## 2. 嚴格命名空間映射 (Strict Namespace Binding)",
+        "## 3. 分層 Payload 淨化機制 (Payload Tiering Protocol)",
+        "## 4. 統一歸檔與差異化刪除政策 (Unified Archive Policy)",
+        "### 情況 A：刪除「整個技能」 (停用/下架)",
+        "### 情況 B：刪除技能內部的「錯誤/失效內容」 (內容清理)"
+      ],
+      "lines": 48,
+      "sha256": "7cc8411ce87dffd1f05efa666560278e4a0fe7a9b39e9f48684650fab73dd495"
+    },
+    ".agents/rules/skills-architecture.md": {
+      "fences": 0,
+      "headings": [
+        "# 規則：技能架構強制規範"
+      ],
+      "lines": 24,
+      "sha256": "538753b98588a16fba6863eac219b9073373620b6d25c27411c2fddad5cc7b84"
+    },
+    ".claude/rules/auditor-protocol.md": {
+      "fences": 2,
+      "headings": [
+        "# 宏觀審計官作業協定",
+        "## 1. 職責範圍",
+        "## 2. 四個審計維度",
+        "## 3. Gatekeeping 規則",
+        "## 4. 報告格式",
+        "## 5. 查證紀律",
+        "### 5.1 不採用執行端的任何數字",
+        "### 5.2 盤點時用結構錨點，不用內文詞彙",
+        "### 5.3 搜尋詞用最短核心片段",
+        "### 5.4 逐行 diff 兩個 clone，不只讀回報",
+        "### 5.5 淘汰或取代的理由，必須逐項驗證",
+        "### 5.6 反例測試要涵蓋真實輸入的格式",
+        "### 5.7 規則的層級決定它會不會被執行",
+        "### 5.8 棄用紀錄：舊 CHECK 15 的兩項行為（2026-09-05）",
+        "## 6. 提示詞產出紀律",
+        "### 6.1 每份提示詞的必備要素",
+        "### 6.2 零命中類的驗證條件，必須先列出自身指令造成的例外",
+        "### 6.3 一次只給一份，一鍵複製",
+        "### 6.4 每次回覆結尾附下一批提示詞",
+        "### 6.5 驗證步驟要設計攔截點",
+        "### 6.6 每個錨點都要驗證唯一性",
+        "### 6.7 修改既有敘述前，先搜尋「這件事」在哪些地方被描述",
+        "## 7. 自我審查",
+        "### 7.1 證據必須落地成檔案",
+        "## 8. 額度紀律",
+        "### 8.1 每輪開頭標示建議模型",
+        "### 8.2 換對話的時機（可數的指標）",
+        "### 8.3 降低消耗的既定做法",
+        "### 8.4 不得為了省額度而做的兩件事",
+        "## 9. 交接協定",
+        "### 9.1 正常交接",
+        "### 9.2 無交接接手",
+        "### 9.3 交接區的維護責任",
+        "### 9.4 交接是否成功的判準",
+        "### 9.5 交接機制的驗證階段",
+        "## 10. 任務板維護",
+        "### 10.1 新項目必須當輪登錄",
+        "### 10.2 被問「還有哪些待辦」時，給完整看板",
+        "### 10.3 五種狀態",
+        "### 10.4 封存不是刪除",
+        "### 10.5 每批次結束時更新",
+        "### 10.6 「最後更新」是可驗證的攔截點",
+        "## 11. 錯誤處置與回滾",
+        "### 11.1 判斷順序",
+        "### 11.2 執行 revert 的完整程序",
+        "### 11.3 已審核標記"
+      ],
+      "lines": 815,
+      "sha256": "b4c8af8e671be45cc7a7313b6ccec6069ac2fc43c21852225cc79177157faf4a"
+    },
+    ".claude/rules/handover-selftest.md": {
+      "fences": 0,
+      "headings": [
+        "# 接手自檢清單",
+        "## A. 載入（做完開場動作後立刻自答）",
+        "## B. 定位（確認「現在在哪」）",
+        "## C. 範圍（確認「該做什麼、不該做什麼」）",
+        "## D. 身分（每一輪都適用，不只接手時）",
+        "## E. 交付（產出提示詞之前）",
+        "## F. 額度（每一輪回覆的開頭與結尾）"
+      ],
+      "lines": 92,
+      "sha256": "a2e14507ef69e17f02d1e48a43a8e04f32da59c80b375cdf38f397f76015e0ae"
+    },
+    ".github/workflows/verify.yml": {
+      "fences": 0,
+      "headings": [],
+      "lines": 41,
+      "sha256": "577ca1d5661d29e23eafaf5bf2ce83139cbaec135ea32faf5d3d4ad628d7d6cb"
+    },
+    "AGENTS.md": {
+      "fences": 14,
+      "headings": [
+        "# HH.AI 專案技能架構規範",
+        "## 0. 工程紀律規則（最高優先）",
+        "## 1. 目錄結構",
+        "## 2. SKILL.md 格式",
+        "### semantic_firewall 有兩種寫法",
+        "## 3. 漸進式揭露（Progressive Disclosure）",
+        "## 4. 技能之間的依賴",
+        "## 5. User-invoked vs Model-invoked",
+        "## 6. Router 技能",
+        "## 6a. 資料夾層級的範圍受限規則",
+        "## 7. README 同步規則",
+        "## 8. 遷移舊技能時的規則",
+        "## 9. 驗證"
+      ],
+      "lines": 230,
+      "sha256": "fd668efcbc237e65d774bb491b1c532f961bbdbc004a90ee9586f386872d2f84"
+    },
+    "MISSION.md": {
+      "fences": 0,
+      "headings": [
+        "# HH.AI v2 — Mission",
+        "## 使命",
+        "## 三個優先序",
+        "## 完成的定義"
+      ],
+      "lines": 30,
+      "sha256": "72f12a97c9bb43feb2c73bac9a1c57dc319ae7517f10fa15dcbec03b5dcb87d7"
+    },
+    "PRINCIPLES.md": {
+      "fences": 0,
+      "headings": [
+        "# HH.AI v2 — 決策與協作原則",
+        "## 0. 角色分工（本文件其他所有原則的前提）",
+        "### 0.1 身分不可切換",
+        "### 0.2 本文件其他原則都預設這個分工",
+        "### 0.3 「審計」一詞有四種意思，不可混用",
+        "### 0.4 各層的分工",
+        "## 1. 治理文件的層級",
+        "### 內容該放哪一層：四個判別問句",
+        "## 2. 決策原則",
+        "### 2.1 品質優先於速度",
+        "### 2.2 拆解到最小可驗證單位，逐一執行、逐一驗證",
+        "### 2.3 每次決策都要宏觀審視整體專案，並預判連帶影響",
+        "### 2.4 發現錯誤時：不預先否決、先問為什麼、親自驗證、從根本剷除",
+        "### 2.5 獨立驗證優於口頭回報",
+        "### 2.6 不確定就明說，不用推測填補",
+        "### 2.7 數字或事實出現分歧時，必須收斂為單一答案",
+        "### 2.8 可機械檢查的規則，就必須機械檢查",
+        "## 3. 記錄紀律",
+        "### 3.1 重大突破當下就記錄，不留到批次結束",
+        "### 3.2 記錄要能被追溯，不能只存在對話裡",
+        "### 3.3 記錄原文不改寫",
+        "## 4. 自我審查檢查點",
+        "### 4.1 觸發時機（到點就做，不需要理由）",
+        "### 4.2 檢查項目",
+        "### 4.3 結果必須外顯",
+        "### 4.4 責任歸屬",
+        "## 5. 更新紀錄"
+      ],
+      "lines": 281,
+      "sha256": "e8f50dcf9df118d61c8656627837b108d010ea705ea67eb21e9f1e5468e9a2f9"
+    },
+    "SOP/README.md": {
+      "fences": 0,
+      "headings": [
+        "# HH.AI SOP 文件總覽",
+        "## 系統治理文件職責分工",
+        "## 核心 SOP 索引清單",
+        "## 已淘汰與已轉換的 SOP 去向紀錄",
+        "### 轉為 ADR 或 Rules (3 份)",
+        "### 已淘汰 (8 份)"
+      ],
+      "lines": 36,
+      "sha256": "41a8593b8eab8414d1e377710efa6d13acf1aa5f3626c1a9b0a86980ab1c2929"
+    },
+    "SOP/SOP_01_Automation_Process.md": {
+      "fences": 4,
+      "headings": [
+        "# 自動化與深度研究標準作業程序 (Automation & Deep Research SOP)",
+        "## 1. 目的",
+        "## 2. 核心原則 (Core Principles)",
+        "### 2.1 通訊語言原則",
+        "### 2.2 配額監控原則（10% 安全法則）",
+        "### 2.3 遞迴深化原則 (Recursive Deepening)",
+        "### 2.4 強制授權協議 (Strong Authorization Protocol)",
+        "## 3. 操作流程 (Operational Flow)",
+        "### 3.1 任務初始化 (Initialization)",
+        "### 3.2 研究執行迴圈 (Execution Loop)",
+        "### 3.3 成果輸出 (Reporting)",
+        "## 4. 例外處理 (Exception Handling)",
+        "## 5. 可信工具與環境 (Trusted Tools & Environments)",
+        "### 5.1 工具授權管理",
+        "### 5.2 自動化執行模式 (Headless Mode)",
+        "## 6. Skills 資料夾路徑對照",
+        "### 6.1 路徑設定（v260503 版）",
+        "### 6.2 核心技能清單 (Core Skills Inventory)",
+        "### 6.3 合規要求"
+      ],
+      "lines": 160,
+      "sha256": "bf3faf94a5bf52e0326aa2c8fddf8d44610e9f0523408ebfe867fc8ba561265d"
+    },
+    "SOP/SOP_02_Security_Guidelines.md": {
+      "fences": 0,
+      "headings": [
+        "# 本協作系統 Skills 資訊安全與防護準則",
+        "## 1. 智慧整合與資料防洩（Smart Integration & DLP）",
+        "### 核心原則：最小權限與上下文隔離",
+        "## 2. 憑證管理 (Credential Management)",
+        "## 3. 注入攻擊防禦（Injection Defense）",
+        "### CSV / Excel 公式注入防禦",
+        "### 提示詞注入防禦 (Prompt Injection Defense)",
+        "## 4. SSRF 防禦 (SSRF Defense)",
+        "## 5. 文件合規與本地化（Documentation & Localization）",
+        "### SOP 6：本地對話紀錄的資料防洩漏 (DLP) 規範",
+        "### SOP 合規規範"
+      ],
+      "lines": 69,
+      "sha256": "634fec5b1170bac530f6d1d7e33d2a9699f75612c30f8164c43415f0bbd03cdd"
+    },
+    "SOP/SOP_04_Data_Cleanup.md": {
+      "fences": 10,
+      "headings": [
+        "# 資料清理與工作站保護標準作業程序 (SOP)",
+        "## ⚠️ 安全警示：執行前確認",
+        "## 一、受保護資產清單（Protected Assets）",
+        "### 1.1 核心受保護路徑",
+        "### 1.2 專案應用目錄",
+        "### 1.3 可歸檔資產",
+        "## 二、安全清理執行流程",
+        "### Step 1：掃描異常路徑引用",
+        "# @EXECUTE",
+        "# 搜尋所有腳本中的舊路徑引用（排除 node_modules 與 .next）",
+        "### Step 2：確認 Windows 啟動項目",
+        "# @EXECUTE",
+        "# 確認 Windows 啟動資料夾內容",
+        "### Step 3：確認背景執行程序",
+        "# @EXECUTE",
+        "# 確認是否有佔用舊路徑的背景程序",
+        "### Step 4：標記待刪除項目",
+        "### Step 5：驗證服務健康狀態",
+        "# @EXECUTE",
+        "# 確認本地開發伺服器正常回應",
+        "## 三、可安全清理的暫存項目",
+        "## 四、工作站目錄結構（標準化範本）",
+        "## 五、清理後復原備忘",
+        "## 六、UI 語言與顯示規範 (UI & Language Standards)",
+        "## 七、本地服務埠號規範",
+        "### 服務啟動確認步驟"
+      ],
+      "lines": 179,
+      "sha256": "16b51a274b28e390e0961b558c72dfb894ab5a20bdf54f5df083a331a1ab861f"
+    },
+    "SOP/SOP_05_System_Policies.md": {
+      "fences": 0,
+      "headings": [
+        "# 本協作系統 系統核心治理政策 (System Governance Policies)",
+        "### 🚫 絕對禁止事項 (Anti-Patterns) [HARD CONSTRAINTS]",
+        "### 🔒 工具呼叫狀態綁定 (Slot-filling Verification)",
+        "## 1. Watchdog 非同步巡檢機制 [HIGHEST_PERMISSION]",
+        "## 2. 通訊授權管理政策",
+        "### 2.1 語言規定",
+        "## 3. 嚴格配額監控政策",
+        "## 4. 跨平台編碼與檔案規範 (Cross-Platform Encoding Protocol)",
+        "### 4.1 零容忍編碼政策",
+        "## 5. 技能目錄與命名空間治理 (Namespace Governance)",
+        "### 5.1 架構層級劃分",
+        "### 5.2 嚴格 1:1 映射原則（無前綴）",
+        "### 5.3 索引絕對同步原則",
+        "## 6. 系統備份與版本控制規範 (System Backup Protocol)",
+        "### 6.1 GitHub 遠端備份政策",
+        "## 7. 技能不刪除原則 (No-Delete Policy) [HIGHEST_PERMISSION]"
+      ],
+      "lines": 129,
+      "sha256": "a500ed0d65af9ccce681220e1a5672946a9acad1bdc743f8b801c4d495a25911"
+    },
+    "SOP/SOP_06_Handover_Manual.md": {
+      "fences": 10,
+      "headings": [
+        "# 本協作系統 (Argus v6.0) 專案維護日誌 CORE_MAINTENANCE_LOG",
+        "## 01. 系統架構總覽 SYSTEM_OVERVIEW_STRATA",
+        "## 02. 技術棧矩陣 TECHNICAL_STACK_MATRIX",
+        "## 03. 系統拓撲與資料流 SYSTEM_TOPOLOGY_DATA_BUS",
+        "### 3.1 核心資料流向圖",
+        "### 3.2 目錄結構說明",
+        "## 03.5 LINE Bot 服務啟動 SOP LOCAL_DEV_STARTUP_SOP",
+        "# LINE 接管（該技能尚未遷移至 HH.AI_v2，路徑為預計位置）",
+        "# TG 接管（該技能尚未遷移至 HH.AI_v2，路徑為預計位置）",
+        "## 04. 專案維運指南 OPERATIONAL_TACTICS_GUIDE",
+        "### 4.1 環境變數配置 (`.env.local`)",
+        "# 核心參數",
+        "# 資料庫 (開發)",
+        "### 4.2 常用開發指令",
+        "### 4.3 Skills 目錄結構與動態同步",
+        "### 4.4 產業對映表擴充",
+        "## 05. 設計與視覺規範 DESIGN_VISUAL_IDENTITY_SYSTEM",
+        "### 5.1 核心顏色與視覺標誌",
+        "### 5.2 字體與排版",
+        "## 06. 系統常見錯誤排除 TROUBLESHOOTING_DIAGNOSTICS",
+        "## 07. 未來擴展藍圖 FUTURE_EXPANSION_ROADMAP",
+        "## 08. 溝通與語言標準 COMMUNICATION_LANGUAGE_STANDARDS"
+      ],
+      "lines": 207,
+      "sha256": "1cf4f518dbde003278d519a8d72e2d376cd105524815f382274e5cb31639c4a2"
+    },
+    "SOP/SOP_09_AutoResearch_CPU.md": {
+      "fences": 16,
+      "headings": [
+        "# 自動化研究 CPU 版實驗框架 (AutoResearch CPU)",
+        "## 一、環境建置 (Setup)",
+        "### 1.1 安裝依賴套件",
+        "### 1.2 準備資料集（僅需執行一次）",
+        "### 1.3 建立實驗分支",
+        "### 1.4 驗證前置條件",
+        "## 二、實驗執行規範 (Experimentation)",
+        "### 2.1 允許調整的超參數（`train_cpu.py` 中可修改）",
+        "### 2.2 禁止修改的項目（固定設定，任何情況下不得更動）",
+        "## 三、輸出格式 (Output Format)",
+        "## 四、實驗日誌規範 (Logging)",
+        "## 五、自動化迴圈協議 (LOOP FOREVER Protocol)",
+        "### 5.1 決策邏輯",
+        "### 5.2 指標提取指令",
+        "## 六、合規備註"
+      ],
+      "lines": 133,
+      "sha256": "295c68b18773ed40d9bf0d6e575ac9176ca22ee97d2cc02a4c38d31886d1359d"
+    },
+    "SOP/SOP_11_Task_Reflection_Protocol.md": {
+      "fences": 0,
+      "headings": [
+        "# 任務反思標準作業程序 (Task Reflection Protocol V2.0.0)",
+        "## 1. 觸發時機 (When to Reflect)",
+        "## 2. 5 步執行程序 (The 5-Step Reflexion Loop)",
+        "## 3. 記憶庫提取 (Memory Retrieval)"
+      ],
+      "lines": 49,
+      "sha256": "b978f2a6cb36445a90432c6b7b3791daba771e7378c4283ec76f95f88d662f1a"
+    },
+    "SOP/SOP_12_MCP_Auth_Recovery.md": {
+      "fences": 8,
+      "headings": [
+        "# SOP_12 外部 MCP 服務認證修復 SOP (External MCP Auth Recovery)",
+        "## 1. 觸發條件",
+        "## 2. 診斷流程",
+        "### 步驟 2.1：確認伺服器狀態",
+        "## 3. NotebookLM MCP 認證修復標準流程",
+        "### 步驟 3.1：執行自動或引導式預檢 (Chrome DevTools MCP)",
+        "### 步驟 3.2：執行認證指令",
+        "# 優先嘗試全域指令",
+        "# 若遇到 PATH 環境變數遺失或指令無法辨識，請改用絕對路徑強制喚醒：",
+        "### 步驟 3.3：判斷成功標準（關鍵！）",
+        "### 步驟 3.4：更新 MCP 伺服器快取",
+        "### 步驟 3.5：驗證修復完成",
+        "## 4. 根本原因說明",
+        "## 5. 常見錯誤速查",
+        "## 6. 相關設定檔位置"
+      ],
+      "lines": 118,
+      "sha256": "4101ddd000588c60699d80643297ccc61a8751a48d8a19dc265aeb15053d33ea"
+    },
+    "SOP/SOP_13_Hyperparameter_Training.md": {
+      "fences": 2,
+      "headings": [
+        "# 微型模型超參數訓練與日誌監控 SOP (SOP_13)",
+        "## 一、實驗控制與執行架構 (Execution Architecture)",
+        "### 1.1 核心腳本說明",
+        "### 1.2 狀態監控檔案",
+        "## 二、例行監控與巡檢步驟 (Routine Monitoring)",
+        "### 2.1 指標提取與驗證",
+        "# 從 results.tsv 取最新 5 筆結果（該技能尚未遷移至 HH.AI_v2，路徑為預計位置）：",
+        "### 2.2 熔斷與安全閥 (熔斷機制)",
+        "## 三、異常處理 (Troubleshooting)"
+      ],
+      "lines": 50,
+      "sha256": "12f6bce5fb9c689145b9748e4ad2ec544b080c49e22e5a586113628f6713a3f9"
+    },
+    "SOP/SOP_14_Rigorous_Verification_and_Audit_Protocol.md": {
+      "fences": 0,
+      "headings": [
+        "# 嚴謹驗證與審計標準程序 (Rigorous Verification & Audit Protocol)",
+        "## 0. 觸發條件 (Trigger Conditions)",
+        "## 1. 聯席審計規範 (Joint Audit Standard)",
+        "### 1.1 資安稽核官 (Security Auditor)",
+        "### 1.2 代碼與架構審查官 (Code Reviewer & Architect)",
+        "### 1.3 顧問團 (Advisory Board)",
+        "### 1.4 總架構師 (Chief Architect)",
+        "## 2. 前置沙盒模擬測試 (Pre-flight Sandbox Simulation)",
+        "### 2.1 PM2 設定檔與常駐服務的沙盒先行驗證",
+        "## 3. 使用者確認防線 (User Consent Barrier)",
+        "## 4. 分段執行與階段簽章審計 (Phased Execution & Intermediate Audit)",
+        "## 5. Walkthrough 與結案報告 (Closing & Traceability)",
+        "## 6. 發現錯誤時的判斷順序 (Root-Cause Handling Order)",
+        "### 6.1 事件背景",
+        "### 6.2 四步判斷順序（不得跳過）",
+        "### 6.3 與既有紀律的關係",
+        "## 7. 高風險技能遷移的三層核對 (Three-Layer Review)",
+        "### 7.1 適用範圍",
+        "### 7.2 三層核對",
+        "### 7.3 與既有紀律的關係"
+      ],
+      "lines": 175,
+      "sha256": "6be577270392b57a23fc71b26cbfee5600d0da0650df9fe4cdae03bc0117f51a"
+    },
+    "docs/ARCHIVE-INDEX.md": {
+      "fences": 0,
+      "headings": [
+        "# 歸檔索引",
+        "## 一、查詢入口",
+        "## 二、五個歸檔層級",
+        "## 三、共通原則",
+        "## 四、已知缺口"
+      ],
+      "lines": 57,
+      "sha256": "14e8b39f68f99eca564c9aaffcd30aece17d51b6f4152b5cd68da9461e32e6dd"
+    },
+    "docs/AUDIT-LOG.md": {
+      "fences": 0,
+      "headings": [
+        "# 自我審查檢查點紀錄"
+      ],
+      "lines": 34,
+      "sha256": "5e5b2ac9fd0bd9c7a48ef52d92eb1fd22f80bea8b01f4cf63b33bbdf48d2aeb7"
+    },
+    "docs/EXEC-LOG.md": {
+      "fences": 0,
+      "headings": [
+        "# 執行者檢查紀錄"
+      ],
+      "lines": 22,
+      "sha256": "61ce7b89aa5cea9dc4b922d299150ad4d4a7ff36bf2397c193b41029cc9330f3"
+    },
+    "docs/HANDOVER.md": {
+      "fences": 14,
+      "headings": [
+        "# HH.AI_v2 重構專案 — 完整交接手冊",
+        "## 目錄",
+        "## 1. 專案概述",
+        "### 目標",
+        "### 系統性質",
+        "### 三方角色分工",
+        "### 七桶架構（ADR-0001）",
+        "## 2. 資料來源",
+        "### 兩個 GitHub Repo（皆為公開，可直接 clone）",
+        "### 本機路徑（Antigravity 操作用）",
+        "### 專案內的關鍵文件",
+        "### 使用者提供的外部資料",
+        "### 架構設計的外部參考來源",
+        "### 已識別的 vendored 外部資產",
+        "### 官方文件參考",
+        "### 使用者的 NotebookLM 筆記本（Claude 無法存取）",
+        "## 3. 從頭到尾做了什麼",
+        "### 階段一：架構設計與骨架建立",
+        "### 階段二：技能審計與批次遷移",
+        "### 階段三：SOP 處理",
+        "### 階段四：LINE/TG 雙平台診斷",
+        "### 階段五：安全事件處理",
+        "### 階段六：Jules 分支整合",
+        "### 階段七：Port 規範與雜項",
+        "## 4. 已完成項目與細節",
+        "### 4.1 技能遷移：54 個",
+        "### 4.2 ADR：19 份決策紀錄（＋ 1 份範本）",
+        "### 4.3 Workspace 規則：5 份（`.agents/rules/`）",
+        "### 4.4 SOP：10 份 + 索引",
+        "### 4.5 自動化測試：41 個（從 0 開始）",
+        "### 4.6 Jules 分支整合：兩批共 24 個全數處理",
+        "### 4.7 其他產出",
+        "## 5. 未完成項目與細節",
+        "### 5.1 待遷移技能：7 個",
+        "### 5.2 攔截項（兩項已裁決，一項待裁決）",
+        "### 5.3 Persona 認知顧問：15 個（階段一可立即做）",
+        "### 5.4 runtime / shared 層（尚未開始）",
+        "### 5.5 其他待辦",
+        "## 6. 已處理的風險",
+        "### 6.1 憑證外洩（本機，未推送）",
+        "### 6.2 已修復的兩個安全漏洞",
+        "### 6.3 遷移過程中攔截的問題（不完整列舉）",
+        "### 6.4 執行期產物清理（舊 repo）",
+        "## 7. 未處理的風險",
+        "### 7.1 ~~🔴 最高優先~~ ✅ 已處置：`nlm_cookies.txt` 已推送至公開 repo",
+        "### 7.2 🔴 LINE 通道完全失效（根因已查明，未修復）",
+        "### 7.3 🟡 資安防線的結構性缺口（ADR-0016）",
+        "### 7.4 🟡 記憶體是被低估的失效因素",
+        "### 7.5 🟡 Telegram 的 Heap Usage 偏高",
+        "### 7.6 🟡 Port 衝突（潛在，未來必然發生）",
+        "### 7.7 🟢 其他",
+        "## 8. 使用者的工作習慣",
+        "### 8.1 明確表達過的偏好",
+        "### 8.2 工作模式",
+        "### 8.3 決策風格",
+        "### 8.4 環境限制",
+        "## 9. 與 Antigravity IDE Agent 協作規範",
+        "### 9.1 提示詞必備要素",
+        "### 9.2 必須明確指定的事項",
+        "### 9.3 提示詞結構模板",
+        "### 9.4 分批原則",
+        "## 10. Antigravity Agent 的已知出錯模式與風險評估",
+        "### 10.1 已實際發生的出錯模式（依嚴重度排序）",
+        "### 10.2 Agent 表現良好的部分（值得保持的做法）",
+        "### 10.3 風險緩解措施（已建立）",
+        "### 10.4 核對時的重點檢查項",
+        "# 1. 技能總數是否符合預期",
+        "# 2. frontmatter 是否乾淨（不該有 type、version、capabilities）",
+        "# 3. 已知問題字串是否殘留",
+        "# 4. 舊架構名稱是否殘留",
+        "# 5. 拆分後的 code block 是否配對",
+        "# 正確算法：以 ``` 開頭的行數（見 .agents/rules/git-and-reporting.md §3）",
+        "# 6. README 索引是否同步",
+        "# 7. validate_skills.py 是否 0 錯誤",
+        "## 11. Claude 自身的已知失誤",
+        "## 12. 接手第一步該做什麼",
+        "### 12.1 建立脈絡（約 5 分鐘）",
+        "### 12.2 優先處理順序（建議）",
+        "### 12.3 工作方法（不可省略）",
+        "### 12.4 溝通原則",
+        "## 附錄：常用指令速查",
+        "# 查證兩個 repo",
+        "# 技能總數",
+        "# 各 bucket 分布",
+        "# 驗證（Windows 需先設編碼）",
+        "# 測試",
+        "# code block 圍欄數（正確算法）"
+      ],
+      "lines": 868,
+      "sha256": "1006b035b26055dda4268071eb3a68a1141084d5c4af358220d269062212b257"
+    },
+    "docs/TASKBOARD.md": {
+      "fences": 0,
+      "headings": [
+        "# HH.AI_v2 重構任務看板",
+        "## A. 額度控管與交接機制（2026-09-02 使用者提出的十一項）",
+        "## B. 重構主線",
+        "## C. 待使用者裁決",
+        "## D. 驗證階段（§9.5）",
+        "## E. 舊 repo 遷移主線（`refactor-backlog.md` §二 A–F）",
+        "## F. 追蹤項（`refactor-backlog.md` 三、各點）",
+        "## G. 舊 repo 未盤點區塊（2026-09-02 新發現）",
+        "## 封存區"
+      ],
+      "lines": 187,
+      "sha256": "a90f99a0333c8d8f9ff79c78de76002aaa5f90f3bc366adba9c13bb22fc3862c"
+    },
+    "docs/adr/0000-adr-template.md": {
+      "fences": 0,
+      "headings": [
+        "# ADR-NNNN: 決策標題（一行）",
+        "## Context",
+        "## Decision",
+        "## Consequences"
+      ],
+      "lines": 24,
+      "sha256": "bcf6d64f7398f7b53c33eb71c19806342974f2d372bda00d40ed5b14d8e51087"
+    },
+    "docs/adr/0001-seven-bucket-taxonomy.md": {
+      "fences": 0,
+      "headings": [
+        "# ADR-0001: 用 7 個 bucket 取代原本的三層數字資料夾",
+        "## Context",
+        "## Decision",
+        "## Consequences"
+      ],
+      "lines": 26,
+      "sha256": "657acb5c3bd018f6575cab5b4a473d25550c1f491cdae5919085f11a9fd2baa0"
+    },
+    "docs/adr/0002-skill-invocation-aggressiveness.md": {
+      "fences": 0,
+      "headings": [
+        "# ADR-0002: 技能自動觸發的積極程度，依 bucket 風險分級",
+        "## Context",
+        "## Decision",
+        "## Consequences"
+      ],
+      "lines": 31,
+      "sha256": "1f0b1d49c1ac1f7edcd90adfc176adb6f9f9a4bf8bdacfbb454459c80c420c4d"
+    },
+    "docs/adr/0003-jules-integration-via-extension.md": {
+      "fences": 0,
+      "headings": [
+        "# ADR-0003: Jules 整合走官方擴充套件安裝，不 vendor 原始碼",
+        "## Context",
+        "## Decision",
+        "## Consequences"
+      ],
+      "lines": 49,
+      "sha256": "e11fa4d41c466435d02455414f3e7f259f54b4335d3111059f9d6182e07f8307"
+    },
+    "docs/adr/0004-notebooklm-fallback-rule-recovery.md": {
+      "fences": 0,
+      "headings": [
+        "# ADR-0004: 補回 4 個分析型技能遺失的「NotebookLM 研究遵從指示」鐵律",
+        "## Context",
+        "## Decision",
+        "## Consequences"
+      ],
+      "lines": 46,
+      "sha256": "c1135cd57ffcd9b17eee6d70aa5f47f6a3cb49c28f5c75f460cd5b9edef5c607"
+    },
+    "docs/adr/0005-high-risk-skill-three-layer-review.md": {
+      "fences": 0,
+      "headings": [
+        "# ADR-0005: 高風險技能遷移，禁止只憑摘要放行，必須看完整內容 + 直接查驗實體檔案",
+        "## Context",
+        "## Decision",
+        "## Consequences",
+        "## 2026-09-01 分層搬移"
+      ],
+      "lines": 51,
+      "sha256": "8acbf8b3c6003ed3bea092ddcdca4413052490f8fcc063f99adf852947e3234f"
+    },
+    "docs/adr/0006-merge-orchestration-skills.md": {
+      "fences": 0,
+      "headings": [
+        "# ADR-0006: 核心總管與自我進化技能的整併決策",
+        "## Context",
+        "## Decision",
+        "## Consequences"
+      ],
+      "lines": 33,
+      "sha256": "9a303d945dbc03bfcf57f4864c8383c0a97a7a8b1aac9a82d544981697bca6b9"
+    },
+    "docs/adr/0007-macro-auditor-role.md": {
+      "fences": 0,
+      "headings": [
+        "# ADR-0007: 宏觀審計官角色定位",
+        "## Context",
+        "## Decision",
+        "### 由誰執行審計",
+        "### 這個角色怎麼做",
+        "## Consequences",
+        "## 2026-09-01 分層搬移"
+      ],
+      "lines": 55,
+      "sha256": "270b1225c2af0c1f8e450c7f725badb77a11b6d018910702102ec38569973976"
+    },
+    "docs/adr/0008-dual-pipeline-architecture.md": {
+      "fences": 0,
+      "headings": [
+        "# ADR-0008: 技能庫存在兩條平行系統，命名相近不代表職責重複",
+        "## Context",
+        "## Decision",
+        "## Consequences",
+        "## 更新紀錄"
+      ],
+      "lines": 65,
+      "sha256": "99c69e43bc39c4113c071a4b72416553f023c9f36c65373d36687a576bcc789e"
+    },
+    "docs/adr/0009-windows-job-object-process-lifecycle.md": {
+      "fences": 0,
+      "headings": [
+        "# ADR-0009: Windows Job Object 進程回收機制，雙平台啟動必須在單一常駐 Task 內串接",
+        "## Context",
+        "## Decision",
+        "## Consequences"
+      ],
+      "lines": 60,
+      "sha256": "dc0f2d2fe602e6e6544a3baf24f9bbba796fb2afa8143a8a7415be57507e090b"
+    },
+    "docs/adr/0010-powershell-parameter-passing-pitfalls.md": {
+      "fences": 0,
+      "headings": [
+        "# ADR-0010: PowerShell 參數傳遞的兩個陷阱，回覆腳本必須用絕對路徑",
+        "## Context",
+        "## Decision",
+        "## Consequences"
+      ],
+      "lines": 67,
+      "sha256": "198060698db39d2a736b3c48725a2db4acf1ed001487a233a7ecd23bf764124c"
+    },
+    "docs/adr/0011-omnichannel-architecture-evolution.md": {
+      "fences": 2,
+      "headings": [
+        "# ADR-0011: Omni-Channel 雙生遙控通訊架構與 Task-Exit Loop 演進",
+        "## Context",
+        "## Decision",
+        "## Consequences"
+      ],
+      "lines": 67,
+      "sha256": "914cc09c4e0c45da1a6fae63c63e63596779f3a350837dfe7ee5fd87f233aafb"
+    },
+    "docs/adr/0012-distributed-pessimistic-lock.md": {
+      "fences": 2,
+      "headings": [
+        "# ADR-0012: 分散式悲觀鎖機制 (Distributed Pessimistic Lock)",
+        "## Context",
+        "## Decision",
+        "## Consequences"
+      ],
+      "lines": 39,
+      "sha256": "d9b4b6dc553e61265c08a8826ba662d7a930cd8907eace9368b4616a06726bf0"
+    },
+    "docs/adr/0013-watchdog-async-buffer-neon-db.md": {
+      "fences": 2,
+      "headings": [
+        "# ADR-0013: 系統巡檢鉤子與非同步錯誤暫存機制 (Watchdog & Async Buffer)",
+        "## Context",
+        "## Decision",
+        "### 1. 巡檢觸發時機",
+        "### 2. 偵測清單 (Detection Checklist)",
+        "### 3. 強制禁止事項 (Safety Boundary)",
+        "### 4. Buffer 寫入協定與狀態升級",
+        "### 5. 錯誤物件 Schema（強制型別）",
+        "### 6. 技能觸發詞排他性矩陣規範",
+        "### 7. 使用者通報協定 (Alert Protocol)",
+        "## Consequences"
+      ],
+      "lines": 78,
+      "sha256": "e9b42cf83f022aadeeb4ece086041c94dc5b3bad1324230ede977dcd3bebaa8d"
+    },
+    "docs/adr/0014-pm2-config-pitfalls-and-sandbox-validation.md": {
+      "fences": 0,
+      "headings": [
+        "# ADR-0014: PM2 設定檔的三個地雷，與沙盒先行驗證流程",
+        "## Context",
+        "## Decision",
+        "### 1. 修復方式與驗證結果",
+        "### 2. `line-daemon` 的 Stopped 狀態是設計預期，不是故障",
+        "### 3. 待辦：`line-daemon` 缺少 autorestart 設定",
+        "### 4. 沙盒先行驗證流程（Sandbox-First Validation）",
+        "## Consequences",
+        "## 2026-09-01 分層搬移"
+      ],
+      "lines": 93,
+      "sha256": "bc5cb8de3328a63fa8194f372bbf005516f5f9e3a06cc4ff179459ecd105382d"
+    },
+    "docs/adr/0015-line-tunnel-chain-failure.md": {
+      "fences": 0,
+      "headings": [
+        "# ADR-0015: LINE 隧道同步鏈路斷裂，與雙平台架構的失效點數量對照",
+        "## Context",
+        "### 時間軸（依實際證據重建）",
+        "### 7/26 部署的完整架構（依當時 LINE 推播的部署報告）",
+        "### 診斷發現",
+        "### Telegram 對照診斷（實機執行 $$TG連線$$ 完整流程）",
+        "## Decision",
+        "### 核心洞察：失效點數量決定穩定度",
+        "### 遷移 runtime 層時的架構選擇",
+        "## Consequences"
+      ],
+      "lines": 167,
+      "sha256": "b9c32163efe5a8583daff62363dfda214d67879e85694723fcf6d09614e9ab88"
+    },
+    "docs/adr/0016-credential-leak-defense-gap.md": {
+      "fences": 0,
+      "headings": [
+        "# ADR-0016: 憑證外洩的三道防線都存在，但都沒有在正確時機觸發",
+        "## Context",
+        "## 核心發現：三道防線都存在，都有能力，但都沒被觸發",
+        "## Decision",
+        "### 1. 必須是自動觸發，不能依賴 Agent 主動判斷",
+        "### 2. 檢查範圍不能依副檔名過濾",
+        "### 3. 必須有針對憑證特徵的檢查規則",
+        "### 4. SOP_14 的觸發條件應補上「版控操作前」",
+        "## Consequences",
+        "## 2026-09-01 落實紀錄"
+      ],
+      "lines": 89,
+      "sha256": "a991516ac81d2db1ae251db4498ec99a4aa0064ac5928af1f028cdf61cc2e5cc"
+    },
+    "docs/adr/0017-port-allocation.md": {
+      "fences": 0,
+      "headings": [
+        "# ADR-0017: Port 分配規範，為未來重建的網頁應用預留",
+        "## Context",
+        "## Decision",
+        "## Consequences"
+      ],
+      "lines": 81,
+      "sha256": "3db47a9ee5588e9da0147e19e79fdfba38a92459a4e6734c7d18b46bed7ff2b7"
+    },
+    "docs/adr/0018-vendored-external-assets.md": {
+      "fences": 0,
+      "headings": [
+        "# ADR-0018: vendored 外部資產保留 fork，並以三層方式標示",
+        "## Context",
+        "## Decision",
+        "## Consequences"
+      ],
+      "lines": 52,
+      "sha256": "368b3b4d3c62502c6a36c6e73dda2822c1f48d114e6db121b2bd709f07fd2d33"
+    },
+    "docs/adr/0019-jules-official-cli-and-mcp.md": {
+      "fences": 0,
+      "headings": [
+        "# ADR-0019: Jules 整合改採 Google 官方 CLI 與 MCP，取代擴充套件方案",
+        "## Context",
+        "## Decision",
+        "## 2026-08-29 當日更正",
+        "## Consequences"
+      ],
+      "lines": 117,
+      "sha256": "8bc30c4224501ce9fa58d99894cb62a428b4c680953d2a44611db24c1d9d56a8"
+    },
+    "docs/mcp-environment-guide.md": {
+      "fences": 0,
+      "headings": [
+        "# MCP 環境設定與重建指南",
+        "## 設定檔位置",
+        "## 架構：兩層 MCP",
+        "## 六個 MCP Server 的重建方式",
+        "## 金鑰存放方式（2026-08-29 起）",
+        "## 已知風險與待改善項目",
+        "### 1. 憑證雙處存放，且命名不一致（高風險）",
+        "### 2. notebooklm 的絕對路徑含 Python 版本號（中風險）",
+        "### 認證重建：`nlm login` 的正確流程",
+        "### 3. Gateway 動態載入的 server 無紀錄（中風險）",
+        "## 環境重建檢查清單"
+      ],
+      "lines": 171,
+      "sha256": "80a6a557d538d2ec2a928ec02b2bbe75eb54ac042a5e22389fa85bc77b6d80c3"
+    },
+    "docs/migration-kickoff-prompt.md": {
+      "fences": 12,
+      "headings": [
+        "# 貼給 Antigravity 的遷移啟動指令",
+        "## 整體分成 4 個階段，每個階段做完才進下一個",
+        "## 兩種角色，你自己在 prompt 開頭指定給 Antigravity",
+        "## 每一批 prompt 的固定結尾要求",
+        "## 長流程要維護 task artifact(Antigravity 沒有原生 todo 工具)",
+        "## 「Careful Mode」——每一批的通用互動方式",
+        "## 前置：把舊 repo 放進來當參考",
+        "## 第一批：修復 5 個空白 description（優先，且風險最低）— 規劃模式",
+        "## 第二批：處理重名技能的 diff — 規劃模式",
+        "## 第三批：示範遷移 3 個技能（驗證流程可行）— 實作模式",
+        "## 待補事項清單（階段一審計中發現，正式遷移時要記得處理）",
+        "## 第四批之後：批次遷移 — 實作模式",
+        "## 全部遷移完成後"
+      ],
+      "lines": 187,
+      "sha256": "24a3edcdb26775c048d44b5cd21ce09be899e115c3b907aa95252ddd5fd93ea8"
+    },
+    "docs/refactor-backlog.md": {
+      "fences": 4,
+      "headings": [
+        "# HH.AI_v2 重構待辦清單與進度盤點",
+        "## 一、目前已完成的部分",
+        "## 二、待重構清單",
+        "### A. 技能（skills/）— 尚未遷移",
+        "#### A-1. 確定要遷移的",
+        "#### A-2. 確定不遷移",
+        "#### A-3. Archive 裡值得評估復活的",
+        "### B. Persona 認知顧問（15 個）",
+        "### C. Runtime 執行層（尚未開始）",
+        "### D. `$$` 指令定義收斂（待處理）",
+        "### E. Data/ 資料層（部分處理）",
+        "### F. 確定淘汰、不遷移的項目",
+        "## 三、本次討論的重要發現",
+        "## 三之二、Jules 自動化修正分支處理狀態",
+        "### 已合併",
+        "### 已評估，決定不採用",
+        "### 待處理",
+        "## 四、更新紀錄 (Update Log)",
+        "## 五、接手交接區（新對話接手時先讀這一段）",
+        "### 5.1 上一批狀態",
+        "### 5.2 待辦",
+        "### 5.3 待使用者裁決",
+        "### 5.4 進行中／等待回報"
+      ],
+      "lines": 2412,
+      "sha256": "44bf16c831601f00d9088627ff2e4755ca303e5c3f6a6a8a6956c8806b5b0025"
+    },
+    "scripts/anchor.py": {
+      "fences": 0,
+      "headings": [
+        "# -*- coding: utf-8 -*-",
+        "# 確保在 Windows 下標準輸出編碼為 utf-8"
+      ],
+      "lines": 97,
+      "sha256": "60f5ed235b015c9cedf6fb5e100f82a2f3d46e0e64ffb3561e092a6b098b82fc"
+    },
+    "scripts/check_consistency.py": {
+      "fences": 0,
+      "headings": [],
+      "lines": 959,
+      "sha256": "4a88dd8dfd17b4645be91157e283622115a8efa9e36ee6655d492c3845dcc4e1"
+    },
+    "scripts/fingerprint.py": {
+      "fences": 0,
+      "headings": [
+        "# -*- coding: utf-8 -*-",
+        "# 確保在 Windows 下標準輸出編碼為 utf-8"
+      ],
+      "lines": 265,
+      "sha256": "1bc82335c5a11354218240533845faf77c5d5a450e24aa52faee9d94561107ef"
+    },
+    "scripts/tests/test_anchor.py": {
+      "fences": 0,
+      "headings": [],
+      "lines": 65,
+      "sha256": "ee8bb5eb421f95bf95d041f051539d52b13c999fa2fff12ce111d9055da61671"
+    },
+    "scripts/tests/test_check_consistency.py": {
+      "fences": 0,
+      "headings": [
+        "# Ensure scripts dir is on sys.path"
+      ],
+      "lines": 322,
+      "sha256": "d6e81f99f809993b4ca4b64ccc8a0e788edd6c993537206bed63feea8dc83cf7"
+    },
+    "scripts/tests/test_fingerprint.py": {
+      "fences": 0,
+      "headings": [],
+      "lines": 98,
+      "sha256": "37003c5cbe7497a43d35697e9a7586ac8195e23d38aafbfaf8829cf903064b4d"
+    },
+    "scripts/tests/test_validate_skills.py": {
+      "fences": 0,
+      "headings": [
+        "# Ensure scripts directory is in sys.path",
+        "# ==========================================",
+        "# parse_frontmatter tests",
+        "# ==========================================",
+        "# ==========================================",
+        "# validate_name tests",
+        "# ==========================================",
+        "# ==========================================",
+        "# validate_description tests",
+        "# ==========================================",
+        "# ==========================================",
+        "# validate_bucket_structure tests",
+        "# ==========================================",
+        "# ==========================================",
+        "# validate_skill tests",
+        "# ==========================================",
+        "# ==========================================",
+        "# main tests",
+        "# ==========================================",
+        "# ==========================================",
+        "# report_results tests",
+        "# =========================================="
+      ],
+      "lines": 437,
+      "sha256": "5246664fd91d3a964ffe55d414517fda4d9ba2cf7c3adea7a21e3f4cfc2120b0"
+    },
+    "scripts/validate_skills.py": {
+      "fences": 0,
+      "headings": [
+        "# 官方 Agent Skills 規格允許的 frontmatter 欄位",
+        "# 本專案自訂擴充欄位（見 AGENTS.md 第 2 節），官方規格沒有但本專案沿用"
+      ],
+      "lines": 231,
+      "sha256": "3bd2fe1c0589d9abe230ada46baddd2851f9a1f7e47c6334dbfb55f13534bd89"
+    }
+  },
+  "generated_at": "2026-09-06T04:18:52Z",
+  "schema_version": 1,
+  "skills": {
+    "by_bucket": {
+      "agents": 6,
+      "analysis": 14,
+      "execution": 16,
+      "meta": 2,
+      "orchestration": 10,
+      "platform": 6
+    },
+    "total": 54
+  }
+}
