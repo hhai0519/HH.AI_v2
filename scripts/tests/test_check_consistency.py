@@ -36,14 +36,32 @@ def test_check_8_taskboard_head_prev_pass(tmp_path):
     assert len(fails) == 0
 
 
+def test_check_8_taskboard_head_prev2_pass(tmp_path):
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    tb = docs / "TASKBOARD.md"
+    tb.write_text("# 看板\n**最後更新**：2026-09-02，HEAD `b6ab53f` 之後\n", encoding="utf-8")
+    fails, infos = check_8_taskboard_head(str(tmp_path), git_head="08e6bbc", git_prev="18af8ad", git_prev2="b6ab53f")
+    assert len(fails) == 0
+
+
+def test_check_9_handover_head_prev2_pass(tmp_path):
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    bl = docs / "refactor-backlog.md"
+    bl.write_text("上次核對通過的 HEAD：b6ab53f\n", encoding="utf-8")
+    fails, infos = check_9_handover_head(str(tmp_path), git_head="08e6bbc", git_prev="18af8ad", git_prev2="b6ab53f")
+    assert len(fails) == 0
+
+
 def test_check_8_taskboard_head_fail_lag(tmp_path):
     docs = tmp_path / "docs"
     docs.mkdir()
     tb = docs / "TASKBOARD.md"
     tb.write_text("# 看板\n**最後更新**：2026-09-02，HEAD `aaaaaaa` 之後\n", encoding="utf-8")
-    fails, infos = check_8_taskboard_head(str(tmp_path), git_head="08e6bbc", git_prev="18af8ad")
+    fails, infos = check_8_taskboard_head(str(tmp_path), git_head="08e6bbc", git_prev="18af8ad", git_prev2="b6ab53f")
     assert len(fails) == 1
-    assert "落後超過一批" in fails[0]
+    assert "落後超過兩批" in fails[0]
 
 
 def test_check_9_handover_head_pass(tmp_path):
@@ -60,9 +78,9 @@ def test_check_9_handover_head_fail_lag(tmp_path):
     docs.mkdir()
     bl = docs / "refactor-backlog.md"
     bl.write_text("上次核對通過的 HEAD：bbbbbbb\n", encoding="utf-8")
-    fails, infos = check_9_handover_head(str(tmp_path), git_head="08e6bbc", git_prev="18af8ad")
+    fails, infos = check_9_handover_head(str(tmp_path), git_head="08e6bbc", git_prev="18af8ad", git_prev2="b6ab53f")
     assert len(fails) == 1
-    assert "落後超過一批" in fails[0]
+    assert "落後超過兩批" in fails[0]
 
 
 def test_check_10_section_refs_pass(tmp_path):

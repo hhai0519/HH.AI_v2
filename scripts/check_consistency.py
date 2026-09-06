@@ -561,7 +561,7 @@ def check_8_taskboard_head(root_dir=None, git_head=None, git_prev=None, git_prev
     lag = 0 if matches_head else (1 if matches_prev else (2 if matches_prev2 else 3))
 
     if lag > 2:
-        fails.append(f"docs/TASKBOARD.md: 最後更新 HEAD ({tb_hash}) 落後超過兩批 (落後超過一批) (HEAD={head}, HEAD~1={prev}, HEAD~2={prev2})")
+        fails.append(f"docs/TASKBOARD.md: 最後更新 HEAD ({tb_hash}) 落後超過兩批 (HEAD={head}, HEAD~1={prev}, HEAD~2={prev2})")
     return fails, infos
 
 def check_9_handover_head(root_dir=None, git_head=None, git_prev=None, git_prev2=None):
@@ -605,7 +605,7 @@ def check_9_handover_head(root_dir=None, git_head=None, git_prev=None, git_prev2
     lag = 0 if matches_head else (1 if matches_prev else (2 if matches_prev2 else 3))
 
     if lag > 2:
-        fails.append(f"docs/refactor-backlog.md: 上次核對通過的 HEAD ({ho_hash}) 落後超過兩批 (落後超過一批) (HEAD={head}, HEAD~1={prev}, HEAD~2={prev2})")
+        fails.append(f"docs/refactor-backlog.md: 上次核對通過的 HEAD ({ho_hash}) 落後超過兩批 (HEAD={head}, HEAD~1={prev}, HEAD~2={prev2})")
     return fails, infos
 
 def check_10_section_refs(root_dir=None):
