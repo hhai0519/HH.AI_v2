@@ -1,5 +1,5 @@
 {
-  "base_head": "a44cc6b",
+  "base_head": "936b9af",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 0,
@@ -50,8 +50,8 @@
         "## 5. 例外",
         "## 6. 這條規則保護的是誰"
       ],
-      "lines": 332,
-      "sha256": "53d14fcbf8947e6c565af23ac4ea97e55f00f13d3fcd9fb3c97151042947a5ba"
+      "lines": 334,
+      "sha256": "ccedeee7aed689f7252e565f8f362834c8af1ceef88fd55aee58c9f3a1af1a3a"
     },
     ".agents/rules/role-boundaries.md": {
       "fences": 0,
@@ -138,8 +138,8 @@
         "### 11.2 執行 revert 的完整程序",
         "### 11.3 已審核標記"
       ],
-      "lines": 860,
-      "sha256": "1f5c900d50c427096839ced2a874655daf11ced8f2a19a82bb4791b54690859f"
+      "lines": 875,
+      "sha256": "d33f0788b66e3f21498384fe60950ce92032d31a73d6e707b7d50c01eeb3c9b3"
     },
     ".claude/rules/handover-selftest.md": {
       "fences": 0,
@@ -152,8 +152,8 @@
         "## E. 交付（產出提示詞之前）",
         "## F. 額度（每一輪回覆的開頭與結尾）"
       ],
-      "lines": 94,
-      "sha256": "147a4754997e7c9d2c50e35a9a5791707e1759294d0f3a891984d8a568505862"
+      "lines": 96,
+      "sha256": "6e2e94a4e8df043275e24f6bf3ca05533133ae19b67610f192fa699c81df1222"
     },
     ".github/workflows/verify.yml": {
       "fences": 0,
@@ -213,6 +213,7 @@
         "### 2.7 數字或事實出現分歧時，必須收斂為單一答案",
         "### 2.8 可機械檢查的規則，就必須機械檢查",
         "### 2.9 移除任何本體之前，必須獨立複查",
+        "### 2.10 每一個數字都必須有它的產生者",
         "## 3. 記錄紀律",
         "### 3.1 重大突破當下就記錄，不留到批次結束",
         "### 3.2 記錄要能被追溯，不能只存在對話裡",
@@ -224,8 +225,8 @@
         "### 4.4 責任歸屬",
         "## 5. 更新紀錄"
       ],
-      "lines": 311,
-      "sha256": "879f4f0876a65907269ab7529288b86ac14b3ba52d69d8fa5bfeb8ac25c931d4"
+      "lines": 345,
+      "sha256": "ad4b926848cba42c7ca847c0e66672da4c47cb74da195fdb6eef5a581319ddac"
     },
     "SOP/README.md": {
       "fences": 0,
@@ -484,16 +485,16 @@
       "headings": [
         "# 自我審查檢查點紀錄"
       ],
-      "lines": 39,
-      "sha256": "4a3b03fd343c22ef99cd3e51242123e2718525ed1bd500c9b1248735df0fbcc0"
+      "lines": 40,
+      "sha256": "a5aefb84a659ab3a9de0957a9ab840d298ff12ef9eccbad94858790c48cf79aa"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 27,
-      "sha256": "25b9fff30971304492c43b157569b3daba9eb14be8501ea596f0560f440fca2a"
+      "lines": 28,
+      "sha256": "2b1fe4847eabd194941ffb3aa98d5f4209a3caf302d54128e7b2cb43dc71788f"
     },
     "docs/HANDOVER.md": {
       "fences": 14,
@@ -603,7 +604,7 @@
         "## 封存區"
       ],
       "lines": 221,
-      "sha256": "e5d2f36f71f72b0985861817c46bf84b7f37e9614789b01f4bae828de2d17ba2"
+      "sha256": "1326352666d6d036cbe3a6cdd3d0bec1fa76ecd8fb6bc3c1bec1834031b9f5e9"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -920,8 +921,8 @@
         "### 5.3 待使用者裁決",
         "### 5.4 進行中／等待回報"
       ],
-      "lines": 2788,
-      "sha256": "b0717b4f97ab39edc149b223b71a30b31abd2b2a8c97f49fe4b9b869351f0a80"
+      "lines": 2864,
+      "sha256": "9321dca8a784d70bd66ec0b2305a02174a1f56095e8cb961666171a10db9c31c"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1025,7 +1026,7 @@
       "sha256": "bc653c823579a59b1708f0fd17c01ed52b934252502ec2dcdfdb25d3e3e82da5"
     }
   },
-  "generated_at": "2026-09-07T09:49:28Z",
+  "generated_at": "2026-09-07T10:46:26Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {
