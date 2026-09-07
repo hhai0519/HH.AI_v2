@@ -1,5 +1,5 @@
 {
-  "base_head": "59cea4c",
+  "base_head": "a44cc6b",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 0,
@@ -484,16 +484,16 @@
       "headings": [
         "# 自我審查檢查點紀錄"
       ],
-      "lines": 38,
-      "sha256": "2b05e8bd5b0d3cb6ac71b298dad1da4d2f2ee9b105aa5be4953e2f66ed1960f3"
+      "lines": 39,
+      "sha256": "4a3b03fd343c22ef99cd3e51242123e2718525ed1bd500c9b1248735df0fbcc0"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 26,
-      "sha256": "452166f447e8578d85cc40988f6f20d0d0ad793f1c748785c54b19181890ce65"
+      "lines": 27,
+      "sha256": "25b9fff30971304492c43b157569b3daba9eb14be8501ea596f0560f440fca2a"
     },
     "docs/HANDOVER.md": {
       "fences": 14,
@@ -602,8 +602,8 @@
         "## G. 舊 repo 未盤點區塊（2026-09-02 新發現）",
         "## 封存區"
       ],
-      "lines": 207,
-      "sha256": "820a42635626955663440285b1ad0aec0b2f67d5c36bb76329c2d110249e8cbf"
+      "lines": 221,
+      "sha256": "e5d2f36f71f72b0985861817c46bf84b7f37e9614789b01f4bae828de2d17ba2"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -920,8 +920,8 @@
         "### 5.3 待使用者裁決",
         "### 5.4 進行中／等待回報"
       ],
-      "lines": 2671,
-      "sha256": "b1428823fd81dc864c2bca33c024ff2007e211d98eeafc1798956dba6c1e71d3"
+      "lines": 2788,
+      "sha256": "b0717b4f97ab39edc149b223b71a30b31abd2b2a8c97f49fe4b9b869351f0a80"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -931,6 +931,14 @@
       ],
       "lines": 97,
       "sha256": "60f5ed235b015c9cedf6fb5e100f82a2f3d46e0e64ffb3561e092a6b098b82fc"
+    },
+    "scripts/build_prompt_evidence.py": {
+      "fences": 0,
+      "headings": [
+        "# -*- coding: utf-8 -*-"
+      ],
+      "lines": 469,
+      "sha256": "effacf788546f07f228d574d43ecf10f191354be1687154e6df946cd2b8533b7"
     },
     "scripts/check_consistency.py": {
       "fences": 0,
@@ -952,6 +960,17 @@
       "headings": [],
       "lines": 65,
       "sha256": "ee8bb5eb421f95bf95d041f051539d52b13c999fa2fff12ce111d9055da61671"
+    },
+    "scripts/tests/test_build_prompt_evidence.py": {
+      "fences": 0,
+      "headings": [
+        "# -*- coding: utf-8 -*-",
+        "# 第一級標題",
+        "## 第二級標題",
+        "# 修改後標題"
+      ],
+      "lines": 370,
+      "sha256": "58d22b2ac0b48a7dd682ca6c5f050aa6f654b2b94a86902057c1bc11cdb7e6cb"
     },
     "scripts/tests/test_check_consistency.py": {
       "fences": 0,
@@ -1006,7 +1025,7 @@
       "sha256": "bc653c823579a59b1708f0fd17c01ed52b934252502ec2dcdfdb25d3e3e82da5"
     }
   },
-  "generated_at": "2026-09-06T13:47:42Z",
+  "generated_at": "2026-09-07T09:49:28Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

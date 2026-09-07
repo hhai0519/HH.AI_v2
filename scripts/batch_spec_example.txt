@@ -1,0 +1,44 @@
+# 批次規格格式（batch spec）
+#
+# 用途：審計官與執行者共用的單一來源。審計官用它跑模擬與產生證據，
+#       未來（B-78）執行者也用它套用修改。
+#
+# 為什麼不用 YAML／JSON：requirements.txt 只有 pytest 與 playwright，
+#   沒有 PyYAML；而 JSON 需要對多行錨點做逃脫，人工撰寫極易出錯。
+#   本格式用分隔線切段，多行文字原樣保留，不需要任何逃脫。
+#
+# 規則：
+#   - 以 # 開頭的行是註解，但**只在 HEAD 與 MOD 標頭區有效**，
+#     ANCHOR 與 PAYLOAD 區塊內的 # 一律視為內容。
+#   - 分隔線必須整行完全相符，前後不得有空白。
+#   - mode 只有三種：insert_after、insert_before、replace
+#   - 每個 MOD 必須有 file、mode、ANCHOR；三種 mode 皆須有 PAYLOAD
+#   - EXPECT 區塊選用，可有多個，用於把「插入後的預期序列」
+#     從一句宣告變成可驗的事實
+
+HEAD: a44cc6b
+
+=== MOD 1 ===
+file: docs/TASKBOARD.md
+mode: replace
+--- ANCHOR ---
+**最後更新**：2026-09-06，HEAD `59cea4c` 之後
+--- PAYLOAD ---
+**最後更新**：2026-09-06，HEAD `a44cc6b` 之後
+--- END MOD ---
+
+=== MOD 2 ===
+file: docs/AUDIT-LOG.md
+mode: insert_after
+--- ANCHOR ---
+| 59cea4c | 2026-09-06 | §4.1-1 |
+--- PAYLOAD ---
+| a44cc6b | 2026-09-06 | §4.1-1 | 範例列，實際使用時替換 |
+--- END MOD ---
+
+=== EXPECT ===
+type: id_sequence
+file: docs/TASKBOARD.md
+pattern: ^\| B-(\d+) \|
+range: 1-65
+--- END EXPECT ---
