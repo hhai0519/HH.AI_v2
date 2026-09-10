@@ -1,5 +1,5 @@
 {
-  "base_head": "936b9af",
+  "base_head": "b46cd5d",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 0,
@@ -51,7 +51,7 @@
         "## 6. 這條規則保護的是誰"
       ],
       "lines": 334,
-      "sha256": "ccedeee7aed689f7252e565f8f362834c8af1ceef88fd55aee58c9f3a1af1a3a"
+      "sha256": "560c16f4be46b074efd831578b1998b5e147e16b61daca3459d041bbd5f8f592"
     },
     ".agents/rules/role-boundaries.md": {
       "fences": 0,
@@ -136,10 +136,11 @@
         "## 11. 錯誤處置與回滾",
         "### 11.1 判斷順序",
         "### 11.2 執行 revert 的完整程序",
-        "### 11.3 已審核標記"
+        "### 11.3 已審核標記",
+        "### 11.4 打 tag 的判準（2026-09-07 使用者裁決）"
       ],
-      "lines": 875,
-      "sha256": "d33f0788b66e3f21498384fe60950ce92032d31a73d6e707b7d50c01eeb3c9b3"
+      "lines": 901,
+      "sha256": "cb39c4a08fe2d743d01e700c695e29e7f7149cda7051b212e07878b4cf78e8db"
     },
     ".claude/rules/handover-selftest.md": {
       "fences": 0,
@@ -152,8 +153,8 @@
         "## E. 交付（產出提示詞之前）",
         "## F. 額度（每一輪回覆的開頭與結尾）"
       ],
-      "lines": 96,
-      "sha256": "6e2e94a4e8df043275e24f6bf3ca05533133ae19b67610f192fa699c81df1222"
+      "lines": 97,
+      "sha256": "97fbc2cd2ace6d29aa15d8f1f321b054d246abeb08417e74d1854ddcb7f942f5"
     },
     ".github/workflows/verify.yml": {
       "fences": 0,
@@ -485,16 +486,16 @@
       "headings": [
         "# 自我審查檢查點紀錄"
       ],
-      "lines": 40,
-      "sha256": "a5aefb84a659ab3a9de0957a9ab840d298ff12ef9eccbad94858790c48cf79aa"
+      "lines": 41,
+      "sha256": "cde75c55840225d5eab77546c36f7cc67bffd75644cd2e877fc012740ccd5c1e"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 28,
-      "sha256": "2b1fe4847eabd194941ffb3aa98d5f4209a3caf302d54128e7b2cb43dc71788f"
+      "lines": 29,
+      "sha256": "2424d4018e446f914df09df78c82b2016ecd27f1f2185e2d382dfcd76a81484c"
     },
     "docs/HANDOVER.md": {
       "fences": 14,
@@ -603,8 +604,8 @@
         "## G. 舊 repo 未盤點區塊（2026-09-02 新發現）",
         "## 封存區"
       ],
-      "lines": 221,
-      "sha256": "1326352666d6d036cbe3a6cdd3d0bec1fa76ecd8fb6bc3c1bec1834031b9f5e9"
+      "lines": 230,
+      "sha256": "b601b80fccae89f1dd24864ab2dfe99b5d64dce2ec57cd9c5d0b56b42c140f0b"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -921,8 +922,8 @@
         "### 5.3 待使用者裁決",
         "### 5.4 進行中／等待回報"
       ],
-      "lines": 2864,
-      "sha256": "9321dca8a784d70bd66ec0b2305a02174a1f56095e8cb961666171a10db9c31c"
+      "lines": 2942,
+      "sha256": "079614f5133d93b5b4e1ef46cc5dced58a3ba741ac8ecd17e96a46dd2eaaf3c3"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1026,7 +1027,7 @@
       "sha256": "bc653c823579a59b1708f0fd17c01ed52b934252502ec2dcdfdb25d3e3e82da5"
     }
   },
-  "generated_at": "2026-09-07T10:46:26Z",
+  "generated_at": "2026-09-10T14:05:05Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {
