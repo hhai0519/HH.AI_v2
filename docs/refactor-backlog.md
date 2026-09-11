@@ -2825,7 +2825,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 5.1 上一批狀態
 
-上次核對通過的 HEAD：60d5479
+上次核對通過的 HEAD：a884e97
 
 - `23af193`（執行者前置檢查 ＋ 回滾程序 ＋ `AUDIT-LOG.md` ＋ 四缺口修正）
   已於 2026-09-02 由審計官核對通過：6 檔異動（含 2 個新檔）、零夾帶、
@@ -2966,8 +2966,8 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 - `94f75bc`（Transient Red Reduction：強化 CHECK 9 candidate 自引防護與實作 --as-if-committed 預演模式，完成 B-51）已於 2026-09-11 執行完成：9 檔異動、零夾帶，獨立驗證五項全過（54 技能、18 項 CHECK、128 passed、13 webapp passed、`--verify` exit 0），CI Run verify success，**尚待審計官核對**，見 §5.4。
 - `8f9847e`（GitHub Actions 遠端健康權威與歷史失敗歸檔：建立 ADR-0020、SOP_14 §8、AUDIT-LOG CI 事故歸檔、README badge）已於 2026-09-11 執行完成：11 檔異動、零夾帶，獨立驗證五項全過，CI Run 34590592049 success，**尚待審計官核對**，見 §5.4。
 - `60d5479`（Post-Governance Taskboard Reconciliation：全面對帳 TASKBOARD B 節 50 項待辦，標定已實作與封存項目，產出 Next Execution Queue 與儀表板）已於 2026-09-11 執行完成：6 檔異動、零夾帶，獨立驗證五項全過，CI Run 34593961967 success，**尚待審計官核對**，見 §5.4。
-- `a884e97`（Post-Governance Taskboard Truth Correction：修正 B-12/B-57/B-60/B-76/B-78/B-80/B-81/B-85 之 Planning Truth 分類與描述，恢復真實待辦與架構取代留痕）已於 2026-09-11 執行完成：6 檔異動、零夾帶，獨立驗證五項全過，CI Run 34599748829 (Run #28) success，**尚待審計官核對**，見 §5.4。
-- 本批（尚未 commit）（Final Governance Exit — Active Contract Cleanup：全面對齊 GOAL_SPEC 正常重構預設、mode-aware preflight、SOP 執行期可用性邊界、去除破壞性操作指引、E-03 轉待辦）已執行，**尚待審計官核對**，見 §5.4。
+- `acc5890`（Final Governance Exit — Active Contract Cleanup：全面對齊 GOAL_SPEC 正常重構預設、mode-aware preflight、SOP 執行期可用性邊界、去除破壞性操作指引、E-03 轉待辦）已於 2026-09-11 執行完成：22 檔異動、零夾帶，獨立驗證五項全過，CI Run 34604144548 (Run #29) success，**尚待審計官核對**，見 §5.4。
+- 本批（尚未 commit）（Final Governance Exit — Convergence Patch：確立 GOAL_SPEC 檔案自主性、preflight/selftest 模式感知徹底解耦、M3 自主修復閉環、B-36 回報通道轉移、SOP_14 治理減法）已執行，**尚待審計官核對**，見 §5.4。
 
 ### 5.2 待辦
 
@@ -3048,3 +3048,12 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
       - **安全與工具契約現代化**：`SOP_02` 服從 C-02 裁決，確立金鑰洩漏第一優先為撤銷輪替，嚴禁 Agent 破壞性重寫歷史；`SOP_05` 採用跨工具寫入政策（Tool-portable Write Policy），解除特定 API 綁定；`SOP_09` 移除 `git reset --hard`；`SOP_04` / `SOP_06` 對齊 ADR-0017 Port 配置（LINE=3000, TG=3001, Next.js=3002, Static=8888）。
       - **授權與審計流程精簡**：`SOP_14` 消除已獲明確任務授權後之第二次「Proceed」確認，審計官直接由 GitHub 獨立讀取 diff 證據，不強制建 `task.md`，壓測改為風險導向。
       - **規劃真實性**：`TASKBOARD.md` 與交接區將 E-03 更新為待辦，下一步開展只讀依賴調研（READ-ONLY DEPENDENCY INVENTORY），不再重問已裁決之 C-04。
+59. **Final Governance Exit — Convergence Patch（治理層退出收斂修正）**（2026-09-11）
+    - **背景**：治理層退出正式凍結前之最終收斂修正。修正宏觀審計官於 exact commit `acc5890` 確認之 Active Contract 殘留矛盾，確保後續 D/E 主線自主推進時不再受任何過時規範阻礙。
+    - **收斂成果**：
+      - **GOAL_SPEC 檔案自主性**：確立 GOAL_SPEC 模式下執行者在 Allowed Scope 內具備檔案選擇自主權（inspect → design → implement）；Auditor 無須在提示詞預測 exact implementation files，以 `git diff --name-only` 取得之實際路徑進行逐檔明確 `git add`。
+      - **Preflight & Selftest 模式感知徹底解耦**：清查並消除 `prompt-preflight.md` §3.4 與 `handover-selftest.md` E 節殘留之無條件 Batch Spec / 錨點 / BPE 要求；GOAL_SPEC 正式免除規格與錨點驗證，EXACT_SPEC 保留嚴格重放。
+      - **M3 自主修復閉環**：解除 M3「僅限 pre-commit」之過度嚴格限制；GOAL_SPEC 允許執行者在原 Allowed Scope 內透過新增 repair commit 進行最多 3 輪自主修復，無需每次 roundtrip 升級。
+      - **B-36 回報通道正式轉移**：確立版本庫（Git commit、`EXEC-LOG.md` 與 GitHub Actions）為單一證據通道，對話視窗預設採用單行 `COMMIT <sha> | CI PASS | S1 NONE`，嚴禁預設轉貼終端機日誌或 raw diff。
+      - **SOP_14 治理減法**：移除檔案數量單獨觸發限制（改採純風險導向），廢除四角色會議文字扮演、常態任務沙盒測試與強制 `walkthrough.md`。
+      - **執行期邊界與授權清晰化**：`SOP_README` 區分版本庫納管資產與外部環境工具；`SOP_01` 釐清 `$$` 指令為研究領域專屬命令，不阻擋版本庫重構授權；`SOP_11` 確立記憶庫缺席不阻擋反思與任務執行。

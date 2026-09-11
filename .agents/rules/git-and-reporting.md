@@ -125,24 +125,25 @@
 
   同樣適用讀檔失敗的規則：diff 指令若執行失敗，明說失敗，不得補寫。
 
-- **預設採用精簡回報格式，不貼檔案內容、不貼 `git diff`**：
-  審計官以獨立 clone 逐行 diff 核對實體檔案，
-  貼進回報裡的內容是同一件事的較弱版本，且會大量佔用審計官的 context。
+- **正式回報通道為 Repo，非對話視窗（B-36 規範）**：
+  版本庫（Git commit、`docs/EXEC-LOG.md` 與 GitHub Actions）為本專案單一事實來源與證據通道（Evidence Channel），對話視窗僅作為狀態通知與決策通道（Notification / Decision Channel）。
 
-  預設回報只需要六項：
-  1. `pwd`、`git status`、`HEAD`
-  2. 各檔案的總行數（開始前與結束後）
-  3. **驗證步驟的完整終端機輸出**（這一項不可省）
-  4. `git add` 前的 staged 清單
-  5. commit hash 與 push 結果
-  6. 任何與提示詞不符之處
+  **正常成功批次（Default Success Reporting）**：
+  所有詳細的機器證據——包括前置檢查（preflight）、實際變更檔案（changed paths）、測試與驗證結果（`verify_all.py` 各 Gate 輸出）、M1-M3 自主修復歷程、遠端 CI 查核結果與任何例外說明——**一律完整寫入 `docs/EXEC-LOG.md`**，並由 Git commit 與 GitHub Actions 永久保留。
+  **對話回覆預設採用單行格式**：
+  `COMMIT <full-sha> | CI PASS | S1 NONE`
+  （最多再附加一行非常短的必要例外摘要）。
+  **嚴禁在對話中預設貼出**：完整終端機輸出、完整 `git diff`、完整檔案內容、長篇 walkthrough 或大型 completion report，杜絕 context 膨脹與 token 浪費。
 
-  **第 3 項為什麼不能省**：殘留檢查要求「貼出實際命中的檔名與行號，
-  不接受只回報數量」，2026-09-01 有 9 個漏網檔案就是靠這一項被發現的。
-  若簡化為「零命中」三個字，那 9 個檔案會就此沉沒。
+  **S1 升級回報格式**：
+  若遇到真正需要審計官或使用者決策的 S1 阻擋事項，對話回覆僅需提供：
+  `S1 <簡短分類> | evidence location / blocker`
+  並附加最小必要的 consolidated S1 report。
 
-  **例外**：新建檔案仍需貼出全文（審計官沒有舊版可以 diff）。
-  若某批提示詞明確要求貼 `git diff`，以該提示詞為準。
+  **貼出原始片段的特許例外**（僅在以下情況才允許於對話貼出片段）：
+  1. GitHub 遠端服務異常導致 remote evidence 不可取得。
+  2. 宏觀審計官於提示詞明確要求特定 raw evidence。
+  3. 尚未執行 push 且處於本地阻塞狀態。
 
 ## 2.1 撰寫測試時，依規格而非依實作
 

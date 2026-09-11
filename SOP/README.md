@@ -7,10 +7,18 @@
 
 ## 執行期可用性邊界（Runtime Availability Boundary）
 
-SOP 文件中引用的外部或底層資產（包括但不限於 `Modules/`、`Data/`、`runtime/`、`shared/`、`scripts/`、`00_Master_Menu.ps1`、`ecosystem.config.js` 等）：
+SOP 文件中引用的外部或底層資產依其性質明確區分為兩大類：
+
+### A. 版本庫納管資產（Repo-managed Artifacts）
+包括但不限於 `Modules/`、`Data/`、`runtime/`、`shared/`、版本庫腳本 `scripts/`、`00_Master_Menu.ps1`、`ecosystem.config.js` 等：
 1. **現行可執行標準**：唯有在當前 `origin/main` 根目錄中**實體存在**之檔案與模組，方可作為現行直接執行的指令依據。
 2. **遷移中／目標態程序（Target-State Procedure）**：若該資產尚未遷移、TASKBOARD 標為 pending、或當前 repo 根目錄查無該實體檔案，相關段落僅代表遷移完成後之目標態作業指引，**不得假定其已存在**，**不得自行發明路徑**，**不得從舊 repo 偷跑指令**，更**不得因其缺失而阻擋無關的常態重構與程式開發任務**。
 3. **路由導向**：涉及缺失資產之作業，應正確路由至 TASKBOARD Section E（舊 repo 遷移主線）或 Section F（追蹤項）所對應的專門遷移任務。
+
+### B. 外部環境相依工具（External Environment Dependencies）
+包括 CLI 工具、MCP server、瀏覽器環境、本機使用者 Profile、外部執行檔等：
+1. **免進版控**：此類外部相依資產不需要亦不可能存在於 Git 版本庫中。
+2. **探測查驗紀律**：使用前必須透過確定性指令進行可用性查驗（Machine check availability），嚴禁假造路徑，亦不得把歷史工作站特定路徑（workstation-specific path）當作通用的 portable truth。
 
 ## 核心 SOP 索引清單
 1. [SOP_01_Automation_Process.md](./SOP_01_Automation_Process.md)：規範系統自動化進程的觸發、防呆機制與越權攔截標準。

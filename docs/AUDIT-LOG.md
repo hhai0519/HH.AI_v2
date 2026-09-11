@@ -51,6 +51,7 @@ CHECK 12 應跳過該值——建立本檔的那一批沒有「前一個 commit�
 | 8f9847e | 2026-09-11 | §4.1-1 | **核對通過**。11 檔異動、零夾帶。獨立驗證五項全過：54 技能無死鏈、18 項 CHECK 全 PASS、128 passed、13 webapp passed、`fingerprint.py --verify` exit 0；GitHub Actions Run 34590592049 (Run #26) success。建立 ADR-0020 與 SOP_14 §8，完成 CI 歷史事故歸檔與清理授權整備 | 確立 GitHub Actions 為唯一 Remote Health Authority；完成 5 筆歷史失敗 runs 的根本原因歸檔；README 增加 Verify badge；建立雙層權威分工機制。 |
 | 60d5479 | 2026-09-11 | §4.1-1 | **核對通過**。6 檔異動、零夾帶。獨立驗證五項全過：54 技能零錯誤、18 項 CHECK 全 PASS、128 passed、13 webapp passed、`fingerprint.py --verify` exit 0；GitHub Actions Run 34593961967 (Run #27) success。CHECK 17 normal replay 驗證通過 | Post-Governance Taskboard Reconciliation 經宏觀審計官核對通過。清點治理層完成後之任務看板，確認 Governance Exit 7/7 維持 PASS，消除已過期舊待辦。 |
 | a884e97 | 2026-09-11 | §4.1-1 | **核對通過**。6 檔異動、零夾帶。獨立驗證五項全過：54 技能零錯誤、18 項 CHECK 全 PASS、128 passed、13 webapp passed、`fingerprint.py --verify` exit 0；GitHub Actions Run 34599748829 (Run #28) success。CHECK 17 normal replay 驗證通過 | Post-Governance Taskboard Truth Correction 經宏觀審計官核對通過。修正 8 項 Planning Truth 分類失真，恢復真實待辦與架構取代留痕。 |
+| acc5890 | 2026-09-11 | §4.1-1 | **核對通過**。22 檔異動、零夾帶。獨立驗證五項全過：54 技能零錯誤、18 項 CHECK 全 PASS、128 passed、13 webapp passed、`fingerprint.py --verify` exit 0；GitHub Actions Run 34604144548 (Run #29) success。CHECK 17 normal replay 驗證通過 | Final Governance Exit — Active Contract Cleanup 經宏觀審計官核對通過。確立 GOAL_SPEC 正常重構預設、mode-aware preflight 與 SOP 執行期可用性邊界，唯殘留矛盾由本輪收斂修正。 |
 
 ---
 

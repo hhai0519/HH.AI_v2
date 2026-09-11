@@ -10,7 +10,7 @@
 `待裁決`（需使用者決定）／`已完成`（仍可能被引用）／
 `可封存`（不影響後續工作，待使用者確認後移入封存區）
 
-**最後更新**：2026-09-11，HEAD `a884e97` 之後（Final Governance Exit — Active Contract Cleanup）
+**最後更新**：2026-09-11，HEAD `acc5890` 之後（Final Governance Exit — Convergence Patch）
 
 ---
 
@@ -104,7 +104,7 @@
 | B-30 | 待辦 | **playwright 掃描清單含 3000／3001，運行風險已存在** | `skills/execution/playwright-automation/lib/helpers.js:381` 的 `commonPorts` 含 LINE／TG bridge 埠。ADR-0017 預警過但寫「尚未遷移」，**實測已遷移**，ADR 狀態描述過期。使用者裁決改為「明確指定目標 port 而非自動掃描」。排批 4 |
 | B-31 | 待辦 | **ADR-0013 §2C BOM 污染偵測未被取代** | 實測 `scripts/*.py` 查無 `FEFF`／`BOM`／`utf-8-sig`。A／B／D 三項確已被 CHECK 7 與 `validate_skills.py` 取代，唯獨 C 沒有。實作為新 CHECK，排批 4 |
 | B-32 | 待辦 | **ADR-0013 §6 觸發詞排他性矩陣** | 與 Watchdog 無關的夾帶內容，且使用已廢除的「Cognitive Agent」分類。需重寫為 v2 bucket 語彙並實作跨技能觸發詞重疊偵測。排批 4 |
-| B-33 | 待辦 | **Port 規範的三個缺口** | 舊 repo `.env.example:12` 的 `NEXT_PUBLIC_APP_URL=3000` 殘留未修（會隨 E-03 遷入）；ADR-0017 未涵蓋 6379 Redis 與 9222／9223 Chrome CDP；v2 內 `SOP_04:94-95,167-168` 與 `SOP_06:133` 五處殘留。排批 4 |
+| B-33 | 待辦 | **Port 規範的三個缺口** | 舊 repo `.env.example:12` 的 `NEXT_PUBLIC_APP_URL=3000` 殘留未修（待 E-03 遷入處理）；ADR-0017 未涵蓋 6379 Redis 與 9222／9223 Chrome CDP（v2 內 SOP_04 與 SOP_06 之 Port 衝突已於 `acc5890` 修復）。排批 4 |
 | B-34 | 已完成 | **看板 C-01 的行號與衝突性質記錯** | 宣稱「`SOP_06` 第 100 行說 line-bridge = 3000」是衝突，實測該行敘述與 ADR-0017 完全一致；真正衝突在第 133 行。B-16 的又一實例。本批已於 C-01 列更正 |
 | B-35 | 可封存 | **雙代理事實指紋與 Dashboard** | Stage 1 指紋與驗證已實作；Stage 2/3 (dashboard.html/GitHub Pages) 被 ADR-0020 與 GitHub Actions Remote Health Dashboard 完全取代。 |
 | B-36 | 已完成 | **廢除口頭回報，回報即 commit** | 執行者不再產出供轉貼的文字報告，檢查結果與疑問一律寫入 `docs/EXEC-LOG.md` 並 push，對話僅回一行 commit hash。根因：五類回報失真加 B-27 的第六類全部發生在「文字報告」這一環，且它是審計官 token 消耗最大的單一來源。**自本批生效** |

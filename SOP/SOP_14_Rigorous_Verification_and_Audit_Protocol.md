@@ -13,44 +13,43 @@ dependencies: [".agents/rules/skill-engineering-guardrails.md", "SOP_05_System_P
 
 ## 0. 觸發條件 (Trigger Conditions)
 
-以下任一情況發生時，**強制觸發**本 SOP 聯席審計程序，不得省略：
-- 修改超過 **2 個以上** SOP 或 SKILL 文件的任務
-- 任何涉及 `start_line.js`、`bridge.js`、`poll_inbox.js`、`skills/platform/telegram-bot-cdp-bridge` 或 `Start-TelegramBot.ps1` 的修改（註：telegram-bot-cdp-bridge 尚未遷移至 HH.AI_v2，路徑為預計位置）
-- 新增或刪除技能目錄
-- 在生產環境執行首次部署或架構重組
-- 使用者明確輸入「請進行審計」或「SOP14」關鍵字（註：此處觸發的是本 SOP 的**聯席審計／任務內驗證**程序，不是宏觀審計。兩者的區分見 `PRINCIPLES.md` §0.3）
-- 任何 commit 或 push 操作前，若 staged 檔案中包含設定檔（`.json`、`.env`、`.yaml`）或非程式碼的資料檔（來源：`docs/adr/0016-credential-leak-defense-gap.md` §4）
+本 SOP 的聯席審計／任務內驗證程序採**風險導向（Risk-based）**，檔案數量本身不構成風險。普通多技能重構與文件遷移走正常 `GOAL_SPEC` 與 machine gates，**僅在以下真正高風險情境**才強制觸發加強查核程序：
+- 涉及破壞性或不可逆操作（Destructive / Irreversible operations，如大量物理刪除或非受控清理）
+- 涉及金鑰、憑證與最高安全層級變更（Credential / Security policies）
+- 涉及執行期底層與進程生命週期調整（Runtime / Process lifecycle，如 PM2、`ecosystem.config.js`、`start_line.js`、通訊 bridge 與 daemon 進程）
+- 涉及生產環境部署或不可逆之對外真實副作用（Production deployment / External side effects）
+- 涉及核心調度與代理人路由語意重大變更（High-risk orchestration / agents routing semantics）
+- 涉及架構邊界與安全防火牆變更（Architecture boundary change）
+- 使用者明確指示要求進行加強審計或 SOP14 檢核（註：此處觸發的是**任務內驗證**，非跨批次宏觀審計）
 
 ---
 
-## 1. 聯席審計規範 (Joint Audit Standard)
+## 1. 風險維度審計規範 (Risk Dimension Audit Standard)
 
-當觸發本程序時，Orchestrator 必須模擬並召集以下四個角色的聯席會議，產出獨立的審查意見：
+當觸發本程序時，執行者依任務涉及的領域聚焦檢查對應之客觀風險維度（Risk Dimensions），**嚴禁進行無實質效益的四角色會議文字扮演（Role-play ceremony）**：
 
-### 1.1 資安稽核官 (Security Auditor)
-- 檢查金鑰暴露（如 `.env.local` 密碼洩漏）。
+### 1.1 資安維度 (Security)
+- 檢查金鑰暴露（如 `.env` 敏感字串外洩）。
 - 檢驗極端情境的 Fallback 機制（如變數未定義時的預設值安全）。
-- 檢查是否符合 WMI 精準狙擊原則（SOP_02）。
+- 確認符合 WMI 精準狙擊原則（SOP_02）。
 
-### 1.2 代碼與架構審查官 (Code Reviewer & Architect)
-- 靜態掃描是否有語法衝突（如重複宣告 `const path`）。
-- 掃描參數傳遞的精準性與變數作用域。
-- 確認無窮迴圈等 Anti-Pattern。
+### 1.2 架構與代碼維度 (Architecture & Code)
+- 靜態掃描語法與命名空間衝突。
+- 檢查變數作用域、依賴邊界與非同步呼叫。
+- 消除無窮迴圈與死鎖等 Anti-Pattern。
 
-### 1.3 顧問團 (Advisory Board)
-- **Node.js 顧問**：評估非同步與事件驅動效能。
-- **DevOps 顧問**：評估環境變數與容器化對接。
-- **SRE 顧問**：評估進程生命週期與重試退避機制（Backoff）。
+### 1.3 維運與可靠性維度 (SRE & Operations)
+- 評估進程生命週期管理、優雅終止與信號處理。
+- 評估外部服務呼叫之指數退避與熔斷機制。
 
-### 1.4 總架構師 (Chief Architect)
-- 執行最後的「全域副作用與相容性評估」，給予最終核發。
+### 1.4 相容性維度 (Compatibility)
+- 評估全域副作用，確保向下相容與規範一致性。
 
 ---
 
 ## 2. 前置沙盒模擬測試 (Pre-flight Sandbox Simulation)
 
-- **強約束**：禁止直接在工作區實際代碼上進行測試。
-- **執行方式**：建立獨立的模擬測試腳本（如 `sandbox_test.js`），在隔離的控制台環境運行參數解析與邏輯邊界測試，並將結果輸出為 `SIMULATION_TEST_REPORT.md`。
+- **適用邊界**：常態代碼重構、規則微調與單純技能遷移**不強制要求**產出 `sandbox_test.js` 或 `SIMULATION_TEST_REPORT.md`，直接透過 disposable worktree、單元測試套件與 `verify_all.py` 驗證。唯有在涉及 PM2/runtime 進程、非受控破壞性外部副作用或高風險進程生命週期調整時，才必須在拋棄式沙盒環境中進行前置隔離測試。
 
 ### 2.1 PM2 設定檔與常駐服務的沙盒先行驗證
 
@@ -86,10 +85,10 @@ dependencies: [".agents/rules/skill-engineering-guardrails.md", "SOP_05_System_P
 
 ---
 
-## 5. Walkthrough 與結案報告 (Closing & Traceability)
+## 5. 結案紀錄與可追蹤性 (Closing & Traceability)
 
-- 任務成功後，產出純 UTF-8 (無 BOM) 的 `walkthrough.md`。
-- 必須詳列修改的檔案路徑與行號連結，並附上最終功能驗證成功的終端機日誌。
+- **結案紀錄標準**：正常重構與開發任務以 Git commit、`docs/EXEC-LOG.md` 與 GitHub Actions 綠燈作為完整結案憑證。
+- **Walkthrough 適用情境**：`walkthrough.md` **不得作為所有任務之必備工件**；僅在正式部署（Deployment）、安全事故歸檔（Incident）、使用者交付物（User Deliverable）或高複雜度手動切換（Manual cutover）確有留痕需要時才產出。
 
 
 ---
@@ -158,15 +157,13 @@ dependencies: [".agents/rules/skill-engineering-guardrails.md", "SOP_05_System_P
 
 ### 7.2 三層核對
 
-1. 不接受純文字摘要形式的完成回報，要求貼出修改後的**完整檔案內容**
-   或該次 `git diff` 的原始輸出。
-2. 內容看過後，比對是否有：
+1. 執行者預設回報 commit full OID、changed paths、驗證結果與 remote health 狀態；宏觀審計官直接從 GitHub 遠端取得 exact diff 與實體檔案證據，**不預設要求執行者貼出修改後完整檔案內容或 raw diff**（僅在遠端不可得時例外提供）。
+2. 審計官獨立查核是否有：
    - 牴觸本專案核心原則的規則（尤其「遇到不確定情況要不要問人」這類）
    - 尚未處理的硬編碼符號／觸發詞
    - 檔案內部自相矛盾或重複的區塊
    - 遷移後失效的絕對路徑、外部引用
-3. 回報 push 完成後，直接 clone 遠端 repo 核對實體檔案內容，
-   不只依賴執行者自己的文字描述。
+3. 回報 push 完成後，直接自遠端 repo 核對實體檔案內容與 GitHub Actions 狀態，不依賴執行者口頭宣稱。
 
 ### 7.3 與既有紀律的關係
 

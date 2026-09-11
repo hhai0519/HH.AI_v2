@@ -38,4 +38,5 @@
 | 8f9847e | 2026-09-11 | 執行者 (Antigravity) | 遠端健康權威與歷史失敗歸檔（ADR-0020、SOP_14 §8、AUDIT-LOG CI 事故歸檔、README badge） | 待核對 | Remote Health Authority 落地 |
 | 60d5479 | 2026-09-11 | 執行者 (Antigravity) | 看板待辦對帳（TASKBOARD B 節 50 項對帳、18 項更新封存、產出 Next Execution Queue 與對帳儀表板） | 待核對 | Post-Governance Taskboard Reconciliation |
 | a884e97 | 2026-09-11 | 執行者 (Antigravity) | 看板真實性修正（修正 B-12/B-57/B-60/B-76/B-78/B-80/B-81/B-85 之 Planning Truth 分類與描述，恢復真實待辦與架構取代留痕） | 待核對 | Post-Governance Taskboard Truth Correction |
-| 本批 | 2026-09-11 | 執行者 (Antigravity) | 治理層退出前現行契約清理（對齊 GOAL_SPEC 正常重構預設、mode-aware preflight、SOP 執行期可用性邊界、去除破壞性操作指引、E-03 轉待辦） | 待核對 | Final Governance Exit — Active Contract Cleanup |
+| acc5890 | 2026-09-11 | 執行者 (Antigravity) | 治理層退出前現行契約清理（對齊 GOAL_SPEC 正常重構預設、mode-aware preflight、SOP 執行期可用性邊界、去除破壞性操作指引、E-03 轉待辦） | 待核對 | Final Governance Exit — Active Contract Cleanup |
+| 本批 | 2026-09-11 | 執行者 (Antigravity) | 治理層退出收斂修正（確立 GOAL_SPEC 檔案自主性、preflight/selftest 模式感知徹底解耦、M3 自主修復閉環、B-36 回報通道轉移、SOP_14 治理減法） | 待核對 | Final Governance Exit — Convergence Patch |

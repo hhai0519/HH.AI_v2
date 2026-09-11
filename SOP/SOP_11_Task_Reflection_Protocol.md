@@ -39,8 +39,8 @@ dependencies: ["orchestration/agency-orchestrator"]
    - 驗證「狀態改變 (State Change)」，確保修改確實解決了報錯或通過了前瞻性檢查。
 
 5. **退出與記憶寫入 (Exit & Memory Logging)**：
-   - **硬性約束**：最多循環 3-5 次。若仍失敗，則拋出異常並終止。
-   - **長期記憶寫入**：提取最重要的「Lessons Learned」，開啟 `Data/Agent_Reflections.md` 並分類追加寫入（Patterns, Gotchas, Style, or Learnings）。
+   - **硬性約束**：最多循環 3 次（對齊 M3 自主修復上限，不得凌駕 M3 max 3 repair cycles 原則）。若仍失敗，則依 S1 升級回報並終止。
+   - **長期記憶寫入**：提取最重要的「Lessons Learned」。若 `Data/Agent_Reflections.md` 實體存在則分類追加寫入；若當前版本庫中該檔案尚未遷移，**嚴禁自行建立 `Data/` 目錄，嚴禁編造假記憶，且不得因記憶儲存點缺失而判定任務失敗**。此時僅需於 `docs/EXEC-LOG.md` 註記 `persistent reflection sink unavailable; pending E-05` 即可。
 
 ## 3. 記憶庫提取 (Memory Retrieval)
 

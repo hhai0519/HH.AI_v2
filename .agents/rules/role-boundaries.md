@@ -25,10 +25,10 @@
 
 1. 做出架構決策，或判斷某條規範是否應該存在、應該改成什麼。
 2. 評價另一個 agent 的產出是否正確。
-3. 在提示詞未指定的情況下，自行決定要修改哪些檔案。
-
-第 3 點特別注意：提示詞要求你「回報某項殘留檢查的結果」時，
-你的工作是**回報**，不是**順手清掉**。清不清由審計官決定。
+3. 在提示詞未指定的情況下，自行決定要修改哪些檔案（依模式分流）：
+   - **GOAL_SPEC**：執行者可在 Allowed Scope 內，根據 inspect 與 design 自主選擇實際需要修改的檔案；Auditor 不需要預先列出 exact file list。不得因「提示詞未預先列出某個 Allowed Scope 內的實作檔案」而停止。但實際修改範圍永遠不得超出 Allowed Scope，且 commit 前必須以 machine-derived `git diff --name-only` 取得實際清單逐檔 explicit git add。若需要修改 Allowed Scope 外的檔案，屬於 scope expansion，必須停下來升級 S1。
+   - **EXACT_SPEC**：只能修改規格（Batch Spec）宣告的 targets 與正式 exempt/generated artifacts。未於規格宣告的檔案一律不得動手。
+   - 提示詞要求你「回報某項殘留檢查的結果」時，不論模式，你的工作是**回報**，不是**順手清掉**。清不清由審計官決定。
 
 ---
 
@@ -120,20 +120,23 @@
 |---|---|---|
 | **M1** 機械性衍生值 | 行數、圍欄數、錨點行號、測試數、CHECK 數、技能數與提示詞所寫不同 | **自己重算、記錄、繼續。不得回報。** |
 | **M2** 環境與暫態 | GitHub API 速率上限、CI 輪詢逾時、shell 或 locale 差異、網路重試 | 走既定 fallback（例如 API 擋住就讀 badge SVG 的 `<title>`），重試後繼續。**不得回報。** |
-| **M3** 實作失敗 | **僅限 pre-commit 階段**，授權路徑內、且不需要改動任何由規格控制的檔案內容——例如指紋要重新產生、暫存檔或 shell 差異、重跑一次就好的失敗 | **自己修、自己重跑驗證，最多 3 輪。** 3 輪仍未過才升級為 S1。每輪都記進 `docs/EXEC-LOG.md`。**EXACT_SPEC 下 M3 的可動範圍只有 generated artifact，不含任何 MOD 目標檔；commit 之後 M3 完全不適用。** |
+| **M3** 實作失敗 | Allowed Scope 內的一般實作、單元測試、Gate 或 CI correctness 失敗 | **自己修、自己重跑驗證，最多 3 輪。** 每輪都記進 `docs/EXEC-LOG.md`。**GOAL_SPEC** 下 pre-commit 直接修正 candidate；若 production commit 或 remote CI 失敗，不得 amend 或 force，建立新的 normal repair commit 重新跑驗證與 push，同一授權工作最多 3 次修復循環，仍無法收斂才升級 S1。**EXACT_SPEC** 下 M3 僅限 pre-commit 且只動 generated artifacts；規格套用後任何 correctness failure 均為 S1，commit 後不得改動 bytes。 |
 | **S1** 語意／範圍／架構 | 規格 base 與實際 HEAD 不符；錨點 0 命中或多重命中且無法機械判定；規格自相矛盾；需要動未授權路徑；驗收條件互相矛盾；架構、安全或規範決策；破壞性 Git 歷史操作；**EXACT_SPEC 下規格忠實套用後測試或 CHECK 仍 FAIL**（＝規格與驗收條件不一致） | **停止並回報。** 這是唯一該消耗審計官額度的類別。 |
 
 判準與 §3 同一句：**「照著做」還是「決定要不要做」。**
 M1 至 M3 都是照著做，S1 才是決定要不要做。
 
 **EXACT_SPEC 下 commit 是分水嶺。**
-所有會改變 repo bytes 的工作——canonical apply、產生決定性產物、
+在 EXACT_SPEC 模式下，所有會改變 repo bytes 的工作——canonical apply、產生決定性產物、
 重新產生指紋、測試、範圍檢查——都必須在 **commit 之前**完成。
 **commit 建立之後，post-commit gate 只做驗證，不再修改任何 repo bytes。**
-M3 的「自己修最多 3 輪」只適用於 pre-commit 階段；
+EXACT_SPEC 下 M3 的「自己修最多 3 輪」只適用於 pre-commit 階段；
 commit 之後不得以 `git commit --amend` 或任何方式作為常態自修路徑。
 post-commit 的 correctness CHECK 或測試 FAIL → **S1 停止**；
 只有 M2 的暫態問題（網路、輪詢逾時）可以重試，且重試不得改動 repo bytes。
+而在 **GOAL_SPEC** 模式下，若 production commit 或遠端 CI 發生實作失敗，
+允許執行者在原 Allowed Scope 內透過新增正常 repair commit 進行最多 3 輪 M3 自主修復，
+不強制中斷為 S1。
 
 **EXACT_SPEC 下最重要的一條**：規格忠實套用之後，若測試沒過、CHECK 沒過，
 或你判斷某個原始碼還需要額外修改才會過——**不得動手**。

@@ -42,7 +42,7 @@ docs/batches/<base-hash>-<slug>.spec.txt
 
 | 情形 | 規則 |
 |---|---|
-| 一般批次 | 一份規格、一個 commit。規格與該批修改在同一個 commit 內。 |
+| EXACT_SPEC 一般批次 | 一份規格、一個 commit。規格與該批修改在同一個 commit 內。 |
 | 修正批次 | **不是同一批**。開新規格，base 為前一個 commit（即被修正的那一個）。 |
 | merge commit | CHECK 17 跳過（parent 數 != 1）。本專案不使用 merge，此為防禦性條款。 |
 | 沒有規格的維護 commit | 允許。CHECK 17 輸出 INFO 並跳過，不強迫產生虛假規格。 |

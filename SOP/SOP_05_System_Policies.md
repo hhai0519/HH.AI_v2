@@ -16,17 +16,17 @@ dependencies: [".agents/rules/skill-engineering-guardrails.md"]
 > [!CAUTION]
 > **觸犯以下禁止事項，系統將立即判定任務失敗 (Task Failed)，並啟動斷路器強行中斷 Session。**
 
-1. **PM2 官方特許清單與背景進程治理 (V3)**
-   - PM2 僅可用於管理以下 **6 個** 官方認可的常駐進程：
+1. **PM2 候選清單與背景進程治理 (Legacy/Current Candidate Inventory)**
+   - 目前 PM2 涵蓋以下 6 個候選常駐進程清單：
      1. `line-bridge` (LINE Webhook 接收與駐留)
      2. `tg-bridge-zero-delay` (TG 橋接伺服器)
      3. `line-daemon` (LINE 背景自主監聽守護者)
      4. `tg-daemon` (TG 背景自主監聽守護者)
      5. `line-tunnel` (Cloudflare 活體隧道)
      6. `sync-tunnel` (隧道網址自動同步器)
-   - **嚴禁**在 PM2 中新增上述清單以外的任何 App。
+   - **進程拓撲約束**：在 E-03 依賴盤點與最終架構裁決完成前，生產環境不得任意新增其他未經授權之常駐進程。E-03 遷移任務可基於唯讀調研證據提出整併、拆分或淘汰建議，最終執行期架構由後續架構決策決定。
    - **輪詢與計時器規範**：嚴禁 Agent 在任務腳本中使用 `setInterval` 或 `setTimeout` 建立私有的背景常駐輪詢。
-     - **豁免條款**：屬 PM2 官方特許進程 (如 `sync-tunnel`) 內部運作所需的 `setInterval` 定時邏輯，不受此限。
+     - **豁免條款**：屬特許進程 (如 `sync-tunnel`) 內部運作所需的 `setInterval` 定時邏輯，不受此限。
 2. **禁止破壞性 Git 指令 (Destructive Commands)**
    - **嚴禁**在腳本內寫死或執行 `git checkout .`、`git reset --hard`、`rm -rf` 等具有歷史抹除與物理破壞性的暴力還原指令。
 3. **禁止終端機越權寫入 (Unsafe File Writing)**
@@ -52,16 +52,16 @@ dependencies: [".agents/rules/skill-engineering-guardrails.md"]
 
 ### 🔒 工具呼叫狀態綁定 (Slot-filling Verification)
 Agent 在調用任何檔案寫入或終端指令前，**必須**動態填充並核對以下狀態插槽 (Slots)。狀態不符者立即中斷操作：
-- `[Current Workspace Root]`: 確認目標路徑是否在預期且合法的技能目錄內。
+- `[Current Workspace Root]`: 確認目標路徑位於當前版本庫或核准之工作區內、落在本任務 Allowed Scope 授權邊界內，且通過合法路徑校驗（涵蓋 runtime/, shared/, skills/, docs/, SOP/, scripts/ 等）。
 - `[Intended Write Encoding]`: 寫入前強制確認預期編碼為 UTF-8 (無 BOM)。
 
 ---
 
-## 1. Watchdog 非同步巡檢機制 [HIGHEST_PERMISSION]
+## 1. Watchdog 非同步巡檢機制（目標態架構宣告）
 
 > [!IMPORTANT]
-> **V3.2.0 架構宣告**：系統已全面採用**非同步 Watchdog Hook 機制與 Neon DB 佇列**。
-> 詳細機制與優先級處置規則，請參閱：`docs/adr/0013-watchdog-async-buffer-neon-db.md`。
+> **架構定位（目標態／待 F-02 與 E-03 落地）**：規劃採用非同步 Watchdog Hook 機制與 Neon DB 佇列（詳見 `docs/adr/0013-watchdog-async-buffer-neon-db.md`）。
+> 在對應執行期模組實體遷入 HH.AI_v2 前，**不得將其作為常態代碼重構或本地測試的 blocking prerequisite**。保留安全防護原則，待執行期資產就緒後啟用。
 
 ---
 
@@ -73,11 +73,10 @@ Agent 在調用任何檔案寫入或終端指令前，**必須**動態填充並�
 
 ---
 
-## 3. 嚴格配額監控政策
+## 3. 配額監控政策（目標態規範）
 
-- 本系統所有自動化任務皆須遵守 10% 配額安全熔斷機制。
-- 超出警戒線時，Agent 必須立即暫停任務並通知使用者，禁止自行決策繼續執行。
-- 配額監控相關規範詳見 `SOP_01_Automation_Process.md §2.2`。
+- 配額管理機制（10% 安全熔斷法則）為目標態架構規範（待 F-02 與 E-03 模組落地後啟用），相關技術機制詳見 `SOP_01_Automation_Process.md §2.2`。
+- 在執行期模組未遷入前，不得因配額管理組件缺失而阻擋一般代碼重構或常態開發任務。
 
 ---
 

@@ -58,20 +58,20 @@
 ## E. 交付（產出提示詞之前）
 
 - [ ] E1 提示詞開頭有執行者身分宣告？（§6.1-1）
-- [ ] E2 提示詞載明基準 commit full OID 與目標檔案範圍，交由確定性工具比對，未手寫檔案總行數作為 blocking truth？（§6.1-2）
+- [ ] E2 提示詞載明基準 commit full OID 與目標檔案範圍（EXACT_SPEC 另需批次規格），交由確定性工具比對，未手寫檔案總行數作為 blocking truth？（§6.1-2）
 - [ ] E3 修改指令依模式區分：EXACT_SPEC 以 structural anchor 原文為主；GOAL_SPEC 定義目標、邊界與驗收準則，未以固定行號作為 blocking 依賴？（§6.1-3）
 - [ ] E4 驗證步驟要求回報確定性工具與 Gate 執行結果，實際命中位置由工具輸出而非 Auditor 預測？（§6.1-4）
-- [ ] E5 `git add` 一律明確路徑，且明寫禁止 `-A` 與 `.`？（§6.1-5）
+- [ ] E5 `git add` 一律明確路徑，且明寫禁止 `-A` 與 `.`？GOAL_SPEC 實際路徑由執行者自 diff 產生逐檔 explicit git add，不要求 Auditor 預測實作檔案；EXACT_SPEC 依規格 targets？（§6.1-5）
 - [ ] E6 結尾固定要求純文字回覆與署名行？（§6.1-6）
 - [ ] E7 回報負擔二擇一——要求 `git diff` 時就不要同時要既有檔案全文？（§6.1-7）
 - [ ] E8 **有包含「更新交接區」、「更新 `docs/TASKBOARD.md`」與「更新 `docs/AUDIT-LOG.md`」三項？**（§6.1-8）
 - [ ] E9 有要求執行者先 `git pull origin main` 並確認 HEAD 一致？（§6.1-9）
 - [ ] E10 零命中類的條件，我檢查過自己的指令會不會產生該字串？（§6.2）
-- [ ] E11 **每一個錨點都已透過確定性工具（BPE、count() 或 spec parser）驗證在目標檔案中 count == 1？**（§6.1-11，見 §6.6）
+- [ ] E11 **每一個錨點都已透過確定性工具（BPE、count() 或 spec parser）驗證在目標檔案中 count == 1？**（僅 EXACT_SPEC 適用；GOAL_SPEC 標記為 N/A）（§6.1-11，見 §6.6）
 - [ ] E12 **提示詞開頭有「動手前必讀」，要求執行者從檔案讀取規則？**（§6.1-10；不可依賴自動載入，session 前綴可能已被清掉）
-- [ ] E13 **配對與覆蓋都檢查過？**（§6.1-11）更新 TASKBOARD HEAD ⇔ 更新交接區 §5.1 HEAD；EXACT_SPEC 比對 spec targets ↔ git add；GOAL_SPEC 比對 Allowed Scope ↔ actual changed files ↔ git add ↔ acceptance criteria
+- [ ] E13 **配對與覆蓋都檢查過？**（§6.1-11）更新 TASKBOARD HEAD ⇔ 更新交接區 §5.1 HEAD；EXACT_SPEC 比對 spec targets ↔ git add；GOAL_SPEC 比對 Allowed Scope ↔ actual changed files ↔ explicit git add ↔ acceptance criteria
 - [ ] E14 **提示詞中有「審計官自檢聲明」區塊，逐項列出本節各項的結果？**（§6.1-12；這是自檢唯一的外部產物，沒有它等同沒做自檢。**新增本節項目時，聲明區塊要同步增列**）
-- [ ] E15 **每個錨點都對應本批 base commit 與規格上下文，具備結構唯一性而非依賴特定第 N 行？**（§6.1-13）
+- [ ] E15 **每個錨點都對應本批 base commit 與規格上下文，具備結構唯一性而非依賴特定第 N 行？**（僅 EXACT_SPEC 適用；GOAL_SPEC 標記為 N/A）（§6.1-13）
 - [ ] E16 **寫入的文字若含跨檔 `§X.Y` 引用，檔名與章節號在同一行？**（§6.1-14；CHECK 10 逐行判斷，換行斷開就會 FAIL）
 - [ ] E17 **每個插入型修改若涉及結構序列，都定義了明確的驗收準則而非預測所有衍生數值？**（§6.1-15）
 - [ ] E18 **提示詞中有「機械前置證據區塊」，含 base full OID、batch mode、Allowed Scope 與驗證指令（EXACT_SPEC 另含 spec path 與 SHA）？**（§6.1-16；未手寫 line/fence 衍生快照作為 blocking truth）

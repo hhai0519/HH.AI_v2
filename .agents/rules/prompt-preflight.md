@@ -49,7 +49,7 @@
 | 3 | 批次模式宣告（Batch Mode） | 明確宣告 `batch_mode: GOAL_SPEC` 或 `batch_mode: EXACT_SPEC` |
 | 4 | 目標與範圍邊界（Goal & Boundaries） | 載明目標（Goal）、允許修改範圍（Allowed Scope）、禁止修改範圍（Forbidden Scope）與驗收條件（Acceptance Criteria） |
 | 5 | 確定性驗證閘門（Required Machine Gates） | 載明 Canonical 驗證指令與 Gate 清單（如 `python scripts/verify_all.py`）；**不得以手寫檔案行數或衍生值作為 blocking truth** |
-| 6 | `git add` 明確路徑 | 明確列出提交目標檔案路徑，包含「嚴禁 `git add -A`」或等義明確禁令 |
+| 6 | `git add` 明確路徑原則 | 包含「嚴禁 `git add -A` 或 `git add .`」禁令與逐檔明確路徑提交原則。在 GOAL_SPEC 模式下，Auditor 不需要預先列出 exact file list，實際檔案清單由執行者在 commit 前透過 machine-derived `git diff --name-only` 取得並驗證在 Allowed Scope 內；EXACT_SPEC 則依 Batch Spec targets |
 | 7 | 破壞性操作防護宣告 | 明確禁止未授權之 force push、reset --hard 或歷史重寫 |
 | 8 | 遠端健康查驗要求 | 包含執行後查驗 GitHub Actions exact SHA 綠燈之要求 |
 
@@ -139,28 +139,28 @@
 | 聲明項 | 怎麼驗 |
 |---|---|
 | E1 身分宣告 | 提示詞開頭有「你是本專案的執行者」或等義敘述 |
-| E2 基準與規格識別 | 提示詞載明基準 commit full OID 與批次規格（或規格 SHA-256），交由確定性工具比對，**不再要求 Auditor 手寫總行數作為 blocking truth** |
-| E5 `git add` 明確路徑 | 有「嚴禁 `git add -A`」或等義禁令 |
+| E2 基準與規格識別 | 提示詞載明基準 commit full OID（EXACT_SPEC 另需批次規格或 SHA-256），交由確定性工具比對；GOAL_SPEC 僅需 base OID 與 Allowed Scope，不要求規格，**亦不再要求手寫檔案總行數作為 blocking truth** |
+| E5 `git add` 明確路徑 | 有「嚴禁 `git add -A` 或 `git add .`」禁令。GOAL_SPEC 實際路徑由執行者自 diff 產生逐檔 explicit git add，不要求 Auditor 預測實作檔案；EXACT_SPEC 依規格 targets |
 | E6 結尾格式 | 有要求純文字與署名行 |
 | E8 三項更新 | 修改指令中有「交接區」「TASKBOARD」「AUDIT-LOG」三者（或明確說明本批無核對事實例外） |
 | E9 `git pull` | 有 `git pull origin main` 且指明預期 HEAD |
 | E12 動手前必讀 | 有要求讀取規則檔或執行基準前置檢查 |
-| E3 錨點原文定位 | 每個修改指令附 structural anchor 原文或唯一語意識別字，**固定行號僅作輔助說明，非 blocking truth** |
+| E3 錨點原文定位 | 修改指令依模式區分：EXACT_SPEC 附 structural anchor 原文或唯一語意識別字；GOAL_SPEC 僅定義目標、邊界與驗收準則，不要求錨點。**固定行號僅作輔助說明，非 blocking truth** |
 | E4 貼出實際輸出 | 驗證步驟要求回報確定性工具與 Gate 執行結果；實際命中位置由工具輸出，Auditor 不預測 |
 | E7 回報負擔二擇一 | 不得同時要求 `git diff` 與既有檔案全文 |
 | E10 零命中條件的自身檢查 | 提示詞若有「字串 X 應為零命中」，檢查 X 是否出現在提示詞本身的其他位置——**純字串比對，非語意判斷** |
-| E11 錨點唯一性驗證 | 執行者以確定性工具（BPE、`count()` 或 spec parser）於套用前驗證錨點在目標檔 count == 1；**提示詞無須手抄 count 數值** |
-| E13 配對與覆蓋 | 依 §3.1、§3.2 比對 allowed scope ↔ spec targets ↔ git add ↔ gates 覆蓋，不依賴手寫行數／圍欄清單 |
+| E11 錨點唯一性驗證 | **僅在 EXACT_SPEC 模式下檢查**：執行者以確定性工具（BPE、`count()` 或 spec parser）於套用前驗證錨點在目標檔 count == 1；**GOAL_SPEC 模式為 N/A，不要求 Batch Spec 錨點** |
+| E13 配對與覆蓋 | 依 §3.1、§3.2 比對。GOAL_SPEC 比對 Allowed Scope ↔ actual changed files ↔ explicit git add ↔ gates；EXACT_SPEC 比對 allowed scope ↔ spec targets ↔ git add ↔ gates，不依賴手寫行數／圍欄清單 |
 | E14 自檢聲明區塊 | 區塊存在且項目連號無缺 |
-| E15 錨點基準來源 | 錨點對應本批 base commit full OID 與規格上下文，**不依賴特定 clone 第 N 行作為依賴** |
+| E15 錨點基準來源 | **僅在 EXACT_SPEC 模式下檢查**：錨點對應本批 base commit full OID 與規格上下文，不依賴特定第 N 行；**GOAL_SPEC 模式為 N/A** |
 | E16 跨檔引用同行 | 寫入文字中的 `§X.Y` 若跨檔，檔名與章節號在同一行 |
 | E17 結構序列驗收 | 若插入或結構變更涉及語意驗收條件（如章節／項目順序），附明確驗收準則；**不得將 LLM 預測所有 post-state 衍生序列當作通用 blocking 條件** |
-| E18 機械前置證據 | 依 §3.6 確認包含 base full OID、batch mode、spec path、spec SHA 與標準驗證指令；**不得要求手寫 line/fence snapshot** |
+| E18 機械前置證據 | 依 §3.6 確認包含 base full OID、batch mode、Allowed Scope 與標準驗證指令；EXACT_SPEC 才額外要求 spec path 與 SHA；**不得要求手寫 line/fence snapshot** |
 | E19 移除前複查 | 提示詞若含刪除檔案／章節／規則／看板項目，檢查是否附有三步複查結果（反向引用掃描、唯一內容確認、獨立複查）。**純存在性比對，非語意判斷**——不必判斷複查做得對不對，只判斷有沒有 |
-| E20 規則層變更的模擬授權 | 規則層變更由同一份 Batch Spec 經 BPE 與確定性檢查器（如 check_consistency）驗證；**Auditor 不得預抄套用後行數、圍欄數、項數或 INFO 輸出作為 blocking truth** |
+| E20 規則層變更的模擬授權 | EXACT_SPEC 規則層變更由同一份 Batch Spec 經 BPE 與 check_consistency 模擬驗證；GOAL_SPEC 由單元測試與 Gate 驗證守護，不需規格模擬；**Auditor 不得預抄套用後行數、圍欄數、項數或 INFO 輸出作為 blocking truth** |
 | E21 衍生數值不作 blocking truth | 基準 commit 必須與執行者實測 HEAD 一致；**所有 machine-derived values（行數、圍欄數、test count、CHECK count、INFO 輸出等）由確定性工具產出，不得由 LLM 複製成提示詞 blocking truth** |
 | E22 audited tag 指令 | 提示詞是否含 `git tag audited-<hash> <hash>` 與 `git push origin audited-<hash>` 兩條指令，且驗證步驟要求貼出 `git tag -l "audited-*"` 的實際輸出。**純存在性比對**——不必判斷 hash 對不對，只判斷有沒有 |
-| E23 批次規格進 repo | 提示詞附有 `docs/batches/<base-hash>-<slug>.spec.txt` 的路徑與該規格的 sha256，且出現在本批的 `git add` 清單中。規格作為可重放之 executable artifact，LLM 不重新編碼 machine-derived truth |
+| E23 批次規格進 repo | **僅在 EXACT_SPEC 模式下檢查**：提示詞附有 `docs/batches/<base-hash>-<slug>.spec.txt` 的路徑與該規格的 sha256，且出現在本批的 `git add` 清單中。**GOAL_SPEC 模式不要求規格進 repo，不得因缺規格而判缺失** |
 
 **自檢聲明不接受任何豁免。**
 
@@ -215,7 +215,7 @@
 
 1. (a) 基準 Commit Full OID（base commit hash）
 2. (b) 批次模式（`batch_mode`，如 `EXACT_SPEC` 或 `GOAL_SPEC`）
-3. (c) 批次規格路徑與規格 SHA-256（指向 `docs/batches/` 下的規格檔案）
+3. (c) 批次規格路徑與規格 SHA-256（指向 `docs/batches/` 下的規格檔案，**僅 EXACT_SPEC 必備；GOAL_SPEC 不要求**）
 4. (d) 允許修改範圍（Allowed Scope 白名單路徑）
 5. (e) 標準驗證指令與 Gate 清單（canonical validation commands，如 validate_skills, check_consistency, fingerprint, pytest）
 
@@ -226,7 +226,7 @@
 | 證據區塊存在 | 缺區塊或缺任一必備元素即停 |
 | 基準 OID 一致 | 實測第 0 步的 HEAD 必須等於宣告的 base OID |
 | 批次模式合法 | 確認 `batch_mode` 宣告且符合規格契約（如 EXACT_SPEC 或 GOAL_SPEC） |
-| 規格 SHA 一致 | 由 `scripts/build_prompt_evidence.py` 或確定性工具計算規格 sha256，與提示詞宣稱值完全一致 |
+| 規格 SHA 一致 | 僅 EXACT_SPEC 檢查：由 `scripts/build_prompt_evidence.py` 或確定性工具計算規格 sha256，與提示詞宣稱值完全一致；GOAL_SPEC 為 N/A |
 | 範圍與驗證指令齊備 | 規格修改目標完全落在 Allowed Scope 內，且包含標準驗證指令 |
 
 **核心原則（Machine Truth）**：

@@ -206,10 +206,10 @@ CHECK 8 至 15 有 63 個測試並經審計官反例注入驗證，
 
 1. **開頭宣告執行者身分**，指向 `PRINCIPLES.md` §0 與
    `.agents/rules/role-boundaries.md`。
-2. **載明基準 Commit（Base Full OID）與目標檔案清單**，不再要求手寫檔案總行數作為 blocking truth。執行者於執行前確認工作區乾淨且 HEAD 與基準一致。
+2. **載明基準 Commit（Base Full OID）與目標檔案範圍（EXACT_SPEC 另需批次規格或 SHA）**，不再要求手寫檔案總行數作為 blocking truth。執行者於執行前確認工作區乾淨且 HEAD 與基準一致。
 3. 修改指令依模式區分：**EXACT_SPEC 必須以批次規格（Batch Spec）的 structural anchor 原文為主**；**GOAL_SPEC 則提供目標架構、變更邊界與驗收準則**，由執行者自主決定實作方式。若有行號僅作為輔助 diagnostic，不得作為 blocking truth。
 4. 驗證步驟要求**回報確定性工具與 Gate 的執行輸出**（如 validate_skills, check_consistency, fingerprint, pytest）；命中檔名與行號等由機器輸出提供，提示詞不作人工預測。
-5. `git add` 一律明確路徑，禁止 `-A` 與 `.`。
+5. `git add` 一律明確路徑，禁止 `-A` 與 `.`。GOAL_SPEC 模式下不要求 Auditor 預先列出 exact file list，實際提交路徑由執行者自 diff 產生逐檔 explicit git add。
 6. 結尾固定要求純文字回覆與「以上是 Antigravity IDE Agent 的回覆」。
 7. **回報負擔要二擇一**：要求 `git diff` 原始輸出時，
    就**不要**同時要求既有檔案的全文——diff 已能證明「改了什麼」且無法造假，
@@ -252,7 +252,7 @@ CHECK 8 至 15 有 63 個測試並經審計官反例注入驗證，
     不是自律問題，是設計上無法被觀察。
     執行者對該區塊做機械交叉驗證，規則見
     `.agents/rules/prompt-preflight.md` §3.4。
-13. **每個錨點對應本批 base commit 與規格上下文**，在目標檔案中具備結構唯一性
+13. **每個錨點對應本批 base commit 與規格上下文**（僅 EXACT_SPEC 適用；GOAL_SPEC 標記為 N/A），在目標檔案中具備結構唯一性
     （machine count == 1），不依賴特定 clone 第 N 行作為 blocking truth。
 14. **寫入含 `§X.Y` 的文字時，若引用的是他檔章節，必須在同一行寫出檔名。**
     CHECK 10 把未標明檔名的 `§X.Y` 視為同檔引用，找不到就 FAIL。
