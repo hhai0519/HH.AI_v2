@@ -10,7 +10,7 @@
 `待裁決`（需使用者決定）／`已完成`（仍可能被引用）／
 `可封存`（不影響後續工作，待使用者確認後移入封存區）
 
-**最後更新**：2026-09-11，HEAD `acc5890` 之後（Final Governance Exit — Convergence Patch）
+**最後更新**：2026-09-11，HEAD `9553994` 之後（Final Governance Exit — Reporting Contract Micro-Cleanup）
 
 ---
 

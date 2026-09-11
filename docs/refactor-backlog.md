@@ -2825,7 +2825,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 5.1 上一批狀態
 
-上次核對通過的 HEAD：a884e97
+上次核對通過的 HEAD：9553994
 
 - `23af193`（執行者前置檢查 ＋ 回滾程序 ＋ `AUDIT-LOG.md` ＋ 四缺口修正）
   已於 2026-09-02 由審計官核對通過：6 檔異動（含 2 個新檔）、零夾帶、
@@ -2967,7 +2967,8 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 - `8f9847e`（GitHub Actions 遠端健康權威與歷史失敗歸檔：建立 ADR-0020、SOP_14 §8、AUDIT-LOG CI 事故歸檔、README badge）已於 2026-09-11 執行完成：11 檔異動、零夾帶，獨立驗證五項全過，CI Run 34590592049 success，**尚待審計官核對**，見 §5.4。
 - `60d5479`（Post-Governance Taskboard Reconciliation：全面對帳 TASKBOARD B 節 50 項待辦，標定已實作與封存項目，產出 Next Execution Queue 與儀表板）已於 2026-09-11 執行完成：6 檔異動、零夾帶，獨立驗證五項全過，CI Run 34593961967 success，**尚待審計官核對**，見 §5.4。
 - `acc5890`（Final Governance Exit — Active Contract Cleanup：全面對齊 GOAL_SPEC 正常重構預設、mode-aware preflight、SOP 執行期可用性邊界、去除破壞性操作指引、E-03 轉待辦）已於 2026-09-11 執行完成：22 檔異動、零夾帶，獨立驗證五項全過，CI Run 34604144548 (Run #29) success，**尚待審計官核對**，見 §5.4。
-- 本批（尚未 commit）（Final Governance Exit — Convergence Patch：確立 GOAL_SPEC 檔案自主性、preflight/selftest 模式感知徹底解耦、M3 自主修復閉環、B-36 回報通道轉移、SOP_14 治理減法）已執行，**尚待審計官核對**，見 §5.4。
+- `9553994`（Final Governance Exit — Convergence Patch：確立 GOAL_SPEC 檔案自主性、preflight/selftest 模式感知徹底解耦、M3 自主修復閉環、B-36 回報通道轉移、SOP_14 治理減法）已於 2026-09-11 執行完成：17 檔異動、零夾帶，獨立驗證五項全過，CI Run 34606818571 (Run #30) success，**尚待審計官核對**，見 §5.4。
+- 本批（尚未 commit）（Final Governance Exit — Reporting Contract Micro-Cleanup：消除 git-and-reporting.md 舊有口頭報告/行號/diff 規定與 B-36 之衝突，將舊規則退役為歷史留痕，對齊 SOP_14 階段審計文字）已執行，**尚待審計官核對**，見 §5.4。
 
 ### 5.2 待辦
 
@@ -2993,11 +2994,11 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 > 兩份內容不同的「後續」順序）。清理紀錄與成因見第 53 點。
 > **歷史敘述屬留痕層，落點是編號點，不是本節。**
 
-- **本批（Transient Red Reduction）已執行完成，等待審計官核對。**
-  內容：強化 `check_9_handover_head` 排除 candidate 自己（CASE C 防護）；
-  實作 `check_consistency.py --as-if-committed` 預演模式；
-  更新 `.agents/rules/git-and-reporting.md` 建立 Pre-Prospective Handoff 前置檢查要求；
-  補齊 Durable Tests（CASE A, B, C 全過）；完成 B-51。
+- **本批（Final Governance Exit — Reporting Contract Micro-Cleanup）已執行完成，等待審計官核對。**
+  內容：消除 `.agents/rules/git-and-reporting.md` 內部舊有口頭報告、逐行行號、總行數、raw diff 與指令文字輸出等舊要求與 B-36 之衝突；
+  將舊規則移入歷史留痕專節（Retired Reporting Mechanism）退役保存，確立 Repo Evidence Channel 為唯一 active reporting contract；
+  對齊 `SOP/SOP_14_Rigorous_Verification_and_Audit_Protocol.md` §4 與 §7.2 審計文字；
+  維持最後一行固定署名協定。
 - **後續順序**：治理層 7/7 核心里程碑已全數收斂就緒，安全路徑約束已封閉；
   唯一剩餘 B-91（9 個歷史錯 tag，待授權）不阻擋治理層 exit。
   待宏觀審計官裁決 Governance Exit 後，即可正式退出治理層並啟動 3（E-01 技能遷移第一梯次 ＋ B-01）主重構主線。

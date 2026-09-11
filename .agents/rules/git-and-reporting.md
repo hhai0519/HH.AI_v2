@@ -22,17 +22,41 @@
 
 ## 2. 回報紀律
 
+- **正式回報通道為 Repo，非對話視窗（B-36 唯一現行規範）**：
+  版本庫（Git commit、`docs/EXEC-LOG.md` 與 GitHub Actions）為本專案單一事實來源與客觀證據通道（Evidence Channel），對話視窗僅作為狀態通知與決策通道（Notification / Decision Channel）。
+
+  **正常成功批次（Default Success Reporting）**：
+  所有詳細的機器證據——包括前置檢查（preflight）、實際變更檔案（changed paths）、測試與驗證結果（`verify_all.py` 各 Gate 輸出）、M1-M3 自主修復歷程、遠端 CI 查核結果與任何例外說明——**一律完整寫入 `docs/EXEC-LOG.md`**，並由 Git commit 與 GitHub Actions 永久保留。
+  **對話回覆預設採用單行格式**：
+  `COMMIT <full-sha> | CI PASS | S1 NONE`
+  （最多再附加一行非常短的必要例外摘要）。
+  **嚴禁在對話中預設貼出**：完整終端機輸出、完整檔案內容、逐行行號 dump、檔案總行數 dump、raw git diff、長篇 walkthrough 或大型 completion report，杜絕 context 膨脹與 token 浪費。
+
+  **S1 升級回報格式**：
+  若遇到真正需要審計官或使用者決策的 S1 阻擋事項，對話回覆僅需提供：
+  `S1 <簡短分類> | evidence location / blocker`
+  並附加最小必要的 consolidated S1 report。
+
+  **貼出原始片段的特許例外**（僅在以下情況才允許於對話貼出片段）：
+  1. GitHub 遠端服務異常導致 remote evidence 不可取得。
+  2. 宏觀審計官於提示詞明確要求特定 raw evidence。
+  3. 尚未執行 push 且處於本地阻塞狀態。
+  即使例外，亦僅貼最小必要片段，不得恢復全檔或 raw diff。
+
 - **「等我核對後再 commit」就是真的不要 commit**：使用者明確要求停下來
   等核對時，不得先行執行 commit 或 push。
 - **回報的狀態必須與實際執行的動作一致**：如果因任何原因已經執行了不該
   執行的動作，必須在回報的**第一句話**明確說明實際狀態，不得在結尾才補述，
   更不得同時聲稱「等待核准」。
-- **不接受只回報「已完成」**：涉及檔案內容變更時，要貼出實際內容供核對；
-  涉及多檔案操作時，要貼出 `git status` 的 staged 清單。
 - **不確定就明說「需要你確認」**：不要用推測填補未查證的部分，也不要編造
   看起來合理但沒有根據的內容（例如工具名稱、檔案路徑、設定值）。
 
-- **回報檔案內容時，必須是腳本從檔案讀出的原文，並附可核對的指紋**：
+### 2.0 歷史教訓與已退役之舊回報機制（Historical Rationale / Retired Reporting Mechanism）
+
+以下條目為專案早期針對虛構回報所設計之過渡核對手段。**這些機制（如口頭貼檔案全文、行號、總行數、raw git diff、指令文字輸出等）已全面被 B-36（Repo Evidence Channel ＋ GitHub Actions 遠端健康權威）正式取代，退役為歷史留痕，不得再作為現行對話回報要求（Mandatory Reporting Rule）**。此處完整保留其事故背景與分析，用以解釋為何現代架構必須建立單一事實來源與版本庫機器證據鏈，防止同類事故重演：
+
+- **[已退役] 不接受只回報「已完成」**：早期曾因缺乏客觀機器證據，要求口頭貼出內容與 staged 清單；現行由 `docs/EXEC-LOG.md`、Git commit 與 Actions 自動化保留客觀證據。
+- **[已退役] 回報檔案內容時，必須是腳本從檔案讀出的原文，並附可核對的指紋**：
   貼出任何檔案內容（全文或片段）時，一律用 Python 腳本讀檔後輸出，
   且必須提供兩項：(1) 每一行前面加上該行在檔案中的實際行號；
   (2) 該檔案的總行數。SHA-256 為選用，理由見下方「雜湊機制的實測結果」。
@@ -86,7 +110,7 @@
   日後若要重啟雜湊，起點是印出可疑行的 `repr()`，
   行尾空白在 `repr()` 中可見，一行即可判定。
 
-- **回報的檔案內容必須來自同一次執行的實際輸出；讀檔失敗時必須明說失敗**：
+- **[已退役] 回報的檔案內容必須來自同一次執行的實際輸出；讀檔失敗時必須明說失敗**：
   貼出的內容只能是該次讀檔指令實際印出的結果，直接複製終端機輸出。
   若腳本執行失敗、輸出被截斷、或編碼問題導致無法完整顯示，
   **必須在回報中明確寫出「讀檔輸出失敗，無法提供該檔案內容」**，並附上失敗訊息。
@@ -109,9 +133,7 @@
   （回報紀錄顯示產出報告的腳本連續重試三次，可能是在輸出未成功取得的
   情況下以生成內容代替，但此為推論，未經執行端確認，不得當作結論引用。）
 
-
-
-- **回報檔案內容時，必須一併貼出該次 `git diff` 的原始輸出**：
+- **[已退役] 回報檔案內容時，必須一併貼出該次 `git diff` 的原始輸出**：
   貼出修改後的檔案內容之外，另外執行 `git diff`（或 `git diff --cached`）
   並貼出未經整理的原始輸出。
 
@@ -124,26 +146,6 @@
   無法混入虛構的上下文。這是目前唯一能對抗局部虛構的機制。
 
   同樣適用讀檔失敗的規則：diff 指令若執行失敗，明說失敗，不得補寫。
-
-- **正式回報通道為 Repo，非對話視窗（B-36 規範）**：
-  版本庫（Git commit、`docs/EXEC-LOG.md` 與 GitHub Actions）為本專案單一事實來源與證據通道（Evidence Channel），對話視窗僅作為狀態通知與決策通道（Notification / Decision Channel）。
-
-  **正常成功批次（Default Success Reporting）**：
-  所有詳細的機器證據——包括前置檢查（preflight）、實際變更檔案（changed paths）、測試與驗證結果（`verify_all.py` 各 Gate 輸出）、M1-M3 自主修復歷程、遠端 CI 查核結果與任何例外說明——**一律完整寫入 `docs/EXEC-LOG.md`**，並由 Git commit 與 GitHub Actions 永久保留。
-  **對話回覆預設採用單行格式**：
-  `COMMIT <full-sha> | CI PASS | S1 NONE`
-  （最多再附加一行非常短的必要例外摘要）。
-  **嚴禁在對話中預設貼出**：完整終端機輸出、完整 `git diff`、完整檔案內容、長篇 walkthrough 或大型 completion report，杜絕 context 膨脹與 token 浪費。
-
-  **S1 升級回報格式**：
-  若遇到真正需要審計官或使用者決策的 S1 阻擋事項，對話回覆僅需提供：
-  `S1 <簡短分類> | evidence location / blocker`
-  並附加最小必要的 consolidated S1 report。
-
-  **貼出原始片段的特許例外**（僅在以下情況才允許於對話貼出片段）：
-  1. GitHub 遠端服務異常導致 remote evidence 不可取得。
-  2. 宏觀審計官於提示詞明確要求特定 raw evidence。
-  3. 尚未執行 push 且處於本地阻塞狀態。
 
 ## 2.1 撰寫測試時，依規格而非依實作
 
@@ -180,9 +182,13 @@
 立刻用 `t.count(指定的新內容)` 確認為 1。為 0 即代表寫入內容與指令不符。
 規則見 `prompt-preflight.md` §4.1。
 
-## 2.3 commit 與 push 的狀態，必須以指令輸出為準
+## 2.3 [已退役] commit 與 push 的狀態，早期以指令輸出為準
 
-回報 commit 或 push 是否執行時，**不得以敘述代替，必須貼出三條指令的實際輸出**：
+> **現行規範**：本機制已被 B-36（Repo Evidence Channel）與 §2.5（Remote Health Verification）正式取代。推送到遠端後，一律由 GitHub API 查證 exact origin/main OID 與 Actions 狀態為客觀憑證，並記錄於 `docs/EXEC-LOG.md`，禁止在對話視窗貼出終端機指令文字輸出，禁止文字摘要辯論。
+
+以下保留 2026-09-05 歷史事故記錄：
+
+回報 commit 或 push 是否執行時，早期曾要求不得以敘述代替，必須貼出三條指令的實際輸出：
 
     git log -1 --format=%h
     git rev-parse --short origin/main

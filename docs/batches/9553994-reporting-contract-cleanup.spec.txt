@@ -1,0 +1,353 @@
+# 批次規格 — Final Governance Exit — Reporting Contract Micro-Cleanup
+#
+# batch_id     : 9553994-reporting-contract-cleanup
+# batch_mode   : EXACT_SPEC
+# base_commit  : 9553994
+#
+# 目的：
+#   消除 .agents/rules/git-and-reporting.md 內部舊有口頭報告、逐行行號、總行數、raw diff 與指令文字輸出等舊要求與 B-36 之衝突；
+#   將舊規則移入歷史留痕專節（Retired Reporting Mechanism）退役保存，確立 Repo Evidence Channel 為唯一 active reporting contract；
+#   對齊 SOP/SOP_14_Rigorous_Verification_and_Audit_Protocol.md §4 與 §7.2 審計文字；
+#   維持最後一行固定署名協定。
+#
+HEAD: 9553994d9ee7185b87735dff60ef9c672adcc3e9
+
+=== MOD 1 ===
+file: .agents/rules/git-and-reporting.md
+mode: replace
+--- ANCHOR ---
+
+## 2. 回報紀律
+
+- **「等我核對後再 commit」就是真的不要 commit**：使用者明確要求停下來
+  等核對時，不得先行執行 commit 或 push。
+- **回報的狀態必須與實際執行的動作一致**：如果因任何原因已經執行了不該
+--- PAYLOAD ---
+
+## 2. 回報紀律
+
+- **正式回報通道為 Repo，非對話視窗（B-36 唯一現行規範）**：
+  版本庫（Git commit、`docs/EXEC-LOG.md` 與 GitHub Actions）為本專案單一事實來源與客觀證據通道（Evidence Channel），對話視窗僅作為狀態通知與決策通道（Notification / Decision Channel）。
+
+  **正常成功批次（Default Success Reporting）**：
+  所有詳細的機器證據——包括前置檢查（preflight）、實際變更檔案（changed paths）、測試與驗證結果（`verify_all.py` 各 Gate 輸出）、M1-M3 自主修復歷程、遠端 CI 查核結果與任何例外說明——**一律完整寫入 `docs/EXEC-LOG.md`**，並由 Git commit 與 GitHub Actions 永久保留。
+  **對話回覆預設採用單行格式**：
+  `COMMIT <full-sha> | CI PASS | S1 NONE`
+  （最多再附加一行非常短的必要例外摘要）。
+  **嚴禁在對話中預設貼出**：完整終端機輸出、完整檔案內容、逐行行號 dump、檔案總行數 dump、raw git diff、長篇 walkthrough 或大型 completion report，杜絕 context 膨脹與 token 浪費。
+
+  **S1 升級回報格式**：
+  若遇到真正需要審計官或使用者決策的 S1 阻擋事項，對話回覆僅需提供：
+  `S1 <簡短分類> | evidence location / blocker`
+  並附加最小必要的 consolidated S1 report。
+
+  **貼出原始片段的特許例外**（僅在以下情況才允許於對話貼出片段）：
+  1. GitHub 遠端服務異常導致 remote evidence 不可取得。
+  2. 宏觀審計官於提示詞明確要求特定 raw evidence。
+  3. 尚未執行 push 且處於本地阻塞狀態。
+  即使例外，亦僅貼最小必要片段，不得恢復全檔或 raw diff。
+
+- **「等我核對後再 commit」就是真的不要 commit**：使用者明確要求停下來
+  等核對時，不得先行執行 commit 或 push。
+- **回報的狀態必須與實際執行的動作一致**：如果因任何原因已經執行了不該
+--- END MOD ---
+
+=== MOD 2 ===
+file: .agents/rules/git-and-reporting.md
+mode: replace
+--- ANCHOR ---
+- **回報的狀態必須與實際執行的動作一致**：如果因任何原因已經執行了不該
+  執行的動作，必須在回報的**第一句話**明確說明實際狀態，不得在結尾才補述，
+  更不得同時聲稱「等待核准」。
+- **不接受只回報「已完成」**：涉及檔案內容變更時，要貼出實際內容供核對；
+  涉及多檔案操作時，要貼出 `git status` 的 staged 清單。
+- **不確定就明說「需要你確認」**：不要用推測填補未查證的部分，也不要編造
+  看起來合理但沒有根據的內容（例如工具名稱、檔案路徑、設定值）。
+--- PAYLOAD ---
+- **回報的狀態必須與實際執行的動作一致**：如果因任何原因已經執行了不該
+  執行的動作，必須在回報的**第一句話**明確說明實際狀態，不得在結尾才補述，
+  更不得同時聲稱「等待核准」。
+- **不確定就明說「需要你確認」**：不要用推測填補未查證的部分，也不要編造
+  看起來合理但沒有根據的內容（例如工具名稱、檔案路徑、設定值）。
+--- END MOD ---
+
+=== MOD 3 ===
+file: .agents/rules/git-and-reporting.md
+mode: replace
+--- ANCHOR ---
+- **不確定就明說「需要你確認」**：不要用推測填補未查證的部分，也不要編造
+  看起來合理但沒有根據的內容（例如工具名稱、檔案路徑、設定值）。
+
+- **回報檔案內容時，必須是腳本從檔案讀出的原文，並附可核對的指紋**：
+  貼出任何檔案內容（全文或片段）時，一律用 Python 腳本讀檔後輸出，
+  且必須提供兩項：(1) 每一行前面加上該行在檔案中的實際行號；
+  (2) 該檔案的總行數。SHA-256 為選用，理由見下方「雜湊機制的實測結果」。
+--- PAYLOAD ---
+- **不確定就明說「需要你確認」**：不要用推測填補未查證的部分，也不要編造
+  看起來合理但沒有根據的內容（例如工具名稱、檔案路徑、設定值）。
+
+### 2.0 歷史教訓與已退役之舊回報機制（Historical Rationale / Retired Reporting Mechanism）
+
+以下條目為專案早期針對虛構回報所設計之過渡核對手段。**這些機制（如口頭貼檔案全文、行號、總行數、raw git diff、指令文字輸出等）已全面被 B-36（Repo Evidence Channel ＋ GitHub Actions 遠端健康權威）正式取代，退役為歷史留痕，不得再作為現行對話回報要求（Mandatory Reporting Rule）**。此處完整保留其事故背景與分析，用以解釋為何現代架構必須建立單一事實來源與版本庫機器證據鏈，防止同類事故重演：
+
+- **[已退役] 不接受只回報「已完成」**：早期曾因缺乏客觀機器證據，要求口頭貼出內容與 staged 清單；現行由 `docs/EXEC-LOG.md`、Git commit 與 Actions 自動化保留客觀證據。
+- **[已退役] 回報檔案內容時，必須是腳本從檔案讀出的原文，並附可核對的指紋**：
+  貼出任何檔案內容（全文或片段）時，一律用 Python 腳本讀檔後輸出，
+  且必須提供兩項：(1) 每一行前面加上該行在檔案中的實際行號；
+  (2) 該檔案的總行數。SHA-256 為選用，理由見下方「雜湊機制的實測結果」。
+--- END MOD ---
+
+=== MOD 4 ===
+file: .agents/rules/git-and-reporting.md
+mode: replace
+--- ANCHOR ---
+  日後若要重啟雜湊，起點是印出可疑行的 `repr()`，
+  行尾空白在 `repr()` 中可見，一行即可判定。
+
+- **回報的檔案內容必須來自同一次執行的實際輸出；讀檔失敗時必須明說失敗**：
+  貼出的內容只能是該次讀檔指令實際印出的結果，直接複製終端機輸出。
+  若腳本執行失敗、輸出被截斷、或編碼問題導致無法完整顯示，
+  **必須在回報中明確寫出「讀檔輸出失敗，無法提供該檔案內容」**，並附上失敗訊息。
+--- PAYLOAD ---
+  日後若要重啟雜湊，起點是印出可疑行的 `repr()`，
+  行尾空白在 `repr()` 中可見，一行即可判定。
+
+- **[已退役] 回報的檔案內容必須來自同一次執行的實際輸出；讀檔失敗時必須明說失敗**：
+  貼出的內容只能是該次讀檔指令實際印出的結果，直接複製終端機輸出。
+  若腳本執行失敗、輸出被截斷、或編碼問題導致無法完整顯示，
+  **必須在回報中明確寫出「讀檔輸出失敗，無法提供該檔案內容」**，並附上失敗訊息。
+--- END MOD ---
+
+=== MOD 5 ===
+file: .agents/rules/git-and-reporting.md
+mode: replace
+--- ANCHOR ---
+  （回報紀錄顯示產出報告的腳本連續重試三次，可能是在輸出未成功取得的
+  情況下以生成內容代替，但此為推論，未經執行端確認，不得當作結論引用。）
+
+
+
+- **回報檔案內容時，必須一併貼出該次 `git diff` 的原始輸出**：
+  貼出修改後的檔案內容之外，另外執行 `git diff`（或 `git diff --cached`）
+  並貼出未經整理的原始輸出。
+--- PAYLOAD ---
+  （回報紀錄顯示產出報告的腳本連續重試三次，可能是在輸出未成功取得的
+  情況下以生成內容代替，但此為推論，未經執行端確認，不得當作結論引用。）
+
+- **[已退役] 回報檔案內容時，必須一併貼出該次 `git diff` 的原始輸出**：
+  貼出修改後的檔案內容之外，另外執行 `git diff`（或 `git diff --cached`）
+  並貼出未經整理的原始輸出。
+--- END MOD ---
+
+=== MOD 6 ===
+file: .agents/rules/git-and-reporting.md
+mode: replace
+--- ANCHOR ---
+  無法混入虛構的上下文。這是目前唯一能對抗局部虛構的機制。
+
+  同樣適用讀檔失敗的規則：diff 指令若執行失敗，明說失敗，不得補寫。
+
+- **正式回報通道為 Repo，非對話視窗（B-36 規範）**：
+  版本庫（Git commit、`docs/EXEC-LOG.md` 與 GitHub Actions）為本專案單一事實來源與證據通道（Evidence Channel），對話視窗僅作為狀態通知與決策通道（Notification / Decision Channel）。
+
+  **正常成功批次（Default Success Reporting）**：
+  所有詳細的機器證據——包括前置檢查（preflight）、實際變更檔案（changed paths）、測試與驗證結果（`verify_all.py` 各 Gate 輸出）、M1-M3 自主修復歷程、遠端 CI 查核結果與任何例外說明——**一律完整寫入 `docs/EXEC-LOG.md`**，並由 Git commit 與 GitHub Actions 永久保留。
+  **對話回覆預設採用單行格式**：
+  `COMMIT <full-sha> | CI PASS | S1 NONE`
+  （最多再附加一行非常短的必要例外摘要）。
+  **嚴禁在對話中預設貼出**：完整終端機輸出、完整 `git diff`、完整檔案內容、長篇 walkthrough 或大型 completion report，杜絕 context 膨脹與 token 浪費。
+
+  **S1 升級回報格式**：
+  若遇到真正需要審計官或使用者決策的 S1 阻擋事項，對話回覆僅需提供：
+  `S1 <簡短分類> | evidence location / blocker`
+  並附加最小必要的 consolidated S1 report。
+
+  **貼出原始片段的特許例外**（僅在以下情況才允許於對話貼出片段）：
+  1. GitHub 遠端服務異常導致 remote evidence 不可取得。
+  2. 宏觀審計官於提示詞明確要求特定 raw evidence。
+  3. 尚未執行 push 且處於本地阻塞狀態。
+
+## 2.1 撰寫測試時，依規格而非依實作
+--- PAYLOAD ---
+  無法混入虛構的上下文。這是目前唯一能對抗局部虛構的機制。
+
+  同樣適用讀檔失敗的規則：diff 指令若執行失敗，明說失敗，不得補寫。
+
+## 2.1 撰寫測試時，依規格而非依實作
+--- END MOD ---
+
+=== MOD 7 ===
+file: .agents/rules/git-and-reporting.md
+mode: replace
+--- ANCHOR ---
+立刻用 `t.count(指定的新內容)` 確認為 1。為 0 即代表寫入內容與指令不符。
+規則見 `prompt-preflight.md` §4.1。
+
+## 2.3 commit 與 push 的狀態，必須以指令輸出為準
+
+回報 commit 或 push 是否執行時，**不得以敘述代替，必須貼出三條指令的實際輸出**：
+
+    git log -1 --format=%h
+    git rev-parse --short origin/main
+--- PAYLOAD ---
+立刻用 `t.count(指定的新內容)` 確認為 1。為 0 即代表寫入內容與指令不符。
+規則見 `prompt-preflight.md` §4.1。
+
+## 2.3 [已退役] commit 與 push 的狀態，早期以指令輸出為準
+
+> **現行規範**：本機制已被 B-36（Repo Evidence Channel）與 §2.5（Remote Health Verification）正式取代。推送到遠端後，一律由 GitHub API 查證 exact origin/main OID 與 Actions 狀態為客觀憑證，並記錄於 `docs/EXEC-LOG.md`，禁止在對話視窗貼出終端機指令文字輸出，禁止文字摘要辯論。
+
+以下保留 2026-09-05 歷史事故記錄：
+
+回報 commit 或 push 是否執行時，早期曾要求不得以敘述代替，必須貼出三條指令的實際輸出：
+
+    git log -1 --format=%h
+    git rev-parse --short origin/main
+--- END MOD ---
+
+=== MOD 8 ===
+file: SOP/SOP_14_Rigorous_Verification_and_Audit_Protocol.md
+mode: replace
+--- ANCHOR ---
+
+1. **結構化管理**：依據任務複雜度，由專案既有之 TASKBOARD、EXEC-LOG、Git commit 與 Batch/Goal 契約管理狀態，**不得強制每個任務額外建立重複的 `task.md`**；僅在複雜 implementation 專案本身確有需要時才建立。
+2. **漸進式執行**：每次聚焦處理單一明確範疇，確保可追蹤性。
+3. **階段審計**：任務完成後由審計官依客觀驗證入口查核，執行者預設回報 commit OID、changed paths、machine gate results 與 remote health，審計官直接從遠端 GitHub 讀取 diff 與檔案證據，不預設要求將完整代碼或 raw diff 貼入對話。
+4. **風險導向壓力測試**：若修改涉及底層資料持久化 (DB/檔案寫入) 或主要 Web API，應依 acceptance criteria、實際併發語意與 SRE 風險設計對應之測試，不得以無條件固定 50 次之 magic number 取代工程風險判斷。
+5. **失敗處置**：若驗證失敗，依循 M1/M2/M3 本地修復流程處理；重大原則分歧則依 S1 升級回報。
+--- PAYLOAD ---
+
+1. **結構化管理**：依據任務複雜度，由專案既有之 TASKBOARD、EXEC-LOG、Git commit 與 Batch/Goal 契約管理狀態，**不得強制每個任務額外建立重複的 `task.md`**；僅在複雜 implementation 專案本身確有需要時才建立。
+2. **漸進式執行**：每次聚焦處理單一明確範疇，確保可追蹤性。
+3. **階段審計**：任務完成後由審計官依客觀驗證入口查核。詳細 changed paths、machine gate results、M1-M3 歷程與 remote health 完整寫入 `docs/EXEC-LOG.md`、Git commit 與 GitHub Actions；對話視窗正常成功僅回報 `COMMIT <full-sha> | CI PASS | S1 NONE`。審計官直接自 GitHub 遠端讀取 diff、實體檔案與 Actions 綠燈證據，對話視窗不預設要求張貼任何詳細內容或 raw diff。
+4. **風險導向壓力測試**：若修改涉及底層資料持久化 (DB/檔案寫入) 或主要 Web API，應依 acceptance criteria、實際併發語意與 SRE 風險設計對應之測試，不得以無條件固定 50 次之 magic number 取代工程風險判斷。
+5. **失敗處置**：若驗證失敗，依循 M1/M2/M3 本地修復流程處理；重大原則分歧則依 S1 升級回報。
+--- END MOD ---
+
+=== MOD 9 ===
+file: SOP/SOP_14_Rigorous_Verification_and_Audit_Protocol.md
+mode: replace
+--- ANCHOR ---
+
+### 7.2 三層核對
+
+1. 執行者預設回報 commit full OID、changed paths、驗證結果與 remote health 狀態；宏觀審計官直接從 GitHub 遠端取得 exact diff 與實體檔案證據，**不預設要求執行者貼出修改後完整檔案內容或 raw diff**（僅在遠端不可得時例外提供）。
+2. 審計官獨立查核是否有：
+   - 牴觸本專案核心原則的規則（尤其「遇到不確定情況要不要問人」這類）
+   - 尚未處理的硬編碼符號／觸發詞
+--- PAYLOAD ---
+
+### 7.2 三層核對
+
+1. 詳細 changed paths、驗證結果與 remote health 狀態一律寫入 `docs/EXEC-LOG.md` 與 Git commit；對話回覆正常成功維持單行 `COMMIT <full-sha> | CI PASS | S1 NONE`。宏觀審計官直接自 GitHub 遠端取得 exact diff 與實體檔案證據，**嚴禁預設要求執行者在對話貼出修改後完整檔案內容或 raw diff**（僅在遠端不可得時例外提供最小必要片段）。
+2. 審計官獨立查核是否有：
+   - 牴觸本專案核心原則的規則（尤其「遇到不確定情況要不要問人」這類）
+   - 尚未處理的硬編碼符號／觸發詞
+--- END MOD ---
+
+=== MOD 10 ===
+file: docs/AUDIT-LOG.md
+mode: replace
+--- ANCHOR ---
+| 60d5479 | 2026-09-11 | §4.1-1 | **核對通過**。6 檔異動、零夾帶。獨立驗證五項全過：54 技能零錯誤、18 項 CHECK 全 PASS、128 passed、13 webapp passed、`fingerprint.py --verify` exit 0；GitHub Actions Run 34593961967 (Run #27) success。CHECK 17 normal replay 驗證通過 | Post-Governance Taskboard Reconciliation 經宏觀審計官核對通過。清點治理層完成後之任務看板，確認 Governance Exit 7/7 維持 PASS，消除已過期舊待辦。 |
+| a884e97 | 2026-09-11 | §4.1-1 | **核對通過**。6 檔異動、零夾帶。獨立驗證五項全過：54 技能零錯誤、18 項 CHECK 全 PASS、128 passed、13 webapp passed、`fingerprint.py --verify` exit 0；GitHub Actions Run 34599748829 (Run #28) success。CHECK 17 normal replay 驗證通過 | Post-Governance Taskboard Truth Correction 經宏觀審計官核對通過。修正 8 項 Planning Truth 分類失真，恢復真實待辦與架構取代留痕。 |
+| acc5890 | 2026-09-11 | §4.1-1 | **核對通過**。22 檔異動、零夾帶。獨立驗證五項全過：54 技能零錯誤、18 項 CHECK 全 PASS、128 passed、13 webapp passed、`fingerprint.py --verify` exit 0；GitHub Actions Run 34604144548 (Run #29) success。CHECK 17 normal replay 驗證通過 | Final Governance Exit — Active Contract Cleanup 經宏觀審計官核對通過。確立 GOAL_SPEC 正常重構預設、mode-aware preflight 與 SOP 執行期可用性邊界，唯殘留矛盾由本輪收斂修正。 |
+
+---
+--- PAYLOAD ---
+| 60d5479 | 2026-09-11 | §4.1-1 | **核對通過**。6 檔異動、零夾帶。獨立驗證五項全過：54 技能零錯誤、18 項 CHECK 全 PASS、128 passed、13 webapp passed、`fingerprint.py --verify` exit 0；GitHub Actions Run 34593961967 (Run #27) success。CHECK 17 normal replay 驗證通過 | Post-Governance Taskboard Reconciliation 經宏觀審計官核對通過。清點治理層完成後之任務看板，確認 Governance Exit 7/7 維持 PASS，消除已過期舊待辦。 |
+| a884e97 | 2026-09-11 | §4.1-1 | **核對通過**。6 檔異動、零夾帶。獨立驗證五項全過：54 技能零錯誤、18 項 CHECK 全 PASS、128 passed、13 webapp passed、`fingerprint.py --verify` exit 0；GitHub Actions Run 34599748829 (Run #28) success。CHECK 17 normal replay 驗證通過 | Post-Governance Taskboard Truth Correction 經宏觀審計官核對通過。修正 8 項 Planning Truth 分類失真，恢復真實待辦與架構取代留痕。 |
+| acc5890 | 2026-09-11 | §4.1-1 | **核對通過**。22 檔異動、零夾帶。獨立驗證五項全過：54 技能零錯誤、18 項 CHECK 全 PASS、128 passed、13 webapp passed、`fingerprint.py --verify` exit 0；GitHub Actions Run 34604144548 (Run #29) success。CHECK 17 normal replay 驗證通過 | Final Governance Exit — Active Contract Cleanup 經宏觀審計官核對通過。確立 GOAL_SPEC 正常重構預設、mode-aware preflight 與 SOP 執行期可用性邊界，唯殘留矛盾由本輪收斂修正。 |
+| 9553994 | 2026-09-11 | §4.1-1 | **核對通過**。17 檔異動、零夾帶。獨立驗證五項全過：54 技能零錯誤、18 項 CHECK 全 PASS、128 passed、13 webapp passed、`fingerprint.py --verify` exit 0；GitHub Actions Run 34606818571 (Run #30) success。CHECK 17 normal replay 驗證通過 | Final Governance Exit — Convergence Patch 經宏觀審計官核對通過。確立 GOAL_SPEC 模式下執行者檔案選擇自主權、prompt-preflight §3.4 徹底解耦、M3 自主修復閉環、B-36 回報契約與 SOP_14 治理減法。 |
+
+---
+--- END MOD ---
+
+=== MOD 11 ===
+file: docs/TASKBOARD.md
+mode: replace
+--- ANCHOR ---
+`待裁決`（需使用者決定）／`已完成`（仍可能被引用）／
+`可封存`（不影響後續工作，待使用者確認後移入封存區）
+
+**最後更新**：2026-09-11，HEAD `acc5890` 之後（Final Governance Exit — Convergence Patch）
+
+---
+--- PAYLOAD ---
+`待裁決`（需使用者決定）／`已完成`（仍可能被引用）／
+`可封存`（不影響後續工作，待使用者確認後移入封存區）
+
+**最後更新**：2026-09-11，HEAD `9553994` 之後（Final Governance Exit — Reporting Contract Micro-Cleanup）
+
+---
+--- END MOD ---
+
+=== MOD 12 ===
+file: docs/refactor-backlog.md
+mode: replace
+--- ANCHOR ---
+
+### 5.1 上一批狀態
+
+上次核對通過的 HEAD：a884e97
+
+- `23af193`（執行者前置檢查 ＋ 回滾程序 ＋ `AUDIT-LOG.md` ＋ 四缺口修正）
+  已於 2026-09-02 由審計官核對通過：6 檔異動（含 2 個新檔）、零夾帶、
+--- PAYLOAD ---
+
+### 5.1 上一批狀態
+
+上次核對通過的 HEAD：9553994
+
+- `23af193`（執行者前置檢查 ＋ 回滾程序 ＋ `AUDIT-LOG.md` ＋ 四缺口修正）
+  已於 2026-09-02 由審計官核對通過：6 檔異動（含 2 個新檔）、零夾帶、
+--- END MOD ---
+
+=== MOD 13 ===
+file: docs/refactor-backlog.md
+mode: replace
+--- ANCHOR ---
+- `8f9847e`（GitHub Actions 遠端健康權威與歷史失敗歸檔：建立 ADR-0020、SOP_14 §8、AUDIT-LOG CI 事故歸檔、README badge）已於 2026-09-11 執行完成：11 檔異動、零夾帶，獨立驗證五項全過，CI Run 34590592049 success，**尚待審計官核對**，見 §5.4。
+- `60d5479`（Post-Governance Taskboard Reconciliation：全面對帳 TASKBOARD B 節 50 項待辦，標定已實作與封存項目，產出 Next Execution Queue 與儀表板）已於 2026-09-11 執行完成：6 檔異動、零夾帶，獨立驗證五項全過，CI Run 34593961967 success，**尚待審計官核對**，見 §5.4。
+- `acc5890`（Final Governance Exit — Active Contract Cleanup：全面對齊 GOAL_SPEC 正常重構預設、mode-aware preflight、SOP 執行期可用性邊界、去除破壞性操作指引、E-03 轉待辦）已於 2026-09-11 執行完成：22 檔異動、零夾帶，獨立驗證五項全過，CI Run 34604144548 (Run #29) success，**尚待審計官核對**，見 §5.4。
+- 本批（尚未 commit）（Final Governance Exit — Convergence Patch：確立 GOAL_SPEC 檔案自主性、preflight/selftest 模式感知徹底解耦、M3 自主修復閉環、B-36 回報通道轉移、SOP_14 治理減法）已執行，**尚待審計官核對**，見 §5.4。
+
+### 5.2 待辦
+--- PAYLOAD ---
+- `8f9847e`（GitHub Actions 遠端健康權威與歷史失敗歸檔：建立 ADR-0020、SOP_14 §8、AUDIT-LOG CI 事故歸檔、README badge）已於 2026-09-11 執行完成：11 檔異動、零夾帶，獨立驗證五項全過，CI Run 34590592049 success，**尚待審計官核對**，見 §5.4。
+- `60d5479`（Post-Governance Taskboard Reconciliation：全面對帳 TASKBOARD B 節 50 項待辦，標定已實作與封存項目，產出 Next Execution Queue 與儀表板）已於 2026-09-11 執行完成：6 檔異動、零夾帶，獨立驗證五項全過，CI Run 34593961967 success，**尚待審計官核對**，見 §5.4。
+- `acc5890`（Final Governance Exit — Active Contract Cleanup：全面對齊 GOAL_SPEC 正常重構預設、mode-aware preflight、SOP 執行期可用性邊界、去除破壞性操作指引、E-03 轉待辦）已於 2026-09-11 執行完成：22 檔異動、零夾帶，獨立驗證五項全過，CI Run 34604144548 (Run #29) success，**尚待審計官核對**，見 §5.4。
+- `9553994`（Final Governance Exit — Convergence Patch：確立 GOAL_SPEC 檔案自主性、preflight/selftest 模式感知徹底解耦、M3 自主修復閉環、B-36 回報通道轉移、SOP_14 治理減法）已於 2026-09-11 執行完成：17 檔異動、零夾帶，獨立驗證五項全過，CI Run 34606818571 (Run #30) success，**尚待審計官核對**，見 §5.4。
+- 本批（尚未 commit）（Final Governance Exit — Reporting Contract Micro-Cleanup：消除 git-and-reporting.md 舊有口頭報告/行號/diff 規定與 B-36 之衝突，將舊規則退役為歷史留痕，對齊 SOP_14 階段審計文字）已執行，**尚待審計官核對**，見 §5.4。
+
+### 5.2 待辦
+--- END MOD ---
+
+=== MOD 14 ===
+file: docs/refactor-backlog.md
+mode: replace
+--- ANCHOR ---
+> 兩份內容不同的「後續」順序）。清理紀錄與成因見第 53 點。
+> **歷史敘述屬留痕層，落點是編號點，不是本節。**
+
+- **本批（Transient Red Reduction）已執行完成，等待審計官核對。**
+  內容：強化 `check_9_handover_head` 排除 candidate 自己（CASE C 防護）；
+  實作 `check_consistency.py --as-if-committed` 預演模式；
+  更新 `.agents/rules/git-and-reporting.md` 建立 Pre-Prospective Handoff 前置檢查要求；
+  補齊 Durable Tests（CASE A, B, C 全過）；完成 B-51。
+- **後續順序**：治理層 7/7 核心里程碑已全數收斂就緒，安全路徑約束已封閉；
+  唯一剩餘 B-91（9 個歷史錯 tag，待授權）不阻擋治理層 exit。
+  待宏觀審計官裁決 Governance Exit 後，即可正式退出治理層並啟動 3（E-01 技能遷移第一梯次 ＋ B-01）主重構主線。
+--- PAYLOAD ---
+> 兩份內容不同的「後續」順序）。清理紀錄與成因見第 53 點。
+> **歷史敘述屬留痕層，落點是編號點，不是本節。**
+
+- **本批（Final Governance Exit — Reporting Contract Micro-Cleanup）已執行完成，等待審計官核對。**
+  內容：消除 `.agents/rules/git-and-reporting.md` 內部舊有口頭報告、逐行行號、總行數、raw diff 與指令文字輸出等舊要求與 B-36 之衝突；
+  將舊規則移入歷史留痕專節（Retired Reporting Mechanism）退役保存，確立 Repo Evidence Channel 為唯一 active reporting contract；
+  對齊 `SOP/SOP_14_Rigorous_Verification_and_Audit_Protocol.md` §4 與 §7.2 審計文字；
+  維持最後一行固定署名協定。
+- **後續順序**：治理層 7/7 核心里程碑已全數收斂就緒，安全路徑約束已封閉；
+  唯一剩餘 B-91（9 個歷史錯 tag，待授權）不阻擋治理層 exit。
+  待宏觀審計官裁決 Governance Exit 後，即可正式退出治理層並啟動 3（E-01 技能遷移第一梯次 ＋ B-01）主重構主線。
+--- END MOD ---

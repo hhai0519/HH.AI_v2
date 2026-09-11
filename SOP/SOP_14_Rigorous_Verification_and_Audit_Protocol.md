@@ -79,7 +79,7 @@ dependencies: [".agents/rules/skill-engineering-guardrails.md", "SOP_05_System_P
 
 1. **結構化管理**：依據任務複雜度，由專案既有之 TASKBOARD、EXEC-LOG、Git commit 與 Batch/Goal 契約管理狀態，**不得強制每個任務額外建立重複的 `task.md`**；僅在複雜 implementation 專案本身確有需要時才建立。
 2. **漸進式執行**：每次聚焦處理單一明確範疇，確保可追蹤性。
-3. **階段審計**：任務完成後由審計官依客觀驗證入口查核，執行者預設回報 commit OID、changed paths、machine gate results 與 remote health，審計官直接從遠端 GitHub 讀取 diff 與檔案證據，不預設要求將完整代碼或 raw diff 貼入對話。
+3. **階段審計**：任務完成後由審計官依客觀驗證入口查核。詳細 changed paths、machine gate results、M1-M3 歷程與 remote health 完整寫入 `docs/EXEC-LOG.md`、Git commit 與 GitHub Actions；對話視窗正常成功僅回報 `COMMIT <full-sha> | CI PASS | S1 NONE`。審計官直接自 GitHub 遠端讀取 diff、實體檔案與 Actions 綠燈證據，對話視窗不預設要求張貼任何詳細內容或 raw diff。
 4. **風險導向壓力測試**：若修改涉及底層資料持久化 (DB/檔案寫入) 或主要 Web API，應依 acceptance criteria、實際併發語意與 SRE 風險設計對應之測試，不得以無條件固定 50 次之 magic number 取代工程風險判斷。
 5. **失敗處置**：若驗證失敗，依循 M1/M2/M3 本地修復流程處理；重大原則分歧則依 S1 升級回報。
 
@@ -157,7 +157,7 @@ dependencies: [".agents/rules/skill-engineering-guardrails.md", "SOP_05_System_P
 
 ### 7.2 三層核對
 
-1. 執行者預設回報 commit full OID、changed paths、驗證結果與 remote health 狀態；宏觀審計官直接從 GitHub 遠端取得 exact diff 與實體檔案證據，**不預設要求執行者貼出修改後完整檔案內容或 raw diff**（僅在遠端不可得時例外提供）。
+1. 詳細 changed paths、驗證結果與 remote health 狀態一律寫入 `docs/EXEC-LOG.md` 與 Git commit；對話回覆正常成功維持單行 `COMMIT <full-sha> | CI PASS | S1 NONE`。宏觀審計官直接自 GitHub 遠端取得 exact diff 與實體檔案證據，**嚴禁預設要求執行者在對話貼出修改後完整檔案內容或 raw diff**（僅在遠端不可得時例外提供最小必要片段）。
 2. 審計官獨立查核是否有：
    - 牴觸本專案核心原則的規則（尤其「遇到不確定情況要不要問人」這類）
    - 尚未處理的硬編碼符號／觸發詞
