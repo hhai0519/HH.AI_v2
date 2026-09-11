@@ -2819,7 +2819,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 5.1 上一批狀態
 
-上次核對通過的 HEAD：0e13c85
+上次核對通過的 HEAD：38b7c49
 
 - `23af193`（執行者前置檢查 ＋ 回滾程序 ＋ `AUDIT-LOG.md` ＋ 四缺口修正）
   已於 2026-09-02 由審計官核對通過：6 檔異動（含 2 個新檔）、零夾帶、
@@ -2941,9 +2941,15 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   ＋ 錯誤分級 M1-M3/S1 ＋ BPE 輸出 sha256 綁定。4 檔異動、零夾帶，
   獨立驗證四項全過（54 技能、18 項 CHECK、93 測試、`--verify` exit 0），
   CI Run 34241773099 success。
-- 本批（尚未 commit）（Governance Gate Unblocker / B-92：修正 `docs/EXEC-LOG.md` 與
+- `38b7c49`（Governance Gate Unblocker / B-92：修正 `docs/EXEC-LOG.md` 與
   `docs/fingerprints/exec-latest.json` 作為 CHECK 17 豁免檔的生命週期，
-  解除 normal spec-driven batch 的 deadlock）已執行，**尚待審計官核對**，見 §5.4。
+  解除 normal spec-driven batch 的 deadlock）已於 2026-09-11 由審計官核對通過：
+  7 檔異動、零夾帶，獨立驗證四項全過（54 技能、18 項 CHECK、107 測試、`--verify` exit 0），
+  CI success，`audited-38b7c49` tag 已成功建立並推送。
+- 本批（尚未 commit）（Mechanical-Truth Migration：確立「機器產出衍生事實、提示詞引用機械來源、
+  不將衍生數值複製為第二份 blocking truth」之單一權威模型；移除手寫總行數、固定行號、
+  圍欄數與 post-apply 衍生值 blocking 要求；補齊 BPE 與 Batch Spec 規範，完成 B-86）
+  已執行，**尚待審計官核對**，見 §5.4。
 
 ### 5.2 待辦
 
@@ -2969,17 +2975,16 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 > 兩份內容不同的「後續」順序）。清理紀錄與成因見第 53 點。
 > **歷史敘述屬留痕層，落點是編號點，不是本節。**
 
-- **本批（Governance Gate Unblocker / B-92）已執行完成，等待審計官核對。**
-  內容：2b-6 已完成；Mechanical-Truth Migration 因 B-92 deadlock 暫停；
-  本批修正 `scripts/check_consistency.py` 中 CHECK 17 對豁免檔的生命週期驗證：
-  `docs/fingerprints/exec-latest.json` 不再套用 zero-deletion，委派 `fingerprint.py --verify` 驗證；
-  `docs/EXEC-LOG.md` 改採 fail-closed 的 semantic transition validator
-  （支援上一批『本批』合法回填為 parent hash，並追加當批新紀錄；禁止任何刪改舊列）；
-  `scripts/tests/test_check_17_18.py` 新增 7 項真實 Git repo 正反例測試；
-  TASKBOARD B-92 標記為已完成。
-- **下一批**：Mechanical-Truth Migration（以 normal Batch Spec 執行，移除 LLM 手寫衍生數值作為 blocking truth 制度）。
-- **後續順序**：Mechanical-Truth Migration → 2b-7（B-90 規格支援 `create_file` mode，移除 BOOTSTRAP 例外；B-81 BPE `--emit-anchors`；B-53 CHECK 1-7 抽成函式）→ 3（E-01 技能遷移第一梯次 ＋ B-01）→ 4 起後續項目。
-  **治理 Exit blocker 說明**：B-90 仍為治理 Exit blocker；B-91（9 個歷史錯 tag，待授權）不阻擋治理層 exit。
+- **本批（Mechanical-Truth Migration）已執行完成，等待審計官核對。**
+  內容：B-92 已完成；本批以 normal Batch Spec 執行 Mechanical-Truth Migration；
+  修改 `.agents/rules/prompt-preflight.md`、`.claude/rules/auditor-protocol.md`、
+  `.claude/rules/handover-selftest.md`，建立「機器產出衍生事實、提示詞引用機械來源、
+  不將衍生數值複製為第二份 blocking truth」的權威模型；移除手寫總行數、固定行號、手寫圍欄數、
+  post-apply 衍生值與 INFO 輸出的 blocking 要求；補齊 BPE 與 Batch Spec 正式說明，
+  標記 TASKBOARD B-86 為已完成。
+- **下一批**：2b-7（B-90 批次規格支援 `create_file` mode，移除 BOOTSTRAP 例外；B-81 BPE `--emit-anchors`；B-53 CHECK 1-7 抽成函式）。
+- **後續順序**：唯一治理 Exit blocker 為 B-90；B-91（9 個歷史錯 tag，待授權）與 B-92 不阻擋治理層 exit。
+  完成 B-90 後即可啟動 3（E-01 技能遷移第一梯次 ＋ B-01）→ 4 起後續重構主線。
 - **後續順序（唯一權威版本，2026-09-11 依 Governance Freeze 重排）**：
   2b-7（B-90／B-81／B-53）→ **3（E-01 技能遷移第一梯次 ＋ B-01）**→
   4（C 節執行 ＋ B-30／B-31／B-32／B-33）→ 5（Runtime 依賴調研 ＋ C-04 細節裁決）→

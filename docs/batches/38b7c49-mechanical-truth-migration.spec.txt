@@ -1,0 +1,597 @@
+# 批次規格 — Mechanical-Truth Migration
+#
+# batch_id     : 38b7c49-mechanical-truth-migration
+# batch_mode   : GOAL_SPEC
+# base_commit  : 38b7c49
+#
+# 本批目的：確立「機器產出衍生事實、提示詞引用機械來源、不將衍生數值複製為第二份 blocking truth」之單一原則。
+# 移除手寫檔案總行數、固定錨點行號、手寫圍欄數、post-apply 衍生數值與 INFO 輸出的 blocking 要求。
+# 補齊 Batch Spec 與 BPE 用法說明，完成 B-86 治理要求。
+# 同步修復 docs/refactor-backlog.md 上次核對通過的 HEAD handoff pointer (CHECK 9)。
+#
+# 允許修改的檔案：
+#   .agents/rules/prompt-preflight.md
+#   .claude/rules/auditor-protocol.md
+#   .claude/rules/handover-selftest.md
+#   docs/TASKBOARD.md
+#   docs/refactor-backlog.md
+#   docs/AUDIT-LOG.md
+#   scripts/tests/test_check_consistency.py
+#
+# 豁免檔（不在 MOD 內，由狀態流轉或驗證工具產生）：
+#   docs/EXEC-LOG.md
+#   docs/fingerprints/exec-latest.json
+
+HEAD: 38b7c49
+
+=== MOD 1 ===
+file: .agents/rules/prompt-preflight.md
+mode: replace
+--- ANCHOR ---
+## 3. 必要結構元素（缺一即停）
+
+收到提示詞後，逐項確認以下七項是否存在：
+
+| # | 元素 | 判準 |
+|---|---|---|
+| 1 | 執行者身分宣告 | 提示詞開頭有「你是本專案的執行者」或等義敘述 |
+| 2 | 工作目錄確認 | 有要求 `pwd` 或 `Get-Location` |
+| 3 | **同步確認** | 有 `git pull origin main`，且指明預期的 HEAD |
+| 4 | **檔案總行數** | 有列出相關檔案的具體行數，並要求不符就停止 |
+| 5 | **`git add` 明確路徑** | 有「嚴禁 `git add -A`」或等義禁令 |
+| 6 | **更新交接區與任務看板** | 修改指令中有「交接區」與「TASKBOARD」兩者 |
+| 7 | 回報格式 | 結尾要求純文字與署名行 |
+
+**缺任何一項，停下來回報缺了哪幾項，不要動手。**
+--- PAYLOAD ---
+## 3. 必要結構元素（缺一即停）
+
+收到提示詞後，逐項確認以下七項是否存在：
+
+| # | 元素 | 判準 |
+|---|---|---|
+| 1 | 執行者身分宣告 | 提示詞開頭有「你是本專案的執行者」或等義身分界定 |
+| 2 | 基準與工作區確認（Base & Workspace） | 載明基準 commit full OID（如 HEAD / origin/main），並確認工作區乾淨（working tree clean） |
+| 3 | 批次模式（Batch Mode） | 明確宣告 `batch_mode`（如 `EXACT_SPEC` 或 `GOAL_SPEC`） |
+| 4 | 允許修改範圍（Allowed Scope） | 明確列出本批允許修改／新增的路徑白名單，非允許範圍嚴禁改動 |
+| 5 | 規格與確定性閘門（Spec & Machine Gates） | 載明批次規格路徑與規格 SHA-256，並以確定性工具（如 validate_skills, check_consistency, fingerprint, pytest）為機械事實權威；**不得以手寫檔案總行數或衍生數值作為 blocking truth** |
+| 6 | `git add` 明確路徑 | 明確列出提交目標檔案，包含「嚴禁 `git add -A`」或等義明確禁令 |
+| 7 | 交接與回報契約（Handoff & Reporting Contract） | 修改指令涵蓋交接區與 TASKBOARD（及 AUDIT-LOG，若本批有核對通過事實），結尾要求固定格式回覆與署名行 |
+
+**缺任何一項，停下來回報缺了哪幾項，不要動手。**
+
+**權威模型核心原則**：機器產出衍生事實，提示詞引用機械來源，提示詞不得將 machine-derived 數字複製成第二份 blocking truth。手寫行數對不上不再作為停止條件，改以 base OID、spec SHA、allowed scope 與機械 Gate 為驗收準則。
+--- END MOD ---
+
+=== MOD 2 ===
+file: .agents/rules/prompt-preflight.md
+mode: replace
+--- ANCHOR ---
+## 3.2 覆蓋規則（缺一即停）
+
+提示詞中 `git add` 清單的**每一個檔案**，都必須同時出現在：
+
+1. 「確認總行數」的清單中
+2. 驗證步驟的圍欄配對檢查清單中
+
+反之亦然——出現在總行數確認、卻不在 `git add` 清單中的檔案，
+代表提示詞可能漏了提交指令。
+--- PAYLOAD ---
+## 3.2 覆蓋規則（缺一即停）
+
+提示詞中 `git add` 清單的**每一個非 exempt 檔案**，都必須同時出現在：
+
+1. 允許修改範圍（Allowed Scope）
+2. 批次規格（Batch Spec）的修改目標檔案中
+3. 本批驗證步驟所涵蓋的檢查範圍中
+
+反之亦然——出現在規格修改目標卻不在 `git add` 清單中的檔案，
+代表提示詞可能漏了提交指令。
+
+覆蓋驗證以 allowed scope ↔ spec targets ↔ explicit git add ↔ required validation 為準，
+**不得再依賴「手寫檔案總行數清單」或「手寫圍欄數清單」作為覆蓋驗證的 blocking 條件**。
+--- END MOD ---
+
+=== MOD 3 ===
+file: .agents/rules/prompt-preflight.md
+mode: replace
+--- ANCHOR ---
+| 聲明項 | 怎麼驗 |
+|---|---|
+| E1 身分宣告 | 提示詞開頭有「你是本專案的執行者」或等義敘述 |
+| E2 總行數 | 有列出具體行數並要求不符就停止 |
+| E5 `git add` 明確路徑 | 有「嚴禁 `git add -A`」或等義禁令 |
+| E6 結尾格式 | 有要求純文字與署名行 |
+| E8 三項更新 | 修改指令中有「交接區」「TASKBOARD」「AUDIT-LOG」三者 |
+| E9 `git pull` | 有 `git pull origin main` 且指明預期 HEAD |
+| E12 動手前必讀 | 有要求 `cat` 規則檔並貼出輸出 |
+| E3 錨點原文定位 | 每個修改指令都附錨點原文，而非僅給行號 |
+| E4 貼出實際輸出 | 驗證步驟含「貼出」「完整輸出」等要求，而非只問結果 |
+| E7 回報負擔二擇一 | 不得同時要求 `git diff` 與既有檔案全文 |
+| E10 零命中條件的自身檢查 | 提示詞若有「字串 X 應為零命中」，檢查 X 是否出現在提示詞本身的其他位置——**純字串比對，非語意判斷** |
+| E11 錨點逐條 count | 證據區塊**逐條列出**每個錨點與其 count 值，多行錨點須為**完整多行原文**的實測值。不接受「皆為 1」的概括宣告，也不接受只量首行 |
+| E13 配對與覆蓋 | 依 §3.1、§3.2 逐條比對 |
+| E14 自檢聲明區塊 | 區塊存在且項目連號無缺 |
+| E15 錨點註明來源 | 每個錨點標註取自哪個 commit 的 clone |
+| E16 跨檔引用同行 | 寫入文字中的 `§X.Y` 若跨檔，檔名與章節號在同一行 |
+| E17 插入型修改附序列 | 每個「插入」型修改都有「插入後的預期序列」 |
+| E18 證據區塊 | 依 §3.6 逐項比對 HEAD、行數、結構快照 |
+| E19 移除前複查 | 提示詞若含刪除檔案／章節／規則／看板項目，檢查是否附有三步複查結果（反向引用掃描、唯一內容確認、獨立複查）。**純存在性比對，非語意判斷**——不必判斷複查做得對不對，只判斷有沒有 |
+| E20 規則層變更的模擬證據 | 提示詞若修改 `.claude/rules/`、`.agents/rules/`、`PRINCIPLES.md` 或 `AGENTS.md`，證據區塊須有 (e) 段。**你套用修改後跑同一指令，逐項比對行數、圍欄數、項數與最後三條 INFO 行**，不同即停止。純字串比對 |
+| E21 數字的產生者 | 證據區塊 (a) 宣告的基準 HEAD 必須等於你在第 0 步實測的 HEAD。**這是純字串比對**——不符即代表審計官的 clone 早於 HEAD 最後一次移動，停止並回報兩個值 |
+| E22 audited tag 指令 | 提示詞是否含 `git tag audited-<hash>` 與 `git push origin audited-<hash>` 兩條指令，且驗證步驟要求貼出 `git tag -l "audited-*"` 的實際輸出。**純存在性比對**——不必判斷 hash 對不對，只判斷有沒有 |
+| E23 批次規格進 repo | 提示詞是否附有 `docs/batches/<base-hash>-<slug>.spec.txt` 的路徑與該規格的 sha256，且該路徑出現在本批的 `git add` 清單中。你跑 `build_prompt_evidence.py` 時它會印出 `[SPEC] sha256=`，**與提示詞所寫不符即停止**（S1：你手上的規格不是審計官驗過的那一份）。規格內 `HEAD:` 欄位由工具自行與實際 HEAD 比對，不需你人工核 |
+--- PAYLOAD ---
+| 聲明項 | 怎麼驗 |
+|---|---|
+| E1 身分宣告 | 提示詞開頭有「你是本專案的執行者」或等義敘述 |
+| E2 基準與規格識別 | 提示詞載明基準 commit full OID 與批次規格（或規格 SHA-256），交由確定性工具比對，**不再要求 Auditor 手寫總行數作為 blocking truth** |
+| E5 `git add` 明確路徑 | 有「嚴禁 `git add -A`」或等義禁令 |
+| E6 結尾格式 | 有要求純文字與署名行 |
+| E8 三項更新 | 修改指令中有「交接區」「TASKBOARD」「AUDIT-LOG」三者（或明確說明本批無核對事實例外） |
+| E9 `git pull` | 有 `git pull origin main` 且指明預期 HEAD |
+| E12 動手前必讀 | 有要求讀取規則檔或執行基準前置檢查 |
+| E3 錨點原文定位 | 每個修改指令附 structural anchor 原文或唯一語意識別字，**固定行號僅作輔助說明，非 blocking truth** |
+| E4 貼出實際輸出 | 驗證步驟要求回報確定性工具與 Gate 執行結果；實際命中位置由工具輸出，Auditor 不預測 |
+| E7 回報負擔二擇一 | 不得同時要求 `git diff` 與既有檔案全文 |
+| E10 零命中條件的自身檢查 | 提示詞若有「字串 X 應為零命中」，檢查 X 是否出現在提示詞本身的其他位置——**純字串比對，非語意判斷** |
+| E11 錨點唯一性驗證 | 執行者以確定性工具（BPE、`count()` 或 spec parser）於套用前驗證錨點在目標檔 count == 1；**提示詞無須手抄 count 數值** |
+| E13 配對與覆蓋 | 依 §3.1、§3.2 比對 allowed scope ↔ spec targets ↔ git add ↔ gates 覆蓋，不依賴手寫行數／圍欄清單 |
+| E14 自檢聲明區塊 | 區塊存在且項目連號無缺 |
+| E15 錨點基準來源 | 錨點對應本批 base commit full OID 與規格上下文，**不依賴特定 clone 第 N 行作為依賴** |
+| E16 跨檔引用同行 | 寫入文字中的 `§X.Y` 若跨檔，檔名與章節號在同一行 |
+| E17 結構序列驗收 | 若插入或結構變更涉及語意驗收條件（如章節／項目順序），附明確驗收準則；**不得將 LLM 預測所有 post-state 衍生序列當作通用 blocking 條件** |
+| E18 機械前置證據 | 依 §3.6 確認包含 base full OID、batch mode、spec path、spec SHA 與標準驗證指令；**不得要求手寫 line/fence snapshot** |
+| E19 移除前複查 | 提示詞若含刪除檔案／章節／規則／看板項目，檢查是否附有三步複查結果（反向引用掃描、唯一內容確認、獨立複查）。**純存在性比對，非語意判斷**——不必判斷複查做得對不對，只判斷有沒有 |
+| E20 規則層變更的模擬授權 | 規則層變更由同一份 Batch Spec 經 BPE 與確定性檢查器（如 check_consistency）驗證；**Auditor 不得預抄套用後行數、圍欄數、項數或 INFO 輸出作為 blocking truth** |
+| E21 衍生數值不作 blocking truth | 基準 commit 必須與執行者實測 HEAD 一致；**所有 machine-derived values（行數、圍欄數、test count、CHECK count、INFO 輸出等）由確定性工具產出，不得由 LLM 複製成提示詞 blocking truth** |
+| E22 audited tag 指令 | 提示詞是否含 `git tag audited-<hash> <hash>` 與 `git push origin audited-<hash>` 兩條指令，且驗證步驟要求貼出 `git tag -l "audited-*"` 的實際輸出。**純存在性比對**——不必判斷 hash 對不對，只判斷有沒有 |
+| E23 批次規格進 repo | 提示詞附有 `docs/batches/<base-hash>-<slug>.spec.txt` 的路徑與該規格的 sha256，且出現在本批的 `git add` 清單中。規格作為可重放之 executable artifact，LLM 不重新編碼 machine-derived truth |
+--- END MOD ---
+
+=== MOD 4 ===
+file: .agents/rules/prompt-preflight.md
+mode: replace
+--- ANCHOR ---
+## 3.6 新鮮 clone 證據區塊的交叉驗證
+
+每份提示詞必須包含一個【新鮮 clone 證據】區塊，內容五項：
+
+1. (a) clone 時間點的 HEAD
+2. (b) 本批所有目標檔案的行數（以 `splitlines()` 實測）
+3. (c) 本批所有目標區塊的**結構快照**（章節序列、ID 序列、子段落序列）
+4. (d) 本批所有目標 Markdown 檔的**圍欄數**
+5. (e) 本批若修改規則層檔案，套用後的行數、項數與最後三條 CHECK 10 INFO 行（見 §3.4 的 E20）
+
+**你要做五件事，全部是機械比對：**
+
+| 檢查 | 方法 |
+|---|---|
+| 區塊存在 | 缺區塊或缺任一項即停 |
+| 行數相符 | 逐檔實測，與宣稱值比對 |
+| 結構相符 | 逐區塊實測序列，與宣稱的快照比對 |
+| 圍欄數相符 | 逐檔實測「以三個反引號開頭的行數」，**與宣稱值比對**，不是只比對修改前後 |
+| 模擬輸出相符 | (e) 段存在時，套用後跑同一指令，逐項比對文字 |
+
+**(d) 與 (e) 為 2026-09-06 新增。** (d) 的成因：審計官曾把某檔圍欄數
+誤寫為 0（實際為 2），執行者回報了實際值卻判定「零變動相符」——
+它比對的是修改前後，不是與宣稱值。**這不是執行者疏漏，是本表沒有要求它比對。**
+一個沒有人核對的數字等於沒有寫。
+
+**任一不符，即代表審計官沒有真的從 clone 取值**，停下並回報實際值。
+
+**為什麼需要這一節**：2026-09-05 有一批提示詞重投八次才通過。
+八次中有七次的根因相同——審計官 clone 了，但只查它打算查的那幾行，
+其餘錨點與結構取自上一批提示詞、上一輪回報或印象。
+
+問題不在「有沒有 clone」，在「clone 之後看了多少」。
+證據區塊讓後者變成可驗證的——**抄舊值會過期，憑印象填結構會對不上**。
+--- PAYLOAD ---
+## 3.6 機械前置證據（Machine Evidence / Execution Preflight）的交叉驗證
+
+每份提示詞必須包含一個【機械前置證據】（或等義 Preflight Evidence）區塊，內容包含五項：
+
+1. (a) 基準 Commit Full OID（base commit hash）
+2. (b) 批次模式（`batch_mode`，如 `EXACT_SPEC` 或 `GOAL_SPEC`）
+3. (c) 批次規格路徑與規格 SHA-256（指向 `docs/batches/` 下的規格檔案）
+4. (d) 允許修改範圍（Allowed Scope 白名單路徑）
+5. (e) 標準驗證指令與 Gate 清單（canonical validation commands，如 validate_skills, check_consistency, fingerprint, pytest）
+
+**你要做五項機械比對：**
+
+| 檢查 | 方法 |
+|---|---|
+| 證據區塊存在 | 缺區塊或缺任一必備元素即停 |
+| 基準 OID 一致 | 實測第 0 步的 HEAD 必須等於宣告的 base OID |
+| 批次模式合法 | 確認 `batch_mode` 宣告且符合規格契約（如 EXACT_SPEC 或 GOAL_SPEC） |
+| 規格 SHA 一致 | 由 `scripts/build_prompt_evidence.py` 或確定性工具計算規格 sha256，與提示詞宣稱值完全一致 |
+| 範圍與驗證指令齊備 | 規格修改目標完全落在 Allowed Scope 內，且包含標準驗證指令 |
+
+**核心原則（Machine Truth）**：
+目標檔案行數、圍欄數、測試數量、CHECK 總數、套用後行數／圍欄數及 INFO 輸出等，皆為**確定性工具在執行當下產出的衍生診斷數值（derived diagnostic truth）**。
+**提示詞不得再將這些衍生數值抄寫為 expected blocking truth，執行者亦不得因手寫衍生數值不符而停止執行。**
+所有內容完整性、重放正確性與變更安全，一律交由 Batch Spec 與 repository machine tools（如 BPE、`check_consistency.py` CHECK 17 規格重放、`fingerprint.py --verify` 等）嚴格守護。
+--- END MOD ---
+
+=== MOD 5 ===
+file: .claude/rules/auditor-protocol.md
+mode: replace
+--- ANCHOR ---
+2. 列出相關檔案的**總行數**，要求對不上就停止回報。
+3. 修改指令附**行號與錨點原文**；若前一項修改會造成行號位移，
+   後續項目改用錨點文字定位並明確說明。
+4. 驗證步驟要求**貼出實際命中的檔名與行號**，不接受只回報數量。
+--- PAYLOAD ---
+2. **載明基準 Commit（Base Full OID）與目標檔案清單**，不再要求手寫檔案總行數作為 blocking truth。執行者於執行前確認工作區乾淨且 HEAD 與基準一致。
+3. 修改指令以**批次規格（Batch Spec）的 structural anchor 原文或唯一語意識別字**為主；若有行號僅作為輔助 diagnostic，不得作為 blocking truth。
+4. 驗證步驟要求**回報確定性工具與 Gate 的執行輸出**（如 validate_skills, check_consistency, fingerprint, pytest）；命中檔名與行號等由機器輸出提供，提示詞不作人工預測。
+--- END MOD ---
+
+=== MOD 6 ===
+file: .claude/rules/auditor-protocol.md
+mode: replace
+--- ANCHOR ---
+11. **配對與覆蓋**：更新 `TASKBOARD.md` 的 HEAD 時，必須同時更新交接區
+    §5.1 第一行的 HEAD；`git add` 清單的每個檔案，都要出現在總行數確認
+    與圍欄檢查中。完整規則見 `.agents/rules/prompt-preflight.md` §3.1、§3.2，
+    由執行者在動手前機械檢查。
+    2026-09-02 審計官漏了交接區 HEAD，被驗證步驟攔下——
+    但驗證步驟在寫入之後才跑，配對規則能把失敗提早到寫入之前。
+--- PAYLOAD ---
+11. **配對與覆蓋**：更新 `TASKBOARD.md` 的 HEAD 時，必須同時更新交接區
+    §5.1 第一行的 HEAD；`git add` 清單的每個非 exempt 檔案，都要同時出現在
+    Allowed Scope、批次規格修改目標與 Gate 驗證清單中。完整規則見
+    `.agents/rules/prompt-preflight.md` §3.1、§3.2。覆蓋檢查以 scope/spec/git-add
+    為準，不得再依賴手寫行數清單。
+--- END MOD ---
+
+=== MOD 7 ===
+file: .claude/rules/auditor-protocol.md
+mode: replace
+--- ANCHOR ---
+13. **每個錨點必須標註取自 clone 的哪一行**，格式為「錨點（第 N 行）」。
+    多行錨點標註起始行號。執行者驗證該行號的實際內容是否等於錨點文字。
+    **理由**：`count()` 可以瞎猜「1」，行號猜不到。
+    這讓「審計官有沒有實際從 clone 讀過」變成可被推翻的宣稱。
+    2026-09-04 至 09-05 連續發生三類錨點失誤——跨檔案汙染、
+    引用自己上一批的措辭、誤判檔案結構——共同根因都是
+    **沒有從 clone 逐字取錨點**。
+--- PAYLOAD ---
+13. **每個錨點對應本批 base commit 與規格上下文**，在目標檔案中具備結構唯一性
+    （machine count == 1），不依賴特定 clone 第 N 行作為 blocking truth。
+--- END MOD ---
+
+=== MOD 8 ===
+file: .claude/rules/auditor-protocol.md
+mode: replace
+--- ANCHOR ---
+15. **每個插入型修改必須附「插入後的預期序列」**，
+    例如「插入後 §5 的小節序列應為：5.1 → 5.2 → … → 5.6」。
+    執行者機械比對兩件事：該序列是否嚴格遞增、
+    依指定的錨點與插入方向實際會產生的序列是否等於預期序列。
+    **理由**：§6.6 的錨點選擇表寫了正確規則，審計官在寫下它的**同一批**
+    仍然違反（G／H 段錨在 F 段之前，造成 A→B→C→D→E→G→H→F）。
+    這是同一個錯誤模式的第三次，前兩次的處置「把規則寫清楚」已證明無效。
+    **寫出預期序列會強迫在下筆前先看結構**——那正是三次都被跳過的步驟。
+    規則可以誤以為自己遵守了，序列寫不出來就是寫不出來。
+16. **每份提示詞必須包含「新鮮 clone 證據區塊」**，內容三項：
+    (a) clone 時間點的 HEAD；(b) 本批所有目標檔案的行數，
+    從該 clone 以 `splitlines()` 實測；(c) 本批所有目標區塊的**結構快照**
+    （章節序列、ID 序列、子段落序列）。
+    執行者交叉驗證三項是否等於實測，規則見
+    `.agents/rules/prompt-preflight.md` §3.6。
+
+    **理由**：2026-09-05 有一批提示詞重投八次才通過，
+    八次中有七次的根因相同——**審計官 clone 了，但只查它打算查的那幾行，
+    其餘錨點與結構是從上一批提示詞、上一輪回報或印象裡取的**。
+    問題不在「有沒有 clone」，在「clone 之後看了多少」。
+
+    **結構快照是關鍵**：它強迫審計官在寫錨點之前，
+    先把目標區塊的完整序列列出來。那八次中的五次
+    （跨檔引用未寫檔名、子段落逆序、圍欄檢查漏檔、
+    換行斷開、替換範圍誤判）只要列了結構快照就不會發生。
+
+    **不採用「幾輪內必須 clone」的計數式門檻**——計數要靠記憶或誠實回報，
+    那正是本條要解決的問題。改為每批無條件出示證據，取消計數。
+--- PAYLOAD ---
+15. **每個插入型修改若涉及結構序列，必須附明確驗收準則**（例如小節或項目序列應嚴格遞增）；
+    不得將 LLM 預測所有 post-state 衍生序列當作通用 blocking requirement。
+16. **每份提示詞必須包含「機械前置證據（Machine Evidence / Execution Preflight）」**，內容五項：
+    (a) 基準 Commit Full OID；(b) 批次模式（`batch_mode`）；(c) 批次規格路徑與規格 SHA-256；
+    (d) 允許修改範圍（Allowed Scope）；(e) 標準驗證指令與 Gate 清單。
+    執行者交叉驗證基準 OID、模式合法性、規格 SHA 與範圍，規則見
+    `.agents/rules/prompt-preflight.md` §3.6。
+    **刪除手寫檔案行數、圍欄數與結構快照的 blocking 要求。**
+--- END MOD ---
+
+=== MOD 9 ===
+file: .claude/rules/auditor-protocol.md
+mode: replace
+--- ANCHOR ---
+18. **提示詞若修改 CHECK 10／11 的掃描範圍內任一檔案，必須先在本地 clone
+    實際套用、再執行 `scripts/check_consistency.py`**，並在證據區塊新增
+    (e) 段。掃描範圍為 `.claude/rules/` 與 `.agents/rules/` 底下的 `.md`、
+    根目錄 `PRINCIPLES.md`、根目錄 `AGENTS.md`。
+    (e) 段的內容為三項：套用後各檔的行數與圍欄數；套用後各目標區塊的項數；
+    以及**本批修改的每個檔案，其最後三條 CHECK 10 INFO 行的逐字內容**。
+    執行者套用後跑同一指令，逐項比對，不同即停止。
+    **理由**：CHECK 10 的 INFO 行逐條列出每個章節引用的檔名與行號，
+    最後幾條累積了整個檔案的位移量——**沒有真的套用過就寫不出正確的行號**。
+    這讓「我檢查過了」從一句宣告變成可被推翻的宣稱。
+    **模擬的對象必須是最終要送出的文字本身。** 先模擬、再修潤提示詞措辭，
+    等於驗證了一份不會被執行的版本。作法是把各修改的替換文字寫成單一來源，
+    模擬從該來源套用，提示詞也從該來源貼出。
+    **腳本產出的證據不得由審計官修改。** 產出之後若「順手修潤措辭」，
+    模擬的對象就不再等於送出的文字。要改就改批次規格再重跑。
+    **比對的是文字，不是位元組雜湊。** 雜湊一段跨平台 shell pipeline 的輸出，
+    會把「內容是否相同」綁死在行尾、locale、工具實作這些與內容無關的變數上。
+    2026-09-06 實測：雙方的 136 行輸出逐行完全相同，雜湊卻不同——
+    這與 CRLF 那次是同一形狀的錯誤原語。
+    **三次實證（2026-09-06）**：審計官 E16 打勾但只用目視，兩處跨檔章節引用
+    未帶檔名被攔下；本條上線後首次使用，審計官模擬完才多加五行說明而未重跑，
+    行數立即不符再度被攔下；第三次即本段記錄的雜湊原語錯誤。
+    **三次都是審計官出錯，三次都被機制當場抓到。**
+
+
+19. **本輪若 HEAD 可能已移動，必須重新 clone 之後才產出任何數字。**
+    「可能已移動」包含：執行者回報過 commit、距上次 clone 已跨批、
+    或無法確定。**§8.4 第 2 項的「一批改十三個檔案已接近上限」
+    是規模的上限；本項是新鮮度的下限**——`§8.3` 的「每輪最多一次 clone」
+    講的是不要浪費，不是允許沿用。
+    並且：提示詞中每一個數字，在自檢聲明中都要能指出它由哪一次工具呼叫
+    產生。指不出來的，就是模型寫的，必須刪掉或補測。
+    原則本體見 `PRINCIPLES.md` §2.10。
+    **來源**：2026-09-06 由使用者指出——審計官每輪重 clone 靠自律不靠規則，
+    下一個接手者可能用開場那次 clone 撐三輪而無人發現。
+--- PAYLOAD ---
+18. **提示詞若修改規範層檔案，必須以同一份批次規格進行模擬，並以確定性工具輸出為準**。
+    審計官在產出提示詞前，使用 `scripts/build_prompt_evidence.py`（BPE）驗證規格與模擬，
+    但**不得將套用後行數、圍欄數、項數或 INFO 輸出預抄至提示詞作為 blocking truth**。
+    規格重放正確性由 CI 上的 CHECK 17 逐位元守護。
+19. **提示詞中的不可變常數（base OID、spec SHA、allowed scope 等）必須有明確來源；
+    derived values 不得進 prompt 成為 blocking truth**。
+    基準 commit 必須等於執行者在第 0 步實測的 HEAD。指不出產生者的不可變常數即為模型編造，
+    必須刪除或重測；而由機器計算的衍生值（行數、圍欄數、test count、CHECK count 等）交由確定性工具產出，
+    不作為提示詞 blocking truth。原則本體見 `PRINCIPLES.md` §2.10。
+--- END MOD ---
+
+=== MOD 10 ===
+file: .claude/rules/auditor-protocol.md
+mode: replace
+--- ANCHOR ---
+21. **每一批的批次規格必須以 repo artifact 形式交付。**
+    規格存放於 `docs/batches/<base-hash>-<slug>.spec.txt`，
+    與該批的修改在同一個 commit 內進版控。
+    **只存在於對話或 `/tmp` 的規格視為不存在**——CI 取不到、
+    重放無從自動化、下一個接手者只能靠人記得，
+    這正是 `PRINCIPLES.md` §2.8 定義的「尚未生效」。
+    規格進 repo 之後，`scripts/check_consistency.py` 的 CHECK 17
+    會在 CI 上以 parent commit 為基準重放規格並逐位元比對，
+    因此對**符合 CHECK 17 強制範圍的 commit**——單一 parent、
+    恰好一份非 BOOTSTRAP 規格——規格重放結果與 actual target 必須一致，
+    「模擬的對象＝送出的文字＝執行者套用的文字」由機器驗證而非自律維持。
+    不在強制範圍內的 commit（無規格的維護 commit、root/merge commit、
+    BOOTSTRAP 例外）不受此保證涵蓋。
+    規格與 CI 對應方式、命名規則與單一 commit 原則見 `docs/batches/README.md`。
+
+    **推論：提示詞不得寫入任何由機器可直接產生的衍生數字作為攔截條件。**
+    套用後行數、圍欄數、錨點行號、測試總數、CHECK 總數、技能總數，
+    一律由 `scripts/build_prompt_evidence.py` 與各驗證腳本在執行當下產生。
+    審計官把這些值抄進提示詞的那一刻，就多了一次抄錯的機會，
+    而抄錯的代價是一次完整的 roundtrip。2026-09-11 實證：
+    審計官修正規格後重跑工具，卻把修正前那一次的 (e) 區塊抄進提示詞，
+    行數差 5，執行者正確停止，一整批因此重來。
+    **正確作法是把規格交給執行者，由它跑同一支工具、消費同一份輸出。**
+    執行者側的對應規則與錯誤分級見 `.agents/rules/role-boundaries.md` §7。
+--- PAYLOAD ---
+21. **每一批的批次規格必須以 repo artifact 形式交付，並使用 BPE 進行驗證與模擬。**
+    規格存放於 `docs/batches/<base-hash>-<slug>.spec.txt`，載明 `HEAD: <base-hash>`。
+    規格格式由 `parse_spec` 與 `apply_mod_to_text` 解析，支援 `insert_after`、`insert_before`、`replace` 等 mode。
+    審計官在產出提示詞前，必須執行 `python scripts/build_prompt_evidence.py <spec_path>`（BPE）：
+    BPE 會自動驗證所有錨點在當前 repo 的唯一性（count == 1）、計算規格 SHA-256、執行本地模擬並驗證 EXPECT 序列。
+    **BPE 與 Batch Spec 是消除「散文有損重新編碼」的唯一權威機制（完成 B-86 治理要求）。**
+    只存在於對話或 `/tmp` 的規格視為不存在。CI 上的 CHECK 17 會在 parent commit 基準上重放規格並逐位元比對。
+    規格與 CI 對應方式、命名規則與單一 commit 原則見 `docs/batches/README.md`。
+
+    **單一原則：提示詞不得寫入任何由機器直接產生的衍生數字作為 blocking truth。**
+    套用後行數、圍欄數、錨點行號、測試總數、CHECK 總數、技能總數，
+    一律由 `scripts/build_prompt_evidence.py` 與各驗證腳本在執行當下產生。
+    審計官把這些值抄進提示詞的那一刻，就多了一次抄錯的機會。
+    **正確作法是把規格交給執行者，由確定性工具消費同一份規格、產出機械事實。**
+    執行者側的對應規則與錯誤分級見 `.agents/rules/role-boundaries.md` §7。
+--- END MOD ---
+
+=== MOD 11 ===
+file: .claude/rules/handover-selftest.md
+mode: replace
+--- ANCHOR ---
+## E. 交付（產出提示詞之前）
+
+- [ ] E1 提示詞開頭有執行者身分宣告？（§6.1-1）
+- [ ] E2 有列出相關檔案總行數，並要求對不上就停止？（§6.1-2）
+- [ ] E3 修改指令附行號與錨點原文？若前一項會造成行號位移，後續是否改用錨點定位並說明？（§6.1-3）
+- [ ] E4 驗證步驟要求貼出實際命中的檔名與行號，而不是只回報數量？（§6.1-4）
+- [ ] E5 `git add` 一律明確路徑，且明寫禁止 `-A` 與 `.`？（§6.1-5）
+- [ ] E6 結尾固定要求純文字回覆與署名行？（§6.1-6）
+- [ ] E7 回報負擔二擇一——要求 `git diff` 時就不要同時要既有檔案全文？（§6.1-7）
+- [ ] E8 **有包含「更新交接區」、「更新 `docs/TASKBOARD.md`」與「更新 `docs/AUDIT-LOG.md`」三項？**（§6.1-8）
+- [ ] E9 有要求執行者先 `git pull origin main` 並確認 HEAD 一致？（§6.1-9）
+- [ ] E10 零命中類的條件，我檢查過自己的指令會不會產生該字串？（§6.2）
+- [ ] E11 **每一個錨點都用 `count()` 驗證過在目標檔案中恰好出現一次？**（見 §6.6）
+- [ ] E12 **提示詞開頭有「動手前必讀」，要求執行者從檔案讀取規則？**（§6.1-10；不可依賴自動載入，session 前綴可能已被清掉）
+- [ ] E13 **配對與覆蓋都檢查過？**（§6.1-11）更新 TASKBOARD HEAD ⇔ 更新交接區 §5.1 HEAD；`git add` 清單的每個檔案 ⇔ 總行數確認 ＋ 圍欄檢查
+- [ ] E14 **提示詞中有「審計官自檢聲明」區塊，逐項列出本節各項的結果？**（§6.1-12；這是自檢唯一的外部產物，沒有它等同沒做自檢。**新增本節項目時，聲明區塊要同步增列**）
+- [ ] E15 **每個錨點都標註了取自 clone 的哪一行？**（§6.1-13；`count()` 可以瞎猜「1」，行號猜不到）
+- [ ] E16 **寫入的文字若含跨檔 `§X.Y` 引用，檔名與章節號在同一行？**（§6.1-14；CHECK 10 逐行判斷，換行斷開就會 FAIL）
+- [ ] E17 **每個插入型修改都附了「插入後的預期序列」？**（§6.1-15；寫出序列會強迫在下筆前先看結構）
+- [ ] E18 **提示詞中有「新鮮 clone 證據區塊」，含 HEAD、目標檔案行數、目標區塊結構快照？**（§6.1-16；問題不在有沒有 clone，在 clone 之後看了多少）
+- [ ] E19 **提示詞若含任何「移除」，附上了移除前複查的三步結果？**（§6.1-17；反向引用掃描、唯一內容確認、**重新讀檔的獨立複查**；原則見 `PRINCIPLES.md` §2.9）
+- [ ] E20 **提示詞若修改 `.claude/rules/`、`.agents/rules/`、`PRINCIPLES.md` 或 `AGENTS.md`，我已在本地 clone 套用並跑過 `scripts/check_consistency.py`，且證據區塊含 (e) 段？**（§6.1-18；**模擬的對象必須是最終送出的文字本身**，且 (e) 段比對的是文字不是位元組雜湊）
+
+- [ ] E21 **本輪的 clone 是在 HEAD 最後一次移動之後取得的，且提示詞中每個數字都能指出它由哪一次工具呼叫產生？**（§6.1-19；原則見 `PRINCIPLES.md` §2.10——指不出產生者的數字就是模型寫的，必須刪掉或補測）
+- [ ] E22 **提示詞包含補打 `audited-*` tag 的兩條指令，且驗證步驟要求貼出 `git tag -l "audited-*"` 的實際輸出？**（§6.1-20；`auditor-protocol.md` §11.3 此前不在執行路徑上，tag 因此落後七批，判準見同檔 §11.4）
+- [ ] E23 **本批的批次規格已寫成 `docs/batches/<base-hash>-<slug>.spec.txt` 並列入本批的 `git add` 清單，規格的 `HEAD:` 欄位等於本批的 base commit，且提示詞中沒有任何被當成攔截條件的衍生數字？**（§6.1-21；只存在於對話或 `/tmp` 的規格 CI 取不到，CHECK 17 無從重放；衍生數字由工具在執行當下產生，抄進提示詞只是多一次抄錯的機會）
+--- PAYLOAD ---
+## E. 交付（產出提示詞之前）
+
+- [ ] E1 提示詞開頭有執行者身分宣告？（§6.1-1）
+- [ ] E2 提示詞載明基準 commit full OID 與目標檔案範圍，交由確定性工具比對，未手寫檔案總行數作為 blocking truth？（§6.1-2）
+- [ ] E3 修改指令以 structural anchor 原文或唯一語意識別字為主，未以固定行號作為 blocking 依賴？（§6.1-3）
+- [ ] E4 驗證步驟要求回報確定性工具與 Gate 執行結果，實際命中位置由工具輸出而非 Auditor 預測？（§6.1-4）
+- [ ] E5 `git add` 一律明確路徑，且明寫禁止 `-A` 與 `.`？（§6.1-5）
+- [ ] E6 結尾固定要求純文字回覆與署名行？（§6.1-6）
+- [ ] E7 回報負擔二擇一——要求 `git diff` 時就不要同時要既有檔案全文？（§6.1-7）
+- [ ] E8 **有包含「更新交接區」、「更新 `docs/TASKBOARD.md`」與「更新 `docs/AUDIT-LOG.md`」三項？**（§6.1-8）
+- [ ] E9 有要求執行者先 `git pull origin main` 並確認 HEAD 一致？（§6.1-9）
+- [ ] E10 零命中類的條件，我檢查過自己的指令會不會產生該字串？（§6.2）
+- [ ] E11 **每一個錨點都已透過確定性工具（BPE、count() 或 spec parser）驗證在目標檔案中 count == 1？**（§6.1-11，見 §6.6）
+- [ ] E12 **提示詞開頭有「動手前必讀」，要求執行者從檔案讀取規則？**（§6.1-10；不可依賴自動載入，session 前綴可能已被清掉）
+- [ ] E13 **配對與覆蓋都檢查過？**（§6.1-11）更新 TASKBOARD HEAD ⇔ 更新交接區 §5.1 HEAD；`git add` 清單 ⇔ Allowed Scope ＋ 規格修改目標 ＋ Gate 檢查範圍
+- [ ] E14 **提示詞中有「審計官自檢聲明」區塊，逐項列出本節各項的結果？**（§6.1-12；這是自檢唯一的外部產物，沒有它等同沒做自檢。**新增本節項目時，聲明區塊要同步增列**）
+- [ ] E15 **每個錨點都對應本批 base commit 與規格上下文，具備結構唯一性而非依賴特定第 N 行？**（§6.1-13）
+- [ ] E16 **寫入的文字若含跨檔 `§X.Y` 引用，檔名與章節號在同一行？**（§6.1-14；CHECK 10 逐行判斷，換行斷開就會 FAIL）
+- [ ] E17 **每個插入型修改若涉及結構序列，都定義了明確的驗收準則而非預測所有衍生數值？**（§6.1-15）
+- [ ] E18 **提示詞中有「機械前置證據區塊」，含 base full OID、batch mode、spec path、spec SHA 與標準驗證指令？**（§6.1-16；未手寫 line/fence 衍生快照作為 blocking truth）
+- [ ] E19 **提示詞若含任何「移除」，附上了移除前複查的三步結果？**（§6.1-17；反向引用掃描、唯一內容確認、**重新讀檔的獨立複查**；原則見 `PRINCIPLES.md` §2.9）
+- [ ] E20 **提示詞若修改規範層檔案，已使用同一份批次規格經 BPE 與 check_consistency 模擬，未將 post-apply 衍生數值預抄進提示詞？**（§6.1-18；模擬對象等於送出的規格，正確性由 CHECK 17 守護）
+
+- [ ] E21 **本輪基準 commit 與執行者實測一致，且提示詞未將任何 machine-derived 數字（行數、圍欄數、test/CHECK 數等）複製為 blocking truth？**（§6.1-19；原則見 `PRINCIPLES.md` §2.10）
+- [ ] E22 **提示詞包含補打 `audited-*` tag 的兩條指令，且驗證步驟要求貼出 `git tag -l "audited-*"` 的實際輸出？**（§6.1-20；`auditor-protocol.md` §11.3 此前不在執行路徑上，tag 因此落後七批，判準見同檔 §11.4）
+- [ ] E23 **本批的批次規格已寫成 `docs/batches/<base-hash>-<slug>.spec.txt` 並列入本批的 `git add` 清單，規格的 `HEAD:` 欄位等於本批 base commit，且以 BPE 驗證通過？**（§6.1-21；規格為唯一的 executable artifact，重放與生命週期由 CI 守護）
+--- END MOD ---
+
+=== MOD 12 ===
+file: docs/TASKBOARD.md
+mode: replace
+--- ANCHOR ---
+**最後更新**：2026-09-11，HEAD `9a09716` 之後（B-92 豁免檔生命週期修復）
+--- PAYLOAD ---
+**最後更新**：2026-09-11，HEAD `38b7c49` 之後（Mechanical-Truth Migration 機械真實遷移）
+--- END MOD ---
+
+=== MOD 13 ===
+file: docs/TASKBOARD.md
+mode: replace
+--- ANCHOR ---
+| B-86 | 待辦 | **規則層從未說明 BPE 是什麼** | 2026-09-07 實測：`.claude/rules/` 與 `.agents/rules/` 搜尋 `build_prompt_evidence`、`parse_spec`、`apply_mod_to_text` **三個識別字皆零命中**；「批次規格」四字全規則層只出現 1 次，且未說明它由哪支腳本讀、格式為何。**工具上線兩批，規則層等於零字。** `.claude/rules/auditor-protocol.md` §6.1 第 18 項只寫「把各修改的替換文字寫成單一來源」，沒指出那個來源就是 BPE 讀的批次規格，**新 Agent 讀規則會走回散文流程**。處置：§6.1 補上 BPE 用法與規格格式，依同檔 §5.7 同步進 `.claude/rules/handover-selftest.md` 與 `.agents/rules/prompt-preflight.md` §3.4。排批 2b-6 |
+--- PAYLOAD ---
+| B-86 | 已完成 | **規則層從未說明 BPE 是什麼** | BPE 用法與批次規格（Batch Spec）格式已於 Mechanical-Truth Migration 完整寫入 `.claude/rules/auditor-protocol.md` §6.1 第 21 項，並依 §5.7 同步進 `.claude/rules/handover-selftest.md` E23 與 `.agents/rules/prompt-preflight.md` §3.4 E23。明訂批次規格由 `parse_spec`／`apply_mod_to_text` 解析，BPE 負責單一來源驗證與模擬，消除散文編碼失真 |
+--- END MOD ---
+
+=== MOD 14 ===
+file: docs/refactor-backlog.md
+mode: replace
+--- ANCHOR ---
+- 本批（尚未 commit）（Governance Gate Unblocker / B-92：修正 `docs/EXEC-LOG.md` 與
+  `docs/fingerprints/exec-latest.json` 作為 CHECK 17 豁免檔的生命週期，
+  解除 normal spec-driven batch 的 deadlock）已執行，**尚待審計官核對**，見 §5.4。
+--- PAYLOAD ---
+- `38b7c49`（Governance Gate Unblocker / B-92：修正 `docs/EXEC-LOG.md` 與
+  `docs/fingerprints/exec-latest.json` 作為 CHECK 17 豁免檔的生命週期，
+  解除 normal spec-driven batch 的 deadlock）已於 2026-09-11 由審計官核對通過：
+  7 檔異動、零夾帶，獨立驗證四項全過（54 技能、18 項 CHECK、107 測試、`--verify` exit 0），
+  CI success，`audited-38b7c49` tag 已成功建立並推送。
+- 本批（尚未 commit）（Mechanical-Truth Migration：確立「機器產出衍生事實、提示詞引用機械來源、
+  不將衍生數值複製為第二份 blocking truth」之單一權威模型；移除手寫總行數、固定行號、
+  圍欄數與 post-apply 衍生值 blocking 要求；補齊 BPE 與 Batch Spec 規範，完成 B-86）
+  已執行，**尚待審計官核對**，見 §5.4。
+--- END MOD ---
+
+=== MOD 15 ===
+file: docs/refactor-backlog.md
+mode: replace
+--- ANCHOR ---
+- **本批（Governance Gate Unblocker / B-92）已執行完成，等待審計官核對。**
+  內容：2b-6 已完成；Mechanical-Truth Migration 因 B-92 deadlock 暫停；
+  本批修正 `scripts/check_consistency.py` 中 CHECK 17 對豁免檔的生命週期驗證：
+  `docs/fingerprints/exec-latest.json` 不再套用 zero-deletion，委派 `fingerprint.py --verify` 驗證；
+  `docs/EXEC-LOG.md` 改採 fail-closed 的 semantic transition validator
+  （支援上一批『本批』合法回填為 parent hash，並追加當批新紀錄；禁止任何刪改舊列）；
+  `scripts/tests/test_check_17_18.py` 新增 7 項真實 Git repo 正反例測試；
+  TASKBOARD B-92 標記為已完成。
+- **下一批**：Mechanical-Truth Migration（以 normal Batch Spec 執行，移除 LLM 手寫衍生數值作為 blocking truth 制度）。
+- **後續順序**：Mechanical-Truth Migration → 2b-7（B-90 規格支援 `create_file` mode，移除 BOOTSTRAP 例外；B-81 BPE `--emit-anchors`；B-53 CHECK 1-7 抽成函式）→ 3（E-01 技能遷移第一梯次 ＋ B-01）→ 4 起後續項目。
+  **治理 Exit blocker 說明**：B-90 仍為治理 Exit blocker；B-91（9 個歷史錯 tag，待授權）不阻擋治理層 exit。
+--- PAYLOAD ---
+- **本批（Mechanical-Truth Migration）已執行完成，等待審計官核對。**
+  內容：B-92 已完成；本批以 normal Batch Spec 執行 Mechanical-Truth Migration；
+  修改 `.agents/rules/prompt-preflight.md`、`.claude/rules/auditor-protocol.md`、
+  `.claude/rules/handover-selftest.md`，建立「機器產出衍生事實、提示詞引用機械來源、
+  不將衍生數值複製為第二份 blocking truth」的權威模型；移除手寫總行數、固定行號、手寫圍欄數、
+  post-apply 衍生值與 INFO 輸出的 blocking 要求；補齊 BPE 與 Batch Spec 正式說明，
+  標記 TASKBOARD B-86 為已完成。
+- **下一批**：2b-7（B-90 批次規格支援 `create_file` mode，移除 BOOTSTRAP 例外；B-81 BPE `--emit-anchors`；B-53 CHECK 1-7 抽成函式）。
+- **後續順序**：唯一治理 Exit blocker 為 B-90；B-91（9 個歷史錯 tag，待授權）與 B-92 不阻擋治理層 exit。
+  完成 B-90 後即可啟動 3（E-01 技能遷移第一梯次 ＋ B-01）→ 4 起後續重構主線。
+--- END MOD ---
+
+=== MOD 16 ===
+file: docs/AUDIT-LOG.md
+mode: replace
+--- ANCHOR ---
+| 9a09716 | 2026-09-11 | §4.1-1 | **核對通過**。4 檔異動、零夾帶（未觸碰 `skills/`、`scripts/` 等非允許範圍）。獨立驗證四項全過：54 技能零錯誤、18 項 CHECK 全 PASS、`pytest scripts/tests/` 93 passed、`fingerprint.py --verify` exit 0；CI badge 實測 `Verify - passing`（Run 34241773099 success）。CHECK 17 規格重放、CHECK 18 tag 名實比對、規格生命週期規範落地全數驗證通過 | 2b-6 Governance Integrity Consolidation 經宏觀審計官核對通過。本批成功建立規格重放與 tag 守衛防線。本輪實測新發現：在嘗試以 normal spec 執行下一批時，CHECK 17 對 `SPEC_EXEMPT_FILES` 的 zero-deletion 限制導致 `exec-latest.json` 與 `EXEC-LOG.md` 出現 lifecycle 死結，已登錄 B-92 並由下一修正批次（Governance Gate Unblocker）專門處置 |
+--- PAYLOAD ---
+| 9a09716 | 2026-09-11 | §4.1-1 | **核對通過**。4 檔異動、零夾帶（未觸碰 `skills/`、`scripts/` 等非允許範圍）。獨立驗證四項全過：54 技能零錯誤、18 項 CHECK 全 PASS、`pytest scripts/tests/` 93 passed、`fingerprint.py --verify` exit 0；CI badge 實測 `Verify - passing`（Run 34241773099 success）。CHECK 17 規格重放、CHECK 18 tag 名實比對、規格生命週期規範落地全數驗證通過 | 2b-6 Governance Integrity Consolidation 經宏觀審計官核對通過。本批成功建立規格重放與 tag 守衛防線。本輪實測新發現：在嘗試以 normal spec 執行下一批時，CHECK 17 對 `SPEC_EXEMPT_FILES` 的 zero-deletion 限制導致 `exec-latest.json` 與 `EXEC-LOG.md` 出現 lifecycle 死結，已登錄 B-92 並由下一修正批次（Governance Gate Unblocker）專門處置 |
+| 38b7c49 | 2026-09-11 | §4.1-1 | **核對通過**。7 檔異動、零夾帶。獨立驗證四項全過：54 技能零錯誤、18 項 CHECK 全 PASS、`pytest scripts/tests/` 107 passed、`fingerprint.py --verify` exit 0；CI Run 34267431206 success。CHECK 17 normal replay 驗證通過，`audited-38b7c49` tag 已成功建立並推送 | B-92 豁免檔生命週期修復經宏觀審計官核對通過。`docs/EXEC-LOG.md` 狀態流轉驗證通過，`docs/fingerprints/exec-latest.json` 委派驗證通過，正常 spec-driven 批次在 CHECK 16/17 之間的死結已解除 |
+--- END MOD ---
+
+=== MOD 17 ===
+file: scripts/tests/test_check_consistency.py
+mode: replace
+--- ANCHOR ---
+def test_check_16_exec_log_cadence_bootstrap(tmp_path):
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    el = docs / "EXEC-LOG.md"
+    el.write_text("| BOOTSTRAP | 2026-09-05 | 初始 | 啟動 | 無 |\n", encoding="utf-8")
+    fails, infos = check_16_exec_log_cadence(str(tmp_path), git_count=10)
+    assert len(fails) == 0
+    assert any("BOOTSTRAP" in i for i in infos)
+--- PAYLOAD ---
+def test_check_16_exec_log_cadence_bootstrap(tmp_path):
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    el = docs / "EXEC-LOG.md"
+    el.write_text("| BOOTSTRAP | 2026-09-05 | 初始 | 啟動 | 無 |\n", encoding="utf-8")
+    fails, infos = check_16_exec_log_cadence(str(tmp_path), git_count=10)
+    assert len(fails) == 0
+    assert any("BOOTSTRAP" in i for i in infos)
+
+
+def test_preflight_authority_model_contract_validation():
+    valid_prompt_metadata = {
+        "base_oid": "38b7c49c1ef071eb7fd78fe30fdc2680b335a4c1",
+        "batch_mode": "GOAL_SPEC",
+        "spec_path": "docs/batches/38b7c49-mechanical-truth-migration.spec.txt",
+        "spec_sha256": "abc1234567890",
+        "allowed_scope": ["docs/TASKBOARD.md", "docs/AUDIT-LOG.md"],
+        "gates": ["validate_skills.py", "check_consistency.py", "fingerprint.py --verify", "pytest"]
+    }
+    assert bool(valid_prompt_metadata.get("base_oid"))
+    assert bool(valid_prompt_metadata.get("spec_sha256"))
+    assert bool(valid_prompt_metadata.get("allowed_scope"))
+    assert "expected_line_count" not in valid_prompt_metadata
+    assert "expected_fence_count" not in valid_prompt_metadata
+
+    invalid_prompt_metadata = valid_prompt_metadata.copy()
+    invalid_prompt_metadata.pop("spec_sha256")
+    assert not bool(invalid_prompt_metadata.get("spec_sha256"))
+--- END MOD ---
+
+=== MOD 18 ===
+file: docs/refactor-backlog.md
+mode: replace
+--- ANCHOR ---
+上次核對通過的 HEAD：0e13c85
+--- PAYLOAD ---
+上次核對通過的 HEAD：38b7c49
+--- END MOD ---
+
+=== MOD 19 ===
+file: docs/TASKBOARD.md
+mode: replace
+--- ANCHOR ---
+| B-51 | 待辦 | **判準含 HEAD 的檢查，本地與 CI 的答案結構性差 1** | 本地在 commit 前跑、CI 在 commit 後跑。CHECK 8／9 門檻 `lag > 2` 故差 1 看不出；**CHECK 12／16 門檻 `lag > 1`，正好卡在差值上**——「漏更新 AUDIT-LOG」在本地驗證中原理上偵測不到。2026-09-06 實證：本地 HEAD=`2d76958` lag=1 PASS、CI HEAD=`3a85a30` lag=2 FAIL。**執行者無疏忽。** 處置方向：這四項增加 `--as-if-committed` 本地預演模式，或另設 pre-commit 的等效判準。排批 2b |
+--- PAYLOAD ---
+| B-51 | 待辦 | **判準含 HEAD 的檢查，本地與 CI 的答案結構性差 1** | 本地在 commit 前跑、CI 在 commit 後跑。CHECK 8／9 門檻 `lag > 2` 故差 1 看不出；**CHECK 12／16 門檻 `lag > 1`，正好卡在差值上**——「漏更新 AUDIT-LOG」在本地驗證中原理上偵測不到。2026-09-06 實證：本地 HEAD=`2d76958` lag=1 PASS、CI HEAD=`3a85a30` lag=2 FAIL。**執行者無疏忽。** 處置方向：這四項增加 `--as-if-committed` 本地預演模式，或另設 pre-commit 的等效判準。2026-09-11 實證：CHECK 9 亦存在 prospective-HEAD 差異，pre-commit 在 parent HEAD 為 lag=2 PASS，commit 後因 HEAD 前進 1 步使 lag=3 FAIL。排批 2b |
+--- END MOD ---

@@ -1,5 +1,5 @@
 {
-  "base_head": "9a09716",
+  "base_head": "c281aaa",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 0,
@@ -42,7 +42,7 @@
         "## 3.3 遇到疑問而非缺失時",
         "## 3.4 審計官自檢聲明的交叉驗證",
         "## 3.5 檢查結果只存在於回報中，這是已知缺口",
-        "## 3.6 新鮮 clone 證據區塊的交叉驗證",
+        "## 3.6 機械前置證據（Machine Evidence / Execution Preflight）的交叉驗證",
         "## 3.7 E 節每一項都可機械驗證，沒有例外",
         "## 3.8 你的檢查結果必須留在 repo",
         "## 4. 錨點唯一性驗證（動手前必做）",
@@ -50,8 +50,8 @@
         "## 5. 例外",
         "## 6. 這條規則保護的是誰"
       ],
-      "lines": 335,
-      "sha256": "cebeed7543c91f46f4bdb155c52c40870beee5a62bec0b2b79b009df022183c6"
+      "lines": 332,
+      "sha256": "31f67b8ba1841850600a31b9f297ee65466b01fb2230fe3b4da3bc6e08f14b63"
     },
     ".agents/rules/role-boundaries.md": {
       "fences": 0,
@@ -143,8 +143,8 @@
         "### 11.5 審計狀態是四態，互斥且窮盡",
         "### 11.6 歷史 `audited-*` tag 的修復程序（需使用者明確授權）"
       ],
-      "lines": 983,
-      "sha256": "78a518e6d521137385043f9eef10d27ba392109e9f2407976c76043405c6aec1"
+      "lines": 921,
+      "sha256": "a1b7a43dd50875c5c6ecfff872b0f93bafb3d7f27a0dace9f868bb3f1f8460bb"
     },
     ".claude/rules/handover-selftest.md": {
       "fences": 0,
@@ -158,7 +158,7 @@
         "## F. 額度（每一輪回覆的開頭與結尾）"
       ],
       "lines": 98,
-      "sha256": "d4e2279b441b631f972fe6bb71ffb7e82f8ed8d4c4f1d9cdc57b10b732509142"
+      "sha256": "76d5b116079d3108490f8b635c488bebfe2ed84d67f12b838546cef71020cced"
     },
     ".github/workflows/verify.yml": {
       "fences": 0,
@@ -490,16 +490,16 @@
       "headings": [
         "# 自我審查檢查點紀錄"
       ],
-      "lines": 44,
-      "sha256": "e034236cbdb1ec8f3a782c307335506b4ee4b9d7dfa3caffe7bc9e9f94097d13"
+      "lines": 45,
+      "sha256": "da8255de7a9729e5682e5eadc5ce3206d2c4fdd229003fd5ecc123c7f4d48c19"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 32,
-      "sha256": "e5cc09ba599c9557e48845129532f6f8e5e9a06e4aa977b32a4b1bdca5b41f5c"
+      "lines": 33,
+      "sha256": "2e7aaf2933991f84d3ba589ebfee89a062a1e5be7668c0be307382d6f957b837"
     },
     "docs/HANDOVER.md": {
       "fences": 14,
@@ -609,7 +609,7 @@
         "## 封存區"
       ],
       "lines": 234,
-      "sha256": "baf9424fe98642ddc0b9a5bc9144bbf25b1af7ded0a4db29ad4bb8ba9dea5119"
+      "sha256": "ca61e72aa76aca2264be20083e9082a708dce1b5fe70db8ee528877c254c4662"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -926,8 +926,8 @@
         "### 5.3 待使用者裁決",
         "### 5.4 進行中／等待回報"
       ],
-      "lines": 3005,
-      "sha256": "051495c178d3c6ea4d14ffa8d94e1712189ac346c6011afab7fd17fce0e6c5b9"
+      "lines": 3010,
+      "sha256": "ae8fd1e23ebeb7ab51a1872b83e4310550040806392400d273d750cbc7084336"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -995,8 +995,8 @@
       "headings": [
         "# Ensure scripts dir is on sys.path"
       ],
-      "lines": 322,
-      "sha256": "f540d916b47b8dcea7ff8b9628e808a3859d9b1cccb7e1265aba5ad025065106"
+      "lines": 342,
+      "sha256": "9f9589d61b5079c56b3370b87fedcd74220343799287f3de89663661faddefc0"
     },
     "scripts/tests/test_fingerprint.py": {
       "fences": 0,
@@ -1043,7 +1043,7 @@
       "sha256": "bc653c823579a59b1708f0fd17c01ed52b934252502ec2dcdfdb25d3e3e82da5"
     }
   },
-  "generated_at": "2026-09-11T07:56:57Z",
+  "generated_at": "2026-09-11T08:51:12Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

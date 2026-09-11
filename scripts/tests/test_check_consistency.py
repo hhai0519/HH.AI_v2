@@ -320,3 +320,23 @@ def test_check_16_exec_log_cadence_bootstrap(tmp_path):
     fails, infos = check_16_exec_log_cadence(str(tmp_path), git_count=10)
     assert len(fails) == 0
     assert any("BOOTSTRAP" in i for i in infos)
+
+
+def test_preflight_authority_model_contract_validation():
+    valid_prompt_metadata = {
+        "base_oid": "38b7c49c1ef071eb7fd78fe30fdc2680b335a4c1",
+        "batch_mode": "GOAL_SPEC",
+        "spec_path": "docs/batches/38b7c49-mechanical-truth-migration.spec.txt",
+        "spec_sha256": "abc1234567890",
+        "allowed_scope": ["docs/TASKBOARD.md", "docs/AUDIT-LOG.md"],
+        "gates": ["validate_skills.py", "check_consistency.py", "fingerprint.py --verify", "pytest"]
+    }
+    assert bool(valid_prompt_metadata.get("base_oid"))
+    assert bool(valid_prompt_metadata.get("spec_sha256"))
+    assert bool(valid_prompt_metadata.get("allowed_scope"))
+    assert "expected_line_count" not in valid_prompt_metadata
+    assert "expected_fence_count" not in valid_prompt_metadata
+
+    invalid_prompt_metadata = valid_prompt_metadata.copy()
+    invalid_prompt_metadata.pop("spec_sha256")
+    assert not bool(invalid_prompt_metadata.get("spec_sha256"))

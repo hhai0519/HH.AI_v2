@@ -41,15 +41,17 @@
 
 | # | 元素 | 判準 |
 |---|---|---|
-| 1 | 執行者身分宣告 | 提示詞開頭有「你是本專案的執行者」或等義敘述 |
-| 2 | 工作目錄確認 | 有要求 `pwd` 或 `Get-Location` |
-| 3 | **同步確認** | 有 `git pull origin main`，且指明預期的 HEAD |
-| 4 | **檔案總行數** | 有列出相關檔案的具體行數，並要求不符就停止 |
-| 5 | **`git add` 明確路徑** | 有「嚴禁 `git add -A`」或等義禁令 |
-| 6 | **更新交接區與任務看板** | 修改指令中有「交接區」與「TASKBOARD」兩者 |
-| 7 | 回報格式 | 結尾要求純文字與署名行 |
+| 1 | 執行者身分宣告 | 提示詞開頭有「你是本專案的執行者」或等義身分界定 |
+| 2 | 基準與工作區確認（Base & Workspace） | 載明基準 commit full OID（如 HEAD / origin/main），並確認工作區乾淨（working tree clean） |
+| 3 | 批次模式（Batch Mode） | 明確宣告 `batch_mode`（如 `EXACT_SPEC` 或 `GOAL_SPEC`） |
+| 4 | 允許修改範圍（Allowed Scope） | 明確列出本批允許修改／新增的路徑白名單，非允許範圍嚴禁改動 |
+| 5 | 規格與確定性閘門（Spec & Machine Gates） | 載明批次規格路徑與規格 SHA-256，並以確定性工具（如 validate_skills, check_consistency, fingerprint, pytest）為機械事實權威；**不得以手寫檔案總行數或衍生數值作為 blocking truth** |
+| 6 | `git add` 明確路徑 | 明確列出提交目標檔案，包含「嚴禁 `git add -A`」或等義明確禁令 |
+| 7 | 交接與回報契約（Handoff & Reporting Contract） | 修改指令涵蓋交接區與 TASKBOARD（及 AUDIT-LOG，若本批有核對通過事實），結尾要求固定格式回覆與署名行 |
 
 **缺任何一項，停下來回報缺了哪幾項，不要動手。**
+
+**權威模型核心原則**：機器產出衍生事實，提示詞引用機械來源，提示詞不得將 machine-derived 數字複製成第二份 blocking truth。手寫行數對不上不再作為停止條件，改以 base OID、spec SHA、allowed scope 與機械 Gate 為驗收準則。
 
 **第 6 項有實際失效紀錄**：2026-09-02 的批 G 提示詞更新了 TASKBOARD
 卻漏了交接區，導致交接區落後兩批、下一批的錨點對不上。
@@ -77,13 +79,17 @@
 
 ## 3.2 覆蓋規則（缺一即停）
 
-提示詞中 `git add` 清單的**每一個檔案**，都必須同時出現在：
+提示詞中 `git add` 清單的**每一個非 exempt 檔案**，都必須同時出現在：
 
-1. 「確認總行數」的清單中
-2. 驗證步驟的圍欄配對檢查清單中
+1. 允許修改範圍（Allowed Scope）
+2. 批次規格（Batch Spec）的修改目標檔案中
+3. 本批驗證步驟所涵蓋的檢查範圍中
 
-反之亦然——出現在總行數確認、卻不在 `git add` 清單中的檔案，
+反之亦然——出現在規格修改目標卻不在 `git add` 清單中的檔案，
 代表提示詞可能漏了提交指令。
+
+覆蓋驗證以 allowed scope ↔ spec targets ↔ explicit git add ↔ required validation 為準，
+**不得再依賴「手寫檔案總行數清單」或「手寫圍欄數清單」作為覆蓋驗證的 blocking 條件**。
 
 **這兩節檢查的是「有沒有」，不是「對不對」**，與 §2 的分界一致。
 你不需要判斷提示詞的內容是否正確，只需要比對清單是否齊全。
@@ -116,28 +122,28 @@
 | 聲明項 | 怎麼驗 |
 |---|---|
 | E1 身分宣告 | 提示詞開頭有「你是本專案的執行者」或等義敘述 |
-| E2 總行數 | 有列出具體行數並要求不符就停止 |
+| E2 基準與規格識別 | 提示詞載明基準 commit full OID 與批次規格（或規格 SHA-256），交由確定性工具比對，**不再要求 Auditor 手寫總行數作為 blocking truth** |
 | E5 `git add` 明確路徑 | 有「嚴禁 `git add -A`」或等義禁令 |
 | E6 結尾格式 | 有要求純文字與署名行 |
-| E8 三項更新 | 修改指令中有「交接區」「TASKBOARD」「AUDIT-LOG」三者 |
+| E8 三項更新 | 修改指令中有「交接區」「TASKBOARD」「AUDIT-LOG」三者（或明確說明本批無核對事實例外） |
 | E9 `git pull` | 有 `git pull origin main` 且指明預期 HEAD |
-| E12 動手前必讀 | 有要求 `cat` 規則檔並貼出輸出 |
-| E3 錨點原文定位 | 每個修改指令都附錨點原文，而非僅給行號 |
-| E4 貼出實際輸出 | 驗證步驟含「貼出」「完整輸出」等要求，而非只問結果 |
+| E12 動手前必讀 | 有要求讀取規則檔或執行基準前置檢查 |
+| E3 錨點原文定位 | 每個修改指令附 structural anchor 原文或唯一語意識別字，**固定行號僅作輔助說明，非 blocking truth** |
+| E4 貼出實際輸出 | 驗證步驟要求回報確定性工具與 Gate 執行結果；實際命中位置由工具輸出，Auditor 不預測 |
 | E7 回報負擔二擇一 | 不得同時要求 `git diff` 與既有檔案全文 |
 | E10 零命中條件的自身檢查 | 提示詞若有「字串 X 應為零命中」，檢查 X 是否出現在提示詞本身的其他位置——**純字串比對，非語意判斷** |
-| E11 錨點逐條 count | 證據區塊**逐條列出**每個錨點與其 count 值，多行錨點須為**完整多行原文**的實測值。不接受「皆為 1」的概括宣告，也不接受只量首行 |
-| E13 配對與覆蓋 | 依 §3.1、§3.2 逐條比對 |
+| E11 錨點唯一性驗證 | 執行者以確定性工具（BPE、`count()` 或 spec parser）於套用前驗證錨點在目標檔 count == 1；**提示詞無須手抄 count 數值** |
+| E13 配對與覆蓋 | 依 §3.1、§3.2 比對 allowed scope ↔ spec targets ↔ git add ↔ gates 覆蓋，不依賴手寫行數／圍欄清單 |
 | E14 自檢聲明區塊 | 區塊存在且項目連號無缺 |
-| E15 錨點註明來源 | 每個錨點標註取自哪個 commit 的 clone |
+| E15 錨點基準來源 | 錨點對應本批 base commit full OID 與規格上下文，**不依賴特定 clone 第 N 行作為依賴** |
 | E16 跨檔引用同行 | 寫入文字中的 `§X.Y` 若跨檔，檔名與章節號在同一行 |
-| E17 插入型修改附序列 | 每個「插入」型修改都有「插入後的預期序列」 |
-| E18 證據區塊 | 依 §3.6 逐項比對 HEAD、行數、結構快照 |
+| E17 結構序列驗收 | 若插入或結構變更涉及語意驗收條件（如章節／項目順序），附明確驗收準則；**不得將 LLM 預測所有 post-state 衍生序列當作通用 blocking 條件** |
+| E18 機械前置證據 | 依 §3.6 確認包含 base full OID、batch mode、spec path、spec SHA 與標準驗證指令；**不得要求手寫 line/fence snapshot** |
 | E19 移除前複查 | 提示詞若含刪除檔案／章節／規則／看板項目，檢查是否附有三步複查結果（反向引用掃描、唯一內容確認、獨立複查）。**純存在性比對，非語意判斷**——不必判斷複查做得對不對，只判斷有沒有 |
-| E20 規則層變更的模擬證據 | 提示詞若修改 `.claude/rules/`、`.agents/rules/`、`PRINCIPLES.md` 或 `AGENTS.md`，證據區塊須有 (e) 段。**你套用修改後跑同一指令，逐項比對行數、圍欄數、項數與最後三條 INFO 行**，不同即停止。純字串比對 |
-| E21 數字的產生者 | 證據區塊 (a) 宣告的基準 HEAD 必須等於你在第 0 步實測的 HEAD。**這是純字串比對**——不符即代表審計官的 clone 早於 HEAD 最後一次移動，停止並回報兩個值 |
-| E22 audited tag 指令 | 提示詞是否含 `git tag audited-<hash>` 與 `git push origin audited-<hash>` 兩條指令，且驗證步驟要求貼出 `git tag -l "audited-*"` 的實際輸出。**純存在性比對**——不必判斷 hash 對不對，只判斷有沒有 |
-| E23 批次規格進 repo | 提示詞是否附有 `docs/batches/<base-hash>-<slug>.spec.txt` 的路徑與該規格的 sha256，且該路徑出現在本批的 `git add` 清單中。你跑 `build_prompt_evidence.py` 時它會印出 `[SPEC] sha256=`，**與提示詞所寫不符即停止**（S1：你手上的規格不是審計官驗過的那一份）。規格內 `HEAD:` 欄位由工具自行與實際 HEAD 比對，不需你人工核 |
+| E20 規則層變更的模擬授權 | 規則層變更由同一份 Batch Spec 經 BPE 與確定性檢查器（如 check_consistency）驗證；**Auditor 不得預抄套用後行數、圍欄數、項數或 INFO 輸出作為 blocking truth** |
+| E21 衍生數值不作 blocking truth | 基準 commit 必須與執行者實測 HEAD 一致；**所有 machine-derived values（行數、圍欄數、test count、CHECK count、INFO 輸出等）由確定性工具產出，不得由 LLM 複製成提示詞 blocking truth** |
+| E22 audited tag 指令 | 提示詞是否含 `git tag audited-<hash> <hash>` 與 `git push origin audited-<hash>` 兩條指令，且驗證步驟要求貼出 `git tag -l "audited-*"` 的實際輸出。**純存在性比對**——不必判斷 hash 對不對，只判斷有沒有 |
+| E23 批次規格進 repo | 提示詞附有 `docs/batches/<base-hash>-<slug>.spec.txt` 的路徑與該規格的 sha256，且出現在本批的 `git add` 清單中。規格作為可重放之 executable artifact，LLM 不重新編碼 machine-derived truth |
 
 **自檢聲明不接受任何豁免。**
 
@@ -186,39 +192,30 @@
 在它建立之前，**你的回報就是唯一證據**——因此不得簡化、不得只寫「通過」，
 必須逐項列出檢查了什麼、結果為何。
 
-## 3.6 新鮮 clone 證據區塊的交叉驗證
+## 3.6 機械前置證據（Machine Evidence / Execution Preflight）的交叉驗證
 
-每份提示詞必須包含一個【新鮮 clone 證據】區塊，內容五項：
+每份提示詞必須包含一個【機械前置證據】（或等義 Preflight Evidence）區塊，內容包含五項：
 
-1. (a) clone 時間點的 HEAD
-2. (b) 本批所有目標檔案的行數（以 `splitlines()` 實測）
-3. (c) 本批所有目標區塊的**結構快照**（章節序列、ID 序列、子段落序列）
-4. (d) 本批所有目標 Markdown 檔的**圍欄數**
-5. (e) 本批若修改規則層檔案，套用後的行數、項數與最後三條 CHECK 10 INFO 行（見 §3.4 的 E20）
+1. (a) 基準 Commit Full OID（base commit hash）
+2. (b) 批次模式（`batch_mode`，如 `EXACT_SPEC` 或 `GOAL_SPEC`）
+3. (c) 批次規格路徑與規格 SHA-256（指向 `docs/batches/` 下的規格檔案）
+4. (d) 允許修改範圍（Allowed Scope 白名單路徑）
+5. (e) 標準驗證指令與 Gate 清單（canonical validation commands，如 validate_skills, check_consistency, fingerprint, pytest）
 
-**你要做五件事，全部是機械比對：**
+**你要做五項機械比對：**
 
 | 檢查 | 方法 |
 |---|---|
-| 區塊存在 | 缺區塊或缺任一項即停 |
-| 行數相符 | 逐檔實測，與宣稱值比對 |
-| 結構相符 | 逐區塊實測序列，與宣稱的快照比對 |
-| 圍欄數相符 | 逐檔實測「以三個反引號開頭的行數」，**與宣稱值比對**，不是只比對修改前後 |
-| 模擬輸出相符 | (e) 段存在時，套用後跑同一指令，逐項比對文字 |
+| 證據區塊存在 | 缺區塊或缺任一必備元素即停 |
+| 基準 OID 一致 | 實測第 0 步的 HEAD 必須等於宣告的 base OID |
+| 批次模式合法 | 確認 `batch_mode` 宣告且符合規格契約（如 EXACT_SPEC 或 GOAL_SPEC） |
+| 規格 SHA 一致 | 由 `scripts/build_prompt_evidence.py` 或確定性工具計算規格 sha256，與提示詞宣稱值完全一致 |
+| 範圍與驗證指令齊備 | 規格修改目標完全落在 Allowed Scope 內，且包含標準驗證指令 |
 
-**(d) 與 (e) 為 2026-09-06 新增。** (d) 的成因：審計官曾把某檔圍欄數
-誤寫為 0（實際為 2），執行者回報了實際值卻判定「零變動相符」——
-它比對的是修改前後，不是與宣稱值。**這不是執行者疏漏，是本表沒有要求它比對。**
-一個沒有人核對的數字等於沒有寫。
-
-**任一不符，即代表審計官沒有真的從 clone 取值**，停下並回報實際值。
-
-**為什麼需要這一節**：2026-09-05 有一批提示詞重投八次才通過。
-八次中有七次的根因相同——審計官 clone 了，但只查它打算查的那幾行，
-其餘錨點與結構取自上一批提示詞、上一輪回報或印象。
-
-問題不在「有沒有 clone」，在「clone 之後看了多少」。
-證據區塊讓後者變成可驗證的——**抄舊值會過期，憑印象填結構會對不上**。
+**核心原則（Machine Truth）**：
+目標檔案行數、圍欄數、測試數量、CHECK 總數、套用後行數／圍欄數及 INFO 輸出等，皆為**確定性工具在執行當下產出的衍生診斷數值（derived diagnostic truth）**。
+**提示詞不得再將這些衍生數值抄寫為 expected blocking truth，執行者亦不得因手寫衍生數值不符而停止執行。**
+所有內容完整性、重放正確性與變更安全，一律交由 Batch Spec 與 repository machine tools（如 BPE、`check_consistency.py` CHECK 17 規格重放、`fingerprint.py --verify` 等）嚴格守護。
 
 ## 3.7 E 節每一項都可機械驗證，沒有例外
 
