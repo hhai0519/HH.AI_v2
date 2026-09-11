@@ -352,12 +352,41 @@ CHECK 8 至 15 有 63 個測試並經審計官反例注入驗證，
     2026-09-07 實測：時序最新的 tag 為 `audited-e6f543a`（2026-09-05），
     其後七個已核對通過的批次全數無 tag，
     且 `scripts/` 與 `.github/` 全庫查無 `audited-` 字串，偵測從未實作（B-12）。
-    指令固定兩條：`git tag audited-<上一批的 hash>` 與
+    指令固定兩條，**且都必須明確帶上目標 commit**：
+    `git tag audited-<上一批的 hash> <上一批的 hash>` 與
     `git push origin audited-<上一批的 hash>`。
+    **省略第二個參數會打在當下的 HEAD 上**——tag 名字對、指向錯。
+    2026-09-11 實測 17 個 tag 中有 9 個如此，成因正是原措辭沒寫目標參數。
+    機械守衛為 `scripts/check_consistency.py` 的 CHECK 18（tag 名實比對）；
+    九個歷史錯 tag 的修復程序見同檔 §11.6，需使用者明確授權。
     驗證步驟必須要求貼出 `git tag -l "audited-*"` 的實際輸出，
     只回報「已補打」不算數。打不打的判準見 §11.4。
 
 
+21. **每一批的批次規格必須以 repo artifact 形式交付。**
+    規格存放於 `docs/batches/<base-hash>-<slug>.spec.txt`，
+    與該批的修改在同一個 commit 內進版控。
+    **只存在於對話或 `/tmp` 的規格視為不存在**——CI 取不到、
+    重放無從自動化、下一個接手者只能靠人記得，
+    這正是 `PRINCIPLES.md` §2.8 定義的「尚未生效」。
+    規格進 repo 之後，`scripts/check_consistency.py` 的 CHECK 17
+    會在 CI 上以 parent commit 為基準重放規格並逐位元比對，
+    因此對**符合 CHECK 17 強制範圍的 commit**——單一 parent、
+    恰好一份非 BOOTSTRAP 規格——規格重放結果與 actual target 必須一致，
+    「模擬的對象＝送出的文字＝執行者套用的文字」由機器驗證而非自律維持。
+    不在強制範圍內的 commit（無規格的維護 commit、root/merge commit、
+    BOOTSTRAP 例外）不受此保證涵蓋。
+    規格與 CI 對應方式、命名規則與單一 commit 原則見 `docs/batches/README.md`。
+
+    **推論：提示詞不得寫入任何由機器可直接產生的衍生數字作為攔截條件。**
+    套用後行數、圍欄數、錨點行號、測試總數、CHECK 總數、技能總數，
+    一律由 `scripts/build_prompt_evidence.py` 與各驗證腳本在執行當下產生。
+    審計官把這些值抄進提示詞的那一刻，就多了一次抄錯的機會，
+    而抄錯的代價是一次完整的 roundtrip。2026-09-11 實證：
+    審計官修正規格後重跑工具，卻把修正前那一次的 (e) 區塊抄進提示詞，
+    行數差 5，執行者正確停止，一整批因此重來。
+    **正確作法是把規格交給執行者，由它跑同一支工具、消費同一份輸出。**
+    執行者側的對應規則與錯誤分級見 `.agents/rules/role-boundaries.md` §7。
 ### 6.2 零命中類的驗證條件，必須先列出自身指令造成的例外
 
 寫「某字串應為零命中」之前，先檢查自己的指令內容是否會產生該字串。
@@ -899,3 +928,56 @@ revert 之後**必須同批完成三件事**，否則狀態會不一致：
 `3a85a30`（內容通過、該批 CI failure，已由 `1491d33` 修復）要打。
 **tag 序列因此不連續，這是設計而非漏打**——B-12 的落後偵測實作時
 必須以交接區記載的核對結論為準，不得以 commit 數推算。
+
+### 11.5 審計狀態是四態，互斥且窮盡
+
+2026-09-11 審計官在同一份回覆中同時寫出「未核對」與「核對通過」，
+成因是把「對話裡做過的事」當成一種 repo 狀態。它不是。
+
+**接手者只能從 repo 觀察，因此狀態表只能由 repo 可觀察的事實定義。**
+以下四態互斥且窮盡，任何 commit 必落在其中恰好一態：
+
+| 狀態 | repo 可觀察的判準 |
+|---|---|
+| **A. UNREVIEWED** | `docs/AUDIT-LOG.md` 無該 commit 的列 |
+| **B. FAIL_FINAL** | AUDIT-LOG 有列且結論為不通過。依 §11.4 不應存在 `audited-*` tag |
+| **C. PASS_PENDING_FINALIZATION** | AUDIT-LOG 有列且結論為通過，但正式完成條件尚未全部成立——交接區 §5.1 未同步，或 `audited-<hash>` tag 尚未建立，或 tag 指向不正確 |
+| **D. PASS_FINAL** | AUDIT-LOG 結論為通過、交接區 §5.1 已同步、`audited-<hash>` tag 存在且指向正確 |
+
+**狀態 C 是必要的。** 審計結論寫進 AUDIT-LOG 與補打 tag 分屬不同批次，
+中間必然有一段時間 AUDIT-LOG 已是通過而 tag 還不存在；
+沒有 C，那段時間會落在狀態表之外。
+
+**狀態 A 不再細分。** repo 無從判斷某次對話裡是否已逐檔看過，
+也不該試圖判斷。對接手者而言，「完全沒人看過」與
+「某個 session 看過但沒寫進 repo」是同一件事：UNREVIEWED。
+
+交接區 §5.1 的「上次核對通過的 HEAD」欄位（`scripts/check_consistency.py`
+的 CHECK 9 以這個字串為標記，措辭不得更動）記載的是**最後一個
+PASS_FINAL 的 commit**，不是「最近一次在對話裡看過的 commit」。
+
+「內容核對通過」只能作為**單一 session 內的暫時措辭**使用，
+描述審計官此刻手上的進度。它不是 handoff state，
+**不得寫成任何可由下一個 session 從 repo 推斷的歷史狀態**。
+
+### 11.6 歷史 `audited-*` tag 的修復程序（需使用者明確授權）
+
+2026-09-11 實測 17 個 tag 中 9 個名實不符，清單見 `docs/TASKBOARD.md` B-91。
+修復涉及刪除並覆寫 remote ref，屬 `PRINCIPLES.md` §0 定義的
+**需使用者明確授權的 Git 歷史操作**。未取得授權前，
+任何批次規格都不得要求執行者執行本節指令。
+
+授權後的程序（逐一，不得批次一次做完）：
+
+1. 先跑 `git fetch --tags --force`，確認 local 與 remote 一致。
+2. 對每一個待修 tag，先記錄現況：`git rev-parse <tag>^{commit}`。
+3. `git tag -d <tag>` 刪本地。
+4. `git push origin :refs/tags/<tag>` 刪遠端。
+5. `git tag <tag> <tag 名稱中的 hash>` 重打，**必須帶第二個參數**。
+6. `git push origin <tag>` 推送。
+7. 九個全部完成後，跑 `python3 scripts/check_consistency.py`，
+   CHECK 18 必定 FAIL 並列出「已修復但仍留在 KNOWN_BAD_TAGS」的 tag。
+8. 依該輸出把 `KNOWN_BAD_TAGS` 清空，CHECK 18 轉 PASS。
+
+**第 7 步的 FAIL 是設計而非意外**——清單不會自己過期，
+必須由一次紅燈強迫清掉，否則豁免清單會變成下一個假綠燈。

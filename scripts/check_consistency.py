@@ -478,6 +478,37 @@ def run_checks():
         failed += 1
 
     # ---------------------------------------------------------
+    # ---------------------------------------------------------
+    # CHECK 17: Batch Spec 重放一致性
+    # ---------------------------------------------------------
+    print("\nCHECK 17 - Batch Spec 重放一致性")
+    c17_fails, c17_infos = check_17_spec_replay(repo_root)
+    for info in c17_infos:
+        print(f"  [INFO] {info}")
+    if len(c17_fails) == 0:
+        print("  [PASS] 0 命中")
+        passed += 1
+    else:
+        print(f"  [FAIL] {len(c17_fails)} 命中")
+        for fail in c17_fails:
+            print(f"    {fail}")
+        failed += 1
+
+    # ---------------------------------------------------------
+    # CHECK 18: audited-* tag 名實一致
+    # ---------------------------------------------------------
+    print("\nCHECK 18 - audited-* tag 名實一致")
+    c18_fails, c18_infos = check_18_tag_integrity(repo_root)
+    for info in c18_infos:
+        print(f"  [INFO] {info}")
+    if len(c18_fails) == 0:
+        print("  [PASS] 0 命中")
+        passed += 1
+    else:
+        print(f"  [FAIL] {len(c18_fails)} 命中")
+        for fail in c18_fails:
+            print(f"    {fail}")
+        failed += 1
     # 總結
     # ---------------------------------------------------------
     print(f"\n========================================")
@@ -954,6 +985,343 @@ def check_16_exec_log_cadence(root_dir=None, git_count=None):
         fails.append(f"docs/EXEC-LOG.md: 最新檢查紀錄 ({latest_hash}) 落後 HEAD {lag} 個 commit（允許落後 1 批，因本批尚未核對）")
     return fails, infos
 
+
+SPEC_DIR = "docs/batches"
+SPEC_EXEMPT_FILES = {"docs/EXEC-LOG.md", "docs/fingerprints/exec-latest.json"}
+
+# 已知指向錯誤的歷史 tag。本清單只能縮短、不得加長。
+# 修復批次完成後必須清空；清單中的 tag 若已修復卻未移除，CHECK 18 會 FAIL。
+KNOWN_BAD_TAGS = {
+    "audited-1491d33", "audited-3a85a30", "audited-59cea4c",
+    "audited-7450c4a", "audited-875a604", "audited-936b9af",
+    "audited-a44cc6b", "audited-e6f543a", "audited-ec840fe",
+}
+
+
+def _git(root_dir, args):
+    """文字模式的 git，只用於 hash、檔名、numstat 等純 ASCII 輸出。"""
+    res = subprocess.run(["git"] + args, cwd=root_dir,
+                         capture_output=True, text=True)
+    return res.returncode, res.stdout, res.stderr
+
+
+def _git_bytes(root_dir, args):
+    """
+    位元組模式的 git。取檔案內容一律走這裡。
+
+    text=True 會啟用 Python 的 universal newline，把 CRLF 靜靜換成 LF——
+    一個 CRLF blob 與一個 LF blob 進到 Python 之後會變成同一個字串，
+    「逐位元比對」的宣稱就不成立。取內容時不得使用文字模式。
+    """
+    res = subprocess.run(["git"] + args, cwd=root_dir, capture_output=True)
+    return res.returncode, res.stdout, res.stderr
+
+
+def _resolve_commit(root_dir, rev):
+    """
+    把 revision 解析成完整 40 碼 commit OID。
+    不存在、有歧義、不是 commit，一律回 None。
+    commit identity 一律走這裡，不使用字串前綴或 startswith。
+    """
+    rc, out, _ = _git(root_dir, ["rev-parse", "--verify", f"{rev}^{{commit}}"])
+    if rc != 0:
+        return None
+    oid = out.strip()
+    return oid if len(oid) == 40 else None
+
+
+def _in_git_repo(root_dir):
+    """
+    這個路徑底下是否有 git repository。
+
+    區分兩件事很重要：「根本沒有 repo 可驗」與「有 repo 但 git 回答不出來」。
+    前者是不適用（例如規格模擬用的臨時目錄），後者是環境異常，
+    必須 FAIL，不得放行。
+    """
+    rc, _, _ = _git(root_dir, ["rev-parse", "--git-dir"])
+    return rc == 0
+
+
+def _head_bootstrap_specs(root_dir):
+    """
+    從 committed HEAD tree 取 BOOTSTRAP 規格清單。
+
+    不使用 `git ls-files`——那讀的是 index。index 暫存一次刪除就能讓
+    「全庫至多一份」的答案改變，但 CHECK 17 驗的是 HEAD 這個
+    committed 狀態的 invariant，不該被 index 或工作區的變動左右。
+    回傳 (清單, 是否成功)。
+    """
+    rc, out, _ = _git(root_dir, ["ls-tree", "-r", "--name-only", "HEAD", SPEC_DIR + "/"])
+    if rc != 0:
+        return [], False
+    return sorted(p for p in out.splitlines()
+                  if p.strip().endswith("-BOOTSTRAP.spec.txt")), True
+
+
+def check_17_spec_replay(root_dir=None):
+    """
+    CHECK 17 — Batch Spec 重放一致性
+
+    **強制範圍（enforcement scope）**：本檢查只對同時滿足以下條件的 commit
+    執行逐位元重放——單一 parent、本 commit 恰好異動一份
+    docs/batches/*.spec.txt、且該份不是 BOOTSTRAP 規格。
+    對這類 commit，規格重放結果與 actual target 必須一致。
+
+    以下情形依設計跳過重放，這些是合法 skip，不是漏洞：
+      - 本 commit 未異動任何規格（一般維護 commit）
+      - 非單一 parent（root commit、merge commit）
+      - 本 commit 的唯一一份規格是 BOOTSTRAP 規格
+
+    BOOTSTRAP 是目前針對 spec-driven 單一 parent 批次的暫時 replay 例外，
+    存在理由是規格格式還無法表達新建檔案；由 docs/TASKBOARD.md B-90 移除。
+
+    對進入 enforcement scope 的 commit，本檢查驗五件事：
+      1. 規格 HEAD: 欄位解析成完整 commit OID，必須等於唯一 parent 的 OID
+      2. 由 parent 取出各 MOD 目標檔案，經 parse_spec + apply_mod_to_text 重放
+      3. 重放結果 encode UTF-8 後，與本 commit 的 git blob 原始位元組直接比對
+      4. parent..HEAD 的實際異動檔案集合不得超出
+         {MOD 宣告的檔案} ∪ {本規格檔} ∪ SPEC_EXEMPT_FILES
+      5. 豁免檔只允許追加：以 git numstat 取刪除行數，> 0 即 FAIL
+
+    「全庫 BOOTSTRAP 至多一份」是 HEAD tree 的 repository invariant，
+    在任何 early-return 之前先驗。
+    """
+    fails, infos = [], []
+    root_dir = root_dir or "."
+
+    if not _in_git_repo(root_dir):
+        infos.append("此路徑不是 git repository，本檢查不適用")
+        return fails, infos
+
+    # ---- repository invariant：先於任何 early-return，且讀 HEAD tree ----
+    all_boots, ok = _head_bootstrap_specs(root_dir)
+    if not ok:
+        infos.append("無法讀取 HEAD tree，略過 BOOTSTRAP 數量檢查")
+    elif len(all_boots) > 1:
+        fails.append(f"{SPEC_DIR}:0  HEAD tree 中的 BOOTSTRAP 規格不得超過一份，"
+                     f"實測 {len(all_boots)} 份: {all_boots}")
+
+    rc, out, _ = _git(root_dir, ["rev-list", "--parents", "-n", "1", "HEAD"])
+    if rc != 0:
+        infos.append("無法取得 git 資訊，跳過重放")
+        return fails, infos
+    parts = out.split()
+    if len(parts) != 2:
+        infos.append(f"HEAD 的 parent 數為 {len(parts) - 1}，非單一 parent，"
+                     f"不在 CHECK 17 強制範圍內，跳過重放")
+        return fails, infos
+    parent_oid = _resolve_commit(root_dir, parts[1])
+    if parent_oid is None:
+        fails.append("無法把 HEAD 的 parent 解析為 commit OID")
+        return fails, infos
+
+    rc, out, _ = _git(root_dir, ["diff", "--name-only", parent_oid, "HEAD"])
+    if rc != 0:
+        infos.append("無法取得 git diff，跳過重放")
+        return fails, infos
+    changed = {p for p in out.splitlines() if p.strip()}
+
+    specs = sorted(p for p in changed
+                   if p.startswith(SPEC_DIR + "/") and p.endswith(".spec.txt"))
+
+    # 順序很重要：「單一 commit 只允許一份規格」必須在任何 BOOTSTRAP
+    # early-return 之前判定。否則「一份 BOOTSTRAP ＋ 一份普通規格」
+    # 會從 BOOTSTRAP 分支提前 return，讓那份普通規格完全不被重放。
+    if not specs:
+        infos.append("本 commit 未異動 docs/batches/*.spec.txt，"
+                     "不在 CHECK 17 強制範圍內，跳過重放（一般維護 commit）")
+        return fails, infos
+    if len(specs) > 1:
+        fails.append(f"{SPEC_DIR}:0  單一 commit 只允許一份規格，實測 {len(specs)} 份: {specs}")
+        return fails, infos
+
+    spec_path = specs[0]
+    if spec_path.endswith("-BOOTSTRAP.spec.txt"):
+        infos.append(f"本 commit 的規格為 BOOTSTRAP 例外 {spec_path}，跳過重放。"
+                     f"該批不在本檢查的強制範圍內，見 docs/batches/README.md 第六節")
+        return fails, infos
+
+    rc, spec_bytes, _ = _git_bytes(root_dir, ["show", f"HEAD:{spec_path}"])
+    if rc != 0:
+        fails.append(f"{spec_path}:0  無法從 HEAD 取出規格內容")
+        return fails, infos
+    try:
+        spec_text = spec_bytes.decode("utf-8")
+    except UnicodeDecodeError as e:
+        fails.append(f"{spec_path}:0  規格不是合法 UTF-8: {e}")
+        return fails, infos
+
+    sys.path.insert(0, os.path.join(root_dir, "scripts"))
+    try:
+        from build_prompt_evidence import parse_spec, apply_mod_to_text
+    except Exception as e:
+        fails.append(f"{spec_path}:0  無法載入指定 apply path: {e}")
+        return fails, infos
+    try:
+        spec_head, mods, _expects = parse_spec(spec_text)
+    except Exception as e:
+        fails.append(f"{spec_path}:0  規格解析失敗: {e}")
+        return fails, infos
+
+    if not spec_head:
+        fails.append(f"{spec_path}:0  規格缺少 HEAD: 欄位")
+        return fails, infos
+    spec_oid = _resolve_commit(root_dir, spec_head)
+    if spec_oid is None:
+        fails.append(f"{spec_path}:0  規格宣告的 base={spec_head} 無法解析為 commit"
+                     f"（不存在、有歧義，或不是 commit）")
+        return fails, infos
+    if spec_oid != parent_oid:
+        fails.append(f"{spec_path}:0  規格 base 與實際 parent 不是同一個 commit："
+                     f"spec={spec_oid} parent={parent_oid}")
+        return fails, infos
+    infos.append(f"規格 {spec_path}，base OID 與 parent 相符，MOD {len(mods)} 個")
+
+    declared = set()
+    by_file = {}
+    for mod in mods:
+        declared.add(mod["file"])
+        by_file.setdefault(mod["file"], []).append(mod)
+
+    allowed = declared | {spec_path} | SPEC_EXEMPT_FILES
+    extra = sorted(changed - allowed)
+    if extra:
+        fails.append(f"{spec_path}:0  規格未宣告卻被修改的檔案: {extra}")
+
+    # 豁免檔只允許追加。刪除行數由 git numstat 直接給，
+    # 不自行解析 unified diff 的行首——內容本身就是 `---` 的那一行
+    # 會與 diff 的檔頭標記混淆，靠字首判定一定會漏。
+    for ex in sorted(SPEC_EXEMPT_FILES & changed):
+        rc, out, _ = _git(root_dir, ["diff", "--numstat", parent_oid, "HEAD", "--", ex])
+        if rc != 0:
+            fails.append(f"{ex}:0  無法取得 numstat，無法證明只有追加")
+            continue
+        for row in out.splitlines():
+            cols = row.split("\t")
+            if len(cols) < 3:
+                continue
+            adds, dels = cols[0], cols[1]
+            if adds == "-" or dels == "-":
+                fails.append(f"{ex}:0  被視為二進位檔，無法證明只有追加")
+                continue
+            if int(dels) > 0:
+                fails.append(f"{ex}:0  豁免檔只允許追加，numstat 實測刪除 {dels} 行")
+
+    for path, mlist in sorted(by_file.items()):
+        rc, base_bytes, _ = _git_bytes(root_dir, ["show", f"{parent_oid}:{path}"])
+        if rc != 0:
+            fails.append(f"{path}:0  無法從 base 取出原始內容（新檔無法以 MOD 表達）")
+            continue
+        try:
+            text = base_bytes.decode("utf-8")
+        except UnicodeDecodeError as e:
+            fails.append(f"{path}:0  base 內容不是合法 UTF-8: {e}")
+            continue
+        try:
+            for mod in mlist:
+                text = apply_mod_to_text(text, mod)
+        except Exception as e:
+            fails.append(f"{path}:0  重放失敗: {e}")
+            continue
+        expected = text.encode("utf-8")
+
+        rc, actual, _ = _git_bytes(root_dir, ["show", f"HEAD:{path}"])
+        if rc != 0:
+            fails.append(f"{path}:0  本 commit 中不存在")
+            continue
+        if expected != actual:
+            pos = next((i for i in range(min(len(expected), len(actual)))
+                        if expected[i] != actual[i]), min(len(expected), len(actual)))
+            line = expected[:pos].count(b"\n") + 1
+            fails.append(
+                f"{path}:{line}  重放結果與實際 commit 的位元組不一致"
+                f"（首個相異 offset={pos}，"
+                f"expected={expected[pos:pos + 12]!r} actual={actual[pos:pos + 12]!r}，"
+                f"長度 expected={len(expected)} actual={len(actual)}）")
+        else:
+            infos.append(f"{path} 重放逐位元相符")
+
+    return fails, infos
+
+
+def check_18_tag_integrity(root_dir=None):
+    """
+    CHECK 18 — audited-* tag 名實一致
+
+    每個 audited-<hash> tag 必須滿足：
+      1. 名稱中的 hash 解析得到的完整 commit OID，等於 tag 指向的 commit OID
+      2. 該 commit 由目前 HEAD 可達（git merge-base --is-ancestor）
+
+    任何一方的 commit identity 無法解析，一律 FAIL，不得 fail-open：
+    HEAD 解析不出來就跳過可達性驗證，等於在環境異常時自動放行。
+
+    `git cat-file -e` 只證明物件還在 object database 裡——被丟棄的分支、
+    orphan commit 都還在，那不是「本分支可達」，所以不用它。
+
+    成因：`git tag audited-<hash>` 未帶 commit 參數時會打在當下 HEAD 上，
+    tag 名字對、指向錯。2026-09-11 實測 17 個 tag 中 9 個如此。
+
+    KNOWN_BAD_TAGS 為已知待修復的歷史 tag，本清單只能縮短不得加長；
+    清單中的 tag 若已修復卻未從清單移除，本檢查一律 FAIL。
+    """
+    fails, infos = [], []
+    root_dir = root_dir or "."
+
+    if not _in_git_repo(root_dir):
+        infos.append("此路徑不是 git repository，本檢查不適用")
+        return fails, infos
+
+    rc, out, _ = _git(root_dir, ["tag", "-l", "audited-*"])
+    if rc != 0:
+        fails.append("tag:0  repository 存在但無法取得 tag 清單，無法驗證 tag 完整性")
+        return fails, infos
+    tags = sorted(t.strip() for t in out.splitlines() if t.strip())
+    if not tags:
+        infos.append("repo 中無 audited-* tag，跳過")
+        return fails, infos
+
+    head_oid = _resolve_commit(root_dir, "HEAD")
+    if head_oid is None:
+        fails.append("tag:0  無法把 HEAD 解析為 commit OID，"
+                     "無法進行可達性驗證（不得在此情形下放行）")
+        return fails, infos
+
+    known_bad_seen, repaired = [], []
+
+    for t in tags:
+        named = t[len("audited-"):]
+        tag_oid = _resolve_commit(root_dir, t)
+        if tag_oid is None:
+            fails.append(f"tag:{t}  無法解析為 commit")
+            continue
+        named_oid = _resolve_commit(root_dir, named)
+        if named_oid is None:
+            fails.append(f"tag:{t}  名稱中的 hash 無法解析為 commit"
+                         f"（不存在、有歧義，或不是 commit）")
+            continue
+
+        if named_oid != tag_oid:
+            if t in KNOWN_BAD_TAGS:
+                known_bad_seen.append(f"{t}->{tag_oid[:7]}")
+            else:
+                fails.append(f"tag:{t}  指向 {tag_oid[:7]}，與名稱不符（新增的名實不符）")
+            continue
+
+        if t in KNOWN_BAD_TAGS:
+            repaired.append(t)
+
+        rc2, _, _ = _git(root_dir, ["merge-base", "--is-ancestor", named_oid, head_oid])
+        if rc2 != 0:
+            fails.append(f"tag:{t}  指向的 commit {named_oid[:7]} "
+                         f"無法由目前 HEAD 到達（物件還在，但不在本分支歷史上）")
+
+    if repaired:
+        fails.append(f"tag:0  下列 tag 已修復但仍留在 KNOWN_BAD_TAGS，必須移除: {sorted(repaired)}")
+    if known_bad_seen:
+        infos.append(f"已知待修復 tag {len(known_bad_seen)} 個（見 KNOWN_BAD_TAGS）: "
+                     f"{sorted(known_bad_seen)}")
+    infos.append(f"audited-* tag 共 {len(tags)} 個")
+    return fails, infos
 
 if __name__ == "__main__":
     run_checks()

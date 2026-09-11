@@ -1,5 +1,5 @@
 {
-  "base_head": "10f7e31",
+  "base_head": "0e13c85",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 0,
@@ -50,8 +50,8 @@
         "## 5. 例外",
         "## 6. 這條規則保護的是誰"
       ],
-      "lines": 334,
-      "sha256": "560c16f4be46b074efd831578b1998b5e147e16b61daca3459d041bbd5f8f592"
+      "lines": 335,
+      "sha256": "cebeed7543c91f46f4bdb155c52c40870beee5a62bec0b2b79b009df022183c6"
     },
     ".agents/rules/role-boundaries.md": {
       "fences": 0,
@@ -61,10 +61,12 @@
         "## 2. 不屬於你的三類工作",
         "## 3. 判斷方法：不要靠關鍵字",
         "## 4. 這不是限制，是分工",
-        "## 5. `.claude/` 目錄不是你的"
+        "## 5. `.claude/` 目錄不是你的",
+        "## 6. 依批次規格修改時，只能走指定的套用路徑",
+        "## 7. 什麼時候該停下來回報，什麼時候該自己處理"
       ],
-      "lines": 76,
-      "sha256": "6ac7625a84a5d0fe54e466d59a9086dfd45864071772bc4b7a31e3734245a894"
+      "lines": 182,
+      "sha256": "c1919db7e015b963078a81943e9a112568eb1e482f7bd8c20255452e47891377"
     },
     ".agents/rules/skill-engineering-guardrails.md": {
       "fences": 0,
@@ -137,10 +139,12 @@
         "### 11.1 判斷順序",
         "### 11.2 執行 revert 的完整程序",
         "### 11.3 已審核標記",
-        "### 11.4 打 tag 的判準（2026-09-07 使用者裁決）"
+        "### 11.4 打 tag 的判準（2026-09-07 使用者裁決）",
+        "### 11.5 審計狀態是四態，互斥且窮盡",
+        "### 11.6 歷史 `audited-*` tag 的修復程序（需使用者明確授權）"
       ],
-      "lines": 901,
-      "sha256": "cb39c4a08fe2d743d01e700c695e29e7f7149cda7051b212e07878b4cf78e8db"
+      "lines": 983,
+      "sha256": "78a518e6d521137385043f9eef10d27ba392109e9f2407976c76043405c6aec1"
     },
     ".claude/rules/handover-selftest.md": {
       "fences": 0,
@@ -153,8 +157,8 @@
         "## E. 交付（產出提示詞之前）",
         "## F. 額度（每一輪回覆的開頭與結尾）"
       ],
-      "lines": 97,
-      "sha256": "97fbc2cd2ace6d29aa15d8f1f321b054d246abeb08417e74d1854ddcb7f942f5"
+      "lines": 98,
+      "sha256": "d4e2279b441b631f972fe6bb71ffb7e82f8ed8d4c4f1d9cdc57b10b732509142"
     },
     ".github/workflows/verify.yml": {
       "fences": 0,
@@ -486,16 +490,16 @@
       "headings": [
         "# 自我審查檢查點紀錄"
       ],
-      "lines": 42,
-      "sha256": "064237d4552c1528512c03e1e41d52914f49ea87b7116d56ebc7bf14e214c9bd"
+      "lines": 43,
+      "sha256": "c46fc3361b4ce908dd0b3831eed1250b28b181c31bcc763004ba341da25824d1"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 30,
-      "sha256": "317fe47ee365924e253089db42bb667de061ab19c4d8939d1843ed5371d1c021"
+      "lines": 31,
+      "sha256": "5b965c37cea7da4b34081fe47f8433d4c370dd1adaef053791961e4d6d692ca2"
     },
     "docs/HANDOVER.md": {
       "fences": 14,
@@ -604,8 +608,8 @@
         "## G. 舊 repo 未盤點區塊（2026-09-02 新發現）",
         "## 封存區"
       ],
-      "lines": 231,
-      "sha256": "f25d1e1055219c1d03db750d15de3283850a1ccbb047f9cf85f898b676a7407f"
+      "lines": 234,
+      "sha256": "990f7d0c1691bbb616effc2aac1882b974f5f12da7da88495be9c5b99f300369"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -922,8 +926,8 @@
         "### 5.3 待使用者裁決",
         "### 5.4 進行中／等待回報"
       ],
-      "lines": 2987,
-      "sha256": "2f7eefedf22bc23bc85d40510c8115468b1f104b1973213cc97b925a810f5cbe"
+      "lines": 2997,
+      "sha256": "5a6ee70acf58e34617d3fb824ddfba9c1f5b7d492d3fa4cd751604fe5e4ac221"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -939,14 +943,17 @@
       "headings": [
         "# -*- coding: utf-8 -*-"
       ],
-      "lines": 469,
-      "sha256": "effacf788546f07f228d574d43ecf10f191354be1687154e6df946cd2b8533b7"
+      "lines": 513,
+      "sha256": "b8cdea9f90d4fe342cdcf50aa6b70916500f966e459e32c26dbc83a56c5ec2c2"
     },
     "scripts/check_consistency.py": {
       "fences": 0,
-      "headings": [],
-      "lines": 959,
-      "sha256": "8e6f5b308d50999b7ddfe544a49572b7912d42d51f718d905d14ab204b3513db"
+      "headings": [
+        "# 已知指向錯誤的歷史 tag。本清單只能縮短、不得加長。",
+        "# 修復批次完成後必須清空；清單中的 tag 若已修復卻未移除，CHECK 18 會 FAIL。"
+      ],
+      "lines": 1327,
+      "sha256": "e024fc47e5955574c1fed6d91ff226f43d8ff3101754a2925a496f54532a8aa4"
     },
     "scripts/fingerprint.py": {
       "fences": 0,
@@ -973,6 +980,15 @@
       ],
       "lines": 370,
       "sha256": "58d22b2ac0b48a7dd682ca6c5f050aa6f654b2b94a86902057c1bc11cdb7e6cb"
+    },
+    "scripts/tests/test_check_17_18.py": {
+      "fences": 0,
+      "headings": [
+        "# ----------------------------- CHECK 17 -----------------------------",
+        "# ----------------------------- CHECK 18 -----------------------------"
+      ],
+      "lines": 500,
+      "sha256": "8f351fe44c78bc9a1de1581c5abbb69bc6f8e0d2efdeccb5db1ee9f82149136f"
     },
     "scripts/tests/test_check_consistency.py": {
       "fences": 0,
@@ -1027,7 +1043,7 @@
       "sha256": "bc653c823579a59b1708f0fd17c01ed52b934252502ec2dcdfdb25d3e3e82da5"
     }
   },
-  "generated_at": "2026-09-10T14:21:17Z",
+  "generated_at": "2026-09-11T05:37:01Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

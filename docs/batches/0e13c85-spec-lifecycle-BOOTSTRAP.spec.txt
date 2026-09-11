@@ -1,0 +1,840 @@
+# 批次規格 — 2b-6 Governance Integrity Consolidation
+#
+# batch_id     : 0e13c85-spec-lifecycle-BOOTSTRAP
+# batch_mode   : EXACT_SPEC（規格即輸出契約；執行者不得自行偏離）
+# base_commit  : 0e13c85
+# 產生時間      : 2026-09-11（審計官於新鮮 clone 實測，所有錨點 count()=1）
+#
+# 本批目的：把「規格 → 決定性重放 → CI 攔截」建立為常設機制，
+#           並讓 audited-* tag 的名實不符無法再新增。
+#
+# BOOTSTRAP 說明：本批必須建立三個新檔，而本規格格式目前沒有 create_file
+#   mode，無法表達「新建檔案」。因此本規格的檔名以 -BOOTSTRAP.spec.txt 結尾，
+#   CHECK 17 對這種檔名跳過重放並輸出 INFO，且全庫至多允許一份。
+#   create_file mode 由 B-90 於下一批補上，屆時不再需要例外。
+#
+# 本批允許修改的檔案（其餘一律不得動）：
+#   scripts/check_consistency.py
+#   scripts/build_prompt_evidence.py
+#   .agents/rules/role-boundaries.md
+#   .agents/rules/prompt-preflight.md
+#   .claude/rules/auditor-protocol.md
+#   .claude/rules/handover-selftest.md
+#   docs/TASKBOARD.md
+#   docs/AUDIT-LOG.md
+#   docs/refactor-backlog.md
+#   docs/EXEC-LOG.md            （執行者依 preflight §3.8 追加一列）
+#   docs/fingerprints/exec-latest.json（重新產生）
+#
+# 本批新建的檔案（不在 MOD 中，見提示詞【新檔】段）：
+#   docs/batches/README.md
+#   docs/batches/0e13c85-spec-lifecycle-BOOTSTRAP.spec.txt（本檔）
+#   scripts/tests/test_check_17_18.py
+
+HEAD: 0e13c85
+
+=== MOD 1 ===
+file: scripts/check_consistency.py
+mode: insert_before
+--- ANCHOR ---
+if __name__ == "__main__":
+--- PAYLOAD ---
+SPEC_DIR = "docs/batches"
+SPEC_EXEMPT_FILES = {"docs/EXEC-LOG.md", "docs/fingerprints/exec-latest.json"}
+
+# 已知指向錯誤的歷史 tag。本清單只能縮短、不得加長。
+# 修復批次完成後必須清空；清單中的 tag 若已修復卻未移除，CHECK 18 會 FAIL。
+KNOWN_BAD_TAGS = {
+    "audited-1491d33", "audited-3a85a30", "audited-59cea4c",
+    "audited-7450c4a", "audited-875a604", "audited-936b9af",
+    "audited-a44cc6b", "audited-e6f543a", "audited-ec840fe",
+}
+
+
+def _git(root_dir, args):
+    """文字模式的 git，只用於 hash、檔名、numstat 等純 ASCII 輸出。"""
+    res = subprocess.run(["git"] + args, cwd=root_dir,
+                         capture_output=True, text=True)
+    return res.returncode, res.stdout, res.stderr
+
+
+def _git_bytes(root_dir, args):
+    """
+    位元組模式的 git。取檔案內容一律走這裡。
+
+    text=True 會啟用 Python 的 universal newline，把 CRLF 靜靜換成 LF——
+    一個 CRLF blob 與一個 LF blob 進到 Python 之後會變成同一個字串，
+    「逐位元比對」的宣稱就不成立。取內容時不得使用文字模式。
+    """
+    res = subprocess.run(["git"] + args, cwd=root_dir, capture_output=True)
+    return res.returncode, res.stdout, res.stderr
+
+
+def _resolve_commit(root_dir, rev):
+    """
+    把 revision 解析成完整 40 碼 commit OID。
+    不存在、有歧義、不是 commit，一律回 None。
+    commit identity 一律走這裡，不使用字串前綴或 startswith。
+    """
+    rc, out, _ = _git(root_dir, ["rev-parse", "--verify", f"{rev}^{{commit}}"])
+    if rc != 0:
+        return None
+    oid = out.strip()
+    return oid if len(oid) == 40 else None
+
+
+def _in_git_repo(root_dir):
+    """
+    這個路徑底下是否有 git repository。
+
+    區分兩件事很重要：「根本沒有 repo 可驗」與「有 repo 但 git 回答不出來」。
+    前者是不適用（例如規格模擬用的臨時目錄），後者是環境異常，
+    必須 FAIL，不得放行。
+    """
+    rc, _, _ = _git(root_dir, ["rev-parse", "--git-dir"])
+    return rc == 0
+
+
+def _head_bootstrap_specs(root_dir):
+    """
+    從 committed HEAD tree 取 BOOTSTRAP 規格清單。
+
+    不使用 `git ls-files`——那讀的是 index。index 暫存一次刪除就能讓
+    「全庫至多一份」的答案改變，但 CHECK 17 驗的是 HEAD 這個
+    committed 狀態的 invariant，不該被 index 或工作區的變動左右。
+    回傳 (清單, 是否成功)。
+    """
+    rc, out, _ = _git(root_dir, ["ls-tree", "-r", "--name-only", "HEAD", SPEC_DIR + "/"])
+    if rc != 0:
+        return [], False
+    return sorted(p for p in out.splitlines()
+                  if p.strip().endswith("-BOOTSTRAP.spec.txt")), True
+
+
+def check_17_spec_replay(root_dir=None):
+    """
+    CHECK 17 — Batch Spec 重放一致性
+
+    **強制範圍（enforcement scope）**：本檢查只對同時滿足以下條件的 commit
+    執行逐位元重放——單一 parent、本 commit 恰好異動一份
+    docs/batches/*.spec.txt、且該份不是 BOOTSTRAP 規格。
+    對這類 commit，規格重放結果與 actual target 必須一致。
+
+    以下情形依設計跳過重放，這些是合法 skip，不是漏洞：
+      - 本 commit 未異動任何規格（一般維護 commit）
+      - 非單一 parent（root commit、merge commit）
+      - 本 commit 的唯一一份規格是 BOOTSTRAP 規格
+
+    BOOTSTRAP 是目前針對 spec-driven 單一 parent 批次的暫時 replay 例外，
+    存在理由是規格格式還無法表達新建檔案；由 docs/TASKBOARD.md B-90 移除。
+
+    對進入 enforcement scope 的 commit，本檢查驗五件事：
+      1. 規格 HEAD: 欄位解析成完整 commit OID，必須等於唯一 parent 的 OID
+      2. 由 parent 取出各 MOD 目標檔案，經 parse_spec + apply_mod_to_text 重放
+      3. 重放結果 encode UTF-8 後，與本 commit 的 git blob 原始位元組直接比對
+      4. parent..HEAD 的實際異動檔案集合不得超出
+         {MOD 宣告的檔案} ∪ {本規格檔} ∪ SPEC_EXEMPT_FILES
+      5. 豁免檔只允許追加：以 git numstat 取刪除行數，> 0 即 FAIL
+
+    「全庫 BOOTSTRAP 至多一份」是 HEAD tree 的 repository invariant，
+    在任何 early-return 之前先驗。
+    """
+    fails, infos = [], []
+    root_dir = root_dir or "."
+
+    if not _in_git_repo(root_dir):
+        infos.append("此路徑不是 git repository，本檢查不適用")
+        return fails, infos
+
+    # ---- repository invariant：先於任何 early-return，且讀 HEAD tree ----
+    all_boots, ok = _head_bootstrap_specs(root_dir)
+    if not ok:
+        infos.append("無法讀取 HEAD tree，略過 BOOTSTRAP 數量檢查")
+    elif len(all_boots) > 1:
+        fails.append(f"{SPEC_DIR}:0  HEAD tree 中的 BOOTSTRAP 規格不得超過一份，"
+                     f"實測 {len(all_boots)} 份: {all_boots}")
+
+    rc, out, _ = _git(root_dir, ["rev-list", "--parents", "-n", "1", "HEAD"])
+    if rc != 0:
+        infos.append("無法取得 git 資訊，跳過重放")
+        return fails, infos
+    parts = out.split()
+    if len(parts) != 2:
+        infos.append(f"HEAD 的 parent 數為 {len(parts) - 1}，非單一 parent，"
+                     f"不在 CHECK 17 強制範圍內，跳過重放")
+        return fails, infos
+    parent_oid = _resolve_commit(root_dir, parts[1])
+    if parent_oid is None:
+        fails.append("無法把 HEAD 的 parent 解析為 commit OID")
+        return fails, infos
+
+    rc, out, _ = _git(root_dir, ["diff", "--name-only", parent_oid, "HEAD"])
+    if rc != 0:
+        infos.append("無法取得 git diff，跳過重放")
+        return fails, infos
+    changed = {p for p in out.splitlines() if p.strip()}
+
+    specs = sorted(p for p in changed
+                   if p.startswith(SPEC_DIR + "/") and p.endswith(".spec.txt"))
+
+    # 順序很重要：「單一 commit 只允許一份規格」必須在任何 BOOTSTRAP
+    # early-return 之前判定。否則「一份 BOOTSTRAP ＋ 一份普通規格」
+    # 會從 BOOTSTRAP 分支提前 return，讓那份普通規格完全不被重放。
+    if not specs:
+        infos.append("本 commit 未異動 docs/batches/*.spec.txt，"
+                     "不在 CHECK 17 強制範圍內，跳過重放（一般維護 commit）")
+        return fails, infos
+    if len(specs) > 1:
+        fails.append(f"{SPEC_DIR}:0  單一 commit 只允許一份規格，實測 {len(specs)} 份: {specs}")
+        return fails, infos
+
+    spec_path = specs[0]
+    if spec_path.endswith("-BOOTSTRAP.spec.txt"):
+        infos.append(f"本 commit 的規格為 BOOTSTRAP 例外 {spec_path}，跳過重放。"
+                     f"該批不在本檢查的強制範圍內，見 docs/batches/README.md 第六節")
+        return fails, infos
+
+    rc, spec_bytes, _ = _git_bytes(root_dir, ["show", f"HEAD:{spec_path}"])
+    if rc != 0:
+        fails.append(f"{spec_path}:0  無法從 HEAD 取出規格內容")
+        return fails, infos
+    try:
+        spec_text = spec_bytes.decode("utf-8")
+    except UnicodeDecodeError as e:
+        fails.append(f"{spec_path}:0  規格不是合法 UTF-8: {e}")
+        return fails, infos
+
+    sys.path.insert(0, os.path.join(root_dir, "scripts"))
+    try:
+        from build_prompt_evidence import parse_spec, apply_mod_to_text
+    except Exception as e:
+        fails.append(f"{spec_path}:0  無法載入指定 apply path: {e}")
+        return fails, infos
+    try:
+        spec_head, mods, _expects = parse_spec(spec_text)
+    except Exception as e:
+        fails.append(f"{spec_path}:0  規格解析失敗: {e}")
+        return fails, infos
+
+    if not spec_head:
+        fails.append(f"{spec_path}:0  規格缺少 HEAD: 欄位")
+        return fails, infos
+    spec_oid = _resolve_commit(root_dir, spec_head)
+    if spec_oid is None:
+        fails.append(f"{spec_path}:0  規格宣告的 base={spec_head} 無法解析為 commit"
+                     f"（不存在、有歧義，或不是 commit）")
+        return fails, infos
+    if spec_oid != parent_oid:
+        fails.append(f"{spec_path}:0  規格 base 與實際 parent 不是同一個 commit："
+                     f"spec={spec_oid} parent={parent_oid}")
+        return fails, infos
+    infos.append(f"規格 {spec_path}，base OID 與 parent 相符，MOD {len(mods)} 個")
+
+    declared = set()
+    by_file = {}
+    for mod in mods:
+        declared.add(mod["file"])
+        by_file.setdefault(mod["file"], []).append(mod)
+
+    allowed = declared | {spec_path} | SPEC_EXEMPT_FILES
+    extra = sorted(changed - allowed)
+    if extra:
+        fails.append(f"{spec_path}:0  規格未宣告卻被修改的檔案: {extra}")
+
+    # 豁免檔只允許追加。刪除行數由 git numstat 直接給，
+    # 不自行解析 unified diff 的行首——內容本身就是 `---` 的那一行
+    # 會與 diff 的檔頭標記混淆，靠字首判定一定會漏。
+    for ex in sorted(SPEC_EXEMPT_FILES & changed):
+        rc, out, _ = _git(root_dir, ["diff", "--numstat", parent_oid, "HEAD", "--", ex])
+        if rc != 0:
+            fails.append(f"{ex}:0  無法取得 numstat，無法證明只有追加")
+            continue
+        for row in out.splitlines():
+            cols = row.split("\t")
+            if len(cols) < 3:
+                continue
+            adds, dels = cols[0], cols[1]
+            if adds == "-" or dels == "-":
+                fails.append(f"{ex}:0  被視為二進位檔，無法證明只有追加")
+                continue
+            if int(dels) > 0:
+                fails.append(f"{ex}:0  豁免檔只允許追加，numstat 實測刪除 {dels} 行")
+
+    for path, mlist in sorted(by_file.items()):
+        rc, base_bytes, _ = _git_bytes(root_dir, ["show", f"{parent_oid}:{path}"])
+        if rc != 0:
+            fails.append(f"{path}:0  無法從 base 取出原始內容（新檔無法以 MOD 表達）")
+            continue
+        try:
+            text = base_bytes.decode("utf-8")
+        except UnicodeDecodeError as e:
+            fails.append(f"{path}:0  base 內容不是合法 UTF-8: {e}")
+            continue
+        try:
+            for mod in mlist:
+                text = apply_mod_to_text(text, mod)
+        except Exception as e:
+            fails.append(f"{path}:0  重放失敗: {e}")
+            continue
+        expected = text.encode("utf-8")
+
+        rc, actual, _ = _git_bytes(root_dir, ["show", f"HEAD:{path}"])
+        if rc != 0:
+            fails.append(f"{path}:0  本 commit 中不存在")
+            continue
+        if expected != actual:
+            pos = next((i for i in range(min(len(expected), len(actual)))
+                        if expected[i] != actual[i]), min(len(expected), len(actual)))
+            line = expected[:pos].count(b"\n") + 1
+            fails.append(
+                f"{path}:{line}  重放結果與實際 commit 的位元組不一致"
+                f"（首個相異 offset={pos}，"
+                f"expected={expected[pos:pos + 12]!r} actual={actual[pos:pos + 12]!r}，"
+                f"長度 expected={len(expected)} actual={len(actual)}）")
+        else:
+            infos.append(f"{path} 重放逐位元相符")
+
+    return fails, infos
+
+
+def check_18_tag_integrity(root_dir=None):
+    """
+    CHECK 18 — audited-* tag 名實一致
+
+    每個 audited-<hash> tag 必須滿足：
+      1. 名稱中的 hash 解析得到的完整 commit OID，等於 tag 指向的 commit OID
+      2. 該 commit 由目前 HEAD 可達（git merge-base --is-ancestor）
+
+    任何一方的 commit identity 無法解析，一律 FAIL，不得 fail-open：
+    HEAD 解析不出來就跳過可達性驗證，等於在環境異常時自動放行。
+
+    `git cat-file -e` 只證明物件還在 object database 裡——被丟棄的分支、
+    orphan commit 都還在，那不是「本分支可達」，所以不用它。
+
+    成因：`git tag audited-<hash>` 未帶 commit 參數時會打在當下 HEAD 上，
+    tag 名字對、指向錯。2026-09-11 實測 17 個 tag 中 9 個如此。
+
+    KNOWN_BAD_TAGS 為已知待修復的歷史 tag，本清單只能縮短不得加長；
+    清單中的 tag 若已修復卻未從清單移除，本檢查一律 FAIL。
+    """
+    fails, infos = [], []
+    root_dir = root_dir or "."
+
+    if not _in_git_repo(root_dir):
+        infos.append("此路徑不是 git repository，本檢查不適用")
+        return fails, infos
+
+    rc, out, _ = _git(root_dir, ["tag", "-l", "audited-*"])
+    if rc != 0:
+        fails.append("tag:0  repository 存在但無法取得 tag 清單，無法驗證 tag 完整性")
+        return fails, infos
+    tags = sorted(t.strip() for t in out.splitlines() if t.strip())
+    if not tags:
+        infos.append("repo 中無 audited-* tag，跳過")
+        return fails, infos
+
+    head_oid = _resolve_commit(root_dir, "HEAD")
+    if head_oid is None:
+        fails.append("tag:0  無法把 HEAD 解析為 commit OID，"
+                     "無法進行可達性驗證（不得在此情形下放行）")
+        return fails, infos
+
+    known_bad_seen, repaired = [], []
+
+    for t in tags:
+        named = t[len("audited-"):]
+        tag_oid = _resolve_commit(root_dir, t)
+        if tag_oid is None:
+            fails.append(f"tag:{t}  無法解析為 commit")
+            continue
+        named_oid = _resolve_commit(root_dir, named)
+        if named_oid is None:
+            fails.append(f"tag:{t}  名稱中的 hash 無法解析為 commit"
+                         f"（不存在、有歧義，或不是 commit）")
+            continue
+
+        if named_oid != tag_oid:
+            if t in KNOWN_BAD_TAGS:
+                known_bad_seen.append(f"{t}->{tag_oid[:7]}")
+            else:
+                fails.append(f"tag:{t}  指向 {tag_oid[:7]}，與名稱不符（新增的名實不符）")
+            continue
+
+        if t in KNOWN_BAD_TAGS:
+            repaired.append(t)
+
+        rc2, _, _ = _git(root_dir, ["merge-base", "--is-ancestor", named_oid, head_oid])
+        if rc2 != 0:
+            fails.append(f"tag:{t}  指向的 commit {named_oid[:7]} "
+                         f"無法由目前 HEAD 到達（物件還在，但不在本分支歷史上）")
+
+    if repaired:
+        fails.append(f"tag:0  下列 tag 已修復但仍留在 KNOWN_BAD_TAGS，必須移除: {sorted(repaired)}")
+    if known_bad_seen:
+        infos.append(f"已知待修復 tag {len(known_bad_seen)} 個（見 KNOWN_BAD_TAGS）: "
+                     f"{sorted(known_bad_seen)}")
+    infos.append(f"audited-* tag 共 {len(tags)} 個")
+    return fails, infos
+
+
+--- END MOD ---
+
+=== MOD 2 ===
+file: scripts/check_consistency.py
+mode: insert_before
+--- ANCHOR ---
+    # 總結
+--- PAYLOAD ---
+    # ---------------------------------------------------------
+    # CHECK 17: Batch Spec 重放一致性
+    # ---------------------------------------------------------
+    print("\nCHECK 17 - Batch Spec 重放一致性")
+    c17_fails, c17_infos = check_17_spec_replay(repo_root)
+    for info in c17_infos:
+        print(f"  [INFO] {info}")
+    if len(c17_fails) == 0:
+        print("  [PASS] 0 命中")
+        passed += 1
+    else:
+        print(f"  [FAIL] {len(c17_fails)} 命中")
+        for fail in c17_fails:
+            print(f"    {fail}")
+        failed += 1
+
+    # ---------------------------------------------------------
+    # CHECK 18: audited-* tag 名實一致
+    # ---------------------------------------------------------
+    print("\nCHECK 18 - audited-* tag 名實一致")
+    c18_fails, c18_infos = check_18_tag_integrity(repo_root)
+    for info in c18_infos:
+        print(f"  [INFO] {info}")
+    if len(c18_fails) == 0:
+        print("  [PASS] 0 命中")
+        passed += 1
+    else:
+        print(f"  [FAIL] {len(c18_fails)} 命中")
+        for fail in c18_fails:
+            print(f"    {fail}")
+        failed += 1
+
+--- END MOD ---
+
+=== MOD 3 ===
+file: .agents/rules/role-boundaries.md
+mode: insert_after
+--- ANCHOR ---
+不得因為「看起來過期」「順便同步」而主動修改。
+--- PAYLOAD ---
+
+---
+
+## 6. 依批次規格修改時，只能走指定的套用路徑
+
+提示詞若附帶批次規格（`docs/batches/<batch-id>.spec.txt`），
+規格就是本批唯一的執行契約。你必須：
+
+- 用 `scripts/build_prompt_evidence.py` 的 `parse_spec` 讀規格，
+  用同檔的 `apply_mod_to_text` 套用每一個 MOD。
+- 不得自行撰寫另一套 parser。
+- 不得自行撰寫另一套套用邏輯。
+- 不得手工重打規格描述的任何內容，即使只有一行。
+- 不得把規格套用與人工編輯混在同一個檔案上。
+
+**理由不是形式主義。** 2026-09-07 的 `10f7e31` 是唯一一次執行者
+逐條自寫套用腳本並手工重打部分內容，結果 `docs/TASKBOARD.md`
+被改進兩個日文字元、`docs/refactor-backlog.md` 多一個空行，
+而四項標準驗證與 CI 全部綠燈。**散文與手打是一層有損的重新編碼。**
+
+本條的機械守衛是 `scripts/check_consistency.py` 的 CHECK 17：
+它從 parent commit 取出檔案、用上述唯一路徑重放規格，
+再把重放結果與實際 commit 的 git blob 逐位元組比對，任何差異即 FAIL。
+
+**這個保證有明確的生效起點，在那之前不存在。**
+檔名以 `-BOOTSTRAP.spec.txt` 結尾的批次，CHECK 17 依設計跳過重放
+（規格格式還無法表達新建檔案，見 `docs/batches/README.md` 第六節）。
+**引入本機制的那一批，自己不在保護範圍內**——對該批而言，
+偏離規格不會被 CHECK 17 攔截，也不會因此讓 CI 變紅。
+該批的正確性依賴的是：canonical apply path、動手前的錨點唯一性驗證、
+允許檔案清單的範圍檢查、測試、指紋，以及 CI 對這些項目的重跑。
+**逐位元重放的完整保證，自 `docs/TASKBOARD.md` B-90 移除 BOOTSTRAP 例外
+之後的每一個正常 EXACT_SPEC 批次起生效。**
+在那之前，不得對任何批次宣稱 CHECK 17 會攔截它的 actual/spec drift。
+
+---
+
+## 7. 什麼時候該停下來回報，什麼時候該自己處理
+
+**提示詞中的衍生數字一律不是停止條件。**
+套用後行數、圍欄數、錨點行號、測試總數、CHECK 總數、技能總數，
+全部由 `scripts/build_prompt_evidence.py` 與各驗證腳本在執行當下產生。
+審計官不再是這些數字的權威來源；提示詞裡若出現這類數字，
+那是給人看的參考值，**與它不符不構成停止理由**，
+以工具當下的輸出為準，並把差異記進 `docs/EXEC-LOG.md`。
+
+**先確認本批是哪一種模式**，因為它決定 M3 的邊界：
+
+| 模式 | 提示詞給你的東西 | 你在實作上的自由度 |
+|---|---|---|
+| **EXACT_SPEC** | 完整的批次規格，規格即輸出契約 | **零。** 套用結果必須等於規格重放結果 |
+| **GOAL_SPEC** | 目標、授權範圍、不變量、驗收條件 | 在授權範圍內自選作法 |
+
+提示詞未註明模式時，**一律當作 EXACT_SPEC**。
+
+錯誤分四級，只有 S1 需要回報：
+
+| 級別 | 內容 | 你該怎麼做 |
+|---|---|---|
+| **M1** 機械性衍生值 | 行數、圍欄數、錨點行號、測試數、CHECK 數、技能數與提示詞所寫不同 | **自己重算、記錄、繼續。不得回報。** |
+| **M2** 環境與暫態 | GitHub API 速率上限、CI 輪詢逾時、shell 或 locale 差異、網路重試 | 走既定 fallback（例如 API 擋住就讀 badge SVG 的 `<title>`），重試後繼續。**不得回報。** |
+| **M3** 實作失敗 | **僅限 pre-commit 階段**，授權路徑內、且不需要改動任何由規格控制的檔案內容——例如指紋要重新產生、暫存檔或 shell 差異、重跑一次就好的失敗 | **自己修、自己重跑驗證，最多 3 輪。** 3 輪仍未過才升級為 S1。每輪都記進 `docs/EXEC-LOG.md`。**EXACT_SPEC 下 M3 的可動範圍只有 generated artifact，不含任何 MOD 目標檔；commit 之後 M3 完全不適用。** |
+| **S1** 語意／範圍／架構 | 規格 base 與實際 HEAD 不符；錨點 0 命中或多重命中且無法機械判定；規格自相矛盾；需要動未授權路徑；驗收條件互相矛盾；架構、安全或規範決策；破壞性 Git 歷史操作；**EXACT_SPEC 下規格忠實套用後測試或 CHECK 仍 FAIL**（＝規格與驗收條件不一致） | **停止並回報。** 這是唯一該消耗審計官額度的類別。 |
+
+判準與 §3 同一句：**「照著做」還是「決定要不要做」。**
+M1 至 M3 都是照著做，S1 才是決定要不要做。
+
+**EXACT_SPEC 下 commit 是分水嶺。**
+所有會改變 repo bytes 的工作——canonical apply、產生決定性產物、
+重新產生指紋、測試、範圍檢查——都必須在 **commit 之前**完成。
+**commit 建立之後，post-commit gate 只做驗證，不再修改任何 repo bytes。**
+M3 的「自己修最多 3 輪」只適用於 pre-commit 階段；
+commit 之後不得以 `git commit --amend` 或任何方式作為常態自修路徑。
+post-commit 的 correctness CHECK 或測試 FAIL → **S1 停止**；
+只有 M2 的暫態問題（網路、輪詢逾時）可以重試，且重試不得改動 repo bytes。
+
+**EXACT_SPEC 下最重要的一條**：規格忠實套用之後，若測試沒過、CHECK 沒過，
+或你判斷某個原始碼還需要額外修改才會過——**不得動手**。
+你一改，實際 commit 就偏離了規格重放的結果，
+真正的問題（規格與驗收條件不一致）會被掩蓋成一個看似是你造成的差異。
+在正常 EXACT_SPEC 批次上，CHECK 17 的逐位元重放會攔下這種偏離；
+**在 BOOTSTRAP 批次上不會**，那時這條限制只能靠你遵守。
+正確作法都一樣：停止，回報「規格忠實套用後 <某項> 仍 FAIL」，由審計官改規格。
+**規格錯了要改的是規格，不是套用結果。**
+
+**tag 只有一條規則，沒有例外，也不分級。**
+執行者**永遠不得**執行 `git tag -d`、刪除遠端 tag、覆寫既有 tag，
+或「刪掉再試一次」。以下四種情形一律 S1 停止：
+
+- local 已存在同名 tag
+- remote 已存在同名 tag
+- 建立 tag 的指令本身失敗
+- 建立後驗證 target 不正確
+
+只有在 local 與 remote **都能可靠證明不存在**時才可以建立。
+「可靠證明」指查詢指令的 exit status 明確代表「不存在」；
+指令錯誤、網路失敗、遠端拒絕一律不得當成「不存在」，
+那是 M2 retry 或 S1，不是放行條件。
+`docs/TASKBOARD.md` B-91 的九個歷史錯 tag 在任何批次都不得處理，
+除非提示詞明確載明使用者已授權。
+
+**CI 的 FAIL 不得被覆蓋。** GitHub Actions 在雙方都控制不了的第三方環境
+重跑同一批腳本（含 CHECK 17 的規格重放），它是本專案唯一的遠端獨立驗證者。
+執行者與審計官都不得以「本地是綠的」「重跑一次就好了」為理由
+略過、停用、改判或繞過遠端的 FAIL。
+CI 紅燈只有兩條合法出路：修到它綠，或由審計官開新批次處置。
+--- END MOD ---
+
+=== MOD 4 ===
+file: .claude/rules/auditor-protocol.md
+mode: replace
+--- ANCHOR ---
+    指令固定兩條：`git tag audited-<上一批的 hash>` 與
+    `git push origin audited-<上一批的 hash>`。
+--- PAYLOAD ---
+    指令固定兩條，**且都必須明確帶上目標 commit**：
+    `git tag audited-<上一批的 hash> <上一批的 hash>` 與
+    `git push origin audited-<上一批的 hash>`。
+    **省略第二個參數會打在當下的 HEAD 上**——tag 名字對、指向錯。
+    2026-09-11 實測 17 個 tag 中有 9 個如此，成因正是原措辭沒寫目標參數。
+    機械守衛為 `scripts/check_consistency.py` 的 CHECK 18（tag 名實比對）；
+    九個歷史錯 tag 的修復程序見同檔 §11.6，需使用者明確授權。
+--- END MOD ---
+
+=== MOD 5 ===
+file: .claude/rules/auditor-protocol.md
+mode: insert_before
+--- ANCHOR ---
+### 6.2 零命中類的驗證條件，必須先列出自身指令造成的例外
+--- PAYLOAD ---
+21. **每一批的批次規格必須以 repo artifact 形式交付。**
+    規格存放於 `docs/batches/<base-hash>-<slug>.spec.txt`，
+    與該批的修改在同一個 commit 內進版控。
+    **只存在於對話或 `/tmp` 的規格視為不存在**——CI 取不到、
+    重放無從自動化、下一個接手者只能靠人記得，
+    這正是 `PRINCIPLES.md` §2.8 定義的「尚未生效」。
+    規格進 repo 之後，`scripts/check_consistency.py` 的 CHECK 17
+    會在 CI 上以 parent commit 為基準重放規格並逐位元比對，
+    因此對**符合 CHECK 17 強制範圍的 commit**——單一 parent、
+    恰好一份非 BOOTSTRAP 規格——規格重放結果與 actual target 必須一致，
+    「模擬的對象＝送出的文字＝執行者套用的文字」由機器驗證而非自律維持。
+    不在強制範圍內的 commit（無規格的維護 commit、root/merge commit、
+    BOOTSTRAP 例外）不受此保證涵蓋。
+    規格與 CI 對應方式、命名規則與單一 commit 原則見 `docs/batches/README.md`。
+
+    **推論：提示詞不得寫入任何由機器可直接產生的衍生數字作為攔截條件。**
+    套用後行數、圍欄數、錨點行號、測試總數、CHECK 總數、技能總數，
+    一律由 `scripts/build_prompt_evidence.py` 與各驗證腳本在執行當下產生。
+    審計官把這些值抄進提示詞的那一刻，就多了一次抄錯的機會，
+    而抄錯的代價是一次完整的 roundtrip。2026-09-11 實證：
+    審計官修正規格後重跑工具，卻把修正前那一次的 (e) 區塊抄進提示詞，
+    行數差 5，執行者正確停止，一整批因此重來。
+    **正確作法是把規格交給執行者，由它跑同一支工具、消費同一份輸出。**
+    執行者側的對應規則與錯誤分級見 `.agents/rules/role-boundaries.md` §7。
+
+--- END MOD ---
+
+=== MOD 6 ===
+file: .claude/rules/handover-selftest.md
+mode: insert_after
+--- ANCHOR ---
+- [ ] E22 **提示詞包含補打
+--- PAYLOAD ---
+- [ ] E23 **本批的批次規格已寫成 `docs/batches/<base-hash>-<slug>.spec.txt` 並列入本批的 `git add` 清單，規格的 `HEAD:` 欄位等於本批的 base commit，且提示詞中沒有任何被當成攔截條件的衍生數字？**（§6.1-21；只存在於對話或 `/tmp` 的規格 CI 取不到，CHECK 17 無從重放；衍生數字由工具在執行當下產生，抄進提示詞只是多一次抄錯的機會）
+--- END MOD ---
+
+=== MOD 7 ===
+file: .agents/rules/prompt-preflight.md
+mode: insert_after
+--- ANCHOR ---
+| E22 audited tag 指令 |
+--- PAYLOAD ---
+| E23 批次規格進 repo | 提示詞是否附有 `docs/batches/<base-hash>-<slug>.spec.txt` 的路徑與該規格的 sha256，且該路徑出現在本批的 `git add` 清單中。你跑 `build_prompt_evidence.py` 時它會印出 `[SPEC] sha256=`，**與提示詞所寫不符即停止**（S1：你手上的規格不是審計官驗過的那一份）。規格內 `HEAD:` 欄位由工具自行與實際 HEAD 比對，不需你人工核 |
+--- END MOD ---
+
+=== MOD 8 ===
+file: docs/TASKBOARD.md
+mode: replace
+--- ANCHOR ---
+**最後更新**：2026-09-07，HEAD `10f7e31` 之後
+--- PAYLOAD ---
+**最後更新**：2026-09-11，HEAD `0e13c85` 之後
+--- END MOD ---
+
+=== MOD 9 ===
+file: docs/TASKBOARD.md
+mode: insert_after
+--- ANCHOR ---
+| B-89 | 待辦 |
+--- PAYLOAD ---
+| B-90 | 待辦 | **批次規格格式缺 `create_file` mode** | 本批必須新建三個檔案，而規格只有 `insert_after`／`insert_before`／`replace`，無法表達新建檔案，因此本批的規格必須以 BOOTSTRAP 例外跳過 CHECK 17 的重放。處置：`parse_spec` 與 `apply_mod_to_text` 增加 `create_file` mode（ANCHOR 對該 mode 可為空），並在 CHECK 17 中把新建檔案納入重放比對；完成後移除 BOOTSTRAP 例外。**這是目前唯一針對 spec-driven 單一 parent 批次的暫時 replay 例外**（其餘跳過情形——無規格的維護 commit、root/merge commit——是設計內的不適用，不是繞過），排下一批 |
+| B-91 | **待授權** | **9 個 `audited-*` tag 指向錯誤，需刪除並重打 remote tag** | 2026-09-11 實測：`audited-1491d33`／`3a85a30`／`59cea4c`／`7450c4a`／`936b9af`／`a44cc6b` 六個指向 `b46cd5d`，`audited-875a604`／`e6f543a`／`ec840fe` 三個指向 `7450c4a`。全部為 lightweight tag，local 與 remote 一致，名稱中的 hash 皆為可達的真實 commit。成因：`git tag audited-<hash>` 未帶目標 commit 參數即打在當下 HEAD 上（源頭已由本批 §6.1-20 修正，新增者由 CHECK 18 攔截）。**修復涉及刪除並覆寫 remote ref，依 `PRINCIPLES.md` §0 屬需使用者明確授權的 Git 歷史操作，未授權前不得排入任何批次。** 程序見 `.claude/rules/auditor-protocol.md` §11.6 |
+| B-92 | 待辦 | **`docs/EXEC-LOG.md` 與 `docs/fingerprints/exec-latest.json` 是 CHECK 17 的兩個豁免檔** | 兩者由執行者或腳本產生，審計官無法預先寫出內容，故不能以 MOD 表達。CHECK 17 對兩者只驗「僅追加、零刪除行」，指紋另由 `fingerprint.py --verify` 守。**這是刻意保留的兩個缺口，不是遺漏**；若未來發現有內容被從豁免檔中改寫而非追加，處置方向為把 EXEC-LOG 改為一行一檔的追加式目錄。**登錄為待觀察，不排批** |
+--- END MOD ---
+
+=== MOD 10 ===
+file: docs/AUDIT-LOG.md
+mode: insert_after
+--- ANCHOR ---
+| 10f7e31 | 2026-09-07 | §4.1-1 |
+--- PAYLOAD ---
+| 0e13c85 | 2026-09-11 | §4.1-1 | **核對通過**。5 檔異動、零夾帶（未觸碰 `skills/`、`scripts/`）。獨立驗證四項全過：54 技能零錯誤、16 項 CHECK 全 PASS、`pytest scripts/tests/` 76 passed、`fingerprint.py --verify` exit 0；CI badge 實測 `Verify - passing`（GitHub API 已達速率上限，走 `.claude/rules/auditor-protocol.md` 規劃的 badge fallback）。`10f7e31` 的兩處日文字元與一處空行修正內容正確；審計官另以假名＋日文新字體字集全庫獨立重掃，除引號內歷史紀錄外零殘留 | **本輪新發現：`audited-*` tag 的名實不符，17 個中有 9 個。** 成因為 `git tag audited-<hash>` 未帶目標 commit 參數。**B-08「已審核標記機制」標為已完成，但它產出的是名字對、指向錯的標記——假綠燈的第六種形狀：標籤名稱與標籤目標脫鉤。** 且 B-12／CHECK 19 原規劃只讀 tag 名稱，照該規格實作會永遠 PASS。處置：本批新增 CHECK 18（名實比對，附只能縮短的已知待修復清單）＋ §6.1-20 命令補目標參數；歷史修復因涉及覆寫 remote ref，登錄 B-91 待授權。**另：審計官上一輪同時寫出「未核對」與「核對通過」兩種狀態，成因是把「內容核對通過」與「正式審計完成」混為一談，本批於 `.claude/rules/auditor-protocol.md` §11.5 區分兩者** |
+--- END MOD ---
+
+=== MOD 11 ===
+file: docs/refactor-backlog.md
+mode: replace
+--- ANCHOR ---
+上次核對通過的 HEAD：b46cd5d
+--- PAYLOAD ---
+上次核對通過的 HEAD：0e13c85
+--- END MOD ---
+
+=== MOD 12 ===
+file: docs/refactor-backlog.md
+mode: replace
+--- ANCHOR ---
+- **本批（2b-5-fix）已執行完成，等待審計官核對。** 內容：`10f7e31`
+  的兩處日文字元與一處空行修正 ＋ B-89 登錄 ＋ 第 54 點留痕。
+  **前一批核對不通過**，依 `.claude/rules/auditor-protocol.md` §11.1
+  第 2 項以修正批次處置、不 revert；依同檔 §11.4 不打 `audited-10f7e31`。
+--- PAYLOAD ---
+- **本批（2b-6 Governance Integrity Consolidation）已執行完成，等待審計官核對。**
+  內容：CHECK 17 規格重放 ＋ CHECK 18 tag 名實一致 ＋ `docs/batches/` 規格生命週期
+  ＋ `role-boundaries.md` §6 唯一套用路徑 ＋ §6.1-20 命令補目標參數 ＋ §6.1-21
+  規格進 repo ＋ selftest E23 ＋ preflight E23 ＋ §11.5／§11.6 ＋ B-90 至 B-92 登錄
+  ＋ `role-boundaries.md` §7 錯誤分級（M1／M2／M3／S1）
+  ＋ BPE 輸出與規格 sha256 綁定。
+  `0e13c85` 的審計結論已寫入 `docs/AUDIT-LOG.md`，
+  本批補打 `audited-0e13c85` 後轉為 PASS_FINAL（見 auditor-protocol §11.5）。
+--- END MOD ---
+
+=== MOD 13 ===
+file: docs/refactor-backlog.md
+mode: replace
+--- ANCHOR ---
+- **下一批（2b-6）**：P1 的 B-78（`scripts/apply_batch.py`）、
+  B-85（散文層）、B-84（模擬閘門觸發條件改為任何批次）、
+  B-86（規則層補 BPE 用法）、B-81（BPE 的 `--emit-anchors`）、
+  B-80（模擬涵蓋範圍），加 B-74（執行者回報範圍）
+  與 `scripts/impact_scan.py`。
+--- PAYLOAD ---
+- **下一批（2b-7）**：B-90（規格 `create_file` mode，移除 BOOTSTRAP 例外）、
+  B-81（BPE `--emit-anchors`）、B-53（CHECK 1-7 抽成函式並補正反例測試）。
+  **這三項是 CHECK 17 生效後僅存的三個機械缺口**，做完即進 E 主線。
+--- END MOD ---
+
+=== MOD 14 ===
+file: docs/refactor-backlog.md
+mode: replace
+--- ANCHOR ---
+- **後續順序（唯一權威版本）**：2b-7（P1 剩餘：B-87／B-12／B-42／B-43／
+  B-51／B-47）→ 2c（B-53）→ 2d（CHECK 17 至 24 ＋ P3 的機制項
+  ＋ B-82 與 B-88 的偵測）→ 2e（B-54 跨層矛盾 ＋ B-16 回溯稽核）→
+  2f（B-58 減法 ＋ B-83 ＋ 六項已修正者封存）→ 3（B-01）→
+  4（C 節執行 ＋ B-30／B-31／B-32／B-33）→ 5（上游對照表 B-28／B-29）→
+  6（Runtime 依賴調研）→ 7 起 E-03、E-01、E-02、E-04、E-05。
+  使用者於 2026-09-06 裁決的粗粒度順序見第 53 點 F 段。
+--- PAYLOAD ---
+- **後續順序（唯一權威版本，2026-09-11 依 Governance Freeze 重排）**：
+  2b-7（B-90／B-81／B-53）→ **3（E-01 技能遷移第一梯次 ＋ B-01）**→
+  4（C 節執行 ＋ B-30／B-31／B-32／B-33）→ 5（Runtime 依賴調研 ＋ C-04 細節裁決）→
+  6 起 E-03、E-02、E-04、E-05 →（隨時可插）2f 封存與減法。
+  **Governance Freeze 判準**：自 2026-09-11 起，只有兩類治理項目可以阻塞 E 節——
+  (A) 會造成假綠燈、審計鏈汙染、執行結果錯誤或 CI 完整性失效者；
+  (B) 能一次性以 CI／決定性腳本／機械驗證解決整類問題的架構性改善。
+  其餘（歷史說明、流程優化、重複敘述、不影響重構正確性的文件問題）
+  一律登錄後不排批，累積至 2f 一次處理。
+  **被本判準判為不阻塞而延後的項目**：B-16／B-26／B-28／B-29／B-38／B-41／
+  B-42／B-43／B-47／B-51／B-54／B-55／B-56／B-57／B-58／B-59／B-68／B-69／
+  B-70／B-71／B-74／B-75／B-76／B-83／B-84／B-86／B-87／B-88／B-92 共 29 項。
+  **被 CHECK 17 結構性取代而不需個別處理**：B-78／B-80／B-85／B-89 第 ② 項
+  （字形、空白、換行、手打偏差一律由逐位元重放比對攔截）。
+  使用者於 2026-09-06 裁決的粗粒度順序見第 53 點 F 段，本列取代其中的批次編號。
+--- END MOD ---
+
+=== MOD 15 ===
+file: .claude/rules/auditor-protocol.md
+mode: insert_after
+--- ANCHOR ---
+必須以交接區記載的核對結論為準，不得以 commit 數推算。
+--- PAYLOAD ---
+
+### 11.5 審計狀態是四態，互斥且窮盡
+
+2026-09-11 審計官在同一份回覆中同時寫出「未核對」與「核對通過」，
+成因是把「對話裡做過的事」當成一種 repo 狀態。它不是。
+
+**接手者只能從 repo 觀察，因此狀態表只能由 repo 可觀察的事實定義。**
+以下四態互斥且窮盡，任何 commit 必落在其中恰好一態：
+
+| 狀態 | repo 可觀察的判準 |
+|---|---|
+| **A. UNREVIEWED** | `docs/AUDIT-LOG.md` 無該 commit 的列 |
+| **B. FAIL_FINAL** | AUDIT-LOG 有列且結論為不通過。依 §11.4 不應存在 `audited-*` tag |
+| **C. PASS_PENDING_FINALIZATION** | AUDIT-LOG 有列且結論為通過，但正式完成條件尚未全部成立——交接區 §5.1 未同步，或 `audited-<hash>` tag 尚未建立，或 tag 指向不正確 |
+| **D. PASS_FINAL** | AUDIT-LOG 結論為通過、交接區 §5.1 已同步、`audited-<hash>` tag 存在且指向正確 |
+
+**狀態 C 是必要的。** 審計結論寫進 AUDIT-LOG 與補打 tag 分屬不同批次，
+中間必然有一段時間 AUDIT-LOG 已是通過而 tag 還不存在；
+沒有 C，那段時間會落在狀態表之外。
+
+**狀態 A 不再細分。** repo 無從判斷某次對話裡是否已逐檔看過，
+也不該試圖判斷。對接手者而言，「完全沒人看過」與
+「某個 session 看過但沒寫進 repo」是同一件事：UNREVIEWED。
+
+交接區 §5.1 的「上次核對通過的 HEAD」欄位（`scripts/check_consistency.py`
+的 CHECK 9 以這個字串為標記，措辭不得更動）記載的是**最後一個
+PASS_FINAL 的 commit**，不是「最近一次在對話裡看過的 commit」。
+
+「內容核對通過」只能作為**單一 session 內的暫時措辭**使用，
+描述審計官此刻手上的進度。它不是 handoff state，
+**不得寫成任何可由下一個 session 從 repo 推斷的歷史狀態**。
+
+### 11.6 歷史 `audited-*` tag 的修復程序（需使用者明確授權）
+
+2026-09-11 實測 17 個 tag 中 9 個名實不符，清單見 `docs/TASKBOARD.md` B-91。
+修復涉及刪除並覆寫 remote ref，屬 `PRINCIPLES.md` §0 定義的
+**需使用者明確授權的 Git 歷史操作**。未取得授權前，
+任何批次規格都不得要求執行者執行本節指令。
+
+授權後的程序（逐一，不得批次一次做完）：
+
+1. 先跑 `git fetch --tags --force`，確認 local 與 remote 一致。
+2. 對每一個待修 tag，先記錄現況：`git rev-parse <tag>^{commit}`。
+3. `git tag -d <tag>` 刪本地。
+4. `git push origin :refs/tags/<tag>` 刪遠端。
+5. `git tag <tag> <tag 名稱中的 hash>` 重打，**必須帶第二個參數**。
+6. `git push origin <tag>` 推送。
+7. 九個全部完成後，跑 `python3 scripts/check_consistency.py`，
+   CHECK 18 必定 FAIL 並列出「已修復但仍留在 KNOWN_BAD_TAGS」的 tag。
+8. 依該輸出把 `KNOWN_BAD_TAGS` 清空，CHECK 18 轉 PASS。
+
+**第 7 步的 FAIL 是設計而非意外**——清單不會自己過期，
+必須由一次紅燈強迫清掉，否則豁免清單會變成下一個假綠燈。
+--- END MOD ---
+
+=== MOD 16 ===
+file: scripts/build_prompt_evidence.py
+mode: insert_after
+--- ANCHOR ---
+import argparse
+--- PAYLOAD ---
+import hashlib
+--- END MOD ---
+
+=== MOD 17 ===
+file: scripts/build_prompt_evidence.py
+mode: insert_before
+--- ANCHOR ---
+    ok, anchor_results = verify_anchors(mods, repo_root)
+--- PAYLOAD ---
+    # 證據必須與規格 bytes 綁定：先印出規格身分，再做任何事。
+    # 目的是讓「產生證據的規格」與「執行者手上的規格」可被機械比對，
+    # 不再依賴「此證據未經修改」這種文字宣稱。
+    spec_sha = hashlib.sha256(spec_content.encode("utf-8")).hexdigest()
+    print(f"[SPEC] path={os.path.basename(args.spec)}")
+    print(f"[SPEC] sha256={spec_sha}")
+
+    def _oid(rev):
+        # commit identity 一律解析成完整 40 碼 OID。
+        # 不存在、有歧義、不是 commit，一律回 None。
+        # 不使用 short hash 或 startswith——前綴相同不代表是同一個 commit，
+        # 且必須與 check_consistency.py 的 CHECK 17 使用相同的 Git 語意。
+        r = subprocess.run(["git", "rev-parse", "--verify", f"{rev}^{{commit}}"],
+                           cwd=repo_root, capture_output=True, text=True)
+        o = r.stdout.strip()
+        return o if r.returncode == 0 and len(o) == 40 else None
+
+    _rr = subprocess.run(["git", "rev-parse", "--git-dir"],
+                         cwd=repo_root, capture_output=True, text=True)
+    in_repo = _rr.returncode == 0
+    if not in_repo:
+        # 沒有 repository 可比對（例如規格格式的單元測試用臨時目錄）。
+        # 這是「不適用」，不是「解析失敗」；後者在有 repo 時一律 S1。
+        print(f"[SPEC] base={head}  (此路徑非 git repository，略過 base identity 比對)"
+              f"  mods={len(mods)}")
+        head_oid = base_oid = None
+    else:
+        head_oid = _oid("HEAD")
+        base_oid = _oid(head) if head else None
+        print(f"[SPEC] base={head}  base_oid={base_oid}  head_oid={head_oid}  mods={len(mods)}")
+    if in_repo and head_oid is None:
+        print("[錯誤] repository 存在但無法把工作區 HEAD 解析為唯一 commit OID；S1，停止",
+              file=sys.stderr)
+        sys.exit(2)
+    if in_repo and base_oid is None:
+        print(f"[錯誤] 規格宣告的 base={head} 無法解析為唯一 commit"
+              f"（不存在、有歧義，或不是 commit）；S1，停止", file=sys.stderr)
+        sys.exit(2)
+    if in_repo and base_oid != head_oid:
+        print(f"[錯誤] 規格 base 與工作區 HEAD 不是同一個 commit："
+              f"base={base_oid} head={head_oid}；S1，停止", file=sys.stderr)
+        sys.exit(2)
+
+--- END MOD ---
+
+=== MOD 18 ===
+file: scripts/build_prompt_evidence.py
+mode: replace
+--- ANCHOR ---
+            print(f"[e-1] {frel}  套用後 {line_count} 行  圍欄 {fence_count}")
+--- PAYLOAD ---
+            fsha = hashlib.sha256(t.encode("utf-8")).hexdigest()
+            print(f"[e-1] {frel}  套用後 {line_count} 行  圍欄 {fence_count}  sha256={fsha}")
+--- END MOD ---
+
+=== EXPECT ===
+type: id_sequence
+file: docs/TASKBOARD.md
+pattern: ^\| B-(\d+) \|
+range: 1-92
+--- END EXPECT ---

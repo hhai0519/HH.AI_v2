@@ -19,6 +19,7 @@ import os
 import re
 import sys
 import argparse
+import hashlib
 import shutil
 import subprocess
 import tempfile
@@ -362,7 +363,8 @@ def simulate_and_verify(mods, expects, repo_root):
             lines = t.splitlines()
             line_count = len(lines)
             fence_count = sum(1 for l in lines if l.strip().startswith("```"))
-            print(f"[e-1] {frel}  套用後 {line_count} 行  圍欄 {fence_count}")
+            fsha = hashlib.sha256(t.encode("utf-8")).hexdigest()
+            print(f"[e-1] {frel}  套用後 {line_count} 行  圍欄 {fence_count}  sha256={fsha}")
 
             # 擷取 CHECK 10 INFO 行
             # 從 CHECK 10 區塊中尋找
@@ -449,6 +451,48 @@ def main(argv=None):
         print(f"[錯誤] {e}", file=sys.stderr)
         sys.exit(2)
 
+    # 證據必須與規格 bytes 綁定：先印出規格身分，再做任何事。
+    # 目的是讓「產生證據的規格」與「執行者手上的規格」可被機械比對，
+    # 不再依賴「此證據未經修改」這種文字宣稱。
+    spec_sha = hashlib.sha256(spec_content.encode("utf-8")).hexdigest()
+    print(f"[SPEC] path={os.path.basename(args.spec)}")
+    print(f"[SPEC] sha256={spec_sha}")
+
+    def _oid(rev):
+        # commit identity 一律解析成完整 40 碼 OID。
+        # 不存在、有歧義、不是 commit，一律回 None。
+        # 不使用 short hash 或 startswith——前綴相同不代表是同一個 commit，
+        # 且必須與 check_consistency.py 的 CHECK 17 使用相同的 Git 語意。
+        r = subprocess.run(["git", "rev-parse", "--verify", f"{rev}^{{commit}}"],
+                           cwd=repo_root, capture_output=True, text=True)
+        o = r.stdout.strip()
+        return o if r.returncode == 0 and len(o) == 40 else None
+
+    _rr = subprocess.run(["git", "rev-parse", "--git-dir"],
+                         cwd=repo_root, capture_output=True, text=True)
+    in_repo = _rr.returncode == 0
+    if not in_repo:
+        # 沒有 repository 可比對（例如規格格式的單元測試用臨時目錄）。
+        # 這是「不適用」，不是「解析失敗」；後者在有 repo 時一律 S1。
+        print(f"[SPEC] base={head}  (此路徑非 git repository，略過 base identity 比對)"
+              f"  mods={len(mods)}")
+        head_oid = base_oid = None
+    else:
+        head_oid = _oid("HEAD")
+        base_oid = _oid(head) if head else None
+        print(f"[SPEC] base={head}  base_oid={base_oid}  head_oid={head_oid}  mods={len(mods)}")
+    if in_repo and head_oid is None:
+        print("[錯誤] repository 存在但無法把工作區 HEAD 解析為唯一 commit OID；S1，停止",
+              file=sys.stderr)
+        sys.exit(2)
+    if in_repo and base_oid is None:
+        print(f"[錯誤] 規格宣告的 base={head} 無法解析為唯一 commit"
+              f"（不存在、有歧義，或不是 commit）；S1，停止", file=sys.stderr)
+        sys.exit(2)
+    if in_repo and base_oid != head_oid:
+        print(f"[錯誤] 規格 base 與工作區 HEAD 不是同一個 commit："
+              f"base={base_oid} head={head_oid}；S1，停止", file=sys.stderr)
+        sys.exit(2)
     ok, anchor_results = verify_anchors(mods, repo_root)
     if not ok:
         sys.exit(1)

@@ -137,6 +137,7 @@
 | E20 規則層變更的模擬證據 | 提示詞若修改 `.claude/rules/`、`.agents/rules/`、`PRINCIPLES.md` 或 `AGENTS.md`，證據區塊須有 (e) 段。**你套用修改後跑同一指令，逐項比對行數、圍欄數、項數與最後三條 INFO 行**，不同即停止。純字串比對 |
 | E21 數字的產生者 | 證據區塊 (a) 宣告的基準 HEAD 必須等於你在第 0 步實測的 HEAD。**這是純字串比對**——不符即代表審計官的 clone 早於 HEAD 最後一次移動，停止並回報兩個值 |
 | E22 audited tag 指令 | 提示詞是否含 `git tag audited-<hash>` 與 `git push origin audited-<hash>` 兩條指令，且驗證步驟要求貼出 `git tag -l "audited-*"` 的實際輸出。**純存在性比對**——不必判斷 hash 對不對，只判斷有沒有 |
+| E23 批次規格進 repo | 提示詞是否附有 `docs/batches/<base-hash>-<slug>.spec.txt` 的路徑與該規格的 sha256，且該路徑出現在本批的 `git add` 清單中。你跑 `build_prompt_evidence.py` 時它會印出 `[SPEC] sha256=`，**與提示詞所寫不符即停止**（S1：你手上的規格不是審計官驗過的那一份）。規格內 `HEAD:` 欄位由工具自行與實際 HEAD 比對，不需你人工核 |
 
 **自檢聲明不接受任何豁免。**
 
