@@ -2934,8 +2934,16 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   量出三處不一致**：`docs/TASKBOARD.md` 兩處日文字元、本節與第 53 點之間
   多一個空行。成因為執行者未依提示詞使用同一份規格套用。詳見第 54 點。
   依 `.claude/rules/auditor-protocol.md` §11.4，核對不通過者不打 tag。
-- 本批（尚未 commit）（2b-5-fix：兩處日文字元 ＋ 一處空行修正
-  ＋ B-89 登錄 ＋ 第 54 點）已執行，**尚待審計官核對**，見 §5.4。
+- `9a09716`（2b-6：Governance Integrity Consolidation）已於 2026-09-11 由審計官核對通過：
+  CHECK 17 規格重放 ＋ CHECK 18 tag 名實一致 ＋ `docs/batches/` 規格生命週期
+  ＋ `role-boundaries.md` §6 唯一套用路徑 ＋ §6.1-20 命令補目標參數 ＋ §6.1-21
+  規格進 repo ＋ selftest E23 ＋ preflight E23 ＋ §11.5／§11.6 ＋ B-90 至 B-92 登錄
+  ＋ 錯誤分級 M1-M3/S1 ＋ BPE 輸出 sha256 綁定。4 檔異動、零夾帶，
+  獨立驗證四項全過（54 技能、18 項 CHECK、93 測試、`--verify` exit 0），
+  CI Run 34241773099 success。
+- 本批（尚未 commit）（Governance Gate Unblocker / B-92：修正 `docs/EXEC-LOG.md` 與
+  `docs/fingerprints/exec-latest.json` 作為 CHECK 17 豁免檔的生命週期，
+  解除 normal spec-driven batch 的 deadlock）已執行，**尚待審計官核對**，見 §5.4。
 
 ### 5.2 待辦
 
@@ -2961,17 +2969,17 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 > 兩份內容不同的「後續」順序）。清理紀錄與成因見第 53 點。
 > **歷史敘述屬留痕層，落點是編號點，不是本節。**
 
-- **本批（2b-6 Governance Integrity Consolidation）已執行完成，等待審計官核對。**
-  內容：CHECK 17 規格重放 ＋ CHECK 18 tag 名實一致 ＋ `docs/batches/` 規格生命週期
-  ＋ `role-boundaries.md` §6 唯一套用路徑 ＋ §6.1-20 命令補目標參數 ＋ §6.1-21
-  規格進 repo ＋ selftest E23 ＋ preflight E23 ＋ §11.5／§11.6 ＋ B-90 至 B-92 登錄
-  ＋ `role-boundaries.md` §7 錯誤分級（M1／M2／M3／S1）
-  ＋ BPE 輸出與規格 sha256 綁定。
-  `0e13c85` 的審計結論已寫入 `docs/AUDIT-LOG.md`，
-  本批補打 `audited-0e13c85` 後轉為 PASS_FINAL（見 auditor-protocol §11.5）。
-- **下一批（2b-7）**：B-90（規格 `create_file` mode，移除 BOOTSTRAP 例外）、
-  B-81（BPE `--emit-anchors`）、B-53（CHECK 1-7 抽成函式並補正反例測試）。
-  **這三項是 CHECK 17 生效後僅存的三個機械缺口**，做完即進 E 主線。
+- **本批（Governance Gate Unblocker / B-92）已執行完成，等待審計官核對。**
+  內容：2b-6 已完成；Mechanical-Truth Migration 因 B-92 deadlock 暫停；
+  本批修正 `scripts/check_consistency.py` 中 CHECK 17 對豁免檔的生命週期驗證：
+  `docs/fingerprints/exec-latest.json` 不再套用 zero-deletion，委派 `fingerprint.py --verify` 驗證；
+  `docs/EXEC-LOG.md` 改採 fail-closed 的 semantic transition validator
+  （支援上一批『本批』合法回填為 parent hash，並追加當批新紀錄；禁止任何刪改舊列）；
+  `scripts/tests/test_check_17_18.py` 新增 7 項真實 Git repo 正反例測試；
+  TASKBOARD B-92 標記為已完成。
+- **下一批**：Mechanical-Truth Migration（以 normal Batch Spec 執行，移除 LLM 手寫衍生數值作為 blocking truth 制度）。
+- **後續順序**：Mechanical-Truth Migration → 2b-7（B-90 規格支援 `create_file` mode，移除 BOOTSTRAP 例外；B-81 BPE `--emit-anchors`；B-53 CHECK 1-7 抽成函式）→ 3（E-01 技能遷移第一梯次 ＋ B-01）→ 4 起後續項目。
+  **治理 Exit blocker 說明**：B-90 仍為治理 Exit blocker；B-91（9 個歷史錯 tag，待授權）不阻擋治理層 exit。
 - **後續順序（唯一權威版本，2026-09-11 依 Governance Freeze 重排）**：
   2b-7（B-90／B-81／B-53）→ **3（E-01 技能遷移第一梯次 ＋ B-01）**→
   4（C 節執行 ＋ B-30／B-31／B-32／B-33）→ 5（Runtime 依賴調研 ＋ C-04 細節裁決）→

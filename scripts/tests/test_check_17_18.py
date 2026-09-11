@@ -130,55 +130,164 @@ def test_17_undeclared_file_change_fails():
                    for f in fails), fails
 
 
-def test_17_exempt_file_deletion_fails():
-    """豁免檔只允許追加；改寫既有列必須 FAIL。"""
+EXEC_LOG_HEADER = (
+    "# 執行者檢查紀錄\n\n"
+    "| 批次 commit | 日期 | 檢查範圍 | 結果 | 攔截紀錄 |\n"
+    "|---|---|---|---|---|\n"
+)
+
+
+def test_17_fingerprint_generated_artifact_replacement_passes():
+    """TEST A: fingerprint snapshot 允許 JSON replacement/deletions，CHECK 17 不得報錯。"""
     with tempfile.TemporaryDirectory() as d:
         _init_repo(d)
         _write(d, "docs/T.md", "A\nB\nC\n")
-        _write(d, "docs/EXEC-LOG.md", "row1\nrow2\n")
+        _write(d, "docs/fingerprints/exec-latest.json", '{\n  "lines": 3,\n  "sha256": "old"\n}\n')
         base = _commit(d, "c1")
         _write(d, "docs/T.md", "A\nZ\nC\n")
-        _write(d, "docs/EXEC-LOG.md", "row1\nCHANGED\n")
+        # 更新 fingerprint JSON，產生 replacement/deletions 行
+        _write(d, "docs/fingerprints/exec-latest.json", '{\n  "lines": 3,\n  "sha256": "new"\n}\n')
         _write(d, "docs/batches/%s-x.spec.txt" % base,
                SPEC_TMPL.format(base=base, anchor="B", payload="Z"))
         _commit(d, "c2")
-        fails, _ = cc.check_17_spec_replay(d)
-        assert any("只允許追加" in f for f in fails), fails
-
-
-def test_17_exempt_file_deleting_literal_dashes_fails():
-    """
-    豁免檔原本含一行 literal `---`，本 commit 把它刪掉。
-    靠 diff 行首判定 append-only 時，這一行會被當成 diff 檔頭而漏掉。
-    刪除行數必須由 git numstat 直接取得。
-    """
-    with tempfile.TemporaryDirectory() as d:
-        _init_repo(d)
-        _write(d, "docs/T.md", "A\nB\nC\n")
-        _write(d, "docs/EXEC-LOG.md", "row1\n---\nrow2\n")
-        base = _commit(d, "c1")
-        _write(d, "docs/T.md", "A\nZ\nC\n")
-        _write(d, "docs/EXEC-LOG.md", "row1\nrow2\n")   # 刪掉 literal ---
-        _write(d, "docs/batches/%s-x.spec.txt" % base,
-               SPEC_TMPL.format(base=base, anchor="B", payload="Z"))
-        _commit(d, "c2")
-        fails, _ = cc.check_17_spec_replay(d)
-        assert any("只允許追加" in f for f in fails), fails
-
-
-def test_17_exempt_file_append_passes():
-    with tempfile.TemporaryDirectory() as d:
-        _init_repo(d)
-        _write(d, "docs/T.md", "A\nB\nC\n")
-        _write(d, "docs/EXEC-LOG.md", "row1\n")
-        base = _commit(d, "c1")
-        _write(d, "docs/T.md", "A\nZ\nC\n")
-        _write(d, "docs/EXEC-LOG.md", "row1\nrow2\n")
-        _write(d, "docs/batches/%s-x.spec.txt" % base,
-               SPEC_TMPL.format(base=base, anchor="B", payload="Z"))
-        _commit(d, "c2")
-        fails, _ = cc.check_17_spec_replay(d)
+        fails, infos = cc.check_17_spec_replay(d)
         assert fails == [], fails
+        assert any("fingerprint artifact integrity delegated" in i for i in infos)
+
+
+def test_17_exec_log_legal_transition_passes():
+    """TEST B: EXEC-LOG 合法 transition：parent 最後一列『本批』，child 回填 parent hash 並追加新『本批』。"""
+    with tempfile.TemporaryDirectory() as d:
+        _init_repo(d)
+        _write(d, "docs/T.md", "A\nB\nC\n")
+        _write(d, "docs/EXEC-LOG.md", EXEC_LOG_HEADER +
+               "| BOOTSTRAP | 2026-09-05 | 建立 | 通過 | 無 |\n"
+               "| 本批 | 2026-09-11 | 範圍 | 通過 | 紀錄 |\n")
+        base = _commit(d, "c1")
+        _write(d, "docs/T.md", "A\nZ\nC\n")
+        _write(d, "docs/EXEC-LOG.md", EXEC_LOG_HEADER +
+               "| BOOTSTRAP | 2026-09-05 | 建立 | 通過 | 無 |\n"
+               f"| {base[:7]} | 2026-09-11 | 範圍 | 通過 | 紀錄 |\n"
+               "| 本批 | 2026-09-11 | 新範圍 | 通過 | 無 |\n")
+        _write(d, "docs/batches/%s-x.spec.txt" % base,
+               SPEC_TMPL.format(base=base, anchor="B", payload="Z"))
+        _commit(d, "c2")
+        fails, infos = cc.check_17_spec_replay(d)
+        assert fails == [], fails
+        assert any("docs/EXEC-LOG.md 狀態流轉驗證通過" in i for i in infos)
+
+
+def test_17_exec_log_old_row_edit_fails():
+    """TEST C: EXEC-LOG 任意舊 row 改寫必須 FAIL。"""
+    with tempfile.TemporaryDirectory() as d:
+        _init_repo(d)
+        _write(d, "docs/T.md", "A\nB\nC\n")
+        _write(d, "docs/EXEC-LOG.md", EXEC_LOG_HEADER +
+               "| BOOTSTRAP | 2026-09-05 | 建立 | 通過 | 無 |\n"
+               "| 本批 | 2026-09-11 | 範圍 | 通過 | 紀錄 |\n")
+        base = _commit(d, "c1")
+        _write(d, "docs/T.md", "A\nZ\nC\n")
+        # 修改了 BOOTSTRAP 那一列的內容
+        _write(d, "docs/EXEC-LOG.md", EXEC_LOG_HEADER +
+               "| BOOTSTRAP | 2026-09-05 | 遭竄改 | 通過 | 無 |\n"
+               f"| {base[:7]} | 2026-09-11 | 範圍 | 通過 | 紀錄 |\n"
+               "| 本批 | 2026-09-11 | 新範圍 | 通過 | 無 |\n")
+        _write(d, "docs/batches/%s-x.spec.txt" % base,
+               SPEC_TMPL.format(base=base, anchor="B", payload="Z"))
+        _commit(d, "c2")
+        fails, _ = cc.check_17_spec_replay(d)
+        assert any("歷史資料列遭修改" in f for f in fails), fails
+
+
+def test_17_exec_log_old_row_delete_fails():
+    """TEST D: EXEC-LOG 舊 row 刪除必須 FAIL。"""
+    with tempfile.TemporaryDirectory() as d:
+        _init_repo(d)
+        _write(d, "docs/T.md", "A\nB\nC\n")
+        _write(d, "docs/EXEC-LOG.md", EXEC_LOG_HEADER +
+               "| BOOTSTRAP | 2026-09-05 | 建立 | 通過 | 無 |\n"
+               "| 本批 | 2026-09-11 | 範圍 | 通過 | 紀錄 |\n")
+        base = _commit(d, "c1")
+        _write(d, "docs/T.md", "A\nZ\nC\n")
+        # 刪除了 BOOTSTRAP 列
+        _write(d, "docs/EXEC-LOG.md", EXEC_LOG_HEADER +
+               f"| {base[:7]} | 2026-09-11 | 範圍 | 通過 | 紀錄 |\n"
+               "| 本批 | 2026-09-11 | 新範圍 | 通過 | 無 |\n")
+        _write(d, "docs/batches/%s-x.spec.txt" % base,
+               SPEC_TMPL.format(base=base, anchor="B", payload="Z"))
+        _commit(d, "c2")
+        fails, _ = cc.check_17_spec_replay(d)
+        assert any("既有資料列遭刪除" in f for f in fails), fails
+
+
+def test_17_exec_log_wrong_commit_backfill_fails():
+    """TEST E: 『本批』回填錯誤 commit identity 必須 FAIL。"""
+    with tempfile.TemporaryDirectory() as d:
+        _init_repo(d)
+        _write(d, "docs/T.md", "A\nB\nC\n")
+        _write(d, "docs/EXEC-LOG.md", EXEC_LOG_HEADER +
+               "| BOOTSTRAP | 2026-09-05 | 建立 | 通過 | 無 |\n"
+               "| 本批 | 2026-09-11 | 範圍 | 通過 | 紀錄 |\n")
+        base = _commit(d, "c1")
+        _write(d, "docs/T.md", "A\nZ\nC\n")
+        # 回填錯誤 hash deadbee
+        _write(d, "docs/EXEC-LOG.md", EXEC_LOG_HEADER +
+               "| BOOTSTRAP | 2026-09-05 | 建立 | 通過 | 無 |\n"
+               "| deadbee | 2026-09-11 | 範圍 | 通過 | 紀錄 |\n"
+               "| 本批 | 2026-09-11 | 新範圍 | 通過 | 無 |\n")
+        _write(d, "docs/batches/%s-x.spec.txt" % base,
+               SPEC_TMPL.format(base=base, anchor="B", payload="Z"))
+        _commit(d, "c2")
+        fails, _ = cc.check_17_spec_replay(d)
+        assert any("上一批『本批』回填之 commit identity" in f for f in fails), fails
+
+
+def test_17_exec_log_concrete_hash_append_passes():
+    """TEST F: parent 已是具體 hash 時純 append 必須 PASS。"""
+    with tempfile.TemporaryDirectory() as d:
+        _init_repo(d)
+        _write(d, "docs/T.md", "A\nB\nC\n")
+        _write(d, "docs/EXEC-LOG.md", EXEC_LOG_HEADER +
+               "| BOOTSTRAP | 2026-09-05 | 建立 | 通過 | 無 |\n"
+               "| a1b2c3d | 2026-09-11 | 範圍 | 通過 | 紀錄 |\n")
+        base = _commit(d, "c1")
+        _write(d, "docs/T.md", "A\nZ\nC\n")
+        _write(d, "docs/EXEC-LOG.md", EXEC_LOG_HEADER +
+               "| BOOTSTRAP | 2026-09-05 | 建立 | 通過 | 無 |\n"
+               "| a1b2c3d | 2026-09-11 | 範圍 | 通過 | 紀錄 |\n"
+               "| 本批 | 2026-09-11 | 新範圍 | 通過 | 無 |\n")
+        _write(d, "docs/batches/%s-x.spec.txt" % base,
+               SPEC_TMPL.format(base=base, anchor="B", payload="Z"))
+        _commit(d, "c2")
+        fails, infos = cc.check_17_spec_replay(d)
+        assert fails == [], fails
+        assert any("docs/EXEC-LOG.md 狀態流轉驗證通過" in i for i in infos)
+
+
+def test_17_normal_spec_with_fingerprint_and_exec_log_passes():
+    """TEST G: normal spec + fingerprint update + EXEC-LOG 合法 transition 整合測試。"""
+    with tempfile.TemporaryDirectory() as d:
+        _init_repo(d)
+        _write(d, "docs/T.md", "A\nB\nC\n")
+        _write(d, "docs/fingerprints/exec-latest.json", '{\n  "lines": 3\n}\n')
+        _write(d, "docs/EXEC-LOG.md", EXEC_LOG_HEADER +
+               "| BOOTSTRAP | 2026-09-05 | 建立 | 通過 | 無 |\n"
+               "| 本批 | 2026-09-11 | 範圍 | 通過 | 紀錄 |\n")
+        base = _commit(d, "c1")
+        _write(d, "docs/T.md", "A\nZ\nC\n")
+        _write(d, "docs/fingerprints/exec-latest.json", '{\n  "lines": 4\n}\n')
+        _write(d, "docs/EXEC-LOG.md", EXEC_LOG_HEADER +
+               "| BOOTSTRAP | 2026-09-05 | 建立 | 通過 | 無 |\n"
+               f"| {base[:7]} | 2026-09-11 | 範圍 | 通過 | 紀錄 |\n"
+               "| 本批 | 2026-09-11 | 新範圍 | 通過 | 無 |\n")
+        _write(d, "docs/batches/%s-x.spec.txt" % base,
+               SPEC_TMPL.format(base=base, anchor="B", payload="Z"))
+        _commit(d, "c2")
+        fails, infos = cc.check_17_spec_replay(d)
+        assert fails == [], fails
+        assert any("逐位元相符" in i for i in infos)
+        assert any("fingerprint artifact integrity delegated" in i for i in infos)
+        assert any("docs/EXEC-LOG.md 狀態流轉驗證通過" in i for i in infos)
 
 
 def test_17_unresolvable_base_fails():

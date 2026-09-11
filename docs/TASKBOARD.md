@@ -10,7 +10,7 @@
 `待裁決`（需使用者決定）／`已完成`（仍可能被引用）／
 `可封存`（不影響後續工作，待使用者確認後移入封存區）
 
-**最後更新**：2026-09-11，HEAD `0e13c85` 之後
+**最後更新**：2026-09-11，HEAD `9a09716` 之後（B-92 豁免檔生命週期修復）
 
 ---
 
@@ -163,7 +163,7 @@
 | B-89 | 待辦 | **日文字元混入 repo，四項驗證全綠卻抓不到** | 2026-09-07 實測：`10f7e31` 在 `docs/TASKBOARD.md` 第 114 行以平假名取代「的」、第 135 行以日文新字體取代「證」。成因為執行者以日文進行思考與生成，字形在輸出時未轉回繁體。**四項標準驗證全數通過**——CHECK 14 的偵測集是一份手寫的簡體字清單，不含平假名、片假名與日文新字體漢字；`validate_skills`、`pytest`、`fingerprint --verify` 三者與字形無關。**這是假綠燈的第五種形狀：偵測器的字集比它宣稱守護的範圍窄。** 處置：①本批修正兩處 ②CHECK 14 擴充偵測範圍至平假名、片假名與常見日文新字體漢字，沿用原編號不新開 ③每份提示詞開頭固定宣告「以繁體中文思考與輸出」。排批 2d |
 | B-90 | 待辦 | **批次規格格式缺 `create_file` mode** | 本批必須新建三個檔案，而規格只有 `insert_after`／`insert_before`／`replace`，無法表達新建檔案，因此本批的規格必須以 BOOTSTRAP 例外跳過 CHECK 17 的重放。處置：`parse_spec` 與 `apply_mod_to_text` 增加 `create_file` mode（ANCHOR 對該 mode 可為空），並在 CHECK 17 中把新建檔案納入重放比對；完成後移除 BOOTSTRAP 例外。**這是目前唯一針對 spec-driven 單一 parent 批次的暫時 replay 例外**（其餘跳過情形——無規格的維護 commit、root/merge commit——是設計內的不適用，不是繞過），排下一批 |
 | B-91 | **待授權** | **9 個 `audited-*` tag 指向錯誤，需刪除並重打 remote tag** | 2026-09-11 實測：`audited-1491d33`／`3a85a30`／`59cea4c`／`7450c4a`／`936b9af`／`a44cc6b` 六個指向 `b46cd5d`，`audited-875a604`／`e6f543a`／`ec840fe` 三個指向 `7450c4a`。全部為 lightweight tag，local 與 remote 一致，名稱中的 hash 皆為可達的真實 commit。成因：`git tag audited-<hash>` 未帶目標 commit 參數即打在當下 HEAD 上（源頭已由本批 §6.1-20 修正，新增者由 CHECK 18 攔截）。**修復涉及刪除並覆寫 remote ref，依 `PRINCIPLES.md` §0 屬需使用者明確授權的 Git 歷史操作，未授權前不得排入任何批次。** 程序見 `.claude/rules/auditor-protocol.md` §11.6 |
-| B-92 | 待辦 | **`docs/EXEC-LOG.md` 與 `docs/fingerprints/exec-latest.json` 是 CHECK 17 的兩個豁免檔** | 兩者由執行者或腳本產生，審計官無法預先寫出內容，故不能以 MOD 表達。CHECK 17 對兩者只驗「僅追加、零刪除行」，指紋另由 `fingerprint.py --verify` 守。**這是刻意保留的兩個缺口，不是遺漏**；若未來發現有內容被從豁免檔中改寫而非追加，處置方向為把 EXEC-LOG 改為一行一檔的追加式目錄。**登錄為待觀察，不排批** |
+| B-92 | 已完成 | **`docs/EXEC-LOG.md` 與 `docs/fingerprints/exec-latest.json` 作為 CHECK 17 豁免檔的生命週期** | 豁免檔生命週期已修正。`docs/EXEC-LOG.md` 不再採 generic zero-deletion，改採 fail-closed semantic transition validation（支援歷史列不變、回填 parent hash、追加當批紀錄）；`docs/fingerprints/exec-latest.json` 作為 generated snapshot 正確性由 `fingerprint.py --verify` 守護；真實 Git repo 正反例測試已建立 |
 
 ---
 

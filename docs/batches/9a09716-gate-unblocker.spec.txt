@@ -1,0 +1,483 @@
+# 批次規格 — Governance Gate Unblocker / B-92
+#
+# batch_id     : 9a09716-gate-unblocker
+# batch_mode   : GOAL_SPEC
+# base_commit  : 9a09716
+#
+# 本批目的：解除正常 spec-driven batch 在 CHECK 16 / CHECK 17 / fingerprint lifecycle 之間的結構性死結。
+#
+# 本批允許修改的檔案（其餘一律不得動）：
+#   scripts/check_consistency.py
+#   scripts/tests/test_check_17_18.py
+#   docs/TASKBOARD.md
+#   docs/refactor-backlog.md
+#   docs/AUDIT-LOG.md
+#
+# 豁免檔（不在 MOD 內，由腳本或執行者產生）：
+#   docs/EXEC-LOG.md
+#   docs/fingerprints/exec-latest.json
+
+HEAD: 9a09716
+
+=== MOD 1 ===
+file: scripts/check_consistency.py
+mode: insert_before
+--- ANCHOR ---
+def check_17_spec_replay(root_dir=None):
+--- PAYLOAD ---
+def _validate_exec_log_transition(root_dir, parent_oid, head_rev="HEAD"):
+    """
+    驗證 docs/EXEC-LOG.md 的狀態流轉。
+
+    規則：
+    1. parent 中所有較早歷史列完全不變。
+    2. 若 parent 最後一列第一欄為『本批』：
+       - child 將該列第一欄替換為 parent commit 的合法 commit identity（可解析為 parent_oid）。
+       - 該列其餘欄位內容必須完全不變。
+       - child 在尾端追加本批新紀錄，第一欄為『本批』。
+    3. 若 parent 最後一列已是合法 concrete hash 或 BOOTSTRAP：
+       - child 保持所有既有列不變，在尾端追加新的『本批』列。
+    4. 不允許任意舊 row 修改、刪除、reorder。
+    """
+    fails, infos = [], []
+    rc, p_bytes, _ = _git_bytes(root_dir, ["show", f"{parent_oid}:docs/EXEC-LOG.md"])
+    if rc != 0:
+        fails.append("docs/EXEC-LOG.md:0  無法自 parent 取出內容")
+        return fails, infos
+    rc, c_bytes, _ = _git_bytes(root_dir, ["show", f"{head_rev}:docs/EXEC-LOG.md"])
+    if rc != 0:
+        fails.append(f"docs/EXEC-LOG.md:0  無法自 {head_rev} 取出內容")
+        return fails, infos
+
+    try:
+        p_text = p_bytes.decode("utf-8")
+        c_text = c_bytes.decode("utf-8")
+    except UnicodeDecodeError as e:
+        fails.append(f"docs/EXEC-LOG.md:0  內容不是合法 UTF-8: {e}")
+        return fails, infos
+
+    p_lines = p_text.splitlines()
+    c_lines = c_text.splitlines()
+
+    def _is_data_row(line):
+        s = line.strip()
+        if not s.startswith("|"):
+            return False
+        if "批次 commit" in s:
+            return False
+        if re.match(r"^\|(\s*:?-+:?\s*\|)+$", s):
+            return False
+        return True
+
+    def _split_cols(row_str):
+        cols = [c.strip() for c in row_str.split("|")]
+        if len(cols) >= 3 and cols[0] == "" and cols[-1] == "":
+            return cols[1:-1]
+        return [c.strip() for c in cols if c.strip()]
+
+    p_rows = [line.strip() for line in p_lines if _is_data_row(line)]
+    c_rows = [line.strip() for line in c_lines if _is_data_row(line)]
+
+    if not p_rows:
+        fails.append("docs/EXEC-LOG.md:0  parent 中未找到任何表格資料列")
+        return fails, infos
+    if not c_rows:
+        fails.append("docs/EXEC-LOG.md:0  child 中未找到任何表格資料列")
+        return fails, infos
+
+    p_non_data = [line for line in p_lines if not _is_data_row(line)]
+    c_non_data = [line for line in c_lines if not _is_data_row(line)]
+    if p_non_data != c_non_data:
+        fails.append("docs/EXEC-LOG.md:0  表格之外的非資料列內容遭修改")
+
+    p_last_cols = _split_cols(p_rows[-1])
+    if not p_last_cols:
+        fails.append("docs/EXEC-LOG.md:0  parent 最後一列無法解析欄位")
+        return fails, infos
+
+    if len(c_rows) != len(p_rows) + 1:
+        if len(c_rows) <= len(p_rows):
+            fails.append(f"docs/EXEC-LOG.md:0  既有資料列遭刪除或未追加新列（parent {len(p_rows)} 列，child 實測 {len(c_rows)} 列）")
+        else:
+            fails.append(f"docs/EXEC-LOG.md:0  單次 commit 追加過多列（parent {len(p_rows)} 列，child 實測 {len(c_rows)} 列）")
+        return fails, infos
+
+    if p_last_cols[0] == "本批":
+        for i in range(len(p_rows) - 1):
+            if p_rows[i] != c_rows[i]:
+                fails.append(f"docs/EXEC-LOG.md:0  第 {i+1} 筆歷史資料列遭修改")
+        c_replaced_cols = _split_cols(c_rows[len(p_rows) - 1])
+        if len(c_replaced_cols) != len(p_last_cols):
+            fails.append("docs/EXEC-LOG.md:0  回填列欄位數與原列不符")
+        else:
+            c_hash = c_replaced_cols[0]
+            resolved = _resolve_commit(root_dir, c_hash)
+            if resolved is None or resolved != parent_oid:
+                fails.append(f"docs/EXEC-LOG.md:0  上一批『本批』回填之 commit identity ({c_hash}) 無法解析或不等於 parent commit ({parent_oid[:7]})")
+            if c_replaced_cols[1:] != p_last_cols[1:]:
+                fails.append("docs/EXEC-LOG.md:0  回填列除第一欄 commit identity 外之其餘內容遭修改")
+        c_new_cols = _split_cols(c_rows[len(p_rows)])
+        if not c_new_cols or c_new_cols[0] != "本批":
+            fails.append("docs/EXEC-LOG.md:0  最新追加列的第一欄必須為『本批』")
+    else:
+        for i in range(len(p_rows)):
+            if p_rows[i] != c_rows[i]:
+                fails.append(f"docs/EXEC-LOG.md:0  第 {i+1} 筆歷史資料列遭修改")
+        c_new_cols = _split_cols(c_rows[len(p_rows)])
+        if not c_new_cols or c_new_cols[0] != "本批":
+            fails.append("docs/EXEC-LOG.md:0  最新追加列的第一欄必須為『本批』")
+
+    if not fails:
+        infos.append("docs/EXEC-LOG.md 狀態流轉驗證通過（歷史列不變，符合合法生命週期）")
+    return fails, infos
+
+
+
+--- END MOD ---
+
+=== MOD 2 ===
+file: scripts/check_consistency.py
+mode: replace
+--- ANCHOR ---
+    # 豁免檔只允許追加。刪除行數由 git numstat 直接給，
+    # 不自行解析 unified diff 的行首——內容本身就是 `---` 的那一行
+    # 會與 diff 的檔頭標記混淆，靠字首判定一定會漏。
+    for ex in sorted(SPEC_EXEMPT_FILES & changed):
+        rc, out, _ = _git(root_dir, ["diff", "--numstat", parent_oid, "HEAD", "--", ex])
+        if rc != 0:
+            fails.append(f"{ex}:0  無法取得 numstat，無法證明只有追加")
+            continue
+        for row in out.splitlines():
+            cols = row.split("\t")
+            if len(cols) < 3:
+                continue
+            adds, dels = cols[0], cols[1]
+            if adds == "-" or dels == "-":
+                fails.append(f"{ex}:0  被視為二進位檔，無法證明只有追加")
+                continue
+            if int(dels) > 0:
+                fails.append(f"{ex}:0  豁免檔只允許追加，numstat 實測刪除 {dels} 行")
+--- PAYLOAD ---
+    # 豁免檔驗證：
+    # docs/fingerprints/exec-latest.json 為 generated snapshot，正確性由 fingerprint.py --verify 專責守護。
+    # docs/EXEC-LOG.md 採專用 semantic transition validator，禁止任意刪改舊列，僅允許合法回填與追加。
+    for ex in sorted(SPEC_EXEMPT_FILES & changed):
+        if ex == "docs/fingerprints/exec-latest.json":
+            infos.append(f"{ex}: fingerprint artifact integrity delegated to fingerprint.py --verify")
+            continue
+        if ex == "docs/EXEC-LOG.md":
+            el_fails, el_infos = _validate_exec_log_transition(root_dir, parent_oid, "HEAD")
+            fails.extend(el_fails)
+            infos.extend(el_infos)
+            continue
+        rc, out, _ = _git(root_dir, ["diff", "--numstat", parent_oid, "HEAD", "--", ex])
+        if rc != 0:
+            fails.append(f"{ex}:0  無法取得 numstat，無法證明只有追加")
+            continue
+        for row in out.splitlines():
+            cols = row.split("	")
+            if len(cols) < 3:
+                continue
+            adds, dels = cols[0], cols[1]
+            if adds == "-" or dels == "-":
+                fails.append(f"{ex}:0  被視為二進位檔，無法證明只有追加")
+                continue
+            if int(dels) > 0:
+                fails.append(f"{ex}:0  豁免檔只允許追加，numstat 實測刪除 {dels} 行")
+--- END MOD ---
+
+=== MOD 3 ===
+file: scripts/tests/test_check_17_18.py
+mode: replace
+--- ANCHOR ---
+def test_17_exempt_file_deletion_fails():
+    """豁免檔只允許追加；改寫既有列必須 FAIL。"""
+    with tempfile.TemporaryDirectory() as d:
+        _init_repo(d)
+        _write(d, "docs/T.md", "A\nB\nC\n")
+        _write(d, "docs/EXEC-LOG.md", "row1\nrow2\n")
+        base = _commit(d, "c1")
+        _write(d, "docs/T.md", "A\nZ\nC\n")
+        _write(d, "docs/EXEC-LOG.md", "row1\nCHANGED\n")
+        _write(d, "docs/batches/%s-x.spec.txt" % base,
+               SPEC_TMPL.format(base=base, anchor="B", payload="Z"))
+        _commit(d, "c2")
+        fails, _ = cc.check_17_spec_replay(d)
+        assert any("只允許追加" in f for f in fails), fails
+
+
+def test_17_exempt_file_deleting_literal_dashes_fails():
+    """
+    豁免檔原本含一行 literal `---`，本 commit 把它刪掉。
+    靠 diff 行首判定 append-only 時，這一行會被當成 diff 檔頭而漏掉。
+    刪除行數必須由 git numstat 直接取得。
+    """
+    with tempfile.TemporaryDirectory() as d:
+        _init_repo(d)
+        _write(d, "docs/T.md", "A\nB\nC\n")
+        _write(d, "docs/EXEC-LOG.md", "row1\n---\nrow2\n")
+        base = _commit(d, "c1")
+        _write(d, "docs/T.md", "A\nZ\nC\n")
+        _write(d, "docs/EXEC-LOG.md", "row1\nrow2\n")   # 刪掉 literal ---
+        _write(d, "docs/batches/%s-x.spec.txt" % base,
+               SPEC_TMPL.format(base=base, anchor="B", payload="Z"))
+        _commit(d, "c2")
+        fails, _ = cc.check_17_spec_replay(d)
+        assert any("只允許追加" in f for f in fails), fails
+
+
+def test_17_exempt_file_append_passes():
+    with tempfile.TemporaryDirectory() as d:
+        _init_repo(d)
+        _write(d, "docs/T.md", "A\nB\nC\n")
+        _write(d, "docs/EXEC-LOG.md", "row1\n")
+        base = _commit(d, "c1")
+        _write(d, "docs/T.md", "A\nZ\nC\n")
+        _write(d, "docs/EXEC-LOG.md", "row1\nrow2\n")
+        _write(d, "docs/batches/%s-x.spec.txt" % base,
+               SPEC_TMPL.format(base=base, anchor="B", payload="Z"))
+        _commit(d, "c2")
+        fails, _ = cc.check_17_spec_replay(d)
+        assert fails == [], fails
+--- PAYLOAD ---
+EXEC_LOG_HEADER = (
+    "# 執行者檢查紀錄\n\n"
+    "| 批次 commit | 日期 | 檢查範圍 | 結果 | 攔截紀錄 |\n"
+    "|---|---|---|---|---|\n"
+)
+
+
+def test_17_fingerprint_generated_artifact_replacement_passes():
+    """TEST A: fingerprint snapshot 允許 JSON replacement/deletions，CHECK 17 不得報錯。"""
+    with tempfile.TemporaryDirectory() as d:
+        _init_repo(d)
+        _write(d, "docs/T.md", "A\nB\nC\n")
+        _write(d, "docs/fingerprints/exec-latest.json", '{\n  "lines": 3,\n  "sha256": "old"\n}\n')
+        base = _commit(d, "c1")
+        _write(d, "docs/T.md", "A\nZ\nC\n")
+        # 更新 fingerprint JSON，產生 replacement/deletions 行
+        _write(d, "docs/fingerprints/exec-latest.json", '{\n  "lines": 3,\n  "sha256": "new"\n}\n')
+        _write(d, "docs/batches/%s-x.spec.txt" % base,
+               SPEC_TMPL.format(base=base, anchor="B", payload="Z"))
+        _commit(d, "c2")
+        fails, infos = cc.check_17_spec_replay(d)
+        assert fails == [], fails
+        assert any("fingerprint artifact integrity delegated" in i for i in infos)
+
+
+def test_17_exec_log_legal_transition_passes():
+    """TEST B: EXEC-LOG 合法 transition：parent 最後一列『本批』，child 回填 parent hash 並追加新『本批』。"""
+    with tempfile.TemporaryDirectory() as d:
+        _init_repo(d)
+        _write(d, "docs/T.md", "A\nB\nC\n")
+        _write(d, "docs/EXEC-LOG.md", EXEC_LOG_HEADER +
+               "| BOOTSTRAP | 2026-09-05 | 建立 | 通過 | 無 |\n"
+               "| 本批 | 2026-09-11 | 範圍 | 通過 | 紀錄 |\n")
+        base = _commit(d, "c1")
+        _write(d, "docs/T.md", "A\nZ\nC\n")
+        _write(d, "docs/EXEC-LOG.md", EXEC_LOG_HEADER +
+               "| BOOTSTRAP | 2026-09-05 | 建立 | 通過 | 無 |\n"
+               f"| {base[:7]} | 2026-09-11 | 範圍 | 通過 | 紀錄 |\n"
+               "| 本批 | 2026-09-11 | 新範圍 | 通過 | 無 |\n")
+        _write(d, "docs/batches/%s-x.spec.txt" % base,
+               SPEC_TMPL.format(base=base, anchor="B", payload="Z"))
+        _commit(d, "c2")
+        fails, infos = cc.check_17_spec_replay(d)
+        assert fails == [], fails
+        assert any("docs/EXEC-LOG.md 狀態流轉驗證通過" in i for i in infos)
+
+
+def test_17_exec_log_old_row_edit_fails():
+    """TEST C: EXEC-LOG 任意舊 row 改寫必須 FAIL。"""
+    with tempfile.TemporaryDirectory() as d:
+        _init_repo(d)
+        _write(d, "docs/T.md", "A\nB\nC\n")
+        _write(d, "docs/EXEC-LOG.md", EXEC_LOG_HEADER +
+               "| BOOTSTRAP | 2026-09-05 | 建立 | 通過 | 無 |\n"
+               "| 本批 | 2026-09-11 | 範圍 | 通過 | 紀錄 |\n")
+        base = _commit(d, "c1")
+        _write(d, "docs/T.md", "A\nZ\nC\n")
+        # 修改了 BOOTSTRAP 那一列的內容
+        _write(d, "docs/EXEC-LOG.md", EXEC_LOG_HEADER +
+               "| BOOTSTRAP | 2026-09-05 | 遭竄改 | 通過 | 無 |\n"
+               f"| {base[:7]} | 2026-09-11 | 範圍 | 通過 | 紀錄 |\n"
+               "| 本批 | 2026-09-11 | 新範圍 | 通過 | 無 |\n")
+        _write(d, "docs/batches/%s-x.spec.txt" % base,
+               SPEC_TMPL.format(base=base, anchor="B", payload="Z"))
+        _commit(d, "c2")
+        fails, _ = cc.check_17_spec_replay(d)
+        assert any("歷史資料列遭修改" in f for f in fails), fails
+
+
+def test_17_exec_log_old_row_delete_fails():
+    """TEST D: EXEC-LOG 舊 row 刪除必須 FAIL。"""
+    with tempfile.TemporaryDirectory() as d:
+        _init_repo(d)
+        _write(d, "docs/T.md", "A\nB\nC\n")
+        _write(d, "docs/EXEC-LOG.md", EXEC_LOG_HEADER +
+               "| BOOTSTRAP | 2026-09-05 | 建立 | 通過 | 無 |\n"
+               "| 本批 | 2026-09-11 | 範圍 | 通過 | 紀錄 |\n")
+        base = _commit(d, "c1")
+        _write(d, "docs/T.md", "A\nZ\nC\n")
+        # 刪除了 BOOTSTRAP 列
+        _write(d, "docs/EXEC-LOG.md", EXEC_LOG_HEADER +
+               f"| {base[:7]} | 2026-09-11 | 範圍 | 通過 | 紀錄 |\n"
+               "| 本批 | 2026-09-11 | 新範圍 | 通過 | 無 |\n")
+        _write(d, "docs/batches/%s-x.spec.txt" % base,
+               SPEC_TMPL.format(base=base, anchor="B", payload="Z"))
+        _commit(d, "c2")
+        fails, _ = cc.check_17_spec_replay(d)
+        assert any("既有資料列遭刪除" in f for f in fails), fails
+
+
+def test_17_exec_log_wrong_commit_backfill_fails():
+    """TEST E: 『本批』回填錯誤 commit identity 必須 FAIL。"""
+    with tempfile.TemporaryDirectory() as d:
+        _init_repo(d)
+        _write(d, "docs/T.md", "A\nB\nC\n")
+        _write(d, "docs/EXEC-LOG.md", EXEC_LOG_HEADER +
+               "| BOOTSTRAP | 2026-09-05 | 建立 | 通過 | 無 |\n"
+               "| 本批 | 2026-09-11 | 範圍 | 通過 | 紀錄 |\n")
+        base = _commit(d, "c1")
+        _write(d, "docs/T.md", "A\nZ\nC\n")
+        # 回填錯誤 hash deadbee
+        _write(d, "docs/EXEC-LOG.md", EXEC_LOG_HEADER +
+               "| BOOTSTRAP | 2026-09-05 | 建立 | 通過 | 無 |\n"
+               "| deadbee | 2026-09-11 | 範圍 | 通過 | 紀錄 |\n"
+               "| 本批 | 2026-09-11 | 新範圍 | 通過 | 無 |\n")
+        _write(d, "docs/batches/%s-x.spec.txt" % base,
+               SPEC_TMPL.format(base=base, anchor="B", payload="Z"))
+        _commit(d, "c2")
+        fails, _ = cc.check_17_spec_replay(d)
+        assert any("上一批『本批』回填之 commit identity" in f for f in fails), fails
+
+
+def test_17_exec_log_concrete_hash_append_passes():
+    """TEST F: parent 已是具體 hash 時純 append 必須 PASS。"""
+    with tempfile.TemporaryDirectory() as d:
+        _init_repo(d)
+        _write(d, "docs/T.md", "A\nB\nC\n")
+        _write(d, "docs/EXEC-LOG.md", EXEC_LOG_HEADER +
+               "| BOOTSTRAP | 2026-09-05 | 建立 | 通過 | 無 |\n"
+               "| a1b2c3d | 2026-09-11 | 範圍 | 通過 | 紀錄 |\n")
+        base = _commit(d, "c1")
+        _write(d, "docs/T.md", "A\nZ\nC\n")
+        _write(d, "docs/EXEC-LOG.md", EXEC_LOG_HEADER +
+               "| BOOTSTRAP | 2026-09-05 | 建立 | 通過 | 無 |\n"
+               "| a1b2c3d | 2026-09-11 | 範圍 | 通過 | 紀錄 |\n"
+               "| 本批 | 2026-09-11 | 新範圍 | 通過 | 無 |\n")
+        _write(d, "docs/batches/%s-x.spec.txt" % base,
+               SPEC_TMPL.format(base=base, anchor="B", payload="Z"))
+        _commit(d, "c2")
+        fails, infos = cc.check_17_spec_replay(d)
+        assert fails == [], fails
+        assert any("docs/EXEC-LOG.md 狀態流轉驗證通過" in i for i in infos)
+
+
+def test_17_normal_spec_with_fingerprint_and_exec_log_passes():
+    """TEST G: normal spec + fingerprint update + EXEC-LOG 合法 transition 整合測試。"""
+    with tempfile.TemporaryDirectory() as d:
+        _init_repo(d)
+        _write(d, "docs/T.md", "A\nB\nC\n")
+        _write(d, "docs/fingerprints/exec-latest.json", '{\n  "lines": 3\n}\n')
+        _write(d, "docs/EXEC-LOG.md", EXEC_LOG_HEADER +
+               "| BOOTSTRAP | 2026-09-05 | 建立 | 通過 | 無 |\n"
+               "| 本批 | 2026-09-11 | 範圍 | 通過 | 紀錄 |\n")
+        base = _commit(d, "c1")
+        _write(d, "docs/T.md", "A\nZ\nC\n")
+        _write(d, "docs/fingerprints/exec-latest.json", '{\n  "lines": 4\n}\n')
+        _write(d, "docs/EXEC-LOG.md", EXEC_LOG_HEADER +
+               "| BOOTSTRAP | 2026-09-05 | 建立 | 通過 | 無 |\n"
+               f"| {base[:7]} | 2026-09-11 | 範圍 | 通過 | 紀錄 |\n"
+               "| 本批 | 2026-09-11 | 新範圍 | 通過 | 無 |\n")
+        _write(d, "docs/batches/%s-x.spec.txt" % base,
+               SPEC_TMPL.format(base=base, anchor="B", payload="Z"))
+        _commit(d, "c2")
+        fails, infos = cc.check_17_spec_replay(d)
+        assert fails == [], fails
+        assert any("逐位元相符" in i for i in infos)
+        assert any("fingerprint artifact integrity delegated" in i for i in infos)
+        assert any("docs/EXEC-LOG.md 狀態流轉驗證通過" in i for i in infos)
+--- END MOD ---
+
+=== MOD 4 ===
+file: docs/TASKBOARD.md
+mode: replace
+--- ANCHOR ---
+**最後更新**：2026-09-11，HEAD `0e13c85` 之後
+--- PAYLOAD ---
+**最後更新**：2026-09-11，HEAD `9a09716` 之後（B-92 豁免檔生命週期修復）
+--- END MOD ---
+
+=== MOD 5 ===
+file: docs/TASKBOARD.md
+mode: replace
+--- ANCHOR ---
+| B-92 | 待辦 | **`docs/EXEC-LOG.md` 與 `docs/fingerprints/exec-latest.json` 是 CHECK 17 的兩個豁免檔** | 兩者由執行者或腳本產生，審計官無法預先寫出內容，故不能以 MOD 表達。CHECK 17 對兩者只驗「僅追加、零刪除行」，指紋另由 `fingerprint.py --verify` 守。**這是刻意保留的兩個缺口，不是遺漏**；若未來發現有內容被從豁免檔中改寫而非追加，處置方向為把 EXEC-LOG 改為一行一檔的追加式目錄。**登錄為待觀察，不排批** |
+--- PAYLOAD ---
+| B-92 | 已完成 | **`docs/EXEC-LOG.md` 與 `docs/fingerprints/exec-latest.json` 作為 CHECK 17 豁免檔的生命週期** | 豁免檔生命週期已修正。`docs/EXEC-LOG.md` 不再採 generic zero-deletion，改採 fail-closed semantic transition validation（支援歷史列不變、回填 parent hash、追加當批紀錄）；`docs/fingerprints/exec-latest.json` 作為 generated snapshot 正確性由 `fingerprint.py --verify` 守護；真實 Git repo 正反例測試已建立 |
+--- END MOD ---
+
+=== MOD 6 ===
+file: docs/refactor-backlog.md
+mode: replace
+--- ANCHOR ---
+- 本批（尚未 commit）（2b-5-fix：兩處日文字元 ＋ 一處空行修正
+  ＋ B-89 登錄 ＋ 第 54 點）已執行，**尚待審計官核對**，見 §5.4。
+--- PAYLOAD ---
+- `9a09716`（2b-6：Governance Integrity Consolidation）已於 2026-09-11 由審計官核對通過：
+  CHECK 17 規格重放 ＋ CHECK 18 tag 名實一致 ＋ `docs/batches/` 規格生命週期
+  ＋ `role-boundaries.md` §6 唯一套用路徑 ＋ §6.1-20 命令補目標參數 ＋ §6.1-21
+  規格進 repo ＋ selftest E23 ＋ preflight E23 ＋ §11.5／§11.6 ＋ B-90 至 B-92 登錄
+  ＋ 錯誤分級 M1-M3/S1 ＋ BPE 輸出 sha256 綁定。4 檔異動、零夾帶，
+  獨立驗證四項全過（54 技能、18 項 CHECK、93 測試、`--verify` exit 0），
+  CI Run 34241773099 success。
+- 本批（尚未 commit）（Governance Gate Unblocker / B-92：修正 `docs/EXEC-LOG.md` 與
+  `docs/fingerprints/exec-latest.json` 作為 CHECK 17 豁免檔的生命週期，
+  解除 normal spec-driven batch 的 deadlock）已執行，**尚待審計官核對**，見 §5.4。
+--- END MOD ---
+
+=== MOD 7 ===
+file: docs/refactor-backlog.md
+mode: replace
+--- ANCHOR ---
+- **本批（2b-6 Governance Integrity Consolidation）已執行完成，等待審計官核對。**
+  內容：CHECK 17 規格重放 ＋ CHECK 18 tag 名實一致 ＋ `docs/batches/` 規格生命週期
+  ＋ `role-boundaries.md` §6 唯一套用路徑 ＋ §6.1-20 命令補目標參數 ＋ §6.1-21
+  規格進 repo ＋ selftest E23 ＋ preflight E23 ＋ §11.5／§11.6 ＋ B-90 至 B-92 登錄
+  ＋ `role-boundaries.md` §7 錯誤分級（M1／M2／M3／S1）
+  ＋ BPE 輸出與規格 sha256 綁定。
+  `0e13c85` 的審計結論已寫入 `docs/AUDIT-LOG.md`，
+  本批補打 `audited-0e13c85` 後轉為 PASS_FINAL（見 auditor-protocol §11.5）。
+- **下一批（2b-7）**：B-90（規格 `create_file` mode，移除 BOOTSTRAP 例外）、
+  B-81（BPE `--emit-anchors`）、B-53（CHECK 1-7 抽成函式並補正反例測試）。
+  **這三項是 CHECK 17 生效後僅存的三個機械缺口**，做完即進 E 主線。
+--- PAYLOAD ---
+- **本批（Governance Gate Unblocker / B-92）已執行完成，等待審計官核對。**
+  內容：2b-6 已完成；Mechanical-Truth Migration 因 B-92 deadlock 暫停；
+  本批修正 `scripts/check_consistency.py` 中 CHECK 17 對豁免檔的生命週期驗證：
+  `docs/fingerprints/exec-latest.json` 不再套用 zero-deletion，委派 `fingerprint.py --verify` 驗證；
+  `docs/EXEC-LOG.md` 改採 fail-closed 的 semantic transition validator
+  （支援上一批『本批』合法回填為 parent hash，並追加當批新紀錄；禁止任何刪改舊列）；
+  `scripts/tests/test_check_17_18.py` 新增 7 項真實 Git repo 正反例測試；
+  TASKBOARD B-92 標記為已完成。
+- **下一批**：Mechanical-Truth Migration（以 normal Batch Spec 執行，移除 LLM 手寫衍生數值作為 blocking truth 制度）。
+- **後續順序**：Mechanical-Truth Migration → 2b-7（B-90 規格支援 `create_file` mode，移除 BOOTSTRAP 例外；B-81 BPE `--emit-anchors`；B-53 CHECK 1-7 抽成函式）→ 3（E-01 技能遷移第一梯次 ＋ B-01）→ 4 起後續項目。
+  **治理 Exit blocker 說明**：B-90 仍為治理 Exit blocker；B-91（9 個歷史錯 tag，待授權）不阻擋治理層 exit。
+--- END MOD ---
+
+=== MOD 8 ===
+file: docs/AUDIT-LOG.md
+mode: insert_after
+--- ANCHOR ---
+| 0e13c85 | 2026-09-11 | §4.1-1 | **核對通過**。5 檔異動、零夾帶（未觸碰 `skills/`、`scripts/`）。獨立驗證四項全過：54 技能零錯誤、16 項 CHECK 全 PASS、`pytest scripts/tests/` 76 passed、`fingerprint.py --verify` exit 0；CI badge 實測 `Verify - passing`（GitHub API 已達速率上限，走 `.claude/rules/auditor-protocol.md` 規劃的 badge fallback）。`10f7e31` 的兩處日文字元與一處空行修正內容正確；審計官另以假名＋日文新字體字集全庫獨立重掃，除引號內歷史紀錄外零殘留 | **本輪新發現：`audited-*` tag 的名實不符，17 個中有 9 個。** 成因為 `git tag audited-<hash>` 未帶目標 commit 參數。**B-08「已審核標記機制」標為已完成，但它產出的是名字對、指向錯的標記——假綠燈的第六種形狀：標籤名稱與標籤目標脫鉤。** 且 B-12／CHECK 19 原規劃只讀 tag 名稱，照該規格實作會永遠 PASS。處置：本批新增 CHECK 18（名實比對，附只能縮短的已知待修復清單）＋ §6.1-20 命令補目標參數；歷史修復因涉及覆寫 remote ref，登錄 B-91 待授權。**另：審計官上一輪同時寫出「未核對」與「核對通過」兩種狀態，成因是把「內容核對通過」與「正式審計完成」混為一談，本批於 `.claude/rules/auditor-protocol.md` §11.5 區分兩者** |
+--- PAYLOAD ---
+| 9a09716 | 2026-09-11 | §4.1-1 | **核對通過**。4 檔異動、零夾帶（未觸碰 `skills/`、`scripts/` 等非允許範圍）。獨立驗證四項全過：54 技能零錯誤、18 項 CHECK 全 PASS、`pytest scripts/tests/` 93 passed、`fingerprint.py --verify` exit 0；CI badge 實測 `Verify - passing`（Run 34241773099 success）。CHECK 17 規格重放、CHECK 18 tag 名實比對、規格生命週期規範落地全數驗證通過 | 2b-6 Governance Integrity Consolidation 經宏觀審計官核對通過。本批成功建立規格重放與 tag 守衛防線。本輪實測新發現：在嘗試以 normal spec 執行下一批時，CHECK 17 對 `SPEC_EXEMPT_FILES` 的 zero-deletion 限制導致 `exec-latest.json` 與 `EXEC-LOG.md` 出現 lifecycle 死結，已登錄 B-92 並由下一修正批次（Governance Gate Unblocker）專門處置 |
+--- END MOD ---
+
+=== EXPECT ===
+type: id_sequence
+file: docs/TASKBOARD.md
+pattern: ^\| B-(\d+) \|
+range: 1-92
+--- END EXPECT ---

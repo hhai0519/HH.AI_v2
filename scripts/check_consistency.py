@@ -1058,6 +1058,113 @@ def _head_bootstrap_specs(root_dir):
                   if p.strip().endswith("-BOOTSTRAP.spec.txt")), True
 
 
+def _validate_exec_log_transition(root_dir, parent_oid, head_rev="HEAD"):
+    """
+    驗證 docs/EXEC-LOG.md 的狀態流轉。
+
+    規則：
+    1. parent 中所有較早歷史列完全不變。
+    2. 若 parent 最後一列第一欄為『本批』：
+       - child 將該列第一欄替換為 parent commit 的合法 commit identity（可解析為 parent_oid）。
+       - 該列其餘欄位內容必須完全不變。
+       - child 在尾端追加本批新紀錄，第一欄為『本批』。
+    3. 若 parent 最後一列已是合法 concrete hash 或 BOOTSTRAP：
+       - child 保持所有既有列不變，在尾端追加新的『本批』列。
+    4. 不允許任意舊 row 修改、刪除、reorder。
+    """
+    fails, infos = [], []
+    rc, p_bytes, _ = _git_bytes(root_dir, ["show", f"{parent_oid}:docs/EXEC-LOG.md"])
+    if rc != 0:
+        fails.append("docs/EXEC-LOG.md:0  無法自 parent 取出內容")
+        return fails, infos
+    rc, c_bytes, _ = _git_bytes(root_dir, ["show", f"{head_rev}:docs/EXEC-LOG.md"])
+    if rc != 0:
+        fails.append(f"docs/EXEC-LOG.md:0  無法自 {head_rev} 取出內容")
+        return fails, infos
+
+    try:
+        p_text = p_bytes.decode("utf-8")
+        c_text = c_bytes.decode("utf-8")
+    except UnicodeDecodeError as e:
+        fails.append(f"docs/EXEC-LOG.md:0  內容不是合法 UTF-8: {e}")
+        return fails, infos
+
+    p_lines = p_text.splitlines()
+    c_lines = c_text.splitlines()
+
+    def _is_data_row(line):
+        s = line.strip()
+        if not s.startswith("|"):
+            return False
+        if "批次 commit" in s:
+            return False
+        if re.match(r"^\|(\s*:?-+:?\s*\|)+$", s):
+            return False
+        return True
+
+    def _split_cols(row_str):
+        cols = [c.strip() for c in row_str.split("|")]
+        if len(cols) >= 3 and cols[0] == "" and cols[-1] == "":
+            return cols[1:-1]
+        return [c.strip() for c in cols if c.strip()]
+
+    p_rows = [line.strip() for line in p_lines if _is_data_row(line)]
+    c_rows = [line.strip() for line in c_lines if _is_data_row(line)]
+
+    if not p_rows:
+        fails.append("docs/EXEC-LOG.md:0  parent 中未找到任何表格資料列")
+        return fails, infos
+    if not c_rows:
+        fails.append("docs/EXEC-LOG.md:0  child 中未找到任何表格資料列")
+        return fails, infos
+
+    p_non_data = [line for line in p_lines if not _is_data_row(line)]
+    c_non_data = [line for line in c_lines if not _is_data_row(line)]
+    if p_non_data != c_non_data:
+        fails.append("docs/EXEC-LOG.md:0  表格之外的非資料列內容遭修改")
+
+    p_last_cols = _split_cols(p_rows[-1])
+    if not p_last_cols:
+        fails.append("docs/EXEC-LOG.md:0  parent 最後一列無法解析欄位")
+        return fails, infos
+
+    if len(c_rows) != len(p_rows) + 1:
+        if len(c_rows) <= len(p_rows):
+            fails.append(f"docs/EXEC-LOG.md:0  既有資料列遭刪除或未追加新列（parent {len(p_rows)} 列，child 實測 {len(c_rows)} 列）")
+        else:
+            fails.append(f"docs/EXEC-LOG.md:0  單次 commit 追加過多列（parent {len(p_rows)} 列，child 實測 {len(c_rows)} 列）")
+        return fails, infos
+
+    if p_last_cols[0] == "本批":
+        for i in range(len(p_rows) - 1):
+            if p_rows[i] != c_rows[i]:
+                fails.append(f"docs/EXEC-LOG.md:0  第 {i+1} 筆歷史資料列遭修改")
+        c_replaced_cols = _split_cols(c_rows[len(p_rows) - 1])
+        if len(c_replaced_cols) != len(p_last_cols):
+            fails.append("docs/EXEC-LOG.md:0  回填列欄位數與原列不符")
+        else:
+            c_hash = c_replaced_cols[0]
+            resolved = _resolve_commit(root_dir, c_hash)
+            if resolved is None or resolved != parent_oid:
+                fails.append(f"docs/EXEC-LOG.md:0  上一批『本批』回填之 commit identity ({c_hash}) 無法解析或不等於 parent commit ({parent_oid[:7]})")
+            if c_replaced_cols[1:] != p_last_cols[1:]:
+                fails.append("docs/EXEC-LOG.md:0  回填列除第一欄 commit identity 外之其餘內容遭修改")
+        c_new_cols = _split_cols(c_rows[len(p_rows)])
+        if not c_new_cols or c_new_cols[0] != "本批":
+            fails.append("docs/EXEC-LOG.md:0  最新追加列的第一欄必須為『本批』")
+    else:
+        for i in range(len(p_rows)):
+            if p_rows[i] != c_rows[i]:
+                fails.append(f"docs/EXEC-LOG.md:0  第 {i+1} 筆歷史資料列遭修改")
+        c_new_cols = _split_cols(c_rows[len(p_rows)])
+        if not c_new_cols or c_new_cols[0] != "本批":
+            fails.append("docs/EXEC-LOG.md:0  最新追加列的第一欄必須為『本批』")
+
+    if not fails:
+        infos.append("docs/EXEC-LOG.md 狀態流轉驗證通過（歷史列不變，符合合法生命週期）")
+    return fails, infos
+
+
 def check_17_spec_replay(root_dir=None):
     """
     CHECK 17 — Batch Spec 重放一致性
@@ -1188,16 +1295,24 @@ def check_17_spec_replay(root_dir=None):
     if extra:
         fails.append(f"{spec_path}:0  規格未宣告卻被修改的檔案: {extra}")
 
-    # 豁免檔只允許追加。刪除行數由 git numstat 直接給，
-    # 不自行解析 unified diff 的行首——內容本身就是 `---` 的那一行
-    # 會與 diff 的檔頭標記混淆，靠字首判定一定會漏。
+    # 豁免檔驗證：
+    # docs/fingerprints/exec-latest.json 為 generated snapshot，正確性由 fingerprint.py --verify 專責守護。
+    # docs/EXEC-LOG.md 採專用 semantic transition validator，禁止任意刪改舊列，僅允許合法回填與追加。
     for ex in sorted(SPEC_EXEMPT_FILES & changed):
+        if ex == "docs/fingerprints/exec-latest.json":
+            infos.append(f"{ex}: fingerprint artifact integrity delegated to fingerprint.py --verify")
+            continue
+        if ex == "docs/EXEC-LOG.md":
+            el_fails, el_infos = _validate_exec_log_transition(root_dir, parent_oid, "HEAD")
+            fails.extend(el_fails)
+            infos.extend(el_infos)
+            continue
         rc, out, _ = _git(root_dir, ["diff", "--numstat", parent_oid, "HEAD", "--", ex])
         if rc != 0:
             fails.append(f"{ex}:0  無法取得 numstat，無法證明只有追加")
             continue
         for row in out.splitlines():
-            cols = row.split("\t")
+            cols = row.split("	")
             if len(cols) < 3:
                 continue
             adds, dels = cols[0], cols[1]

@@ -1,5 +1,5 @@
 {
-  "base_head": "0e13c85",
+  "base_head": "9a09716",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 0,
@@ -490,16 +490,16 @@
       "headings": [
         "# 自我審查檢查點紀錄"
       ],
-      "lines": 43,
-      "sha256": "c46fc3361b4ce908dd0b3831eed1250b28b181c31bcc763004ba341da25824d1"
+      "lines": 44,
+      "sha256": "e034236cbdb1ec8f3a782c307335506b4ee4b9d7dfa3caffe7bc9e9f94097d13"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 31,
-      "sha256": "5b965c37cea7da4b34081fe47f8433d4c370dd1adaef053791961e4d6d692ca2"
+      "lines": 32,
+      "sha256": "e5cc09ba599c9557e48845129532f6f8e5e9a06e4aa977b32a4b1bdca5b41f5c"
     },
     "docs/HANDOVER.md": {
       "fences": 14,
@@ -609,7 +609,7 @@
         "## 封存區"
       ],
       "lines": 234,
-      "sha256": "990f7d0c1691bbb616effc2aac1882b974f5f12da7da88495be9c5b99f300369"
+      "sha256": "baf9424fe98642ddc0b9a5bc9144bbf25b1af7ded0a4db29ad4bb8ba9dea5119"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -926,8 +926,8 @@
         "### 5.3 待使用者裁決",
         "### 5.4 進行中／等待回報"
       ],
-      "lines": 2997,
-      "sha256": "5a6ee70acf58e34617d3fb824ddfba9c1f5b7d492d3fa4cd751604fe5e4ac221"
+      "lines": 3005,
+      "sha256": "051495c178d3c6ea4d14ffa8d94e1712189ac346c6011afab7fd17fce0e6c5b9"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -952,8 +952,8 @@
         "# 已知指向錯誤的歷史 tag。本清單只能縮短、不得加長。",
         "# 修復批次完成後必須清空；清單中的 tag 若已修復卻未移除，CHECK 18 會 FAIL。"
       ],
-      "lines": 1327,
-      "sha256": "e024fc47e5955574c1fed6d91ff226f43d8ff3101754a2925a496f54532a8aa4"
+      "lines": 1442,
+      "sha256": "c466d28b0da8bf9931856d20df9d65e13e9ac75201969030698bdf40795285f0"
     },
     "scripts/fingerprint.py": {
       "fences": 0,
@@ -987,8 +987,8 @@
         "# ----------------------------- CHECK 17 -----------------------------",
         "# ----------------------------- CHECK 18 -----------------------------"
       ],
-      "lines": 500,
-      "sha256": "8f351fe44c78bc9a1de1581c5abbb69bc6f8e0d2efdeccb5db1ee9f82149136f"
+      "lines": 609,
+      "sha256": "83d152b81f5bd96cdf90646db2fd78e149c8da030baa96a26f32fbd5f7944030"
     },
     "scripts/tests/test_check_consistency.py": {
       "fences": 0,
@@ -1043,7 +1043,7 @@
       "sha256": "bc653c823579a59b1708f0fd17c01ed52b934252502ec2dcdfdb25d3e3e82da5"
     }
   },
-  "generated_at": "2026-09-11T05:37:01Z",
+  "generated_at": "2026-09-11T07:56:57Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {
