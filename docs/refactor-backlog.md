@@ -2825,7 +2825,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 5.1 上一批狀態
 
-上次核對通過的 HEAD：d4461d6
+上次核對通過的 HEAD：4bf8611
 
 - `23af193`（執行者前置檢查 ＋ 回滾程序 ＋ `AUDIT-LOG.md` ＋ 四缺口修正）
   已於 2026-09-02 由審計官核對通過：6 檔異動（含 2 個新檔）、零夾帶、
@@ -2970,7 +2970,8 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 - `9553994`（Final Governance Exit — Convergence Patch：確立 GOAL_SPEC 檔案自主性、preflight/selftest 模式感知徹底解耦、M3 自主修復閉環、B-36 回報通道轉移、SOP_14 治理減法）已於 2026-09-11 執行完成：17 檔異動、零夾帶，獨立驗證五項全過，CI Run 34606818571 (Run #30) success，**尚待審計官核對**，見 §5.4。
 - `dc806e1`（Final Governance Exit — Reporting Contract Micro-Cleanup：消除 git-and-reporting.md 舊有口頭報告/行號/diff 規定與 B-36 之衝突，將舊規則退役為歷史留痕，對齊 SOP_14 階段審計文字）已於 2026-09-11 由審計官核對通過：8 檔異動、零夾帶，獨立驗證五項全過，CI Run 34608625314 (Run #31) success。
 - `d4461d6`（Final Governance Exit — Auditor Contract & Audit-State SSOT Convergence：移除 auditor-protocol/selftest/preflight 舊有貼輸出/diff 要求；退役 mandatory audited tag 建立並確立 AUDIT-LOG、refactor-backlog §5.1 與 Actions 為 SSOT；B-12/B-91 轉可封存）已於 2026-09-11 由審計官核對通過：13 檔異動、零夾帶，獨立驗證五項全過，CI Run 34610027229 (Run #32) success。
-- `1054cfc`（Fresh Claude Bootstrap Hardening：修復 cold-start 環境引導缺陷，落實 A4 targeted extraction、TASKBOARD next-work authority、AUDIT-LOG/§5.1 SSOT 與 E1→E2 state bridge 規則）已於 2026-09-12 執行完成：8 檔異動、零夾帶，獨立驗證五項全過，CI Run 34620190512 success。經宏觀審計官獨立審查，Machine PASS，但發現 3 項契約不一致（A1/§9.4 raw output 要求、refactor-backlog mutability 描述衝突、§5.4「尚未 commit」即刻失真），判定 NEEDS MICRO-FIX，由本批修復中（尚未核對通過）。
+- `1054cfc`（Fresh Claude Bootstrap Hardening：修復 cold-start 環境引導缺陷，落實 A4 targeted extraction、TASKBOARD next-work authority、AUDIT-LOG/§5.1 SSOT 與 E1→E2 state bridge 規則）已於 2026-09-12 執行完成：8 檔異動、零夾帶，獨立驗證五項全過，CI Run 34620190512 success。經宏觀審計官獨立審查，Machine PASS，但發現 3 項契約不一致（A1/§9.4 raw output 要求、refactor-backlog mutability 描述衝突、§5.4「尚未 commit」即刻失真），判定 NEEDS MICRO-FIX，後續由 4bf8611 修復完成。
+- `4bf8611`（Fresh Claude Bootstrap — Final Contract Consistency Micro-Fix：修正 1054cfc 留下的三項契約不一致，落實 compact full-clone attestation、refactor-backlog mutability 邊界與 §5.4 machine-derived pending-audit contract）已於 2026-09-12 由宏觀審計官獨立核對通過：8 檔異動、零夾帶，獨立驗證五項全過，CI Run 34622753906 success（Architecture Health = GREEN, Bootstrap Governance = CLOSED）。
 
 ### 5.2 待辦
 
