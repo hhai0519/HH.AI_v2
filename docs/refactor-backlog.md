@@ -2970,6 +2970,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 - `9553994`（Final Governance Exit — Convergence Patch：確立 GOAL_SPEC 檔案自主性、preflight/selftest 模式感知徹底解耦、M3 自主修復閉環、B-36 回報通道轉移、SOP_14 治理減法）已於 2026-09-11 執行完成：17 檔異動、零夾帶，獨立驗證五項全過，CI Run 34606818571 (Run #30) success，**尚待審計官核對**，見 §5.4。
 - `dc806e1`（Final Governance Exit — Reporting Contract Micro-Cleanup：消除 git-and-reporting.md 舊有口頭報告/行號/diff 規定與 B-36 之衝突，將舊規則退役為歷史留痕，對齊 SOP_14 階段審計文字）已於 2026-09-11 由審計官核對通過：8 檔異動、零夾帶，獨立驗證五項全過，CI Run 34608625314 (Run #31) success。
 - `d4461d6`（Final Governance Exit — Auditor Contract & Audit-State SSOT Convergence：移除 auditor-protocol/selftest/preflight 舊有貼輸出/diff 要求；退役 mandatory audited tag 建立並確立 AUDIT-LOG、refactor-backlog §5.1 與 Actions 為 SSOT；B-12/B-91 轉可封存）已於 2026-09-11 由審計官核對通過：13 檔異動、零夾帶，獨立驗證五項全過，CI Run 34610027229 (Run #32) success。
+- `1054cfc`（Fresh Claude Bootstrap Hardening：修復 cold-start 環境引導缺陷，落實 A4 targeted extraction、TASKBOARD next-work authority、AUDIT-LOG/§5.1 SSOT 與 E1→E2 state bridge 規則）已於 2026-09-12 執行完成：8 檔異動、零夾帶，獨立驗證五項全過，CI Run 34620190512 success。經宏觀審計官獨立審查，Machine PASS，但發現 3 項契約不一致（A1/§9.4 raw output 要求、refactor-backlog mutability 描述衝突、§5.4「尚未 commit」即刻失真），判定 NEEDS MICRO-FIX，由本批修復中（尚未核對通過）。
 
 ### 5.2 待辦
 
@@ -2989,13 +2990,15 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 5.4 進行中／等待回報
 
-> **本節只保留現行狀態。** 每次更新時，被取代的條目一律移除，
-> 不得只在前面追加——本節曾因此單調成長十輪、累積 18 個項目符號，
-> 其中十條過期或互相矛盾（兩條都宣稱自己是「批 2b-5」、
-> 兩份內容不同的「後續」順序）。清理紀錄與成因見第 53 點。
-> **歷史敘述屬留痕層，落點是編號點，不是本節。**
+> **本節為反映當前事實之可變狀態投影（mutable interface），只保留現行狀態。**
+> 每次更新時，被取代的陳舊條目（stale state）一律替換或移除，不得把過期狀態堆在 §5 作為「歷史」。
+> 歷史理由與事實屬於留痕層（append-only），落點為正文編號項目，不是本節。
 
-- **尚待審計批次**：目前無（base `d4461d6` 經宏觀審計官裁決核對通過，無未核對批次；本批 Bootstrap Hardening 執行中尚未 commit）。
+- **尚待審計判準（Pending-Audit Contract）**：待審計範圍必須在讀取時以確定性指令即時導出（machine-derived），不在本檔持久化當前 HEAD、commit range、候選 hash 或 commit/push 等易失真狀態。
+  - actual HEAD = `git rev-parse HEAD`
+  - checkpoint = §5.1 第一行記載之「上次核對通過的 HEAD（last audited checkpoint）」
+  - 若 `HEAD == checkpoint` → 無尚待宏觀審計之 commit（no pending macro-audit commit）
+  - 若 `HEAD != checkpoint` → `checkpoint..HEAD` 即為尚待宏觀審計之 commit range
 - **待使用者裁決事項**：目前無。C-04 已裁決採用方向（runtime/ + shared/ + skills/），已裁決事項見 §5.3 與 `docs/TASKBOARD.md` C 節，不要重複提問。
 - **下一步／剩餘工作權威**：以 `docs/TASKBOARD.md` 為唯一 remaining-work / next-work authority，交接區不保留待辦清單副本或執行佇列。
 

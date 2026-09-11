@@ -1,5 +1,5 @@
 {
-  "base_head": "d4461d6",
+  "base_head": "1054cfc",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 0,
@@ -151,8 +151,8 @@
         "### 11.5 審計狀態之單一事實來源（Audit State SSOT）",
         "### 11.6 [已退役／不需執行] 歷史 `audited-*` tag 之留痕保存（RETIRED / NOT REQUIRED）"
       ],
-      "lines": 883,
-      "sha256": "538e72ceff0da3a2fc4ba6e67421dbc946e0df9f2c5896ad2fe1e8e981f08d3d"
+      "lines": 882,
+      "sha256": "4762a03d5b5938b14da52da941a64897b3e13049e6c71e6074d613c1abf443ce"
     },
     ".claude/rules/handover-selftest.md": {
       "fences": 0,
@@ -166,7 +166,7 @@
         "## F. 額度（每一輪回覆的開頭與結尾）"
       ],
       "lines": 101,
-      "sha256": "7f2879b658e4d926655663e508625768815a703fc8b863b92af946c296975691"
+      "sha256": "61eec85d2c7bff07c4d0ca3db19ffb5e342e56f5696e94eba43f2f2e95c56e35"
     },
     ".github/workflows/verify.yml": {
       "fences": 0,
@@ -511,16 +511,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 74,
-      "sha256": "10a9bded96adb62ae1f731b6b8633ab3d7f7110e7147a2c8fdbd47ac1ee1ce12"
+      "lines": 75,
+      "sha256": "eb697c7521fe8a33e5ae4c2608fe000756b4c93db170e09daf271e235c8714ad"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 45,
-      "sha256": "aefcf92bfb7aac8b4c6aa707b09cd4780ce8f9f29539ef1b492189a981d01f4f"
+      "lines": 46,
+      "sha256": "60edfdde6286ba67e0c235c565a41b23cb4a5d8d417ed0b35131acd6a003bb7d"
     },
     "docs/HANDOVER.md": {
       "fences": 14,
@@ -630,7 +630,7 @@
         "## 封存區"
       ],
       "lines": 234,
-      "sha256": "9f95fb29d6c5ea5a000dd7a0455add5550ffb0636373c3010136516f5e4c1b4a"
+      "sha256": "32434bdd028d7dedf24887f02ada46f2ad03a615aafa9858cda74bd18ce8ef3e"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -958,8 +958,8 @@
         "### 5.3 待使用者裁決",
         "### 5.4 進行中／等待回報"
       ],
-      "lines": 3034,
-      "sha256": "264b6876b725642cc50939fcf67793cb86e03867f0e99d5117e4f07fdef9fe71"
+      "lines": 3037,
+      "sha256": "d9b662dc5dcd7b7824b42f03e2f0de4e467e37859a0cbbf41997a1ee480604c7"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1099,7 +1099,7 @@
       "sha256": "77163678353cb7a444f90f17956d03312f715cfcccf933603948715939ecdc10"
     }
   },
-  "generated_at": "2026-09-11T16:03:01Z",
+  "generated_at": "2026-09-11T16:26:27Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

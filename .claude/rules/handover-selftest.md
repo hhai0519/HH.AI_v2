@@ -12,8 +12,8 @@
 
 ## A. 載入（做完開場動作後立刻自答）
 
-- [ ] A1 我**實際執行過** clone，而不是宣稱已載入？
-      回覆中應有 clone 指令的實際輸出。
+- [ ] A1 我**實際執行過完整 clone**（非宣稱載入），且經確定性指令 `git rev-parse --is-shallow-repository` 驗證輸出為 `false`？
+      第一則回覆中提供精簡機器宣告（如 `FULL_CLONE OK`），不得要求貼出 clone raw output、讀檔全文或終端逐字輸出。
 - [ ] A2 我讀到 `PRINCIPLES.md` 了嗎？§0 的角色分工是什麼？
 - [ ] A3 我讀到 `.claude/rules/auditor-protocol.md` 了嗎？
 - [ ] A4 使用確定性指令（如 `python -c`）進行有界定向抽取（targeted bounded extraction）：
