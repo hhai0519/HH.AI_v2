@@ -1,0 +1,889 @@
+# 批次規格 — B-90 create_file support + BOOTSTRAP exception removal
+#
+# batch_id     : 4c6aee4-create-file
+# batch_mode   : GOAL_SPEC
+# base_commit  : 4c6aee4
+#
+# 本批目的：Batch Spec 與 canonical apply 原生支援 create_file mode；
+# BPE 與 CHECK 17 支援新檔建立、模擬與逐位元重放；全面移除 BOOTSTRAP bypass 與全庫限制。
+#
+# 允許修改的檔案：
+#   scripts/build_prompt_evidence.py
+#   scripts/check_consistency.py
+#   scripts/tests/test_check_17_18.py
+#   scripts/tests/test_spec_create_file.py
+#   docs/batches/README.md
+#   docs/TASKBOARD.md
+#   docs/refactor-backlog.md
+#   docs/AUDIT-LOG.md
+#
+# 豁免檔：
+#   docs/EXEC-LOG.md
+#   docs/fingerprints/exec-latest.json
+
+HEAD: 4c6aee4
+
+=== MOD 1 ===
+file: scripts/build_prompt_evidence.py
+mode: replace
+--- ANCHOR ---
+    valid_modes = {"insert_after", "insert_before", "replace"}
+--- PAYLOAD ---
+    valid_modes = {"insert_after", "insert_before", "replace", "create_file"}
+--- END MOD ---
+
+=== MOD 2 ===
+file: scripts/build_prompt_evidence.py
+mode: replace
+--- ANCHOR ---
+            if raw_line == "--- ANCHOR ---":
+                if not current_mod["file"]:
+                    raise SpecParseError("MOD 缺少 file 欄位", idx)
+                if not current_mod["mode"]:
+                    raise SpecParseError("MOD 缺少 mode 欄位", idx)
+                anchor_lines = []
+                state = "IN_ANCHOR"
+                continue
+            raise SpecParseError(f"MOD 標頭區語法錯誤: {stripped}", idx)
+
+        elif state == "IN_ANCHOR":
+            if raw_line == "--- PAYLOAD ---":
+                current_mod["anchor"] = "\n".join(anchor_lines)
+                payload_lines = []
+                state = "IN_PAYLOAD"
+                continue
+            if raw_line == "--- END MOD ---":
+                raise SpecParseError("MOD 缺少 PAYLOAD 區塊", idx)
+            anchor_lines.append(raw_line)
+
+        elif state == "IN_PAYLOAD":
+            if raw_line == "--- END MOD ---":
+                current_mod["payload"] = "\n".join(payload_lines)
+                if current_mod["anchor"] is None or not current_mod["anchor"]:
+                    raise SpecParseError("MOD 的 ANCHOR 不得為空", current_mod["line"])
+                mods.append(current_mod)
+                current_mod = None
+                state = "TOP"
+                continue
+            payload_lines.append(raw_line)
+--- PAYLOAD ---
+            if raw_line == "--- ANCHOR ---":
+                if not current_mod["file"]:
+                    raise SpecParseError("MOD 缺少 file 欄位", idx)
+                if not current_mod["mode"]:
+                    raise SpecParseError("MOD 缺少 mode 欄位", idx)
+                anchor_lines = []
+                state = "IN_ANCHOR"
+                continue
+            if raw_line == "--- PAYLOAD ---":
+                if not current_mod["file"]:
+                    raise SpecParseError("MOD 缺少 file 欄位", idx)
+                if not current_mod["mode"]:
+                    raise SpecParseError("MOD 缺少 mode 欄位", idx)
+                if current_mod["mode"] == "create_file":
+                    current_mod["anchor"] = ""
+                    payload_lines = []
+                    state = "IN_PAYLOAD"
+                    continue
+                raise SpecParseError("MOD 缺少 ANCHOR 區塊", idx)
+            raise SpecParseError(f"MOD 標頭區語法錯誤: {stripped}", idx)
+
+        elif state == "IN_ANCHOR":
+            if raw_line == "--- PAYLOAD ---":
+                current_mod["anchor"] = "\n".join(anchor_lines)
+                if current_mod["mode"] == "create_file" and current_mod["anchor"].strip() != "":
+                    raise SpecParseError("create_file 的 ANCHOR 必須為空", current_mod["line"])
+                payload_lines = []
+                state = "IN_PAYLOAD"
+                continue
+            if raw_line == "--- END MOD ---":
+                raise SpecParseError("MOD 缺少 PAYLOAD 區塊", idx)
+            anchor_lines.append(raw_line)
+
+        elif state == "IN_PAYLOAD":
+            if raw_line == "--- END MOD ---":
+                current_mod["payload"] = "\n".join(payload_lines)
+                if current_mod["mode"] != "create_file":
+                    if current_mod["anchor"] is None or not current_mod["anchor"]:
+                        raise SpecParseError("MOD 的 ANCHOR 不得為空", current_mod["line"])
+                else:
+                    if current_mod["anchor"] is None:
+                        current_mod["anchor"] = ""
+                for m in mods:
+                    if m["file"] == current_mod["file"]:
+                        if current_mod["mode"] == "create_file" or m["mode"] == "create_file":
+                            raise SpecParseError(f"同一檔案 {current_mod['file']} 不得重複 create_file 或混用不同模式", idx)
+                mods.append(current_mod)
+                current_mod = None
+                state = "TOP"
+                continue
+            payload_lines.append(raw_line)
+--- END MOD ---
+
+=== MOD 3 ===
+file: scripts/build_prompt_evidence.py
+mode: replace
+--- ANCHOR ---
+    results = []
+    for mod in mods:
+        fpath = os.path.join(repo_root, mod["file"])
+        if not os.path.isfile(fpath):
+            print(f"[錨點] MOD {mod['id']}  {mod['file']}:0  count=0")
+            print(f"[錯誤] 目標檔案不存在: {mod['file']}")
+            return False, results
+--- PAYLOAD ---
+    results = []
+    for mod in mods:
+        fpath = os.path.join(repo_root, mod["file"])
+        if mod["mode"] == "create_file":
+            if os.path.exists(fpath):
+                print(f"[錨點] MOD {mod['id']}  {mod['file']}:0  count=0")
+                print(f"[錯誤] create_file 目標檔案在基準中已存在: {mod['file']}")
+                return False, results
+            results.append((mod, 0))
+            continue
+
+        if not os.path.isfile(fpath):
+            print(f"[錨點] MOD {mod['id']}  {mod['file']}:0  count=0")
+            print(f"[錯誤] 目標檔案不存在: {mod['file']}")
+            return False, results
+--- END MOD ---
+
+=== MOD 4 ===
+file: scripts/build_prompt_evidence.py
+mode: replace
+--- ANCHOR ---
+    for mod, line_no in anchor_results:
+        lines.append(f"[錨點] MOD {mod['id']}  {mod['file']}:{line_no}  count=1")
+--- PAYLOAD ---
+    for mod, line_no in anchor_results:
+        if mod["mode"] == "create_file":
+            lines.append(f"[錨點] MOD {mod['id']}  {mod['file']}:new  count=1 (create_file)")
+        else:
+            lines.append(f"[錨點] MOD {mod['id']}  {mod['file']}:{line_no}  count=1")
+--- END MOD ---
+
+=== MOD 5 ===
+file: scripts/build_prompt_evidence.py
+mode: replace
+--- ANCHOR ---
+def apply_mod_to_text(content, mod):
+    """
+    將單一 MOD 套用至檔案內容字串。
+    """
+    mode = mod["mode"]
+    anchor = mod["anchor"]
+    payload = mod["payload"]
+
+    if content.count(anchor) != 1:
+        raise ValueError(f"套用 MOD {mod['id']} 時錨點 count != 1")
+--- PAYLOAD ---
+def apply_mod_to_text(content, mod):
+    """
+    將單一 MOD 套用至檔案內容字串。
+    """
+    mode = mod["mode"]
+    payload = mod["payload"]
+
+    if mode == "create_file":
+        if content is not None:
+            raise ValueError(f"create_file 目標檔案在 base 已存在: {mod['file']}")
+        return payload
+
+    if content is None:
+        raise ValueError(f"目標檔案不存在: {mod['file']}")
+
+    anchor = mod["anchor"]
+    if content.count(anchor) != 1:
+        raise ValueError(f"套用 MOD {mod['id']} 時錨點 count != 1")
+--- END MOD ---
+
+=== MOD 6 ===
+file: scripts/build_prompt_evidence.py
+mode: replace
+--- ANCHOR ---
+        # 套用 MODs
+        for mod in mods:
+            fpath = os.path.join(temp_dir, mod["file"])
+            with io.open(fpath, "r", encoding="utf-8") as f:
+                content = f.read()
+            new_content = apply_mod_to_text(content, mod)
+            with io.open(fpath, "w", encoding="utf-8", newline="\n") as f:
+                f.write(new_content)
+--- PAYLOAD ---
+        # 套用 MODs
+        for mod in mods:
+            fpath = os.path.join(temp_dir, mod["file"])
+            if mod["mode"] == "create_file":
+                if os.path.exists(fpath):
+                    raise ValueError(f"create_file 目標檔案在 base 已存在: {mod['file']}")
+                pdir = os.path.dirname(fpath)
+                if pdir:
+                    os.makedirs(pdir, exist_ok=True)
+                new_content = apply_mod_to_text(None, mod)
+            else:
+                if not os.path.isfile(fpath):
+                    raise ValueError(f"目標檔案不存在: {mod['file']}")
+                with io.open(fpath, "r", encoding="utf-8") as f:
+                    content = f.read()
+                new_content = apply_mod_to_text(content, mod)
+            with io.open(fpath, "w", encoding="utf-8", newline="\n") as f:
+                f.write(new_content)
+--- END MOD ---
+
+=== MOD 7 ===
+file: scripts/check_consistency.py
+mode: replace
+--- ANCHOR ---
+    以下情形依設計跳過重放，這些是合法 skip，不是漏洞：
+      - 本 commit 未異動任何規格（一般維護 commit）
+      - 非單一 parent（root commit、merge commit）
+      - 本 commit 的唯一一份規格是 BOOTSTRAP 規格
+
+    BOOTSTRAP 是目前針對 spec-driven 單一 parent 批次的暫時 replay 例外，
+    存在理由是規格格式還無法表達新建檔案；由 docs/TASKBOARD.md B-90 移除。
+--- PAYLOAD ---
+    以下情形依設計跳過重放，這些是合法 skip，不是漏洞：
+      - 本 commit 未異動任何規格（一般維護 commit）
+      - 非單一 parent（root commit、merge commit）
+
+    規格格式原生支援 create_file mode，能以宣告式表達建立新檔並執行逐位元重放；
+    BOOTSTRAP 特殊跳過語意已於 B-90 全面移除。
+--- END MOD ---
+
+=== MOD 8 ===
+file: scripts/check_consistency.py
+mode: replace
+--- ANCHOR ---
+    # ---- repository invariant：先於任何 early-return，且讀 HEAD tree ----
+    all_boots, ok = _head_bootstrap_specs(root_dir)
+    if not ok:
+        infos.append("無法讀取 HEAD tree，略過 BOOTSTRAP 數量檢查")
+    elif len(all_boots) > 1:
+        fails.append(f"{SPEC_DIR}:0  HEAD tree 中的 BOOTSTRAP 規格不得超過一份，"
+                     f"實測 {len(all_boots)} 份: {all_boots}")
+
+    rc, out, _ = _git(root_dir, ["rev-list", "--parents", "-n", "1", "HEAD"])
+--- PAYLOAD ---
+    rc, out, _ = _git(root_dir, ["rev-list", "--parents", "-n", "1", "HEAD"])
+--- END MOD ---
+
+=== MOD 9 ===
+file: scripts/check_consistency.py
+mode: replace
+--- ANCHOR ---
+    spec_path = specs[0]
+    if spec_path.endswith("-BOOTSTRAP.spec.txt"):
+        infos.append(f"本 commit 的規格為 BOOTSTRAP 例外 {spec_path}，跳過重放。"
+                     f"該批不在本檢查的強制範圍內，見 docs/batches/README.md 第六節")
+        return fails, infos
+
+    rc, spec_bytes, _ = _git_bytes(root_dir, ["show", f"HEAD:{spec_path}"])
+--- PAYLOAD ---
+    spec_path = specs[0]
+    rc, spec_bytes, _ = _git_bytes(root_dir, ["show", f"HEAD:{spec_path}"])
+--- END MOD ---
+
+=== MOD 10 ===
+file: scripts/check_consistency.py
+mode: replace
+--- ANCHOR ---
+    for path, mlist in sorted(by_file.items()):
+        rc, base_bytes, _ = _git_bytes(root_dir, ["show", f"{parent_oid}:{path}"])
+        if rc != 0:
+            fails.append(f"{path}:0  無法從 base 取出原始內容（新檔無法以 MOD 表達）")
+            continue
+        try:
+            text = base_bytes.decode("utf-8")
+        except UnicodeDecodeError as e:
+            fails.append(f"{path}:0  base 內容不是合法 UTF-8: {e}")
+            continue
+        try:
+            for mod in mlist:
+                text = apply_mod_to_text(text, mod)
+        except Exception as e:
+            fails.append(f"{path}:0  重放失敗: {e}")
+            continue
+        expected = text.encode("utf-8")
+
+        rc, actual, _ = _git_bytes(root_dir, ["show", f"HEAD:{path}"])
+        if rc != 0:
+            fails.append(f"{path}:0  本 commit 中不存在")
+            continue
+        if expected != actual:
+            pos = next((i for i in range(min(len(expected), len(actual)))
+                        if expected[i] != actual[i]), min(len(expected), len(actual)))
+            line = expected[:pos].count(b"\n") + 1
+            fails.append(
+                f"{path}:{line}  重放結果與實際 commit 的位元組不一致"
+                f"（首個相異 offset={pos}，"
+                f"expected={expected[pos:pos + 12]!r} actual={actual[pos:pos + 12]!r}，"
+                f"長度 expected={len(expected)} actual={len(actual)}）")
+        else:
+            infos.append(f"{path} 重放逐位元相符")
+--- PAYLOAD ---
+    for path, mlist in sorted(by_file.items()):
+        is_create = (mlist[0]["mode"] == "create_file")
+        if is_create:
+            if len(mlist) > 1:
+                fails.append(f"{path}:0  create_file 不得與其他 MOD 混用")
+                continue
+            rc, base_bytes, _ = _git_bytes(root_dir, ["show", f"{parent_oid}:{path}"])
+            if rc == 0:
+                fails.append(f"{path}:0  create_file 目標檔案在 parent commit 已存在")
+                continue
+            try:
+                text = apply_mod_to_text(None, mlist[0])
+            except Exception as e:
+                fails.append(f"{path}:0  重放失敗: {e}")
+                continue
+        else:
+            rc, base_bytes, _ = _git_bytes(root_dir, ["show", f"{parent_oid}:{path}"])
+            if rc != 0:
+                fails.append(f"{path}:0  無法從 base 取出原始內容（新檔無法以 MOD 表達）")
+                continue
+            try:
+                text = base_bytes.decode("utf-8")
+            except UnicodeDecodeError as e:
+                fails.append(f"{path}:0  base 內容不是合法 UTF-8: {e}")
+                continue
+            try:
+                for mod in mlist:
+                    text = apply_mod_to_text(text, mod)
+            except Exception as e:
+                fails.append(f"{path}:0  重放失敗: {e}")
+                continue
+
+        expected = text.encode("utf-8")
+
+        rc, actual, _ = _git_bytes(root_dir, ["show", f"HEAD:{path}"])
+        if rc != 0:
+            fails.append(f"{path}:0  本 commit 中不存在")
+            continue
+        if expected != actual:
+            pos = next((i for i in range(min(len(expected), len(actual)))
+                        if expected[i] != actual[i]), min(len(expected), len(actual)))
+            line = expected[:pos].count(b"\n") + 1
+            fails.append(
+                f"{path}:{line}  重放結果與實際 commit 的位元組不一致"
+                f"（首個相異 offset={pos}，"
+                f"expected={expected[pos:pos + 12]!r} actual={actual[pos:pos + 12]!r}，"
+                f"長度 expected={len(expected)} actual={len(actual)}）")
+        else:
+            infos.append(f"{path} 重放逐位元相符")
+--- END MOD ---
+
+=== MOD 11 ===
+file: scripts/tests/test_check_17_18.py
+mode: replace
+--- ANCHOR ---
+def test_17_repo_wide_bootstrap_limit_survives_root_commit_early_return():
+    """
+    全庫 BOOTSTRAP 上限是 repository invariant，不得被 parent 數的
+    early-return 跳過。root commit 沒有 parent，會在重放前就 return，
+    但 invariant 仍必須已經被驗過。
+    """
+    with tempfile.TemporaryDirectory() as d:
+        _init_repo(d)
+        _write(d, "docs/T.md", "A\n")
+        _write(d, "docs/batches/aaaaaaa-one-BOOTSTRAP.spec.txt",
+               SPEC_TMPL.format(base="aaaaaaa", anchor="A", payload="A"))
+        _write(d, "docs/batches/bbbbbbb-two-BOOTSTRAP.spec.txt",
+               SPEC_TMPL.format(base="bbbbbbb", anchor="A", payload="A"))
+        _commit(d, "root")           # 唯一的 commit，沒有 parent
+        fails, infos = cc.check_17_spec_replay(d)
+        assert any("BOOTSTRAP 規格不得超過一份" in f for f in fails), (fails, infos)
+        assert any("非單一 parent" in i for i in infos), (fails, infos)
+
+
+def test_17_bootstrap_spec_is_skipped():
+    with tempfile.TemporaryDirectory() as d:
+        _init_repo(d)
+        _write(d, "docs/T.md", "A\n")
+        base = _commit(d, "c1")
+        _write(d, "docs/T.md", "A\nNEW\n")
+        _write(d, "docs/batches/%s-x-BOOTSTRAP.spec.txt" % base,
+               SPEC_TMPL.format(base=base, anchor="A", payload="A"))
+        _commit(d, "c2")
+        fails, infos = cc.check_17_spec_replay(d)
+        assert fails == []
+        assert any("BOOTSTRAP" in i for i in infos)
+
+
+def test_17_two_bootstrap_specs_fail():
+    with tempfile.TemporaryDirectory() as d:
+        _init_repo(d)
+        _write(d, "docs/T.md", "A\n")
+        base = _commit(d, "c1")
+        _write(d, "docs/batches/aaaaaaa-one-BOOTSTRAP.spec.txt",
+               SPEC_TMPL.format(base=base, anchor="A", payload="A"))
+        _write(d, "docs/batches/%s-two-BOOTSTRAP.spec.txt" % base,
+               SPEC_TMPL.format(base=base, anchor="A", payload="A"))
+        _commit(d, "c2")
+        fails, _ = cc.check_17_spec_replay(d)
+        assert any("BOOTSTRAP 規格不得超過一份" in f for f in fails), fails
+
+
+def test_17_mixed_bootstrap_and_normal_spec_fails():
+    """
+    第三種混合情形：同一 commit 同時新增一份 BOOTSTRAP 規格與一份普通規格。
+    若「多份規格必 FAIL」寫在 BOOTSTRAP early-return 之後，
+    這個 commit 會從 BOOTSTRAP 分支提前 return，
+    那份普通規格完全不被重放——等於一條繞過 CHECK 17 的路徑。
+    """
+    with tempfile.TemporaryDirectory() as d:
+        _init_repo(d)
+        _write(d, "docs/T.md", "A\nB\nC\n")
+        base = _commit(d, "c1")
+        _write(d, "docs/T.md", "A\nSMUGGLED\nC\n")   # 與普通規格宣告的不同
+        _write(d, "docs/batches/%s-boot-BOOTSTRAP.spec.txt" % base,
+               SPEC_TMPL.format(base=base, anchor="B", payload="Z"))
+        _write(d, "docs/batches/%s-normal.spec.txt" % base,
+               SPEC_TMPL.format(base=base, anchor="B", payload="Z"))
+        _commit(d, "c2")
+        fails, infos = cc.check_17_spec_replay(d)
+        assert any("只允許一份規格" in f for f in fails), (fails, infos)
+        assert not any("跳過重放" in i for i in infos), (fails, infos)
+
+
+def test_17_repo_wide_bootstrap_limit_enforced_on_plain_commit():
+    """全庫 BOOTSTRAP 上限與本 commit 是否含規格無關，一律要驗。"""
+    with tempfile.TemporaryDirectory() as d:
+        _init_repo(d)
+        _write(d, "docs/T.md", "A\n")
+        base = _commit(d, "c1")
+        _write(d, "docs/batches/aaaaaaa-one-BOOTSTRAP.spec.txt",
+               SPEC_TMPL.format(base=base, anchor="A", payload="A"))
+        _write(d, "docs/batches/bbbbbbb-two-BOOTSTRAP.spec.txt",
+               SPEC_TMPL.format(base=base, anchor="A", payload="A"))
+        _commit(d, "c2")
+        _write(d, "docs/T.md", "A\nB\n")   # 這一個 commit 不含任何規格
+        _commit(d, "c3")
+        fails, _ = cc.check_17_spec_replay(d)
+        assert any("BOOTSTRAP 規格不得超過一份" in f for f in fails), fails
+
+
+def test_17_bootstrap_limit_reads_head_tree_not_index():
+    """
+    HEAD tree 有兩份 BOOTSTRAP，index 暫存刪掉其中一份。
+    invariant 驗的是 committed HEAD，不得因 index 的暫存刪除而放行。
+    """
+    with tempfile.TemporaryDirectory() as d:
+        _init_repo(d)
+        _write(d, "docs/T.md", "A\n")
+        base = _commit(d, "c1")
+        _write(d, "docs/batches/aaaaaaa-one-BOOTSTRAP.spec.txt",
+               SPEC_TMPL.format(base=base, anchor="A", payload="A"))
+        _write(d, "docs/batches/bbbbbbb-two-BOOTSTRAP.spec.txt",
+               SPEC_TMPL.format(base=base, anchor="A", payload="A"))
+        _commit(d, "c2")
+        # index 暫存刪除其中一份，但不 commit
+        _run(d, "git", "rm", "-q", "--cached",
+             "docs/batches/bbbbbbb-two-BOOTSTRAP.spec.txt")
+        fails, _ = cc.check_17_spec_replay(d)
+        assert any("BOOTSTRAP 規格不得超過一份" in f for f in fails), fails
+--- PAYLOAD ---
+def _make_create_spec(base, file, payload):
+    return (
+        f"HEAD: {base}\n\n"
+        f"=== MOD 1 ===\n"
+        f"file: {file}\n"
+        f"mode: create_file\n"
+        f"--- PAYLOAD ---\n"
+        f"{payload}\n"
+        "--- END " + "MOD ---\n"
+    )
+
+
+def test_17_create_file_replay_pass():
+    """TEST 1: normal spec + create_file -> replay PASS"""
+    with tempfile.TemporaryDirectory() as d:
+        _init_repo(d)
+        _write(d, "docs/T.md", "init\n")
+        base = _commit(d, "c1")
+        _write(d, "docs/NEW.md", "hello world\n")
+        _write(d, f"docs/batches/{base}-create.spec.txt",
+               _make_create_spec(base, "docs/NEW.md", "hello world\n"))
+        _commit(d, "c2")
+        fails, infos = cc.check_17_spec_replay(d)
+        assert fails == [], fails
+        assert any("docs/NEW.md 重放逐位元相符" in i for i in infos), infos
+
+
+def test_17_create_file_payload_mismatch_fails():
+    """TEST 2: create_file actual HEAD bytes 與 payload 不同 -> FAIL"""
+    with tempfile.TemporaryDirectory() as d:
+        _init_repo(d)
+        _write(d, "docs/T.md", "init\n")
+        base = _commit(d, "c1")
+        _write(d, "docs/NEW.md", "actual content\n")
+        _write(d, f"docs/batches/{base}-create.spec.txt",
+               _make_create_spec(base, "docs/NEW.md", "expected content\n"))
+        _commit(d, "c2")
+        fails, _ = cc.check_17_spec_replay(d)
+        assert any("重放結果與實際 commit 的位元組不一致" in f for f in fails), fails
+
+
+def test_17_create_file_missing_in_head_fails():
+    """TEST 3: spec 宣告 create_file，但 HEAD 沒有 file -> FAIL"""
+    with tempfile.TemporaryDirectory() as d:
+        _init_repo(d)
+        _write(d, "docs/T.md", "init\n")
+        base = _commit(d, "c1")
+        _write(d, f"docs/batches/{base}-create.spec.txt",
+               _make_create_spec(base, "docs/NEW.md", "content\n"))
+        _commit(d, "c2")
+        fails, _ = cc.check_17_spec_replay(d)
+        assert any("docs/NEW.md:0  本 commit 中不存在" in f for f in fails), fails
+
+
+def test_17_create_file_parent_already_exists_fails():
+    """TEST 4: parent 已存在 target -> FAIL"""
+    with tempfile.TemporaryDirectory() as d:
+        _init_repo(d)
+        _write(d, "docs/NEW.md", "already exists\n")
+        base = _commit(d, "c1")
+        _write(d, "docs/NEW.md", "overwritten\n")
+        _write(d, f"docs/batches/{base}-create.spec.txt",
+               _make_create_spec(base, "docs/NEW.md", "overwritten\n"))
+        _commit(d, "c2")
+        fails, _ = cc.check_17_spec_replay(d)
+        assert any("create_file 目標檔案在 parent commit 已存在" in f for f in fails), fails
+
+
+def test_17_create_file_undeclared_new_file_fails_scope():
+    """TEST 5: HEAD 多一個未宣告新檔 -> scope FAIL"""
+    with tempfile.TemporaryDirectory() as d:
+        _init_repo(d)
+        _write(d, "docs/T.md", "init\n")
+        base = _commit(d, "c1")
+        _write(d, "docs/NEW.md", "hello\n")
+        _write(d, "docs/SMUGGLED.md", "sneaky\n")
+        _write(d, f"docs/batches/{base}-create.spec.txt",
+               _make_create_spec(base, "docs/NEW.md", "hello\n"))
+        _commit(d, "c2")
+        fails, _ = cc.check_17_spec_replay(d)
+        assert any("規格未宣告卻被修改的檔案" in f and "docs/SMUGGLED.md" in f for f in fails), fails
+
+
+def test_17_bootstrap_spec_mismatch_fails_replay():
+    """TEST 6: spec filename 含 `-BOOTSTRAP.spec.txt` 但 replay 不正確 -> 必須 FAIL"""
+    with tempfile.TemporaryDirectory() as d:
+        _init_repo(d)
+        _write(d, "docs/T.md", "A\nB\nC\n")
+        base = _commit(d, "c1")
+        _write(d, "docs/T.md", "A\nWRONG\nC\n")
+        _write(d, f"docs/batches/{base}-fake-BOOTSTRAP.spec.txt",
+               _make_create_spec(base, "docs/T.md", "Z").replace("mode: create_file", "mode: replace\n--- ANCHOR ---\nB"))
+        _commit(d, "c2")
+        fails, infos = cc.check_17_spec_replay(d)
+        # 證明不再被跳過，而是正常重放且失敗！
+        assert any("重放結果與實際 commit 的位元組不一致" in f for f in fails), fails
+        assert not any("跳過重放" in i for i in infos), infos
+
+
+def test_17_bootstrap_spec_correct_passes_normal_replay():
+    """TEST 7: spec filename 含 BOOTSTRAP，但 spec 正確 -> 按 normal replay PASS（不是 skip PASS）"""
+    with tempfile.TemporaryDirectory() as d:
+        _init_repo(d)
+        _write(d, "docs/T.md", "A\nB\nC\n")
+        base = _commit(d, "c1")
+        _write(d, "docs/T.md", "A\nZ\nC\n")
+        _write(d, f"docs/batches/{base}-valid-BOOTSTRAP.spec.txt",
+               _make_create_spec(base, "docs/T.md", "Z").replace("mode: create_file", "mode: replace\n--- ANCHOR ---\nB"))
+        _commit(d, "c2")
+        fails, infos = cc.check_17_spec_replay(d)
+        assert fails == [], fails
+        assert any("docs/T.md 重放逐位元相符" in i for i in infos), infos
+        assert not any("跳過重放" in i for i in infos), infos
+--- END MOD ---
+
+=== MOD 12 ===
+file: scripts/tests/test_spec_create_file.py
+mode: create_file
+--- PAYLOAD ---
+import os, sys
+import pytest
+
+REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+sys.path.insert(0, os.path.join(REPO_ROOT, "scripts"))
+
+from build_prompt_evidence import parse_spec, apply_mod_to_text, SpecParseError
+
+END_MOD = "--- END " + "MOD ---"
+
+def test_create_file_parse_pass():
+    """A. create_file spec parse = PASS"""
+    spec_text = f"""HEAD: 1234567
+
+=== MOD 1 ===
+file: docs/new_feature.txt
+mode: create_file
+--- PAYLOAD ---
+This is a new file.
+Line 2.
+{END_MOD}
+"""
+    head, mods, expects = parse_spec(spec_text)
+    assert head == "1234567"
+    assert len(mods) == 1
+    assert mods[0]["file"] == "docs/new_feature.txt"
+    assert mods[0]["mode"] == "create_file"
+    assert mods[0]["anchor"] == ""
+    assert mods[0]["payload"] == "This is a new file.\nLine 2."
+
+
+def test_create_file_with_empty_anchor_parse_pass():
+    spec_text = f"""HEAD: 1234567
+
+=== MOD 1 ===
+file: docs/new_feature.txt
+mode: create_file
+--- ANCHOR ---
+--- PAYLOAD ---
+Content
+{END_MOD}
+"""
+    head, mods, expects = parse_spec(spec_text)
+    assert mods[0]["anchor"] == ""
+    assert mods[0]["payload"] == "Content"
+
+
+def test_create_file_non_empty_anchor_fails():
+    """D. create_file 非空 illegal anchor = FAIL"""
+    spec_text = f"""HEAD: 1234567
+
+=== MOD 1 ===
+file: docs/new_feature.txt
+mode: create_file
+--- ANCHOR ---
+illegal anchor
+--- PAYLOAD ---
+Content
+{END_MOD}
+"""
+    with pytest.raises(SpecParseError, match="create_file 的 ANCHOR 必須為空"):
+        parse_spec(spec_text)
+
+
+def test_duplicate_create_file_same_path_fails():
+    """F. duplicate create_file same path = FAIL"""
+    spec_text = f"""HEAD: 1234567
+
+=== MOD 1 ===
+file: docs/dup.txt
+mode: create_file
+--- PAYLOAD ---
+File 1
+{END_MOD}
+
+=== MOD 2 ===
+file: docs/dup.txt
+mode: create_file
+--- PAYLOAD ---
+File 2
+{END_MOD}
+"""
+    with pytest.raises(SpecParseError, match="不得重複 create_file 或混用不同模式"):
+        parse_spec(spec_text)
+
+
+def test_create_file_mixed_mode_same_path_fails():
+    spec_text = f"""HEAD: 1234567
+
+=== MOD 1 ===
+file: docs/mixed.txt
+mode: create_file
+--- PAYLOAD ---
+File 1
+{END_MOD}
+
+=== MOD 2 ===
+file: docs/mixed.txt
+mode: replace
+--- ANCHOR ---
+File 1
+--- PAYLOAD ---
+File 2
+{END_MOD}
+"""
+    with pytest.raises(SpecParseError, match="不得重複 create_file 或混用不同模式"):
+        parse_spec(spec_text)
+
+
+def test_apply_create_file_parent_absent_pass():
+    """B. create_file target parent 不存在 = PASS & E. 完整 payload bytes 正確"""
+    mod = {
+        "id": "1",
+        "file": "docs/new.txt",
+        "mode": "create_file",
+        "anchor": "",
+        "payload": "hello\nworld\n"
+    }
+    result = apply_mod_to_text(None, mod)
+    assert result == "hello\nworld\n"
+    assert result.encode("utf-8") == b"hello\nworld\n"
+
+
+def test_apply_create_file_parent_exists_fails():
+    """C. create_file target parent 已存在 = FAIL"""
+    mod = {
+        "id": "1",
+        "file": "docs/existing.txt",
+        "mode": "create_file",
+        "anchor": "",
+        "payload": "hello\nworld\n"
+    }
+    with pytest.raises(ValueError, match="create_file 目標檔案在 base 已存在"):
+        apply_mod_to_text("existing content", mod)
+
+
+def test_existing_modes_regression_pass():
+    """G. existing modes regression：insert_after / insert_before / replace 全部仍 PASS"""
+    rep_mod = {"id": "1", "file": "f", "mode": "replace", "anchor": "B", "payload": "Z"}
+    assert apply_mod_to_text("A\nB\nC", rep_mod) == "A\nZ\nC"
+
+    after_mod = {"id": "2", "file": "f", "mode": "insert_after", "anchor": "B", "payload": "X"}
+    assert apply_mod_to_text("A\nB\nC", after_mod) == "A\nB\nX\nC"
+
+    before_mod = {"id": "3", "file": "f", "mode": "insert_before", "anchor": "B", "payload": "Y"}
+    assert apply_mod_to_text("A\nB\nC", before_mod) == "A\nY\nB\nC"
+
+--- END MOD ---
+
+=== MOD 13 ===
+file: docs/batches/README.md
+mode: replace
+--- ANCHOR ---
+## 六、BOOTSTRAP 例外
+
+規格格式目前沒有 `create_file` mode，無法表達「新建檔案」。
+本機制上線的那一批必然要建立新檔，因此：
+
+- 檔名以 `-BOOTSTRAP.spec.txt` 結尾者，CHECK 17 跳過重放並輸出 INFO。
+- **全庫至多允許一份**，超過即 FAIL。
+- `create_file` mode 由 `docs/TASKBOARD.md` B-90 於下一批補上，
+  屆時本例外連同這一節一併移除。
+
+**CHECK 17 的強制範圍要講精確。** 它只對「單一 parent、恰好異動一份
+非 BOOTSTRAP 規格」的 commit 執行逐位元重放。以下都是設計內的合法跳過：
+無規格的維護 commit、root commit 與 merge commit、BOOTSTRAP 例外。
+`-BOOTSTRAP.spec.txt` 是**目前針對 spec-driven 單一 parent 批次的暫時
+replay 例外**，不是「唯一能繞過 CHECK 17 的路徑」——那個講法把
+設計內的不適用情形也算成漏洞了。
+
+**因此對 BOOTSTRAP 那一批本身，不得宣稱它受 CHECK 17 保護。**
+對該批而言，偏離規格不會被 CHECK 17 攔截，也不會因此讓 CI 變紅。
+該批的正確性依賴 canonical apply path、動手前的錨點唯一性驗證、
+範圍檢查、測試、指紋，以及 CI 對這些項目的重跑，而非逐位元重放。
+逐位元重放的完整保證自本例外移除（B-90）之後的每一個正常
+EXACT_SPEC 批次起生效。
+
+**BOOTSTRAP 不是繞過「一 commit 一份規格」的後門。**
+CHECK 17 先判定「本 commit 的規格是否恰好一份」，
+只有恰好一份且那一份本身是 BOOTSTRAP 時才跳過重放。
+「一份 BOOTSTRAP ＋ 一份普通規格」一律 FAIL——
+否則那份普通規格會完全不被重放。
+--- PAYLOAD ---
+## 六、create_file 模式與 BOOTSTRAP 例外退役
+
+自 B-90 起，批次規格原生支援 `create_file` 模式，可完整以宣告式表達建立新檔：
+
+### 1. `create_file` 規格語意與約束
+- **MODE**：宣告 `mode: create_file`。
+- **FILE**：指定 repo 相對路徑。
+- **ANCHOR**：新建檔案不使用既存錨點，`--- ANCHOR ---` 區塊可省略；若存在，內容必須為空。非空錨點將被拒絕。
+- **PAYLOAD**：代表新檔案的完整內容（非追加片段）。
+- **基準不變量（Base Invariant）**：目標檔案在 parent / base commit 必須不存在；若已存在則 FAIL（禁止 fallback 為 replace）。
+- **重放不變量（Result Invariant）**：apply 後該檔案必須存在，且 HEAD blob 位元組與 payload UTF-8 編碼逐位元相符。
+- **排他約束**：同一 spec 中不得對同一路徑重複 create_file，亦不得混用不同模式。
+
+### 2. BOOTSTRAP 歷史例外退役
+隨著 `create_file` 模式上線，原針對新建檔案設立的 `-BOOTSTRAP.spec.txt` 跳過重放機制與「全庫至多一份 BOOTSTRAP」之 runtime invariant 已全面移除。
+歷史檔案 `0e13c85-spec-lifecycle-BOOTSTRAP.spec.txt` 作為歷史 artifact 安全保留於版控中，不再具有任何 replay-bypass 語意。所有進入 CHECK 17 強制範圍之規格一律按正常批次執行逐位元重放。
+--- END MOD ---
+
+=== MOD 14 ===
+file: docs/TASKBOARD.md
+mode: replace
+--- ANCHOR ---
+**最後更新**：2026-09-11，HEAD `38b7c49` 之後（Mechanical-Truth Migration 機械真實遷移）
+--- PAYLOAD ---
+**最後更新**：2026-09-11，HEAD `4c6aee4` 之後（B-90 Batch Spec create_file 支援與 BOOTSTRAP 例外移除）
+--- END MOD ---
+
+=== MOD 15 ===
+file: docs/TASKBOARD.md
+mode: replace
+--- ANCHOR ---
+| B-90 | 待辦 | **批次規格格式缺 `create_file` mode** | 本批必須新建三個檔案，而規格只有 `insert_after`／`insert_before`／`replace`，無法表達新建檔案，因此本批的規格必須以 BOOTSTRAP 例外跳過 CHECK 17 的重放。處置：`parse_spec` 與 `apply_mod_to_text` 增加 `create_file` mode（ANCHOR 對該 mode 可為空），並在 CHECK 17 中把新建檔案納入重放比對；完成後移除 BOOTSTRAP 例外。**這是目前唯一針對 spec-driven 單一 parent 批次的暫時 replay 例外**（其餘跳過情形——無規格的維護 commit、root/merge commit——是設計內的不適用，不是繞過），排下一批 |
+--- PAYLOAD ---
+| B-90 | 已完成 | **批次規格格式缺 `create_file` mode** | 已於 B-90 實作完成：`parse_spec` 與 `apply_mod_to_text` 原生支援 `create_file` mode，BPE 支援新建檔案模擬與驗收，CHECK 17 完成新檔逐位元重放，並全面移除 `-BOOTSTRAP.spec.txt` 跳過重放與全庫單一 BOOTSTRAP 限制。歷史規格 `0e13c85` 安全保留為歷史 artifact |
+--- END MOD ---
+
+=== MOD 16 ===
+file: docs/refactor-backlog.md
+mode: replace
+--- ANCHOR ---
+上次核對通過的 HEAD：38b7c49
+--- PAYLOAD ---
+上次核對通過的 HEAD：4c6aee4
+--- END MOD ---
+
+=== MOD 17 ===
+file: docs/refactor-backlog.md
+mode: replace
+--- ANCHOR ---
+- `38b7c49`（Governance Gate Unblocker / B-92：修正 `docs/EXEC-LOG.md` 與
+  `docs/fingerprints/exec-latest.json` 作為 CHECK 17 豁免檔的生命週期，
+  解除 normal spec-driven batch 的 deadlock）已於 2026-09-11 由審計官核對通過：
+  7 檔異動、零夾帶，獨立驗證四項全過（54 技能、18 項 CHECK、107 測試、`--verify` exit 0），
+  CI success，`audited-38b7c49` tag 已成功建立並推送。
+- 本批（尚未 commit）（Mechanical-Truth Migration：確立「機器產出衍生事實、提示詞引用機械來源、
+  不將衍生數值複製為第二份 blocking truth」之單一權威模型；移除手寫總行數、固定行號、
+  圍欄數與 post-apply 衍生值 blocking 要求；補齊 BPE 與 Batch Spec 規範，完成 B-86）
+  已執行，**尚待審計官核對**，見 §5.4。
+--- PAYLOAD ---
+- `4c6aee4`（Mechanical-Truth Migration：確立「機器產出衍生事實、提示詞引用機械來源、
+  不將衍生數值複製為第二份 blocking truth」之單一權威模型；移除手寫總行數、固定行號、
+  圍欄數與 post-apply 衍生值 blocking 要求；補齊 BPE 與 Batch Spec 規範，完成 B-86）
+  已於 2026-09-11 由審計官核對通過：10 檔異動、零夾帶，獨立驗證四項全過（54 技能、18 項 CHECK、
+  108 測試、`--verify` exit 0），CI success，`audited-4c6aee4` tag 已成功建立並推送。
+- 本批（尚未 commit）（B-90：Batch Spec 支援 `create_file` mode，移除 BOOTSTRAP 跳過例外與全庫限制，
+  解除治理層最後一個 Exit blocker）已執行，**尚待審計官核對**，見 §5.4。
+--- END MOD ---
+
+=== MOD 18 ===
+file: docs/refactor-backlog.md
+mode: replace
+--- ANCHOR ---
+- **本批（Mechanical-Truth Migration）已執行完成，等待審計官核對。**
+  內容：B-92 已完成；本批以 normal Batch Spec 執行 Mechanical-Truth Migration；
+  修改 `.agents/rules/prompt-preflight.md`、`.claude/rules/auditor-protocol.md`、
+  `.claude/rules/handover-selftest.md`，建立「機器產出衍生事實、提示詞引用機械來源、
+  不將衍生數值複製為第二份 blocking truth」的權威模型；移除手寫總行數、固定行號、手寫圍欄數、
+  post-apply 衍生值與 INFO 輸出的 blocking 要求；補齊 BPE 與 Batch Spec 正式說明，
+  標記 TASKBOARD B-86 為已完成。
+- **下一批**：2b-7（B-90 批次規格支援 `create_file` mode，移除 BOOTSTRAP 例外；B-81 BPE `--emit-anchors`；B-53 CHECK 1-7 抽成函式）。
+- **後續順序**：唯一治理 Exit blocker 為 B-90；B-91（9 個歷史錯 tag，待授權）與 B-92 不阻擋治理層 exit。
+  完成 B-90 後即可啟動 3（E-01 技能遷移第一梯次 ＋ B-01）→ 4 起後續重構主線。
+--- PAYLOAD ---
+- **本批（B-90：Batch Spec create_file 支援與 BOOTSTRAP 例外移除）已執行完成，等待審計官核對。**
+  內容：Mechanical-Truth Migration 與 B-86 已完成；本批以 normal Batch Spec 執行 B-90；
+  `parse_spec` 與 `apply_mod_to_text` 原生支援 `create_file` mode；BPE 支援建立新檔模擬驗收；
+  CHECK 17 支援新檔逐位元重放；全面移除 `-BOOTSTRAP.spec.txt` 跳過重放與全庫單一 BOOTSTRAP 限制；
+  新增單元測試與 CHECK 17 正反例測試；TASKBOARD B-90 標記為已完成。
+- **後續順序**：治理層 7/7 核心里程碑（A-01~A-11、B-46~B-52、B-86、B-92、B-90、Mechanical-Truth、Spec Lifecycle）
+  已全部就緒；唯一剩餘 B-91（9 個歷史錯 tag，待授權）不阻擋治理層 exit。
+  待宏觀審計官核對通過後，即可退出治理層並啟動 3（E-01 技能遷移第一梯次 ＋ B-01）主重構主線。
+--- END MOD ---
+
+=== MOD 19 ===
+file: docs/AUDIT-LOG.md
+mode: replace
+--- ANCHOR ---
+| 38b7c49 | 2026-09-11 | §4.1-1 | **核對通過**。7 檔異動、零夾帶。獨立驗證四項全過：54 技能零錯誤、18 項 CHECK 全 PASS、`pytest scripts/tests/` 107 passed、`fingerprint.py --verify` exit 0；CI Run 34267431206 success。CHECK 17 normal replay 驗證通過，`audited-38b7c49` tag 已成功建立並推送 | B-92 豁免檔生命週期修復經宏觀審計官核對通過。`docs/EXEC-LOG.md` 狀態流轉驗證通過，`docs/fingerprints/exec-latest.json` 委派驗證通過，正常 spec-driven 批次在 CHECK 16/17 之間的死結已解除 |
+--- PAYLOAD ---
+| 38b7c49 | 2026-09-11 | §4.1-1 | **核對通過**。7 檔異動、零夾帶。獨立驗證四項全過：54 技能零錯誤、18 項 CHECK 全 PASS、`pytest scripts/tests/` 107 passed、`fingerprint.py --verify` exit 0；CI Run 34267431206 success。CHECK 17 normal replay 驗證通過，`audited-38b7c49` tag 已成功建立並推送 | B-92 豁免檔生命週期修復經宏觀審計官核對通過。`docs/EXEC-LOG.md` 狀態流轉驗證通過，`docs/fingerprints/exec-latest.json` 委派驗證通過，正常 spec-driven 批次在 CHECK 16/17 之間的死結已解除 |
+| 4c6aee4 | 2026-09-11 | §4.1-1 | **核對通過**。10 檔異動、零夾帶。獨立驗證四項全過：54 技能零錯誤、18 項 CHECK 全 PASS、`pytest scripts/tests/` 108 passed、`fingerprint.py --verify` exit 0；CI Run verify success。CHECK 17 normal replay 驗證通過，`audited-4c6aee4` tag 已成功建立並推送 | Mechanical-Truth Migration 機械真實遷移經宏觀審計官核對通過。確立「機器產出衍生事實、提示詞引用機械來源、不將衍生數值複製為第二份 blocking truth」之單一原則。手寫行數/圍欄數 blocking 要求全面移除，B-86 完成 |
+--- END MOD ---

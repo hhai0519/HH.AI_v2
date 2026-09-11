@@ -1177,10 +1177,9 @@ def check_17_spec_replay(root_dir=None):
     以下情形依設計跳過重放，這些是合法 skip，不是漏洞：
       - 本 commit 未異動任何規格（一般維護 commit）
       - 非單一 parent（root commit、merge commit）
-      - 本 commit 的唯一一份規格是 BOOTSTRAP 規格
 
-    BOOTSTRAP 是目前針對 spec-driven 單一 parent 批次的暫時 replay 例外，
-    存在理由是規格格式還無法表達新建檔案；由 docs/TASKBOARD.md B-90 移除。
+    規格格式原生支援 create_file mode，能以宣告式表達建立新檔並執行逐位元重放；
+    BOOTSTRAP 特殊跳過語意已於 B-90 全面移除。
 
     對進入 enforcement scope 的 commit，本檢查驗五件事：
       1. 規格 HEAD: 欄位解析成完整 commit OID，必須等於唯一 parent 的 OID
@@ -1199,14 +1198,6 @@ def check_17_spec_replay(root_dir=None):
     if not _in_git_repo(root_dir):
         infos.append("此路徑不是 git repository，本檢查不適用")
         return fails, infos
-
-    # ---- repository invariant：先於任何 early-return，且讀 HEAD tree ----
-    all_boots, ok = _head_bootstrap_specs(root_dir)
-    if not ok:
-        infos.append("無法讀取 HEAD tree，略過 BOOTSTRAP 數量檢查")
-    elif len(all_boots) > 1:
-        fails.append(f"{SPEC_DIR}:0  HEAD tree 中的 BOOTSTRAP 規格不得超過一份，"
-                     f"實測 {len(all_boots)} 份: {all_boots}")
 
     rc, out, _ = _git(root_dir, ["rev-list", "--parents", "-n", "1", "HEAD"])
     if rc != 0:
@@ -1243,11 +1234,6 @@ def check_17_spec_replay(root_dir=None):
         return fails, infos
 
     spec_path = specs[0]
-    if spec_path.endswith("-BOOTSTRAP.spec.txt"):
-        infos.append(f"本 commit 的規格為 BOOTSTRAP 例外 {spec_path}，跳過重放。"
-                     f"該批不在本檢查的強制範圍內，見 docs/batches/README.md 第六節")
-        return fails, infos
-
     rc, spec_bytes, _ = _git_bytes(root_dir, ["show", f"HEAD:{spec_path}"])
     if rc != 0:
         fails.append(f"{spec_path}:0  無法從 HEAD 取出規格內容")
@@ -1323,21 +1309,37 @@ def check_17_spec_replay(root_dir=None):
                 fails.append(f"{ex}:0  豁免檔只允許追加，numstat 實測刪除 {dels} 行")
 
     for path, mlist in sorted(by_file.items()):
-        rc, base_bytes, _ = _git_bytes(root_dir, ["show", f"{parent_oid}:{path}"])
-        if rc != 0:
-            fails.append(f"{path}:0  無法從 base 取出原始內容（新檔無法以 MOD 表達）")
-            continue
-        try:
-            text = base_bytes.decode("utf-8")
-        except UnicodeDecodeError as e:
-            fails.append(f"{path}:0  base 內容不是合法 UTF-8: {e}")
-            continue
-        try:
-            for mod in mlist:
-                text = apply_mod_to_text(text, mod)
-        except Exception as e:
-            fails.append(f"{path}:0  重放失敗: {e}")
-            continue
+        is_create = (mlist[0]["mode"] == "create_file")
+        if is_create:
+            if len(mlist) > 1:
+                fails.append(f"{path}:0  create_file 不得與其他 MOD 混用")
+                continue
+            rc, base_bytes, _ = _git_bytes(root_dir, ["show", f"{parent_oid}:{path}"])
+            if rc == 0:
+                fails.append(f"{path}:0  create_file 目標檔案在 parent commit 已存在")
+                continue
+            try:
+                text = apply_mod_to_text(None, mlist[0])
+            except Exception as e:
+                fails.append(f"{path}:0  重放失敗: {e}")
+                continue
+        else:
+            rc, base_bytes, _ = _git_bytes(root_dir, ["show", f"{parent_oid}:{path}"])
+            if rc != 0:
+                fails.append(f"{path}:0  無法從 base 取出原始內容（新檔無法以 MOD 表達）")
+                continue
+            try:
+                text = base_bytes.decode("utf-8")
+            except UnicodeDecodeError as e:
+                fails.append(f"{path}:0  base 內容不是合法 UTF-8: {e}")
+                continue
+            try:
+                for mod in mlist:
+                    text = apply_mod_to_text(text, mod)
+            except Exception as e:
+                fails.append(f"{path}:0  重放失敗: {e}")
+                continue
+
         expected = text.encode("utf-8")
 
         rc, actual, _ = _git_bytes(root_dir, ["show", f"HEAD:{path}"])

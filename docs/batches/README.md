@@ -87,32 +87,19 @@ CHECK 17 同時驗三件事，缺一不可：
 
 ---
 
-## 六、BOOTSTRAP 例外
+## 六、create_file 模式與 BOOTSTRAP 例外退役
 
-規格格式目前沒有 `create_file` mode，無法表達「新建檔案」。
-本機制上線的那一批必然要建立新檔，因此：
+自 B-90 起，批次規格原生支援 `create_file` 模式，可完整以宣告式表達建立新檔：
 
-- 檔名以 `-BOOTSTRAP.spec.txt` 結尾者，CHECK 17 跳過重放並輸出 INFO。
-- **全庫至多允許一份**，超過即 FAIL。
-- `create_file` mode 由 `docs/TASKBOARD.md` B-90 於下一批補上，
-  屆時本例外連同這一節一併移除。
+### 1. `create_file` 規格語意與約束
+- **MODE**：宣告 `mode: create_file`。
+- **FILE**：指定 repo 相對路徑。
+- **ANCHOR**：新建檔案不使用既存錨點，`--- ANCHOR ---` 區塊可省略；若存在，內容必須為空。非空錨點將被拒絕。
+- **PAYLOAD**：代表新檔案的完整內容（非追加片段）。
+- **基準不變量（Base Invariant）**：目標檔案在 parent / base commit 必須不存在；若已存在則 FAIL（禁止 fallback 為 replace）。
+- **重放不變量（Result Invariant）**：apply 後該檔案必須存在，且 HEAD blob 位元組與 payload UTF-8 編碼逐位元相符。
+- **排他約束**：同一 spec 中不得對同一路徑重複 create_file，亦不得混用不同模式。
 
-**CHECK 17 的強制範圍要講精確。** 它只對「單一 parent、恰好異動一份
-非 BOOTSTRAP 規格」的 commit 執行逐位元重放。以下都是設計內的合法跳過：
-無規格的維護 commit、root commit 與 merge commit、BOOTSTRAP 例外。
-`-BOOTSTRAP.spec.txt` 是**目前針對 spec-driven 單一 parent 批次的暫時
-replay 例外**，不是「唯一能繞過 CHECK 17 的路徑」——那個講法把
-設計內的不適用情形也算成漏洞了。
-
-**因此對 BOOTSTRAP 那一批本身，不得宣稱它受 CHECK 17 保護。**
-對該批而言，偏離規格不會被 CHECK 17 攔截，也不會因此讓 CI 變紅。
-該批的正確性依賴 canonical apply path、動手前的錨點唯一性驗證、
-範圍檢查、測試、指紋，以及 CI 對這些項目的重跑，而非逐位元重放。
-逐位元重放的完整保證自本例外移除（B-90）之後的每一個正常
-EXACT_SPEC 批次起生效。
-
-**BOOTSTRAP 不是繞過「一 commit 一份規格」的後門。**
-CHECK 17 先判定「本 commit 的規格是否恰好一份」，
-只有恰好一份且那一份本身是 BOOTSTRAP 時才跳過重放。
-「一份 BOOTSTRAP ＋ 一份普通規格」一律 FAIL——
-否則那份普通規格會完全不被重放。
+### 2. BOOTSTRAP 歷史例外退役
+隨著 `create_file` 模式上線，原針對新建檔案設立的 `-BOOTSTRAP.spec.txt` 跳過重放機制與「全庫至多一份 BOOTSTRAP」之 runtime invariant 已全面移除。
+歷史檔案 `0e13c85-spec-lifecycle-BOOTSTRAP.spec.txt` 作為歷史 artifact 安全保留於版控中，不再具有任何 replay-bypass 語意。所有進入 CHECK 17 強制範圍之規格一律按正常批次執行逐位元重放。

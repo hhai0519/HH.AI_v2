@@ -54,7 +54,7 @@ def parse_spec(spec_text):
     anchor_lines = []
     payload_lines = []
 
-    valid_modes = {"insert_after", "insert_before", "replace"}
+    valid_modes = {"insert_after", "insert_before", "replace", "create_file"}
 
     for idx, raw_line in enumerate(lines, 1):
         # 註解只在 TOP, MOD_HEADER, EXPECT_HEADER 有效
@@ -126,11 +126,24 @@ def parse_spec(spec_text):
                 anchor_lines = []
                 state = "IN_ANCHOR"
                 continue
+            if raw_line == "--- PAYLOAD ---":
+                if not current_mod["file"]:
+                    raise SpecParseError("MOD 缺少 file 欄位", idx)
+                if not current_mod["mode"]:
+                    raise SpecParseError("MOD 缺少 mode 欄位", idx)
+                if current_mod["mode"] == "create_file":
+                    current_mod["anchor"] = ""
+                    payload_lines = []
+                    state = "IN_PAYLOAD"
+                    continue
+                raise SpecParseError("MOD 缺少 ANCHOR 區塊", idx)
             raise SpecParseError(f"MOD 標頭區語法錯誤: {stripped}", idx)
 
         elif state == "IN_ANCHOR":
             if raw_line == "--- PAYLOAD ---":
                 current_mod["anchor"] = "\n".join(anchor_lines)
+                if current_mod["mode"] == "create_file" and current_mod["anchor"].strip() != "":
+                    raise SpecParseError("create_file 的 ANCHOR 必須為空", current_mod["line"])
                 payload_lines = []
                 state = "IN_PAYLOAD"
                 continue
@@ -141,8 +154,16 @@ def parse_spec(spec_text):
         elif state == "IN_PAYLOAD":
             if raw_line == "--- END MOD ---":
                 current_mod["payload"] = "\n".join(payload_lines)
-                if current_mod["anchor"] is None or not current_mod["anchor"]:
-                    raise SpecParseError("MOD 的 ANCHOR 不得為空", current_mod["line"])
+                if current_mod["mode"] != "create_file":
+                    if current_mod["anchor"] is None or not current_mod["anchor"]:
+                        raise SpecParseError("MOD 的 ANCHOR 不得為空", current_mod["line"])
+                else:
+                    if current_mod["anchor"] is None:
+                        current_mod["anchor"] = ""
+                for m in mods:
+                    if m["file"] == current_mod["file"]:
+                        if current_mod["mode"] == "create_file" or m["mode"] == "create_file":
+                            raise SpecParseError(f"同一檔案 {current_mod['file']} 不得重複 create_file 或混用不同模式", idx)
                 mods.append(current_mod)
                 current_mod = None
                 state = "TOP"
@@ -189,6 +210,14 @@ def verify_anchors(mods, repo_root):
     results = []
     for mod in mods:
         fpath = os.path.join(repo_root, mod["file"])
+        if mod["mode"] == "create_file":
+            if os.path.exists(fpath):
+                print(f"[錨點] MOD {mod['id']}  {mod['file']}:0  count=0")
+                print(f"[錯誤] create_file 目標檔案在基準中已存在: {mod['file']}")
+                return False, results
+            results.append((mod, 0))
+            continue
+
         if not os.path.isfile(fpath):
             print(f"[錨點] MOD {mod['id']}  {mod['file']}:0  count=0")
             print(f"[錯誤] 目標檔案不存在: {mod['file']}")
@@ -232,7 +261,10 @@ def format_e11(mods, anchor_results):
     """
     lines = [f"[E11] 錨點總數: {len(mods)}"]
     for mod, line_no in anchor_results:
-        lines.append(f"[錨點] MOD {mod['id']}  {mod['file']}:{line_no}  count=1")
+        if mod["mode"] == "create_file":
+            lines.append(f"[錨點] MOD {mod['id']}  {mod['file']}:new  count=1 (create_file)")
+        else:
+            lines.append(f"[錨點] MOD {mod['id']}  {mod['file']}:{line_no}  count=1")
     return "\n".join(lines)
 
 
@@ -265,9 +297,17 @@ def apply_mod_to_text(content, mod):
     將單一 MOD 套用至檔案內容字串。
     """
     mode = mod["mode"]
-    anchor = mod["anchor"]
     payload = mod["payload"]
 
+    if mode == "create_file":
+        if content is not None:
+            raise ValueError(f"create_file 目標檔案在 base 已存在: {mod['file']}")
+        return payload
+
+    if content is None:
+        raise ValueError(f"目標檔案不存在: {mod['file']}")
+
+    anchor = mod["anchor"]
     if content.count(anchor) != 1:
         raise ValueError(f"套用 MOD {mod['id']} 時錨點 count != 1")
 
@@ -308,9 +348,19 @@ def simulate_and_verify(mods, expects, repo_root):
         # 套用 MODs
         for mod in mods:
             fpath = os.path.join(temp_dir, mod["file"])
-            with io.open(fpath, "r", encoding="utf-8") as f:
-                content = f.read()
-            new_content = apply_mod_to_text(content, mod)
+            if mod["mode"] == "create_file":
+                if os.path.exists(fpath):
+                    raise ValueError(f"create_file 目標檔案在 base 已存在: {mod['file']}")
+                pdir = os.path.dirname(fpath)
+                if pdir:
+                    os.makedirs(pdir, exist_ok=True)
+                new_content = apply_mod_to_text(None, mod)
+            else:
+                if not os.path.isfile(fpath):
+                    raise ValueError(f"目標檔案不存在: {mod['file']}")
+                with io.open(fpath, "r", encoding="utf-8") as f:
+                    content = f.read()
+                new_content = apply_mod_to_text(content, mod)
             with io.open(fpath, "w", encoding="utf-8", newline="\n") as f:
                 f.write(new_content)
 

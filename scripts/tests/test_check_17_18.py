@@ -359,111 +359,119 @@ def test_17_crlf_vs_lf_fails():
         assert any("位元組不一致" in f for f in fails), fails
 
 
-def test_17_repo_wide_bootstrap_limit_survives_root_commit_early_return():
-    """
-    全庫 BOOTSTRAP 上限是 repository invariant，不得被 parent 數的
-    early-return 跳過。root commit 沒有 parent，會在重放前就 return，
-    但 invariant 仍必須已經被驗過。
-    """
-    with tempfile.TemporaryDirectory() as d:
-        _init_repo(d)
-        _write(d, "docs/T.md", "A\n")
-        _write(d, "docs/batches/aaaaaaa-one-BOOTSTRAP.spec.txt",
-               SPEC_TMPL.format(base="aaaaaaa", anchor="A", payload="A"))
-        _write(d, "docs/batches/bbbbbbb-two-BOOTSTRAP.spec.txt",
-               SPEC_TMPL.format(base="bbbbbbb", anchor="A", payload="A"))
-        _commit(d, "root")           # 唯一的 commit，沒有 parent
-        fails, infos = cc.check_17_spec_replay(d)
-        assert any("BOOTSTRAP 規格不得超過一份" in f for f in fails), (fails, infos)
-        assert any("非單一 parent" in i for i in infos), (fails, infos)
+def _make_create_spec(base, file, payload):
+    return (
+        f"HEAD: {base}\n\n"
+        f"=== MOD 1 ===\n"
+        f"file: {file}\n"
+        f"mode: create_file\n"
+        f"--- PAYLOAD ---\n"
+        f"{payload}\n"
+        "--- END " + "MOD ---\n"
+    )
 
 
-def test_17_bootstrap_spec_is_skipped():
+def test_17_create_file_replay_pass():
+    """TEST 1: normal spec + create_file -> replay PASS"""
     with tempfile.TemporaryDirectory() as d:
         _init_repo(d)
-        _write(d, "docs/T.md", "A\n")
+        _write(d, "docs/T.md", "init\n")
         base = _commit(d, "c1")
-        _write(d, "docs/T.md", "A\nNEW\n")
-        _write(d, "docs/batches/%s-x-BOOTSTRAP.spec.txt" % base,
-               SPEC_TMPL.format(base=base, anchor="A", payload="A"))
+        _write(d, "docs/NEW.md", "hello world\n")
+        _write(d, f"docs/batches/{base}-create.spec.txt",
+               _make_create_spec(base, "docs/NEW.md", "hello world\n"))
         _commit(d, "c2")
         fails, infos = cc.check_17_spec_replay(d)
-        assert fails == []
-        assert any("BOOTSTRAP" in i for i in infos)
+        assert fails == [], fails
+        assert any("docs/NEW.md 重放逐位元相符" in i for i in infos), infos
 
 
-def test_17_two_bootstrap_specs_fail():
+def test_17_create_file_payload_mismatch_fails():
+    """TEST 2: create_file actual HEAD bytes 與 payload 不同 -> FAIL"""
     with tempfile.TemporaryDirectory() as d:
         _init_repo(d)
-        _write(d, "docs/T.md", "A\n")
+        _write(d, "docs/T.md", "init\n")
         base = _commit(d, "c1")
-        _write(d, "docs/batches/aaaaaaa-one-BOOTSTRAP.spec.txt",
-               SPEC_TMPL.format(base=base, anchor="A", payload="A"))
-        _write(d, "docs/batches/%s-two-BOOTSTRAP.spec.txt" % base,
-               SPEC_TMPL.format(base=base, anchor="A", payload="A"))
+        _write(d, "docs/NEW.md", "actual content\n")
+        _write(d, f"docs/batches/{base}-create.spec.txt",
+               _make_create_spec(base, "docs/NEW.md", "expected content\n"))
         _commit(d, "c2")
         fails, _ = cc.check_17_spec_replay(d)
-        assert any("BOOTSTRAP 規格不得超過一份" in f for f in fails), fails
+        assert any("重放結果與實際 commit 的位元組不一致" in f for f in fails), fails
 
 
-def test_17_mixed_bootstrap_and_normal_spec_fails():
-    """
-    第三種混合情形：同一 commit 同時新增一份 BOOTSTRAP 規格與一份普通規格。
-    若「多份規格必 FAIL」寫在 BOOTSTRAP early-return 之後，
-    這個 commit 會從 BOOTSTRAP 分支提前 return，
-    那份普通規格完全不被重放——等於一條繞過 CHECK 17 的路徑。
-    """
+def test_17_create_file_missing_in_head_fails():
+    """TEST 3: spec 宣告 create_file，但 HEAD 沒有 file -> FAIL"""
+    with tempfile.TemporaryDirectory() as d:
+        _init_repo(d)
+        _write(d, "docs/T.md", "init\n")
+        base = _commit(d, "c1")
+        _write(d, f"docs/batches/{base}-create.spec.txt",
+               _make_create_spec(base, "docs/NEW.md", "content\n"))
+        _commit(d, "c2")
+        fails, _ = cc.check_17_spec_replay(d)
+        assert any("docs/NEW.md:0  本 commit 中不存在" in f for f in fails), fails
+
+
+def test_17_create_file_parent_already_exists_fails():
+    """TEST 4: parent 已存在 target -> FAIL"""
+    with tempfile.TemporaryDirectory() as d:
+        _init_repo(d)
+        _write(d, "docs/NEW.md", "already exists\n")
+        base = _commit(d, "c1")
+        _write(d, "docs/NEW.md", "overwritten\n")
+        _write(d, f"docs/batches/{base}-create.spec.txt",
+               _make_create_spec(base, "docs/NEW.md", "overwritten\n"))
+        _commit(d, "c2")
+        fails, _ = cc.check_17_spec_replay(d)
+        assert any("create_file 目標檔案在 parent commit 已存在" in f for f in fails), fails
+
+
+def test_17_create_file_undeclared_new_file_fails_scope():
+    """TEST 5: HEAD 多一個未宣告新檔 -> scope FAIL"""
+    with tempfile.TemporaryDirectory() as d:
+        _init_repo(d)
+        _write(d, "docs/T.md", "init\n")
+        base = _commit(d, "c1")
+        _write(d, "docs/NEW.md", "hello\n")
+        _write(d, "docs/SMUGGLED.md", "sneaky\n")
+        _write(d, f"docs/batches/{base}-create.spec.txt",
+               _make_create_spec(base, "docs/NEW.md", "hello\n"))
+        _commit(d, "c2")
+        fails, _ = cc.check_17_spec_replay(d)
+        assert any("規格未宣告卻被修改的檔案" in f and "docs/SMUGGLED.md" in f for f in fails), fails
+
+
+def test_17_bootstrap_spec_mismatch_fails_replay():
+    """TEST 6: spec filename 含 `-BOOTSTRAP.spec.txt` 但 replay 不正確 -> 必須 FAIL"""
     with tempfile.TemporaryDirectory() as d:
         _init_repo(d)
         _write(d, "docs/T.md", "A\nB\nC\n")
         base = _commit(d, "c1")
-        _write(d, "docs/T.md", "A\nSMUGGLED\nC\n")   # 與普通規格宣告的不同
-        _write(d, "docs/batches/%s-boot-BOOTSTRAP.spec.txt" % base,
-               SPEC_TMPL.format(base=base, anchor="B", payload="Z"))
-        _write(d, "docs/batches/%s-normal.spec.txt" % base,
-               SPEC_TMPL.format(base=base, anchor="B", payload="Z"))
+        _write(d, "docs/T.md", "A\nWRONG\nC\n")
+        _write(d, f"docs/batches/{base}-fake-BOOTSTRAP.spec.txt",
+               _make_create_spec(base, "docs/T.md", "Z").replace("mode: create_file", "mode: replace\n--- ANCHOR ---\nB"))
         _commit(d, "c2")
         fails, infos = cc.check_17_spec_replay(d)
-        assert any("只允許一份規格" in f for f in fails), (fails, infos)
-        assert not any("跳過重放" in i for i in infos), (fails, infos)
+        # 證明不再被跳過，而是正常重放且失敗！
+        assert any("重放結果與實際 commit 的位元組不一致" in f for f in fails), fails
+        assert not any("跳過重放" in i for i in infos), infos
 
 
-def test_17_repo_wide_bootstrap_limit_enforced_on_plain_commit():
-    """全庫 BOOTSTRAP 上限與本 commit 是否含規格無關，一律要驗。"""
+def test_17_bootstrap_spec_correct_passes_normal_replay():
+    """TEST 7: spec filename 含 BOOTSTRAP，但 spec 正確 -> 按 normal replay PASS（不是 skip PASS）"""
     with tempfile.TemporaryDirectory() as d:
         _init_repo(d)
-        _write(d, "docs/T.md", "A\n")
+        _write(d, "docs/T.md", "A\nB\nC\n")
         base = _commit(d, "c1")
-        _write(d, "docs/batches/aaaaaaa-one-BOOTSTRAP.spec.txt",
-               SPEC_TMPL.format(base=base, anchor="A", payload="A"))
-        _write(d, "docs/batches/bbbbbbb-two-BOOTSTRAP.spec.txt",
-               SPEC_TMPL.format(base=base, anchor="A", payload="A"))
+        _write(d, "docs/T.md", "A\nZ\nC\n")
+        _write(d, f"docs/batches/{base}-valid-BOOTSTRAP.spec.txt",
+               _make_create_spec(base, "docs/T.md", "Z").replace("mode: create_file", "mode: replace\n--- ANCHOR ---\nB"))
         _commit(d, "c2")
-        _write(d, "docs/T.md", "A\nB\n")   # 這一個 commit 不含任何規格
-        _commit(d, "c3")
-        fails, _ = cc.check_17_spec_replay(d)
-        assert any("BOOTSTRAP 規格不得超過一份" in f for f in fails), fails
-
-
-def test_17_bootstrap_limit_reads_head_tree_not_index():
-    """
-    HEAD tree 有兩份 BOOTSTRAP，index 暫存刪掉其中一份。
-    invariant 驗的是 committed HEAD，不得因 index 的暫存刪除而放行。
-    """
-    with tempfile.TemporaryDirectory() as d:
-        _init_repo(d)
-        _write(d, "docs/T.md", "A\n")
-        base = _commit(d, "c1")
-        _write(d, "docs/batches/aaaaaaa-one-BOOTSTRAP.spec.txt",
-               SPEC_TMPL.format(base=base, anchor="A", payload="A"))
-        _write(d, "docs/batches/bbbbbbb-two-BOOTSTRAP.spec.txt",
-               SPEC_TMPL.format(base=base, anchor="A", payload="A"))
-        _commit(d, "c2")
-        # index 暫存刪除其中一份，但不 commit
-        _run(d, "git", "rm", "-q", "--cached",
-             "docs/batches/bbbbbbb-two-BOOTSTRAP.spec.txt")
-        fails, _ = cc.check_17_spec_replay(d)
-        assert any("BOOTSTRAP 規格不得超過一份" in f for f in fails), fails
+        fails, infos = cc.check_17_spec_replay(d)
+        assert fails == [], fails
+        assert any("docs/T.md 重放逐位元相符" in i for i in infos), infos
+        assert not any("跳過重放" in i for i in infos), infos
 
 
 def test_17_two_specs_one_commit_fails():
