@@ -65,12 +65,37 @@ def test_check_8_taskboard_head_fail_lag(tmp_path):
 
 
 def test_check_9_handover_head_pass(tmp_path):
+    # CASE A：handoff pointer = audited parent (prev) -> PASS
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    bl = docs / "refactor-backlog.md"
+    bl.write_text("上次核對通過的 HEAD：18af8ad\n", encoding="utf-8")
+    fails, infos = check_9_handover_head(str(tmp_path), git_head="08e6bbc", git_prev="18af8ad")
+    assert len(fails) == 0
+
+
+def test_check_9_handover_head_fail_candidate_self(tmp_path):
+    # CASE C：不能將 candidate 自己當 audited parent 來騙過 CHECK 9 -> FAIL
     docs = tmp_path / "docs"
     docs.mkdir()
     bl = docs / "refactor-backlog.md"
     bl.write_text("上次核對通過的 HEAD：08e6bbc\n", encoding="utf-8")
-    fails, infos = check_9_handover_head(str(tmp_path), git_head="08e6bbc", git_prev="18af8ad")
-    assert len(fails) == 0
+    fails, infos = check_9_handover_head(str(tmp_path), git_head="08e6bbc", git_prev="18af8ad", git_prev2="b6ab53f")
+    assert len(fails) == 1
+    assert "不得為當前 HEAD/candidate 自己" in fails[0]
+
+
+def test_check_9_as_if_committed_predicts_lag(tmp_path):
+    # 預演模式：若在 commit 前上次核對通過的 HEAD 停留在當前 HEAD~2（未來的 HEAD~3），提前報 FAIL
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    bl = docs / "refactor-backlog.md"
+    bl.write_text("上次核對通過的 HEAD：1111111\n", encoding="utf-8")
+    fails, infos = check_9_handover_head(
+        str(tmp_path), git_head="candidate", git_prev="curhead", git_prev2="prevhead"
+    )
+    assert len(fails) == 1
+    assert "落後超過兩批" in fails[0]
 
 
 def test_check_9_handover_head_fail_lag(tmp_path):

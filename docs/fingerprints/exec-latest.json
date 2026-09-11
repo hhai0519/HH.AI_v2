@@ -1,5 +1,5 @@
 {
-  "base_head": "b50c1e5",
+  "base_head": "a56c5c9",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 0,
@@ -12,8 +12,8 @@
         "## 2.3 commit 與 push 的狀態，必須以指令輸出為準",
         "## 3. 查證紀律"
       ],
-      "lines": 257,
-      "sha256": "60e9156c65c0de9f925e3c8d849b067c9fa889da748cf9f8ed2d8b9ab302f759"
+      "lines": 258,
+      "sha256": "32f1592199562b773958c89880a134d2d7abdce4e33934213f1338b4df77bffd"
     },
     ".agents/rules/powershell-encoding-protocol.md": {
       "fences": 6,
@@ -490,16 +490,16 @@
       "headings": [
         "# 自我審查檢查點紀錄"
       ],
-      "lines": 48,
-      "sha256": "b1d944c701a5c50f2b870728382440c8f7f71657f61a714e00f506fd5dd15150"
+      "lines": 49,
+      "sha256": "b1fc19c36224a12e30b92cfe9dd8782b0519fa369d5ff45848dd7a1d579def2d"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 36,
-      "sha256": "b196681fc43cfc404a879b839e0c592ae4298c91f5171d8fb8e6f83407aaab23"
+      "lines": 37,
+      "sha256": "dae150f5b9d1411e3f37d7bbd3d222207d58bb18e212a4ea716e0762efc58d1c"
     },
     "docs/HANDOVER.md": {
       "fences": 14,
@@ -609,7 +609,7 @@
         "## 封存區"
       ],
       "lines": 234,
-      "sha256": "c7873ba655b67bfa49420c71aa3ae1e1a7c3d8467e461b8c65d17ec9d69ae6a0"
+      "sha256": "7873406ed2ae65cb38b21ae9c62920d1a46a3892db0cba2dbd64cd443b6a57c6"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -926,8 +926,8 @@
         "### 5.3 待使用者裁決",
         "### 5.4 進行中／等待回報"
       ],
-      "lines": 3014,
-      "sha256": "6d9bc06ec6a5fa2b83f9867088f8bbac463dbb1614234ad07863bbcb7a629fbb"
+      "lines": 3016,
+      "sha256": "04bf1b4efc70758aea1b5d2856f149f6f3ffd92c82dff4859eb8ec58f2ce18a4"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -952,8 +952,8 @@
         "# 已知指向錯誤的歷史 tag。本清單只能縮短、不得加長。",
         "# 修復批次完成後必須清空；清單中的 tag 若已修復卻未移除，CHECK 18 會 FAIL。"
       ],
-      "lines": 1450,
-      "sha256": "810db4aea3f40c6c56ea26ae86422a30e28e1e3bb695bde53b53408ad346458c"
+      "lines": 1468,
+      "sha256": "3e7eff8940a9bb53d72197a8b9240db9311bbef1ce7b3d96bed9176936ea8f37"
     },
     "scripts/fingerprint.py": {
       "fences": 0,
@@ -995,8 +995,8 @@
       "headings": [
         "# Ensure scripts dir is on sys.path"
       ],
-      "lines": 342,
-      "sha256": "9f9589d61b5079c56b3370b87fedcd74220343799287f3de89663661faddefc0"
+      "lines": 367,
+      "sha256": "90c5900f278070080206ba33ccc744d185b63852fb3d882ac56aa6491fb4ea93"
     },
     "scripts/tests/test_fingerprint.py": {
       "fences": 0,
@@ -1067,7 +1067,7 @@
       "sha256": "77163678353cb7a444f90f17956d03312f715cfcccf933603948715939ecdc10"
     }
   },
-  "generated_at": "2026-09-11T09:43:21Z",
+  "generated_at": "2026-09-11T10:15:44Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

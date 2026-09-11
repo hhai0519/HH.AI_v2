@@ -10,7 +10,7 @@
 `待裁決`（需使用者決定）／`已完成`（仍可能被引用）／
 `可封存`（不影響後續工作，待使用者確認後移入封存區）
 
-**最後更新**：2026-09-11，HEAD `ff17ae5` 之後（Governance Exit Gate Parity 收斂：建立單一驗證入口 scripts/verify_all.py）
+**最後更新**：2026-09-11，HEAD `a56c5c9` 之後（Transient Red Reduction：強化 CHECK 9 candidate 自引防護與實作 --as-if-committed 預演模式）
 
 ---
 
@@ -122,7 +122,7 @@
 | B-48 | 待辦 | **「回報即 commit」無法容納 commit 之後才發生的事** | `docs/EXEC-LOG.md` 的列在 commit 前寫入，CI 在 push 後才跑，時序上不可能相遇。執行者在 `2d76958` 正確診斷出 CRLF 卻無處可放，回覆格式亦只有「成功兩行」與「前置檢查未通過」兩種，CI 事後失敗兩者皆非。處置：push 後輪詢 CI 至 completed，以第二個 commit 記錄結論；回覆格式增列 CI 結論行；`conclusion != success` 一律走未通過格式。排批 2b |
 | B-49 | 待辦 | **CI 獨立查證的規則化與機械化** | 落點：`auditor-protocol.md` §6.1（新增第 0 項：上一批 CI 非 success 即不得產出下一份提示詞）＋ `handover-selftest.md` 新增 E19 ＋ `.agents/rules/git-and-reporting.md` §2.3。並新建 `scripts/ci_status.py`，**必須含 badge SVG fallback**（`actions/workflows/<name>/badge.svg` 的 `<title>` 標籤不受 API 速率限制）——GitHub API 每小時 60 次的上限曾兩度擋住審計官，而查不到很容易被當成沒問題。排批 2b |
 | B-50 | 已完成 | **`prompt-preflight.md` §3.4 的交叉驗證可被審計官以「知情偏離」宣告繞過** | 2026-09-06 審計官在 2a-fix 把 E8 標為 ⚠️ 並附理由，執行者接受並未停止，導致 CHECK 12 在 CI 上 FAIL。§3.7 明寫「十八項全部可機械驗證，沒有任何一項需要你憑信任接受」，但 E8 就此變成信任項——與該節建立時要消滅的 E11 造假是同一個洞。而 `role-boundaries.md` §2 又禁止執行者判斷規範是否應存在，執行者被夾在中間。**修法：E8 比對為否時一律停止、不接受任何理由；審計官需偏離 §6.1-8 時，唯一合法路徑是先另開一批修改規則本身。** 排批 2b。**2026-09-07 實測落地**：`.agents/rules/prompt-preflight.md` §3.4 已含「自檢聲明不接受任何豁免」，實測 1 處 |
-| B-51 | 待辦 | **判準含 HEAD 的檢查，本地與 CI 的答案結構性差 1** | 本地在 commit 前跑、CI 在 commit 後跑。CHECK 8／9 門檻 `lag > 2` 故差 1 看不出；**CHECK 12／16 門檻 `lag > 1`，正好卡在差值上**——「漏更新 AUDIT-LOG」在本地驗證中原理上偵測不到。2026-09-06 實證：本地 HEAD=`2d76958` lag=1 PASS、CI HEAD=`3a85a30` lag=2 FAIL。**執行者無疏忽。** 處置方向：這四項增加 `--as-if-committed` 本地預演模式，或另設 pre-commit 的等效判準。2026-09-11 實證：CHECK 9 亦存在 prospective-HEAD 差異，pre-commit 在 parent HEAD 為 lag=2 PASS，commit 後因 HEAD 前進 1 步使 lag=3 FAIL。排批 2b |
+| B-51 | 已完成 | **判準含 HEAD 的檢查，本地與 CI 的答案結構性差 1** | 已於 Transient Red Reduction 完成：check_9_handover_head 強化 candidate 自引防護（不得為當前 HEAD）；check_consistency.py 實作 --as-if-committed 預演模式，使 commit 前即可準確預測 commit 後拓撲（HEAD=candidate, HEAD~1=當前HEAD, HEAD~2=當前HEAD~1），提前攔截 stale handoff pointer 與週期落後，消除本地與 CI 差 1 的可預測中間紅燈 |
 | B-52 | 已完成 | **同形錯誤連續三批：改動或跳過某物之前，未查誰依賴它** | 批 1 改 `check_consistency.py` 顯示字串未查測試斷言引用；批 2a 設計跨平台位元組比對未查 git 跨平台轉換；批 2a-fix 宣告偏離 §6.1-8 未查其機械守衛 CHECK 12。`auditor-protocol.md` §6.7 已有此規則但措辭只舉「數字」「章節引用」為例。**處置：§6.7 的搜尋對象清單擴為四類**——被測試斷言引用的字串／會被執行環境改動的東西（換行、編碼、路徑分隔符）／有機械守衛的規則／本地與 CI 判準會分歧的東西。依 §5.7 同步進 §6.1、selftest E 節、preflight §3 三處。**原 B-24 併入本項**。**2026-09-07 實測落地**：`.claude/rules/auditor-protocol.md` §6.7 已含「要偏離任何一條規則」，實測 1 處，清單共 7 條 |
 | B-53 | 待辦 | **CHECK 1–7 內嵌於 453 行的 `run_checks()`，永遠無法被單元測試** | `grep "^def " scripts/check_consistency.py` 實測只有 `run_checks`、`get_git_heads` 與 `check_8`～`check_16`。CHECK 8–16 是獨立函式且有 322 行測試；**CHECK 1–7 只有一次性反例注入（B-15），無回歸保護**——重構 `run_checks()` 弄壞任一項不會有測試變紅，CI 仍是綠的。**假綠燈形狀住在檢查器本身裡。** 處置：抽成 7 個函式並補正反例測試。排批 2c |
 | B-54 | 待辦 | **零項 CHECK 驗證 SOP 層內容或跨層矛盾** | 16 項中 6 項對著稽核迴圈自己（8／9／11／12／15／16）、5 項通用格式（1／2／3／13／14）、3 項 `skills/`（4／6／7）、2 項路由引用（5／10）。**SOP 的 1,305 行內容與規範層之間的矛盾完全無守衛。** 已知兩例（`SOP_02` 清歷史 vs `.agents/rules/git-and-reporting.md` 禁 force push、`SOP_04` 第 167 行與 `SOP_06` 第 133 行 vs ADR-0017）皆為人工偶然發現。處置：建 `docs/managed-facts.yaml` ＋ **CHECK 21 跨層矛盾偵測**。排批 2e |

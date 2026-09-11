@@ -2819,7 +2819,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 5.1 上一批狀態
 
-上次核對通過的 HEAD：0470df2
+上次核對通過的 HEAD：ff17ae5
 
 - `23af193`（執行者前置檢查 ＋ 回滾程序 ＋ `AUDIT-LOG.md` ＋ 四缺口修正）
   已於 2026-09-02 由審計官核對通過：6 檔異動（含 2 個新檔）、零夾帶、
@@ -2953,9 +2953,11 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   實作 canonical validate_repo_path，全面防堵路徑穿透、UNC 與 Windows 磁碟機路徑逃逸，
   完成治理層收斂）已於 2026-09-11 執行完成：14 檔異動、零夾帶，
   獨立驗證四項全過（54 技能、18 項 CHECK、122 測試、`--verify` exit 0），CI success，**尚待審計官核對**，見 §5.4。
-- 本批（尚未 commit）（Governance Exit Gate Parity 收斂：建立單一權威驗證入口 scripts/verify_all.py；
+- `a56c5c9`（Governance Exit Gate Parity 收斂：建立單一權威驗證入口 scripts/verify_all.py；
   完整納入 validate_skills、check_consistency、fingerprint --verify、scripts/tests、webapp-testing/tests 5 大 Correctness Gates；
-  消除 Local 與 CI 驗證閘門分叉與 parity gap，完成 B-47）已執行，**尚待審計官核對**，見 §5.4。
+  消除 Local 與 CI 驗證閘門分叉與 parity gap，完成 B-47）已於 2026-09-11 執行完成：10 檔異動、零夾帶，
+  獨立驗證五項全過（54 技能、18 項 CHECK、126 passed、13 webapp passed、`--verify` exit 0），CI Run 34585789663 success，**尚待審計官核對**，見 §5.4。
+- 本批（尚未 commit）（Transient Red Reduction：強化 CHECK 9 candidate 自引防護與實作 --as-if-committed 預演模式，完成 B-51）已執行，**尚待審計官核對**，見 §5.4。
 
 ### 5.2 待辦
 
@@ -2981,11 +2983,11 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 > 兩份內容不同的「後續」順序）。清理紀錄與成因見第 53 點。
 > **歷史敘述屬留痕層，落點是編號點，不是本節。**
 
-- **本批（Governance Exit Gate Parity 收斂）已執行完成，等待審計官核對。**
-  內容：建立 Canonical Verification Entrypoint（`scripts/verify_all.py`），收攏全專案 5 大 Correctness Gates；
-  更新 `.github/workflows/verify.yml` 直接呼叫單一權威入口；
-  補齊單元測試 `scripts/tests/test_verify_all.py`；
-  更新規範文檔與看板（完成 B-47），消除 Local 與 CI 之驗證閘門分叉。
+- **本批（Transient Red Reduction）已執行完成，等待審計官核對。**
+  內容：強化 `check_9_handover_head` 排除 candidate 自己（CASE C 防護）；
+  實作 `check_consistency.py --as-if-committed` 預演模式；
+  更新 `.agents/rules/git-and-reporting.md` 建立 Pre-Prospective Handoff 前置檢查要求；
+  補齊 Durable Tests（CASE A, B, C 全過）；完成 B-51。
 - **後續順序**：治理層 7/7 核心里程碑已全數收斂就緒，安全路徑約束已封閉；
   唯一剩餘 B-91（9 個歷史錯 tag，待授權）不阻擋治理層 exit。
   待宏觀審計官裁決 Governance Exit 後，即可正式退出治理層並啟動 3（E-01 技能遷移第一梯次 ＋ B-01）主重構主線。

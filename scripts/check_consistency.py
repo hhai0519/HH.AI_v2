@@ -39,7 +39,12 @@ import json
 sys.stdout.reconfigure(encoding='utf-8')
 repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
-def run_checks():
+def run_checks(argv=None):
+    if argv is None:
+        argv = sys.argv[1:]
+    as_if_committed = "--as-if-committed" in argv
+    if as_if_committed:
+        print("[MODE] 啟用 --as-if-committed 本地 commit 拓撲預演模式")
     total_checks = 16
     passed = 0
     failed = 0
@@ -337,7 +342,7 @@ def run_checks():
     # CHECK 8: 任務看板 HEAD 落後
     # ---------------------------------------------------------
     print("\nCHECK 8 - 任務看板 HEAD 落後")
-    c8_fails, c8_infos = check_8_taskboard_head(repo_root)
+    c8_fails, c8_infos = check_8_taskboard_head(repo_root, as_if_committed=as_if_committed)
     for info in c8_infos:
         print(f"  [INFO] {info}")
     if len(c8_fails) == 0:
@@ -353,7 +358,7 @@ def run_checks():
     # CHECK 9: 交接區 HEAD 落後
     # ---------------------------------------------------------
     print("\nCHECK 9 - 交接區 HEAD 落後")
-    c9_fails, c9_infos = check_9_handover_head(repo_root)
+    c9_fails, c9_infos = check_9_handover_head(repo_root, as_if_committed=as_if_committed)
     for info in c9_infos:
         print(f"  [INFO] {info}")
     if len(c9_fails) == 0:
@@ -524,7 +529,7 @@ def run_checks():
 
 import subprocess
 
-def get_git_heads(root):
+def get_git_heads(root, as_if_committed=False):
     env_head = os.environ.get("GIT_HEAD")
     env_prev = os.environ.get("GIT_HEAD_PREV")
     env_prev2 = os.environ.get("GIT_HEAD_PREV2")
@@ -532,15 +537,24 @@ def get_git_heads(root):
     prev = None
     prev2 = None
     try:
-        res = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=root, capture_output=True, text=True)
-        if res.returncode == 0:
-            head = res.stdout.strip()
-        res2 = subprocess.run(["git", "rev-parse", "--short", "HEAD~1"], cwd=root, capture_output=True, text=True)
-        if res2.returncode == 0:
-            prev = res2.stdout.strip()
-        res3 = subprocess.run(["git", "rev-parse", "--short", "HEAD~2"], cwd=root, capture_output=True, text=True)
-        if res3.returncode == 0:
-            prev2 = res3.stdout.strip()
+        if as_if_committed:
+            head = "candidate"
+            res_prev = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=root, capture_output=True, text=True)
+            if res_prev.returncode == 0:
+                prev = res_prev.stdout.strip()
+            res_prev2 = subprocess.run(["git", "rev-parse", "--short", "HEAD~1"], cwd=root, capture_output=True, text=True)
+            if res_prev2.returncode == 0:
+                prev2 = res_prev2.stdout.strip()
+        else:
+            res = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=root, capture_output=True, text=True)
+            if res.returncode == 0:
+                head = res.stdout.strip()
+            res2 = subprocess.run(["git", "rev-parse", "--short", "HEAD~1"], cwd=root, capture_output=True, text=True)
+            if res2.returncode == 0:
+                prev = res2.stdout.strip()
+            res3 = subprocess.run(["git", "rev-parse", "--short", "HEAD~2"], cwd=root, capture_output=True, text=True)
+            if res3.returncode == 0:
+                prev2 = res3.stdout.strip()
     except Exception:
         pass
     if env_head:
@@ -551,7 +565,7 @@ def get_git_heads(root):
         prev2 = env_prev2
     return head, prev, prev2
 
-def check_8_taskboard_head(root_dir=None, git_head=None, git_prev=None, git_prev2=None):
+def check_8_taskboard_head(root_dir=None, git_head=None, git_prev=None, git_prev2=None, as_if_committed=False):
     if root_dir is None: root_dir = repo_root
     fails = []
     infos = []
@@ -576,7 +590,7 @@ def check_8_taskboard_head(root_dir=None, git_head=None, git_prev=None, git_prev
     prev = git_prev.lower() if git_prev else None
     prev2 = git_prev2.lower() if git_prev2 else None
     if head is None or prev is None:
-        g_head, g_prev, g_prev2 = get_git_heads(root_dir)
+        g_head, g_prev, g_prev2 = get_git_heads(root_dir, as_if_committed=as_if_committed)
         if head is None: head = g_head
         if prev is None: prev = g_prev
         if prev2 is None: prev2 = g_prev2
@@ -595,7 +609,7 @@ def check_8_taskboard_head(root_dir=None, git_head=None, git_prev=None, git_prev
         fails.append(f"docs/TASKBOARD.md: 最後更新 HEAD ({tb_hash}) 落後超過兩批 (HEAD={head}, HEAD~1={prev}, HEAD~2={prev2})")
     return fails, infos
 
-def check_9_handover_head(root_dir=None, git_head=None, git_prev=None, git_prev2=None):
+def check_9_handover_head(root_dir=None, git_head=None, git_prev=None, git_prev2=None, as_if_committed=False):
     if root_dir is None: root_dir = repo_root
     fails = []
     infos = []
@@ -620,7 +634,7 @@ def check_9_handover_head(root_dir=None, git_head=None, git_prev=None, git_prev2
     prev = git_prev.lower() if git_prev else None
     prev2 = git_prev2.lower() if git_prev2 else None
     if head is None or prev is None:
-        g_head, g_prev, g_prev2 = get_git_heads(root_dir)
+        g_head, g_prev, g_prev2 = get_git_heads(root_dir, as_if_committed=as_if_committed)
         if head is None: head = g_head
         if prev is None: prev = g_prev
         if prev2 is None: prev2 = g_prev2
@@ -629,11 +643,15 @@ def check_9_handover_head(root_dir=None, git_head=None, git_prev=None, git_prev2
         infos.append("無法取得 git HEAD 資訊，略過比對")
         return fails, infos
 
-    # 門檻：lag > 2（允許 HEAD、HEAD~1、HEAD~2，落後超過兩批才報 FAIL）
-    matches_head = head.startswith(ho_hash) or ho_hash.startswith(head)
+    # 防護 CASE C：上次核對通過的 HEAD 不得為當前 HEAD / candidate 自己
+    if head and (head.startswith(ho_hash) or ho_hash.startswith(head)):
+        fails.append(f"docs/refactor-backlog.md: 上次核對通過的 HEAD ({ho_hash}) 不得為當前 HEAD/candidate 自己")
+        return fails, infos
+
+    # 門檻：lag > 2（僅允許已審計歷史 commit HEAD~1 或 HEAD~2，落後超過兩批才報 FAIL）
     matches_prev = prev and (prev.startswith(ho_hash) or ho_hash.startswith(prev))
     matches_prev2 = prev2 and (prev2.startswith(ho_hash) or ho_hash.startswith(prev2))
-    lag = 0 if matches_head else (1 if matches_prev else (2 if matches_prev2 else 3))
+    lag = 1 if matches_prev else (2 if matches_prev2 else 3)
 
     if lag > 2:
         fails.append(f"docs/refactor-backlog.md: 上次核對通過的 HEAD ({ho_hash}) 落後超過兩批 (HEAD={head}, HEAD~1={prev}, HEAD~2={prev2})")

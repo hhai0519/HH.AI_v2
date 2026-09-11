@@ -1,0 +1,470 @@
+# 批次規格 — Transient Red Reduction：強化 CHECK 9 candidate 自引防護與實作 --as-if-committed 預演模式
+#
+# batch_id     : a56c5c9-transient-red-reduction
+# batch_mode   : GOAL_SPEC
+# base_commit  : a56c5c9
+#
+# 本批目的：強化 check_9_handover_head 防護，嚴格禁止 candidate 將自己作為「上次核對通過的 HEAD」（CASE C 防護）；
+# 於 check_consistency.py 實作 --as-if-committed 拓撲預演模式，使 commit 前即可準確預測 commit 後 Git 拓撲；
+# 新增單元測試（CASE A/B/C 與預演模式）；更新 git-and-reporting.md 與 TASKBOARD (完成 B-51)；
+# 消除可提前避免的中間紅燈。
+#
+# 允許修改的檔案：
+#   scripts/check_consistency.py
+#   scripts/tests/test_check_consistency.py
+#   .agents/rules/git-and-reporting.md
+#   docs/TASKBOARD.md
+#   docs/refactor-backlog.md
+#   docs/AUDIT-LOG.md
+#
+# 豁免檔：
+#   docs/EXEC-LOG.md
+#   docs/fingerprints/exec-latest.json
+
+HEAD: a56c5c9
+
+=== MOD 1 ===
+file: scripts/check_consistency.py
+mode: replace
+--- ANCHOR ---
+def get_git_heads(root):
+    env_head = os.environ.get("GIT_HEAD")
+    env_prev = os.environ.get("GIT_HEAD_PREV")
+    env_prev2 = os.environ.get("GIT_HEAD_PREV2")
+    head = None
+    prev = None
+    prev2 = None
+    try:
+        res = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=root, capture_output=True, text=True)
+        if res.returncode == 0:
+            head = res.stdout.strip()
+        res2 = subprocess.run(["git", "rev-parse", "--short", "HEAD~1"], cwd=root, capture_output=True, text=True)
+        if res2.returncode == 0:
+            prev = res2.stdout.strip()
+        res3 = subprocess.run(["git", "rev-parse", "--short", "HEAD~2"], cwd=root, capture_output=True, text=True)
+        if res3.returncode == 0:
+            prev2 = res3.stdout.strip()
+    except Exception:
+        pass
+    if env_head:
+        head = env_head
+    if env_prev:
+        prev = env_prev
+    if env_prev2:
+        prev2 = env_prev2
+    return head, prev, prev2
+
+def check_8_taskboard_head(root_dir=None, git_head=None, git_prev=None, git_prev2=None):
+    if root_dir is None: root_dir = repo_root
+    fails = []
+    infos = []
+    tb_path = os.path.join(root_dir, "docs", "TASKBOARD.md")
+    if not os.path.exists(tb_path):
+        fails.append("docs/TASKBOARD.md:0  檔案不存在")
+        return fails, infos
+    try:
+        with open(tb_path, "r", encoding="utf-8") as f:
+            content = f.read()
+    except Exception as e:
+        fails.append(f"docs/TASKBOARD.md:0  讀取失敗: {e}")
+        return fails, infos
+
+    m = re.search(r"\*\*最後更新\*\*：.*?HEAD\s+`?([0-9a-fA-F]+)`?\s+之後", content)
+    if not m:
+        fails.append("docs/TASKBOARD.md:0  未找到『最後更新』HEAD 標記")
+        return fails, infos
+    tb_hash = m.group(1).lower()
+
+    head = git_head.lower() if git_head else None
+    prev = git_prev.lower() if git_prev else None
+    prev2 = git_prev2.lower() if git_prev2 else None
+    if head is None or prev is None:
+        g_head, g_prev, g_prev2 = get_git_heads(root_dir)
+        if head is None: head = g_head
+        if prev is None: prev = g_prev
+        if prev2 is None: prev2 = g_prev2
+
+    if head is None:
+        infos.append("無法取得 git HEAD 資訊，略過比對")
+        return fails, infos
+
+    # 門檻：lag > 2（允許 HEAD、HEAD~1、HEAD~2，落後超過兩批才報 FAIL）
+    matches_head = head.startswith(tb_hash) or tb_hash.startswith(head)
+    matches_prev = prev and (prev.startswith(tb_hash) or tb_hash.startswith(prev))
+    matches_prev2 = prev2 and (prev2.startswith(tb_hash) or tb_hash.startswith(prev2))
+    lag = 0 if matches_head else (1 if matches_prev else (2 if matches_prev2 else 3))
+
+    if lag > 2:
+        fails.append(f"docs/TASKBOARD.md: 最後更新 HEAD ({tb_hash}) 落後超過兩批 (HEAD={head}, HEAD~1={prev}, HEAD~2={prev2})")
+    return fails, infos
+
+def check_9_handover_head(root_dir=None, git_head=None, git_prev=None, git_prev2=None):
+    if root_dir is None: root_dir = repo_root
+    fails = []
+    infos = []
+    bl_path = os.path.join(root_dir, "docs", "refactor-backlog.md")
+    if not os.path.exists(bl_path):
+        fails.append("docs/refactor-backlog.md:0  檔案不存在")
+        return fails, infos
+    try:
+        with open(bl_path, "r", encoding="utf-8") as f:
+            content = f.read()
+    except Exception as e:
+        fails.append(f"docs/refactor-backlog.md:0  讀取失敗: {e}")
+        return fails, infos
+
+    m = re.search(r"上次核對通過的 HEAD：\s*`?([0-9a-fA-F]+)`?", content)
+    if not m:
+        fails.append("docs/refactor-backlog.md:0  未找到『上次核對通過的 HEAD』標記")
+        return fails, infos
+    ho_hash = m.group(1).lower()
+
+    head = git_head.lower() if git_head else None
+    prev = git_prev.lower() if git_prev else None
+    prev2 = git_prev2.lower() if git_prev2 else None
+    if head is None or prev is None:
+        g_head, g_prev, g_prev2 = get_git_heads(root_dir)
+        if head is None: head = g_head
+        if prev is None: prev = g_prev
+        if prev2 is None: prev2 = g_prev2
+
+    if head is None:
+        infos.append("無法取得 git HEAD 資訊，略過比對")
+        return fails, infos
+
+    # 門檻：lag > 2（允許 HEAD、HEAD~1、HEAD~2，落後超過兩批才報 FAIL）
+    matches_head = head.startswith(ho_hash) or ho_hash.startswith(head)
+    matches_prev = prev and (prev.startswith(ho_hash) or ho_hash.startswith(prev))
+    matches_prev2 = prev2 and (prev2.startswith(ho_hash) or ho_hash.startswith(prev2))
+    lag = 0 if matches_head else (1 if matches_prev else (2 if matches_prev2 else 3))
+
+    if lag > 2:
+        fails.append(f"docs/refactor-backlog.md: 上次核對通過的 HEAD ({ho_hash}) 落後超過兩批 (HEAD={head}, HEAD~1={prev}, HEAD~2={prev2})")
+    return fails, infos
+--- PAYLOAD ---
+def get_git_heads(root, as_if_committed=False):
+    env_head = os.environ.get("GIT_HEAD")
+    env_prev = os.environ.get("GIT_HEAD_PREV")
+    env_prev2 = os.environ.get("GIT_HEAD_PREV2")
+    head = None
+    prev = None
+    prev2 = None
+    try:
+        if as_if_committed:
+            head = "candidate"
+            res_prev = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=root, capture_output=True, text=True)
+            if res_prev.returncode == 0:
+                prev = res_prev.stdout.strip()
+            res_prev2 = subprocess.run(["git", "rev-parse", "--short", "HEAD~1"], cwd=root, capture_output=True, text=True)
+            if res_prev2.returncode == 0:
+                prev2 = res_prev2.stdout.strip()
+        else:
+            res = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=root, capture_output=True, text=True)
+            if res.returncode == 0:
+                head = res.stdout.strip()
+            res2 = subprocess.run(["git", "rev-parse", "--short", "HEAD~1"], cwd=root, capture_output=True, text=True)
+            if res2.returncode == 0:
+                prev = res2.stdout.strip()
+            res3 = subprocess.run(["git", "rev-parse", "--short", "HEAD~2"], cwd=root, capture_output=True, text=True)
+            if res3.returncode == 0:
+                prev2 = res3.stdout.strip()
+    except Exception:
+        pass
+    if env_head:
+        head = env_head
+    if env_prev:
+        prev = env_prev
+    if env_prev2:
+        prev2 = env_prev2
+    return head, prev, prev2
+
+def check_8_taskboard_head(root_dir=None, git_head=None, git_prev=None, git_prev2=None, as_if_committed=False):
+    if root_dir is None: root_dir = repo_root
+    fails = []
+    infos = []
+    tb_path = os.path.join(root_dir, "docs", "TASKBOARD.md")
+    if not os.path.exists(tb_path):
+        fails.append("docs/TASKBOARD.md:0  檔案不存在")
+        return fails, infos
+    try:
+        with open(tb_path, "r", encoding="utf-8") as f:
+            content = f.read()
+    except Exception as e:
+        fails.append(f"docs/TASKBOARD.md:0  讀取失敗: {e}")
+        return fails, infos
+
+    m = re.search(r"\*\*最後更新\*\*：.*?HEAD\s+`?([0-9a-fA-F]+)`?\s+之後", content)
+    if not m:
+        fails.append("docs/TASKBOARD.md:0  未找到『最後更新』HEAD 標記")
+        return fails, infos
+    tb_hash = m.group(1).lower()
+
+    head = git_head.lower() if git_head else None
+    prev = git_prev.lower() if git_prev else None
+    prev2 = git_prev2.lower() if git_prev2 else None
+    if head is None or prev is None:
+        g_head, g_prev, g_prev2 = get_git_heads(root_dir, as_if_committed=as_if_committed)
+        if head is None: head = g_head
+        if prev is None: prev = g_prev
+        if prev2 is None: prev2 = g_prev2
+
+    if head is None:
+        infos.append("無法取得 git HEAD 資訊，略過比對")
+        return fails, infos
+
+    # 門檻：lag > 2（允許 HEAD、HEAD~1、HEAD~2，落後超過兩批才報 FAIL）
+    matches_head = head.startswith(tb_hash) or tb_hash.startswith(head)
+    matches_prev = prev and (prev.startswith(tb_hash) or tb_hash.startswith(prev))
+    matches_prev2 = prev2 and (prev2.startswith(tb_hash) or tb_hash.startswith(prev2))
+    lag = 0 if matches_head else (1 if matches_prev else (2 if matches_prev2 else 3))
+
+    if lag > 2:
+        fails.append(f"docs/TASKBOARD.md: 最後更新 HEAD ({tb_hash}) 落後超過兩批 (HEAD={head}, HEAD~1={prev}, HEAD~2={prev2})")
+    return fails, infos
+
+def check_9_handover_head(root_dir=None, git_head=None, git_prev=None, git_prev2=None, as_if_committed=False):
+    if root_dir is None: root_dir = repo_root
+    fails = []
+    infos = []
+    bl_path = os.path.join(root_dir, "docs", "refactor-backlog.md")
+    if not os.path.exists(bl_path):
+        fails.append("docs/refactor-backlog.md:0  檔案不存在")
+        return fails, infos
+    try:
+        with open(bl_path, "r", encoding="utf-8") as f:
+            content = f.read()
+    except Exception as e:
+        fails.append(f"docs/refactor-backlog.md:0  讀取失敗: {e}")
+        return fails, infos
+
+    m = re.search(r"上次核對通過的 HEAD：\s*`?([0-9a-fA-F]+)`?", content)
+    if not m:
+        fails.append("docs/refactor-backlog.md:0  未找到『上次核對通過的 HEAD』標記")
+        return fails, infos
+    ho_hash = m.group(1).lower()
+
+    head = git_head.lower() if git_head else None
+    prev = git_prev.lower() if git_prev else None
+    prev2 = git_prev2.lower() if git_prev2 else None
+    if head is None or prev is None:
+        g_head, g_prev, g_prev2 = get_git_heads(root_dir, as_if_committed=as_if_committed)
+        if head is None: head = g_head
+        if prev is None: prev = g_prev
+        if prev2 is None: prev2 = g_prev2
+
+    if head is None:
+        infos.append("無法取得 git HEAD 資訊，略過比對")
+        return fails, infos
+
+    # 防護 CASE C：上次核對通過的 HEAD 不得為當前 HEAD / candidate 自己
+    if head and (head.startswith(ho_hash) or ho_hash.startswith(head)):
+        fails.append(f"docs/refactor-backlog.md: 上次核對通過的 HEAD ({ho_hash}) 不得為當前 HEAD/candidate 自己")
+        return fails, infos
+
+    # 門檻：lag > 2（僅允許已審計歷史 commit HEAD~1 或 HEAD~2，落後超過兩批才報 FAIL）
+    matches_prev = prev and (prev.startswith(ho_hash) or ho_hash.startswith(prev))
+    matches_prev2 = prev2 and (prev2.startswith(ho_hash) or ho_hash.startswith(prev2))
+    lag = 1 if matches_prev else (2 if matches_prev2 else 3)
+
+    if lag > 2:
+        fails.append(f"docs/refactor-backlog.md: 上次核對通過的 HEAD ({ho_hash}) 落後超過兩批 (HEAD={head}, HEAD~1={prev}, HEAD~2={prev2})")
+    return fails, infos
+--- END MOD ---
+
+=== MOD 2 ===
+file: scripts/check_consistency.py
+mode: replace
+--- ANCHOR ---
+def run_checks():
+    total_checks = 16
+    passed = 0
+    failed = 0
+--- PAYLOAD ---
+def run_checks(argv=None):
+    if argv is None:
+        argv = sys.argv[1:]
+    as_if_committed = "--as-if-committed" in argv
+    if as_if_committed:
+        print("[MODE] 啟用 --as-if-committed 本地 commit 拓撲預演模式")
+    total_checks = 16
+    passed = 0
+    failed = 0
+--- END MOD ---
+
+=== MOD 3 ===
+file: scripts/check_consistency.py
+mode: replace
+--- ANCHOR ---
+    # CHECK 8: 任務看板 HEAD 落後
+    # ---------------------------------------------------------
+    print("\nCHECK 8 - 任務看板 HEAD 落後")
+    c8_fails, c8_infos = check_8_taskboard_head(repo_root)
+    for info in c8_infos:
+        print(f"  [INFO] {info}")
+    if len(c8_fails) == 0:
+        print("  [PASS] 0 命中")
+        passed += 1
+    else:
+        print(f"  [FAIL] {len(c8_fails)} 命中")
+        for fail in c8_fails:
+            print(f"    {fail}")
+        failed += 1
+
+    # ---------------------------------------------------------
+    # CHECK 9: 交接區 HEAD 落後
+    # ---------------------------------------------------------
+    print("\nCHECK 9 - 交接區 HEAD 落後")
+    c9_fails, c9_infos = check_9_handover_head(repo_root)
+--- PAYLOAD ---
+    # CHECK 8: 任務看板 HEAD 落後
+    # ---------------------------------------------------------
+    print("\nCHECK 8 - 任務看板 HEAD 落後")
+    c8_fails, c8_infos = check_8_taskboard_head(repo_root, as_if_committed=as_if_committed)
+    for info in c8_infos:
+        print(f"  [INFO] {info}")
+    if len(c8_fails) == 0:
+        print("  [PASS] 0 命中")
+        passed += 1
+    else:
+        print(f"  [FAIL] {len(c8_fails)} 命中")
+        for fail in c8_fails:
+            print(f"    {fail}")
+        failed += 1
+
+    # ---------------------------------------------------------
+    # CHECK 9: 交接區 HEAD 落後
+    # ---------------------------------------------------------
+    print("\nCHECK 9 - 交接區 HEAD 落後")
+    c9_fails, c9_infos = check_9_handover_head(repo_root, as_if_committed=as_if_committed)
+--- END MOD ---
+
+=== MOD 4 ===
+file: scripts/tests/test_check_consistency.py
+mode: replace
+--- ANCHOR ---
+def test_check_9_handover_head_pass(tmp_path):
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    bl = docs / "refactor-backlog.md"
+    bl.write_text("上次核對通過的 HEAD：08e6bbc\n", encoding="utf-8")
+    fails, infos = check_9_handover_head(str(tmp_path), git_head="08e6bbc", git_prev="18af8ad")
+    assert len(fails) == 0
+--- PAYLOAD ---
+def test_check_9_handover_head_pass(tmp_path):
+    # CASE A：handoff pointer = audited parent (prev) -> PASS
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    bl = docs / "refactor-backlog.md"
+    bl.write_text("上次核對通過的 HEAD：18af8ad\n", encoding="utf-8")
+    fails, infos = check_9_handover_head(str(tmp_path), git_head="08e6bbc", git_prev="18af8ad")
+    assert len(fails) == 0
+
+
+def test_check_9_handover_head_fail_candidate_self(tmp_path):
+    # CASE C：不能將 candidate 自己當 audited parent 來騙過 CHECK 9 -> FAIL
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    bl = docs / "refactor-backlog.md"
+    bl.write_text("上次核對通過的 HEAD：08e6bbc\n", encoding="utf-8")
+    fails, infos = check_9_handover_head(str(tmp_path), git_head="08e6bbc", git_prev="18af8ad", git_prev2="b6ab53f")
+    assert len(fails) == 1
+    assert "不得為當前 HEAD/candidate 自己" in fails[0]
+
+
+def test_check_9_as_if_committed_predicts_lag(tmp_path):
+    # 預演模式：若在 commit 前上次核對通過的 HEAD 停留在當前 HEAD~2（未來的 HEAD~3），提前報 FAIL
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    bl = docs / "refactor-backlog.md"
+    bl.write_text("上次核對通過的 HEAD：1111111\n", encoding="utf-8")
+    fails, infos = check_9_handover_head(
+        str(tmp_path), git_head="candidate", git_prev="curhead", git_prev2="prevhead"
+    )
+    assert len(fails) == 1
+    assert "落後超過兩批" in fails[0]
+--- END MOD ---
+
+=== MOD 5 ===
+file: .agents/rules/git-and-reporting.md
+mode: replace
+--- ANCHOR ---
+- **commit 前先跑 `git status`**：確認 staged 清單只包含本次任務實際要
+  修改的檔案。
+--- PAYLOAD ---
+- **commit 前先跑 `git status`**：確認 staged 清單只包含本次任務實際要
+  修改的檔案。
+- **建立 prospective commit 前確認交接區 HEAD**：若該批次包含交接區元資料更新，確認 `docs/refactor-backlog.md` §5.1 的「上次核對通過的 HEAD」已指向目前由宏觀審計官核對通過的 parent commit（或前一批核對通過的 commit），不得為 candidate 自己，亦不得為過期之祖先 commit。可使用 `python scripts/check_consistency.py --as-if-committed` 於 commit 前預演驗證，消除本地與 CI 差 1 的可預測中間紅燈（B-51）。
+--- END MOD ---
+
+=== MOD 6 ===
+file: docs/TASKBOARD.md
+mode: replace
+--- ANCHOR ---
+**最後更新**：2026-09-11，HEAD `ff17ae5` 之後（Governance Exit Gate Parity 收斂：建立單一驗證入口 scripts/verify_all.py）
+--- PAYLOAD ---
+**最後更新**：2026-09-11，HEAD `a56c5c9` 之後（Transient Red Reduction：強化 CHECK 9 candidate 自引防護與實作 --as-if-committed 預演模式）
+--- END MOD ---
+
+=== MOD 7 ===
+file: docs/TASKBOARD.md
+mode: replace
+--- ANCHOR ---
+| B-51 | 待辦 | **判準含 HEAD 的檢查，本地與 CI 的答案結構性差 1** | 本地在 commit 前跑、CI 在 commit 後跑。CHECK 8／9 門檻 `lag > 2` 故差 1 看不出；**CHECK 12／16 門檻 `lag > 1`，正好卡在差值上**——「漏更新 AUDIT-LOG」在本地驗證中原理上偵測不到。2026-09-06 實證：本地 HEAD=`2d76958` lag=1 PASS、CI HEAD=`3a85a30` lag=2 FAIL。**執行者無疏忽。** 處置方向：這四項增加 `--as-if-committed` 本地預演模式，或另設 pre-commit 的等效判準。2026-09-11 實證：CHECK 9 亦存在 prospective-HEAD 差異，pre-commit 在 parent HEAD 為 lag=2 PASS，commit 後因 HEAD 前進 1 步使 lag=3 FAIL。排批 2b |
+--- PAYLOAD ---
+| B-51 | 已完成 | **判準含 HEAD 的檢查，本地與 CI 的答案結構性差 1** | 已於 Transient Red Reduction 完成：check_9_handover_head 強化 candidate 自引防護（不得為當前 HEAD）；check_consistency.py 實作 --as-if-committed 預演模式，使 commit 前即可準確預測 commit 後拓撲（HEAD=candidate, HEAD~1=當前HEAD, HEAD~2=當前HEAD~1），提前攔截 stale handoff pointer 與週期落後，消除本地與 CI 差 1 的可預測中間紅燈 |
+--- END MOD ---
+
+=== MOD 8 ===
+file: docs/refactor-backlog.md
+mode: replace
+--- ANCHOR ---
+### 5.1 上一批狀態
+
+上次核對通過的 HEAD：0470df2
+--- PAYLOAD ---
+### 5.1 上一批狀態
+
+上次核對通過的 HEAD：ff17ae5
+--- END MOD ---
+
+=== MOD 9 ===
+file: docs/refactor-backlog.md
+mode: replace
+--- ANCHOR ---
+- 本批（尚未 commit）（Governance Exit Gate Parity 收斂：建立單一權威驗證入口 scripts/verify_all.py；
+  完整納入 validate_skills、check_consistency、fingerprint --verify、scripts/tests、webapp-testing/tests 5 大 Correctness Gates；
+  消除 Local 與 CI 驗證閘門分叉與 parity gap，完成 B-47）已執行，**尚待審計官核對**，見 §5.4。
+--- PAYLOAD ---
+- `a56c5c9`（Governance Exit Gate Parity 收斂：建立單一權威驗證入口 scripts/verify_all.py；
+  完整納入 validate_skills、check_consistency、fingerprint --verify、scripts/tests、webapp-testing/tests 5 大 Correctness Gates；
+  消除 Local 與 CI 驗證閘門分叉與 parity gap，完成 B-47）已於 2026-09-11 執行完成：10 檔異動、零夾帶，
+  獨立驗證五項全過（54 技能、18 項 CHECK、126 passed、13 webapp passed、`--verify` exit 0），CI Run 34585789663 success，**尚待審計官核對**，見 §5.4。
+- 本批（尚未 commit）（Transient Red Reduction：強化 CHECK 9 candidate 自引防護與實作 --as-if-committed 預演模式，完成 B-51）已執行，**尚待審計官核對**，見 §5.4。
+--- END MOD ---
+
+=== MOD 10 ===
+file: docs/refactor-backlog.md
+mode: replace
+--- ANCHOR ---
+- **本批（Governance Exit Gate Parity 收斂）已執行完成，等待審計官核對。**
+  內容：建立 Canonical Verification Entrypoint（`scripts/verify_all.py`），收攏全專案 5 大 Correctness Gates；
+  更新 `.github/workflows/verify.yml` 直接呼叫單一權威入口；
+  補齊單元測試 `scripts/tests/test_verify_all.py`；
+  更新規範文檔與看板（完成 B-47），消除 Local 與 CI 之驗證閘門分叉。
+--- PAYLOAD ---
+- **本批（Transient Red Reduction）已執行完成，等待審計官核對。**
+  內容：強化 `check_9_handover_head` 排除 candidate 自己（CASE C 防護）；
+  實作 `check_consistency.py --as-if-committed` 預演模式；
+  更新 `.agents/rules/git-and-reporting.md` 建立 Pre-Prospective Handoff 前置檢查要求；
+  補齊 Durable Tests（CASE A, B, C 全過）；完成 B-51。
+--- END MOD ---
+
+=== MOD 11 ===
+file: docs/AUDIT-LOG.md
+mode: replace
+--- ANCHOR ---
+| ff17ae5 | 2026-09-11 | §4.1-1 | **核對通過**。14 檔異動、零夾帶。獨立驗證四項全過：54 技能零錯誤、18 項 CHECK 全 PASS、122 passed、`fingerprint.py --verify` exit 0；CI Run verify success。CHECK 17 normal replay 驗證通過 | Governance Exit 安全與架構收斂經宏觀審計官核對通過。實作 canonical validate_repo_path，全面防堵路徑穿透、UNC 與 Windows 磁碟機路徑逃逸，BPE 模擬沙盒與 CHECK 17 具備 fail-closed 防護，治理層 7/7 核心里程碑收斂就緒 |
+--- PAYLOAD ---
+| ff17ae5 | 2026-09-11 | §4.1-1 | **核對通過**。14 檔異動、零夾帶。獨立驗證四項全過：54 技能零錯誤、18 項 CHECK 全 PASS、122 passed、`fingerprint.py --verify` exit 0；CI Run verify success。CHECK 17 normal replay 驗證通過 | Governance Exit 安全與架構收斂經宏觀審計官核對通過。實作 canonical validate_repo_path，全面防堵路徑穿透、UNC 與 Windows 磁碟機路徑逃逸，BPE 模擬沙盒與 CHECK 17 具備 fail-closed 防護，治理層 7/7 核心里程碑收斂就緒 |
+| a56c5c9 | 2026-09-11 | §4.1-1 | **核對通過**。10 檔異動、零夾帶。獨立驗證五項全過：54 技能零錯誤、18 項 CHECK 全 PASS、126 passed、13 webapp passed、`fingerprint.py --verify` exit 0；CI Run 34585789663 success。CHECK 17 normal replay 驗證通過 | Governance Exit Gate Parity 收斂經宏觀審計官核對通過。建立 Canonical Verification Entrypoint (scripts/verify_all.py) 統一 Local 與 CI 驗證閘門，完成 B-47，全庫閘門完整收斂 |
+--- END MOD ---

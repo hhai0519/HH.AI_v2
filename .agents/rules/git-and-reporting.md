@@ -16,6 +16,7 @@
   原因：完整的歷史紀錄是回溯問題發生在哪一步的唯一依據。
 - **commit 前先跑 `git status`**：確認 staged 清單只包含本次任務實際要
   修改的檔案。
+- **建立 prospective commit 前確認交接區 HEAD**：若該批次包含交接區元資料更新，確認 `docs/refactor-backlog.md` §5.1 的「上次核對通過的 HEAD」已指向目前由宏觀審計官核對通過的 parent commit（或前一批核對通過的 commit），不得為 candidate 自己，亦不得為過期之祖先 commit。可使用 `python scripts/check_consistency.py --as-if-committed` 於 commit 前預演驗證，消除本地與 CI 差 1 的可預測中間紅燈（B-51）。
 - **commit message 內若含 `$$` 字元，訊息要用單引號包住**，避免被 shell
   展開成進程 ID。
 
