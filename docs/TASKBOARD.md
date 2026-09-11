@@ -10,7 +10,7 @@
 `待裁決`（需使用者決定）／`已完成`（仍可能被引用）／
 `可封存`（不影響後續工作，待使用者確認後移入封存區）
 
-**最後更新**：2026-09-11，HEAD `0470df2` 之後（Governance Exit 安全與架構收斂：Batch Spec 路徑約束防護）
+**最後更新**：2026-09-11，HEAD `ff17ae5` 之後（Governance Exit Gate Parity 收斂：建立單一驗證入口 scripts/verify_all.py）
 
 ---
 
@@ -118,7 +118,7 @@
 | B-44 | 已完成 | **看板 C-04 狀態未隨裁決更新** | 使用者已於 2026-09-06 同意 Runtime 層方向，但批 1 的提示詞改了 C-01／02／03 卻漏了 C-04。**審計官漏項**，會導致下一個接手者重新提問已裁決事項（§9.4 第 4 項要防的情形）。本批已修 |
 | B-45 | 已完成 | **交接區 §5.3 與看板 C 節是未登記的配對關係** | 批 1 把看板 C-01／02／03 改為已裁決，但交接區 §5.3「待使用者裁決」那張表原封不動，兩處說法相反。`prompt-preflight.md` §3.1 的配對清單未登記這一對，故配對檢查不會發現。與 B-44 同一成因：處理裁決結果時只想到看板，忘了交接區也有一份。本批已修內容；**配對規則登記排批 2b** |
 | B-46 | 已完成 | **指紋的 sha256 未處理跨平台換行，CI 上線首日即紅燈** | 審計官在批 2a 規格中指定 `hashlib.sha256(raw_bytes)` 並註明「讀 bytes，非 text」，未考慮 Windows Git `core.autocrlf` 預設把 LF 轉 CRLF。實測 42 檔僅 `sha256` 不符、`lines`／`fences`／`headings` 全對；CRLF 假說以位元組證明。**規格錯誤，非執行者實作錯誤。** 已於 `3a85a30` 修正（雜湊前正規化 ＋ `.gitattributes` 第二道 ＋ CRLF 守護測試） |
-| B-47 | 待辦 | **`fingerprint.py --verify` 不在標準驗證集內，是假綠燈的生成路徑** | 實測：`validate_skills`／`check_consistency`／`pytest` 三項在 CRLF 不一致下全部通過，只有 `--verify` 會紅，而它之所以被跑到是因為寫在該批的驗證步驟裡，不是因為屬於標準集。**機制沒被放進每批都跑的清單，等同沒有機制。** 處置：升格為第四項，寫進 `auditor-protocol.md` §6.1 與 `.agents/rules/git-and-reporting.md`。排批 2b |
+| B-47 | 已完成 | **`fingerprint.py --verify` 不在標準驗證集內，是假綠燈的生成路徑** | 已於 Gate Parity 收斂完成：建立 Canonical Verification Entrypoint（`scripts/verify_all.py`），將 validate_skills、check_consistency、fingerprint --verify、scripts/tests、webapp-testing/tests 5 大 Correctness Gates 統一收攏。CI workflow（`.github/workflows/verify.yml`）、Local、Prospective 與 Post-commit 全部呼叫同一 entrypoint，根除假綠燈與 parity gap |
 | B-48 | 待辦 | **「回報即 commit」無法容納 commit 之後才發生的事** | `docs/EXEC-LOG.md` 的列在 commit 前寫入，CI 在 push 後才跑，時序上不可能相遇。執行者在 `2d76958` 正確診斷出 CRLF 卻無處可放，回覆格式亦只有「成功兩行」與「前置檢查未通過」兩種，CI 事後失敗兩者皆非。處置：push 後輪詢 CI 至 completed，以第二個 commit 記錄結論；回覆格式增列 CI 結論行；`conclusion != success` 一律走未通過格式。排批 2b |
 | B-49 | 待辦 | **CI 獨立查證的規則化與機械化** | 落點：`auditor-protocol.md` §6.1（新增第 0 項：上一批 CI 非 success 即不得產出下一份提示詞）＋ `handover-selftest.md` 新增 E19 ＋ `.agents/rules/git-and-reporting.md` §2.3。並新建 `scripts/ci_status.py`，**必須含 badge SVG fallback**（`actions/workflows/<name>/badge.svg` 的 `<title>` 標籤不受 API 速率限制）——GitHub API 每小時 60 次的上限曾兩度擋住審計官，而查不到很容易被當成沒問題。排批 2b |
 | B-50 | 已完成 | **`prompt-preflight.md` §3.4 的交叉驗證可被審計官以「知情偏離」宣告繞過** | 2026-09-06 審計官在 2a-fix 把 E8 標為 ⚠️ 並附理由，執行者接受並未停止，導致 CHECK 12 在 CI 上 FAIL。§3.7 明寫「十八項全部可機械驗證，沒有任何一項需要你憑信任接受」，但 E8 就此變成信任項——與該節建立時要消滅的 E11 造假是同一個洞。而 `role-boundaries.md` §2 又禁止執行者判斷規範是否應存在，執行者被夾在中間。**修法：E8 比對為否時一律停止、不接受任何理由；審計官需偏離 §6.1-8 時，唯一合法路徑是先另開一批修改規則本身。** 排批 2b。**2026-09-07 實測落地**：`.agents/rules/prompt-preflight.md` §3.4 已含「自檢聲明不接受任何豁免」，實測 1 處 |

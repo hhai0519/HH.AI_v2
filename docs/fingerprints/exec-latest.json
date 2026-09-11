@@ -1,5 +1,5 @@
 {
-  "base_head": "5cf0f9b",
+  "base_head": "b50c1e5",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 0,
@@ -163,11 +163,11 @@
     ".github/workflows/verify.yml": {
       "fences": 0,
       "headings": [],
-      "lines": 41,
-      "sha256": "678c0a2dd706418633a74f9d7c26222ada5e6798393a95d31e299fd791a30fd6"
+      "lines": 28,
+      "sha256": "a6ad5222f292f44e8d3f6f2d3919772c1fffd3c281c91bce808dcfb24f26f200"
     },
     "AGENTS.md": {
-      "fences": 14,
+      "fences": 10,
       "headings": [
         "# HH.AI 專案技能架構規範",
         "## 0. 工程紀律規則（最高優先）",
@@ -183,8 +183,8 @@
         "## 8. 遷移舊技能時的規則",
         "## 9. 驗證"
       ],
-      "lines": 230,
-      "sha256": "4e52bfa801d540c6289c7f255d167d82d8d019cc901d63645f444c7c62b56522"
+      "lines": 218,
+      "sha256": "9ad189d4b40bfae682f45655dbd51f95b5eb5184d9e038afa2404d150a59d568"
     },
     "MISSION.md": {
       "fences": 0,
@@ -490,16 +490,16 @@
       "headings": [
         "# 自我審查檢查點紀錄"
       ],
-      "lines": 47,
-      "sha256": "53e8524a50a630d14589732d02a1f598fcf111bd71d5b9b34b45c5f068e4d67a"
+      "lines": 48,
+      "sha256": "b1d944c701a5c50f2b870728382440c8f7f71657f61a714e00f506fd5dd15150"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 35,
-      "sha256": "ae62d3cf17dabfc44a32a679c40fea1a2b2c3500d1d8356a1c55f0dba0eb6dfb"
+      "lines": 36,
+      "sha256": "b196681fc43cfc404a879b839e0c592ae4298c91f5171d8fb8e6f83407aaab23"
     },
     "docs/HANDOVER.md": {
       "fences": 14,
@@ -609,7 +609,7 @@
         "## 封存區"
       ],
       "lines": 234,
-      "sha256": "b66f7becb2dffdb3f3ee20cc6e96e467c0805951f28e806bb94a694f2b42c7a0"
+      "sha256": "c7873ba655b67bfa49420c71aa3ae1e1a7c3d8467e461b8c65d17ec9d69ae6a0"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -926,8 +926,8 @@
         "### 5.3 待使用者裁決",
         "### 5.4 進行中／等待回報"
       ],
-      "lines": 3010,
-      "sha256": "bd61c390c9ecba7e4d6d7f1e1634deb72bd475b78bd15110cfd1ede5bc63e04a"
+      "lines": 3014,
+      "sha256": "6d9bc06ec6a5fa2b83f9867088f8bbac463dbb1614234ad07863bbcb7a629fbb"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1043,6 +1043,12 @@
       "lines": 437,
       "sha256": "2dc3e09525f1c5d7a3d7e50c3fb9eb94fc05cf18b3532a0a54d8c4ea1d1507a2"
     },
+    "scripts/tests/test_verify_all.py": {
+      "fences": 0,
+      "headings": [],
+      "lines": 54,
+      "sha256": "406cb1ff55338c9f84e617acd2485cf502deea47d069572a631a0974f6bd803f"
+    },
     "scripts/validate_skills.py": {
       "fences": 0,
       "headings": [
@@ -1051,9 +1057,17 @@
       ],
       "lines": 231,
       "sha256": "bc653c823579a59b1708f0fd17c01ed52b934252502ec2dcdfdb25d3e3e82da5"
+    },
+    "scripts/verify_all.py": {
+      "fences": 0,
+      "headings": [
+        "# -*- coding: utf-8 -*-"
+      ],
+      "lines": 92,
+      "sha256": "77163678353cb7a444f90f17956d03312f715cfcccf933603948715939ecdc10"
     }
   },
-  "generated_at": "2026-09-11T09:25:51Z",
+  "generated_at": "2026-09-11T09:43:21Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

@@ -197,34 +197,22 @@ SKILL.md 本體只放：
 
 ## 9. 驗證
 
-每次新增/修改技能後，執行：
+本專案提供單一權威驗證入口（Canonical Verification Entrypoint）：
 
 ```bash
-python3 scripts/validate_skills.py
+python3 scripts/verify_all.py
 ```
 
-這個腳本會檢查：frontmatter 是否合法、description 是否為空、是否有重複技能名稱、README 索引是否跟實際技能資料夾一致、SKILL.md 是否過長未拆分。**驗證沒過不要視為完成。**
+此腳本為 Local、Prospective Commit、Post-commit 與 CI 的統一閘門權威，依序執行全專案 5 大 Correctness Gates：
+1. 技能架構與 frontmatter 結構檢查（`scripts/validate_skills.py`）
+2. 全庫一致性與規格重放檢查（`scripts/check_consistency.py`）
+3. 指紋檔完整性驗證（`scripts/fingerprint.py --verify`）
+4. Scripts 單元測試套件（`pytest scripts/tests/ -q`）
+5. Webapp 測試套件（`pytest skills/execution/webapp-testing/tests/ -q`）
 
-執行全庫一致性檢查：
-
-```bash
-python3 scripts/check_consistency.py
-```
-
-這個腳本檢查七項：控制字元、Markdown 圍欄配對、相對連結有效性、
-三層 README 完整性、`SOP_00A` 路由目標存在性、`skills/` 底下的舊分層路徑殘留、
-技能數與索引條目數一致。與 `validate_skills.py` 互補——後者檢查單一技能的格式，
-前者檢查跨檔案的一致性。
-
-執行自動化測試：
-
-```bash
-pip install -r requirements.txt
-python3 -m pytest scripts/tests/ -q
-python3 -m pytest skills/execution/webapp-testing/tests/ -q
-```
+任何一項失敗即以非零 exit code 退出。**所有驗證全數通過（exit 0）才視為完成。**
 
 本專案為 Python 專案，**沒有 `npm run test`**。唯一的 Node 相依是
 `skills/execution/playwright-automation/` 內的 vendored 套件，不參與專案測試。
 雲端代理（如 Google Jules）在獨立 VM 執行時只能依賴本節判斷如何驗證，
-變更測試方式時必須同步更新這裡。
+新增測試套件或變更測試方式時，應維護 `scripts/verify_all.py` 中的閘門定義。
