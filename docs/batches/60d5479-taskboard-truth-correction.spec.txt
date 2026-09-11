@@ -1,0 +1,152 @@
+# 批次規格 — Post-Governance Taskboard Truth Correction
+#
+# batch_id     : 60d5479-taskboard-truth-correction
+# batch_mode   : GOAL_SPEC
+# base_commit  : 60d5479
+#
+# 目的：
+#   修正上一輪 TASKBOARD RECONCILIATION 之 Planning Truth 分類失真。
+#   依原 acceptance criteria 重新核對 B-12/B-57/B-60/B-76/B-78/B-80/B-81/B-85。
+#   恢復真實待辦 (DEFER_POST_MAIN) 與架構取代留痕 (SUPERSEDED)。
+#   確保意圖大致涵蓋不得等同於已實作。
+#
+# 允許修改的檔案：
+#   docs/AUDIT-LOG.md
+#   docs/TASKBOARD.md
+#   docs/refactor-backlog.md
+#
+# 豁免檔案：
+#   docs/EXEC-LOG.md
+#   docs/fingerprints/exec-latest.json
+
+HEAD: 60d5479
+
+=== MOD 1 ===
+file: docs/AUDIT-LOG.md
+mode: replace
+--- ANCHOR ---
+| 8f9847e | 2026-09-11 | §4.1-1 | **核對通過**。11 檔異動、零夾帶。獨立驗證五項全過：54 技能無死鏈、18 項 CHECK 全 PASS、128 passed、13 webapp passed、`fingerprint.py --verify` exit 0；GitHub Actions Run 34590592049 (Run #26) success。建立 ADR-0020 與 SOP_14 §8，完成 CI 歷史事故歸檔與清理授權整備 | 確立 GitHub Actions 為唯一 Remote Health Authority；完成 5 筆歷史失敗 runs 的根本原因歸檔；README 增加 Verify badge；建立雙層權威分工機制。 |
+--- PAYLOAD ---
+| 8f9847e | 2026-09-11 | §4.1-1 | **核對通過**。11 檔異動、零夾帶。獨立驗證五項全過：54 技能無死鏈、18 項 CHECK 全 PASS、128 passed、13 webapp passed、`fingerprint.py --verify` exit 0；GitHub Actions Run 34590592049 (Run #26) success。建立 ADR-0020 與 SOP_14 §8，完成 CI 歷史事故歸檔與清理授權整備 | 確立 GitHub Actions 為唯一 Remote Health Authority；完成 5 筆歷史失敗 runs 的根本原因歸檔；README 增加 Verify badge；建立雙層權威分工機制。 |
+| 60d5479 | 2026-09-11 | §4.1-1 | **核對通過**。6 檔異動、零夾帶。獨立驗證五項全過：54 技能零錯誤、18 項 CHECK 全 PASS、128 passed、13 webapp passed、`fingerprint.py --verify` exit 0；GitHub Actions Run 34593961967 (Run #27) success。CHECK 17 normal replay 驗證通過 | Post-Governance Taskboard Reconciliation 經宏觀審計官核對通過。清點治理層完成後之任務看板，確認 Governance Exit 7/7 維持 PASS，消除已過期舊待辦。 |
+--- END MOD ---
+
+=== MOD 2 ===
+file: docs/TASKBOARD.md
+mode: replace
+--- ANCHOR ---
+**最後更新**：2026-09-11，HEAD `8f9847e` 之後（Post-Governance Taskboard Reconciliation）
+--- PAYLOAD ---
+**最後更新**：2026-09-11，HEAD `60d5479` 之後（Post-Governance Taskboard Truth Correction）
+--- END MOD ---
+
+=== MOD 3 ===
+file: docs/TASKBOARD.md
+mode: replace
+--- ANCHOR ---
+| B-12 | 已完成 | **`audited-*` tag 落後偵測（CHECK 16）** | CHECK 18 (check_18_tag_integrity) 已完整實作於 check_consistency.py 且有單元測試驗證。 |
+--- PAYLOAD ---
+| B-12 | 待辦 | **`audited-*` tag 落後偵測（CHECK 16）** | 原 lag detection 尚未實作；CHECK 18 是 tag identity integrity，不是 tag cadence/lag detection；因 Remote Health Authority 已轉移至 GitHub Actions，本項不再是 handover/main-refactor blocker。 |
+--- END MOD ---
+
+=== MOD 4 ===
+file: docs/TASKBOARD.md
+mode: replace
+--- ANCHOR ---
+| B-57 | 可封存 | **審查機制的完成定義（五條可機械驗收）** | 審計官退出指標已由 Governance Exit 7/7、scripts/verify_all.py 與 ADR-0020 實質收斂完成。 |
+--- PAYLOAD ---
+| B-57 | 可封存 | **審查機制的完成定義（五條可機械驗收）** | 原五項 acceptance 並未全部達成；本項被後續 Governance Exit criteria 取代；未完成的 residual risks 保留於 B-53 / B-54 / B-71 等 post-main tasks。 |
+--- END MOD ---
+
+=== MOD 5 ===
+file: docs/TASKBOARD.md
+mode: replace
+--- ANCHOR ---
+| B-60 | 可封存 | **CHECK 17–24 編號一次配置完成（防 B-21 重演）** | CHECK 17 (Spec Replay) 與 CHECK 18 (Tag 名實一致) 已正式落地，舊 CHECK 17-24 擴張提案已被現有 Canonical 體系取代。 |
+--- PAYLOAD ---
+| B-60 | 可封存 | **CHECK 17–24 編號一次配置完成（防 B-21 重演）** | 原 17–24 allocation plan 已停止作為 implementation schedule；未來若 post-main 決定新增 CHECK，必須先從 current check_consistency.py machine derive 下一個可用 ID，不得重用舊 B-60 數字表。 |
+--- END MOD ---
+
+=== MOD 6 ===
+file: docs/TASKBOARD.md
+mode: replace
+--- ANCHOR ---
+| B-76 | 已完成 | **審計官的核對階段未腳本化** | 審計官核對動作已由 scripts/verify_all.py 單一權威入口實質完成腳本化。 |
+--- PAYLOAD ---
+| B-76 | 可封存 | **審計官的核對階段未腳本化** | 原 audit_verify.py 並未實作；其核心需求已由 canonical verify_all 與 GitHub remote audit workflow 取代。 |
+--- END MOD ---
+
+=== MOD 7 ===
+file: docs/TASKBOARD.md
+mode: replace
+--- ANCHOR ---
+| B-78 | 已完成 | **`scripts/apply_batch.py`：消除散文這一層有損的重新編碼** | 消除散文編碼已由 Batch Spec 規格與 apply/replay 流程 (0470df2 B-90) 實質完成。 |
+--- PAYLOAD ---
+| B-78 | 待辦 | **`scripts/apply_batch.py`：消除散文這一層有損的重新編碼** | 原 apply_batch.py 未實作；現有 CHECK 17 提供 correctness containment，剩餘價值主要為效率與降低一次性 apply-script parsing，延後主重構後再評估。 |
+--- END MOD ---
+
+=== MOD 8 ===
+file: docs/TASKBOARD.md
+mode: replace
+--- ANCHOR ---
+| B-80 | 可封存 | **BPE 的模擬只涵蓋規格中有真實 payload 的修改** | BPE 制度已由 Mechanical-Truth Migration 廢除，現由 Batch Spec 與 --as-if-committed + CHECK 17 取代。 |
+--- PAYLOAD ---
+| B-80 | 可封存 | **BPE 的模擬只涵蓋規格中有真實 payload 的修改** | 原 check-only simulation gap 已隨 check-only/手寫 derived-truth authority 消失；現行 source mutation 均以實際 Batch Spec MOD 及 CHECK 17 replay 管理。BPE 本身仍保留。 |
+--- END MOD ---
+
+=== MOD 9 ===
+file: docs/TASKBOARD.md
+mode: replace
+--- ANCHOR ---
+| B-81 | 可封存 | **BPE 的輸出不含錨點原文** | BPE 衍生值制度已隨 Mechanical-Truth Migration 廢除，不再適用。 |
+--- PAYLOAD ---
+| B-81 | 可封存 | **BPE 的輸出不含錨點原文** | anchor 原文不再需要由 LLM 從 BPE output 重新抄成 blocking truth；BPE 本身仍是 active parser/simulator，不是被廢除。 |
+--- END MOD ---
+
+=== MOD 10 ===
+file: docs/TASKBOARD.md
+mode: replace
+--- ANCHOR ---
+| B-85 | 已完成 | **散文是一層有損的重新編碼** | 散文重新編碼問題已由 Batch Spec 標準格式徹底解決。 |
+--- PAYLOAD ---
+| B-85 | 已完成 | **散文是一層有損的重新編碼** | 解決的是散文不得充當 exact mechanical truth（GOAL_SPEC 定義目標邊界，EXACT_SPEC / Batch Spec + CHECK 17 提供 canonical replay）；不宣稱 executor 已有通用 apply_batch.py。 |
+--- END MOD ---
+
+=== MOD 11 ===
+file: docs/refactor-backlog.md
+mode: replace
+--- ANCHOR ---
+上次核對通過的 HEAD：94f75bc
+--- PAYLOAD ---
+上次核對通過的 HEAD：8f9847e
+--- END MOD ---
+
+=== MOD 12 ===
+file: docs/refactor-backlog.md
+mode: replace
+--- ANCHOR ---
+- 本批（尚未 commit）（Post-Governance Taskboard Reconciliation：全面對帳 TASKBOARD B 節 50 項待辦，標定已實作與封存項目，產出 Next Execution Queue 與儀表板）已執行，**尚待審計官核對**，見 §5.4。
+--- PAYLOAD ---
+- `60d5479`（Post-Governance Taskboard Reconciliation：全面對帳 TASKBOARD B 節 50 項待辦，標定已實作與封存項目，產出 Next Execution Queue 與儀表板）已於 2026-09-11 執行完成：6 檔異動、零夾帶，獨立驗證五項全過，CI Run 34593961967 success，**尚待審計官核對**，見 §5.4。
+- 本批（尚未 commit）（Post-Governance Taskboard Truth Correction：修正 B-12/B-57/B-60/B-76/B-78/B-80/B-81/B-85 之 Planning Truth 分類與描述，恢復真實待辦與架構取代留痕）已執行，**尚待審計官核對**，見 §5.4。
+--- END MOD ---
+
+=== MOD 13 ===
+file: docs/refactor-backlog.md
+mode: replace
+--- ANCHOR ---
+    - **佇列產出**：機械導出 NEXT EXECUTION QUEUE，確立「1. 正式交接驗證 D → 2. 主遷移 E → 3. 相依項 → 4. 演進 F → 5. 主重構後優化 → 6. 低優先探索」之推進順序，治理待辦不再阻擋主重構。
+--- PAYLOAD ---
+    - **佇列產出**：機械導出 NEXT EXECUTION QUEUE，確立「1. 正式交接驗證 D → 2. 主遷移 E → 3. 相依項 → 4. 演進 F → 5. 主重構後優化 → 6. 低優先探索」之推進順序，治理待辦不再阻擋主重構。
+
+57. **Post-Governance Taskboard Truth Correction（看板規劃真實性修正）**（2026-09-11）
+    - **背景**：宏觀審計官與執行者依據原 acceptance criteria 重新核對，修正上一輪 TASKBOARD RECONCILIATION 將「後續機制涵蓋」誤等同於「原需求已實作」的分類失真問題。
+    - **修訂內容**：
+      - B-12：恢復為待辦（DEFER_POST_MAIN）。CHECK 18 為 tag identity integrity，原 lag detection 尚未實作；因遠端健康權威已轉移至 GitHub Actions，不阻擋主重構。
+      - B-57：維持可封存（SUPERSEDED）。澄清原五項 acceptance 並未全部達成（B-53/B-54/B-71 仍有殘留風險），本項係被後續 Governance Exit 7/7 標準取代，絕不假造已全部完成。
+      - B-76：更正為可封存（SUPERSEDED）。`scripts/audit_verify.py` 實體檔案未實作，核心需求已由 canonical `verify_all.py` 與 GitHub 遠端工作流取代。
+      - B-78：恢復為待辦（DEFER_POST_MAIN）。`scripts/apply_batch.py` 未實作且目前仍依賴一次性 apply 腳本，由 CHECK 17 提供 correctness containment，延後主重構後評估。
+      - B-80 / B-81：維持可封存（SUPERSEDED），但更正「BPE 制度廢除」之敘述。BPE（`build_prompt_evidence.py`）依然保留為 Batch Spec 解析與模擬工具，廢除的僅是 LLM 手寫衍生值作為 blocking truth。
+      - B-60：維持可封存（SUPERSEDED），更正備註說明 17–24 配置表已停止作為排程，未來若 post-main 新增 CHECK 應從 `check_consistency.py` 機器動態導出可用 ID。
+      - B-85：維持已完成（ALREADY_IMPLEMENTED），澄清解決的是「散文不得充當 exact mechanical truth」，不與 B-78 通用套用腳本混淆。
+--- END MOD ---

@@ -10,7 +10,7 @@
 `待裁決`（需使用者決定）／`已完成`（仍可能被引用）／
 `可封存`（不影響後續工作，待使用者確認後移入封存區）
 
-**最後更新**：2026-09-11，HEAD `8f9847e` 之後（Post-Governance Taskboard Reconciliation）
+**最後更新**：2026-09-11，HEAD `60d5479` 之後（Post-Governance Taskboard Truth Correction）
 
 ---
 
@@ -83,7 +83,7 @@
 | B-09 | 已完成 | `test_check_consistency.py` | 為 CHECK 8 至 CHECK 15 撰寫完整正反例測試，含 BOOTSTRAP 例外與 CHECK 11 失敗重現 |
 | B-10 | 待辦 | Jules 的協作規範 | 目前全庫關於 Jules 只有兩行。缺：產出如何驗證、分支如何審查、誰負責合併、失敗如何處置。F-01 已指定為 Jules 首航任務——**規範必須在 Jules 實際加入前完成** |
 | B-11 | 已完成 | CHECK 15 名稱漂移 | 實作與 docstring 已改為「交接區 §5.1 的 commit hash 語境衝突」，但第 19／448／450 行三處顯示字串仍是舊名稱，**執行輸出對使用者顯示的與它實際做的事無關**。§6.7 的第六次發生。本批修復 |
-| B-12 | 已完成 | **`audited-*` tag 落後偵測（CHECK 16）** | CHECK 18 (check_18_tag_integrity) 已完整實作於 check_consistency.py 且有單元測試驗證。 |
+| B-12 | 待辦 | **`audited-*` tag 落後偵測（CHECK 16）** | 原 lag detection 尚未實作；CHECK 18 是 tag identity integrity，不是 tag cadence/lag detection；因 Remote Health Authority 已轉移至 GitHub Actions，本項不再是 handover/main-refactor blocker。 |
 | B-13 | 已完成 | §5.1 項目符號必須帶 commit hash | CHECK 15 靠反引號包住的 hash 判斷語境，2026-09-05 實測末項無 hash、「待核對 0 個」——機制存在但輸入不合格。處置：規則寫入 `auditor-protocol.md` §9.3 |
 | B-14 | 已完成 | **執行者側的檢查紀錄檔** | 執行者每批做的結構元素、配對／覆蓋、自檢聲明交叉驗證，此前**只存在於回報中，repo 無痕跡**——那是整套機制最後一個沒有證據的環節。審計官有 `docs/AUDIT-LOG.md`，執行者這一側什麼都沒有。處置：建立 `docs/EXEC-LOG.md`（規則見 `.agents/rules/prompt-preflight.md` §3.8），並新增 CHECK 16 驗證其不落後於 HEAD，判準與 CHECK 12 對 `docs/AUDIT-LOG.md` 相同 |
 | B-15 | 已完成 | **CHECK 1-7 沒有函式也沒有測試** | 2026-09-05 實測：CHECK 1 至 7 內嵌在 `run_checks()` 中，無獨立函式、無測試。**審計官已於本批做反例注入實測**：逐一破壞後確認七項皆能正確 FAIL，結果見 `docs/AUDIT-LOG.md`。判定為**不需重構為獨立函式**——它們自 2026-08-29 起每批都在跑且多次實際命中真實缺陷，反例注入已證明其有效性；重構的風險高於收益 |
@@ -128,10 +128,10 @@
 | B-54 | 待辦 | **零項 CHECK 驗證 SOP 層內容或跨層矛盾** | 16 項中 6 項對著稽核迴圈自己（8／9／11／12／15／16）、5 項通用格式（1／2／3／13／14）、3 項 `skills/`（4／6／7）、2 項路由引用（5／10）。**SOP 的 1,305 行內容與規範層之間的矛盾完全無守衛。** 已知兩例（`SOP_02` 清歷史 vs `.agents/rules/git-and-reporting.md` 禁 force push、`SOP_04` 第 167 行與 `SOP_06` 第 133 行 vs ADR-0017）皆為人工偶然發現。處置：建 `docs/managed-facts.yaml` ＋ **CHECK 21 跨層矛盾偵測**。排批 2e |
 | B-55 | 待辦 | **治理層已分裂成兩個速度** | 實測最後修改日：稽核迴圈檔案 09-05～09-06；作業層 SOP_01／02／05／06／09／11／12／13 停在 2026-08-25（12 天）；**`.agents/rules/skills-architecture.md` 停在 2026-08-13（24 天，全庫最舊）——而它正是 B-01 的目標檔案**。處置：**CHECK 23 文件時效偵測**。排批 2e |
 | B-56 | 待辦 | **`SOP_00A_Master_Index.json` 的維護規則靠記憶** | 該檔是 `$$` 指令的唯一權威定義來源，內含「每次新增或修改 SOP 時，必須同步更新此索引對應的 tags」但無任何偵測；`last_updated` 停在 2026-08-29，另有 5 個 `PENDING_MIGRATION`。CHECK 5 只驗路由目標存在性，不驗時效與完整性。併入 CHECK 23。排批 2e |
-| B-57 | 可封存 | **審查機制的完成定義（五條可機械驗收）** | 審計官退出指標已由 Governance Exit 7/7、scripts/verify_all.py 與 ADR-0020 實質收斂完成。 |
+| B-57 | 可封存 | **審查機制的完成定義（五條可機械驗收）** | 原五項 acceptance 並未全部達成；本項被後續 Governance Exit criteria 取代；未完成的 residual risks 保留於 B-53 / B-54 / B-71 等 post-main tasks。 |
 | B-58 | 待辦 | **治理層瘦身（減法），使用者已裁決同意** | 10,054 行治理文件（不含 20 份 ADR）vs 30 行 `MISSION.md`；`docs/refactor-backlog.md` 單檔 2,501 行、`docs/HANDOVER.md` 868 行且其協作規範與已知出錯模式兩節與 `.agents/rules/git-and-reporting.md` 高度重疊。**2026-09-06 使用者裁決**：①同意拆解 HANDOVER，**但移除本體前必須再做一次檢查**（已寫入 `PRINCIPLES.md` §2.9）②同意封存 A 節 39 項與 B 節已完成項，**但須確保封存後有足夠的邏輯與指向**（處置為 CHECK 20）。排批 2f |
 | B-59 | 待辦 | **`docs/ARCHIVE-INDEX.md` 自己沒有機械守衛** | 開頭寫「新增或變更任何歸檔機制時，必須同步更新本檔」但無偵測。處置：**CHECK 20 ARCHIVE-INDEX 可達性**，雙向驗證——索引提到的每個歸檔區必須實際存在，且 repo 中每個歸檔區必須被索引收錄。這是使用者裁決條件②「封存要有足夠的邏輯及指向」的機械化。排批 2d |
-| B-60 | 可封存 | **CHECK 17–24 編號一次配置完成（防 B-21 重演）** | CHECK 17 (Spec Replay) 與 CHECK 18 (Tag 名實一致) 已正式落地，舊 CHECK 17-24 擴張提案已被現有 Canonical 體系取代。 |
+| B-60 | 可封存 | **CHECK 17–24 編號一次配置完成（防 B-21 重演）** | 原 17–24 allocation plan 已停止作為 implementation schedule；未來若 post-main 決定新增 CHECK，必須先從 current check_consistency.py machine derive 下一個可用 ID，不得重用舊 B-60 數字表。 |
 | B-61 | 已完成 | **證據區塊 (d) 的圍欄數沒有被納入 §3.6 的交叉驗證** | `.agents/rules/prompt-preflight.md` §3.6 的驗證表只有三項：區塊存在／行數相符／結構相符，**圍欄數不在其中**。2026-09-06 實測：審計官在提示詞把 `.claude/rules/auditor-protocol.md` 的圍欄數誤寫為 0（實際為 2，位於第 54、65 行），執行者回報實際值但判定為「零變動相符」——它比對的是修改前後，不是與宣稱值。**這不是執行者疏漏，是 §3.6 沒有要求它比對。** 一個沒有人核對的數字等於沒有寫。處置：§3.6 驗證表增列圍欄數比對。排批 2d。**2026-09-07 實測落地**：`.agents/rules/prompt-preflight.md` §3.6 驗證表 5 列，已含「圍欄數相符」 |
 | B-62 | 已完成 | **規則層變更必須先在本地模擬，且模擬證據要不可偽造** | 審計官連續四批犯同形錯誤，其中三次（改字串未查引用、CRLF、E16 目視）都會被「本地套用後跑 `scripts/check_consistency.py`」攔下。**落點依 `PRINCIPLES.md` §1 第 2 問判定為 `.claude/rules/auditor-protocol.md` §6.1 第 18 項**（不是 `SOP/`——那是執行者的程序層），同批落到 `handover-selftest.md` E20 與 `prompt-preflight.md` §3.4。**機械閘門的設計關鍵**：證據不是「我跑過了」的宣告，而是最後三條 CHECK 10 INFO 行——它們累積了整個檔案的位移量，**沒有真的套用過就寫不出正確的行號** |
 | B-63 | 已完成 | **章節標題含硬編碼項數，新增項目時無人會發現** | `.agents/rules/prompt-preflight.md` §3.7 標題與內文原寫「十八項」，而 E 節在 2026-09-06 的同一天已增為 19 項，**當場失準且無任何機制會發現**——CHECK 10 只看章節號，CHECK 11 只看 §6.1 ⇔ E 的對應，都不看散文裡的數字。與 `.agents/rules/git-and-reporting.md` §3「凡是會被自身寫入行為改變的數字，不得寫進文件」是同一形狀。**處置不是把 18 改成 20**，而是把數字整個拿掉 |
@@ -147,16 +147,16 @@
 | B-73 | 已完成 | **`§8.4-2` 的「每輪最多一次 clone」是上限，沒有下限**（**使用者發現**） | 審計官每輪重 clone 靠自律不靠規則，下一個接手者可能用開場那次 clone 撐三輪。處置：`.claude/rules/auditor-protocol.md` §6.1 新增一項補下限「HEAD 可能移動即必須重 clone」，並要求自檢聲明能指出每個數字由哪一次工具呼叫產生。依 §5.7 同批落到 `handover-selftest.md` 與 `prompt-preflight.md` §3.4。排批 2b-4 |
 | B-74 | 已完成 | **執行者只回報無法從 commit 重生的東西**（**使用者發現**） | 執行者精簡回報已由 Mechanical-Truth Migration (4c6aee4) 實質完成落地，移除 machine-derived 數字重複比對。 |
 | B-75 | 待辦 | **提示詞約四成是每批重寫的樣板** | 【動手前必讀】、【第 0 步】、【回覆格式】、驗證步驟的通用部分、自檢聲明 E1／E5／E6／E7／E9／E12／E14／E15 每批幾乎逐字相同。**樣板每批重寫一次，就是每批有一次寫錯的機會**——攔截點未指定時點、預期零命中寫錯兩件都發生在樣板段落。處置：抽成 `.agents/rules/batch-template.md`，執行者從 repo 讀，提示詞只寫差異。排批 2b-4 |
-| B-76 | 已完成 | **審計官的核對階段未腳本化** | 審計官核對動作已由 scripts/verify_all.py 單一權威入口實質完成腳本化。 |
+| B-76 | 可封存 | **審計官的核對階段未腳本化** | 原 audit_verify.py 並未實作；其核心需求已由 canonical verify_all 與 GitHub remote audit workflow 取代。 |
 | B-77 | 已完成 | **BPE 的輸出不得被審計官修改** | B-64 的直接推論：BPE 產生證據後若「順手修潤措辭」，就重現「模擬的對象不等於送出的文字」。處置：`.claude/rules/auditor-protocol.md` §6.1 第 18 項延伸一句——**BPE 輸出後不得修改，要改就改批次規格再重跑**。排批 2b-4 |
-| B-78 | 已完成 | **`scripts/apply_batch.py`：消除散文這一層有損的重新編碼** | 消除散文編碼已由 Batch Spec 規格與 apply/replay 流程 (0470df2 B-90) 實質完成。 |
+| B-78 | 待辦 | **`scripts/apply_batch.py`：消除散文這一層有損的重新編碼** | 原 apply_batch.py 未實作；現有 CHECK 17 提供 correctness containment，剩餘價值主要為效率與降低一次性 apply-script parsing，延後主重構後再評估。 |
 | B-79 | 已完成 | **零項 CHECK 驗證看板與 backlog 的 ID 序列連續性** | 2026-09-06 實測：`scripts/check_consistency.py` 對 `docs/TASKBOARD.md` **只驗最後更新 HEAD（CHECK 8）**，全庫查無任何驗證 B 節編號連續性的檢查；backlog 的編號點亦同。唯一的守衛是審計官每批手寫的驗證步驟——**那正是「靠記憶」的形狀**。首投的缺號錯誤（缺 B-72／73／74）因此在模擬中 16 項全 PASS，是執行者人工比對抓到的。處置：BPE 新增 **EXPECT 區塊**把「插入後的預期序列」從宣告變成可驗事實（本批完成）；獨立的 **CHECK 25 ID 序列連續性** 排批 2d |
-| B-80 | 可封存 | **BPE 的模擬只涵蓋規格中有真實 payload 的修改** | BPE 制度已由 Mechanical-Truth Migration 廢除，現由 Batch Spec 與 --as-if-committed + CHECK 17 取代。 |
-| B-81 | 可封存 | **BPE 的輸出不含錨點原文** | BPE 衍生值制度已隨 Mechanical-Truth Migration 廢除，不再適用。 |
+| B-80 | 可封存 | **BPE 的模擬只涵蓋規格中有真實 payload 的修改** | 原 check-only simulation gap 已隨 check-only/手寫 derived-truth authority 消失；現行 source mutation 均以實際 Batch Spec MOD 及 CHECK 17 replay 管理。BPE 本身仍保留。 |
+| B-81 | 可封存 | **BPE 的輸出不含錨點原文** | anchor 原文不再需要由 LLM 從 BPE output 重新抄成 blocking truth；BPE 本身仍是 active parser/simulator，不是被廢除。 |
 | B-82 | 已完成 | **交接區 §5.4 是一個只追加、從不清理的堆疊** | 每份提示詞只替換第一個項目符號並在其前追加，**從未移除被取代的**，單調成長十輪。2026-09-07 實測 62 行（含標題）、18 個頂層項目符號，其中十條過期或互相矛盾。**本批完成清理，成因見 `docs/refactor-backlog.md` 第 53 點 A 段。惟偵測機制尚未建立**——§5.4 頂層項目符號數上限檢查排批 2d，編號依 B-60 配置 |
 | B-83 | 待辦 | **開場動作單次載入 2,338 行** | 2026-09-07 實測：`PRINCIPLES.md` 345 ＋ `.claude/rules/auditor-protocol.md` 875 ＋ `.claude/rules/handover-selftest.md` 96 ＋ `docs/TASKBOARD.md` 221 ＋ `docs/EXEC-LOG.md` 28 ＋ 交接區 773。交接區中第 44 至 53 點實測 589 行是歷史留痕，不該每次開場全文載入。處置：移入 `docs/archive/`，與 B-58 合併。排批 2f |
 | B-84 | 可封存 | **模擬閘門的觸發條件比它要保護的範圍窄** | 模擬閘門保護範圍已被 CHECK 17 全量 Spec Replay 逐位元比對完全覆蓋取代。 |
-| B-85 | 已完成 | **散文是一層有損的重新編碼** | 散文重新編碼問題已由 Batch Spec 標準格式徹底解決。 |
+| B-85 | 已完成 | **散文是一層有損的重新編碼** | 解決的是散文不得充當 exact mechanical truth（GOAL_SPEC 定義目標邊界，EXACT_SPEC / Batch Spec + CHECK 17 提供 canonical replay）；不宣稱 executor 已有通用 apply_batch.py。 |
 | B-86 | 已完成 | **規則層從未說明 BPE 是什麼** | BPE 用法與批次規格（Batch Spec）格式已於 Mechanical-Truth Migration 完整寫入 `.claude/rules/auditor-protocol.md` §6.1 第 21 項，並依 §5.7 同步進 `.claude/rules/handover-selftest.md` E23 與 `.agents/rules/prompt-preflight.md` §3.4 E23。明訂批次規格由 `parse_spec`／`apply_mod_to_text` 解析，BPE 負責單一來源驗證與模擬，消除散文編碼失真 |
 | B-87 | 待辦 | **看板狀態與 repo 實際狀態無任何 CHECK 驗證** | 2026-09-07 實測兩個實證：①B-24／B-27／B-40／B-50／B-52／B-61 六項在 repo 中已生效、看板仍標待辦，本批同步，逐項落地位置見各列與 `docs/refactor-backlog.md` 第 53 點 C 段 ②D-02「E2 正式交接」標待辦，但 `docs/refactor-backlog.md` 第 46 點 A 段記載 E2 已於 2026-09-06 執行完成。成因：更新規則檔卻沒回頭改看板狀態，**而沒有任何機制會發現**。處置：CHECK 驗證看板「已完成」項目的落點是否真的存在、「待辦」項目的落點是否真的不存在。**這是使用者判準「機制上沒辦法與 github 同步」的直接命中。** 排批 2b-7 |
 | B-88 | 待辦 | **表格被空行斷開，無任何機械偵測** | 2026-09-07 實測：`b46cd5d` 把 E21 寫進 `.agents/rules/prompt-preflight.md` §3.4 時，在 E20 與 E21 之間留了一個空行，該表在 E20 結束，E21 成為表格外的孤立一行，不會渲染成表格。**這是 A-20（`.claude/rules/auditor-protocol.md` §6.1 第 10 項被空行斷開）的同形第二次。** 三個機制都抓不到：CHECK 11 只驗 §6.1 與 E 節的對應關係、CHECK 2 只驗圍欄配對、執行者用 grep 數列數而 grep 不在乎空行——**數字是對的，表格是斷的**。處置：①本批修復該空行 ②新增 CHECK，偵測以管線符號開頭的連續列之間不得出現空行；編號依 B-60 配置，排批 2d |

@@ -49,6 +49,7 @@ CHECK 12 應跳過該值——建立本檔的那一批沒有「前一個 commit�
 | a56c5c9 | 2026-09-11 | §4.1-1 | **核對通過**。10 檔異動、零夾帶。獨立驗證五項全過：54 技能零錯誤、18 項 CHECK 全 PASS、126 passed、13 webapp passed、`fingerprint.py --verify` exit 0；CI Run 34585789663 success。CHECK 17 normal replay 驗證通過 | Governance Exit Gate Parity 收斂經宏觀審計官核對通過。建立 Canonical Verification Entrypoint (scripts/verify_all.py) 統一 Local 與 CI 驗證閘門，完成 B-47，全庫閘門完整收斂 |
 | 94f75bc | 2026-09-11 | §4.1-1 | **核對通過**。9 檔異動、零夾帶。獨立驗證五項全過：54 技能零錯誤、18 項 CHECK 全 PASS、128 passed、13 webapp passed、`fingerprint.py --verify` exit 0；CI Run verify success。CHECK 9 強化防偽造檢查，--as-if-committed 拓撲預演落地 | 消除 CHECK 9 在 prospective commit 後 HEAD 前進導致的中間紅燈。完成 B-51，實現 pre-prospective 前置拓撲預演，杜絕可預測的 fail-first 迴圈 |
 | 8f9847e | 2026-09-11 | §4.1-1 | **核對通過**。11 檔異動、零夾帶。獨立驗證五項全過：54 技能無死鏈、18 項 CHECK 全 PASS、128 passed、13 webapp passed、`fingerprint.py --verify` exit 0；GitHub Actions Run 34590592049 (Run #26) success。建立 ADR-0020 與 SOP_14 §8，完成 CI 歷史事故歸檔與清理授權整備 | 確立 GitHub Actions 為唯一 Remote Health Authority；完成 5 筆歷史失敗 runs 的根本原因歸檔；README 增加 Verify badge；建立雙層權威分工機制。 |
+| 60d5479 | 2026-09-11 | §4.1-1 | **核對通過**。6 檔異動、零夾帶。獨立驗證五項全過：54 技能零錯誤、18 項 CHECK 全 PASS、128 passed、13 webapp passed、`fingerprint.py --verify` exit 0；GitHub Actions Run 34593961967 (Run #27) success。CHECK 17 normal replay 驗證通過 | Post-Governance Taskboard Reconciliation 經宏觀審計官核對通過。清點治理層完成後之任務看板，確認 Governance Exit 7/7 維持 PASS，消除已過期舊待辦。 |
 
 ---
 

@@ -2825,7 +2825,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 5.1 上一批狀態
 
-上次核對通過的 HEAD：94f75bc
+上次核對通過的 HEAD：8f9847e
 
 - `23af193`（執行者前置檢查 ＋ 回滾程序 ＋ `AUDIT-LOG.md` ＋ 四缺口修正）
   已於 2026-09-02 由審計官核對通過：6 檔異動（含 2 個新檔）、零夾帶、
@@ -2965,7 +2965,8 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   獨立驗證五項全過（54 技能、18 項 CHECK、126 passed、13 webapp passed、`--verify` exit 0），CI Run 34585789663 success，**尚待審計官核對**，見 §5.4。
 - `94f75bc`（Transient Red Reduction：強化 CHECK 9 candidate 自引防護與實作 --as-if-committed 預演模式，完成 B-51）已於 2026-09-11 執行完成：9 檔異動、零夾帶，獨立驗證五項全過（54 技能、18 項 CHECK、128 passed、13 webapp passed、`--verify` exit 0），CI Run verify success，**尚待審計官核對**，見 §5.4。
 - `8f9847e`（GitHub Actions 遠端健康權威與歷史失敗歸檔：建立 ADR-0020、SOP_14 §8、AUDIT-LOG CI 事故歸檔、README badge）已於 2026-09-11 執行完成：11 檔異動、零夾帶，獨立驗證五項全過，CI Run 34590592049 success，**尚待審計官核對**，見 §5.4。
-- 本批（尚未 commit）（Post-Governance Taskboard Reconciliation：全面對帳 TASKBOARD B 節 50 項待辦，標定已實作與封存項目，產出 Next Execution Queue 與儀表板）已執行，**尚待審計官核對**，見 §5.4。
+- `60d5479`（Post-Governance Taskboard Reconciliation：全面對帳 TASKBOARD B 節 50 項待辦，標定已實作與封存項目，產出 Next Execution Queue 與儀表板）已於 2026-09-11 執行完成：6 檔異動、零夾帶，獨立驗證五項全過，CI Run 34593961967 success，**尚待審計官核對**，見 §5.4。
+- 本批（尚未 commit）（Post-Governance Taskboard Truth Correction：修正 B-12/B-57/B-60/B-76/B-78/B-80/B-81/B-85 之 Planning Truth 分類與描述，恢復真實待辦與架構取代留痕）已執行，**尚待審計官核對**，見 §5.4。
 
 ### 5.2 待辦
 
@@ -3027,4 +3028,15 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
     - **背景**：在 Governance Exit 7/7 完成、ADR-0020 確立 Remote Health Authority、歷史 Actions failure runs 全數清理後，為避免未來 Agent 執行已被取代或已完成的舊治理待辦，展開一次性 repo-to-taskboard 對帳。
     - **對帳結果**：審查 B 節未完成 50 項，分類為 ALREADY_IMPLEMENTED (9 項)、SUPERSEDED (9 項)、DEFER_POST_MAIN (28 項)、BLOCKED_DEPENDENCY (3 項)、BLOCKED_USER_AUTH (1 項)。更新 18 個項目的狀態為「已完成」或「可封存」，並留存 supersede 理由。
     - **佇列產出**：機械導出 NEXT EXECUTION QUEUE，確立「1. 正式交接驗證 D → 2. 主遷移 E → 3. 相依項 → 4. 演進 F → 5. 主重構後優化 → 6. 低優先探索」之推進順序，治理待辦不再阻擋主重構。
+
+57. **Post-Governance Taskboard Truth Correction（看板規劃真實性修正）**（2026-09-11）
+    - **背景**：宏觀審計官與執行者依據原 acceptance criteria 重新核對，修正上一輪 TASKBOARD RECONCILIATION 將「後續機制涵蓋」誤等同於「原需求已實作」的分類失真問題。
+    - **修訂內容**：
+      - B-12：恢復為待辦（DEFER_POST_MAIN）。CHECK 18 為 tag identity integrity，原 lag detection 尚未實作；因遠端健康權威已轉移至 GitHub Actions，不阻擋主重構。
+      - B-57：維持可封存（SUPERSEDED）。澄清原五項 acceptance 並未全部達成（B-53/B-54/B-71 仍有殘留風險），本項係被後續 Governance Exit 7/7 標準取代，絕不假造已全部完成。
+      - B-76：更正為可封存（SUPERSEDED）。`scripts/audit_verify.py` 實體檔案未實作，核心需求已由 canonical `verify_all.py` 與 GitHub 遠端工作流取代。
+      - B-78：恢復為待辦（DEFER_POST_MAIN）。`scripts/apply_batch.py` 未實作且目前仍依賴一次性 apply 腳本，由 CHECK 17 提供 correctness containment，延後主重構後評估。
+      - B-80 / B-81：維持可封存（SUPERSEDED），但更正「BPE 制度廢除」之敘述。BPE（`build_prompt_evidence.py`）依然保留為 Batch Spec 解析與模擬工具，廢除的僅是 LLM 手寫衍生值作為 blocking truth。
+      - B-60：維持可封存（SUPERSEDED），更正備註說明 17–24 配置表已停止作為排程，未來若 post-main 新增 CHECK 應從 `check_consistency.py` 機器動態導出可用 ID。
+      - B-85：維持已完成（ALREADY_IMPLEMENTED），澄清解決的是「散文不得充當 exact mechanical truth」，不與 B-78 通用套用腳本混淆。
 
