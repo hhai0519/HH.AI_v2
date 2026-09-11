@@ -144,3 +144,97 @@ def test_existing_modes_regression_pass():
 
     before_mod = {"id": "3", "file": "f", "mode": "insert_before", "anchor": "B", "payload": "Y"}
     assert apply_mod_to_text("A\nB\nC", before_mod) == "A\nY\nB\nC"
+
+
+# ----------------------------------------------------------------------
+# Path Confinement Tests
+# ----------------------------------------------------------------------
+from build_prompt_evidence import validate_repo_path
+
+MALICIOUS_PATHS = [
+    "../escape.txt",
+    "../../escape.txt",
+    "docs/../../escape.txt",
+    "\\..\\escape.txt",
+    "..\\escape.txt",
+    "/tmp/escape.txt",
+    "/absolute/path.txt",
+    "C:\\temp\\escape.txt",
+    "C:/temp/escape.txt",
+    "\\\\server\\share\\escape.txt",
+]
+
+def test_validate_repo_path_unit():
+    # Valid relative paths
+    assert validate_repo_path("docs/batches/README.md") == "docs/batches/README.md"
+    assert validate_repo_path("scripts\\test.py") == "scripts/test.py"
+    assert validate_repo_path("root_file.txt") == "root_file.txt"
+
+    # Invalid paths
+    for p in MALICIOUS_PATHS:
+        with pytest.raises(ValueError):
+            validate_repo_path(p)
+
+    for invalid in ["", "   ", "docs/", "a//b", "a/./b", "a\0b"]:
+        with pytest.raises(ValueError):
+            validate_repo_path(invalid)
+
+
+def test_malicious_paths_blocked_in_parse_spec_create_file():
+    for p in MALICIOUS_PATHS:
+        spec_text = f"""HEAD: 1234567
+
+=== MOD 1 ===
+file: {p}
+mode: create_file
+--- PAYLOAD ---
+malicious payload
+{END_MOD}
+"""
+        with pytest.raises(SpecParseError, match="無效的目標檔案路徑"):
+            parse_spec(spec_text)
+
+
+def test_malicious_paths_blocked_in_parse_spec_existing_modes():
+    for mode in ("replace", "insert_after", "insert_before"):
+        for p in MALICIOUS_PATHS:
+            spec_text = f"""HEAD: 1234567
+
+=== MOD 1 ===
+file: {p}
+mode: {mode}
+--- ANCHOR ---
+some anchor
+--- PAYLOAD ---
+some payload
+{END_MOD}
+"""
+            with pytest.raises(SpecParseError, match="無效的目標檔案路徑"):
+                parse_spec(spec_text)
+
+
+def test_path_confinement_sandbox_zero_escape(tmp_path):
+    """驗證包含路徑穿透的 spec 絕不會在 sandbox 外建立任何檔案"""
+    sandbox = tmp_path / "sandbox"
+    sandbox.mkdir()
+    (sandbox / "docs").mkdir()
+    (sandbox / "docs" / "T.md").write_text("Hello\n", encoding="utf-8")
+
+    outside_canary = tmp_path / "escape.txt"
+
+    for p in MALICIOUS_PATHS:
+        spec_text = f"""HEAD: 1234567
+
+=== MOD 1 ===
+file: {p}
+mode: create_file
+--- PAYLOAD ---
+escape attempt
+{END_MOD}
+"""
+        # parse 必須直接攔截
+        with pytest.raises(SpecParseError):
+            parse_spec(spec_text)
+
+    # 確認外部從未產生任何檔案
+    assert not outside_canary.exists()

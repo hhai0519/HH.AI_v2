@@ -2946,8 +2946,12 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   圍欄數與 post-apply 衍生值 blocking 要求；補齊 BPE 與 Batch Spec 規範，完成 B-86）
   已於 2026-09-11 由審計官核對通過：10 檔異動、零夾帶，獨立驗證四項全過（54 技能、18 項 CHECK、
   108 測試、`--verify` exit 0），CI success，`audited-4c6aee4` tag 已成功建立並推送。
-- 本批（尚未 commit）（B-90：Batch Spec 支援 `create_file` mode，移除 BOOTSTRAP 跳過例外與全庫限制，
-  解除治理層最後一個 Exit blocker）已執行，**尚待審計官核對**，見 §5.4。
+- `0470df2`（B-90：Batch Spec 支援 `create_file` mode，移除 BOOTSTRAP 跳過例外與全庫限制，
+  解除治理層最後一個 Exit blocker）已於 2026-09-11 執行完成：11 檔異動、零夾帶，
+  獨立驗證四項全過（54 技能、18 項 CHECK、117 測試、`--verify` exit 0），CI success，**尚待審計官核對**，見 §5.4。
+- 本批（尚未 commit）（Governance Exit 安全與架構收斂：Batch Spec FILE 路徑安全約束與 Exit 審計；
+  實作 canonical validate_repo_path，全面防堵路徑穿透、UNC 與 Windows 磁碟機路徑逃逸，
+  完成治理層收斂）已執行，**尚待審計官核對**，見 §5.4。
 
 ### 5.2 待辦
 
@@ -2973,14 +2977,14 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 > 兩份內容不同的「後續」順序）。清理紀錄與成因見第 53 點。
 > **歷史敘述屬留痕層，落點是編號點，不是本節。**
 
-- **本批（B-90：Batch Spec create_file 支援與 BOOTSTRAP 例外移除）已執行完成，等待審計官核對。**
-  內容：Mechanical-Truth Migration 與 B-86 已完成；本批以 normal Batch Spec 執行 B-90；
-  `parse_spec` 與 `apply_mod_to_text` 原生支援 `create_file` mode；BPE 支援建立新檔模擬驗收；
-  CHECK 17 支援新檔逐位元重放；全面移除 `-BOOTSTRAP.spec.txt` 跳過重放與全庫單一 BOOTSTRAP 限制；
-  新增單元測試與 CHECK 17 正反例測試；TASKBOARD B-90 標記為已完成。
-- **後續順序**：治理層 7/7 核心里程碑（A-01~A-11、B-46~B-52、B-86、B-92、B-90、Mechanical-Truth、Spec Lifecycle）
-  已全部就緒；唯一剩餘 B-91（9 個歷史錯 tag，待授權）不阻擋治理層 exit。
-  待宏觀審計官核對通過後，即可退出治理層並啟動 3（E-01 技能遷移第一梯次 ＋ B-01）主重構主線。
+- **本批（Governance Exit 安全與架構收斂）已執行完成，等待審計官核對。**
+  內容：B-90 已完成；本批執行 Governance Exit 安全與架構收斂；實作 canonical `validate_repo_path`，
+  全面防堵 Batch Spec 任意模式下路徑穿透（`..` traversal）、Windows 磁碟機代號、UNC 路徑與 repo 逃逸；
+  BPE 模擬沙盒與 CHECK 17 具備 fail-closed 驗證防護；新增惡意路徑測試套件；
+  完成 Governance Exit 7/7 核心里程碑架構審計。
+- **後續順序**：治理層 7/7 核心里程碑已全數收斂就緒，安全路徑約束已封閉；
+  唯一剩餘 B-91（9 個歷史錯 tag，待授權）不阻擋治理層 exit。
+  待宏觀審計官裁決 Governance Exit 後，即可正式退出治理層並啟動 3（E-01 技能遷移第一梯次 ＋ B-01）主重構主線。
 - **後續順序（唯一權威版本，2026-09-11 依 Governance Freeze 重排）**：
   2b-7（B-90／B-81／B-53）→ **3（E-01 技能遷移第一梯次 ＋ B-01）**→
   4（C 節執行 ＋ B-30／B-31／B-32／B-33）→ 5（Runtime 依賴調研 ＋ C-04 細節裁決）→

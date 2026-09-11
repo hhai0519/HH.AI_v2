@@ -38,6 +38,42 @@ class SpecParseError(Exception):
         return f"解析錯誤: {self.message}"
 
 
+def validate_repo_path(raw_path):
+    """
+    驗證並正規化 Batch Spec 的目標檔案路徑。
+    目標路徑必須是乾淨、相對於 repository 根目錄的 POSIX 風格相對路徑。
+    嚴禁：
+      - 空路徑或空白路徑
+      - 包含 NUL 字元
+      - Windows 磁碟機代號路徑（例如 C:, D:）
+      - UNC 路徑（例如 \\\\server\\share 或 //server/share）
+      - 絕對路徑（例如以 / 或 \\ 開頭）
+      - 包含 '..' 路徑穿透片段
+      - 包含空片段或冗餘的 '.' 片段
+      - 目錄路徑（以斜線結尾）
+    回傳正規化後的 POSIX 相對路徑。
+    """
+    if not raw_path or not raw_path.strip():
+        raise ValueError("檔案路徑不得為空")
+    path = raw_path.strip()
+    if "\0" in path:
+        raise ValueError("檔案路徑不得包含 NUL 字元")
+    if re.match(r"^[a-zA-Z]:", path):
+        raise ValueError(f"檔案路徑不得為 Windows 磁碟機路徑: {raw_path}")
+    if path.startswith(("\\\\", "//", "/", "\\")):
+        raise ValueError(f"檔案路徑不得為絕對路徑或 UNC 路徑: {raw_path}")
+    norm_path = path.replace("\\", "/")
+    if norm_path.endswith("/"):
+        raise ValueError(f"檔案路徑不得以斜線結尾: {raw_path}")
+    parts = norm_path.split("/")
+    for part in parts:
+        if part == "..":
+            raise ValueError(f"檔案路徑不得包含 '..' 路徑穿透片段: {raw_path}")
+        if part == "" or part == ".":
+            raise ValueError(f"檔案路徑包含非法或冗餘片段: {raw_path}")
+    return norm_path
+
+
 def parse_spec(spec_text):
     """
     解析批次規格文字。
@@ -108,7 +144,11 @@ def parse_spec(spec_text):
             if stripped.startswith("file:"):
                 if current_mod["file"] is not None:
                     raise SpecParseError("重複定義 file 欄位", idx)
-                current_mod["file"] = stripped[len("file:"):].strip()
+                raw_file = stripped[len("file:"):].strip()
+                try:
+                    current_mod["file"] = validate_repo_path(raw_file)
+                except ValueError as e:
+                    raise SpecParseError(f"無效的目標檔案路徑: {e}", idx)
                 continue
             if stripped.startswith("mode:"):
                 if current_mod["mode"] is not None:
@@ -178,7 +218,11 @@ def parse_spec(spec_text):
                 current_expect["type"] = stripped[len("type:"):].strip()
                 continue
             if stripped.startswith("file:"):
-                current_expect["file"] = stripped[len("file:"):].strip()
+                raw_file = stripped[len("file:"):].strip()
+                try:
+                    current_expect["file"] = validate_repo_path(raw_file)
+                except ValueError as e:
+                    raise SpecParseError(f"無效的目標檔案路徑: {e}", idx)
                 continue
             if stripped.startswith("pattern:"):
                 current_expect["pattern"] = stripped[len("pattern:"):].strip()
@@ -208,8 +252,13 @@ def verify_anchors(mods, repo_root):
     若 count != 1，印出命中位置後回傳 False，否則回傳 (True, results)。
     """
     results = []
+    real_root = os.path.realpath(os.path.abspath(repo_root))
     for mod in mods:
         fpath = os.path.join(repo_root, mod["file"])
+        real_path = os.path.realpath(os.path.abspath(fpath))
+        if not (real_path == real_root or real_path.startswith(real_root + os.sep)):
+            print(f"[錯誤] 目標檔案解析後超出 repository 根目錄: {mod['file']}")
+            return False, results
         if mod["mode"] == "create_file":
             if os.path.exists(fpath):
                 print(f"[錨點] MOD {mod['id']}  {mod['file']}:0  count=0")
@@ -346,13 +395,20 @@ def simulate_and_verify(mods, expects, repo_root):
         shutil.copytree(repo_root, temp_dir, dirs_exist_ok=True, ignore=shutil.ignore_patterns(".git"))
 
         # 套用 MODs
+        real_temp = os.path.realpath(os.path.abspath(temp_dir))
         for mod in mods:
             fpath = os.path.join(temp_dir, mod["file"])
+            real_path = os.path.realpath(os.path.abspath(fpath))
+            if not (real_path == real_temp or real_path.startswith(real_temp + os.sep)):
+                raise ValueError(f"目標檔案解析後超出模擬目錄: {mod['file']}")
             if mod["mode"] == "create_file":
                 if os.path.exists(fpath):
                     raise ValueError(f"create_file 目標檔案在 base 已存在: {mod['file']}")
                 pdir = os.path.dirname(fpath)
                 if pdir:
+                    real_pdir = os.path.realpath(os.path.abspath(pdir))
+                    if not (real_pdir == real_temp or real_pdir.startswith(real_temp + os.sep)):
+                        raise ValueError(f"create_file 目標目錄解析後超出模擬目錄: {mod['file']}")
                     os.makedirs(pdir, exist_ok=True)
                 new_content = apply_mod_to_text(None, mod)
             else:

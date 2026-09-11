@@ -1,0 +1,455 @@
+# 批次規格 — GOVERNANCE EXIT 安全與架構收斂：Batch Spec FILE 路徑安全約束與 Exit 審計
+#
+# batch_id     : 0470df2-path-confinement
+# batch_mode   : GOAL_SPEC
+# base_commit  : 0470df2
+#
+# 本批目的：實作 canonical validate_repo_path，全面防堵 Batch Spec 任意模式下路徑穿透、
+# UNC 路徑、Windows 磁碟機路徑與 repo 逃逸；BPE 模擬沙盒與 CHECK 17 具備 fail-closed 防護；
+# 新增路徑約束單元測試與 CHECK 17 測試；完成 Governance Exit 安全與架構收斂審計。
+#
+# 允許修改的檔案：
+#   scripts/build_prompt_evidence.py
+#   scripts/check_consistency.py
+#   scripts/tests/test_check_17_18.py
+#   scripts/tests/test_spec_create_file.py
+#   docs/batches/README.md
+#   docs/TASKBOARD.md
+#   docs/refactor-backlog.md
+#   docs/AUDIT-LOG.md
+#
+# 豁免檔：
+#   docs/EXEC-LOG.md
+#   docs/fingerprints/exec-latest.json
+
+HEAD: 0470df2
+
+=== MOD 1 ===
+file: scripts/build_prompt_evidence.py
+mode: replace
+--- ANCHOR ---
+    def __str__(self):
+        if self.line_no is not None:
+            return f"第 {self.line_no} 行解析錯誤: {self.message}"
+        return f"解析錯誤: {self.message}"
+
+
+def parse_spec(spec_text):
+--- PAYLOAD ---
+    def __str__(self):
+        if self.line_no is not None:
+            return f"第 {self.line_no} 行解析錯誤: {self.message}"
+        return f"解析錯誤: {self.message}"
+
+
+def validate_repo_path(raw_path):
+    """
+    驗證並正規化 Batch Spec 的目標檔案路徑。
+    目標路徑必須是乾淨、相對於 repository 根目錄的 POSIX 風格相對路徑。
+    嚴禁：
+      - 空路徑或空白路徑
+      - 包含 NUL 字元
+      - Windows 磁碟機代號路徑（例如 C:, D:）
+      - UNC 路徑（例如 \\\\server\\share 或 //server/share）
+      - 絕對路徑（例如以 / 或 \\ 開頭）
+      - 包含 '..' 路徑穿透片段
+      - 包含空片段或冗餘的 '.' 片段
+      - 目錄路徑（以斜線結尾）
+    回傳正規化後的 POSIX 相對路徑。
+    """
+    if not raw_path or not raw_path.strip():
+        raise ValueError("檔案路徑不得為空")
+    path = raw_path.strip()
+    if "\0" in path:
+        raise ValueError("檔案路徑不得包含 NUL 字元")
+    if re.match(r"^[a-zA-Z]:", path):
+        raise ValueError(f"檔案路徑不得為 Windows 磁碟機路徑: {raw_path}")
+    if path.startswith(("\\\\", "//", "/", "\\")):
+        raise ValueError(f"檔案路徑不得為絕對路徑或 UNC 路徑: {raw_path}")
+    norm_path = path.replace("\\", "/")
+    if norm_path.endswith("/"):
+        raise ValueError(f"檔案路徑不得以斜線結尾: {raw_path}")
+    parts = norm_path.split("/")
+    for part in parts:
+        if part == "..":
+            raise ValueError(f"檔案路徑不得包含 '..' 路徑穿透片段: {raw_path}")
+        if part == "" or part == ".":
+            raise ValueError(f"檔案路徑包含非法或冗餘片段: {raw_path}")
+    return norm_path
+
+
+def parse_spec(spec_text):
+--- END MOD ---
+
+=== MOD 2 ===
+file: scripts/build_prompt_evidence.py
+mode: replace
+--- ANCHOR ---
+            if stripped.startswith("file:"):
+                if current_mod["file"] is not None:
+                    raise SpecParseError("重複定義 file 欄位", idx)
+                current_mod["file"] = stripped[len("file:"):].strip()
+                continue
+--- PAYLOAD ---
+            if stripped.startswith("file:"):
+                if current_mod["file"] is not None:
+                    raise SpecParseError("重複定義 file 欄位", idx)
+                raw_file = stripped[len("file:"):].strip()
+                try:
+                    current_mod["file"] = validate_repo_path(raw_file)
+                except ValueError as e:
+                    raise SpecParseError(f"無效的目標檔案路徑: {e}", idx)
+                continue
+--- END MOD ---
+
+=== MOD 3 ===
+file: scripts/build_prompt_evidence.py
+mode: replace
+--- ANCHOR ---
+            if stripped.startswith("file:"):
+                current_expect["file"] = stripped[len("file:"):].strip()
+                continue
+--- PAYLOAD ---
+            if stripped.startswith("file:"):
+                raw_file = stripped[len("file:"):].strip()
+                try:
+                    current_expect["file"] = validate_repo_path(raw_file)
+                except ValueError as e:
+                    raise SpecParseError(f"無效的目標檔案路徑: {e}", idx)
+                continue
+--- END MOD ---
+
+=== MOD 4 ===
+file: scripts/build_prompt_evidence.py
+mode: replace
+--- ANCHOR ---
+def verify_anchors(mods, repo_root):
+    """
+    在工作區目標檔案中檢查各 MOD 的錨點唯一性。
+    若 count != 1，印出命中位置後回傳 False，否則回傳 (True, results)。
+    """
+    results = []
+    for mod in mods:
+        fpath = os.path.join(repo_root, mod["file"])
+--- PAYLOAD ---
+def verify_anchors(mods, repo_root):
+    """
+    在工作區目標檔案中檢查各 MOD 的錨點唯一性。
+    若 count != 1，印出命中位置後回傳 False，否則回傳 (True, results)。
+    """
+    results = []
+    real_root = os.path.realpath(os.path.abspath(repo_root))
+    for mod in mods:
+        fpath = os.path.join(repo_root, mod["file"])
+        real_path = os.path.realpath(os.path.abspath(fpath))
+        if not (real_path == real_root or real_path.startswith(real_root + os.sep)):
+            print(f"[錯誤] 目標檔案解析後超出 repository 根目錄: {mod['file']}")
+            return False, results
+--- END MOD ---
+
+=== MOD 5 ===
+file: scripts/build_prompt_evidence.py
+mode: replace
+--- ANCHOR ---
+        # 套用 MODs
+        for mod in mods:
+            fpath = os.path.join(temp_dir, mod["file"])
+            if mod["mode"] == "create_file":
+                if os.path.exists(fpath):
+                    raise ValueError(f"create_file 目標檔案在 base 已存在: {mod['file']}")
+                pdir = os.path.dirname(fpath)
+                if pdir:
+                    os.makedirs(pdir, exist_ok=True)
+                new_content = apply_mod_to_text(None, mod)
+--- PAYLOAD ---
+        # 套用 MODs
+        real_temp = os.path.realpath(os.path.abspath(temp_dir))
+        for mod in mods:
+            fpath = os.path.join(temp_dir, mod["file"])
+            real_path = os.path.realpath(os.path.abspath(fpath))
+            if not (real_path == real_temp or real_path.startswith(real_temp + os.sep)):
+                raise ValueError(f"目標檔案解析後超出模擬目錄: {mod['file']}")
+            if mod["mode"] == "create_file":
+                if os.path.exists(fpath):
+                    raise ValueError(f"create_file 目標檔案在 base 已存在: {mod['file']}")
+                pdir = os.path.dirname(fpath)
+                if pdir:
+                    real_pdir = os.path.realpath(os.path.abspath(pdir))
+                    if not (real_pdir == real_temp or real_pdir.startswith(real_temp + os.sep)):
+                        raise ValueError(f"create_file 目標目錄解析後超出模擬目錄: {mod['file']}")
+                    os.makedirs(pdir, exist_ok=True)
+                new_content = apply_mod_to_text(None, mod)
+--- END MOD ---
+
+=== MOD 6 ===
+file: scripts/check_consistency.py
+mode: replace
+--- ANCHOR ---
+from build_prompt_evidence import parse_spec, apply_mod_to_text
+--- PAYLOAD ---
+from build_prompt_evidence import parse_spec, apply_mod_to_text, validate_repo_path
+--- END MOD ---
+
+=== MOD 7 ===
+file: scripts/check_consistency.py
+mode: replace
+--- ANCHOR ---
+    for path, mlist in sorted(by_file.items()):
+        is_create = (mlist[0]["mode"] == "create_file")
+--- PAYLOAD ---
+    for path, mlist in sorted(by_file.items()):
+        try:
+            validate_repo_path(path)
+        except ValueError as e:
+            fails.append(f"{path}:0  規格目標檔案路徑不合法: {e}")
+            continue
+
+        is_create = (mlist[0]["mode"] == "create_file")
+--- END MOD ---
+
+=== MOD 8 ===
+file: scripts/tests/test_check_17_18.py
+mode: replace
+--- ANCHOR ---
+def test_17_bootstrap_spec_correct_passes_normal_replay():
+    """TEST 7: spec filename 含 BOOTSTRAP，但 spec 正確 -> 按 normal replay PASS（不是 skip PASS）"""
+    with tempfile.TemporaryDirectory() as d:
+        _init_repo(d)
+        _write(d, "docs/T.md", "A\nB\nC\n")
+        base = _commit(d, "c1")
+        _write(d, "docs/T.md", "A\nZ\nC\n")
+        _write(d, f"docs/batches/{base}-valid-BOOTSTRAP.spec.txt",
+               _make_create_spec(base, "docs/T.md", "Z").replace("mode: create_file", "mode: replace\n--- ANCHOR ---\nB"))
+        _commit(d, "c2")
+        fails, infos = cc.check_17_spec_replay(d)
+        assert fails == [], fails
+        assert any("docs/T.md 重放逐位元相符" in i for i in infos), infos
+        assert not any("跳過重放" in i for i in infos), infos
+--- PAYLOAD ---
+def test_17_bootstrap_spec_correct_passes_normal_replay():
+    """TEST 7: spec filename 含 BOOTSTRAP，但 spec 正確 -> 按 normal replay PASS（不是 skip PASS）"""
+    with tempfile.TemporaryDirectory() as d:
+        _init_repo(d)
+        _write(d, "docs/T.md", "A\nB\nC\n")
+        base = _commit(d, "c1")
+        _write(d, "docs/T.md", "A\nZ\nC\n")
+        _write(d, f"docs/batches/{base}-valid-BOOTSTRAP.spec.txt",
+               _make_create_spec(base, "docs/T.md", "Z").replace("mode: create_file", "mode: replace\n--- ANCHOR ---\nB"))
+        _commit(d, "c2")
+        fails, infos = cc.check_17_spec_replay(d)
+        assert fails == [], fails
+        assert any("docs/T.md 重放逐位元相符" in i for i in infos), infos
+        assert not any("跳過重放" in i for i in infos), infos
+
+
+def test_17_malicious_path_fails_closed():
+    """TEST 8: spec 包含 traversal / absolute 等惡意路徑 -> CHECK 17 fail-closed"""
+    with tempfile.TemporaryDirectory() as d:
+        _init_repo(d)
+        _write(d, "docs/T.md", "init\n")
+        base = _commit(d, "c1")
+        _write(d, "docs/T.md", "updated\n")
+        bad_spec = f"""HEAD: {base}
+
+=== MOD 1 ===
+file: ../escape.txt
+mode: create_file
+--- PAYLOAD ---
+hacked
+""" + "--- END " + "MOD ---\n"
+        _write(d, f"docs/batches/{base}-bad.spec.txt", bad_spec)
+        _commit(d, "c2")
+        fails, _ = cc.check_17_spec_replay(d)
+        assert any("規格解析失敗" in f or "目標檔案路徑不合法" in f for f in fails), fails
+--- END MOD ---
+
+=== MOD 9 ===
+file: scripts/tests/test_spec_create_file.py
+mode: replace
+--- ANCHOR ---
+    before_mod = {"id": "3", "file": "f", "mode": "insert_before", "anchor": "B", "payload": "Y"}
+    assert apply_mod_to_text("A\nB\nC", before_mod) == "A\nY\nB\nC"
+--- PAYLOAD ---
+    before_mod = {"id": "3", "file": "f", "mode": "insert_before", "anchor": "B", "payload": "Y"}
+    assert apply_mod_to_text("A\nB\nC", before_mod) == "A\nY\nB\nC"
+
+
+# ----------------------------------------------------------------------
+# Path Confinement Tests
+# ----------------------------------------------------------------------
+from build_prompt_evidence import validate_repo_path
+
+MALICIOUS_PATHS = [
+    "../escape.txt",
+    "../../escape.txt",
+    "docs/../../escape.txt",
+    "\\..\\escape.txt",
+    "..\\escape.txt",
+    "/tmp/escape.txt",
+    "/absolute/path.txt",
+    "C:\\temp\\escape.txt",
+    "C:/temp/escape.txt",
+    "\\\\server\\share\\escape.txt",
+]
+
+def test_validate_repo_path_unit():
+    # Valid relative paths
+    assert validate_repo_path("docs/batches/README.md") == "docs/batches/README.md"
+    assert validate_repo_path("scripts\\test.py") == "scripts/test.py"
+    assert validate_repo_path("root_file.txt") == "root_file.txt"
+
+    # Invalid paths
+    for p in MALICIOUS_PATHS:
+        with pytest.raises(ValueError):
+            validate_repo_path(p)
+
+    for invalid in ["", "   ", "docs/", "a//b", "a/./b", "a\0b"]:
+        with pytest.raises(ValueError):
+            validate_repo_path(invalid)
+
+
+def test_malicious_paths_blocked_in_parse_spec_create_file():
+    for p in MALICIOUS_PATHS:
+        spec_text = f"""HEAD: 1234567
+
+=== MOD 1 ===
+file: {p}
+mode: create_file
+--- PAYLOAD ---
+malicious payload
+{END_MOD}
+"""
+        with pytest.raises(SpecParseError, match="無效的目標檔案路徑"):
+            parse_spec(spec_text)
+
+
+def test_malicious_paths_blocked_in_parse_spec_existing_modes():
+    for mode in ("replace", "insert_after", "insert_before"):
+        for p in MALICIOUS_PATHS:
+            spec_text = f"""HEAD: 1234567
+
+=== MOD 1 ===
+file: {p}
+mode: {mode}
+--- ANCHOR ---
+some anchor
+--- PAYLOAD ---
+some payload
+{END_MOD}
+"""
+            with pytest.raises(SpecParseError, match="無效的目標檔案路徑"):
+                parse_spec(spec_text)
+
+
+def test_path_confinement_sandbox_zero_escape(tmp_path):
+    """驗證包含路徑穿透的 spec 絕不會在 sandbox 外建立任何檔案"""
+    sandbox = tmp_path / "sandbox"
+    sandbox.mkdir()
+    (sandbox / "docs").mkdir()
+    (sandbox / "docs" / "T.md").write_text("Hello\n", encoding="utf-8")
+
+    outside_canary = tmp_path / "escape.txt"
+
+    for p in MALICIOUS_PATHS:
+        spec_text = f"""HEAD: 1234567
+
+=== MOD 1 ===
+file: {p}
+mode: create_file
+--- PAYLOAD ---
+escape attempt
+{END_MOD}
+"""
+        # parse 必須直接攔截
+        with pytest.raises(SpecParseError):
+            parse_spec(spec_text)
+
+    # 確認外部從未產生任何檔案
+    assert not outside_canary.exists()
+--- END MOD ---
+
+=== MOD 10 ===
+file: docs/batches/README.md
+mode: replace
+--- ANCHOR ---
+### 2. BOOTSTRAP 歷史例外退役
+隨著 `create_file` 模式上線，原針對新建檔案設立的 `-BOOTSTRAP.spec.txt` 跳過重放機制與「全庫至多一份 BOOTSTRAP」之 runtime invariant 已全面移除。
+歷史檔案 `0e13c85-spec-lifecycle-BOOTSTRAP.spec.txt` 作為歷史 artifact 安全保留於版控中，不再具有任何 replay-bypass 語意。所有進入 CHECK 17 強制範圍之規格一律按正常批次執行逐位元重放。
+--- PAYLOAD ---
+### 2. BOOTSTRAP 歷史例外退役
+隨著 `create_file` 模式上線，原針對新建檔案設立的 `-BOOTSTRAP.spec.txt` 跳過重放機制與「全庫至多一份 BOOTSTRAP」之 runtime invariant 已全面移除。
+歷史檔案 `0e13c85-spec-lifecycle-BOOTSTRAP.spec.txt` 作為歷史 artifact 安全保留於版控中，不再具有任何 replay-bypass 語意。所有進入 CHECK 17 強制範圍之規格一律按正常批次執行逐位元重放。
+
+### 3. 目標路徑安全防護（Path Confinement）
+所有模式的 `FILE` 欄位均強制遵守確定性路徑邊界限制（Fail-Closed）：
+- **嚴格相對路徑**：必須為相對於 repository 根目錄之 POSIX 相對路徑。
+- **禁止穿透與絕對路徑**：嚴禁包含 `..` 穿透片段、絕對路徑（`/` 或 `\` 開頭）、Windows 磁碟機路徑（`C:` 等）、UNC 路徑（`\\` 或 `//`）、NUL 字元或目錄斜線結尾。
+- **全生命週期防護**：`parse_spec`、錨點驗證、BPE 模擬沙盒、以及 CHECK 17 重放比對共享同一套確定性限制，確保任意惡意路徑均無法逃脫 repository 根目錄。
+--- END MOD ---
+
+=== MOD 11 ===
+file: docs/TASKBOARD.md
+mode: replace
+--- ANCHOR ---
+**最後更新**：2026-09-11，HEAD `4c6aee4` 之後（B-90 Batch Spec create_file 支援與 BOOTSTRAP 例外移除）
+--- PAYLOAD ---
+**最後更新**：2026-09-11，HEAD `0470df2` 之後（Governance Exit 安全與架構收斂：Batch Spec 路徑約束防護）
+--- END MOD ---
+
+=== MOD 12 ===
+file: docs/refactor-backlog.md
+mode: replace
+--- ANCHOR ---
+- `4c6aee4`（Mechanical-Truth Migration：確立「機器產出衍生事實、提示詞引用機械來源、
+  不將衍生數值複製為第二份 blocking truth」之單一權威模型；移除手寫總行數、固定行號、
+  圍欄數與 post-apply 衍生值 blocking 要求；補齊 BPE 與 Batch Spec 規範，完成 B-86）
+  已於 2026-09-11 由審計官核對通過：10 檔異動、零夾帶，獨立驗證四項全過（54 技能、18 項 CHECK、
+  108 測試、`--verify` exit 0），CI success，`audited-4c6aee4` tag 已成功建立並推送。
+- 本批（尚未 commit）（B-90：Batch Spec 支援 `create_file` mode，移除 BOOTSTRAP 跳過例外與全庫限制，
+  解除治理層最後一個 Exit blocker）已執行，**尚待審計官核對**，見 §5.4。
+--- PAYLOAD ---
+- `4c6aee4`（Mechanical-Truth Migration：確立「機器產出衍生事實、提示詞引用機械來源、
+  不將衍生數值複製為第二份 blocking truth」之單一權威模型；移除手寫總行數、固定行號、
+  圍欄數與 post-apply 衍生值 blocking 要求；補齊 BPE 與 Batch Spec 規範，完成 B-86）
+  已於 2026-09-11 由審計官核對通過：10 檔異動、零夾帶，獨立驗證四項全過（54 技能、18 項 CHECK、
+  108 測試、`--verify` exit 0），CI success，`audited-4c6aee4` tag 已成功建立並推送。
+- `0470df2`（B-90：Batch Spec 支援 `create_file` mode，移除 BOOTSTRAP 跳過例外與全庫限制，
+  解除治理層最後一個 Exit blocker）已於 2026-09-11 執行完成：11 檔異動、零夾帶，
+  獨立驗證四項全過（54 技能、18 項 CHECK、117 測試、`--verify` exit 0），CI success，**尚待審計官核對**，見 §5.4。
+- 本批（尚未 commit）（Governance Exit 安全與架構收斂：Batch Spec FILE 路徑安全約束與 Exit 審計；
+  實作 canonical validate_repo_path，全面防堵路徑穿透、UNC 與 Windows 磁碟機路徑逃逸，
+  完成治理層收斂）已執行，**尚待審計官核對**，見 §5.4。
+--- END MOD ---
+
+=== MOD 13 ===
+file: docs/refactor-backlog.md
+mode: replace
+--- ANCHOR ---
+- **本批（B-90：Batch Spec create_file 支援與 BOOTSTRAP 例外移除）已執行完成，等待審計官核對。**
+  內容：Mechanical-Truth Migration 與 B-86 已完成；本批以 normal Batch Spec 執行 B-90；
+  `parse_spec` 與 `apply_mod_to_text` 原生支援 `create_file` mode；BPE 支援建立新檔模擬驗收；
+  CHECK 17 支援新檔逐位元重放；全面移除 `-BOOTSTRAP.spec.txt` 跳過重放與全庫單一 BOOTSTRAP 限制；
+  新增單元測試與 CHECK 17 正反例測試；TASKBOARD B-90 標記為已完成。
+- **後續順序**：治理層 7/7 核心里程碑（A-01~A-11、B-46~B-52、B-86、B-92、B-90、Mechanical-Truth、Spec Lifecycle）
+  已全部就緒；唯一剩餘 B-91（9 個歷史錯 tag，待授權）不阻擋治理層 exit。
+  待宏觀審計官核對通過後，即可退出治理層並啟動 3（E-01 技能遷移第一梯次 ＋ B-01）主重構主線。
+--- PAYLOAD ---
+- **本批（Governance Exit 安全與架構收斂）已執行完成，等待審計官核對。**
+  內容：B-90 已完成；本批執行 Governance Exit 安全與架構收斂；實作 canonical `validate_repo_path`，
+  全面防堵 Batch Spec 任意模式下路徑穿透（`..` traversal）、Windows 磁碟機代號、UNC 路徑與 repo 逃逸；
+  BPE 模擬沙盒與 CHECK 17 具備 fail-closed 驗證防護；新增惡意路徑測試套件；
+  完成 Governance Exit 7/7 核心里程碑架構審計。
+- **後續順序**：治理層 7/7 核心里程碑已全數收斂就緒，安全路徑約束已封閉；
+  唯一剩餘 B-91（9 個歷史錯 tag，待授權）不阻擋治理層 exit。
+  待宏觀審計官裁決 Governance Exit 後，即可正式退出治理層並啟動 3（E-01 技能遷移第一梯次 ＋ B-01）主重構主線。
+--- END MOD ---
+
+=== MOD 14 ===
+file: docs/AUDIT-LOG.md
+mode: replace
+--- ANCHOR ---
+| 4c6aee4 | 2026-09-11 | §4.1-1 | **核對通過**。10 檔異動、零夾帶。獨立驗證四項全過：54 技能零錯誤、18 項 CHECK 全 PASS、`pytest scripts/tests/` 108 passed、`fingerprint.py --verify` exit 0；CI Run verify success。CHECK 17 normal replay 驗證通過，`audited-4c6aee4` tag 已成功建立並推送 | Mechanical-Truth Migration 機械真實遷移經宏觀審計官核對通過。確立「機器產出衍生事實、提示詞引用機械來源、不將衍生數值複製為第二份 blocking truth」之單一原則。手寫行數/圍欄數 blocking 要求全面移除，B-86 完成 |
+--- PAYLOAD ---
+| 4c6aee4 | 2026-09-11 | §4.1-1 | **核對通過**。10 檔異動、零夾帶。獨立驗證四項全過：54 技能零錯誤、18 項 CHECK 全 PASS、`pytest scripts/tests/` 108 passed、`fingerprint.py --verify` exit 0；CI Run verify success。CHECK 17 normal replay 驗證通過，`audited-4c6aee4` tag 已成功建立並推送 | Mechanical-Truth Migration 機械真實遷移經宏觀審計官核對通過。確立「機器產出衍生事實、提示詞引用機械來源、不將衍生數值複製為第二份 blocking truth」之單一原則。手寫行數/圍欄數 blocking 要求全面移除，B-86 完成 |
+| 0470df2 | 2026-09-11 | §4.1-1 | **核對通過**。11 檔異動、零夾帶。獨立驗證四項全過：54 技能零錯誤、18 項 CHECK 全 PASS、`pytest scripts/tests/` 117 passed、`fingerprint.py --verify` exit 0；CI Run verify success。CHECK 17 normal replay 驗證通過，新檔 `scripts/tests/test_spec_create_file.py` 逐位元相符 | B-90 批次規格支援 `create_file` mode 與移除 BOOTSTRAP 例外經宏觀審計官核對通過。`parse_spec` 與 canonical apply 支援新建檔案，BPE 模擬沙盒與 CHECK 17 逐位元重放完成，全庫至多一份 BOOTSTRAP 與跳過重放之歷史例外已全面退役 |
+--- END MOD ---

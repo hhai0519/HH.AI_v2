@@ -103,3 +103,9 @@ CHECK 17 同時驗三件事，缺一不可：
 ### 2. BOOTSTRAP 歷史例外退役
 隨著 `create_file` 模式上線，原針對新建檔案設立的 `-BOOTSTRAP.spec.txt` 跳過重放機制與「全庫至多一份 BOOTSTRAP」之 runtime invariant 已全面移除。
 歷史檔案 `0e13c85-spec-lifecycle-BOOTSTRAP.spec.txt` 作為歷史 artifact 安全保留於版控中，不再具有任何 replay-bypass 語意。所有進入 CHECK 17 強制範圍之規格一律按正常批次執行逐位元重放。
+
+### 3. 目標路徑安全防護（Path Confinement）
+所有模式的 `FILE` 欄位均強制遵守確定性路徑邊界限制（Fail-Closed）：
+- **嚴格相對路徑**：必須為相對於 repository 根目錄之 POSIX 相對路徑。
+- **禁止穿透與絕對路徑**：嚴禁包含 `..` 穿透片段、絕對路徑（`/` 或 `\` 開頭）、Windows 磁碟機路徑（`C:` 等）、UNC 路徑（`\\` 或 `//`）、NUL 字元或目錄斜線結尾。
+- **全生命週期防護**：`parse_spec`、錨點驗證、BPE 模擬沙盒、以及 CHECK 17 重放比對共享同一套確定性限制，確保任意惡意路徑均無法逃脫 repository 根目錄。

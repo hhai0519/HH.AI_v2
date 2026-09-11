@@ -474,6 +474,27 @@ def test_17_bootstrap_spec_correct_passes_normal_replay():
         assert not any("跳過重放" in i for i in infos), infos
 
 
+def test_17_malicious_path_fails_closed():
+    """TEST 8: spec 包含 traversal / absolute 等惡意路徑 -> CHECK 17 fail-closed"""
+    with tempfile.TemporaryDirectory() as d:
+        _init_repo(d)
+        _write(d, "docs/T.md", "init\n")
+        base = _commit(d, "c1")
+        _write(d, "docs/T.md", "updated\n")
+        bad_spec = f"""HEAD: {base}
+
+=== MOD 1 ===
+file: ../escape.txt
+mode: create_file
+--- PAYLOAD ---
+hacked
+""" + "--- END " + "MOD ---\n"
+        _write(d, f"docs/batches/{base}-bad.spec.txt", bad_spec)
+        _commit(d, "c2")
+        fails, _ = cc.check_17_spec_replay(d)
+        assert any("規格解析失敗" in f or "目標檔案路徑不合法" in f for f in fails), fails
+
+
 def test_17_two_specs_one_commit_fails():
     with tempfile.TemporaryDirectory() as d:
         _init_repo(d)

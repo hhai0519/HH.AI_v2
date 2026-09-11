@@ -1246,7 +1246,7 @@ def check_17_spec_replay(root_dir=None):
 
     sys.path.insert(0, os.path.join(root_dir, "scripts"))
     try:
-        from build_prompt_evidence import parse_spec, apply_mod_to_text
+        from build_prompt_evidence import parse_spec, apply_mod_to_text, validate_repo_path
     except Exception as e:
         fails.append(f"{spec_path}:0  無法載入指定 apply path: {e}")
         return fails, infos
@@ -1309,6 +1309,12 @@ def check_17_spec_replay(root_dir=None):
                 fails.append(f"{ex}:0  豁免檔只允許追加，numstat 實測刪除 {dels} 行")
 
     for path, mlist in sorted(by_file.items()):
+        try:
+            validate_repo_path(path)
+        except ValueError as e:
+            fails.append(f"{path}:0  規格目標檔案路徑不合法: {e}")
+            continue
+
         is_create = (mlist[0]["mode"] == "create_file")
         if is_create:
             if len(mlist) > 1:
