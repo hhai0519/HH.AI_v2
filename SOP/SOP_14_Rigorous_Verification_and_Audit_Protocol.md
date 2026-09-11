@@ -68,7 +68,7 @@ dependencies: [".agents/rules/skill-engineering-guardrails.md", "SOP_05_System_P
 
 ## 3. 使用者確認防線 (User Consent Barrier)
 
-- **強約束**：在使用者未輸入「同意執行」或「Proceed」前，代理人必須凍結工作區修改權限。
+- **任務授權界線**：使用者已明確發出任務指令，或宏觀審計官已指派明確之 `GOAL_SPEC` / `EXACT_SPEC`，即構成該 Allowed Scope 內之執行授權。正常實作與驗證過程中，**不得再要求使用者做第二次「同意執行」或「Proceed」輸入**。唯有在涉及破壞性 Git 操作、金鑰敏感變更、範圍擴張 (Scope Expansion)、未決之架構重大分歧 (S1) 或不可逆外部動作時，才需要求使用者進行 fresh authorization。
 - 必須完整呈現：
   1. 聯席審計意見彙整。
   2. 模擬測試結果。
@@ -78,11 +78,11 @@ dependencies: [".agents/rules/skill-engineering-guardrails.md", "SOP_05_System_P
 
 ## 4. 分段執行與階段簽章審計 (Phased Execution & Intermediate Audit)
 
-1. **清單化管理**：建立 `task.md` 並拆分為 `Phase A, B, C...`。
-2. **階段解凍**：每完成一個 Phase 的變更，必須執行該 Phase 的單元測試。
-3. **階段審計**：由相關 Agent 進行階段查核。只有在上一階段 100% 審計通過且在 `task.md` 標記為 `[x]` 後，下一個 Phase 才能解凍執行。
-4. **強制併發與壓測要求**：若修改涉及底層資料持久化 (DB/檔案寫入) 或主要 Web API (如 Express API 路由)，在 Phase 3 (驗證) 期間，必須強制執行最少 50 次併發或高負載壓力測試，驗證鎖定與流水號遞增之安全性，錯誤率必須為 0。
-5. **失敗退回**：若任一階段審計失敗，必須立即退回 Stage 1，啟動反思程序（SOP_11）。
+1. **結構化管理**：依據任務複雜度，由專案既有之 TASKBOARD、EXEC-LOG、Git commit 與 Batch/Goal 契約管理狀態，**不得強制每個任務額外建立重複的 `task.md`**；僅在複雜 implementation 專案本身確有需要時才建立。
+2. **漸進式執行**：每次聚焦處理單一明確範疇，確保可追蹤性。
+3. **階段審計**：任務完成後由審計官依客觀驗證入口查核，執行者預設回報 commit OID、changed paths、machine gate results 與 remote health，審計官直接從遠端 GitHub 讀取 diff 與檔案證據，不預設要求將完整代碼或 raw diff 貼入對話。
+4. **風險導向壓力測試**：若修改涉及底層資料持久化 (DB/檔案寫入) 或主要 Web API，應依 acceptance criteria、實際併發語意與 SRE 風險設計對應之測試，不得以無條件固定 50 次之 magic number 取代工程風險判斷。
+5. **失敗處置**：若驗證失敗，依循 M1/M2/M3 本地修復流程處理；重大原則分歧則依 S1 升級回報。
 
 ---
 

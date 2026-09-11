@@ -16,12 +16,14 @@
 
 ## 開發規則
 
-新增或修改任何技能前，先讀 [AGENTS.md](./AGENTS.md)。Antigravity 會在本專案內自動載入這份規則，
-但如果你是人類直接編輯檔案，也請務必遵守，並在完成後執行：
+新增或修改任何技能或程式碼前，先讀 [AGENTS.md](./AGENTS.md)。Antigravity 會在本專案內自動載入這份規則，
+完成任何修改後，必須執行 Canonical 統一驗證入口確保全庫合規：
 
 ```bash
-python3 scripts/validate_skills.py
+python scripts/verify_all.py
 ```
+
+> 註：`scripts/validate_skills.py` 僅供技能編輯時的快速 inner-loop 自檢，不能取代涵蓋全庫 5 大 Correctness Gates 的 `verify_all.py`。
 
 ## 技能總索引
 

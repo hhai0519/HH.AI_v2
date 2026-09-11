@@ -35,23 +35,36 @@
 
 ---
 
-## 3. 必要結構元素（缺一即停）
+## 3. 必要結構元素（缺一即停，Mode-Aware）
 
-收到提示詞後，逐項確認以下七項是否存在：
+收到提示詞後，首先檢查批次模式宣告：
+- **若未宣告 `batch_mode`**：**一律直接判定為 `PROMPT STRUCTURE ERROR`（缺少模式宣告）**，立即停機回報，嚴禁默認 EXACT_SPEC。
+
+### 3.0A 所有模式共同必備要素（缺一即停）
 
 | # | 元素 | 判準 |
 |---|---|---|
 | 1 | 執行者身分宣告 | 提示詞開頭有「你是本專案的執行者」或等義身分界定 |
-| 2 | 基準與工作區確認（Base & Workspace） | 載明基準 commit full OID（如 HEAD / origin/main），並確認工作區乾淨（working tree clean） |
-| 3 | 批次模式（Batch Mode） | 明確宣告 `batch_mode`（如 `EXACT_SPEC` 或 `GOAL_SPEC`） |
-| 4 | 允許修改範圍（Allowed Scope） | 明確列出本批允許修改／新增的路徑白名單，非允許範圍嚴禁改動 |
-| 5 | 規格與確定性閘門（Spec & Machine Gates） | 載明批次規格路徑與規格 SHA-256，並以確定性工具（如 validate_skills, check_consistency, fingerprint, pytest）為機械事實權威；**不得以手寫檔案總行數或衍生數值作為 blocking truth** |
-| 6 | `git add` 明確路徑 | 明確列出提交目標檔案，包含「嚴禁 `git add -A`」或等義明確禁令 |
-| 7 | 交接與回報契約（Handoff & Reporting Contract） | 修改指令涵蓋交接區與 TASKBOARD（及 AUDIT-LOG，若本批有核對通過事實），結尾要求固定格式回覆與署名行 |
+| 2 | 基準與工作區確認（Base & Workspace） | 載明基準 commit full OID（如 HEAD / origin/main），並要求確認工作區乾淨（working tree clean） |
+| 3 | 批次模式宣告（Batch Mode） | 明確宣告 `batch_mode: GOAL_SPEC` 或 `batch_mode: EXACT_SPEC` |
+| 4 | 目標與範圍邊界（Goal & Boundaries） | 載明目標（Goal）、允許修改範圍（Allowed Scope）、禁止修改範圍（Forbidden Scope）與驗收條件（Acceptance Criteria） |
+| 5 | 確定性驗證閘門（Required Machine Gates） | 載明 Canonical 驗證指令與 Gate 清單（如 `python scripts/verify_all.py`）；**不得以手寫檔案行數或衍生值作為 blocking truth** |
+| 6 | `git add` 明確路徑 | 明確列出提交目標檔案路徑，包含「嚴禁 `git add -A`」或等義明確禁令 |
+| 7 | 破壞性操作防護宣告 | 明確禁止未授權之 force push、reset --hard 或歷史重寫 |
+| 8 | 遠端健康查驗要求 | 包含執行後查驗 GitHub Actions exact SHA 綠燈之要求 |
 
-**缺任何一項，停下來回報缺了哪幾項，不要動手。**
+### 3.0B EXACT_SPEC 專屬必備要素（僅在 EXACT_SPEC 模式下檢查）
 
-**權威模型核心原則**：機器產出衍生事實，提示詞引用機械來源，提示詞不得將 machine-derived 數字複製成第二份 blocking truth。手寫行數對不上不再作為停止條件，改以 base OID、spec SHA、allowed scope 與機械 Gate 為驗收準則。
+| # | 元素 | 判準 |
+|---|---|---|
+| E-1 | 批次規格路徑 | 載明 `docs/batches/<base-hash>-<slug>.spec.txt` 路徑 |
+| E-2 | 規格 SHA-256 | 載明該規格檔案之 exact SHA-256 校驗碼 |
+| E-3 | 錨點唯一性 | 規格中所有錨點經 BPE 驗證在 base commit 中 count == 1 |
+| E-4 | 規格重放守衛 | 明確要求經由 CHECK 17 進行 parent commit 逐位元重放比對 |
+
+**GOAL_SPEC 模式下不得要求 E-1～E-4 之規格要素，其正確性由單元測試、Gate 驗證與 GitHub Actions 守護。**
+
+**缺任何共同必備項（或 EXACT_SPEC 缺專屬項），停下來回報缺了哪幾項，不要動手。**
 
 **第 6 項有實際失效紀錄**：2026-09-02 的批 G 提示詞更新了 TASKBOARD
 卻漏了交接區，導致交接區落後兩批、下一批的錨點對不上。
@@ -77,19 +90,23 @@
 該次是被驗證步驟攔下的——但驗證步驟是在**寫入之後**才跑，
 配對規則能把失敗提早到**寫入之前**。
 
-## 3.2 覆蓋規則（缺一即停）
+## 3.2 覆蓋規則（缺一即停，Mode-Aware）
 
-提示詞中 `git add` 清單的**每一個非 exempt 檔案**，都必須同時出現在：
+### A. GOAL_SPEC 覆蓋驗證
+在 GOAL_SPEC 模式下，提示詞中 `git add` 清單與實際變更檔案必須滿足：
+1. **Allowed Scope ↔ actual changed files**：實際異動之檔案必須全數落在允許修改範圍內，零越權、零夾帶。
+2. **actual changed files ↔ explicit git add**：實際異動檔案必須與 `git add` 清單完全一致。
+3. **Acceptance Criteria ↔ Required Gates**：驗證步驟與 Gates 必須完整涵蓋驗收準則。
+> ⚠️ **GOAL_SPEC 模式下不得要求 Allowed Scope ↔ spec targets**（因 GOAL_SPEC 無 mandatory Batch Spec）。
 
+### B. EXACT_SPEC 覆蓋驗證
+在 EXACT_SPEC 模式下，提示詞中 `git add` 清單的**每一個非 exempt 檔案**，都必須同時出現在：
 1. 允許修改範圍（Allowed Scope）
 2. 批次規格（Batch Spec）的修改目標檔案中
 3. 本批驗證步驟所涵蓋的檢查範圍中
+反之亦然——出現在規格修改目標卻不在 `git add` 清單中的檔案，代表提示詞漏了提交指令。
 
-反之亦然——出現在規格修改目標卻不在 `git add` 清單中的檔案，
-代表提示詞可能漏了提交指令。
-
-覆蓋驗證以 allowed scope ↔ spec targets ↔ explicit git add ↔ required validation 為準，
-**不得再依賴「手寫檔案總行數清單」或「手寫圍欄數清單」作為覆蓋驗證的 blocking 條件**。
+覆蓋驗證**不得再依賴「手寫檔案總行數清單」或「手寫圍欄數清單」作為 blocking 條件**。
 
 **這兩節檢查的是「有沒有」，不是「對不對」**，與 §2 的分界一致。
 你不需要判斷提示詞的內容是否正確，只需要比對清單是否齊全。
@@ -260,7 +277,9 @@
 
 **首列例外**：本檔建立於 2026-09-05，第一列標記為 `BOOTSTRAP`，CHECK 16 跳過該值。
 
-## 4. 錨點唯一性驗證（動手前必做）
+## 4. 錨點唯一性驗證（僅 EXACT_SPEC 動手前必做）
+
+> 註：本節僅適用於 `EXACT_SPEC` 模式。在 `GOAL_SPEC` 模式下，由執行者自主實作，不強制要求 Batch Spec 錨點驗證。
 
 在執行任何寫入之前，把提示詞中的**每一個**錨點字串取出，逐一驗證：
 

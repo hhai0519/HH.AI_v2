@@ -37,4 +37,5 @@
 | 94f75bc | 2026-09-11 | Transient Red Reduction：強化 CHECK 9 candidate 自引防護與實作 --as-if-committed 預演模式 | 通過 | 強化 check_9_handover_head 防堵 candidate 自引；check_consistency.py 支援 --as-if-committed 預演拓撲；新增 CASE A/B/C 與預演單元測試；更新 git-and-reporting.md 與 TASKBOARD (完成 B-51)；消除可預測的中間紅燈。 |
 | 8f9847e | 2026-09-11 | 執行者 (Antigravity) | 遠端健康權威與歷史失敗歸檔（ADR-0020、SOP_14 §8、AUDIT-LOG CI 事故歸檔、README badge） | 待核對 | Remote Health Authority 落地 |
 | 60d5479 | 2026-09-11 | 執行者 (Antigravity) | 看板待辦對帳（TASKBOARD B 節 50 項對帳、18 項更新封存、產出 Next Execution Queue 與對帳儀表板） | 待核對 | Post-Governance Taskboard Reconciliation |
-| 本批 | 2026-09-11 | 執行者 (Antigravity) | 看板真實性修正（修正 B-12/B-57/B-60/B-76/B-78/B-80/B-81/B-85 之 Planning Truth 分類與描述，恢復真實待辦與架構取代留痕） | 待核對 | Post-Governance Taskboard Truth Correction |
+| a884e97 | 2026-09-11 | 執行者 (Antigravity) | 看板真實性修正（修正 B-12/B-57/B-60/B-76/B-78/B-80/B-81/B-85 之 Planning Truth 分類與描述，恢復真實待辦與架構取代留痕） | 待核對 | Post-Governance Taskboard Truth Correction |
+| 本批 | 2026-09-11 | 執行者 (Antigravity) | 治理層退出前現行契約清理（對齊 GOAL_SPEC 正常重構預設、mode-aware preflight、SOP 執行期可用性邊界、去除破壞性操作指引、E-03 轉待辦） | 待核對 | Final Governance Exit — Active Contract Cleanup |

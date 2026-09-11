@@ -90,9 +90,9 @@ Get-Process | Where-Object { $_.Path -like "*<WORKSPACE_ROOT>*" }
 ### Step 5：驗證服務健康狀態
 ```powershell
 # @EXECUTE
-# 確認本地開發伺服器正常回應
-Invoke-WebRequest http://localhost:3000 -UseBasicParsing | Select StatusCode
-Invoke-WebRequest http://localhost:8888 -UseBasicParsing | Select StatusCode
+# 只有對應服務實體存在且已啟動時，方可進行健康探測（符合 Runtime Availability Boundary）：
+# LINE bridge (3000) / TG bridge (3001) / 未來 Next.js (3002) / 靜態伺服器 (8888)
+# 若服務尚未部署或啟動，跳過該探測，不得判為異常。
 ```
 確認 Dashboard、腳本、Watchdog Hook 與 Next.js 應用程式均正常運作。
 
@@ -164,8 +164,10 @@ Invoke-WebRequest http://localhost:8888 -UseBasicParsing | Select StatusCode
 
 | 服務 | 埠號 | URL | 說明 |
 |------|------|-----|------|
-| **Next.js 應用程式** | **3000** | http://localhost:3000 | tw-stock-web 主要應用 |
-| **靜態 HTTP 伺服器** | **8888** | http://localhost:8888 | taiwan-stock/ 靜態頁面 |
+| **LINE bridge** | **3000** | http://localhost:3000 | LINE Bot 通訊橋接（依 ADR-0017 固定） |
+| **TG bridge** | **3001** | http://localhost:3001 | Telegram Bot 通訊橋接（依 ADR-0017 固定） |
+| **Next.js 應用程式（預留）** | **3002** | http://localhost:3002 | 未來 tw-stock-web Web 應用（依 ADR-0017 規劃） |
+| **靜態 HTTP 伺服器（預留）** | **8888** | http://localhost:8888 | 未來靜態分析頁面與 Dashboard |
 
 ### 服務啟動確認步驟
 1. 確認工作目錄與服務類型正確（html / js / bat / py）

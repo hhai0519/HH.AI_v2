@@ -1,5 +1,5 @@
 {
-  "base_head": "60d5479",
+  "base_head": "a884e97",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 0,
@@ -37,22 +37,26 @@
         "# 提示詞前置檢查",
         "## 1. 為什麼有這一條",
         "## 2. 這不是叫你評價提示詞",
-        "## 3. 必要結構元素（缺一即停）",
+        "## 3. 必要結構元素（缺一即停，Mode-Aware）",
+        "### 3.0A 所有模式共同必備要素（缺一即停）",
+        "### 3.0B EXACT_SPEC 專屬必備要素（僅在 EXACT_SPEC 模式下檢查）",
         "## 3.1 配對規則（缺一即停）",
-        "## 3.2 覆蓋規則（缺一即停）",
+        "## 3.2 覆蓋規則（缺一即停，Mode-Aware）",
+        "### A. GOAL_SPEC 覆蓋驗證",
+        "### B. EXACT_SPEC 覆蓋驗證",
         "## 3.3 遇到疑問而非缺失時",
         "## 3.4 審計官自檢聲明的交叉驗證",
         "## 3.5 檢查結果只存在於回報中，這是已知缺口",
         "## 3.6 機械前置證據（Machine Evidence / Execution Preflight）的交叉驗證",
         "## 3.7 E 節每一項都可機械驗證，沒有例外",
         "## 3.8 你的檢查結果必須留在 repo",
-        "## 4. 錨點唯一性驗證（動手前必做）",
+        "## 4. 錨點唯一性驗證（僅 EXACT_SPEC 動手前必做）",
         "## 4.1 寫入後的原文驗證（動手後必做）",
         "## 5. 例外",
         "## 6. 這條規則保護的是誰"
       ],
-      "lines": 332,
-      "sha256": "31f67b8ba1841850600a31b9f297ee65466b01fb2230fe3b4da3bc6e08f14b63"
+      "lines": 351,
+      "sha256": "a9f100a44cd26f8d401da5ff23532fd818843ffc4300a15049c24b5d35b731ea"
     },
     ".agents/rules/role-boundaries.md": {
       "fences": 0,
@@ -64,10 +68,12 @@
         "## 4. 這不是限制，是分工",
         "## 5. `.claude/` 目錄不是你的",
         "## 6. 依批次規格修改時，只能走指定的套用路徑",
+        "### 6.1 GOAL_SPEC（正常重構與功能實作預設）",
+        "### 6.2 EXACT_SPEC（精確替換／規範契約重構）",
         "## 7. 什麼時候該停下來回報，什麼時候該自己處理"
       ],
-      "lines": 182,
-      "sha256": "c1919db7e015b963078a81943e9a112568eb1e482f7bd8c20255452e47891377"
+      "lines": 167,
+      "sha256": "4833a798cec167670e8a768a5b38a0e6089a8895835bfbd0b084066803e36eb0"
     },
     ".agents/rules/skill-engineering-guardrails.md": {
       "fences": 0,
@@ -144,8 +150,8 @@
         "### 11.5 審計狀態是四態，互斥且窮盡",
         "### 11.6 歷史 `audited-*` tag 的修復程序（需使用者明確授權）"
       ],
-      "lines": 921,
-      "sha256": "a1b7a43dd50875c5c6ecfff872b0f93bafb3d7f27a0dace9f868bb3f1f8460bb"
+      "lines": 917,
+      "sha256": "f3d3792cd5610681a3c6452c2ff4acece1efdae8984ce5339b1b3e7ab4a51423"
     },
     ".claude/rules/handover-selftest.md": {
       "fences": 0,
@@ -159,7 +165,7 @@
         "## F. 額度（每一輪回覆的開頭與結尾）"
       ],
       "lines": 98,
-      "sha256": "76d5b116079d3108490f8b635c488bebfe2ed84d67f12b838546cef71020cced"
+      "sha256": "9655146bbbd0c38d4dc2a99be2a3695b7a72e62c26a8af13120043bbf3c523c1"
     },
     ".github/workflows/verify.yml": {
       "fences": 0,
@@ -242,13 +248,14 @@
       "headings": [
         "# HH.AI SOP 文件總覽",
         "## 系統治理文件職責分工",
+        "## 執行期可用性邊界（Runtime Availability Boundary）",
         "## 核心 SOP 索引清單",
         "## 已淘汰與已轉換的 SOP 去向紀錄",
         "### 轉為 ADR 或 Rules (3 份)",
         "### 已淘汰 (8 份)"
       ],
-      "lines": 36,
-      "sha256": "499d16f1be9189c8175d6bf0d03d5ba9d6d500a519005d6f58b659f5e3e8d62b"
+      "lines": 43,
+      "sha256": "07881d7321dbd480fce8c554ca39edd1c706cfd90f1363c0da71f0c4aa9423b7"
     },
     "SOP/SOP_01_Automation_Process.md": {
       "fences": 4,
@@ -274,7 +281,7 @@
         "### 6.3 合規要求"
       ],
       "lines": 160,
-      "sha256": "dab28fbf6501c4e1a61e39498eea56ff45764131739dab040d4e04c41e68811b"
+      "sha256": "b5448e47a32b36164769133270f98b0c8484c6c3a39447f4f75a14fc3d2393e7"
     },
     "SOP/SOP_02_Security_Guidelines.md": {
       "fences": 0,
@@ -291,8 +298,8 @@
         "### SOP 6：本地對話紀錄的資料防洩漏 (DLP) 規範",
         "### SOP 合規規範"
       ],
-      "lines": 69,
-      "sha256": "130b1b5c82324580a92709751174c4efdd44e2f850d07c59a58003610819aead"
+      "lines": 73,
+      "sha256": "8d6da85570155d3510de1c1d0c8e381613cc3f927e752c1799bce511111bb277"
     },
     "SOP/SOP_04_Data_Cleanup.md": {
       "fences": 10,
@@ -316,7 +323,9 @@
         "### Step 4：標記待刪除項目",
         "### Step 5：驗證服務健康狀態",
         "# @EXECUTE",
-        "# 確認本地開發伺服器正常回應",
+        "# 只有對應服務實體存在且已啟動時，方可進行健康探測（符合 Runtime Availability Boundary）：",
+        "# LINE bridge (3000) / TG bridge (3001) / 未來 Next.js (3002) / 靜態伺服器 (8888)",
+        "# 若服務尚未部署或啟動，跳過該探測，不得判為異常。",
         "## 三、可安全清理的暫存項目",
         "## 四、工作站目錄結構（標準化範本）",
         "## 五、清理後復原備忘",
@@ -324,8 +333,8 @@
         "## 七、本地服務埠號規範",
         "### 服務啟動確認步驟"
       ],
-      "lines": 179,
-      "sha256": "d4d3886bfd75a76cdf94a73a4986b28c5f08d73564f927716c5783260231c840"
+      "lines": 181,
+      "sha256": "9f1044b5ad1d95dee84e7def4fbaec3e74819c19c7424829578c52e16e378ec3"
     },
     "SOP/SOP_05_System_Policies.md": {
       "fences": 0,
@@ -347,8 +356,8 @@
         "### 6.1 GitHub 遠端備份政策",
         "## 7. 技能不刪除原則 (No-Delete Policy) [HIGHEST_PERMISSION]"
       ],
-      "lines": 129,
-      "sha256": "6a95c02c38078c3c41727bcedddf860dfd799e0dd69cc57cea363064f7a655e0"
+      "lines": 133,
+      "sha256": "3bf69e9aab27d557ebde454535ec66953d8c40272f90cdc9f7598de0c9df5bf8"
     },
     "SOP/SOP_06_Handover_Manual.md": {
       "fences": 10,
@@ -377,7 +386,7 @@
         "## 08. 溝通與語言標準 COMMUNICATION_LANGUAGE_STANDARDS"
       ],
       "lines": 207,
-      "sha256": "9b15a5a3f4bd4d57b158d170c6c118e529e3cb8be5619f6cdb125a09ccd02a0d"
+      "sha256": "a7b629f42c8dd9335495ed988659d7a419ed02c4c7b685e7fecb495d5623487b"
     },
     "SOP/SOP_09_AutoResearch_CPU.md": {
       "fences": 16,
@@ -399,7 +408,7 @@
         "## 六、合規備註"
       ],
       "lines": 133,
-      "sha256": "efbe1464ec76c80fa8fc87601cc3b0fc8689ef7620c0273a879d16d011782b49"
+      "sha256": "86acb33f5e5f1b7713deb865c9945abde7d46f16657a7ef2b0391df97db6ce21"
     },
     "SOP/SOP_11_Task_Reflection_Protocol.md": {
       "fences": 0,
@@ -410,7 +419,7 @@
         "## 3. 記憶庫提取 (Memory Retrieval)"
       ],
       "lines": 49,
-      "sha256": "36e3ee79fbe40feee839da22bc204f17ce226825ed6ba0a5f472ad1be8d7eed5"
+      "sha256": "305e63d64dad27509e88aa293ecc8a6e2a89512183dc0d3b6dd63ea837e8b667"
     },
     "SOP/SOP_12_MCP_Auth_Recovery.md": {
       "fences": 8,
@@ -478,7 +487,7 @@
         "### 8.2 歷史清理紅線 (Cleanup Invariants)"
       ],
       "lines": 220,
-      "sha256": "ce04c2b6c32bc60e6141114f239d6545c8e0804ab62c1e468464be7f52b838d9"
+      "sha256": "6792d567157dc9a9e1ec4d3ed76c2f4f49ff577d8b0db3a45cabee838479da86"
     },
     "docs/ARCHIVE-INDEX.md": {
       "fences": 0,
@@ -499,16 +508,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 68,
-      "sha256": "e20ff15d3cc076509cf9b3b85068470f4e4b14b3e74b5e004210324281711a93"
+      "lines": 69,
+      "sha256": "a8a3e7439e0d4330eabe69014c785ae9d700d87103107e9fd7fa61cd92a4b2a5"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 40,
-      "sha256": "603e08d4e7c5ef7038f96547e33659fe389241f245e0073a134a25c9453ecddb"
+      "lines": 41,
+      "sha256": "5d6f32f37cffa3c3dfad7a3fcdc29fc456615776b2ff34956c2b7d6ee6a480fd"
     },
     "docs/HANDOVER.md": {
       "fences": 14,
@@ -618,7 +627,7 @@
         "## 封存區"
       ],
       "lines": 234,
-      "sha256": "802dc2f30882099ad462f65d872a9d4be9bdc2694657eaf08f300f09a84cba2e"
+      "sha256": "07a54a21318fc6913e4231b17d8df587a792bd68b496d25005f59f295edff233"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -946,8 +955,8 @@
         "### 5.3 待使用者裁決",
         "### 5.4 進行中／等待回報"
       ],
-      "lines": 3042,
-      "sha256": "c5aa521b3796cbe23a0992ff8c9161b4f04680cd16ab6feb4a656f6a05f5ac87"
+      "lines": 3050,
+      "sha256": "b21fb97be6e94928e2368b0786389cfc5923df28c953c245a55c2a6bc9a1af42"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1087,7 +1096,7 @@
       "sha256": "77163678353cb7a444f90f17956d03312f715cfcccf933603948715939ecdc10"
     }
   },
-  "generated_at": "2026-09-11T12:33:43Z",
+  "generated_at": "2026-09-11T13:20:50Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

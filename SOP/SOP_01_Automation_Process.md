@@ -27,9 +27,9 @@ dependencies: []
 ### 2.2 配額監控原則（10% 安全法則）
 
 > [!IMPORTANT]
-> **V3.1.3 升級宣告**：配額管理機制已全面廢棄 `current_quota.tmp` 檔案系統與 `quota_monitor.py` Python 腳本，改採 **Neon PostgreSQL 原子性資料庫操作**，徹底解決多 Agent 協作時的 Race Condition。
-
-**配額監控實作**：系統已全面採用 Neon PostgreSQL 進行狀態管理。所有 Agent 執行任務前，必須呼叫 `Modules/quota_manager.js` 中的 `check_and_consume_quota` 方法。利用資料庫的原子性操作防止併發造成的 Race Condition。一旦單一 Session 消耗超過 10%，資料庫將拒絕寫入並拋出 `QUOTA_EXCEEDED` 錯誤，強制觸發任務暫停。
+> **配額管理架構定位（目標態／待 F-02 與 E-03 落地）**：配額管理機制規劃採用 **Neon PostgreSQL 原子性資料庫操作**，以解決多 Agent 協作時的 Race Condition。
+>
+> ⚠️ **執行期可用性說明**：當前 HH.AI_v2 根目錄尚未遷移 `Modules/quota_manager.js`（相依於 F-02 與 E-03 Runtime 遷移）。在該模組實體遷入前，**不得將其作為阻擋常態代碼重構或本地測試的強制前置條件**。本節內容為目標態規範，待對應模組正式遷入並通過驗證後啟用。
 
 **核心 SQL 機制**（位於 `check_and_consume_quota`）：
 ```sql
@@ -145,8 +145,8 @@ UPDATE session_quota_state
 |-------|---------|
 | `autoresearch-agent` | 自動化研究代理人：負責 CPU/GPU 超參數調優（尚未遷移至 HH.AI_v2，此為預計名稱） |
 | `meta/skill-creator` | 女媧造人：自動深度調研並生成新 Skill 技能框架（尚未遷移至 HH.AI_v2，此為預計路徑） |
-| `recursive-research-automation` | 遞迴深度研究自動化執行器（尚未遷移至 HH.AI_v2） |
-| `orchestration/cost-benefit-router` | API 配額與成本監控路由（尚未遷移至 HH.AI_v2，此為預計路徑） |
+| `skills/orchestration/recursive-research-automation` | 遞迴深度研究自動化執行器（已存在於 HH.AI_v2） |
+| `skills/orchestration/cost-benefit-router` | API 配額與成本監控路由（已存在於 HH.AI_v2） |
 | `execution/mcp-engineer` | MCP 伺服器配置與排錯 |
 | `execution/webapp-testing` | Web App 自動化測試 |
 | `platform/notebooklm-mcp` | NotebookLM MCP 整合操作指南 |

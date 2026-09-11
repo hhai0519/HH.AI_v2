@@ -44,6 +44,6 @@ dependencies: ["orchestration/agency-orchestrator"]
 
 ## 3. 記憶庫提取 (Memory Retrieval)
 
-所有代理人在制定全新任務計畫（Planning Mode）時，**必須**第一時間閱讀 `Data/Agent_Reflections.md`。
+所有代理人在制定全新任務計畫（Planning Mode）時，若根目錄之 `Data/Agent_Reflections.md` 實體存在，應第一時間閱讀；若當前版本庫中該檔案尚未遷移（待 E-05 遷移），則記錄為記憶來源暫不可用，不得自行假造內容，亦不得因此阻擋正常的 Planning 與任務執行。待 E-05 遷移完成後再恢復為正常 memory source。
 
 此記憶庫等同於系統的「免疫系統」，避免在相同的坑跌倒兩次。

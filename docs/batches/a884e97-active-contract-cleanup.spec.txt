@@ -1,0 +1,750 @@
+# 批次規格 — Final Governance Exit — Active Contract Cleanup
+#
+# batch_id     : a884e97-active-contract-cleanup
+# batch_mode   : GOAL_SPEC
+# base_commit  : a884e97
+#
+# 目的：
+#   治理層退出前最後一批 active-contract cleanup。
+#   將歷史累積、仍會被 Agent 視為「現行可執行指令」的過時治理與 SOP 契約全面對齊 Governance Exit 架構，
+#   確立 GOAL_SPEC 為正常重構預設模式、Prompt Preflight / Selftest 支援模式感知，
+#   SOP 確立執行期可用性邊界（Runtime Availability Boundary），移除破壞性歷史重寫與已獲授權任務之二次確認，
+#   交接區與看板將 E-03 轉為待辦並指向只讀依賴調研，為後續主重構建立單一一致的自治執行契約。
+#
+# 允許修改的檔案：
+#   .agents/rules/prompt-preflight.md
+#   .agents/rules/role-boundaries.md
+#   .claude/rules/auditor-protocol.md
+#   .claude/rules/handover-selftest.md
+#   README.md
+#   SOP/README.md
+#   SOP/SOP_00A_Master_Index.json
+#   SOP/SOP_01_Automation_Process.md
+#   SOP/SOP_02_Security_Guidelines.md
+#   SOP/SOP_04_Data_Cleanup.md
+#   SOP/SOP_05_System_Policies.md
+#   SOP/SOP_06_Handover_Manual.md
+#   SOP/SOP_09_AutoResearch_CPU.md
+#   SOP/SOP_11_Task_Reflection_Protocol.md
+#   SOP/SOP_14_Rigorous_Verification_and_Audit_Protocol.md
+#   docs/AUDIT-LOG.md
+#   docs/TASKBOARD.md
+#   docs/batches/README.md
+#   docs/refactor-backlog.md
+#
+# 豁免檔案：
+#   docs/EXEC-LOG.md
+#   docs/fingerprints/exec-latest.json
+
+HEAD: a884e97
+
+=== MOD 1 ===
+file: .agents/rules/prompt-preflight.md
+mode: replace
+--- ANCHOR ---
+
+## 3. 必要結構元素（缺一即停）
+
+收到提示詞後，逐項確認以下七項是否存在：
+
+--- PAYLOAD ---
+
+## 3. 必要結構元素（缺一即停，Mode-Aware）
+
+收到提示詞後，首先檢查批次模式宣告：
+- **若未宣告 `batch_mode`**：**一律直接判定為 `PROMPT STRUCTURE ERROR`（缺少模式宣告）**，立即停機回報，嚴禁默認 EXACT_SPEC。
+
+### 3.0A 所有模式共同必備要素（缺一即停）
+
+--- END MOD ---
+
+=== MOD 2 ===
+file: .agents/rules/prompt-preflight.md
+mode: replace
+--- ANCHOR ---
+| 1 | 執行者身分宣告 | 提示詞開頭有「你是本專案的執行者」或等義身分界定 |
+| 2 | 基準與工作區確認（Base & Workspace） | 載明基準 commit full OID（如 HEAD / origin/main），並確認工作區乾淨（working tree clean） |
+| 3 | 批次模式（Batch Mode） | 明確宣告 `batch_mode`（如 `EXACT_SPEC` 或 `GOAL_SPEC`） |
+| 4 | 允許修改範圍（Allowed Scope） | 明確列出本批允許修改／新增的路徑白名單，非允許範圍嚴禁改動 |
+| 5 | 規格與確定性閘門（Spec & Machine Gates） | 載明批次規格路徑與規格 SHA-256，並以確定性工具（如 validate_skills, check_consistency, fingerprint, pytest）為機械事實權威；**不得以手寫檔案總行數或衍生數值作為 blocking truth** |
+| 6 | `git add` 明確路徑 | 明確列出提交目標檔案，包含「嚴禁 `git add -A`」或等義明確禁令 |
+| 7 | 交接與回報契約（Handoff & Reporting Contract） | 修改指令涵蓋交接區與 TASKBOARD（及 AUDIT-LOG，若本批有核對通過事實），結尾要求固定格式回覆與署名行 |
+
+**缺任何一項，停下來回報缺了哪幾項，不要動手。**
+
+**權威模型核心原則**：機器產出衍生事實，提示詞引用機械來源，提示詞不得將 machine-derived 數字複製成第二份 blocking truth。手寫行數對不上不再作為停止條件，改以 base OID、spec SHA、allowed scope 與機械 Gate 為驗收準則。
+
+--- PAYLOAD ---
+| 1 | 執行者身分宣告 | 提示詞開頭有「你是本專案的執行者」或等義身分界定 |
+| 2 | 基準與工作區確認（Base & Workspace） | 載明基準 commit full OID（如 HEAD / origin/main），並要求確認工作區乾淨（working tree clean） |
+| 3 | 批次模式宣告（Batch Mode） | 明確宣告 `batch_mode: GOAL_SPEC` 或 `batch_mode: EXACT_SPEC` |
+| 4 | 目標與範圍邊界（Goal & Boundaries） | 載明目標（Goal）、允許修改範圍（Allowed Scope）、禁止修改範圍（Forbidden Scope）與驗收條件（Acceptance Criteria） |
+| 5 | 確定性驗證閘門（Required Machine Gates） | 載明 Canonical 驗證指令與 Gate 清單（如 `python scripts/verify_all.py`）；**不得以手寫檔案行數或衍生值作為 blocking truth** |
+| 6 | `git add` 明確路徑 | 明確列出提交目標檔案路徑，包含「嚴禁 `git add -A`」或等義明確禁令 |
+| 7 | 破壞性操作防護宣告 | 明確禁止未授權之 force push、reset --hard 或歷史重寫 |
+| 8 | 遠端健康查驗要求 | 包含執行後查驗 GitHub Actions exact SHA 綠燈之要求 |
+
+### 3.0B EXACT_SPEC 專屬必備要素（僅在 EXACT_SPEC 模式下檢查）
+
+| # | 元素 | 判準 |
+|---|---|---|
+| E-1 | 批次規格路徑 | 載明 `docs/batches/<base-hash>-<slug>.spec.txt` 路徑 |
+| E-2 | 規格 SHA-256 | 載明該規格檔案之 exact SHA-256 校驗碼 |
+| E-3 | 錨點唯一性 | 規格中所有錨點經 BPE 驗證在 base commit 中 count == 1 |
+| E-4 | 規格重放守衛 | 明確要求經由 CHECK 17 進行 parent commit 逐位元重放比對 |
+
+**GOAL_SPEC 模式下不得要求 E-1～E-4 之規格要素，其正確性由單元測試、Gate 驗證與 GitHub Actions 守護。**
+
+**缺任何共同必備項（或 EXACT_SPEC 缺專屬項），停下來回報缺了哪幾項，不要動手。**
+
+--- END MOD ---
+
+=== MOD 3 ===
+file: .agents/rules/prompt-preflight.md
+mode: replace
+--- ANCHOR ---
+
+## 3.2 覆蓋規則（缺一即停）
+
+提示詞中 `git add` 清單的**每一個非 exempt 檔案**，都必須同時出現在：
+
+1. 允許修改範圍（Allowed Scope）
+--- PAYLOAD ---
+
+## 3.2 覆蓋規則（缺一即停，Mode-Aware）
+
+### A. GOAL_SPEC 覆蓋驗證
+在 GOAL_SPEC 模式下，提示詞中 `git add` 清單與實際變更檔案必須滿足：
+1. **Allowed Scope ↔ actual changed files**：實際異動之檔案必須全數落在允許修改範圍內，零越權、零夾帶。
+2. **actual changed files ↔ explicit git add**：實際異動檔案必須與 `git add` 清單完全一致。
+3. **Acceptance Criteria ↔ Required Gates**：驗證步驟與 Gates 必須完整涵蓋驗收準則。
+> ⚠️ **GOAL_SPEC 模式下不得要求 Allowed Scope ↔ spec targets**（因 GOAL_SPEC 無 mandatory Batch Spec）。
+
+### B. EXACT_SPEC 覆蓋驗證
+在 EXACT_SPEC 模式下，提示詞中 `git add` 清單的**每一個非 exempt 檔案**，都必須同時出現在：
+1. 允許修改範圍（Allowed Scope）
+--- END MOD ---
+
+=== MOD 4 ===
+file: .agents/rules/prompt-preflight.md
+mode: replace
+--- ANCHOR ---
+3. 本批驗證步驟所涵蓋的檢查範圍中
+
+反之亦然——出現在規格修改目標卻不在 `git add` 清單中的檔案，
+代表提示詞可能漏了提交指令。
+
+覆蓋驗證以 allowed scope ↔ spec targets ↔ explicit git add ↔ required validation 為準，
+**不得再依賴「手寫檔案總行數清單」或「手寫圍欄數清單」作為覆蓋驗證的 blocking 條件**。
+
+--- PAYLOAD ---
+3. 本批驗證步驟所涵蓋的檢查範圍中
+反之亦然——出現在規格修改目標卻不在 `git add` 清單中的檔案，代表提示詞漏了提交指令。
+
+覆蓋驗證**不得再依賴「手寫檔案總行數清單」或「手寫圍欄數清單」作為 blocking 條件**。
+
+--- END MOD ---
+
+=== MOD 5 ===
+file: .agents/rules/prompt-preflight.md
+mode: replace
+--- ANCHOR ---
+
+## 4. 錨點唯一性驗證（動手前必做）
+
+--- PAYLOAD ---
+
+## 4. 錨點唯一性驗證（僅 EXACT_SPEC 動手前必做）
+
+> 註：本節僅適用於 `EXACT_SPEC` 模式。在 `GOAL_SPEC` 模式下，由執行者自主實作，不強制要求 Batch Spec 錨點驗證。
+
+--- END MOD ---
+
+=== MOD 6 ===
+file: .agents/rules/role-boundaries.md
+mode: replace
+--- ANCHOR ---
+
+提示詞若附帶批次規格（`docs/batches/<batch-id>.spec.txt`），
+規格就是本批唯一的執行契約。你必須：
+
+- 用 `scripts/build_prompt_evidence.py` 的 `parse_spec` 讀規格，
+  用同檔的 `apply_mod_to_text` 套用每一個 MOD。
+- 不得自行撰寫另一套 parser。
+- 不得自行撰寫另一套套用邏輯。
+- 不得手工重打規格描述的任何內容，即使只有一行。
+- 不得把規格套用與人工編輯混在同一個檔案上。
+
+**理由不是形式主義。** 2026-09-07 的 `10f7e31` 是唯一一次執行者
+逐條自寫套用腳本並手工重打部分內容，結果 `docs/TASKBOARD.md`
+被改進兩個日文字元、`docs/refactor-backlog.md` 多一個空行，
+而四項標準驗證與 CI 全部綠燈。**散文與手打是一層有損的重新編碼。**
+
+本條的機械守衛是 `scripts/check_consistency.py` 的 CHECK 17：
+它從 parent commit 取出檔案、用上述唯一路徑重放規格，
+再把重放結果與實際 commit 的 git blob 逐位元組比對，任何差異即 FAIL。
+
+**這個保證有明確的生效起點，在那之前不存在。**
+檔名以 `-BOOTSTRAP.spec.txt` 結尾的批次，CHECK 17 依設計跳過重放
+（規格格式還無法表達新建檔案，見 `docs/batches/README.md` 第六節）。
+**引入本機制的那一批，自己不在保護範圍內**——對該批而言，
+偏離規格不會被 CHECK 17 攔截，也不會因此讓 CI 變紅。
+該批的正確性依賴的是：canonical apply path、動手前的錨點唯一性驗證、
+允許檔案清單的範圍檢查、測試、指紋，以及 CI 對這些項目的重跑。
+**逐位元重放的完整保證，自 `docs/TASKBOARD.md` B-90 移除 BOOTSTRAP 例外
+之後的每一個正常 EXACT_SPEC 批次起生效。**
+在那之前，不得對任何批次宣稱 CHECK 17 會攔截它的 actual/spec drift。
+
+--- PAYLOAD ---
+
+本專案明確區分兩大執行模式（`batch_mode`）：
+
+### 6.1 GOAL_SPEC（正常重構與功能實作預設）
+- **定位**：後續主重構、模組遷移與功能開發的**常態預設模式**。
+- **職責界線**：宏觀審計官提供目標（Goal）、允許修改範疇（Allowed Scope）、禁止範疇（Forbidden Scope）、不變量（Invariants）、驗收準則（Acceptance Criteria）與驗證閘門（Required Machine Gates）；執行者具備完整自主性，負責探索、設計、實作、測試、除錯與 M1-M3 自主修復。
+- **無強制 Batch Spec**：GOAL_SPEC 模式**不得強制要求產出 Batch Spec、spec SHA、BPE、exact anchors 或手寫 payload**。執行者可自由運用結構化工具實作，其正確性由驗收測試、`scripts/verify_all.py` 5 大 Gates 與 GitHub Actions CI 守護。
+
+### 6.2 EXACT_SPEC（精確替換／規範契約重構）
+- **定位**：僅用於 byte-exact canonical 文本修改、治理規範與規則層精準調整、或涉及 mechanical replay 必須逐位元完全一致之場景。
+- **唯一套用路徑**：提示詞附帶批次規格（`docs/batches/<batch-id>.spec.txt`），規格即本批唯一執行契約。你必須：
+  - 用 `scripts/build_prompt_evidence.py` 的 `parse_spec` 讀規格，用同檔的 `apply_mod_to_text` 套用每一個 MOD。
+  - 不得自行撰寫另一套 parser 或套用邏輯。
+  - 不得手工重打規格描述的任何內容，不得把規格套用與人工編輯混在同一個檔案上。
+- **逐位元守衛**：CHECK 17 從 parent commit 取出檔案重放規格並比對，任何 byte 差異即 FAIL。
+
+--- END MOD ---
+
+=== MOD 7 ===
+file: .agents/rules/role-boundaries.md
+mode: replace
+--- ANCHOR ---
+
+提示詞未註明模式時，**一律當作 EXACT_SPEC**。
+
+--- PAYLOAD ---
+
+提示詞未載明模式（缺少 `batch_mode`）時，**不得默認 EXACT_SPEC，明確視為 PROMPT STRUCTURE ERROR**。執行者必須立即停止 mutation，回報缺少模式宣告。未來正常主重構提示詞一律明確宣告 `batch_mode: GOAL_SPEC`。
+
+--- END MOD ---
+
+=== MOD 8 ===
+file: .claude/rules/auditor-protocol.md
+mode: replace
+--- ANCHOR ---
+2. **載明基準 Commit（Base Full OID）與目標檔案清單**，不再要求手寫檔案總行數作為 blocking truth。執行者於執行前確認工作區乾淨且 HEAD 與基準一致。
+3. 修改指令以**批次規格（Batch Spec）的 structural anchor 原文或唯一語意識別字**為主；若有行號僅作為輔助 diagnostic，不得作為 blocking truth。
+4. 驗證步驟要求**回報確定性工具與 Gate 的執行輸出**（如 validate_skills, check_consistency, fingerprint, pytest）；命中檔名與行號等由機器輸出提供，提示詞不作人工預測。
+--- PAYLOAD ---
+2. **載明基準 Commit（Base Full OID）與目標檔案清單**，不再要求手寫檔案總行數作為 blocking truth。執行者於執行前確認工作區乾淨且 HEAD 與基準一致。
+3. 修改指令依模式區分：**EXACT_SPEC 必須以批次規格（Batch Spec）的 structural anchor 原文為主**；**GOAL_SPEC 則提供目標架構、變更邊界與驗收準則**，由執行者自主決定實作方式。若有行號僅作為輔助 diagnostic，不得作為 blocking truth。
+4. 驗證步驟要求**回報確定性工具與 Gate 的執行輸出**（如 validate_skills, check_consistency, fingerprint, pytest）；命中檔名與行號等由機器輸出提供，提示詞不作人工預測。
+--- END MOD ---
+
+=== MOD 9 ===
+file: .claude/rules/auditor-protocol.md
+mode: replace
+--- ANCHOR ---
+    不得將 LLM 預測所有 post-state 衍生序列當作通用 blocking requirement。
+16. **每份提示詞必須包含「機械前置證據（Machine Evidence / Execution Preflight）」**，內容五項：
+    (a) 基準 Commit Full OID；(b) 批次模式（`batch_mode`）；(c) 批次規格路徑與規格 SHA-256；
+    (d) 允許修改範圍（Allowed Scope）；(e) 標準驗證指令與 Gate 清單。
+    執行者交叉驗證基準 OID、模式合法性、規格 SHA 與範圍，規則見
+    `.agents/rules/prompt-preflight.md` §3.6。
+    **刪除手寫檔案行數、圍欄數與結構快照的 blocking 要求。**
+--- PAYLOAD ---
+    不得將 LLM 預測所有 post-state 衍生序列當作通用 blocking requirement。
+16. **每份提示詞必須包含「機械前置證據與邊界宣告（Mode-Aware Preflight）」**：
+    所有模式共同包含：(a) 基準 Commit Full OID；(b) 批次模式（`batch_mode`，明確標記 GOAL_SPEC 或 EXACT_SPEC）；(c) 允許修改範圍（Allowed Scope）；(d) 標準驗證指令與 Gate 清單。
+    只有 EXACT_SPEC 模式才需附帶批次規格路徑與規格 SHA-256；GOAL_SPEC 模式則載明目標、不變量與驗收準則。
+    執行者交叉驗證規則見 `.agents/rules/prompt-preflight.md` §3。
+    **刪除手寫檔案行數、圍欄數與結構快照的 blocking 要求。**
+--- END MOD ---
+
+=== MOD 10 ===
+file: .claude/rules/auditor-protocol.md
+mode: replace
+--- ANCHOR ---
+
+18. **提示詞若修改規範層檔案，必須以同一份批次規格進行模擬，並以確定性工具輸出為準**。
+    審計官在產出提示詞前，使用 `scripts/build_prompt_evidence.py`（BPE）驗證規格與模擬，
+    但**不得將套用後行數、圍欄數、項數或 INFO 輸出預抄至提示詞作為 blocking truth**。
+    規格重放正確性由 CI 上的 CHECK 17 逐位元守護。
+19. **提示詞中的不可變常數（base OID、spec SHA、allowed scope 等）必須有明確來源；
+--- PAYLOAD ---
+
+18. **提示詞若為 EXACT_SPEC 且修改規範層檔案，必須以同一份批次規格進行模擬，並以確定性工具輸出為準**。
+    審計官在 EXACT_SPEC 產出提示詞前，使用 `scripts/build_prompt_evidence.py`（BPE）驗證規格與模擬，但**不得將套用後行數、圍欄數、項數或預測輸出預抄至提示詞作為 blocking truth**。GOAL_SPEC 模式由驗收測試與 `scripts/verify_all.py` 守護，不要求虛假規格模擬。
+19. **提示詞中的不可變常數（base OID、spec SHA、allowed scope 等）必須有明確來源；
+--- END MOD ---
+
+=== MOD 11 ===
+file: .claude/rules/auditor-protocol.md
+mode: replace
+--- ANCHOR ---
+
+21. **每一批的批次規格必須以 repo artifact 形式交付，並使用 BPE 進行驗證與模擬。**
+    規格存放於 `docs/batches/<base-hash>-<slug>.spec.txt`，載明 `HEAD: <base-hash>`。
+    規格格式由 `parse_spec` 與 `apply_mod_to_text` 解析，支援 `insert_after`、`insert_before`、`replace` 等 mode。
+    審計官在產出提示詞前，必須執行 `python scripts/build_prompt_evidence.py <spec_path>`（BPE）：
+    BPE 會自動驗證所有錨點在當前 repo 的唯一性（count == 1）、計算規格 SHA-256、執行本地模擬並驗證 EXPECT 序列。
+    **BPE 與 Batch Spec 是消除「散文有損重新編碼」的唯一權威機制（完成 B-86 治理要求）。**
+    只存在於對話或 `/tmp` 的規格視為不存在。CI 上的 CHECK 17 會在 parent commit 基準上重放規格並逐位元比對。
+--- PAYLOAD ---
+
+21. **EXACT_SPEC 批次的規格必須以 repo artifact 形式交付，並使用 BPE 進行驗證與模擬。**
+    規格存放於 `docs/batches/<base-hash>-<slug>.spec.txt`，載明 `HEAD: <base-hash>`。
+    規格格式由 `parse_spec` 與 `apply_mod_to_text` 解析，支援 `insert_after`、`insert_before`、`replace`、`create_file` 等 mode。
+    審計官在產出 EXACT_SPEC 提示詞前，執行 `python scripts/build_prompt_evidence.py <spec_path>`（BPE）驗證錨點唯一性並計算規格 SHA-256。
+    **GOAL_SPEC 模式不強制要求 Batch Spec**，其完成證據由 git commit 紀錄、測試通過輸出與 Actions 綠燈構成。
+    只存在於對話或 `/tmp` 的規格視為不存在。CI 上的 CHECK 17 會在 parent commit 基準上重放規格並逐位元比對。
+--- END MOD ---
+
+=== MOD 12 ===
+file: .claude/rules/handover-selftest.md
+mode: replace
+--- ANCHOR ---
+- [ ] E2 提示詞載明基準 commit full OID 與目標檔案範圍，交由確定性工具比對，未手寫檔案總行數作為 blocking truth？（§6.1-2）
+- [ ] E3 修改指令以 structural anchor 原文或唯一語意識別字為主，未以固定行號作為 blocking 依賴？（§6.1-3）
+- [ ] E4 驗證步驟要求回報確定性工具與 Gate 執行結果，實際命中位置由工具輸出而非 Auditor 預測？（§6.1-4）
+--- PAYLOAD ---
+- [ ] E2 提示詞載明基準 commit full OID 與目標檔案範圍，交由確定性工具比對，未手寫檔案總行數作為 blocking truth？（§6.1-2）
+- [ ] E3 修改指令依模式區分：EXACT_SPEC 以 structural anchor 原文為主；GOAL_SPEC 定義目標、邊界與驗收準則，未以固定行號作為 blocking 依賴？（§6.1-3）
+- [ ] E4 驗證步驟要求回報確定性工具與 Gate 執行結果，實際命中位置由工具輸出而非 Auditor 預測？（§6.1-4）
+--- END MOD ---
+
+=== MOD 13 ===
+file: .claude/rules/handover-selftest.md
+mode: replace
+--- ANCHOR ---
+- [ ] E12 **提示詞開頭有「動手前必讀」，要求執行者從檔案讀取規則？**（§6.1-10；不可依賴自動載入，session 前綴可能已被清掉）
+- [ ] E13 **配對與覆蓋都檢查過？**（§6.1-11）更新 TASKBOARD HEAD ⇔ 更新交接區 §5.1 HEAD；`git add` 清單 ⇔ Allowed Scope ＋ 規格修改目標 ＋ Gate 檢查範圍
+- [ ] E14 **提示詞中有「審計官自檢聲明」區塊，逐項列出本節各項的結果？**（§6.1-12；這是自檢唯一的外部產物，沒有它等同沒做自檢。**新增本節項目時，聲明區塊要同步增列**）
+--- PAYLOAD ---
+- [ ] E12 **提示詞開頭有「動手前必讀」，要求執行者從檔案讀取規則？**（§6.1-10；不可依賴自動載入，session 前綴可能已被清掉）
+- [ ] E13 **配對與覆蓋都檢查過？**（§6.1-11）更新 TASKBOARD HEAD ⇔ 更新交接區 §5.1 HEAD；EXACT_SPEC 比對 spec targets ↔ git add；GOAL_SPEC 比對 Allowed Scope ↔ actual changed files ↔ git add ↔ acceptance criteria
+- [ ] E14 **提示詞中有「審計官自檢聲明」區塊，逐項列出本節各項的結果？**（§6.1-12；這是自檢唯一的外部產物，沒有它等同沒做自檢。**新增本節項目時，聲明區塊要同步增列**）
+--- END MOD ---
+
+=== MOD 14 ===
+file: .claude/rules/handover-selftest.md
+mode: replace
+--- ANCHOR ---
+- [ ] E17 **每個插入型修改若涉及結構序列，都定義了明確的驗收準則而非預測所有衍生數值？**（§6.1-15）
+- [ ] E18 **提示詞中有「機械前置證據區塊」，含 base full OID、batch mode、spec path、spec SHA 與標準驗證指令？**（§6.1-16；未手寫 line/fence 衍生快照作為 blocking truth）
+- [ ] E19 **提示詞若含任何「移除」，附上了移除前複查的三步結果？**（§6.1-17；反向引用掃描、唯一內容確認、**重新讀檔的獨立複查**；原則見 `PRINCIPLES.md` §2.9）
+- [ ] E20 **提示詞若修改規範層檔案，已使用同一份批次規格經 BPE 與 check_consistency 模擬，未將 post-apply 衍生數值預抄進提示詞？**（§6.1-18；模擬對象等於送出的規格，正確性由 CHECK 17 守護）
+
+--- PAYLOAD ---
+- [ ] E17 **每個插入型修改若涉及結構序列，都定義了明確的驗收準則而非預測所有衍生數值？**（§6.1-15）
+- [ ] E18 **提示詞中有「機械前置證據區塊」，含 base full OID、batch mode、Allowed Scope 與驗證指令（EXACT_SPEC 另含 spec path 與 SHA）？**（§6.1-16；未手寫 line/fence 衍生快照作為 blocking truth）
+- [ ] E19 **提示詞若含任何「移除」，附上了移除前複查的三步結果？**（§6.1-17；反向引用掃描、唯一內容確認、**重新讀檔的獨立複查**；原則見 `PRINCIPLES.md` §2.9）
+- [ ] E20 **EXACT_SPEC 提示詞若修改規範層檔案，已使用同一份批次規格經 BPE 與 check_consistency 模擬，未將 post-apply 衍生數值預抄進提示詞？**（§6.1-18；GOAL_SPEC 不需偽造 spec）
+
+--- END MOD ---
+
+=== MOD 15 ===
+file: .claude/rules/handover-selftest.md
+mode: replace
+--- ANCHOR ---
+- [ ] E22 **提示詞包含補打 `audited-*` tag 的兩條指令，且驗證步驟要求貼出 `git tag -l "audited-*"` 的實際輸出？**（§6.1-20；`auditor-protocol.md` §11.3 此前不在執行路徑上，tag 因此落後七批，判準見同檔 §11.4）
+- [ ] E23 **本批的批次規格已寫成 `docs/batches/<base-hash>-<slug>.spec.txt` 並列入本批的 `git add` 清單，規格的 `HEAD:` 欄位等於本批 base commit，且以 BPE 驗證通過？**（§6.1-21；規格為唯一的 executable artifact，重放與生命週期由 CI 守護）
+
+--- PAYLOAD ---
+- [ ] E22 **提示詞包含補打 `audited-*` tag 的兩條指令，且驗證步驟要求貼出 `git tag -l "audited-*"` 的實際輸出？**（§6.1-20；`auditor-protocol.md` §11.3 此前不在執行路徑上，tag 因此落後七批，判準見同檔 §11.4）
+- [ ] E23 **若為 EXACT_SPEC 批次，批次規格已寫成 `docs/batches/<base-hash>-<slug>.spec.txt` 並列入 `git add` 清單且經 BPE 驗證；若為 GOAL_SPEC 則不強制產出 Batch Spec？**（§6.1-21；重放與生命週期由 CI 守護）
+
+--- END MOD ---
+
+=== MOD 16 ===
+file: README.md
+mode: replace
+--- ANCHOR ---
+
+新增或修改任何技能前，先讀 [AGENTS.md](./AGENTS.md)。Antigravity 會在本專案內自動載入這份規則，
+但如果你是人類直接編輯檔案，也請務必遵守，並在完成後執行：
+
+```bash
+python3 scripts/validate_skills.py
+```
+
+--- PAYLOAD ---
+
+新增或修改任何技能或程式碼前，先讀 [AGENTS.md](./AGENTS.md)。Antigravity 會在本專案內自動載入這份規則，
+完成任何修改後，必須執行 Canonical 統一驗證入口確保全庫合規：
+
+```bash
+python scripts/verify_all.py
+```
+
+> 註：`scripts/validate_skills.py` 僅供技能編輯時的快速 inner-loop 自檢，不能取代涵蓋全庫 5 大 Correctness Gates 的 `verify_all.py`。
+
+--- END MOD ---
+
+=== MOD 17 ===
+file: SOP/README.md
+mode: replace
+--- ANCHOR ---
+- **`.agents/rules/`**：「agent 執行任務時的行為約束」，此處的規則會被系統原生機制自動載入並嚴格執行。
+
+--- PAYLOAD ---
+- **`.agents/rules/`**：「agent 執行任務時的行為約束」，此處的規則會被系統原生機制自動載入並嚴格執行。
+
+## 執行期可用性邊界（Runtime Availability Boundary）
+
+SOP 文件中引用的外部或底層資產（包括但不限於 `Modules/`、`Data/`、`runtime/`、`shared/`、`scripts/`、`00_Master_Menu.ps1`、`ecosystem.config.js` 等）：
+1. **現行可執行標準**：唯有在當前 `origin/main` 根目錄中**實體存在**之檔案與模組，方可作為現行直接執行的指令依據。
+2. **遷移中／目標態程序（Target-State Procedure）**：若該資產尚未遷移、TASKBOARD 標為 pending、或當前 repo 根目錄查無該實體檔案，相關段落僅代表遷移完成後之目標態作業指引，**不得假定其已存在**，**不得自行發明路徑**，**不得從舊 repo 偷跑指令**，更**不得因其缺失而阻擋無關的常態重構與程式開發任務**。
+3. **路由導向**：涉及缺失資產之作業，應正確路由至 TASKBOARD Section E（舊 repo 遷移主線）或 Section F（追蹤項）所對應的專門遷移任務。
+
+--- END MOD ---
+
+=== MOD 18 ===
+file: SOP/SOP_00A_Master_Index.json
+mode: replace
+--- ANCHOR ---
+    "maintenance_note": "每次新增或修改 SOP 時，必須同步更新此索引對應的 tags。10 份 SOP 已實際遷移至 HH.AI_v2/SOP/。SOP_00_RUNBOOK 與 SOP_00_System_Prompt_Bootstrap 已淘汰（前者內容被 ADR-0009 與 ADR-0012 涵蓋，後者被 AGENTS.md 與 .agents/rules/ 的原生載入機制取代）。SOP_00_Skill_Lifecycle 已拆分為 ADR-0013 與兩份 .agents/rules/ 規則。SOP_10 轉為 ADR-0012、SOP_15 轉為 ADR-0011。路由表中標記 PENDING_MIGRATION 的項目待對應技能遷移後更新為正式路徑。$$啟動LINE$$ 經查證為 line-bot-zero-delay 文件內部對 $$LINE連線$$ 的不一致寫法，非獨立指令，已排除；日後遷移該技能時應一併統一文件用詞。",
+    "last_updated": "2026-08-29",
+    "total_sop_files": 10
+--- PAYLOAD ---
+    "maintenance_note": "每次新增或修改 SOP 時，必須同步更新此索引對應的 tags。10 份 SOP 已實際遷移至 HH.AI_v2/SOP/。SOP_00_RUNBOOK 與 SOP_00_System_Prompt_Bootstrap 已淘汰（前者內容被 ADR-0009 與 ADR-0012 涵蓋，後者被 AGENTS.md 與 .agents/rules/ 的原生載入機制取代）。SOP_00_Skill_Lifecycle 已拆分為 ADR-0013 與兩份 .agents/rules/ 規則。SOP_10 轉為 ADR-0012、SOP_15 轉為 ADR-0011。路由表中標記 PENDING_MIGRATION 的項目待對應技能遷移後更新為正式路徑。$$啟動LINE$$ 經查證為 line-bot-zero-delay 文件內部對 $$LINE連線$$ 的不一致寫法，非獨立指令，已排除；日後遷移該技能時應一併統一文件用詞。",
+    "last_updated": "2026-09-11",
+    "total_sop_files": 10
+--- END MOD ---
+
+=== MOD 19 ===
+file: SOP/SOP_01_Automation_Process.md
+mode: replace
+--- ANCHOR ---
+> [!IMPORTANT]
+> **V3.1.3 升級宣告**：配額管理機制已全面廢棄 `current_quota.tmp` 檔案系統與 `quota_monitor.py` Python 腳本，改採 **Neon PostgreSQL 原子性資料庫操作**，徹底解決多 Agent 協作時的 Race Condition。
+
+**配額監控實作**：系統已全面採用 Neon PostgreSQL 進行狀態管理。所有 Agent 執行任務前，必須呼叫 `Modules/quota_manager.js` 中的 `check_and_consume_quota` 方法。利用資料庫的原子性操作防止併發造成的 Race Condition。一旦單一 Session 消耗超過 10%，資料庫將拒絕寫入並拋出 `QUOTA_EXCEEDED` 錯誤，強制觸發任務暫停。
+
+--- PAYLOAD ---
+> [!IMPORTANT]
+> **配額管理架構定位（目標態／待 F-02 與 E-03 落地）**：配額管理機制規劃採用 **Neon PostgreSQL 原子性資料庫操作**，以解決多 Agent 協作時的 Race Condition。
+>
+> ⚠️ **執行期可用性說明**：當前 HH.AI_v2 根目錄尚未遷移 `Modules/quota_manager.js`（相依於 F-02 與 E-03 Runtime 遷移）。在該模組實體遷入前，**不得將其作為阻擋常態代碼重構或本地測試的強制前置條件**。本節內容為目標態規範，待對應模組正式遷入並通過驗證後啟用。
+
+--- END MOD ---
+
+=== MOD 20 ===
+file: SOP/SOP_01_Automation_Process.md
+mode: replace
+--- ANCHOR ---
+| `meta/skill-creator` | 女媧造人：自動深度調研並生成新 Skill 技能框架（尚未遷移至 HH.AI_v2，此為預計路徑） |
+| `recursive-research-automation` | 遞迴深度研究自動化執行器（尚未遷移至 HH.AI_v2） |
+| `orchestration/cost-benefit-router` | API 配額與成本監控路由（尚未遷移至 HH.AI_v2，此為預計路徑） |
+| `execution/mcp-engineer` | MCP 伺服器配置與排錯 |
+--- PAYLOAD ---
+| `meta/skill-creator` | 女媧造人：自動深度調研並生成新 Skill 技能框架（尚未遷移至 HH.AI_v2，此為預計路徑） |
+| `skills/orchestration/recursive-research-automation` | 遞迴深度研究自動化執行器（已存在於 HH.AI_v2） |
+| `skills/orchestration/cost-benefit-router` | API 配額與成本監控路由（已存在於 HH.AI_v2） |
+| `execution/mcp-engineer` | MCP 伺服器配置與排錯 |
+--- END MOD ---
+
+=== MOD 21 ===
+file: SOP/SOP_02_Security_Guidelines.md
+mode: replace
+--- ANCHOR ---
+- **AI 任務中的憑證引用**：在自動化任務中，AI 系統須透過環境變數（Environment Variables）引用憑證，嚴禁使用硬編碼字串。
+- **Git 歷史污染處置原則**：若敏感 API Token 不慎進入 Git 歷史紀錄並觸發 Push Protection，嚴禁僅使用 `git rm` 刪除檔案。必須執行完整的 `.git` 歷史重置 (History Wipe) 或使用 BFG 工具清理，確保歷史負債被徹底銷毀。
+
+--- PAYLOAD ---
+- **AI 任務中的憑證引用**：在自動化任務中，AI 系統須透過環境變數（Environment Variables）引用憑證，嚴禁使用硬編碼字串。
+- **Git 金鑰洩漏處置原則（依 C-02 裁決）**：若敏感 API Token 或 Secret 不慎進入 Git 歷史紀錄並推送到遠端倉庫：
+  1. **第一優先（立即生效防禦）**：必須**立即將該金鑰作廢撤銷 (Revoke) 並重新輪替 (Rotate)**。已推送到遠端的金鑰一律視為公開洩漏，撤銷使其失效才是唯一絕對安全的阻斷措施。
+  2. **工作區清理**：從當前工作區代碼樹中移除該敏感金鑰，並補上適當的防復發措施（如 `.gitignore`、環境變數化等），進行正常 commit 與推送。
+  3. **嚴禁破壞性歷史重寫**：所有 Agent **嚴禁執行 `git push --force`、歷史重置 (History Wipe)、BFG Repo-Cleaner、git-filter-repo 或刪除/覆寫遠端分支**，嚴禁以「清理歷史」代替金鑰撤銷輪替。
+  4. **歷史清理權威**：若金鑰撤銷後使用者仍希望清理遠端歷史記錄，**僅能由使用者本人決定並手動執行**。Agent 最多在使用者明確要求時提供唯讀的影響評估或操作說明，不得擅自代為執行。
+
+--- END MOD ---
+
+=== MOD 22 ===
+file: SOP/SOP_04_Data_Cleanup.md
+mode: replace
+--- ANCHOR ---
+# @EXECUTE
+# 確認本地開發伺服器正常回應
+Invoke-WebRequest http://localhost:3000 -UseBasicParsing | Select StatusCode
+Invoke-WebRequest http://localhost:8888 -UseBasicParsing | Select StatusCode
+```
+--- PAYLOAD ---
+# @EXECUTE
+# 只有對應服務實體存在且已啟動時，方可進行健康探測（符合 Runtime Availability Boundary）：
+# LINE bridge (3000) / TG bridge (3001) / 未來 Next.js (3002) / 靜態伺服器 (8888)
+# 若服務尚未部署或啟動，跳過該探測，不得判為異常。
+```
+--- END MOD ---
+
+=== MOD 23 ===
+file: SOP/SOP_04_Data_Cleanup.md
+mode: replace
+--- ANCHOR ---
+|------|------|-----|------|
+| **Next.js 應用程式** | **3000** | http://localhost:3000 | tw-stock-web 主要應用 |
+| **靜態 HTTP 伺服器** | **8888** | http://localhost:8888 | taiwan-stock/ 靜態頁面 |
+
+--- PAYLOAD ---
+|------|------|-----|------|
+| **LINE bridge** | **3000** | http://localhost:3000 | LINE Bot 通訊橋接（依 ADR-0017 固定） |
+| **TG bridge** | **3001** | http://localhost:3001 | Telegram Bot 通訊橋接（依 ADR-0017 固定） |
+| **Next.js 應用程式（預留）** | **3002** | http://localhost:3002 | 未來 tw-stock-web Web 應用（依 ADR-0017 規劃） |
+| **靜態 HTTP 伺服器（預留）** | **8888** | http://localhost:8888 | 未來靜態分析頁面與 Dashboard |
+
+--- END MOD ---
+
+=== MOD 24 ===
+file: SOP/SOP_05_System_Policies.md
+mode: replace
+--- ANCHOR ---
+tags: ["SOP", "系統政策", "治理", "Watchdog", "Governance"]
+dependencies: [".agents/rules/skill-engineering-guardrails.md", "Modules/db_state_manager.js"]
+---
+--- PAYLOAD ---
+tags: ["SOP", "系統政策", "治理", "Watchdog", "Governance"]
+dependencies: [".agents/rules/skill-engineering-guardrails.md"]
+---
+--- END MOD ---
+
+=== MOD 25 ===
+file: SOP/SOP_05_System_Policies.md
+mode: replace
+--- ANCHOR ---
+3. **禁止終端機越權寫入 (Unsafe File Writing)**
+   - **嚴禁**在終端機使用 PowerShell 的 `Out-File`、`Set-Content` 或 `>` 重導向來寫入程式碼或檔案。
+   - 所有寫入操作強制使用專用 API 工具 (`write_to_file`)，並確保為 **無 BOM 的標準 UTF-8** 編碼。
+4. **禁止檔案型跨進程通訊 (No File-Based IPC)**
+--- PAYLOAD ---
+3. **禁止終端機越權寫入 (Unsafe File Writing)**
+   - **嚴禁**在終端機使用 PowerShell 的 `Out-File`、`Set-Content` 或 `>` 重導向來直接寫入程式碼或檔案，避免編碼污染與無稽核寫入。
+   - **檔案寫入工具政策（Tool-portable Write Policy）**：所有代碼與檔案變更必須透過能保證範圍約束、編碼正確性與可審計性的結構化方式執行：
+     1. 執行環境提供的結構化編輯/寫入工具（如 Antigravity `write_to_file` / `replace_file_content`、Claude Code 檔案工具等）。
+     2. 專案內建具備單一權威的 canonical 腳本（如 Batch Spec canonical apply）。
+     3. 共同強制要求：一律使用**無 BOM 的標準 UTF-8** 編碼、嚴格遵循 Allowed Scope 範圍、明確檔案路徑、且寫入後必須進行機器驗證。
+   - **執行期相依說明**：歷史文件中引用的 `Modules/db_state_manager.js` 屬目標態資產（待 E-03 Runtime 遷移）。在該模組實體遷入前，不得將其宣告為現行可執行的 active prerequisite。
+4. **禁止檔案型跨進程通訊 (No File-Based IPC)**
+--- END MOD ---
+
+=== MOD 26 ===
+file: SOP/SOP_06_Handover_Manual.md
+mode: replace
+--- ANCHOR ---
+```bash
+npm run dev       # 啟動本地開發伺服器 (http://localhost:3000)
+npm run workflow  # 觸發 AI 分析流程，將產生 ai_report.json 報告
+--- PAYLOAD ---
+```bash
+npm run dev -- -p 3002   # 啟動本地開發伺服器 (http://localhost:3002，對齊 ADR-0017 防與 LINE 3000 衝突)
+npm run workflow  # 觸發 AI 分析流程，將產生 ai_report.json 報告
+--- END MOD ---
+
+=== MOD 27 ===
+file: SOP/SOP_09_AutoResearch_CPU.md
+mode: replace
+--- ANCHOR ---
+- 若 `val_bpb` **改善**：在 Git 分支上推進提交（`git commit`）。
+- 若 `val_bpb` **持平或變差**：回退至前一個良好狀態（`git reset --hard HEAD~1`）。
+
+--- PAYLOAD ---
+- 若 `val_bpb` **改善**：在 Git 分支上推進提交（`git commit`）。
+- 若 `val_bpb` **持平或變差**：放棄候選實驗（使用獨立 disposable experiment branch/worktree，不進行 merge/cherry-pick，或直接安全刪除未共享之實驗分支），**嚴禁使用 `git reset --hard` 重寫共享歷史**。
+
+--- END MOD ---
+
+=== MOD 28 ===
+file: SOP/SOP_11_Task_Reflection_Protocol.md
+mode: replace
+--- ANCHOR ---
+
+所有代理人在制定全新任務計畫（Planning Mode）時，**必須**第一時間閱讀 `Data/Agent_Reflections.md`。
+
+--- PAYLOAD ---
+
+所有代理人在制定全新任務計畫（Planning Mode）時，若根目錄之 `Data/Agent_Reflections.md` 實體存在，應第一時間閱讀；若當前版本庫中該檔案尚未遷移（待 E-05 遷移），則記錄為記憶來源暫不可用，不得自行假造內容，亦不得因此阻擋正常的 Planning 與任務執行。待 E-05 遷移完成後再恢復為正常 memory source。
+
+--- END MOD ---
+
+=== MOD 29 ===
+file: SOP/SOP_14_Rigorous_Verification_and_Audit_Protocol.md
+mode: replace
+--- ANCHOR ---
+
+- **強約束**：在使用者未輸入「同意執行」或「Proceed」前，代理人必須凍結工作區修改權限。
+- 必須完整呈現：
+--- PAYLOAD ---
+
+- **任務授權界線**：使用者已明確發出任務指令，或宏觀審計官已指派明確之 `GOAL_SPEC` / `EXACT_SPEC`，即構成該 Allowed Scope 內之執行授權。正常實作與驗證過程中，**不得再要求使用者做第二次「同意執行」或「Proceed」輸入**。唯有在涉及破壞性 Git 操作、金鑰敏感變更、範圍擴張 (Scope Expansion)、未決之架構重大分歧 (S1) 或不可逆外部動作時，才需要求使用者進行 fresh authorization。
+- 必須完整呈現：
+--- END MOD ---
+
+=== MOD 30 ===
+file: SOP/SOP_14_Rigorous_Verification_and_Audit_Protocol.md
+mode: replace
+--- ANCHOR ---
+
+1. **清單化管理**：建立 `task.md` 並拆分為 `Phase A, B, C...`。
+2. **階段解凍**：每完成一個 Phase 的變更，必須執行該 Phase 的單元測試。
+3. **階段審計**：由相關 Agent 進行階段查核。只有在上一階段 100% 審計通過且在 `task.md` 標記為 `[x]` 後，下一個 Phase 才能解凍執行。
+4. **強制併發與壓測要求**：若修改涉及底層資料持久化 (DB/檔案寫入) 或主要 Web API (如 Express API 路由)，在 Phase 3 (驗證) 期間，必須強制執行最少 50 次併發或高負載壓力測試，驗證鎖定與流水號遞增之安全性，錯誤率必須為 0。
+5. **失敗退回**：若任一階段審計失敗，必須立即退回 Stage 1，啟動反思程序（SOP_11）。
+
+--- PAYLOAD ---
+
+1. **結構化管理**：依據任務複雜度，由專案既有之 TASKBOARD、EXEC-LOG、Git commit 與 Batch/Goal 契約管理狀態，**不得強制每個任務額外建立重複的 `task.md`**；僅在複雜 implementation 專案本身確有需要時才建立。
+2. **漸進式執行**：每次聚焦處理單一明確範疇，確保可追蹤性。
+3. **階段審計**：任務完成後由審計官依客觀驗證入口查核，執行者預設回報 commit OID、changed paths、machine gate results 與 remote health，審計官直接從遠端 GitHub 讀取 diff 與檔案證據，不預設要求將完整代碼或 raw diff 貼入對話。
+4. **風險導向壓力測試**：若修改涉及底層資料持久化 (DB/檔案寫入) 或主要 Web API，應依 acceptance criteria、實際併發語意與 SRE 風險設計對應之測試，不得以無條件固定 50 次之 magic number 取代工程風險判斷。
+5. **失敗處置**：若驗證失敗，依循 M1/M2/M3 本地修復流程處理；重大原則分歧則依 S1 升級回報。
+
+--- END MOD ---
+
+=== MOD 31 ===
+file: docs/AUDIT-LOG.md
+mode: replace
+--- ANCHOR ---
+| 60d5479 | 2026-09-11 | §4.1-1 | **核對通過**。6 檔異動、零夾帶。獨立驗證五項全過：54 技能零錯誤、18 項 CHECK 全 PASS、128 passed、13 webapp passed、`fingerprint.py --verify` exit 0；GitHub Actions Run 34593961967 (Run #27) success。CHECK 17 normal replay 驗證通過 | Post-Governance Taskboard Reconciliation 經宏觀審計官核對通過。清點治理層完成後之任務看板，確認 Governance Exit 7/7 維持 PASS，消除已過期舊待辦。 |
+
+--- PAYLOAD ---
+| 60d5479 | 2026-09-11 | §4.1-1 | **核對通過**。6 檔異動、零夾帶。獨立驗證五項全過：54 技能零錯誤、18 項 CHECK 全 PASS、128 passed、13 webapp passed、`fingerprint.py --verify` exit 0；GitHub Actions Run 34593961967 (Run #27) success。CHECK 17 normal replay 驗證通過 | Post-Governance Taskboard Reconciliation 經宏觀審計官核對通過。清點治理層完成後之任務看板，確認 Governance Exit 7/7 維持 PASS，消除已過期舊待辦。 |
+| a884e97 | 2026-09-11 | §4.1-1 | **核對通過**。6 檔異動、零夾帶。獨立驗證五項全過：54 技能零錯誤、18 項 CHECK 全 PASS、128 passed、13 webapp passed、`fingerprint.py --verify` exit 0；GitHub Actions Run 34599748829 (Run #28) success。CHECK 17 normal replay 驗證通過 | Post-Governance Taskboard Truth Correction 經宏觀審計官核對通過。修正 8 項 Planning Truth 分類失真，恢復真實待辦與架構取代留痕。 |
+
+--- END MOD ---
+
+=== MOD 32 ===
+file: docs/TASKBOARD.md
+mode: replace
+--- ANCHOR ---
+
+**最後更新**：2026-09-11，HEAD `60d5479` 之後（Post-Governance Taskboard Truth Correction）
+
+--- PAYLOAD ---
+
+**最後更新**：2026-09-11，HEAD `a884e97` 之後（Final Governance Exit — Active Contract Cleanup）
+
+--- END MOD ---
+
+=== MOD 33 ===
+file: docs/TASKBOARD.md
+mode: replace
+--- ANCHOR ---
+| E-02 | 待辦 | Persona 認知顧問 15 個（§二 B 節） | 架構已定為方案 A（設定檔非技能，不放 `skills/`），遷移未執行 |
+| E-03 | **待裁決** | **Runtime 執行層（§二 C 節）** | **重構最大的一塊**，尚未開始。前置條件是 C-04 的架構裁決 |
+| E-04 | 待辦 | `$$` 指令定義收斂（§二 D 節） | `$$LINE連線$$`／`$$TG連線$$` 散落三個檔案且內容互相矛盾 |
+--- PAYLOAD ---
+| E-02 | 待辦 | Persona 認知顧問 15 個（§二 B 節） | 架構已定為方案 A（設定檔非技能，不放 `skills/`），遷移未執行 |
+| E-03 | 待辦 | **Runtime 執行層（§二 C 節）** | **重構最大的一塊**，尚未開始。C-04 已裁決採用方向（runtime/ + shared/ + skills/），下一步為開展只讀依賴調研（READ-ONLY DEPENDENCY INVENTORY）。 |
+| E-04 | 待辦 | `$$` 指令定義收斂（§二 D 節） | `$$LINE連線$$`／`$$TG連線$$` 散落三個檔案且內容互相矛盾 |
+--- END MOD ---
+
+=== MOD 34 ===
+file: docs/batches/README.md
+mode: replace
+--- ANCHOR ---
+
+> 本目錄存放每一批的**正式執行契約**。
+> 規格格式的說明見 `scripts/batch_spec_example.txt`，本檔只規範生命週期。
+>
+> 規則本體在 `.claude/rules/auditor-protocol.md` §6.1 第 21 項，
+--- PAYLOAD ---
+
+> 本目錄存放**精確替換批次（EXACT_SPEC）的正式執行契約**。
+> 正常重構與功能實作預設採用 **GOAL_SPEC**，不要求產出 Batch Spec，其正確性由單元測試、`verify_all.py` 與遠端 CI 共同守護。
+>
+> 規格格式的說明見 `scripts/batch_spec_example.txt`，本檔規範 Batch Spec 之生命週期。
+> 規則本體在 `.claude/rules/auditor-protocol.md` §6.1 第 21 項，
+--- END MOD ---
+
+=== MOD 35 ===
+file: docs/batches/README.md
+mode: replace
+--- ANCHOR ---
+
+## 一、為什麼規格必須進 repo
+
+規格若只存在於對話或 `/tmp`：
+
+- CI 取不到，無法重放
+- 下一個接手者只能靠人記得
+- 「模擬的對象」「送出的文字」「執行者套用的文字」三者沒有共同來源
+
+依 `PRINCIPLES.md` §2.8，只能靠人記得的東西視為尚未生效。
+規格進 repo 之後，三者在結構上不可能不一致——
+CHECK 17 從 parent commit 重放規格並與實際 commit 逐位元比對。
+
+--- PAYLOAD ---
+
+## 一、批次模式與規格定位（Mode-Aware Specification）
+
+### 1. GOAL_SPEC（正常重構／功能遷移預設）
+- **定位**：正常業務重構、模組遷移與 Bug 修復的主流模式。
+- **契約**：宏觀審計官定義目標（Goal）、允許範疇（Allowed Scope）、禁止範疇（Forbidden Scope）、不變量（Invariants）與驗收準則（Acceptance Criteria）；執行者具備完整自主性，負責探索、設計、實作、測試與除錯。
+- **無強制 Spec**：不要求 Batch Spec，Git commit 紀錄、測試通過輸出與 GitHub Actions 綠燈即為完成證據。
+- **CHECK 17 行為**：若 commit 中未附帶規格檔案，CHECK 17 合法跳過重放（由 `verify_all.py` 其他 Gates 守護）。
+
+### 2. EXACT_SPEC（精確字元替換／規範契約重構）
+- **定位**：僅用於 byte-exact canonical 文本修改、治理規範與規則層精準調整、或涉及 mechanical replay 必須逐位元完全一致之場景。
+- **契約**：批次規格為唯一的 executable artifact。審計官模擬的對象、提示詞傳遞的依據、執行者套用的內容三者共享同一份規格。
+- **CHECK 17 行為**：commit 內附帶之規格檔案，CHECK 17 從 parent commit 逐位元嚴格重放比對，確保完全零漂移。
+
+--- END MOD ---
+
+=== MOD 36 ===
+file: docs/refactor-backlog.md
+mode: replace
+--- ANCHOR ---
+
+上次核對通過的 HEAD：8f9847e
+
+--- PAYLOAD ---
+
+上次核對通過的 HEAD：60d5479
+
+--- END MOD ---
+
+=== MOD 37 ===
+file: docs/refactor-backlog.md
+mode: replace
+--- ANCHOR ---
+- `60d5479`（Post-Governance Taskboard Reconciliation：全面對帳 TASKBOARD B 節 50 項待辦，標定已實作與封存項目，產出 Next Execution Queue 與儀表板）已於 2026-09-11 執行完成：6 檔異動、零夾帶，獨立驗證五項全過，CI Run 34593961967 success，**尚待審計官核對**，見 §5.4。
+- 本批（尚未 commit）（Post-Governance Taskboard Truth Correction：修正 B-12/B-57/B-60/B-76/B-78/B-80/B-81/B-85 之 Planning Truth 分類與描述，恢復真實待辦與架構取代留痕）已執行，**尚待審計官核對**，見 §5.4。
+
+--- PAYLOAD ---
+- `60d5479`（Post-Governance Taskboard Reconciliation：全面對帳 TASKBOARD B 節 50 項待辦，標定已實作與封存項目，產出 Next Execution Queue 與儀表板）已於 2026-09-11 執行完成：6 檔異動、零夾帶，獨立驗證五項全過，CI Run 34593961967 success，**尚待審計官核對**，見 §5.4。
+- `a884e97`（Post-Governance Taskboard Truth Correction：修正 B-12/B-57/B-60/B-76/B-78/B-80/B-81/B-85 之 Planning Truth 分類與描述，恢復真實待辦與架構取代留痕）已於 2026-09-11 執行完成：6 檔異動、零夾帶，獨立驗證五項全過，CI Run 34599748829 (Run #28) success，**尚待審計官核對**，見 §5.4。
+- 本批（尚未 commit）（Final Governance Exit — Active Contract Cleanup：全面對齊 GOAL_SPEC 正常重構預設、mode-aware preflight、SOP 執行期可用性邊界、去除破壞性操作指引、E-03 轉待辦）已執行，**尚待審計官核對**，見 §5.4。
+
+--- END MOD ---
+
+=== MOD 38 ===
+file: docs/refactor-backlog.md
+mode: replace
+--- ANCHOR ---
+  使用者於 2026-09-06 裁決的粗粒度順序見第 53 點 F 段，本列取代其中的批次編號。
+- **待裁決事項**：目前無。C-04 的 Runtime 層細節待批 6 的依賴調研後裁決，
+  **該項擋著 E-03，而 E-03 是重構最大的一塊**。
+  已裁決事項見 §5.3 與 `docs/TASKBOARD.md` C 節，不要重複提問。
+--- PAYLOAD ---
+  使用者於 2026-09-06 裁決的粗粒度順序見第 53 點 F 段，本列取代其中的批次編號。
+- **待裁決事項**：目前無。C-04 已裁決採用方向（runtime/ + shared/ + skills/），E-03 轉為待辦，下一步開展只讀依賴調研（READ-ONLY DEPENDENCY INVENTORY）。
+  已裁決事項見 §5.3 與 `docs/TASKBOARD.md` C 節，不要重複提問。
+--- END MOD ---
+
+=== MOD 39 ===
+file: docs/refactor-backlog.md
+mode: replace
+--- ANCHOR ---
+      - B-85：維持已完成（ALREADY_IMPLEMENTED），澄清解決的是「散文不得充當 exact mechanical truth」，不與 B-78 通用套用腳本混淆。
+
+--- PAYLOAD ---
+      - B-85：維持已完成（ALREADY_IMPLEMENTED），澄清解決的是「散文不得充當 exact mechanical truth」，不與 B-78 通用套用腳本混淆。
+58. **Final Governance Exit — Active Contract Cleanup（治理層退出前現行契約全面對齊）**（2026-09-11）
+    - **背景**：治理層退出前最後一批 active-contract cleanup。目的在於將歷史累積、仍會被 Agent 視為「現行可執行指令」的過時治理與 SOP 契約全面對齊 Governance Exit 架構，消除高 Token、高 roundtrip、雙重權威與過時 SOP 約束，讓後續 D/E 主線可真正以 GOAL_SPEC 自主推進。
+    - **對齊成果**：
+      - **GOAL_SPEC 正常重構預設**：確立 GOAL_SPEC 為正常重構預設模式，Auditor 提供 Goal、Scope、Invariants、Criteria 與 Gates，Executor 自主實作除錯，不強制要求 Batch Spec、BPE、exact anchors 與手寫數值；EXACT_SPEC 僅保留於 byte-exact 與治理規範調整；未宣告模式視為 `PROMPT STRUCTURE ERROR`。
+      - **Mode-Aware Preflight & Selftest**：更新 `.agents/rules/prompt-preflight.md`、`role-boundaries.md`、`auditor-protocol.md` 與 `handover-selftest.md`，支援模式感知檢查，消除虛假 Batch Spec 要求。
+      - **SOP 執行期可用性邊界（Runtime Availability Boundary）**：於 `SOP/README.md` 確立未遷移資產（Modules/, Data/, runtime/ 等）視為 Target-State Procedure，不得 invent path 或阻擋常態開發；更新 `SOP_01`（配額模組目標態）、`SOP_11`（反思記憶缺席不阻擋 Planning）。
+      - **安全與工具契約現代化**：`SOP_02` 服從 C-02 裁決，確立金鑰洩漏第一優先為撤銷輪替，嚴禁 Agent 破壞性重寫歷史；`SOP_05` 採用跨工具寫入政策（Tool-portable Write Policy），解除特定 API 綁定；`SOP_09` 移除 `git reset --hard`；`SOP_04` / `SOP_06` 對齊 ADR-0017 Port 配置（LINE=3000, TG=3001, Next.js=3002, Static=8888）。
+      - **授權與審計流程精簡**：`SOP_14` 消除已獲明確任務授權後之第二次「Proceed」確認，審計官直接由 GitHub 獨立讀取 diff 證據，不強制建 `task.md`，壓測改為風險導向。
+      - **規劃真實性**：`TASKBOARD.md` 與交接區將 E-03 更新為待辦，下一步開展只讀依賴調研（READ-ONLY DEPENDENCY INVENTORY），不再重問已裁決之 C-04。
+--- END MOD ---

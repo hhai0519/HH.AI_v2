@@ -2,7 +2,7 @@
 title: "系統核心治理政策"
 version: "3.2.0"
 tags: ["SOP", "系統政策", "治理", "Watchdog", "Governance"]
-dependencies: [".agents/rules/skill-engineering-guardrails.md", "Modules/db_state_manager.js"]
+dependencies: [".agents/rules/skill-engineering-guardrails.md"]
 ---
 
 # 本協作系統 系統核心治理政策 (System Governance Policies)
@@ -30,8 +30,12 @@ dependencies: [".agents/rules/skill-engineering-guardrails.md", "Modules/db_stat
 2. **禁止破壞性 Git 指令 (Destructive Commands)**
    - **嚴禁**在腳本內寫死或執行 `git checkout .`、`git reset --hard`、`rm -rf` 等具有歷史抹除與物理破壞性的暴力還原指令。
 3. **禁止終端機越權寫入 (Unsafe File Writing)**
-   - **嚴禁**在終端機使用 PowerShell 的 `Out-File`、`Set-Content` 或 `>` 重導向來寫入程式碼或檔案。
-   - 所有寫入操作強制使用專用 API 工具 (`write_to_file`)，並確保為 **無 BOM 的標準 UTF-8** 編碼。
+   - **嚴禁**在終端機使用 PowerShell 的 `Out-File`、`Set-Content` 或 `>` 重導向來直接寫入程式碼或檔案，避免編碼污染與無稽核寫入。
+   - **檔案寫入工具政策（Tool-portable Write Policy）**：所有代碼與檔案變更必須透過能保證範圍約束、編碼正確性與可審計性的結構化方式執行：
+     1. 執行環境提供的結構化編輯/寫入工具（如 Antigravity `write_to_file` / `replace_file_content`、Claude Code 檔案工具等）。
+     2. 專案內建具備單一權威的 canonical 腳本（如 Batch Spec canonical apply）。
+     3. 共同強制要求：一律使用**無 BOM 的標準 UTF-8** 編碼、嚴格遵循 Allowed Scope 範圍、明確檔案路徑、且寫入後必須進行機器驗證。
+   - **執行期相依說明**：歷史文件中引用的 `Modules/db_state_manager.js` 屬目標態資產（待 E-03 Runtime 遷移）。在該模組實體遷入前，不得將其宣告為現行可執行的 active prerequisite。
 4. **禁止檔案型跨進程通訊 (No File-Based IPC)**
    - **嚴禁**以「寫入暫存 `.txt` 或 `.json` 再由另一個程式讀取」的方式進行跨進程資料傳遞。
    - **唯一合法作法**：強制使用記憶體串流 `stdio: ['pipe', 'pipe', 'pipe']`，或透過本機 HTTP API / WebSocket 進行傳遞。

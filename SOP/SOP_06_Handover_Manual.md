@@ -130,7 +130,7 @@ DATABASE_URL=postgresql://...
 
 ### 4.2 常用開發指令
 ```bash
-npm run dev       # 啟動本地開發伺服器 (http://localhost:3000)
+npm run dev -- -p 3002   # 啟動本地開發伺服器 (http://localhost:3002，對齊 ADR-0017 防與 LINE 3000 衝突)
 npm run workflow  # 觸發 AI 分析流程，將產生 ai_report.json 報告
 npm run build     # 構建生產環境應用
 ```

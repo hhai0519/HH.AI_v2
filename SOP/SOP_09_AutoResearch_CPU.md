@@ -111,7 +111,7 @@ def456  | 2.5678  | discard  | DEPTH=4 超時，步數不足
 
 ### 5.1 決策邏輯
 - 若 `val_bpb` **改善**：在 Git 分支上推進提交（`git commit`）。
-- 若 `val_bpb` **持平或變差**：回退至前一個良好狀態（`git reset --hard HEAD~1`）。
+- 若 `val_bpb` **持平或變差**：放棄候選實驗（使用獨立 disposable experiment branch/worktree，不進行 merge/cherry-pick，或直接安全刪除未共享之實驗分支），**嚴禁使用 `git reset --hard` 重寫共享歷史**。
 
 ### 5.2 指標提取指令
 ```bash

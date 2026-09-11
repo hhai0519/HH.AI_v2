@@ -1,25 +1,27 @@
 # 批次規格區（Batch Spec Lifecycle）
 
-> 本目錄存放每一批的**正式執行契約**。
-> 規格格式的說明見 `scripts/batch_spec_example.txt`，本檔只規範生命週期。
+> 本目錄存放**精確替換批次（EXACT_SPEC）的正式執行契約**。
+> 正常重構與功能實作預設採用 **GOAL_SPEC**，不要求產出 Batch Spec，其正確性由單元測試、`verify_all.py` 與遠端 CI 共同守護。
 >
+> 規格格式的說明見 `scripts/batch_spec_example.txt`，本檔規範 Batch Spec 之生命週期。
 > 規則本體在 `.claude/rules/auditor-protocol.md` §6.1 第 21 項，
 > 執行者側的對應規則在 `.agents/rules/role-boundaries.md` §6，
 > 機械守衛是 `scripts/check_consistency.py` 的 CHECK 17。
 
 ---
 
-## 一、為什麼規格必須進 repo
+## 一、批次模式與規格定位（Mode-Aware Specification）
 
-規格若只存在於對話或 `/tmp`：
+### 1. GOAL_SPEC（正常重構／功能遷移預設）
+- **定位**：正常業務重構、模組遷移與 Bug 修復的主流模式。
+- **契約**：宏觀審計官定義目標（Goal）、允許範疇（Allowed Scope）、禁止範疇（Forbidden Scope）、不變量（Invariants）與驗收準則（Acceptance Criteria）；執行者具備完整自主性，負責探索、設計、實作、測試與除錯。
+- **無強制 Spec**：不要求 Batch Spec，Git commit 紀錄、測試通過輸出與 GitHub Actions 綠燈即為完成證據。
+- **CHECK 17 行為**：若 commit 中未附帶規格檔案，CHECK 17 合法跳過重放（由 `verify_all.py` 其他 Gates 守護）。
 
-- CI 取不到，無法重放
-- 下一個接手者只能靠人記得
-- 「模擬的對象」「送出的文字」「執行者套用的文字」三者沒有共同來源
-
-依 `PRINCIPLES.md` §2.8，只能靠人記得的東西視為尚未生效。
-規格進 repo 之後，三者在結構上不可能不一致——
-CHECK 17 從 parent commit 重放規格並與實際 commit 逐位元比對。
+### 2. EXACT_SPEC（精確字元替換／規範契約重構）
+- **定位**：僅用於 byte-exact canonical 文本修改、治理規範與規則層精準調整、或涉及 mechanical replay 必須逐位元完全一致之場景。
+- **契約**：批次規格為唯一的 executable artifact。審計官模擬的對象、提示詞傳遞的依據、執行者套用的內容三者共享同一份規格。
+- **CHECK 17 行為**：commit 內附帶之規格檔案，CHECK 17 從 parent commit 逐位元嚴格重放比對，確保完全零漂移。
 
 ---
 

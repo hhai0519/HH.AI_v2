@@ -79,35 +79,20 @@
 
 ## 6. 依批次規格修改時，只能走指定的套用路徑
 
-提示詞若附帶批次規格（`docs/batches/<batch-id>.spec.txt`），
-規格就是本批唯一的執行契約。你必須：
+本專案明確區分兩大執行模式（`batch_mode`）：
 
-- 用 `scripts/build_prompt_evidence.py` 的 `parse_spec` 讀規格，
-  用同檔的 `apply_mod_to_text` 套用每一個 MOD。
-- 不得自行撰寫另一套 parser。
-- 不得自行撰寫另一套套用邏輯。
-- 不得手工重打規格描述的任何內容，即使只有一行。
-- 不得把規格套用與人工編輯混在同一個檔案上。
+### 6.1 GOAL_SPEC（正常重構與功能實作預設）
+- **定位**：後續主重構、模組遷移與功能開發的**常態預設模式**。
+- **職責界線**：宏觀審計官提供目標（Goal）、允許修改範疇（Allowed Scope）、禁止範疇（Forbidden Scope）、不變量（Invariants）、驗收準則（Acceptance Criteria）與驗證閘門（Required Machine Gates）；執行者具備完整自主性，負責探索、設計、實作、測試、除錯與 M1-M3 自主修復。
+- **無強制 Batch Spec**：GOAL_SPEC 模式**不得強制要求產出 Batch Spec、spec SHA、BPE、exact anchors 或手寫 payload**。執行者可自由運用結構化工具實作，其正確性由驗收測試、`scripts/verify_all.py` 5 大 Gates 與 GitHub Actions CI 守護。
 
-**理由不是形式主義。** 2026-09-07 的 `10f7e31` 是唯一一次執行者
-逐條自寫套用腳本並手工重打部分內容，結果 `docs/TASKBOARD.md`
-被改進兩個日文字元、`docs/refactor-backlog.md` 多一個空行，
-而四項標準驗證與 CI 全部綠燈。**散文與手打是一層有損的重新編碼。**
-
-本條的機械守衛是 `scripts/check_consistency.py` 的 CHECK 17：
-它從 parent commit 取出檔案、用上述唯一路徑重放規格，
-再把重放結果與實際 commit 的 git blob 逐位元組比對，任何差異即 FAIL。
-
-**這個保證有明確的生效起點，在那之前不存在。**
-檔名以 `-BOOTSTRAP.spec.txt` 結尾的批次，CHECK 17 依設計跳過重放
-（規格格式還無法表達新建檔案，見 `docs/batches/README.md` 第六節）。
-**引入本機制的那一批，自己不在保護範圍內**——對該批而言，
-偏離規格不會被 CHECK 17 攔截，也不會因此讓 CI 變紅。
-該批的正確性依賴的是：canonical apply path、動手前的錨點唯一性驗證、
-允許檔案清單的範圍檢查、測試、指紋，以及 CI 對這些項目的重跑。
-**逐位元重放的完整保證，自 `docs/TASKBOARD.md` B-90 移除 BOOTSTRAP 例外
-之後的每一個正常 EXACT_SPEC 批次起生效。**
-在那之前，不得對任何批次宣稱 CHECK 17 會攔截它的 actual/spec drift。
+### 6.2 EXACT_SPEC（精確替換／規範契約重構）
+- **定位**：僅用於 byte-exact canonical 文本修改、治理規範與規則層精準調整、或涉及 mechanical replay 必須逐位元完全一致之場景。
+- **唯一套用路徑**：提示詞附帶批次規格（`docs/batches/<batch-id>.spec.txt`），規格即本批唯一執行契約。你必須：
+  - 用 `scripts/build_prompt_evidence.py` 的 `parse_spec` 讀規格，用同檔的 `apply_mod_to_text` 套用每一個 MOD。
+  - 不得自行撰寫另一套 parser 或套用邏輯。
+  - 不得手工重打規格描述的任何內容，不得把規格套用與人工編輯混在同一個檔案上。
+- **逐位元守衛**：CHECK 17 從 parent commit 取出檔案重放規格並比對，任何 byte 差異即 FAIL。
 
 ---
 
@@ -127,7 +112,7 @@
 | **EXACT_SPEC** | 完整的批次規格，規格即輸出契約 | **零。** 套用結果必須等於規格重放結果 |
 | **GOAL_SPEC** | 目標、授權範圍、不變量、驗收條件 | 在授權範圍內自選作法 |
 
-提示詞未註明模式時，**一律當作 EXACT_SPEC**。
+提示詞未載明模式（缺少 `batch_mode`）時，**不得默認 EXACT_SPEC，明確視為 PROMPT STRUCTURE ERROR**。執行者必須立即停止 mutation，回報缺少模式宣告。未來正常主重構提示詞一律明確宣告 `batch_mode: GOAL_SPEC`。
 
 錯誤分四級，只有 S1 需要回報：
 

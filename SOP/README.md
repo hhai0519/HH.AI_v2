@@ -5,6 +5,13 @@
 - **`docs/adr/`**：「當初為什麼這樣決定」的架構決策紀錄（Architecture Decision Records），記錄系統演進的決策留痕。
 - **`.agents/rules/`**：「agent 執行任務時的行為約束」，此處的規則會被系統原生機制自動載入並嚴格執行。
 
+## 執行期可用性邊界（Runtime Availability Boundary）
+
+SOP 文件中引用的外部或底層資產（包括但不限於 `Modules/`、`Data/`、`runtime/`、`shared/`、`scripts/`、`00_Master_Menu.ps1`、`ecosystem.config.js` 等）：
+1. **現行可執行標準**：唯有在當前 `origin/main` 根目錄中**實體存在**之檔案與模組，方可作為現行直接執行的指令依據。
+2. **遷移中／目標態程序（Target-State Procedure）**：若該資產尚未遷移、TASKBOARD 標為 pending、或當前 repo 根目錄查無該實體檔案，相關段落僅代表遷移完成後之目標態作業指引，**不得假定其已存在**，**不得自行發明路徑**，**不得從舊 repo 偷跑指令**，更**不得因其缺失而阻擋無關的常態重構與程式開發任務**。
+3. **路由導向**：涉及缺失資產之作業，應正確路由至 TASKBOARD Section E（舊 repo 遷移主線）或 Section F（追蹤項）所對應的專門遷移任務。
+
 ## 核心 SOP 索引清單
 1. [SOP_01_Automation_Process.md](./SOP_01_Automation_Process.md)：規範系統自動化進程的觸發、防呆機制與越權攔截標準。
 2. [SOP_02_Security_Guidelines.md](./SOP_02_Security_Guidelines.md)：規範系統中所有 Agent 技能在執行時的安全邊界與機密防護措施。

@@ -207,7 +207,7 @@ CHECK 8 至 15 有 63 個測試並經審計官反例注入驗證，
 1. **開頭宣告執行者身分**，指向 `PRINCIPLES.md` §0 與
    `.agents/rules/role-boundaries.md`。
 2. **載明基準 Commit（Base Full OID）與目標檔案清單**，不再要求手寫檔案總行數作為 blocking truth。執行者於執行前確認工作區乾淨且 HEAD 與基準一致。
-3. 修改指令以**批次規格（Batch Spec）的 structural anchor 原文或唯一語意識別字**為主；若有行號僅作為輔助 diagnostic，不得作為 blocking truth。
+3. 修改指令依模式區分：**EXACT_SPEC 必須以批次規格（Batch Spec）的 structural anchor 原文為主**；**GOAL_SPEC 則提供目標架構、變更邊界與驗收準則**，由執行者自主決定實作方式。若有行號僅作為輔助 diagnostic，不得作為 blocking truth。
 4. 驗證步驟要求**回報確定性工具與 Gate 的執行輸出**（如 validate_skills, check_consistency, fingerprint, pytest）；命中檔名與行號等由機器輸出提供，提示詞不作人工預測。
 5. `git add` 一律明確路徑，禁止 `-A` 與 `.`。
 6. 結尾固定要求純文字回覆與「以上是 Antigravity IDE Agent 的回覆」。
@@ -261,11 +261,10 @@ CHECK 8 至 15 有 63 個測試並經審計官反例注入驗證，
     **審計官寫的規則觸發了審計官建的檢查器**。
 15. **每個插入型修改若涉及結構序列，必須附明確驗收準則**（例如小節或項目序列應嚴格遞增）；
     不得將 LLM 預測所有 post-state 衍生序列當作通用 blocking requirement。
-16. **每份提示詞必須包含「機械前置證據（Machine Evidence / Execution Preflight）」**，內容五項：
-    (a) 基準 Commit Full OID；(b) 批次模式（`batch_mode`）；(c) 批次規格路徑與規格 SHA-256；
-    (d) 允許修改範圍（Allowed Scope）；(e) 標準驗證指令與 Gate 清單。
-    執行者交叉驗證基準 OID、模式合法性、規格 SHA 與範圍，規則見
-    `.agents/rules/prompt-preflight.md` §3.6。
+16. **每份提示詞必須包含「機械前置證據與邊界宣告（Mode-Aware Preflight）」**：
+    所有模式共同包含：(a) 基準 Commit Full OID；(b) 批次模式（`batch_mode`，明確標記 GOAL_SPEC 或 EXACT_SPEC）；(c) 允許修改範圍（Allowed Scope）；(d) 標準驗證指令與 Gate 清單。
+    只有 EXACT_SPEC 模式才需附帶批次規格路徑與規格 SHA-256；GOAL_SPEC 模式則載明目標、不變量與驗收準則。
+    執行者交叉驗證規則見 `.agents/rules/prompt-preflight.md` §3。
     **刪除手寫檔案行數、圍欄數與結構快照的 blocking 要求。**
 
 17. **提示詞若包含任何「移除」，必須附上移除前複查的三步結果**。
@@ -281,10 +280,8 @@ CHECK 8 至 15 有 63 個測試並經審計官反例注入驗證，
     去向被概括寫成「已拆分為 ADR-0013 與兩份 rules」，
     實際上第一至第四節從未遷移也未淘汰（見 `docs/ARCHIVE-INDEX.md`）。
 
-18. **提示詞若修改規範層檔案，必須以同一份批次規格進行模擬，並以確定性工具輸出為準**。
-    審計官在產出提示詞前，使用 `scripts/build_prompt_evidence.py`（BPE）驗證規格與模擬，
-    但**不得將套用後行數、圍欄數、項數或 INFO 輸出預抄至提示詞作為 blocking truth**。
-    規格重放正確性由 CI 上的 CHECK 17 逐位元守護。
+18. **提示詞若為 EXACT_SPEC 且修改規範層檔案，必須以同一份批次規格進行模擬，並以確定性工具輸出為準**。
+    審計官在 EXACT_SPEC 產出提示詞前，使用 `scripts/build_prompt_evidence.py`（BPE）驗證規格與模擬，但**不得將套用後行數、圍欄數、項數或預測輸出預抄至提示詞作為 blocking truth**。GOAL_SPEC 模式由驗收測試與 `scripts/verify_all.py` 守護，不要求虛假規格模擬。
 19. **提示詞中的不可變常數（base OID、spec SHA、allowed scope 等）必須有明確來源；
     derived values 不得進 prompt 成為 blocking truth**。
     基準 commit 必須等於執行者在第 0 步實測的 HEAD。指不出產生者的不可變常數即為模型編造，
@@ -310,12 +307,11 @@ CHECK 8 至 15 有 63 個測試並經審計官反例注入驗證，
     只回報「已補打」不算數。打不打的判準見 §11.4。
 
 
-21. **每一批的批次規格必須以 repo artifact 形式交付，並使用 BPE 進行驗證與模擬。**
+21. **EXACT_SPEC 批次的規格必須以 repo artifact 形式交付，並使用 BPE 進行驗證與模擬。**
     規格存放於 `docs/batches/<base-hash>-<slug>.spec.txt`，載明 `HEAD: <base-hash>`。
-    規格格式由 `parse_spec` 與 `apply_mod_to_text` 解析，支援 `insert_after`、`insert_before`、`replace` 等 mode。
-    審計官在產出提示詞前，必須執行 `python scripts/build_prompt_evidence.py <spec_path>`（BPE）：
-    BPE 會自動驗證所有錨點在當前 repo 的唯一性（count == 1）、計算規格 SHA-256、執行本地模擬並驗證 EXPECT 序列。
-    **BPE 與 Batch Spec 是消除「散文有損重新編碼」的唯一權威機制（完成 B-86 治理要求）。**
+    規格格式由 `parse_spec` 與 `apply_mod_to_text` 解析，支援 `insert_after`、`insert_before`、`replace`、`create_file` 等 mode。
+    審計官在產出 EXACT_SPEC 提示詞前，執行 `python scripts/build_prompt_evidence.py <spec_path>`（BPE）驗證錨點唯一性並計算規格 SHA-256。
+    **GOAL_SPEC 模式不強制要求 Batch Spec**，其完成證據由 git commit 紀錄、測試通過輸出與 Actions 綠燈構成。
     只存在於對話或 `/tmp` 的規格視為不存在。CI 上的 CHECK 17 會在 parent commit 基準上重放規格並逐位元比對。
     規格與 CI 對應方式、命名規則與單一 commit 原則見 `docs/batches/README.md`。
 

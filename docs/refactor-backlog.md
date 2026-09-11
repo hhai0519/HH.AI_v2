@@ -2825,7 +2825,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 5.1 上一批狀態
 
-上次核對通過的 HEAD：8f9847e
+上次核對通過的 HEAD：60d5479
 
 - `23af193`（執行者前置檢查 ＋ 回滾程序 ＋ `AUDIT-LOG.md` ＋ 四缺口修正）
   已於 2026-09-02 由審計官核對通過：6 檔異動（含 2 個新檔）、零夾帶、
@@ -2966,7 +2966,8 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 - `94f75bc`（Transient Red Reduction：強化 CHECK 9 candidate 自引防護與實作 --as-if-committed 預演模式，完成 B-51）已於 2026-09-11 執行完成：9 檔異動、零夾帶，獨立驗證五項全過（54 技能、18 項 CHECK、128 passed、13 webapp passed、`--verify` exit 0），CI Run verify success，**尚待審計官核對**，見 §5.4。
 - `8f9847e`（GitHub Actions 遠端健康權威與歷史失敗歸檔：建立 ADR-0020、SOP_14 §8、AUDIT-LOG CI 事故歸檔、README badge）已於 2026-09-11 執行完成：11 檔異動、零夾帶，獨立驗證五項全過，CI Run 34590592049 success，**尚待審計官核對**，見 §5.4。
 - `60d5479`（Post-Governance Taskboard Reconciliation：全面對帳 TASKBOARD B 節 50 項待辦，標定已實作與封存項目，產出 Next Execution Queue 與儀表板）已於 2026-09-11 執行完成：6 檔異動、零夾帶，獨立驗證五項全過，CI Run 34593961967 success，**尚待審計官核對**，見 §5.4。
-- 本批（尚未 commit）（Post-Governance Taskboard Truth Correction：修正 B-12/B-57/B-60/B-76/B-78/B-80/B-81/B-85 之 Planning Truth 分類與描述，恢復真實待辦與架構取代留痕）已執行，**尚待審計官核對**，見 §5.4。
+- `a884e97`（Post-Governance Taskboard Truth Correction：修正 B-12/B-57/B-60/B-76/B-78/B-80/B-81/B-85 之 Planning Truth 分類與描述，恢復真實待辦與架構取代留痕）已於 2026-09-11 執行完成：6 檔異動、零夾帶，獨立驗證五項全過，CI Run 34599748829 (Run #28) success，**尚待審計官核對**，見 §5.4。
+- 本批（尚未 commit）（Final Governance Exit — Active Contract Cleanup：全面對齊 GOAL_SPEC 正常重構預設、mode-aware preflight、SOP 執行期可用性邊界、去除破壞性操作指引、E-03 轉待辦）已執行，**尚待審計官核對**，見 §5.4。
 
 ### 5.2 待辦
 
@@ -3015,8 +3016,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   **被 CHECK 17 結構性取代而不需個別處理**：B-78／B-80／B-85／B-89 第 ② 項
   （字形、空白、換行、手打偏差一律由逐位元重放比對攔截）。
   使用者於 2026-09-06 裁決的粗粒度順序見第 53 點 F 段，本列取代其中的批次編號。
-- **待裁決事項**：目前無。C-04 的 Runtime 層細節待批 6 的依賴調研後裁決，
-  **該項擋著 E-03，而 E-03 是重構最大的一塊**。
+- **待裁決事項**：目前無。C-04 已裁決採用方向（runtime/ + shared/ + skills/），E-03 轉為待辦，下一步開展只讀依賴調研（READ-ONLY DEPENDENCY INVENTORY）。
   已裁決事項見 §5.3 與 `docs/TASKBOARD.md` C 節，不要重複提問。
 - **B-01（ADR-0002／0004／0010 分層搬移）保留給批 3**，不得提前執行。
 - **驗證階段（`.claude/rules/auditor-protocol.md` §9.5）目前未由使用者
@@ -3039,4 +3039,12 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
       - B-80 / B-81：維持可封存（SUPERSEDED），但更正「BPE 制度廢除」之敘述。BPE（`build_prompt_evidence.py`）依然保留為 Batch Spec 解析與模擬工具，廢除的僅是 LLM 手寫衍生值作為 blocking truth。
       - B-60：維持可封存（SUPERSEDED），更正備註說明 17–24 配置表已停止作為排程，未來若 post-main 新增 CHECK 應從 `check_consistency.py` 機器動態導出可用 ID。
       - B-85：維持已完成（ALREADY_IMPLEMENTED），澄清解決的是「散文不得充當 exact mechanical truth」，不與 B-78 通用套用腳本混淆。
-
+58. **Final Governance Exit — Active Contract Cleanup（治理層退出前現行契約全面對齊）**（2026-09-11）
+    - **背景**：治理層退出前最後一批 active-contract cleanup。目的在於將歷史累積、仍會被 Agent 視為「現行可執行指令」的過時治理與 SOP 契約全面對齊 Governance Exit 架構，消除高 Token、高 roundtrip、雙重權威與過時 SOP 約束，讓後續 D/E 主線可真正以 GOAL_SPEC 自主推進。
+    - **對齊成果**：
+      - **GOAL_SPEC 正常重構預設**：確立 GOAL_SPEC 為正常重構預設模式，Auditor 提供 Goal、Scope、Invariants、Criteria 與 Gates，Executor 自主實作除錯，不強制要求 Batch Spec、BPE、exact anchors 與手寫數值；EXACT_SPEC 僅保留於 byte-exact 與治理規範調整；未宣告模式視為 `PROMPT STRUCTURE ERROR`。
+      - **Mode-Aware Preflight & Selftest**：更新 `.agents/rules/prompt-preflight.md`、`role-boundaries.md`、`auditor-protocol.md` 與 `handover-selftest.md`，支援模式感知檢查，消除虛假 Batch Spec 要求。
+      - **SOP 執行期可用性邊界（Runtime Availability Boundary）**：於 `SOP/README.md` 確立未遷移資產（Modules/, Data/, runtime/ 等）視為 Target-State Procedure，不得 invent path 或阻擋常態開發；更新 `SOP_01`（配額模組目標態）、`SOP_11`（反思記憶缺席不阻擋 Planning）。
+      - **安全與工具契約現代化**：`SOP_02` 服從 C-02 裁決，確立金鑰洩漏第一優先為撤銷輪替，嚴禁 Agent 破壞性重寫歷史；`SOP_05` 採用跨工具寫入政策（Tool-portable Write Policy），解除特定 API 綁定；`SOP_09` 移除 `git reset --hard`；`SOP_04` / `SOP_06` 對齊 ADR-0017 Port 配置（LINE=3000, TG=3001, Next.js=3002, Static=8888）。
+      - **授權與審計流程精簡**：`SOP_14` 消除已獲明確任務授權後之第二次「Proceed」確認，審計官直接由 GitHub 獨立讀取 diff 證據，不強制建 `task.md`，壓測改為風險導向。
+      - **規劃真實性**：`TASKBOARD.md` 與交接區將 E-03 更新為待辦，下一步開展只讀依賴調研（READ-ONLY DEPENDENCY INVENTORY），不再重問已裁決之 C-04。

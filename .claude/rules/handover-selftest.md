@@ -59,7 +59,7 @@
 
 - [ ] E1 提示詞開頭有執行者身分宣告？（§6.1-1）
 - [ ] E2 提示詞載明基準 commit full OID 與目標檔案範圍，交由確定性工具比對，未手寫檔案總行數作為 blocking truth？（§6.1-2）
-- [ ] E3 修改指令以 structural anchor 原文或唯一語意識別字為主，未以固定行號作為 blocking 依賴？（§6.1-3）
+- [ ] E3 修改指令依模式區分：EXACT_SPEC 以 structural anchor 原文為主；GOAL_SPEC 定義目標、邊界與驗收準則，未以固定行號作為 blocking 依賴？（§6.1-3）
 - [ ] E4 驗證步驟要求回報確定性工具與 Gate 執行結果，實際命中位置由工具輸出而非 Auditor 預測？（§6.1-4）
 - [ ] E5 `git add` 一律明確路徑，且明寫禁止 `-A` 與 `.`？（§6.1-5）
 - [ ] E6 結尾固定要求純文字回覆與署名行？（§6.1-6）
@@ -69,18 +69,18 @@
 - [ ] E10 零命中類的條件，我檢查過自己的指令會不會產生該字串？（§6.2）
 - [ ] E11 **每一個錨點都已透過確定性工具（BPE、count() 或 spec parser）驗證在目標檔案中 count == 1？**（§6.1-11，見 §6.6）
 - [ ] E12 **提示詞開頭有「動手前必讀」，要求執行者從檔案讀取規則？**（§6.1-10；不可依賴自動載入，session 前綴可能已被清掉）
-- [ ] E13 **配對與覆蓋都檢查過？**（§6.1-11）更新 TASKBOARD HEAD ⇔ 更新交接區 §5.1 HEAD；`git add` 清單 ⇔ Allowed Scope ＋ 規格修改目標 ＋ Gate 檢查範圍
+- [ ] E13 **配對與覆蓋都檢查過？**（§6.1-11）更新 TASKBOARD HEAD ⇔ 更新交接區 §5.1 HEAD；EXACT_SPEC 比對 spec targets ↔ git add；GOAL_SPEC 比對 Allowed Scope ↔ actual changed files ↔ git add ↔ acceptance criteria
 - [ ] E14 **提示詞中有「審計官自檢聲明」區塊，逐項列出本節各項的結果？**（§6.1-12；這是自檢唯一的外部產物，沒有它等同沒做自檢。**新增本節項目時，聲明區塊要同步增列**）
 - [ ] E15 **每個錨點都對應本批 base commit 與規格上下文，具備結構唯一性而非依賴特定第 N 行？**（§6.1-13）
 - [ ] E16 **寫入的文字若含跨檔 `§X.Y` 引用，檔名與章節號在同一行？**（§6.1-14；CHECK 10 逐行判斷，換行斷開就會 FAIL）
 - [ ] E17 **每個插入型修改若涉及結構序列，都定義了明確的驗收準則而非預測所有衍生數值？**（§6.1-15）
-- [ ] E18 **提示詞中有「機械前置證據區塊」，含 base full OID、batch mode、spec path、spec SHA 與標準驗證指令？**（§6.1-16；未手寫 line/fence 衍生快照作為 blocking truth）
+- [ ] E18 **提示詞中有「機械前置證據區塊」，含 base full OID、batch mode、Allowed Scope 與驗證指令（EXACT_SPEC 另含 spec path 與 SHA）？**（§6.1-16；未手寫 line/fence 衍生快照作為 blocking truth）
 - [ ] E19 **提示詞若含任何「移除」，附上了移除前複查的三步結果？**（§6.1-17；反向引用掃描、唯一內容確認、**重新讀檔的獨立複查**；原則見 `PRINCIPLES.md` §2.9）
-- [ ] E20 **提示詞若修改規範層檔案，已使用同一份批次規格經 BPE 與 check_consistency 模擬，未將 post-apply 衍生數值預抄進提示詞？**（§6.1-18；模擬對象等於送出的規格，正確性由 CHECK 17 守護）
+- [ ] E20 **EXACT_SPEC 提示詞若修改規範層檔案，已使用同一份批次規格經 BPE 與 check_consistency 模擬，未將 post-apply 衍生數值預抄進提示詞？**（§6.1-18；GOAL_SPEC 不需偽造 spec）
 
 - [ ] E21 **本輪基準 commit 與執行者實測一致，且提示詞未將任何 machine-derived 數字（行數、圍欄數、test/CHECK 數等）複製為 blocking truth？**（§6.1-19；原則見 `PRINCIPLES.md` §2.10）
 - [ ] E22 **提示詞包含補打 `audited-*` tag 的兩條指令，且驗證步驟要求貼出 `git tag -l "audited-*"` 的實際輸出？**（§6.1-20；`auditor-protocol.md` §11.3 此前不在執行路徑上，tag 因此落後七批，判準見同檔 §11.4）
-- [ ] E23 **本批的批次規格已寫成 `docs/batches/<base-hash>-<slug>.spec.txt` 並列入本批的 `git add` 清單，規格的 `HEAD:` 欄位等於本批 base commit，且以 BPE 驗證通過？**（§6.1-21；規格為唯一的 executable artifact，重放與生命週期由 CI 守護）
+- [ ] E23 **若為 EXACT_SPEC 批次，批次規格已寫成 `docs/batches/<base-hash>-<slug>.spec.txt` 並列入 `git add` 清單且經 BPE 驗證；若為 GOAL_SPEC 則不強制產出 Batch Spec？**（§6.1-21；重放與生命週期由 CI 守護）
 
 ★ 2026-09-02 稽核發現本節原只有七項，`auditor-protocol.md` §6.1 有九項，
   缺了「行號錨點」「`git add` 明確路徑」「結尾格式」「回報負擔二擇一」四項。

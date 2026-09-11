@@ -10,7 +10,7 @@
 `待裁決`（需使用者決定）／`已完成`（仍可能被引用）／
 `可封存`（不影響後續工作，待使用者確認後移入封存區）
 
-**最後更新**：2026-09-11，HEAD `60d5479` 之後（Post-Governance Taskboard Truth Correction）
+**最後更新**：2026-09-11，HEAD `a884e97` 之後（Final Governance Exit — Active Contract Cleanup）
 
 ---
 
@@ -197,7 +197,7 @@
 |---|---|---|---|
 | E-01 | 待辦 | 技能尚未遷移（§二 A 節） | 逐一比對 A-1「確定要遷移的」清單 |
 | E-02 | 待辦 | Persona 認知顧問 15 個（§二 B 節） | 架構已定為方案 A（設定檔非技能，不放 `skills/`），遷移未執行 |
-| E-03 | **待裁決** | **Runtime 執行層（§二 C 節）** | **重構最大的一塊**，尚未開始。前置條件是 C-04 的架構裁決 |
+| E-03 | 待辦 | **Runtime 執行層（§二 C 節）** | **重構最大的一塊**，尚未開始。C-04 已裁決採用方向（runtime/ + shared/ + skills/），下一步為開展只讀依賴調研（READ-ONLY DEPENDENCY INVENTORY）。 |
 | E-04 | 待辦 | `$$` 指令定義收斂（§二 D 節） | `$$LINE連線$$`／`$$TG連線$$` 散落三個檔案且內容互相矛盾 |
 | E-05 | 待辦 | Data/ 資料層逐項裁決（§二 E 節） | 尚有 `Data/logs/`（必須遷移）、`reports/`、`Agent_Reflections.md`、`TODO.md`、`Execution_Plans/`、`_archive_legacy_docs/` 待裁決 |
 
