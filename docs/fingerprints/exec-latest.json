@@ -1,5 +1,5 @@
 {
-  "base_head": "a56c5c9",
+  "base_head": "5bac808",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 0,
@@ -10,10 +10,11 @@
         "## 2.1 撰寫測試時，依規格而非依實作",
         "## 2.2 提示詞指定的寫入內容，逐字照抄",
         "## 2.3 commit 與 push 的狀態，必須以指令輸出為準",
+        "## 2.5 遠端健康查證與 GitHub Actions 閉環規範 (Remote Health Verification)",
         "## 3. 查證紀律"
       ],
-      "lines": 258,
-      "sha256": "32f1592199562b773958c89880a134d2d7abdce4e33934213f1338b4df77bffd"
+      "lines": 265,
+      "sha256": "d36931c162ae8899a6ab864bcfa4360ee1e3baaecc6bc302cbc3ada04d1b4628"
     },
     ".agents/rules/powershell-encoding-protocol.md": {
       "fences": 6,
@@ -181,10 +182,13 @@
         "## 6a. 資料夾層級的範圍受限規則",
         "## 7. README 同步規則",
         "## 8. 遷移舊技能時的規則",
-        "## 9. 驗證"
+        "## 9. 驗證",
+        "## 10. Remote Project Health Authority（遠端健康權威）",
+        "### 10.1 遠端健康查證與回報規範",
+        "### 10.2 禁止文字摘要辯論 (Anti-Debate Policy)"
       ],
-      "lines": 218,
-      "sha256": "9ad189d4b40bfae682f45655dbd51f95b5eb5184d9e038afa2404d150a59d568"
+      "lines": 244,
+      "sha256": "a2dd871ba7e5eaced59dd80d680ad3456921d15f81bd9652a03c9f6e102495d2"
     },
     "MISSION.md": {
       "fences": 0,
@@ -447,7 +451,7 @@
       "sha256": "414cd5479936aef3c04e410bd9b7b61a988a75b038c3e83a5bdaa01c673f2709"
     },
     "SOP/SOP_14_Rigorous_Verification_and_Audit_Protocol.md": {
-      "fences": 0,
+      "fences": 2,
       "headings": [
         "# 嚴謹驗證與審計標準程序 (Rigorous Verification & Audit Protocol)",
         "## 0. 觸發條件 (Trigger Conditions)",
@@ -468,10 +472,13 @@
         "## 7. 高風險技能遷移的三層核對 (Three-Layer Review)",
         "### 7.1 適用範圍",
         "### 7.2 三層核對",
-        "### 7.3 與既有紀律的關係"
+        "### 7.3 與既有紀律的關係",
+        "## 8. GitHub Actions 事故生命週期 (GitHub Actions Incident Lifecycle)",
+        "### 8.1 標準生命週期流程 (Incident Lifecycle)",
+        "### 8.2 歷史清理紅線 (Cleanup Invariants)"
       ],
-      "lines": 175,
-      "sha256": "54a53f6ba7ae39f6c7e34b57d5cb26a56ecb173a06873ec721d3467a036b1c64"
+      "lines": 220,
+      "sha256": "ce04c2b6c32bc60e6141114f239d6545c8e0804ab62c1e468464be7f52b838d9"
     },
     "docs/ARCHIVE-INDEX.md": {
       "fences": 0,
@@ -488,18 +495,20 @@
     "docs/AUDIT-LOG.md": {
       "fences": 0,
       "headings": [
-        "# 自我審查檢查點紀錄"
+        "# 自我審查檢查點紀錄",
+        "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
+        "### 事故清單與根因處置紀錄"
       ],
-      "lines": 49,
-      "sha256": "b1fc19c36224a12e30b92cfe9dd8782b0519fa369d5ff45848dd7a1d579def2d"
+      "lines": 66,
+      "sha256": "07cc33e879d2045e823947c6f50cff6d60dc49605b9d13968db797ba91dce922"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 37,
-      "sha256": "dae150f5b9d1411e3f37d7bbd3d222207d58bb18e212a4ea716e0762efc58d1c"
+      "lines": 38,
+      "sha256": "dec87a29589ceafc1d10e0f635e1aceb50e3c1655e7bcecdc5d3be142a39e8ae"
     },
     "docs/HANDOVER.md": {
       "fences": 14,
@@ -609,7 +618,7 @@
         "## 封存區"
       ],
       "lines": 234,
-      "sha256": "7873406ed2ae65cb38b21ae9c62920d1a46a3892db0cba2dbd64cd443b6a57c6"
+      "sha256": "c67ed9d7cb8272f1deb35f265bcbdbdff80d9b5847bd078ad56db472fb1b782b"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -861,6 +870,17 @@
       "lines": 117,
       "sha256": "df899180af4acaf413f1fcc23b2d4be928bbf79a581356e4063cbd9d2a8a1bb8"
     },
+    "docs/adr/0020-github-actions-remote-health-authority.md": {
+      "fences": 0,
+      "headings": [
+        "# ADR-0020: GitHub Actions 作為專案遠端健康單一權威 (Remote Health Authority)",
+        "## Context",
+        "## Decision",
+        "## Consequences"
+      ],
+      "lines": 54,
+      "sha256": "87df0368aaa8a13721f3451a0feb688859bd1651c1e45c6b767e8abf9753e941"
+    },
     "docs/mcp-environment-guide.md": {
       "fences": 0,
       "headings": [
@@ -926,8 +946,8 @@
         "### 5.3 待使用者裁決",
         "### 5.4 進行中／等待回報"
       ],
-      "lines": 3016,
-      "sha256": "04bf1b4efc70758aea1b5d2856f149f6f3ffd92c82dff4859eb8ec58f2ce18a4"
+      "lines": 3023,
+      "sha256": "f7ba3739f767e6a784b7c16654175c82be3ed8851df3ad515be016f5413f5a22"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1067,7 +1087,7 @@
       "sha256": "77163678353cb7a444f90f17956d03312f715cfcccf933603948715939ecdc10"
     }
   },
-  "generated_at": "2026-09-11T10:15:44Z",
+  "generated_at": "2026-09-11T10:40:50Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

@@ -205,6 +205,13 @@
 前四類虛構的是檔案內容、行數與上下文行，會在審計官 clone 核對時被抓到；
 **動作狀態虛構若不主動查 `git log` 就看不見**。
 
+## 2.5 遠端健康查證與 GitHub Actions 閉環規範 (Remote Health Verification)
+
+所有 Agent 在推送到遠端（push）後，必須落實遠端健康查證閉環：
+1. **取得 exact origin/main OID**：確認本地當前 commit 已正確被 remote main 接收。
+2. **查證 GitHub Actions Verify**：使用 GitHub API 查詢 Verify workflow run，驗證 `head_sha` exact match、`status == completed`、`conclusion == success`。
+3. **禁止文字摘要辯論**：不得僅以本地 PASS 或 Agent 間文字對談斷定遠端健康。若 Actions 出現 failure，直接引用 run ID、failed job 與 failed step，禁止憑空猜測。
+
 ## 3. 查證紀律
 
 - **文件自己的宣告不等於事實**：曾發生 `mcp-gateway` 的 SKILL.md 宣稱

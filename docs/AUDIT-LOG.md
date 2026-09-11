@@ -47,3 +47,20 @@ CHECK 12 應跳過該值——建立本檔的那一批沒有「前一個 commit�
 | 0470df2 | 2026-09-11 | §4.1-1 | **核對通過**。11 檔異動、零夾帶。獨立驗證四項全過：54 技能零錯誤、18 項 CHECK 全 PASS、`pytest scripts/tests/` 117 passed、`fingerprint.py --verify` exit 0；CI Run verify success。CHECK 17 normal replay 驗證通過，新檔 `scripts/tests/test_spec_create_file.py` 逐位元相符 | B-90 批次規格支援 `create_file` mode 與移除 BOOTSTRAP 例外經宏觀審計官核對通過。`parse_spec` 與 canonical apply 支援新建檔案，BPE 模擬沙盒與 CHECK 17 逐位元重放完成，全庫至多一份 BOOTSTRAP 與跳過重放之歷史例外已全面退役 |
 | ff17ae5 | 2026-09-11 | §4.1-1 | **核對通過**。14 檔異動、零夾帶。獨立驗證四項全過：54 技能零錯誤、18 項 CHECK 全 PASS、122 passed、`fingerprint.py --verify` exit 0；CI Run verify success。CHECK 17 normal replay 驗證通過 | Governance Exit 安全與架構收斂經宏觀審計官核對通過。實作 canonical validate_repo_path，全面防堵路徑穿透、UNC 與 Windows 磁碟機路徑逃逸，BPE 模擬沙盒與 CHECK 17 具備 fail-closed 防護，治理層 7/7 核心里程碑收斂就緒 |
 | a56c5c9 | 2026-09-11 | §4.1-1 | **核對通過**。10 檔異動、零夾帶。獨立驗證五項全過：54 技能零錯誤、18 項 CHECK 全 PASS、126 passed、13 webapp passed、`fingerprint.py --verify` exit 0；CI Run 34585789663 success。CHECK 17 normal replay 驗證通過 | Governance Exit Gate Parity 收斂經宏觀審計官核對通過。建立 Canonical Verification Entrypoint (scripts/verify_all.py) 統一 Local 與 CI 驗證閘門，完成 B-47，全庫閘門完整收斂 |
+| 94f75bc | 2026-09-11 | §4.1-1 | **核對通過**。9 檔異動、零夾帶。獨立驗證五項全過：54 技能零錯誤、18 項 CHECK 全 PASS、128 passed、13 webapp passed、`fingerprint.py --verify` exit 0；CI Run verify success。CHECK 9 強化防偽造檢查，--as-if-committed 拓撲預演落地 | 消除 CHECK 9 在 prospective commit 後 HEAD 前進導致的中間紅燈。完成 B-51，實現 pre-prospective 前置拓撲預演，杜絕可預測的 fail-first 迴圈 |
+
+---
+
+## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)
+
+依據 `docs/adr/0020-github-actions-remote-health-authority.md` 與 `SOP/SOP_14_Rigorous_Verification_and_Audit_Protocol.md` §8，本專案將 GitHub Actions 歷史 Verify 失敗 runs 進行機器證據分析、根本原因分類與預防控制歸檔，作為 closed CI incidents 的權威留痕。
+
+### 事故清單與根因處置紀錄
+
+| 事故編號 | 影響 Runs | 影響 Commits | 失敗步驟與現象 | 根本原因 (Root Cause) | 修復 Commit 與處置 | 現行預防控制 (Preventive Control) | 結案狀態 |
+|---|---|---|---|---|---|---|---|
+| **INCIDENT-CI-01** | Run #5 (33970141482)<br>Run #6 (33970983284)<br>Run #7 (33972533555) | `76f424c`<br>`875a604`<br>`ec840fe` | `Check consistency`<br>CHECK 8/9 FAIL | 拓撲指標滯後：未 commit 前相對於 parent 的 lag 合格，但 push 至 remote 成為 HEAD 後，HEAD 前進 1 步導致落後門檻溢出觸發 FAIL (B-51)。 | 後續治理批次修正 handoff pointer | `scripts/check_consistency.py --as-if-committed` 拓撲預演模式與 disposable prospective commit 驗證機制。 | **CLOSED**<br>(Resolved & Prevented) |
+| **INCIDENT-CI-02** | Run #10 (34011261550) | `2d76958` | `Verify fingerprint`<br>refactor-backlog.md 指紋不符 | 跨平台換行符差異：`scripts/fingerprint.py` 原本讀取 raw bytes 計算 sha256，未處理 Windows 與 Linux/CI 間的 CRLF/LF 轉換差異。 | `3a85a30` / `9a09716` | `scripts/fingerprint.py` 內建文字檔換行符標準化、verify_all Gate 3 納入指紋驗證與 Batch Spec 規格重放。 | **CLOSED**<br>(Resolved & Prevented) |
+| **INCIDENT-CI-03** | Run #11 (34013141925) | `3a85a30` | `Check consistency`<br>CHECK 12 FAIL | AUDIT-LOG 審查條目週期落後：commit 產生前未在 AUDIT-LOG 預填待審查項目或補齊 parent 條目，導致落後超過 1 個 commit。 | 後續治理批次補齊 | Batch Spec 流程要求 AUDIT-LOG 預先納入 intended tree，並由 `check_consistency.py --as-if-committed` 在 pre-commit 階段預先驗證。 | **CLOSED**<br>(Resolved & Prevented) |
+
+> 註：自 Run #11 之後的 14 個 runs（Run #12 至 Run #25）在 exact origin/main 上全數為綠燈（100% SUCCESS）。以上 5 個 failed runs 均已符合五大結案清理門檻，標記為清理候選（`safe_to_delete = YES`），待使用者核准後清理。

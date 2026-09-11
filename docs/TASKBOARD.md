@@ -10,7 +10,7 @@
 `待裁決`（需使用者決定）／`已完成`（仍可能被引用）／
 `可封存`（不影響後續工作，待使用者確認後移入封存區）
 
-**最後更新**：2026-09-11，HEAD `a56c5c9` 之後（Transient Red Reduction：強化 CHECK 9 candidate 自引防護與實作 --as-if-committed 預演模式）
+**最後更新**：2026-09-11，HEAD `94f75bc` 之後（GitHub Actions Remote Health Authority & Historical Failure Archive）
 
 ---
 

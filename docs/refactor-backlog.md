@@ -2089,6 +2089,12 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
     **這是本專案唯一一次允許使用 `git reset --hard`。**
     往後仍禁止，除非審計官在提示詞中明確授權並說明理由與範圍。
 
+55. **GitHub Actions 遠端健康權威與歷史失敗歸檔**（2026-09-11）
+    - 依據 `docs/adr/0020-github-actions-remote-health-authority.md`，正式確立雙層權威架構：Local correctness authority 為 `scripts/verify_all.py`，Remote project-health authority 為 GitHub Actions Verify。
+    - 在 `SOP/SOP_14_Rigorous_Verification_and_Audit_Protocol.md` 建立 GitHub Actions 事故生命週期（§8），規範 remote red 時以 exact Actions log 為客觀機器事實，嚴禁無憑證文字摘要辯論。
+    - 完整盤點全庫歷史上 main 分支的所有 5 個 failed runs（#5, #6, #7, #10, #11），進行機器 log 下載與深度根因分析，歸納為三大類事故（CHECK 8/9 拓撲滯後、跨平台換行符指紋不符、AUDIT-LOG 週期落後），並在 `docs/AUDIT-LOG.md` 建立 CI 歷史事故歸檔專區。
+    - 在 `README.md` 首頁新增 GitHub Actions Verify status badge，使專案健康狀態一目了然。
+
 ## 五、接手交接區（新對話接手時先讀這一段）
 
 44. **關閉最後兩個破口（2026-09-05）**
@@ -2819,7 +2825,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 5.1 上一批狀態
 
-上次核對通過的 HEAD：ff17ae5
+上次核對通過的 HEAD：a56c5c9
 
 - `23af193`（執行者前置檢查 ＋ 回滾程序 ＋ `AUDIT-LOG.md` ＋ 四缺口修正）
   已於 2026-09-02 由審計官核對通過：6 檔異動（含 2 個新檔）、零夾帶、
@@ -2957,7 +2963,8 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   完整納入 validate_skills、check_consistency、fingerprint --verify、scripts/tests、webapp-testing/tests 5 大 Correctness Gates；
   消除 Local 與 CI 驗證閘門分叉與 parity gap，完成 B-47）已於 2026-09-11 執行完成：10 檔異動、零夾帶，
   獨立驗證五項全過（54 技能、18 項 CHECK、126 passed、13 webapp passed、`--verify` exit 0），CI Run 34585789663 success，**尚待審計官核對**，見 §5.4。
-- 本批（尚未 commit）（Transient Red Reduction：強化 CHECK 9 candidate 自引防護與實作 --as-if-committed 預演模式，完成 B-51）已執行，**尚待審計官核對**，見 §5.4。
+- `94f75bc`（Transient Red Reduction：強化 CHECK 9 candidate 自引防護與實作 --as-if-committed 預演模式，完成 B-51）已於 2026-09-11 執行完成：9 檔異動、零夾帶，獨立驗證五項全過（54 技能、18 項 CHECK、128 passed、13 webapp passed、`--verify` exit 0），CI Run verify success，**尚待審計官核對**，見 §5.4。
+- 本批（尚未 commit）（GitHub Actions 遠端健康權威與歷史失敗歸檔：建立 ADR-0020、SOP_14 §8、AUDIT-LOG CI 事故歸檔、README badge）已執行，**尚待審計官核對**，見 §5.4。
 
 ### 5.2 待辦
 

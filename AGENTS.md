@@ -216,3 +216,29 @@ python3 scripts/verify_all.py
 `skills/execution/playwright-automation/` 內的 vendored 套件，不參與專案測試。
 雲端代理（如 Google Jules）在獨立 VM 執行時只能依賴本節判斷如何驗證，
 新增測試套件或變更測試方式時，應維護 `scripts/verify_all.py` 中的閘門定義。
+
+---
+
+## 10. Remote Project Health Authority（遠端健康權威）
+
+本專案實施雙層權威分工機制（Dual Authority Separation，架構決策見 `docs/adr/0020-github-actions-remote-health-authority.md`）：
+
+- **本地正確性權威 (Local Correctness Authority)**：`scripts/verify_all.py`
+  涵蓋全專案 5 大 Correctness Gates，為本地修改、Prospective Commit 與 Post-commit 的唯一標準驗證入口。
+- **遠端專案健康權威 (Remote Project Health Authority)**：GitHub Actions 對 exact `origin/main` HEAD 的 Verify workflow。
+  為全專案唯一的遠端健康單一事實來源。
+
+### 10.1 遠端健康查證與回報規範
+
+所有 Agent 在完成 `git push` 後，必須執行以下查證程序方可回報：
+1. 取得 exact `origin/main` 的 full commit OID。
+2. 透過 GitHub API 查證 GitHub Actions Verify workflow run。
+3. 確認該 run 之 `head_sha` 與當前 `origin/main` full OID **完全相符 (exact match)**。
+4. `status` 必須為 `completed` 且 `conclusion` 必須為 `success`，方可正式宣告 remote healthy。
+
+### 10.2 禁止文字摘要辯論 (Anti-Debate Policy)
+
+當 GitHub Actions 可以機械回答健康狀態時：
+- **嚴禁以多 Agent 間的文字比對或口頭宣告取代 Actions 機器證據**（例如「Agent A 說 PASS，但 Agent B 認為可能 FAIL」不得展開口頭辯論）。
+- 若遠端出現紅燈（failure），必須直接引用 Actions run ID、`failed job` 與 `failed step`，以客觀機器 log 為唯一事實基礎。
+- 一般實作/環境問題由執行者循 M3 自行修復；僅有涉及重大架構或原則衝突（S1）時才升級宏觀審計官。

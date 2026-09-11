@@ -173,3 +173,48 @@ dependencies: [".agents/rules/skill-engineering-guardrails.md", "SOP_05_System_P
 第 3 點的執行者是宏觀審計官（見 `PRINCIPLES.md` §0），不是執行遷移的
 Agent 自己。決策背景與 2026-08-13 的三輪來回事件，見
 `docs/adr/0005-high-risk-skill-three-layer-review.md`。
+
+---
+
+## 8. GitHub Actions 事故生命週期 (GitHub Actions Incident Lifecycle)
+
+本節規範 GitHub Actions CI Verify workflow 出現紅燈（failure）時的標準處理與處置閉環程序，確保遠端健康單一權威的嚴謹性。
+
+### 8.1 標準生命週期流程 (Incident Lifecycle)
+
+當 GitHub Actions Verify 出現 red 時，所有角色必須遵循以下固定狀態流轉：
+
+```
+RED（遠端異常）
+  ↓
+1. Read exact Actions failure（讀取 run ID、failed job、failed step 與原始 log）
+  ↓
+2. Classify & Root-cause（分類並找出根本原因，禁止展開無憑證猜測或文字辯論）
+  ↓
+3. Reproduce & Fix（於本地重現問題並編寫修復程式碼/規格）
+  ↓
+4. Local verify_all.py PASS（執行標準權威入口驗證全數通過，exit 0）
+  ↓
+5. Prospective PASS（透過 disposable prospective commit 或 --as-if-committed 預演通過）
+  ↓
+6. Normal Push（以 fast-forward 推送修復 commit 至 origin/main，嚴禁 force push）
+  ↓
+7. Exact origin/main Actions PASS（查證 GitHub Actions Verify 且 head_sha 完全相符、completed/success）
+  ↓
+8. Archive incident knowledge（將事故成因、修復 commit 與預防措施歸檔至 docs/AUDIT-LOG.md）
+  ↓
+9. Eligible for historical-run cleanup（標記為可清理候選，待使用者授權後執行）
+```
+
+### 8.2 歷史清理紅線 (Cleanup Invariants)
+
+1. **嚴禁刪除 current red run**：不得以刪除 Actions 執行紀錄來粉飾太平或製造綠色畫面。
+2. **五大結案清理門檻 (Closure Criteria)**：
+   只有同時滿足以下全部條件的歷史失敗 run，才能標記為 `safe_to_delete = YES`：
+   - Root cause 已明確查明並有機器證據記錄
+   - Fixing commit 已合併入 main
+   - 繼任（Successor）的 Verify workflow 實測為綠燈（completed / success）
+   - Preventive control（預防機制與守衛）已於程式碼或規範中落地生效
+   - 完整事故知識已沉澱歸檔於 `docs/AUDIT-LOG.md`
+3. **使用者授權防線**：
+   符合清理條件之 run 清單必須先呈報使用者，取得明確授權後方可調用 API 執行清理。

@@ -1,5 +1,7 @@
 # HH.AI Skills
 
+[![Verify](https://github.com/hhai0519/HH.AI_v2/actions/workflows/verify.yml/badge.svg?branch=main)](https://github.com/hhai0519/HH.AI_v2/actions)
+
 台股分析 + LINE Bot 系統的 agent 技能集合。架構規範見 [AGENTS.md](./AGENTS.md)。
 
 技能分成以下幾個 bucket，每個 bucket 有自己的 README 列出完整清單：
