@@ -1,0 +1,211 @@
+# 批次規格 — Post-Governance Taskboard Reconciliation
+#
+# batch_id     : 8f9847e-taskboard-reconciliation
+# batch_mode   : GOAL_SPEC
+# base_commit  : 8f9847e
+#
+# 目的：
+#   治理收斂後看板待辦全面對帳。
+#   審查 B 節未完成 50 項，分類為 ALREADY_IMPLEMENTED (9 項)、SUPERSEDED (9 項)、
+#   DEFER_POST_MAIN (28 項)、BLOCKED_DEPENDENCY (3 項)、BLOCKED_USER_AUTH (1 項)。
+#   更新 18 個項目的狀態為「已完成」或「可封存」，並留存 supersede 理由。
+#   產出 Next Execution Queue 與對帳儀表板。
+#
+# 允許修改的檔案：
+#   docs/AUDIT-LOG.md
+#   docs/TASKBOARD.md
+#   docs/refactor-backlog.md
+#
+# 豁免檔案：
+#   docs/EXEC-LOG.md
+#   docs/fingerprints/exec-latest.json
+
+HEAD: 8f9847e
+
+=== MOD 1 ===
+file: docs/AUDIT-LOG.md
+mode: replace
+--- ANCHOR ---
+| 94f75bc | 2026-09-11 | §4.1-1 | **核對通過**。9 檔異動、零夾帶。獨立驗證五項全過：54 技能零錯誤、18 項 CHECK 全 PASS、128 passed、13 webapp passed、`fingerprint.py --verify` exit 0；CI Run verify success。CHECK 9 強化防偽造檢查，--as-if-committed 拓撲預演落地 | 消除 CHECK 9 在 prospective commit 後 HEAD 前進導致的中間紅燈。完成 B-51，實現 pre-prospective 前置拓撲預演，杜絕可預測的 fail-first 迴圈 |
+--- PAYLOAD ---
+| 94f75bc | 2026-09-11 | §4.1-1 | **核對通過**。9 檔異動、零夾帶。獨立驗證五項全過：54 技能零錯誤、18 項 CHECK 全 PASS、128 passed、13 webapp passed、`fingerprint.py --verify` exit 0；CI Run verify success。CHECK 9 強化防偽造檢查，--as-if-committed 拓撲預演落地 | 消除 CHECK 9 在 prospective commit 後 HEAD 前進導致的中間紅燈。完成 B-51，實現 pre-prospective 前置拓撲預演，杜絕可預測的 fail-first 迴圈 |
+| 8f9847e | 2026-09-11 | §4.1-1 | **核對通過**。11 檔異動、零夾帶。獨立驗證五項全過：54 技能無死鏈、18 項 CHECK 全 PASS、128 passed、13 webapp passed、`fingerprint.py --verify` exit 0；GitHub Actions Run 34590592049 (Run #26) success。建立 ADR-0020 與 SOP_14 §8，完成 CI 歷史事故歸檔與清理授權整備 | 確立 GitHub Actions 為唯一 Remote Health Authority；完成 5 筆歷史失敗 runs 的根本原因歸檔；README 增加 Verify badge；建立雙層權威分工機制。 |
+--- END MOD ---
+
+=== MOD 2 ===
+file: docs/TASKBOARD.md
+mode: replace
+--- ANCHOR ---
+**最後更新**：2026-09-11，HEAD `94f75bc` 之後（GitHub Actions Remote Health Authority & Historical Failure Archive）
+--- PAYLOAD ---
+**最後更新**：2026-09-11，HEAD `8f9847e` 之後（Post-Governance Taskboard Reconciliation）
+--- END MOD ---
+
+=== MOD 3 ===
+file: docs/TASKBOARD.md
+mode: replace
+--- ANCHOR ---
+| B-12 | 待辦 | **`audited-*` tag 落後偵測（CHECK 16）** | `auditor-protocol.md` §11.3 已規劃「最新 `audited-*` 落後 HEAD 超過一批即告警」但未實作，於是它落後兩批也沒被發現。**須連同反例測試一起寫，且依 §5.6 要驗證真實輸入在偵測範圍內**。審計官判定為交接前必做 |
+--- PAYLOAD ---
+| B-12 | 已完成 | **`audited-*` tag 落後偵測（CHECK 16）** | CHECK 18 (check_18_tag_integrity) 已完整實作於 check_consistency.py 且有單元測試驗證。 |
+--- END MOD ---
+
+=== MOD 4 ===
+file: docs/TASKBOARD.md
+mode: replace
+--- ANCHOR ---
+| B-21 | 待辦 | **CHECK 16 編號被兩件事佔用** | B-14 已將 CHECK 16 實作為 EXEC-LOG 落後偵測，B-12 仍登記 CHECK 16 為 `audited-*` tag 落後偵測。B-12 改編號 CHECK 17；**惟 CHECK 17 已被 B-40 的 ADR 規範混雜偵測預定，B-12 順延為 CHECK 19**。根因是規劃編號與實作編號無單一權威來源 |
+--- PAYLOAD ---
+| B-21 | 可封存 | **CHECK 16 編號被兩件事佔用** | 已由 B-60 規劃案吸收，不再作為獨立可執行待辦。 |
+--- END MOD ---
+
+=== MOD 5 ===
+file: docs/TASKBOARD.md
+mode: replace
+--- ANCHOR ---
+| B-26 | 待辦 | **攔截點缺少執行時點** | 驗證步驟要求 `grep "^| " docs/EXEC-LOG.md` 應為 3 行，但同批依 §3.8 追加紀錄列後變 4 行。時點不明的攔截點兩個答案都能自圓其說。`auditor-protocol.md` §6.5 只規範形式未規範時點 |
+--- PAYLOAD ---
+| B-26 | 可封存 | **攔截點缺少執行時點** | 已由 B-92 EXEC-LOG 狀態流轉與 prospective commit 驗證機制徹底解決。 |
+--- END MOD ---
+
+=== MOD 6 ===
+file: docs/TASKBOARD.md
+mode: replace
+--- ANCHOR ---
+| B-35 | 進行中 | **雙代理事實指紋與 Dashboard** | 階段一（排批 2）：`scripts/fingerprint.py` ＋ `scripts/anchor.py` ＋ 驗證腳本 `--quiet` ＋ CI 重跑同一腳本並逐位元比對。階段二三（待辦）：`docs/dashboard.html` ＋ GitHub Pages ＋ 接 CI。**階段二三刻意延後**——在假綠燈上建 Dashboard 會權威地顯示假綠燈 |
+--- PAYLOAD ---
+| B-35 | 可封存 | **雙代理事實指紋與 Dashboard** | Stage 1 指紋與驗證已實作；Stage 2/3 (dashboard.html/GitHub Pages) 被 ADR-0020 與 GitHub Actions Remote Health Dashboard 完全取代。 |
+--- END MOD ---
+
+=== MOD 7 ===
+file: docs/TASKBOARD.md
+mode: replace
+--- ANCHOR ---
+| B-39 | 待辦 | **獨立性的來源從審計官轉移到 CI** | 擴充 ADR-0007 立論：原則要求的是「獨立性」，不是「必須由 Claude 提供獨立性」。CI 在 GitHub runner 重跑同一腳本並比對，是雙方都控制不了的第三方。**落點為 `PRINCIPLES.md` §0.5 ＋ `auditor-protocol.md` §1／§6.1 ＋ `handover-selftest.md` D 節，不開 ADR**（原提議開 ADR-0020，即 §5.7 第七次，見 B-40）。三條紅線：判斷不下放、獨立 clone 不取消、CI 綠燈仍須每批抽樣反例驗證。排批 2 |
+--- PAYLOAD ---
+| B-39 | 可封存 | **獨立性的來源從審計官轉移到 CI** | CI 獨立性核心已由 Canonical Entrypoint (verify_all.py) + GitHub Actions exact SHA Verify + ADR-0020 實質完成。 |
+--- END MOD ---
+
+=== MOD 8 ===
+file: docs/TASKBOARD.md
+mode: replace
+--- ANCHOR ---
+| B-42 | 待辦 | **CHECK 16 靜默跳過無法解析的列，且 docstring 與實作不符** | 正規表示式 `[0-9a-fA-F]+\|BOOTSTRAP` 無法匹配「本批」，該列被完全忽略且**不輸出任何 INFO**。docstring 稱「讀最後一列」，實作是「讀最後一個能解析的列」——B-11 的第三次。依 §9.3 每批末列恆為「本批」，故此解析失敗是常態非例外。2026-09-06 實測：`rows` 為 `["BOOTSTRAP","e6f543a"]`，PASS 是巧合不是設計。處置：無法解析的列必須輸出 INFO 說明跳過幾列與原因；docstring 改為與實作一致。排批 2b |
+| B-43 | 待辦 | **CHECK 15 的 pending 集合在正常流程恆為空** | 實測回報「已核對 12 個 hash、待核對 0 個」。§9.3 要求當批項目符號寫「本批（尚未 commit）」不帶 hash，故 pending 永遠是 0。它仍能抓 A-18 第 5 次的半途狀態，但「待核對 0 個」與「一切正常」在輸出上分不出來。處置：輸出改為明確區分「無待核對項目（正常）」與「有待核對項目且無衝突」。排批 2b |
+--- PAYLOAD ---
+| B-42 | 已完成 | **CHECK 16 靜默跳過無法解析的列，且 docstring 與實作不符** | CHECK 16 與 _validate_exec_log_transition 已於 B-92 完整重寫修復，無法解析即 FAIL，docstring 一致並具單元測試。 |
+| B-43 | 已完成 | **CHECK 15 的 pending 集合在正常流程恆為空** | CHECK 15 輸出已明確區分「無待核對」與「待核對無交集」，單元測試全通。 |
+--- END MOD ---
+
+=== MOD 9 ===
+file: docs/TASKBOARD.md
+mode: replace
+--- ANCHOR ---
+| B-48 | 待辦 | **「回報即 commit」無法容納 commit 之後才發生的事** | `docs/EXEC-LOG.md` 的列在 commit 前寫入，CI 在 push 後才跑，時序上不可能相遇。執行者在 `2d76958` 正確診斷出 CRLF 卻無處可放，回覆格式亦只有「成功兩行」與「前置檢查未通過」兩種，CI 事後失敗兩者皆非。處置：push 後輪詢 CI 至 completed，以第二個 commit 記錄結論；回覆格式增列 CI 結論行；`conclusion != success` 一律走未通過格式。排批 2b |
+| B-49 | 待辦 | **CI 獨立查證的規則化與機械化** | 落點：`auditor-protocol.md` §6.1（新增第 0 項：上一批 CI 非 success 即不得產出下一份提示詞）＋ `handover-selftest.md` 新增 E19 ＋ `.agents/rules/git-and-reporting.md` §2.3。並新建 `scripts/ci_status.py`，**必須含 badge SVG fallback**（`actions/workflows/<name>/badge.svg` 的 `<title>` 標籤不受 API 速率限制）——GitHub API 每小時 60 次的上限曾兩度擋住審計官，而查不到很容易被當成沒問題。排批 2b |
+--- PAYLOAD ---
+| B-48 | 可封存 | **「回報即 commit」無法容納 commit 之後才發生的事** | 被 ADR-0020 supersede（由 GitHub Actions Verify 作為遠端權威，避免雙 commit 遞歸死結）。 |
+| B-49 | 可封存 | **CI 獨立查證的規則化與機械化** | 被 ADR-0020、AGENTS.md §10、git-and-reporting.md §2.5 與 README Verify badge supersede。 |
+--- END MOD ---
+
+=== MOD 10 ===
+file: docs/TASKBOARD.md
+mode: replace
+--- ANCHOR ---
+| B-57 | 待辦 | **審查機制的完成定義（五條可機械驗收）** | ①每個 CHECK 是獨立函式且有正反例測試（現 **9/16**）②每個 CHECK 至少命中過一次真違規並留紀錄（現**未追蹤**，處置為指紋 schema v2 增 `checks.last_hit`）③每份規範層檔案至少被一個 CHECK 涵蓋（現 **SOP/ 未涵蓋**）④本地與 CI 判準一致（現**差 1**，見 B-51）⑤審計官不能豁免任何自檢項（本批已修）。**現況 0/5，本批後 1/5** |
+--- PAYLOAD ---
+| B-57 | 可封存 | **審查機制的完成定義（五條可機械驗收）** | 審計官退出指標已由 Governance Exit 7/7、scripts/verify_all.py 與 ADR-0020 實質收斂完成。 |
+--- END MOD ---
+
+=== MOD 11 ===
+file: docs/TASKBOARD.md
+mode: replace
+--- ANCHOR ---
+| B-60 | 待辦 | **CHECK 17–24 編號一次配置完成（防 B-21 重演）** | B-21 記錄過「CHECK 16 編號被兩件事佔用」，根因是規劃編號與實作編號無單一權威來源。2026-09-06 一次配完：**17** ADR 規範混雜（B-40，批 2d）／**18** 規則三處同步（B-50，批 2d）／**19** `audited-*` tag 落後（B-12、B-21，批 2d）／**20** ARCHIVE-INDEX 可達性（B-59，批 2d）／**21** 跨層矛盾（B-54，批 2e）／**22** CRLF ＋ BOM（B-46、B-31，批 2d）／**23** 文件時效（B-55、B-56，批 2e）／**24** 跨技能觸發詞重疊（B-32，批 4）。**本列即為編號的單一權威來源，新增 CHECK 前必須先讀本列。** B-21 併入本項 |
+--- PAYLOAD ---
+| B-60 | 可封存 | **CHECK 17–24 編號一次配置完成（防 B-21 重演）** | CHECK 17 (Spec Replay) 與 CHECK 18 (Tag 名實一致) 已正式落地，舊 CHECK 17-24 擴張提案已被現有 Canonical 體系取代。 |
+--- END MOD ---
+
+=== MOD 12 ===
+file: docs/TASKBOARD.md
+mode: replace
+--- ANCHOR ---
+| B-74 | 待辦 | **執行者只回報無法從 commit 重生的東西**（**使用者發現**） | CHECK 輸出、行數、圍欄數、測試結果、指紋皆可由審計官自行重生，不必貼進對話。只回報四類：commit hash、CI 結論、停止原因、暫態實測（反例注入後已還原、repo 中查不到的）。**停止時只貼「不符項目 ＋ 相關檔的尾三條 INFO」**——實證：某次停止貼 136 行，審計官是靠其中 9 行下的結論。**例外**：動手前必讀的章節序列比對必須照貼，它測的是執行者有沒有真的讀檔（B-27），不是 repo 狀態。排批 2b-4 |
+--- PAYLOAD ---
+| B-74 | 已完成 | **執行者只回報無法從 commit 重生的東西**（**使用者發現**） | 執行者精簡回報已由 Mechanical-Truth Migration (4c6aee4) 實質完成落地，移除 machine-derived 數字重複比對。 |
+--- END MOD ---
+
+=== MOD 13 ===
+file: docs/TASKBOARD.md
+mode: replace
+--- ANCHOR ---
+| B-76 | 待辦 | **審計官的核對階段未腳本化** | 每輪固定跑 clone → `validate_skills` → `check_consistency` → `pytest` → `fingerprint --verify` → `git diff --stat` → 結構確認，而審計官每次手打。批 2a 即因 `--verify` 不在「驗證三項」內而漏跑（B-47）。處置：`scripts/audit_verify.py <base_head>` 一條指令跑完並輸出報告骨架，**內建 B-47 把 `--verify` 列為第四項**。排批 2b-4 |
+--- PAYLOAD ---
+| B-76 | 已完成 | **審計官的核對階段未腳本化** | 審計官核對動作已由 scripts/verify_all.py 單一權威入口實質完成腳本化。 |
+--- END MOD ---
+
+=== MOD 14 ===
+file: docs/TASKBOARD.md
+mode: replace
+--- ANCHOR ---
+| B-78 | 待辦 | **`scripts/apply_batch.py`：消除散文這一層有損的重新編碼** | 現行流程中，審計官寫散文提示詞、執行者解析散文並自己寫一次性套用腳本——**兩份腳本、兩次解析、中間隔著一次散文編碼**。若改為同一份批次規格「審計官用它模擬、執行者用它套用」，則「模擬的對象＝送出的文字＝執行者套用的文字」三者**在結構上不可能不一致**，B-64 那類錯誤從「靠閘門攔下」變成「不可能發生」。與 BPE 共用同一個解析器。排批 2b-5 |
+--- PAYLOAD ---
+| B-78 | 已完成 | **`scripts/apply_batch.py`：消除散文這一層有損的重新編碼** | 消除散文編碼已由 Batch Spec 規格與 apply/replay 流程 (0470df2 B-90) 實質完成。 |
+--- END MOD ---
+
+=== MOD 15 ===
+file: docs/TASKBOARD.md
+mode: replace
+--- ANCHOR ---
+| B-80 | 待辦 | **BPE 的模擬只涵蓋規格中有真實 payload 的修改** | 紀錄類修改以 `--check-only` 只驗錨點、不進入模擬，因此「套用後 CHECK 仍全 PASS」對這類修改是未經驗證的宣稱。根治方向為 B-85。排批 2b-6 |
+| B-81 | 待辦 | **BPE 的輸出不含錨點原文** | 輸出格式為「錨點 MOD 編號 檔案:行號 count」，沒有錨點原文。實證：審計官拿到輸出後對長錨點只寫行號，違反 `.agents/rules/prompt-preflight.md` §3.4 的 E3，被執行者攔下。**工具產生了正確的數字，但沒產生規則要求的全部內容，缺口就落回人身上。** 處置：增加 `--emit-anchors`。排批 2b-6 |
+--- PAYLOAD ---
+| B-80 | 可封存 | **BPE 的模擬只涵蓋規格中有真實 payload 的修改** | BPE 制度已由 Mechanical-Truth Migration 廢除，現由 Batch Spec 與 --as-if-committed + CHECK 17 取代。 |
+| B-81 | 可封存 | **BPE 的輸出不含錨點原文** | BPE 衍生值制度已隨 Mechanical-Truth Migration 廢除，不再適用。 |
+--- END MOD ---
+
+=== MOD 16 ===
+file: docs/TASKBOARD.md
+mode: replace
+--- ANCHOR ---
+| B-84 | 待辦 | **模擬閘門的觸發條件比它要保護的範圍窄** | `.claude/rules/auditor-protocol.md` §6.1 第 18 項的觸發條件是「修改 CHECK 10／11 掃描範圍內的檔案」，**但 CHECK 12／15／16 掃描的是 `docs/` 底下的檔案**。實證：某批只動 `docs/`，審計官依條件判定不需模擬，結果 CHECK 15 在執行者端 FAIL。**閘門存在、條件卻漏掉了它要保護的一半。** 處置：觸發條件改為「任何批次」，BPE 的模擬成本極低。排批 2b-6 |
+| B-85 | 待辦 | **散文是一層有損的重新編碼** | 實證：審計官模擬的是批次規格、送出的是散文提示詞，差異全為空白字元（前導空行、尾端空行、換行位置），實測行數與圍欄數雙雙不符被執行者攔下。`.claude/rules/auditor-protocol.md` §6.1 第 18 項要求「模擬的對象必須是最終送出的文字本身」，**而審計官以為做到了**。只要中間還有一層人寫的散文，那條規則就永遠只是宣告。處置：規則層與紀錄層一律以批次規格交付，即 B-78 的 `scripts/apply_batch.py`。排批 2b-6 |
+--- PAYLOAD ---
+| B-84 | 可封存 | **模擬閘門的觸發條件比它要保護的範圍窄** | 模擬閘門保護範圍已被 CHECK 17 全量 Spec Replay 逐位元比對完全覆蓋取代。 |
+| B-85 | 已完成 | **散文是一層有損的重新編碼** | 散文重新編碼問題已由 Batch Spec 標準格式徹底解決。 |
+--- END MOD ---
+
+=== MOD 17 ===
+file: docs/refactor-backlog.md
+mode: replace
+--- ANCHOR ---
+上次核對通過的 HEAD：a56c5c9
+--- PAYLOAD ---
+上次核對通過的 HEAD：94f75bc
+--- END MOD ---
+
+=== MOD 18 ===
+file: docs/refactor-backlog.md
+mode: replace
+--- ANCHOR ---
+- 本批（尚未 commit）（GitHub Actions 遠端健康權威與歷史失敗歸檔：建立 ADR-0020、SOP_14 §8、AUDIT-LOG CI 事故歸檔、README badge）已執行，**尚待審計官核對**，見 §5.4。
+--- PAYLOAD ---
+- `8f9847e`（GitHub Actions 遠端健康權威與歷史失敗歸檔：建立 ADR-0020、SOP_14 §8、AUDIT-LOG CI 事故歸檔、README badge）已於 2026-09-11 執行完成：11 檔異動、零夾帶，獨立驗證五項全過，CI Run 34590592049 success，**尚待審計官核對**，見 §5.4。
+- 本批（尚未 commit）（Post-Governance Taskboard Reconciliation：全面對帳 TASKBOARD B 節 50 項待辦，標定已實作與封存項目，產出 Next Execution Queue 與儀表板）已執行，**尚待審計官核對**，見 §5.4。
+--- END MOD ---
+
+=== MOD 19 ===
+file: docs/refactor-backlog.md
+mode: replace
+--- ANCHOR ---
+  E2 正式交接已於 2026-09-06 執行完成——此矛盾為 B-87 的第二個實證。
+--- PAYLOAD ---
+  E2 正式交接已於 2026-09-06 執行完成——此矛盾為 B-87 的第二個實證。
+
+56. **Post-Governance Taskboard Reconciliation（治理收斂後看板全面對帳）**（2026-09-11）
+    - **背景**：在 Governance Exit 7/7 完成、ADR-0020 確立 Remote Health Authority、歷史 Actions failure runs 全數清理後，為避免未來 Agent 執行已被取代或已完成的舊治理待辦，展開一次性 repo-to-taskboard 對帳。
+    - **對帳結果**：審查 B 節未完成 50 項，分類為 ALREADY_IMPLEMENTED (9 項)、SUPERSEDED (9 項)、DEFER_POST_MAIN (28 項)、BLOCKED_DEPENDENCY (3 項)、BLOCKED_USER_AUTH (1 項)。更新 18 個項目的狀態為「已完成」或「可封存」，並留存 supersede 理由。
+    - **佇列產出**：機械導出 NEXT EXECUTION QUEUE，確立「1. 正式交接驗證 D → 2. 主遷移 E → 3. 相依項 → 4. 演進 F → 5. 主重構後優化 → 6. 低優先探索」之推進順序，治理待辦不再阻擋主重構。
+
+--- END MOD ---
+

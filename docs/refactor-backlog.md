@@ -2825,7 +2825,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 5.1 上一批狀態
 
-上次核對通過的 HEAD：a56c5c9
+上次核對通過的 HEAD：94f75bc
 
 - `23af193`（執行者前置檢查 ＋ 回滾程序 ＋ `AUDIT-LOG.md` ＋ 四缺口修正）
   已於 2026-09-02 由審計官核對通過：6 檔異動（含 2 個新檔）、零夾帶、
@@ -2964,7 +2964,8 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   消除 Local 與 CI 驗證閘門分叉與 parity gap，完成 B-47）已於 2026-09-11 執行完成：10 檔異動、零夾帶，
   獨立驗證五項全過（54 技能、18 項 CHECK、126 passed、13 webapp passed、`--verify` exit 0），CI Run 34585789663 success，**尚待審計官核對**，見 §5.4。
 - `94f75bc`（Transient Red Reduction：強化 CHECK 9 candidate 自引防護與實作 --as-if-committed 預演模式，完成 B-51）已於 2026-09-11 執行完成：9 檔異動、零夾帶，獨立驗證五項全過（54 技能、18 項 CHECK、128 passed、13 webapp passed、`--verify` exit 0），CI Run verify success，**尚待審計官核對**，見 §5.4。
-- 本批（尚未 commit）（GitHub Actions 遠端健康權威與歷史失敗歸檔：建立 ADR-0020、SOP_14 §8、AUDIT-LOG CI 事故歸檔、README badge）已執行，**尚待審計官核對**，見 §5.4。
+- `8f9847e`（GitHub Actions 遠端健康權威與歷史失敗歸檔：建立 ADR-0020、SOP_14 §8、AUDIT-LOG CI 事故歸檔、README badge）已於 2026-09-11 執行完成：11 檔異動、零夾帶，獨立驗證五項全過，CI Run 34590592049 success，**尚待審計官核對**，見 §5.4。
+- 本批（尚未 commit）（Post-Governance Taskboard Reconciliation：全面對帳 TASKBOARD B 節 50 項待辦，標定已實作與封存項目，產出 Next Execution Queue 與儀表板）已執行，**尚待審計官核對**，見 §5.4。
 
 ### 5.2 待辦
 
@@ -3021,3 +3022,9 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   明示啟動**，故同檔 §9.1 的不交接例外不適用，適用同檔 §8.2 的正常換對話節奏。
   `docs/TASKBOARD.md` D-02 仍標「待辦」，但第 46 點 A 段記載
   E2 正式交接已於 2026-09-06 執行完成——此矛盾為 B-87 的第二個實證。
+
+56. **Post-Governance Taskboard Reconciliation（治理收斂後看板全面對帳）**（2026-09-11）
+    - **背景**：在 Governance Exit 7/7 完成、ADR-0020 確立 Remote Health Authority、歷史 Actions failure runs 全數清理後，為避免未來 Agent 執行已被取代或已完成的舊治理待辦，展開一次性 repo-to-taskboard 對帳。
+    - **對帳結果**：審查 B 節未完成 50 項，分類為 ALREADY_IMPLEMENTED (9 項)、SUPERSEDED (9 項)、DEFER_POST_MAIN (28 項)、BLOCKED_DEPENDENCY (3 項)、BLOCKED_USER_AUTH (1 項)。更新 18 個項目的狀態為「已完成」或「可封存」，並留存 supersede 理由。
+    - **佇列產出**：機械導出 NEXT EXECUTION QUEUE，確立「1. 正式交接驗證 D → 2. 主遷移 E → 3. 相依項 → 4. 演進 F → 5. 主重構後優化 → 6. 低優先探索」之推進順序，治理待辦不再阻擋主重構。
+

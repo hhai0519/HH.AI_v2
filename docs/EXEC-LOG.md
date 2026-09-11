@@ -35,4 +35,5 @@
 | ff17ae5 | 2026-09-11 | GOVERNANCE EXIT 安全與架構收斂：Batch Spec FILE 路徑安全約束與 Exit 審計 | 通過 | 實作 canonical validate_repo_path，全面防堵路徑穿透、UNC、Windows drive prefix 與 repo 逃逸；BPE 模擬沙盒與 CHECK 17 fail-closed 驗證通過；新增 12 項惡意路徑測試全過；完成治理收斂審計。 |
 | a56c5c9 | 2026-09-11 | GOVERNANCE EXIT Gate Parity 收斂：建立 Canonical Verification Entrypoint (scripts/verify_all.py) 統一 Local 與 CI 驗證 | 通過 | 實作 scripts/verify_all.py 統合 5 大 Correctness Gates；更新 .github/workflows/verify.yml 呼叫單一權威；新增 scripts/tests/test_verify_all.py 測試；更新 AGENTS.md、TASKBOARD.md (完成 B-47) 與交接區；消除 Local 與 CI 驗證分叉與 parity gap。 |
 | 94f75bc | 2026-09-11 | Transient Red Reduction：強化 CHECK 9 candidate 自引防護與實作 --as-if-committed 預演模式 | 通過 | 強化 check_9_handover_head 防堵 candidate 自引；check_consistency.py 支援 --as-if-committed 預演拓撲；新增 CASE A/B/C 與預演單元測試；更新 git-and-reporting.md 與 TASKBOARD (完成 B-51)；消除可預測的中間紅燈。 |
-| 本批 | 2026-09-11 | 執行者 (Antigravity) | 遠端健康權威與歷史失敗歸檔（ADR-0020、SOP_14 §8、AUDIT-LOG CI 事故歸檔、README badge） | 待核對 | Remote Health Authority 落地 |
+| 8f9847e | 2026-09-11 | 執行者 (Antigravity) | 遠端健康權威與歷史失敗歸檔（ADR-0020、SOP_14 §8、AUDIT-LOG CI 事故歸檔、README badge） | 待核對 | Remote Health Authority 落地 |
+| 本批 | 2026-09-11 | 執行者 (Antigravity) | 看板待辦對帳（TASKBOARD B 節 50 項對帳、18 項更新封存、產出 Next Execution Queue 與對帳儀表板） | 待核對 | Post-Governance Taskboard Reconciliation |
