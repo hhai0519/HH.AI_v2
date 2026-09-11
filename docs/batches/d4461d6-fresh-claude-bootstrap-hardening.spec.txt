@@ -1,0 +1,283 @@
+# 批次規格 — Fresh Claude Bootstrap Hardening
+#
+# batch_id     : d4461d6-fresh-claude-bootstrap-hardening
+# batch_mode   : EXACT_SPEC
+# base_commit  : d4461d6
+#
+# 目的：
+#   修復 fresh cold-start 環境的 bootstrap 介面缺陷；
+#   落實 targeted current-state extraction（A4 不再讀至 EOF）；
+#   確立 docs/TASKBOARD.md 為唯一下一步與剩餘工作權威（§9.1、§9.2、B3、C1、§5.4）；
+#   落實 auditor-protocol §6.1-11 mode-aware 與 §6.5 Repo Evidence Channel 原則；
+#   確立 d4461d6 macro audit PASS 單一事實來源（AUDIT-LOG 與 §5.1）；
+#   記錄 B-83 Phase 1 hardening truthful note（維持待辦不關單）；
+#   建立 E1 → E2 repo-visible state bridge 規則。
+#
+HEAD: d4461d62ab4fee0bca92043ad14a0ff2803f561d
+
+=== MOD 1 ===
+file: .claude/rules/handover-selftest.md
+mode: replace
+--- ANCHOR ---
+- [ ] A4 `sed -n '/## 五、接手交接區/,$p' docs/refactor-backlog.md`
+      有回傳實質內容，而不是空模板？
+--- PAYLOAD ---
+- [ ] A4 使用確定性指令（如 `python -c`）進行有界定向抽取（targeted bounded extraction）：
+      - **§5.1**：只取得「上次核對通過的 HEAD」及完成接手判斷必要的當前行（current rows）
+      - **§5.3**：取得完整 §5.3 當前區塊（直到下一個同級標題），掌握全部待裁決事項
+      - **§5.4**：取得完整 §5.4 當前區塊（直到下一個同級標題），掌握全部進行中狀態
+      （嚴禁全檔讀取或從 §5 一路讀到檔尾；目標為完整當前狀態之有界抽取，而非僅讀首段，亦不得重新載入歷史編號紀錄）
+--- END MOD ---
+
+=== MOD 2 ===
+file: .claude/rules/handover-selftest.md
+mode: replace
+--- ANCHOR ---
+- [ ] B3 兩者一致嗎？
+      - 一致 → 沒有未核對的批次，從 §5.2 接續
+      - 不一致 → **有一批已執行但未核對，先做核對再往下**
+- [ ] B4 §5.4「進行中／等待回報」有內容嗎？有的話那是什麼？
+
+**B3 是整套機制的核心。** 它不依賴記憶、不依賴摘要，
+只依賴兩個都查得到的事實。跳過這一步，後面全部是推測。
+
+---
+
+## C. 範圍（確認「該做什麼、不該做什麼」）
+
+- [ ] C1 §5.2 待辦的第 1 項是什麼？我打算做的是不是它？
+--- PAYLOAD ---
+- [ ] B3 兩者一致嗎？
+      - 一致 → 沒有未核對的批次，下一步從 `docs/TASKBOARD.md` 取得（§5.2 僅為指標）
+      - 不一致 → **有一批已執行但未核對，先做核對再往下**
+- [ ] B4 §5.4「進行中／等待回報」有內容嗎？有的話那是什麼？
+
+**B3 是整套機制的核心。** 它不依賴記憶、不依賴摘要，
+只依賴兩個都查得到的事實。跳過這一步，後面全部是推測。
+
+---
+
+## C. 範圍（確認「該做什麼、不該做什麼」）
+
+- [ ] C1 我從 `docs/TASKBOARD.md` 取得的下一步第 1 項是什麼？我打算做的是不是它？（交接區 §5.2 僅為指標）
+--- END MOD ---
+
+=== MOD 3 ===
+file: .claude/rules/auditor-protocol.md
+mode: replace
+--- ANCHOR ---
+11. **配對與覆蓋**：更新 `TASKBOARD.md` 的 HEAD 時，必須同時更新交接區
+    §5.1 第一行的 HEAD；`git add` 清單的每個非 exempt 檔案，都要同時出現在
+    Allowed Scope、批次規格修改目標與 Gate 驗證清單中。完整規則見
+    `.agents/rules/prompt-preflight.md` §3.1、§3.2。覆蓋檢查以 scope/spec/git-add
+    為準，不得再依賴手寫行數清單。
+--- PAYLOAD ---
+11. **配對與覆蓋（模式感知）**：更新 `TASKBOARD.md` 的 HEAD 時，必須同時更新交接區
+    §5.1 第一行的 HEAD。
+    - **EXACT_SPEC**：`git add` 清單的每個非 exempt 檔案，必須同時出現在
+      Allowed Scope、批次規格修改目標與 Gate 驗證清單中。
+    - **GOAL_SPEC**：實際 `git add` 路徑由執行者自 `git diff --name-only` 產生，
+      不要求 Auditor 預先列出 exact file list；Auditor 以 Allowed Scope 與
+      驗收準則（acceptance criteria）驗收。
+    完整規則見 `.agents/rules/prompt-preflight.md` §3.1、§3.2。
+--- END MOD ---
+
+=== MOD 4 ===
+file: .claude/rules/auditor-protocol.md
+mode: replace
+--- ANCHOR ---
+### 6.5 驗證步驟要設計攔截點
+
+只問「有沒有做」抓不到「只做一半」。驗證步驟要設計成
+**做一半就會露出來**的形式。
+
+作法：要求執行者**貼出整節內容並確認共 N 項**，
+而不是問「第 8 項加了嗎」。若他只加了第 8 項漏掉第 9 項，
+項目數對不上，當場就會被發現。
+
+同類手法還有：要求貼出章節標題的完整序列（跳號即異常）、
+要求貼出殘留檢查的實際命中清單（只回報「零命中」等於沒驗證）。
+--- PAYLOAD ---
+### 6.5 驗證步驟要設計攔截點（以 Repo Evidence 為主）
+
+只問「有沒有做」抓不到「只做一半」。驗證步驟要設計成
+**做一半就會露出來**的形式。
+
+**Repo Evidence Channel 單一契約**：驗證的主要依據是 repo 可觀察事實，
+而非要求執行者在對話中傳輸原始片段或機器證據。
+
+- **執行者職責（Executor）**：使用確定性工具產生驗證產物（如標題序列 heading sequence、項目數 item count、殘留命中清單 residual hit list、或其他驗證證據），但詳細結果必須寫入 `docs/EXEC-LOG.md` 或其他任務授權的 repo evidence。
+- **審計官職責（Macro Auditor）**：使用 fresh clone、GitHub Actions 或 GitHub API 自行驗證與檢驗 repo evidence，不得依賴對話傳輸。
+- **正常成功對話規範**：在正常成功的對話中，提示詞與驗收流程**不得**要求執行者貼出標題序列、項目清單、殘留命中清單、計數統計（counts）、終端原始輸出（raw output）、完整檔案或完整 diff。
+- **驗收準則表達方式**：若機器執行結果屬於驗收準則（acceptance criterion），提示詞應要求「執行並記錄 machine evidence」，而不是「貼出 evidence」。
+- **對話傳輸之唯一例外**：只有在 GitHub 遠端服務不可用（GitHub unavailable）、本地阻擋（local-only blocker）、或審計官明確要求特定片段（specific fragment）時，才允許貼出最小必要 snippet。
+--- END MOD ---
+
+=== MOD 5 ===
+file: .claude/rules/auditor-protocol.md
+mode: replace
+--- ANCHOR ---
+**接手後第一件事**
+執行 `git log -1 --format=%h` 取得實際 HEAD，與上面的 HEAD 比對：
+- 相同 → 沒有未核對的批次，從交接區 §5.2 接續
+- 不同 → 有一批已執行但未核對，先做核對再往下
+
+---
+
+**這份提示詞不取代交接區。** 交接區是權威來源，提示詞只是加速接手。
+兩者若有矛盾，一律以交接區與實際 repo 為準，
+並在回覆中明說矛盾之處（同 §9.2 第 5 點）。
+
+### 9.2 無交接接手
+
+舊 Agent 中斷、額度耗盡或對話遺失時，新 Agent 依開場動作載入後，
+按以下順序判斷「現在在哪」：
+
+1. 讀 §5.4「進行中／等待回報」——若有內容，代表有批次已發出但未核對。
+2. 讀 §5.1 第一行的「上次核對通過的 HEAD」。
+3. **執行 `git log -1 --format=%h` 取得實際 HEAD，與第 2 步比對：**
+   - **相同** → 沒有未核對的批次，從 §5.2 待辦接續。
+   - **不同** → 有一批已執行但未核對。**先做核對，再往下。**
+--- PAYLOAD ---
+**接手後第一件事**
+執行 `git log -1 --format=%h` 取得實際 HEAD，與上面的 HEAD 比對：
+- 相同 → 沒有未核對的批次，從 `docs/TASKBOARD.md` 取得下一步工作（交接區 §5.2 僅為指標）
+- 不同 → 有一批已執行但未核對，先做核對再往下
+
+---
+
+**這份提示詞不取代交接區。** 交接區是權威來源，提示詞只是加速接手。
+兩者若有矛盾，一律以交接區與實際 repo 為準，
+並在回覆中明說矛盾之處（同 §9.2 第 5 點）。
+
+### 9.2 無交接接手
+
+舊 Agent 中斷、額度耗盡或對話遺失時，新 Agent 依開場動作載入後，
+按以下順序判斷「現在在哪」：
+
+1. 讀 §5.4「進行中／等待回報」——若有內容，代表有批次已發出但未核對。
+2. 讀 §5.1 第一行的「上次核對通過的 HEAD」。
+3. **執行 `git log -1 --format=%h` 取得實際 HEAD，與第 2 步比對：**
+   - **相同** → 沒有未核對的批次，從 `docs/TASKBOARD.md` 取得下一步工作（交接區 §5.2 僅為指標，非待辦清單）。
+   - **不同** → 有一批已執行但未核對。**先做核對，再往下。**
+--- END MOD ---
+
+=== MOD 6 ===
+file: .claude/rules/auditor-protocol.md
+mode: replace
+--- ANCHOR ---
+| 第 3 項無法判斷 | 交接區 §5.2 是空的或過期 | 讀 `docs/refactor-backlog.md` 全文，並回報交接區失效 |
+--- PAYLOAD ---
+| 第 3 項無法判斷 | 交接區 §5.2 是空的或過期 | 讀 `docs/TASKBOARD.md` 確認下一步，並回報交接區失效 |
+--- END MOD ---
+
+=== MOD 7 ===
+file: .claude/rules/auditor-protocol.md
+mode: replace
+--- ANCHOR ---
+| **注入測試題目與答案卷** | 不進 repo，由使用者與留任的舊 Agent 保管 | 它考的是「被要求違規時會不會拒絕」。知道題目就能演出來，一旦洩題該測試永久失效 |
+
+驗證期間適用 §9.1 的「不交接」例外。
+--- PAYLOAD ---
+| **注入測試題目與答案卷** | 不進 repo，由使用者與留任的舊 Agent 保管 | 它考的是「被要求違規時會不會拒絕」。知道題目就能演出來，一旦洩題該測試永久失效 |
+
+**E1 → E2 Repo-Visible State Bridge 規則**：
+E1 注入測試之題目（questions）、答案卷（answer key）與注入負載（injection payload）絕對不得進 repo，由使用者與審計官保管。
+但 E1 判定通過（PASS）後、且在啟動 D-02 正式交接之全新生產對話前，必須透過正常執行者狀態同步 commit（executor state-sync commit），使 repo 產生可見之狀態流轉（例如在 `docs/TASKBOARD.md` 將 A-07 / D-01 標記為已完成，D-02 標記為 Ready／進行中）。
+**原則：只保存 PASS 狀態流轉（state transition），絕對不保存測試秘密（test secrets）。** 讓全新生產對話的新 Agent 能依 repo 事實判定前置條件已滿足。
+
+驗證期間適用 §9.1 的「不交接」例外。
+--- END MOD ---
+
+=== MOD 8 ===
+file: docs/AUDIT-LOG.md
+mode: replace
+--- ANCHOR ---
+| dc806e1 | 2026-09-11 | §4.1-1 | **核對通過**。8 檔異動、零夾帶。獨立驗證五項全過：54 技能零錯誤、18 項 CHECK 全 PASS、128 passed、13 webapp passed、`fingerprint.py --verify` exit 0；GitHub Actions Run 34608625314 (Run #31) success。CHECK 17 normal replay 驗證通過 | Final Governance Exit — Reporting Contract Micro-Cleanup 經宏觀審計官核對通過。消除 git-and-reporting.md 舊有口頭報告/行號/diff 與 B-36 之衝突，退役舊規則為歷史留痕，對齊 SOP_14 階段審計文字。 |
+--- PAYLOAD ---
+| dc806e1 | 2026-09-11 | §4.1-1 | **核對通過**。8 檔異動、零夾帶。獨立驗證五項全過：54 技能零錯誤、18 項 CHECK 全 PASS、128 passed、13 webapp passed、`fingerprint.py --verify` exit 0；GitHub Actions Run 34608625314 (Run #31) success。CHECK 17 normal replay 驗證通過 | Final Governance Exit — Reporting Contract Micro-Cleanup 經宏觀審計官核對通過。消除 git-and-reporting.md 舊有口頭報告/行號/diff 與 B-36 之衝突，退役舊規則為歷史留痕，對齊 SOP_14 階段審計文字。 |
+| d4461d62 | 2026-09-11 | §4.1-1 | **核對通過**。13 檔異動、零夾帶。獨立驗證五項全過：54 技能零錯誤、18 項 CHECK 全 PASS、128 passed、13 webapp passed、`fingerprint.py --verify` exit 0；GitHub Actions Run 34610027229 (Run #32) success。CHECK 17 normal replay 驗證通過 | Final Governance Exit — Auditor Contract & Audit-State SSOT Convergence 經宏觀審計官核對通過（Architecture Health = GREEN, Governance Exit = FINAL PASS）。移除 auditor-protocol/selftest/preflight 舊有貼輸出/diff 要求；退役 mandatory audited tag 建立並確立 AUDIT-LOG、refactor-backlog §5.1 與 Actions 為 SSOT；B-12/B-91 轉可封存。 |
+
+--- END MOD ---
+
+=== MOD 9 ===
+file: docs/TASKBOARD.md
+mode: replace
+--- ANCHOR ---
+**最後更新**：2026-09-11，HEAD `dc806e1` 之後（Final Governance Exit — Auditor Contract & Audit-State SSOT Convergence）
+--- PAYLOAD ---
+**最後更新**：2026-09-11，HEAD `d4461d62` 之後（Fresh Claude Bootstrap Hardening — 執行中）
+--- END MOD ---
+
+=== MOD 10 ===
+file: docs/TASKBOARD.md
+mode: replace
+--- ANCHOR ---
+| B-83 | 待辦 | **開場動作單次載入 2,338 行** | 2026-09-07 實測：`PRINCIPLES.md` 345 ＋ `.claude/rules/auditor-protocol.md` 875 ＋ `.claude/rules/handover-selftest.md` 96 ＋ `docs/TASKBOARD.md` 221 ＋ `docs/EXEC-LOG.md` 28 ＋ 交接區 773。交接區中第 44 至 53 點實測 589 行是歷史留痕，不該每次開場全文載入。處置：移入 `docs/archive/`，與 B-58 合併。排批 2f |
+--- PAYLOAD ---
+| B-83 | 待辦 | **開場動作單次載入 2,338 行** | 2026-09-07 實測：`PRINCIPLES.md` 345 ＋ `.claude/rules/auditor-protocol.md` 875 ＋ `.claude/rules/handover-selftest.md` 96 ＋ `docs/TASKBOARD.md` 221 ＋ `docs/EXEC-LOG.md` 28 ＋ 交接區 773。交接區中第 44 至 53 點實測 589 行是歷史留痕，不該每次開場全文載入。處置：移入 `docs/archive/`，與 B-58 合併。排批 2f。（2026-09-11 狀態備註：Fresh-Claude Bootstrap Phase 1 hardening 已完成：A4 不再 §5 → EOF、改採 targeted current-state extraction、確立 TASKBOARD next-work authority、historical rationale on demand；但 archive / historical slimming 尚未完整完成，故本項保持待辦，不得錯誤關單） |
+--- END MOD ---
+
+=== MOD 11 ===
+file: docs/refactor-backlog.md
+mode: replace
+--- ANCHOR ---
+### 5.1 上一批狀態
+
+上次核對通過的 HEAD：dc806e1
+--- PAYLOAD ---
+### 5.1 上一批狀態
+
+上次核對通過的 HEAD：d4461d6
+--- END MOD ---
+
+=== MOD 12 ===
+file: docs/refactor-backlog.md
+mode: replace
+--- ANCHOR ---
+- `dc806e1`（Final Governance Exit — Reporting Contract Micro-Cleanup：消除 git-and-reporting.md 舊有口頭報告/行號/diff 規定與 B-36 之衝突，將舊規則退役為歷史留痕，對齊 SOP_14 階段審計文字）已於 2026-09-11 執行完成：8 檔異動、零夾帶，獨立驗證五項全過，CI Run 34608625314 (Run #31) success，**尚待審計官核對**，見 §5.4。
+- 本批（尚未 commit）（Final Governance Exit — Auditor Contract & Audit-State SSOT Convergence：移除 auditor-protocol/selftest/preflight 舊有貼輸出/diff 要求；退役 mandatory audited tag 建立並確立 AUDIT-LOG、refactor-backlog §5.1 與 Actions 為 SSOT；B-12/B-91 轉可封存）已執行，**尚待審計官核對**，見 §5.4。
+--- PAYLOAD ---
+- `dc806e1`（Final Governance Exit — Reporting Contract Micro-Cleanup：消除 git-and-reporting.md 舊有口頭報告/行號/diff 規定與 B-36 之衝突，將舊規則退役為歷史留痕，對齊 SOP_14 階段審計文字）已於 2026-09-11 由審計官核對通過：8 檔異動、零夾帶，獨立驗證五項全過，CI Run 34608625314 (Run #31) success。
+- `d4461d6`（Final Governance Exit — Auditor Contract & Audit-State SSOT Convergence：移除 auditor-protocol/selftest/preflight 舊有貼輸出/diff 要求；退役 mandatory audited tag 建立並確立 AUDIT-LOG、refactor-backlog §5.1 與 Actions 為 SSOT；B-12/B-91 轉可封存）已於 2026-09-11 由審計官核對通過：13 檔異動、零夾帶，獨立驗證五項全過，CI Run 34610027229 (Run #32) success。
+--- END MOD ---
+
+=== MOD 13 ===
+file: docs/refactor-backlog.md
+mode: replace
+--- ANCHOR ---
+- **本批（Final Governance Exit — Auditor Contract & Audit-State SSOT Convergence）已執行完成，等待審計官核對。**
+  內容：消除 `.claude/rules/auditor-protocol.md`、`.claude/rules/handover-selftest.md` 與 `.agents/rules/prompt-preflight.md` 殘留之要求貼出 Gate output、diff/full-file 等舊 reporting contract；
+  確立 Repo Evidence Channel 與單行對話回報契約；
+  退役 mandatory `audited-*` tag 建立，確立 AUDIT-LOG（per-commit 結論）、refactor-backlog §5.1（最新 checkpoint）與 GitHub Actions（遠端健康權威）為單一事實來源；
+  B-12 與 B-91 轉為可封存，刻意保留 9 個錯 tag 作為歷史留痕，不作破壞性遠端清理。
+- **後續順序**：治理層 7/7 核心里程碑已全數收斂就緒，安全路徑約束已封閉；
+  唯一剩餘 B-91（9 個歷史錯 tag，待授權）不阻擋治理層 exit。
+  待宏觀審計官裁決 Governance Exit 後，即可正式退出治理層並啟動 3（E-01 技能遷移第一梯次 ＋ B-01）主重構主線。
+- **後續順序（唯一權威版本，2026-09-11 依 Governance Freeze 重排）**：
+  2b-7（B-90／B-81／B-53）→ **3（E-01 技能遷移第一梯次 ＋ B-01）**→
+  4（C 節執行 ＋ B-30／B-31／B-32／B-33）→ 5（Runtime 依賴調研 ＋ C-04 細節裁決）→
+  6 起 E-03、E-02、E-04、E-05 →（隨時可插）2f 封存與減法。
+  **Governance Freeze 判準**：自 2026-09-11 起，只有兩類治理項目可以阻塞 E 節——
+  (A) 會造成假綠燈、審計鏈汙染、執行結果錯誤或 CI 完整性失效者；
+  (B) 能一次性以 CI／決定性腳本／機械驗證解決整類問題的架構性改善。
+  其餘（歷史說明、流程優化、重複敘述、不影響重構正確性的文件問題）
+  一律登錄後不排批，累積至 2f 一次處理。
+  **被本判準判為不阻塞而延後的項目**：B-16／B-26／B-28／B-29／B-38／B-41／
+  B-42／B-43／B-47／B-51／B-54／B-55／B-56／B-57／B-58／B-59／B-68／B-69／
+  B-70／B-71／B-74／B-75／B-76／B-83／B-84／B-86／B-87／B-88／B-92 共 29 項。
+  **被 CHECK 17 結構性取代而不需個別處理**：B-78／B-80／B-85／B-89 第 ② 項
+  （字形、空白、換行、手打偏差一律由逐位元重放比對攔截）。
+  使用者於 2026-09-06 裁決的粗粒度順序見第 53 點 F 段，本列取代其中的批次編號。
+- **待裁決事項**：目前無。C-04 已裁決採用方向（runtime/ + shared/ + skills/），E-03 轉為待辦，下一步開展只讀依賴調研（READ-ONLY DEPENDENCY INVENTORY）。
+  已裁決事項見 §5.3 與 `docs/TASKBOARD.md` C 節，不要重複提問。
+- **B-01（ADR-0002／0004／0010 分層搬移）保留給批 3**，不得提前執行。
+- **驗證階段（`.claude/rules/auditor-protocol.md` §9.5）目前未由使用者
+  明示啟動**，故同檔 §9.1 的不交接例外不適用，適用同檔 §8.2 的正常換對話節奏。
+  `docs/TASKBOARD.md` D-02 仍標「待辦」，但第 46 點 A 段記載
+  E2 正式交接已於 2026-09-06 執行完成——此矛盾為 B-87 的第二個實證。
+--- PAYLOAD ---
+- **尚待審計批次**：目前無（base `d4461d6` 經宏觀審計官裁決核對通過，無未核對批次；本批 Bootstrap Hardening 執行中尚未 commit）。
+- **待使用者裁決事項**：目前無。C-04 已裁決採用方向（runtime/ + shared/ + skills/），已裁決事項見 §5.3 與 `docs/TASKBOARD.md` C 節，不要重複提問。
+- **下一步／剩餘工作權威**：以 `docs/TASKBOARD.md` 為唯一 remaining-work / next-work authority，交接區不保留待辦清單副本或執行佇列。
+--- END MOD ---

@@ -234,11 +234,14 @@ CHECK 8 至 15 有 63 個測試並經審計官反例注入驗證，
     **自動載入的規則可能已被丟出 context 而執行者不自知**。
     這是「規則存在、也載入了，但被 context 截斷丟掉」的第三種失效形態，
     前兩種是「不在執行路徑上」與「沒有偵測」。
-11. **配對與覆蓋**：更新 `TASKBOARD.md` 的 HEAD 時，必須同時更新交接區
-    §5.1 第一行的 HEAD；`git add` 清單的每個非 exempt 檔案，都要同時出現在
-    Allowed Scope、批次規格修改目標與 Gate 驗證清單中。完整規則見
-    `.agents/rules/prompt-preflight.md` §3.1、§3.2。覆蓋檢查以 scope/spec/git-add
-    為準，不得再依賴手寫行數清單。
+11. **配對與覆蓋（模式感知）**：更新 `TASKBOARD.md` 的 HEAD 時，必須同時更新交接區
+    §5.1 第一行的 HEAD。
+    - **EXACT_SPEC**：`git add` 清單的每個非 exempt 檔案，必須同時出現在
+      Allowed Scope、批次規格修改目標與 Gate 驗證清單中。
+    - **GOAL_SPEC**：實際 `git add` 路徑由執行者自 `git diff --name-only` 產生，
+      不要求 Auditor 預先列出 exact file list；Auditor 以 Allowed Scope 與
+      驗收準則（acceptance criteria）驗收。
+    完整規則見 `.agents/rules/prompt-preflight.md` §3.1、§3.2。
 12. **每份提示詞必須包含「審計官自檢聲明」區塊**，
     逐項列出 `handover-selftest.md` E 節的自檢結果。
     **這是自檢唯一的外部產物。**
@@ -323,17 +326,19 @@ CHECK 8 至 15 有 63 個測試並經審計官反例注入驗證，
 ---
 
 
-### 6.5 驗證步驟要設計攔截點
+### 6.5 驗證步驟要設計攔截點（以 Repo Evidence 為主）
 
 只問「有沒有做」抓不到「只做一半」。驗證步驟要設計成
 **做一半就會露出來**的形式。
 
-作法：要求執行者**貼出整節內容並確認共 N 項**，
-而不是問「第 8 項加了嗎」。若他只加了第 8 項漏掉第 9 項，
-項目數對不上，當場就會被發現。
+**Repo Evidence Channel 單一契約**：驗證的主要依據是 repo 可觀察事實，
+而非要求執行者在對話中傳輸原始片段或機器證據。
 
-同類手法還有：要求貼出章節標題的完整序列（跳號即異常）、
-要求貼出殘留檢查的實際命中清單（只回報「零命中」等於沒驗證）。
+- **執行者職責（Executor）**：使用確定性工具產生驗證產物（如標題序列 heading sequence、項目數 item count、殘留命中清單 residual hit list、或其他驗證證據），但詳細結果必須寫入 `docs/EXEC-LOG.md` 或其他任務授權的 repo evidence。
+- **審計官職責（Macro Auditor）**：使用 fresh clone、GitHub Actions 或 GitHub API 自行驗證與檢驗 repo evidence，不得依賴對話傳輸。
+- **正常成功對話規範**：在正常成功的對話中，提示詞與驗收流程**不得**要求執行者貼出標題序列、項目清單、殘留命中清單、計數統計（counts）、終端原始輸出（raw output）、完整檔案或完整 diff。
+- **驗收準則表達方式**：若機器執行結果屬於驗收準則（acceptance criterion），提示詞應要求「執行並記錄 machine evidence」，而不是「貼出 evidence」。
+- **對話傳輸之唯一例外**：只有在 GitHub 遠端服務不可用（GitHub unavailable）、本地阻擋（local-only blocker）、或審計官明確要求特定片段（specific fragment）時，才允許貼出最小必要 snippet。
 
 > [!WARNING]
 > **攔截點屬於驗證設計，不是規範內容。**
@@ -569,7 +574,7 @@ count 為 0 代表錨點不存在，大於 1 代表會改到錯的地方。
 
 **接手後第一件事**
 執行 `git log -1 --format=%h` 取得實際 HEAD，與上面的 HEAD 比對：
-- 相同 → 沒有未核對的批次，從交接區 §5.2 接續
+- 相同 → 沒有未核對的批次，從 `docs/TASKBOARD.md` 取得下一步工作（交接區 §5.2 僅為指標）
 - 不同 → 有一批已執行但未核對，先做核對再往下
 
 ---
@@ -586,7 +591,7 @@ count 為 0 代表錨點不存在，大於 1 代表會改到錯的地方。
 1. 讀 §5.4「進行中／等待回報」——若有內容，代表有批次已發出但未核對。
 2. 讀 §5.1 第一行的「上次核對通過的 HEAD」。
 3. **執行 `git log -1 --format=%h` 取得實際 HEAD，與第 2 步比對：**
-   - **相同** → 沒有未核對的批次，從 §5.2 待辦接續。
+   - **相同** → 沒有未核對的批次，從 `docs/TASKBOARD.md` 取得下一步工作（交接區 §5.2 僅為指標，非待辦清單）。
    - **不同** → 有一批已執行但未核對。**先做核對，再往下。**
 4. 讀 §5.3「待裁決」——不要重複提問已經裁決過的事項。
 5. 若交接區與實際 repo 狀態矛盾，**一律以 repo 為準**，
@@ -634,7 +639,7 @@ CHECK 15 因此回報「待核對 0 個 hash」——**機制存在，但真實�
 |---|---|---|
 | 無法完成第 1 項 | clone 失敗、檔案不存在 | 依開場動作的「載入失敗的處理」，第一句明說 |
 | 第 2 項 HEAD 不一致 | 有批次已執行但未核對 | 依 §9.2 第 3 點，先核對再往下 |
-| 第 3 項無法判斷 | 交接區 §5.2 是空的或過期 | 讀 `docs/refactor-backlog.md` 全文，並回報交接區失效 |
+| 第 3 項無法判斷 | 交接區 §5.2 是空的或過期 | 讀 `docs/TASKBOARD.md` 確認下一步，並回報交接區失效 |
 | 第 4 項重複提問 | 未讀 §5.3 | 補讀後更正 |
 
 **這四項同時是新 Agent 的自檢清單與判定標準。**
@@ -674,6 +679,11 @@ CHECK 15 因此回報「待核對 0 個 hash」——**機制存在，但真實�
 |---|---|---|
 | **接手自檢清單** | `.claude/rules/handover-selftest.md`（進 repo） | 它檢查的是「你做了沒」，不是「你答對沒」。看到內容不影響效果，反而應該讓新 Agent 主動照著自檢 |
 | **注入測試題目與答案卷** | 不進 repo，由使用者與留任的舊 Agent 保管 | 它考的是「被要求違規時會不會拒絕」。知道題目就能演出來，一旦洩題該測試永久失效 |
+
+**E1 → E2 Repo-Visible State Bridge 規則**：
+E1 注入測試之題目（questions）、答案卷（answer key）與注入負載（injection payload）絕對不得進 repo，由使用者與審計官保管。
+但 E1 判定通過（PASS）後、且在啟動 D-02 正式交接之全新生產對話前，必須透過正常執行者狀態同步 commit（executor state-sync commit），使 repo 產生可見之狀態流轉（例如在 `docs/TASKBOARD.md` 將 A-07 / D-01 標記為已完成，D-02 標記為 Ready／進行中）。
+**原則：只保存 PASS 狀態流轉（state transition），絕對不保存測試秘密（test secrets）。** 讓全新生產對話的新 Agent 能依 repo 事實判定前置條件已滿足。
 
 驗證期間適用 §9.1 的「不交接」例外。
 三個事件全部通過後，例外解除，恢復 §8.2 的正常換對話節奏。

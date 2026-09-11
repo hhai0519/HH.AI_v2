@@ -2825,7 +2825,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 5.1 上一批狀態
 
-上次核對通過的 HEAD：dc806e1
+上次核對通過的 HEAD：d4461d6
 
 - `23af193`（執行者前置檢查 ＋ 回滾程序 ＋ `AUDIT-LOG.md` ＋ 四缺口修正）
   已於 2026-09-02 由審計官核對通過：6 檔異動（含 2 個新檔）、零夾帶、
@@ -2968,8 +2968,8 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 - `60d5479`（Post-Governance Taskboard Reconciliation：全面對帳 TASKBOARD B 節 50 項待辦，標定已實作與封存項目，產出 Next Execution Queue 與儀表板）已於 2026-09-11 執行完成：6 檔異動、零夾帶，獨立驗證五項全過，CI Run 34593961967 success，**尚待審計官核對**，見 §5.4。
 - `acc5890`（Final Governance Exit — Active Contract Cleanup：全面對齊 GOAL_SPEC 正常重構預設、mode-aware preflight、SOP 執行期可用性邊界、去除破壞性操作指引、E-03 轉待辦）已於 2026-09-11 執行完成：22 檔異動、零夾帶，獨立驗證五項全過，CI Run 34604144548 (Run #29) success，**尚待審計官核對**，見 §5.4。
 - `9553994`（Final Governance Exit — Convergence Patch：確立 GOAL_SPEC 檔案自主性、preflight/selftest 模式感知徹底解耦、M3 自主修復閉環、B-36 回報通道轉移、SOP_14 治理減法）已於 2026-09-11 執行完成：17 檔異動、零夾帶，獨立驗證五項全過，CI Run 34606818571 (Run #30) success，**尚待審計官核對**，見 §5.4。
-- `dc806e1`（Final Governance Exit — Reporting Contract Micro-Cleanup：消除 git-and-reporting.md 舊有口頭報告/行號/diff 規定與 B-36 之衝突，將舊規則退役為歷史留痕，對齊 SOP_14 階段審計文字）已於 2026-09-11 執行完成：8 檔異動、零夾帶，獨立驗證五項全過，CI Run 34608625314 (Run #31) success，**尚待審計官核對**，見 §5.4。
-- 本批（尚未 commit）（Final Governance Exit — Auditor Contract & Audit-State SSOT Convergence：移除 auditor-protocol/selftest/preflight 舊有貼輸出/diff 要求；退役 mandatory audited tag 建立並確立 AUDIT-LOG、refactor-backlog §5.1 與 Actions 為 SSOT；B-12/B-91 轉可封存）已執行，**尚待審計官核對**，見 §5.4。
+- `dc806e1`（Final Governance Exit — Reporting Contract Micro-Cleanup：消除 git-and-reporting.md 舊有口頭報告/行號/diff 規定與 B-36 之衝突，將舊規則退役為歷史留痕，對齊 SOP_14 階段審計文字）已於 2026-09-11 由審計官核對通過：8 檔異動、零夾帶，獨立驗證五項全過，CI Run 34608625314 (Run #31) success。
+- `d4461d6`（Final Governance Exit — Auditor Contract & Audit-State SSOT Convergence：移除 auditor-protocol/selftest/preflight 舊有貼輸出/diff 要求；退役 mandatory audited tag 建立並確立 AUDIT-LOG、refactor-backlog §5.1 與 Actions 為 SSOT；B-12/B-91 轉可封存）已於 2026-09-11 由審計官核對通過：13 檔異動、零夾帶，獨立驗證五項全過，CI Run 34610027229 (Run #32) success。
 
 ### 5.2 待辦
 
@@ -2995,36 +2995,9 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 > 兩份內容不同的「後續」順序）。清理紀錄與成因見第 53 點。
 > **歷史敘述屬留痕層，落點是編號點，不是本節。**
 
-- **本批（Final Governance Exit — Auditor Contract & Audit-State SSOT Convergence）已執行完成，等待審計官核對。**
-  內容：消除 `.claude/rules/auditor-protocol.md`、`.claude/rules/handover-selftest.md` 與 `.agents/rules/prompt-preflight.md` 殘留之要求貼出 Gate output、diff/full-file 等舊 reporting contract；
-  確立 Repo Evidence Channel 與單行對話回報契約；
-  退役 mandatory `audited-*` tag 建立，確立 AUDIT-LOG（per-commit 結論）、refactor-backlog §5.1（最新 checkpoint）與 GitHub Actions（遠端健康權威）為單一事實來源；
-  B-12 與 B-91 轉為可封存，刻意保留 9 個錯 tag 作為歷史留痕，不作破壞性遠端清理。
-- **後續順序**：治理層 7/7 核心里程碑已全數收斂就緒，安全路徑約束已封閉；
-  唯一剩餘 B-91（9 個歷史錯 tag，待授權）不阻擋治理層 exit。
-  待宏觀審計官裁決 Governance Exit 後，即可正式退出治理層並啟動 3（E-01 技能遷移第一梯次 ＋ B-01）主重構主線。
-- **後續順序（唯一權威版本，2026-09-11 依 Governance Freeze 重排）**：
-  2b-7（B-90／B-81／B-53）→ **3（E-01 技能遷移第一梯次 ＋ B-01）**→
-  4（C 節執行 ＋ B-30／B-31／B-32／B-33）→ 5（Runtime 依賴調研 ＋ C-04 細節裁決）→
-  6 起 E-03、E-02、E-04、E-05 →（隨時可插）2f 封存與減法。
-  **Governance Freeze 判準**：自 2026-09-11 起，只有兩類治理項目可以阻塞 E 節——
-  (A) 會造成假綠燈、審計鏈汙染、執行結果錯誤或 CI 完整性失效者；
-  (B) 能一次性以 CI／決定性腳本／機械驗證解決整類問題的架構性改善。
-  其餘（歷史說明、流程優化、重複敘述、不影響重構正確性的文件問題）
-  一律登錄後不排批，累積至 2f 一次處理。
-  **被本判準判為不阻塞而延後的項目**：B-16／B-26／B-28／B-29／B-38／B-41／
-  B-42／B-43／B-47／B-51／B-54／B-55／B-56／B-57／B-58／B-59／B-68／B-69／
-  B-70／B-71／B-74／B-75／B-76／B-83／B-84／B-86／B-87／B-88／B-92 共 29 項。
-  **被 CHECK 17 結構性取代而不需個別處理**：B-78／B-80／B-85／B-89 第 ② 項
-  （字形、空白、換行、手打偏差一律由逐位元重放比對攔截）。
-  使用者於 2026-09-06 裁決的粗粒度順序見第 53 點 F 段，本列取代其中的批次編號。
-- **待裁決事項**：目前無。C-04 已裁決採用方向（runtime/ + shared/ + skills/），E-03 轉為待辦，下一步開展只讀依賴調研（READ-ONLY DEPENDENCY INVENTORY）。
-  已裁決事項見 §5.3 與 `docs/TASKBOARD.md` C 節，不要重複提問。
-- **B-01（ADR-0002／0004／0010 分層搬移）保留給批 3**，不得提前執行。
-- **驗證階段（`.claude/rules/auditor-protocol.md` §9.5）目前未由使用者
-  明示啟動**，故同檔 §9.1 的不交接例外不適用，適用同檔 §8.2 的正常換對話節奏。
-  `docs/TASKBOARD.md` D-02 仍標「待辦」，但第 46 點 A 段記載
-  E2 正式交接已於 2026-09-06 執行完成——此矛盾為 B-87 的第二個實證。
+- **尚待審計批次**：目前無（base `d4461d6` 經宏觀審計官裁決核對通過，無未核對批次；本批 Bootstrap Hardening 執行中尚未 commit）。
+- **待使用者裁決事項**：目前無。C-04 已裁決採用方向（runtime/ + shared/ + skills/），已裁決事項見 §5.3 與 `docs/TASKBOARD.md` C 節，不要重複提問。
+- **下一步／剩餘工作權威**：以 `docs/TASKBOARD.md` 為唯一 remaining-work / next-work authority，交接區不保留待辦清單副本或執行佇列。
 
 56. **Post-Governance Taskboard Reconciliation（治理收斂後看板全面對帳）**（2026-09-11）
     - **背景**：在 Governance Exit 7/7 完成、ADR-0020 確立 Remote Health Authority、歷史 Actions failure runs 全數清理後，為避免未來 Agent 執行已被取代或已完成的舊治理待辦，展開一次性 repo-to-taskboard 對帳。

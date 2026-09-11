@@ -10,7 +10,7 @@
 `待裁決`（需使用者決定）／`已完成`（仍可能被引用）／
 `可封存`（不影響後續工作，待使用者確認後移入封存區）
 
-**最後更新**：2026-09-11，HEAD `dc806e1` 之後（Final Governance Exit — Auditor Contract & Audit-State SSOT Convergence）
+**最後更新**：2026-09-11，HEAD `d4461d62` 之後（Fresh Claude Bootstrap Hardening — 執行中）
 
 ---
 
@@ -154,7 +154,7 @@
 | B-80 | 可封存 | **BPE 的模擬只涵蓋規格中有真實 payload 的修改** | 原 check-only simulation gap 已隨 check-only/手寫 derived-truth authority 消失；現行 source mutation 均以實際 Batch Spec MOD 及 CHECK 17 replay 管理。BPE 本身仍保留。 |
 | B-81 | 可封存 | **BPE 的輸出不含錨點原文** | anchor 原文不再需要由 LLM 從 BPE output 重新抄成 blocking truth；BPE 本身仍是 active parser/simulator，不是被廢除。 |
 | B-82 | 已完成 | **交接區 §5.4 是一個只追加、從不清理的堆疊** | 每份提示詞只替換第一個項目符號並在其前追加，**從未移除被取代的**，單調成長十輪。2026-09-07 實測 62 行（含標題）、18 個頂層項目符號，其中十條過期或互相矛盾。**本批完成清理，成因見 `docs/refactor-backlog.md` 第 53 點 A 段。惟偵測機制尚未建立**——§5.4 頂層項目符號數上限檢查排批 2d，編號依 B-60 配置 |
-| B-83 | 待辦 | **開場動作單次載入 2,338 行** | 2026-09-07 實測：`PRINCIPLES.md` 345 ＋ `.claude/rules/auditor-protocol.md` 875 ＋ `.claude/rules/handover-selftest.md` 96 ＋ `docs/TASKBOARD.md` 221 ＋ `docs/EXEC-LOG.md` 28 ＋ 交接區 773。交接區中第 44 至 53 點實測 589 行是歷史留痕，不該每次開場全文載入。處置：移入 `docs/archive/`，與 B-58 合併。排批 2f |
+| B-83 | 待辦 | **開場動作單次載入 2,338 行** | 2026-09-07 實測：`PRINCIPLES.md` 345 ＋ `.claude/rules/auditor-protocol.md` 875 ＋ `.claude/rules/handover-selftest.md` 96 ＋ `docs/TASKBOARD.md` 221 ＋ `docs/EXEC-LOG.md` 28 ＋ 交接區 773。交接區中第 44 至 53 點實測 589 行是歷史留痕，不該每次開場全文載入。處置：移入 `docs/archive/`，與 B-58 合併。排批 2f。（2026-09-11 狀態備註：Fresh-Claude Bootstrap Phase 1 hardening 已完成：A4 不再 §5 → EOF、改採 targeted current-state extraction、確立 TASKBOARD next-work authority、historical rationale on demand；但 archive / historical slimming 尚未完整完成，故本項保持待辦，不得錯誤關單） |
 | B-84 | 可封存 | **模擬閘門的觸發條件比它要保護的範圍窄** | 模擬閘門保護範圍已被 CHECK 17 全量 Spec Replay 逐位元比對完全覆蓋取代。 |
 | B-85 | 已完成 | **散文是一層有損的重新編碼** | 解決的是散文不得充當 exact mechanical truth（GOAL_SPEC 定義目標邊界，EXACT_SPEC / Batch Spec + CHECK 17 提供 canonical replay）；不宣稱 executor 已有通用 apply_batch.py。 |
 | B-86 | 已完成 | **規則層從未說明 BPE 是什麼** | BPE 用法與批次規格（Batch Spec）格式已於 Mechanical-Truth Migration 完整寫入 `.claude/rules/auditor-protocol.md` §6.1 第 21 項，並依 §5.7 同步進 `.claude/rules/handover-selftest.md` E23 與 `.agents/rules/prompt-preflight.md` §3.4 E23。明訂批次規格由 `parse_spec`／`apply_mod_to_text` 解析，BPE 負責單一來源驗證與模擬，消除散文編碼失真 |
