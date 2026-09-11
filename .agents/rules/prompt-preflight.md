@@ -146,8 +146,8 @@
 | E9 `git pull` | 有 `git pull origin main` 且指明預期 HEAD |
 | E12 動手前必讀 | 有要求讀取規則檔或執行基準前置檢查 |
 | E3 錨點原文定位 | 修改指令依模式區分：EXACT_SPEC 附 structural anchor 原文或唯一語意識別字；GOAL_SPEC 僅定義目標、邊界與驗收準則，不要求錨點。**固定行號僅作輔助說明，非 blocking truth** |
-| E4 貼出實際輸出 | 驗證步驟要求回報確定性工具與 Gate 執行結果；實際命中位置由工具輸出，Auditor 不預測 |
-| E7 回報負擔二擇一 | 不得同時要求 `git diff` 與既有檔案全文 |
+| E4 機器驗證證據落地 | 提示詞要求執行 Required Machine Gates 且證據寫入 docs/EXEC-LOG.md / GitHub，未要求在對話貼出完整 Gate 輸出 |
+| E7 回報通道約束 | 提示詞未要求正常成功批次貼出 full diff / full file / terminal dump，遵守 Repo Evidence Channel 契約 |
 | E10 零命中條件的自身檢查 | 提示詞若有「字串 X 應為零命中」，檢查 X 是否出現在提示詞本身的其他位置——**純字串比對，非語意判斷** |
 | E11 錨點唯一性驗證 | **僅在 EXACT_SPEC 模式下檢查**：執行者以確定性工具（BPE、`count()` 或 spec parser）於套用前驗證錨點在目標檔 count == 1；**GOAL_SPEC 模式為 N/A，不要求 Batch Spec 錨點** |
 | E13 配對與覆蓋 | 依 §3.1、§3.2 比對。GOAL_SPEC 比對 Allowed Scope ↔ actual changed files ↔ explicit git add ↔ gates；EXACT_SPEC 比對 allowed scope ↔ spec targets ↔ git add ↔ gates，不依賴手寫行數／圍欄清單 |
@@ -159,7 +159,7 @@
 | E19 移除前複查 | 提示詞若含刪除檔案／章節／規則／看板項目，檢查是否附有三步複查結果（反向引用掃描、唯一內容確認、獨立複查）。**純存在性比對，非語意判斷**——不必判斷複查做得對不對，只判斷有沒有 |
 | E20 規則層變更的模擬授權 | EXACT_SPEC 規則層變更由同一份 Batch Spec 經 BPE 與 check_consistency 模擬驗證；GOAL_SPEC 由單元測試與 Gate 驗證守護，不需規格模擬；**Auditor 不得預抄套用後行數、圍欄數、項數或 INFO 輸出作為 blocking truth** |
 | E21 衍生數值不作 blocking truth | 基準 commit 必須與執行者實測 HEAD 一致；**所有 machine-derived values（行數、圍欄數、test count、CHECK count、INFO 輸出等）由確定性工具產出，不得由 LLM 複製成提示詞 blocking truth** |
-| E22 audited tag 指令 | 提示詞是否含 `git tag audited-<hash> <hash>` 與 `git push origin audited-<hash>` 兩條指令，且驗證步驟要求貼出 `git tag -l "audited-*"` 的實際輸出。**純存在性比對**——不必判斷 hash 對不對，只判斷有沒有 |
+| E22 審計狀態權威檢查 | 確認提示詞未要求建立 audited tag 作為完成條件；審計狀態以 AUDIT-LOG、refactor-backlog §5.1 與 GitHub Actions 為 Single Source of Truth |
 | E23 批次規格進 repo | **僅在 EXACT_SPEC 模式下檢查**：提示詞附有 `docs/batches/<base-hash>-<slug>.spec.txt` 的路徑與該規格的 sha256，且出現在本批的 `git add` 清單中。**GOAL_SPEC 模式不要求規格進 repo，不得因缺規格而判缺失** |
 
 **自檢聲明不接受任何豁免。**

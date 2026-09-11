@@ -40,4 +40,5 @@
 | a884e97 | 2026-09-11 | 執行者 (Antigravity) | 看板真實性修正（修正 B-12/B-57/B-60/B-76/B-78/B-80/B-81/B-85 之 Planning Truth 分類與描述，恢復真實待辦與架構取代留痕） | 待核對 | Post-Governance Taskboard Truth Correction |
 | acc5890 | 2026-09-11 | 執行者 (Antigravity) | 治理層退出前現行契約清理（對齊 GOAL_SPEC 正常重構預設、mode-aware preflight、SOP 執行期可用性邊界、去除破壞性操作指引、E-03 轉待辦） | 待核對 | Final Governance Exit — Active Contract Cleanup |
 | 9553994 | 2026-09-11 | 執行者 (Antigravity) | 治理層退出收斂修正（確立 GOAL_SPEC 檔案自主性、preflight/selftest 模式感知徹底解耦、M3 自主修復閉環、B-36 回報通道轉移、SOP_14 治理減法） | 待核對 | Final Governance Exit — Convergence Patch |
-| 本批 | 2026-09-11 | 執行者 (Antigravity) | 回報契約微清理（消除 git-and-reporting.md 舊有口頭報告/行號/diff 規定與 B-36 之衝突，退役舊規則為歷史留痕，對齊 SOP_14 階段審計文字） | 待核對 | Final Governance Exit — Reporting Contract Micro-Cleanup |
+| dc806e1 | 2026-09-11 | 執行者 (Antigravity) | 回報契約微清理（消除 git-and-reporting.md 舊有口頭報告/行號/diff 規定與 B-36 之衝突，退役舊規則為歷史留痕，對齊 SOP_14 階段審計文字） | 待核對 | Final Governance Exit — Reporting Contract Micro-Cleanup |
+| 本批 | 2026-09-11 | 執行者 (Antigravity) | 審計官契約與審計狀態單一事實來源收斂（移除 auditor-protocol/selftest/preflight 舊有貼輸出/diff 要求；退役 mandatory audited tag 建立並確立 AUDIT-LOG、refactor-backlog §5.1 與 Actions 為 SSOT；B-12/B-91 轉可封存） | 待核對 | Final Governance Exit — Auditor Contract & Audit-State SSOT Convergence |

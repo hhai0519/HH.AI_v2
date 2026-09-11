@@ -53,6 +53,7 @@ CHECK 12 應跳過該值——建立本檔的那一批沒有「前一個 commit�
 | a884e97 | 2026-09-11 | §4.1-1 | **核對通過**。6 檔異動、零夾帶。獨立驗證五項全過：54 技能零錯誤、18 項 CHECK 全 PASS、128 passed、13 webapp passed、`fingerprint.py --verify` exit 0；GitHub Actions Run 34599748829 (Run #28) success。CHECK 17 normal replay 驗證通過 | Post-Governance Taskboard Truth Correction 經宏觀審計官核對通過。修正 8 項 Planning Truth 分類失真，恢復真實待辦與架構取代留痕。 |
 | acc5890 | 2026-09-11 | §4.1-1 | **核對通過**。22 檔異動、零夾帶。獨立驗證五項全過：54 技能零錯誤、18 項 CHECK 全 PASS、128 passed、13 webapp passed、`fingerprint.py --verify` exit 0；GitHub Actions Run 34604144548 (Run #29) success。CHECK 17 normal replay 驗證通過 | Final Governance Exit — Active Contract Cleanup 經宏觀審計官核對通過。確立 GOAL_SPEC 正常重構預設、mode-aware preflight 與 SOP 執行期可用性邊界，唯殘留矛盾由本輪收斂修正。 |
 | 9553994 | 2026-09-11 | §4.1-1 | **核對通過**。17 檔異動、零夾帶。獨立驗證五項全過：54 技能零錯誤、18 項 CHECK 全 PASS、128 passed、13 webapp passed、`fingerprint.py --verify` exit 0；GitHub Actions Run 34606818571 (Run #30) success。CHECK 17 normal replay 驗證通過 | Final Governance Exit — Convergence Patch 經宏觀審計官核對通過。確立 GOAL_SPEC 模式下執行者檔案選擇自主權、prompt-preflight §3.4 徹底解耦、M3 自主修復閉環、B-36 回報契約與 SOP_14 治理減法。 |
+| dc806e1 | 2026-09-11 | §4.1-1 | **核對通過**。8 檔異動、零夾帶。獨立驗證五項全過：54 技能零錯誤、18 項 CHECK 全 PASS、128 passed、13 webapp passed、`fingerprint.py --verify` exit 0；GitHub Actions Run 34608625314 (Run #31) success。CHECK 17 normal replay 驗證通過 | Final Governance Exit — Reporting Contract Micro-Cleanup 經宏觀審計官核對通過。消除 git-and-reporting.md 舊有口頭報告/行號/diff 與 B-36 之衝突，退役舊規則為歷史留痕，對齊 SOP_14 階段審計文字。 |
 
 ---
 

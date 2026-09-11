@@ -10,7 +10,7 @@
 `待裁決`（需使用者決定）／`已完成`（仍可能被引用）／
 `可封存`（不影響後續工作，待使用者確認後移入封存區）
 
-**最後更新**：2026-09-11，HEAD `9553994` 之後（Final Governance Exit — Reporting Contract Micro-Cleanup）
+**最後更新**：2026-09-11，HEAD `dc806e1` 之後（Final Governance Exit — Auditor Contract & Audit-State SSOT Convergence）
 
 ---
 
@@ -83,7 +83,7 @@
 | B-09 | 已完成 | `test_check_consistency.py` | 為 CHECK 8 至 CHECK 15 撰寫完整正反例測試，含 BOOTSTRAP 例外與 CHECK 11 失敗重現 |
 | B-10 | 待辦 | Jules 的協作規範 | 目前全庫關於 Jules 只有兩行。缺：產出如何驗證、分支如何審查、誰負責合併、失敗如何處置。F-01 已指定為 Jules 首航任務——**規範必須在 Jules 實際加入前完成** |
 | B-11 | 已完成 | CHECK 15 名稱漂移 | 實作與 docstring 已改為「交接區 §5.1 的 commit hash 語境衝突」，但第 19／448／450 行三處顯示字串仍是舊名稱，**執行輸出對使用者顯示的與它實際做的事無關**。§6.7 的第六次發生。本批修復 |
-| B-12 | 待辦 | **`audited-*` tag 落後偵測（CHECK 16）** | 原 lag detection 尚未實作；CHECK 18 是 tag identity integrity，不是 tag cadence/lag detection；因 Remote Health Authority 已轉移至 GitHub Actions，本項不再是 handover/main-refactor blocker。 |
+| B-12 | 可封存 | **`audited-*` tag 落後偵測（CHECK 16）** | 被 AUDIT-LOG、refactor-backlog §5.1 與 GitHub Actions Remote Health Authority supersede。audited-* tag 已退役為 legacy historical markers，失去 active authority 用途，不再實作 tag-lag CHECK。 |
 | B-13 | 已完成 | §5.1 項目符號必須帶 commit hash | CHECK 15 靠反引號包住的 hash 判斷語境，2026-09-05 實測末項無 hash、「待核對 0 個」——機制存在但輸入不合格。處置：規則寫入 `auditor-protocol.md` §9.3 |
 | B-14 | 已完成 | **執行者側的檢查紀錄檔** | 執行者每批做的結構元素、配對／覆蓋、自檢聲明交叉驗證，此前**只存在於回報中，repo 無痕跡**——那是整套機制最後一個沒有證據的環節。審計官有 `docs/AUDIT-LOG.md`，執行者這一側什麼都沒有。處置：建立 `docs/EXEC-LOG.md`（規則見 `.agents/rules/prompt-preflight.md` §3.8），並新增 CHECK 16 驗證其不落後於 HEAD，判準與 CHECK 12 對 `docs/AUDIT-LOG.md` 相同 |
 | B-15 | 已完成 | **CHECK 1-7 沒有函式也沒有測試** | 2026-09-05 實測：CHECK 1 至 7 內嵌在 `run_checks()` 中，無獨立函式、無測試。**審計官已於本批做反例注入實測**：逐一破壞後確認七項皆能正確 FAIL，結果見 `docs/AUDIT-LOG.md`。判定為**不需重構為獨立函式**——它們自 2026-08-29 起每批都在跑且多次實際命中真實缺陷，反例注入已證明其有效性；重構的風險高於收益 |
@@ -162,7 +162,7 @@
 | B-88 | 待辦 | **表格被空行斷開，無任何機械偵測** | 2026-09-07 實測：`b46cd5d` 把 E21 寫進 `.agents/rules/prompt-preflight.md` §3.4 時，在 E20 與 E21 之間留了一個空行，該表在 E20 結束，E21 成為表格外的孤立一行，不會渲染成表格。**這是 A-20（`.claude/rules/auditor-protocol.md` §6.1 第 10 項被空行斷開）的同形第二次。** 三個機制都抓不到：CHECK 11 只驗 §6.1 與 E 節的對應關係、CHECK 2 只驗圍欄配對、執行者用 grep 數列數而 grep 不在乎空行——**數字是對的，表格是斷的**。處置：①本批修復該空行 ②新增 CHECK，偵測以管線符號開頭的連續列之間不得出現空行；編號依 B-60 配置，排批 2d |
 | B-89 | 待辦 | **日文字元混入 repo，四項驗證全綠卻抓不到** | 2026-09-07 實測：`10f7e31` 在 `docs/TASKBOARD.md` 第 114 行以平假名取代「的」、第 135 行以日文新字體取代「證」。成因為執行者以日文進行思考與生成，字形在輸出時未轉回繁體。**四項標準驗證全數通過**——CHECK 14 的偵測集是一份手寫的簡體字清單，不含平假名、片假名與日文新字體漢字；`validate_skills`、`pytest`、`fingerprint --verify` 三者與字形無關。**這是假綠燈的第五種形狀：偵測器的字集比它宣稱守護的範圍窄。** 處置：①本批修正兩處 ②CHECK 14 擴充偵測範圍至平假名、片假名與常見日文新字體漢字，沿用原編號不新開 ③每份提示詞開頭固定宣告「以繁體中文思考與輸出」。排批 2d |
 | B-90 | 已完成 | **批次規格格式缺 `create_file` mode** | 已於 B-90 實作完成：`parse_spec` 與 `apply_mod_to_text` 原生支援 `create_file` mode，BPE 支援新建檔案模擬與驗收，CHECK 17 完成新檔逐位元重放，並全面移除 `-BOOTSTRAP.spec.txt` 跳過重放與全庫單一 BOOTSTRAP 限制。歷史規格 `0e13c85` 安全保留為歷史 artifact |
-| B-91 | **待授權** | **9 個 `audited-*` tag 指向錯誤，需刪除並重打 remote tag** | 2026-09-11 實測：`audited-1491d33`／`3a85a30`／`59cea4c`／`7450c4a`／`936b9af`／`a44cc6b` 六個指向 `b46cd5d`，`audited-875a604`／`e6f543a`／`ec840fe` 三個指向 `7450c4a`。全部為 lightweight tag，local 與 remote 一致，名稱中的 hash 皆為可達的真實 commit。成因：`git tag audited-<hash>` 未帶目標 commit 參數即打在當下 HEAD 上（源頭已由本批 §6.1-20 修正，新增者由 CHECK 18 攔截）。**修復涉及刪除並覆寫 remote ref，依 `PRINCIPLES.md` §0 屬需使用者明確授權的 Git 歷史操作，未授權前不得排入任何批次。** 程序見 `.claude/rules/auditor-protocol.md` §11.6 |
+| B-91 | 可封存 | **9 個 `audited-*` tag 歷史留痕保存（退役破壞性遠端清理）** | 9 個錯 tag 刻意作為歷史事故證據保留；audited tag 次系統已退役為 non-authoritative legacy markers（0 remote tag deleted, 0 remote tag rewritten, historical wrong tags intentionally preserved），審計狀態已由 AUDIT-LOG、refactor-backlog §5.1 與 GitHub Actions SSOT 完全接管，不再影響 correctness、audit state、handoff 或 remote health。不需執行破壞性遠端清理。 |
 | B-92 | 已完成 | **`docs/EXEC-LOG.md` 與 `docs/fingerprints/exec-latest.json` 作為 CHECK 17 豁免檔的生命週期** | 豁免檔生命週期已修正。`docs/EXEC-LOG.md` 不再採 generic zero-deletion，改採 fail-closed semantic transition validation（支援歷史列不變、回填 parent hash、追加當批紀錄）；`docs/fingerprints/exec-latest.json` 作為 generated snapshot 正確性由 `fingerprint.py --verify` 守護；真實 Git repo 正反例測試已建立 |
 
 ---

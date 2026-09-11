@@ -208,14 +208,10 @@ CHECK 8 至 15 有 63 個測試並經審計官反例注入驗證，
    `.agents/rules/role-boundaries.md`。
 2. **載明基準 Commit（Base Full OID）與目標檔案範圍（EXACT_SPEC 另需批次規格或 SHA）**，不再要求手寫檔案總行數作為 blocking truth。執行者於執行前確認工作區乾淨且 HEAD 與基準一致。
 3. 修改指令依模式區分：**EXACT_SPEC 必須以批次規格（Batch Spec）的 structural anchor 原文為主**；**GOAL_SPEC 則提供目標架構、變更邊界與驗收準則**，由執行者自主決定實作方式。若有行號僅作為輔助 diagnostic，不得作為 blocking truth。
-4. 驗證步驟要求**回報確定性工具與 Gate 的執行輸出**（如 validate_skills, check_consistency, fingerprint, pytest）；命中檔名與行號等由機器輸出提供，提示詞不作人工預測。
+4. 提示詞必須要求執行者執行 Required Machine Gates，並把完整 machine evidence 寫入 `docs/EXEC-LOG.md` 與 GitHub evidence。正常成功之對話回覆不得要求張貼完整輸出；宏觀審計官直接自 GitHub 遠端與 repo 獨立驗證。
 5. `git add` 一律明確路徑，禁止 `-A` 與 `.`。GOAL_SPEC 模式下不要求 Auditor 預先列出 exact file list，實際提交路徑由執行者自 diff 產生逐檔 explicit git add。
 6. 結尾固定要求純文字回覆與「以上是 Antigravity IDE Agent 的回覆」。
-7. **回報負擔要二擇一**：要求 `git diff` 原始輸出時，
-   就**不要**同時要求既有檔案的全文——diff 已能證明「改了什麼」且無法造假，
-   全文是冗餘的。只有新建檔案才需要貼全文。
-   2026-09-01 曾因同時要求兩者，回覆過長而導致執行端以摘要代替，
-   使 diff 機制歸零（見 `docs/refactor-backlog.md` 第 24 點 C 段）。
+7. **對話回報通道約束（Repo Evidence Channel）**：正常成功之對話回覆預設採用單行 `COMMIT <full-sha> | CI PASS | S1 NONE`，不得預設要求執行者張貼任何 full diff、full file 或 terminal output。唯有在 GitHub 遠端服務異常、審計官明確指示特定片段或 push 前本地 blocking 時，才例外允許張貼最小必要片段。
 8. **每份提示詞都必須包含三項更新指令：交接區、`docs/TASKBOARD.md`、
    `docs/AUDIT-LOG.md`**（見 §9.3、§10.5、§7.1），
    與更新 `docs/refactor-backlog.md` 同級。
@@ -229,8 +225,10 @@ CHECK 8 至 15 有 63 個測試並經審計官反例注入驗證，
    2026-09-02 曾發生本機落後遠端一個 commit，若未察覺，
    所有行號基準都會錯。
 10. **提示詞開頭要求執行者從檔案讀取規則，不依賴自動載入**：
-    必須包含一段「動手前必讀」，要求執行者執行
-    `cat .agents/rules/prompt-preflight.md` 等指令並貼出輸出。
+    必須包含一段「動手前必讀」，要求執行者重新從檔案讀取 active rules，
+    避免 session prefix truncation 導致規則遺失。但讀取確認紀錄寫入
+    `docs/EXEC-LOG.md`，不得要求把完整 rules 或 cat output 貼入對話，
+    防止 context 膨脹。
     2026-09-02 發現 Antigravity 的 session 變長時會清掉對話前綴
     （畫面顯示「The server cleared a prefix of the conversation」），
     **自動載入的規則可能已被丟出 context 而執行者不自知**。
@@ -288,23 +286,8 @@ CHECK 8 至 15 有 63 個測試並經審計官反例注入驗證，
     必須刪除或重測；而由機器計算的衍生值（行數、圍欄數、test count、CHECK count 等）交由確定性工具產出，
     不作為提示詞 blocking truth。原則本體見 `PRINCIPLES.md` §2.10。
 
-20. **每份提示詞必須包含補打 `audited-*` tag 的指令。**
-    §11.3 規定每批核對通過後在下一批打 tag，但該規則從未寫進本節——
-    **這是 §5.7「規則的層級決定它會不會被執行」的第八次**。
-    前三次分別是交接區、`docs/TASKBOARD.md` 與 `docs/AUDIT-LOG.md`，
-    各導致該檔落後一至三批；這一次落後七批。
-    2026-09-07 實測：時序最新的 tag 為 `audited-e6f543a`（2026-09-05），
-    其後七個已核對通過的批次全數無 tag，
-    且 `scripts/` 與 `.github/` 全庫查無 `audited-` 字串，偵測從未實作（B-12）。
-    指令固定兩條，**且都必須明確帶上目標 commit**：
-    `git tag audited-<上一批的 hash> <上一批的 hash>` 與
-    `git push origin audited-<上一批的 hash>`。
-    **省略第二個參數會打在當下的 HEAD 上**——tag 名字對、指向錯。
-    2026-09-11 實測 17 個 tag 中有 9 個如此，成因正是原措辭沒寫目標參數。
-    機械守衛為 `scripts/check_consistency.py` 的 CHECK 18（tag 名實比對）；
-    九個歷史錯 tag 的修復程序見同檔 §11.6，需使用者明確授權。
-    驗證步驟必須要求貼出 `git tag -l "audited-*"` 的實際輸出，
-    只回報「已補打」不算數。打不打的判準見 §11.4。
+20. **審計狀態單一權威查驗（退役 mandatory audited-* tag 建立）**：
+    每批核對結果由 `docs/AUDIT-LOG.md`（每 commit 結論）、`docs/refactor-backlog.md` §5.1（當前最新審查通過的 checkpoint）與 GitHub Actions（遠端健康權威）作為 Single Source of Truth。提示詞不得再要求自動建立或推送 `audited-*` tag 作為完成條件。既有 21 個 tag 降級為歷史留痕標記（Legacy Historical Markers），由 CHECK 18 進行唯讀名實一致守衛，不再作為 active authority。
 
 
 21. **EXACT_SPEC 批次的規格必須以 repo artifact 形式交付，並使用 BPE 進行驗證與模擬。**
@@ -508,7 +491,7 @@ count 為 0 代表錨點不存在，大於 1 代表會改到錯的地方。
 | 本對話已完成的批次數 | ≥ 1 | 回覆結尾建議關掉本對話 |
 | 本對話已完成的批次數 | ≥ 2 | 回覆**開頭**就建議換對話 |
 | 本輪 bash 呼叫次數 | ≥ 3 | 代表脈絡不足、正在重新蒐集，主動說明並建議換對話 |
-| 貼入的執行者回報 | 超過約 300 行 | 建議下批改用精簡回報格式（見 §8.3 第 1 點） |
+| 貼入的執行者回報 | 出現多行 raw evidence 或 dump | 視為 Reporting Contract Drift，下批先修正 reporting path（見 §8.3 第 1 點） |
 
 換對話不會遺失脈絡：開場動作 ＋ 交接區就是完整的交接。
 **不要為了「保留脈絡」而拖著同一個對話繼續**——
@@ -516,11 +499,9 @@ count 為 0 代表錨點不存在，大於 1 代表會改到錯的地方。
 
 ### 8.3 降低消耗的既定做法
 
-1. **不要求執行者貼檔案內容或 `git diff` 原始輸出。**
-   審計官以獨立 clone 逐行 diff 核對，貼進來的內容是同一件事的較弱版本，
-   而成本落在審計官的 context 上。
-   **但驗證步驟的實際輸出必須保留**——殘留檢查的命中清單是關鍵，
-   2026-09-01 那 9 個漏網檔案就是靠「貼出實際命中的檔名與行號」才被發現的。
+1. **對話不要求執行者貼檔案內容、`git diff` 或工具完整輸出。**
+   審計官以 GitHub remote 與獨立 clone 逐行 diff 核對。
+   **驗證步驟的完整機器證據由 `docs/EXEC-LOG.md`、Git commit 與 GitHub Actions 保留**，對話視窗維持單行狀態回報，不把詳細輸出複製至 conversation。
 2. **探索性掃描交給執行者，驗證性掃描審計官自己做。**
    執行者的模型額度不共用審計官的額度池。
    但這條分界破了就是回到「採信執行端數字」，不得放寬。
@@ -836,70 +817,45 @@ revert 之後**必須同批完成三件事**，否則狀態會不一致：
 **不得 revert 一個已經被後續批次依賴的 commit**——
 先確認之後的批次有沒有建立在它之上。
 
-### 11.3 已審核標記
+### 11.3 已審核標記之退役（Retired Historical Audit Markers）
 
-每批核對通過後，在**下一批**打一個 tag 標記上一批：
+> **歷史背景與現行架構**：早期曾規劃每批核對後補打 `audited-*` tag 作為狀態標記。現行架構已由 **`docs/AUDIT-LOG.md`（每 commit 審查結論）＋ `docs/refactor-backlog.md` §5.1（最新交接 checkpoint）＋ GitHub Actions（遠端專案健康單一權威）** 完整接管，建立單一事實來源（SSOT）。`audited-*` tags 正式退役為唯讀歷史留痕標記（Legacy Historical Markers），**未來正常批次不再自動建立、補打或推送任何 audited tag**。
 
-    git tag audited-<上一批的 commit hash>
-    git push origin audited-<上一批的 commit hash>
+### 11.4 [已退役／歷史記錄] 早期打 tag 判準（Historical Rationale）
 
-必須在下一批打，因為核對發生在 push 之後。
+以下為 2026-09-07 裁決之歷史規則，保留供回溯早期設計脈絡。因 tag 次系統已於 Governance Exit 退役，本表不得再作為現行執行指令：
 
-用途有三：回滾目標明確（「回到上一個已審核狀態」是可執行的指令）、
-交接區 §5.1 的 HEAD 有機器可查的對應物、
-以及最新的 `audited-*` 若落後 HEAD 超過一批，
-代表有批次未經核對就累積（規劃為 CI 檢查項）。
-
-### 11.4 打 tag 的判準（2026-09-07 使用者裁決）
-
-| 該批的核對結論 | 打不打 |
+| 該批的核對結論 | 打不打（歷史規則） |
 |---|---|
 | 內容核對通過，且該批 CI success | 打 |
 | 內容核對通過，但該批 CI failure（缺陷已由後續批次修復） | 打。tag 標記的是「內容經審計官核對通過」，CI 結論另由 badge 查 |
 | 內容核對不通過 | **不打。** 打上去會與交接區（`docs/refactor-backlog.md` §5.1）記載的「核對不通過」直接矛盾，違反 `PRINCIPLES.md` §2.7 |
 
-依此判準，`2d76958`（交接區記載核對不通過）永久不打；
-`3a85a30`（內容通過、該批 CI failure，已由 `1491d33` 修復）要打。
-**tag 序列因此不連續，這是設計而非漏打**——B-12 的落後偵測實作時
-必須以交接區記載的核對結論為準，不得以 commit 數推算。
+依此歷史判準，`2d76958` 永久不打；`3a85a30` 要打。既有 21 個 tag 由 CHECK 18 唯讀守護，不作擴張。
 
-### 11.5 審計狀態是四態，互斥且窮盡
+### 11.5 審計狀態之單一事實來源（Audit State SSOT）
 
 2026-09-11 審計官在同一份回覆中同時寫出「未核對」與「核對通過」，
 成因是把「對話裡做過的事」當成一種 repo 狀態。它不是。
 
 **接手者只能從 repo 觀察，因此狀態表只能由 repo 可觀察的事實定義。**
-以下四態互斥且窮盡，任何 commit 必落在其中恰好一態：
+審計狀態以 **`docs/AUDIT-LOG.md`** 為 per-commit 審查結論唯一權威，以 **`docs/refactor-backlog.md` §5.1** 為當前最新 checkpoint 唯一權威，不依賴 `audited-*` tag：
 
 | 狀態 | repo 可觀察的判準 |
 |---|---|
-| **A. UNREVIEWED** | `docs/AUDIT-LOG.md` 無該 commit 的列 |
-| **B. FAIL_FINAL** | AUDIT-LOG 有列且結論為不通過。依 §11.4 不應存在 `audited-*` tag |
-| **C. PASS_PENDING_FINALIZATION** | AUDIT-LOG 有列且結論為通過，但正式完成條件尚未全部成立——交接區 §5.1 未同步，或 `audited-<hash>` tag 尚未建立，或 tag 指向不正確 |
-| **D. PASS_FINAL** | AUDIT-LOG 結論為通過、交接區 §5.1 已同步、`audited-<hash>` tag 存在且指向正確 |
+| **A. UNREVIEWED** | `docs/AUDIT-LOG.md` 無該 commit 結論 |
+| **B. AUDIT_FAIL** | `docs/AUDIT-LOG.md` 有列且結論為不通過 |
+| **C. AUDIT_PASS_PENDING_HANDOFF** | `docs/AUDIT-LOG.md` 有列且結論為通過，但交接區 §5.1 尚未同步至該 commit |
+| **D. AUDIT_PASS_FINAL** | `docs/AUDIT-LOG.md` 結論為通過，且交接區 §5.1 已同步為該 checkpoint |
 
-**狀態 C 是必要的。** 審計結論寫進 AUDIT-LOG 與補打 tag 分屬不同批次，
-中間必然有一段時間 AUDIT-LOG 已是通過而 tag 還不存在；
-沒有 C，那段時間會落在狀態表之外。
+**說明**：
+1. 舊 commit 的歷史審查結論永久由 `docs/AUDIT-LOG.md` 保存。
+2. 交接區 §5.1 的「上次核對通過的 HEAD」僅標示**目前最新且由審計官核對通過的單一 checkpoint**，不是每個歷史 commit 的狀態資料庫。
+3. 判定完成條件不再要求存在 `audited-*` tag，消除三重權威矛盾。
 
-**狀態 A 不再細分。** repo 無從判斷某次對話裡是否已逐檔看過，
-也不該試圖判斷。對接手者而言，「完全沒人看過」與
-「某個 session 看過但沒寫進 repo」是同一件事：UNREVIEWED。
+### 11.6 [已退役／不需執行] 歷史 `audited-*` tag 之留痕保存（RETIRED / NOT REQUIRED）
 
-交接區 §5.1 的「上次核對通過的 HEAD」欄位（`scripts/check_consistency.py`
-的 CHECK 9 以這個字串為標記，措辭不得更動）記載的是**最後一個
-PASS_FINAL 的 commit**，不是「最近一次在對話裡看過的 commit」。
-
-「內容核對通過」只能作為**單一 session 內的暫時措辭**使用，
-描述審計官此刻手上的進度。它不是 handoff state，
-**不得寫成任何可由下一個 session 從 repo 推斷的歷史狀態**。
-
-### 11.6 歷史 `audited-*` tag 的修復程序（需使用者明確授權）
-
-2026-09-11 實測 17 個 tag 中 9 個名實不符，清單見 `docs/TASKBOARD.md` B-91。
-修復涉及刪除並覆寫 remote ref，屬 `PRINCIPLES.md` §0 定義的
-**需使用者明確授權的 Git 歷史操作**。未取得授權前，
-任何批次規格都不得要求執行者執行本節指令。
+2026-09-11 實測 17 個 tag 中 9 個名實不符，清單見 `docs/TASKBOARD.md` B-91。因 `audited-*` tag 次系統已於 Governance Exit 正式退役，審計狀態已由 AUDIT-LOG、refactor-backlog §5.1 與 GitHub Actions SSOT 完全接管，**本專案刻意保留這 9 個錯 tag 作為歷史事故證據，不執行破壞性遠端清理（0 remote tag deleted, 0 remote tag rewritten）**。既有 tag 不再影響正確性、審計狀態、交接或遠端健康。以下修復程序已退役，僅保留作為歷史留痕：
 
 授權後的程序（逐一，不得批次一次做完）：
 

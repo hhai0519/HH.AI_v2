@@ -60,10 +60,10 @@
 - [ ] E1 提示詞開頭有執行者身分宣告？（§6.1-1）
 - [ ] E2 提示詞載明基準 commit full OID 與目標檔案範圍（EXACT_SPEC 另需批次規格），交由確定性工具比對，未手寫檔案總行數作為 blocking truth？（§6.1-2）
 - [ ] E3 修改指令依模式區分：EXACT_SPEC 以 structural anchor 原文為主；GOAL_SPEC 定義目標、邊界與驗收準則，未以固定行號作為 blocking 依賴？（§6.1-3）
-- [ ] E4 驗證步驟要求回報確定性工具與 Gate 執行結果，實際命中位置由工具輸出而非 Auditor 預測？（§6.1-4）
+- [ ] E4 提示詞要求 Machine Gates 實際執行，完整結果進 repo evidence，conversation 不要求 full output？（§6.1-4）
 - [ ] E5 `git add` 一律明確路徑，且明寫禁止 `-A` 與 `.`？GOAL_SPEC 實際路徑由執行者自 diff 產生逐檔 explicit git add，不要求 Auditor 預測實作檔案；EXACT_SPEC 依規格 targets？（§6.1-5）
 - [ ] E6 結尾固定要求純文字回覆與署名行？（§6.1-6）
-- [ ] E7 回報負擔二擇一——要求 `git diff` 時就不要同時要既有檔案全文？（§6.1-7）
+- [ ] E7 Reporting Channel 契約——正常成功對話回覆僅需 COMMIT <sha> | CI PASS | S1 NONE 加上固定署名行，未預設要求 full diff / full file / terminal dump？（§6.1-7）
 - [ ] E8 **有包含「更新交接區」、「更新 `docs/TASKBOARD.md`」與「更新 `docs/AUDIT-LOG.md`」三項？**（§6.1-8）
 - [ ] E9 有要求執行者先 `git pull origin main` 並確認 HEAD 一致？（§6.1-9）
 - [ ] E10 零命中類的條件，我檢查過自己的指令會不會產生該字串？（§6.2）
@@ -79,7 +79,7 @@
 - [ ] E20 **EXACT_SPEC 提示詞若修改規範層檔案，已使用同一份批次規格經 BPE 與 check_consistency 模擬，未將 post-apply 衍生數值預抄進提示詞？**（§6.1-18；GOAL_SPEC 不需偽造 spec）
 
 - [ ] E21 **本輪基準 commit 與執行者實測一致，且提示詞未將任何 machine-derived 數字（行數、圍欄數、test/CHECK 數等）複製為 blocking truth？**（§6.1-19；原則見 `PRINCIPLES.md` §2.10）
-- [ ] E22 **提示詞包含補打 `audited-*` tag 的兩條指令，且驗證步驟要求貼出 `git tag -l "audited-*"` 的實際輸出？**（§6.1-20；`auditor-protocol.md` §11.3 此前不在執行路徑上，tag 因此落後七批，判準見同檔 §11.4）
+- [ ] E22 **審計狀態單一權威檢查（AUDIT STATE SSOT CHECK）——確認 AUDIT-LOG 為每 commit 結論權威、refactor-backlog §5.1 為最新 checkpoint、Actions 為遠端健康權威，且提示詞不建立 audited tag 作為完成條件？**（§6.1-20；退役 mandatory audited tag 建立）
 - [ ] E23 **若為 EXACT_SPEC 批次，批次規格已寫成 `docs/batches/<base-hash>-<slug>.spec.txt` 並列入 `git add` 清單且經 BPE 驗證；若為 GOAL_SPEC 則不強制產出 Batch Spec？**（§6.1-21；重放與生命週期由 CI 守護）
 
 ★ 2026-09-02 稽核發現本節原只有七項，`auditor-protocol.md` §6.1 有九項，
