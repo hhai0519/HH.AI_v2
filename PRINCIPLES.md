@@ -77,7 +77,22 @@ Google Jules 是非同步雲端編碼代理，由執行者透過 MCP 觸發，
 | 2 | `SOP/` | 可執行的操作程序 | 隨流程調整 |
 | 3 | `docs/adr/` | 決策留痕：當初為什麼這樣決定 | 只追加，不改寫 |
 
-### 內容該放哪一層：四個判別問句
+### R. Router（非權威導覽層）
+
+本專案定義橫向文件角色（Document Role）：**Router**。
+
+> **核心不變式（Core Invariant）**：
+> **Router 不擁有事實，只擁有導向。**（*Router never owns truth. Router only owns navigation.*）
+
+- **不參與權威層級（No Authority Precedence）**：Router 標記為「R — Router」，但 **R 不是權威優先序數字**。現行 0（`MISSION.md`）→ 0.5（`PRINCIPLES.md`）→ 1（`AGENTS.md` / 規範）→ 2（`SOP/`）→ 3（`docs/adr/`）的權威層級保持不變。Router 是橫跨各領域提供索引與導向的非權威文件角色，絕非新的 Authority、SSOT、State Store、Task Queue、治理層次或框架。
+- **不擁有事實（Never Owns Truth）**：Router 本身嚴禁保存當前 HEAD、當前 checkpoint、待審計 commit range、當前任務進度、待辦佇列（TODO queue）、暫緩狀態（TEMPORARILY HELD）、驗收條件（AC）的權威副本、規範全文副本、SOP 全文副本、歷史敘事全文、ADR 裁決脈絡全文，或任何需要與權威來源雙向同步才能保持正確的事實副本。Router 的唯一職責是回答：「這個問題真正應去哪個權威來源（canonical source）找答案？」
+- **權威來源永遠優先（Canonical Source Always Wins）**：若 Router 的導向與其指向的權威來源發生衝突，**權威來源永遠優先**。此情況視為導覽缺陷（navigation defect），應修復 Router，嚴禁讓 Router 成為第三個競爭性權威來源。
+- **階層式導覽與終端約束（Hierarchical Navigation & Termination）**：Router 允許指向下一層 Router，但僅限於階層式導覽（例如根目錄 `README.md` → `skills/README.md` → 具體技能 `SKILL.md`）。階層導覽必須遵守四項嚴格限制：（1）嚴禁形成循環導向（no Router cycle）；（2）最終必須且必定抵達權威來源（terminal canonical source，涵蓋 authority、procedure、capability、state、evidence 或 history）；（3）嚴禁形成無限鏈條；（4）中間 Router 嚴禁複製終端來源之事實。
+- **優先重用既有檔案（Prefer Reuse Over Inventing）**：Router 是一種文件角色，而非強求每個領域新建一份 `ROUTER.md`。原則上**優先重用既有之 `README.md`、`INDEX` 或現有入口文件**；嚴禁為了對稱美感或形式主義建立 Router registry、Router database、Router manifest、第二任務看板、第二權威地圖或龐大 Router 框架。
+- **術語邊界（Terminology Boundary）**：本節定義之 Router 嚴格限定為文件架構角色（Document Role: Router）。既有技術組件（如 Skill Router、Runtime Router、cost-benefit-router、任務分派器 dispatcher 或執行期請求路由）維持原技術語意與職責，不因同名而承擔治理導覽職責，Document Router 亦不取得執行期分派權限。
+- **機械可驗證（Machine-Verifiable Navigation）**：Router 指向倉庫內之路徑時，其導向目標原則上應可由確定性工具驗證存在；但驗證規則應視實際治理需要逐步演進，不預設建立空泛的檢查機制。
+
+### 內容該放哪一層：五個判別問句
 
 依序自問，第一個答「是」的就是歸屬：
 
@@ -87,10 +102,12 @@ Google Jules 是非同步雲端編碼代理，由執行者透過 MCP 觸發，
    → 給審計官的 → `.claude/rules/`
 3. **這是在說某件事該怎麼一步步做？** → `SOP/`
 4. **這是在說當初為什麼這樣決定？** → `docs/adr/`
+5. **這是在說真正答案在哪裡（導覽與索引），且本身不擁有答案？** → 角色為 **Router**（優先重用既有之 `README.md` 或入口索引文件，指向上述權威來源）
 
 **同一份文件不應同時承載兩種性質。** 若一份 ADR 裡出現大量「必須／嚴禁／
 一律」的可執行指令，代表規範與留痕混雜，應把指令搬到第 1 或第 2 層，
-ADR 只留「為什麼」並指向新位置。
+ADR 只留「為什麼」並指向新位置。若一份導覽文件開始複製條文細節、狀態或規則，
+代表導覽與權威混雜，應將事實收斂回權威來源，導覽文件僅保留路徑指向。
 
 ---
 

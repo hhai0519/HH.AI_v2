@@ -1,5 +1,5 @@
 {
-  "base_head": "15444f5",
+  "base_head": "91b43b2",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 0,
@@ -218,7 +218,8 @@
         "### 0.3 「審計」一詞有四種意思，不可混用",
         "### 0.4 各層的分工",
         "## 1. 治理文件的層級",
-        "### 內容該放哪一層：四個判別問句",
+        "### R. Router（非權威導覽層）",
+        "### 內容該放哪一層：五個判別問句",
         "## 2. 決策原則",
         "### 2.1 品質優先於速度",
         "### 2.2 拆解到最小可驗證單位，逐一執行、逐一驗證",
@@ -241,8 +242,8 @@
         "### 4.4 責任歸屬",
         "## 5. 更新紀錄"
       ],
-      "lines": 345,
-      "sha256": "ad4b926848cba42c7ca847c0e66672da4c47cb74da195fdb6eef5a581319ddac"
+      "lines": 362,
+      "sha256": "3e4f5097d5ea41e31c43a47633821e57e97245fe33141ede27c348b3e58883c1"
     },
     "SOP/README.md": {
       "fences": 0,
@@ -511,16 +512,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 78,
-      "sha256": "38da686a643d0f703286606513bca2cdd7b991b2abc946d02259ea0799404aaa"
+      "lines": 79,
+      "sha256": "0508cb5e3b7630354b70fb6c74684169d0a2cdf84b4ede2853cb197cec69acc7"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 49,
-      "sha256": "66220f58a84240b9dbde7560f37c85b53d6df9631c9dffac24ab36f02d567006"
+      "lines": 50,
+      "sha256": "df5db6401734a3384308fc8b9d11089b6a8df61b7c9d6d6ab8d0ea9aaec1876b"
     },
     "docs/HANDOVER.md": {
       "fences": 14,
@@ -630,7 +631,7 @@
         "## 封存區"
       ],
       "lines": 234,
-      "sha256": "26186b8472859d1ab89b569e2f6dd9f0c02524811341f06c31fd47803325db81"
+      "sha256": "91f5ea378dd14fa2bbf11a73d0861e79ac660efdc1b9f16bcc32e16f7e4783ae"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -958,8 +959,8 @@
         "### 5.3 待使用者裁決",
         "### 5.4 進行中／等待回報"
       ],
-      "lines": 3041,
-      "sha256": "9b134088eb64bb3dbb206e9f74b4a86bea460e082b071b4cb67e8730f6bae3bc"
+      "lines": 3042,
+      "sha256": "609f816ac7b8b40b52edc607c8e71f40cc0f7d7812b6101be9bcbaccdf0f9ca9"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1099,7 +1100,7 @@
       "sha256": "77163678353cb7a444f90f17956d03312f715cfcccf933603948715939ecdc10"
     }
   },
-  "generated_at": "2026-09-12T03:01:18Z",
+  "generated_at": "2026-09-12T03:11:22Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {
