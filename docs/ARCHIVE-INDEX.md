@@ -20,6 +20,7 @@
 | 舊 repo 的某個檔案**為什麼不遷移** | `docs/refactor-backlog.md` §二 E、F 節 |
 | 某個**決定**當初為什麼那樣做 | `docs/adr/`；重構過程的判斷見 `docs/refactor-backlog.md` 編號項目 |
 | 歷史**專案文件**／舊版完整交接手冊 | `docs/archive/handover/README.md`（目錄導覽），具體快照見 `docs/archive/handover/HANDOVER-pre-router-568209e.md` |
+| 舊版 **Claude / Macro Auditor protocol** | `docs/archive/claude-control-plane/README.md`（目錄導覽），具體快照見 `docs/archive/claude-control-plane/auditor-protocol-pre-slim-76b5e9.md` |
 
 ---
 
@@ -33,6 +34,7 @@
 | **任務** | 五態流轉，`可封存` 需使用者確認後移入封存區 | `.claude/rules/auditor-protocol.md` §10.3、§10.4 | `docs/TASKBOARD.md` 封存區 |
 | **分支** | 不採用的分支保留在遠端，不刪除 | `docs/refactor-backlog.md` 三之二 | GitHub 遠端分支 |
 | **專案文件** | 歷史專案文件／Superseded Project Documents：active 文件在重大架構重整前保存不可變歷史快照（immutable historical snapshot）。快照為歷史證據，不具備現行權威；現行事實必須回到權威來源，歸檔區不得成為第二現行狀態 SSOT | `PRINCIPLES.md` §1（Router 與歷史留痕分工） | `docs/archive/handover/` |
+| **控制平面歷史快照** | 歷史控制平面文件／Superseded Control Plane Documents：active protocol 瘦身前保存不可變歷史快照，完整保留歷史事故與推論脈絡。快照為歷史留痕，不具現行權威 | `PRINCIPLES.md` §1（Router 與歷史留痕分工） | `docs/archive/claude-control-plane/` |
 
 ---
 

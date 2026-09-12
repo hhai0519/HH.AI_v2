@@ -1,5 +1,5 @@
 {
-  "base_head": "529aab3",
+  "base_head": "76b5e92",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 0,
@@ -99,7 +99,7 @@
       "sha256": "538753b98588a16fba6863eac219b9073373620b6d25c27411c2fddad5cc7b84"
     },
     ".claude/rules/auditor-protocol.md": {
-      "fences": 2,
+      "fences": 6,
       "headings": [
         "# 宏觀審計官作業協定",
         "## 1. 職責範圍",
@@ -151,8 +151,8 @@
         "### 11.5 審計狀態之單一事實來源（Audit State SSOT）",
         "### 11.6 [已退役／不需執行] 歷史 `audited-*` tag 之留痕保存（RETIRED / NOT REQUIRED）"
       ],
-      "lines": 878,
-      "sha256": "260bba3c2e93ceea70b05f9368f2d3449faa9b98885f041b5716f5b125700e3b"
+      "lines": 400,
+      "sha256": "bf7c3552306c6aa0a91f7f0a082614e0f8eda889e08b90c3ba74e34c127ba729"
     },
     ".claude/rules/auditor-selftest.md": {
       "fences": 0,
@@ -504,8 +504,8 @@
         "## 三、共通原則",
         "## 四、已知缺口"
       ],
-      "lines": 67,
-      "sha256": "bec1f01d8e4bf78fb908d2bc050749f86c766ba0dd4278f409e3badc4ef6d95c"
+      "lines": 69,
+      "sha256": "85d6a06e9cfa37a6f047bdf2e0e1b2f652802255b0bcd22da5af572da1c5fa07"
     },
     "docs/AUDIT-LOG.md": {
       "fences": 0,
@@ -514,16 +514,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 85,
-      "sha256": "c8365db38cee9c0638344f135edf34469e7c5678b3c04ff310e210828753764c"
+      "lines": 86,
+      "sha256": "b9ca1e23918598d83e408aee960adcbe3a8a01a30aee87cd1f750d38b9b7dcca"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 57,
-      "sha256": "23956dd3c97cb2affa6bc2efd2c650fe4a22e9ff3836e413a29cccfe65fcbb81"
+      "lines": 58,
+      "sha256": "18a9850dffc68b40bf1c412a7cd4064917fee4b5c4f334e1a50fad7d06d9d08e"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -559,7 +559,7 @@
         "## 封存區"
       ],
       "lines": 234,
-      "sha256": "a26add89f0968c542fc77aa53eff4efbec65a2a58f00ae428becb6830264197e"
+      "sha256": "3cc9c5eb21a7a8c18d7bac4d7d4a498a7b9459654ea354afcc4a8e9469978e7a"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -887,8 +887,8 @@
         "### 5.3 待使用者裁決",
         "### 5.4 進行中／等待回報"
       ],
-      "lines": 3049,
-      "sha256": "0f778692e300d29daa117d207f308f18f77aaba2d5065af89d43ee746d5e3663"
+      "lines": 3050,
+      "sha256": "7de02f45479c112d615b549f4a1347d30ef59651ebc28f67d0eaaa593bf1d293"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1035,7 +1035,7 @@
       "sha256": "77163678353cb7a444f90f17956d03312f715cfcccf933603948715939ecdc10"
     }
   },
-  "generated_at": "2026-09-12T08:13:57Z",
+  "generated_at": "2026-09-12T08:28:04Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {
