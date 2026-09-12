@@ -2825,7 +2825,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 5.1 上一批狀態
 
-上次核對通過的 HEAD：3614d69
+上次核對通過的 HEAD：622e840
 
 - `23af193`（執行者前置檢查 ＋ 回滾程序 ＋ `AUDIT-LOG.md` ＋ 四缺口修正）
   已於 2026-09-02 由審計官核對通過：6 檔異動（含 2 個新檔）、零夾帶、
@@ -2986,6 +2986,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 - `0fd655d`（B-58 Recovery R4 — SOP Layer Purification & SOP_06 De-overloading）已於 2026-09-12 由宏觀審計官全面審查獨立核對通過：10 檔 authorized scope；SOP 層 Information Architecture 對齊並保留 Runtime Availability 邊界；active SOP_06 成功收斂為可重複執行的 Runtime Handover & Service Operations SOP；舊版 SOP_06 歷史快照 blob exact match (d862a54304b58d93a22f1990506a976522e56155)；archive Router 與 ARCHIVE-INDEX routing 正常；exact-SHA Actions Run 34685685456 (status completed, conclusion success)；判定 Macro PASS。
 - `a7febb0`（B-58 Recovery R5A Micro-Fix — Skill Path Portability Cleanup）已於 2026-09-12 由宏觀審計官獨立核對通過：8 檔 authorized scope；target Skills（setup-hhai-skills、skill-evolution-governor、agency-orchestrator）殘留之 machine-specific local paths 全數移除，repo-internal links 已全數改為 portable relative paths 並由機器驗證 100% 存在；exact-SHA Actions Run 34688295360 (status completed, conclusion success)；判定 Macro PASS。
 - `3614d69`（B-58 Recovery R5 Finalization — Global Skill Boundary Residual Audit & Bounded Self-Repair）已於 2026-09-12 由宏觀審計官全面審查獨立核對通過：14 檔 authorized scope；全庫 active Skills content architecture residual scan 完成；無 project-state / governance authority / stale ghost runtime / machine-specific path / false compliance self-attestation 等 residual；bounded repairs 僅處理明確 local material defects；無架構裁決殘留且未建立 R5B；exact-SHA Actions Run 34692108678 (status completed, conclusion success)；R5 正式結案；判定 Macro PASS。
+- `622e840`（B-58 Recovery R6 Micro-Fix — Narrow False-DLP Guard Exemption）已於 2026-09-12 由宏觀審計官全面審查獨立核對通過：7 檔 authorized scope；移除 validate_skills.py 中 EXEMPT_DLP_LOCATIONS 整檔豁免，實作 narrow contextual distinction；naked false DLP self-attestation 嚴格 FAIL，合法否定/歷史說明 PASS；原兩個豁免目標（governor/setup）補齊確定性正向、負向與反例單元測試；無新 CHECK，無技能語意異動；exact-SHA Actions Run 34693575178 (status completed, conclusion success)；R6 正式結案；B-58 Content Architecture 達成 FINAL MACRO PASS，正式解除 D-02 之 TEMPORARILY HELD。
 
 ### 5.2 待辦
 
@@ -3014,8 +3015,8 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - checkpoint = §5.1 第一行記載之「上次核對通過的 HEAD（last audited checkpoint）」
   - 若 `HEAD == checkpoint` → 無尚待宏觀審計之 commit（no pending macro-audit commit）
   - 若 `HEAD != checkpoint` → `checkpoint..HEAD` 即為尚待宏觀審計之 commit range（包含 checkpoint 之後至當前 HEAD 間所有 pending / repair commits，不因 commit 數量直接判定 FAIL）
-- **目前進行中工作（Active Work）**：B-58 Recovery R6 Micro-Fix — Narrow False-DLP Guard Exemption。修正 validate_skills.py 之 false-DLP guard 移除 whole-file exemption，改採 narrow deterministic distinction；維持 checkpoint 為 3614d69，D-02 維持 TEMPORARILY HELD。
-- **D-02 狀態**：READY / TEMPORARILY HELD。E1 PASS，前置條件已滿足；依 2026-09-12 使用者裁決暫緩啟動 production E2，先完成 B-58 Content Architecture cleanup，完成並經 Macro Audit後恢復 D-02。
+- **目前進行中工作（Active Work）**：D-02 / E2 Formal Production Handoff Preparation。B-58 Content Architecture cleanup 已正式完成並經 Final Macro Audit PASS 結案；解除 D-02 之暫緩狀態，準備由使用者建立 Fresh Claude Agent 執行 E2 正式交接（目標任務 B-01）。
+- **D-02 狀態**：READY。E1 PASS，前置條件已滿足；B-58 Content Architecture cleanup 已完成並經 Final Macro Audit PASS，TEMPORARILY HELD 正式解除。
 - **待使用者裁決事項**：無（NONE）。
 - **下一步／剩餘工作權威**：以 `docs/TASKBOARD.md` 為唯一 remaining-work / next-work authority，交接區不保留待辦清單副本或執行佇列。
 
