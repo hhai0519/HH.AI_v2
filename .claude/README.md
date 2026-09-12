@@ -17,13 +17,13 @@ Claude Control Plane 與 Antigravity Control Plane 是分離、互補且非對�
 - [docs/adr/0007-macro-auditor-role.md](../docs/adr/0007-macro-auditor-role.md) — 宏觀審計官角色架構決策紀錄。
 
 ### 2. Claude 規範性協定 (Normative Protocol)
-- [rules/auditor-protocol.md](rules/auditor-protocol.md) — 宏觀審計官作業協定本體（normative contract）：四大審計維度、Gatekeeping 查證紀律、提示詞產出標準與生命週期規範。
+- [rules/auditor-protocol.md](rules/auditor-protocol.md) — 宏觀審計官作業協定本體（normative contract）：審計維度、Gatekeeping 查證紀律、提示詞產出標準與生命週期規範。
 
 ### 3. Claude 可執行操作清單 (Executable Projection)
-- [rules/auditor-selftest.md](rules/auditor-selftest.md) — 宏觀審計官自檢清單（executable checklist）：A–F 節與 E1–E23 提示詞產出前自檢項目。本清單為 `auditor-protocol.md` 之操作投影，非第二獨立治理權威。
+- [rules/auditor-selftest.md](rules/auditor-selftest.md) — 宏觀審計官自檢清單（executable checklist）：提示詞產出前自檢項目。本清單為 `auditor-protocol.md` 之操作投影，非第二獨立治理權威。
 
 ### 4. 專案整體交接與狀態路由
 - [docs/HANDOVER.md](../docs/HANDOVER.md) — Project Handover Router：專案整體架構、最新進度、工作板（`docs/TASKBOARD.md`）與交接區（`docs/refactor-backlog.md` §5）之統一切入點。
 
 ### 5. 執行者控制平面導航 (Executor Boundary Navigation)
-- [AGENTS.md](../AGENTS.md) 及 [.agents/](../.agents/) — Antigravity IDE Agent（執行者）之行為準則與控制平面。執行者不得將 `.claude/` 目錄規範作為其行為指令來源；邊界規範詳見 [.agents/rules/role-boundaries.md](../.agents/rules/role-boundaries.md)。
+- [AGENTS.md](../AGENTS.md) 及 [.agents/](../.agents/) — Antigravity IDE Agent（執行者）之行為準則與控制平面；控制平面邊界規範詳見 [.agents/rules/role-boundaries.md](../.agents/rules/role-boundaries.md)。
