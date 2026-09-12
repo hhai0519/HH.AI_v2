@@ -1,96 +1,60 @@
-# Setup HH.AI Skills - 技術細節參考
+# 技能維護與規範參考 (Skill Maintenance Reference)
 
-## 1. 臺股網站標準目錄結構
+本文件提供技能開發者與維護者所需的詳細規格、Schema 規範與檢核清單。
 
-```text
-<需動態確認當前工作目錄>/
-├── index.html              # 首頁（大盤概況）
-├── stock.html              # 個股 K 線圖頁面
-├── css/
-│   ├── main.css            # 全域樣式 & 深色主題
-│   └── components.css      # 元件樣式
-├── js/
-│   ├── candlestick.js      # K 線圖
-│   ├── api.js              # TWSE API 呼叫層
-│   └── utils.js            # 共用工具
-├── data/                   # 假資料（開發階段使用）
-└── tests/
-    ├── verify_task.py      # 通用驗證腳本
-    └── screenshots/        # 驗證截圖存放
+---
+
+## 1. YAML Frontmatter 欄位規格
+
+標準技能 frontmatter 範例如下：
+
+```yaml
+---
+name: example-skill
+description: "簡明敘述情境與觸發詞。例如：分析台股技術線圖與指標。當使用者要求『技術分析』、『K 線圖』時使用。"
+disable-model-invocation: false
+---
 ```
 
-## 2. TWSE 公開 API 參考
+### 欄位說明
 
-```javascript
-// 常用臺股開放資料 API（無需 Key）
-const TWSE_API = {
-  // 個股日 K（近 30 天）
-  dailyK: (stock, yyyymm) =>
-    `https://www.twse.com.tw/exchangeReport/STOCK_DAY?response=json&date=${yyyymm}01&stockNo=${stock}`,
+| 欄位名稱 | 類型 | 必要性 | 說明 |
+| :--- | :--- | :--- | :--- |
+| `name` | string | **必要** | 技能名稱，必須為全小寫英數與破折號，且與所在資料夾名稱完全一致。 |
+| `description` | string | **必要** | 觸發描述。**必須一行寫完，嚴禁換行**。應包含明確使用情境與關鍵觸發詞。 |
+| `disable-model-invocation` | boolean | 選用 | 預設為 false。若為 true 則僅限人類手動觸發，模型不可自主呼叫。適用於有副作用、下單或一次性維護技能。 |
+| `authorized_mcp_tools` | array | 條件必要 | 限用在 `skills/agents/` 與特定 `skills/platform/`。明確列出授權使用的 MCP 工具清單。 |
+| `semantic_firewall` | string/bool | 條件必要 | 限用在 `skills/agents/`。建議使用領域字串如 `"/Domain/Finance/TWSE/"`，限定工作記憶存取範圍。 |
 
-  // 大盤加權指數
-  taiex: (yyyymm) =>
-    `https://www.twse.com.tw/exchangeReport/FMTQIK?response=json&date=${yyyymm}01`,
+---
 
-  // 類股即時行情
-  sector: () =>
-    `https://www.twse.com.tw/exchangeReport/MI_INDEX?response=json&type=MS`,
-};
+## 2. 技能撰寫檢核清單 (Authoring Checklist)
 
-// 資料清洗（TWSE 回傳格式統一處理）
-function parseTWSEDailyK(rawData) {
-  if (!rawData.data || rawData.stat !== 'OK') return [];
-  return rawData.data.map(row => ({
-    date: row[0].replace(/\//g, '-').replace(/^(\d+)/, m => (parseInt(m) + 1911).toString()), // 民國轉西元
-    volume: parseInt(row[1].replace(/,/g, ''), 10),
-    open:   parseFloat(row[3].replace(/,/g, '')),
-    high:   parseFloat(row[4].replace(/,/g, '')),
-    low:    parseFloat(row[5].replace(/,/g, '')),
-    close:  parseFloat(row[6].replace(/,/g, '')),
-    change: parseFloat(row[7].replace(/[+,]/g, '')),
-  })).filter(d => !isNaN(d.close));
-}
-```
+在提交或修改技能前，請逐一檢查：
 
-## 3. 驗證腳本範例 (`verify_task.py`)
+- [ ] **單一職責**：一個技能只做一件事，不混合資料擷取、圖表繪製與對外通知。
+- [ ] **漸進式揭露**：`SKILL.md` 本體控制在 150 行以內，細節移至 `REFERENCE.md`。
+- [ ] **非狀態保存庫**：技能不得保存特定工作階段的任務狀態、進度或檢查點（狀態屬 `docs/`）。
+- [ ] **無假性合規**：不得手寫「✓ DLP 資料安全驗證已通過」等無機器的自我宣告。安全規範以 `SOP_02` 與 guardrails 為準。
+- [ ] **相對路徑**：不使用已廢棄的舊路徑（如 `00_Master_Menu`、`Data/`、`reply.js`）。
+- [ ] **命名一致**：目錄名稱、`SKILL.md` 內的 `name` 欄位與各層 README 連結完全一致。
+- [ ] **三層 README 同步**：
+  1. `skills/<bucket>/README.md`（按 User-invoked / Model-invoked 分組）
+  2. `skills/README.md`（依 Bucket 分類清單）
+  3. `README.md`（專案根目錄索引）
 
-```python
-# verify_task.py — 每次完成功能後執行
-from playwright.sync_api import sync_playwright
-import os
+---
 
-def verify_feature(url, task_name):
-    errors = []
-    
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
-        page = browser.new_page(viewport={"width": 1920, "height": 1080})
-        
-        # 偵測主控臺錯誤
-        page.on("console", lambda m: errors.append(m.text) if m.type == "error" else None)
-        page.on("pageerror", lambda e: errors.append(f"PAGE ERROR: {e}"))
-        
-        page.goto(url)
-        page.wait_for_load_state('networkidle')
-        
-        # 確保 screenshots 目錄存在
-        os.makedirs('screenshots', exist_ok=True)
-        screenshot_path = f'screenshots/verify_{task_name}.png'
-        page.screenshot(path=screenshot_path, full_page=True)
-        
-        svg_count = page.locator('svg').count()
-        browser.close()
-    
-    print(f"✅ Task: {task_name} | 📸 {screenshot_path} | 📊 SVG: {svg_count}")
-    if errors:
-        print(f"❌ 主控臺錯誤 ({len(errors)} 個)：")
-        for e in errors: print(f"   - {e}")
-    else:
-        print(f"✅ 無主控臺錯誤")
-    
-    return len(errors) == 0
+## 3. 本地驗證指令
 
-# 用法（根據實際情況調整）
-# verify_feature('http://localhost:3000', 'k-line-chart')
-# verify_feature('file:///<需動態確認當前工作目錄>/index.html', 'homepage')
+```bash
+# 1. 快速技能結構與 frontmatter 驗證
+python scripts/validate_skills.py
+
+# 2. 跨檔案規格一致性驗證
+python scripts/check_consistency.py --as-if-committed
+
+# 3. 指紋檔校驗與全庫權威驗證
+python scripts/fingerprint.py --verify
+python scripts/verify_all.py
 ```

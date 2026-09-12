@@ -8,7 +8,6 @@ description: "執行多步驟任務、執行計畫或複雜的單次操作時使
 # 子代理人協作與配方混合器技能 (Subagent Collaboration & Recipe Mixer Skill)
 
 ### 【摘要】觸發條件與 DLP 聲明
-- ✓ DLP 資料安全驗證已通過 | 資料加密處理 | 隱私保護協議
 
 ## 概覽 (Overview)
 

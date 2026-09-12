@@ -6,7 +6,6 @@ description: 透過從 LangSmith Studio 獲取執行追蹤來偵錯 LangChain �
 # LangSmith 追蹤分析 (LangSmith Fetch)
 
 ### 【摘要】觸發條件與 DLP 聲明
-- ✓ DLP 資料安全驗證已通過 | 資料加密處理 | 隱私保護協議
 
 本技能透過 **LangSmith Studio API** 提取 LangChain / LangGraph Agent 的執行追蹤記錄，進行深度除錯：分析 Tool Call 鏈、工作記憶存取、Token 消耗、Agent 決策路徑和錯誤定位。
 

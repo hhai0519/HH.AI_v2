@@ -5,7 +5,6 @@ description: 機構持股與籌碼集中度指數（CI_INDEX）分析。當使�
 # 籌碼叢集追蹤 (Ownership Clustering)
 
 ### 【摘要】觸發條件與 DLP 宣告
-- ✓ DLP 資料安全驗證已透過 | 資料加密處理 | 隱私保護協議
 
 本技能深度分析**三大法人（外資、投資訊、自營）持股結構**與籌碼集中度指數（CI_INDEX），識別主力佈局、大戶進出及籌碼鎖定狀態，為選股與停利判斷提供機構級依據。
 
@@ -101,7 +100,6 @@ def calc_ci_index(foreign_ratio, trust_ratio, dealer_ratio, major_1000_ratio):
 
 ---
 ## [Security] Smart Integration & DLP
-- ✓ DLP 資料安全驗證已透過 | 資料加密處理 | 隱私保護協議
 
 ## 版本紀錄 (Changelog)
 - **[3.0.0]** 解耦與 `chip-logic-expert` 的迴圈依賴，符合 SOP §6.1 反死鎖協定。版本躍升至 V3.0.0。

@@ -1,71 +1,68 @@
 ---
 name: setup-hhai-skills
-description: "一次性的專案初始化與交接設定指南。當接手現有專案、需要了解專案技術棧與目錄結構、或準備開始開發臺股網站功能時手動觸發閱讀。"
+description: "HH.AI 技能工作區初始化與維護導引。當使用者需要新增、修改、遷移技能、接手技能工作區或確認技能架構時手動觸發執行。"
 disable-model-invocation: true
 ---
 
-# 專案初始化與交接指南 (Setup & Handover)
+# 技能工作區維護與導引 (Skill Maintenance & Onboarding)
 
-本技能提供**專案交接狀態追蹤**與**臺股網站開發標準作業程序 (SOP)**。
-Agent 在新環境啟動或準備開發功能前，應優先閱讀本指南以確保對齊專案現況。
+本技能提供 **HH.AI 技能工作區的維護與接手標準作業程序**。
+當需要新增技能、修改既有技能、遷移舊技能或確認技能庫架構規範時，遵循本流程以確保符合專案架構規範。
+
+> [!NOTE]
+> 本技能為**可重複呼叫的維護能力**，不保存專案即時狀態。若需查詢專案進行中任務或交接狀態，請查閱 [docs/HANDOVER.md](file:///c:/Users/HH.AI_260806/Desktop/HH.AI_v2/docs/HANDOVER.md)、[docs/TASKBOARD.md](file:///c:/Users/HH.AI_260806/Desktop/HH.AI_v2/docs/TASKBOARD.md) 與 [docs/refactor-backlog.md](file:///c:/Users/HH.AI_260806/Desktop/HH.AI_v2/docs/refactor-backlog.md) §5。
 
 ---
 
-## 1. 專案概況與狀態追蹤 (Status & Handover)
+## 🛠️ 技能維護五步標準流程 (Skill Maintenance Loop)
 
-每次開始新功能或接手新 Session，請先確認或更新任務清單 `task.md`：
-
-```markdown
-<!-- task.md 範例 -->
-## 目前功能：臺股 K 線圖頁面
-
-- [x] 1. 建立 HTML 頁面骨架 - 完成 2024-01-15
-- [x] 2. 實作 CSS 基礎樣式與深色主題 - 完成 2024-01-15
-- [/] 3. 實作 K 線圖元件 ← 進行中
-- [ ] 4. 串接 TWSE API
-- [ ] 5. 截圖驗證所有圖表渲染正確
-- [ ] 6. 主控臺錯誤清零確認
+```text
+1. 閱讀規範  →  2. 決定分類  →  3. 建立/修改結構  →  4. 漸進揭露撰寫  →  5. 標準驗證
+(Read Rules)    (Select Bucket)   (Create Structure)     (Author Content)     (Verify All)
 ```
 
-### 驗證通過標準 (Definition of Done)
-每個任務必須滿足：
-✅ 功能行為符合需求
-✅ 截圖顯示正確（無空白、無亂碼）
-✅ 主控臺零錯誤
-✅ 響應式頁面在 1280px 與 1920px 均正常
-✅ task.md 中對應任務標記 `[x]`
+### Step 1: 閱讀專案規範 (Read Rules)
+動手前務必閱讀專案核心架構規範：
+- 專案架構原則：[AGENTS.md](file:///c:/Users/HH.AI_260806/Desktop/HH.AI_v2/AGENTS.md)（含 §0 工程紀律與 §1 目錄結構）
+- 技能工程護欄：[.agents/rules/skill-engineering-guardrails.md](file:///c:/Users/HH.AI_260806/Desktop/HH.AI_v2/.agents/rules/skill-engineering-guardrails.md)
+- 目標 Bucket 規則：`skills/<bucket>/AGENTS.md` 與 `skills/<bucket>/README.md`
+
+### Step 2: 決定分類桶 (Select Bucket)
+依職責特性決定歸屬桶（7 Buckets，嚴禁同名技能跨桶存在）：
+- `orchestration/`：流程調度、狀態機控制、多技能協同
+- `analysis/`：台股分析、財務模型、技術分析（純分析型，無副作用）
+- `agents/`：RARV 執行型代理人（呼叫外部工具、寫檔案、下單；需 `authorized_mcp_tools`）
+- `execution/`：通用工具型技能（Playwright、D3.js、PDF 等）
+- `platform/`：外部平台串接（LINE、Telegram、Postgres、MCP 等）
+- `meta/`：造技能的技能、生態治理類（skill-creator、setup 等）
+- `deprecated/`：已棄用技能目錄，保留供參考
+
+### Step 3: 建立與核對結構 (Create Structure)
+- 資料夾路徑：`skills/<bucket>/<skill-name>/`
+- 目錄名稱必須與 frontmatter 中的 `name` 完全一致。
+- 必備檔案：`SKILL.md`（YAML frontmatter + Markdown 指令本體）。
+- 選用檔案：`REFERENCE.md`、`EXAMPLES.md`、`scripts/`。
+
+### Step 4: 漸進式揭露撰寫 (Author Content)
+- **Frontmatter**：
+  - `name`（必要）：全域唯一英數技能識別碼。
+  - `description`（必要）：單行撰寫（嚴禁換行），包含使用情境與豐富觸發詞。
+  - `disable-model-invocation: true`：若涉及實體修改、下單或一次性維護等風險操作，設為 true。
+- **SKILL.md 本體**：保持精簡（約 150 行以內），只保留使用情境、核心操作流程與最小範例。
+- **細節拆分**：大量參數表、API Schema、範例代碼移至 `REFERENCE.md`。
+
+### Step 5: 全面驗證與同步 (Verify All)
+每次異動技能後，必須執行以下檢查並同步索引：
+1. 單一技能格式檢查：`python scripts/validate_skills.py`
+2. 跨檔案一致性檢查：`python scripts/check_consistency.py --as-if-committed`
+3. 同步三層 README（`AGENTS.md` §7）：
+   - 所屬 Bucket README：`skills/<bucket>/README.md`
+   - 全技能總覽：`skills/README.md`
+   - 專案根目錄索引：`README.md`
+4. 全庫單一權威閘門驗證：`python scripts/verify_all.py`
 
 ---
 
-## 2. 開發 SOP 核心四階段 (Development Loop)
-
-```
-PHASE 1: 計畫  →  PHASE 2: 實作  →  PHASE 3: 驗證  →  PHASE 4: 迭代
-   (Plan)              (Build)           (Verify)          (Iterate)
-```
-
-- **PHASE 1 (Plan)**: 拆解任務至 `task.md`，定義成功標準。若任務超過 5 步驟，可呼叫 `subagent-collaboration` 派發子代理人。
-- **PHASE 2 (Build)**: 實作程式碼。建議順序：HTML 骨架 → 假資料測試 → 串接真實 API → 互動功能。
-- **PHASE 3 (Verify)**: 使用 Playwright 截圖驗證。
-- **PHASE 4 (Iterate)**: 若遇錯誤阻塞，呼叫 `systematic-debugging` 進行排查。
-
----
-
-## 3. 自主實驗迴圈 (autoresearch 模式)
-
-當需要 AI 自主改進圖表或 UI 品質時，可啟動自主實驗迴圈：
-1. 建立 `experiment_program.md` 定義實驗目標與指令。
-2. 建立 `experiments.tsv` (含 `commit`, `vqs_score`, `status`, `description` 欄位)。
-3. 在每次實驗後，執行 `verify_task.py` 檢查是否有主控臺錯誤、圖表是否渲染，並針對截圖評分。
-4. **VQS (Visual Quality Score) 評分標準**：無錯誤(+40)、圖表正確(+30)、響應式正常(+30)。
-5. 若分數改善則保留變更，若退步則 `git reset HEAD~1 --hard` 退回上一步。
-
-> [!CAUTION]
-> **執行 `git reset --hard` 前，必須先向使用者說明目前分數與變更內容，取得明確同意後才能執行，不可自動判斷分數後直接硬重置。**
-
----
-
-## 🛠️ 技術細節與 API 參考
-
-關於臺股網站標準目錄結構、TWSE 公開 API 參考代碼，以及完整的 `verify_task.py` 驗證腳本，請參考：
+## 📚 參考範本與欄位規範
+詳細的 YAML Frontmatter 欄位說明、技能模板與各 Bucket 特殊限制，請參閱：
 👉 **[REFERENCE.md](./REFERENCE.md)**

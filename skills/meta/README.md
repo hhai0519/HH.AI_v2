@@ -4,8 +4,9 @@
 
 ## User-invoked
 
-- **[skill-evolution-governor](./skill-evolution-governor/SKILL.md)** — 負責技能生態系統的生命週期管理、DLP 合規審計與系統自我進化。包含自動覆寫技能規範的修復能力。此技能涉及實體檔案變更，必須由使用者明確要求時才可觸發執行。
-- **[setup-hhai-skills](./setup-hhai-skills/SKILL.md)** — 一次性的專案初始化與交接設定指南。當接手現有專案、需要了解專案技術棧與目錄結構、或準備開始開發臺股網站功能時手動觸發閱讀。
+- **[skill-evolution-governor](./skill-evolution-governor/SKILL.md)** — 負責技能生態系統的生命週期檢查與有界修復。當使用者明確要求審計技能分類、檢查技能一致性或修復具體技能缺陷時手動觸發執行。
+- **[setup-hhai-skills](./setup-hhai-skills/SKILL.md)** — HH.AI 技能工作區初始化與維護導引。當使用者需要新增、修改、遷移技能、接手技能工作區或確認技能架構時手動觸發執行。
+
 
 ## Model-invoked
 

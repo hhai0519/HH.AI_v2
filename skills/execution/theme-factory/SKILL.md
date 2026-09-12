@@ -7,7 +7,6 @@ license: Complete terms in LICENSE.txt
 # 主題工廠 (Theme Factory)
 
 ### 【摘要】觸發條件與 DLP 聲明
-- ✓ DLP 資料安全驗證已通過 | 資料加密處理 | 隱私保護協議
 
 本技能是所有視覺輸出的**主題系統中樞**，提供 10 個精心調配的預設主題（含色板、字型、間距規範），也支援根據使用者描述實時生成新主題。適用對象：HTML 儀錶板、投影片、報告、登陸頁、資訊圖表。
 
@@ -48,7 +47,6 @@ document.documentElement.style.setProperty('--accent', theme.colors.accent);
 - **[2.0.0]** 2026-05-04：V2.0.0 Polymorphic Labeling Migration — 依生命週期 SOP 導入多態功能性技術標籤 (tool_category, execution_env, io_format)，建立執行層 Manifest 路由能力。
 
 ## [Security] Smart Integration & DLP
-- ✓ DLP 資料安全驗證已通過 | 資料加密處理 | 隱私保護協議
 
 
 ---

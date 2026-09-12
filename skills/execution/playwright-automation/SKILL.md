@@ -6,7 +6,6 @@ description: 使用 Playwright 建立完整的瀏覽器自動化測試框架。�
 # Playwright 瀏覽器自動化 (Playwright Automation)
 
 ### 【摘要】觸發條件與 DLP 聲明
-- ✓ DLP 資料安全驗證已通過 | 資料加密處理 | 隱私保護協議
 
 本技能使用 **Playwright** 實現完整的瀏覽器端到端自動化，包含 E2E 測試腳本撰寫、表單填寫、截圖擷取、響應式驗證、登入流程測試、連結檢查與跨瀏覽器相容性驗證。
 
@@ -61,7 +60,6 @@ npx playwright install chromium
 - **[2.0.0]** 2026-05-04：V2.0.0 Polymorphic Labeling Migration — 依生命週期 SOP 導入多態功能性技術標籤 (tool_category, execution_env, io_format)，建立執行層 Manifest 路由能力。
 
 ## [Security] Smart Integration & DLP
-- ✓ DLP 資料安全驗證已通過 | 資料加密處理 | 隱私保護協議
 
 
 ---

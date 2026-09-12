@@ -6,7 +6,6 @@ description: 臺股市場分析深度邏輯。包含恐慌指數 (VIX/VIXTWN) �
 # 臺股市場分析深度邏輯 (TWSE Market Logic)
 
 ### 【摘要】觸發條件與 DLP 聲明
-- ✓ DLP 資料安全驗證已通過 | 資料加密處理 | 隱私保護協議
 
 本技能提供臺股投資決策的核心量化閾值與策略框架。詳細的指標閾值、分層模型與籌碼面量化法則，請參閱 [REFERENCE.md](./REFERENCE.md)。
 

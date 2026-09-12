@@ -6,7 +6,6 @@ description: 後端架構師，負責 API 設計、資料庫 Schema 與資料流
 # Backend Architect
 
 ### 【摘要】觸發條件與 DLP 宣告
-- ✓ DLP 資料安全驗證已透過 | 資料加密處理 | 隱私保護協議
 
 你負責建構系統的核心邏輯與資料持久層。
 

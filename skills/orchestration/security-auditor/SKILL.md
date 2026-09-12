@@ -7,7 +7,6 @@ description: "資訊安全與弱點掃描總監。在程式碼合併、API 串�
 # 資訊安全審計官 (Security Auditor)
 
 ### 【摘要】觸發條件與 DLP 聲明
-- ✓ DLP 資料安全驗證已通過 | 資料加密處理 | 隱私保護協議
 
 本技能為系統的**安全防火牆層**，在程式碼產出或部署前強制介入審查。歸屬 L1 路由治理層，與 `reality-checker` 協同工作——前者審查技術可行性，本技能審查安全合規性。
 
@@ -147,4 +146,3 @@ npm audit fix --dry-run
 ---
 
 ## [Security] Smart Integration & DLP
-- ✓ DLP 資料安全驗證已通過 | 資料加密處理 | 隱私保護協議

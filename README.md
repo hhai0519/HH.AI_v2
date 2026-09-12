@@ -37,7 +37,7 @@ python scripts/verify_all.py
 - **[webapp-testing](./skills/execution/webapp-testing/SKILL.md)** (`execution`) — 使用 Playwright 互動和測試本地 Web 應用程式的工具包。支援驗證前端功能、偵錯 UI 行為、擷取瀏覽器螢幕截圖以及查看瀏覽器日誌。
 - **[mcp-engineer](./skills/execution/mcp-engineer/SKILL.md)** (`execution`) — MCP 開發與環境配置完整生命週期工程師。整合 mcp-builder（建立高品質 MCP 伺服器的標準流程）與 mcp-setup（本地環境設定與排錯）為單一職責技能。觸發關鍵字：建立MCP、MCP伺服器、MCP配置、MCP環境、mcp-builder、mcp-setup。
 - **[active-inference](./skills/orchestration/active-inference/SKILL.md)** (`orchestration`) — 系統的 System 2 大腦。負責將使用者的自然語言意圖轉化為決定論的狀態機 (SDLC/EARS 語法)，並執行主動推論 (Active Inference) 來預測並最小化專案失敗的風險 (Surprise)。
-- **[agency-orchestrator](./skills/orchestration/agency-orchestrator/SKILL.md)** (`orchestration`) — 萬能總管模式（Agency-Agents 最高總管），負責通用意圖解析與全局任務拆解，並執行 4-Phase 狀態機工作流。當遇到複雜任務 (complex task)、新專案建立、系統架構設計、複雜除錯，或發生連續工具錯誤需進行反思 (reflection)、專案告一段落需進行記憶歸檔 (consolidation) 時觸發。
+- **[agency-orchestrator](./skills/orchestration/agency-orchestrator/SKILL.md)** (`orchestration`) — 複雜多技能任務調度器。負責通用意圖解析、任務分解與多技能依賴協調。當遇到跨領域複雜任務 (complex task)、需要多個技能或子代理人協同執行時使用。
 - **[cost-benefit-router](./skills/orchestration/cost-benefit-router/SKILL.md)** (`orchestration`) — 在動態實驗或複雜研究中評估預算與成本，判斷是否繼續深入。
 - **[epistemic-state-governor](./skills/orchestration/epistemic-state-governor/SKILL.md)** (`orchestration`) — 認知狀態管制官，監控推演健康度並在幻覺時強制介入。
 - **[recursive-research-automation](./skills/orchestration/recursive-research-automation/SKILL.md)** (`orchestration`) — 執行遞迴式深度研究，涵蓋廣度掃描與深度收斂。
@@ -45,8 +45,8 @@ python scripts/verify_all.py
 - **[security-auditor](./skills/orchestration/security-auditor/SKILL.md)** (`orchestration`) — 資訊安全與弱點掃描總監。在程式碼合併、API 串接或外部資料處理前，自動執行安全審查。掃描 SQL Injection、XSS、API 密鑰外洩、路徑穿越等高危漏洞。觸發關鍵字：安全掃描、資安審計、弱點掃描、密碼外洩、secret外洩、SQL注入、XSS。
 - **[stock-orchestrator](./skills/orchestration/stock-orchestrator/SKILL.md)** (`orchestration`) — 股票與量化領域總管，負責拆解金融任務並調度 analysis/ 層的專業技能。
 - **[reality-checker](./skills/orchestration/reality-checker/SKILL.md)** (`orchestration`) — 品質保證與幻覺過濾器，負責審核計畫、架構與代碼的技術可行性。
-- **[skill-evolution-governor](./skills/meta/skill-evolution-governor/SKILL.md)** (`meta`) — 負責技能生態系統的生命週期管理、DLP 合規審計與系統自我進化。包含自動覆寫技能規範的修復能力。此技能涉及實體檔案變更，必須由使用者明確要求時才可觸發執行。
-- **[setup-hhai-skills](./skills/meta/setup-hhai-skills/SKILL.md)** (`meta`) — 一次性的專案初始化與交接設定指南。當接手現有專案、需要了解專案技術棧與目錄結構、或準備開始開發臺股網站功能時手動觸發閱讀。user-invoked。
+- **[skill-evolution-governor](./skills/meta/skill-evolution-governor/SKILL.md)** (`meta`) — 負責技能生態系統的生命週期檢查與有界修復。當使用者明確要求審計技能分類、檢查技能一致性或修復具體技能缺陷時手動觸發執行。user-invoked。
+- **[setup-hhai-skills](./skills/meta/setup-hhai-skills/SKILL.md)** (`meta`) — HH.AI 技能工作區初始化與維護導引。當使用者需要新增、修改、遷移技能、接手技能工作區或確認技能架構時手動觸發執行。user-invoked。
 
 - **[connect-apps](./skills/platform/connect-apps/SKILL.md)** (`platform`) — 操控 Gmail、Slack、GitHub、Notion 等外部服務執行自動化任務。當使用者要求『在 Slack 發通知』、『建立 GitHub Issue』、『更新 Notion 頁面』、『發送郵件』或『跨系統資料同步』時使用。user-invoked。
 - **[postgres](./skills/platform/postgres/SKILL.md)** (`platform`) — 對多個 PostgreSQL 資料庫執行唯讀 SQL 查詢。支援結構探索、資料分析和品質檢查。為確保安全，封鎖所有寫入操作。user-invoked。

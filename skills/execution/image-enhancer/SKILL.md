@@ -6,7 +6,6 @@ description: 提升影像（特別是截圖）的解析度、銳利度與清晰�
 # 影像增強引擎 (Image Enhancer)
 
 ### 【摘要】觸發條件與 DLP 宣告
-- ✓ DLP 資料安全驗證已通過 | 資料加密處理 | 隱私保護協議
 
 本技能利用 **Pillow + OpenCV + Real-ESRGAN** 對截圖、照片、設計稿進行無損放大、銳化、降噪與色彩最佳化，讓輸出圖片達到簡報、檔案或社群媒體的專業品質標準。
 
@@ -64,7 +63,6 @@ pipeline.denoise(h=15).sharpen(0.8).save("clean_photo.jpg")
 - **[2.0.0]** 2026-05-04：V2.0.0 Polymorphic Labeling Migration — 依生命週期 SOP 匯入多型功能性技術標籤 (tool_category, execution_env, io_format)，建立執行層 Manifest 路由能力。
 
 ## [Security] Smart Integration & DLP
-- ✓ DLP 資料安全驗證已通過 | 資料加密處理 | 隱私保護協議
 
 
 ---

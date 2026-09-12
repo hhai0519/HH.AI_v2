@@ -6,7 +6,6 @@ description: "操控 NotebookLM 建立知識庫、進行深度研究與生成報
 # NotebookLM 智庫整合 (NotebookLM MCP)
 
 ### 【摘要】觸發條件與 DLP 聲明
-- ✓ DLP 資料安全驗證已通過 | 資料加密處理 | 隱私保護協議
 
 本技能透過 **NotebookLM MCP Server** 讓 本協作系統 Agent 直接自動化操控 Gemini Notebook (formerly Google NotebookLM)，實現：批量建立知識庫、多源研究彙整、Podcast 製作、AI 報告生成，以及跨 Notebook 的深度知識交叉查詢。
 

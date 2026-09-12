@@ -5,7 +5,6 @@ description: 透過新聞、論壇和機構報告對市場情緒進行非結構�
 # 市場情緒偵測 (Sentiment Scout)
 
 ### 【摘要】觸發條件與 DLP 宣告
-- ✓ DLP 資料安全驗證已透過 | 資料加密處理 | 隱私保護協議
 
 本技能分析**非結構化資料**（新聞標題、PTT/Dcard 討論、法人報告摘要），透過自然語言處理量化市場情緒，辨識散戶恐慌/貪婪週期與法人態度轉變的早期訊號。
 
@@ -111,7 +110,6 @@ def classify_sentiment(score: float) -> str:
 
 ---
 ## [Security] Smart Integration & DLP
-- ✓ DLP 資料安全驗證已透過 | 資料加密處理 | 隱私保護協議
 
 ## 版本紀錄 (Changelog)
 - **[2.0.0]** 匯入 V2 架構，實裝多維度認知矩陣標籤與 Dynamic Payload 預備介面。

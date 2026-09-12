@@ -7,7 +7,6 @@ disable-model-invocation: true
 # SQL 資料探勘 (PostgreSQL Query Engine)
 
 ### 【摘要】觸發條件與 DLP 聲明
-- ✓ DLP 資料安全驗證已通過 | 資料加密處理 | 隱私保護協議
 
 本技能提供對多個 PostgreSQL 資料庫的**安全唯讀查詢能力**，支援 Schema 探索、複雜 SQL 分析、資料品質稽查與跨表 JOIN 操作，所有寫入操作（INSERT/UPDATE/DELETE/DROP/TRUNCATE）均被系統級硬性攔截。
 

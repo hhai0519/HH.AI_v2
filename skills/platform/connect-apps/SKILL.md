@@ -7,7 +7,6 @@ disable-model-invocation: true
 # 外部應用連接器 (Connect Apps)
 
 ### 【摘要】觸發條件與 DLP 聲明
-- ✓ DLP 資料安全驗證已通過 | 資料加密處理 | 隱私保護協議
 
 本技能讓 本協作系統 Agent **直接操控外部服務**，包括 Gmail、Slack、GitHub、Notion、Calendar 等，透過 API 自動化完成跨平臺任務，無需使用者手動切換應用程式。
 

@@ -75,15 +75,15 @@
 
 | 技能名稱 (Skill ID) | 核心功能簡述 | 適用場景 / 觸發時機 |
 |---------------------|-------------|--------------------|
-| **[setup-hhai-skills](./meta/setup-hhai-skills/)** | 一次性的專案初始化與交接設定指南 | 當接手現有專案、需要了解專案技術棧與目錄結構、或準備開始開發臺股網站功能時手動觸發閱讀 |
-| **[skill-evolution-governor](./meta/skill-evolution-governor/)** | 負責技能生態系統的生命週期管理、DLP 合規審計與系統自我進化。包含自動覆寫技能規範的修復能力。此技能涉及實體檔案變更，必須由使用者明確要求時才可觸發執行。 | - |
+| **[setup-hhai-skills](./meta/setup-hhai-skills/)** | HH.AI 技能工作區初始化與維護導引 | 當使用者需要新增、修改、遷移技能、接手技能工作區或確認技能架構時手動觸發執行 |
+| **[skill-evolution-governor](./meta/skill-evolution-governor/)** | 負責技能生態系統的生命週期檢查與有界修復 | 當使用者明確要求審計技能分類、檢查技能一致性或修復具體技能缺陷時手動觸發執行 |
 
 ### skills/orchestration/ (調度型)
 
 | 技能名稱 (Skill ID) | 核心功能簡述 | 適用場景 / 觸發時機 |
 |---------------------|-------------|--------------------|
 | **[active-inference](./orchestration/active-inference/)** | 系統的 System 2 大腦。負責將使用者的自然語言意圖轉化為決定論的狀態機 (SDLC/EARS 語法)，並執行主動推論 (Active Inference) 來預測並最小化專案失敗的風險 (Surprise)。 | - |
-| **[agency-orchestrator](./orchestration/agency-orchestrator/)** | 萬能總管模式（Agency-Agents 最高總管），負責通用意圖解析與全局任務拆解，並執行 4-Phase 狀態機工作流 | 當遇到複雜任務 (complex task)、新專案建立、系統架構設計、複雜除錯，或發生連續工具錯誤需進行反思 (reflection)、專案告一段落需進行記憶歸檔 (consolidation) 時觸發 |
+| **[agency-orchestrator](./orchestration/agency-orchestrator/)** | 複雜多技能任務調度器，負責通用意圖解析、任務分解與多技能依賴協調 | 當遇到跨領域複雜任務 (complex task)、需要多個技能或子代理人協同執行時使用 |
 | **[cost-benefit-router](./orchestration/cost-benefit-router/)** | 在動態實驗或複雜研究中評估預算與成本，判斷是否繼續深入。 | - |
 | **[epistemic-state-governor](./orchestration/epistemic-state-governor/)** | 認知狀態管制官，監控推演健康度並在幻覺時強制介入。 | - |
 | **[real-time-stream-orchestrator](./orchestration/real-time-stream-orchestrator/)** | 即時串流總指揮。實作 Interactive ReAct 架構，支援非同步「邊想邊說、邊聽邊想」，透過 AG-UI 協定將推演過程即時投影至前端介面（目前為設計願景，尚未有對應實作程式碼）。 | - |

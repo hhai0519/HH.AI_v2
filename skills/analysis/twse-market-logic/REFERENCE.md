@@ -109,3 +109,40 @@ VIX 與 VIXTWN 是均值回歸指標，極端讀數提供反向交易訊號。
 | **莊家資金效應** | 早盤獲利顯著 | 警示：早盤獲利會增加 15% 午盤非理性冒險機率。 |
 | **處置效應** | 損益比異常（留賠切賺） | 警示：平均持股時間若「賠錢 > 賺錢」，提醒調整停損。 |
 | **散戶從眾行為** | 散戶買超佔比極高 | 警示：散戶過度擁擠的標的一年後平均落後 4.4%。 |
+
+---
+
+## 6. TWSE 公開開放資料 API 端點與資料清洗參考
+
+常用臺股官方開放資料 HTTP API（無需 API Key）：
+
+```javascript
+const TWSE_API = {
+  // 個股日 K（近 30 天）
+  dailyK: (stock, yyyymm) =>
+    `https://www.twse.com.tw/exchangeReport/STOCK_DAY?response=json&date=${yyyymm}01&stockNo=${stock}`,
+
+  // 大盤加權指數歷史
+  taiex: (yyyymm) =>
+    `https://www.twse.com.tw/exchangeReport/FMTQIK?response=json&date=${yyyymm}01`,
+
+  // 類股即時行情
+  sector: () =>
+    `https://www.twse.com.tw/exchangeReport/MI_INDEX?response=json&type=MS`,
+};
+
+// 資料清洗（TWSE 回傳格式統一處理：民國年轉西元年、數值字串轉浮點）
+function parseTWSEDailyK(rawData) {
+  if (!rawData.data || rawData.stat !== 'OK') return [];
+  return rawData.data.map(row => ({
+    date: row[0].replace(/\//g, '-').replace(/^(\d+)/, m => (parseInt(m) + 1911).toString()),
+    volume: parseInt(row[1].replace(/,/g, ''), 10),
+    open:   parseFloat(row[3].replace(/,/g, '')),
+    high:   parseFloat(row[4].replace(/,/g, '')),
+    low:    parseFloat(row[5].replace(/,/g, '')),
+    close:  parseFloat(row[6].replace(/,/g, '')),
+    change: parseFloat(row[7].replace(/[+,]/g, '')),
+  })).filter(d => !isNaN(d.close));
+}
+```
+

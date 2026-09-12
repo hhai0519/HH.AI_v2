@@ -7,7 +7,6 @@ description: "MCP 開發與環境配置完整生命週期工程師。整合 mcp-
 # MCP 工程師 (MCP Engineer)
 
 ### 【摘要】觸發條件與 DLP 聲明
-- ✓ DLP 資料安全驗證已通過 | 資料加密處理 | 隱私保護協議
 
 本技能整合原 `mcp-builder`（MCP 伺服器開發指南）與 `mcp-setup`（MCP 環境配置與排錯）的全部職責，覆蓋 MCP 工具的完整生命週期。
 
@@ -135,4 +134,3 @@ await server.connect(transport);
 ---
 
 ## [Security] Smart Integration & DLP
-- ✓ DLP 資料安全驗證已通過 | 資料加密處理 | 隱私保護協議

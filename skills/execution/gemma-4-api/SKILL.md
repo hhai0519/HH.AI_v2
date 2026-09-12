@@ -6,7 +6,6 @@ description: 提供存取 Gemma 4 API 的標準作業流程、模型設定與防
 # Gemma 4 API：設定與 SOP 技能 (Setup & SOP Skill)
 
 ### 【摘要】觸發條件與 DLP 聲明
-- ✓ DLP 資料安全驗證已通過 | 資料加密處理 | 隱私保護協議
 
 ## 概覽 (Overview)
 本技能 (Skill) 定義了在 本協作系統 平臺或任何透過 Gemini API 存取 **Gemma 4 (26B/31B)** 系列模型時的標準作業程式 (SOP) 與防坑指南。當使用者要求串接 Gemma 4 服務、建立 AI 助理或處理 API Rate Limit 錯誤時，應優先遵循此技能指引。
@@ -74,7 +73,6 @@ config = types.GenerateContentConfig(
 - **[2.0.0]** 2026-05-04：V2.0.0 Polymorphic Labeling Migration — 依生命週期 SOP 導入多態功能性技術標籤 (tool_category, execution_env, io_format)，建立執行層 Manifest 路由能力。
 
 ## [Security] Smart Integration & DLP
-- ✓ DLP 資料安全驗證已通過 | 資料加密處理 | 隱私保護協議
 
 
 ---

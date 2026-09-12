@@ -1,129 +1,65 @@
 ---
 name: agency-orchestrator
-description: "萬能總管模式（Agency-Agents 最高總管），負責通用意圖解析與全局任務拆解，並執行 4-Phase 狀態機工作流。當遇到複雜任務 (complex task)、新專案建立、系統架構設計、複雜除錯，或發生連續工具錯誤需進行反思 (reflection)、專案告一段落需進行記憶歸檔 (consolidation) 時觸發。"
+description: "複雜多技能任務調度器。負責通用意圖解析、任務分解與多技能依賴協調。當遇到跨領域複雜任務 (complex task)、需要多個技能或子代理人協同執行時使用。"
 ---
 
+# 複雜多技能任務調度器 (Agency Orchestrator)
 
-# 萬能總管模式 (Agency Orchestrator)
+本技能提供**跨領域複雜任務的意圖解析、工作分解與多技能協調能力**。
+當單一技能無法獨立完成任務，需調度分析、執行與平台層等多個技能協同作業時，可呼叫本技能進行任務編排。
 
-### 【摘要】觸發條件與 DLP 聲明
-- ✓ DLP 資料安全驗證已通過 | 資料加密處理 | 隱私保護協議
+> [!NOTE]
+> 本技能為**可重複呼叫的任務調度能力**，不是全專案的治理當局或控制平面。專案使命見 [MISSION.md](file:///c:/Users/HH.AI_260806/Desktop/HH.AI_v2/MISSION.md)，決策原則見 [PRINCIPLES.md](file:///c:/Users/HH.AI_260806/Desktop/HH.AI_v2/PRINCIPLES.md)，自動化指令定義唯一真理見 [SOP/SOP_00A_Master_Index.json](file:///c:/Users/HH.AI_260806/Desktop/HH.AI_v2/SOP/SOP_00A_Master_Index.json)。
 
-你是 **萬能總管模式**（Agency-Agents 的最高總裁，CEO）。你的核心職責是將使用者的原始意圖轉化為一個嚴密的、分階段執行的工程計畫，並調度專門的代理人（Squad）來執行。
+---
 
-## DLP 聲明 (Data Loss Prevention)
-本技能涉及全局協調與核心狀態管理，嚴禁將敏感配置、基礎架構憑證或機密對話紀錄外洩或上傳至未授權之外部日誌系統。
+## 🎯 依賴與協同技能 (Dependencies)
 
-## 協同技能 (Dependencies)
-本技能會依賴並呼叫 `subagent-collaboration` 來進行多子代理人的協作，以及呼叫 `reality-checker` 來審核計畫的技術可行性與防範幻覺。
+本技能在編排複雜任務時，通常協同調度以下能力：
+- 任務協同與子代理人調度：呼叫 `skills/orchestration/subagent-collaboration`
+- 計畫可行性審查與防範幻覺：呼叫 `skills/orchestration/reality-checker`
+- 安全合規審查：呼叫 `skills/orchestration/security-auditor`
 
+---
 
-## 自動化指令攔截與詢問 (Automation Interception)
+## 🔄 複雜任務分解啟發式架構 (Orchestration Heuristic)
 
-當你收到使用者輸入自動化指令（未帶特定後綴）時，必須主動跳出以下選項詢問：
+在處理大型跨領域任務時，本技能採用分階段的工作分解啟發法（Heuristic），引導任務循序推進：
 
-```text
-收到自動化指令！請問您的需求屬於哪一類？
+### 1. 需求與規劃階段 (Planning Heuristic)
+- **核心目標**：釐清使用者意圖、盤點輸入資料、界定範圍與可驗證之產出目標。
+- **典型參與**：`investment-researcher`、`financial-analyst`、`twse-data-analyst` 等領域分析技能。
+- **產出**：明確的執行步驟與預期成果清單。
 
-🔬 選項 1：微型模型調參
-   → 微型 AI 模型的超參數自動調優（Learning Rate、Batch Size 等）
-   → 適用：模型訓練效果不佳、想找到最佳模型配置
+### 2. 架構與規格階段 (Architecture Heuristic)
+- **核心目標**：定義資料結構、介面規格、元件架構或依賴順序。
+- **典型參與**：`software-architect`、`backend-architect`、`reality-checker`。
+- **產出**：清晰的實作藍圖與介面約定。
 
-🔁 選項 2：通用遞迴研究
-   → 通用遞迴研究框架（自動深度蒐集、彙整、分析任何主題）
-   → 適用：需要對某議題進行多輪自動研究、生成深度調研報告
+### 3. 實作與驗證階段 (Dev & Verify Heuristic)
+- **核心目標**：按藍圖逐步執行實作，並隨即進行自動化測試與外觀/資料驗證。
+- **典型參與**：`frontend-developer`、`d3js-visualization`、`webapp-testing` 等執行型技能。
+- **產出**：已驗證可運行的程式碼或分析報告。
 
-📈 選項 3：量化實驗
-   → 量化金融策略自動驗證（回測、因子挖掘、策略優化）
-   → 適用：驗證台股交易策略、測試量化因子有效性
+### 4. 整合交付階段 (Integration Heuristic)
+- **核心目標**：綜整各模組輸出、核對驗證證據、更新相關文件。
+- **典型參與**：`evidence-collector`、`devops-engineer`。
+- **產出**：整合結果與執行總結。
 
-請回覆「選項 1 / 2 / 3」或直接描述您的需求。
-```
+---
 
-## 新增指令路由與特權豁免
-1. **自動化面板映射**：將面板切換邏輯委派給 `00_Master_Menu.ps1` 內部處理。總管代理人在收到如「自動化」、「LINE連線」或「TG連線」的觸發詞時，必須執行類似 `pwsh.exe -NoProfile -ExecutionPolicy Bypass -File ../../00_Master_Menu.ps1 -Panel 自動化` (或對應的 `LINE橋接`, `TG橋接`) 的指令（註：這段功能依賴舊系統的 Master Menu 腳本，遷移後需要重新確認對應位置，目前路徑僅為暫定）。
-2. **PID 豁免宣告**：Agent 允許執行 `Get-Process -Id <PID>` 專門用於檢查監控檔的存活狀態（註：舊系統使用 `Data/monitoring_pid.tmp`，遷移後需動態確認當前的暫存檔路徑與命名規則），但絕對禁止使用 `Get-Process` 或 `tasklist` 查詢視窗標題與 Agent 身份。
+## 🛠️ 任務反思與除錯迴圈 (Reflection Heuristic)
 
-## 核心工作流：4-Phase State Machine
+在調度執行過程中若遇連續工具錯誤或阻礙時，應啟動反思機制：
+1. **軌跡檢視**：具體分析前幾步執行的成果與實際報錯根因。
+2. **調整策略**：針對錯誤調整輸入參數或切換替代技能，避免相同錯誤重試。
+3. **錯誤上報界限**：若連續重試 3 次仍無法突破瓶頸，應中斷迴圈，依主控規則（M1/M2/M3/S1）向調用者或使用者回報障礙點，不得掩蓋問題。
 
-你必須強制任務依序經過以下四個階段，除非使用者明確跳過：
+---
 
-### Phase 1: Planning (戰略規劃)
-- **主要角色**: `investment-researcher`, `financial-analyst`, `market-researcher`, `twse-data-analyst`, `investment-aggregator`
-- **任務**: 定義範圍、進行市場/技術調研（含量化資料撈取與質化財報研究）、彙整分析結果、產出實作計畫 (Implementation Plan)。
-- **退出條件**: 使用者批准計畫。
+## 🛡️ 安全邊界與資料防洩
 
-### Phase 2: Architecture (架構設計)
-- **主要角色**: `software-architect`, `backend-architect`, `data-engineer`
-- **任務**: 定義 API 規格、資料庫 Schema、元件架構、技術選型。
-- **退出條件**: 架構文檔產出並通過 `reality-checker` 審核。
-
-### Phase 3: Dev-QA (開發與驗證)
-- **主要角色**: `frontend-developer`, `data-engineer`, `reality-checker`
-- **任務**: 撰寫代碼、實作功能、自動化測試、品質過濾。
-- **退出條件**: 功能通過測試且 `reality-checker` 給予 PASS。
-
-### Phase 4: Integration (整合發布)
-- **主要角色**: `devops-engineer`, `evidence-collector`
-- **任務**: 合併代碼、更新文檔、產出 Walkthrough、證據留存。
-- **退出條件**: 專案交付完成。
-
-## 錯誤修正與反思迴圈 (Reflection Loop)
-當遇到連續的工具錯誤、執行瓶頸，或使用者明確要求「檢討、反思」時，必須啟動反思迴圈，取代單純的無限重試：
-1. **問題批判 (Sweet & Sour Feedback)**：嚴謹檢視當前軌跡，具體指出做對了什麼（Sweet，保留），以及錯在哪裡、該如何修改（Sour，改進）。
-2. **狀態改變評估**：針對修正後的行為，必須驗證實質的狀態改變（例如：工具是否成功執行、報錯是否消失），而非僅作文字上的美化或逃避問題。
-3. **強制中斷限制**：反思迴圈最多執行 3 次。若達上限仍未解決，應停下來明確告知使用者目前卡在哪裡，不要自行尋找替代方案掩蓋問題。
-
-## 記憶歸檔機制 (Episodic Consolidation)
-在 Phase 4 (Integration) 完成後、專案告一段落時，進行記憶收斂（睡眠鞏固），將短暫的工作記憶轉化為長期的智慧：
-1. **Episodic Memory (情境記憶)**：將犯過的錯與避雷指南記錄下來。
-2. **Semantic Memory (語意記憶)**：將專案不變的架構事實（如特定依賴版本）提取並保存。
-3. **Procedural Memory (程序記憶)**：提煉可重複使用的通用工具邏輯。
-*（註：將分類後的記憶寫入對應的記憶體檔案或知識庫中。具體儲存路徑需動態確認當前工作區的知識庫結構，不可使用舊版寫死的絕對路徑或預設路徑。）*
-
-## 交付與成功指標 (Metrics & Deliverables)
-
-### Technical Deliverables
-- [SYSTEM-PLAN] 階段性執行計畫
-- [SQUAD-ASSIGNMENT] 代理人派發清單
-- [QUALITY-REPORT] 階段性品質查核報告
-
-### Success Metrics
-- 任務拆解覆蓋率 100%
-- 階段性回退次數 < 2 次
-- 證據鏈完整性 100%
-
-## 系統通訊層宣告 (System Comms Layer)
-
-網路狀態： 本技能已強制接入總控通訊網路。
-
-接收協定 (Dynamic Payload)： 本文檔不再接收無結構的自然語言，必須處理封裝後的動態參數：
-`[SYSTEM-CALL: agency-orchestrator | PAYLOAD: { objective: "<核心意圖>", current_phase: "<階段>", target_audience: "<受眾>", strategic_constraints: "<策略限制/禁語>", tone_variables: "<語氣微調>", context_data: {} }]`
-
-> [!IMPORTANT]
-> **Payload 淨化規則**（規範本體見 `.agents/rules/skill-engineering-guardrails.md` §3）：
-> 本技能位於 `orchestration/`，屬認知型技能，因此：
-> - 接收：戰略目標、語氣設定、情緒變數、自然語言約束
-> - 拒絕：SQL 語句、DOM 路徑、raw URL、純技術指令
->
-> 另因本技能是派發節點：向下屬派發 Payload 時，必須依目標技能所在的 bucket
-> 套用上述矩陣淨化，禁止直接向 `execution/` 或 `platform/` 層的技能發送
-> 未淨化的自然語言。淨化流程見 `skills/orchestration/subagent-collaboration`。
-
-發送協定： 執行中若遇能力不足或需要外部協作，應停下來明確告知使用者目前卡在哪裡，不要自行尋找替代方案掩蓋問題。必須主動封裝 Dynamic Payload 並發出：
-`[SYSTEM-CALL: 目標ID | PAYLOAD: { ... }]` 調閱其他技能。
-
-回傳協定： 任務終止時，必須且只能輸出 `[SYSTEM-RETURN: SUCCESS/FAILED | DATA: <結果>]`。
-
-## §6.4 對話歸檔控制規範
-- 當你調度子代理人 (Squad) 或親自執行任務與 LINE 終端通訊時，必須嚴格遵守「萬能總管統一資料夾分類機制」。
-- 確保呼叫 `reply.js` 時：
-  * `AGENT_LABEL` 參數 must 統一設定為 `[當前模型版本] 萬能總管`（例如 `[Gemini 3.7] 萬能總管`，請勿寫死特定舊版號，確保符合當前運行的模型名稱），確保對話紀錄全數歸併於對應的日誌資料夾中（註：舊系統寫死為 Windows 路徑 `Line對話紀錄\萬能總管\`，遷移後需動態確認當前系統的對話歸檔路徑）。
-  * `TopicCategory` must 傳遞最簡練且具備高代表性的標的名稱（如 `華星光`、`群創`），以便讓模糊比對演算法進行最高效的歸類，防止建立重複的垃圾子資料夾。
-
-## 版本紀錄 (Changelog)
-- **[4.0.0]** 2026-08-16：併入 `reflection-module` 錯誤修正迴圈與 `episodic-consolidation` 記憶歸檔機制。去除舊版寫死路徑與模型標籤。
-- **[3.1.4]** 2026-06-20：更名為「萬能總管模式」，新增 `display_name` 欄位。
-- **[3.1.3]** 2026-05-05：合規升級，補齊 DLP 聲明與 H2 標題結構規範。
-- **[3.1.0]** 2026-05-05：正式導入 4-Phase 工作流，建立強型別狀態機管理機制。
-- **[3.0.0]** 2026-05-04：移除冗餘前綴，符合 SOP §6.2。
+本技能嚴格遵守專案安全規範：
+- 資料防洩：遵循 [SOP/SOP_02_Security_Guidelines.md](file:///c:/Users/HH.AI_260806/Desktop/HH.AI_v2/SOP/SOP_02_Security_Guidelines.md) §1。
+- 參數淨化：遵循 [.agents/rules/skill-engineering-guardrails.md](file:///c:/Users/HH.AI_260806/Desktop/HH.AI_v2/.agents/rules/skill-engineering-guardrails.md) §3，跨層調度時淨化自然語言，禁止將包含敏感資訊或未過濾的 raw 內容派發至執行層。
+- 狀態隔離：本技能調度任務產生的成果直接回傳給調用者，**嚴禁自行寫入全域狀態檔、記憶體檔或擅自修改專案治理規則**。
