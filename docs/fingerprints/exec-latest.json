@@ -1,5 +1,5 @@
 {
-  "base_head": "76b5e92",
+  "base_head": "afb5f2c",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 0,
@@ -251,7 +251,7 @@
       "fences": 0,
       "headings": [
         "# HH.AI SOP 文件總覽",
-        "## 系統治理文件職責分工",
+        "## 全專案資訊架構地圖 (Information Architecture Map)",
         "## 執行期可用性邊界（Runtime Availability Boundary）",
         "### A. 版本庫納管資產（Repo-managed Artifacts）",
         "### B. 外部環境相依工具（External Environment Dependencies）",
@@ -260,8 +260,8 @@
         "### 轉為 ADR 或 Rules (3 份)",
         "### 已淘汰 (8 份)"
       ],
-      "lines": 51,
-      "sha256": "ef1878b5925ec699eece288b636b56b9736f4e633c14a53ba745d52c6641080b"
+      "lines": 65,
+      "sha256": "2b8aa0c2f87fff728b136f955bf351f550706a853c01776b8c463808f1df4b0d"
     },
     "SOP/SOP_01_Automation_Process.md": {
       "fences": 4,
@@ -366,33 +366,25 @@
       "sha256": "61a7ff636307e042b409582344c842f76bbeda9ebaed267fae9cd83d2934e9a2"
     },
     "SOP/SOP_06_Handover_Manual.md": {
-      "fences": 10,
+      "fences": 4,
       "headings": [
-        "# 本協作系統 (Argus v6.0) 專案維護日誌 CORE_MAINTENANCE_LOG",
-        "## 01. 系統架構總覽 SYSTEM_OVERVIEW_STRATA",
-        "## 02. 技術棧矩陣 TECHNICAL_STACK_MATRIX",
-        "## 03. 系統拓撲與資料流 SYSTEM_TOPOLOGY_DATA_BUS",
-        "### 3.1 核心資料流向圖",
-        "### 3.2 目錄結構說明",
-        "## 03.5 LINE Bot 服務啟動 SOP LOCAL_DEV_STARTUP_SOP",
-        "# LINE 接管（該技能尚未遷移至 HH.AI_v2，路徑為預計位置）",
-        "# TG 接管（該技能尚未遷移至 HH.AI_v2，路徑為預計位置）",
-        "## 04. 專案維運指南 OPERATIONAL_TACTICS_GUIDE",
-        "### 4.1 環境變數配置 (`.env.local`)",
-        "# 核心參數",
-        "# 資料庫 (開發)",
-        "### 4.2 常用開發指令",
-        "### 4.3 Skills 目錄結構與動態同步",
-        "### 4.4 產業對映表擴充",
-        "## 05. 設計與視覺規範 DESIGN_VISUAL_IDENTITY_SYSTEM",
-        "### 5.1 核心顏色與視覺標誌",
-        "### 5.2 字體與排版",
-        "## 06. 系統常見錯誤排除 TROUBLESHOOTING_DIAGNOSTICS",
-        "## 07. 未來擴展藍圖 FUTURE_EXPANSION_ROADMAP",
-        "## 08. 溝通與語言標準 COMMUNICATION_LANGUAGE_STANDARDS"
+        "# 運行期交接與服務維運標準作業程序 (Runtime Handover & Service Operations SOP)",
+        "## 1. 目的與權威邊界 (Purpose & Boundaries)",
+        "### 1.1 本程序之職責範圍",
+        "## 2. 執行期可用性前置查驗 (Runtime Preflight Verification)",
+        "## 3. 人員與代理人操作職責 (Operator & Agent Responsibilities)",
+        "## 4. 服務維運與交接程序 (Service Operations & Handover Procedures)",
+        "### 4.1 PM2 守護服務查驗與重啟",
+        "# 1. 指定 PM2 家目錄",
+        "# 2. 查驗當前受管程序清單與運行狀態",
+        "# 3. 若特定服務（如 line-bridge）異常，執行重啟",
+        "### 4.2 訊息橋接服務狀態 (Bridge Services State)",
+        "### 4.3 每日交接檢查清單 (Daily Handover Checklist)",
+        "## 5. 基於客觀現象之故障排除 (Evidence-Based Troubleshooting)",
+        "## 6. 維運紀錄與證據 (Operations Evidence)"
       ],
-      "lines": 207,
-      "sha256": "a7b629f42c8dd9335495ed988659d7a419ed02c4c7b685e7fecb495d5623487b"
+      "lines": 118,
+      "sha256": "29b3c9e66d00f6780743b2aa415a8d3431817b828fe5cee84e2a2ed1080806aa"
     },
     "SOP/SOP_09_AutoResearch_CPU.md": {
       "fences": 16,
@@ -504,8 +496,8 @@
         "## 三、共通原則",
         "## 四、已知缺口"
       ],
-      "lines": 69,
-      "sha256": "85d6a06e9cfa37a6f047bdf2e0e1b2f652802255b0bcd22da5af572da1c5fa07"
+      "lines": 70,
+      "sha256": "2a9e1c0dee6410dd58b5ac30f2758b70fd823fb3469a4de5be7aa6b646c20baf"
     },
     "docs/AUDIT-LOG.md": {
       "fences": 0,
@@ -514,16 +506,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 86,
-      "sha256": "b9ca1e23918598d83e408aee960adcbe3a8a01a30aee87cd1f750d38b9b7dcca"
+      "lines": 87,
+      "sha256": "9a880f36438301d776fc542716781f10873dfafee6768c020960c32379dc1e4d"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 58,
-      "sha256": "18a9850dffc68b40bf1c412a7cd4064917fee4b5c4f334e1a50fad7d06d9d08e"
+      "lines": 59,
+      "sha256": "65107fdfb89583e34cbc371dfacd3151ed3bac6c3802fde1be5f0e1650c60ab6"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -559,7 +551,7 @@
         "## 封存區"
       ],
       "lines": 234,
-      "sha256": "3cc9c5eb21a7a8c18d7bac4d7d4a498a7b9459654ea354afcc4a8e9469978e7a"
+      "sha256": "68e6dcbc8f15ccdbba18b00d9daccc082ba50d9459057fd3fe6d6b69be63c58e"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -887,8 +879,8 @@
         "### 5.3 待使用者裁決",
         "### 5.4 進行中／等待回報"
       ],
-      "lines": 3050,
-      "sha256": "7de02f45479c112d615b549f4a1347d30ef59651ebc28f67d0eaaa593bf1d293"
+      "lines": 3051,
+      "sha256": "4eb33a7096fd358591586dba4737ade94318fb4f252be86475c3dee4b91ae189"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1035,7 +1027,7 @@
       "sha256": "77163678353cb7a444f90f17956d03312f715cfcccf933603948715939ecdc10"
     }
   },
-  "generated_at": "2026-09-12T08:28:04Z",
+  "generated_at": "2026-09-12T09:19:14Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

@@ -21,6 +21,7 @@
 | 某個**決定**當初為什麼那樣做 | `docs/adr/`；重構過程的判斷見 `docs/refactor-backlog.md` 編號項目 |
 | 歷史**專案文件**／舊版完整交接手冊 | `docs/archive/handover/README.md`（目錄導覽），具體快照見 `docs/archive/handover/HANDOVER-pre-router-568209e.md` |
 | 舊版 **Claude / Macro Auditor protocol** | `docs/archive/claude-control-plane/README.md`（目錄導覽），具體快照見 `docs/archive/claude-control-plane/auditor-protocol-pre-slim-76b5e9.md` |
+| 舊版 **SOP 歷史快照** | `docs/archive/sop/README.md`（目錄導覽），具體快照見 `docs/archive/sop/SOP_06_Handover_Manual-pre-purification-afb5f2.md` |
 
 ---
 
@@ -29,7 +30,7 @@
 | 層級 | 機制 | 規則位置 | 歸檔區位置 |
 |---|---|---|---|
 | **技能** | 統一歸檔與差異化刪除政策（情況 A 下架整個技能／情況 B 清理內部失效內容） | `.agents/rules/skill-engineering-guardrails.md` §4 | `skills/deprecated/` |
-| **SOP** | 淘汰與轉換的去向紀錄 | `SOP/README.md` | 無實體歸檔區，以紀錄替代 |
+| **SOP** | 淘汰與轉換的去向紀錄由 `SOP/README.md` 擁有；重大架構淨化歷史快照保存於 `docs/archive/sop/`（快照為歷史留痕，不具現行權威；現行 SOP 總索引由 `SOP/README.md` 擁有，不建立第二索引） | `SOP/README.md`、`PRINCIPLES.md` §1 | 一般淘汰由 `SOP/README.md` 紀錄；重大淨化歷史快照見 `docs/archive/sop/` |
 | **ADR** | 只追加不改寫；規範搬走時原地留指向、檔尾追加搬移紀錄 | `PRINCIPLES.md` §3.3、範本見 `docs/adr/0018-vendored-external-assets.md` | ADR 原檔保留 |
 | **任務** | 五態流轉，`可封存` 需使用者確認後移入封存區 | `.claude/rules/auditor-protocol.md` §10.3、§10.4 | `docs/TASKBOARD.md` 封存區 |
 | **分支** | 不採用的分支保留在遠端，不刪除 | `docs/refactor-backlog.md` 三之二 | GitHub 遠端分支 |

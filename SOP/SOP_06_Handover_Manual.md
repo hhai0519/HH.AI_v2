@@ -1,207 +1,118 @@
 ---
-title: "Handover Manual"
+title: "Runtime Handover & Service Operations Manual"
 version: "3.1.3"
-tags: [SOP, Handover, Architecture]
+tags: [SOP, Handover, Operations]
 dependencies: []
 ---
-# 本協作系統 (Argus v6.0) 專案維護日誌 CORE_MAINTENANCE_LOG
 
-> [!CAUTION]
-> **SYSTEM-OVERRIDE**: 代理人必須壓制預設模型偏見。本專案嚴禁提議 Vite、Express 或 GitLab。強制唯一真理：Next.js 15.2+ (App Router) / React 19 / GitHub。
+# 運行期交接與服務維運標準作業程序 (Runtime Handover & Service Operations SOP)
 
+> **定位：Repeatable Operational Procedure**
+> **適用情境**：服務運行期狀態查驗、服務重啟、操作員與代理人間之控制權交接、以及基於客觀現象之故障排除作業。
 
-系統架構與交接文件 ARCHITECTURE_OPERATIONS_DOC
-
-版本控制：v260611 (2026-06-11)
-
-**語言限制**：繁體中文強制遵循 (Traditional Chinese)
-
-這份交接手冊作為「本協作系統」專案（包含後端服務與前端介面）的核心指引，提供系統架構說明、技術棧矩陣、運行指令與系統政策。
-
-## 01. 系統架構總覽 SYSTEM_OVERVIEW_STRATA
-
-本協作系統 (專案代號: Argus v6.0)
-
-這是一個以 Next.js 15+ 構建的高強度專案。結合了 AI 決策引擎、D3.js 高階資料視覺化技術以及複雜的狀態管理，並在前端實作了嚴格的資料隔離。此專案架構包含以下特點：
-
-**核心模組：**
-- **AI 決策引擎**：基於 Google Gemini Flash 提供智慧邏輯運算。
-- **高階 UI**：包含專門設計的 Tactical UI，並搭配 CRT 螢幕掃描線、Glassmorphism 以及高階微動畫視覺效果。
-- **資料視覺化**：自定義的 P/E River Map（本益比河流圖）與 Ownership Cluster（籌碼集中度分析）。
+本標準作業程序（SOP）定義系統在運行環境下的常態維運程序與交接流程。
 
 ---
 
-## 02. 技術棧矩陣 TECHNICAL_STACK_MATRIX
+## 1. 目的與權威邊界 (Purpose & Boundaries)
 
-**前端框架**
-- Framework: Next.js 15.2+ (App Router, PPR 支援)
-- React 版本: v19 (Experimental Features Support)
-- 樣式與動畫:
-  - Tailwind CSS v4: 作為主要的樣式解決方案。
-  - Framer Motion: 處理複雜的元件過渡與微動畫。
-  - Lucide React: 系統圖示標準。
-  - Radix UI: 無樣式元件庫 (Primitives)。
+### 1.1 本程序之職責範圍
+- **涵蓋範圍**：運行期服務狀態查核（Runtime Availability）、PM2 守護程序管理、操作員與代理人交接控制點、以及基於客觀現象之基礎設施故障排除。
+- **排除範圍（本程序不擁有以下事實）**：
+  - **專案交接與進度導覽**：由專案總交接文件 [`docs/HANDOVER.md`](../docs/HANDOVER.md) 統籌導覽。
+  - **現行進度與審計檢查點**：由交接區 [`docs/refactor-backlog.md` §5](../docs/refactor-backlog.md) 實時導出。
+  - **剩餘與下一步任務**：以任務看板 [`docs/TASKBOARD.md`](../docs/TASKBOARD.md) 為唯一權威來源。
+  - **核心架構與決策留痕**：由 [`PRINCIPLES.md`](../PRINCIPLES.md) 及 [`docs/adr/`](../docs/adr/) 擁有。
+  - **代理人行為約束**：由 [`AGENTS.md`](../AGENTS.md) 及 [`.agents/rules/`](../.agents/rules/) 原生管轄。
+  - **`$$` 觸發指令權威**：由 [`SOP/SOP_00A_Master_Index.json`](./SOP_00A_Master_Index.json) 唯一定義，本程序不重複定義指令語意。
 
-**資料視覺化**
-- D3.js (v7): 用於高階客製化 SVG 渲染。
-- Recharts / ApexCharts: 用於基礎 K 線與折線圖。
-
-**後端與環境**
-- 運行環境: Node.js 20+ / Edge Runtime.
-- AI 模型: Google Gemini 1.5 Flash (用於市場數據分析與報告生成)
-- 資料請求: axios + p-limit (用於 API 併發控制)。
-- 資料庫: Neon (PostgreSQL) - 用於後續的高性能數據存儲。
+> [!NOTE]
+> **歷史快照留痕**：本文件淨化前所包含之早期 Argus v6 架構百科、技術棧宣告、視覺設計標準及未來擴充藍圖等歷史內容，已完整保存於不可變快照 [`docs/archive/sop/SOP_06_Handover_Manual-pre-purification-afb5f2.md`](../docs/archive/sop/SOP_06_Handover_Manual-pre-purification-afb5f2.md)。
 
 ---
 
-## 03. 系統拓撲與資料流 SYSTEM_TOPOLOGY_DATA_BUS
+## 2. 執行期可用性前置查驗 (Runtime Preflight Verification)
 
-### 3.1 核心資料流向圖
+依據 [`SOP/README.md`](./README.md) 的「執行期可用性邊界（Runtime Availability Boundary）」，在執行任何維運指令前，必須進行實體存在性查驗：
 
-```mermaid
-graph TD
-    A[啟動 Workflow] --> B[呼叫 FinMind 獲取法人數據]
-    B --> C[呼叫籌碼集中度模組]
-    C --> D[計算技術指標 RSI/MA]
-    D --> E[Gemini AI 決策分析]
-    E --> F[產出 ai_report.json]
-    F --> G[Next.js 前端路由解析]
-    G --> H[渲染至專案介面]
-```
-
-### 3.2 目錄結構說明
-- `/src/app/`: Next.js App Router 路由。
-- `/src/components/`: 共用的 UI 元件，如 `L2OrderBook`, `StockChart`, `AISignalPanel` 等。
-- `/src/execution/`: 系統核心邏輯，包含 `masterWorkflow.ts` 與 `industryMapping.ts`。
-- `/src/services/`: 外部 API 封裝，如 AI, Market Data, DB。
-- `/src/utils/`: 共通輔助函數，如資料格式化、數學運算。
+1. **版本庫納管資產（Repo-managed Artifacts）**：
+   - 唯有在當前 `origin/main` 根目錄中**實體存在**之檔案與腳本，方可作為現行直接執行的指令依據。
+   - 若檔案尚未遷移至版本庫中（如未遷移之 bridge 啟動腳本），該段落僅屬**目標態指引（Target-State Procedure）**，嚴禁假造路徑或直接執行，應路由至 [`docs/TASKBOARD.md`](../docs/TASKBOARD.md) 對應之遷移任務。
+2. **外部環境工具（External Environment Dependencies）**：
+   - 使用 PM2、Node.js 等外部工具前，必須透過確定性指令（如 `Get-Command pm2`、`node -v`）探測可用性，不得假設特定本機絕對路徑為通用真理。
 
 ---
 
-## 03.5 LINE Bot 服務啟動 SOP LOCAL_DEV_STARTUP_SOP
+## 3. 人員與代理人操作職責 (Operator & Agent Responsibilities)
 
-**目標：** 透過 `00_Master_Menu.ps1` 啟動 LINE Bot Bridge 或 Telegram CDP Bridge，讓 Agent 可接管對話控制權。
+- **人類操作員（總管）職責**：
+  - 負責作業系統底層設定、全域 PM2 守護程序開機自啟排程與外部網路通道（如 Pinggy/SSH）之建立。
+  - AI 代理人**不得**自行安裝未經授權之作業系統服務或執行非受管之底層網路穿透指令。
+- **AI 代理人職責**：
+  - 負責於基礎設施就緒後進行服務狀態探測、程序可用性確認、排程工作巡檢與數據收集。
+  - 涉及程序終止或敏感寫入時，必須遵守 [`SOP/SOP_01_Automation_Process.md`](./SOP_01_Automation_Process.md) 與 [`SOP/SOP_02_Security_Guidelines.md`](./SOP_02_Security_Guidelines.md) 之授權規範。
 
-> [!IMPORTANT]
-> 此為人類（總管）的職責。AI Agent **絕對不可**自行嘗試執行此段啟動流程。
+---
 
-**啟動指令（在工作區根目錄的 PowerShell 終端機執行）：**
-> [!IMPORTANT]
-> 此為人類（總管）的職責。AI Agent **絕對不可**自行嘗試執行此段啟動流程。
+## 4. 服務維運與交接程序 (Service Operations & Handover Procedures)
 
-PM2 基礎設施採開機自動啟動（Windows Task Scheduler 延遲 60 秒）。
-若需手動重啟，使用以下指令：
+### 4.1 PM2 守護服務查驗與重啟
+PM2 基礎設施預設採系統自動啟動。若維運過程需查驗或重啟服務，依序執行以下步驟：
+
 ```powershell
+# 1. 指定 PM2 家目錄
 $env:PM2_HOME = "$env:USERPROFILE\.pm2"
+
+# 2. 查驗當前受管程序清單與運行狀態
+npx pm2 list
+
+# 3. 若特定服務（如 line-bridge）異常，執行重啟
 npx pm2 restart line-bridge
 ```
 
-**預期輸出流程（Zero-Delay 架構，無 Cloudflare Tunnel）：**
-1. `line-bridge` 已由 PM2 常駐管理，系統開機時自動啟動於 Port 3000。
-2. `bridge.js` 內建的 `startPinggyDaemon()` 自動建立 SSH 隧道並更新 LINE Webhook URL。
-3. `tg-bridge-zero-delay` 同樣由 PM2 管理，獨立運行於 Port 3001。
+**狀態判準**：
+- 程序之 `status` 欄位必須為 `online`。
+- `restart` 次數未呈現異常高頻遞增（避免 crash-loop）。
 
-**Agent 接管控制權（基建啟動後，由 Agent 執行）：**
-```powershell
-# LINE 接管（該技能尚未遷移至 HH.AI_v2，路徑為預計位置）
-node skills/platform/line-bot-zero-delay/line-bot-project/start_line.js Antigravity-Master "AI_Master" true
-
-# TG 接管（該技能尚未遷移至 HH.AI_v2，路徑為預計位置）
-node skills/platform/telegram-bot-cdp-bridge/telegram-bot-project/start_tg.js Antigravity-Master
-```
-
-**注意：LINE 與 TG 兩個橋接器完全獨立運行（Port 3000 vs Port 3001），可同時並行，不存在任何衝突。**
-
----
-
-## 04. 專案維運指南 OPERATIONAL_TACTICS_GUIDE
-
-### 4.1 環境變數配置 (`.env.local`)
-請確保後端具有以下環境變數設定：
-```bash
-# 核心參數
-GOOGLE_API_KEY=your_gemini_key
-FINMIND_API_TOKEN=<YOUR_FINMIND_TOKEN>
-INTERNAL_GATEWAY_TOKEN=<YOUR_INTERNAL_TOKEN>
-
-# 資料庫 (開發)
-DATABASE_URL=postgresql://...
-```
-
-### 4.2 常用開發指令
-```bash
-npm run dev -- -p 3002   # 啟動本地開發伺服器 (http://localhost:3002，對齊 ADR-0017 防與 LINE 3000 衝突)
-npm run workflow  # 觸發 AI 分析流程，將產生 ai_report.json 報告
-npm run build     # 構建生產環境應用
-```
-
-**權限管理 (Strong Auth Tokens)：**
-- `$$自動化$$`：用於授權腳本執行敏感寫入（必須包含此關鍵字）。
-- `$$Allow All$$`：用於忽略「單次請求修改」限制的強制參數。
-
-### 4.3 Skills 目錄結構與動態同步
-**本協作系統 引擎**：`<USER_HOME>\.gemini\本協作系統\skills\`
-**本地工作區**：`HH.AI_v2/skills/`
-**數量與清單**：【動態獲取】嚴禁在此 SOP 紀錄靜態數字。系統當前技能清單與數量，**必須且僅能**透過讀取各 bucket 的 README.md 獲取。
-**目錄限制**：`/skills/` 目錄下嚴格禁止修改核心，所有新 Skill 必須透過正規流程進行變更。
-
-### 4.4 產業對映表擴充
-修改 `src/execution/industryMapping.ts` 中的 `INDUSTRY_CONFIG` 即可擴充股票類別。系統會自動在下一次 Workflow 執行時納入 AI 評估。
-
----
-
-## 05. 設計與視覺規範 DESIGN_VISUAL_IDENTITY_SYSTEM
-
-### 5.1 核心顏色與視覺標誌
-- **Primary (主色)**: `#3b82f6` (Blue) - 用於主要按鈕與強調。
-- **Secondary (次色)**: `#10b981` (Emerald) - 用於成功狀態與標籤。
-- **Accents**: 琥珀色 (`#f59e0b`) 用於警告，以及特定 AI 狀態呈現。
-- **CRT Effect**: 套用 `.crt-overlay` 與 `.crt-scanline` 以製造復古終端機風格。
-
-### 5.2 字體與排版
-- **全局字體**: 預設字體大小為 10px，建議改為 12-13px 提升可讀性。
-- **SVG 渲染**: D3 視覺化組件字體大小統一為 12px。
-- **組件尺寸**: `L2OrderBook` 與 `QuantTicker` 的高度必須固定。
-
----
-
-## 06. 系統常見錯誤排除 TROUBLESHOOTING_DIAGNOSTICS
-
-| 症狀 | 狀況 | 解決方案 |
-|------|------|----------|
-| Workflow 出現 Gemini 429 錯誤 | Free Tier RPM 限制 | 確保 `pLimit(1)` 中 `setTimeout` 為 4000ms |
-| 載入資料畫面卡頓 | ai_report.json 過大 | 檢查 JSON 大小，引入 Next.js PPR Suspense |
-| D3 視覺化元件重疊 | Resize Observer 觸發異常 | 檢查 `useEffect` cleanup 函數 |
-| Skills 無法讀取 | 路徑設定錯誤 | 確保 本協作系統 引擎路徑正確 |
-
----
-
-## 07. 未來擴展藍圖 FUTURE_EXPANSION_ROADMAP
-
-1. **技術指標擴展**: 擴展 RAG 引擎，更新 `signal.ts` 中的算法。
-2. **多使用者架構**: 啟用 Neon DB 的 RLS 功能以支援多使用者。
-3. **即時 WebSocket**: 引入 SSE (Server-Sent Events) 或 WebSockets。
-4. **Skills 自動同步**: 建立本地工作區與 本協作系統 引擎的雙向同步機制。
-
----
-
-## 08. 溝通與語言標準 COMMUNICATION_LANGUAGE_STANDARDS
+### 4.2 訊息橋接服務狀態 (Bridge Services State)
+依據 [`docs/adr/0017-port-allocation.md`](../docs/adr/0017-port-allocation.md) 之 Port 配置規範：
+- **LINE Bridge**：常駐運行於 Port `3000`。
+- **Telegram Bridge**：常駐運行於 Port `3001`。
+- **本地 Web 開發伺服器（若需啟動）**：必須綁定於 Port `3002`（指令：`npm run dev -- -p 3002`），嚴禁佔用 3000/3001 導致通訊橋接中斷。
 
 > [!IMPORTANT]
-> 核心語言：繁體中文 (Taiwan/Traditional Chinese)
-> 所有輸出報告與日誌，必須維持台灣慣用語。
+> **目標態標記（TARGET_STATE / 尚未遷移）**：
+> 早期手冊提及之 Agent 本地接管指令（如 `start_line.js` 與 `start_tg.js`），其對應之技能目錄（`skills/platform/line-bot-zero-delay/` 及 `skills/platform/telegram-bot-cdp-bridge/`）尚未遷移至當前版本庫。
+> 依執行期邊界規範，目前**不得直接執行該指令**；相關遷移進度以 [`docs/TASKBOARD.md`](../docs/TASKBOARD.md) Section E/F 為準。
 
-**檔案命名規範**：
-- Agent 對話過程中產生的檔案：
-  - `implementation_plan.md`
-  - `task.md`
-  - `walkthrough.md`
-- `docs/` 下的 SOP：
-  - `SKILL.md` 等標準文件。
+### 4.3 每日交接檢查清單 (Daily Handover Checklist)
+操作員或代理人於交接班次時，依序確認以下項目：
+- [ ] 執行 `npx pm2 list`，確認所有常駐服務皆為 `online`。
+- [ ] 執行 TCP 連線探測，確認通訊連接埠未發生衝突：
+  ```powershell
+  Get-NetTCPConnection -LocalPort 3000, 3001 -ErrorAction SilentlyContinue
+  ```
+- [ ] 確認後端服務所需之環境變數（如 API Key）已於執行環境就緒。
+- [ ] 確認無未受管之孤兒程序佔用系統資源（參照 [`SOP/SOP_04_Data_Cleanup.md`](./SOP_04_Data_Cleanup.md)）。
 
 ---
 
-系統管理者: 本協作系統 AI Agent // TACTICAL_AUTONOMOUS_ENTITY
-版本控制: v260507 (2026-05-07) // PATH_GENERALIZATION_BUILD
-維護記錄: 架構清洗 (2026-06-15) → V3.2.0 升級
-變更概要: 移除所有絕對路徑 (<USER_HOME>\...)，改為相對路徑或佔位符 (<USER_HOME>) 以支援環境遷移。
+## 5. 基於客觀現象之故障排除 (Evidence-Based Troubleshooting)
+
+故障排除遵循「可觀察現象 → 確定性檢驗 → 安全處置 → 升級路由」原則：
+
+| 觀察現象 | 確定性檢驗方法 | 安全處置步驟 | 升級與路由 |
+|---|---|---|---|
+| **PM2 服務狀態顯示 `errored` 或 `stopped`** | 執行 `npx pm2 logs <app-name> --lines 20` 檢視崩潰堆疊 | 檢查相依模組與環境變數，執行 `npx pm2 restart <app-name>` | 若重啟後仍持續崩潰，通知操作員並記錄錯誤訊息 |
+| **通訊 Port 衝突（3000 或 3001 被非預期程序佔用）** | `Get-Process -Id (Get-NetTCPConnection -LocalPort 3000).OwningProcess` | 確認程序名稱；若為舊殘留程序，依 [`SOP/SOP_02_Security_Guidelines.md`](./SOP_02_Security_Guidelines.md) 規範安全終止 | 若佔用程序非專案相關，通知操作員協調 Port 衝突 |
+| **API 請求遭遇 Rate Limit (HTTP 429)** | 檢視請求錯誤標頭中之 Retry-After 或配額狀態 | 依指數退避策略（Exponential Backoff）等待冷卻時間，暫停高頻請求 | 若配額完全耗盡，通知操作員更新憑證或切換後備路由 |
+| **檔案或模組路徑查無實體** | 使用 `Test-Path <path>` 查驗路徑是否存在 | 查閱 [`SOP/README.md`](./README.md) 確認是否屬於尚未遷移之資產 | 路由至 [`docs/TASKBOARD.md`](../docs/TASKBOARD.md) 對應任務，不得憑空發明路徑 |
+
+---
+
+## 6. 維運紀錄與證據 (Operations Evidence)
+
+維運操作與交接動作應保留客觀紀錄：
+- 服務啟動與例行重啟狀態保留於 PM2 日誌目錄中。
+- 專案層次之程式碼異動與審查狀態，一律記錄於版本庫客觀證據通道（`docs/EXEC-LOG.md`、`docs/AUDIT-LOG.md`、Git commit 與 GitHub Actions）。
+- 本程序不建立第二套獨立之審計日誌或任務看板。

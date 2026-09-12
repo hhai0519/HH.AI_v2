@@ -1,9 +1,23 @@
 # HH.AI SOP 文件總覽
 
-## 系統治理文件職責分工
-- **`SOP/` (本目錄)**：「該怎麼操作」的流程指南，提供具體的步驟、指令與作業標準。
-- **`docs/adr/`**：「當初為什麼這樣決定」的架構決策紀錄（Architecture Decision Records），記錄系統演進的決策留痕。
-- **`.agents/rules/`**：「agent 執行任務時的行為約束」，此處的規則會被系統原生機制自動載入並嚴格執行。
+> **定位：SOP Index / Operational Boundary**
+> 本文件為標準作業程序（SOP）之總索引與執行期可用性邊界規範。
+> 各領域之權威來源請依下方資訊架構地圖前往，SOP 目錄僅負責「可重複執行的操作程序（repeatable operational procedures）」。
+
+## 全專案資訊架構地圖 (Information Architecture Map)
+
+- **專案使命與核心優先序 (Mission)**：[`../MISSION.md`](../MISSION.md)
+- **決策與協作原則、治理層級 (Principles)**：[`../PRINCIPLES.md`](../PRINCIPLES.md)
+- **執行者行為準則與控制平面 (Executor Rules)**：[`../AGENTS.md`](../AGENTS.md) 及 [`../.agents/`](../.agents/)
+- **宏觀審計官工作協定與控制平面 (Claude Rules)**：[`../.claude/`](../.claude/)
+- **現行工作與剩餘任務 (Current Work / Next Work)**：[`../docs/TASKBOARD.md`](../docs/TASKBOARD.md)
+- **當前進度與審計檢查點 (Current Progress & Audited Checkpoint)**：[`../docs/refactor-backlog.md` §5](../docs/refactor-backlog.md)
+- **專案交接總導覽 (Project Handover Router)**：[`../docs/HANDOVER.md`](../docs/HANDOVER.md)
+- **標準作業程序 (Operational Procedures)**：本目錄（`SOP/`）各程序文件
+- **技能與系統能力庫 (Capabilities)**：[`../skills/`](../skills/)
+- **架構決策紀錄與留痕 (Architecture Decisions & Rationale)**：[`../docs/adr/`](../docs/adr/)
+- **歷史不可變快照與歸檔索引 (Historical Snapshots & Archive Index)**：[`../docs/ARCHIVE-INDEX.md`](../docs/ARCHIVE-INDEX.md)
+- **執行與審計證據鏈 (Evidence)**：`docs/EXEC-LOG.md`、`docs/AUDIT-LOG.md`、Git commit 與 GitHub Actions
 
 ## 執行期可用性邊界（Runtime Availability Boundary）
 
@@ -25,7 +39,7 @@ SOP 文件中引用的外部或底層資產依其性質明確區分為兩大類�
 2. [SOP_02_Security_Guidelines.md](./SOP_02_Security_Guidelines.md)：規範系統中所有 Agent 技能在執行時的安全邊界與機密防護措施。
 3. [SOP_04_Data_Cleanup.md](./SOP_04_Data_Cleanup.md)：規範系統快取、無效日誌與孤兒程序的定期深度清理機制。
 4. [SOP_05_System_Policies.md](./SOP_05_System_Policies.md)：規範系統最頂層的核心治理規則與絕對禁止事項。
-5. [SOP_06_Handover_Manual.md](./SOP_06_Handover_Manual.md)：提供代理人系統的每日交接程序、基建維護指令與故障排除指南。
+5. [SOP_06_Handover_Manual.md](./SOP_06_Handover_Manual.md)：規範系統運行期交接程序（Runtime Handover）、服務可用性查驗與故障排除標準作業流程。
 6. [SOP_09_AutoResearch_CPU.md](./SOP_09_AutoResearch_CPU.md)：規範 CPU 模式下自動化模型研究與參數評估流程。
 7. [SOP_11_Task_Reflection_Protocol.md](./SOP_11_Task_Reflection_Protocol.md)：確立所有 AI 代理人在高風險決策或複雜任務後的反思與自我修正迴圈。
 8. [SOP_12_MCP_Auth_Recovery.md](./SOP_12_MCP_Auth_Recovery.md)：規範 MCP 工具認證掉線時的緊急憑證修復程序。
