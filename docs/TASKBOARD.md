@@ -10,7 +10,7 @@
 `待裁決`（需使用者決定）／`已完成`（仍可能被引用）／
 `可封存`（不影響後續工作，待使用者確認後移入封存區）
 
-**最後更新**：2026-09-12，B-58 Recovery R6 — Minimal Content-Architecture Guards & Final Audit Preparation
+**最後更新**：2026-09-12，B-58 Recovery R6 Micro-Fix — Narrow False-DLP Guard Exemption
 
 ---
 
@@ -129,7 +129,7 @@
 | B-55 | 待辦 | **治理層已分裂成兩個速度** | 實測最後修改日：稽核迴圈檔案 09-05～09-06；作業層 SOP_01／02／05／06／09／11／12／13 停在 2026-08-25（12 天）；**`.agents/rules/skills-architecture.md` 停在 2026-08-13（24 天，全庫最舊）——而它正是 B-01 的目標檔案**。處置：**CHECK 23 文件時效偵測**。排批 2e |
 | B-56 | 待辦 | **`SOP_00A_Master_Index.json` 的維護規則靠記憶** | 該檔是 `$$` 指令的唯一權威定義來源，內含「每次新增或修改 SOP 時，必須同步更新此索引對應的 tags」但無任何偵測；`last_updated` 停在 2026-08-29，另有 5 個 `PENDING_MIGRATION`。CHECK 5 只驗路由目標存在性，不驗時效與完整性。併入 CHECK 23。排批 2e |
 | B-57 | 可封存 | **審查機制的完成定義（五條可機械驗收）** | 原五項 acceptance 並未全部達成；本項被後續 Governance Exit criteria 取代；未完成的 residual risks 保留於 B-53 / B-54 / B-71 等 post-main tasks。 |
-| B-58 | 進行中 | **治理層瘦身（Content Architecture cleanup），使用者已裁決正式開始** | 2026-09-12 使用者裁決正式開始 Content Architecture cleanup。Router layer PASS；Phase 3A PASS；R1 PASS；R2 PASS；R3 PASS；R4 PASS；R5 PASS；R6 active；implementation 完成後等待 B-58 Final Macro Audit；B-58 Final PASS 才解除 D-02 hold |
+| B-58 | 進行中 | **治理層瘦身（Content Architecture cleanup），使用者已裁決正式開始** | 2026-09-12 使用者裁決正式開始 Content Architecture cleanup。Router layer PASS；Phase 3A PASS；R1 PASS；R2 PASS；R3 PASS；R4 PASS；R5 PASS；R6 implementation complete，Final Macro Audit 發現 1 項 guard exemption micro-fix，修正中；B-58 final PASS 後解除 D-02 hold |
 | B-59 | 待辦 | **`docs/ARCHIVE-INDEX.md` 自己沒有機械守衛** | 開頭寫「新增或變更任何歸檔機制時，必須同步更新本檔」但無偵測。處置：**CHECK 20 ARCHIVE-INDEX 可達性**，雙向驗證——索引提到的每個歸檔區必須實際存在，且 repo 中每個歸檔區必須被索引收錄。這是使用者裁決條件②「封存要有足夠的邏輯及指向」的機械化。排批 2d |
 | B-60 | 可封存 | **CHECK 17–24 編號一次配置完成（防 B-21 重演）** | 原 17–24 allocation plan 已停止作為 implementation schedule；未來若 post-main 決定新增 CHECK，必須先從 current check_consistency.py machine derive 下一個可用 ID，不得重用舊 B-60 數字表。 |
 | B-61 | 已完成 | **證據區塊 (d) 的圍欄數沒有被納入 §3.6 的交叉驗證** | `.agents/rules/prompt-preflight.md` §3.6 的驗證表只有三項：區塊存在／行數相符／結構相符，**圍欄數不在其中**。2026-09-06 實測：審計官在提示詞把 `.claude/rules/auditor-protocol.md` 的圍欄數誤寫為 0（實際為 2，位於第 54、65 行），執行者回報實際值但判定為「零變動相符」——它比對的是修改前後，不是與宣稱值。**這不是執行者疏漏，是 §3.6 沒有要求它比對。** 一個沒有人核對的數字等於沒有寫。處置：§3.6 驗證表增列圍欄數比對。排批 2d。**2026-09-07 實測落地**：`.agents/rules/prompt-preflight.md` §3.6 驗證表 5 列，已含「圍欄數相符」 |

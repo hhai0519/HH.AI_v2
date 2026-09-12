@@ -1,5 +1,5 @@
 {
-  "base_head": "3614d69",
+  "base_head": "2d48b3b",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 0,
@@ -506,16 +506,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 94,
-      "sha256": "bad8bbc39fd91ac5ad5fcebb12bf5e734d16b7fa80e896cb34bdb819e00fbc48"
+      "lines": 96,
+      "sha256": "7938ec99401afabe2c7aa4ed67193d8d540e34bfdcb79e27bd947ddf4b6cb66a"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 65,
-      "sha256": "61e4b355942a8cef6fd655a462cbd0cfc9e0c0ae31fd407910c9e19b487f4249"
+      "lines": 67,
+      "sha256": "ec39cf6f66bc57f4e98a76217884c8a47610f16fdff1b163bd8253cb046cce48"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -551,7 +551,7 @@
         "## 封存區"
       ],
       "lines": 234,
-      "sha256": "21bf1495f5ade776f891de63a13ea37ce6cbc23ced4d469430260b6564d3eca4"
+      "sha256": "9e6eb44354e853387f9cd55c5a4c09e36d954e84e0281cf3d67005d2e74dba62"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -880,7 +880,7 @@
         "### 5.4 進行中／等待回報"
       ],
       "lines": 3054,
-      "sha256": "3c55b1ed2dc2a648ff457d1edf2bf4e53af9969c8e3e5f1e38159186a5325561"
+      "sha256": "2015f426f4c4928a7a141e74535fc6efcc9a784bac722cd617dda47d50b00e4b"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1006,8 +1006,8 @@
         "# validate_skill_content_purity tests (B-58 R6)",
         "# =========================================="
       ],
-      "lines": 543,
-      "sha256": "f8d4c3c81f41b20ac07dad7ca0ce36afbfec0fb936194cd62d6b395c0ad86c3b"
+      "lines": 599,
+      "sha256": "6f1eb3e9b24493381fcc740413360905da420dd8a33b8e93a91ce5ef03b30eae"
     },
     "scripts/tests/test_verify_all.py": {
       "fences": 0,
@@ -1021,8 +1021,8 @@
         "# 官方 Agent Skills 規格允許的 frontmatter 欄位",
         "# 本專案自訂擴充欄位（見 AGENTS.md 第 2 節），官方規格沒有但本專案沿用"
       ],
-      "lines": 278,
-      "sha256": "6ba7557ebb9b1fd11e36c059c053cc6e17e48dea93f3d430822b60b99666c777"
+      "lines": 287,
+      "sha256": "ec1525007144d0551c4e0bf06f591baa90df0fab47255432ad60426de7eea85f"
     },
     "scripts/verify_all.py": {
       "fences": 0,
@@ -1033,7 +1033,7 @@
       "sha256": "77163678353cb7a444f90f17956d03312f715cfcccf933603948715939ecdc10"
     }
   },
-  "generated_at": "2026-09-12T12:09:58Z",
+  "generated_at": "2026-09-12T12:22:28Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

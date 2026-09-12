@@ -518,16 +518,71 @@ def test_validate_skill_content_purity_pass_deprecated_bucket(tmp_path):
     assert errors == []
 
 
-def test_validate_skill_content_purity_pass_dlp_exempt_location(tmp_path):
+def test_validate_skill_content_purity_pass_historical_explanation(tmp_path):
     skill_dir = tmp_path / "meta" / "skill-evolution-governor"
     skill_dir.mkdir(parents=True)
     (skill_dir / "SKILL.md").write_text(
-        "# Skill Evolution Governor\n過去曾有人聲稱『✓ DLP 資料安全驗證已通過』，該做法已廢止。\n",
+        "# Skill Evolution Governor\n舊版規範曾要求每個技能在 SKILL.md 中加上一行「✓ DLP 資料安全驗證已通過 …」的宣告，該做法已廢止。\n",
         encoding="utf-8",
     )
     errors = []
     validate_skill_content_purity("meta", skill_dir, errors)
     assert errors == []
+
+
+def test_validate_skill_content_purity_fail_governor_naked_dlp(tmp_path):
+    skill_dir = tmp_path / "meta" / "skill-evolution-governor"
+    skill_dir.mkdir(parents=True)
+    (skill_dir / "SKILL.md").write_text(
+        "# Skill Evolution Governor\n✓ DLP 資料安全驗證已通過\n",
+        encoding="utf-8",
+    )
+    errors = []
+    validate_skill_content_purity("meta", skill_dir, errors)
+    assert len(errors) == 1
+    assert "包含未經機器的假性安全合規宣告" in errors[0]
+
+
+def test_validate_skill_content_purity_pass_setup_prohibition(tmp_path):
+    skill_dir = tmp_path / "meta" / "setup-hhai-skills"
+    skill_dir.mkdir(parents=True)
+    (skill_dir / "REFERENCE.md").write_text(
+        "# Setup\n不得手寫\n「✓ DLP 資料安全驗證已通過」等無機器的自我宣告。\n",
+        encoding="utf-8",
+    )
+    errors = []
+    validate_skill_content_purity("meta", skill_dir, errors)
+    assert errors == []
+
+
+def test_validate_skill_content_purity_fail_setup_naked_dlp(tmp_path):
+    skill_dir = tmp_path / "meta" / "setup-hhai-skills"
+    skill_dir.mkdir(parents=True)
+    (skill_dir / "REFERENCE.md").write_text(
+        "# Setup\n✓ DLP 資料安全驗證已通過\n",
+        encoding="utf-8",
+    )
+    errors = []
+    validate_skill_content_purity("meta", skill_dir, errors)
+    assert len(errors) == 1
+    assert "包含未經機器的假性安全合規宣告" in errors[0]
+
+
+def test_validate_skill_content_purity_fail_mixed_content(tmp_path):
+    skill_dir = tmp_path / "meta" / "skill-evolution-governor"
+    skill_dir.mkdir(parents=True)
+    (skill_dir / "SKILL.md").write_text(
+        "# Skill Evolution Governor\n"
+        "舊版規範曾要求「✓ DLP 資料安全驗證已通過」，該做法已廢止。\n\n"
+        "### Status\n"
+        "✓ DLP 資料安全驗證已通過\n",
+        encoding="utf-8",
+    )
+    errors = []
+    validate_skill_content_purity("meta", skill_dir, errors)
+    assert len(errors) == 1
+    assert "包含未經機器的假性安全合規宣告" in errors[0]
+    assert "SKILL.md:5" in errors[0]
 
 
 def test_validate_skill_content_purity_pass_template_placeholder(tmp_path):
@@ -540,4 +595,5 @@ def test_validate_skill_content_purity_pass_template_placeholder(tmp_path):
     errors = []
     validate_skill_content_purity("execution", skill_dir, errors)
     assert errors == []
+
 

@@ -185,11 +185,19 @@ MACHINE_PATH_RE = re.compile(
     re.IGNORECASE,
 )
 DLP_ATTESTATION_RE = re.compile(r'✓\s*DLP.*通過|DLP.*資料安全驗證已通過')
+DLP_LEGITIMATE_CONTEXT_RE = re.compile(
+    r'(不得手寫|不得要求|嚴禁|禁止|舊版|過去曾|曾要求|已廢止|假性合規|無機器的自我宣告)'
+)
 
-EXEMPT_DLP_LOCATIONS = {
-    "meta/skill-evolution-governor": {"SKILL.md"},
-    "meta/setup-hhai-skills": {"REFERENCE.md"},
-}
+
+def is_legitimate_dlp_reference(line: str, prev_line: str = "") -> bool:
+    """判斷 DLP 相關字眼是否為合法否定、歷史說明或合規警語，而非裸自證。"""
+    if DLP_LEGITIMATE_CONTEXT_RE.search(line):
+        return True
+    if prev_line and not DLP_ATTESTATION_RE.search(prev_line) and not prev_line.strip().startswith("#"):
+        if DLP_LEGITIMATE_CONTEXT_RE.search(prev_line):
+            return True
+    return False
 
 
 def validate_skill_content_purity(bucket: str, skill_dir: Path, errors: list):
@@ -207,6 +215,7 @@ def validate_skill_content_purity(bucket: str, skill_dir: Path, errors: list):
             errors.append(f"[{location}] 無法讀取 {doc_name}: {e}")
             continue
 
+        prev_line = ""
         for idx, line in enumerate(lines):
             line_no = idx + 1
             if MACHINE_PATH_RE.search(line):
@@ -214,11 +223,11 @@ def validate_skill_content_purity(bucket: str, skill_dir: Path, errors: list):
                     f"[{location}] {doc_name}:{line_no} 包含本機絕對工作區路徑，違反可移植性規範: {line.strip()}"
                 )
             if DLP_ATTESTATION_RE.search(line):
-                if location in EXEMPT_DLP_LOCATIONS and doc_name in EXEMPT_DLP_LOCATIONS[location]:
-                    continue
-                errors.append(
-                    f"[{location}] {doc_name}:{line_no} 包含未經機器的假性安全合規宣告 (false DLP self-attestation): {line.strip()}"
-                )
+                if not is_legitimate_dlp_reference(line, prev_line):
+                    errors.append(
+                        f"[{location}] {doc_name}:{line_no} 包含未經機器的假性安全合規宣告 (false DLP self-attestation): {line.strip()}"
+                    )
+            prev_line = line
 
 
 def report_results(seen_names: dict, errors: list, warnings: list):

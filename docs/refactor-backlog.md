@@ -3014,7 +3014,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - checkpoint = §5.1 第一行記載之「上次核對通過的 HEAD（last audited checkpoint）」
   - 若 `HEAD == checkpoint` → 無尚待宏觀審計之 commit（no pending macro-audit commit）
   - 若 `HEAD != checkpoint` → `checkpoint..HEAD` 即為尚待宏觀審計之 commit range（包含 checkpoint 之後至當前 HEAD 間所有 pending / repair commits，不因 commit 數量直接判定 FAIL）
-- **目前進行中工作（Active Work）**：B-58 Recovery R6 — Minimal Content-Architecture Guards & Final Audit Preparation。評估 R1–R5 架構之回歸防護需求，以高價值、低維護、確定性原則針對 active Skills 之本機絕對工作區路徑與假性合規自證補齊最小防護；CHECK 3 擴充本機路徑防護，validate_skills.py 增加 active 技能內容純度驗證；checkpoint 更新為 3614d69，D-02 維持 TEMPORARILY HELD，待本批完成後由宏觀審計官進行 B-58 Final Macro Audit。
+- **目前進行中工作（Active Work）**：B-58 Recovery R6 Micro-Fix — Narrow False-DLP Guard Exemption。修正 validate_skills.py 之 false-DLP guard 移除 whole-file exemption，改採 narrow deterministic distinction；維持 checkpoint 為 3614d69，D-02 維持 TEMPORARILY HELD。
 - **D-02 狀態**：READY / TEMPORARILY HELD。E1 PASS，前置條件已滿足；依 2026-09-12 使用者裁決暫緩啟動 production E2，先完成 B-58 Content Architecture cleanup，完成並經 Macro Audit後恢復 D-02。
 - **待使用者裁決事項**：無（NONE）。
 - **下一步／剩餘工作權威**：以 `docs/TASKBOARD.md` 為唯一 remaining-work / next-work authority，交接區不保留待辦清單副本或執行佇列。
