@@ -2825,7 +2825,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 5.1 上一批狀態
 
-上次核對通過的 HEAD：bd6cda3
+上次核對通過的 HEAD：34babd5
 
 - `23af193`（執行者前置檢查 ＋ 回滾程序 ＋ `AUDIT-LOG.md` ＋ 四缺口修正）
   已於 2026-09-02 由審計官核對通過：6 檔異動（含 2 個新檔）、零夾帶、
@@ -2979,6 +2979,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 - `addc388`（B-58 Content Architecture Phase 2B — Active HANDOVER → Project Router & Active Reverse-Reference Detachment）已於 2026-09-12 執行完成：9 檔異動、零夾帶，獨立驗證五項全過，CI Run 34670859204 success。經宏觀審計官獨立審查，Machine PASS，但發現 2 項 Router purity micro-fix（包含「五大 Gates」實作描述與跨層 deep-link agency-orchestrator），判定 NEEDS MICRO-FIX，由後續微修批次處置。
 - `bd6cda3`（B-58 Content Architecture Phase 2B Micro-Fix — Project Router Purity）已於 2026-09-12 由宏觀審計官獨立核對通過：6 檔異動、零夾帶，獨立驗證五項全過，CI Run 34671244747 success。Macro Auditor 獨立核對通過（MACRO AUDIT = PASS）。addc388 的兩項 micro-fix 均已修復：Project Router 不再保存 gate count 等實作事實、不再 deep-link agency-orchestrator；archive snapshot blob 維持 0a75b3bdc7ac68a06a882b63090c635862991bd3；判定 Macro PASS。
 - `276e11f`（B-58 Content Architecture Phase 3A — Claude Control Plane Identity & Routing Normalization）已於 2026-09-12 執行完成：9 檔異動、零夾帶，獨立驗證五項全過，CI Run 34677802062 success。經宏觀審計官獨立審查，Machine PASS，但發現 2 項 Claude Router purity micro-fix（包含四大審計維度/A–F與E1–E23等內部結構副本，以及重複宣告執行者行為禁令），判定 NEEDS MICRO-FIX，由後續微修批次處置。
+- `34babd5`（B-58 Content Architecture Phase 3A Micro-Fix — Claude Router Purity）已於 2026-09-12 由宏觀審計官獨立核對通過：6 檔異動、零夾帶，獨立驗證五項全過，CI Run 34679360620 success。Macro Auditor 全面審查後判定 Macro PASS；276e11f 的兩項 blocking Router purity defects 已完成修復，.claude/README 剩餘之 selftest 描述降級為 non-blocking navigation cleanup。
 
 ### 5.2 待辦
 
@@ -3002,12 +3003,12 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 > 每次更新時，被取代的陳舊條目（stale state）一律替換或移除，不得把過期狀態堆在 §5 作為「歷史」。
 > 歷史理由與事實屬於留痕層（append-only），落點為正文編號項目，不是本節。
 
-- **尚待審計判準（Pending-Audit Contract）**：待審計範圍必須在讀取時以確定性指令即時導出（machine-derived），不在本檔持久化當前 HEAD、commit range、候選 hash 或 commit/push 等易失真狀態。
+- **尚待審計判準（Pending-Audit Contract）**：待審計範圍必須在讀取時以確定性指令即時導出（machine-derived），不在本檔持久化當前 HEAD、commit range、候選 hash 或 commit/push 等易失真狀態，且不設定固定 commit-count 數量上限。
   - actual HEAD = `git rev-parse HEAD`
   - checkpoint = §5.1 第一行記載之「上次核對通過的 HEAD（last audited checkpoint）」
   - 若 `HEAD == checkpoint` → 無尚待宏觀審計之 commit（no pending macro-audit commit）
-  - 若 `HEAD != checkpoint` → `checkpoint..HEAD` 即為尚待宏觀審計之 commit range
-- **目前進行中工作（Active Work）**：B-58 Phase 3A — Claude Router Purity Micro-Fix。修正 Macro Auditor 於 276e11f 獨立審查後發現之兩項 Claude Control Plane Router purity 問題（移除結構計數與執行者行為規則重複宣告）；checkpoint 保持 bd6cda3，D-02 維持 TEMPORARILY HELD。
+  - 若 `HEAD != checkpoint` → `checkpoint..HEAD` 即為尚待宏觀審計之 commit range（包含 checkpoint 之後至當前 HEAD 間所有 pending / repair commits，不因 commit 數量直接判定 FAIL）
+- **目前進行中工作（Active Work）**：B-58 Recovery R1 — Goal Lock & Pending-Audit Range Generalization。將 Agent Operating Objectives (A1–A5) 寫入治理原則，修正 CHECK 8/9 硬編碼上限，將 pending-audit contract 一般化為合法 range；checkpoint 更新為 34babd5，D-02 維持 TEMPORARILY HELD。
 - **D-02 狀態**：READY / TEMPORARILY HELD。E1 PASS，前置條件已滿足；依 2026-09-12 使用者裁決暫緩啟動 production E2，先完成 B-58 Content Architecture cleanup，完成並經 Macro Audit 後恢復 D-02。
 - **待使用者裁決事項**：無（NONE）。
 - **下一步／剩餘工作權威**：以 `docs/TASKBOARD.md` 為唯一 remaining-work / next-work authority，交接區不保留待辦清單副本或執行佇列。

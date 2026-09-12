@@ -216,7 +216,7 @@ CHECK 8 至 15 有 63 個測試並經審計官反例注入驗證，
    `docs/AUDIT-LOG.md`**（見 §9.3、§10.5、§7.1），
    與更新 `docs/refactor-backlog.md` 同級。
    TASKBOARD 要更新的內容：受影響項目的狀態流轉、新發現的缺口登錄、
-   可封存項目的建議，**以及「最後更新」那一行的 HEAD**。
+   可封存項目的建議，**以及「最後更新」那一行的日期與工作狀態描述**（不記錄 Git HEAD 或 checkpoint hash，避免與 Git / AUDIT-LOG 產生第二事實來源）。
    2026-09-02 的複驗兩度發現同一個失效模式：規則只寫在 §9.3／§10.5，
    而審計官實際照著跑的清單是本節——規則不在執行路徑上。
    第一次是交接區，第二次是 TASKBOARD，後者導致看板在建立後三批就已過期。
@@ -234,8 +234,8 @@ CHECK 8 至 15 有 63 個測試並經審計官反例注入驗證，
     **自動載入的規則可能已被丟出 context 而執行者不自知**。
     這是「規則存在、也載入了，但被 context 截斷丟掉」的第三種失效形態，
     前兩種是「不在執行路徑上」與「沒有偵測」。
-11. **配對與覆蓋（模式感知）**：更新 `TASKBOARD.md` 的 HEAD 時，必須同時更新交接區
-    §5.1 第一行的 HEAD。
+11. **配對與覆蓋（模式感知）**：
+    - **審計狀態配對 (Audit-State Pairing)**：若提示詞將某 commit 正式提升為 Macro PASS checkpoint，則 `AUDIT-LOG` 與交接區 §5.1 checkpoint 必須指向同一個已由 Macro Auditor 明確裁決 PASS 的 commit（TASKBOARD 只維持工作狀態，不參與 commit-verdict authority）。
     - **EXACT_SPEC**：`git add` 清單的每個非 exempt 檔案，必須同時出現在
       Allowed Scope、批次規格修改目標與 Gate 驗證清單中。
     - **GOAL_SPEC**：實際 `git add` 路徑由執行者自 `git diff --name-only` 產生，
@@ -575,7 +575,7 @@ count 為 0 代表錨點不存在，大於 1 代表會改到錯的地方。
 **接手後第一件事**
 執行 `git log -1 --format=%h` 取得實際 HEAD，與上面的 HEAD 比對：
 - 相同 → 沒有未核對的批次，從 `docs/TASKBOARD.md` 取得下一步工作（交接區 §5.2 僅為指標）
-- 不同 → 有一批已執行但未核對，先做核對再往下
+- 不同 → 存在 pending macro-audit range（由 `checkpoint..HEAD` machine derive），先完成該 range 宏觀審核再往下
 
 ---
 
@@ -592,7 +592,7 @@ count 為 0 代表錨點不存在，大於 1 代表會改到錯的地方。
 2. 讀 §5.1 第一行的「上次核對通過的 HEAD」。
 3. **執行 `git log -1 --format=%h` 取得實際 HEAD，與第 2 步比對：**
    - **相同** → 沒有未核對的批次，從 `docs/TASKBOARD.md` 取得下一步工作（交接區 §5.2 僅為指標，非待辦清單）。
-   - **不同** → 有一批已執行但未核對。**先做核對，再往下。**
+   - **不同** → 存在 pending macro-audit range（由 `checkpoint..HEAD` machine derive）。**先完成該 range 宏觀審核，再往下。**
 4. 讀 §5.3「待裁決」——不要重複提問已經裁決過的事項。
 5. 若交接區與實際 repo 狀態矛盾，**一律以 repo 為準**，
    並在回覆中明說矛盾之處，不得靜默採用其中一方。
@@ -637,7 +637,7 @@ CHECK 15 因此回報「待核對 0 個 hash」——**機制存在，但真實�
 | 缺項 | 可能原因 | 處置 |
 |---|---|---|
 | 無法完成第 1 項 | clone 失敗、shallow clone、檔案不存在 | 依開場動作的「載入失敗的處理」，第一句明說 |
-| 第 2 項 HEAD 不一致 | 有批次已執行但未核對 | 依 §9.2 第 3 點，先核對再往下 |
+| 第 2 項 HEAD 不一致 | 存在 pending macro-audit range | 依 §9.2 第 3 點，先完成該 range 宏觀審核再往下 |
 | 第 3 項無法判斷 | 交接區 §5.2 是空的或過期 | 讀 `docs/TASKBOARD.md` 確認下一步，並回報交接區失效 |
 | 第 4 項重複提問 | 未讀 §5.3 | 補讀後更正 |
 
@@ -765,24 +765,20 @@ E1 注入測試之題目（questions）、答案卷（answer key）與注入負�
 1. 受影響項目的狀態流轉
 2. 新發現的缺口登錄（§10.1）
 3. 可封存項目的建議（§10.4）
-4. **「最後更新」那一行的 HEAD**
+4. **「最後更新」那一行的日期與當前工作狀態描述**（不記錄 Git HEAD 或 checkpoint hash）
 
 **第 4 項即使本批沒有任何項目狀態變動也要做。**
 否則無法分辨「這批沒東西要改」與「忘了更新看板」。
 
 ### 10.6 「最後更新」是可驗證的攔截點
 
-`TASKBOARD.md` 第 13 行的「**最後更新**：日期，HEAD `xxxxxxx` 之後」
-不是裝飾，它是機制。
+`TASKBOARD.md` 的「**最後更新**：日期，當前階段／工作描述」為活動看板狀態標記。
 
-**只要該 HEAD 落後於實際 HEAD，就代表有批次沒更新看板。**
-這與 §9.2 用「交接區記載的 HEAD」對比「`git log` 的實際 HEAD」
-判斷有無未核對批次，是同一個手法，套用在看板上。
+依 B-58 治理決策，TASKBOARD 不再擁有 Git HEAD / checkpoint / pending range 之事實；Git 與審計狀態由 Git HEAD、`AUDIT-LOG` 與交接區 §5.1 擁有。CHECK 8 轉為驗證 TASKBOARD 當前狀態 metadata 純度（不得包含 Git commit hash），防止 Git truth 重新複製回看板。
 
 因此每一批的驗證步驟固定加入一條：
 
-    確認 `TASKBOARD.md` 的「最後更新」HEAD 等於本批的前一個 commit，
-    且本批 commit 後會被更新為本批的 hash。
+    確認 `TASKBOARD.md` 的「最後更新」包含日期與當前工作描述，且不含 Git commit hash。
 
 **失效紀錄**：2026-09-02 看板建立後三批（`aa36448`、`d1e389b` 及其間）
 都沒有更新，「最後更新」停在 `eb40749`，

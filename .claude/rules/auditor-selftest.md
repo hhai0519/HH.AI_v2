@@ -43,8 +43,8 @@
 - [ ] B1 我執行了 `git log -1 --format=%h` 取得實際 HEAD？
 - [ ] B2 交接區 §5.1 第一行記載的 HEAD 是多少？
 - [ ] B3 兩者一致嗎？
-      - 一致 → 沒有未核對的批次，下一步從 `docs/TASKBOARD.md` 取得（§5.2 僅為指標）
-      - 不一致 → **有一批已執行但未核對，先做核對再往下**
+      - 一致 → 沒有 pending macro-audit，下一步從 `docs/TASKBOARD.md` 取得（§5.2 僅為指標）
+      - 不一致 → **存在 pending macro-audit range（由 `checkpoint..HEAD` machine derive），先完成該 range 宏觀審核再往下**
 - [ ] B4 §5.4「進行中／等待回報」有內容嗎？有的話那是什麼？
 
 **B3 是整套機制的核心。** 它不依賴記憶、不依賴摘要，
@@ -84,7 +84,7 @@
 - [ ] E10 零命中類的條件，我檢查過自己的指令會不會產生該字串？（§6.2）
 - [ ] E11 **每一個錨點都已透過確定性工具（BPE、count() 或 spec parser）驗證在目標檔案中 count == 1？**（僅 EXACT_SPEC 適用；GOAL_SPEC 標記為 N/A）（§6.1-11，見 §6.6）
 - [ ] E12 **提示詞開頭有「動手前必讀」，要求執行者從檔案讀取規則？**（§6.1-10；不可依賴自動載入，session 前綴可能已被清掉）
-- [ ] E13 **配對與覆蓋都檢查過？**（§6.1-11）更新 TASKBOARD HEAD ⇔ 更新交接區 §5.1 HEAD；EXACT_SPEC 比對 spec targets ↔ git add；GOAL_SPEC 比對 Allowed Scope ↔ actual changed files ↔ explicit git add ↔ acceptance criteria
+- [ ] E13 **配對與覆蓋都檢查過？**（§6.1-11）Audit-state pairing：Macro PASS verdict ⇔ AUDIT-LOG ⇔ §5.1 checkpoint（TASKBOARD 只維持工作狀態，不參與 commit-verdict authority）；EXACT_SPEC 比對 spec targets ↔ git add；GOAL_SPEC 比對 Allowed Scope ↔ actual changed files ↔ explicit git add ↔ acceptance criteria
 - [ ] E14 **提示詞中有「審計官自檢聲明」區塊，逐項列出本節各項的結果？**（§6.1-12；這是自檢唯一的外部產物，沒有它等同沒做自檢。**新增本節項目時，聲明區塊要同步增列**）
 - [ ] E15 **每個錨點都對應本批 base commit 與規格上下文，具備結構唯一性而非依賴特定第 N 行？**（僅 EXACT_SPEC 適用；GOAL_SPEC 標記為 N/A）（§6.1-13）
 - [ ] E16 **寫入的文字若含跨檔 `§X.Y` 引用，檔名與章節號在同一行？**（§6.1-14；CHECK 10 逐行判斷，換行斷開就會 FAIL）

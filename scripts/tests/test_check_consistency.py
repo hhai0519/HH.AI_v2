@@ -7,6 +7,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 
 from check_consistency import (
     check_8_taskboard_head,
+    check_8_taskboard_metadata_purity,
     check_9_handover_head,
     check_10_section_refs,
     check_11_selftest_correspondence,
@@ -18,94 +19,222 @@ from check_consistency import (
 )
 
 
-def test_check_8_taskboard_head_pass(tmp_path):
+def _setup_check_9_env(tmp_path, checkpoint_hash, audit_rows, bl_extra=""):
     docs = tmp_path / "docs"
-    docs.mkdir()
-    tb = docs / "TASKBOARD.md"
-    tb.write_text("# 看板\n**最後更新**：2026-09-02，HEAD `08e6bbc` 之後\n", encoding="utf-8")
-    fails, infos = check_8_taskboard_head(str(tmp_path), git_head="08e6bbc", git_prev="18af8ad")
-    assert len(fails) == 0
-
-
-def test_check_8_taskboard_head_prev_pass(tmp_path):
-    docs = tmp_path / "docs"
-    docs.mkdir()
-    tb = docs / "TASKBOARD.md"
-    tb.write_text("# 看板\n**最後更新**：2026-09-02，HEAD `18af8ad` 之後\n", encoding="utf-8")
-    fails, infos = check_8_taskboard_head(str(tmp_path), git_head="08e6bbc", git_prev="18af8ad")
-    assert len(fails) == 0
-
-
-def test_check_8_taskboard_head_prev2_pass(tmp_path):
-    docs = tmp_path / "docs"
-    docs.mkdir()
-    tb = docs / "TASKBOARD.md"
-    tb.write_text("# 看板\n**最後更新**：2026-09-02，HEAD `b6ab53f` 之後\n", encoding="utf-8")
-    fails, infos = check_8_taskboard_head(str(tmp_path), git_head="08e6bbc", git_prev="18af8ad", git_prev2="b6ab53f")
-    assert len(fails) == 0
-
-
-def test_check_9_handover_head_prev2_pass(tmp_path):
-    docs = tmp_path / "docs"
-    docs.mkdir()
+    docs.mkdir(parents=True, exist_ok=True)
     bl = docs / "refactor-backlog.md"
-    bl.write_text("上次核對通過的 HEAD：b6ab53f\n", encoding="utf-8")
-    fails, infos = check_9_handover_head(str(tmp_path), git_head="08e6bbc", git_prev="18af8ad", git_prev2="b6ab53f")
-    assert len(fails) == 0
-
-
-def test_check_8_taskboard_head_fail_lag(tmp_path):
-    docs = tmp_path / "docs"
-    docs.mkdir()
-    tb = docs / "TASKBOARD.md"
-    tb.write_text("# 看板\n**最後更新**：2026-09-02，HEAD `aaaaaaa` 之後\n", encoding="utf-8")
-    fails, infos = check_8_taskboard_head(str(tmp_path), git_head="08e6bbc", git_prev="18af8ad", git_prev2="b6ab53f")
-    assert len(fails) == 1
-    assert "落後超過兩批" in fails[0]
-
-
-def test_check_9_handover_head_pass(tmp_path):
-    # CASE A：handoff pointer = audited parent (prev) -> PASS
-    docs = tmp_path / "docs"
-    docs.mkdir()
-    bl = docs / "refactor-backlog.md"
-    bl.write_text("上次核對通過的 HEAD：18af8ad\n", encoding="utf-8")
-    fails, infos = check_9_handover_head(str(tmp_path), git_head="08e6bbc", git_prev="18af8ad")
-    assert len(fails) == 0
-
-
-def test_check_9_handover_head_fail_candidate_self(tmp_path):
-    # CASE C：不能將 candidate 自己當 audited parent 來騙過 CHECK 9 -> FAIL
-    docs = tmp_path / "docs"
-    docs.mkdir()
-    bl = docs / "refactor-backlog.md"
-    bl.write_text("上次核對通過的 HEAD：08e6bbc\n", encoding="utf-8")
-    fails, infos = check_9_handover_head(str(tmp_path), git_head="08e6bbc", git_prev="18af8ad", git_prev2="b6ab53f")
-    assert len(fails) == 1
-    assert "不得為當前 HEAD/candidate 自己" in fails[0]
-
-
-def test_check_9_as_if_committed_predicts_lag(tmp_path):
-    # 預演模式：若在 commit 前上次核對通過的 HEAD 停留在當前 HEAD~2（未來的 HEAD~3），提前報 FAIL
-    docs = tmp_path / "docs"
-    docs.mkdir()
-    bl = docs / "refactor-backlog.md"
-    bl.write_text("上次核對通過的 HEAD：1111111\n", encoding="utf-8")
-    fails, infos = check_9_handover_head(
-        str(tmp_path), git_head="candidate", git_prev="curhead", git_prev2="prevhead"
+    bl.write_text(
+        f"### 5.1 上一批狀態\n\n上次核對通過的 HEAD：{checkpoint_hash}\n{bl_extra}\n### 5.2 待辦\n",
+        encoding="utf-8",
     )
-    assert len(fails) == 1
-    assert "落後超過兩批" in fails[0]
+
+    al_lines = [
+        "# 自我審查檢查點紀錄\n",
+        "| 批次 commit | 日期 | 觸發條款 | 結論摘要 | 失效檢討 |",
+        "|---|---|---|---|---|",
+        "| BOOTSTRAP | 2026-09-02 | §4.1-1 | 初始紀錄 | — |",
+    ]
+    for c_hash, summary in audit_rows:
+        al_lines.append(f"| {c_hash} | 2026-09-12 | §4.1-1 | {summary} | — |")
+    al_lines.append("\n## CI 歷史事故歸檔專區\n")
+    al = docs / "AUDIT-LOG.md"
+    al.write_text("\n".join(al_lines), encoding="utf-8")
 
 
-def test_check_9_handover_head_fail_lag(tmp_path):
+# ---------------------------------------------------------------------------
+# CHECK 8 Tests: TASKBOARD Metadata Purity
+# ---------------------------------------------------------------------------
+
+def test_check_8_taskboard_metadata_purity_pass(tmp_path):
     docs = tmp_path / "docs"
     docs.mkdir()
-    bl = docs / "refactor-backlog.md"
-    bl.write_text("上次核對通過的 HEAD：bbbbbbb\n", encoding="utf-8")
-    fails, infos = check_9_handover_head(str(tmp_path), git_head="08e6bbc", git_prev="18af8ad", git_prev2="b6ab53f")
+    tb = docs / "TASKBOARD.md"
+    tb.write_text(
+        "# 看板\n**最後更新**：2026-09-12，B-58 Recovery R1 — Goal Lock & Pending-Audit Range Generalization\n",
+        encoding="utf-8",
+    )
+    fails, infos = check_8_taskboard_head(str(tmp_path))
+    assert len(fails) == 0
+
+
+def test_check_8_taskboard_metadata_purity_fail_sha_duplication(tmp_path):
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    tb = docs / "TASKBOARD.md"
+    tb.write_text(
+        "# 看板\n**最後更新**：2026-09-12，HEAD `08e6bbc` 之後\n",
+        encoding="utf-8",
+    )
+    fails, infos = check_8_taskboard_head(str(tmp_path))
+    assert len(fails) >= 1
+    assert any("HEAD 關鍵字" in f or "commit hash" in f for f in fails)
+
+
+def test_check_8_taskboard_metadata_purity_fail_commit_checkpoint_range(tmp_path):
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    tb = docs / "TASKBOARD.md"
+    tb.write_text(
+        "# 看板\n**最後更新**：2026-09-12，checkpoint 34babd5..HEAD\n",
+        encoding="utf-8",
+    )
+    fails, infos = check_8_taskboard_head(str(tmp_path))
+    assert len(fails) >= 1
+
+
+def test_check_8_taskboard_metadata_purity_fail_missing_date(tmp_path):
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    tb = docs / "TASKBOARD.md"
+    tb.write_text(
+        "# 看板\n**最後更新**：B-58 Recovery R1 進行中\n",
+        encoding="utf-8",
+    )
+    fails, infos = check_8_taskboard_head(str(tmp_path))
     assert len(fails) == 1
-    assert "落後超過兩批" in fails[0]
+    assert "缺少有效日期" in fails[0]
+
+
+def test_check_8_taskboard_metadata_purity_fail_missing_desc(tmp_path):
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    tb = docs / "TASKBOARD.md"
+    tb.write_text(
+        "# 看板\n**最後更新**：2026-09-12\n",
+        encoding="utf-8",
+    )
+    fails, infos = check_8_taskboard_head(str(tmp_path))
+    assert len(fails) == 1
+    assert "缺少工作階段或當前狀態描述" in fails[0]
+
+
+# ---------------------------------------------------------------------------
+# CHECK 9 Tests: Semantic Authority & Pending Range Generalization
+# ---------------------------------------------------------------------------
+
+def test_check_9_shape_a_head_equals_checkpoint_pass(tmp_path):
+    _setup_check_9_env(
+        tmp_path,
+        checkpoint_hash="a111111",
+        audit_rows=[("a111111", "**核對通過**。Macro PASS")],
+    )
+    ancestry = ["a111111", "a000000"]
+    fails, infos = check_9_handover_head(str(tmp_path), git_ancestry=ancestry)
+    assert len(fails) == 0
+
+
+def test_check_9_shape_b_one_pending_commit_pass(tmp_path):
+    _setup_check_9_env(
+        tmp_path,
+        checkpoint_hash="a111111",
+        audit_rows=[("a111111", "**核對通過**。Macro PASS")],
+    )
+    ancestry = ["b222222", "a111111", "a000000"]
+    fails, infos = check_9_handover_head(str(tmp_path), git_ancestry=ancestry)
+    assert len(fails) == 0
+    assert any("pending commits in range: 1" in info for info in infos)
+
+
+def test_check_9_shape_c_multi_pending_commits_pass(tmp_path):
+    # Proves no fixed N threshold assumption (testing 6 pending commits)
+    _setup_check_9_env(
+        tmp_path,
+        checkpoint_hash="a111111",
+        audit_rows=[("a111111", "**核對通過**。Macro PASS")],
+    )
+    ancestry = [
+        "p000006", "p000005", "p000004", "p000003", "p000002", "p000001",
+        "a111111", "a000000"
+    ]
+    fails, infos = check_9_handover_head(str(tmp_path), git_ancestry=ancestry)
+    assert len(fails) == 0
+    assert any("pending commits in range: 6" in info for info in infos)
+
+
+def test_check_9_shape_d_checkpoint_row_not_pass_fail(tmp_path):
+    _setup_check_9_env(
+        tmp_path,
+        checkpoint_hash="d111111",
+        audit_rows=[
+            ("a111111", "**核對通過**。Macro PASS"),
+            ("d111111", "**Machine PASS / 語意審計待微修（NEEDS MICRO-FIX）**"),
+        ],
+    )
+    ancestry = ["d111111", "a111111", "a000000"]
+    fails, infos = check_9_handover_head(str(tmp_path), git_ancestry=ancestry)
+    assert len(fails) >= 1
+    assert any("結論非 Macro PASS" in f for f in fails)
+
+
+def test_check_9_shape_e_stale_checkpoint_when_newer_pass_exists_fail(tmp_path):
+    _setup_check_9_env(
+        tmp_path,
+        checkpoint_hash="a111111",
+        audit_rows=[
+            ("a111111", "**核對通過**。Macro PASS"),
+            ("e222222", "**核對通過**。Macro PASS"),
+        ],
+    )
+    ancestry = ["p000001", "e222222", "a111111", "a000000"]
+    fails, infos = check_9_handover_head(str(tmp_path), git_ancestry=ancestry)
+    assert len(fails) >= 1
+    assert any("已過期" in f and "e222222" in f for f in fails)
+
+
+def test_check_9_shape_f_checkpoint_not_ancestor_fail(tmp_path):
+    _setup_check_9_env(
+        tmp_path,
+        checkpoint_hash="f999999",
+        audit_rows=[("f999999", "**核對通過**。Macro PASS")],
+    )
+    ancestry = ["p000002", "p000001", "a111111", "a000000"]
+    fails, infos = check_9_handover_head(str(tmp_path), git_ancestry=ancestry)
+    assert len(fails) >= 1
+    assert any("不存在於當前 Git 歷史或非 HEAD 的祖先 commit" in f for f in fails)
+
+
+def test_check_9_shape_g_candidate_self_without_pass_fail(tmp_path):
+    _setup_check_9_env(
+        tmp_path,
+        checkpoint_hash="c777777",
+        audit_rows=[("a111111", "**核對通過**。Macro PASS")],
+    )
+    ancestry = ["c777777", "a111111", "a000000"]
+    fails, infos = check_9_handover_head(str(tmp_path), git_ancestry=ancestry)
+    assert len(fails) >= 1
+    assert any("未找到審查紀錄" in f or "未經 Macro PASS 裁決" in f for f in fails)
+
+
+def test_check_9_as_if_committed_mode_pass(tmp_path):
+    _setup_check_9_env(
+        tmp_path,
+        checkpoint_hash="a111111",
+        audit_rows=[("a111111", "**核對通過**。Macro PASS")],
+    )
+    fails, infos = check_9_handover_head(
+        str(tmp_path),
+        git_head="candidate",
+        git_prev="a111111",
+        git_prev2="a000000",
+        as_if_committed=True,
+    )
+    assert len(fails) == 0
+
+
+def test_check_9_as_if_committed_candidate_self_fail(tmp_path):
+    _setup_check_9_env(
+        tmp_path,
+        checkpoint_hash="candidate",
+        audit_rows=[("a111111", "**核對通過**。Macro PASS")],
+    )
+    fails, infos = check_9_handover_head(
+        str(tmp_path),
+        git_head="candidate",
+        git_prev="a111111",
+        as_if_committed=True,
+    )
+    assert len(fails) >= 1
+    assert any("不得為 candidate 自己" in f for f in fails)
 
 
 def test_check_10_section_refs_pass(tmp_path):

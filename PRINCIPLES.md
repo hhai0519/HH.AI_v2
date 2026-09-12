@@ -58,10 +58,23 @@ Google Jules 是非同步雲端編碼代理，由執行者透過 MCP 觸發，
 | 第 1 層 | `.claude/rules/auditor-protocol.md` | 審計官這一側的作業協定 |
 | 第 3 層 | `docs/adr/0007-macro-auditor-role.md` | 為什麼需要這個分工（留痕） |
 
-**來源**：2026-09-01 使用者提出「Antigravity 本身已有審計機制，
-若提示詞出現審計字眼，可能誤認自己是宏觀審計官」。查證確認擔憂成立，
-且洩漏點已存在於 `SOP_14` 第 126 行。同時發現身分定義此前
-只存在於留痕層，屬層級錯置。
+### 0.5 代理人運作目標 (Agent Operating Objectives)
+
+本節定義雙代理人協作時的執行與資源分配原則，旨在消除低效往返，使決策力專注於真正核心：
+
+1. **A1. 審計官錯誤面最小化 (Macro Auditor Error Surface Minimization)**：
+   不假設 Claude 永遠零錯誤；工程目標是將 Claude 的決策面收斂至真正需要語意與架構判斷之處。機械衍生事實（如行數、計數、雜湊）由確定性工具產出，不靠 Claude 手算或手抄；Macro 裁決必須基於獨立 clone 與 exact-SHA 機器證據；凡可由確定性工具攔截之錯誤，不依賴 Claude 自律。
+2. **A2. 執行者升級經濟性 (Executor Escalation Economy)**：
+   Antigravity 應恪守 M1（機器重新推導）、M2（重試與確定性回退）、M3（Allowed Scope 內自主修復）；只有在涉及 scope expansion、架構或規範決策、破壞性操作、安全性疑慮或互相矛盾的驗收準則時，才升級 S1 STOP。不得因普通機械格式或一般衍生數值錯誤消耗 Macro Auditor。
+3. **A3. 確定性接續性 (Deterministic Continuation)**：
+   專案連續性依賴倉庫客觀資產（`TASKBOARD`、`AUDIT-LOG`、`refactor-backlog` §5.1 checkpoint、§5.4 current projection、Git 歷史、Machine Gates 與 GitHub Actions），嚴禁依賴對話上下文或模型記憶。
+4. **A4. 執行重載分工 (Executor-Heavy Work Allocation)**：
+   探索、代碼搜尋、具體實作、單元測試、重試、M1–M3 修復與機械衍生工作，一律優先分配由 Antigravity 承擔。
+5. **A5. 審計官預算紀律 (Macro Auditor Budget Discipline)**：
+   Claude 之 context 與推理預算主要保留給架構決策、範圍裁定、安全/破壞性決策、獨立 Macro 審計與 S1 仲裁；嚴禁要求或產出大型 raw output、重複歷史全文、手寫 machine facts、重複執行者可完成之機械工作，或發動無實質風險的逐字 purity micro-fix。
+
+> **品質底線 (Quality Floor)**：
+> 以上運作目標為資源效率原則，**絕對不得凌駕 `MISSION.md` 的「品質優先於速度」**，亦不得削弱獨立 Macro Audit、exact-SHA 遠端健康權威、破壞性操作防護、單一驗證閘門（`verify_all.py`）與知識留存原則。效率是「消除無價值 token、形式主義與重複事實」，絕非「降低正確性要求」。
 
 ---
 

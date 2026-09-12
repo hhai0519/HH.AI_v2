@@ -79,16 +79,16 @@
 
 | 若提示詞包含 | 就必須同時包含 |
 |---|---|
-| 更新 `docs/TASKBOARD.md` 的「最後更新」HEAD | 更新交接區 §5.1 第一行的「上次核對通過的 HEAD」 |
+| 正式提升某 commit 為 Macro PASS checkpoint | `docs/AUDIT-LOG.md`（Macro PASS 判定）與交接區 §5.1 第一行的「上次核對通過的 HEAD」指向同一 commit（TASKBOARD 只維持工作狀態，不參與 commit-verdict authority） |
 | 新增 `docs/TASKBOARD.md` 的項目 | 該批的驗證步驟含看板項目數檢查 |
 | 新增或修改 `.claude/rules/` 或 `.agents/rules/` 的章節 | 該批的驗證步驟含章節序列檢查 |
 | 追加 `docs/refactor-backlog.md` 的編號項目 | 該批的驗證步驟含編號連續性檢查 |
 | 新增 `.claude/rules/auditor-protocol.md` §6.1 的項目 | 同步新增 `.claude/rules/auditor-selftest.md` E 節的對應項（標註 `§6.1-N`） |
 
-**失效紀錄**：2026-09-02 審計官更新了 `TASKBOARD.md` 的 HEAD，
-卻漏了交接區 §5.1 第一行，造成兩處記載不同步。
-該次是被驗證步驟攔下的——但驗證步驟是在**寫入之後**才跑，
-配對規則能把失敗提早到**寫入之前**。
+**審計狀態配對 (Audit-State Pairing)**：2026-09-12 治理重構（B-58 Recovery R1）
+明確將 TASKBOARD 的 Git HEAD truth 移除，退役舊有的 TASKBOARD HEAD ⇔ §5.1 HEAD 配對。
+真正的審計狀態單一事實來源為：`AUDIT-LOG` 裁決 ⇔ §5.1 checkpoint。
+若提示詞宣告某 commit 通過核對，兩者必須同步指向該 commit，防止審計結論漂移。
 
 ## 3.2 覆蓋規則（缺一即停，Mode-Aware）
 

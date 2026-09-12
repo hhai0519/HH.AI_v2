@@ -1,5 +1,5 @@
 {
-  "base_head": "276e11f",
+  "base_head": "34babd5",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 0,
@@ -15,7 +15,7 @@
         "## 3. 查證紀律"
       ],
       "lines": 272,
-      "sha256": "8ebb7026e9955fcef45f1c8c91e6b35df70455cbc7ab9db37debbd8c4ad9ed40"
+      "sha256": "ac36eff634c89cf1e01d23620d53692142b5b0f711a2e3050ccc6f0e3827116f"
     },
     ".agents/rules/powershell-encoding-protocol.md": {
       "fences": 6,
@@ -57,7 +57,7 @@
         "## 6. 這條規則保護的是誰"
       ],
       "lines": 351,
-      "sha256": "cfa3aef6ef757aba10b50a4326185da0ce89418d7db7e55d1f5da8346b95ee61"
+      "sha256": "0548c007e0a3bc4233173d539ee65ef4ecba2b9cb6af5b7a18126f09553fd9c9"
     },
     ".agents/rules/role-boundaries.md": {
       "fences": 0,
@@ -151,8 +151,8 @@
         "### 11.5 審計狀態之單一事實來源（Audit State SSOT）",
         "### 11.6 [已退役／不需執行] 歷史 `audited-*` tag 之留痕保存（RETIRED / NOT REQUIRED）"
       ],
-      "lines": 882,
-      "sha256": "1f036cb034d318e527761088baa40bd528e264829faeb53fc6ee8d57a3ab5043"
+      "lines": 878,
+      "sha256": "260bba3c2e93ceea70b05f9368f2d3449faa9b98885f041b5716f5b125700e3b"
     },
     ".claude/rules/auditor-selftest.md": {
       "fences": 0,
@@ -167,7 +167,7 @@
         "## F. 額度（每一輪回覆的開頭與結尾）"
       ],
       "lines": 113,
-      "sha256": "d123a25456dd0b0400886fcfe7c0b185a9bdf46d7467a23d9197f494153ae446"
+      "sha256": "de293b0fa8f2ed19e3dce7f5fec8a7db7c52c3ed54d4587b42f2b04614ce98b5"
     },
     ".github/workflows/verify.yml": {
       "fences": 0,
@@ -218,6 +218,7 @@
         "### 0.2 本文件其他原則都預設這個分工",
         "### 0.3 「審計」一詞有四種意思，不可混用",
         "### 0.4 各層的分工",
+        "### 0.5 代理人運作目標 (Agent Operating Objectives)",
         "## 1. 治理文件的層級",
         "### R. Router（非權威導覽層）",
         "### 內容該放哪一層：五個判別問句",
@@ -243,8 +244,8 @@
         "### 4.4 責任歸屬",
         "## 5. 更新紀錄"
       ],
-      "lines": 362,
-      "sha256": "3e4f5097d5ea41e31c43a47633821e57e97245fe33141ede27c348b3e58883c1"
+      "lines": 375,
+      "sha256": "8ace5bcd19ef601883a0d608fc91c6cb54f2ac342e8ac8652e85741f1c0cd032"
     },
     "SOP/README.md": {
       "fences": 0,
@@ -513,16 +514,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 86,
-      "sha256": "020d7b0bc4c289d69d322be7dc58dc604bbc5a748586d2f188c893735e671dee"
+      "lines": 84,
+      "sha256": "d481aee4dd2d0234c40e0f7ad1171e0057f428586fed924584b205cb4163c1ab"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 55,
-      "sha256": "31df1a77683af610959caa528780dcf1b8a8e90b4aa5e5ce0d851ae0fbd7d005"
+      "lines": 56,
+      "sha256": "23270864f7ee56ca283d531d098a76a92f19686b905ae51686952d4235f38ff3"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -558,7 +559,7 @@
         "## 封存區"
       ],
       "lines": 234,
-      "sha256": "a89b43b7f8efa647cccba13b1d8684002042c39b3e996bba4eb3f50d19419c30"
+      "sha256": "aad142b929c53fba709e610ed58c1e54c90c260392a52234162405e7fd86e252"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -886,8 +887,8 @@
         "### 5.3 待使用者裁決",
         "### 5.4 進行中／等待回報"
       ],
-      "lines": 3047,
-      "sha256": "d9393b7b06c8117f72cf64cce8f29e148f36a0bf7c411e5d41e93b7a3c461991"
+      "lines": 3048,
+      "sha256": "00e89242a8a94a15c821cb813d2f836a933b5a05d371fab17baf54ff16658992"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -909,11 +910,12 @@
     "scripts/check_consistency.py": {
       "fences": 0,
       "headings": [
+        "# Backward compatibility alias",
         "# 已知指向錯誤的歷史 tag。本清單只能縮短、不得加長。",
         "# 修復批次完成後必須清空；清單中的 tag 若已修復卻未移除，CHECK 18 會 FAIL。"
       ],
-      "lines": 1468,
-      "sha256": "bed2a08d03670ef48df79f9b5b966a1ea177e2855677187eedfe8b89826f9087"
+      "lines": 1592,
+      "sha256": "99ae585f96f4e3b696a6afcf0626ac3edc758e241d5216c078613b0159648113"
     },
     "scripts/fingerprint.py": {
       "fences": 0,
@@ -953,10 +955,16 @@
     "scripts/tests/test_check_consistency.py": {
       "fences": 0,
       "headings": [
-        "# Ensure scripts dir is on sys.path"
+        "# Ensure scripts dir is on sys.path",
+        "# ---------------------------------------------------------------------------",
+        "# CHECK 8 Tests: TASKBOARD Metadata Purity",
+        "# ---------------------------------------------------------------------------",
+        "# ---------------------------------------------------------------------------",
+        "# CHECK 9 Tests: Semantic Authority & Pending Range Generalization",
+        "# ---------------------------------------------------------------------------"
       ],
-      "lines": 367,
-      "sha256": "4a0e791b61e6d276e0eb5c1ccc9212332b0daec6ced04e4935445ab054abf512"
+      "lines": 496,
+      "sha256": "2e4b4ec39d0b47b8217ce387e3d7a006522f912a2253630eafcd269f68bb4eeb"
     },
     "scripts/tests/test_fingerprint.py": {
       "fences": 0,
@@ -1027,7 +1035,7 @@
       "sha256": "77163678353cb7a444f90f17956d03312f715cfcccf933603948715939ecdc10"
     }
   },
-  "generated_at": "2026-09-12T06:53:39Z",
+  "generated_at": "2026-09-12T07:35:17Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

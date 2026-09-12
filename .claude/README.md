@@ -20,7 +20,7 @@ Claude Control Plane 與 Antigravity Control Plane 是分離、互補且非對�
 - [rules/auditor-protocol.md](rules/auditor-protocol.md) — 宏觀審計官作業協定本體（normative contract）：審計維度、Gatekeeping 查證紀律、提示詞產出標準與生命週期規範。
 
 ### 3. Claude 可執行操作清單 (Executable Projection)
-- [rules/auditor-selftest.md](rules/auditor-selftest.md) — 宏觀審計官自檢清單（executable checklist）：提示詞產出前自檢項目。本清單為 `auditor-protocol.md` 之操作投影，非第二獨立治理權威。
+- [rules/auditor-selftest.md](rules/auditor-selftest.md) — 宏觀審計官自檢清單（executable selftest / operational projection）：依該檔自身 Trigger Map 於對應時機執行。本清單為 `auditor-protocol.md` 之操作投影，非第二獨立治理權威。
 
 ### 4. 專案整體交接與狀態路由
 - [docs/HANDOVER.md](../docs/HANDOVER.md) — Project Handover Router：專案整體架構、最新進度、工作板（`docs/TASKBOARD.md`）與交接區（`docs/refactor-backlog.md` §5）之統一切入點。

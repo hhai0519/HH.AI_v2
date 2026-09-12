@@ -9,8 +9,8 @@
   CHECK 5 — SOP_00A 路由目標存在性
   CHECK 6 — skills/ 底下不得殘留舊分層路徑
   CHECK 7 — 技能數與索引條目數一致
-  CHECK 8 — 任務看板 HEAD 落後
-  CHECK 9 — 交接區 HEAD 落後
+  CHECK 8 — 任務看板當前狀態 Metadata 純度
+  CHECK 9 — 交接區 HEAD 審計狀態與合法範圍
   CHECK 10 — §X.Y 章節引用有效性
   CHECK 11 — §6.1 清單與自檢清單 E 節項目對應
   CHECK 12 — AUDIT-LOG 審查週期落後
@@ -339,9 +339,9 @@ def run_checks(argv=None):
         failed += 1
 
     # ---------------------------------------------------------
-    # CHECK 8: 任務看板 HEAD 落後
+    # CHECK 8: 任務看板當前狀態 Metadata 純度
     # ---------------------------------------------------------
-    print("\nCHECK 8 - 任務看板 HEAD 落後")
+    print("\nCHECK 8 - 任務看板當前狀態 Metadata 純度")
     c8_fails, c8_infos = check_8_taskboard_head(repo_root, as_if_committed=as_if_committed)
     for info in c8_infos:
         print(f"  [INFO] {info}")
@@ -355,9 +355,9 @@ def run_checks(argv=None):
         failed += 1
 
     # ---------------------------------------------------------
-    # CHECK 9: 交接區 HEAD 落後
+    # CHECK 9: 交接區 HEAD 審計狀態與合法範圍
     # ---------------------------------------------------------
-    print("\nCHECK 9 - 交接區 HEAD 落後")
+    print("\nCHECK 9 - 交接區 HEAD 審計狀態與合法範圍")
     c9_fails, c9_infos = check_9_handover_head(repo_root, as_if_committed=as_if_committed)
     for info in c9_infos:
         print(f"  [INFO] {info}")
@@ -565,7 +565,23 @@ def get_git_heads(root, as_if_committed=False):
         prev2 = env_prev2
     return head, prev, prev2
 
-def check_8_taskboard_head(root_dir=None, git_head=None, git_prev=None, git_prev2=None, as_if_committed=False):
+def hashes_match(h1, h2):
+    if not h1 or not h2:
+        return False
+    h1, h2 = h1.lower(), h2.lower()
+    return h1 == h2 or h1.startswith(h2) or h2.startswith(h1)
+
+
+def check_8_taskboard_metadata_purity(root_dir=None, git_head=None, git_prev=None, git_prev2=None, as_if_committed=False):
+    """CHECK 8 — 任務看板當前狀態 Metadata 純度。
+
+    驗證 TASKBOARD.md 的『最後更新』標記為活動看板狀態標記：
+    1. 存在唯一的『最後更新』標記。
+    2. 包含有效日期 (YYYY-MM-DD) 與當前工作階段/狀態描述。
+    3. 不得包含 Git HEAD、checkpoint、commit、pending range (..) 或任何 commit hash。
+       Git 與審計狀態單一事實來源由 Git HEAD、AUDIT-LOG 與交接區 §5.1 擁有，
+       防止將 Git truth 重新複製回看板產生第二事實來源。
+    """
     if root_dir is None: root_dir = repo_root
     fails = []
     infos = []
@@ -575,41 +591,69 @@ def check_8_taskboard_head(root_dir=None, git_head=None, git_prev=None, git_prev
         return fails, infos
     try:
         with open(tb_path, "r", encoding="utf-8") as f:
-            content = f.read()
+            lines = f.readlines()
     except Exception as e:
         fails.append(f"docs/TASKBOARD.md:0  讀取失敗: {e}")
         return fails, infos
 
-    m = re.search(r"\*\*最後更新\*\*：.*?HEAD\s+`?([0-9a-fA-F]+)`?\s+之後", content)
-    if not m:
-        fails.append("docs/TASKBOARD.md:0  未找到『最後更新』HEAD 標記")
+    markers = []
+    for idx, line in enumerate(lines, 1):
+        if "**最後更新**：" in line:
+            markers.append((idx, line.strip()))
+
+    if len(markers) == 0:
+        fails.append("docs/TASKBOARD.md:0  未找到『最後更新』標記")
         return fails, infos
-    tb_hash = m.group(1).lower()
-
-    head = git_head.lower() if git_head else None
-    prev = git_prev.lower() if git_prev else None
-    prev2 = git_prev2.lower() if git_prev2 else None
-    if head is None or prev is None:
-        g_head, g_prev, g_prev2 = get_git_heads(root_dir, as_if_committed=as_if_committed)
-        if head is None: head = g_head
-        if prev is None: prev = g_prev
-        if prev2 is None: prev2 = g_prev2
-
-    if head is None:
-        infos.append("無法取得 git HEAD 資訊，略過比對")
+    if len(markers) > 1:
+        fails.append(f"docs/TASKBOARD.md: 找到多個『最後更新』標記 (共 {len(markers)} 個)")
         return fails, infos
 
-    # 門檻：lag > 2（允許 HEAD、HEAD~1、HEAD~2，落後超過兩批才報 FAIL）
-    matches_head = head.startswith(tb_hash) or tb_hash.startswith(head)
-    matches_prev = prev and (prev.startswith(tb_hash) or tb_hash.startswith(prev))
-    matches_prev2 = prev2 and (prev2.startswith(tb_hash) or tb_hash.startswith(prev2))
-    lag = 0 if matches_head else (1 if matches_prev else (2 if matches_prev2 else 3))
+    line_no, marker_text = markers[0]
+    payload = marker_text.split("**最後更新**：", 1)[1].strip()
 
-    if lag > 2:
-        fails.append(f"docs/TASKBOARD.md: 最後更新 HEAD ({tb_hash}) 落後超過兩批 (HEAD={head}, HEAD~1={prev}, HEAD~2={prev2})")
+    # 1. 必須包含有效日期 (YYYY-MM-DD)
+    if not re.search(r"\b\d{4}-\d{2}-\d{2}\b", payload):
+        fails.append(f"docs/TASKBOARD.md:{line_no}  『最後更新』標記缺少有效日期 (格式: YYYY-MM-DD)")
+
+    # 2. 必須包含工作階段或當前狀態描述
+    desc = re.sub(r"\b\d{4}-\d{2}-\d{2}\b", "", payload).strip(" ，,、\t")
+    if not desc:
+        fails.append(f"docs/TASKBOARD.md:{line_no}  『最後更新』標記缺少工作階段或當前狀態描述")
+
+    # 3. 不得包含 Git HEAD / commit / checkpoint / range
+    if re.search(r"\bHEAD\b", payload, re.IGNORECASE):
+        fails.append(f"docs/TASKBOARD.md:{line_no}  『最後更新』標記不得包含 HEAD 關鍵字 (違反 Metadata Purity，Git truth 由 Git/AUDIT-LOG/§5.1 擁有)")
+
+    if re.search(r"\b(checkpoint|commit)\b", payload, re.IGNORECASE):
+        fails.append(f"docs/TASKBOARD.md:{line_no}  『最後更新』標記不得包含 checkpoint/commit 關鍵字")
+
+    if ".." in payload:
+        fails.append(f"docs/TASKBOARD.md:{line_no}  『最後更新』標記不得包含 commit range (..)")
+
+    # 4. 不得保存 7-40 位的十六進位 commit hash (反引號包住或純英數 hex)
+    hex_in_backticks = re.findall(r"`([0-9a-fA-F]{7,40})`", payload)
+    bare_hex_hashes = re.findall(r"\b(?=[0-9a-fA-F]*[a-fA-F])([0-9a-fA-F]{7,40})\b", payload)
+    all_found_hashes = set(hex_in_backticks + bare_hex_hashes)
+    if all_found_hashes:
+        fails.append(f"docs/TASKBOARD.md:{line_no}  『最後更新』標記不得保存 Git commit hash: {', '.join(sorted(all_found_hashes))}")
+
     return fails, infos
 
-def check_9_handover_head(root_dir=None, git_head=None, git_prev=None, git_prev2=None, as_if_committed=False):
+# Backward compatibility alias
+check_8_taskboard_head = check_8_taskboard_metadata_purity
+
+
+def check_9_handover_head(root_dir=None, git_head=None, git_prev=None, git_prev2=None, as_if_committed=False, git_ancestry=None):
+    """CHECK 9 — 交接區 HEAD 審計狀態與合法範圍。
+
+    驗證 semantic authority relationship：
+    1. refactor-backlog.md §5.1 存在唯一『上次核對通過的 HEAD』checkpoint。
+    2. checkpoint 在 AUDIT-LOG.md 中存在合法審查紀錄且結論為 Macro PASS / 核對通過。
+    3. checkpoint 存在於 Git 歷史且為 HEAD 的祖先 commit（或 HEAD 自己）。
+    4. checkpoint 等於 AUDIT-LOG 中最新且屬 HEAD ancestry 的 Macro PASS commit。
+    5. checkpoint 之後可有任意數量 pending/repair commits，無固定數量上限。
+    6. candidate / current HEAD 若未經 Macro PASS 裁決，不得自稱為 checkpoint。
+    """
     if root_dir is None: root_dir = repo_root
     fails = []
     infos = []
@@ -619,42 +663,122 @@ def check_9_handover_head(root_dir=None, git_head=None, git_prev=None, git_prev2
         return fails, infos
     try:
         with open(bl_path, "r", encoding="utf-8") as f:
-            content = f.read()
+            bl_content = f.read()
     except Exception as e:
         fails.append(f"docs/refactor-backlog.md:0  讀取失敗: {e}")
         return fails, infos
 
-    m = re.search(r"上次核對通過的 HEAD：\s*`?([0-9a-fA-F]+)`?", content)
-    if not m:
+    # 1. 存在唯一 checkpoint
+    checkpoint_matches = re.findall(r"^上次核對通過的 HEAD：\s*`?([0-9a-fA-F]+)`?", bl_content, re.M)
+    if not checkpoint_matches:
         fails.append("docs/refactor-backlog.md:0  未找到『上次核對通過的 HEAD』標記")
         return fails, infos
-    ho_hash = m.group(1).lower()
-
-    head = git_head.lower() if git_head else None
-    prev = git_prev.lower() if git_prev else None
-    prev2 = git_prev2.lower() if git_prev2 else None
-    if head is None or prev is None:
-        g_head, g_prev, g_prev2 = get_git_heads(root_dir, as_if_committed=as_if_committed)
-        if head is None: head = g_head
-        if prev is None: prev = g_prev
-        if prev2 is None: prev2 = g_prev2
-
-    if head is None:
-        infos.append("無法取得 git HEAD 資訊，略過比對")
+    if len(checkpoint_matches) > 1:
+        fails.append(f"docs/refactor-backlog.md: 找到多個『上次核對通過的 HEAD』標記 (共 {len(checkpoint_matches)} 個)")
         return fails, infos
 
-    # 防護 CASE C：上次核對通過的 HEAD 不得為當前 HEAD / candidate 自己
-    if head and (head.startswith(ho_hash) or ho_hash.startswith(head)):
-        fails.append(f"docs/refactor-backlog.md: 上次核對通過的 HEAD ({ho_hash}) 不得為當前 HEAD/candidate 自己")
+    ho_hash = checkpoint_matches[0].lower()
+
+    # 2. 讀取 docs/AUDIT-LOG.md 驗證審查紀錄與 Macro PASS verdict
+    al_path = os.path.join(root_dir, "docs", "AUDIT-LOG.md")
+    if not os.path.exists(al_path):
+        fails.append("docs/AUDIT-LOG.md:0  檔案不存在")
+        return fails, infos
+    try:
+        with open(al_path, "r", encoding="utf-8") as f:
+            al_content = f.read()
+    except Exception as e:
+        fails.append(f"docs/AUDIT-LOG.md:0  讀取失敗: {e}")
         return fails, infos
 
-    # 門檻：lag > 2（僅允許已審計歷史 commit HEAD~1 或 HEAD~2，落後超過兩批才報 FAIL）
-    matches_prev = prev and (prev.startswith(ho_hash) or ho_hash.startswith(prev))
-    matches_prev2 = prev2 and (prev2.startswith(ho_hash) or ho_hash.startswith(prev2))
-    lag = 1 if matches_prev else (2 if matches_prev2 else 3)
+    al_table_content = al_content.split("## CI 歷史事故歸檔專區")[0]
+    audit_rows = []
+    for line in al_table_content.splitlines():
+        line = line.strip()
+        if line.startswith("|") and not line.startswith("|---") and "批次 commit" not in line:
+            parts = [p.strip() for p in line.split("|")[1:-1]]
+            if len(parts) >= 4:
+                c_hash = parts[0].lower()
+                if c_hash == "bootstrap":
+                    continue
+                summary = parts[3]
+                is_pass = ("通過" in summary or "pass" in summary.lower()) and not any(
+                    neg in summary for neg in ["不通過", "NEEDS MICRO-FIX", "待微修", "CI failure", "failure"]
+                )
+                audit_rows.append((c_hash, is_pass, summary))
 
-    if lag > 2:
-        fails.append(f"docs/refactor-backlog.md: 上次核對通過的 HEAD ({ho_hash}) 落後超過兩批 (HEAD={head}, HEAD~1={prev}, HEAD~2={prev2})")
+    checkpoint_row = None
+    for c_hash, is_pass, summary in audit_rows:
+        if hashes_match(c_hash, ho_hash):
+            checkpoint_row = (c_hash, is_pass, summary)
+            break
+
+    if checkpoint_row is None:
+        fails.append(f"docs/refactor-backlog.md: 上次核對通過的 HEAD ({ho_hash}) 在 docs/AUDIT-LOG.md 中未找到審查紀錄")
+    elif not checkpoint_row[1]:
+        fails.append(f"docs/refactor-backlog.md: 上次核對通過的 HEAD ({ho_hash}) 在 docs/AUDIT-LOG.md 中的結論非 Macro PASS (現為: {checkpoint_row[2][:30]})")
+
+    # 3. 取得 Git 歷史 / Ancestry
+    ancestry = []
+    if git_ancestry is not None:
+        ancestry = [c.lower() for c in git_ancestry]
+    elif _in_git_repo(root_dir):
+        rc, out, _ = _git(root_dir, ["rev-list", "HEAD"])
+        if rc == 0:
+            ancestry = [line.strip().lower() for line in out.splitlines() if line.strip()]
+            if as_if_committed:
+                ancestry = ["candidate"] + ancestry
+    else:
+        raw_list = [x.lower() for x in [git_head, git_prev, git_prev2] if x]
+        if as_if_committed and "candidate" not in raw_list:
+            raw_list = ["candidate"] + raw_list
+        ancestry = raw_list
+
+    if not ancestry:
+        infos.append("無法取得 git 歷史資訊，略過 ancestry 比對")
+        return fails, infos
+
+    current_head = ancestry[0]
+
+    # 4. candidate / current HEAD 若沒有既存 Macro PASS evidence，不得自稱 checkpoint (Shape G)
+    if current_head == "candidate" and hashes_match("candidate", ho_hash):
+        fails.append(f"docs/refactor-backlog.md: 上次核對通過的 HEAD ({ho_hash}) 不得為 candidate 自己")
+        return fails, infos
+    if hashes_match(current_head, ho_hash):
+        if checkpoint_row is None or not checkpoint_row[1]:
+            fails.append(f"docs/refactor-backlog.md: 當前 HEAD ({current_head}) 未經 Macro PASS 裁決，不得自稱為 checkpoint")
+            return fails, infos
+
+    # 5. checkpoint 必須存在於 Git 歷史且為 HEAD 的 ancestor (Shape F)
+    checkpoint_ancestry_idx = None
+    for idx, c in enumerate(ancestry):
+        if hashes_match(c, ho_hash):
+            checkpoint_ancestry_idx = idx
+            break
+
+    if checkpoint_ancestry_idx is None:
+        fails.append(f"docs/refactor-backlog.md: 上次核對通過的 HEAD ({ho_hash}) 不存在於當前 Git 歷史或非 HEAD 的祖先 commit")
+        return fails, infos
+
+    # 6. checkpoint 必須等於 AUDIT-LOG 中最新且屬 HEAD ancestry 的 Macro PASS commit (Shape E)
+    latest_pass_in_ancestry = None
+    for c in ancestry:
+        if c == "candidate":
+            continue
+        for a_hash, a_is_pass, _ in audit_rows:
+            if a_is_pass and hashes_match(c, a_hash):
+                latest_pass_in_ancestry = c
+                break
+        if latest_pass_in_ancestry is not None:
+            break
+
+    if latest_pass_in_ancestry is not None:
+        if not hashes_match(ho_hash, latest_pass_in_ancestry):
+            fails.append(f"docs/refactor-backlog.md: 上次核對通過的 HEAD ({ho_hash}) 已過期；AUDIT-LOG 存在更晚的 Macro PASS ancestor commit ({latest_pass_in_ancestry})")
+
+    pending_count = checkpoint_ancestry_idx
+    infos.append(f"上次核對通過的 checkpoint: {ho_hash} (PASS), pending commits in range: {pending_count}")
+
     return fails, infos
 
 def check_10_section_refs(root_dir=None):
