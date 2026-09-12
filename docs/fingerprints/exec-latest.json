@@ -1,5 +1,5 @@
 {
-  "base_head": "568209e",
+  "base_head": "8f48750",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 0,
@@ -503,7 +503,7 @@
         "## 四、已知缺口"
       ],
       "lines": 67,
-      "sha256": "af6cd180d2a722374d3c344a47bd975d1ecad16105a2c13a931a7d7562f12e17"
+      "sha256": "bec1f01d8e4bf78fb908d2bc050749f86c766ba0dd4278f409e3badc4ef6d95c"
     },
     "docs/AUDIT-LOG.md": {
       "fences": 0,
@@ -512,110 +512,36 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 80,
-      "sha256": "1bf5fb9857f390c9ffca7aedef344f3719fc42127f3ebf9395148615def94270"
+      "lines": 82,
+      "sha256": "34b65e3475747ae2bf4d7caa3fbfeea561996d4818d482d6eced19268485427e"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 51,
-      "sha256": "c286d3e199f3899ba0bb644211b01d956157ed674b0c0a4e568bf60ffc2bd17e"
+      "lines": 52,
+      "sha256": "5026a7897336b41a78bf24f3590779c2002df4ae9f1a40f7f0bf7eed0640d982"
     },
     "docs/HANDOVER.md": {
-      "fences": 14,
+      "fences": 0,
       "headings": [
-        "# HH.AI_v2 重構專案 — 完整交接手冊",
-        "## 目錄",
-        "## 1. 專案概述",
-        "### 目標",
-        "### 系統性質",
-        "### 三方角色分工",
-        "### 七桶架構（ADR-0001）",
-        "## 2. 資料來源",
-        "### 兩個 GitHub Repo（皆為公開，可直接 clone）",
-        "### 本機路徑（Antigravity 操作用）",
-        "### 專案內的關鍵文件",
-        "### 使用者提供的外部資料",
-        "### 架構設計的外部參考來源",
-        "### 已識別的 vendored 外部資產",
-        "### 官方文件參考",
-        "### 使用者的 NotebookLM 筆記本（Claude 無法存取）",
-        "## 3. 從頭到尾做了什麼",
-        "### 階段一：架構設計與骨架建立",
-        "### 階段二：技能審計與批次遷移",
-        "### 階段三：SOP 處理",
-        "### 階段四：LINE/TG 雙平台診斷",
-        "### 階段五：安全事件處理",
-        "### 階段六：Jules 分支整合",
-        "### 階段七：Port 規範與雜項",
-        "## 4. 已完成項目與細節",
-        "### 4.1 技能遷移：54 個",
-        "### 4.2 ADR：19 份決策紀錄（＋ 1 份範本）",
-        "### 4.3 Workspace 規則：5 份（`.agents/rules/`）",
-        "### 4.4 SOP：10 份 + 索引",
-        "### 4.5 自動化測試：41 個（從 0 開始）",
-        "### 4.6 Jules 分支整合：兩批共 24 個全數處理",
-        "### 4.7 其他產出",
-        "## 5. 未完成項目與細節",
-        "### 5.1 待遷移技能：7 個",
-        "### 5.2 攔截項（兩項已裁決，一項待裁決）",
-        "### 5.3 Persona 認知顧問：15 個（階段一可立即做）",
-        "### 5.4 runtime / shared 層（尚未開始）",
-        "### 5.5 其他待辦",
-        "## 6. 已處理的風險",
-        "### 6.1 憑證外洩（本機，未推送）",
-        "### 6.2 已修復的兩個安全漏洞",
-        "### 6.3 遷移過程中攔截的問題（不完整列舉）",
-        "### 6.4 執行期產物清理（舊 repo）",
-        "## 7. 未處理的風險",
-        "### 7.1 ~~🔴 最高優先~~ ✅ 已處置：`nlm_cookies.txt` 已推送至公開 repo",
-        "### 7.2 🔴 LINE 通道完全失效（根因已查明，未修復）",
-        "### 7.3 🟡 資安防線的結構性缺口（ADR-0016）",
-        "### 7.4 🟡 記憶體是被低估的失效因素",
-        "### 7.5 🟡 Telegram 的 Heap Usage 偏高",
-        "### 7.6 🟡 Port 衝突（潛在，未來必然發生）",
-        "### 7.7 🟢 其他",
-        "## 8. 使用者的工作習慣",
-        "### 8.1 明確表達過的偏好",
-        "### 8.2 工作模式",
-        "### 8.3 決策風格",
-        "### 8.4 環境限制",
-        "## 9. 與 Antigravity IDE Agent 協作規範",
-        "### 9.1 提示詞必備要素",
-        "### 9.2 必須明確指定的事項",
-        "### 9.3 提示詞結構模板",
-        "### 9.4 分批原則",
-        "## 10. Antigravity Agent 的已知出錯模式與風險評估",
-        "### 10.1 已實際發生的出錯模式（依嚴重度排序）",
-        "### 10.2 Agent 表現良好的部分（值得保持的做法）",
-        "### 10.3 風險緩解措施（已建立）",
-        "### 10.4 核對時的重點檢查項",
-        "# 1. 技能總數是否符合預期",
-        "# 2. frontmatter 是否乾淨（不該有 type、version、capabilities）",
-        "# 3. 已知問題字串是否殘留",
-        "# 4. 舊架構名稱是否殘留",
-        "# 5. 拆分後的 code block 是否配對",
-        "# 正確算法：以 ``` 開頭的行數（見 .agents/rules/git-and-reporting.md §3）",
-        "# 6. README 索引是否同步",
-        "# 7. validate_skills.py 是否 0 錯誤",
-        "## 11. Claude 自身的已知失誤",
-        "## 12. 接手第一步該做什麼",
-        "### 12.1 建立脈絡（約 5 分鐘）",
-        "### 12.2 優先處理順序（建議）",
-        "### 12.3 工作方法（不可省略）",
-        "### 12.4 溝通原則",
-        "## 附錄：常用指令速查",
-        "# 查證兩個 repo",
-        "# 技能總數",
-        "# 各 bucket 分布",
-        "# 驗證（Windows 需先設編碼）",
-        "# 測試",
-        "# code block 圍欄數（正確算法）"
+        "# HH.AI_v2 Project Handover Router",
+        "## 導覽索引 (Navigation Directory)",
+        "### 1. 專案使命與核心原則 (Mission & Principles)",
+        "### 2. 宏觀審計官接手導引 (Macro Auditor / Claude Control Plane)",
+        "### 3. 執行者接手導引 (Executor / Antigravity Control Plane)",
+        "### 4. 下一步工作與待辦 (Next Work & Tasks)",
+        "### 5. 目前進度與審計狀態 (Current Progress & Audited Checkpoint)",
+        "### 6. 作業程序 (Operational SOP)",
+        "### 7. 技能與能力庫 (Skills & Capabilities)",
+        "### 8. 架構決策紀錄 (Architecture Decision Records)",
+        "### 9. 執行證據與審計紀錄 (Execution Evidence & Audit)",
+        "### 10. 歸檔與歷史資料 (Archive & Historical Material)",
+        "### 11. 規範驗證入口 (Canonical Verification)"
       ],
-      "lines": 868,
-      "sha256": "29413d77e522428a640f67fac9d6711d1e32c552c6689c69c82a15d5125b03bf"
+      "lines": 62,
+      "sha256": "1f173ae09fc918d8eb92c08f7d9d24e24f27bf00b0909f1cb34d285a84b8f5dd"
     },
     "docs/TASKBOARD.md": {
       "fences": 0,
@@ -631,7 +557,7 @@
         "## 封存區"
       ],
       "lines": 234,
-      "sha256": "279810ecd90ee04643ab4da6560ff05ce6ece40175f6bbaa25fa45a46262ff77"
+      "sha256": "58b98629ebdad3a30c7f170093e80ce7935869f0c5376b1f3a07c35c10b08c2e"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -959,8 +885,8 @@
         "### 5.3 待使用者裁決",
         "### 5.4 進行中／等待回報"
       ],
-      "lines": 3043,
-      "sha256": "8c52e023034e1c6055d92d11d6904e9eddf0142777de573f62907c4514bd8be8"
+      "lines": 3044,
+      "sha256": "9563b6c37ec34021ddcec34b403a21d0bae6059538f8182ecd3fdd584205965a"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -986,7 +912,7 @@
         "# 修復批次完成後必須清空；清單中的 tag 若已修復卻未移除，CHECK 18 會 FAIL。"
       ],
       "lines": 1468,
-      "sha256": "3e7eff8940a9bb53d72197a8b9240db9311bbef1ce7b3d96bed9176936ea8f37"
+      "sha256": "939dc525e47f79451aa95d50c41bcf7226e1342aa2cfe3247b35d00ef4341c51"
     },
     "scripts/fingerprint.py": {
       "fences": 0,
@@ -1100,7 +1026,7 @@
       "sha256": "77163678353cb7a444f90f17956d03312f715cfcccf933603948715939ecdc10"
     }
   },
-  "generated_at": "2026-09-12T03:20:57Z",
+  "generated_at": "2026-09-12T03:35:12Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

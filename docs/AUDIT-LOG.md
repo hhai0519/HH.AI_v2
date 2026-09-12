@@ -61,6 +61,8 @@ CHECK 12 應跳過該值——建立本檔的那一批沒有「前一個 commit�
 | 15444f5 | 2026-09-12 | §4.1-1 | **Machine PASS / 語意審計待微修（NEEDS MICRO-FIX）**。5 檔異動、零夾帶。本地 verify_all 5 Gates 全 PASS、GitHub Actions Run 34668857779 success。Macro Auditor 獨立審查發現 1 項審計證據事實錯誤待修正 | Content Architecture Kickoff — Repo-Visible State Sync。經宏觀審計官獨立核對，5 大 Gates 與 CI 全過，但發現唯一 micro-fix：b9b997f 歷史 row 記錄了錯誤的 GitHub Actions Run ID（誤填為不存在的 34625299443，正確 exact-SHA Run 應為 34628553531）。因 audit evidence factual error，15444f5 不得視為 Macro PASS，由本 micro-fix 批次修正。 |
 | 91b43b2 | 2026-09-12 | §4.1-1 | **核對通過**。5 檔異動、零夾帶。本地 verify_all 5 Gates 全 PASS、GitHub Actions Run 34669274290 success。Macro Auditor 獨立核對通過（MACRO AUDIT = PASS） | Audit Evidence Micro-Fix 經宏觀審計官獨立核對通過。修正 b9b997f 錯誤之 Actions Run ID（34625299443 → 34628553531），保留 15444f5 為 Machine PASS / NEEDS MICRO-FIX 歷史；本批判定 Macro PASS。 |
 | 568209e | 2026-09-12 | §4.1-1 | **核對通過**。6 檔異動、零夾帶。本地 verify_all 5 Gates 全 PASS、GitHub Actions Run 34669753257 success。Macro Auditor 獨立核對通過（MACRO AUDIT = PASS） | B-58 Content Architecture Phase 1 — Router Foundation 經宏觀審計官獨立核對通過。於 PRINCIPLES.md §1 正式確立橫向非權威 Document Role: Router 及其核心不變式（不擁有事實、不參與權威層級、canonical source 優先、階層導覽無循環、優先重用既有檔案）；判定 Macro PASS。 |
+| 8f48750 | 2026-09-12 | §4.1-1 | **核對通過**。7 檔異動、零夾帶。本地 verify_all 5 Gates 全 PASS、GitHub Actions Run 34670189537 success。Macro Auditor 獨立核對通過（MACRO AUDIT = PASS） | B-58 Content Architecture Phase 2A — Historical Document Archive Foundation & Byte-Exact Legacy HANDOVER Snapshot 經宏觀審計官獨立核對通過。建立 docs/archive/handover/ 實體歸檔落點與 HANDOVER-pre-router-568209e.md 快照；active docs/HANDOVER.md 完全未修改；archive 快照與 base HANDOVER blob identity exact match (0a75b3bdc7ac68a06a882b63090c635862991bd3)；判定 Macro PASS。 |
+
 
 
 ---

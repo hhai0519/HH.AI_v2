@@ -291,7 +291,7 @@ def run_checks(argv=None):
                 # Check allowed list
                 is_allowed = False
                 if rel_fp in allowed_c6:
-                    print(f"  [INFO] 略過已知殘留: {rel_fp} (原因: runtime 層尚未遷移，遷移完成後必須更新；見 docs/HANDOVER.md §5.5)")
+                    print(f"  [INFO] 略過已知殘留: {rel_fp} (原因: runtime 層尚未遷移，遷移完成後必須更新；見 docs/TASKBOARD.md F-06)")
                     is_allowed = True
                 
                 if not is_allowed:

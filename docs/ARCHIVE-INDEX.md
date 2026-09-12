@@ -19,7 +19,7 @@
 | 某個 **Jules 分支**為什麼沒合併 | `docs/refactor-backlog.md`「三之二、Jules 自動化修正分支處理狀態」 |
 | 舊 repo 的某個檔案**為什麼不遷移** | `docs/refactor-backlog.md` §二 E、F 節 |
 | 某個**決定**當初為什麼那樣做 | `docs/adr/`；重構過程的判斷見 `docs/refactor-backlog.md` 編號項目 |
-| 歷史**專案文件**／舊版完整交接手冊 | `docs/archive/handover/`；舊版完整交接手冊見 `docs/archive/handover/HANDOVER-pre-router-568209e.md` |
+| 歷史**專案文件**／舊版完整交接手冊 | `docs/archive/handover/README.md`（目錄導覽），具體快照見 `docs/archive/handover/HANDOVER-pre-router-568209e.md` |
 
 ---
 
