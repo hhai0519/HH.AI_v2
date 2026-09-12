@@ -2825,7 +2825,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 5.1 上一批狀態
 
-上次核對通過的 HEAD：8f48750
+上次核對通過的 HEAD：bd6cda3
 
 - `23af193`（執行者前置檢查 ＋ 回滾程序 ＋ `AUDIT-LOG.md` ＋ 四缺口修正）
   已於 2026-09-02 由審計官核對通過：6 檔異動（含 2 個新檔）、零夾帶、
@@ -2977,6 +2977,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 - `568209e`（B-58 Content Architecture Phase 1 — Router Foundation）已於 2026-09-12 由宏觀審計官獨立核對通過：6 檔異動、零夾帶，獨立驗證五項全過，CI Run 34669753257 success。Macro Auditor 獨立核對通過（MACRO AUDIT = PASS）。於 PRINCIPLES.md §1 正式確立橫向非權威 Document Role: Router 及其核心不變式（不擁有事實、不參與權威層級、canonical source 優先、階層導覽無循環、優先重用既有檔案）。
 - `8f48750`（B-58 Content Architecture Phase 2A — Historical Document Archive Foundation & Byte-Exact Legacy HANDOVER Snapshot）已於 2026-09-12 由宏觀審計官獨立核對通過：7 檔異動、零夾帶，獨立驗證五項全過，CI Run 34670189537 success。Macro Auditor 獨立核對通過（MACRO AUDIT = PASS）。建立 `docs/archive/handover/` 實體歸檔落點與 `HANDOVER-pre-router-568209e.md` 不可變歷史快照，active `docs/HANDOVER.md` 原封不動保留，Git blob SHA 完全相符（0a75b3bdc7ac68a06a882b63090c635862991bd3）。
 - `addc388`（B-58 Content Architecture Phase 2B — Active HANDOVER → Project Router & Active Reverse-Reference Detachment）已於 2026-09-12 執行完成：9 檔異動、零夾帶，獨立驗證五項全過，CI Run 34670859204 success。經宏觀審計官獨立審查，Machine PASS，但發現 2 項 Router purity micro-fix（包含「五大 Gates」實作描述與跨層 deep-link agency-orchestrator），判定 NEEDS MICRO-FIX，由後續微修批次處置。
+- `bd6cda3`（B-58 Content Architecture Phase 2B Micro-Fix — Project Router Purity）已於 2026-09-12 由宏觀審計官獨立核對通過：6 檔異動、零夾帶，獨立驗證五項全過，CI Run 34671244747 success。Macro Auditor 獨立核對通過（MACRO AUDIT = PASS）。addc388 的兩項 micro-fix 均已修復：Project Router 不再保存 gate count 等實作事實、不再 deep-link agency-orchestrator；archive snapshot blob 維持 0a75b3bdc7ac68a06a882b63090c635862991bd3；判定 Macro PASS。
 
 ### 5.2 待辦
 
@@ -3005,7 +3006,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - checkpoint = §5.1 第一行記載之「上次核對通過的 HEAD（last audited checkpoint）」
   - 若 `HEAD == checkpoint` → 無尚待宏觀審計之 commit（no pending macro-audit commit）
   - 若 `HEAD != checkpoint` → `checkpoint..HEAD` 即為尚待宏觀審計之 commit range
-- **目前進行中工作（Active Work）**：B-58 治理層瘦身（Content Architecture cleanup）Phase 2B — Project Router Purity Micro-Fix。修正 docs/HANDOVER.md 中殘留之 driftable 實作描述（移除「五大 Gates」字樣）與跨層 deep-link（移除 agency-orchestrator 直連，回歸 skills/README.md 階層導覽）；保持 8f48750 為 last audited checkpoint，D-02 維持 TEMPORARILY HELD。
+- **目前進行中工作（Active Work）**：B-58 Content Architecture Phase 3A — Claude Control Plane Identity & Routing Normalization。Claude Control Plane README Router 化、handover-selftest.md 更名為 auditor-selftest.md 並明確化 trigger boundaries、修復 active references 與 CHECK 11 相依；checkpoint 更新為 bd6cda3，D-02 維持 TEMPORARILY HELD。
 - **D-02 狀態**：READY / TEMPORARILY HELD。E1 PASS，前置條件已滿足；依 2026-09-12 使用者裁決暫緩啟動 production E2，先完成 B-58 Content Architecture cleanup，完成並經 Macro Audit 後恢復 D-02。
 - **待使用者裁決事項**：無（NONE）。
 - **下一步／剩餘工作權威**：以 `docs/TASKBOARD.md` 為唯一 remaining-work / next-work authority，交接區不保留待辦清單副本或執行佇列。

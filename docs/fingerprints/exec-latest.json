@@ -1,5 +1,5 @@
 {
-  "base_head": "addc388",
+  "base_head": "bd6cda3",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 0,
@@ -57,7 +57,7 @@
         "## 6. 這條規則保護的是誰"
       ],
       "lines": 351,
-      "sha256": "e594beb5e4a227568e6452c303a7e47d1eae319a3ab03d2b0e4e1a4915b6bf48"
+      "sha256": "cfa3aef6ef757aba10b50a4326185da0ce89418d7db7e55d1f5da8346b95ee61"
     },
     ".agents/rules/role-boundaries.md": {
       "fences": 0,
@@ -152,12 +152,13 @@
         "### 11.6 [已退役／不需執行] 歷史 `audited-*` tag 之留痕保存（RETIRED / NOT REQUIRED）"
       ],
       "lines": 882,
-      "sha256": "4762a03d5b5938b14da52da941a64897b3e13049e6c71e6074d613c1abf443ce"
+      "sha256": "1f036cb034d318e527761088baa40bd528e264829faeb53fc6ee8d57a3ab5043"
     },
-    ".claude/rules/handover-selftest.md": {
+    ".claude/rules/auditor-selftest.md": {
       "fences": 0,
       "headings": [
-        "# 接手自檢清單",
+        "# 宏觀審計官自檢清單",
+        "## 觸發時機對照表 (Trigger Map)",
         "## A. 載入（做完開場動作後立刻自答）",
         "## B. 定位（確認「現在在哪」）",
         "## C. 範圍（確認「該做什麼、不該做什麼」）",
@@ -165,8 +166,8 @@
         "## E. 交付（產出提示詞之前）",
         "## F. 額度（每一輪回覆的開頭與結尾）"
       ],
-      "lines": 101,
-      "sha256": "61eec85d2c7bff07c4d0ca3db19ffb5e342e56f5696e94eba43f2f2e95c56e35"
+      "lines": 113,
+      "sha256": "d123a25456dd0b0400886fcfe7c0b185a9bdf46d7467a23d9197f494153ae446"
     },
     ".github/workflows/verify.yml": {
       "fences": 0,
@@ -512,16 +513,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 84,
-      "sha256": "79b76074b96d3c2d1108452d6eb9545a71f19e2ea859c39bd8521e08e9192a5e"
+      "lines": 85,
+      "sha256": "e1977247efd2a4e84102660d992fbb884e99a463dbb9b897cf4a8c5830ff0774"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 53,
-      "sha256": "1b18f2582b8bbc569d4e8765ae26be7ac12ae34864dca6604d7df24295b11ca0"
+      "lines": 54,
+      "sha256": "adbfa3e622c1fd08e1abdc65e794e736ba21ae897834353352dc969d969e0640"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -541,7 +542,7 @@
         "### 11. 規範驗證入口 (Canonical Verification)"
       ],
       "lines": 60,
-      "sha256": "cde1ead9b929f14e1a35576f2c46ed038f2a9cc27fee21968b3a15dff309881f"
+      "sha256": "adaefc479d71e8bb465883b47b0af109358b239179d8454dd05154d298bd60bd"
     },
     "docs/TASKBOARD.md": {
       "fences": 0,
@@ -557,7 +558,7 @@
         "## 封存區"
       ],
       "lines": 234,
-      "sha256": "c3b316ca748eddfeb7d5ef3d39b85edfd522c02dd0c861ff4a84c0da48466244"
+      "sha256": "d70e105c1223f7d773b1fb8e453cb5952f7e2bd5f82009ec4c264dea40ab1391"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -885,8 +886,8 @@
         "### 5.3 待使用者裁決",
         "### 5.4 進行中／等待回報"
       ],
-      "lines": 3045,
-      "sha256": "f6439a49bae2cc4810d2faa1edf1b698a5bd177f8cea38378b073da920de1343"
+      "lines": 3046,
+      "sha256": "46632bbc1dd3c5905a84a2d6c2c7c08c7ece5afbdf1dde4f02fa650f017ba05b"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -912,7 +913,7 @@
         "# 修復批次完成後必須清空；清單中的 tag 若已修復卻未移除，CHECK 18 會 FAIL。"
       ],
       "lines": 1468,
-      "sha256": "939dc525e47f79451aa95d50c41bcf7226e1342aa2cfe3247b35d00ef4341c51"
+      "sha256": "bed2a08d03670ef48df79f9b5b966a1ea177e2855677187eedfe8b89826f9087"
     },
     "scripts/fingerprint.py": {
       "fences": 0,
@@ -955,7 +956,7 @@
         "# Ensure scripts dir is on sys.path"
       ],
       "lines": 367,
-      "sha256": "90c5900f278070080206ba33ccc744d185b63852fb3d882ac56aa6491fb4ea93"
+      "sha256": "4a0e791b61e6d276e0eb5c1ccc9212332b0daec6ced04e4935445ab054abf512"
     },
     "scripts/tests/test_fingerprint.py": {
       "fences": 0,
@@ -1026,7 +1027,7 @@
       "sha256": "77163678353cb7a444f90f17956d03312f715cfcccf933603948715939ecdc10"
     }
   },
-  "generated_at": "2026-09-12T03:44:24Z",
+  "generated_at": "2026-09-12T06:14:36Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

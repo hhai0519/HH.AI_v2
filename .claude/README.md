@@ -1,31 +1,29 @@
-# `.claude/` — 宏觀審計官的規則目錄
+# Claude Control Plane Router
 
+> **Document Role: Router**
 > **適用對象：Claude（宏觀審計官／規劃者）**
-> **Antigravity IDE Agent 請注意：本目錄的內容不是你的行為指令。**
+> **控制平面：Claude Control Plane (`.claude/`)**
 
-## 這個目錄是什麼
+本目錄為 Claude Control Plane 的入口路由（Router）。本檔非規範性規則本體，不保存執行狀態、檢查清單項目或規則全文副本。
 
-本專案有兩個 AI 代理人，各有一套規則目錄，互為鏡像：
+Claude Control Plane 與 Antigravity Control Plane 是分離、互補且非對稱的兩個獨立控制平面，各自擁有明確的職責與權威邊界，非鏡像對稱結構。
 
-| 目錄 | 適用對象 | 載入方式 |
-|---|---|---|
-| `.agents/rules/` | Antigravity IDE Agent（執行者） | 由 IDE 自動載入 |
-| `.claude/rules/` | Claude（宏觀審計官／規劃者） | 由審計官在對話開場時主動 clone 讀取 |
+---
 
-角色分工的定義見 `PRINCIPLES.md` §0，
-為什麼需要這個分工見 `docs/adr/0007-macro-auditor-role.md`。
+## 路由索引 (Routing Index)
 
-## 給執行者的說明
+### 1. 角色憲法與協作原則
+- [PRINCIPLES.md §0](../PRINCIPLES.md) — 雙角色核心憲章：執行者與審計官之職責、邊界與禁止行為。
+- [docs/adr/0007-macro-auditor-role.md](../docs/adr/0007-macro-auditor-role.md) — 宏觀審計官角色架構決策紀錄。
 
-你可以編輯本目錄下的檔案，但僅限提示詞中明確指定完整檔案路徑時。
+### 2. Claude 規範性協定 (Normative Protocol)
+- [rules/auditor-protocol.md](rules/auditor-protocol.md) — 宏觀審計官作業協定本體（normative contract）：四大審計維度、Gatekeeping 查證紀律、提示詞產出標準與生命週期規範。
 
-**不得**把其中任何內容當作自己要遵守或執行的規則。
-**不得**因為「看起來過期」「順便同步」而主動修改。
+### 3. Claude 可執行操作清單 (Executable Projection)
+- [rules/auditor-selftest.md](rules/auditor-selftest.md) — 宏觀審計官自檢清單（executable checklist）：A–F 節與 E1–E23 提示詞產出前自檢項目。本清單為 `auditor-protocol.md` 之操作投影，非第二獨立治理權威。
 
-對照關係很簡單：`.agents/` 是你的，`.claude/` 是審計官的。
-細節見 `.agents/rules/role-boundaries.md`。
+### 4. 專案整體交接與狀態路由
+- [docs/HANDOVER.md](../docs/HANDOVER.md) — Project Handover Router：專案整體架構、最新進度、工作板（`docs/TASKBOARD.md`）與交接區（`docs/refactor-backlog.md` §5）之統一切入點。
 
-## 內容
-
-- `rules/auditor-protocol.md` — 審計官作業協定：四個審計維度、
-  Gatekeeping 規則、報告格式、查證紀律、提示詞產出紀律。
+### 5. 執行者控制平面導航 (Executor Boundary Navigation)
+- [AGENTS.md](../AGENTS.md) 及 [.agents/](../.agents/) — Antigravity IDE Agent（執行者）之行為準則與控制平面。執行者不得將 `.claude/` 目錄規範作為其行為指令來源；邊界規範詳見 [.agents/rules/role-boundaries.md](../.agents/rules/role-boundaries.md)。

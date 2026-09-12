@@ -17,7 +17,7 @@
 ### 2. 宏觀審計官接手導引 (Macro Auditor / Claude Control Plane)
 - **Claude 控制平面總覽**：[`.claude/README.md`](../.claude/README.md)
 - **審計官工作協議與核對規範**：[`.claude/rules/auditor-protocol.md`](../.claude/rules/auditor-protocol.md)
-- **接手自檢清單**：[`.claude/rules/handover-selftest.md`](../.claude/rules/handover-selftest.md)
+- **宏觀審計官自檢清單**：[`.claude/rules/auditor-selftest.md`](../.claude/rules/auditor-selftest.md)
 
 ### 3. 執行者接手導引 (Executor / Antigravity Control Plane)
 - **專案技能與工程架構規範、統一驗證入口說明**：[`AGENTS.md`](../AGENTS.md)

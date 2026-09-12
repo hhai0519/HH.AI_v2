@@ -83,7 +83,7 @@
 | 新增 `docs/TASKBOARD.md` 的項目 | 該批的驗證步驟含看板項目數檢查 |
 | 新增或修改 `.claude/rules/` 或 `.agents/rules/` 的章節 | 該批的驗證步驟含章節序列檢查 |
 | 追加 `docs/refactor-backlog.md` 的編號項目 | 該批的驗證步驟含編號連續性檢查 |
-| 新增 `.claude/rules/auditor-protocol.md` §6.1 的項目 | 同步新增 `.claude/rules/handover-selftest.md` E 節的對應項（標註 `§6.1-N`） |
+| 新增 `.claude/rules/auditor-protocol.md` §6.1 的項目 | 同步新增 `.claude/rules/auditor-selftest.md` E 節的對應項（標註 `§6.1-N`） |
 
 **失效紀錄**：2026-09-02 審計官更新了 `TASKBOARD.md` 的 HEAD，
 卻漏了交接區 §5.1 第一行，造成兩處記載不同步。
@@ -125,7 +125,7 @@
 ## 3.4 審計官自檢聲明的交叉驗證
 
 每份提示詞必須包含一個【審計官自檢聲明】區塊，
-逐項列出 `handover-selftest.md` E 節的結果。
+逐項列出 `auditor-selftest.md` E 節的結果。
 
 **你要做兩件事：**
 
@@ -236,7 +236,7 @@
 
 ## 3.7 E 節每一項都可機械驗證，沒有例外
 
-`.claude/rules/handover-selftest.md` E 節的**每一項**，
+`.claude/rules/auditor-selftest.md` E 節的**每一項**，
 §3.4 的交叉驗證表全數涵蓋。**沒有任何一項需要你憑信任接受。**
 
 **本節刻意不寫項數。** 2026-09-06 實證：本節標題與內文原寫「十八項」，

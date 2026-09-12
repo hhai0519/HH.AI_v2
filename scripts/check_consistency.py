@@ -674,7 +674,7 @@ def check_10_section_refs(root_dir=None):
             target_files.append(fpath)
 
     cross_file_indicators = [
-        'PRINCIPLES.md', 'auditor-protocol.md', 'AGENTS.md', 'handover-selftest.md',
+        'PRINCIPLES.md', 'auditor-protocol.md', 'AGENTS.md', 'auditor-selftest.md',
         'prompt-preflight.md', 'role-boundaries.md', 'refactor-backlog.md',
         'TASKBOARD', 'HANDOVER', 'AUDIT-LOG', '交接區', 'SOP_', 'ADR-'
     ]
@@ -715,7 +715,7 @@ def check_11_selftest_correspondence(root_dir=None):
     fails = []
     infos = []
     proto_path = os.path.join(root_dir, ".claude", "rules", "auditor-protocol.md")
-    selftest_path = os.path.join(root_dir, ".claude", "rules", "handover-selftest.md")
+    selftest_path = os.path.join(root_dir, ".claude", "rules", "auditor-selftest.md")
     if not os.path.exists(proto_path) or not os.path.exists(selftest_path):
         fails.append("規則檔案不存在，無法進行 §6.1-selftest 比對")
         return fails, infos
@@ -743,7 +743,7 @@ def check_11_selftest_correspondence(root_dir=None):
 
     m_self = re.search(r"## E\. 交付(.*?)(?=## F\.|\Z)", selftest_content, re.S)
     if not m_self:
-        fails.append(".claude/rules/handover-selftest.md: 未找到 ## E. 交付 章節")
+        fails.append(".claude/rules/auditor-selftest.md: 未找到 ## E. 交付 章節")
         return fails, infos
     e_section = m_self.group(1)
 
@@ -759,16 +759,16 @@ def check_11_selftest_correspondence(root_dir=None):
         for rnum in ref_nums:
             mapped_proto_nums.add(rnum)
             if rnum not in proto_items:
-                fails.append(f".claude/rules/handover-selftest.md: {eid} 指向不存在的 §6.1-{rnum}")
+                fails.append(f".claude/rules/auditor-selftest.md: {eid} 指向不存在的 §6.1-{rnum}")
 
     for pnum in sorted(proto_items.keys()):
         if pnum not in mapped_proto_nums:
-            fails.append(f".claude/rules/auditor-protocol.md: §6.1 第 {pnum} 項在 handover-selftest.md E 節中無對應項目")
+            fails.append(f".claude/rules/auditor-protocol.md: §6.1 第 {pnum} 項在 auditor-selftest.md E 節中無對應項目")
 
     if 8 in proto_items and "AUDIT-LOG" in proto_items[8]:
         e8_has_audit = any("AUDIT-LOG" in text for eid, text in e_items.items() if "§6.1-8" in text)
         if not e8_has_audit:
-            fails.append(".claude/rules/handover-selftest.md: E8 缺少 AUDIT-LOG 更新項目（與 §6.1-8 不一致）")
+            fails.append(".claude/rules/auditor-selftest.md: E8 缺少 AUDIT-LOG 更新項目（與 §6.1-8 不一致）")
 
     return fails, infos
 

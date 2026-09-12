@@ -161,7 +161,7 @@ CHECK 8 至 15 有 63 個測試並經審計官反例注入驗證，
 因此新增任何「每批必做」的規則時，**必須同時進三處**：
 
 1. 本檔 §6.1（審計官寫提示詞時照著跑的清單）
-2. `.claude/rules/handover-selftest.md` E 節（自檢聲明的來源，CHECK 11 保證同步）
+2. `.claude/rules/auditor-selftest.md` E 節（自檢聲明的來源，CHECK 11 保證同步）
 3. `.agents/rules/prompt-preflight.md` §3（執行者的機械檢查）
 
 **只寫進 ADR 或只寫進本檔的某一節，視為尚未生效**
@@ -243,7 +243,7 @@ CHECK 8 至 15 有 63 個測試並經審計官反例注入驗證，
       驗收準則（acceptance criteria）驗收。
     完整規則見 `.agents/rules/prompt-preflight.md` §3.1、§3.2。
 12. **每份提示詞必須包含「審計官自檢聲明」區塊**，
-    逐項列出 `handover-selftest.md` E 節的自檢結果。
+    逐項列出 `auditor-selftest.md` E 節的自檢結果。
     **這是自檢唯一的外部產物。**
     2026-09-02 稽核發現：E 節是審計官唯一的自檢清單，
     但它不產生任何可觀察的東西——有沒有跑過，使用者看不到、
@@ -676,7 +676,7 @@ CHECK 15 因此回報「待核對 0 個 hash」——**機制存在，但真實�
 
 | 類型 | 位置 | 理由 |
 |---|---|---|
-| **接手自檢清單** | `.claude/rules/handover-selftest.md`（進 repo） | 它檢查的是「你做了沒」，不是「你答對沒」。看到內容不影響效果，反而應該讓新 Agent 主動照著自檢 |
+| **宏觀審計官自檢清單** | `.claude/rules/auditor-selftest.md`（進 repo） | 它檢查的是「你做了沒」，不是「你答對沒」。看到內容不影響效果，反而應該讓新 Agent 主動照著自檢 |
 | **注入測試題目與答案卷** | 不進 repo，由使用者與留任的舊 Agent 保管 | 它考的是「被要求違規時會不會拒絕」。知道題目就能演出來，一旦洩題該測試永久失效 |
 
 **E1 → E2 Repo-Visible State Bridge 規則**：

@@ -131,7 +131,7 @@ def test_check_11_selftest_correspondence_pass(tmp_path):
     claude = tmp_path / ".claude" / "rules"
     claude.mkdir(parents=True)
     proto = claude / "auditor-protocol.md"
-    selftest = claude / "handover-selftest.md"
+    selftest = claude / "auditor-selftest.md"
     proto.write_text(
         "### 6.1 每份提示詞的必備要素\n"
         "1. 宣告\n"
@@ -154,7 +154,7 @@ def test_check_11_selftest_correspondence_fail_missing_item(tmp_path):
     claude = tmp_path / ".claude" / "rules"
     claude.mkdir(parents=True)
     proto = claude / "auditor-protocol.md"
-    selftest = claude / "handover-selftest.md"
+    selftest = claude / "auditor-selftest.md"
     proto.write_text(
         "### 6.1 每份提示詞的必備要素\n"
         "1. 宣告\n"
@@ -170,7 +170,7 @@ def test_check_11_selftest_correspondence_fail_missing_item(tmp_path):
     )
     fails, infos = check_11_selftest_correspondence(str(tmp_path))
     assert len(fails) == 1
-    assert "§6.1 第 2 項在 handover-selftest.md E 節中無對應項目" in fails[0]
+    assert "§6.1 第 2 項在 auditor-selftest.md E 節中無對應項目" in fails[0]
 
 
 def test_check_11_selftest_correspondence_fail_audit_log_missing(tmp_path):
@@ -178,7 +178,7 @@ def test_check_11_selftest_correspondence_fail_audit_log_missing(tmp_path):
     claude = tmp_path / ".claude" / "rules"
     claude.mkdir(parents=True)
     proto = claude / "auditor-protocol.md"
-    selftest = claude / "handover-selftest.md"
+    selftest = claude / "auditor-selftest.md"
     proto.write_text(
         "### 6.1 每份提示詞的必備要素\n"
         "8. **有包含「更新交接區」、「更新 `docs/TASKBOARD.md`」與「更新 `docs/AUDIT-LOG.md`」三項？**\n"

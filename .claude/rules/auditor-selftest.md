@@ -1,12 +1,24 @@
-# 接手自檢清單
+# 宏觀審計官自檢清單
 
 > **適用對象：Claude（宏觀審計官／規劃者）**
 > **Antigravity IDE Agent 不執行本清單。**
 >
-> 接手後的第一則回覆，逐項自答本清單。
-> 判準的規範本體在 `.claude/rules/auditor-protocol.md` §9.4。
-> 本清單是它的可操作版本，看到內容不影響效果——
-> 它檢查的是「你做了沒」，不是「你答對沒」。
+> **規範與操作邊界**：
+> - 本清單之規範本體為 `.claude/rules/auditor-protocol.md`（normative contract）。
+> - 本檔為審計官日常操作之可執行清單（executable checklist / operational projection）。
+> - 本清單不建立第二套獨立治理權威。若本清單與 `auditor-protocol.md` 發生衝突，以 `auditor-protocol.md` 為準，本清單視為投影缺陷並予修正。
+> - 本清單檢查的是「你做了沒」，不是「你答對沒」；看到內容不影響效果。
+
+---
+
+## 觸發時機對照表 (Trigger Map)
+
+| 章節 | 觸發時機代碼 | 執行時機 |
+|---|---|---|
+| **A–C** | `FRESH_SESSION_ONLY` | 新 Session 接手／開場載入動作後立刻逐項自答 |
+| **D** | `EVERY_ROUND` | 每一輪回覆均適用（身分與查證紀律確認） |
+| **E** | `BEFORE_PRODUCTION_PROMPT` | 產出任何生產提示詞之前（逐項檢驗並產出自檢聲明） |
+| **F** | `SESSION_BUDGET / BEFORE_HANDOFF` | 每一輪開頭標記模型，及對話批次接近額度上限時執行交接 |
 
 ---
 
