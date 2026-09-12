@@ -216,8 +216,13 @@
 
 所有 Agent 在推送到遠端（push）後，必須落實遠端健康查證閉環：
 1. **取得 exact origin/main OID**：確認本地當前 commit 已正確被 remote main 接收。
-2. **查證 GitHub Actions Verify**：使用 GitHub API 查詢 Verify workflow run，驗證 `head_sha` exact match、`status == completed`、`conclusion == success`。
-3. **禁止文字摘要辯論**：不得僅以本地 PASS 或 Agent 間文字對談斷定遠端健康。若 Actions 出現 failure，直接引用 run ID、failed job 與 failed step，禁止憑空猜測。
+2. **查證 GitHub Actions Verify（Exact-SHA 閉環）**：
+   - **必備五要素**：必須同時證明 (1) remote main 接收目標 commit；(2) workflow 名稱為 `Verify`；(3) `head_sha` 與目標 commit full SHA 完全一致；(4) `status == completed`；(5) `conclusion == success`。
+   - **主要查證途徑 (Primary Channel)**：GitHub API / exact-SHA workflow run query（例如查詢 `/actions/runs?head_sha=<exact_sha>`）。
+   - **暫態重試與替代途徑 (M2 Fallback)**：若主要查詢管道遭遇速率限制或網路逾時等 M2 暫態，允許重試或使用其他可綁定 exact SHA 的確定性管道（如 `gh` CLI 查詢 exact commit、commit status / check runs API 等）。具體可用途徑依當下環境決定，不建立單一工具硬相依。
+   - **嚴禁使用非 exact-SHA 替代品 (Strictly Forbidden)**：嚴禁使用 branch badge、README badge、branch general green state、僅本地 PASS 或 Executor 口頭聲稱代替 exact-SHA 遠端證據。Branch badge 僅能反映分支一般狀態，無法證明特定 commit 已通過驗證。
+   - **不可取得之升級 (S1 Escalation)**：經合理 M2 重試後，若所有 exact-SHA-capable 遠端管道均無法取得必要遠端健康證據，此時已非一般暫態，必須升級 S1 停止（`required remote evidence unavailable`），交由審計官或使用者仲裁。
+3. **禁止文字摘要辯論 (Anti-Debate Policy)**：不得僅以本地 PASS 或 Agent 間文字對談斷定遠端健康。若 Actions 出現 failure，直接引用 run ID、failed job 與 failed step 客觀 log，禁止憑空猜測或口頭辯論。
 
 ## 3. 查證紀律
 

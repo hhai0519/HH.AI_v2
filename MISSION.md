@@ -25,6 +25,6 @@ while redesigning how that knowledge is organized.
 - 每個技能是否只做一件事、職責清楚
 - 重複知識是否都被抽成共用內容，而不是散落在多個技能裡各寫一次
 - 新增一個技能時，是否能直接照著 `AGENTS.md` 的規範走，不用重新思考格式
-- `scripts/validate_skills.py` 是否通過
+- 全庫標準驗證入口 `scripts/verify_all.py` 是否通過（包含 `scripts/validate_skills.py` 等技能架構檢查）
 
 決策與協作原則見 [PRINCIPLES.md](./PRINCIPLES.md)，詳細架構規範見 [AGENTS.md](./AGENTS.md)。

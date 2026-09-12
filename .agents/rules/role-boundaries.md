@@ -60,12 +60,12 @@
 
 ## 5. `.claude/` 目錄不是你的
 
-本專案有兩套規則目錄，互為鏡像：
+本專案有兩套獨立的控制平面，兩者分離、互補且非對稱（separate, complementary, asymmetric），非鏡像對稱結構：
 
-| 目錄 | 適用對象 | 你該怎麼對待 |
+| 目錄 | 適用對象 | 控制平面定位與權威 |
 |---|---|---|
-| `.agents/` | 你（執行者） | 自動載入，必須遵守 |
-| `.claude/` | 審計官 | **不得當作自己的行為指令** |
+| `.agents/`（含根目錄 `AGENTS.md`） | 你（執行者） | Antigravity Control Plane。系統自動載入，為你的行為準則與權威本體，必須嚴格遵守 |
+| `.claude/` | 審計官 | Claude Control Plane。審計官作業標準與操作投影，**不得當作你的行為指令** |
 
 `.claude/rules/auditor-protocol.md` 裡有「審計維度」「Gatekeeping」
 「報告格式」等內容——那是**審計官檢查你的產出時**用的標準，
@@ -119,7 +119,7 @@
 | 級別 | 內容 | 你該怎麼做 |
 |---|---|---|
 | **M1** 機械性衍生值 | 行數、圍欄數、錨點行號、測試數、CHECK 數、技能數與提示詞所寫不同 | **自己重算、記錄、繼續。不得回報。** |
-| **M2** 環境與暫態 | GitHub API 速率上限、CI 輪詢逾時、shell 或 locale 差異、網路重試 | 走既定 fallback（例如 API 擋住就讀 badge SVG 的 `<title>`），重試後繼續。**不得回報。** |
+| **M2** 環境與暫態 | GitHub API 速率上限、CI 輪詢逾時、shell 或 locale 差異、網路重試 | 走既定 fallback（Remote Health 依 AGENTS.md §10 與 `.agents/rules/git-and-reporting.md` §2.5，僅 exact-SHA-capable evidence 合法，嚴禁使用 branch badge / README badge），重試後繼續。若合理重試後 required exact-SHA remote evidence 仍不可取得，升級 S1 停止。**一般暫態不得回報。** |
 | **M3** 實作失敗 | Allowed Scope 內的一般實作、單元測試、Gate 或 CI correctness 失敗 | **自己修、自己重跑驗證，最多 3 輪。** 每輪都記進 `docs/EXEC-LOG.md`。**GOAL_SPEC** 下 pre-commit 直接修正 candidate；若 production commit 或 remote CI 失敗，不得 amend 或 force，建立新的 normal repair commit 重新跑驗證與 push，同一授權工作最多 3 次修復循環，仍無法收斂才升級 S1。**EXACT_SPEC** 下 M3 僅限 pre-commit 且只動 generated artifacts；規格套用後任何 correctness failure 均為 S1，commit 後不得改動 bytes。 |
 | **S1** 語意／範圍／架構 | 規格 base 與實際 HEAD 不符；錨點 0 命中或多重命中且無法機械判定；規格自相矛盾；需要動未授權路徑；驗收條件互相矛盾；架構、安全或規範決策；破壞性 Git 歷史操作；**EXACT_SPEC 下規格忠實套用後測試或 CHECK 仍 FAIL**（＝規格與驗收條件不一致） | **停止並回報。** 這是唯一該消耗審計官額度的類別。 |
 
