@@ -2825,7 +2825,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 5.1 上一批狀態
 
-上次核對通過的 HEAD：91b43b2
+上次核對通過的 HEAD：568209e
 
 - `23af193`（執行者前置檢查 ＋ 回滾程序 ＋ `AUDIT-LOG.md` ＋ 四缺口修正）
   已於 2026-09-02 由審計官核對通過：6 檔異動（含 2 個新檔）、零夾帶、
@@ -2974,6 +2974,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 - `4bf8611`（Fresh Claude Bootstrap — Final Contract Consistency Micro-Fix：修正 1054cfc 留下的三項契約不一致，落實 compact full-clone attestation、refactor-backlog mutability 邊界與 §5.4 machine-derived pending-audit contract）已於 2026-09-12 由宏觀審計官獨立核對通過：8 檔異動、零夾帶，獨立驗證五項全過，CI Run 34622753906 success（Architecture Health = GREEN, Bootstrap Governance = CLOSED）。
 - `b9b997f`（E1 → E2 repo-visible state bridge）已於 2026-09-12 由宏觀審計官獨立核對通過：5 檔異動、零夾帶，獨立驗證五項全過，CI Run 34628553531 success。Macro Auditor 獨立核對通過（MACRO AUDIT = PASS, State Bridge Validated）。E1 PASS、E2 bootstrap mechanics 已驗證；使用者明確裁決正式開始 B-58 Content Architecture cleanup，先完成 Router / HANDOVER / Control Plane cleanup 並經 Macro Audit 後，再恢復 E2 / D-02。
 - `91b43b2`（Audit Evidence Micro-Fix — Wrong GitHub Actions Run ID）已於 2026-09-12 由宏觀審計官獨立核對通過：5 檔異動、零夾帶，獨立驗證五項全過，CI Run 34669274290 success。Macro Auditor 獨立核對通過（MACRO AUDIT = PASS）。修正 b9b997f 錯誤之 Actions Run ID（34625299443 → 34628553531），確認 15444f5 維持 NEEDS MICRO-FIX 歷史。
+- `568209e`（B-58 Content Architecture Phase 1 — Router Foundation）已於 2026-09-12 由宏觀審計官獨立核對通過：6 檔異動、零夾帶，獨立驗證五項全過，CI Run 34669753257 success。Macro Auditor 獨立核對通過（MACRO AUDIT = PASS）。於 PRINCIPLES.md §1 正式確立橫向非權威 Document Role: Router 及其核心不變式（不擁有事實、不參與權威層級、canonical source 優先、階層導覽無循環、優先重用既有檔案）。
 
 ### 5.2 待辦
 
@@ -3002,7 +3003,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - checkpoint = §5.1 第一行記載之「上次核對通過的 HEAD（last audited checkpoint）」
   - 若 `HEAD == checkpoint` → 無尚待宏觀審計之 commit（no pending macro-audit commit）
   - 若 `HEAD != checkpoint` → `checkpoint..HEAD` 即為尚待宏觀審計之 commit range
-- **目前進行中工作（Active Work）**：B-58 治理層瘦身（Content Architecture cleanup）。2026-09-12 使用者裁決正式啟動，Router 將作為非權威導引文件處理，`docs/HANDOVER.md`、Claude Control Plane、SOP 與 setup-hhai-skills 將依小批次逐步整理，每批經宏觀審計官獨立核對後前進。
+- **目前進行中工作（Active Work）**：B-58 治理層瘦身（Content Architecture cleanup）Phase 2A — Historical Document Archive Foundation / Legacy HANDOVER Preservation。建立 `docs/archive/handover/` 實體歸檔落點與 `HANDOVER-pre-router-568209e.md` 不可變歷史快照，更新 `docs/ARCHIVE-INDEX.md` 歸檔層級與專案文件機制；active `docs/HANDOVER.md` 原封不動保留，Phase 2B 前置確認 CHECK 6 反向引用相依。
 - **D-02 狀態**：READY / TEMPORARILY HELD。E1 PASS，前置條件已滿足；依 2026-09-12 使用者裁決暫緩啟動 production E2，先完成 B-58 Content Architecture cleanup，完成並經 Macro Audit 後恢復 D-02。
 - **待使用者裁決事項**：無（NONE）。
 - **下一步／剩餘工作權威**：以 `docs/TASKBOARD.md` 為唯一 remaining-work / next-work authority，交接區不保留待辦清單副本或執行佇列。

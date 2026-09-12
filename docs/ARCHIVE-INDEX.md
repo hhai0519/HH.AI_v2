@@ -1,7 +1,7 @@
 # 歸檔索引
 
 > **這是索引，不是歸檔區本身。**
-> 本專案的歸檔機制散在五個層級，本檔的作用是回答
+> 本專案的歸檔機制散在多個層級，本檔的作用是回答
 > 「某某東西被歸檔到哪裡了、要去哪裡找」。
 >
 > 新增或變更任何歸檔機制時，必須同步更新本檔。
@@ -19,10 +19,11 @@
 | 某個 **Jules 分支**為什麼沒合併 | `docs/refactor-backlog.md`「三之二、Jules 自動化修正分支處理狀態」 |
 | 舊 repo 的某個檔案**為什麼不遷移** | `docs/refactor-backlog.md` §二 E、F 節 |
 | 某個**決定**當初為什麼那樣做 | `docs/adr/`；重構過程的判斷見 `docs/refactor-backlog.md` 編號項目 |
+| 歷史**專案文件**／舊版完整交接手冊 | `docs/archive/handover/`；舊版完整交接手冊見 `docs/archive/handover/HANDOVER-pre-router-568209e.md` |
 
 ---
 
-## 二、五個歸檔層級
+## 二、歸檔層級
 
 | 層級 | 機制 | 規則位置 | 歸檔區位置 |
 |---|---|---|---|
@@ -31,12 +32,13 @@
 | **ADR** | 只追加不改寫；規範搬走時原地留指向、檔尾追加搬移紀錄 | `PRINCIPLES.md` §3.3、範本見 `docs/adr/0018-vendored-external-assets.md` | ADR 原檔保留 |
 | **任務** | 五態流轉，`可封存` 需使用者確認後移入封存區 | `.claude/rules/auditor-protocol.md` §10.3、§10.4 | `docs/TASKBOARD.md` 封存區 |
 | **分支** | 不採用的分支保留在遠端，不刪除 | `docs/refactor-backlog.md` 三之二 | GitHub 遠端分支 |
+| **專案文件** | 歷史專案文件／Superseded Project Documents：active 文件在重大架構重整前保存不可變歷史快照（immutable historical snapshot）。快照為歷史證據，不具備現行權威；現行事實必須回到權威來源，歸檔區不得成為第二現行狀態 SSOT | `PRINCIPLES.md` §1（Router 與歷史留痕分工） | `docs/archive/handover/` |
 
 ---
 
 ## 三、共通原則
 
-1. **歸檔不是刪除。** 五個層級都採「保留可查」，不做物理刪除。
+1. **歸檔不是刪除。** 各歸檔層級都採「保留可查」，不做物理刪除。
    唯一例外是 guardrails §4 情況 B——清理技能檔案**內部**的失效內容，
    那是修正不是歸檔。
 2. **歸檔要留去向。** 只把東西移走而不記錄去向，等同遺失。
