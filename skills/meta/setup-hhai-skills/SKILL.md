@@ -10,7 +10,7 @@ disable-model-invocation: true
 當需要新增技能、修改既有技能、遷移舊技能或確認技能庫架構規範時，遵循本流程以確保符合專案架構規範。
 
 > [!NOTE]
-> 本技能為**可重複呼叫的維護能力**，不保存專案即時狀態。若需查詢專案進行中任務或交接狀態，請查閱 [docs/HANDOVER.md](file:///c:/Users/HH.AI_260806/Desktop/HH.AI_v2/docs/HANDOVER.md)、[docs/TASKBOARD.md](file:///c:/Users/HH.AI_260806/Desktop/HH.AI_v2/docs/TASKBOARD.md) 與 [docs/refactor-backlog.md](file:///c:/Users/HH.AI_260806/Desktop/HH.AI_v2/docs/refactor-backlog.md) §5。
+> 本技能為**可重複呼叫的維護能力**，不保存專案即時狀態。若需查詢專案進行中任務或交接狀態，請查閱 [docs/HANDOVER.md](../../../docs/HANDOVER.md)、[docs/TASKBOARD.md](../../../docs/TASKBOARD.md) 與 [docs/refactor-backlog.md](../../../docs/refactor-backlog.md) §5。
 
 ---
 
@@ -23,8 +23,8 @@ disable-model-invocation: true
 
 ### Step 1: 閱讀專案規範 (Read Rules)
 動手前務必閱讀專案核心架構規範：
-- 專案架構原則：[AGENTS.md](file:///c:/Users/HH.AI_260806/Desktop/HH.AI_v2/AGENTS.md)（含 §0 工程紀律與 §1 目錄結構）
-- 技能工程護欄：[.agents/rules/skill-engineering-guardrails.md](file:///c:/Users/HH.AI_260806/Desktop/HH.AI_v2/.agents/rules/skill-engineering-guardrails.md)
+- 專案架構原則：[AGENTS.md](../../../AGENTS.md)（含 §0 工程紀律與 §1 目錄結構）
+- 技能工程護欄：[.agents/rules/skill-engineering-guardrails.md](../../../.agents/rules/skill-engineering-guardrails.md)
 - 目標 Bucket 規則：`skills/<bucket>/AGENTS.md` 與 `skills/<bucket>/README.md`
 
 ### Step 2: 決定分類桶 (Select Bucket)

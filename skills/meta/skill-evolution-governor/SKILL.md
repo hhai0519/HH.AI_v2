@@ -19,21 +19,21 @@ disable-model-invocation: true
 ## 🏗️ 技能生態治理規範
 
 ### 技能分類體系
-本專案的技能分類嚴格遵守 [AGENTS.md](file:///c:/Users/HH.AI_260806/Desktop/HH.AI_v2/AGENTS.md) §1 定義的七個 bucket：
+本專案的技能分類嚴格遵守 [AGENTS.md](../../../AGENTS.md) §1 定義的七個 bucket：
 - `orchestration` / `analysis` / `agents` / `execution` / `platform` / `meta` / `deprecated`
 
 歸屬判斷的依據是「這個技能實際做什麼」。其中 `analysis`（純分析、無副作用）與 `agents`（會實際執行動作）必須嚴格分開，後者需要 `authorized_mcp_tools` 白名單以維護安全邊界（決策依據見 `docs/adr/0001-seven-bucket-taxonomy.md`）。
 
 ### 🔴 技能的刪除與歸檔（強制安全邊界）
-刪除與歸檔一律遵守 [.agents/rules/skill-engineering-guardrails.md](file:///c:/Users/HH.AI_260806/Desktop/HH.AI_v2/.agents/rules/skill-engineering-guardrails.md) §4「統一歸檔與差異化刪除政策」：
+刪除與歸檔一律遵守 [.agents/rules/skill-engineering-guardrails.md](../../../.agents/rules/skill-engineering-guardrails.md) §4「統一歸檔與差異化刪除政策」：
 
 - **情況 A — 下架整個技能**：嚴禁物理刪除技能目錄。必須移入 `skills/deprecated/`，從原 bucket 的 README.md 移除，並加入 `skills/deprecated/README.md`。
 - **情況 B — 清理技能內部的錯誤／失效內容**：幽靈引用、已廢棄政策殘留、失效的舊架構路徑，不受歸檔限制，可直接物理刪除。
 
 ### 🛡️ 資料安全與防洩規範 (DLP Compliance)
 技能的資料安全規範以下列文件為準：
-- [SOP/SOP_02_Security_Guidelines.md](file:///c:/Users/HH.AI_260806/Desktop/HH.AI_v2/SOP/SOP_02_Security_Guidelines.md) §1「智慧整合與資料防洩」
-- [.agents/rules/skill-engineering-guardrails.md](file:///c:/Users/HH.AI_260806/Desktop/HH.AI_v2/.agents/rules/skill-engineering-guardrails.md) §3「分層 Payload 淨化機制」
+- [SOP/SOP_02_Security_Guidelines.md](../../../SOP/SOP_02_Security_Guidelines.md) §1「智慧整合與資料防洩」
+- [.agents/rules/skill-engineering-guardrails.md](../../../.agents/rules/skill-engineering-guardrails.md) §3「分層 Payload 淨化機制」
 
 審計資料安全時，檢查的是技能是否實際遵守上述文件的行為規範與安全邊界。
 

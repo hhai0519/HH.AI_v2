@@ -9,7 +9,7 @@ description: "複雜多技能任務調度器。負責通用意圖解析、任務
 當單一技能無法獨立完成任務，需調度分析、執行與平台層等多個技能協同作業時，可呼叫本技能進行任務編排。
 
 > [!NOTE]
-> 本技能為**可重複呼叫的任務調度能力**，不是全專案的治理當局或控制平面。專案使命見 [MISSION.md](file:///c:/Users/HH.AI_260806/Desktop/HH.AI_v2/MISSION.md)，決策原則見 [PRINCIPLES.md](file:///c:/Users/HH.AI_260806/Desktop/HH.AI_v2/PRINCIPLES.md)，自動化指令定義唯一真理見 [SOP/SOP_00A_Master_Index.json](file:///c:/Users/HH.AI_260806/Desktop/HH.AI_v2/SOP/SOP_00A_Master_Index.json)。
+> 本技能為**可重複呼叫的任務調度能力**，不是全專案的治理當局或控制平面。專案使命見 [MISSION.md](../../../MISSION.md)，決策原則見 [PRINCIPLES.md](../../../PRINCIPLES.md)，自動化指令定義唯一真理見 [SOP/SOP_00A_Master_Index.json](../../../SOP/SOP_00A_Master_Index.json)。
 
 ---
 
@@ -60,6 +60,6 @@ description: "複雜多技能任務調度器。負責通用意圖解析、任務
 ## 🛡️ 安全邊界與資料防洩
 
 本技能嚴格遵守專案安全規範：
-- 資料防洩：遵循 [SOP/SOP_02_Security_Guidelines.md](file:///c:/Users/HH.AI_260806/Desktop/HH.AI_v2/SOP/SOP_02_Security_Guidelines.md) §1。
-- 參數淨化：遵循 [.agents/rules/skill-engineering-guardrails.md](file:///c:/Users/HH.AI_260806/Desktop/HH.AI_v2/.agents/rules/skill-engineering-guardrails.md) §3，跨層調度時淨化自然語言，禁止將包含敏感資訊或未過濾的 raw 內容派發至執行層。
+- 資料防洩：遵循 [SOP/SOP_02_Security_Guidelines.md](../../../SOP/SOP_02_Security_Guidelines.md) §1。
+- 參數淨化：遵循 [.agents/rules/skill-engineering-guardrails.md](../../../.agents/rules/skill-engineering-guardrails.md) §3，跨層調度時淨化自然語言，禁止將包含敏感資訊或未過濾的 raw 內容派發至執行層。
 - 狀態隔離：本技能調度任務產生的成果直接回傳給調用者，**嚴禁自行寫入全域狀態檔、記憶體檔或擅自修改專案治理規則**。

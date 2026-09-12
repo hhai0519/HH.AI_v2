@@ -3012,7 +3012,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - checkpoint = §5.1 第一行記載之「上次核對通過的 HEAD（last audited checkpoint）」
   - 若 `HEAD == checkpoint` → 無尚待宏觀審計之 commit（no pending macro-audit commit）
   - 若 `HEAD != checkpoint` → `checkpoint..HEAD` 即為尚待宏觀審計之 commit range（包含 checkpoint 之後至當前 HEAD 間所有 pending / repair commits，不因 commit 數量直接判定 FAIL）
-- **目前進行中工作（Active Work）**：B-58 Recovery R5A — High-Risk Skill Boundary Cleanup & Global Skill Content Inventory。清理三個已確認 content-architecture 高風險技能（setup-hhai-skills, skill-evolution-governor, agency-orchestrator），回歸 reusable/callable capability，消除專案狀態、假性治理、SOP 百科與過期路徑；完成全庫 54 份 SKILL.md 邊界盤點；機械清除全庫無證據的 false DLP self-attestation 宣告行；checkpoint 更新為 0fd655d，D-02 維持 TEMPORARILY HELD。
+- **目前進行中工作（Active Work）**：B-58 R5A — Skill Path Portability Micro-Fix。修復 target Skills（setup-hhai-skills, skill-evolution-governor, agency-orchestrator）殘留之 machine-specific absolute file URI，改為 portable repo-relative links；checkpoint 維持 0fd655d，D-02 維持 TEMPORARILY HELD。
 - **D-02 狀態**：READY / TEMPORARILY HELD。E1 PASS，前置條件已滿足；依 2026-09-12 使用者裁決暫緩啟動 production E2，先完成 B-58 Content Architecture cleanup，完成並經 Macro Audit後恢復 D-02。
 - **待使用者裁決事項**：無（NONE）。
 - **下一步／剩餘工作權威**：以 `docs/TASKBOARD.md` 為唯一 remaining-work / next-work authority，交接區不保留待辦清單副本或執行佇列。
