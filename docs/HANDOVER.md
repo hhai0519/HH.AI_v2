@@ -40,7 +40,6 @@
 
 ### 7. 技能與能力庫 (Skills & Capabilities)
 - **技能架構與總索引**：[`skills/README.md`](../skills/README.md)
-- **流程調度總路由**：[`skills/orchestration/agency-orchestrator/SKILL.md`](../skills/orchestration/agency-orchestrator/SKILL.md)
 - **技能庫目錄**：[`skills/`](../skills/)
 
 ### 8. 架構決策紀錄 (Architecture Decision Records)
@@ -58,5 +57,4 @@
   > 警告：歸檔快照僅供追溯歷史脈絡與既有設計依據，不具備現行權威，嚴禁直接依其舊指令操作。
 
 ### 11. 規範驗證入口 (Canonical Verification)
-- **全庫五大 Correctness Gates 統一驗證入口**：[`scripts/verify_all.py`](../scripts/verify_all.py)
-  > 說明：本地開發、Commit 閘門與 CI workflow 均呼叫此單一入口。
+- **統一規範驗證入口**：[`scripts/verify_all.py`](../scripts/verify_all.py)
