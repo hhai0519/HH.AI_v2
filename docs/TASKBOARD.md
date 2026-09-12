@@ -10,7 +10,7 @@
 `待裁決`（需使用者決定）／`已完成`（仍可能被引用）／
 `可封存`（不影響後續工作，待使用者確認後移入封存區）
 
-**最後更新**：2026-09-12，HEAD `b9b997f` 之後（Content Architecture Kickoff — Repo-Visible State Sync）
+**最後更新**：2026-09-12，HEAD `15444f5` 之後（Audit Evidence Micro-Fix — Wrong GitHub Actions Run ID）
 
 ---
 
