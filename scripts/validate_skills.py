@@ -27,6 +27,9 @@ import re
 import sys
 from pathlib import Path
 
+if hasattr(sys.stdout, 'reconfigure'):
+    sys.stdout.reconfigure(encoding='utf-8')
+
 ROOT = Path(__file__).resolve().parent.parent
 SKILLS_DIR = ROOT / "skills"
 
@@ -172,6 +175,50 @@ def validate_skill(
 
     if bucket != "deprecated" and skill_name not in readme_text:
         warnings.append(f"[{location}] 未出現在 {bucket}/README.md 中，索引可能過期")
+
+    if bucket != "deprecated":
+        validate_skill_content_purity(bucket, skill_dir, errors)
+
+
+MACHINE_PATH_RE = re.compile(
+    r'(file:///(?!<)|[a-zA-Z]:[/\\]Users[/\\]|/Users/[^/\s]+/Desktop|Desktop/HH\.AI_v2)',
+    re.IGNORECASE,
+)
+DLP_ATTESTATION_RE = re.compile(r'✓\s*DLP.*通過|DLP.*資料安全驗證已通過')
+
+EXEMPT_DLP_LOCATIONS = {
+    "meta/skill-evolution-governor": {"SKILL.md"},
+    "meta/setup-hhai-skills": {"REFERENCE.md"},
+}
+
+
+def validate_skill_content_purity(bucket: str, skill_dir: Path, errors: list):
+    """檢查 active 技能檔案不得殘留本機絕對工作區路徑或假性 DLP 合規自證。"""
+    if bucket == "deprecated":
+        return
+    location = f"{bucket}/{skill_dir.name}"
+    for doc_name in ["SKILL.md", "REFERENCE.md", "EXAMPLES.md"]:
+        doc_path = skill_dir / doc_name
+        if not doc_path.exists():
+            continue
+        try:
+            lines = doc_path.read_text(encoding="utf-8").splitlines()
+        except Exception as e:
+            errors.append(f"[{location}] 無法讀取 {doc_name}: {e}")
+            continue
+
+        for idx, line in enumerate(lines):
+            line_no = idx + 1
+            if MACHINE_PATH_RE.search(line):
+                errors.append(
+                    f"[{location}] {doc_name}:{line_no} 包含本機絕對工作區路徑，違反可移植性規範: {line.strip()}"
+                )
+            if DLP_ATTESTATION_RE.search(line):
+                if location in EXEMPT_DLP_LOCATIONS and doc_name in EXEMPT_DLP_LOCATIONS[location]:
+                    continue
+                errors.append(
+                    f"[{location}] {doc_name}:{line_no} 包含未經機器的假性安全合規宣告 (false DLP self-attestation): {line.strip()}"
+                )
 
 
 def report_results(seen_names: dict, errors: list, warnings: list):

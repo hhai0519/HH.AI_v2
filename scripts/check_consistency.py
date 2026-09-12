@@ -112,55 +112,9 @@ def run_checks(argv=None):
     # CHECK 3: Markdown 相對連結有效性
     # ---------------------------------------------------------
     print("\nCHECK 3 - Markdown 相對連結有效性")
-    c3_fails = []
-    md_link_pattern = re.compile(r'\[([^\]]+)\]\(([^)]+)\)')
-    allowed_c3 = [
-        ("skills/execution/playwright-automation/README.md", "skills/playwright-skill/API_REFERENCE.md")
-    ]
-    
-    for root, dirs, files in os.walk(repo_root):
-        if ".git" in root or ".venv" in root or "node_modules" in root:
-            continue
-        for file in files:
-            if file.endswith(".md"):
-                filepath = os.path.join(root, file)
-                rel_fp = os.path.relpath(filepath, repo_root).replace("\\", "/")
-                try:
-                    with open(filepath, "r", encoding="utf-8") as f:
-                        lines = f.readlines()
-                        in_fence = False
-                        for i, line in enumerate(lines):
-                            if line.strip().startswith("```"):
-                                in_fence = not in_fence
-                                continue
-                            if in_fence:
-                                continue
-                                
-                            no_inline = re.sub(r'`[^`]*`', '', line)
-                            matches = md_link_pattern.findall(no_inline)
-                            
-                            for text, link in matches:
-                                if link.startswith("http") or link.startswith("file://") or link.startswith("mailto:") or "<" in link or ">" in link:
-                                    continue
-                                if link.startswith("#"):
-                                    continue
-                                
-                                target = link.split('#')[0]
-                                if not target:
-                                    continue
-                                    
-                                target_abs = os.path.normpath(os.path.join(root, target))
-                                if not os.path.exists(target_abs):
-                                    is_allowed = False
-                                    for fp_match, link_match in allowed_c3:
-                                        if rel_fp == fp_match and target == link_match:
-                                            is_allowed = True
-                                            print(f"  [INFO] 略過已知失效連結: {rel_fp}:{i+1} -> {link} (原因: vendored 上游原文，依 ADR-0018 不改寫)")
-                                            break
-                                    if not is_allowed:
-                                        c3_fails.append(f"{rel_fp}:{i+1}  目標不存在: {link}")
-                except Exception:
-                    pass
+    c3_fails, c3_infos = check_3_markdown_links(repo_root)
+    for info in c3_infos:
+        print(f"  [INFO] {info}")
 
     if len(c3_fails) == 0:
         print("  [PASS] 0 命中")
@@ -570,6 +524,66 @@ def hashes_match(h1, h2):
         return False
     h1, h2 = h1.lower(), h2.lower()
     return h1 == h2 or h1.startswith(h2) or h2.startswith(h1)
+
+
+def check_3_markdown_links(root_dir=None):
+    """CHECK 3 — Markdown 相對連結有效性與本機路徑防護。"""
+    if root_dir is None:
+        root_dir = repo_root
+    c3_fails = []
+    c3_infos = []
+    md_link_pattern = re.compile(r'\[([^\]]+)\]\(([^)]+)\)')
+    allowed_c3 = [
+        ("skills/execution/playwright-automation/README.md", "skills/playwright-skill/API_REFERENCE.md")
+    ]
+
+    for root, dirs, files in os.walk(root_dir):
+        if ".git" in root or ".venv" in root or "node_modules" in root:
+            continue
+        for file in files:
+            if file.endswith(".md"):
+                filepath = os.path.join(root, file)
+                rel_fp = os.path.relpath(filepath, root_dir).replace("\\", "/")
+                try:
+                    with open(filepath, "r", encoding="utf-8") as f:
+                        lines = f.readlines()
+                        in_fence = False
+                        for i, line in enumerate(lines):
+                            if line.strip().startswith("```"):
+                                in_fence = not in_fence
+                                continue
+                            if in_fence:
+                                continue
+
+                            no_inline = re.sub(r'`[^`]*`', '', line)
+                            matches = md_link_pattern.findall(no_inline)
+
+                            for text, link in matches:
+                                if link.startswith("http") or link.startswith("mailto:") or "<" in link or ">" in link:
+                                    continue
+                                if link.startswith("file://") or re.match(r'^[a-zA-Z]:[/\\]', link) or link.startswith("/Users/") or link.startswith("/home/"):
+                                    c3_fails.append(f"{rel_fp}:{i+1}  不得使用本機絕對路徑連結: {link}")
+                                    continue
+                                if link.startswith("#"):
+                                    continue
+
+                                target = link.split('#')[0]
+                                if not target:
+                                    continue
+
+                                target_abs = os.path.normpath(os.path.join(root, target))
+                                if not os.path.exists(target_abs):
+                                    is_allowed = False
+                                    for fp_match, link_match in allowed_c3:
+                                        if rel_fp == fp_match and target == link_match:
+                                            is_allowed = True
+                                            c3_infos.append(f"略過已知失效連結: {rel_fp}:{i+1} -> {link} (原因: vendored 上游原文，依 ADR-0018 不改寫)")
+                                            break
+                                    if not is_allowed:
+                                        c3_fails.append(f"{rel_fp}:{i+1}  目標不存在: {link}")
+                except Exception:
+                    pass
+    return c3_fails, c3_infos
 
 
 def check_8_taskboard_metadata_purity(root_dir=None, git_head=None, git_prev=None, git_prev2=None, as_if_committed=False):

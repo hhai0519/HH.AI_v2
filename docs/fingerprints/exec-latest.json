@@ -1,5 +1,5 @@
 {
-  "base_head": "a7febb0",
+  "base_head": "3614d69",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 0,
@@ -506,16 +506,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 92,
-      "sha256": "7feda87863e9bdd3fa33423c4d7230dd3a29857f8193a4dbd7a8363f0b8c02b8"
+      "lines": 94,
+      "sha256": "bad8bbc39fd91ac5ad5fcebb12bf5e734d16b7fa80e896cb34bdb819e00fbc48"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 63,
-      "sha256": "d509f6b1c514b61310f41fded82074d571ec7517f9f2c7c00dd642f0dddadf84"
+      "lines": 65,
+      "sha256": "61e4b355942a8cef6fd655a462cbd0cfc9e0c0ae31fd407910c9e19b487f4249"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -551,7 +551,7 @@
         "## 封存區"
       ],
       "lines": 234,
-      "sha256": "a77e81e88225518cdaca9b93f4e7c367aeaa81db96519ac538d1e56cf58b522d"
+      "sha256": "21bf1495f5ade776f891de63a13ea37ce6cbc23ced4d469430260b6564d3eca4"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -879,8 +879,8 @@
         "### 5.3 待使用者裁決",
         "### 5.4 進行中／等待回報"
       ],
-      "lines": 3053,
-      "sha256": "4088db13ced819fde969653483e8082505c28f19cd0ccf93cb93e46139fea188"
+      "lines": 3054,
+      "sha256": "3c55b1ed2dc2a648ff457d1edf2bf4e53af9969c8e3e5f1e38159186a5325561"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -906,8 +906,8 @@
         "# 已知指向錯誤的歷史 tag。本清單只能縮短、不得加長。",
         "# 修復批次完成後必須清空；清單中的 tag 若已修復卻未移除，CHECK 18 會 FAIL。"
       ],
-      "lines": 1592,
-      "sha256": "99ae585f96f4e3b696a6afcf0626ac3edc758e241d5216c078613b0159648113"
+      "lines": 1606,
+      "sha256": "e05811b3345449386a7235046670eeb3ca27e292d1c4833458ec41f51c5af4ac"
     },
     "scripts/fingerprint.py": {
       "fences": 0,
@@ -953,10 +953,13 @@
         "# ---------------------------------------------------------------------------",
         "# ---------------------------------------------------------------------------",
         "# CHECK 9 Tests: Semantic Authority & Pending Range Generalization",
+        "# ---------------------------------------------------------------------------",
+        "# ---------------------------------------------------------------------------",
+        "# CHECK 3 Tests: Markdown Links & Path Portability (B-58 R6)",
         "# ---------------------------------------------------------------------------"
       ],
-      "lines": 496,
-      "sha256": "2e4b4ec39d0b47b8217ce387e3d7a006522f912a2253630eafcd269f68bb4eeb"
+      "lines": 563,
+      "sha256": "8c630e7dcea1136ac97dfd4da0cfb0553013459a630f742ce6486223fa945941"
     },
     "scripts/tests/test_fingerprint.py": {
       "fences": 0,
@@ -998,10 +1001,13 @@
         "# ==========================================",
         "# ==========================================",
         "# report_results tests",
+        "# ==========================================",
+        "# ==========================================",
+        "# validate_skill_content_purity tests (B-58 R6)",
         "# =========================================="
       ],
-      "lines": 437,
-      "sha256": "2dc3e09525f1c5d7a3d7e50c3fb9eb94fc05cf18b3532a0a54d8c4ea1d1507a2"
+      "lines": 543,
+      "sha256": "f8d4c3c81f41b20ac07dad7ca0ce36afbfec0fb936194cd62d6b395c0ad86c3b"
     },
     "scripts/tests/test_verify_all.py": {
       "fences": 0,
@@ -1015,8 +1021,8 @@
         "# 官方 Agent Skills 規格允許的 frontmatter 欄位",
         "# 本專案自訂擴充欄位（見 AGENTS.md 第 2 節），官方規格沒有但本專案沿用"
       ],
-      "lines": 231,
-      "sha256": "bc653c823579a59b1708f0fd17c01ed52b934252502ec2dcdfdb25d3e3e82da5"
+      "lines": 278,
+      "sha256": "6ba7557ebb9b1fd11e36c059c053cc6e17e48dea93f3d430822b60b99666c777"
     },
     "scripts/verify_all.py": {
       "fences": 0,
@@ -1027,7 +1033,7 @@
       "sha256": "77163678353cb7a444f90f17956d03312f715cfcccf933603948715939ecdc10"
     }
   },
-  "generated_at": "2026-09-12T11:49:53Z",
+  "generated_at": "2026-09-12T12:09:58Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

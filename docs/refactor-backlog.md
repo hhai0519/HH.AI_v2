@@ -2825,7 +2825,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 5.1 上一批狀態
 
-上次核對通過的 HEAD：a7febb0
+上次核對通過的 HEAD：3614d69
 
 - `23af193`（執行者前置檢查 ＋ 回滾程序 ＋ `AUDIT-LOG.md` ＋ 四缺口修正）
   已於 2026-09-02 由審計官核對通過：6 檔異動（含 2 個新檔）、零夾帶、
@@ -2985,6 +2985,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 - `afb5f2c`（B-58 Recovery R3 — Claude Protocol Slimming & Historical Extraction）已於 2026-09-12 由宏觀審計官全面審查獨立核對通過：9 檔異動、零夾帶，本地 verify_all 5 Gates 全 PASS，GitHub Actions Run 34684595656 success。Macro Auditor 正式判定 Macro PASS。9 檔 authorized scope；active auditor-protocol.md 大幅縮減 hot-path active context（400 行/25736 bytes，瘦身 50.7%），歷史事故與長篇散文移出至 docs/archive/claude-control-plane/；保留所有現行規範語意與 48 個數值標題骨架；auditor-selftest.md 完全未變；不可變歷史快照 blob exact match (976ce3b73fc2e09ee26e3e5753d1dad9d54b5ff6)；archive navigation valid；判定 Macro PASS。
 - `0fd655d`（B-58 Recovery R4 — SOP Layer Purification & SOP_06 De-overloading）已於 2026-09-12 由宏觀審計官全面審查獨立核對通過：10 檔 authorized scope；SOP 層 Information Architecture 對齊並保留 Runtime Availability 邊界；active SOP_06 成功收斂為可重複執行的 Runtime Handover & Service Operations SOP；舊版 SOP_06 歷史快照 blob exact match (d862a54304b58d93a22f1990506a976522e56155)；archive Router 與 ARCHIVE-INDEX routing 正常；exact-SHA Actions Run 34685685456 (status completed, conclusion success)；判定 Macro PASS。
 - `a7febb0`（B-58 Recovery R5A Micro-Fix — Skill Path Portability Cleanup）已於 2026-09-12 由宏觀審計官獨立核對通過：8 檔 authorized scope；target Skills（setup-hhai-skills、skill-evolution-governor、agency-orchestrator）殘留之 machine-specific local paths 全數移除，repo-internal links 已全數改為 portable relative paths 並由機器驗證 100% 存在；exact-SHA Actions Run 34688295360 (status completed, conclusion success)；判定 Macro PASS。
+- `3614d69`（B-58 Recovery R5 Finalization — Global Skill Boundary Residual Audit & Bounded Self-Repair）已於 2026-09-12 由宏觀審計官全面審查獨立核對通過：14 檔 authorized scope；全庫 active Skills content architecture residual scan 完成；無 project-state / governance authority / stale ghost runtime / machine-specific path / false compliance self-attestation 等 residual；bounded repairs 僅處理明確 local material defects；無架構裁決殘留且未建立 R5B；exact-SHA Actions Run 34692108678 (status completed, conclusion success)；R5 正式結案；判定 Macro PASS。
 
 ### 5.2 待辦
 
@@ -3013,7 +3014,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - checkpoint = §5.1 第一行記載之「上次核對通過的 HEAD（last audited checkpoint）」
   - 若 `HEAD == checkpoint` → 無尚待宏觀審計之 commit（no pending macro-audit commit）
   - 若 `HEAD != checkpoint` → `checkpoint..HEAD` 即為尚待宏觀審計之 commit range（包含 checkpoint 之後至當前 HEAD 間所有 pending / repair commits，不因 commit 數量直接判定 FAIL）
-- **目前進行中工作（Active Work）**：B-58 Recovery R5 Finalization — Global Skill Boundary Residual Audit。完成全庫 76 份 active Skill 文件 Content Architecture 邊界盤點；完成 6 份 REFERENCE.md 中 false DLP self-attestation 機械清理；target Skills 邊界純度與路徑可移植性二次查核確認乾淨；checkpoint 更新為 a7febb0，D-02 維持 TEMPORARILY HELD。
+- **目前進行中工作（Active Work）**：B-58 Recovery R6 — Minimal Content-Architecture Guards & Final Audit Preparation。評估 R1–R5 架構之回歸防護需求，以高價值、低維護、確定性原則針對 active Skills 之本機絕對工作區路徑與假性合規自證補齊最小防護；CHECK 3 擴充本機路徑防護，validate_skills.py 增加 active 技能內容純度驗證；checkpoint 更新為 3614d69，D-02 維持 TEMPORARILY HELD，待本批完成後由宏觀審計官進行 B-58 Final Macro Audit。
 - **D-02 狀態**：READY / TEMPORARILY HELD。E1 PASS，前置條件已滿足；依 2026-09-12 使用者裁決暫緩啟動 production E2，先完成 B-58 Content Architecture cleanup，完成並經 Macro Audit後恢復 D-02。
 - **待使用者裁決事項**：無（NONE）。
 - **下一步／剩餘工作權威**：以 `docs/TASKBOARD.md` 為唯一 remaining-work / next-work authority，交接區不保留待辦清單副本或執行佇列。

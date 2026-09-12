@@ -12,6 +12,7 @@ from validate_skills import (
     validate_description,
     validate_bucket_structure,
     validate_skill,
+    validate_skill_content_purity,
     report_results,
     main,
     NAME_MAX_LEN,
@@ -435,3 +436,108 @@ def test_report_results_errors(capsys):
     assert "❌ 錯誤（1）：" in captured.out
     assert "  - Some error" in captured.out
     assert "驗證失敗，請修正上述錯誤後再視為完成。" in captured.out
+
+
+# ==========================================
+# validate_skill_content_purity tests (B-58 R6)
+# ==========================================
+def test_validate_skill_content_purity_clean(tmp_path):
+    skill_dir = tmp_path / "analysis" / "my-skill"
+    skill_dir.mkdir(parents=True)
+    (skill_dir / "SKILL.md").write_text("# My Skill\nUse portable relative paths like [ref](./REFERENCE.md).\n", encoding="utf-8")
+    (skill_dir / "REFERENCE.md").write_text("# Reference\nDetails here.\n", encoding="utf-8")
+    (skill_dir / "EXAMPLES.md").write_text("# Examples\nExample usage.\n", encoding="utf-8")
+
+    errors = []
+    validate_skill_content_purity("analysis", skill_dir, errors)
+    assert errors == []
+
+
+def test_validate_skill_content_purity_fail_machine_path_file_uri(tmp_path):
+    skill_dir = tmp_path / "analysis" / "my-skill"
+    skill_dir.mkdir(parents=True)
+    (skill_dir / "SKILL.md").write_text(
+        "# My Skill\n[Local doc](file:///C:/Users/HH.AI_260806/Desktop/HH.AI_v2/docs/HANDOVER.md)\n",
+        encoding="utf-8",
+    )
+    errors = []
+    validate_skill_content_purity("analysis", skill_dir, errors)
+    assert len(errors) == 1
+    assert "包含本機絕對工作區路徑，違反可移植性規範" in errors[0]
+    assert "file:///" in errors[0]
+
+
+def test_validate_skill_content_purity_fail_machine_path_windows(tmp_path):
+    skill_dir = tmp_path / "analysis" / "my-skill"
+    skill_dir.mkdir(parents=True)
+    (skill_dir / "REFERENCE.md").write_text(
+        "# Reference\nPath is C:\\Users\\user\\Desktop\\HH.AI_v2\\data\n",
+        encoding="utf-8",
+    )
+    errors = []
+    validate_skill_content_purity("analysis", skill_dir, errors)
+    assert len(errors) >= 1
+    assert any("包含本機絕對工作區路徑" in e for e in errors)
+
+
+def test_validate_skill_content_purity_fail_machine_path_unix(tmp_path):
+    skill_dir = tmp_path / "execution" / "my-tool"
+    skill_dir.mkdir(parents=True)
+    (skill_dir / "EXAMPLES.md").write_text(
+        "# Examples\nRun under /Users/tester/Desktop/HH.AI_v2\n",
+        encoding="utf-8",
+    )
+    errors = []
+    validate_skill_content_purity("execution", skill_dir, errors)
+    assert len(errors) >= 1
+    assert any("包含本機絕對工作區路徑" in e for e in errors)
+
+
+def test_validate_skill_content_purity_fail_false_dlp(tmp_path):
+    skill_dir = tmp_path / "agents" / "trading-agent"
+    skill_dir.mkdir(parents=True)
+    (skill_dir / "SKILL.md").write_text(
+        "# Trading Agent\n✓ DLP 資料安全驗證已通過\n",
+        encoding="utf-8",
+    )
+    errors = []
+    validate_skill_content_purity("agents", skill_dir, errors)
+    assert len(errors) == 1
+    assert "包含未經機器的假性安全合規宣告" in errors[0]
+
+
+def test_validate_skill_content_purity_pass_deprecated_bucket(tmp_path):
+    skill_dir = tmp_path / "deprecated" / "old-skill"
+    skill_dir.mkdir(parents=True)
+    (skill_dir / "SKILL.md").write_text(
+        "# Old Skill\nfile:///C:/Users/tester/Desktop/HH.AI_v2\n✓ DLP 資料安全驗證已通過\n",
+        encoding="utf-8",
+    )
+    errors = []
+    validate_skill_content_purity("deprecated", skill_dir, errors)
+    assert errors == []
+
+
+def test_validate_skill_content_purity_pass_dlp_exempt_location(tmp_path):
+    skill_dir = tmp_path / "meta" / "skill-evolution-governor"
+    skill_dir.mkdir(parents=True)
+    (skill_dir / "SKILL.md").write_text(
+        "# Skill Evolution Governor\n過去曾有人聲稱『✓ DLP 資料安全驗證已通過』，該做法已廢止。\n",
+        encoding="utf-8",
+    )
+    errors = []
+    validate_skill_content_purity("meta", skill_dir, errors)
+    assert errors == []
+
+
+def test_validate_skill_content_purity_pass_template_placeholder(tmp_path):
+    skill_dir = tmp_path / "execution" / "webapp-testing"
+    skill_dir.mkdir(parents=True)
+    (skill_dir / "REFERENCE.md").write_text(
+        "# Webapp Testing\n範例 URL 格式：`file:///<YOUR_PROJECT_PATH>/app/index.html`\n",
+        encoding="utf-8",
+    )
+    errors = []
+    validate_skill_content_purity("execution", skill_dir, errors)
+    assert errors == []
+

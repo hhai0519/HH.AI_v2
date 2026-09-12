@@ -6,6 +6,7 @@ import pytest
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from check_consistency import (
+    check_3_markdown_links,
     check_8_taskboard_head,
     check_8_taskboard_metadata_purity,
     check_9_handover_head,
@@ -494,3 +495,69 @@ def test_preflight_authority_model_contract_validation():
     invalid_prompt_metadata = valid_prompt_metadata.copy()
     invalid_prompt_metadata.pop("spec_sha256")
     assert not bool(invalid_prompt_metadata.get("spec_sha256"))
+
+
+# ---------------------------------------------------------------------------
+# CHECK 3 Tests: Markdown Links & Path Portability (B-58 R6)
+# ---------------------------------------------------------------------------
+
+def test_check_3_markdown_links_pass_relative(tmp_path):
+    doc1 = tmp_path / "doc1.md"
+    doc2 = tmp_path / "doc2.md"
+    doc2.write_text("# Target\n", encoding="utf-8")
+    doc1.write_text("[Link to doc2](doc2.md)\n", encoding="utf-8")
+
+    fails, infos = check_3_markdown_links(str(tmp_path))
+    assert len(fails) == 0
+
+
+def test_check_3_markdown_links_fail_file_uri(tmp_path):
+    doc = tmp_path / "test.md"
+    doc.write_text("[Local](file:///C:/Users/tester/doc.md)\n", encoding="utf-8")
+
+    fails, infos = check_3_markdown_links(str(tmp_path))
+    assert len(fails) == 1
+    assert "不得使用本機絕對路徑連結" in fails[0]
+    assert "file:///" in fails[0]
+
+
+def test_check_3_markdown_links_fail_windows_drive(tmp_path):
+    doc = tmp_path / "test.md"
+    doc.write_text("[Local](C:/Users/tester/Desktop/doc.md)\n", encoding="utf-8")
+
+    fails, infos = check_3_markdown_links(str(tmp_path))
+    assert len(fails) == 1
+    assert "不得使用本機絕對路徑連結" in fails[0]
+
+
+def test_check_3_markdown_links_fail_unix_user(tmp_path):
+    doc = tmp_path / "test.md"
+    doc.write_text("[Local](/Users/tester/Desktop/doc.md)\n", encoding="utf-8")
+
+    fails, infos = check_3_markdown_links(str(tmp_path))
+    assert len(fails) == 1
+    assert "不得使用本機絕對路徑連結" in fails[0]
+
+
+def test_check_3_markdown_links_pass_exemptions(tmp_path):
+    doc = tmp_path / "test.md"
+    doc.write_text(
+        "[Web](https://github.com/example/repo)\n"
+        "[Email](mailto:user@example.com)\n"
+        "[Anchor](#section-1)\n"
+        "[Template](<YOUR_PROJECT_PATH>/doc.md)\n",
+        encoding="utf-8",
+    )
+
+    fails, infos = check_3_markdown_links(str(tmp_path))
+    assert len(fails) == 0
+
+
+def test_check_3_markdown_links_fail_missing_target(tmp_path):
+    doc = tmp_path / "test.md"
+    doc.write_text("[Missing](nonexistent_file.md)\n", encoding="utf-8")
+
+    fails, infos = check_3_markdown_links(str(tmp_path))
+    assert len(fails) == 1
+    assert "目標不存在" in fails[0]
+
