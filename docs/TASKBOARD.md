@@ -10,7 +10,7 @@
 `待裁決`（需使用者決定）／`已完成`（仍可能被引用）／
 `可封存`（不影響後續工作，待使用者確認後移入封存區）
 
-**最後更新**：2026-09-12，HEAD `4bf8611f` 之後（E1→E2 Repo-Visible State Bridge）
+**最後更新**：2026-09-12，HEAD `b9b997f` 之後（Content Architecture Kickoff — Repo-Visible State Sync）
 
 ---
 
@@ -129,7 +129,7 @@
 | B-55 | 待辦 | **治理層已分裂成兩個速度** | 實測最後修改日：稽核迴圈檔案 09-05～09-06；作業層 SOP_01／02／05／06／09／11／12／13 停在 2026-08-25（12 天）；**`.agents/rules/skills-architecture.md` 停在 2026-08-13（24 天，全庫最舊）——而它正是 B-01 的目標檔案**。處置：**CHECK 23 文件時效偵測**。排批 2e |
 | B-56 | 待辦 | **`SOP_00A_Master_Index.json` 的維護規則靠記憶** | 該檔是 `$$` 指令的唯一權威定義來源，內含「每次新增或修改 SOP 時，必須同步更新此索引對應的 tags」但無任何偵測；`last_updated` 停在 2026-08-29，另有 5 個 `PENDING_MIGRATION`。CHECK 5 只驗路由目標存在性，不驗時效與完整性。併入 CHECK 23。排批 2e |
 | B-57 | 可封存 | **審查機制的完成定義（五條可機械驗收）** | 原五項 acceptance 並未全部達成；本項被後續 Governance Exit criteria 取代；未完成的 residual risks 保留於 B-53 / B-54 / B-71 等 post-main tasks。 |
-| B-58 | 待辦 | **治理層瘦身（減法），使用者已裁決同意** | 10,054 行治理文件（不含 20 份 ADR）vs 30 行 `MISSION.md`；`docs/refactor-backlog.md` 單檔 2,501 行、`docs/HANDOVER.md` 868 行且其協作規範與已知出錯模式兩節與 `.agents/rules/git-and-reporting.md` 高度重疊。**2026-09-06 使用者裁決**：①同意拆解 HANDOVER，**但移除本體前必須再做一次檢查**（已寫入 `PRINCIPLES.md` §2.9）②同意封存 A 節 39 項與 B 節已完成項，**但須確保封存後有足夠的邏輯與指向**（處置為 CHECK 20）。排批 2f |
+| B-58 | 進行中 | **治理層瘦身（Content Architecture cleanup），使用者已裁決正式開始** | 2026-09-12 使用者裁決正式開始 Content Architecture cleanup。Router 將作為非權威導引文件處理；`docs/HANDOVER.md`、Claude Control Plane、SOP 與 `skills/meta/setup-hhai-skills` 將依小批次逐步整理，每批均由 Macro Auditor 獨立核對後才前進；完成後恢復 D-02 / E2 |
 | B-59 | 待辦 | **`docs/ARCHIVE-INDEX.md` 自己沒有機械守衛** | 開頭寫「新增或變更任何歸檔機制時，必須同步更新本檔」但無偵測。處置：**CHECK 20 ARCHIVE-INDEX 可達性**，雙向驗證——索引提到的每個歸檔區必須實際存在，且 repo 中每個歸檔區必須被索引收錄。這是使用者裁決條件②「封存要有足夠的邏輯及指向」的機械化。排批 2d |
 | B-60 | 可封存 | **CHECK 17–24 編號一次配置完成（防 B-21 重演）** | 原 17–24 allocation plan 已停止作為 implementation schedule；未來若 post-main 決定新增 CHECK，必須先從 current check_consistency.py machine derive 下一個可用 ID，不得重用舊 B-60 數字表。 |
 | B-61 | 已完成 | **證據區塊 (d) 的圍欄數沒有被納入 §3.6 的交叉驗證** | `.agents/rules/prompt-preflight.md` §3.6 的驗證表只有三項：區塊存在／行數相符／結構相符，**圍欄數不在其中**。2026-09-06 實測：審計官在提示詞把 `.claude/rules/auditor-protocol.md` 的圍欄數誤寫為 0（實際為 2，位於第 54、65 行），執行者回報實際值但判定為「零變動相符」——它比對的是修改前後，不是與宣稱值。**這不是執行者疏漏，是 §3.6 沒有要求它比對。** 一個沒有人核對的數字等於沒有寫。處置：§3.6 驗證表增列圍欄數比對。排批 2d。**2026-09-07 實測落地**：`.agents/rules/prompt-preflight.md` §3.6 驗證表 5 列，已含「圍欄數相符」 |
@@ -184,7 +184,7 @@
 | ID | 狀態 | 事項 |
 |---|---|---|
 | D-01 | 已完成 | **E1 注入測試**——拋棄式對話，四題，判定者為留任的審計官。**題目與答案卷刻意不進 repo（見 §9.5），由使用者保管。** 2026-09-12 執行完成，判定 E1 = PASS |
-| D-02 | 待辦 | **E2 正式交接**——新 Agent 依 §9.1 提示詞接手，任務為 B-01。E1 PASS，前置條件已滿足，狀態 READY，下一步為啟動新的 production Claude conversation 執行 E2 |
+| D-02 | 待辦 | **E2 正式交接**——新 Agent 依 §9.1 提示詞接手，任務為 B-01。E1 PASS，前置條件已滿足，狀態 READY；但依 2026-09-12 使用者裁決暫緩（TEMPORARILY HELD），先完成 B-58 Content Architecture cleanup，完成並經 Macro Audit 後恢復 D-02 |
 | D-03 | 待辦 | E3 補洞（僅在 E1／E2 有失敗時需要） |
 
 ---

@@ -2825,7 +2825,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 5.1 上一批狀態
 
-上次核對通過的 HEAD：4bf8611
+上次核對通過的 HEAD：b9b997f
 
 - `23af193`（執行者前置檢查 ＋ 回滾程序 ＋ `AUDIT-LOG.md` ＋ 四缺口修正）
   已於 2026-09-02 由審計官核對通過：6 檔異動（含 2 個新檔）、零夾帶、
@@ -2972,6 +2972,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 - `d4461d6`（Final Governance Exit — Auditor Contract & Audit-State SSOT Convergence：移除 auditor-protocol/selftest/preflight 舊有貼輸出/diff 要求；退役 mandatory audited tag 建立並確立 AUDIT-LOG、refactor-backlog §5.1 與 Actions 為 SSOT；B-12/B-91 轉可封存）已於 2026-09-11 由審計官核對通過：13 檔異動、零夾帶，獨立驗證五項全過，CI Run 34610027229 (Run #32) success。
 - `1054cfc`（Fresh Claude Bootstrap Hardening：修復 cold-start 環境引導缺陷，落實 A4 targeted extraction、TASKBOARD next-work authority、AUDIT-LOG/§5.1 SSOT 與 E1→E2 state bridge 規則）已於 2026-09-12 執行完成：8 檔異動、零夾帶，獨立驗證五項全過，CI Run 34620190512 success。經宏觀審計官獨立審查，Machine PASS，但發現 3 項契約不一致（A1/§9.4 raw output 要求、refactor-backlog mutability 描述衝突、§5.4「尚未 commit」即刻失真），判定 NEEDS MICRO-FIX，後續由 4bf8611 修復完成。
 - `4bf8611`（Fresh Claude Bootstrap — Final Contract Consistency Micro-Fix：修正 1054cfc 留下的三項契約不一致，落實 compact full-clone attestation、refactor-backlog mutability 邊界與 §5.4 machine-derived pending-audit contract）已於 2026-09-12 由宏觀審計官獨立核對通過：8 檔異動、零夾帶，獨立驗證五項全過，CI Run 34622753906 success（Architecture Health = GREEN, Bootstrap Governance = CLOSED）。
+- `b9b997f`（E1 → E2 repo-visible state bridge）已於 2026-09-12 由宏觀審計官獨立核對通過：5 檔異動、零夾帶，獨立驗證五項全過，CI Run 34625299443 success。Macro Auditor 獨立核對通過（MACRO AUDIT = PASS, State Bridge Validated）。E1 PASS、E2 bootstrap mechanics 已驗證；使用者明確裁決正式開始 B-58 Content Architecture cleanup，先完成 Router / HANDOVER / Control Plane cleanup 並經 Macro Audit 後，再恢復 E2 / D-02。
 
 ### 5.2 待辦
 
@@ -3000,7 +3001,9 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - checkpoint = §5.1 第一行記載之「上次核對通過的 HEAD（last audited checkpoint）」
   - 若 `HEAD == checkpoint` → 無尚待宏觀審計之 commit（no pending macro-audit commit）
   - 若 `HEAD != checkpoint` → `checkpoint..HEAD` 即為尚待宏觀審計之 commit range
-- **待使用者裁決事項**：目前無。C-04 已裁決採用方向（runtime/ + shared/ + skills/），已裁決事項見 §5.3 與 `docs/TASKBOARD.md` C 節，不要重複提問。
+- **目前進行中工作（Active Work）**：B-58 治理層瘦身（Content Architecture cleanup）。2026-09-12 使用者裁決正式啟動，Router 將作為非權威導引文件處理，`docs/HANDOVER.md`、Claude Control Plane、SOP 與 setup-hhai-skills 將依小批次逐步整理，每批經宏觀審計官獨立核對後前進。
+- **D-02 狀態**：READY / TEMPORARILY HELD。E1 PASS，前置條件已滿足；依 2026-09-12 使用者裁決暫緩啟動 production E2，先完成 B-58 Content Architecture cleanup，完成並經 Macro Audit 後恢復 D-02。
+- **待使用者裁決事項**：無（NONE）。
 - **下一步／剩餘工作權威**：以 `docs/TASKBOARD.md` 為唯一 remaining-work / next-work authority，交接區不保留待辦清單副本或執行佇列。
 
 56. **Post-Governance Taskboard Reconciliation（治理收斂後看板全面對帳）**（2026-09-11）
