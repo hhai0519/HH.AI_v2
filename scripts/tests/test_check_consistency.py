@@ -17,6 +17,8 @@ from check_consistency import (
     check_14_simplified_chinese,
     check_15_context_conflict,
     check_16_exec_log_cadence,
+    check_19_utf8_bom,
+    check_20_markdown_table_continuity,
 )
 
 
@@ -815,3 +817,191 @@ def test_check_3_markdown_links_fail_missing_target(tmp_path):
     assert len(fails) == 1
     assert "目標不存在" in fails[0]
 
+
+# ---------------------------------------------------------------------------
+# CHECK 14 Extended Tests: Japanese Character False-Green (B-89)
+# ---------------------------------------------------------------------------
+
+def test_check_14_japanese_hiragana_fail(tmp_path):
+    f = tmp_path / "test.md"
+    f.write_text("這是包含平假名「の」的測試。\n", encoding="utf-8")
+    fails, infos = check_14_simplified_chinese(str(tmp_path))
+    assert len(fails) == 1
+    assert "包含日文字元 [の]" in fails[0]
+
+
+def test_check_14_japanese_katakana_fail(tmp_path):
+    f = tmp_path / "test.md"
+    f.write_text("這是包含片假名「カ」的測試。\n", encoding="utf-8")
+    fails, infos = check_14_simplified_chinese(str(tmp_path))
+    assert len(fails) == 1
+    assert "包含日文字元 [カ]" in fails[0]
+
+
+def test_check_14_japanese_halfwidth_katakana_fail(tmp_path):
+    f = tmp_path / "test.md"
+    f.write_text("這是包含半形片假名「ｶ」的測試。\n", encoding="utf-8")
+    fails, infos = check_14_simplified_chinese(str(tmp_path))
+    assert len(fails) == 1
+    assert "包含日文字元 [ｶ]" in fails[0]
+
+
+def test_check_14_japanese_shinjitai_fail(tmp_path):
+    f = tmp_path / "test.md"
+    f.write_text("這是日文新字體「証」的歷史回歸測試。\n", encoding="utf-8")
+    fails, infos = check_14_simplified_chinese(str(tmp_path))
+    assert len(fails) == 1
+    assert "包含日文字元 [証]" in fails[0]
+
+
+def test_check_14_traditional_chinese_char_pass(tmp_path):
+    f = tmp_path / "test.md"
+    f.write_text("這是繁體中文「證書」與「變革」與「步驟」，完全合法。\n", encoding="utf-8")
+    fails, infos = check_14_simplified_chinese(str(tmp_path))
+    assert len(fails) == 0
+
+
+def test_check_14_japanese_in_backlog_allowed_exception(tmp_path):
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    f = docs / "refactor-backlog.md"
+    f.write_text("修正日文漢字\n「適用対象」與簡繁誤譯。\n", encoding="utf-8")
+    fails, infos = check_14_simplified_chinese(str(tmp_path))
+    assert len(fails) == 0
+    assert len(infos) == 1
+    assert "歷史紀錄引用例外" in infos[0]
+
+
+# ---------------------------------------------------------------------------
+# CHECK 19 Tests: UTF-8 BOM Detection (B-31)
+# ---------------------------------------------------------------------------
+
+def test_check_19_utf8_bom_pass(tmp_path):
+    clean_file = tmp_path / "clean.md"
+    clean_file.write_text("# Clean UTF-8 without BOM\nHello World\n", encoding="utf-8")
+    fails, infos = check_19_utf8_bom(str(tmp_path))
+    assert len(fails) == 0
+    assert any("掃描受守護文字檔" in inf for inf in infos)
+
+
+def test_check_19_utf8_bom_fail_negative_canary(tmp_path):
+    # Canary: identical text content, clean PASS, with BOM bytes FAIL
+    content = "# Canary Header\nSome content\n"
+    clean_file = tmp_path / "clean.md"
+    clean_file.write_text(content, encoding="utf-8")
+    bom_file = tmp_path / "bom.md"
+    with open(bom_file, "wb") as fh:
+        fh.write(b"\xef\xbb\xbf" + content.encode("utf-8"))
+
+    fails, infos = check_19_utf8_bom(str(tmp_path))
+    assert len(fails) == 1
+    assert "檔案開頭包含 UTF-8 BOM (EF BB BF) 污染" in fails[0]
+    assert "bom.md" in fails[0]
+
+
+def test_check_19_utf8_bom_ignored_dir_or_extension(tmp_path):
+    git_dir = tmp_path / ".git"
+    git_dir.mkdir()
+    ignored_git = git_dir / "config.md"
+    ignored_git.write_bytes(b"\xef\xbb\xbfSome config")
+
+    bin_file = tmp_path / "image.png"
+    bin_file.write_bytes(b"\xef\xbb\xbfSome binary")
+
+    fails, infos = check_19_utf8_bom(str(tmp_path))
+    assert len(fails) == 0
+
+
+# ---------------------------------------------------------------------------
+# CHECK 20 Tests: Markdown Table Continuity (B-88)
+# ---------------------------------------------------------------------------
+
+def test_check_20_markdown_table_continuity_pass(tmp_path):
+    # Two independent tables, each with header + separator, separated by blank line
+    doc = tmp_path / "test.md"
+    doc.write_text(
+        "| Header 1 | Col 2 |\n"
+        "|---|---|\n"
+        "| Row 1 | Val 1 |\n"
+        "\n"
+        "| Header 2 | Col B |\n"
+        "|---|---|\n"
+        "| Row 2 | Val B |\n",
+        encoding="utf-8",
+    )
+    fails, infos = check_20_markdown_table_continuity(str(tmp_path))
+    assert len(fails) == 0
+    assert any("掃描 Markdown 檔案" in inf for inf in infos)
+
+
+def test_check_20_markdown_table_continuity_fail_real_shape_accident(tmp_path):
+    # Real accident fixture: same table broken by a blank line
+    doc = tmp_path / "test.md"
+    doc.write_text(
+        "| header |\n"
+        "|---|\n"
+        "| row1 |\n"
+        "\n"
+        "| row2 |\n",
+        encoding="utf-8",
+    )
+    fails, infos = check_20_markdown_table_continuity(str(tmp_path))
+    assert len(fails) == 1
+    assert "表格被空白行切斷" in fails[0]
+    assert "row2" in fails[0]
+
+
+def test_check_20_markdown_table_continuity_fenced_code_pass(tmp_path):
+    doc = tmp_path / "test.md"
+    doc.write_text(
+        "```markdown\n"
+        "| header |\n"
+        "|---|\n"
+        "| row1 |\n"
+        "\n"
+        "| row2 |\n"
+        "```\n",
+        encoding="utf-8",
+    )
+    fails, infos = check_20_markdown_table_continuity(str(tmp_path))
+    assert len(fails) == 0
+
+
+def test_check_20_markdown_table_continuity_paragraph_pipe_pass(tmp_path):
+    doc = tmp_path / "test.md"
+    doc.write_text(
+        "This is an ordinary paragraph containing a | pipe character.\n"
+        "\n"
+        "| Valid Header |\n"
+        "|---|\n"
+        "| Row 1 |\n",
+        encoding="utf-8",
+    )
+    fails, infos = check_20_markdown_table_continuity(str(tmp_path))
+    assert len(fails) == 0
+
+
+def test_check_20_markdown_table_continuity_archive_ignored(tmp_path):
+    archive_dir = tmp_path / "docs" / "archive"
+    archive_dir.mkdir(parents=True)
+    doc = archive_dir / "legacy.md"
+    doc.write_text(
+        "| header |\n"
+        "|---|\n"
+        "| row1 |\n"
+        "\n"
+        "| row2 |\n",
+        encoding="utf-8",
+    )
+    fails, infos = check_20_markdown_table_continuity(str(tmp_path))
+    assert len(fails) == 0
+
+
+def test_integration_run_checks_includes_19_and_20():
+    import check_consistency
+    import inspect
+    source = inspect.getsource(check_consistency.run_checks)
+    assert "check_19_utf8_bom" in source
+    assert "check_20_markdown_table_continuity" in source
+    assert "CHECK 19 - UTF-8 BOM" in source
+    assert "CHECK 20 - Markdown 表格連續性" in source

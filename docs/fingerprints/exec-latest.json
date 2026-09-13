@@ -1,5 +1,5 @@
 {
-  "base_head": "a3201f3",
+  "base_head": "b2256fd",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 0,
@@ -509,16 +509,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 115,
-      "sha256": "5b93fe4a42da87fee88a3646118af12af535dc6cf4c3fcff78ea3925d78a2607"
+      "lines": 116,
+      "sha256": "f722517b933b87763872f4f91df4a6bc88be5b5ffbca7e15f5524ad359d8a1ed"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 87,
-      "sha256": "73263e05ddcf243eec8cc27903d63aef1f7b7563bedd48a9c4df9c769c490118"
+      "lines": 88,
+      "sha256": "46a82a30c3ca113c5882740f3c74c4bef8cdb9000fa51e4027f1ff77790e1b96"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -553,8 +553,8 @@
         "## G. 舊 repo 未盤點區塊（2026-09-02 新發現）",
         "## 封存區"
       ],
-      "lines": 239,
-      "sha256": "66111bb01a3789cca24cdf07e045cdf4e2ca78ff06d20b907299db67490bb02a"
+      "lines": 238,
+      "sha256": "9f1a2701c6d7659dc6b534bdada88ae6674e4bcd36def6dcc248a391694ed30d"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -882,8 +882,8 @@
         "### 5.3 待使用者裁決",
         "### 5.4 進行中／等待回報"
       ],
-      "lines": 3110,
-      "sha256": "afc4f96b729fd6a476dbbd33504e4807c783607bd959fb2fbb044beb299a72ee"
+      "lines": 3118,
+      "sha256": "99f77e0811efe1f26127f258c512a3db15fdba999828e6fb40b69a867bb0e5e0"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -910,8 +910,8 @@
         "# 已知指向錯誤的歷史 tag。本清單只能縮短、不得加長。",
         "# 修復批次完成後必須清空；清單中的 tag 若已修復卻未移除，CHECK 18 會 FAIL。"
       ],
-      "lines": 1954,
-      "sha256": "d6feb539bd32b098c384967228c1105a19296584991a4b43d7709bcdcdf0f195"
+      "lines": 2115,
+      "sha256": "d3e1ed5f239eb2d384e87dabb5fcefcee26712a5b65d3732747784381cadc701"
     },
     "scripts/fingerprint.py": {
       "fences": 0,
@@ -969,10 +969,19 @@
         "# ---------------------------------------------------------------------------",
         "# ---------------------------------------------------------------------------",
         "# CHECK 3 Tests: Markdown Links & Path Portability (B-58 R6)",
+        "# ---------------------------------------------------------------------------",
+        "# ---------------------------------------------------------------------------",
+        "# CHECK 14 Extended Tests: Japanese Character False-Green (B-89)",
+        "# ---------------------------------------------------------------------------",
+        "# ---------------------------------------------------------------------------",
+        "# CHECK 19 Tests: UTF-8 BOM Detection (B-31)",
+        "# ---------------------------------------------------------------------------",
+        "# ---------------------------------------------------------------------------",
+        "# CHECK 20 Tests: Markdown Table Continuity (B-88)",
         "# ---------------------------------------------------------------------------"
       ],
-      "lines": 817,
-      "sha256": "839ecb93faba68f11fdc6d716e5336cfd6b7f0db2b08c16ae0a5fe9c54fa40c0"
+      "lines": 1007,
+      "sha256": "f0c9af61a1473a0e1c5c5a89fdcb2ad6d0e1df9a4e7e27ab08e81607baafdc9b"
     },
     "scripts/tests/test_fingerprint.py": {
       "fences": 0,
@@ -1064,11 +1073,11 @@
         "# Defect 6: CHECK 13 Advisory Output Behavior (Direct Production Rendering Path)",
         "# ===========================================================================",
         "# ===========================================================================",
-        "# Meta-test: Active CHECK Inventory Integrity (1..18)",
+        "# Meta-test: Active CHECK Inventory Integrity (1..20)",
         "# ==========================================================================="
       ],
       "lines": 512,
-      "sha256": "d3df3ebea6740374da6a553d01f3150dd71ced766b3a08f337e9d5c74dbe4425"
+      "sha256": "689a01d3b24cf6716d8dea41367c1664eac513ba91ba032f1bf699d698dbf38f"
     },
     "scripts/tests/test_verify_all.py": {
       "fences": 0,
@@ -1100,7 +1109,7 @@
       "sha256": "77163678353cb7a444f90f17956d03312f715cfcccf933603948715939ecdc10"
     }
   },
-  "generated_at": "2026-09-13T16:15:28Z",
+  "generated_at": "2026-09-13T17:36:31Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

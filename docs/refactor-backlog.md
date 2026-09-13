@@ -2825,7 +2825,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 5.1 上一批狀態
 
-上次核對通過的 HEAD：e377d51
+上次核對通過的 HEAD：b2256fd
 
 - `23af193`（執行者前置檢查 ＋ 回滾程序 ＋ `AUDIT-LOG.md` ＋ 四缺口修正）
   已於 2026-09-02 由審計官核對通過：6 檔異動（含 2 個新檔）、零夾帶、
@@ -2995,6 +2995,8 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 - `dac5921`（A-06 Machine-Generated Rule Traceability）已於 2026-09-13 由外部審計官全面審查獨立核對通過：exact-SHA Actions Run 34762339410 (status completed, conclusion success)；canonical verification = ALL 5 GATES PASSED；stale ADR path repair PASS；fresh != valid fail-closed contract PASS；negative canary PASS；valid fixture PASS；UNRESOLVED_HISTORICAL advisory behavior PASS；fenced code heading attribution PASS；blocking status = 0；B-01 零實作；A-06 正式結案；判定 Macro PASS。
 - `c53de3b`（A-14 Executor Prompt Preflight Enforcement）已於 2026-09-13 由外部審計官全面審查獨立核對通過：exact-SHA Actions Run 34763116512 (status completed, conclusion success)；canonical verification = ALL 5 GATES PASSED；Prompt Manifest validator（scripts/validate_prompt_manifest.py）實作與單元測試全數通過；malformed-manifest 與 full-prompt contradiction 兩次 runtime canaries 均成功阻擋且零 mutation；A-14 正式結案；判定 Macro PASS。
 - `e377d51`（A-14 External Macro PASS / Runtime Canary State Closure）已於 2026-09-13 由外部審計官全面審查獨立核對通過：exact-SHA Actions Run 34764485489 (status completed, conclusion success)；canonical verification = ALL 5 GATES PASSED；異動僅限 5 份狀態與證據檔案；A-14 正式結案；NEXT_WORK 暫停於 B-28；B-01 零實作；判定 Macro PASS。
+- `a3201f3`（B-87 Phase 1 Comprehensive Taskboard Truth Reconciliation）已於 2026-09-13 執行完成：5 檔異動、零夾帶，獨立驗證五項全過，CI Run 34765468962 success，Machine PASS / Macro NEEDS BOUNDED MICRO-FIX。
+- `b2256fd`（B-87 Phase 1 Bounded Micro-Fix & Closure）已於 2026-09-13 由外部審計官全面審查獨立核對通過：5 檔 authorized scope，本地 verify_all 5 Gates 全 PASS，GitHub Actions exact-SHA Run 34768119758 success。B-70 正確恢復為 genuine pending；B-57 stale B-71 引用修復；B-87 Phase 1 reconciliation accepted；generic path-existence CHECK proposal 因 false-green risk 明確 rejected / superseded；B-87 結案處置判定為可封存；B-01 零實作；判定 Macro PASS (ACCEPT ALL)。
 
 ### 5.2 待辦
 
@@ -3033,7 +3035,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - generated rule traceability External Macro PASS / CLOSED。
   - Executor prompt-preflight machine enforcement External Macro PASS / CLOSED。
   - Prompt Manifest runtime interception 已由兩種 malformed-prompt canary 實證。
-  - Pre-B01 taskboard truth reconciliation 正處於 bounded Macro repair / pending External Macro Audit。
+  - Pre-B01 taskboard truth reconciliation External Macro PASS / CLOSED。
   - B-28/B-29 full upstream comparison 不再是 Pre-B01 blocker（使用者裁決延後 post-B01）。
   - Production routing ready。
   - 當前與下一步工作任務權威（Current / next work authority）仍只由 `docs/TASKBOARD.md` 的 `**NEXT_WORK**` pointer 保存與導航，交接區不複製 task ID 或待辦佇列。
@@ -3107,4 +3109,10 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
       | B-41 | 待辦 | 待辦 | Project Instructions mirror 與序列比對待實作 | PRE-B01 GATE CANDIDATE，維持待辦 |
       | B-01 | 待辦 | 待辦（NOT STARTED） | targeted comparison 已通且無 blocker；full comparison 已裁決延後；等待 B-87、B-31/88/89、B-41 逐批放行 | 待辦（NOT STARTED），本批零實作 |
 
+    - **B-87 結案留痕（B-87 Closure Note）**（2026-09-13）：
+      - `b2256fd` External Macro PASS (ACCEPT ALL, Actions Run 34768119758 success)。
+      - 原始 generic path-existence CHECK proposal 因具 false-green 結構風險被明確 rejected / superseded，不實作任何 generic completion inference engine。
+      - Taskboard reconciliation accepted；ongoing state integrity 由現行 B-95 promotion、every-round disposition 與 External Macro Review 維持。
+      - B-87 狀態正式轉為「可封存」（CLOSED）。
+      - 全庫未新增 generic completion inference 或第二份 task state store。
     - **注意**：本節為 append-only 歷史證據留痕，當前任務權威唯一以 `docs/TASKBOARD.md` 為準。

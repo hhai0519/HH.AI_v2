@@ -496,17 +496,17 @@ def test_check_13_advisory_output_behavior(tmp_path):
 
 
 # ===========================================================================
-# Meta-test: Active CHECK Inventory Integrity (1..18)
+# Meta-test: Active CHECK Inventory Integrity (1..20)
 # ===========================================================================
 
-def test_active_check_inventory_continuous_1_to_18():
-    """現行 active CHECK IDs 必須為 1..18 連續、無重複、無缺號"""
+def test_active_check_inventory_continuous_1_to_20():
+    """現行 active CHECK IDs 必須為 1..20 連續、無重複、無缺號"""
     script_path = os.path.join(REPO_ROOT, "scripts", "check_consistency.py")
     with open(script_path, "r", encoding="utf-8") as f:
         content = f.read()
 
     # Find all "CHECK <N> -" in execution run_checks
     check_ids = [int(m) for m in re.findall(r"CHECK\s+(\d+)\s+-\s+", content)]
-    assert len(check_ids) == 18, f"Expected 18 checks, found {len(check_ids)}: {check_ids}"
-    expected = list(range(1, 19))
+    assert len(check_ids) == 20, f"Expected 20 checks, found {len(check_ids)}: {check_ids}"
+    expected = list(range(1, 21))
     assert check_ids == expected, f"Check IDs drift: {check_ids} != {expected}"

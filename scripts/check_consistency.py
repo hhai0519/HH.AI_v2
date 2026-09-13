@@ -15,11 +15,13 @@
   CHECK 11 — §6.1 清單與自檢清單 E 節項目對應
   CHECK 12 — AUDIT-LOG 審查紀錄歷史有效性與 Pending Range 相容性
   CHECK 13 — 檔尾換行符
-  CHECK 14 — 繁體中文環境下的簡體字偵測
+  CHECK 14 — 繁體中文環境下的簡體字與日文字元偵測
   CHECK 15 — 交接區 §5.1 的 commit hash 語境衝突
   CHECK 16 — 執行者檢查紀錄（EXEC-LOG）落後偵測
   CHECK 17 — Batch Spec 重放一致性
   CHECK 18 — audited-* tag 名實一致
+  CHECK 19 — ADR-0013 §2C UTF-8 BOM 污染偵測
+  CHECK 20 — Markdown 表格連續性
 
 本腳本的檢查項來自 2026-08-29 的一次全庫實測掃描，每一項都曾實際命中過真實缺陷，不是憑空設計。
 新增檢查項時，必須先確認該檢查在當前 repo 的誤報率，誤報多的檢查會讓人習慣忽略輸出。
@@ -47,7 +49,7 @@ def run_checks(argv=None):
     as_if_committed = "--as-if-committed" in argv
     if as_if_committed:
         print("[MODE] 啟用 --as-if-committed 本地 commit 拓撲預演模式")
-    total_checks = 18
+    total_checks = 20
     passed = 0
     failed = 0
     
@@ -375,6 +377,38 @@ def run_checks(argv=None):
     else:
         print(f"  [FAIL] {len(c18_fails)} 命中")
         for fail in c18_fails:
+            print(f"    {fail}")
+        failed += 1
+
+    # ---------------------------------------------------------
+    # CHECK 19: UTF-8 BOM 偵測
+    # ---------------------------------------------------------
+    print("\nCHECK 19 - UTF-8 BOM 偵測")
+    c19_fails, c19_infos = check_19_utf8_bom(repo_root)
+    for info in c19_infos:
+        print(f"  [INFO] {info}")
+    if len(c19_fails) == 0:
+        print("  [PASS] 0 命中")
+        passed += 1
+    else:
+        print(f"  [FAIL] {len(c19_fails)} 命中")
+        for fail in c19_fails:
+            print(f"    {fail}")
+        failed += 1
+
+    # ---------------------------------------------------------
+    # CHECK 20: Markdown 表格連續性
+    # ---------------------------------------------------------
+    print("\nCHECK 20 - Markdown 表格連續性")
+    c20_fails, c20_infos = check_20_markdown_table_continuity(repo_root)
+    for info in c20_infos:
+        print(f"  [INFO] {info}")
+    if len(c20_fails) == 0:
+        print("  [PASS] 0 命中")
+        passed += 1
+    else:
+        print(f"  [FAIL] {len(c20_fails)} 命中")
+        for fail in c20_fails:
             print(f"    {fail}")
         failed += 1
     # 總結
@@ -1320,32 +1354,50 @@ def check_13_trailing_newline(root_dir=None, strict=False):
     return fails, infos
 
 def check_14_simplified_chinese(root_dir=None):
+    """CHECK 14 — 繁體中文環境下的簡體字與日文字元偵測。"""
     if root_dir is None: root_dir = repo_root
     fails = []
     infos = []
-    chars = set("换爲这个们时说说过还没来实现应该产严术样价专车书长门间乐习买卖举属于")
-    historical_markers = ["簡體", "歷史說明", "原樣板"]
+    simplified_chars = set("换爲这个们时说说过还没来实现应该产严术样价专车书长门间乐习买卖举属于")
+    # Japanese kana: Hiragana (U+3040-U+309F), Katakana (U+30A0-U+30FF), Half-width Katakana (U+FF65-U+FF9F)
+    jp_kana_re = re.compile(r'[\u3040-\u309f\u30a0-\u30ff\uff65-\uff9f]')
+    # Reviewed Japanese Shinjitai denylist (distinct from Traditional Chinese)
+    jp_shinjitai_chars = set('\u8a3c\u9244\u5e83\u5bfe\u8aad\u8ee2\u7d75\u7dcf\u99c5\u685c\u5358\u56f2\u55b6\u5186\u5fdc\u6c17\u7d4c\u770c\u6a29\u56fd\u6e08\u5b9f\u5199\u5bff\u6761\u56f3\u7a0e\u4f1d\u5909\u6b69\u6e80\u52b4\u6b74\u9332')
+    historical_markers = ["簡體", "歷史說明", "原樣板", "日文", "簡繁", "日語"]
     for root, dirs, files in os.walk(root_dir):
         if any(p in root for p in [".git", "node_modules", "__pycache__", ".venv"]):
             continue
         for file in files:
             if file.endswith(".md"):
                 filepath = os.path.join(root, file)
-                rel_fp = os.path.relpath(filepath, root_dir).replace("\\", "/")
+                rel_fp = os.path.relpath(filepath, root_dir).replace(os.sep, "/")
                 try:
                     with open(filepath, "r", encoding="utf-8") as fh:
+                        prev_line = ""
                         for idx, line in enumerate(fh, 1):
-                            hit = [c for c in line if c in chars]
-                            if hit:
-                                hit_str = "".join(sorted(set(hit)))
-                                msg = f"{rel_fp}:{idx}  包含簡體字 [{hit_str}]: {line.strip()[:60]}"
+                            simp_hits = [c for c in line if c in simplified_chars]
+                            kana_hits = jp_kana_re.findall(line)
+                            shinjitai_hits = [c for c in line if c in jp_shinjitai_chars]
+                            all_hits = simp_hits + kana_hits + shinjitai_hits
+                            if all_hits:
+                                hit_categories = []
+                                if simp_hits:
+                                    s_str = "".join(sorted(set(simp_hits)))
+                                    hit_categories.append(f"簡體字 [{s_str}]")
+                                if kana_hits or shinjitai_hits:
+                                    j_str = "".join(sorted(set(kana_hits + shinjitai_hits)))
+                                    hit_categories.append(f"日文字元 [{j_str}]")
+                                category_desc = "與".join(hit_categories)
+                                msg = f"{rel_fp}:{idx}  包含{category_desc}: {line.strip()[:60]}"
                                 if rel_fp in ["docs/refactor-backlog.md", "docs/AUDIT-LOG.md"]:
-                                    if any(m in line for m in historical_markers):
+                                    context = line + " " + prev_line
+                                    if any(m in context for m in historical_markers):
                                         infos.append(f"{msg} (歷史紀錄引用例外)")
                                     else:
                                         fails.append(msg)
                                 else:
                                     fails.append(msg)
+                            prev_line = line
                 except Exception as e:
                     fails.append(f"{rel_fp}:0  檔案讀取失敗: {e}")
     return fails, infos
@@ -1948,6 +2000,115 @@ def check_18_tag_integrity(root_dir=None):
         infos.append(f"已知待修復 tag {len(known_bad_seen)} 個（見 KNOWN_BAD_TAGS）: "
                      f"{sorted(known_bad_seen)}")
     infos.append(f"audited-* tag 共 {len(tags)} 個")
+    return fails, infos
+
+
+def check_19_utf8_bom(root_dir=None):
+    """CHECK 19 — ADR-0013 §2C UTF-8 BOM 污染偵測。"""
+    if root_dir is None:
+        root_dir = repo_root
+    fails = []
+    infos = []
+    text_exts = {
+        ".md", ".py", ".json", ".yaml", ".yml", ".txt", ".template",
+        ".js", ".jsx", ".sh", ".ps1", ".html", ".css", ".spec.txt"
+    }
+    scanned = 0
+    for root, dirs, files in os.walk(root_dir):
+        if any(p in root for p in [".git", "node_modules", "__pycache__", ".venv"]):
+            continue
+        for file in files:
+            if any(file.endswith(ext) for ext in text_exts):
+                filepath = os.path.join(root, file)
+                rel_fp = os.path.relpath(filepath, root_dir).replace(os.sep, "/")
+                try:
+                    with open(filepath, "rb") as fh:
+                        header = fh.read(3)
+                        if header == b"\xef\xbb\xbf":
+                            fails.append(f"{rel_fp}:1  檔案開頭包含 UTF-8 BOM (EF BB BF) 污染")
+                    scanned += 1
+                except Exception as e:
+                    fails.append(f"{rel_fp}:0  檔案讀取失敗: {e}")
+    infos.append(f"掃描受守護文字檔共 {scanned} 個")
+    return fails, infos
+
+
+def _is_table_row(line):
+    s = line.strip()
+    return s.startswith("|") and s.endswith("|") and len(s) >= 2
+
+
+def _is_table_separator_row(line):
+    s = line.strip()
+    if not (s.startswith("|") and s.endswith("|")):
+        return False
+    cells = s[1:-1].split("|")
+    if not cells:
+        return False
+    for c in cells:
+        c_str = c.strip()
+        if not c_str or not re.match(r"^:?-+:?$", c_str):
+            return False
+    return True
+
+
+def check_20_markdown_table_continuity(root_dir=None):
+    """CHECK 20 — Markdown 表格連續性（偵測被空白行切斷之表格）。"""
+    if root_dir is None:
+        root_dir = repo_root
+    fails = []
+    infos = []
+    scanned = 0
+    for root, dirs, files in os.walk(root_dir):
+        if any(p in root for p in [".git", "node_modules", "__pycache__", ".venv", "docs/archive", "docs\\archive", "_archive"]):
+            continue
+        for file in files:
+            if file.endswith(".md"):
+                filepath = os.path.join(root, file)
+                rel_fp = os.path.relpath(filepath, root_dir).replace(os.sep, "/")
+                try:
+                    with open(filepath, "r", encoding="utf-8") as fh:
+                        lines = fh.readlines()
+                    in_code = False
+                    fence_char = None
+                    in_table = False
+                    had_blank = False
+                    for idx, line in enumerate(lines):
+                        s = line.strip()
+                        if s.startswith("```") or s.startswith("~~~"):
+                            curr = s[:3]
+                            if not in_code:
+                                in_code = True
+                                fence_char = curr
+                            elif fence_char == curr:
+                                in_code = False
+                                fence_char = None
+                            in_table = False
+                            had_blank = False
+                            continue
+                        if in_code:
+                            continue
+                        if _is_table_row(line):
+                            is_header = (idx + 1 < len(lines) and _is_table_separator_row(lines[idx + 1]))
+                            if is_header:
+                                in_table = True
+                                had_blank = False
+                            elif _is_table_separator_row(line):
+                                had_blank = False
+                            else:
+                                if in_table and had_blank:
+                                    fails.append(f"{rel_fp}:{idx + 1}  表格被空白行切斷（同一表格接續列未緊鄰表格本體）: {s[:60]}")
+                                    had_blank = False
+                        elif not s:
+                            if in_table:
+                                had_blank = True
+                        else:
+                            in_table = False
+                            had_blank = False
+                    scanned += 1
+                except Exception as e:
+                    fails.append(f"{rel_fp}:0  檔案讀取失敗: {e}")
+    infos.append(f"掃描 Markdown 檔案共 {scanned} 個")
     return fails, infos
 
 if __name__ == "__main__":
