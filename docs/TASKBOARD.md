@@ -10,9 +10,9 @@
 `待裁決`（需使用者決定）／`已完成`（仍可能被引用）／
 `可封存`（不影響後續工作，待使用者確認後移入封存區）
 
-**NEXT_WORK**：B-95
+**NEXT_WORK**：C-06
 
-**最後更新**：2026-09-13，B-94 Macro PASS / B-95 Promotion Contract & C-06 Registered
+**最後更新**：2026-09-13，B-95 Macro PASS / Awaiting User Decision
 
 ---
 
@@ -168,7 +168,7 @@
 | B-92 | 已完成 | **`docs/EXEC-LOG.md` 與 `docs/fingerprints/exec-latest.json` 作為 CHECK 17 豁免檔的生命週期** | 豁免檔生命週期已修正。`docs/EXEC-LOG.md` 不再採 generic zero-deletion，改採 fail-closed semantic transition validation（支援歷史列不變、回填 parent hash、追加當批紀錄）；`docs/fingerprints/exec-latest.json` 作為 generated snapshot 正確性由 `fingerprint.py --verify` 守護；真實 Git repo 正反例測試已建立 |
 | B-93 | 已完成 | **Verification Integrity / False-Green Fail-Closed Hardening** | Verification Integrity / False-Green Fail-Closed Hardening 已完成 External Macro Audit PASS，exact-target final micro-fix closed。 |
 | B-94 | 已完成 | **Antigravity Runtime Rule Loadability / UI Freshness Reconciliation** | 執行三層規則機器對帳：repo/disk chars=9973，blob identity PASS（9adda8a）；使用者 IDE reload 後 UI=9973/12000，stale editor buffer 根因確認；Runtime Rule Freshness Reconciliation 正式關閉（CLOSED）。 |
-| B-95 | 進行中 | **Material Finding → TASKBOARD Promotion Contract** | 建立 Material Finding 處置契約：EVERY_ROUND finding disposition（NONE / CURRENT / EXISTING / NEW）；NEW material finding 當輪透過最小 state-sync prompt 產出 repo-visible TASKBOARD 登錄，不得跨輪延宕；無第二 queue；blocking vs non-blocking 路由；Executor 端機械前置檢驗 cross-check。 |
+| B-95 | 已完成 | **Material Finding → TASKBOARD Promotion Contract** | Material Finding → TASKBOARD Promotion Contract 已完成 External Macro Audit PASS，same-round persistence / EVERY_ROUND disposition / Executor mechanical preflight 正式生效。 |
 
 ---
 
