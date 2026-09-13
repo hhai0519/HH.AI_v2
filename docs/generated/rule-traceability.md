@@ -37,10 +37,10 @@
 | .agents/rules/git-and-reporting.md | 52 | ## 2. 回報紀律 | SECTION | §7 | .agents/rules/role-boundaries.md#§7 | RESOLVED |
 | .agents/rules/git-and-reporting.md | 57 | ### 2.0 歷史教訓與已退役之舊回報機制（Historical Rationale / Retired Reporting Mechanism） | TASK | B-36 | docs/TASKBOARD.md | RESOLVED |
 | .agents/rules/git-and-reporting.md | 59 | ### 2.0 歷史教訓與已退役之舊回報機制（Historical Rationale / Retired Reporting Mechanism） | FILE | `docs/EXEC-LOG.md` | docs/EXEC-LOG.md | RESOLVED |
-| .agents/rules/git-and-reporting.md | 78 | # 正規化換行後再算雜湊，確保 Windows(CRLF) 與 Linux(LF) 得到相同結果 | FILE | `PRINCIPLES.md` | PRINCIPLES.md | RESOLVED |
-| .agents/rules/git-and-reporting.md | 78 | # 正規化換行後再算雜湊，確保 Windows(CRLF) 與 Linux(LF) 得到相同結果 | SECTION | §4.2 | PRINCIPLES.md#§4.2 | RESOLVED |
-| .agents/rules/git-and-reporting.md | 128 | # 正規化換行後再算雜湊，確保 Windows(CRLF) 與 Linux(LF) 得到相同結果 | FILE | `PRINCIPLES.md` | PRINCIPLES.md | RESOLVED |
-| .agents/rules/git-and-reporting.md | 128 | # 正規化換行後再算雜湊，確保 Windows(CRLF) 與 Linux(LF) 得到相同結果 | SECTION | §4.2 | PRINCIPLES.md#§4.2 | RESOLVED |
+| .agents/rules/git-and-reporting.md | 78 | ### 2.0 歷史教訓與已退役之舊回報機制（Historical Rationale / Retired Reporting Mechanism） | FILE | `PRINCIPLES.md` | PRINCIPLES.md | RESOLVED |
+| .agents/rules/git-and-reporting.md | 78 | ### 2.0 歷史教訓與已退役之舊回報機制（Historical Rationale / Retired Reporting Mechanism） | SECTION | §4.2 | PRINCIPLES.md#§4.2 | RESOLVED |
+| .agents/rules/git-and-reporting.md | 128 | ### 2.0 歷史教訓與已退役之舊回報機制（Historical Rationale / Retired Reporting Mechanism） | FILE | `PRINCIPLES.md` | PRINCIPLES.md | RESOLVED |
+| .agents/rules/git-and-reporting.md | 128 | ### 2.0 歷史教訓與已退役之舊回報機制（Historical Rationale / Retired Reporting Mechanism） | SECTION | §4.2 | PRINCIPLES.md#§4.2 | RESOLVED |
 | .agents/rules/git-and-reporting.md | 159 | ## 2.1 撰寫測試時，依規格而非依實作 | CHECK | CHECK 8-15 | scripts/check_consistency.py | RESOLVED |
 | .agents/rules/git-and-reporting.md | 161 | ## 2.1 撰寫測試時，依規格而非依實作 | CHECK | CHECK 12 | scripts/check_consistency.py | RESOLVED |
 | .agents/rules/git-and-reporting.md | 161 | ## 2.1 撰寫測試時，依規格而非依實作 | CHECK | CHECK 15 | scripts/check_consistency.py | RESOLVED |
@@ -59,7 +59,7 @@
 | .agents/rules/git-and-reporting.md | 253 | ## 3. 查證紀律 | SECTION | §11 | docs/archive/handover/HANDOVER-pre-router-568209e.md#§11 | RESOLVED |
 | .agents/rules/git-and-reporting.md | 254 | ## 3. 查證紀律 | FILE | `docs/HANDOVER.md` | docs/HANDOVER.md | RESOLVED |
 | .agents/rules/git-and-reporting.md | 256 | ## 3. 查證紀律 | FILE | `PRINCIPLES.md` | PRINCIPLES.md | RESOLVED |
-| .agents/rules/powershell-encoding-protocol.md | 48 | # 強制 UTF-8 宣告 — 置於腳本第一行，禁止省略 | FILE | `.agents/rules/git-and-reporting.md` | .agents/rules/git-and-reporting.md | RESOLVED |
+| .agents/rules/powershell-encoding-protocol.md | 48 | ## 3. PowerShell 強制 UTF-8 宣告 (PowerShell UTF-8 Lock) | FILE | `.agents/rules/git-and-reporting.md` | .agents/rules/git-and-reporting.md | RESOLVED |
 | .agents/rules/prompt-preflight.md | 9 | ## 1. 為什麼有這一條 | ADR | docs/adr/0007-macro-auditor-role.md | docs/adr/0007-macro-auditor-role.md | RESOLVED |
 | .agents/rules/prompt-preflight.md | 23 | ## 2. 這是審查，不是建議 | FILE | `.agents/rules/role-boundaries.md` | .agents/rules/role-boundaries.md | RESOLVED |
 | .agents/rules/prompt-preflight.md | 23 | ## 2. 這是審查，不是建議 | SECTION | §7 | .agents/rules/role-boundaries.md#§7 | RESOLVED |
@@ -135,7 +135,7 @@
 | .claude/rules/auditor-protocol.md | 10 | # 宏觀審計官作業協定 | FILE | `.claude/rules/auditor-selftest.md` | .claude/rules/auditor-selftest.md | RESOLVED |
 | .claude/rules/auditor-protocol.md | 11 | # 宏觀審計官作業協定 | FILE | `AGENTS.md` | AGENTS.md | RESOLVED |
 | .claude/rules/auditor-protocol.md | 12 | # 宏觀審計官作業協定 | FILE | `docs/archive/claude-control-plane/auditor-protocol-pre-slim-76b5e9.md` | docs/archive/claude-control-plane/auditor-protocol-pre-slim-76b5e9.md | RESOLVED |
-| .claude/rules/auditor-protocol.md | 20 | ## 1. 職責範圍 | ADR | docs/adr/0005-three-layer-verification.md | docs/adr/0005-three-layer-verification.md (NOT FOUND; canonical is docs/adr/0005-high-risk-skill-three-layer-review.md) | FAIL_CLOSED |
+| .claude/rules/auditor-protocol.md | 20 | ## 1. 職責範圍 | ADR | docs/adr/0005-high-risk-skill-three-layer-review.md | docs/adr/0005-high-risk-skill-three-layer-review.md | RESOLVED |
 | .claude/rules/auditor-protocol.md | 79 | ### 5.4 逐行 diff 兩個 clone，不只讀回報 | SECTION | §5.1 | docs/refactor-backlog.md#§5.1 | RESOLVED |
 | .claude/rules/auditor-protocol.md | 94 | ### 5.7 規則的層級決定它會不會被執行 | SECTION | §6.1 | .claude/rules/auditor-protocol.md#§6.1 | RESOLVED |
 | .claude/rules/auditor-protocol.md | 95 | ### 5.7 規則的層級決定它會不會被執行 | CHECK | CHECK 11 | scripts/check_consistency.py | RESOLVED |

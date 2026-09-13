@@ -160,6 +160,9 @@ def extract_references_from_file(rel_src, root_dir=REPO_ROOT):
 
     entries = []
     current_heading = "(document root)"
+    in_code_fence = False
+    fence_char = None
+    fence_len = 0
 
     # 快取 docs/adr/ 下所有現存 ADR 檔案
     adr_files = {}
@@ -172,10 +175,25 @@ def extract_references_from_file(rel_src, root_dir=REPO_ROOT):
                     adr_files[m.group(1)] = f"docs/adr/{fname}"
 
     for line_no, line in enumerate(lines, 1):
-        # 標題追踪
-        m_hd = re.match(r"^(#+)\s+(.+)$", line.strip())
-        if m_hd:
-            current_heading = m_hd.group(0).strip()
+        # 圍欄代碼塊追蹤 (支援 ``` 與 ~~~ 圍欄代碼塊)
+        m_fence = re.match(r"^[ ]{0,3}(`{3,}|~{3,})", line)
+        if m_fence:
+            f_chars = m_fence.group(1)
+            fc = f_chars[0]
+            fl = len(f_chars)
+            if not in_code_fence:
+                in_code_fence = True
+                fence_char = fc
+                fence_len = fl
+            elif fc == fence_char and fl >= fence_len and not line[m_fence.end():].strip():
+                in_code_fence = False
+                fence_char = None
+                fence_len = 0
+        elif not in_code_fence:
+            # 僅在非 code fence 且縮排 <= 3 空格時辨識真實 ATX 標題
+            m_hd = re.match(r"^[ ]{0,3}(#{1,6})\s+(.+)$", line)
+            if m_hd:
+                current_heading = m_hd.group(0).strip()
 
         # 1. ADR 引用：ADR-NNNN 或 docs/adr/...
         for m in re.finditer(r"\bADR-(\d{4})\b", line):
@@ -353,10 +371,9 @@ def escape_table_cell(text):
     return str(text).replace("|", "\\|").replace("\r", "").replace("\n", " ")
 
 
-def generate_traceability_content(root_dir=REPO_ROOT):
-    """產生規則追溯表的規範性 Markdown 字串（確定性排序、LF、UTF-8、無動態時間/hash）。"""
+def collect_traceability_entries(root_dir=REPO_ROOT):
+    """收集並排序所有 active control-plane 規則的追溯條目。"""
     scan_files = get_scan_files(root_dir)
-
     all_entries = []
     for sf in scan_files:
         entries = extract_references_from_file(sf, root_dir)
@@ -370,6 +387,23 @@ def generate_traceability_content(root_dir=REPO_ROOT):
         x["raw_ref"],
         x["target"],
     ))
+    return all_entries, scan_files
+
+
+def get_blocking_traceability_entries(entries):
+    """檢查 inventory 條目中是否存在 blocking failure (FAIL_CLOSED)。
+
+    - RESOLVED -> valid
+    - EXTERNAL_URL -> valid (本工具不做 network existence validation，不因網路未查而 fail)
+    - UNRESOLVED_HISTORICAL -> advisory / non-blocking
+    - FAIL_CLOSED -> blocking failure
+    """
+    return [e for e in entries if e.get("status") == "FAIL_CLOSED"]
+
+
+def generate_traceability_content(root_dir=REPO_ROOT):
+    """產生規則追溯表的規範性 Markdown 字串（確定性排序、LF、UTF-8、無動態時間/hash）。"""
+    all_entries, scan_files = collect_traceability_entries(root_dir)
 
     lines = [
         "<!-- GENERATED FILE - DO NOT EDIT -->",
@@ -422,7 +456,17 @@ def write_rule_traceability(root_dir=REPO_ROOT):
 
 
 def check_rule_traceability(root_dir=REPO_ROOT):
-    """比對現存 docs/generated/rule-traceability.md 與期望內容。完全相符 exit 0，不符或缺檔 exit 1。"""
+    """比對現存 docs/generated/rule-traceability.md 與期望內容，並驗證無 blocking 條目。
+
+    驗證要求：
+    1. 生成產物必須存在且為 100% fresh (actual bytes == expected bytes)。
+    2. 生成產物中不得包含 status == FAIL_CLOSED 之 blocking 條目。
+       - RESOLVED -> valid
+       - EXTERNAL_URL -> valid (不做 network existence validation)
+       - UNRESOLVED_HISTORICAL -> advisory / non-blocking
+       - FAIL_CLOSED -> blocking failure
+    任何一項不符合即 exit 1。
+    """
     out_path = os.path.join(root_dir, OUTPUT_REL_PATH)
     if not os.path.exists(out_path):
         print(f"[FAIL] Missing generated artifact: {OUTPUT_REL_PATH}")
@@ -436,15 +480,23 @@ def check_rule_traceability(root_dir=REPO_ROOT):
         print(f"[FAIL] Unable to read {OUTPUT_REL_PATH}: {e}")
         return 1
 
+    all_entries, _ = collect_traceability_entries(root_dir)
     expected = generate_traceability_content(root_dir).replace("\r\n", "\n")
 
-    if actual == expected:
-        print(f"[PASS] {OUTPUT_REL_PATH} is up-to-date and matches current active control plane.")
-        return 0
-    else:
+    if actual != expected:
         print(f"[FAIL] {OUTPUT_REL_PATH} is stale or out of sync with active control plane.")
         print("Run `python scripts/generate_rule_traceability.py --write` to update it.")
         return 1
+
+    blocking = get_blocking_traceability_entries(all_entries)
+    if blocking:
+        print(f"[FAIL] {OUTPUT_REL_PATH} is fresh but contains {len(blocking)} blocking FAIL_CLOSED reference(s):")
+        for b in blocking:
+            print(f"  - {b['source_file']}:{b['line_no']} [{b['ref_type']}] {b['raw_ref']} -> {b['target']}")
+        return 1
+
+    print(f"[PASS] {OUTPUT_REL_PATH} is up-to-date and all explicit references are valid.")
+    return 0
 
 
 def main(argv=None):

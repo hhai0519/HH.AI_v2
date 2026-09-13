@@ -1,5 +1,5 @@
 {
-  "base_head": "5cf8467",
+  "base_head": "c35555e",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 0,
@@ -154,7 +154,7 @@
         "### 11.6 [已退役／不需執行] 歷史 `audited-*` tag 之留痕保存（RETIRED / NOT REQUIRED）"
       ],
       "lines": 443,
-      "sha256": "6e4ea3437ea0847fc9dc76f5559d282bafe4012e983eaae4af1191e6916a50e0"
+      "sha256": "1eb5a5aa255b0c2354c986eef87553559427c12504db00a7a45a3af41a22af5f"
     },
     ".claude/rules/auditor-selftest.md": {
       "fences": 0,
@@ -169,7 +169,7 @@
         "## F. 額度（每一輪回覆的開頭與結尾）"
       ],
       "lines": 129,
-      "sha256": "4cd3f09064b4ffb9f99656e8a2feb9025cd3437e56c9d719492b70b32899ccae"
+      "sha256": "2c717177ea1329161df0e12feb2b0ac9336102d122a5a70c30bacfdc92de1ead"
     },
     ".github/workflows/verify.yml": {
       "fences": 0,
@@ -508,16 +508,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 109,
-      "sha256": "535a87222a9f7f5ce52b213cf934a6d49cb3d295a9fc9cbe530eecc653160cb6"
+      "lines": 110,
+      "sha256": "8d2f1f1ad63e7299816701c6e2fd24592f65bbd481dd45e09a029526fbae4328"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 82,
-      "sha256": "239c12b0d58a214c71973a2d75c3bdfb0d51e9d9e75063ac895f4eb9e490ab23"
+      "lines": 83,
+      "sha256": "69936eb6c6d530d9b1a536591e7287bba0bda7465e91fc08bc2d46b5e28c4e9f"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -553,7 +553,7 @@
         "## 封存區"
       ],
       "lines": 240,
-      "sha256": "9709c9e38e157ef5ed0ea91770c246b64c427ff436fed5c4583f672634e9de48"
+      "sha256": "9d92e232c59c6da8aa86145e7e7f1ddcf04bf0d584470a9d807612bba216159b"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -881,8 +881,8 @@
         "### 5.3 待使用者裁決",
         "### 5.4 進行中／等待回報"
       ],
-      "lines": 3074,
-      "sha256": "3d84b26357813e9a37ffc37b5978f6eea3300f3653fe1955eb8788508f6d26c9"
+      "lines": 3075,
+      "sha256": "226b2120587115ecd536e53f848b92357f114dec377b824b62f42d6766491ced"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -927,8 +927,8 @@
         "# -*- coding: utf-8 -*-",
         "# 確保在 Windows 下標準輸出編碼為 utf-8"
       ],
-      "lines": 464,
-      "sha256": "610bad28ef07fcf558de0e3a48e88e9778bf60e9d297eed37584f32a87ce422c"
+      "lines": 516,
+      "sha256": "c7316579689d2b9f68669ace3edc9900d0916b9069343a1954f5b4460e5f70ba"
     },
     "scripts/tests/test_anchor.py": {
       "fences": 0,
@@ -990,8 +990,8 @@
       "headings": [
         "# -*- coding: utf-8 -*-"
       ],
-      "lines": 166,
-      "sha256": "bdeca5f018a6b8d868e5ed718a4e6961d732a6d4bcfaa488806a073b987a0256"
+      "lines": 271,
+      "sha256": "ed8b641d9a3741ef2ff1cf97cf7af32029fa04dcebd22500c2b6adf370d797c5"
     },
     "scripts/tests/test_spec_create_file.py": {
       "fences": 0,
@@ -1087,7 +1087,7 @@
       "sha256": "77163678353cb7a444f90f17956d03312f715cfcccf933603948715939ecdc10"
     }
   },
-  "generated_at": "2026-09-13T13:46:20Z",
+  "generated_at": "2026-09-13T14:17:35Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

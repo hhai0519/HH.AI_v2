@@ -92,6 +92,44 @@ def test_nearest_heading_attribution(tmp_path):
     assert e3["heading"] == "## Section Beta"
 
 
+def test_fence_aware_heading_attribution_regression(tmp_path):
+    """回歸測試：Markdown fenced code block (``` 與 ~~~) 及縮排註解中的 '# ' 不得污染 Nearest Heading。
+
+    真正 heading -> fenced code 裡 # Fake -> fence 結束 -> 後續 explicit reference
+    後續 reference 的 nearest heading 仍必須是真正 heading，不能是 # Fake。
+    """
+    test_file = tmp_path / "test_fence.md"
+    test_file.write_text(
+        "# Real Heading Alpha\n\n"
+        "```python\n"
+        "# Fake Heading in Backtick Fence\n"
+        "x = 1\n"
+        "```\n\n"
+        "此處在圍欄之後引用 CHECK 1。\n\n"
+        "## Real Heading Beta\n\n"
+        "~~~\n"
+        "# Fake Heading in Tilde Fence\n"
+        "y = 2\n"
+        "~~~\n\n"
+        "此處在波浪號圍欄之後引用 CHECK 2。\n\n"
+        "      # Indented Comment Not Heading\n"
+        "此處在縮排註解之後引用 CHECK 3。\n",
+        encoding="utf-8",
+    )
+
+    entries = grt.extract_references_from_file("test_fence.md", root_dir=str(tmp_path))
+    assert len(entries) == 3
+
+    e1 = next(e for e in entries if e["raw_ref"] == "CHECK 1")
+    assert e1["heading"] == "# Real Heading Alpha", f"期望 # Real Heading Alpha，實際為 {e1['heading']}"
+
+    e2 = next(e for e in entries if e["raw_ref"] == "CHECK 2")
+    assert e2["heading"] == "## Real Heading Beta", f"期望 ## Real Heading Beta，實際為 {e2['heading']}"
+
+    e3 = next(e for e in entries if e["raw_ref"] == "CHECK 3")
+    assert e3["heading"] == "## Real Heading Beta", f"期望 ## Real Heading Beta，實際為 {e3['heading']}"
+
+
 def test_generated_file_does_not_self_scan():
     """驗證 generated artifact 絕不掃描自身，排除 docs/generated/。"""
     scan_files = grt.get_scan_files(REPO_ROOT)
@@ -140,6 +178,67 @@ def test_check_mode_fresh_and_stale(tmp_path, monkeypatch):
     assert grt.check_rule_traceability(root_dir=str(tmp_path)) == 1
 
 
+def test_negative_canary_fresh_artifact_with_blocking_fail_closed_fails_check(tmp_path):
+    """核心負向金絲雀 (Negative Canary)：fresh != valid。
+
+    建立最小 active control-plane source，其中顯式指向不存在的檔案或 ADR。
+    1. --write 產生 fresh artifact
+    2. 驗證 artifact bytes 與 expected 100% 完全一致
+    3. --check 必須仍回傳 non-zero (1)，阻擋 false-green。
+    """
+    (tmp_path / "MISSION.md").write_text(
+        "# Mission\n\n"
+        "顯式指向不存在的目標檔案：[missing](non_existent_file.md)\n"
+        "顯式指向不存在的 ADR：ADR-9999\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "PRINCIPLES.md").write_text("# Principles\n", encoding="utf-8")
+    (tmp_path / "AGENTS.md").write_text("# Agents\n", encoding="utf-8")
+
+    # 1. 寫入 fresh artifact
+    assert grt.write_rule_traceability(root_dir=str(tmp_path)) == 0
+
+    # 2. 驗證 artifact bytes 與 expected 完全一致 (100% fresh)
+    out_path = tmp_path / grt.OUTPUT_REL_PATH
+    actual_bytes = out_path.read_bytes()
+    expected_bytes = grt.generate_traceability_content(root_dir=str(tmp_path)).encode("utf-8")
+    assert actual_bytes == expected_bytes, "artifact 必須與 expected 完全一致"
+
+    # 3. --check 必須仍回傳 non-zero (1)，證明 fresh != valid
+    check_exit = grt.check_rule_traceability(root_dir=str(tmp_path))
+    assert check_exit != 0, f"期望 --check 回傳 non-zero，實際為 {check_exit}"
+
+
+def test_valid_fixture_passes_check(tmp_path):
+    """驗證有效 fixture：explicit target 真實存在 -> --check PASS。"""
+    (tmp_path / "PRINCIPLES.md").write_text("# Principles\n", encoding="utf-8")
+    (tmp_path / "AGENTS.md").write_text("# Agents\n", encoding="utf-8")
+    (tmp_path / "MISSION.md").write_text(
+        "# Mission\n\n"
+        "顯式指向存在的目標檔案：[principles](PRINCIPLES.md)\n",
+        encoding="utf-8",
+    )
+
+    assert grt.write_rule_traceability(root_dir=str(tmp_path)) == 0
+    assert grt.check_rule_traceability(root_dir=str(tmp_path)) == 0
+
+
+def test_unresolved_historical_is_non_blocking_advisory(tmp_path):
+    """驗證 UNRESOLVED_HISTORICAL 屬於 non-blocking advisory，不導致 --check 失敗。"""
+    (tmp_path / "MISSION.md").write_text(
+        "# Mission\n\n"
+        "歷史語境提及 §999 但無明確檔案關聯。\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "PRINCIPLES.md").write_text("# Principles\n", encoding="utf-8")
+    (tmp_path / "AGENTS.md").write_text("# Agents\n", encoding="utf-8")
+
+    entries = grt.extract_references_from_file("MISSION.md", root_dir=str(tmp_path))
+    assert any(e["status"] == "UNRESOLVED_HISTORICAL" for e in entries)
+    assert grt.write_rule_traceability(root_dir=str(tmp_path)) == 0
+    assert grt.check_rule_traceability(root_dir=str(tmp_path)) == 0
+
+
 def test_no_semantic_lineage_guessing(tmp_path):
     """驗證不從自然語言臆測不存在的 semantic lineage（例如未寫 ADR 編號的通篇散文）。"""
     vague_file = tmp_path / "vague.md"
@@ -155,12 +254,18 @@ def test_no_semantic_lineage_guessing(tmp_path):
 
 
 def test_repo_state_traceability_freshness():
-    """Repo-state gate：當前 repository 的 docs/generated/rule-traceability.md 必須完全 fresh。
+    """Repo-state gate：當前 repository 的 docs/generated/rule-traceability.md 必須完全 fresh 且零 blocking 條目。
 
-    未重新產生 artifact 或 active rules 漂移時，本測試在 verify_all 第 4 Gate 中必須 FAIL。
+    未重新產生 artifact、active rules 漂移或存在 blocking FAIL_CLOSED 條目時，本測試在 verify_all 第 4 Gate 中必須 FAIL。
     """
     exit_code = grt.check_rule_traceability(REPO_ROOT)
     assert exit_code == 0, (
-        "docs/generated/rule-traceability.md is stale! "
-        "Run `python scripts/generate_rule_traceability.py --write` to update."
+        "docs/generated/rule-traceability.md is stale or contains blocking FAIL_CLOSED entries! "
+        "Run `python scripts/generate_rule_traceability.py --write` to update and resolve any broken paths."
     )
+
+    # 驗證 generated artifact 內無 blocking FAIL_CLOSED row
+    out_path = os.path.join(REPO_ROOT, grt.OUTPUT_REL_PATH)
+    with open(out_path, "r", encoding="utf-8") as fh:
+        content = fh.read()
+    assert "FAIL_CLOSED" not in content, "docs/generated/rule-traceability.md 不得存在 blocking FAIL_CLOSED 列"

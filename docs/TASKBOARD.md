@@ -12,7 +12,7 @@
 
 **NEXT_WORK**：A-06
 
-**最後更新**：2026-09-13，A-06 Rule Traceability / B-01 Targeted Comparison Recorded
+**最後更新**：2026-09-13，A-06 Micro-Fix & Traceability Correctness / A-14 Regression Registered
 
 ---
 
@@ -33,7 +33,7 @@
 | A-11 | 已完成 | 兩次以上複驗 | 2026-09-02 執行，找出四個缺口 |
 | A-12 | 已完成 | 任務板常駐化與封存機制 | 本檔 ＋ §10 |
 | A-13 | 已完成 | 看板更新的觸發機制 | §10.5 觸發時機明確化為「每一批無例外」、新增 §10.6「最後更新」作為可驗證攔截點、§6.1 第 8 項與 selftest E4b 同步補上 TASKBOARD |
-| A-14 | 已完成 | 對審計官的獨立偵測 | 新增 `.agents/rules/prompt-preflight.md`：執行者在動手前檢查提示詞的七項必要結構元素與所有錨點的唯一性，缺一即停。這是「審計官也不能審自己」的第一層實作 |
+| A-14 | 待辦 | 對審計官的獨立偵測 | 新增 `.agents/rules/prompt-preflight.md`：執行者在動手前檢查提示詞結構元素與所有錨點的唯一性。2026-09-13 實際 regression evidence：A-06 production prompt 缺少 current mandatory structure（batch_mode / FINDING_DISPOSITION / selftest block / active-rule reread / fixed signature），但 Executor 未依 prompt-preflight 機械攔截而直接執行；「Executor 對 Auditor prompt 獨立前置偵測」存在實際 enforcement regression。本批僅登錄，不重設計，列為 Pre-B01 reconciliation candidate |
 | A-15 | 已完成 | 執行者 session 的 context 截斷風險 | 2026-09-02 實際發生：Antigravity 畫面顯示「The server cleared a prefix of the conversation as it grew too large」，自動載入的 `.agents/rules/` 六份規則可能已被丟出 context 而不自知，且**沒有任何跡象會顯示規則失效**。處置：每批提示詞開頭要求從檔案讀取規則（§6.1-10、selftest E12）；並建議一批一個 session |
 | A-16 | 已完成 | 「可機械檢查者必須機械檢查」原則 | 寫入 `PRINCIPLES.md` §2.8。控制的四層（控制／證據／偵測／獨立性），本專案幾乎只做到第一層。新增規則時必須能回答「這條沒做的話，什麼東西會發現？」 |
 | A-17 | 已完成 | §10.1「當輪登錄」的漏洞 | 審計官不能改檔案，只能透過提示詞登錄；當一輪因需裁決而未產出提示詞時，登錄無處可去。A-15 即因此漏掉，直到使用者逐項對帳才發現。處置：§10.1 補上無提示詞輪次的處置程序 |

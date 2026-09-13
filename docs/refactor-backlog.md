@@ -3027,9 +3027,10 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - Verification Integrity / False-Green Fail-Closed Hardening 已完成 External Macro Audit 並正式 CLOSED。
   - Runtime Rule Freshness Reconciliation 已完成 External Macro Audit 並正式 CLOSED。
   - Material Finding → TASKBOARD Promotion Contract 已完成 External Macro Audit 並正式 CLOSED。
-  - Pre-B01 reconciliation / generated traceability implementation 已進入 pending Macro Audit。
+  - generated rule traceability 正處於 bounded correctness repair / pending External Macro Audit。
+  - Executor prompt-preflight enforcement regression 已 repo-visible 登錄。
   - Production routing ready。
-  - 當前與下一步工作任務權威（Current / next work authority）唯一由 `docs/TASKBOARD.md` 的 `**NEXT_WORK**` pointer 保存與導航，交接區不複製 task ID 或待辦佇列。
+  - 當前與下一步工作任務權威（Current / next work authority）仍只由 `docs/TASKBOARD.md` 的 `**NEXT_WORK**` pointer 保存與導航，交接區不複製 task ID 或待辦佇列。
   - Antigravity IDE runtime rule UI freshness 仍需由 runtime reload / fresh session 保證，不能由 CI 直接證明。
 - **待使用者裁決事項**：有（依 §5.3，包含 GitHub main preventive required-check enforcement 決策，屬 non-blocking user decision）。
 - **剩餘工作權威**：以 `docs/TASKBOARD.md` 為唯一 remaining-work authority。

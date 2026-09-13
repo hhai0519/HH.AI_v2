@@ -17,7 +17,7 @@
 
 在每批次完成 push 後，**獨立 clone 實際 GitHub repo**，核對真實檔案內容與 GitHub Actions 機器證據，不依賴執行者產出的文字報告作為審計依據。
 
-執行者負責遷移執行與個別技能的三層核對（見 `docs/adr/0005-three-layer-verification.md`）；
+執行者負責遷移執行與個別技能的三層核對（見 `docs/adr/0005-high-risk-skill-three-layer-review.md`）；
 審計官負責跨批次的全域一致性與架構治理。
 
 ---
