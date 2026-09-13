@@ -1,5 +1,5 @@
 {
-  "base_head": "3b3e7fa",
+  "base_head": "b1e8804",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 0,
@@ -153,7 +153,7 @@
         "### 11.6 [已退役／不需執行] 歷史 `audited-*` tag 之留痕保存（RETIRED / NOT REQUIRED）"
       ],
       "lines": 415,
-      "sha256": "05e2065839784f4d0f7a0520e5826cbbf6d228894be666816fa32cf8a2a9bf9d"
+      "sha256": "f4953a2288255b388cbd05b11141967b510068983b1c5e33c54040dfa73b794b"
     },
     ".claude/rules/auditor-selftest.md": {
       "fences": 0,
@@ -515,8 +515,8 @@
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 69,
-      "sha256": "337485770cbcf38bf790507d40e65ce7f4c1a29fc2e9df90f09060e1777969fc"
+      "lines": 70,
+      "sha256": "f038f964967a63977226bd6764865c2d3c3020e3e5123181d87d78d690a30dc1"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -907,8 +907,8 @@
         "# 已知指向錯誤的歷史 tag。本清單只能縮短、不得加長。",
         "# 修復批次完成後必須清空；清單中的 tag 若已修復卻未移除，CHECK 18 會 FAIL。"
       ],
-      "lines": 1689,
-      "sha256": "b4a1bdff937c1e59a4511d4389614481595d20b2fa3c232cc1041ac2170d7f49"
+      "lines": 1707,
+      "sha256": "fa081ebe85ccfc3e89cd02a741da66e0df673496e8385f8728deba5db3c47883"
     },
     "scripts/fingerprint.py": {
       "fences": 0,
@@ -959,8 +959,8 @@
         "# CHECK 3 Tests: Markdown Links & Path Portability (B-58 R6)",
         "# ---------------------------------------------------------------------------"
       ],
-      "lines": 690,
-      "sha256": "1b83d3f9c837f8eccd644b2540fc77d31c6abd362b09b2f5e4e0044bc3d891d0"
+      "lines": 770,
+      "sha256": "465df89fdee9d2d3b65d3e9f0ae9c51e2421d1da1e28eb0ec16a85cd59b5686d"
     },
     "scripts/tests/test_fingerprint.py": {
       "fences": 0,
@@ -1034,7 +1034,7 @@
       "sha256": "77163678353cb7a444f90f17956d03312f715cfcccf933603948715939ecdc10"
     }
   },
-  "generated_at": "2026-09-13T04:39:35Z",
+  "generated_at": "2026-09-13T05:00:54Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

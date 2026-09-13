@@ -665,8 +665,9 @@ def check_8_taskboard_metadata_purity(root_dir=None, git_head=None, git_prev=Non
     # ---------------------------------------------------------
     nw_markers = []
     for idx, line in enumerate(lines, 1):
-        if re.search(r"\*\*NEXT_WORK\*\*[:：]", line):
-            nw_markers.append((idx, line.strip()))
+        m = re.match(r"^\s*(?:[-*]\s*)?\*\*NEXT_WORK\*\*[:：]\s*(.*?)\s*$", line)
+        if m:
+            nw_markers.append((idx, line.strip(), m.group(1).strip()))
 
     if len(nw_markers) == 0:
         fails.append("docs/TASKBOARD.md:0  未找到『NEXT_WORK』標記")
@@ -675,8 +676,8 @@ def check_8_taskboard_metadata_purity(root_dir=None, git_head=None, git_prev=Non
         fails.append(f"docs/TASKBOARD.md: 找到多個『NEXT_WORK』標記 (共 {len(nw_markers)} 個)")
         return fails, infos
 
-    nw_line_no, nw_line_text = nw_markers[0]
-    nw_payload = re.sub(r"^\*\*NEXT_WORK\*\*[:：]\s*", "", nw_line_text).strip()
+    nw_line_no, nw_line_text, raw_payload = nw_markers[0]
+    nw_payload = raw_payload.strip()
 
     # 5. pointer 本身不得保存 Git HEAD、checkpoint、commit hash、CI run ID、range
     if re.search(r"\bHEAD\b", nw_payload, re.IGNORECASE):
@@ -691,9 +692,10 @@ def check_8_taskboard_metadata_purity(root_dir=None, git_head=None, git_prev=Non
     if hex_hashes:
         fails.append(f"docs/TASKBOARD.md:{nw_line_no}  『NEXT_WORK』標記不得保存 Git commit hash")
 
-    # 解析 TASKBOARD 中所有任務資料列
+    # 解析 TASKBOARD 中所有任務資料列（正規任務 ID 格式：^[A-G]-\d{2,}$）
     task_rows = {}
     all_active_tasks = []
+    ALLOWED_ACTIVE_STATUSES = {"待辦", "進行中", "待裁決"}
     for idx, line in enumerate(lines, 1):
         line_s = line.strip()
         if not line_s.startswith("|"):
@@ -704,35 +706,51 @@ def check_8_taskboard_metadata_purity(root_dir=None, git_head=None, git_prev=Non
             status = parts[2]
             if tid in ("ID", "---", "#", "事故編號") or set(tid) <= {"-", ":", " "}:
                 continue
-            if re.match(r"^[A-Za-z0-9_-]+$", tid):
+            if re.match(r"^[A-G]-\d{2,}$", tid):
                 task_rows.setdefault(tid, []).append((idx, status, line_s))
-                if any(status.startswith(act) for act in ("待辦", "進行中", "待裁決")):
+                clean_st = status.strip("` \t")
+                if clean_st in ALLOWED_ACTIVE_STATUSES or any(
+                    clean_st.startswith(f"{act} ")
+                    or clean_st.startswith(f"{act}/")
+                    or clean_st.startswith(f"{act}（")
+                    or clean_st.startswith(f"{act}(")
+                    for act in ALLOWED_ACTIVE_STATUSES
+                ):
                     all_active_tasks.append(tid)
 
-    # 2. 值只能為合法 task ID 或 NONE
-    if nw_payload == "NONE":
+    clean_payload = nw_payload.strip("` \t")
+
+    # 2. 值只能為合法 task ID (格式: ^[A-G]-\d{2,}$) 或 NONE
+    if clean_payload == "NONE":
         # 6. NEXT_WORK = NONE 時，TASKBOARD 不得仍存在待辦、進行中、待裁決 active work
         if all_active_tasks:
             fails.append(f"docs/TASKBOARD.md:{nw_line_no}  NEXT_WORK 為 NONE 但任務看板仍存在 active work (共 {len(all_active_tasks)} 項: {', '.join(all_active_tasks[:5])})")
         else:
             infos.append(f"docs/TASKBOARD.md:{nw_line_no}  NEXT_WORK = NONE (看板無 active work)")
     else:
-        # 檢查 task ID 格式
-        if not re.match(r"^[A-Za-z0-9_-]+$", nw_payload):
-            fails.append(f"docs/TASKBOARD.md:{nw_line_no}  『NEXT_WORK』值只能為合法 task ID 或 NONE (當前值: '{nw_payload}')")
+        # 檢查 task ID 命名空間格式（嚴格限制為 HH.AI_v2 正式 task namespace A-G）
+        if not re.match(r"^[A-G]-\d{2,}$", clean_payload):
+            fails.append(f"docs/TASKBOARD.md:{nw_line_no}  『NEXT_WORK』值只能為合法 task ID (格式: ^[A-G]-\\d{{2,}}$) 或 NONE (當前值: '{nw_payload}')")
         else:
             # 3. task ID 必須在 TASKBOARD 恰好存在一列
-            if nw_payload not in task_rows:
-                fails.append(f"docs/TASKBOARD.md:{nw_line_no}  『NEXT_WORK』指向不存在的任務 ID: {nw_payload}")
-            elif len(task_rows[nw_payload]) > 1:
-                fails.append(f"docs/TASKBOARD.md:{nw_line_no}  『NEXT_WORK』指向的任務 ID 存在多個定義: {nw_payload} (共 {len(task_rows[nw_payload])} 列)")
+            if clean_payload not in task_rows:
+                fails.append(f"docs/TASKBOARD.md:{nw_line_no}  『NEXT_WORK』指向不存在的任務 ID: {clean_payload}")
+            elif len(task_rows[clean_payload]) > 1:
+                fails.append(f"docs/TASKBOARD.md:{nw_line_no}  『NEXT_WORK』指向的任務 ID 存在多個定義: {clean_payload} (共 {len(task_rows[clean_payload])} 列)")
             else:
-                target_line_no, target_status, _ = task_rows[nw_payload][0]
-                # 4. 不得指向：已完成、可封存
-                if any(target_status.startswith(done) for done in ("已完成", "可封存")):
-                    fails.append(f"docs/TASKBOARD.md:{nw_line_no}  『NEXT_WORK』不得指向已完成或可封存的任務 (指向 {nw_payload}，狀態: {target_status})")
+                target_line_no, target_status, _ = task_rows[clean_payload][0]
+                clean_target_status = target_status.strip("` \t")
+                # 4. 白名單限制：目標狀態必須明確屬於待辦、進行中、待裁決
+                if clean_target_status not in ALLOWED_ACTIVE_STATUSES and not any(
+                    clean_target_status.startswith(f"{act} ")
+                    or clean_target_status.startswith(f"{act}/")
+                    or clean_target_status.startswith(f"{act}（")
+                    or clean_target_status.startswith(f"{act}(")
+                    for act in ALLOWED_ACTIVE_STATUSES
+                ):
+                    fails.append(f"docs/TASKBOARD.md:{nw_line_no}  『NEXT_WORK』目標任務狀態不合法 (指向 {clean_payload}，狀態: '{target_status}'；只允許: 待辦、進行中、待裁決)")
                 else:
-                    infos.append(f"docs/TASKBOARD.md:{nw_line_no}  NEXT_WORK = {nw_payload} (狀態: {target_status})")
+                    infos.append(f"docs/TASKBOARD.md:{nw_line_no}  NEXT_WORK = {clean_payload} (狀態: {target_status})")
 
     return fails, infos
 

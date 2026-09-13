@@ -48,14 +48,14 @@ def _setup_check_9_env(tmp_path, checkpoint_hash, audit_rows, bl_extra=""):
 
 def _make_taskboard_content(
     last_updated="**最後更新**：2026-09-13，Router / Anti-Loop / State Placement Hardening",
-    next_work="**NEXT_WORK**：X-01",
+    next_work="**NEXT_WORK**：G-90",
     tasks=None,
 ):
     if tasks is None:
         tasks = [
-            ("X-01", "待辦", "Synthetic active task"),
-            ("X-02", "已完成", "Synthetic completed task"),
-            ("X-03", "可封存", "Synthetic archivable task"),
+            ("G-90", "待辦", "Synthetic active task"),
+            ("G-91", "已完成", "Synthetic completed task"),
+            ("G-92", "可封存", "Synthetic archivable task"),
         ]
     rows = ["# 看板", last_updated]
     if next_work is not None:
@@ -76,7 +76,67 @@ def test_check_8_taskboard_metadata_purity_pass(tmp_path):
     tb.write_text(_make_taskboard_content(), encoding="utf-8")
     fails, infos = check_8_taskboard_head(str(tmp_path))
     assert len(fails) == 0
-    assert any("NEXT_WORK = X-01" in i for i in infos)
+    assert any("NEXT_WORK = G-90" in i for i in infos)
+
+
+def test_check_8_pass_active_status_in_progress(tmp_path):
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    tb = docs / "TASKBOARD.md"
+    tasks = [
+        ("G-90", "進行中", "Synthetic active task in progress"),
+        ("G-91", "已完成", "Synthetic completed task"),
+    ]
+    tb.write_text(_make_taskboard_content(tasks=tasks), encoding="utf-8")
+    fails, infos = check_8_taskboard_head(str(tmp_path))
+    assert len(fails) == 0
+    assert any("NEXT_WORK = G-90 (狀態: 進行中)" in i for i in infos)
+
+
+def test_check_8_pass_active_status_pending_decision(tmp_path):
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    tb = docs / "TASKBOARD.md"
+    tasks = [
+        ("G-90", "待裁決", "Synthetic active task pending decision"),
+        ("G-91", "已完成", "Synthetic completed task"),
+    ]
+    tb.write_text(_make_taskboard_content(tasks=tasks), encoding="utf-8")
+    fails, infos = check_8_taskboard_head(str(tmp_path))
+    assert len(fails) == 0
+    assert any("NEXT_WORK = G-90 (狀態: 待裁決)" in i for i in infos)
+
+
+def test_check_8_fail_illegal_task_namespace_even_with_matching_row(tmp_path):
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    tb = docs / "TASKBOARD.md"
+    tasks = [
+        ("X-01", "待辦", "Synthetic task with non-A-G namespace"),
+    ]
+    tb.write_text(
+        _make_taskboard_content(next_work="**NEXT_WORK**：X-01", tasks=tasks),
+        encoding="utf-8",
+    )
+    fails, infos = check_8_taskboard_head(str(tmp_path))
+    assert len(fails) >= 1
+    assert any("只能為合法 task ID" in f for f in fails)
+
+
+def test_check_8_fail_unknown_status(tmp_path):
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    tb = docs / "TASKBOARD.md"
+    tasks = [
+        ("G-90", "未知狀態", "Synthetic task with invalid status"),
+    ]
+    tb.write_text(
+        _make_taskboard_content(next_work="**NEXT_WORK**：G-90", tasks=tasks),
+        encoding="utf-8",
+    )
+    fails, infos = check_8_taskboard_head(str(tmp_path))
+    assert len(fails) >= 1
+    assert any("目標任務狀態不合法" in f for f in fails)
 
 
 def test_check_8_taskboard_metadata_purity_fail_sha_duplication(tmp_path):
@@ -147,11 +207,31 @@ def test_check_8_fail_duplicate_next_work_marker(tmp_path):
     docs = tmp_path / "docs"
     docs.mkdir()
     tb = docs / "TASKBOARD.md"
-    content = _make_taskboard_content(next_work="**NEXT_WORK**：X-01\n**NEXT_WORK**：X-02")
+    content = _make_taskboard_content(next_work="**NEXT_WORK**：G-90\n**NEXT_WORK**：G-91")
     tb.write_text(content, encoding="utf-8")
     fails, infos = check_8_taskboard_head(str(tmp_path))
     assert len(fails) >= 1
     assert any("找到多個『NEXT_WORK』標記" in f for f in fails)
+
+
+def test_check_8_pass_narrative_text_mentioning_next_work(tmp_path):
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    tb = docs / "TASKBOARD.md"
+    content = (
+        "# 看板\n"
+        "**最後更新**：2026-09-13，Router / Anti-Loop / State Placement Hardening\n"
+        "**NEXT_WORK**：G-90\n\n"
+        "> 請讀 `**NEXT_WORK**` pointer\n"
+        "文件說明 **NEXT_WORK**：由 TASKBOARD 管理\n\n"
+        "| ID | 狀態 | 項目 | 備註 |\n"
+        "|---|---|---|---|\n"
+        "| G-90 | 待辦 | Synthetic active task | 說明文字包含 **NEXT_WORK**：G-90 |\n"
+    )
+    tb.write_text(content, encoding="utf-8")
+    fails, infos = check_8_taskboard_head(str(tmp_path))
+    assert len(fails) == 0
+    assert any("NEXT_WORK = G-90" in i for i in infos)
 
 
 def test_check_8_fail_nonexistent_task_id(tmp_path):
@@ -159,7 +239,7 @@ def test_check_8_fail_nonexistent_task_id(tmp_path):
     docs.mkdir()
     tb = docs / "TASKBOARD.md"
     tb.write_text(
-        _make_taskboard_content(next_work="**NEXT_WORK**：NONEXISTENT-99"),
+        _make_taskboard_content(next_work="**NEXT_WORK**：G-99"),
         encoding="utf-8",
     )
     fails, infos = check_8_taskboard_head(str(tmp_path))
@@ -172,12 +252,12 @@ def test_check_8_fail_points_to_completed(tmp_path):
     docs.mkdir()
     tb = docs / "TASKBOARD.md"
     tb.write_text(
-        _make_taskboard_content(next_work="**NEXT_WORK**：X-02"),
+        _make_taskboard_content(next_work="**NEXT_WORK**：G-91"),
         encoding="utf-8",
     )
     fails, infos = check_8_taskboard_head(str(tmp_path))
     assert len(fails) >= 1
-    assert any("不得指向已完成或可封存的任務" in f for f in fails)
+    assert any("目標任務狀態不合法" in f for f in fails)
 
 
 def test_check_8_fail_points_to_archivable(tmp_path):
@@ -185,12 +265,12 @@ def test_check_8_fail_points_to_archivable(tmp_path):
     docs.mkdir()
     tb = docs / "TASKBOARD.md"
     tb.write_text(
-        _make_taskboard_content(next_work="**NEXT_WORK**：X-03"),
+        _make_taskboard_content(next_work="**NEXT_WORK**：G-92"),
         encoding="utf-8",
     )
     fails, infos = check_8_taskboard_head(str(tmp_path))
     assert len(fails) >= 1
-    assert any("不得指向已完成或可封存的任務" in f for f in fails)
+    assert any("目標任務狀態不合法" in f for f in fails)
 
 
 def test_check_8_fail_none_with_active_work(tmp_path):
@@ -211,8 +291,8 @@ def test_check_8_none_without_active_work_pass(tmp_path):
     docs.mkdir()
     tb = docs / "TASKBOARD.md"
     tasks_all_done = [
-        ("X-01", "已完成", "All done"),
-        ("X-02", "可封存", "All archivable"),
+        ("G-91", "已完成", "All done"),
+        ("G-92", "可封存", "All archivable"),
     ]
     tb.write_text(
         _make_taskboard_content(next_work="**NEXT_WORK**：NONE", tasks=tasks_all_done),

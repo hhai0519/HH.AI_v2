@@ -295,10 +295,10 @@ EXACT_SPEC 提示詞中的錨點文字，產出前必須逐一驗證在目標檔
 
 E1 必須排在 E2 之前且用拋棄式對話。
 自檢清單（`auditor-selftest.md`）進 repo；注入測試題目與答案卷由使用者與審計官保管，不進 repo。
-**E1 → E2 Repo-Visible State Bridge**：E1 通過後、啟動 D-02 前，透過正常執行者狀態同步 commit 使 repo 產生可見狀態流轉（如看板 A-07 / D-01 標記已完成，D-02 標記 Ready／進行中）。原則：只保存 PASS 狀態流轉，絕對不保存測試秘密。
+**E1 → E2 Repo-Visible State Bridge**：E1 通過後、啟動後續驗證階段前，透過正常執行者狀態同步 commit 使 repo 產生可見狀態流轉（如前置驗證項目標記已完成，後續驗證項目標記 Ready／進行中）。原則：只保存 PASS 狀態流轉，絕對不保存測試秘密。
 
 **驗證階段去錨定（De-Anchoring of Completed Stages）**：
-上述驗證階段（E1/E2/E3）為一次性前置驗證機制，非每個新 Fresh Session 的例行 startup task。一旦完成並判定 PASS（如 D-01、D-02 已完成），其結果由 `docs/TASKBOARD.md`、`docs/AUDIT-LOG.md` 與版本庫歷史證據永久保留；後續常態 Fresh Session 直接依通用路由器（HEAD == checkpoint → `docs/TASKBOARD.md` 的 `**NEXT_WORK**` pointer）導向常態生產任務，絕不自動重複執行已完成之交接驗證階段。
+上述驗證階段（E1/E2/E3）為一次性前置驗證機制，非每個新 Fresh Session 的例行 startup task。任一 validation stage 一旦由 canonical `docs/TASKBOARD.md` / audit evidence 正式記錄為 completed / PASS，後續 Fresh Session 不因該 stage definition 仍存在於 protocol 而自動重跑；其結果由版本庫歷史證據永久保留。後續常態 Fresh Session 直接依通用路由器（HEAD == checkpoint → `docs/TASKBOARD.md` 的 `**NEXT_WORK**` pointer）導向常態生產任務，絕不自動重複執行已完成之交接驗證階段。
 
 ---
 
