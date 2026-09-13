@@ -12,7 +12,7 @@
 
 **NEXT_WORK**：B-01
 
-**最後更新**：2026-09-13，Pre-Handoff Router / Anti-Loop Hardening Macro Audit PASS / Production Routing Ready
+**最後更新**：2026-09-13，Pre-Handoff final consistency repair
 
 ---
 
@@ -75,7 +75,7 @@
 | ID | 狀態 | 項目 | 備註 |
 |---|---|---|---|
 | B-01 | 待辦 | ADR-0002／0004／0010 分層搬移 | Claude 負責 production prompt 與 Macro Audit，Antigravity 負責 implementation |
-| B-02 | 已完成 | `check_consistency.py` 增補檢查（CHECK 8-15） | CHECK 8 看板 HEAD 落後、9 交接區 HEAD 落後、10 §X.Y 章節引用有效性、11 §6.1 與 selftest E 對應、12 AUDIT-LOG 最新列落後、13 檔尾換行、14 簡體字、15 提示詞衝突字串。本批擴充至 15 項，全數通過 |
+| B-02 | 已完成 | `check_consistency.py` 增補檢查（CHECK 8-15） | CHECK 8 看板 HEAD 落後、9 交接區 HEAD 落後、10 §X.Y 章節引用有效性、11 §6.1 與 selftest E 對應、12 AUDIT-LOG latest audit evidence 必須位於 current HEAD ancestry（允許多個合法 pending repair commits，raw ancestry distance 不再是 FAIL threshold）、13 檔尾換行、14 簡體字、15 提示詞衝突字串。本批擴充至 15 項，全數通過 |
 | B-03 | 待辦 | 新建 `SOP/SOP_03_Skill_Lifecycle_and_Quality.md` | 收納舊 `SOP_00` §一／§三／§四與舊 `SOP_03` §4.2／§4.3，見第 18 點 |
 | B-04 | 待辦 | `validate_skills.py` 加 description 觸發詞警告 ＋ 測試 | 警告非錯誤，現存多個技能會失敗 |
 | B-05 | 待辦 | DLP 裝飾樣板存量清理（25 份 SKILL.md） | 源頭已斷，見第 17 點 |
@@ -87,7 +87,7 @@
 | B-11 | 已完成 | CHECK 15 名稱漂移 | 實作與 docstring 已改為「交接區 §5.1 的 commit hash 語境衝突」，但第 19／448／450 行三處顯示字串仍是舊名稱，**執行輸出對使用者顯示的與它實際做的事無關**。§6.7 的第六次發生。本批修復 |
 | B-12 | 可封存 | **`audited-*` tag 落後偵測（CHECK 16）** | 被 AUDIT-LOG、refactor-backlog §5.1 與 GitHub Actions Remote Health Authority supersede。audited-* tag 已退役為 legacy historical markers，失去 active authority 用途，不再實作 tag-lag CHECK。 |
 | B-13 | 已完成 | §5.1 項目符號必須帶 commit hash | CHECK 15 靠反引號包住的 hash 判斷語境，2026-09-05 實測末項無 hash、「待核對 0 個」——機制存在但輸入不合格。處置：規則寫入 `auditor-protocol.md` §9.3 |
-| B-14 | 已完成 | **執行者側的檢查紀錄檔** | 執行者每批做的結構元素、配對／覆蓋、自檢聲明交叉驗證，此前**只存在於回報中，repo 無痕跡**——那是整套機制最後一個沒有證據的環節。審計官有 `docs/AUDIT-LOG.md`，執行者這一側什麼都沒有。處置：建立 `docs/EXEC-LOG.md`（規則見 `.agents/rules/prompt-preflight.md` §3.8），並新增 CHECK 16 驗證其不落後於 HEAD，判準與 CHECK 12 對 `docs/AUDIT-LOG.md` 相同 |
+| B-14 | 已完成 | **執行者側的檢查紀錄檔** | 執行者每批做的結構元素、配對／覆蓋、自檢聲明交叉驗證，此前**只存在於回報中，repo 無痕跡**——那是整套機制最後一個沒有證據的環節。審計官有 `docs/AUDIT-LOG.md`，執行者這一側什麼都沒有。處置：建立 `docs/EXEC-LOG.md`（規則見 `.agents/rules/prompt-preflight.md` §3.8），並新增 CHECK 16；CHECK 16 獨立守護 Executor EXEC-LOG evidence lifecycle / freshness，CHECK 12 獨立守護 Auditor AUDIT-LOG ancestry validity，兩者為獨立職責，不再宣稱判準相同 |
 | B-15 | 已完成 | **CHECK 1-7 沒有函式也沒有測試** | 2026-09-05 實測：CHECK 1 至 7 內嵌在 `run_checks()` 中，無獨立函式、無測試。**審計官已於本批做反例注入實測**：逐一破壞後確認七項皆能正確 FAIL，結果見 `docs/AUDIT-LOG.md`。判定為**不需重構為獨立函式**——它們自 2026-08-29 起每批都在跑且多次實際命中真實缺陷，反例注入已證明其有效性；重構的風險高於收益 |
 | B-16 | 待辦 | **全庫規則的一次性回溯稽核** | 重構至今所有規則與 backlog 的歷史宣稱，多數是審計官在對話中推算而非實測，從未被機械驗證。實測規模：規則檔 11 份共 1,939 行（含 43 處日期宣稱、8 處「第 N 次」計數宣稱），`refactor-backlog.md` 1,941 行 42 個編號項目（含 79 處日期宣稱）。**審計官已被抓到過四次數字錯誤（7 個檔案、15 個檔案、848 行、89／211 行），沒有理由相信這些未驗證的宣稱是對的。** 拆為三批：**R1** 八處「第 N 次」計數（**2026-09-06 使用者裁決改判為交接後執行**：R1 修正的是留痕層的歷史數字，不影響新 Agent 的行為判斷；該裁決原僅存於交接區 §5.4，本批搬入本列與 `docs/refactor-backlog.md` 第 53 點 B 段）、**R2** 規則檔 43 處日期（可後做）、**R3** backlog 42 點的內部一致性（可後做） |
 | B-17 | 待辦 | **章節語意變更偵測** | 來自 A-29 行為 1 的缺口。CHECK 10 驗證 `§X.Y` 指向的章節是否**存在**，但抓不到「章節仍存在、語意已變」——例如交接區 §5.2 現在只剩一行指標，引用它的「優先序」已失效但章節仍在。舊實作用三個硬編碼字串處理，零通用性。**須重新設計**：可能方向是比對章節的行數或內容雜湊在批次間的變化，對引用該章節的位置提出警示。**可交接後做** |

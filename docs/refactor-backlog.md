@@ -3019,8 +3019,10 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - 若 `HEAD != checkpoint` → `checkpoint..HEAD` 即為尚待宏觀審計之 commit range（包含 checkpoint 之後至當前 HEAD 間所有 pending / repair commits，不因 commit 數量直接判定 FAIL）
 - **交接與審計生命週期（Handoff & Audit Lifecycle）**：
   - Formal Production Handoff 已完成（D-01 / D-02 PASS）。
-  - Pre-Handoff Router / Anti-Loop Hardening 已完成 Macro Audit PASS。
+  - Pre-Handoff Router / Anti-Loop Hardening 主體已完成。
+  - 2531514 post-audit consistency repair 正在進行／本 repair implementation complete 後 pending Macro Audit。
   - 當前與下一步工作任務值（Current / next work task value）唯一由 `docs/TASKBOARD.md` 的 `**NEXT_WORK**` pointer 保存，交接區不複製 task ID 或待辦佇列。
+  - Antigravity IDE runtime rule UI freshness 必須在進入下一個 production task 前確認 reload/reopen。
 - **待使用者裁決事項**：無（依 §5.3，NONE）。
 - **剩餘工作權威**：以 `docs/TASKBOARD.md` 為唯一 remaining-work authority。
 

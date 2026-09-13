@@ -114,7 +114,10 @@
 5. `git add` 一律明確路徑，禁止 `-A` 與 `.`。GOAL_SPEC 實際路徑由執行者自 diff 產生逐檔 explicit git add，不要求 Auditor 預先列出 exact file list；EXACT_SPEC 依規格 targets。
 6. 結尾固定要求純文字回覆與署名行（「以上是 Antigravity IDE Agent 的回覆」）。
 7. **對話回報通道約束（Repo Evidence Channel）**：正常成功之對話回覆預設採用單行 `COMMIT <full-sha> | CI PASS | S1 NONE`，不得預設要求執行者張貼任何 full diff、full file 或 terminal output。唯有在 GitHub 遠端服務異常、審計官明確指示特定片段或 push 前本地 blocking 時，才例外允許張貼最小必要片段。
-8. **每份提示詞都必須包含三項更新指令：交接區、`docs/TASKBOARD.md`、`docs/AUDIT-LOG.md`**（見 §9.3、§10.5、§7.1），與更新 `docs/refactor-backlog.md` 同級。TASKBOARD 需更新項目狀態流轉、新缺口登錄、封存建議，以及「最後更新」那一行的日期與當前工作描述（不記錄 Git HEAD 或 checkpoint hash）。
+8. **每份提示詞都必須明確聲明三個狀態／證據領域（交接區、`docs/TASKBOARD.md`、`docs/AUDIT-LOG.md`）本批的處置（disposition）**（見 §9.3、§10.5、§7.1）：
+   - `docs/refactor-backlog.md` §5：UPDATE 或 NO CHANGE（附理由）。
+   - `docs/TASKBOARD.md`：UPDATE 或 NO CHANGE（附理由；更新時包含狀態流轉、缺口登錄或最後更新描述，不寫入 Git hash）。
+   - `docs/AUDIT-LOG.md`：**僅在存在「已由宏觀審計官獨立成立之 verdict」需進行 repo-visible sync 時才 UPDATE**；若無新 Macro verdict，提示詞必須明確宣告 `AUDIT-LOG = NO CHANGE (no new Macro Auditor verdict)`。執行者不得為了通過 preflight 自行製造審計結論。
 9. **確認執行者本機與遠端同步**：提示詞必須要求執行者先 `git pull origin main` 並確認 HEAD 與提示詞假設一致。
 10. **提示詞開頭要求執行者從檔案讀取規則，不依賴自動載入**：必須包含「動手前必讀」，要求執行者重新從檔案讀取 active rules，避免 session prefix truncation 導致規則遺失。讀取確認紀錄寫入 `docs/EXEC-LOG.md`，不把完整規則貼入對話。
 11. **配對與覆蓋（模式感知）**：

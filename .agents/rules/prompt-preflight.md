@@ -138,7 +138,7 @@
 | E2 基準與規格識別 | 提示詞載明基準 commit full OID（EXACT_SPEC 另需批次規格或 SHA-256），交由確定性工具比對；GOAL_SPEC 僅需 base OID 與 Allowed Scope，不要求規格，**亦不再要求手寫檔案總行數作為 blocking truth** |
 | E5 `git add` 明確路徑 | 有「嚴禁 `git add -A` 或 `git add .`」禁令。GOAL_SPEC 實際路徑由執行者自 diff 產生逐檔 explicit git add，不要求 Auditor 預測實作檔案；EXACT_SPEC 依規格 targets |
 | E6 結尾格式 | 有要求純文字與署名行 |
-| E8 三項更新 | 修改指令中有「交接區」「TASKBOARD」「AUDIT-LOG」三者（或明確說明本批無核對事實例外） |
+| E8 三項狀態領域處置 | 提示詞明確聲明交接區、TASKBOARD 與 AUDIT-LOG 三項處置（UPDATE 或 NO CHANGE 附理由；無新審計結論時 AUDIT-LOG 應明確標記 NO CHANGE，不得迫使執行者自造 verdict） |
 | E9 `git pull` | 有 `git pull origin main` 且指明預期 HEAD |
 | E12 動手前必讀 | 有要求讀取規則檔或執行基準前置檢查 |
 | E3 錨點原文定位 | 修改指令依模式區分：EXACT_SPEC 附 structural anchor 原文或唯一語意識別字；GOAL_SPEC 僅定義目標、邊界與驗收準則，不要求錨點。**固定行號僅作輔助說明，非 blocking truth** |
@@ -201,6 +201,15 @@
 目標檔案行數、圍欄數、測試數量、CHECK 總數、套用後行數／圍欄數及 INFO 輸出等，皆為**確定性工具在執行當下產出的衍生診斷數值（derived diagnostic truth）**。
 **提示詞不得再將這些衍生數值抄寫為 expected blocking truth，執行者亦不得因手寫衍生數值不符而停止執行。**
 所有內容完整性、重放正確性與變更安全，一律交由 Batch Spec 與 repository machine tools（如 BPE、`check_consistency.py` CHECK 17 規格重放、`fingerprint.py --verify` 等）嚴格守護。
+
+**執行期規則新鮮度契約（Runtime Rule Freshness Contract）**：
+1. GitHub CI 驗證的是 committed repository rule artifact，不是 Antigravity IDE Rule UI 的 runtime cache。
+2. Executor 每批仍必須從 local filesystem 實體檔案重新讀取 active rules；auto-loaded / cached Rule UI 不得取代 explicit reread。
+3. 若 IDE Rule UI 顯示內容／字元數與 local disk + HEAD blob 不一致：
+   - HEAD / local disk 為 repository truth。
+   - UI 視為 stale runtime cache，嚴禁將 stale UI 內容保存回 repo。
+   - 在進入下一個 production task 前 reload / reopen rule context 或使用 fresh session。
+4. 此問題屬 runtime freshness，不能宣稱 GitHub CI 可以驗證 IDE cache。
 
 ## 3.7 E 節每一項都可機械驗證，沒有例外
 

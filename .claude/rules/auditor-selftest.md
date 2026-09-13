@@ -90,7 +90,7 @@
 - [ ] E5 `git add` 一律明確路徑，且明寫禁止 `-A` 與 `.`？GOAL_SPEC 實際路徑由執行者自 diff 產生逐檔 explicit git add，不要求 Auditor 預測實作檔案；EXACT_SPEC 依規格 targets？（§6.1-5）
 - [ ] E6 結尾固定要求純文字回覆與署名行？（§6.1-6）
 - [ ] E7 Reporting Channel 契約——正常成功對話回覆僅需 COMMIT <sha> | CI PASS | S1 NONE 加上固定署名行，未預設要求 full diff / full file / terminal dump？（§6.1-7）
-- [ ] E8 **有包含「更新交接區」、「更新 `docs/TASKBOARD.md`」與「更新 `docs/AUDIT-LOG.md`」三項？**（§6.1-8）
+- [ ] E8 **提示詞明確聲明交接區、`docs/TASKBOARD.md` 與 `docs/AUDIT-LOG.md` 三項狀態領域之處置（disposition：UPDATE 或明確標記 NO CHANGE 及原因；無新審計結論時 AUDIT-LOG 宣告 NO CHANGE，禁止逼迫執行者自造審計結論）？**（§6.1-8）
 - [ ] E9 有要求執行者先 `git pull origin main` 並確認 HEAD 一致？（§6.1-9）
 - [ ] E10 零命中類的條件，我檢查過自己的指令會不會產生該字串？（§6.2）
 - [ ] E11 **每一個錨點都已透過確定性工具（BPE、count() 或 spec parser）驗證在目標檔案中 count == 1？**（僅 EXACT_SPEC 適用；GOAL_SPEC 標記為 N/A）（§6.1-11，見 §6.6）
