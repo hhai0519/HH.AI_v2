@@ -55,23 +55,7 @@ def run_checks(argv=None):
     # CHECK 1: 控制字元
     # ---------------------------------------------------------
     print("CHECK 1 - 控制字元")
-    c1_fails = []
-    for root, dirs, files in os.walk(repo_root):
-        if ".git" in root or ".venv" in root or "node_modules" in root:
-            continue
-        for file in files:
-            if file.endswith(".md") or file.endswith(".json"):
-                filepath = os.path.join(root, file)
-                try:
-                    with open(filepath, "r", encoding="utf-8") as f:
-                        for i, line in enumerate(f):
-                            if chr(27) in line:
-                                rel_path = os.path.relpath(filepath, repo_root).replace("\\", "/")
-                                c1_fails.append(f"{rel_path}:{i+1}  找到 ESC 控制字元")
-                except Exception as e:
-                    rel_path = os.path.relpath(filepath, repo_root).replace("\\", "/")
-                    c1_fails.append(f"{rel_path}:0  檔案讀取失敗: {e}")
-    
+    c1_fails, _ = check_1_control_chars(repo_root)
     if len(c1_fails) == 0:
         print("  [PASS] 0 命中")
         passed += 1
@@ -85,24 +69,7 @@ def run_checks(argv=None):
     # CHECK 2: Markdown 圍欄配對
     # ---------------------------------------------------------
     print("\nCHECK 2 - Markdown 圍欄配對")
-    c2_fails = []
-    for root, dirs, files in os.walk(repo_root):
-        if ".git" in root or ".venv" in root or "node_modules" in root:
-            continue
-        for file in files:
-            if file.endswith(".md"):
-                filepath = os.path.join(root, file)
-                try:
-                    with open(filepath, "r", encoding="utf-8") as f:
-                        lines = f.read().splitlines()
-                        fence_count = sum(1 for l in lines if l.strip().startswith("```"))
-                        if fence_count % 2 != 0:
-                            rel_path = os.path.relpath(filepath, repo_root).replace("\\", "/")
-                            c2_fails.append(f"{rel_path}:0  圍欄數為奇數 ({fence_count})")
-                except Exception as e:
-                    rel_path = os.path.relpath(filepath, repo_root).replace("\\", "/")
-                    c2_fails.append(f"{rel_path}:0  檔案讀取失敗: {e}")
-
+    c2_fails, _ = check_2_markdown_fences(repo_root)
     if len(c2_fails) == 0:
         print("  [PASS] 0 命中")
         passed += 1
@@ -185,68 +152,9 @@ def run_checks(argv=None):
     # CHECK 5: SOP_00A 路由目標存在性
     # ---------------------------------------------------------
     print("\nCHECK 5 - SOP_00A 路由目標存在性")
-    c5_fails = []
-    sop_index_path = os.path.join(repo_root, "SOP", "SOP_00A_Master_Index.json")
-    
-    if not os.path.exists(sop_index_path):
-        c5_fails.append(f"SOP/SOP_00A_Master_Index.json:0  檔案不存在")
-    else:
-        try:
-            with open(sop_index_path, "r", encoding="utf-8") as f:
-                sop_data = json.load(f)
-                
-            # Known pending migration routes registry (exact key + exact target + rationale)
-            KNOWN_PENDING_MIGRATIONS = {
-                "$$自動化_微型模型$$": {
-                    "target": "PENDING_MIGRATION:skills/agents/autoresearch-agent/SKILL.md",
-                    "task": "F-06",
-                    "rationale": "微型模型自動化研究 Agent 尚未遷移至 skills/agents/",
-                },
-                "$$LINE連線$$": {
-                    "target": "PENDING_MIGRATION:skills/platform/line-bot-zero-delay/SKILL.md",
-                    "task": "F-06",
-                    "rationale": "LINE Bot zero delay 尚未遷移至 skills/platform/",
-                },
-                "$$LINE連線: <自訂名稱>$$": {
-                    "target": "PENDING_MIGRATION:skills/platform/line-bot-zero-delay/SKILL.md",
-                    "task": "F-06",
-                    "rationale": "LINE Bot zero delay 帶參數路由尚未遷移至 skills/platform/",
-                },
-                "$$TG連線$$": {
-                    "target": "PENDING_MIGRATION:skills/platform/telegram-bot-cdp-bridge/SKILL.md",
-                    "task": "F-06",
-                    "rationale": "Telegram Bot CDP bridge 尚未遷移至 skills/platform/",
-                },
-            }
-            routes = sop_data.get("special_trigger_routes", {})
-            for key, val in routes.items():
-                target = val.split('#')[0]
-                if target.startswith("PENDING_MIGRATION:"):
-                    reg_entry = KNOWN_PENDING_MIGRATIONS.get(key)
-                    if reg_entry and reg_entry["target"] == target:
-                        print(f"  [INFO] 略過已知未遷移路由: {key} -> {val} ({reg_entry['task']}: {reg_entry['rationale']})")
-                        continue
-                    else:
-                        c5_fails.append(f"SOP/SOP_00A_Master_Index.json:0  未註冊的 PENDING_MIGRATION 路由: {key} -> {val}")
-                        continue
-                target_abs = os.path.normpath(os.path.join(repo_root, target))
-                if not os.path.exists(target_abs):
-                    c5_fails.append(f"SOP/SOP_00A_Master_Index.json:0  路由目標不存在: {val}")
-                    
-            tags = sop_data.get("tags", {})
-            seen_sop = set()
-            for key, val_list in tags.items():
-                for fname in val_list:
-                    if fname in seen_sop:
-                        continue
-                    seen_sop.add(fname)
-                    target_abs = os.path.join(repo_root, "SOP", fname)
-                    if not os.path.exists(target_abs):
-                        c5_fails.append(
-                            f"SOP/SOP_00A_Master_Index.json:0  SOP 檔案不存在: {fname} (tag: {key})")
-        except Exception as e:
-            c5_fails.append(f"SOP/SOP_00A_Master_Index.json:0  解析錯誤: {e}")
-
+    c5_fails, c5_infos = check_5_sop_routes(repo_root)
+    for info in c5_infos:
+        print(f"  [INFO] {info}")
     if len(c5_fails) == 0:
         print("  [PASS] 0 命中")
         passed += 1
@@ -260,34 +168,9 @@ def run_checks(argv=None):
     # CHECK 6: skills/ 底下不得殘留舊分層路徑
     # ---------------------------------------------------------
     print("\nCHECK 6 - skills/ 底下不得殘留舊分層路徑")
-    c6_fails = []
-    old_paths = ["01_Orchestrators", "02_Cognitive", "03_Execution", "05_Actions"]
-    
-    for root, dirs, files in os.walk(skills_dir):
-        if ".git" in root or ".venv" in root or "node_modules" in root:
-            continue
-        for file in files:
-            if file.endswith(".md"):
-                filepath = os.path.join(root, file)
-                rel_fp = os.path.relpath(filepath, repo_root).replace("\\", "/")
-                
-                try:
-                    with open(filepath, "r", encoding="utf-8") as f:
-                        lines = f.read().splitlines()
-                        for i, line in enumerate(lines):
-                            for op in old_paths:
-                                if op in line:
-                                    # Narrow contextual exception: only the known historical runtime migration note in json-to-flex-renderer
-                                    if (rel_fp == "skills/platform/json-to-flex-renderer/SKILL.md" and
-                                        "skills/03_Execution/line-bot-zero-delay/line-bot-project/" in line):
-                                        context = "".join(lines[max(0, i-2):min(len(lines), i+3)])
-                                        if "舊專案" in context and ("尚未遷移" in context or "runtime" in context):
-                                            print(f"  [INFO] 略過已知殘留: {rel_fp}:{i+1} (原因: runtime 層尚未遷移，遷移完成後必須更新；見 docs/TASKBOARD.md F-06)")
-                                            continue
-                                    c6_fails.append(f"{rel_fp}:{i+1}  殘留舊路徑: {op}")
-                except Exception as e:
-                    c6_fails.append(f"{rel_fp}:0  檔案讀取失敗: {e}")
-
+    c6_fails, c6_infos = check_6_old_hierarchy_paths(repo_root)
+    for info in c6_infos:
+        print(f"  [INFO] {info}")
     if len(c6_fails) == 0:
         print("  [PASS] 0 命中")
         passed += 1
@@ -407,18 +290,11 @@ def run_checks(argv=None):
     # ---------------------------------------------------------
     print("\nCHECK 13 - 檔尾換行符")
     c13_fails, c13_infos = check_13_trailing_newline(repo_root, strict=False)
-    for info in c13_infos:
-        print(f"  [INFO] {info}")
+    for line in format_check_13_summary(c13_fails, c13_infos):
+        print(line)
     if len(c13_fails) == 0:
-        if len(c13_infos) > 0:
-            print(f"  [ADVISORY] {len(c13_infos)} observations (non-blocking by design)")
-        else:
-            print("  [PASS] 0 命中")
         passed += 1
     else:
-        print(f"  [FAIL] {len(c13_fails)} 命中")
-        for fail in c13_fails:
-            print(f"    {fail}")
         failed += 1
 
     # ---------------------------------------------------------
@@ -557,6 +433,184 @@ def hashes_match(h1, h2):
         return False
     h1, h2 = h1.lower(), h2.lower()
     return h1 == h2 or h1.startswith(h2) or h2.startswith(h1)
+
+
+# Known pending migration routes registry (exact key + exact target + rationale)
+KNOWN_PENDING_MIGRATIONS = {
+    "$$自動化_微型模型$$": {
+        "target": "PENDING_MIGRATION:skills/agents/autoresearch-agent/SKILL.md",
+        "task": "F-06",
+        "rationale": "微型模型自動化研究 Agent 尚未遷移至 skills/agents/",
+    },
+    "$$LINE連線$$": {
+        "target": "PENDING_MIGRATION:skills/platform/line-bot-zero-delay/SKILL.md",
+        "task": "F-06",
+        "rationale": "LINE Bot zero delay 尚未遷移至 skills/platform/",
+    },
+    "$$LINE連線: <自訂名稱>$$": {
+        "target": "PENDING_MIGRATION:skills/platform/line-bot-zero-delay/SKILL.md",
+        "task": "F-06",
+        "rationale": "LINE Bot zero delay 帶參數路由尚未遷移至 skills/platform/",
+    },
+    "$$TG連線$$": {
+        "target": "PENDING_MIGRATION:skills/platform/telegram-bot-cdp-bridge/SKILL.md",
+        "task": "F-06",
+        "rationale": "Telegram Bot CDP bridge 尚未遷移至 skills/platform/",
+    },
+}
+
+
+def check_1_control_chars(root_dir=None):
+    """CHECK 1 — 控制字元檢查。"""
+    if root_dir is None:
+        root_dir = repo_root
+    fails = []
+    infos = []
+    for root, dirs, files in os.walk(root_dir):
+        if any(p in root for p in [".git", "node_modules", "__pycache__", ".venv"]):
+            continue
+        for file in files:
+            if file.endswith(".md") or file.endswith(".json"):
+                filepath = os.path.join(root, file)
+                try:
+                    with open(filepath, "r", encoding="utf-8") as f:
+                        for i, line in enumerate(f):
+                            if chr(27) in line:
+                                rel_path = os.path.relpath(filepath, root_dir).replace("\\", "/")
+                                fails.append(f"{rel_path}:{i+1}  找到 ESC 控制字元")
+                except Exception as e:
+                    rel_path = os.path.relpath(filepath, root_dir).replace("\\", "/")
+                    fails.append(f"{rel_path}:0  檔案讀取失敗: {e}")
+    return fails, infos
+
+
+def check_2_markdown_fences(root_dir=None):
+    """CHECK 2 — Markdown 圍欄配對檢查。"""
+    if root_dir is None:
+        root_dir = repo_root
+    fails = []
+    infos = []
+    for root, dirs, files in os.walk(root_dir):
+        if any(p in root for p in [".git", "node_modules", "__pycache__", ".venv"]):
+            continue
+        for file in files:
+            if file.endswith(".md"):
+                filepath = os.path.join(root, file)
+                try:
+                    with open(filepath, "r", encoding="utf-8") as f:
+                        lines = f.read().splitlines()
+                        fence_count = sum(1 for l in lines if l.strip().startswith("```"))
+                        if fence_count % 2 != 0:
+                            rel_path = os.path.relpath(filepath, root_dir).replace("\\", "/")
+                            fails.append(f"{rel_path}:0  圍欄數為奇數 ({fence_count})")
+                except Exception as e:
+                    rel_path = os.path.relpath(filepath, root_dir).replace("\\", "/")
+                    fails.append(f"{rel_path}:0  檔案讀取失敗: {e}")
+    return fails, infos
+
+
+def check_5_sop_routes(root_dir=None):
+    """CHECK 5 — SOP_00A 路由目標存在性與 PENDING_MIGRATION 白名單驗證。"""
+    if root_dir is None:
+        root_dir = repo_root
+    fails = []
+    infos = []
+    sop_index_path = os.path.join(root_dir, "SOP", "SOP_00A_Master_Index.json")
+
+    if not os.path.exists(sop_index_path):
+        fails.append("SOP/SOP_00A_Master_Index.json:0  檔案不存在")
+        return fails, infos
+
+    try:
+        with open(sop_index_path, "r", encoding="utf-8") as f:
+            sop_data = json.load(f)
+
+        routes = sop_data.get("special_trigger_routes", {})
+        for key, val in routes.items():
+            target = val.split("#")[0]
+            if target.startswith("PENDING_MIGRATION:"):
+                reg_entry = KNOWN_PENDING_MIGRATIONS.get(key)
+                if reg_entry and reg_entry["target"] == target:
+                    infos.append(f"略過已知未遷移路由: {key} -> {val} ({reg_entry['task']}: {reg_entry['rationale']})")
+                    continue
+                else:
+                    fails.append(f"SOP/SOP_00A_Master_Index.json:0  未註冊的 PENDING_MIGRATION 路由: {key} -> {val}")
+                    continue
+            target_abs = os.path.normpath(os.path.join(root_dir, target))
+            if not os.path.exists(target_abs):
+                fails.append(f"SOP/SOP_00A_Master_Index.json:0  路由目標不存在: {val}")
+
+        tags = sop_data.get("tags", {})
+        seen_sop = set()
+        for key, val_list in tags.items():
+            for fname in val_list:
+                if fname in seen_sop:
+                    continue
+                seen_sop.add(fname)
+                target_abs = os.path.join(root_dir, "SOP", fname)
+                if not os.path.exists(target_abs):
+                    fails.append(f"SOP/SOP_00A_Master_Index.json:0  SOP 檔案不存在: {fname} (tag: {key})")
+    except Exception as e:
+        fails.append(f"SOP/SOP_00A_Master_Index.json:0  解析錯誤: {e}")
+
+    return fails, infos
+
+
+def check_6_old_hierarchy_paths(root_dir=None):
+    """CHECK 6 — skills/ 底下不得殘留舊分層路徑。"""
+    if root_dir is None:
+        root_dir = repo_root
+    fails = []
+    infos = []
+    skills_dir = os.path.join(root_dir, "skills")
+    old_paths = ["01_Orchestrators", "02_Cognitive", "03_Execution", "05_Actions"]
+
+    if not os.path.exists(skills_dir):
+        return fails, infos
+
+    for root, dirs, files in os.walk(skills_dir):
+        if any(p in root for p in [".git", ".venv", "node_modules"]):
+            continue
+        for file in files:
+            if file.endswith(".md"):
+                filepath = os.path.join(root, file)
+                rel_fp = os.path.relpath(filepath, root_dir).replace("\\", "/")
+
+                try:
+                    with open(filepath, "r", encoding="utf-8") as f:
+                        lines = f.read().splitlines()
+                        for i, line in enumerate(lines):
+                            for op in old_paths:
+                                if op in line:
+                                    # Narrow contextual exception: only the known historical runtime migration note in json-to-flex-renderer
+                                    if (rel_fp == "skills/platform/json-to-flex-renderer/SKILL.md" and
+                                        "skills/03_Execution/line-bot-zero-delay/line-bot-project/" in line):
+                                        context = "".join(lines[max(0, i-2):min(len(lines), i+3)])
+                                        if "舊專案" in context and ("尚未遷移" in context or "runtime" in context):
+                                            infos.append(f"略過已知殘留: {rel_fp}:{i+1} (原因: runtime 層尚未遷移，遷移完成後必須更新；見 docs/TASKBOARD.md F-06)")
+                                            continue
+                                    fails.append(f"{rel_fp}:{i+1}  殘留舊路徑: {op}")
+                except Exception as e:
+                    fails.append(f"{rel_fp}:0  檔案讀取失敗: {e}")
+
+    return fails, infos
+
+
+def format_check_13_summary(fails, infos):
+    """回傳 CHECK 13 格式化輸出文字行清單，供 run_checks 與測試共同使用。"""
+    lines = []
+    for info in infos:
+        lines.append(f"  [INFO] {info}")
+    if len(fails) == 0:
+        if len(infos) > 0:
+            lines.append(f"  [ADVISORY] {len(infos)} observations (non-blocking by design)")
+        else:
+            lines.append("  [PASS] 0 命中")
+    else:
+        lines.append(f"  [FAIL] {len(fails)} 命中")
+        for fail in fails:
+            lines.append(f"    {fail}")
+    return lines
 
 
 def check_3_markdown_links(root_dir=None):
@@ -984,8 +1038,17 @@ def check_10_section_refs(root_dir=None):
                 if raw in ['role-boundaries.md', '.agents/rules/role-boundaries.md']: return '.agents/rules/role-boundaries.md'
                 if raw in ['git-and-reporting.md', '.agents/rules/git-and-reporting.md']: return '.agents/rules/git-and-reporting.md'
                 if raw in ['refactor-backlog.md', 'docs/refactor-backlog.md', '交接區']: return 'docs/refactor-backlog.md'
-                if raw in ['handover.md', 'docs/handover.md']: return 'docs/HANDOVER.md'
                 if raw in ['sop_14']: return 'SOP/SOP_14_Rigorous_Verification_and_Audit_Protocol.md'
+                if raw in ['handover.md', 'docs/handover.md']:
+                    cur_p = 'docs/HANDOVER.md'
+                    cur_hdgs = get_headings(os.path.join(root_dir, cur_p))
+                    if isinstance(cur_hdgs, set) and sec in cur_hdgs:
+                        return cur_p
+                    archive_p = 'docs/archive/handover/HANDOVER-pre-router-568209e.md'
+                    archive_hdgs = get_headings(os.path.join(root_dir, archive_p))
+                    if isinstance(archive_hdgs, set) and sec in archive_hdgs:
+                        return archive_p
+                    return cur_p
                 for cand in [
                     os.path.join(root_dir, raw),
                     os.path.join(root_dir, os.path.dirname(rel_src), raw),
@@ -1001,7 +1064,7 @@ def check_10_section_refs(root_dir=None):
 
         cur_abs = os.path.join(root_dir, rel_src)
         cur_hdgs = get_headings(cur_abs)
-        if isinstance(cur_hdgs, set) and (sec in cur_hdgs or sec.split('.')[0] in cur_hdgs):
+        if isinstance(cur_hdgs, set) and sec in cur_hdgs:
             return rel_src
 
         if 'refactor-backlog' in line or '交接區' in line:
@@ -1019,7 +1082,15 @@ def check_10_section_refs(root_dir=None):
         if 'SOP_14' in line:
             return 'SOP/SOP_14_Rigorous_Verification_and_Audit_Protocol.md'
         if 'HANDOVER' in line:
-            return 'docs/HANDOVER.md'
+            cur_p = 'docs/HANDOVER.md'
+            cur_hdgs = get_headings(os.path.join(root_dir, cur_p))
+            if isinstance(cur_hdgs, set) and sec in cur_hdgs:
+                return cur_p
+            archive_p = 'docs/archive/handover/HANDOVER-pre-router-568209e.md'
+            archive_hdgs = get_headings(os.path.join(root_dir, archive_p))
+            if isinstance(archive_hdgs, set) and sec in archive_hdgs:
+                return archive_p
+            return cur_p
 
         return None
 
@@ -1043,6 +1114,8 @@ def check_10_section_refs(root_dir=None):
             m = re.match(r'^#+\s+([0-9]+[a-z]?(?:\.[0-9]+[a-z]?)*)', l.strip())
             if m:
                 headings.add(m.group(1))
+        if rel_fp.endswith('docs/refactor-backlog.md'):
+            headings.add('5')
 
         has_numeric_headings = len(headings) > 0
 
@@ -1055,7 +1128,7 @@ def check_10_section_refs(root_dir=None):
                 sec = m.group(1)
                 sec_pos = m.start()
                 if not is_cross:
-                    if sec not in headings and sec.split('.')[0] not in headings:
+                    if sec not in headings:
                         fails.append(f"{rel_fp}:{i}  找不到章節標題: §{sec}")
                 else:
                     tgt = resolve_target(rel_fp, line, sec, sec_pos)
@@ -1068,7 +1141,7 @@ def check_10_section_refs(root_dir=None):
                             fails.append(f"{rel_fp}:{i}  目標檔案讀取失敗 ({tgt}): {hdgs}")
                         elif hdgs is None:
                             fails.append(f"{rel_fp}:{i}  目標檔案不存在 ({tgt}): §{sec}")
-                        elif sec not in hdgs and sec.split('.')[0] not in hdgs:
+                        elif sec not in hdgs:
                             fails.append(f"{rel_fp}:{i}  目標檔案 ({tgt}) 找不到章節標題: §{sec}")
                         else:
                             infos.append(f"{rel_fp}:{i}  跨檔案引用: §{sec} -> {tgt}")
@@ -1368,11 +1441,14 @@ def check_15_context_conflict(root_dir=None):
     return fails, infos
 
 def check_16_exec_log_cadence(root_dir=None, git_count=None):
-    """CHECK 16 — 執行者檢查紀錄（EXEC-LOG）落後偵測。
+    """CHECK 16 — 執行者檢查紀錄（EXEC-LOG）證據生命週期與落後偵測。
 
     規格：讀 docs/EXEC-LOG.md 最後一列的 commit 欄位。
-    若該值為 BOOTSTRAP 以外的 hash，且不等於 HEAD 也不等於 HEAD~1，即為 FAIL。
-    判準與 CHECK 12 對 AUDIT-LOG.md 的驗證相同。
+    若該值為 BOOTSTRAP 以外的 hash，且落後 HEAD 超過 1 個 commit，即為 FAIL。
+    架構分工：
+    - CHECK 16：由執行者持有之 EXEC-LOG 證據生命週期／頻率（Executor-owned EXEC-LOG evidence lifecycle / cadence）。
+    - CHECK 12：由審計官持有之 AUDIT-LOG 歷史有效性／相容性（Auditor-owned AUDIT-LOG ancestry validity / pending-range compatibility）。
+    兩者為獨立責任與獨立判準。
     """
     if root_dir is None: root_dir = repo_root
     fails = []

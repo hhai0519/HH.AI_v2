@@ -1,5 +1,5 @@
 {
-  "base_head": "369c61a",
+  "base_head": "9cb9c5a",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 0,
@@ -507,16 +507,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 104,
-      "sha256": "19aba8771dc9f572243f731b4392b679ad0d44f29b9e26a9797b8bad5c39584b"
+      "lines": 105,
+      "sha256": "725c7bfac89dcf93543a5e1830c649cc9e3908acb10acdc534af93def0d440be"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 75,
-      "sha256": "8e3e5d9673f1c745b2fdf7dddc603bcc84095a29934acf51561c2290220c2daa"
+      "lines": 76,
+      "sha256": "631e046871909555737d49fdfb432bb446f1cca4bb03e0aa3ea38f46860e90cf"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -881,7 +881,7 @@
         "### 5.4 進行中／等待回報"
       ],
       "lines": 3062,
-      "sha256": "98a24802132c4fef84b6c7c582f750ecb506d98d59ad383909b8616e4d6f2684"
+      "sha256": "6e7d8cc2b663e2d3c86f06e173e926ec067ef2de21a9cc0e432a73f69582fc4f"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -903,12 +903,13 @@
     "scripts/check_consistency.py": {
       "fences": 0,
       "headings": [
+        "# Known pending migration routes registry (exact key + exact target + rationale)",
         "# Backward compatibility alias",
         "# 已知指向錯誤的歷史 tag。本清單只能縮短、不得加長。",
         "# 修復批次完成後必須清空；清單中的 tag 若已修復卻未移除，CHECK 18 會 FAIL。"
       ],
-      "lines": 1885,
-      "sha256": "9e115b43da99b856593dde54bde4939e8a8e0cf53d5ca595eaaedb46dd27f6c8"
+      "lines": 1961,
+      "sha256": "3326ec3aeba76872c758c74986959dd4f5eb1e1d4a8dfe8df396facb408afdde"
     },
     "scripts/fingerprint.py": {
       "fences": 0,
@@ -1020,10 +1021,10 @@
       "fences": 0,
       "headings": [
         "# ===========================================================================",
-        "# Defect 1: CHECK 10 Cross-File Validation",
+        "# Defect 1: CHECK 10 Cross-File & Same-File Exact Section Identity",
         "# ===========================================================================",
         "# ===========================================================================",
-        "# Defect 2: Fail-Closed on Read/Decode Errors",
+        "# Defect 2: Fail-Closed on Read/Decode Errors (Direct Production Helper Calls)",
         "# ===========================================================================",
         "# ===========================================================================",
         "# Defect 3: Git Fact Fail-Closed",
@@ -1035,14 +1036,14 @@
         "# Defect 5: PENDING_MIGRATION Exact Registry in CHECK 5",
         "# ===========================================================================",
         "# ===========================================================================",
-        "# Defect 6: CHECK 13 Advisory Output Behavior",
+        "# Defect 6: CHECK 13 Advisory Output Behavior (Direct Production Rendering Path)",
         "# ===========================================================================",
         "# ===========================================================================",
         "# Meta-test: Active CHECK Inventory Integrity (1..18)",
         "# ==========================================================================="
       ],
-      "lines": 395,
-      "sha256": "85eaf62cd6ecb36076173cb795a3cbd6e556be09a59d2e7fb44db0aa7c3f6892"
+      "lines": 451,
+      "sha256": "bc94c4edce2b0665c9fe973bba1c52d948168b78fed88bac7a0246aa868b3522"
     },
     "scripts/tests/test_verify_all.py": {
       "fences": 0,
@@ -1068,7 +1069,7 @@
       "sha256": "77163678353cb7a444f90f17956d03312f715cfcccf933603948715939ecdc10"
     }
   },
-  "generated_at": "2026-09-13T07:48:43Z",
+  "generated_at": "2026-09-13T11:15:02Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

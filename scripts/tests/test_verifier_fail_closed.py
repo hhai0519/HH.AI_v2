@@ -11,18 +11,23 @@ sys.path.insert(0, os.path.join(REPO_ROOT, "scripts"))
 
 import check_consistency
 from check_consistency import (
+    check_1_control_chars,
+    check_2_markdown_fences,
     check_3_markdown_links,
+    check_5_sop_routes,
+    check_6_old_hierarchy_paths,
     check_9_handover_head,
     check_10_section_refs,
     check_12_audit_log_cadence,
     check_13_trailing_newline,
+    format_check_13_summary,
     check_14_simplified_chinese,
     check_16_exec_log_cadence,
 )
 
 
 # ===========================================================================
-# Defect 1: CHECK 10 Cross-File Validation
+# Defect 1: CHECK 10 Cross-File & Same-File Exact Section Identity
 # ===========================================================================
 
 def test_check_10_target_exists_section_not_found_fail(tmp_path):
@@ -90,22 +95,90 @@ def test_check_10_real_format_same_line_target_and_section_pass(tmp_path):
     assert "跨檔案引用: §0.5 -> PRINCIPLES.md" in infos[0]
 
 
+def test_check_10_cross_file_dotted_subsection_parent_fallback_fail(tmp_path):
+    """Fix 1: target 只有 # 6. Root，引用 target.md §6.999 時必須 FAIL，不得 parent-heading fallback 假綠燈"""
+    rules = tmp_path / ".agents" / "rules"
+    rules.mkdir(parents=True)
+    source_file = rules / "source-rule.md"
+    target_file = rules / "target-rule.md"
+
+    target_file.write_text("# 6. 目標根標題\n正文說明\n", encoding="utf-8")
+    source_file.write_text("參考 `target-rule.md` §6.999 說明。\n", encoding="utf-8")
+
+    fails, infos = check_10_section_refs(str(tmp_path))
+    assert len(fails) == 1
+    assert "目標檔案 (.agents/rules/target-rule.md) 找不到章節標題: §6.999" in fails[0]
+
+
+def test_check_10_same_file_dotted_subsection_parent_fallback_fail(tmp_path):
+    """Fix 1: same-file 只有 # 6. Root，正文出現 §6.999 時必須 FAIL，不得 parent-heading fallback 假綠燈"""
+    rules = tmp_path / ".agents" / "rules"
+    rules.mkdir(parents=True)
+    rule_file = rules / "single-rule.md"
+
+    rule_file.write_text("# 6. 目標根標題\n正文見 §6.999 說明。\n", encoding="utf-8")
+
+    fails, infos = check_10_section_refs(str(tmp_path))
+    assert len(fails) == 1
+    assert "找不到章節標題: §6.999" in fails[0]
+
+
+def test_check_10_exact_valid_subsection_pass(tmp_path):
+    """Fix 1: target 有 # 6. Root 與 ## 6.1 Valid，引用 target.md §6.1 -> PASS"""
+    rules = tmp_path / ".agents" / "rules"
+    rules.mkdir(parents=True)
+    source_file = rules / "source-rule.md"
+    target_file = rules / "target-rule.md"
+
+    target_file.write_text("# 6. 目標根標題\n## 6.1 Valid 子標題\n正文說明\n", encoding="utf-8")
+    source_file.write_text("參考 `target-rule.md` §6.1 說明。\n", encoding="utf-8")
+
+    fails, infos = check_10_section_refs(str(tmp_path))
+    assert len(fails) == 0
+    assert any("跨檔案引用: §6.1 -> .agents/rules/target-rule.md" in i for i in infos)
+
+
+def test_check_10_refactor_backlog_root_5_special_case_pass(tmp_path):
+    """Fix 1: docs/refactor-backlog.md 對 root §5 特殊案例合法保留，但非存在子節 §5.999 仍必須 FAIL"""
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    bl = docs / "refactor-backlog.md"
+    bl.write_text("### 5.1 上一批狀態\n### 5.4 進行中\n", encoding="utf-8")
+
+    rules = tmp_path / ".agents" / "rules"
+    rules.mkdir(parents=True)
+    source_file = rules / "source-rule.md"
+    source_file.write_text("見 `docs/refactor-backlog.md` §5 交接區。\n見 `docs/refactor-backlog.md` §5.1。\n", encoding="utf-8")
+
+    fails, infos = check_10_section_refs(str(tmp_path))
+    assert len(fails) == 0
+    assert len(infos) == 2
+
+    # But non-existent §5.999 must FAIL:
+    source_file.write_text("見 `docs/refactor-backlog.md` §5.999。\n", encoding="utf-8")
+    fails, infos = check_10_section_refs(str(tmp_path))
+    assert len(fails) == 1
+    assert "目標檔案 (docs/refactor-backlog.md) 找不到章節標題: §5.999" in fails[0]
+
+
 # ===========================================================================
-# Defect 2: Fail-Closed on Read/Decode Errors
+# Defect 2: Fail-Closed on Read/Decode Errors (Direct Production Helper Calls)
 # ===========================================================================
 
 def test_check_1_read_error_fail(tmp_path):
-    """CHECK 1: 非法 UTF-8 或讀取失敗時判定 FAIL，不得 silent pass"""
+    """CHECK 1: 非法 UTF-8 或讀取失敗時判定 FAIL，直接呼叫 production helper"""
     bad_file = tmp_path / "corrupt.md"
     bad_file.write_bytes(b"\xff\xfe\x00\x00\xaa\xbb\xcc")
-    fails = []
-    # Test file walk read in check_1 logic
-    try:
-        with open(bad_file, "r", encoding="utf-8") as f:
-            f.read()
-    except Exception as e:
-        rel = os.path.relpath(bad_file, tmp_path).replace("\\", "/")
-        fails.append(f"{rel}:0 檔案讀取失敗: {e}")
+    fails, infos = check_1_control_chars(str(tmp_path))
+    assert len(fails) == 1
+    assert "檔案讀取失敗" in fails[0]
+
+
+def test_check_2_read_error_fail(tmp_path):
+    """CHECK 2: markdown 檔案解碼/讀取失敗時判定 FAIL，直接呼叫 production helper"""
+    bad_file = tmp_path / "bad.md"
+    bad_file.write_bytes(b"\x80\x81\x82\xff")
+    fails, infos = check_2_markdown_fences(str(tmp_path))
     assert len(fails) == 1
     assert "檔案讀取失敗" in fails[0]
 
@@ -224,7 +297,7 @@ def test_check_16_git_rev_list_unavailable_fail(tmp_path, monkeypatch):
 # ===========================================================================
 
 def test_check_6_json_to_flex_historical_exemption_pass(tmp_path):
-    """CHECK 6: json-to-flex-renderer 原有歷史 runtime migration 說明通過"""
+    """CHECK 6: json-to-flex-renderer 原有歷史 runtime migration 說明通過 (直接呼叫 production helper)"""
     skills = tmp_path / "skills" / "platform" / "json-to-flex-renderer"
     skills.mkdir(parents=True)
     skill_file = skills / "SKILL.md"
@@ -235,25 +308,14 @@ def test_check_6_json_to_flex_historical_exemption_pass(tmp_path):
         "屬 runtime 層程式碼，尚未遷移至 HH.AI_v2。）\n",
         encoding="utf-8",
     )
-    # Check logic directly on directory
-    fails = []
-    old_paths = ["01_Orchestrators", "02_Cognitive", "03_Execution", "05_Actions"]
-    lines = skill_file.read_text(encoding="utf-8").splitlines()
-    rel_fp = "skills/platform/json-to-flex-renderer/SKILL.md"
-    for i, line in enumerate(lines):
-        for op in old_paths:
-            if op in line:
-                if (rel_fp == "skills/platform/json-to-flex-renderer/SKILL.md" and
-                    "skills/03_Execution/line-bot-zero-delay/line-bot-project/" in line):
-                    context = "".join(lines[max(0, i-2):min(len(lines), i+3)])
-                    if "舊專案" in context and ("尚未遷移" in context or "runtime" in context):
-                        continue
-                fails.append(f"{rel_fp}:{i+1} 殘留舊路徑: {op}")
+    fails, infos = check_6_old_hierarchy_paths(str(tmp_path))
     assert len(fails) == 0
+    assert len(infos) == 1
+    assert "略過已知殘留" in infos[0]
 
 
 def test_check_6_json_to_flex_new_insertion_fail(tmp_path):
-    """CHECK 6: 在 json-to-flex-renderer 插入新的舊分層路徑 -> FAIL"""
+    """CHECK 6: 在 json-to-flex-renderer 插入新的舊分層路徑 -> FAIL (直接呼叫 production helper)"""
     skills = tmp_path / "skills" / "platform" / "json-to-flex-renderer"
     skills.mkdir(parents=True)
     skill_file = skills / "SKILL.md"
@@ -265,19 +327,7 @@ def test_check_6_json_to_flex_new_insertion_fail(tmp_path):
         "屬 runtime 層程式碼，尚未遷移至 HH.AI_v2。）\n",
         encoding="utf-8",
     )
-    fails = []
-    old_paths = ["01_Orchestrators", "02_Cognitive", "03_Execution", "05_Actions"]
-    lines = skill_file.read_text(encoding="utf-8").splitlines()
-    rel_fp = "skills/platform/json-to-flex-renderer/SKILL.md"
-    for i, line in enumerate(lines):
-        for op in old_paths:
-            if op in line:
-                if (rel_fp == "skills/platform/json-to-flex-renderer/SKILL.md" and
-                    "skills/03_Execution/line-bot-zero-delay/line-bot-project/" in line):
-                    context = "".join(lines[max(0, i-2):min(len(lines), i+3)])
-                    if "舊專案" in context and ("尚未遷移" in context or "runtime" in context):
-                        continue
-                fails.append(f"{rel_fp}:{i+1}  殘留舊路徑: {op}")
+    fails, infos = check_6_old_hierarchy_paths(str(tmp_path))
     assert len(fails) == 1
     assert "殘留舊路徑: 01_Orchestrators" in fails[0]
 
@@ -310,7 +360,7 @@ def test_check_14_audit_log_plain_text_simplified_fail(tmp_path):
 # ===========================================================================
 
 def test_check_5_known_pending_migration_routes_pass(tmp_path):
-    """CHECK 5: 已註冊的 PENDING_MIGRATION 路由正常略過並輸出 INFO"""
+    """CHECK 5: 已註冊的 PENDING_MIGRATION 路由正常略過並輸出 INFO (直接呼叫 production helper)"""
     sop = tmp_path / "SOP"
     sop.mkdir()
     idx_file = sop / "SOP_00A_Master_Index.json"
@@ -324,58 +374,64 @@ def test_check_5_known_pending_migration_routes_pass(tmp_path):
         }, ensure_ascii=False),
         encoding="utf-8"
     )
-    # Replicate CHECK 5 registry check
-    known = {
-        "$$自動化_微型模型$$": "PENDING_MIGRATION:skills/agents/autoresearch-agent/SKILL.md",
-        "$$LINE連線$$": "PENDING_MIGRATION:skills/platform/line-bot-zero-delay/SKILL.md"
-    }
-    fails = []
-    data = json.loads(idx_file.read_text(encoding="utf-8"))
-    for k, v in data["special_trigger_routes"].items():
-        if v.startswith("PENDING_MIGRATION:"):
-            if k in known and known[k] == v:
-                continue
-            fails.append(f"未註冊: {k}")
+    fails, infos = check_5_sop_routes(str(tmp_path))
     assert len(fails) == 0
+    assert len(infos) == 2
+    assert any("略過已知未遷移路由: $$自動化_微型模型$$" in i for i in infos)
+    assert any("略過已知未遷移路由: $$LINE連線$$" in i for i in infos)
 
 
 def test_check_5_unknown_pending_migration_route_fail(tmp_path):
-    """CHECK 5: 未註冊的任意 PENDING_MIGRATION:bypass -> FAIL"""
-    known = {
-        "$$自動化_微型模型$$": "PENDING_MIGRATION:skills/agents/autoresearch-agent/SKILL.md",
-    }
-    routes = {
-        "$$未授權路由$$": "PENDING_MIGRATION:skills/agents/malicious-bypass/SKILL.md"
-    }
-    fails = []
-    for k, v in routes.items():
-        if v.startswith("PENDING_MIGRATION:"):
-            if k in known and known[k] == v:
-                continue
-            fails.append(f"未註冊的 PENDING_MIGRATION 路由: {k} -> {v}")
+    """CHECK 5: 未註冊的任意 PENDING_MIGRATION:bypass -> FAIL (直接呼叫 production helper)"""
+    sop = tmp_path / "SOP"
+    sop.mkdir()
+    idx_file = sop / "SOP_00A_Master_Index.json"
+    idx_file.write_text(
+        json.dumps({
+            "special_trigger_routes": {
+                "$$未授權路由$$": "PENDING_MIGRATION:skills/agents/malicious-bypass/SKILL.md"
+            },
+            "tags": {}
+        }, ensure_ascii=False),
+        encoding="utf-8"
+    )
+    fails, infos = check_5_sop_routes(str(tmp_path))
     assert len(fails) == 1
-    assert "未註冊的 PENDING_MIGRATION 路由" in fails[0]
+    assert "未註冊的 PENDING_MIGRATION 路由: $$未授權路由$$" in fails[0]
 
 
 # ===========================================================================
-# Defect 6: CHECK 13 Advisory Output Behavior
+# Defect 6: CHECK 13 Advisory Output Behavior (Direct Production Rendering Path)
 # ===========================================================================
 
-def test_check_13_advisory_output_behavior(capsys):
-    """CHECK 13: 當存在 observations 時，必須顯示 [ADVISORY] N observations (non-blocking by design) 而非 [PASS] 0 命中"""
-    c13_fails = []
-    c13_infos = ["file1.md: 檔尾缺少換行符", "file2.py: 檔尾缺少換行符"]
+def test_check_13_advisory_output_behavior(tmp_path):
+    """CHECK 13: 當存在 observations 時，production rendering path 必須輸出 [ADVISORY] 且不得輸出 [PASS] 0 命中"""
+    # Create file missing trailing newline in tmp_path
+    f1 = tmp_path / "test1.md"
+    f1.write_bytes(b"line without newline")
+    f2 = tmp_path / "test2.py"
+    f2.write_bytes(b"x = 1")
 
-    # Emulate the output logic in run_checks
-    if len(c13_fails) == 0:
-        if len(c13_infos) > 0:
-            print(f"  [ADVISORY] {len(c13_infos)} observations (non-blocking by design)")
-        else:
-            print("  [PASS] 0 命中")
+    fails, infos = check_13_trailing_newline(str(tmp_path), strict=False)
+    assert len(fails) == 0
+    assert len(infos) == 2
 
-    captured = capsys.readouterr()
-    assert "[ADVISORY] 2 observations (non-blocking by design)" in captured.out
-    assert "[PASS] 0 命中" not in captured.out
+    # Execute real production rendering path
+    lines = format_check_13_summary(fails, infos)
+    rendered = "\n".join(lines)
+    assert "[ADVISORY] 2 observations (non-blocking by design)" in rendered
+    assert "[PASS] 0 命中" not in rendered
+
+    # Counterexample: when 0 observations, production rendering path must output [PASS] 0 命中
+    f1.write_bytes(b"line with newline\n")
+    f2.write_bytes(b"x = 1\n")
+    fails_clean, infos_clean = check_13_trailing_newline(str(tmp_path), strict=False)
+    assert len(fails_clean) == 0
+    assert len(infos_clean) == 0
+    lines_clean = format_check_13_summary(fails_clean, infos_clean)
+    rendered_clean = "\n".join(lines_clean)
+    assert "[PASS] 0 命中" in rendered_clean
+    assert "[ADVISORY]" not in rendered_clean
 
 
 # ===========================================================================
