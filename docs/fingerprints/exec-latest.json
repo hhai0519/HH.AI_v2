@@ -1,5 +1,5 @@
 {
-  "base_head": "b1e8804",
+  "base_head": "4fce039",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 0,
@@ -47,7 +47,7 @@
         "### B. EXACT_SPEC 覆蓋驗證",
         "## 3.3 遇到疑問而非缺失時",
         "## 3.4 審計官自檢聲明的交叉驗證",
-        "## 3.5 檢查結果只存在於回報中，這是已知缺口",
+        "## 3.5 執行者檢查證據持久化（已落地）",
         "## 3.6 機械前置證據（Machine Evidence / Execution Preflight）的交叉驗證",
         "## 3.7 E 節每一項都可機械驗證，沒有例外",
         "## 3.8 你的檢查結果必須留在 repo",
@@ -56,8 +56,8 @@
         "## 5. 例外",
         "## 6. 這條規則保護的是誰"
       ],
-      "lines": 361,
-      "sha256": "919e08d45aef6b216bc22ab3a830703b148617cc565b5d6ec7d1b74f03ecef3c"
+      "lines": 284,
+      "sha256": "8af86a54c977000e80e5c01d6151a88662ab9058cc44f10493e8651e67756594"
     },
     ".agents/rules/role-boundaries.md": {
       "fences": 0,
@@ -507,16 +507,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 99,
-      "sha256": "88f566699603f12a1abca5fea4b858a0d5e45c6ebb5af6ef0c4db6e280e850d9"
+      "lines": 101,
+      "sha256": "76c95b854eb3f75017cd895d5d9983ce147f13acfc3e90c35b12f2d18d714996"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 70,
-      "sha256": "f038f964967a63977226bd6764865c2d3c3020e3e5123181d87d78d690a30dc1"
+      "lines": 71,
+      "sha256": "93885113615a2c34dbf671b4fb66f35697e0368f2178c5a45f67325502781878"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -907,8 +907,8 @@
         "# 已知指向錯誤的歷史 tag。本清單只能縮短、不得加長。",
         "# 修復批次完成後必須清空；清單中的 tag 若已修復卻未移除，CHECK 18 會 FAIL。"
       ],
-      "lines": 1707,
-      "sha256": "fa081ebe85ccfc3e89cd02a741da66e0df673496e8385f8728deba5db3c47883"
+      "lines": 1751,
+      "sha256": "ee040029be8254fb0fe136a4dd47aa5cb6b773e91ffc386babba58bbb862b031"
     },
     "scripts/fingerprint.py": {
       "fences": 0,
@@ -959,14 +959,20 @@
         "# CHECK 3 Tests: Markdown Links & Path Portability (B-58 R6)",
         "# ---------------------------------------------------------------------------"
       ],
-      "lines": 770,
-      "sha256": "465df89fdee9d2d3b65d3e9f0ae9c51e2421d1da1e28eb0ec16a85cd59b5686d"
+      "lines": 806,
+      "sha256": "0bb222054083ee2a5210aa3585aaa298eb809c7c7edf94e3078bd2b137520272"
     },
     "scripts/tests/test_fingerprint.py": {
       "fences": 0,
       "headings": [],
       "lines": 119,
       "sha256": "113e2d181ef5675c8ac30ac6b31eb100f82eb138c0532c663b975f1b1dd55b82"
+    },
+    "scripts/tests/test_rule_loadability.py": {
+      "fences": 0,
+      "headings": [],
+      "lines": 38,
+      "sha256": "7e4bf047eaae14e91e8ea3f6f84e270161ade2983c546ca47bf4d45588357532"
     },
     "scripts/tests/test_spec_create_file.py": {
       "fences": 0,
@@ -1034,7 +1040,7 @@
       "sha256": "77163678353cb7a444f90f17956d03312f715cfcccf933603948715939ecdc10"
     }
   },
-  "generated_at": "2026-09-13T05:00:54Z",
+  "generated_at": "2026-09-13T06:17:07Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

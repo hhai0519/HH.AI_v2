@@ -6,8 +6,10 @@
 > **每一次觸發檢查點，都要追加一列。** 只寫在回覆裡的檢查點不算數——
 > 下一個 Agent 看不到，也無從判斷上一任有沒有做。
 
-**檢查方式**：最新一列的 `批次 commit` 若落後於實際 HEAD 超過一批，
-即代表有批次未做檢查點。規劃為 `check_consistency.py` 的 CHECK 12。
+**檢查方式**：AUDIT-LOG 保存 Macro Auditor 實際完成之審查／檢查點證據（review/checkpoint evidence）。
+CHECK 12 驗證最新審查紀錄屬於目前 Git HEAD 歷史（ancestry）；HEAD 可以比最新審查紀錄多個 pending repair commits，
+pending-audit range 由 checkpoint..HEAD 狀態機／router 管理，不以單純 commit 距離（raw commit distance）推導「漏審」。
+Auditor 仍依 auditor protocol 於實際完成獨立核對時追加證據列。
 
 **首列例外**：本檔建立於 2026-09-02，第一列標記為 `BOOTSTRAP`，
 CHECK 12 應跳過該值——建立本檔的那一批沒有「前一個 commit」可對應。

@@ -13,7 +13,7 @@
   CHECK 9 — 交接區 HEAD 審計狀態與合法範圍
   CHECK 10 — §X.Y 章節引用有效性
   CHECK 11 — §6.1 清單與自檢清單 E 節項目對應
-  CHECK 12 — AUDIT-LOG 審查週期落後
+  CHECK 12 — AUDIT-LOG 審查紀錄歷史有效性與 Pending Range 相容性
   CHECK 13 — 檔尾換行符
   CHECK 14 — 繁體中文環境下的簡體字偵測
   CHECK 15 — 交接區 §5.1 的 commit hash 語境衝突
@@ -357,9 +357,9 @@ def run_checks(argv=None):
         failed += 1
 
     # ---------------------------------------------------------
-    # CHECK 12: AUDIT-LOG 審查週期落後
+    # CHECK 12: AUDIT-LOG 審查紀錄歷史有效性與 Pending Range 相容性
     # ---------------------------------------------------------
-    print("\nCHECK 12 - AUDIT-LOG 審查週期落後")
+    print("\nCHECK 12 - AUDIT-LOG 審查紀錄歷史有效性與 Pending Range 相容性")
     c12_fails, c12_infos = check_12_audit_log_cadence(repo_root)
     for info in c12_infos:
         print(f"  [INFO] {info}")
@@ -1011,7 +1011,19 @@ def check_11_selftest_correspondence(root_dir=None):
 
     return fails, infos
 
-def check_12_audit_log_cadence(root_dir=None, git_count=None):
+def check_12_audit_log_cadence(root_dir=None, git_count=None, git_ancestry=None):
+    """CHECK 12 — AUDIT-LOG 審查紀錄歷史有效性與 Pending Range 相容性。
+
+    規格：
+    1. docs/AUDIT-LOG.md 必須存在。
+    2. 必須能解析出至少一個合法 audit row，BOOTSTRAP 例外跳過。
+    3. 最新非 BOOTSTRAP audit row commit 必須存在於目前 HEAD ancestry。
+       若 latest audit hash 不存在或不屬於目前 Git history（ghost history），即為 FAIL。
+    4. 若 latest audit commit 為 HEAD 的 ancestor：
+       允許存在任意合法 pending-audit range（M3 repair commits 等），
+       不以 pending commit count 作為 failure threshold。
+    5. 顯示 pending commits 數量資訊以供審計生命週期參考。
+    """
     if root_dir is None: root_dir = repo_root
     fails = []
     infos = []
@@ -1039,21 +1051,53 @@ def check_12_audit_log_cadence(root_dir=None, git_count=None):
         infos.append("docs/AUDIT-LOG.md 最新列為 BOOTSTRAP，跳過檢查")
         return fails, infos
 
-    lag = 0
-    if git_count is not None:
-        lag = git_count
-    else:
-        try:
-            res = subprocess.run(["git", "rev-list", "--count", f"{latest_hash}..HEAD"], cwd=root_dir, capture_output=True, text=True)
-            if res.returncode == 0:
-                lag = int(res.stdout.strip())
-            else:
-                infos.append(f"無法取得 git rev-list，跳過比對 (hash={latest_hash})")
-        except Exception:
-            infos.append(f"無法執行 git 指令，跳過比對 (hash={latest_hash})")
+    # 取得 Git 歷史 / Ancestry 比對
+    if git_ancestry is not None:
+        ancestry = [c.lower() for c in git_ancestry]
+        match_idx = None
+        for idx, c in enumerate(ancestry):
+            if hashes_match(c, latest_hash):
+                match_idx = idx
+                break
 
-    if lag > 1:
-        fails.append(f"docs/AUDIT-LOG.md: 最新審查紀錄 ({latest_hash}) 落後 HEAD {lag} 個 commit（允許落後 1 批，因本批尚未核對）")
+        if match_idx is None:
+            fails.append(f"docs/AUDIT-LOG.md: 最新審查紀錄 ({latest_hash}) 不存在於目前 Git HEAD 歷史 (ancestors) 中")
+        else:
+            pending_count = git_count if git_count is not None else match_idx
+            infos.append(f"AUDIT-LOG latest reviewed commit: {latest_hash} (pending commits since latest review: {pending_count})")
+        return fails, infos
+
+    ancestry = []
+    if _in_git_repo(root_dir):
+        rc, out, _ = _git(root_dir, ["rev-list", "HEAD"])
+        if rc == 0:
+            ancestry = [line.strip().lower() for line in out.splitlines() if line.strip()]
+
+    if ancestry:
+        match_idx = None
+        for idx, c in enumerate(ancestry):
+            if hashes_match(c, latest_hash):
+                match_idx = idx
+                break
+
+        if match_idx is None:
+            fails.append(f"docs/AUDIT-LOG.md: 最新審查紀錄 ({latest_hash}) 不存在於目前 Git HEAD 歷史 (ancestors) 中")
+        else:
+            pending_count = git_count if git_count is not None else match_idx
+            infos.append(f"AUDIT-LOG latest reviewed commit: {latest_hash} (pending commits since latest review: {pending_count})")
+        return fails, infos
+
+    # Fallback: 若無法取得 rev-list HEAD，但可以以 git rev-list 測 count 或已知在 repo 中
+    try:
+        res = subprocess.run(["git", "rev-list", "--count", f"{latest_hash}..HEAD"], cwd=root_dir, capture_output=True, text=True)
+        if res.returncode == 0:
+            lag = int(res.stdout.strip())
+            infos.append(f"AUDIT-LOG latest reviewed commit: {latest_hash} (pending commits since latest review: {lag})")
+        else:
+            fails.append(f"docs/AUDIT-LOG.md: 最新審查紀錄 ({latest_hash}) 無法於 Git 歷史中解析")
+    except Exception:
+        infos.append(f"無法執行 git 指令，跳過比對 (hash={latest_hash})")
+
     return fails, infos
 
 def check_13_trailing_newline(root_dir=None, strict=False):

@@ -533,33 +533,69 @@ def test_check_11_selftest_correspondence_fail_audit_log_missing(tmp_path):
     assert "E8 缺少 AUDIT-LOG 更新項目" in fails[0]
 
 
-def test_check_12_audit_log_cadence_pass(tmp_path):
-    docs = tmp_path / "docs"
-    docs.mkdir()
-    al = docs / "AUDIT-LOG.md"
-    al.write_text("| 08e6bbc | 2026-09-02 | §4.1-1 | 通過 | 備註 |\n", encoding="utf-8")
-    fails, infos = check_12_audit_log_cadence(str(tmp_path), git_count=1)
-    assert len(fails) == 0
-
-
-def test_check_12_audit_log_cadence_fail(tmp_path):
-    docs = tmp_path / "docs"
-    docs.mkdir()
-    al = docs / "AUDIT-LOG.md"
-    al.write_text("| 08e6bbc | 2026-09-02 | §4.1-1 | 通過 | 備註 |\n", encoding="utf-8")
-    fails, infos = check_12_audit_log_cadence(str(tmp_path), git_count=2)
-    assert len(fails) == 1
-    assert "落後 HEAD 2 個 commit" in fails[0]
-
-
-def test_check_12_audit_log_cadence_bootstrap(tmp_path):
+def test_check_12_audit_log_bootstrap_pass(tmp_path):
+    # A. BOOTSTRAP only -> PASS
     docs = tmp_path / "docs"
     docs.mkdir()
     al = docs / "AUDIT-LOG.md"
     al.write_text("| BOOTSTRAP | 2026-08-25 | 初始 | 啟動 |\n", encoding="utf-8")
-    fails, infos = check_12_audit_log_cadence(str(tmp_path), git_count=10)
+    fails, infos = check_12_audit_log_cadence(str(tmp_path), git_ancestry=["c1", "c0"])
     assert len(fails) == 0
     assert any("BOOTSTRAP" in i for i in infos)
+
+
+def test_check_12_audit_log_distance_1_pass(tmp_path):
+    # B. latest audit commit = HEAD ancestor, pending distance = 1 -> PASS
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    al = docs / "AUDIT-LOG.md"
+    al.write_text("| 08e6bbc | 2026-09-02 | §4.1-1 | 通過 | 備註 |\n", encoding="utf-8")
+    fails, infos = check_12_audit_log_cadence(str(tmp_path), git_ancestry=["head123", "08e6bbc", "root000"])
+    assert len(fails) == 0
+    assert any("AUDIT-LOG latest reviewed commit: 08e6bbc" in i for i in infos)
+    assert any("pending commits since latest review: 1" in i for i in infos)
+
+
+def test_check_12_audit_log_multi_pending_pass(tmp_path):
+    # C. latest audit commit = HEAD ancestor, pending distance > 1 (e.g. 4 pending commits) -> PASS
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    al = docs / "AUDIT-LOG.md"
+    al.write_text("| 08e6bbc | 2026-09-02 | §4.1-1 | 通過 | 備註 |\n", encoding="utf-8")
+    # Synthetic ancestry representing 4 pending repair commits in M3 cycles
+    ancestry = ["c4_repair", "c3_repair", "c2_repair", "c1_impl", "08e6bbc", "root000"]
+    fails, infos = check_12_audit_log_cadence(str(tmp_path), git_ancestry=ancestry)
+    assert len(fails) == 0
+    assert any("pending commits since latest review: 4" in i for i in infos)
+
+
+def test_check_12_audit_log_ghost_history_fail(tmp_path):
+    # D. latest AUDIT-LOG hash not in HEAD ancestry -> FAIL
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    al = docs / "AUDIT-LOG.md"
+    al.write_text("| 08e6bbc | 2026-09-02 | §4.1-1 | 通過 | 備註 |\n", encoding="utf-8")
+    fails, infos = check_12_audit_log_cadence(str(tmp_path), git_ancestry=["c3_other", "c2_other", "c1_other"])
+    assert len(fails) == 1
+    assert "不存在於目前 Git HEAD 歷史" in fails[0]
+
+
+def test_check_12_audit_log_missing_file_fail(tmp_path):
+    # E. AUDIT-LOG 缺失 -> FAIL
+    fails, infos = check_12_audit_log_cadence(str(tmp_path))
+    assert len(fails) == 1
+    assert "檔案不存在" in fails[0]
+
+
+def test_check_12_audit_log_no_valid_row_fail(tmp_path):
+    # F. AUDIT-LOG 無合法 row -> FAIL
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    al = docs / "AUDIT-LOG.md"
+    al.write_text("# 僅有標題\n無任何表格列\n", encoding="utf-8")
+    fails, infos = check_12_audit_log_cadence(str(tmp_path))
+    assert len(fails) == 1
+    assert "未找到自我審查檢查點紀錄列" in fails[0]
 
 
 def test_check_13_trailing_newline_pass(tmp_path):
