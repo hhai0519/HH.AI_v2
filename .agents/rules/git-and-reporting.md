@@ -250,8 +250,8 @@
   `sum(1 for l in text.splitlines() if l.strip().startswith('```'))`。
   **禁止使用 `text.count('```')`** ——該算法會把文件內文中提到的 ``` 一併計入，
   本專案的 `docs/HANDOVER.md` 就有兩行說明文字含有 ``` ，
-  用 `count()` 會多算 2。此規則原本只記在 `docs/HANDOVER.md` §10.4 與 §11，
-  該檔案不會被自動載入，因此移入本規則檔。
+  用 `count()` 會多算 2。此規則原本只記在歸檔快照 `docs/archive/handover/HANDOVER-pre-router-568209e.md` §10.4 與 §11，
+  現行規則權威已完整移入本規則檔（現行 `docs/HANDOVER.md` 為 Router，不再保留舊規則）。
 
   更極端的實例：`PRINCIPLES.md` 與本規則檔兩份文件**完全沒有 code block**
   （以 ``` 開頭的行數皆為 0），但因內文大量引用 ``` 作說明，

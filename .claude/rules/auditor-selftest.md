@@ -98,7 +98,7 @@
 - [ ] E13 **配對與覆蓋都檢查過？**（§6.1-11）Audit-state pairing：Macro PASS verdict ⇔ AUDIT-LOG ⇔ §5.1 checkpoint（TASKBOARD 只維持工作狀態，不參與 commit-verdict authority）；EXACT_SPEC 比對 spec targets ↔ git add；GOAL_SPEC 比對 Allowed Scope ↔ actual changed files ↔ explicit git add ↔ acceptance criteria
 - [ ] E14 **提示詞中有「審計官自檢聲明」區塊，逐項列出本節各項的結果？**（§6.1-12；這是自檢唯一的外部產物，沒有它等同沒做自檢。**新增本節項目時，聲明區塊要同步增列**）
 - [ ] E15 **每個錨點都對應本批 base commit 與規格上下文，具備結構唯一性而非依賴特定第 N 行？**（僅 EXACT_SPEC 適用；GOAL_SPEC 標記為 N/A）（§6.1-13）
-- [ ] E16 **寫入的文字若含跨檔 `§X.Y` 引用，檔名與章節號在同一行？**（§6.1-14；CHECK 10 逐行判斷，換行斷開就會 FAIL）
+- [ ] E16 **寫入的文字若含跨檔 `§X.Y` 引用，檔名與章節號在同一行且指向正確目標？**（§6.1-14；CHECK 10 逐行檢驗；explicit target 不得被 verifier substitution、target section 必須存在於該檔、歷史引用必須明確寫 archive 路徑，換行斷開或 target 不符皆 FAIL）
 - [ ] E17 **每個插入型修改若涉及結構序列，都定義了明確的驗收準則而非預測所有衍生數值？**（§6.1-15）
 - [ ] E18 **提示詞中有「機械前置證據區塊」，含 base full OID、batch mode、Allowed Scope 與驗證指令（EXACT_SPEC 另含 spec path 與 SHA）？**（§6.1-16；未手寫 line/fence 衍生快照作為 blocking truth）
 - [ ] E19 **提示詞若含任何「移除」，附上了移除前複查的三步結果？**（§6.1-17；反向引用掃描、唯一內容確認、**重新讀檔的獨立複查**；原則見 `PRINCIPLES.md` §2.9）

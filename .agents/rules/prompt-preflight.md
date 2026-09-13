@@ -144,7 +144,7 @@
 | E13 配對與覆蓋 | 依 §3.1、§3.2 比對。GOAL_SPEC 比對 Allowed Scope ↔ actual changed files ↔ explicit git add ↔ gates；EXACT_SPEC 比對 allowed scope ↔ spec targets ↔ git add ↔ gates |
 | E14 自檢聲明區塊 | 區塊存在且項目連號無缺 |
 | E15 錨點基準來源 | 僅在 EXACT_SPEC 模式下檢查：錨點對應本批 base commit full OID 與規格上下文；GOAL_SPEC 模式為 N/A |
-| E16 跨檔引用同行 | 寫入文字中的 `§X.Y` 若跨檔，檔名與章節號在同一行 |
+| E16 跨檔引用同行 | 寫入文字中的 `§X.Y` 若跨檔，檔名與章節號在同一行；explicit target 不得被 substitution、target section 必須存在於該檔，歷史引用必須明確寫 archive 路徑 |
 | E17 結構序列驗收 | 若插入或結構變更涉及語意驗收條件（如章節／項目順序），附明確驗收準則；不得將衍生序列當作通用 blocking 條件 |
 | E18 機械前置證據 | 依 §3.6 確認包含 base full OID、batch mode、Allowed Scope 與標準驗證指令；EXACT_SPEC 才額外要求 spec path 與 SHA |
 | E19 移除前複查 | 提示詞若含刪除檔案／章節／規則／看板項目，檢查是否附有三步複查結果。純存在性比對，非語意判斷 |

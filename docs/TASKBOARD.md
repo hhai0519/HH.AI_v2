@@ -12,7 +12,7 @@
 
 **NEXT_WORK**：B-93
 
-**最後更新**：2026-09-13，Verification Integrity / False-Green Hardening
+**最後更新**：2026-09-13，Verification Integrity / False-Green Final Micro-Fix
 
 ---
 
@@ -126,7 +126,7 @@
 | B-50 | 已完成 | **`prompt-preflight.md` §3.4 的交叉驗證可被審計官以「知情偏離」宣告繞過** | 2026-09-06 審計官在 2a-fix 把 E8 標為 ⚠️ 並附理由，執行者接受並未停止，導致 CHECK 12 在 CI 上 FAIL。§3.7 明寫「十八項全部可機械驗證，沒有任何一項需要你憑信任接受」，但 E8 就此變成信任項——與該節建立時要消滅的 E11 造假是同一個洞。而 `role-boundaries.md` §2 又禁止執行者判斷規範是否應存在，執行者被夾在中間。**修法：E8 比對為否時一律停止、不接受任何理由；審計官需偏離 §6.1-8 時，唯一合法路徑是先另開一批修改規則本身。** 排批 2b。**2026-09-07 實測落地**：`.agents/rules/prompt-preflight.md` §3.4 已含「自檢聲明不接受任何豁免」，實測 1 處 |
 | B-51 | 已完成 | **判準含 HEAD 的檢查，本地與 CI 的答案結構性差 1** | 已於 Transient Red Reduction 完成：check_9_handover_head 強化 candidate 自引防護（不得為當前 HEAD）；check_consistency.py 實作 --as-if-committed 預演模式，使 commit 前即可準確預測 commit 後拓撲（HEAD=candidate, HEAD~1=當前HEAD, HEAD~2=當前HEAD~1），提前攔截 stale handoff pointer 與週期落後，消除本地與 CI 差 1 的可預測中間紅燈 |
 | B-52 | 已完成 | **同形錯誤連續三批：改動或跳過某物之前，未查誰依賴它** | 批 1 改 `check_consistency.py` 顯示字串未查測試斷言引用；批 2a 設計跨平台位元組比對未查 git 跨平台轉換；批 2a-fix 宣告偏離 §6.1-8 未查其機械守衛 CHECK 12。`auditor-protocol.md` §6.7 已有此規則但措辭只舉「數字」「章節引用」為例。**處置：§6.7 的搜尋對象清單擴為四類**——被測試斷言引用的字串／會被執行環境改動的東西（換行、編碼、路徑分隔符）／有機械守衛的規則／本地與 CI 判準會分歧的東西。依 §5.7 同步進 §6.1、selftest E 節、preflight §3 三處。**原 B-24 併入本項**。**2026-09-07 實測落地**：`.claude/rules/auditor-protocol.md` §6.7 已含「要偏離任何一條規則」，實測 1 處，清單共 7 條 |
-| B-53 | 待辦 | **CHECK 1–7 內嵌於 453 行的 `run_checks()`，永遠無法被單元測試** | `grep "^def " scripts/check_consistency.py` 實測只有 `run_checks`、`get_git_heads` 與 `check_8`～`check_16`。CHECK 8–16 是獨立函式且有 322 行測試；**CHECK 1–7 只有一次性反例注入（B-15），無回歸保護**——重構 `run_checks()` 弄壞任一項不會有測試變紅，CI 仍是綠的。**假綠燈形狀住在檢查器本身裡。** 處置：抽成 7 個函式並補正反例測試。排批 2c |
+| B-53 | 待辦 | **CHECK 4、7 仍內嵌於 `run_checks()`，待完成剩餘檢查器抽取與回歸測試** | CHECK 1、2、5、6 已於 B-93 抽成 production helpers，CHECK 3 已具獨立 production function，且上述函式皆已具備 direct regression canaries。目前 CHECK 4、7 仍留在 `run_checks()` inline。本項保持「待辦」，但 scope 收斂為 remaining inline checks 抽取與 residual regression coverage，待後續批次處理。不得錯誤標記已完成。 |
 | B-54 | 待辦 | **零項 CHECK 驗證 SOP 層內容或跨層矛盾** | 16 項中 6 項對著稽核迴圈自己（8／9／11／12／15／16）、5 項通用格式（1／2／3／13／14）、3 項 `skills/`（4／6／7）、2 項路由引用（5／10）。**SOP 的 1,305 行內容與規範層之間的矛盾完全無守衛。** 已知兩例（`SOP_02` 清歷史 vs `.agents/rules/git-and-reporting.md` 禁 force push、`SOP_04` 第 167 行與 `SOP_06` 第 133 行 vs ADR-0017）皆為人工偶然發現。處置：建 `docs/managed-facts.yaml` ＋ **CHECK 21 跨層矛盾偵測**。排批 2e |
 | B-55 | 待辦 | **治理層已分裂成兩個速度** | 實測最後修改日：稽核迴圈檔案 09-05～09-06；作業層 SOP_01／02／05／06／09／11／12／13 停在 2026-08-25（12 天）；**`.agents/rules/skills-architecture.md` 停在 2026-08-13（24 天，全庫最舊）——而它正是 B-01 的目標檔案**。處置：**CHECK 23 文件時效偵測**。排批 2e |
 | B-56 | 待辦 | **`SOP_00A_Master_Index.json` 的維護規則靠記憶** | 該檔是 `$$` 指令的唯一權威定義來源，內含「每次新增或修改 SOP 時，必須同步更新此索引對應的 tags」但無任何偵測；`last_updated` 停在 2026-08-29，另有 5 個 `PENDING_MIGRATION`。CHECK 5 只驗路由目標存在性，不驗時效與完整性。併入 CHECK 23。排批 2e |
@@ -166,7 +166,7 @@
 | B-90 | 已完成 | **批次規格格式缺 `create_file` mode** | 已於 B-90 實作完成：`parse_spec` 與 `apply_mod_to_text` 原生支援 `create_file` mode，BPE 支援新建檔案模擬與驗收，CHECK 17 完成新檔逐位元重放，並全面移除 `-BOOTSTRAP.spec.txt` 跳過重放與全庫單一 BOOTSTRAP 限制。歷史規格 `0e13c85` 安全保留為歷史 artifact |
 | B-91 | 可封存 | **9 個 `audited-*` tag 歷史留痕保存（退役破壞性遠端清理）** | 9 個錯 tag 刻意作為歷史事故證據保留；audited tag 次系統已退役為 non-authoritative legacy markers（0 remote tag deleted, 0 remote tag rewritten, historical wrong tags intentionally preserved），審計狀態已由 AUDIT-LOG、refactor-backlog §5.1 與 GitHub Actions SSOT 完全接管，不再影響 correctness、audit state、handoff 或 remote health。不需執行破壞性遠端清理。 |
 | B-92 | 已完成 | **`docs/EXEC-LOG.md` 與 `docs/fingerprints/exec-latest.json` 作為 CHECK 17 豁免檔的生命週期** | 豁免檔生命週期已修正。`docs/EXEC-LOG.md` 不再採 generic zero-deletion，改採 fail-closed semantic transition validation（支援歷史列不變、回填 parent hash、追加當批紀錄）；`docs/fingerprints/exec-latest.json` 作為 generated snapshot 正確性由 `fingerprint.py --verify` 守護；真實 Git repo 正反例測試已建立 |
-| B-93 | 進行中 | **Verification Integrity / False-Green Fail-Closed Hardening** | 修正驗證系統中的既有 false-green 與 fail-open 路徑：CHECK 10 跨檔引用實質驗證目標章節、檔案讀取與 Git facts 取得失敗改為 fail-closed、收斂 CHECK 6 與 CHECK 14 寬鬆豁免為精準語境例外、PENDING_MIGRATION 實施白名單登錄、CHECK 13 建議輸出如實呈現、補齊 verifier negative canaries 與 real-input-shape 測試、收緊 prompt-preflight 至 10,000 字元安全餘裕 |
+| B-93 | 進行中 | **Verification Integrity / False-Green Fail-Closed Hardening** | 修正驗證系統中的既有 false-green 與 fail-open 路徑：CHECK 10 exact section identity 與 exact target identity（禁止 archive substitution）、檔案讀取與 Git facts 取得失敗改為 fail-closed、收斂 CHECK 6 與 CHECK 14 寬鬆豁免為精準語境例外、PENDING_MIGRATION 實施白名單登錄、CHECK 13 建議輸出如實呈現、production-path negative canaries 與 real-input-shape 測試、收緊 prompt-preflight 至 10,000 字元安全餘裕。本批為 final micro-fix，完成後待外部 Macro Audit 裁決方可關單。 |
 
 ---
 

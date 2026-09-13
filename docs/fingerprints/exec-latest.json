@@ -1,5 +1,5 @@
 {
-  "base_head": "9cb9c5a",
+  "base_head": "1f53273",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 0,
@@ -15,7 +15,7 @@
         "## 3. 查證紀律"
       ],
       "lines": 278,
-      "sha256": "3679876f4899c5e01a1e1463cde04b6abae78b1e37d9efe7349d4bc5a4dd8443"
+      "sha256": "2d2e98438100b872019ac42c332b1c731ea654093f47f3efb8c1e35ded28f932"
     },
     ".agents/rules/powershell-encoding-protocol.md": {
       "fences": 6,
@@ -57,7 +57,7 @@
         "## 6. 這條規則保護的是誰"
       ],
       "lines": 291,
-      "sha256": "22cd23745506a0e04a10b8ca07799d82934c55e374bccf55fda66b785ac1973a"
+      "sha256": "775d3b218e7a0f7b4a5c435696bfd474eb89fd18c6b33653ee4965913e7cf6d6"
     },
     ".agents/rules/role-boundaries.md": {
       "fences": 0,
@@ -153,7 +153,7 @@
         "### 11.6 [已退役／不需執行] 歷史 `audited-*` tag 之留痕保存（RETIRED / NOT REQUIRED）"
       ],
       "lines": 418,
-      "sha256": "a6ad29a2a4ef0b32aa610ca46d89e79aba85744d607f759ade5dab5f25a53110"
+      "sha256": "8572809624a86e0b9e01020a8ccb80f54e134886596e3b0bb11bdced05bd6292"
     },
     ".claude/rules/auditor-selftest.md": {
       "fences": 0,
@@ -168,7 +168,7 @@
         "## F. 額度（每一輪回覆的開頭與結尾）"
       ],
       "lines": 124,
-      "sha256": "65182596dfc10a434a8140e587d85eb02e44d9ff5a3ac0412f7ac7a743b1c208"
+      "sha256": "1ff7a7632c8cb524ebcf525fa0a9c80a520c1c0e2293047c3eda761e982fe62b"
     },
     ".github/workflows/verify.yml": {
       "fences": 0,
@@ -507,16 +507,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 105,
-      "sha256": "725c7bfac89dcf93543a5e1830c649cc9e3908acb10acdc534af93def0d440be"
+      "lines": 106,
+      "sha256": "9cd2aa20ba2255d380112efea0ab684d51306e830c86e883383c0a5a74b4217a"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 76,
-      "sha256": "631e046871909555737d49fdfb432bb446f1cca4bb03e0aa3ea38f46860e90cf"
+      "lines": 77,
+      "sha256": "56b0e6900486e8ff380b16edc59579dd0c991cdcb01113f8a5228332d443b705"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -552,7 +552,7 @@
         "## 封存區"
       ],
       "lines": 237,
-      "sha256": "aa544b947296a06326a1c99057cb397fbb5a83542c0efecad213a9fd71b04a4f"
+      "sha256": "53d95eba60b473afe7a7a76938edf265cc37d7e118a5e68353acaca72e9dae81"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -881,7 +881,7 @@
         "### 5.4 進行中／等待回報"
       ],
       "lines": 3062,
-      "sha256": "6e7d8cc2b663e2d3c86f06e173e926ec067ef2de21a9cc0e432a73f69582fc4f"
+      "sha256": "4d4a56f36f0159b1809e57dbd05141fe98faf7a337fd2fd4a5d187f2b9a72fb8"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -908,8 +908,8 @@
         "# 已知指向錯誤的歷史 tag。本清單只能縮短、不得加長。",
         "# 修復批次完成後必須清空；清單中的 tag 若已修復卻未移除，CHECK 18 會 FAIL。"
       ],
-      "lines": 1961,
-      "sha256": "3326ec3aeba76872c758c74986959dd4f5eb1e1d4a8dfe8df396facb408afdde"
+      "lines": 1954,
+      "sha256": "d6feb539bd32b098c384967228c1105a19296584991a4b43d7709bcdcdf0f195"
     },
     "scripts/fingerprint.py": {
       "fences": 0,
@@ -1042,8 +1042,8 @@
         "# Meta-test: Active CHECK Inventory Integrity (1..18)",
         "# ==========================================================================="
       ],
-      "lines": 451,
-      "sha256": "bc94c4edce2b0665c9fe973bba1c52d948168b78fed88bac7a0246aa868b3522"
+      "lines": 512,
+      "sha256": "d3df3ebea6740374da6a553d01f3150dd71ced766b3a08f337e9d5c74dbe4425"
     },
     "scripts/tests/test_verify_all.py": {
       "fences": 0,
@@ -1069,7 +1069,7 @@
       "sha256": "77163678353cb7a444f90f17956d03312f715cfcccf933603948715939ecdc10"
     }
   },
-  "generated_at": "2026-09-13T11:15:02Z",
+  "generated_at": "2026-09-13T11:34:59Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

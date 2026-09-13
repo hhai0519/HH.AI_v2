@@ -3021,7 +3021,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - Formal Production Handoff 已完成（D-01 / D-02 PASS）。
   - Pre-Handoff Router / Anti-Loop Hardening 主體已完成。
   - Verification Integrity hardening candidate 已 landed，external Macro review 發現 bounded canary-integrity micro-fix。
-  - repair implementation 完成後仍 pending Macro Audit。
+  - Verification Integrity final exact-target repair implementation 完成後仍 pending Macro Audit。
   - 當前與下一步工作任務值（Current / next work task value）唯一由 `docs/TASKBOARD.md` 的 `**NEXT_WORK**` pointer 保存，交接區不複製 task ID 或待辦佇列。
   - Antigravity IDE runtime rule UI freshness 仍需由 runtime reload / fresh session 保證，不由 CI 宣稱，必須在進入下一個 production task 前確認 reload/reopen。
 - **待使用者裁決事項**：無（依 §5.3，NONE）。

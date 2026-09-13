@@ -1029,7 +1029,8 @@ def check_10_section_refs(root_dir=None):
         before = line[:sec_pos].rstrip()
         matches = list(re.finditer(r'(`?([a-zA-Z0-9_\-\./]+\.md)`?|PRINCIPLES|交接區|SOP_14)', before, re.IGNORECASE))
         if matches:
-            raw = matches[-1].group(1).strip('`').lower()
+            raw_orig = matches[-1].group(1).strip('`')
+            raw = raw_orig.lower()
             if not any(k in raw for k in ['taskboard', 'audit-log', 'exec-log', 'auditor-selftest']):
                 if raw in ['principles.md', 'principles']: return 'PRINCIPLES.md'
                 if raw in ['agents.md']: return 'AGENTS.md'
@@ -1040,19 +1041,17 @@ def check_10_section_refs(root_dir=None):
                 if raw in ['refactor-backlog.md', 'docs/refactor-backlog.md', '交接區']: return 'docs/refactor-backlog.md'
                 if raw in ['sop_14']: return 'SOP/SOP_14_Rigorous_Verification_and_Audit_Protocol.md'
                 if raw in ['handover.md', 'docs/handover.md']:
-                    cur_p = 'docs/HANDOVER.md'
-                    cur_hdgs = get_headings(os.path.join(root_dir, cur_p))
-                    if isinstance(cur_hdgs, set) and sec in cur_hdgs:
-                        return cur_p
-                    archive_p = 'docs/archive/handover/HANDOVER-pre-router-568209e.md'
-                    archive_hdgs = get_headings(os.path.join(root_dir, archive_p))
-                    if isinstance(archive_hdgs, set) and sec in archive_hdgs:
-                        return archive_p
-                    return cur_p
+                    return 'docs/HANDOVER.md'
+                if 'handover-pre-router-568209e' in raw:
+                    return 'docs/archive/handover/HANDOVER-pre-router-568209e.md'
                 for cand in [
+                    os.path.join(root_dir, raw_orig),
                     os.path.join(root_dir, raw),
+                    os.path.join(root_dir, os.path.dirname(rel_src), raw_orig),
                     os.path.join(root_dir, os.path.dirname(rel_src), raw),
+                    os.path.join(root_dir, ".agents", "rules", raw_orig),
                     os.path.join(root_dir, ".agents", "rules", raw),
+                    os.path.join(root_dir, ".claude", "rules", raw_orig),
                     os.path.join(root_dir, ".claude", "rules", raw),
                 ]:
                     norm_p = os.path.normpath(cand).replace('\\', '/')
@@ -1081,16 +1080,10 @@ def check_10_section_refs(root_dir=None):
             return '.agents/rules/git-and-reporting.md'
         if 'SOP_14' in line:
             return 'SOP/SOP_14_Rigorous_Verification_and_Audit_Protocol.md'
+        if 'handover-pre-router-568209e' in line.lower():
+            return 'docs/archive/handover/HANDOVER-pre-router-568209e.md'
         if 'HANDOVER' in line:
-            cur_p = 'docs/HANDOVER.md'
-            cur_hdgs = get_headings(os.path.join(root_dir, cur_p))
-            if isinstance(cur_hdgs, set) and sec in cur_hdgs:
-                return cur_p
-            archive_p = 'docs/archive/handover/HANDOVER-pre-router-568209e.md'
-            archive_hdgs = get_headings(os.path.join(root_dir, archive_p))
-            if isinstance(archive_hdgs, set) and sec in archive_hdgs:
-                return archive_p
-            return cur_p
+            return 'docs/HANDOVER.md'
 
         return None
 

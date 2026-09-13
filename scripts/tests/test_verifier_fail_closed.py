@@ -161,6 +161,67 @@ def test_check_10_refactor_backlog_root_5_special_case_pass(tmp_path):
     assert "目標檔案 (docs/refactor-backlog.md) 找不到章節標題: §5.999" in fails[0]
 
 
+def test_check_10_handover_router_missing_section_fails_without_substitution(tmp_path):
+    """Fix 4A: docs/HANDOVER.md 無 §10.4 時必須 FAIL，不得自動換檔替換成 archive 快照判 PASS"""
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    handover = docs / "HANDOVER.md"
+    handover.write_text("### 10. 歸檔與歷史資料\n### 11. 規範驗證入口\n", encoding="utf-8")
+
+    archive_dir = docs / "archive" / "handover"
+    archive_dir.mkdir(parents=True)
+    archive_file = archive_dir / "HANDOVER-pre-router-568209e.md"
+    archive_file.write_text("### 10.4 核對時的重點檢查項\n## 11. Claude 自身的已知失誤\n", encoding="utf-8")
+
+    rules = tmp_path / ".agents" / "rules"
+    rules.mkdir(parents=True)
+    source_file = rules / "test-rule.md"
+    source_file.write_text("此規則原本記在 `docs/HANDOVER.md` §10.4 與 §11。\n", encoding="utf-8")
+
+    fails, infos = check_10_section_refs(str(tmp_path))
+    # §10.4 must fail against docs/HANDOVER.md, even though archive has §10.4!
+    assert len(fails) == 1
+    assert "目標檔案 (docs/HANDOVER.md) 找不到章節標題: §10.4" in fails[0]
+    assert any("跨檔案引用: §11 -> docs/HANDOVER.md" in i for i in infos)
+
+
+def test_check_10_explicit_archive_target_with_existing_section_passes(tmp_path):
+    """Fix 4B: 明確引用 docs/archive/handover/HANDOVER-pre-router-568209e.md §10.4 且存在時 PASS"""
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    archive_dir = docs / "archive" / "handover"
+    archive_dir.mkdir(parents=True)
+    archive_file = archive_dir / "HANDOVER-pre-router-568209e.md"
+    archive_file.write_text("### 10.4 核對時的重點檢查項\n## 11. Claude 自身的已知失誤\n", encoding="utf-8")
+
+    rules = tmp_path / ".agents" / "rules"
+    rules.mkdir(parents=True)
+    source_file = rules / "test-rule.md"
+    source_file.write_text("此規則原本記在 `docs/archive/handover/HANDOVER-pre-router-568209e.md` §10.4 與 §11。\n", encoding="utf-8")
+
+    fails, infos = check_10_section_refs(str(tmp_path))
+    assert len(fails) == 0
+    assert any("跨檔案引用: §10.4 -> docs/archive/handover/HANDOVER-pre-router-568209e.md" in i for i in infos)
+    assert any("跨檔案引用: §11 -> docs/archive/handover/HANDOVER-pre-router-568209e.md" in i for i in infos)
+
+
+def test_check_10_current_handover_existing_section_passes(tmp_path):
+    """Fix 4C: 明確引用 docs/HANDOVER.md 且該 current router 確實有該 section 時 PASS"""
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    handover = docs / "HANDOVER.md"
+    handover.write_text("### 10. 歸檔與歷史資料\n### 11. 規範驗證入口\n", encoding="utf-8")
+
+    rules = tmp_path / ".agents" / "rules"
+    rules.mkdir(parents=True)
+    source_file = rules / "test-rule.md"
+    source_file.write_text("驗證入口見 `docs/HANDOVER.md` §11。\n", encoding="utf-8")
+
+    fails, infos = check_10_section_refs(str(tmp_path))
+    assert len(fails) == 0
+    assert any("跨檔案引用: §11 -> docs/HANDOVER.md" in i for i in infos)
+
+
 # ===========================================================================
 # Defect 2: Fail-Closed on Read/Decode Errors (Direct Production Helper Calls)
 # ===========================================================================
