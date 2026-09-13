@@ -10,9 +10,9 @@
 `待裁決`（需使用者決定）／`已完成`（仍可能被引用）／
 `可封存`（不影響後續工作，待使用者確認後移入封存區）
 
-**NEXT_WORK**：A-14
+**NEXT_WORK**：B-28
 
-**最後更新**：2026-09-13，A-06 Macro PASS Closure / A-14 Prompt Manifest Enforcement Implementation
+**最後更新**：2026-09-13，A-14 Macro PASS / Awaiting Pre-B01 User Decision
 
 ---
 
@@ -33,7 +33,7 @@
 | A-11 | 已完成 | 兩次以上複驗 | 2026-09-02 執行，找出四個缺口 |
 | A-12 | 已完成 | 任務板常駐化與封存機制 | 本檔 ＋ §10 |
 | A-13 | 已完成 | 看板更新的觸發機制 | §10.5 觸發時機明確化為「每一批無例外」、新增 §10.6「最後更新」作為可驗證攔截點、§6.1 第 8 項與 selftest E4b 同步補上 TASKBOARD |
-| A-14 | 進行中 | 對審計官的獨立偵測 | 新增 `.agents/rules/prompt-preflight.md`：執行者在動手前檢查提示詞結構元素與所有錨點的唯一性。2026-09-13 實際 regression evidence：A-06 production prompt 缺少 current mandatory structure（batch_mode / FINDING_DISPOSITION / selftest block / active-rule reread / fixed signature），但 Executor 未依 prompt-preflight 機械攔截而直接執行；「Executor 對 Auditor prompt 獨立前置偵測」存在實際 enforcement regression。本批實作 machine-readable prompt manifest validator（`scripts/validate_prompt_manifest.py`）與 negative canary tests，待 External runtime malformed-prompt canary 與 Macro Audit | `.agents/rules/prompt-preflight.md` |
+| A-14 | 已完成 | 對審計官的獨立偵測 | machine-readable Prompt Manifest validator 與 mutation-before-preflight hard rule 已完成 External Macro Audit PASS；兩次 Runtime Canary 均在任何 repo mutation 前成功 fail-closed，證明 Executor 可機械攔截 Auditor prompt 內部結構錯誤與跨區塊矛盾 | `.agents/rules/prompt-preflight.md` |
 | A-15 | 已完成 | 執行者 session 的 context 截斷風險 | 2026-09-02 實際發生：Antigravity 畫面顯示「The server cleared a prefix of the conversation as it grew too large」，自動載入的 `.agents/rules/` 六份規則可能已被丟出 context 而不自知，且**沒有任何跡象會顯示規則失效**。處置：每批提示詞開頭要求從檔案讀取規則（§6.1-10、selftest E12）；並建議一批一個 session |
 | A-16 | 已完成 | 「可機械檢查者必須機械檢查」原則 | 寫入 `PRINCIPLES.md` §2.8。控制的四層（控制／證據／偵測／獨立性），本專案幾乎只做到第一層。新增規則時必須能回答「這條沒做的話，什麼東西會發現？」 |
 | A-17 | 已完成 | §10.1「當輪登錄」的漏洞 | 審計官不能改檔案，只能透過提示詞登錄；當一輪因需裁決而未產出提示詞時，登錄無處可去。A-15 即因此漏掉，直到使用者逐項對帳才發現。處置：§10.1 補上無提示詞輪次的處置程序 |
@@ -61,8 +61,7 @@
 | A-38 | 已完成 | **審計官引用錨點原文造成 count=2** | 2026-09-05 審計官在 backlog 第 43 點 C 段描述「E11 造假」時，把錨點原文寫進正文，使該字串在檔案中 count=2。這與 `.claude/rules/auditor-protocol.md` §6.2「零命中條件要先檢查自身指令會不會產生該字串」是同一形狀。**§6.2 的原則已涵蓋，不新增規則**——過度增加規則會稀釋既有規則的注意力 |
 | A-39 | 已完成 | **CHECK 8／9 的門檻設計錯誤** | 欄位記錄「上次核對通過的 HEAD」，執行者在 commit **之前**跑檢查時落後 1（正常），**commit 之後 HEAD 前進，同一個值就落後 2 而 FAIL**。連續發生三次（875a604、8b56cbd、ec840fe），每次都被當成「填錯值」去修，但**任何值都會在 commit 後落後**——除非填本批自己的 hash，而那在寫提示詞時還不存在。**這是門檻設計錯誤，不是誰的疏忽。** 處置：門檻由 `lag > 1` 改為 `lag > 2`——落後 1＝本批已 commit 尚待核對；落後 2＝下一批也 commit 了卻仍未更新欄位，那才是異常 |
 
-**A 節除 A-06 外全部完成**（A-07 隨 E1 判定 PASS 完成），若 E2 通過且未推翻任何設計，
-屆時可一併提議封存。
+A 節目前狀態以本表各列與 `NEXT_WORK` 之 current repo truth 為準；不另維護會與表格重複的動態完成摘要。
 
 > **看板完整性說明**：2026-09-02 全盤盤點前，本看板只有 A–D 共 24 項，
 > 完全未涵蓋 `refactor-backlog.md` §二的六大節與四個追蹤項。

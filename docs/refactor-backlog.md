@@ -2825,7 +2825,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 5.1 上一批狀態
 
-上次核對通過的 HEAD：dac5921
+上次核對通過的 HEAD：c53de3b
 
 - `23af193`（執行者前置檢查 ＋ 回滾程序 ＋ `AUDIT-LOG.md` ＋ 四缺口修正）
   已於 2026-09-02 由審計官核對通過：6 檔異動（含 2 個新檔）、零夾帶、
@@ -2993,6 +2993,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 - `3e47f44`（Antigravity Runtime Rule Loadability / UI Freshness Reconciliation）已於 2026-09-13 由外部審計官全面審查獨立核對通過：exact-SHA GitHub Actions Run 34756394041 (status completed, conclusion success)；prompt-preflight.md committed chars=9973，UI reload 後確認顯示 9973/12000，stale buffer 根因確認；B-94 Runtime Rule Loadability / UI Freshness Reconciliation 正式通過並結案（B-94 CLOSED）；判定 Macro PASS。
 - `c51ee6b`（B-95 Material Finding → TASKBOARD Promotion Contract）已於 2026-09-13 由外部審計官全面審查獨立核對通過：exact-SHA GitHub Actions Run 34757466644 (status completed, conclusion success)；verification gates 5/5 PASS；Material Finding 定義、四種 disposition 狀態、當輪登錄最小 state-sync 提示詞、無第二 queue、blocking/non-blocking 路由等契約成立；D4 EVERY_ROUND 自檢成立；prompt-preflight FINDING_DISPOSITION 機械檢查契約成立且字元數精簡至 8860/9500；C-06 登錄為待裁決；B-01 零實作；B-95 Material Finding → TASKBOARD Promotion Contract 正式通過並結案（B-95 CLOSED）；判定 Macro PASS。
 - `dac5921`（A-06 Machine-Generated Rule Traceability）已於 2026-09-13 由外部審計官全面審查獨立核對通過：exact-SHA Actions Run 34762339410 (status completed, conclusion success)；canonical verification = ALL 5 GATES PASSED；stale ADR path repair PASS；fresh != valid fail-closed contract PASS；negative canary PASS；valid fixture PASS；UNRESOLVED_HISTORICAL advisory behavior PASS；fenced code heading attribution PASS；blocking status = 0；B-01 零實作；A-06 正式結案；判定 Macro PASS。
+- `c53de3b`（A-14 Executor Prompt Preflight Enforcement）已於 2026-09-13 由外部審計官全面審查獨立核對通過：exact-SHA Actions Run 34763116512 (status completed, conclusion success)；canonical verification = ALL 5 GATES PASSED；Prompt Manifest validator（scripts/validate_prompt_manifest.py）實作與單元測試全數通過；malformed-manifest 與 full-prompt contradiction 兩次 runtime canaries 均成功阻擋且零 mutation；A-14 正式結案；判定 Macro PASS。
 
 ### 5.2 待辦
 
@@ -3029,10 +3030,12 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - Runtime Rule Freshness Reconciliation 已完成 External Macro Audit 並正式 CLOSED。
   - Material Finding → TASKBOARD Promotion Contract 已完成 External Macro Audit 並正式 CLOSED。
   - generated rule traceability External Macro PASS / CLOSED。
-  - Executor prompt-preflight machine enforcement implementation pending runtime canary / External Macro Audit。
+  - Executor prompt-preflight machine enforcement External Macro PASS / CLOSED。
+  - Prompt Manifest runtime interception 已由兩種 malformed-prompt canary 實證。
   - Production routing ready。
   - 當前與下一步工作任務權威（Current / next work authority）仍只由 `docs/TASKBOARD.md` 的 `**NEXT_WORK**` pointer 保存與導航，交接區不複製 task ID 或待辦佇列。
-  - B-01 不得在本批啟動。
+  - 待使用者裁決事項依 §5.3。
+  - B-01 尚未啟動。
   - Antigravity IDE runtime rule UI freshness 仍需由 runtime reload / fresh session 保證，不能由 CI 直接證明。
 - **待使用者裁決事項**：有（依 §5.3，包含 GitHub main preventive required-check enforcement 決策，屬 non-blocking user decision）。
 - **剩餘工作權威**：以 `docs/TASKBOARD.md` 為唯一 remaining-work authority。
