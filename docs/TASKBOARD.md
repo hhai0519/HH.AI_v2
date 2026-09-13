@@ -10,9 +10,9 @@
 `待裁決`（需使用者決定）／`已完成`（仍可能被引用）／
 `可封存`（不影響後續工作，待使用者確認後移入封存區）
 
-**NEXT_WORK**：C-06
+**NEXT_WORK**：A-06
 
-**最後更新**：2026-09-13，B-95 Macro PASS / Awaiting User Decision
+**最後更新**：2026-09-13，A-06 Rule Traceability / B-01 Targeted Comparison Recorded
 
 ---
 
@@ -25,7 +25,7 @@
 | A-03 | 已完成 | 交接提示詞寫進 SOP（含完整模板） | §9.1 |
 | A-04 | 已完成 | 幾次對話換 Agent ＋ 交接前四項確認 | §8.2、§9.1 |
 | A-05 | 已完成 | 額度控管的品質影響評估 | `refactor-backlog.md` 第 30 點 A 段 |
-| A-06 | 待辦 | 規則追溯表 `.claude/rules/rule-traceability.md` | 排在 E1／E2 之後 |
+| A-06 | 進行中 | 規則追溯表（已改為 machine-generated traceability：`scripts/generate_rule_traceability.py` → `docs/generated/rule-traceability.md` → `scripts/tests/test_rule_traceability.py` / canonical verify_all 自動守護；待 External Macro Audit） | `docs/generated/rule-traceability.md` |
 | A-07 | 已完成 | 注入式測試（E1） | 題目與答案卷由使用者與審計官保管，不進 repo。已於 2026-09-12 執行完成並判定 PASS，與 D-01 為同一件事 |
 | A-08 | 已完成 | 接手自檢清單 | `.claude/rules/auditor-selftest.md` |
 | A-09 | 已完成 | 交接區有內容且有人負責填 | §9.3、§6.1 第 8 項 |
@@ -74,7 +74,7 @@
 
 | ID | 狀態 | 項目 | 備註 |
 |---|---|---|---|
-| B-01 | 待辦 | ADR-0002／0004／0010 分層搬移 | Claude 負責 production prompt 與 Macro Audit，Antigravity 負責 implementation |
+| B-01 | 待辦 | ADR-0002／0004／0010 分層搬移（NOT STARTED） | Claude 負責 production prompt 與 Macro Audit，Antigravity 負責 implementation。等 A-06 External Macro Audit 完成，且使用者裁決 B-28/B-29 full comparison timing 後才可開始 |
 | B-02 | 已完成 | `check_consistency.py` 增補檢查（CHECK 8-15） | CHECK 8 看板 HEAD 落後、9 交接區 HEAD 落後、10 §X.Y 章節引用有效性、11 §6.1 與 selftest E 對應、12 AUDIT-LOG latest audit evidence 必須位於 current HEAD ancestry（允許多個合法 pending repair commits，raw ancestry distance 不再是 FAIL threshold）、13 檔尾換行、14 簡體字、15 提示詞衝突字串。本批擴充至 15 項，全數通過 |
 | B-03 | 待辦 | 新建 `SOP/SOP_03_Skill_Lifecycle_and_Quality.md` | 收納舊 `SOP_00` §一／§三／§四與舊 `SOP_03` §4.2／§4.3，見第 18 點 |
 | B-04 | 待辦 | `validate_skills.py` 加 description 觸發詞警告 ＋ 測試 | 警告非錯誤，現存多個技能會失敗 |
@@ -101,8 +101,8 @@
 | B-25 | 已完成 | **自檢聲明 E11 數量宣稱不符** | 聲明「22 個錨點」實列 21 個。A-36 同一形狀第二次。**機制有效**——執行者依 §3.4 逐條清點後推翻。比照 A-38 不新增規則，僅留紀錄 |
 | B-26 | 可封存 | **攔截點缺少執行時點** | 已由 B-92 EXEC-LOG 狀態流轉與 prospective commit 驗證機制徹底解決。 |
 | B-27 | 已完成 | **「動手前必讀」機制從未被驗證，三份規則檔有兩份虛構** | 2026-09-06 實測：執行者貼出的 `prompt-preflight.md` 與 `git-and-reporting.md` 章節標題、§1 全部條目、§2 整節內容皆與實際檔案不符（`prompt-preflight.md` 那張 14 列「歷史失效清單」表在實際檔案中不存在）；§3.4 表漏 E12 卻聲稱驗證了 E12。`role-boundaries.md` 屬實。**回報與實際不符的第六類：規則來源虛構**，最嚴重，因為後續所有檢查都建立在被虛構的規則上。處置：本批提示詞已加入章節序列比對；根本解法為 B-35 指紋機制。**2026-09-07 實測落地**：規則層「章節序列」共 3 處（`.claude/rules/auditor-protocol.md` 1 處、`.agents/rules/prompt-preflight.md` 2 處），動手前必讀已含章節序列比對 |
-| B-28 | 待辦 | **`AGENTS.md` 宣稱遵循 mattpocock/skills，但零審查機制、零版本記載** | 實測上游 HEAD `3cca18b`（2026-09-04）已改版：5 bucket（engineering 18／productivity 7／misc 4／in-progress 8／deprecated 0）、promoted 二分、`.claude-plugin/plugin.json`、`docs/<bucket>/<name>.md` 文件樹、全 repo 禁用 em-dash。v2 停在改版前快照，且 repo 內找不到「上次對照上游是哪個 commit」的記載 |
-| B-29 | 待辦 | **上游一致性對照表 ＋ 機械檢查** | 需逐條標註「遵守／刻意分歧／未採用」，刻意分歧須寫理由。已識別未採用項：promoted 二分、`plugin.json`、docs 樹、README 分 User/Model-invoked 組、`agents/openai.yaml` 的 `policy` 欄位、禁用 em-dash。7 桶 vs 5 桶屬刻意在地化 |
+| B-28 | 待裁決 | **`AGENTS.md` 宣稱遵循 mattpocock/skills，但零審查機制、零版本記載** | B-01 targeted upstream comparison 已由 External Macro Reviewer 完成；upstream baseline machine-confirmed: `3cca18b368ae95cdbdebbff572ccafa662551015`；targeted scope (ADR-0002 / ADR-0004 / ADR-0010 與 B-01 三個 active target) 未發現 upstream blocker；已辨識但未納入本次 B-01 targeted scope 之 adjacent upstream deltas：①user-invoked 的 `agents/openai.yaml` policy pairing ②operative skill dependency 的 explicit Skill-tool invocation convention；full B-28/B-29 comparison 是否在 B-01 前執行保留待使用者裁決 |
+| B-29 | 待裁決 | **上游一致性對照表 ＋ 機械檢查** | 同 B-28，targeted comparison 已由 External Macro Reviewer 完成且無 B-01 blocker；完整對照表與機械檢查是否在 B-01 前執行保留待使用者裁決 |
 | B-30 | 待辦 | **playwright 掃描清單含 3000／3001，運行風險已存在** | `skills/execution/playwright-automation/lib/helpers.js:381` 的 `commonPorts` 含 LINE／TG bridge 埠。ADR-0017 預警過但寫「尚未遷移」，**實測已遷移**，ADR 狀態描述過期。使用者裁決改為「明確指定目標 port 而非自動掃描」。排批 4 |
 | B-31 | 待辦 | **ADR-0013 §2C BOM 污染偵測未被取代** | 實測 `scripts/*.py` 查無 `FEFF`／`BOM`／`utf-8-sig`。A／B／D 三項確已被 CHECK 7 與 `validate_skills.py` 取代，唯獨 C 沒有。實作為新 CHECK，排批 4 |
 | B-32 | 待辦 | **ADR-0013 §6 觸發詞排他性矩陣** | 與 Watchdog 無關的夾帶內容，且使用已廢除的「Cognitive Agent」分類。需重寫為 v2 bucket 語彙並實作跨技能觸發詞重疊偵測。排批 4 |

@@ -1,5 +1,5 @@
 {
-  "base_head": "c51ee6b",
+  "base_head": "5cf8467",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 0,
@@ -516,8 +516,8 @@
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 81,
-      "sha256": "31e4427a6d30981236ec3d881772adb5293cd677d9507485184fb7e4b58f30b8"
+      "lines": 82,
+      "sha256": "239c12b0d58a214c71973a2d75c3bdfb0d51e9d9e75063ac895f4eb9e490ab23"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -553,7 +553,7 @@
         "## 封存區"
       ],
       "lines": 240,
-      "sha256": "84c6e048b31043fb1fbbbbb6d2742c5559a3438ed9237abc01580c234994d607"
+      "sha256": "9709c9e38e157ef5ed0ea91770c246b64c427ff436fed5c4583f672634e9de48"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -881,8 +881,8 @@
         "### 5.3 待使用者裁決",
         "### 5.4 進行中／等待回報"
       ],
-      "lines": 3068,
-      "sha256": "521cea72e4a657c64e11b8f42b27906502f93fbb14b78113cb47c8eb038e1826"
+      "lines": 3074,
+      "sha256": "3d84b26357813e9a37ffc37b5978f6eea3300f3653fe1955eb8788508f6d26c9"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -920,6 +920,15 @@
       ],
       "lines": 274,
       "sha256": "c1796819a9d6b1539aea730ab118062300acfdf86a1740ab3c3709f7813cd6c3"
+    },
+    "scripts/generate_rule_traceability.py": {
+      "fences": 0,
+      "headings": [
+        "# -*- coding: utf-8 -*-",
+        "# 確保在 Windows 下標準輸出編碼為 utf-8"
+      ],
+      "lines": 464,
+      "sha256": "610bad28ef07fcf558de0e3a48e88e9778bf60e9d297eed37584f32a87ce422c"
     },
     "scripts/tests/test_anchor.py": {
       "fences": 0,
@@ -975,6 +984,14 @@
       "headings": [],
       "lines": 38,
       "sha256": "122ce537959189b13cccf5ecbe94eee03312dbae258982a5c4c8801ee536ec25"
+    },
+    "scripts/tests/test_rule_traceability.py": {
+      "fences": 0,
+      "headings": [
+        "# -*- coding: utf-8 -*-"
+      ],
+      "lines": 166,
+      "sha256": "bdeca5f018a6b8d868e5ed718a4e6961d732a6d4bcfaa488806a073b987a0256"
     },
     "scripts/tests/test_spec_create_file.py": {
       "fences": 0,
@@ -1070,7 +1087,7 @@
       "sha256": "77163678353cb7a444f90f17956d03312f715cfcccf933603948715939ecdc10"
     }
   },
-  "generated_at": "2026-09-13T12:42:00Z",
+  "generated_at": "2026-09-13T13:46:20Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

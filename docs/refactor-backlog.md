@@ -3027,8 +3027,9 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - Verification Integrity / False-Green Fail-Closed Hardening 已完成 External Macro Audit 並正式 CLOSED。
   - Runtime Rule Freshness Reconciliation 已完成 External Macro Audit 並正式 CLOSED。
   - Material Finding → TASKBOARD Promotion Contract 已完成 External Macro Audit 並正式 CLOSED。
+  - Pre-B01 reconciliation / generated traceability implementation 已進入 pending Macro Audit。
   - Production routing ready。
-  - 當前與下一步工作任務值（Current / next work task value）唯一由 `docs/TASKBOARD.md` 的 `**NEXT_WORK**` pointer 保存，交接區不複製 task ID 或待辦佇列。
+  - 當前與下一步工作任務權威（Current / next work authority）唯一由 `docs/TASKBOARD.md` 的 `**NEXT_WORK**` pointer 保存與導航，交接區不複製 task ID 或待辦佇列。
   - Antigravity IDE runtime rule UI freshness 仍需由 runtime reload / fresh session 保證，不能由 CI 直接證明。
 - **待使用者裁決事項**：有（依 §5.3，包含 GitHub main preventive required-check enforcement 決策，屬 non-blocking user decision）。
 - **剩餘工作權威**：以 `docs/TASKBOARD.md` 為唯一 remaining-work authority。
@@ -3066,3 +3067,8 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
       - **B-36 回報通道正式轉移**：確立版本庫（Git commit、`EXEC-LOG.md` 與 GitHub Actions）為單一證據通道，對話視窗預設採用單行 `COMMIT <sha> | CI PASS | S1 NONE`，嚴禁預設轉貼終端機日誌或 raw diff。
       - **SOP_14 治理減法**：移除檔案數量單獨觸發限制（改採純風險導向），廢除四角色會議文字扮演、常態任務沙盒測試與強制 `walkthrough.md`。
       - **執行期邊界與授權清晰化**：`SOP_README` 區分版本庫納管資產與外部環境工具；`SOP_01` 釐清 `$$` 指令為研究領域專屬命令，不阻擋版本庫重構授權；`SOP_11` 確立記憶庫缺席不阻擋反思與任務執行。
+60. **A-06 Machine-Generated Rule Traceability & B-01 Targeted Upstream Comparison（規則追溯機械化與 B-01 標靶上游比對）**（2026-09-13）
+    - **背景**：原 A-06 規劃手動維護 `.claude/rules/rule-traceability.md`，因手動維護成本高且易膨脹 Claude hot-path context，重新設計為以專屬腳本 `scripts/generate_rule_traceability.py` 自動抽取 active control-plane 規則顯式引用（ADR、CHECK、TASK、SECTION、FILE），輸出至 `docs/generated/rule-traceability.md`，並由 `scripts/tests/test_rule_traceability.py` 與 canonical `verify_all.py` 自動守護。
+    - **落地成果**：
+      - **A-06 機械化追溯**：實作 `scripts/generate_rule_traceability.py` 與單元測試 `scripts/tests/test_rule_traceability.py`（8 項測試全通，涵蓋確定性排序、顯式引用抽取、最近標題歸屬、無自我掃描、broken target fail-closed、--check fresh/stale 判別、無自然語言臆測，以及 repo-state freshness gate）；產出 `docs/generated/rule-traceability.md`；A-06 於 TASKBOARD 標記進行中並指向 generated 文件，待 External Macro Audit。
+      - **B-01 標靶上游比對留痕**：機器查證上游 `mattpocock/skills` main full SHA 為 `3cca18b368ae95cdbdebbff572ccafa662551015`；記錄 External Macro Reviewer 完成之 B-01 targeted upstream comparison（ADR-0002/0004/0010 與 B-01 三 active targets 無 upstream blocker，辨識兩項 adjacent upstream deltas）；B-28/B-29 改為待裁決，保留完整 upstream audit 執行時機待使用者裁決；B-01 明確維持待辦（NOT STARTED）。
