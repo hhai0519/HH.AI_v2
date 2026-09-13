@@ -10,9 +10,9 @@
 `待裁決`（需使用者決定）／`已完成`（仍可能被引用）／
 `可封存`（不影響後續工作，待使用者確認後移入封存區）
 
-**NEXT_WORK**：B-94
+**NEXT_WORK**：B-95
 
-**最後更新**：2026-09-13，B-94 Runtime Rule Loadability / UI Freshness Reconciliation
+**最後更新**：2026-09-13，B-94 Macro PASS / B-95 Promotion Contract & C-06 Registered
 
 ---
 
@@ -167,7 +167,8 @@
 | B-91 | 可封存 | **9 個 `audited-*` tag 歷史留痕保存（退役破壞性遠端清理）** | 9 個錯 tag 刻意作為歷史事故證據保留；audited tag 次系統已退役為 non-authoritative legacy markers（0 remote tag deleted, 0 remote tag rewritten, historical wrong tags intentionally preserved），審計狀態已由 AUDIT-LOG、refactor-backlog §5.1 與 GitHub Actions SSOT 完全接管，不再影響 correctness、audit state、handoff 或 remote health。不需執行破壞性遠端清理。 |
 | B-92 | 已完成 | **`docs/EXEC-LOG.md` 與 `docs/fingerprints/exec-latest.json` 作為 CHECK 17 豁免檔的生命週期** | 豁免檔生命週期已修正。`docs/EXEC-LOG.md` 不再採 generic zero-deletion，改採 fail-closed semantic transition validation（支援歷史列不變、回填 parent hash、追加當批紀錄）；`docs/fingerprints/exec-latest.json` 作為 generated snapshot 正確性由 `fingerprint.py --verify` 守護；真實 Git repo 正反例測試已建立 |
 | B-93 | 已完成 | **Verification Integrity / False-Green Fail-Closed Hardening** | Verification Integrity / False-Green Fail-Closed Hardening 已完成 External Macro Audit PASS，exact-target final micro-fix closed。 |
-| B-94 | 進行中 | **Antigravity Runtime Rule Loadability / UI Freshness Reconciliation** | 執行三層規則機器對帳：Inventory A workspace rules 全數符合限制（prompt-preflight chars=9973 <= 10000 安全門檻，其餘 5 份規則 <= 12000，disk blob 與 HEAD blob 一致為 9adda8a）；Inventory B legacy .agent/rules/ 不存在（NONE）；Inventory C global ~/.gemini/GEMINI.md 不存在（NONE）；確認 IDE Rule UI 顯示 12138/12000 為 stale editor buffer（IDE_RULE_BUFFER_STALE），嚴禁將 stale buffer 回存磁碟；進入 B-01 前須由使用者完成 runtime reload / fresh session 刷新 UI 快取。 |
+| B-94 | 已完成 | **Antigravity Runtime Rule Loadability / UI Freshness Reconciliation** | 執行三層規則機器對帳：repo/disk chars=9973，blob identity PASS（9adda8a）；使用者 IDE reload 後 UI=9973/12000，stale editor buffer 根因確認；Runtime Rule Freshness Reconciliation 正式關閉（CLOSED）。 |
+| B-95 | 進行中 | **Material Finding → TASKBOARD Promotion Contract** | 建立 Material Finding 處置契約：EVERY_ROUND finding disposition（NONE / CURRENT / EXISTING / NEW）；NEW material finding 當輪透過最小 state-sync prompt 產出 repo-visible TASKBOARD 登錄，不得跨輪延宕；無第二 queue；blocking vs non-blocking 路由；Executor 端機械前置檢驗 cross-check。 |
 
 ---
 
@@ -180,6 +181,7 @@
 | C-03 | 已裁決 | **ADR-0013 處置** | **2026-09-06 使用者裁決採用甲案**（逐節處置）：§1／§2ABD／§7 棄用並註明去向；**§2C BOM 污染偵測實作為新 CHECK**（實測 `scripts/*.py` 查無 BOM 偵測，未被取代）；§3 安全邊界搬進 `.agents/rules/role-boundaries.md`；§4／§5 凍結待 E-03；**§6 觸發詞排他性矩陣獨立為 B-32**。執行排批 4 |
 | C-04 | 已裁決（方向） | **攔截項三：Runtime 層架構選擇** | **2026-09-06 使用者裁決方向**：採 `runtime/`（常駐服務程式碼）＋ `shared/`（共用模組）＋ `skills/`（只放技能文件）三層。此結構與上游 `mattpocock/skills` 的組織原則一致（`skills/` 只放技能，其餘各有頂層目錄），但 **`runtime/` 與 `shared/` 為本專案自訂，上游無對應物**——上游是純技能 repo，無任何常駐服務。**細節（PM2 六進程、`Modules/` 18 檔、`scripts/` 16 檔的實際依賴關係與硬編碼路徑）待批 6 調研後再裁決**。見 `refactor-backlog.md` §二 C 節與 `docs/adr/0015-line-tunnel-chain-failure.md` |
 | C-05 | 已裁決 | **D-01 E1 的判定者** | §9.4 原規定驗證階段判定者為「留任的舊 Agent」，但設計 E1 題目的 session 已離場。**2026-09-05 使用者裁決採用**：題目與答案卷由使用者保管，判定者為現任審計官——判定者既非出題者亦非受測者，較原設計更乾淨 |
+| C-06 | 待裁決 | **是否將 GitHub Verify 升級為 main 的 preventive required check** | 目前 GitHub main branch required-status-check enforcement 為 off。選項：A. 維持 current direct-push + post-push Verify（Executor throughput 高，但 bad commit 可先到 main 再由 CI 變紅）；B. Require PR + Verify success before merge to main（CI 未綠不能進 main，但增加 PR/merge lifecycle）。Auditor 建議：若要求「任何不合法 rule 絕不能曾經進入 main」則選 B。本項為 non-blocking user decision，不阻塞 B-95。 |
 
 ---
 

@@ -73,6 +73,11 @@
 - [ ] D2 我沒有採信執行端回報的任何數字，全部自己 clone 查證？
 - [ ] D3 我這一輪有沒有被要求跳過核對、或直接改檔？
       有的話我拒絕了嗎？（依 §8.4 與 `PRINCIPLES.md` §0.1）
+- [ ] D4 **Material Finding Disposition（每一輪必須明確處置）**：
+      本輪是否發現 material finding？
+      - 若 NO：`FINDING_DISPOSITION = NONE`
+      - 若 YES：是否已明確分類為 `CURRENT <task>`、`EXISTING <task>` 或 `NEW <task>`？
+      - 若為 `NEW <task>`：是否已在當輪提示詞要求 repo-visible 登錄 `docs/TASKBOARD.md`？若未登錄，本輪不得宣告 Production Ready。
 
 ---
 

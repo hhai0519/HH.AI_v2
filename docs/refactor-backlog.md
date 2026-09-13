@@ -2825,7 +2825,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 5.1 上一批狀態
 
-上次核對通過的 HEAD：a8d6575
+上次核對通過的 HEAD：3e47f44
 
 - `23af193`（執行者前置檢查 ＋ 回滾程序 ＋ `AUDIT-LOG.md` ＋ 四缺口修正）
   已於 2026-09-02 由審計官核對通過：6 檔異動（含 2 個新檔）、零夾帶、
@@ -2990,6 +2990,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 - `3b3e7fa`（B-58 Final Macro Audit State Closure & D-02 Release）已於 2026-09-13 由宏觀審計官全面審查獨立核對通過：5 檔 authorized scope；同步 622e840 Macro PASS、R6 CLOSED、B-58 FINAL MACRO PASS 裁決；TASKBOARD B-58 標記已完成；D-02 解除 TEMPORARILY HELD 改標 READY；Formal Production Handoff 判定 PASS；exact-SHA Actions Run 34694285132 (status completed, conclusion success)；判定 Macro PASS。
 - `17216b5`（Pre-Handoff Router / Anti-Loop Hardening）已於 2026-09-13 由外部審計官全面審查獨立核對通過：涵蓋 3b3e7fa..17216b5 完整 pending range（含 b1e8804、4fce039、a6c74bf、17216b5）；Router purity 與確定性續行；M1/M2/M3 自主閉環與 S1-only 升級；TASKBOARD.NEXT_WORK 單一指標與 CHECK 8 指標完整性；CHECK 12 pending-range 相容性模型；Antigravity active rule loadability 守衛；E1/E2/E3 驗證解除手寫衍生值錨定；執行者範疇與 incidental finding 邊界收斂；exact-SHA Actions Run 34743264746 (status completed, conclusion success)；判定 Macro PASS。
 - `a8d6575`（B-93 Verification Integrity / False-Green Fail-Closed Hardening）已於 2026-09-13 由外部審計官全面審查獨立核對通過：exact-SHA GitHub Actions Run 34754917032 (status completed, conclusion success)；CHECK 1–18 = 18 PASS / 0 FAIL；scripts tests = 199 passed、webapp tests = 13 passed；canonical verification = ALL 5 GATES PASSED；CHECK 10 exact subsection identity 與 explicit target identity / archive substitution repair 通過；direct production canaries 通過；active-rule E16 contract sync 通過；TASKBOARD B-53 truth sync 通過；零 B-01 實作；B-93 Verification Integrity / False-Green Fail-Closed Hardening 正式通過並結案（B-93 CLOSED）；判定 Macro PASS。
+- `3e47f44`（Antigravity Runtime Rule Loadability / UI Freshness Reconciliation）已於 2026-09-13 由外部審計官全面審查獨立核對通過：exact-SHA GitHub Actions Run 34756394041 (status completed, conclusion success)；prompt-preflight.md committed chars=9973，UI reload 後確認顯示 9973/12000，stale buffer 根因確認；B-94 Runtime Rule Loadability / UI Freshness Reconciliation 正式通過並結案（B-94 CLOSED）；判定 Macro PASS。
 
 ### 5.2 待辦
 
@@ -3006,6 +3007,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 | 1 | ~~**Port 3000 三方衝突**~~ **已於 2026-09-06 裁決** | 裁決結果見 `docs/TASKBOARD.md` C-01。實測為 11 個 port 而非三方衝突；以 ADR-0017 為準，處置範圍由兩處擴大為七處；playwright 掃描清單改為「明確指定目標 port 而非自動掃描」。執行排批 4 |
 | 2 | ~~**`SOP_02` 清歷史規定違反第 1 層規則**~~ **已於 2026-09-06 裁決** | 裁決結果見 `docs/TASKBOARD.md` C-02。採甲案：不得 force push；已推送憑證視為永久洩漏，處置為撤銷與輪換；清理歷史僅由使用者本人執行。執行排批 4 |
 | 3 | ~~**ADR-0013 處置**~~ **已於 2026-09-06 裁決** | 裁決結果見 `docs/TASKBOARD.md` C-03。採甲案逐節處置：§1／§2ABD／§7 棄用；§2C BOM 偵測實作為新 CHECK；§3 搬進 `role-boundaries.md`；§4／§5 凍結待 E-03；§6 獨立為 B-32。執行排批 4 |
+| 4 | **是否將 GitHub Verify 升級為 main 的 preventive required check** | 待使用者裁決（見 `docs/TASKBOARD.md` C-06）。目前 required status checks 為 off，可選：A. 維持 current direct-push + post-push Verify；B. Require PR + Verify before merge。Auditor 建議：若要求任何不合法 rule 絕不曾進 main 則選 B。本項為 non-blocking user decision，不阻塞 B-95 |
 
 ### 5.4 進行中／等待回報
 
@@ -3022,11 +3024,12 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - Formal Production Handoff 已完成（D-01 / D-02 PASS）。
   - Pre-Handoff Router / Anti-Loop Hardening 已完成。
   - Verification Integrity / False-Green Fail-Closed Hardening 已完成 External Macro Audit 並正式 CLOSED。
+  - Runtime Rule Freshness Reconciliation 已完成 External Macro Audit 並正式 CLOSED。
+  - Material Finding Promotion Contract 實作完成後處於 pending Macro Audit。
   - Production routing ready。
-  - Runtime Rule Loadability / IDE UI Freshness reconciliation pending。
   - 當前與下一步工作任務值（Current / next work task value）唯一由 `docs/TASKBOARD.md` 的 `**NEXT_WORK**` pointer 保存，交接區不複製 task ID 或待辦佇列。
-  - Antigravity IDE runtime rule UI freshness 仍需由 runtime reload / fresh session 保證，不由 CI 宣稱，必須在進入下一個 production task 前確認 reload/reopen。
-- **待使用者裁決事項**：無（依 §5.3，NONE）。
+  - Antigravity IDE runtime rule UI freshness 仍需由 runtime reload / fresh session 保證，不能由 CI 直接證明。
+- **待使用者裁決事項**：有（依 §5.3，包含 GitHub main preventive required-check enforcement 決策，屬 non-blocking user decision）。
 - **剩餘工作權威**：以 `docs/TASKBOARD.md` 為唯一 remaining-work authority。
 
 56. **Post-Governance Taskboard Reconciliation（治理收斂後看板全面對帳）**（2026-09-11）

@@ -315,10 +315,35 @@ E1 必須排在 E2 之前且用拋棄式對話。
 
 職責分工：交接區（§5.1、§5.3、§5.4）回答「現在在哪？」，任務看板（`docs/TASKBOARD.md`）回答「還有什麼？」。交接區不得保留待辦清單副本。
 
-### 10.1 新項目必須當輪登錄
+### 10.1 新項目必須當輪登錄（Material Finding 處置契約）
 
-使用者提出新需求或審計發現新缺口時，提示詞必須包含登錄至 `TASKBOARD.md` 的指令。
-若該輪未產出提示詞，在回覆中明確列出，並在下一份提示詞的第一項執行登錄。不得只說「之後會做」。
+使用者提出新需求或審計發現新缺口（Material Finding）時，必須遵守當輪處置與登錄契約，不得延宕至未來對話。
+
+**1. Material Finding 定義**：
+任何會實質影響 correctness、security、architecture、routing、state truth、audit truth、CI / verifier truth、runtime loadability、repository/runtime truth consistency、或下一個 production task 是否可靠可執行的問題。
+純文句美化、formatting preference、不影響 correctness 的歷史措辭、或已被既有 task 明確涵蓋的 incidental observation，不得無限建立新 task。
+
+**2. 唯一剩餘工作權威（No Second Queue）**：
+`docs/TASKBOARD.md` 為專案唯一 remaining-work authority。嚴禁建立第二 queue、`OPEN-FINDINGS.md`、第二 backlog 或依賴 GitHub Issues 作為剩餘工作權威。
+
+**3. 四種 Finding Disposition 狀態**：
+Claude 每一輪 Macro Review 必須明確產生以下其中之一，不得只寫自然語言「之後記得處理」：
+- `FINDING_DISPOSITION: NONE`：本輪未發現 material finding。
+- `FINDING_DISPOSITION: CURRENT <task-id>`：表示 finding 已屬目前 `**NEXT_WORK**` / current task。
+- `FINDING_DISPOSITION: EXISTING <task-id>`：表示已有 TASKBOARD task 完整涵蓋。
+- `FINDING_DISPOSITION: NEW <task-id>`：表示沒有任何既有 task 涵蓋，必須同輪登錄 TASKBOARD。
+若 finding 已由 CURRENT 或 EXISTING task 涵蓋，不得重複建 task。
+
+**4. 當輪登錄與最小 State-Sync 提示詞（Same-Round Persistence）**：
+若審計輪發現 NEW material finding：
+- 優先映射既有 TASKBOARD task；
+- 若無既有 task 涵蓋，即使該輪原本沒有 implementation prompt，也必須在該輪輸出**最小 state-sync prompt**，讓執行者將 finding repo-visible 寫入 `docs/TASKBOARD.md`。
+- repo-visible 登錄後才能視為 persisted，嚴禁依賴跨輪記憶、下一個 Claude session、使用者提醒或「下次 prompt 再補」。未在當輪 repo-visible 登錄前，不得宣告 Production Ready 或 Finding handled。
+
+**5. 阻擋性分流（Blocking Routing）**：
+- **BLOCKING**：若 material finding 會使目前工作或 `**NEXT_WORK**` 無法可靠、安全、正確執行，該 task 必須取得 `**NEXT_WORK**`。
+- **NON-BLOCKING**：若 material finding 已明確登錄，但不阻礙目前／下一個 production task，登錄至看板，`**NEXT_WORK**` 不因此自動改變。
+- 只有 Macro Auditor / Planner 可以指定 `**NEXT_WORK**`，執行者不得自行決定 priority。
 
 ### 10.2 被問「還有哪些待辦」時，給完整看板
 

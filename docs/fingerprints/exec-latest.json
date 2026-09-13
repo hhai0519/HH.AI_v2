@@ -1,5 +1,5 @@
 {
-  "base_head": "aa3d44f",
+  "base_head": "3e47f44",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 0,
@@ -33,7 +33,7 @@
       "sha256": "f84f800b79ba5187dcb6b85db55ae5b1e465b672d3377286d6330695705d6ccf"
     },
     ".agents/rules/prompt-preflight.md": {
-      "fences": 0,
+      "fences": 4,
       "headings": [
         "# 提示詞前置驗證規範（Prompt Preflight Protocol）",
         "## 1. 為什麼有這一條",
@@ -51,13 +51,14 @@
         "## 3.6 機械前置證據（Machine Evidence / Execution Preflight）的交叉驗證",
         "## 3.7 E 節每一項都可機械驗證，沒有例外",
         "## 3.8 你的檢查結果必須留在 repo",
+        "## 3.9 FINDING_DISPOSITION 機械檢查契約",
         "## 4. 錨點唯一性驗證（僅 EXACT_SPEC 動手前必做）",
         "## 4.1 寫入後的原文驗證（動手後必做）",
         "## 5. 例外",
         "## 6. 這條規則保護的是誰"
       ],
-      "lines": 291,
-      "sha256": "775d3b218e7a0f7b4a5c435696bfd474eb89fd18c6b33653ee4965913e7cf6d6"
+      "lines": 267,
+      "sha256": "4c9a9637c06be40cae0a796a2438ea6ddec85e3b932871aa97bd13fe050da5db"
     },
     ".agents/rules/role-boundaries.md": {
       "fences": 0,
@@ -137,7 +138,7 @@
         "### 9.4 交接是否成功的判準",
         "### 9.5 交接機制的驗證階段",
         "## 10. 任務板維護",
-        "### 10.1 新項目必須當輪登錄",
+        "### 10.1 新項目必須當輪登錄（Material Finding 處置契約）",
         "### 10.2 被問「還有哪些待辦」時，給完整看板",
         "### 10.3 五種狀態",
         "### 10.4 封存不是刪除",
@@ -152,8 +153,8 @@
         "### 11.5 審計狀態之單一事實來源（Audit State SSOT）",
         "### 11.6 [已退役／不需執行] 歷史 `audited-*` tag 之留痕保存（RETIRED / NOT REQUIRED）"
       ],
-      "lines": 418,
-      "sha256": "8572809624a86e0b9e01020a8ccb80f54e134886596e3b0bb11bdced05bd6292"
+      "lines": 443,
+      "sha256": "6e4ea3437ea0847fc9dc76f5559d282bafe4012e983eaae4af1191e6916a50e0"
     },
     ".claude/rules/auditor-selftest.md": {
       "fences": 0,
@@ -167,8 +168,8 @@
         "## E. 交付（產出提示詞之前）",
         "## F. 額度（每一輪回覆的開頭與結尾）"
       ],
-      "lines": 124,
-      "sha256": "1ff7a7632c8cb524ebcf525fa0a9c80a520c1c0e2293047c3eda761e982fe62b"
+      "lines": 129,
+      "sha256": "4cd3f09064b4ffb9f99656e8a2feb9025cd3437e56c9d719492b70b32899ccae"
     },
     ".github/workflows/verify.yml": {
       "fences": 0,
@@ -507,16 +508,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 107,
-      "sha256": "1c514754318a8b62ac7b099672a63dbdbdf7f5193681c20386d726013fb65e1d"
+      "lines": 108,
+      "sha256": "d58f56c359c13d004fe3fcc685b36bf490c10b3ac24583843ae4d9dd708c01fe"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 79,
-      "sha256": "64471dde99d4d9d54cd4a98b667ba60d854fb5b07cbd29d47d07c0de83c34d8a"
+      "lines": 80,
+      "sha256": "efe8f78468c08a0182e93c364ab03cf34e2877960946109880ac1a3f80b210a5"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -551,8 +552,8 @@
         "## G. 舊 repo 未盤點區塊（2026-09-02 新發現）",
         "## 封存區"
       ],
-      "lines": 238,
-      "sha256": "54b9e4d880111c23e0e2bebc302479410294535c2790abde57f8ad5959acd5ba"
+      "lines": 240,
+      "sha256": "6077584916b89a0683995d0797c192268e991ef8f6711a51ab22e022c8a3e663"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -880,8 +881,8 @@
         "### 5.3 待使用者裁決",
         "### 5.4 進行中／等待回報"
       ],
-      "lines": 3064,
-      "sha256": "6539923210c1451542055ceb474eae60872831904039f39d6be0b01297270b1c"
+      "lines": 3067,
+      "sha256": "d4855739b81b50b5df8d3f8a1562d2216ab0f0e8de09591b8ca7d12a304f97a5"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -973,7 +974,7 @@
       "fences": 0,
       "headings": [],
       "lines": 38,
-      "sha256": "9b1ff592a2d0c922e9d16a4062f35f955ff96b64185ff6a3fbce09886af12d3b"
+      "sha256": "122ce537959189b13cccf5ecbe94eee03312dbae258982a5c4c8801ee536ec25"
     },
     "scripts/tests/test_spec_create_file.py": {
       "fences": 0,
@@ -1069,7 +1070,7 @@
       "sha256": "77163678353cb7a444f90f17956d03312f715cfcccf933603948715939ecdc10"
     }
   },
-  "generated_at": "2026-09-13T12:08:49Z",
+  "generated_at": "2026-09-13T12:31:55Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {
