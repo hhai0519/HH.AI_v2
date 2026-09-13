@@ -1,5 +1,5 @@
 {
-  "base_head": "4fce039",
+  "base_head": "a6c74bf",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 0,
@@ -73,8 +73,8 @@
         "### 6.2 EXACT_SPEC（精確替換／規範契約重構）",
         "## 7. 什麼時候該停下來回報，什麼時候該自己處理"
       ],
-      "lines": 176,
-      "sha256": "5bc610cbf97012926daccb57d2d59881fb77d5b35f1745b0ec8d2cc229ddc872"
+      "lines": 179,
+      "sha256": "e1671b1853442c3ae5a09450f5294e6bad21bdcbbe56b3bdb24536ad1dc9f06b"
     },
     ".agents/rules/skill-engineering-guardrails.md": {
       "fences": 0,
@@ -196,8 +196,8 @@
         "### 10.1 遠端健康查證與回報規範",
         "### 10.2 禁止文字摘要辯論 (Anti-Debate Policy)"
       ],
-      "lines": 244,
-      "sha256": "a2dd871ba7e5eaced59dd80d680ad3456921d15f81bd9652a03c9f6e102495d2"
+      "lines": 254,
+      "sha256": "55a80f2f64c75642ad9e3dc87ec71c1b033b2e4812778ff1123f86c4f8e1b059"
     },
     "MISSION.md": {
       "fences": 0,
@@ -515,8 +515,8 @@
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 71,
-      "sha256": "93885113615a2c34dbf671b4fb66f35697e0368f2178c5a45f67325502781878"
+      "lines": 72,
+      "sha256": "169779d5a18f1af04db660d27b6c47f8e528cdcefb6c7ce38b5843d3a4337589"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -1040,7 +1040,7 @@
       "sha256": "77163678353cb7a444f90f17956d03312f715cfcccf933603948715939ecdc10"
     }
   },
-  "generated_at": "2026-09-13T06:17:07Z",
+  "generated_at": "2026-09-13T06:37:15Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {
