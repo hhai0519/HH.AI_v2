@@ -10,9 +10,9 @@
 `待裁決`（需使用者決定）／`已完成`（仍可能被引用）／
 `可封存`（不影響後續工作，待使用者確認後移入封存區）
 
-**NEXT_WORK**：B-28
+**NEXT_WORK**：B-87
 
-**最後更新**：2026-09-13，A-14 Macro PASS / Awaiting Pre-B01 User Decision
+**最後更新**：2026-09-13，B-87 Phase 1 Truth Reconciliation / Awaiting Macro Audit
 
 ---
 
@@ -73,12 +73,12 @@ A 節目前狀態以本表各列與 `NEXT_WORK` 之 current repo truth 為準；
 
 | ID | 狀態 | 項目 | 備註 |
 |---|---|---|---|
-| B-01 | 待辦 | ADR-0002／0004／0010 分層搬移（NOT STARTED） | Claude 負責 production prompt 與 Macro Audit，Antigravity 負責 implementation。等 A-06 External Macro Audit 完成，且使用者裁決 B-28/B-29 full comparison timing 後才可開始 |
+| B-01 | 待辦 | ADR-0002／0004／0010 分層搬移（NOT STARTED） | Claude 負責 production prompt 與 Macro Audit，Antigravity 負責 implementation。targeted upstream comparison 已完成且無 blocker；full B-28/B-29 comparison 依使用者裁決延後，不再是 blocker。但開始 B-01 前仍等待：B-87 reconciliation closure、B-31 / B-88 / B-89、B-41，External Macro Reviewer 逐批放行 |
 | B-02 | 已完成 | `check_consistency.py` 增補檢查（CHECK 8-15） | CHECK 8 看板 HEAD 落後、9 交接區 HEAD 落後、10 §X.Y 章節引用有效性、11 §6.1 與 selftest E 對應、12 AUDIT-LOG latest audit evidence 必須位於 current HEAD ancestry（允許多個合法 pending repair commits，raw ancestry distance 不再是 FAIL threshold）、13 檔尾換行、14 簡體字、15 提示詞衝突字串。本批擴充至 15 項，全數通過 |
 | B-03 | 待辦 | 新建 `SOP/SOP_03_Skill_Lifecycle_and_Quality.md` | 收納舊 `SOP_00` §一／§三／§四與舊 `SOP_03` §4.2／§4.3，見第 18 點 |
 | B-04 | 待辦 | `validate_skills.py` 加 description 觸發詞警告 ＋ 測試 | 警告非錯誤，現存多個技能會失敗 |
-| B-05 | 待辦 | DLP 裝飾樣板存量清理（25 份 SKILL.md） | 源頭已斷，見第 17 點 |
-| B-06 | 待辦 | `description` 引號寫法收斂（26 加／28 未加） | 見第 20 點 C |
+| B-05 | 已完成 | DLP 裝飾樣板存量清理（25 份 SKILL.md） | DLP false self-attestation 已由 `validate_skills.py`（`DLP_ATTESTATION_RE`）與單元測試機械守衛，全庫 skills 零違規殘留，存量清理完成 |
+| B-06 | 可封存 | `description` 引號寫法收斂（26 加／28 未加） | 純格式收斂，parser 支援 quoted/unquoted，無 production correctness 價值，可予封存，不得為此異動技能 |
 | B-07 | 已完成 | **GitHub Actions CI**（`.github/workflows/verify.yml`，push 觸發） | 新建 verify.yml，fetch-depth: 0，包含 validate_skills、check_consistency 與全自動化測試 |
 | B-08 | 已完成 | 已審核標記機制（`audited-<hash>` tag） | 本批補齊 audited-18af8ad 與 audited-08e6bbc 標籤，與遠端同步 |
 | B-09 | 已完成 | `test_check_consistency.py` | 為 CHECK 8 至 CHECK 15 撰寫完整正反例測試，含 BOOTSTRAP 例外與 CHECK 11 失敗重現 |
@@ -100,20 +100,20 @@ A 節目前狀態以本表各列與 `NEXT_WORK` 之 current repo truth 為準；
 | B-25 | 已完成 | **自檢聲明 E11 數量宣稱不符** | 聲明「22 個錨點」實列 21 個。A-36 同一形狀第二次。**機制有效**——執行者依 §3.4 逐條清點後推翻。比照 A-38 不新增規則，僅留紀錄 |
 | B-26 | 可封存 | **攔截點缺少執行時點** | 已由 B-92 EXEC-LOG 狀態流轉與 prospective commit 驗證機制徹底解決。 |
 | B-27 | 已完成 | **「動手前必讀」機制從未被驗證，三份規則檔有兩份虛構** | 2026-09-06 實測：執行者貼出的 `prompt-preflight.md` 與 `git-and-reporting.md` 章節標題、§1 全部條目、§2 整節內容皆與實際檔案不符（`prompt-preflight.md` 那張 14 列「歷史失效清單」表在實際檔案中不存在）；§3.4 表漏 E12 卻聲稱驗證了 E12。`role-boundaries.md` 屬實。**回報與實際不符的第六類：規則來源虛構**，最嚴重，因為後續所有檢查都建立在被虛構的規則上。處置：本批提示詞已加入章節序列比對；根本解法為 B-35 指紋機制。**2026-09-07 實測落地**：規則層「章節序列」共 3 處（`.claude/rules/auditor-protocol.md` 1 處、`.agents/rules/prompt-preflight.md` 2 處），動手前必讀已含章節序列比對 |
-| B-28 | 待裁決 | **`AGENTS.md` 宣稱遵循 mattpocock/skills，但零審查機制、零版本記載** | B-01 targeted upstream comparison 已由 External Macro Reviewer 完成；upstream baseline machine-confirmed: `3cca18b368ae95cdbdebbff572ccafa662551015`；targeted scope (ADR-0002 / ADR-0004 / ADR-0010 與 B-01 三個 active target) 未發現 upstream blocker；已辨識但未納入本次 B-01 targeted scope 之 adjacent upstream deltas：①user-invoked 的 `agents/openai.yaml` policy pairing ②operative skill dependency 的 explicit Skill-tool invocation convention；full B-28/B-29 comparison 是否在 B-01 前執行保留待使用者裁決 |
-| B-29 | 待裁決 | **上游一致性對照表 ＋ 機械檢查** | 同 B-28，targeted comparison 已由 External Macro Reviewer 完成且無 B-01 blocker；完整對照表與機械檢查是否在 B-01 前執行保留待使用者裁決 |
+| B-28 | 待辦 | **`AGENTS.md` 宣稱遵循 mattpocock/skills，但零審查機制、零版本記載** | DEFER POST-B01 / trigger-based reopening，不阻塞 B-01。使用者已正式裁決 full upstream comparison 延後；targeted comparison 已確認無 B-01 blocker |
+| B-29 | 待辦 | **上游一致性對照表 ＋ 機械檢查** | DEFER POST-B01 / trigger-based reopening，不阻塞 B-01。使用者已正式裁決完整對照表與機械檢查延後；targeted comparison 已確認無 B-01 blocker |
 | B-30 | 待辦 | **playwright 掃描清單含 3000／3001，運行風險已存在** | `skills/execution/playwright-automation/lib/helpers.js:381` 的 `commonPorts` 含 LINE／TG bridge 埠。ADR-0017 預警過但寫「尚未遷移」，**實測已遷移**，ADR 狀態描述過期。使用者裁決改為「明確指定目標 port 而非自動掃描」。排批 4 |
-| B-31 | 待辦 | **ADR-0013 §2C BOM 污染偵測未被取代** | 實測 `scripts/*.py` 查無 `FEFF`／`BOM`／`utf-8-sig`。A／B／D 三項確已被 CHECK 7 與 `validate_skills.py` 取代，唯獨 C 沒有。實作為新 CHECK，排批 4 |
+| B-31 | 待辦 | **ADR-0013 §2C BOM 污染偵測未被取代** | 實測 `scripts/*.py` 查無 `FEFF`／`BOM`／`utf-8-sig`。A／B／D 三項確已被 CHECK 7 與 `validate_skills.py` 取代，唯獨 C 沒有。PRE-B01 GATE CANDIDATE，實作為新 CHECK，排批 4 |
 | B-32 | 待辦 | **ADR-0013 §6 觸發詞排他性矩陣** | 與 Watchdog 無關的夾帶內容，且使用已廢除的「Cognitive Agent」分類。需重寫為 v2 bucket 語彙並實作跨技能觸發詞重疊偵測。排批 4 |
 | B-33 | 待辦 | **Port 規範的三個缺口** | 舊 repo `.env.example:12` 的 `NEXT_PUBLIC_APP_URL=3000` 殘留未修（待 E-03 遷入處理）；ADR-0017 未涵蓋 6379 Redis 與 9222／9223 Chrome CDP（v2 內 SOP_04 與 SOP_06 之 Port 衝突已於 `acc5890` 修復）。排批 4 |
 | B-34 | 已完成 | **看板 C-01 的行號與衝突性質記錯** | 宣稱「`SOP_06` 第 100 行說 line-bridge = 3000」是衝突，實測該行敘述與 ADR-0017 完全一致；真正衝突在第 133 行。B-16 的又一實例。本批已於 C-01 列更正 |
 | B-35 | 可封存 | **雙代理事實指紋與 Dashboard** | Stage 1 指紋與驗證已實作；Stage 2/3 (dashboard.html/GitHub Pages) 被 ADR-0020 與 GitHub Actions Remote Health Dashboard 完全取代。 |
 | B-36 | 已完成 | **廢除口頭回報，回報即 commit** | 執行者不再產出供轉貼的文字報告，檢查結果與疑問一律寫入 `docs/EXEC-LOG.md` 並 push，對話僅回一行 commit hash。根因：五類回報失真加 B-27 的第六類全部發生在「文字報告」這一環，且它是審計官 token 消耗最大的單一來源。**自本批生效** |
 | B-37 | 已完成 | **`scripts/anchor.py` 錨點自動抽取器** | 輸入檔名與行範圍，輸出「原文 ＋ 行號 ＋ `count()` 值」。同時消滅「錨點未從 clone 逐字取得」（前任五次、現任一次）與「自檢聲明數量宣稱不符」（A-36、B-25）——機器抄的原文不漂移，機器數的數量不少算。排批 2 |
-| B-38 | 待辦 | **驗證腳本加 `--quiet` / `--json` 模式** | `check_consistency.py` 每次輸出數十行 INFO 全數進入審計官 context。預設改單行摘要，失敗才展開。排批 2 |
+| B-38 | 可封存 | **驗證腳本加 `--quiet` / `--json` 模式** | 原始 Claude context pollution 已由 B-36 Repo Evidence Channel 徹底消除，終端機輸出不進入對話，可予封存 |
 | B-39 | 可封存 | **獨立性的來源從審計官轉移到 CI** | CI 獨立性核心已由 Canonical Entrypoint (verify_all.py) + GitHub Actions exact SHA Verify + ADR-0020 實質完成。 |
 | B-40 | 已完成 | **`PRINCIPLES.md` §1 的判別演算法缺審計官出口** | 層級表未列 `.claude/rules/`（907 行），四個判別問句的答案也沒有它——第 2 問只給執行者的兩個目的地。任何「給審計官的規則」依序自問只能落到第 4 問（ADR）。**現任審計官即因此提議開 ADR-0020，是 §5.7 第七次。這是演算法缺陷不是個別疏忽。** 本批已修 §1；**CHECK 17（ADR 規範混雜偵測）排批 2**——實測 19 份 ADR 有 10 份 Decision 區塊含祈使句且無分層搬移標記，其中 ADR-0017（4 處）正是 C-01 衝突的成因、ADR-0013（10 處）正是 C-03 要拆的那份。**2026-09-07 實測落地**：`PRINCIPLES.md` §1 層級表已列 `.claude/rules/`，四個判別問句第 2 問已有「給審計官的」出口 |
-| B-41 | 待辦 | **Project Instructions 是唯一不在 repo 的一層** | 不受任何 CHECK 保護、不進指紋，可能與 repo 漂移而無人發現（比照 Project 知識庫曾落後 144 行）。處置：建 `.claude/instructions-mirror.md` 保存一份，由 CHECK 比對開場動作的指令序列。需使用者配合貼一次全文。排批 2 |
+| B-41 | 待辦 | **Project Instructions 是唯一不在 repo 的一層** | 不受任何 CHECK 保護、不進指紋，可能與 repo 漂移而無人發現。PRE-B01 GATE CANDIDATE，需建 `.claude/instructions-mirror.md` 保存一份並由 CHECK 比對序列，排批 2 |
 | B-42 | 已完成 | **CHECK 16 靜默跳過無法解析的列，且 docstring 與實作不符** | CHECK 16 與 _validate_exec_log_transition 已於 B-92 完整重寫修復，無法解析即 FAIL，docstring 一致並具單元測試。 |
 | B-43 | 已完成 | **CHECK 15 的 pending 集合在正常流程恆為空** | CHECK 15 輸出已明確區分「無待核對」與「待核對無交集」，單元測試全通。 |
 | B-44 | 已完成 | **看板 C-04 狀態未隨裁決更新** | 使用者已於 2026-09-06 同意 Runtime 層方向，但批 1 的提示詞改了 C-01／02／03 卻漏了 C-04。**審計官漏項**，會導致下一個接手者重新提問已裁決事項（§9.4 第 4 項要防的情形）。本批已修 |
@@ -141,9 +141,9 @@ A 節目前狀態以本表各列與 `NEXT_WORK` 之 current repo truth 為準；
 | B-66 | 已完成 | **根因定案：審計官的輸出是一次連續生成，宣告卻聲稱它是多步驗證的產物** | 2026-09-06 盤點八批共 16 件錯誤（第二投時已增為 19 件），壓到一層是同一件事——擬定修改、寫錨點、宣告已驗證、寫預期值，四者在同一段生成流裡完成，讀者（含審計官自己）分不出哪些數字來自工具、哪些來自生成。**這解釋了為何加強措辭七週無效**：措辭也是文字，進入同一段生成後被同一個機制繞過。**只有外部產物有效，因為它不是模型生成的**。原則落點 `PRINCIPLES.md` §2.10，排批 2b-4 |
 | B-67 | 已完成 | **`scripts/build_prompt_evidence.py`** | 以批次規格為單一來源，產出錨點 `count()` 逐條實測、**E11 清單與總數（由 `len()` 產生）**、(b)(d) 行數與圍欄數、套用到暫存副本後的 (e) 模擬結果，以及 **EXPECT 區塊的 ID 序列驗證**。本批完成 |
 | B-68 | 待辦 | **`scripts/impact_scan.py`** | 對將被改動的字串／章節／檔案做全庫反向引用掃描，涵蓋 `.claude/rules/auditor-protocol.md` §6.7 的四類依賴（測試斷言／執行環境敏感物／機械守衛／跨層副本）。由 BPE 自動呼叫，把「主動想起要查」變成「腳本一定會跑」。排批 2b-4 |
-| B-69 | 待辦 | **跨環境比對原語規則** | 設計任何比對原語前必須問「換 OS／locale／工具鏈會給出相同答案嗎」；依賴行尾、字元編碼、路徑分隔符、時區、排序或工具實作者不得使用；跨環境一律比對正規化文字而非位元組。**兩次實證（B-46 CRLF、B-65 雜湊）都是審計官選了自以為更嚴謹的方案**——位元組層在跨環境下是反的。排批 2b-4 |
-| B-70 | 待辦 | **配對清單改為腳本產生** | `.agents/rules/prompt-preflight.md` §3.1 現手寫三對，其餘靠記憶——而記憶正是整套機制要消滅的東西。先補齊已知配對（看板 C 節 ⇔ 交接區 §5.3、B 節編號 ⇔ backlog 編號點、CHECK 編號 ⇔ B-60 配置表），再做 `scripts/find_pairs.py`。**2026-09-06 首投的缺號錯誤正是此類**：B-72／73／74 只寫進 backlog 散文而未寫進看板。排批 2b-4 |
-| B-71 | 待辦 | **零漏網目前不達標，且存在倖存者偏差** | 19 件已知錯誤中有 4 件進了 repo 且**無任何檢查會發現**，全靠審計官事後回讀。**且不知道還有多少沒發現**——B-16 從未執行（規則檔 1,939 行含 43 處日期、8 處計數宣稱未驗證）、B-54 指出零項 CHECK 驗證跨層矛盾。建議 **CHECK 21 提前至批 2d、B-16 排入批 2e** |
+| B-69 | 待辦 | **跨環境比對原語規則** | 設計任何比對原語前必須問「換 OS／locale／工具鏈會給出相同答案嗎」；依賴行尾、字元編碼、路徑分隔符、時區、排序或工具實作者不得使用；跨環境一律比對正規化文字而非位元組。依 current repo 查證仍具殘留需求，維持待辦 |
+| B-70 | 可封存 | **配對清單改為腳本產生** | 原 proposal 依賴之舊 CHECK 配置與手寫配對假設已遭淘汰，不建第二 state store；taskboard/repo-state truth residual 由 B-87 負責 |
+| B-71 | 可封存 | **零漏網目前不達標，且存在倖存者偏差** | 「零漏網未達標」umbrella 項目；有效殘留風險已各自收納至 concrete tasks (B-31, B-53, B-54, B-87, B-88, B-89)，予以封存且不刪除具體項目 |
 | B-72 | 已完成 | **`PRINCIPLES.md` §2.10「每一個數字都必須有它的產生者」** | 使用者 2026-09-06 提出「每次宣告的數據都親自從 GitHub 重新取得」，審計官逐項檢驗 16 件錯誤後修正範圍：**只能修 1 件、部分修 3 件、修不掉 12 件**——審計官本來就每輪重 clone，多數錯誤不是讀取問題而是「寫了沒有產生者的數字」。正確規則為：**寫進提示詞的每一個數字，都必須是本輪某次工具呼叫的輸出**。四種合法來源：repo 現況→新鮮 clone；文件的自我描述（清單長度、項數）→腳本 `len()`；套用後的未來狀態→本地模擬；外部系統狀態→該系統 API。**「從 GitHub 重讀」只是第一種。** 排批 2b-4 |
 | B-73 | 已完成 | **`§8.4-2` 的「每輪最多一次 clone」是上限，沒有下限**（**使用者發現**） | 審計官每輪重 clone 靠自律不靠規則，下一個接手者可能用開場那次 clone 撐三輪。處置：`.claude/rules/auditor-protocol.md` §6.1 新增一項補下限「HEAD 可能移動即必須重 clone」，並要求自檢聲明能指出每個數字由哪一次工具呼叫產生。依 §5.7 同批落到 `handover-selftest.md` 與 `prompt-preflight.md` §3.4。排批 2b-4 |
 | B-74 | 已完成 | **執行者只回報無法從 commit 重生的東西**（**使用者發現**） | 執行者精簡回報已由 Mechanical-Truth Migration (4c6aee4) 實質完成落地，移除 machine-derived 數字重複比對。 |
@@ -155,13 +155,13 @@ A 節目前狀態以本表各列與 `NEXT_WORK` 之 current repo truth 為準；
 | B-80 | 可封存 | **BPE 的模擬只涵蓋規格中有真實 payload 的修改** | 原 check-only simulation gap 已隨 check-only/手寫 derived-truth authority 消失；現行 source mutation 均以實際 Batch Spec MOD 及 CHECK 17 replay 管理。BPE 本身仍保留。 |
 | B-81 | 可封存 | **BPE 的輸出不含錨點原文** | anchor 原文不再需要由 LLM 從 BPE output 重新抄成 blocking truth；BPE 本身仍是 active parser/simulator，不是被廢除。 |
 | B-82 | 已完成 | **交接區 §5.4 是一個只追加、從不清理的堆疊** | 每份提示詞只替換第一個項目符號並在其前追加，**從未移除被取代的**，單調成長十輪。2026-09-07 實測 62 行（含標題）、18 個頂層項目符號，其中十條過期或互相矛盾。**本批完成清理，成因見 `docs/refactor-backlog.md` 第 53 點 A 段。惟偵測機制尚未建立**——§5.4 頂層項目符號數上限檢查排批 2d，編號依 B-60 配置 |
-| B-83 | 待辦 | **開場動作單次載入 2,338 行** | 2026-09-07 實測：`PRINCIPLES.md` 345 ＋ `.claude/rules/auditor-protocol.md` 875 ＋ `.claude/rules/handover-selftest.md` 96 ＋ `docs/TASKBOARD.md` 221 ＋ `docs/EXEC-LOG.md` 28 ＋ 交接區 773。交接區中第 44 至 53 點實測 589 行是歷史留痕，不該每次開場全文載入。處置：移入 `docs/archive/`，與 B-58 合併。排批 2f。（2026-09-11 狀態備註：Fresh-Claude Bootstrap Phase 1 hardening implementation landed：A4 改採 targeted current-state extraction、確立 TASKBOARD next-work authority、historical rationale on demand；final contract-consistency micro-fix / macro acceptance 尚在進行；archive / historical slimming 尚未完整完成，故本項保持待辦，不得錯誤關單） |
+| B-83 | 可封存 | **開場動作單次載入 2,338 行** | 開場單次載入 2,338 行之 hot-path 負擔已由 targeted current-state extraction 解決，歷史 rationale 改為 on demand，非 production blocker，可予封存 |
 | B-84 | 可封存 | **模擬閘門的觸發條件比它要保護的範圍窄** | 模擬閘門保護範圍已被 CHECK 17 全量 Spec Replay 逐位元比對完全覆蓋取代。 |
 | B-85 | 已完成 | **散文是一層有損的重新編碼** | 解決的是散文不得充當 exact mechanical truth（GOAL_SPEC 定義目標邊界，EXACT_SPEC / Batch Spec + CHECK 17 提供 canonical replay）；不宣稱 executor 已有通用 apply_batch.py。 |
 | B-86 | 已完成 | **規則層從未說明 BPE 是什麼** | BPE 用法與批次規格（Batch Spec）格式已於 Mechanical-Truth Migration 完整寫入 `.claude/rules/auditor-protocol.md` §6.1 第 21 項，並依 §5.7 同步進 `.claude/rules/handover-selftest.md` E23 與 `.agents/rules/prompt-preflight.md` §3.4 E23。明訂批次規格由 `parse_spec`／`apply_mod_to_text` 解析，BPE 負責單一來源驗證與模擬，消除散文編碼失真 |
-| B-87 | 待辦 | **看板狀態與 repo 實際狀態無任何 CHECK 驗證** | 2026-09-07 實測兩個實證：①B-24／B-27／B-40／B-50／B-52／B-61 六項在 repo 中已生效、看板仍標待辦，本批同步，逐項落地位置見各列與 `docs/refactor-backlog.md` 第 53 點 C 段 ②D-02「E2 正式交接」標待辦，但 `docs/refactor-backlog.md` 第 46 點 A 段記載 E2 已於 2026-09-06 執行完成。成因：更新規則檔卻沒回頭改看板狀態，**而沒有任何機制會發現**。處置：CHECK 驗證看板「已完成」項目的落點是否真的存在、「待辦」項目的落點是否真的不存在。**這是使用者判準「機制上沒辦法與 github 同步」的直接命中。** 排批 2b-7 |
-| B-88 | 待辦 | **表格被空行斷開，無任何機械偵測** | 2026-09-07 實測：`b46cd5d` 把 E21 寫進 `.agents/rules/prompt-preflight.md` §3.4 時，在 E20 與 E21 之間留了一個空行，該表在 E20 結束，E21 成為表格外的孤立一行，不會渲染成表格。**這是 A-20（`.claude/rules/auditor-protocol.md` §6.1 第 10 項被空行斷開）的同形第二次。** 三個機制都抓不到：CHECK 11 只驗 §6.1 與 E 節的對應關係、CHECK 2 只驗圍欄配對、執行者用 grep 數列數而 grep 不在乎空行——**數字是對的，表格是斷的**。處置：①本批修復該空行 ②新增 CHECK，偵測以管線符號開頭的連續列之間不得出現空行；編號依 B-60 配置，排批 2d |
-| B-89 | 待辦 | **日文字元混入 repo，四項驗證全綠卻抓不到** | 2026-09-07 實測：`10f7e31` 在 `docs/TASKBOARD.md` 第 114 行以平假名取代「的」、第 135 行以日文新字體取代「證」。成因為執行者以日文進行思考與生成，字形在輸出時未轉回繁體。**四項標準驗證全數通過**——CHECK 14 的偵測集是一份手寫的簡體字清單，不含平假名、片假名與日文新字體漢字；`validate_skills`、`pytest`、`fingerprint --verify` 三者與字形無關。**這是假綠燈的第五種形狀：偵測器的字集比它宣稱守護的範圍窄。** 處置：①本批修正兩處 ②CHECK 14 擴充偵測範圍至平假名、片假名與常見日文新字體漢字，沿用原編號不新開 ③每份提示詞開頭固定宣告「以繁體中文思考與輸出」。排批 2d |
+| B-87 | 進行中 | **看板狀態與 repo 實際狀態無任何 CHECK 驗證** | 已進行 comprehensive repo-to-taskboard reconciliation；不採用「path exists = task complete」這種會 false-green 的 generic inference。candidate push 後等待 External Macro Audit |
+| B-88 | 待辦 | **表格被空行斷開，無任何機械偵測** | 2026-09-07 實測 A-20 同形第二次。PRE-B01 GATE CANDIDATE，排批 2d |
+| B-89 | 待辦 | **日文字元混入 repo，四項驗證全綠卻抓不到** | 假綠燈第五種形狀。PRE-B01 GATE CANDIDATE，CHECK 14 擴充平假名/片假名/新字體，排批 2d |
 | B-90 | 已完成 | **批次規格格式缺 `create_file` mode** | 已於 B-90 實作完成：`parse_spec` 與 `apply_mod_to_text` 原生支援 `create_file` mode，BPE 支援新建檔案模擬與驗收，CHECK 17 完成新檔逐位元重放，並全面移除 `-BOOTSTRAP.spec.txt` 跳過重放與全庫單一 BOOTSTRAP 限制。歷史規格 `0e13c85` 安全保留為歷史 artifact |
 | B-91 | 可封存 | **9 個 `audited-*` tag 歷史留痕保存（退役破壞性遠端清理）** | 9 個錯 tag 刻意作為歷史事故證據保留；audited tag 次系統已退役為 non-authoritative legacy markers（0 remote tag deleted, 0 remote tag rewritten, historical wrong tags intentionally preserved），審計狀態已由 AUDIT-LOG、refactor-backlog §5.1 與 GitHub Actions SSOT 完全接管，不再影響 correctness、audit state、handoff 或 remote health。不需執行破壞性遠端清理。 |
 | B-92 | 已完成 | **`docs/EXEC-LOG.md` 與 `docs/fingerprints/exec-latest.json` 作為 CHECK 17 豁免檔的生命週期** | 豁免檔生命週期已修正。`docs/EXEC-LOG.md` 不再採 generic zero-deletion，改採 fail-closed semantic transition validation（支援歷史列不變、回填 parent hash、追加當批紀錄）；`docs/fingerprints/exec-latest.json` 作為 generated snapshot 正確性由 `fingerprint.py --verify` 守護；真實 Git repo 正反例測試已建立 |
@@ -227,10 +227,10 @@ A 節目前狀態以本表各列與 `NEXT_WORK` 之 current repo truth 為準；
 
 | ID | 狀態 | 項目 | 備註 |
 |---|---|---|---|
-| G-01 | 待辦 | `Data/TODO.md` 的 10 項未完成待辦 | §E 標記「⏳ 待評估」但從未評估。含 Cloudflare 具名隧道（與 C-04 同域）、API 金鑰輪換、完整資安審計、視覺化組件掛載（`pe-river-map`／`ownership-cluster` 已在 v2）等 |
-| G-02 | 待辦 | 計畫書（Execution Plans）保留規範 | `Data/TODO.md` 要求建立儲存、命名與長期保留標準並**寫入 SOP**。這正是 `docs/ARCHIVE-INDEX.md` §四記載的歸檔缺口 |
-| G-03 | 待辦 | `_archive_legacy_docs/adr/` 五份舊 ADR 的內容評估 | ADR-001 分布式行級鎖、ADR-002 Fencing Token、**ADR-003 禁止 In-Memory Fallback 以避免腦裂**、ADR-004 Windows 孤兒行程清理、ADR-006 Redis CAS（編號缺 005）。**ADR-003 與 2026-09-01 移除 `DEFAULT_FALLBACK` 的理由完全相同——該原則兩個月前就存在，我們卻是重新發明的** |
-| G-04 | 待辦 | `_archive_legacy_docs/` 其餘四份文件評估 | `audit_events.md`（89 行治理日誌，含聯署驗證軌跡，可能是 `SOP_14` 聯席審計的來源）、`capacity-planning.md`、`release-checklist.md`、`incidents/incident-template.md` |
+| G-01 | 可封存 | `Data/TODO.md` 的 10 項未完成待辦 | absorbed by E-05；內容仍作為 E-05 acceptance inventory，不是刪除需求。不得刪除其原始歷史內容。不得建立第二 Data migration queue |
+| G-02 | 可封存 | 計畫書（Execution Plans）保留規範 | absorbed by E-05；內容仍作為 E-05 acceptance inventory，不是刪除需求。不得刪除其原始歷史內容。不得建立第二 Data migration queue |
+| G-03 | 可封存 | `_archive_legacy_docs/adr/` 五份舊 ADR 的內容評估 | absorbed by E-05；內容仍作為 E-05 acceptance inventory，不是刪除需求。不得刪除其原始歷史內容。不得建立第二 Data migration queue |
+| G-04 | 可封存 | `_archive_legacy_docs/` 其餘四份文件評估 | absorbed by E-05；內容仍作為 E-05 acceptance inventory，不是刪除需求。不得刪除其原始歷史內容。不得建立第二 Data migration queue |
 
 ---
 

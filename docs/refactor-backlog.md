@@ -2825,7 +2825,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 5.1 上一批狀態
 
-上次核對通過的 HEAD：c53de3b
+上次核對通過的 HEAD：e377d51
 
 - `23af193`（執行者前置檢查 ＋ 回滾程序 ＋ `AUDIT-LOG.md` ＋ 四缺口修正）
   已於 2026-09-02 由審計官核對通過：6 檔異動（含 2 個新檔）、零夾帶、
@@ -2994,6 +2994,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 - `c51ee6b`（B-95 Material Finding → TASKBOARD Promotion Contract）已於 2026-09-13 由外部審計官全面審查獨立核對通過：exact-SHA GitHub Actions Run 34757466644 (status completed, conclusion success)；verification gates 5/5 PASS；Material Finding 定義、四種 disposition 狀態、當輪登錄最小 state-sync 提示詞、無第二 queue、blocking/non-blocking 路由等契約成立；D4 EVERY_ROUND 自檢成立；prompt-preflight FINDING_DISPOSITION 機械檢查契約成立且字元數精簡至 8860/9500；C-06 登錄為待裁決；B-01 零實作；B-95 Material Finding → TASKBOARD Promotion Contract 正式通過並結案（B-95 CLOSED）；判定 Macro PASS。
 - `dac5921`（A-06 Machine-Generated Rule Traceability）已於 2026-09-13 由外部審計官全面審查獨立核對通過：exact-SHA Actions Run 34762339410 (status completed, conclusion success)；canonical verification = ALL 5 GATES PASSED；stale ADR path repair PASS；fresh != valid fail-closed contract PASS；negative canary PASS；valid fixture PASS；UNRESOLVED_HISTORICAL advisory behavior PASS；fenced code heading attribution PASS；blocking status = 0；B-01 零實作；A-06 正式結案；判定 Macro PASS。
 - `c53de3b`（A-14 Executor Prompt Preflight Enforcement）已於 2026-09-13 由外部審計官全面審查獨立核對通過：exact-SHA Actions Run 34763116512 (status completed, conclusion success)；canonical verification = ALL 5 GATES PASSED；Prompt Manifest validator（scripts/validate_prompt_manifest.py）實作與單元測試全數通過；malformed-manifest 與 full-prompt contradiction 兩次 runtime canaries 均成功阻擋且零 mutation；A-14 正式結案；判定 Macro PASS。
+- `e377d51`（A-14 External Macro PASS / Runtime Canary State Closure）已於 2026-09-13 由外部審計官全面審查獨立核對通過：exact-SHA Actions Run 34764485489 (status completed, conclusion success)；canonical verification = ALL 5 GATES PASSED；異動僅限 5 份狀態與證據檔案；A-14 正式結案；NEXT_WORK 暫停於 B-28；B-01 零實作；判定 Macro PASS。
 
 ### 5.2 待辦
 
@@ -3032,6 +3033,8 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - generated rule traceability External Macro PASS / CLOSED。
   - Executor prompt-preflight machine enforcement External Macro PASS / CLOSED。
   - Prompt Manifest runtime interception 已由兩種 malformed-prompt canary 實證。
+  - Pre-B01 taskboard truth reconciliation implementation pending External Macro Audit。
+  - B-28/B-29 full upstream comparison 不再是 Pre-B01 blocker（使用者裁決延後 post-B01）。
   - Production routing ready。
   - 當前與下一步工作任務權威（Current / next work authority）仍只由 `docs/TASKBOARD.md` 的 `**NEXT_WORK**` pointer 保存與導航，交接區不複製 task ID 或待辦佇列。
   - 待使用者裁決事項依 §5.3。
@@ -3078,3 +3081,30 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
     - **落地成果**：
       - **A-06 機械化追溯**：實作 `scripts/generate_rule_traceability.py` 與單元測試 `scripts/tests/test_rule_traceability.py`（8 項測試全通，涵蓋確定性排序、顯式引用抽取、最近標題歸屬、無自我掃描、broken target fail-closed、--check fresh/stale 判別、無自然語言臆測，以及 repo-state freshness gate）；產出 `docs/generated/rule-traceability.md`；A-06 於 TASKBOARD 標記進行中並指向 generated 文件，待 External Macro Audit。
       - **B-01 標靶上游比對留痕**：機器查證上游 `mattpocock/skills` main full SHA 為 `3cca18b368ae95cdbdebbff572ccafa662551015`；記錄 External Macro Reviewer 完成之 B-01 targeted upstream comparison（ADR-0002/0004/0010 與 B-01 三 active targets 無 upstream blocker，辨識兩項 adjacent upstream deltas）；B-28/B-29 改為待裁決，保留完整 upstream audit 執行時機待使用者裁決；B-01 明確維持待辦（NOT STARTED）。
+61. **B-87 Phase 1 Comprehensive Taskboard Truth Reconciliation（看板真實性全面對帳 Phase 1）**（2026-09-13）
+    - **背景**：重新以 current repository truth 全面核對 TASKBOARD A / B / F / G 節，不採用「path exists = task complete」這種會導致假綠燈的 generic inference，逐項自 repo 取得可重現之證據 probe，辨識已實作、已封存（superseded / absorbed）與 genuine remaining work。
+    - **對帳記錄**：
+
+      | Task ID | Old Status | Candidate / New Status | Machine / Repo Evidence | Disposition Reason |
+      |---|---|---|---|---|
+      | B-05 | 待辦 | 已完成 | `scripts/validate_skills.py:187` 正式實作 `DLP_ATTESTATION_RE` 與 `check_doc_content`，`scripts/tests/test_validate_skills.py` 8+ 測試守護；全庫 `skills/` 經掃描 0 筆 raw false DLP attestation 殘留；canonical `verify_all.py` 自動守護 | 裝飾樣板存量清理需求已被 production detector 與 active validator 完全覆蓋且全庫零違規殘留，實質完成 |
+      | B-06 | 待辦 | 可封存 | `AGENTS.md` §2 frontmatter 規範未強制要求 description 引號統一；`scripts/validate_skills.py` 正式解析器對引號與未引號皆合法支援；無任何 correctness 或安全影響 | 純格式收斂，無 production correctness 價值，可予封存，不得為此異動技能 |
+      | B-38 | 待辦 | 可封存 | `.agents/rules/git-and-reporting.md` §2（B-36）確立 Repo Evidence Channel，嚴禁終端機日誌 dump 入對話；機器證據完整留存於 Git / Actions / EXEC-LOG，對話採單行回報 | 原始「Claude context pollution」問題已由 B-36 證據通道架構徹底消除，不再需要實作 `--quiet` / `--json` |
+      | B-69 | 待辦 | 待辦（維持待辦） | `PRINCIPLES.md` 與現行 `.agents/rules/`、`.claude/rules/` 查無跨環境比對原語規範（如「設計比對原語前須考量跨 OS/locale/工具鏈差異、禁止直接依賴位元組」） | 原提案規範尚未被現行更高層 active rules 完整納入，具備真實殘留行為，嚴格依 current repo evidence 維持待辦 |
+      | B-70 | 待辦 | 可封存 | B-60 配置表已於早期封存（不再作為 schedule）；`scripts/find_pairs.py` 未實作；現行無第二 pairing state store | 原 proposal 依賴之舊 CHECK 配置與手寫配對假設已遭淘汰，不建第二 state store；taskboard/repo-state truth residual 由 B-87 負責 |
+      | B-71 | 待辦 | 可封存 | B-31（BOM 偵測）、B-53（inline checks 抽取）、B-54（CHECK 21 跨層矛盾）、B-87（對帳）、B-88（空行斷開）、B-89（日文字元）各自具備 canonical concrete tasks | B-71 屬「零漏網未達標」之 umbrella 觀察項目，所有具體有效之殘留風險皆已收納進獨立 concrete tasks，予以封存且不刪除具體項目 |
+      | B-83 | 待辦 | 可封存 | `.claude/rules/auditor-protocol.md` §9.2 確立開場僅讀 §5.4、§5.1、§5.3 與 `TASKBOARD.NEXT_WORK`，不再載入全量歷史 backlog；historical rationale on-demand | 原始「開場單次載入 2,338 行」之 hot-path 問題已由 targeted current-state extraction 徹底解決；歷史瘦身移入可選維護，不再為 production blocker |
+      | G-01 | 待辦 | 可封存 | `docs/TASKBOARD.md` E-05 明確涵蓋 `Data/TODO.md`（必須遷移/裁決）之範疇 | absorbed by E-05；內容作為 E-05 acceptance inventory，非刪除需求；不建第二 Data migration queue |
+      | G-02 | 待辦 | 可封存 | `docs/TASKBOARD.md` E-05 明確涵蓋 `Execution_Plans/` 之範疇 | absorbed by E-05；內容作為 E-05 acceptance inventory，非刪除需求；不建第二 Data migration queue |
+      | G-03 | 待辦 | 可封存 | `docs/TASKBOARD.md` E-05 明確涵蓋 `_archive_legacy_docs/` 之五份舊 ADR 評估 | absorbed by E-05；內容作為 E-05 acceptance inventory，非刪除需求；不建第二 Data migration queue |
+      | G-04 | 待辦 | 可封存 | `docs/TASKBOARD.md` E-05 明確涵蓋 `_archive_legacy_docs/` 之其餘文件評估 | absorbed by E-05；內容作為 E-05 acceptance inventory，非刪除需求；不建第二 Data migration queue |
+      | B-28 | 待裁決 | 待辦 | 使用者正式裁決：完整 upstream comparison 不在 B-01 前執行；upstream baseline `3cca18b` targeted comparison 已成立且無 blocker | DEFER POST-B01 / trigger-based reopening，不阻塞 B-01 |
+      | B-29 | 待裁決 | 待辦 | 使用者正式裁決同 B-28；上游一致性對照表與機械檢查延後 | DEFER POST-B01 / trigger-based reopening，不阻塞 B-01 |
+      | B-87 | 待辦 | 進行中 | 本批執行 B-87 Phase 1 Truth Reconciliation，不採用 false-green 之 generic file-existence inference，逐項以 repo probe 驗證 | 進行中，待 candidate push 後由 External Macro Reviewer 獨立核對 |
+      | B-31 | 待辦 | 待辦 | ADR-0013 §2C BOM 污染偵測新 CHECK 待實作 | PRE-B01 GATE CANDIDATE，維持待辦 |
+      | B-88 | 待辦 | 待辦 | 表格空行斷開偵測待實作 | PRE-B01 GATE CANDIDATE，維持待辦 |
+      | B-89 | 待辦 | 待辦 | CHECK 14 日文新字體/假名擴充待實作 | PRE-B01 GATE CANDIDATE，維持待辦 |
+      | B-41 | 待辦 | 待辦 | Project Instructions mirror 與序列比對待實作 | PRE-B01 GATE CANDIDATE，維持待辦 |
+      | B-01 | 待辦 | 待辦（NOT STARTED） | targeted comparison 已通且無 blocker；full comparison 已裁決延後；等待 B-87、B-31/88/89、B-41 逐批放行 | 待辦（NOT STARTED），本批零實作 |
+
+    - **注意**：本節為 append-only 歷史證據留痕，當前任務權威唯一以 `docs/TASKBOARD.md` 為準。
