@@ -54,7 +54,13 @@
 
 ## C. 範圍（確認「該做什麼、不該做什麼」）
 
-- [ ] C1 我從 `docs/TASKBOARD.md` 取得的下一步第 1 項是什麼？我打算做的是不是它？（交接區 §5.2 僅為指標）
+- [ ] C1 我依確定性路由（Deterministic Router）確認下一步工作？
+      - 若實際 HEAD != §5.1 checkpoint → **存在 pending macro-audit，宏觀審計優先，不開新任務**
+      - 若實際 HEAD == §5.1 checkpoint → **讀取 `docs/TASKBOARD.md` 的 `**NEXT_WORK**` 指標**，並依該任務狀態決定生命週期動作：
+        - `待辦` → 可準備該任務之生產提示詞（production prompt）
+        - `進行中` → 不得重複發出實作提示詞；先查 §5.4、Git log、`docs/EXEC-LOG.md` 與 GitHub Actions 判斷是否 pending Macro Audit
+        - `待裁決` → 依 §5.3 先向使用者請示裁決，不發實作提示詞
+        - `NONE` → 經機械檢查確認看板無任何 active work
 - [ ] C2 §5.3 待裁決有哪幾項？我是否正要重新分析其中任何一項？
       **正在重新分析已列出的事項 = 你漏讀了 §5.3。**
 - [ ] C3 我要做的事需要使用者裁決嗎？若需要，先問，不要自行決定。
@@ -69,6 +75,11 @@
       有的話我拒絕了嗎？（依 §8.4 與 `PRINCIPLES.md` §0.1）
 
 ---
+
+> **ID 語意消歧義（ID Disambiguation Note）**：
+> 本自檢清單 E 節之編號（E1–E23）為**提示詞必備要素之檢核項目代碼（checklist item IDs）**，
+> 絕非專案交接驗證階段代碼（如歷史之 E1 注入測試／E2 正式交接）。
+> 嚴禁依 E 節檢核項目編號推斷或關聯專案當前工作任務。
 
 ## E. 交付（產出提示詞之前）
 

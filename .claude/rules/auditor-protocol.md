@@ -245,7 +245,7 @@ EXACT_SPEC 提示詞中的錨點文字，產出前必須逐一驗證在目標檔
 
 接手後第一件事
 執行 git log -1 --format=%h 取得實際 HEAD，與上面的 HEAD 比對：
-- 相同 → 沒有未核對的批次，從 docs/TASKBOARD.md 取得下一步工作（§5.2 僅為指標）
+- 相同 → 沒有未核對的批次，從 docs/TASKBOARD.md 的 **NEXT_WORK** pointer 取得下一步工作（§5.2 僅為指標）
 - 不同 → 存在 pending macro-audit range（由 checkpoint..HEAD machine derive），先完成該 range 宏觀審核再往下
 ```
 
@@ -257,7 +257,7 @@ EXACT_SPEC 提示詞中的錨點文字，產出前必須逐一驗證在目標檔
 1. 讀 §5.4「進行中／等待回報」——掌握進行中狀態。
 2. 讀 §5.1 第一行「上次核對通過的 HEAD」。
 3. **執行 `git log -1 --format=%h` 取得實際 HEAD 並與第 2 步比對：**
-   - **相同** → 無 pending macro-audit，從 `docs/TASKBOARD.md` 取得下一步工作（§5.2 僅為指標）。
+   - **相同** → 無 pending macro-audit，從 `docs/TASKBOARD.md` 的 `**NEXT_WORK**` pointer 取得下一步工作（§5.2 僅為指標）。
    - **不同** → 存在 pending macro-audit range（由 `checkpoint..HEAD` machine derive），先完成該 range 宏觀審核再往下。
 4. 讀 §5.3「待裁決」——不重複提問已裁決事項。
 5. 交接區若與實際 repo 矛盾，**一律以 repo 為準**並明說矛盾處。
@@ -273,14 +273,14 @@ EXACT_SPEC 提示詞中的錨點文字，產出前必須逐一驗證在目標檔
 新 Agent 接手後的**第一則回覆**必須包含以下四項，缺一即代表交接失敗：
 1. **實際執行過完整 clone 與開場動作**（確定性指令如 `git rev-parse --is-shallow-repository` 輸出為 `false`，提供 `FULL_CLONE OK` 宣告，不得要求 raw output）。
 2. **明確說出目前的 HEAD**，以及它與交接區 §5.1 記載是否一致。
-3. **明確說出下一步要做什麼**，且與 `docs/TASKBOARD.md` 優先序一致。
+3. **明確說出下一步要做什麼**，以 `docs/TASKBOARD.md` 的 `**NEXT_WORK**` pointer 所指任務為準。
 4. **說明待裁決事項狀態**，不重新分析已裁決事項。
 
 | 缺項 | 可能原因 | 處置 |
 |---|---|---|
 | 無法完成第 1 項 | clone 失敗、shallow clone、檔案不存在 | 依開場動作載入失敗處理，第一句明說 |
 | 第 2 項 HEAD 不一致 | 存在 pending macro-audit range | 依 §9.2 第 3 點，先完成該 range 宏觀審核再往下 |
-| 第 3 項無法判斷 | 交接區 §5.2 空或過期 | 讀 `docs/TASKBOARD.md` 確認下一步並回報 |
+| 第 3 項無法判斷 | 交接區 §5.2 空或過期 | 讀 `docs/TASKBOARD.md` 的 `**NEXT_WORK**` pointer 確認下一步並回報 |
 | 第 4 項重複提問 | 未讀 §5.3 | 補讀後更正 |
 
 正常交接由使用者逐項比對判定；驗證階段由留任舊 Agent 擔任判定者（但舊 Agent 不得擔任受測者，見 `docs/adr/0007-macro-auditor-role.md`）。
@@ -296,6 +296,9 @@ EXACT_SPEC 提示詞中的錨點文字，產出前必須逐一驗證在目標檔
 E1 必須排在 E2 之前且用拋棄式對話。
 自檢清單（`auditor-selftest.md`）進 repo；注入測試題目與答案卷由使用者與審計官保管，不進 repo。
 **E1 → E2 Repo-Visible State Bridge**：E1 通過後、啟動 D-02 前，透過正常執行者狀態同步 commit 使 repo 產生可見狀態流轉（如看板 A-07 / D-01 標記已完成，D-02 標記 Ready／進行中）。原則：只保存 PASS 狀態流轉，絕對不保存測試秘密。
+
+**驗證階段去錨定（De-Anchoring of Completed Stages）**：
+上述驗證階段（E1/E2/E3）為一次性前置驗證機制，非每個新 Fresh Session 的例行 startup task。一旦完成並判定 PASS（如 D-01、D-02 已完成），其結果由 `docs/TASKBOARD.md`、`docs/AUDIT-LOG.md` 與版本庫歷史證據永久保留；後續常態 Fresh Session 直接依通用路由器（HEAD == checkpoint → `docs/TASKBOARD.md` 的 `**NEXT_WORK**` pointer）導向常態生產任務，絕不自動重複執行已完成之交接驗證階段。
 
 ---
 
@@ -345,6 +348,18 @@ E1 必須排在 E2 之前且用拋棄式對話。
 `TASKBOARD.md` 的「**最後更新**：日期，當前階段／工作描述」為活動看板狀態標記。
 TASKBOARD 不擁有 Git HEAD / checkpoint / pending range 之事實（由 Git HEAD、`AUDIT-LOG` 與交接區 §5.1 擁有）。CHECK 8 驗證其 metadata 純度（不得含 Git commit hash）。
 每批驗證步驟固定確認「最後更新」包含日期與當前工作描述且不含 Git commit hash。
+
+### 10.7 NEXT_WORK 指標權威與生命週期
+
+1. **規劃權威（Planning Authority）**：`docs/TASKBOARD.md` 的 `**NEXT_WORK**` 任務指標由宏觀審計官／規劃者（Claude）全權管理與指定。執行者（Antigravity）不得自行選取下一個任務。
+2. **機械同步契約**：執行者僅在提示詞明確指定狀態流轉或 pointer 目標時，方可於 repo 同步修改 `**NEXT_WORK**`。
+3. **Pending-Audit 凍結**：當某任務實作完成但處於 pending Macro Audit 階段時，`**NEXT_WORK**` 必須維持指向同一任務，不得提前跳轉至下一個任務。
+4. **NEEDS FIX 保持**：當宏觀審計判定為 NEEDS FIX 時，`**NEXT_WORK**` 維持指向原任務以待修復。
+5. **PASS 後推進**：只有當 Macro Audit 判定為 PASS 且狀態流轉正式成立時，才由宏觀審計官在下一份生產提示詞中明確指定推進至下一個 `**NEXT_WORK**` 值。
+6. **合法目標與狀態語意**：
+   - `**NEXT_WORK**` 可指向：`待辦`（可進行提示詞規劃與實作）、`進行中`（不得重複發實作提示詞，先查 repo 證據確認是否 pending Macro Audit）、`待裁決`（先找使用者裁決）。
+   - `**NEXT_WORK**` 嚴禁指向：`已完成`、`可封存`。
+   - 若全庫無任何 active work，`**NEXT_WORK**` 方可標記為 `NONE`。
 
 ---
 

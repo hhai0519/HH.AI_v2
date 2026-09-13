@@ -46,16 +46,37 @@ def _setup_check_9_env(tmp_path, checkpoint_hash, audit_rows, bl_extra=""):
 # CHECK 8 Tests: TASKBOARD Metadata Purity
 # ---------------------------------------------------------------------------
 
+def _make_taskboard_content(
+    last_updated="**最後更新**：2026-09-13，Router / Anti-Loop / State Placement Hardening",
+    next_work="**NEXT_WORK**：X-01",
+    tasks=None,
+):
+    if tasks is None:
+        tasks = [
+            ("X-01", "待辦", "Synthetic active task"),
+            ("X-02", "已完成", "Synthetic completed task"),
+            ("X-03", "可封存", "Synthetic archivable task"),
+        ]
+    rows = ["# 看板", last_updated]
+    if next_work is not None:
+        rows.append(next_work)
+    rows.append("")
+    rows.append("| ID | 狀態 | 項目 | 備註 |")
+    rows.append("|---|---|---|---|")
+    for tid, st, desc in tasks:
+        rows.append(f"| {tid} | {st} | {desc} | — |")
+    rows.append("")
+    return "\n".join(rows)
+
+
 def test_check_8_taskboard_metadata_purity_pass(tmp_path):
     docs = tmp_path / "docs"
     docs.mkdir()
     tb = docs / "TASKBOARD.md"
-    tb.write_text(
-        "# 看板\n**最後更新**：2026-09-12，B-58 Recovery R1 — Goal Lock & Pending-Audit Range Generalization\n",
-        encoding="utf-8",
-    )
+    tb.write_text(_make_taskboard_content(), encoding="utf-8")
     fails, infos = check_8_taskboard_head(str(tmp_path))
     assert len(fails) == 0
+    assert any("NEXT_WORK = X-01" in i for i in infos)
 
 
 def test_check_8_taskboard_metadata_purity_fail_sha_duplication(tmp_path):
@@ -63,7 +84,7 @@ def test_check_8_taskboard_metadata_purity_fail_sha_duplication(tmp_path):
     docs.mkdir()
     tb = docs / "TASKBOARD.md"
     tb.write_text(
-        "# 看板\n**最後更新**：2026-09-12，HEAD `08e6bbc` 之後\n",
+        _make_taskboard_content(last_updated="**最後更新**：2026-09-12，HEAD `08e6bbc` 之後"),
         encoding="utf-8",
     )
     fails, infos = check_8_taskboard_head(str(tmp_path))
@@ -76,7 +97,7 @@ def test_check_8_taskboard_metadata_purity_fail_commit_checkpoint_range(tmp_path
     docs.mkdir()
     tb = docs / "TASKBOARD.md"
     tb.write_text(
-        "# 看板\n**最後更新**：2026-09-12，checkpoint 34babd5..HEAD\n",
+        _make_taskboard_content(last_updated="**最後更新**：2026-09-12，checkpoint 34babd5..HEAD"),
         encoding="utf-8",
     )
     fails, infos = check_8_taskboard_head(str(tmp_path))
@@ -88,7 +109,7 @@ def test_check_8_taskboard_metadata_purity_fail_missing_date(tmp_path):
     docs.mkdir()
     tb = docs / "TASKBOARD.md"
     tb.write_text(
-        "# 看板\n**最後更新**：B-58 Recovery R1 進行中\n",
+        _make_taskboard_content(last_updated="**最後更新**：B-58 Recovery R1 進行中"),
         encoding="utf-8",
     )
     fails, infos = check_8_taskboard_head(str(tmp_path))
@@ -101,12 +122,118 @@ def test_check_8_taskboard_metadata_purity_fail_missing_desc(tmp_path):
     docs.mkdir()
     tb = docs / "TASKBOARD.md"
     tb.write_text(
-        "# 看板\n**最後更新**：2026-09-12\n",
+        _make_taskboard_content(last_updated="**最後更新**：2026-09-12"),
         encoding="utf-8",
     )
     fails, infos = check_8_taskboard_head(str(tmp_path))
     assert len(fails) == 1
     assert "缺少工作階段或當前狀態描述" in fails[0]
+
+
+def test_check_8_fail_missing_next_work_marker(tmp_path):
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    tb = docs / "TASKBOARD.md"
+    tb.write_text(
+        _make_taskboard_content(next_work=None),
+        encoding="utf-8",
+    )
+    fails, infos = check_8_taskboard_head(str(tmp_path))
+    assert len(fails) >= 1
+    assert any("未找到『NEXT_WORK』標記" in f for f in fails)
+
+
+def test_check_8_fail_duplicate_next_work_marker(tmp_path):
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    tb = docs / "TASKBOARD.md"
+    content = _make_taskboard_content(next_work="**NEXT_WORK**：X-01\n**NEXT_WORK**：X-02")
+    tb.write_text(content, encoding="utf-8")
+    fails, infos = check_8_taskboard_head(str(tmp_path))
+    assert len(fails) >= 1
+    assert any("找到多個『NEXT_WORK』標記" in f for f in fails)
+
+
+def test_check_8_fail_nonexistent_task_id(tmp_path):
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    tb = docs / "TASKBOARD.md"
+    tb.write_text(
+        _make_taskboard_content(next_work="**NEXT_WORK**：NONEXISTENT-99"),
+        encoding="utf-8",
+    )
+    fails, infos = check_8_taskboard_head(str(tmp_path))
+    assert len(fails) >= 1
+    assert any("指向不存在的任務 ID" in f for f in fails)
+
+
+def test_check_8_fail_points_to_completed(tmp_path):
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    tb = docs / "TASKBOARD.md"
+    tb.write_text(
+        _make_taskboard_content(next_work="**NEXT_WORK**：X-02"),
+        encoding="utf-8",
+    )
+    fails, infos = check_8_taskboard_head(str(tmp_path))
+    assert len(fails) >= 1
+    assert any("不得指向已完成或可封存的任務" in f for f in fails)
+
+
+def test_check_8_fail_points_to_archivable(tmp_path):
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    tb = docs / "TASKBOARD.md"
+    tb.write_text(
+        _make_taskboard_content(next_work="**NEXT_WORK**：X-03"),
+        encoding="utf-8",
+    )
+    fails, infos = check_8_taskboard_head(str(tmp_path))
+    assert len(fails) >= 1
+    assert any("不得指向已完成或可封存的任務" in f for f in fails)
+
+
+def test_check_8_fail_none_with_active_work(tmp_path):
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    tb = docs / "TASKBOARD.md"
+    tb.write_text(
+        _make_taskboard_content(next_work="**NEXT_WORK**：NONE"),
+        encoding="utf-8",
+    )
+    fails, infos = check_8_taskboard_head(str(tmp_path))
+    assert len(fails) >= 1
+    assert any("NEXT_WORK 為 NONE 但任務看板仍存在 active work" in f for f in fails)
+
+
+def test_check_8_none_without_active_work_pass(tmp_path):
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    tb = docs / "TASKBOARD.md"
+    tasks_all_done = [
+        ("X-01", "已完成", "All done"),
+        ("X-02", "可封存", "All archivable"),
+    ]
+    tb.write_text(
+        _make_taskboard_content(next_work="**NEXT_WORK**：NONE", tasks=tasks_all_done),
+        encoding="utf-8",
+    )
+    fails, infos = check_8_taskboard_head(str(tmp_path))
+    assert len(fails) == 0
+    assert any("NEXT_WORK = NONE" in i for i in infos)
+
+
+def test_check_8_fail_pointer_contains_git_truth(tmp_path):
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    tb = docs / "TASKBOARD.md"
+    tb.write_text(
+        _make_taskboard_content(next_work="**NEXT_WORK**：HEAD `1234567`"),
+        encoding="utf-8",
+    )
+    fails, infos = check_8_taskboard_head(str(tmp_path))
+    assert len(fails) >= 1
+    assert any("HEAD" in f or "commit" in f for f in fails)
 
 
 # ---------------------------------------------------------------------------

@@ -10,7 +10,9 @@
 `待裁決`（需使用者決定）／`已完成`（仍可能被引用）／
 `可封存`（不影響後續工作，待使用者確認後移入封存區）
 
-**最後更新**：2026-09-12，B-58 Final Macro Audit PASS / D-02 READY
+**NEXT_WORK**：B-01
+
+**最後更新**：2026-09-13，Router / Anti-Loop / State Placement Hardening
 
 ---
 
@@ -25,7 +27,7 @@
 | A-05 | 已完成 | 額度控管的品質影響評估 | `refactor-backlog.md` 第 30 點 A 段 |
 | A-06 | 待辦 | 規則追溯表 `.claude/rules/rule-traceability.md` | 排在 E1／E2 之後 |
 | A-07 | 已完成 | 注入式測試（E1） | 題目與答案卷由使用者與審計官保管，不進 repo。已於 2026-09-12 執行完成並判定 PASS，與 D-01 為同一件事 |
-| A-08 | 已完成 | 接手自檢清單 | `.claude/rules/handover-selftest.md` |
+| A-08 | 已完成 | 接手自檢清單 | `.claude/rules/auditor-selftest.md` |
 | A-09 | 已完成 | 交接區有內容且有人負責填 | §9.3、§6.1 第 8 項 |
 | A-10 | 已完成 | 無交接接手流程（同 A-02） | §9.2 |
 | A-11 | 已完成 | 兩次以上複驗 | 2026-09-02 執行，找出四個缺口 |
@@ -72,7 +74,7 @@
 
 | ID | 狀態 | 項目 | 備註 |
 |---|---|---|---|
-| B-01 | 待辦 | ADR-0002／0004／0010 分層搬移 | **保留給 E2 的新 Agent 執行**，現任 Agent 不得先做 |
+| B-01 | 待辦 | ADR-0002／0004／0010 分層搬移 | Claude 負責 production prompt 與 Macro Audit，Antigravity 負責 implementation |
 | B-02 | 已完成 | `check_consistency.py` 增補檢查（CHECK 8-15） | CHECK 8 看板 HEAD 落後、9 交接區 HEAD 落後、10 §X.Y 章節引用有效性、11 §6.1 與 selftest E 對應、12 AUDIT-LOG 最新列落後、13 檔尾換行、14 簡體字、15 提示詞衝突字串。本批擴充至 15 項，全數通過 |
 | B-03 | 待辦 | 新建 `SOP/SOP_03_Skill_Lifecycle_and_Quality.md` | 收納舊 `SOP_00` §一／§三／§四與舊 `SOP_03` §4.2／§4.3，見第 18 點 |
 | B-04 | 待辦 | `validate_skills.py` 加 description 觸發詞警告 ＋ 測試 | 警告非錯誤，現存多個技能會失敗 |
@@ -184,8 +186,8 @@
 | ID | 狀態 | 事項 |
 |---|---|---|
 | D-01 | 已完成 | **E1 注入測試**——拋棄式對話，四題，判定者為留任的審計官。**題目與答案卷刻意不進 repo（見 §9.5），由使用者保管。** 2026-09-12 執行完成，判定 E1 = PASS |
-| D-02 | 待辦 | **E2 正式交接**——新 Agent 依 §9.1 提示詞接手，任務為 B-01。E1 PASS，前置條件已滿足，狀態 READY；B-58 hold 已解除，下一步正式執行 E2 production handoff |
-| D-03 | 待辦 | E3 補洞（僅在 E1／E2 有失敗時需要） |
+| D-02 | 已完成 | **E2 正式交接**——Formal Production Handoff PASS。新 Agent 接手前置驗證已完成，後續常態工作由 TASKBOARD.NEXT_WORK 導航 |
+| D-03 | 可封存 | **E3 補洞**——僅在前置 validation 失敗時需要；前置驗證已 PASS，予以可封存建議；未來若重啟驗證須由 TASKBOARD routing 明確指定 |
 
 ---
 

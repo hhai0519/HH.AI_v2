@@ -587,7 +587,7 @@ def check_3_markdown_links(root_dir=None):
 
 
 def check_8_taskboard_metadata_purity(root_dir=None, git_head=None, git_prev=None, git_prev2=None, as_if_committed=False):
-    """CHECK 8 — 任務看板當前狀態 Metadata 純度。
+    """CHECK 8 — 任務看板當前狀態 Metadata 純度與 NEXT_WORK 結構。
 
     驗證 TASKBOARD.md 的『最後更新』標記為活動看板狀態標記：
     1. 存在唯一的『最後更新』標記。
@@ -595,6 +595,14 @@ def check_8_taskboard_metadata_purity(root_dir=None, git_head=None, git_prev=Non
     3. 不得包含 Git HEAD、checkpoint、commit、pending range (..) 或任何 commit hash。
        Git 與審計狀態單一事實來源由 Git HEAD、AUDIT-LOG 與交接區 §5.1 擁有，
        防止將 Git truth 重新複製回看板產生第二事實來源。
+
+    驗證 TASKBOARD.md 的『NEXT_WORK』指標結構：
+    1. 恰好存在一個『**NEXT_WORK**』標記。
+    2. 值只能為合法 task ID 或 NONE。
+    3. pointer 本身不得保存 Git HEAD、checkpoint、commit hash、commit range 或 CI run ID。
+    4. 若為 task ID，必須在 TASKBOARD 恰好存在一列任務定義。
+    5. 不得指向已完成或可封存的任務。
+    6. 若為 NONE，TASKBOARD 不得仍存在待辦、進行中或待裁決之 active work。
     """
     if root_dir is None: root_dir = repo_root
     fails = []
@@ -610,6 +618,9 @@ def check_8_taskboard_metadata_purity(root_dir=None, git_head=None, git_prev=Non
         fails.append(f"docs/TASKBOARD.md:0  讀取失敗: {e}")
         return fails, infos
 
+    # ---------------------------------------------------------
+    # Part 1: 最後更新標記檢驗
+    # ---------------------------------------------------------
     markers = []
     for idx, line in enumerate(lines, 1):
         if "**最後更新**：" in line:
@@ -617,39 +628,111 @@ def check_8_taskboard_metadata_purity(root_dir=None, git_head=None, git_prev=Non
 
     if len(markers) == 0:
         fails.append("docs/TASKBOARD.md:0  未找到『最後更新』標記")
-        return fails, infos
-    if len(markers) > 1:
+    elif len(markers) > 1:
         fails.append(f"docs/TASKBOARD.md: 找到多個『最後更新』標記 (共 {len(markers)} 個)")
+    else:
+        line_no, marker_text = markers[0]
+        payload = marker_text.split("**最後更新**：", 1)[1].strip()
+
+        # 1. 必須包含有效日期 (YYYY-MM-DD)
+        if not re.search(r"\b\d{4}-\d{2}-\d{2}\b", payload):
+            fails.append(f"docs/TASKBOARD.md:{line_no}  『最後更新』標記缺少有效日期 (格式: YYYY-MM-DD)")
+
+        # 2. 必須包含工作階段或當前狀態描述
+        desc = re.sub(r"\b\d{4}-\d{2}-\d{2}\b", "", payload).strip(" ，,、\t")
+        if not desc:
+            fails.append(f"docs/TASKBOARD.md:{line_no}  『最後更新』標記缺少工作階段或當前狀態描述")
+
+        # 3. 不得包含 Git HEAD / commit / checkpoint / range
+        if re.search(r"\bHEAD\b", payload, re.IGNORECASE):
+            fails.append(f"docs/TASKBOARD.md:{line_no}  『最後更新』標記不得包含 HEAD 關鍵字 (違反 Metadata Purity，Git truth 由 Git/AUDIT-LOG/§5.1 擁有)")
+
+        if re.search(r"\b(checkpoint|commit)\b", payload, re.IGNORECASE):
+            fails.append(f"docs/TASKBOARD.md:{line_no}  『最後更新』標記不得包含 checkpoint/commit 關鍵字")
+
+        if ".." in payload:
+            fails.append(f"docs/TASKBOARD.md:{line_no}  『最後更新』標記不得包含 commit range (..)")
+
+        # 4. 不得保存 7-40 位的十六進位 commit hash (反引號包住或純英數 hex)
+        hex_in_backticks = re.findall(r"`([0-9a-fA-F]{7,40})`", payload)
+        bare_hex_hashes = re.findall(r"\b(?=[0-9a-fA-F]*[a-fA-F])([0-9a-fA-F]{7,40})\b", payload)
+        all_found_hashes = set(hex_in_backticks + bare_hex_hashes)
+        if all_found_hashes:
+            fails.append(f"docs/TASKBOARD.md:{line_no}  『最後更新』標記不得保存 Git commit hash: {', '.join(sorted(all_found_hashes))}")
+
+    # ---------------------------------------------------------
+    # Part 2: NEXT_WORK 指標結構檢驗
+    # ---------------------------------------------------------
+    nw_markers = []
+    for idx, line in enumerate(lines, 1):
+        if re.search(r"\*\*NEXT_WORK\*\*[:：]", line):
+            nw_markers.append((idx, line.strip()))
+
+    if len(nw_markers) == 0:
+        fails.append("docs/TASKBOARD.md:0  未找到『NEXT_WORK』標記")
+        return fails, infos
+    if len(nw_markers) > 1:
+        fails.append(f"docs/TASKBOARD.md: 找到多個『NEXT_WORK』標記 (共 {len(nw_markers)} 個)")
         return fails, infos
 
-    line_no, marker_text = markers[0]
-    payload = marker_text.split("**最後更新**：", 1)[1].strip()
+    nw_line_no, nw_line_text = nw_markers[0]
+    nw_payload = re.sub(r"^\*\*NEXT_WORK\*\*[:：]\s*", "", nw_line_text).strip()
 
-    # 1. 必須包含有效日期 (YYYY-MM-DD)
-    if not re.search(r"\b\d{4}-\d{2}-\d{2}\b", payload):
-        fails.append(f"docs/TASKBOARD.md:{line_no}  『最後更新』標記缺少有效日期 (格式: YYYY-MM-DD)")
+    # 5. pointer 本身不得保存 Git HEAD、checkpoint、commit hash、CI run ID、range
+    if re.search(r"\bHEAD\b", nw_payload, re.IGNORECASE):
+        fails.append(f"docs/TASKBOARD.md:{nw_line_no}  『NEXT_WORK』標記不得包含 HEAD 關鍵字")
+    if re.search(r"\b(checkpoint|commit)\b", nw_payload, re.IGNORECASE):
+        fails.append(f"docs/TASKBOARD.md:{nw_line_no}  『NEXT_WORK』標記不得包含 checkpoint/commit 關鍵字")
+    if ".." in nw_payload:
+        fails.append(f"docs/TASKBOARD.md:{nw_line_no}  『NEXT_WORK』標記不得包含 commit range (..)")
+    if re.search(r"\bRun\s*#?\d+\b", nw_payload, re.IGNORECASE):
+        fails.append(f"docs/TASKBOARD.md:{nw_line_no}  『NEXT_WORK』標記不得包含 CI run ID")
+    hex_hashes = re.findall(r"`([0-9a-fA-F]{7,40})`", nw_payload) + re.findall(r"\b(?=[0-9a-fA-F]*[a-fA-F])([0-9a-fA-F]{7,40})\b", nw_payload)
+    if hex_hashes:
+        fails.append(f"docs/TASKBOARD.md:{nw_line_no}  『NEXT_WORK』標記不得保存 Git commit hash")
 
-    # 2. 必須包含工作階段或當前狀態描述
-    desc = re.sub(r"\b\d{4}-\d{2}-\d{2}\b", "", payload).strip(" ，,、\t")
-    if not desc:
-        fails.append(f"docs/TASKBOARD.md:{line_no}  『最後更新』標記缺少工作階段或當前狀態描述")
+    # 解析 TASKBOARD 中所有任務資料列
+    task_rows = {}
+    all_active_tasks = []
+    for idx, line in enumerate(lines, 1):
+        line_s = line.strip()
+        if not line_s.startswith("|"):
+            continue
+        parts = [p.strip() for p in line_s.split("|")]
+        if len(parts) >= 3:
+            tid = parts[1]
+            status = parts[2]
+            if tid in ("ID", "---", "#", "事故編號") or set(tid) <= {"-", ":", " "}:
+                continue
+            if re.match(r"^[A-Za-z0-9_-]+$", tid):
+                task_rows.setdefault(tid, []).append((idx, status, line_s))
+                if any(status.startswith(act) for act in ("待辦", "進行中", "待裁決")):
+                    all_active_tasks.append(tid)
 
-    # 3. 不得包含 Git HEAD / commit / checkpoint / range
-    if re.search(r"\bHEAD\b", payload, re.IGNORECASE):
-        fails.append(f"docs/TASKBOARD.md:{line_no}  『最後更新』標記不得包含 HEAD 關鍵字 (違反 Metadata Purity，Git truth 由 Git/AUDIT-LOG/§5.1 擁有)")
-
-    if re.search(r"\b(checkpoint|commit)\b", payload, re.IGNORECASE):
-        fails.append(f"docs/TASKBOARD.md:{line_no}  『最後更新』標記不得包含 checkpoint/commit 關鍵字")
-
-    if ".." in payload:
-        fails.append(f"docs/TASKBOARD.md:{line_no}  『最後更新』標記不得包含 commit range (..)")
-
-    # 4. 不得保存 7-40 位的十六進位 commit hash (反引號包住或純英數 hex)
-    hex_in_backticks = re.findall(r"`([0-9a-fA-F]{7,40})`", payload)
-    bare_hex_hashes = re.findall(r"\b(?=[0-9a-fA-F]*[a-fA-F])([0-9a-fA-F]{7,40})\b", payload)
-    all_found_hashes = set(hex_in_backticks + bare_hex_hashes)
-    if all_found_hashes:
-        fails.append(f"docs/TASKBOARD.md:{line_no}  『最後更新』標記不得保存 Git commit hash: {', '.join(sorted(all_found_hashes))}")
+    # 2. 值只能為合法 task ID 或 NONE
+    if nw_payload == "NONE":
+        # 6. NEXT_WORK = NONE 時，TASKBOARD 不得仍存在待辦、進行中、待裁決 active work
+        if all_active_tasks:
+            fails.append(f"docs/TASKBOARD.md:{nw_line_no}  NEXT_WORK 為 NONE 但任務看板仍存在 active work (共 {len(all_active_tasks)} 項: {', '.join(all_active_tasks[:5])})")
+        else:
+            infos.append(f"docs/TASKBOARD.md:{nw_line_no}  NEXT_WORK = NONE (看板無 active work)")
+    else:
+        # 檢查 task ID 格式
+        if not re.match(r"^[A-Za-z0-9_-]+$", nw_payload):
+            fails.append(f"docs/TASKBOARD.md:{nw_line_no}  『NEXT_WORK』值只能為合法 task ID 或 NONE (當前值: '{nw_payload}')")
+        else:
+            # 3. task ID 必須在 TASKBOARD 恰好存在一列
+            if nw_payload not in task_rows:
+                fails.append(f"docs/TASKBOARD.md:{nw_line_no}  『NEXT_WORK』指向不存在的任務 ID: {nw_payload}")
+            elif len(task_rows[nw_payload]) > 1:
+                fails.append(f"docs/TASKBOARD.md:{nw_line_no}  『NEXT_WORK』指向的任務 ID 存在多個定義: {nw_payload} (共 {len(task_rows[nw_payload])} 列)")
+            else:
+                target_line_no, target_status, _ = task_rows[nw_payload][0]
+                # 4. 不得指向：已完成、可封存
+                if any(target_status.startswith(done) for done in ("已完成", "可封存")):
+                    fails.append(f"docs/TASKBOARD.md:{nw_line_no}  『NEXT_WORK』不得指向已完成或可封存的任務 (指向 {nw_payload}，狀態: {target_status})")
+                else:
+                    infos.append(f"docs/TASKBOARD.md:{nw_line_no}  NEXT_WORK = {nw_payload} (狀態: {target_status})")
 
     return fails, infos
 

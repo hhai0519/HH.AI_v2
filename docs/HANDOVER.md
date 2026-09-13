@@ -28,7 +28,7 @@
 
 ### 4. 下一步工作與待辦 (Next Work & Tasks)
 - **重構任務看板（唯一的剩餘與下一步工作權威來源）**：[`docs/TASKBOARD.md`](./TASKBOARD.md)
-  > 說明：本 Router 不保存待辦清單副本。詢問「還有哪些待辦」或「下一步做什麼」，一律以 `docs/TASKBOARD.md` 為準。
+  > 說明：本 Router 不保存待辦清單副本與動態任務值。Fresh Claude 接手尋找下一步工作，一律導航至 `docs/TASKBOARD.md` 讀取 `**NEXT_WORK**` 指標。
 
 ### 5. 目前進度與審計狀態 (Current Progress & Audited Checkpoint)
 - **交接區與重構紀錄（上次核對通過 checkpoint、Pending-Audit 機械導出方式）**：[`docs/refactor-backlog.md` §5](./refactor-backlog.md)
