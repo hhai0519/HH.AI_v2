@@ -10,9 +10,9 @@
 `待裁決`（需使用者決定）／`已完成`（仍可能被引用）／
 `可封存`（不影響後續工作，待使用者確認後移入封存區）
 
-**NEXT_WORK**：B-01
+**NEXT_WORK**：B-94
 
-**最後更新**：2026-09-13，B-93 Macro PASS / Production Routing Ready
+**最後更新**：2026-09-13，B-94 Runtime Rule Loadability / UI Freshness Reconciliation
 
 ---
 
@@ -167,6 +167,7 @@
 | B-91 | 可封存 | **9 個 `audited-*` tag 歷史留痕保存（退役破壞性遠端清理）** | 9 個錯 tag 刻意作為歷史事故證據保留；audited tag 次系統已退役為 non-authoritative legacy markers（0 remote tag deleted, 0 remote tag rewritten, historical wrong tags intentionally preserved），審計狀態已由 AUDIT-LOG、refactor-backlog §5.1 與 GitHub Actions SSOT 完全接管，不再影響 correctness、audit state、handoff 或 remote health。不需執行破壞性遠端清理。 |
 | B-92 | 已完成 | **`docs/EXEC-LOG.md` 與 `docs/fingerprints/exec-latest.json` 作為 CHECK 17 豁免檔的生命週期** | 豁免檔生命週期已修正。`docs/EXEC-LOG.md` 不再採 generic zero-deletion，改採 fail-closed semantic transition validation（支援歷史列不變、回填 parent hash、追加當批紀錄）；`docs/fingerprints/exec-latest.json` 作為 generated snapshot 正確性由 `fingerprint.py --verify` 守護；真實 Git repo 正反例測試已建立 |
 | B-93 | 已完成 | **Verification Integrity / False-Green Fail-Closed Hardening** | Verification Integrity / False-Green Fail-Closed Hardening 已完成 External Macro Audit PASS，exact-target final micro-fix closed。 |
+| B-94 | 進行中 | **Antigravity Runtime Rule Loadability / UI Freshness Reconciliation** | 執行三層規則機器對帳：Inventory A workspace rules 全數符合限制（prompt-preflight chars=9973 <= 10000 安全門檻，其餘 5 份規則 <= 12000，disk blob 與 HEAD blob 一致為 9adda8a）；Inventory B legacy .agent/rules/ 不存在（NONE）；Inventory C global ~/.gemini/GEMINI.md 不存在（NONE）；確認 IDE Rule UI 顯示 12138/12000 為 stale editor buffer（IDE_RULE_BUFFER_STALE），嚴禁將 stale buffer 回存磁碟；進入 B-01 前須由使用者完成 runtime reload / fresh session 刷新 UI 快取。 |
 
 ---
 
