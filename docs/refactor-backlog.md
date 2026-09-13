@@ -2825,7 +2825,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 5.1 上一批狀態
 
-上次核對通過的 HEAD：369c61a
+上次核對通過的 HEAD：a8d6575
 
 - `23af193`（執行者前置檢查 ＋ 回滾程序 ＋ `AUDIT-LOG.md` ＋ 四缺口修正）
   已於 2026-09-02 由審計官核對通過：6 檔異動（含 2 個新檔）、零夾帶、
@@ -2989,6 +2989,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 - `622e840`（B-58 Recovery R6 Micro-Fix — Narrow False-DLP Guard Exemption）已於 2026-09-12 由宏觀審計官全面審查獨立核對通過：7 檔 authorized scope；移除 validate_skills.py 中 EXEMPT_DLP_LOCATIONS 整檔豁免，實作 narrow contextual distinction；naked false DLP self-attestation 嚴格 FAIL，合法否定/歷史說明 PASS；原兩個豁免目標（governor/setup）補齊確定性正向、負向與反例單元測試；無新 CHECK，無技能語意異動；exact-SHA Actions Run 34693575178 (status completed, conclusion success)；R6 正式結案；B-58 Content Architecture 達成 FINAL MACRO PASS，正式解除 D-02 之 TEMPORARILY HELD。
 - `3b3e7fa`（B-58 Final Macro Audit State Closure & D-02 Release）已於 2026-09-13 由宏觀審計官全面審查獨立核對通過：5 檔 authorized scope；同步 622e840 Macro PASS、R6 CLOSED、B-58 FINAL MACRO PASS 裁決；TASKBOARD B-58 標記已完成；D-02 解除 TEMPORARILY HELD 改標 READY；Formal Production Handoff 判定 PASS；exact-SHA Actions Run 34694285132 (status completed, conclusion success)；判定 Macro PASS。
 - `17216b5`（Pre-Handoff Router / Anti-Loop Hardening）已於 2026-09-13 由外部審計官全面審查獨立核對通過：涵蓋 3b3e7fa..17216b5 完整 pending range（含 b1e8804、4fce039、a6c74bf、17216b5）；Router purity 與確定性續行；M1/M2/M3 自主閉環與 S1-only 升級；TASKBOARD.NEXT_WORK 單一指標與 CHECK 8 指標完整性；CHECK 12 pending-range 相容性模型；Antigravity active rule loadability 守衛；E1/E2/E3 驗證解除手寫衍生值錨定；執行者範疇與 incidental finding 邊界收斂；exact-SHA Actions Run 34743264746 (status completed, conclusion success)；判定 Macro PASS。
+- `a8d6575`（B-93 Verification Integrity / False-Green Fail-Closed Hardening）已於 2026-09-13 由外部審計官全面審查獨立核對通過：exact-SHA GitHub Actions Run 34754917032 (status completed, conclusion success)；CHECK 1–18 = 18 PASS / 0 FAIL；scripts tests = 199 passed、webapp tests = 13 passed；canonical verification = ALL 5 GATES PASSED；CHECK 10 exact subsection identity 與 explicit target identity / archive substitution repair 通過；direct production canaries 通過；active-rule E16 contract sync 通過；TASKBOARD B-53 truth sync 通過；零 B-01 實作；B-93 Verification Integrity / False-Green Fail-Closed Hardening 正式通過並結案（B-93 CLOSED）；判定 Macro PASS。
 
 ### 5.2 待辦
 
@@ -3019,9 +3020,9 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - 若 `HEAD != checkpoint` → `checkpoint..HEAD` 即為尚待宏觀審計之 commit range（包含 checkpoint 之後至當前 HEAD 間所有 pending / repair commits，不因 commit 數量直接判定 FAIL）
 - **交接與審計生命週期（Handoff & Audit Lifecycle）**：
   - Formal Production Handoff 已完成（D-01 / D-02 PASS）。
-  - Pre-Handoff Router / Anti-Loop Hardening 主體已完成。
-  - Verification Integrity hardening candidate 已 landed，external Macro review 發現 bounded canary-integrity micro-fix。
-  - Verification Integrity final exact-target repair implementation 完成後仍 pending Macro Audit。
+  - Pre-Handoff Router / Anti-Loop Hardening 已完成。
+  - Verification Integrity / False-Green Fail-Closed Hardening 已完成 External Macro Audit 並正式 CLOSED。
+  - Production routing ready。
   - 當前與下一步工作任務值（Current / next work task value）唯一由 `docs/TASKBOARD.md` 的 `**NEXT_WORK**` pointer 保存，交接區不複製 task ID 或待辦佇列。
   - Antigravity IDE runtime rule UI freshness 仍需由 runtime reload / fresh session 保證，不由 CI 宣稱，必須在進入下一個 production task 前確認 reload/reopen。
 - **待使用者裁決事項**：無（依 §5.3，NONE）。
