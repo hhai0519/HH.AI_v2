@@ -3033,7 +3033,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - generated rule traceability External Macro PASS / CLOSED。
   - Executor prompt-preflight machine enforcement External Macro PASS / CLOSED。
   - Prompt Manifest runtime interception 已由兩種 malformed-prompt canary 實證。
-  - Pre-B01 taskboard truth reconciliation implementation pending External Macro Audit。
+  - Pre-B01 taskboard truth reconciliation 正處於 bounded Macro repair / pending External Macro Audit。
   - B-28/B-29 full upstream comparison 不再是 Pre-B01 blocker（使用者裁決延後 post-B01）。
   - Production routing ready。
   - 當前與下一步工作任務權威（Current / next work authority）仍只由 `docs/TASKBOARD.md` 的 `**NEXT_WORK**` pointer 保存與導航，交接區不複製 task ID 或待辦佇列。
@@ -3091,7 +3091,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
       | B-06 | 待辦 | 可封存 | `AGENTS.md` §2 frontmatter 規範未強制要求 description 引號統一；`scripts/validate_skills.py` 正式解析器對引號與未引號皆合法支援；無任何 correctness 或安全影響 | 純格式收斂，無 production correctness 價值，可予封存，不得為此異動技能 |
       | B-38 | 待辦 | 可封存 | `.agents/rules/git-and-reporting.md` §2（B-36）確立 Repo Evidence Channel，嚴禁終端機日誌 dump 入對話；機器證據完整留存於 Git / Actions / EXEC-LOG，對話採單行回報 | 原始「Claude context pollution」問題已由 B-36 證據通道架構徹底消除，不再需要實作 `--quiet` / `--json` |
       | B-69 | 待辦 | 待辦（維持待辦） | `PRINCIPLES.md` 與現行 `.agents/rules/`、`.claude/rules/` 查無跨環境比對原語規範（如「設計比對原語前須考量跨 OS/locale/工具鏈差異、禁止直接依賴位元組」） | 原提案規範尚未被現行更高層 active rules 完整納入，具備真實殘留行為，嚴格依 current repo evidence 維持待辦 |
-      | B-70 | 待辦 | 可封存 | B-60 配置表已於早期封存（不再作為 schedule）；`scripts/find_pairs.py` 未實作；現行無第二 pairing state store | 原 proposal 依賴之舊 CHECK 配置與手寫配對假設已遭淘汰，不建第二 state store；taskboard/repo-state truth residual 由 B-87 負責 |
+      | B-70 | 待辦 | 待辦 | current prompt-preflight §3.1 仍為人工維護 pairing table；B-45 仍記錄 C section ↔ §5.3 pairing registration residual；舊 B-60 allocation 部分已過時，但 B-70 pairing-by-memory 核心問題尚未被取代 | GENUINE REMAINING WORK / NON-PRE-B01；核心配對問題仍存在，但非 Pre-B01 blocker，不阻擋 B-01 |
       | B-71 | 待辦 | 可封存 | B-31（BOM 偵測）、B-53（inline checks 抽取）、B-54（CHECK 21 跨層矛盾）、B-87（對帳）、B-88（空行斷開）、B-89（日文字元）各自具備 canonical concrete tasks | B-71 屬「零漏網未達標」之 umbrella 觀察項目，所有具體有效之殘留風險皆已收納進獨立 concrete tasks，予以封存且不刪除具體項目 |
       | B-83 | 待辦 | 可封存 | `.claude/rules/auditor-protocol.md` §9.2 確立開場僅讀 §5.4、§5.1、§5.3 與 `TASKBOARD.NEXT_WORK`，不再載入全量歷史 backlog；historical rationale on-demand | 原始「開場單次載入 2,338 行」之 hot-path 問題已由 targeted current-state extraction 徹底解決；歷史瘦身移入可選維護，不再為 production blocker |
       | G-01 | 待辦 | 可封存 | `docs/TASKBOARD.md` E-05 明確涵蓋 `Data/TODO.md`（必須遷移/裁決）之範疇 | absorbed by E-05；內容作為 E-05 acceptance inventory，非刪除需求；不建第二 Data migration queue |

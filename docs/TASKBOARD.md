@@ -12,7 +12,7 @@
 
 **NEXT_WORK**：B-87
 
-**最後更新**：2026-09-13，B-87 Phase 1 Truth Reconciliation / Awaiting Macro Audit
+**最後更新**：2026-09-13，B-87 Phase 1 Macro Micro-Fix / Awaiting External Macro Audit
 
 ---
 
@@ -129,7 +129,7 @@ A 節目前狀態以本表各列與 `NEXT_WORK` 之 current repo truth 為準；
 | B-54 | 待辦 | **零項 CHECK 驗證 SOP 層內容或跨層矛盾** | 16 項中 6 項對著稽核迴圈自己（8／9／11／12／15／16）、5 項通用格式（1／2／3／13／14）、3 項 `skills/`（4／6／7）、2 項路由引用（5／10）。**SOP 的 1,305 行內容與規範層之間的矛盾完全無守衛。** 已知兩例（`SOP_02` 清歷史 vs `.agents/rules/git-and-reporting.md` 禁 force push、`SOP_04` 第 167 行與 `SOP_06` 第 133 行 vs ADR-0017）皆為人工偶然發現。處置：建 `docs/managed-facts.yaml` ＋ **CHECK 21 跨層矛盾偵測**。排批 2e |
 | B-55 | 待辦 | **治理層已分裂成兩個速度** | 實測最後修改日：稽核迴圈檔案 09-05～09-06；作業層 SOP_01／02／05／06／09／11／12／13 停在 2026-08-25（12 天）；**`.agents/rules/skills-architecture.md` 停在 2026-08-13（24 天，全庫最舊）——而它正是 B-01 的目標檔案**。處置：**CHECK 23 文件時效偵測**。排批 2e |
 | B-56 | 待辦 | **`SOP_00A_Master_Index.json` 的維護規則靠記憶** | 該檔是 `$$` 指令的唯一權威定義來源，內含「每次新增或修改 SOP 時，必須同步更新此索引對應的 tags」但無任何偵測；`last_updated` 停在 2026-08-29，另有 5 個 `PENDING_MIGRATION`。CHECK 5 只驗路由目標存在性，不驗時效與完整性。併入 CHECK 23。排批 2e |
-| B-57 | 可封存 | **審查機制的完成定義（五條可機械驗收）** | 原五項 acceptance 並未全部達成；本項被後續 Governance Exit criteria 取代；未完成的 residual risks 保留於 B-53 / B-54 / B-71 等 post-main tasks。 |
+| B-57 | 可封存 | **審查機制的完成定義（五條可機械驗收）** | 原五項 acceptance 已被後續 Governance Exit criteria 取代；仍有效的 residual risks 由現行 concrete tasks（如 B-53 / B-54 / B-87 / B-88 / B-89）各自保存。 |
 | B-58 | 已完成 | **治理層瘦身（Content Architecture cleanup），使用者已裁決正式開始** | Router PASS；Phase 3A PASS；R1–R6 PASS；B-58 Final Macro Audit PASS；Content Architecture cleanup CLOSED；D-02 hold released |
 | B-59 | 待辦 | **`docs/ARCHIVE-INDEX.md` 自己沒有機械守衛** | 開頭寫「新增或變更任何歸檔機制時，必須同步更新本檔」但無偵測。處置：**CHECK 20 ARCHIVE-INDEX 可達性**，雙向驗證——索引提到的每個歸檔區必須實際存在，且 repo 中每個歸檔區必須被索引收錄。這是使用者裁決條件②「封存要有足夠的邏輯及指向」的機械化。排批 2d |
 | B-60 | 可封存 | **CHECK 17–24 編號一次配置完成（防 B-21 重演）** | 原 17–24 allocation plan 已停止作為 implementation schedule；未來若 post-main 決定新增 CHECK，必須先從 current check_consistency.py machine derive 下一個可用 ID，不得重用舊 B-60 數字表。 |
@@ -142,7 +142,7 @@ A 節目前狀態以本表各列與 `NEXT_WORK` 之 current repo truth 為準；
 | B-67 | 已完成 | **`scripts/build_prompt_evidence.py`** | 以批次規格為單一來源，產出錨點 `count()` 逐條實測、**E11 清單與總數（由 `len()` 產生）**、(b)(d) 行數與圍欄數、套用到暫存副本後的 (e) 模擬結果，以及 **EXPECT 區塊的 ID 序列驗證**。本批完成 |
 | B-68 | 待辦 | **`scripts/impact_scan.py`** | 對將被改動的字串／章節／檔案做全庫反向引用掃描，涵蓋 `.claude/rules/auditor-protocol.md` §6.7 的四類依賴（測試斷言／執行環境敏感物／機械守衛／跨層副本）。由 BPE 自動呼叫，把「主動想起要查」變成「腳本一定會跑」。排批 2b-4 |
 | B-69 | 待辦 | **跨環境比對原語規則** | 設計任何比對原語前必須問「換 OS／locale／工具鏈會給出相同答案嗎」；依賴行尾、字元編碼、路徑分隔符、時區、排序或工具實作者不得使用；跨環境一律比對正規化文字而非位元組。依 current repo 查證仍具殘留需求，維持待辦 |
-| B-70 | 可封存 | **配對清單改為腳本產生** | 原 proposal 依賴之舊 CHECK 配置與手寫配對假設已遭淘汰，不建第二 state store；taskboard/repo-state truth residual 由 B-87 負責 |
+| B-70 | 待辦 | **配對清單改為腳本產生** | 原 B-60 CHECK 編號配置部分已過時，但 pairing-list-by-memory 的核心問題仍存在。current prompt-preflight §3.1 仍為人工維護 pairing table，且 B-45 的 C section ↔ §5.3 residual pairing registration 尚未機械收斂。因此 B-70 保持 genuine pending。本項不是 Pre-B01 blocker，不得因此阻擋 B-01。 |
 | B-71 | 可封存 | **零漏網目前不達標，且存在倖存者偏差** | 「零漏網未達標」umbrella 項目；有效殘留風險已各自收納至 concrete tasks (B-31, B-53, B-54, B-87, B-88, B-89)，予以封存且不刪除具體項目 |
 | B-72 | 已完成 | **`PRINCIPLES.md` §2.10「每一個數字都必須有它的產生者」** | 使用者 2026-09-06 提出「每次宣告的數據都親自從 GitHub 重新取得」，審計官逐項檢驗 16 件錯誤後修正範圍：**只能修 1 件、部分修 3 件、修不掉 12 件**——審計官本來就每輪重 clone，多數錯誤不是讀取問題而是「寫了沒有產生者的數字」。正確規則為：**寫進提示詞的每一個數字，都必須是本輪某次工具呼叫的輸出**。四種合法來源：repo 現況→新鮮 clone；文件的自我描述（清單長度、項數）→腳本 `len()`；套用後的未來狀態→本地模擬；外部系統狀態→該系統 API。**「從 GitHub 重讀」只是第一種。** 排批 2b-4 |
 | B-73 | 已完成 | **`§8.4-2` 的「每輪最多一次 clone」是上限，沒有下限**（**使用者發現**） | 審計官每輪重 clone 靠自律不靠規則，下一個接手者可能用開場那次 clone 撐三輪。處置：`.claude/rules/auditor-protocol.md` §6.1 新增一項補下限「HEAD 可能移動即必須重 clone」，並要求自檢聲明能指出每個數字由哪一次工具呼叫產生。依 §5.7 同批落到 `handover-selftest.md` 與 `prompt-preflight.md` §3.4。排批 2b-4 |
