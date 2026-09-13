@@ -10,9 +10,9 @@
 `待裁決`（需使用者決定）／`已完成`（仍可能被引用）／
 `可封存`（不影響後續工作，待使用者確認後移入封存區）
 
-**NEXT_WORK**：B-01
+**NEXT_WORK**：B-93
 
-**最後更新**：2026-09-13，Pre-Handoff final consistency repair
+**最後更新**：2026-09-13，Verification Integrity / False-Green Hardening
 
 ---
 
@@ -166,6 +166,7 @@
 | B-90 | 已完成 | **批次規格格式缺 `create_file` mode** | 已於 B-90 實作完成：`parse_spec` 與 `apply_mod_to_text` 原生支援 `create_file` mode，BPE 支援新建檔案模擬與驗收，CHECK 17 完成新檔逐位元重放，並全面移除 `-BOOTSTRAP.spec.txt` 跳過重放與全庫單一 BOOTSTRAP 限制。歷史規格 `0e13c85` 安全保留為歷史 artifact |
 | B-91 | 可封存 | **9 個 `audited-*` tag 歷史留痕保存（退役破壞性遠端清理）** | 9 個錯 tag 刻意作為歷史事故證據保留；audited tag 次系統已退役為 non-authoritative legacy markers（0 remote tag deleted, 0 remote tag rewritten, historical wrong tags intentionally preserved），審計狀態已由 AUDIT-LOG、refactor-backlog §5.1 與 GitHub Actions SSOT 完全接管，不再影響 correctness、audit state、handoff 或 remote health。不需執行破壞性遠端清理。 |
 | B-92 | 已完成 | **`docs/EXEC-LOG.md` 與 `docs/fingerprints/exec-latest.json` 作為 CHECK 17 豁免檔的生命週期** | 豁免檔生命週期已修正。`docs/EXEC-LOG.md` 不再採 generic zero-deletion，改採 fail-closed semantic transition validation（支援歷史列不變、回填 parent hash、追加當批紀錄）；`docs/fingerprints/exec-latest.json` 作為 generated snapshot 正確性由 `fingerprint.py --verify` 守護；真實 Git repo 正反例測試已建立 |
+| B-93 | 進行中 | **Verification Integrity / False-Green Fail-Closed Hardening** | 修正驗證系統中的既有 false-green 與 fail-open 路徑：CHECK 10 跨檔引用實質驗證目標章節、檔案讀取與 Git facts 取得失敗改為 fail-closed、收斂 CHECK 6 與 CHECK 14 寬鬆豁免為精準語境例外、PENDING_MIGRATION 實施白名單登錄、CHECK 13 建議輸出如實呈現、補齊 verifier negative canaries 與 real-input-shape 測試、收緊 prompt-preflight 至 10,000 字元安全餘裕 |
 
 ---
 

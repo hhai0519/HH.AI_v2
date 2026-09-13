@@ -640,11 +640,22 @@ def test_check_14_simplified_chinese_allowed_exception(tmp_path):
     docs = tmp_path / "docs"
     docs.mkdir()
     f = docs / "refactor-backlog.md"
-    f.write_text("历史紀錄中的这个测试。\n", encoding="utf-8")
+    f.write_text("簡體字歷史說明：引用原字形「这个」測試。\n", encoding="utf-8")
     fails, infos = check_14_simplified_chinese(str(tmp_path))
     assert len(fails) == 0
     assert len(infos) == 1
     assert "歷史紀錄引用例外" in infos[0]
+
+
+def test_check_14_simplified_chinese_in_backlog_plain_text_fail(tmp_path):
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    f = docs / "refactor-backlog.md"
+    f.write_text("一般正文出現这个未標註說明的文字。\n", encoding="utf-8")
+    fails, infos = check_14_simplified_chinese(str(tmp_path))
+    assert len(fails) == 1
+    assert "包含簡體字" in fails[0]
+    assert "个" in fails[0] and "这" in fails[0]
 
 
 def test_check_15_context_conflict_pass(tmp_path):

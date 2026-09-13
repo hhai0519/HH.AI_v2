@@ -2825,7 +2825,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 5.1 上一批狀態
 
-上次核對通過的 HEAD：17216b5
+上次核對通過的 HEAD：369c61a
 
 - `23af193`（執行者前置檢查 ＋ 回滾程序 ＋ `AUDIT-LOG.md` ＋ 四缺口修正）
   已於 2026-09-02 由審計官核對通過：6 檔異動（含 2 個新檔）、零夾帶、
@@ -3020,9 +3020,10 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 - **交接與審計生命週期（Handoff & Audit Lifecycle）**：
   - Formal Production Handoff 已完成（D-01 / D-02 PASS）。
   - Pre-Handoff Router / Anti-Loop Hardening 主體已完成。
-  - 2531514 post-audit consistency repair 正在進行／本 repair implementation complete 後 pending Macro Audit。
+  - 上一個 Runtime Rule Freshness / Audit-State repair 已 Macro PASS。
+  - Verification Integrity / False-Green hardening implementation 完成後 pending Macro Audit。
   - 當前與下一步工作任務值（Current / next work task value）唯一由 `docs/TASKBOARD.md` 的 `**NEXT_WORK**` pointer 保存，交接區不複製 task ID 或待辦佇列。
-  - Antigravity IDE runtime rule UI freshness 必須在進入下一個 production task 前確認 reload/reopen。
+  - Antigravity IDE runtime rule UI freshness 仍需由 runtime reload / fresh session 保證，不由 CI 宣稱，必須在進入下一個 production task 前確認 reload/reopen。
 - **待使用者裁決事項**：無（依 §5.3，NONE）。
 - **剩餘工作權威**：以 `docs/TASKBOARD.md` 為唯一 remaining-work authority。
 

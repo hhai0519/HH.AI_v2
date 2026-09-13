@@ -2,7 +2,7 @@ from pathlib import Path
 import pytest
 
 MAX_RULE_CHARS = 12000
-SAFETY_TARGET_CHARS = 11000
+SAFETY_TARGET_CHARS = 10000
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 RULES_DIR = REPO_ROOT / ".agents" / "rules"
@@ -27,7 +27,7 @@ def test_rule_files_within_loadability_limit():
 
 
 def test_prompt_preflight_within_safety_target():
-    """prompt-preflight.md must satisfy the batch design safety target of <= 11,000 characters."""
+    """prompt-preflight.md must satisfy the batch design safety target of <= 10,000 characters."""
     target_file = RULES_DIR / "prompt-preflight.md"
     assert target_file.exists(), f"Target rule file {target_file} does not exist"
     text = target_file.read_text(encoding="utf-8")

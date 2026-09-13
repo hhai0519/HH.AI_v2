@@ -1,5 +1,5 @@
 {
-  "base_head": "2531514",
+  "base_head": "369c61a",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 0,
@@ -35,16 +35,16 @@
     ".agents/rules/prompt-preflight.md": {
       "fences": 0,
       "headings": [
-        "# 提示詞前置檢查",
+        "# 提示詞前置驗證規範（Prompt Preflight Protocol）",
         "## 1. 為什麼有這一條",
-        "## 2. 這不是叫你評價提示詞",
+        "## 2. 這是審查，不是建議",
         "## 3. 必要結構元素（缺一即停，Mode-Aware）",
         "### 3.0A 所有模式共同必備要素（缺一即停）",
         "### 3.0B EXACT_SPEC 專屬必備要素（僅在 EXACT_SPEC 模式下檢查）",
         "## 3.1 配對規則（缺一即停）",
         "## 3.2 覆蓋規則（缺一即停，Mode-Aware）",
-        "### A. GOAL_SPEC 覆蓋驗證",
-        "### B. EXACT_SPEC 覆蓋驗證",
+        "### A. GOAL_SPEC 覆蓋鏈",
+        "### B. EXACT_SPEC 覆蓋鏈",
         "## 3.3 遇到疑問而非缺失時",
         "## 3.4 審計官自檢聲明的交叉驗證",
         "## 3.5 執行者檢查證據持久化（已落地）",
@@ -56,8 +56,8 @@
         "## 5. 例外",
         "## 6. 這條規則保護的是誰"
       ],
-      "lines": 293,
-      "sha256": "f74cde1179b4cd577ae69070e1f865daf78caf92fa88e0abcd96aa53b74ec9d8"
+      "lines": 291,
+      "sha256": "22cd23745506a0e04a10b8ca07799d82934c55e374bccf55fda66b785ac1973a"
     },
     ".agents/rules/role-boundaries.md": {
       "fences": 0,
@@ -507,16 +507,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 103,
-      "sha256": "f53ed7181ad4a0b98e54c6d50ba5d5216cf7dcf0167365dabe353de53b015d5c"
+      "lines": 104,
+      "sha256": "19aba8771dc9f572243f731b4392b679ad0d44f29b9e26a9797b8bad5c39584b"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 74,
-      "sha256": "e27abe26ff27120e3350039ac9d0656b69309734a92c40d93e6c355d5e8f57a3"
+      "lines": 75,
+      "sha256": "8e3e5d9673f1c745b2fdf7dddc603bcc84095a29934acf51561c2290220c2daa"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -551,8 +551,8 @@
         "## G. 舊 repo 未盤點區塊（2026-09-02 新發現）",
         "## 封存區"
       ],
-      "lines": 236,
-      "sha256": "8b892303168f72ccf702e0e0c4e296cca91540c91b8d6eed979c6abe288806d9"
+      "lines": 237,
+      "sha256": "aa544b947296a06326a1c99057cb397fbb5a83542c0efecad213a9fd71b04a4f"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -880,8 +880,8 @@
         "### 5.3 待使用者裁決",
         "### 5.4 進行中／等待回報"
       ],
-      "lines": 3061,
-      "sha256": "b958009cc5445cd8347289407532da683b30d6b0a7ee23df38215426a4b738bb"
+      "lines": 3062,
+      "sha256": "98a24802132c4fef84b6c7c582f750ecb506d98d59ad383909b8616e4d6f2684"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -907,8 +907,8 @@
         "# 已知指向錯誤的歷史 tag。本清單只能縮短、不得加長。",
         "# 修復批次完成後必須清空；清單中的 tag 若已修復卻未移除，CHECK 18 會 FAIL。"
       ],
-      "lines": 1751,
-      "sha256": "ee040029be8254fb0fe136a4dd47aa5cb6b773e91ffc386babba58bbb862b031"
+      "lines": 1885,
+      "sha256": "9e115b43da99b856593dde54bde4939e8a8e0cf53d5ca595eaaedb46dd27f6c8"
     },
     "scripts/fingerprint.py": {
       "fences": 0,
@@ -959,8 +959,8 @@
         "# CHECK 3 Tests: Markdown Links & Path Portability (B-58 R6)",
         "# ---------------------------------------------------------------------------"
       ],
-      "lines": 806,
-      "sha256": "0bb222054083ee2a5210aa3585aaa298eb809c7c7edf94e3078bd2b137520272"
+      "lines": 817,
+      "sha256": "839ecb93faba68f11fdc6d716e5336cfd6b7f0db2b08c16ae0a5fe9c54fa40c0"
     },
     "scripts/tests/test_fingerprint.py": {
       "fences": 0,
@@ -972,7 +972,7 @@
       "fences": 0,
       "headings": [],
       "lines": 38,
-      "sha256": "7e4bf047eaae14e91e8ea3f6f84e270161ade2983c546ca47bf4d45588357532"
+      "sha256": "9b1ff592a2d0c922e9d16a4062f35f955ff96b64185ff6a3fbce09886af12d3b"
     },
     "scripts/tests/test_spec_create_file.py": {
       "fences": 0,
@@ -1016,6 +1016,34 @@
       "lines": 599,
       "sha256": "6f1eb3e9b24493381fcc740413360905da420dd8a33b8e93a91ce5ef03b30eae"
     },
+    "scripts/tests/test_verifier_fail_closed.py": {
+      "fences": 0,
+      "headings": [
+        "# ===========================================================================",
+        "# Defect 1: CHECK 10 Cross-File Validation",
+        "# ===========================================================================",
+        "# ===========================================================================",
+        "# Defect 2: Fail-Closed on Read/Decode Errors",
+        "# ===========================================================================",
+        "# ===========================================================================",
+        "# Defect 3: Git Fact Fail-Closed",
+        "# ===========================================================================",
+        "# ===========================================================================",
+        "# Defect 4: Narrow Exemptions (CHECK 6 & CHECK 14)",
+        "# ===========================================================================",
+        "# ===========================================================================",
+        "# Defect 5: PENDING_MIGRATION Exact Registry in CHECK 5",
+        "# ===========================================================================",
+        "# ===========================================================================",
+        "# Defect 6: CHECK 13 Advisory Output Behavior",
+        "# ===========================================================================",
+        "# ===========================================================================",
+        "# Meta-test: Active CHECK Inventory Integrity (1..18)",
+        "# ==========================================================================="
+      ],
+      "lines": 395,
+      "sha256": "85eaf62cd6ecb36076173cb795a3cbd6e556be09a59d2e7fb44db0aa7c3f6892"
+    },
     "scripts/tests/test_verify_all.py": {
       "fences": 0,
       "headings": [],
@@ -1040,7 +1068,7 @@
       "sha256": "77163678353cb7a444f90f17956d03312f715cfcccf933603948715939ecdc10"
     }
   },
-  "generated_at": "2026-09-13T07:11:50Z",
+  "generated_at": "2026-09-13T07:48:43Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {
