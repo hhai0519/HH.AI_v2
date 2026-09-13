@@ -124,7 +124,7 @@
     - **審計狀態配對 (Audit-State Pairing)**：若提示詞將某 commit 正式提升為 Macro PASS checkpoint，則 `AUDIT-LOG` 與交接區 §5.1 checkpoint 必須指向同一個已由 Macro Auditor 明確裁決 PASS 的 commit（TASKBOARD 只維持工作狀態，不參與 commit-verdict authority）。
     - **EXACT_SPEC**：`git add` 清單的每個非 exempt 檔案，必須同時出現在 Allowed Scope、批次規格修改目標與 Gate 驗證清單中。
     - **GOAL_SPEC**：實際 `git add` 路徑由執行者自 `git diff --name-only` 產生，不要求 Auditor 預先列出 exact file list；Auditor 以 Allowed Scope 與驗收準則（acceptance criteria）驗收。完整規則見 `.agents/rules/prompt-preflight.md` §3.1、§3.2。
-12. **每份提示詞必須包含「審計官自檢聲明」區塊**，逐項列出 `auditor-selftest.md` E 節的自檢結果。這是自檢唯一的外部產物，執行者依 `.agents/rules/prompt-preflight.md` §3.4 進行交叉比對。
+12. **每份提示詞必須包含 machine-readable prompt manifest（由 `scripts/validate_prompt_manifest.py` 驗證）與「審計官自檢聲明」區塊**，逐項列出 `auditor-selftest.md` E 節的自檢結果。這是自檢與提示詞結構檢驗的外部產物，執行者依 `.agents/rules/prompt-preflight.md` §2.1 與 `.agents/rules/prompt-preflight.md` §3.4 進行機械驗證與交叉比對。
 13. **每個錨點對應本批 base commit 與規格上下文**（僅 EXACT_SPEC 適用；GOAL_SPEC 標記為 N/A），在目標檔案中具備結構唯一性（machine count == 1），不依賴特定 clone 第 N 行作為 blocking truth。
 14. **寫入含 `§X.Y` 的文字時，若引用的是他檔章節，必須在同一行寫出明確檔名**（CHECK 10 逐行檢驗，未標明檔名視為同檔引用；explicit target file identity 不得被 verifier substitution，target section 必須存在於該 explicit target，若引用歷史已淘汰規範必須明確寫出 archive 路徑）。
 15. **每個插入型修改若涉及結構序列，必須附明確驗收準則**（例如章節或項目序列嚴格遞增），不得將 LLM 預測所有 post-state 衍生序列當作通用 blocking requirement。

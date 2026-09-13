@@ -22,6 +22,16 @@
 
 遇到疑慮依 `.agents/rules/role-boundaries.md` §7 分流（M1/M2/M3 自主處理），僅未授權之 S1 決策才停機回報。
 
+### 2.1 最前置硬規則：Prompt Manifest 機械驗證（Hard Rule）
+
+任何 repo mutation 前，必須執行：
+1. 取得完整 incoming prompt 原文。
+2. 以 ephemeral / scratch 檔案或 stdin 餵給：`python scripts/validate_prompt_manifest.py`。
+3. 若 exit != 0：立即判定為 `PROMPT STRUCTURE ERROR`，停止執行並回報錯誤，**不得進行任何 repo mutation**。
+4. 若 exit == 0：才進入後續既有語意與機械前置檢查流程。
+
+本驗證器不取代現有 M1/M2/M3/S1 錯誤路由；它將第一層提示詞結構檢驗從 Agent 記憶移至確定性程式碼。
+
 ---
 
 ## 3. 必要結構元素（缺一即停，Mode-Aware）
