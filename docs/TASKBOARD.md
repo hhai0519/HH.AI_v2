@@ -12,7 +12,7 @@
 
 **NEXT_WORK**：B-31
 
-**最後更新**：2026-09-13，Pre-B01 Grouped Gate Batch (B-31/B-88/B-89) / B-87 Closed
+**最後更新**：2026-09-14，B-31 Tracked-Scope Micro-Fix / Awaiting External Macro Audit
 
 ---
 

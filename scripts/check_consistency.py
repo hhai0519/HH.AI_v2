@@ -2004,31 +2004,43 @@ def check_18_tag_integrity(root_dir=None):
 
 
 def check_19_utf8_bom(root_dir=None):
-    """CHECK 19 — ADR-0013 §2C UTF-8 BOM 污染偵測。"""
+    """CHECK 19 — ADR-0013 §2C UTF-8 BOM 污染偵測（Git tracked regular files）。"""
     if root_dir is None:
         root_dir = repo_root
     fails = []
     infos = []
-    text_exts = {
-        ".md", ".py", ".json", ".yaml", ".yml", ".txt", ".template",
-        ".js", ".jsx", ".sh", ".ps1", ".html", ".css", ".spec.txt"
-    }
+
+    if not _in_git_repo(root_dir):
+        fails.append(f"check_consistency:0  路徑不是 git repository，無法驗證 tracked files: {root_dir}")
+        return fails, infos
+
+    rc, out_bytes, _ = _git_bytes(root_dir, ["ls-files", "-z"])
+    if rc != 0:
+        fails.append(f"git:0  無法取得 tracked files 清單 (git ls-files -z 失敗, rc={rc})")
+        return fails, infos
+
+    raw_paths = [p for p in out_bytes.split(b"\0") if p]
     scanned = 0
-    for root, dirs, files in os.walk(root_dir):
-        if any(p in root for p in [".git", "node_modules", "__pycache__", ".venv"]):
+    for raw_p in raw_paths:
+        try:
+            rel_p = raw_p.decode("utf-8")
+        except UnicodeDecodeError:
+            rel_p = raw_p.decode("utf-8", errors="replace")
+        rel_fp = rel_p.replace("\\", "/")
+        full_path = os.path.join(root_dir, rel_p)
+
+        if os.path.isdir(full_path):
             continue
-        for file in files:
-            if any(file.endswith(ext) for ext in text_exts):
-                filepath = os.path.join(root, file)
-                rel_fp = os.path.relpath(filepath, root_dir).replace(os.sep, "/")
-                try:
-                    with open(filepath, "rb") as fh:
-                        header = fh.read(3)
-                        if header == b"\xef\xbb\xbf":
-                            fails.append(f"{rel_fp}:1  檔案開頭包含 UTF-8 BOM (EF BB BF) 污染")
-                    scanned += 1
-                except Exception as e:
-                    fails.append(f"{rel_fp}:0  檔案讀取失敗: {e}")
+
+        try:
+            with open(full_path, "rb") as fh:
+                header = fh.read(3)
+                if header == b"\xef\xbb\xbf":
+                    fails.append(f"{rel_fp}:1  檔案開頭包含 UTF-8 BOM (EF BB BF) 污染")
+            scanned += 1
+        except Exception as e:
+            fails.append(f"{rel_fp}:0  檔案讀取失敗: {e}")
+
     infos.append(f"掃描受守護文字檔共 {scanned} 個")
     return fails, infos
 

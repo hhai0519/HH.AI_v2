@@ -1,5 +1,5 @@
 {
-  "base_head": "b2256fd",
+  "base_head": "8844266",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 0,
@@ -509,16 +509,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 116,
-      "sha256": "f722517b933b87763872f4f91df4a6bc88be5b5ffbca7e15f5524ad359d8a1ed"
+      "lines": 117,
+      "sha256": "11417904254ac106d8d31fa63e29606ceb697346a33030e704542a2ece3f4e03"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 88,
-      "sha256": "46a82a30c3ca113c5882740f3c74c4bef8cdb9000fa51e4027f1ff77790e1b96"
+      "lines": 89,
+      "sha256": "d2d691b230f0010482f8bc95c05b72a45bc0c0cb881d050f9f5d94291f46e474"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -554,7 +554,7 @@
         "## 封存區"
       ],
       "lines": 238,
-      "sha256": "9f1a2701c6d7659dc6b534bdada88ae6674e4bcd36def6dcc248a391694ed30d"
+      "sha256": "6464221e5f301a3688ef794577a4bf0e26e2a9a7941db646f14d8721057d76d9"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -882,8 +882,8 @@
         "### 5.3 待使用者裁決",
         "### 5.4 進行中／等待回報"
       ],
-      "lines": 3118,
-      "sha256": "99f77e0811efe1f26127f258c512a3db15fdba999828e6fb40b69a867bb0e5e0"
+      "lines": 3120,
+      "sha256": "5520202ad53d8e86315e0801532b5f5cb60017450836f54da802eeba0a2dd8f9"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -910,8 +910,8 @@
         "# 已知指向錯誤的歷史 tag。本清單只能縮短、不得加長。",
         "# 修復批次完成後必須清空；清單中的 tag 若已修復卻未移除，CHECK 18 會 FAIL。"
       ],
-      "lines": 2115,
-      "sha256": "d3e1ed5f239eb2d384e87dabb5fcefcee26712a5b65d3732747784381cadc701"
+      "lines": 2127,
+      "sha256": "6edc24d431c81535315ae08672f832d7ed15e95fc646149ac09aacfc46d49f56"
     },
     "scripts/fingerprint.py": {
       "fences": 0,
@@ -974,14 +974,14 @@
         "# CHECK 14 Extended Tests: Japanese Character False-Green (B-89)",
         "# ---------------------------------------------------------------------------",
         "# ---------------------------------------------------------------------------",
-        "# CHECK 19 Tests: UTF-8 BOM Detection (B-31)",
+        "# CHECK 19 Tests: UTF-8 BOM Detection (B-31 Tracked-Scope Authority)",
         "# ---------------------------------------------------------------------------",
         "# ---------------------------------------------------------------------------",
         "# CHECK 20 Tests: Markdown Table Continuity (B-88)",
         "# ---------------------------------------------------------------------------"
       ],
-      "lines": 1007,
-      "sha256": "f0c9af61a1473a0e1c5c5a89fdcb2ad6d0e1df9a4e7e27ab08e81607baafdc9b"
+      "lines": 1097,
+      "sha256": "6f57ca5478b9161f8775a65db4b52df6c4bc8f3014ded3bede9300fca2cb16fc"
     },
     "scripts/tests/test_fingerprint.py": {
       "fences": 0,
@@ -1109,7 +1109,7 @@
       "sha256": "77163678353cb7a444f90f17956d03312f715cfcccf933603948715939ecdc10"
     }
   },
-  "generated_at": "2026-09-13T17:36:31Z",
+  "generated_at": "2026-09-14T00:12:26Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

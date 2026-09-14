@@ -3036,6 +3036,8 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - Executor prompt-preflight machine enforcement External Macro PASS / CLOSED。
   - Prompt Manifest runtime interception 已由兩種 malformed-prompt canary 實證。
   - Pre-B01 taskboard truth reconciliation External Macro PASS / CLOSED。
+  - Pre-B01 deterministic false-green batch B-88/B-89 已由 External Macro Reviewer 審查通過 (accepted)。
+  - B-31 正處於 bounded tracked-scope repair / pending External Macro Audit。
   - B-28/B-29 full upstream comparison 不再是 Pre-B01 blocker（使用者裁決延後 post-B01）。
   - Production routing ready。
   - 當前與下一步工作任務權威（Current / next work authority）仍只由 `docs/TASKBOARD.md` 的 `**NEXT_WORK**` pointer 保存與導航，交接區不複製 task ID 或待辦佇列。

@@ -873,43 +873,133 @@ def test_check_14_japanese_in_backlog_allowed_exception(tmp_path):
 
 
 # ---------------------------------------------------------------------------
-# CHECK 19 Tests: UTF-8 BOM Detection (B-31)
+# CHECK 19 Tests: UTF-8 BOM Detection (B-31 Tracked-Scope Authority)
 # ---------------------------------------------------------------------------
 
-def test_check_19_utf8_bom_pass(tmp_path):
+def _init_test_git_repo(path):
+    import subprocess
+    subprocess.run(["git", "init"], cwd=str(path), capture_output=True, check=True)
+    subprocess.run(["git", "config", "user.name", "Test"], cwd=str(path), capture_output=True, check=True)
+    subprocess.run(["git", "config", "user.email", "test@example.com"], cwd=str(path), capture_output=True, check=True)
+
+
+def test_check_19_utf8_bom_tracked_clean_text_pass(tmp_path):
+    """Canary A: tracked normal text clean -> PASS"""
+    import subprocess
+    _init_test_git_repo(tmp_path)
     clean_file = tmp_path / "clean.md"
     clean_file.write_text("# Clean UTF-8 without BOM\nHello World\n", encoding="utf-8")
+    subprocess.run(["git", "add", "clean.md"], cwd=str(tmp_path), capture_output=True, check=True)
+
     fails, infos = check_19_utf8_bom(str(tmp_path))
     assert len(fails) == 0
     assert any("掃描受守護文字檔" in inf for inf in infos)
 
 
-def test_check_19_utf8_bom_fail_negative_canary(tmp_path):
-    # Canary: identical text content, clean PASS, with BOM bytes FAIL
-    content = "# Canary Header\nSome content\n"
+def test_check_19_utf8_bom_tracked_markdown_bom_fail(tmp_path):
+    """Canary B: tracked Markdown BOM prefix EF BB BF -> FAIL"""
+    import subprocess
+    _init_test_git_repo(tmp_path)
     clean_file = tmp_path / "clean.md"
-    clean_file.write_text(content, encoding="utf-8")
+    clean_file.write_text("# Clean\n", encoding="utf-8")
+    subprocess.run(["git", "add", "clean.md"], cwd=str(tmp_path), capture_output=True, check=True)
+
     bom_file = tmp_path / "bom.md"
-    with open(bom_file, "wb") as fh:
-        fh.write(b"\xef\xbb\xbf" + content.encode("utf-8"))
+    bom_file.write_bytes(b"\xef\xbb\xbf# Header with BOM\n")
+    subprocess.run(["git", "add", "bom.md"], cwd=str(tmp_path), capture_output=True, check=True)
 
     fails, infos = check_19_utf8_bom(str(tmp_path))
     assert len(fails) == 1
+    assert "bom.md:1" in fails[0]
     assert "檔案開頭包含 UTF-8 BOM (EF BB BF) 污染" in fails[0]
-    assert "bom.md" in fails[0]
 
 
-def test_check_19_utf8_bom_ignored_dir_or_extension(tmp_path):
-    git_dir = tmp_path / ".git"
-    git_dir.mkdir()
-    ignored_git = git_dir / "config.md"
-    ignored_git.write_bytes(b"\xef\xbb\xbfSome config")
+def test_check_19_utf8_bom_tracked_gitattributes_bom_fail(tmp_path):
+    """Canary C: tracked extensionless control file .gitattributes with BOM -> FAIL"""
+    import subprocess
+    _init_test_git_repo(tmp_path)
+    ga = tmp_path / ".gitattributes"
+    ga.write_bytes(b"\xef\xbb\xbf* text=auto eol=lf\n")
+    subprocess.run(["git", "add", ".gitattributes"], cwd=str(tmp_path), capture_output=True, check=True)
 
-    bin_file = tmp_path / "image.png"
-    bin_file.write_bytes(b"\xef\xbb\xbfSome binary")
+    fails, infos = check_19_utf8_bom(str(tmp_path))
+    assert len(fails) == 1
+    assert ".gitattributes:1" in fails[0]
+    assert "檔案開頭包含 UTF-8 BOM (EF BB BF) 污染" in fails[0]
+
+
+def test_check_19_utf8_bom_tracked_gitattributes_clean_pass(tmp_path):
+    """Canary D: tracked .gitattributes clean -> PASS"""
+    import subprocess
+    _init_test_git_repo(tmp_path)
+    ga = tmp_path / ".gitattributes"
+    ga.write_bytes(b"* text=auto eol=lf\n")
+    subprocess.run(["git", "add", ".gitattributes"], cwd=str(tmp_path), capture_output=True, check=True)
 
     fails, infos = check_19_utf8_bom(str(tmp_path))
     assert len(fails) == 0
+
+
+def test_check_19_utf8_bom_untracked_bom_ignored(tmp_path):
+    """Canary E: untracked BOM file not git added -> does NOT fail CHECK 19"""
+    import subprocess
+    _init_test_git_repo(tmp_path)
+    clean_file = tmp_path / "clean.md"
+    clean_file.write_text("# Clean\n", encoding="utf-8")
+    subprocess.run(["git", "add", "clean.md"], cwd=str(tmp_path), capture_output=True, check=True)
+
+    untracked = tmp_path / "untracked.md"
+    untracked.write_bytes(b"\xef\xbb\xbf# Untracked BOM\n")
+
+    fails, infos = check_19_utf8_bom(str(tmp_path))
+    assert len(fails) == 0
+
+
+def test_check_19_utf8_bom_gitignored_bom_ignored(tmp_path):
+    """Canary F: gitignored BOM file -> does NOT fail CHECK 19"""
+    import subprocess
+    _init_test_git_repo(tmp_path)
+    gi = tmp_path / ".gitignore"
+    gi.write_text("generated/\n", encoding="utf-8")
+    subprocess.run(["git", "add", ".gitignore"], cwd=str(tmp_path), capture_output=True, check=True)
+
+    gen_dir = tmp_path / "generated"
+    gen_dir.mkdir()
+    noise = gen_dir / "noise.md"
+    noise.write_bytes(b"\xef\xbb\xbf# Noise with BOM\n")
+
+    fails, infos = check_19_utf8_bom(str(tmp_path))
+    assert len(fails) == 0
+
+
+def test_check_19_utf8_bom_inventory_failure_fail_closed(tmp_path, monkeypatch):
+    """Canary G: tracked read / inventory failure -> FAIL CLOSED"""
+    import check_consistency
+    # 1. Non-git directory
+    fails, infos = check_19_utf8_bom(str(tmp_path))
+    assert len(fails) == 1
+    assert "不是 git repository" in fails[0]
+
+    # 2. In git repo, but git ls-files command fails
+    _init_test_git_repo(tmp_path)
+    monkeypatch.setattr(check_consistency, "_git_bytes", lambda root, args: (1, b"", b"Simulated error"))
+    fails, infos = check_19_utf8_bom(str(tmp_path))
+    assert len(fails) == 1
+    assert "無法取得 tracked files 清單" in fails[0]
+
+
+def test_check_19_utf8_bom_tracked_read_failure_fail_closed(tmp_path):
+    """Canary G2: tracked file reading failure -> FAIL CLOSED"""
+    import subprocess
+    _init_test_git_repo(tmp_path)
+    tracked_file = tmp_path / "will_delete.md"
+    tracked_file.write_bytes(b"some content\n")
+    subprocess.run(["git", "add", "will_delete.md"], cwd=str(tmp_path), capture_output=True, check=True)
+    tracked_file.unlink()
+
+    fails, infos = check_19_utf8_bom(str(tmp_path))
+    assert len(fails) == 1
+    assert "檔案讀取失敗" in fails[0]
 
 
 # ---------------------------------------------------------------------------
