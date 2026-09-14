@@ -663,6 +663,7 @@ def main(argv=None):
         sys.exit(1)
 
     print(format_e11(mods, anchor_results))
+    print(format_bcd(mods, repo_root))
     try:
         discovery = scan_spec_dependencies(mods, repo_root)
     except Exception as e:

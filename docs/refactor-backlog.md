@@ -3038,7 +3038,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - Executor prompt-preflight machine enforcement External Macro PASS / CLOSED。
   - Prompt Manifest runtime interception 已由兩種 malformed-prompt canary 實證。
   - B-31 / B-88 / B-89 CLOSED。
-  - B-68 initial 2eca candidate Machine PASS / External Macro bounded repair required；F1-F4 reproduced；B-68 micro-fix 待 External Macro Audit 與 runtime malformed-scope canary。
+  - B-68 34da candidate Machine PASS / External Macro HOLD；B-67 output regression machine reproduced；bounded correction 待 External Macro audit；runtime malformed-scope canary 尚未執行。
   - B-41 尚未啟動 (NOT STARTED)。
   - B-01 尚未啟動 (NOT STARTED)。
   - Production routing ready。

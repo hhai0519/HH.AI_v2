@@ -479,3 +479,38 @@ new content
     with pytest.raises(SystemExit) as exc_info:
         main([str(spec_file), "--repo-root", str(tmp_path), "--check-only"])
     assert exc_info.value.code != 0
+
+
+def test_bpe_main_preserves_b67_bd_output_contract(tmp_path, capsys):
+    """B-67 / B-68: BPE main 必須整合 format_bcd，輸出中必須同時包含 [E11]、[b]、[d] 與 [DEPENDENCY_DISCOVERY]。"""
+    target = tmp_path / "sample.md"
+    target.write_text("# Title\n\n```python\nprint('hello')\n```\nTarget line to replace\nEnd\n", encoding="utf-8")
+
+    spec_file = tmp_path / "spec.txt"
+    spec_file.write_text("""HEAD: a44cc6b
+=== MOD 1 ===
+file: sample.md
+mode: replace
+--- ANCHOR ---
+Target line to replace
+--- PAYLOAD ---
+Target line replaced
+--- END MOD ---
+""", encoding="utf-8")
+
+    ret = main([str(spec_file), "--repo-root", str(tmp_path), "--check-only"])
+    assert ret == 0
+
+    out = capsys.readouterr().out
+    assert "[E11]" in out
+    assert "[b] sample.md" in out
+    assert "[d] sample.md  圍欄 2" in out
+    assert "[DEPENDENCY_DISCOVERY]" in out
+
+    # 驗證輸出邏輯順序：E11 -> (b)(d) -> DEPENDENCY_DISCOVERY
+    pos_e11 = out.find("[E11]")
+    pos_b = out.find("[b] sample.md")
+    pos_d = out.find("[d] sample.md")
+    pos_dep = out.find("[DEPENDENCY_DISCOVERY]")
+    assert pos_e11 != -1 and pos_b != -1 and pos_d != -1 and pos_dep != -1
+    assert pos_e11 < pos_b < pos_d < pos_dep
