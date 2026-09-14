@@ -893,7 +893,7 @@ def test_check_19_utf8_bom_tracked_clean_text_pass(tmp_path):
 
     fails, infos = check_19_utf8_bom(str(tmp_path))
     assert len(fails) == 0
-    assert any("掃描受守護文字檔" in inf for inf in infos)
+    assert any("掃描 Git tracked 檔案" in inf for inf in infos)
 
 
 def test_check_19_utf8_bom_tracked_markdown_bom_fail(tmp_path):

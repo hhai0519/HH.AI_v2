@@ -2825,7 +2825,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 5.1 上一批狀態
 
-上次核對通過的 HEAD：b2256fd
+上次核對通過的 HEAD：3665516
 
 - `23af193`（執行者前置檢查 ＋ 回滾程序 ＋ `AUDIT-LOG.md` ＋ 四缺口修正）
   已於 2026-09-02 由審計官核對通過：6 檔異動（含 2 個新檔）、零夾帶、
@@ -2997,6 +2997,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 - `e377d51`（A-14 External Macro PASS / Runtime Canary State Closure）已於 2026-09-13 由外部審計官全面審查獨立核對通過：exact-SHA Actions Run 34764485489 (status completed, conclusion success)；canonical verification = ALL 5 GATES PASSED；異動僅限 5 份狀態與證據檔案；A-14 正式結案；NEXT_WORK 暫停於 B-28；B-01 零實作；判定 Macro PASS。
 - `a3201f3`（B-87 Phase 1 Comprehensive Taskboard Truth Reconciliation）已於 2026-09-13 執行完成：5 檔異動、零夾帶，獨立驗證五項全過，CI Run 34765468962 success，Machine PASS / Macro NEEDS BOUNDED MICRO-FIX。
 - `b2256fd`（B-87 Phase 1 Bounded Micro-Fix & Closure）已於 2026-09-13 由外部審計官全面審查獨立核對通過：5 檔 authorized scope，本地 verify_all 5 Gates 全 PASS，GitHub Actions exact-SHA Run 34768119758 success。B-70 正確恢復為 genuine pending；B-57 stale B-71 引用修復；B-87 Phase 1 reconciliation accepted；generic path-existence CHECK proposal 因 false-green risk 明確 rejected / superseded；B-87 結案處置判定為可封存；B-01 零實作；判定 Macro PASS (ACCEPT ALL)。
+- `3665516`（B-31 Tracked-Scope Bounded Micro-Fix & Closure）已於 2026-09-14 由外部審計官全面審查獨立核對通過：7 檔 authorized scope，本地 verify_all 5 Gates 全 PASS，GitHub Actions exact-SHA Run 34792068482 success。CHECK 19 改採 Git tracked inventory 為單一權威來源，.gitattributes BOM negative canary FAIL/PASS、untracked/ignored non-authority、fail-closed 完整覆蓋；B-88 PASS；B-89 PASS；B-87 already CLOSED-AS-SUPERSEDED；three non-behavioral verifier reporting strings are synchronized by the following closure batch；B-01 零實作；判定 Macro PASS (ACCEPT ALL)。
 
 ### 5.2 待辦
 
@@ -3035,9 +3036,9 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - generated rule traceability External Macro PASS / CLOSED。
   - Executor prompt-preflight machine enforcement External Macro PASS / CLOSED。
   - Prompt Manifest runtime interception 已由兩種 malformed-prompt canary 實證。
-  - Pre-B01 taskboard truth reconciliation External Macro PASS / CLOSED。
-  - Pre-B01 deterministic false-green batch B-88/B-89 已由 External Macro Reviewer 審查通過 (accepted)。
-  - B-31 正處於 bounded tracked-scope repair / pending External Macro Audit。
+  - Pre-B01 taskboard truth reconciliation External Macro PASS / CLOSED（B-87 CLOSED）。
+  - Pre-B01 deterministic false-green batch B-31 / B-88 / B-89 External Macro PASS / CLOSED。
+  - verifier-reporting truth 已於 closure 同步。
   - B-28/B-29 full upstream comparison 不再是 Pre-B01 blocker（使用者裁決延後 post-B01）。
   - Production routing ready。
   - 當前與下一步工作任務權威（Current / next work authority）仍只由 `docs/TASKBOARD.md` 的 `**NEXT_WORK**` pointer 保存與導航，交接區不複製 task ID 或待辦佇列。

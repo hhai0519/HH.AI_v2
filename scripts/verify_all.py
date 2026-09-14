@@ -31,7 +31,7 @@ GATES = [
     {
         "name": "check_consistency",
         "cmd": [sys.executable, os.path.join(REPO_ROOT, "scripts", "check_consistency.py")],
-        "desc": "全庫一致性檢查（含 CHECK 1-18 與規格重放）",
+        "desc": "全庫一致性檢查（含 active CHECK inventory 與規格重放）",
     },
     {
         "name": "fingerprint",

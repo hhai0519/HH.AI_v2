@@ -10,9 +10,9 @@
 `待裁決`（需使用者決定）／`已完成`（仍可能被引用）／
 `可封存`（不影響後續工作，待使用者確認後移入封存區）
 
-**NEXT_WORK**：B-31
+**NEXT_WORK**：B-41
 
-**最後更新**：2026-09-14，B-31 Tracked-Scope Micro-Fix / Awaiting External Macro Audit
+**最後更新**：2026-09-14，B-31/B-88/B-89 External Macro PASS Closure / Next: B-41
 
 ---
 
@@ -72,7 +72,7 @@ A 節目前狀態以本表各列與 `NEXT_WORK` 之 current repo truth 為準；
 
 | ID | 狀態 | 項目 | 備註 |
 |---|---|---|---|
-| B-01 | 待辦 | ADR-0002／0004／0010 分層搬移（NOT STARTED） | Claude 負責 production prompt 與 Macro Audit，Antigravity 負責 implementation。targeted upstream comparison 已完成且無 blocker；full B-28/B-29 comparison 依使用者裁決延後，不再是 blocker。但開始 B-01 前仍等待：B-31 / B-88 / B-89、B-41，External Macro Reviewer 逐批放行 |
+| B-01 | 待辦 | ADR-0002／0004／0010 分層搬移（NOT STARTED） | Claude 負責 production prompt 與 Macro Audit，Antigravity 負責 implementation。targeted upstream comparison 已完成且無 blocker；full B-28/B-29 comparison 依使用者裁決延後，不再是 blocker。開始 B-01 前仍等待：B-41、External Macro Reviewer 放行 |
 | B-02 | 已完成 | `check_consistency.py` 增補檢查（CHECK 8-15） | CHECK 8 看板 HEAD 落後、9 交接區 HEAD 落後、10 §X.Y 章節引用有效性、11 §6.1 與 selftest E 對應、12 AUDIT-LOG latest audit evidence 必須位於 current HEAD ancestry（允許多個合法 pending repair commits，raw ancestry distance 不再是 FAIL threshold）、13 檔尾換行、14 簡體字、15 提示詞衝突字串。本批擴充至 15 項，全數通過 |
 | B-03 | 待辦 | 新建 `SOP/SOP_03_Skill_Lifecycle_and_Quality.md` | 收納舊 `SOP_00` §一／§三／§四與舊 `SOP_03` §4.2／§4.3，見第 18 點 |
 | B-04 | 待辦 | `validate_skills.py` 加 description 觸發詞警告 ＋ 測試 | 警告非錯誤，現存多個技能會失敗 |
@@ -102,7 +102,7 @@ A 節目前狀態以本表各列與 `NEXT_WORK` 之 current repo truth 為準；
 | B-28 | 待辦 | **`AGENTS.md` 宣稱遵循 mattpocock/skills，但零審查機制、零版本記載** | DEFER POST-B01 / trigger-based reopening，不阻塞 B-01。使用者已正式裁決 full upstream comparison 延後；targeted comparison 已確認無 B-01 blocker |
 | B-29 | 待辦 | **上游一致性對照表 ＋ 機械檢查** | DEFER POST-B01 / trigger-based reopening，不阻塞 B-01。使用者已正式裁決完整對照表與機械檢查延後；targeted comparison 已確認無 B-01 blocker |
 | B-30 | 待辦 | **playwright 掃描清單含 3000／3001，運行風險已存在** | `skills/execution/playwright-automation/lib/helpers.js:381` 的 `commonPorts` 含 LINE／TG bridge 埠。ADR-0017 預警過但寫「尚未遷移」，**實測已遷移**，ADR 狀態描述過期。使用者裁決改為「明確指定目標 port 而非自動掃描」。排批 4 |
-| B-31 | 進行中 | **ADR-0013 §2C BOM 污染偵測未被取代** | 實測 `scripts/*.py` 查無 `FEFF`／`BOM`／`utf-8-sig`。A／B／D 三項確已被 CHECK 7 與 `validate_skills.py` 取代，唯獨 C 沒有。PRE-B01 GATE CANDIDATE，實作為新 CHECK 19，本批進行中（grouped batch anchor） |
+| B-31 | 已完成 | **ADR-0013 §2C BOM 污染偵測未被取代** | CHECK 19 已採 Git tracked inventory 作為 deterministic BOM scope authority；.gitattributes BOM、untracked/ignored non-authority、inventory/read failure fail-closed 均已有 regression coverage，External Macro Audit PASS。 |
 | B-32 | 待辦 | **ADR-0013 §6 觸發詞排他性矩陣** | 與 Watchdog 無關的夾帶內容，且使用已廢除的「Cognitive Agent」分類。需重寫為 v2 bucket 語彙並實作跨技能觸發詞重疊偵測。排批 4 |
 | B-33 | 待辦 | **Port 規範的三個缺口** | 舊 repo `.env.example:12` 的 `NEXT_PUBLIC_APP_URL=3000` 殘留未修（待 E-03 遷入處理）；ADR-0017 未涵蓋 6379 Redis 與 9222／9223 Chrome CDP（v2 內 SOP_04 與 SOP_06 之 Port 衝突已於 `acc5890` 修復）。排批 4 |
 | B-34 | 已完成 | **看板 C-01 的行號與衝突性質記錯** | 宣稱「`SOP_06` 第 100 行說 line-bridge = 3000」是衝突，實測該行敘述與 ADR-0017 完全一致；真正衝突在第 133 行。B-16 的又一實例。本批已於 C-01 列更正 |
@@ -112,7 +112,7 @@ A 節目前狀態以本表各列與 `NEXT_WORK` 之 current repo truth 為準；
 | B-38 | 可封存 | **驗證腳本加 `--quiet` / `--json` 模式** | 原始 Claude context pollution 已由 B-36 Repo Evidence Channel 徹底消除，終端機輸出不進入對話，可予封存 |
 | B-39 | 可封存 | **獨立性的來源從審計官轉移到 CI** | CI 獨立性核心已由 Canonical Entrypoint (verify_all.py) + GitHub Actions exact SHA Verify + ADR-0020 實質完成。 |
 | B-40 | 已完成 | **`PRINCIPLES.md` §1 的判別演算法缺審計官出口** | 層級表未列 `.claude/rules/`（907 行），四個判別問句的答案也沒有它——第 2 問只給執行者的兩個目的地。任何「給審計官的規則」依序自問只能落到第 4 問（ADR）。**現任審計官即因此提議開 ADR-0020，是 §5.7 第七次。這是演算法缺陷不是個別疏忽。** 本批已修 §1；**CHECK 17（ADR 規範混雜偵測）排批 2**——實測 19 份 ADR 有 10 份 Decision 區塊含祈使句且無分層搬移標記，其中 ADR-0017（4 處）正是 C-01 衝突的成因、ADR-0013（10 處）正是 C-03 要拆的那份。**2026-09-07 實測落地**：`PRINCIPLES.md` §1 層級表已列 `.claude/rules/`，四個判別問句第 2 問已有「給審計官的」出口 |
-| B-41 | 待辦 | **Project Instructions 是唯一不在 repo 的一層** | 不受任何 CHECK 保護、不進指紋，可能與 repo 漂移而無人發現。PRE-B01 GATE CANDIDATE，需建 `.claude/instructions-mirror.md` 保存一份並由 CHECK 比對序列，排批 2 |
+| B-41 | 待辦 | **Project Instructions 是唯一不在 repo 的一層** | PRE-B01 GATE。先重新核對目前 UI Project Instructions 是否仍符合已裁決 Slim Bootstrap/Router 設計。不得建立 repo 規則的第二份完整 mirror。剩餘設計目標為：建立 repo-owned canonical slim bootstrap payload / recovery source，再以 runtime/user reconciliation 確認 UI 層指向或符合該 slim payload。CI 無法直接讀取 UI state，不得建立宣稱可直接比較 UI 的假 CHECK。 |
 | B-42 | 已完成 | **CHECK 16 靜默跳過無法解析的列，且 docstring 與實作不符** | CHECK 16 與 _validate_exec_log_transition 已於 B-92 完整重寫修復，無法解析即 FAIL，docstring 一致並具單元測試。 |
 | B-43 | 已完成 | **CHECK 15 的 pending 集合在正常流程恆為空** | CHECK 15 輸出已明確區分「無待核對」與「待核對無交集」，單元測試全通。 |
 | B-44 | 已完成 | **看板 C-04 狀態未隨裁決更新** | 使用者已於 2026-09-06 同意 Runtime 層方向，但批 1 的提示詞改了 C-01／02／03 卻漏了 C-04。**審計官漏項**，會導致下一個接手者重新提問已裁決事項（§9.4 第 4 項要防的情形）。本批已修 |
@@ -159,8 +159,8 @@ A 節目前狀態以本表各列與 `NEXT_WORK` 之 current repo truth 為準；
 | B-85 | 已完成 | **散文是一層有損的重新編碼** | 解決的是散文不得充當 exact mechanical truth（GOAL_SPEC 定義目標邊界，EXACT_SPEC / Batch Spec + CHECK 17 提供 canonical replay）；不宣稱 executor 已有通用 apply_batch.py。 |
 | B-86 | 已完成 | **規則層從未說明 BPE 是什麼** | BPE 用法與批次規格（Batch Spec）格式已於 Mechanical-Truth Migration 完整寫入 `.claude/rules/auditor-protocol.md` §6.1 第 21 項，並依 §5.7 同步進 `.claude/rules/handover-selftest.md` E23 與 `.agents/rules/prompt-preflight.md` §3.4 E23。明訂批次規格由 `parse_spec`／`apply_mod_to_text` 解析，BPE 負責單一來源驗證與模擬，消除散文編碼失真 |
 | B-87 | 可封存 | **看板狀態與 repo 實際狀態無任何 CHECK 驗證** | comprehensive repo-to-taskboard reconciliation 已完成；original generic path-existence CHECK proposal 明確 superseded / rejected（因 false-green risk 不實作 generic completion inference）；ongoing state integrity 由 B-95 promotion、every-round disposition 與 External Macro Review 維持，可封存 |
-| B-88 | 進行中 | **表格被空行斷開，無任何機械偵測** | 2026-09-07 實測 A-20 同形第二次。PRE-B01 GATE CANDIDATE，實作為新 CHECK 20，本批進行中 |
-| B-89 | 進行中 | **日文字元混入 repo，四項驗證全綠卻抓不到** | 假綠燈第五種形狀。PRE-B01 GATE CANDIDATE，擴充現行 CHECK 14（平假名/片假名/半形片假名/新字體 denylist），本批進行中 |
+| B-88 | 已完成 | **表格被空行斷開，無任何機械偵測** | CHECK 20 + positive/negative canaries 已完成，External Macro Audit PASS。 |
+| B-89 | 已完成 | **日文字元混入 repo，四項驗證全綠卻抓不到** | CHECK 14 Japanese extension 已完成，External Macro Audit PASS，原 Simplified-Chinese guard 未 regression。 |
 | B-90 | 已完成 | **批次規格格式缺 `create_file` mode** | 已於 B-90 實作完成：`parse_spec` 與 `apply_mod_to_text` 原生支援 `create_file` mode，BPE 支援新建檔案模擬與驗收，CHECK 17 完成新檔逐位元重放，並全面移除 `-BOOTSTRAP.spec.txt` 跳過重放與全庫單一 BOOTSTRAP 限制。歷史規格 `0e13c85` 安全保留為歷史 artifact |
 | B-91 | 可封存 | **9 個 `audited-*` tag 歷史留痕保存（退役破壞性遠端清理）** | 9 個錯 tag 刻意作為歷史事故證據保留；audited tag 次系統已退役為 non-authoritative legacy markers（0 remote tag deleted, 0 remote tag rewritten, historical wrong tags intentionally preserved），審計狀態已由 AUDIT-LOG、refactor-backlog §5.1 與 GitHub Actions SSOT 完全接管，不再影響 correctness、audit state、handoff 或 remote health。不需執行破壞性遠端清理。 |
 | B-92 | 已完成 | **`docs/EXEC-LOG.md` 與 `docs/fingerprints/exec-latest.json` 作為 CHECK 17 豁免檔的生命週期** | 豁免檔生命週期已修正。`docs/EXEC-LOG.md` 不再採 generic zero-deletion，改採 fail-closed semantic transition validation（支援歷史列不變、回填 parent hash、追加當批紀錄）；`docs/fingerprints/exec-latest.json` 作為 generated snapshot 正確性由 `fingerprint.py --verify` 守護；真實 Git repo 正反例測試已建立 |

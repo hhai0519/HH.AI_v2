@@ -300,9 +300,9 @@ def run_checks(argv=None):
         failed += 1
 
     # ---------------------------------------------------------
-    # CHECK 14: 繁體中文環境下的簡體字偵測
+    # CHECK 14: 繁體中文環境下的簡體字與日文字元偵測
     # ---------------------------------------------------------
-    print("\nCHECK 14 - 繁體中文環境下的簡體字偵測")
+    print("\nCHECK 14 - 繁體中文環境下的簡體字與日文字元偵測")
     c14_fails, c14_infos = check_14_simplified_chinese(repo_root)
     for info in c14_infos:
         print(f"  [INFO] {info}")
@@ -2041,7 +2041,7 @@ def check_19_utf8_bom(root_dir=None):
         except Exception as e:
             fails.append(f"{rel_fp}:0  檔案讀取失敗: {e}")
 
-    infos.append(f"掃描受守護文字檔共 {scanned} 個")
+    infos.append(f"掃描 Git tracked 檔案共 {scanned} 個")
     return fails, infos
 
 
