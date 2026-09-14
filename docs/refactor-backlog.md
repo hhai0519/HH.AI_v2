@@ -2825,7 +2825,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 5.1 上一批狀態
 
-上次核對通過的 HEAD：a41166e
+上次核對通過的 HEAD：23dd01f
 
 - `23af193`（執行者前置檢查 ＋ 回滾程序 ＋ `AUDIT-LOG.md` ＋ 四缺口修正）
   已於 2026-09-02 由審計官核對通過：6 檔異動（含 2 個新檔）、零夾帶、
@@ -3000,6 +3000,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 - `3665516`（B-31 Tracked-Scope Bounded Micro-Fix & Closure）已於 2026-09-14 由外部審計官全面審查獨立核對通過：7 檔 authorized scope，本地 verify_all 5 Gates 全 PASS，GitHub Actions exact-SHA Run 34792068482 success。CHECK 19 改採 Git tracked inventory 為單一權威來源，.gitattributes BOM negative canary FAIL/PASS、untracked/ignored non-authority、fail-closed 完整覆蓋；B-88 PASS；B-89 PASS；B-87 already CLOSED-AS-SUPERSEDED；three non-behavioral verifier reporting strings are synchronized by the following closure batch；B-01 零實作；判定 Macro PASS (ACCEPT ALL)。
 - `3023267`（B-31/B-88/B-89 Closure & Reporting Truth Sync）已於 2026-09-14 由外部審計官全面審查獨立核對通過：4 檔 authorized scope，本地 verify_all 5 Gates 全 PASS，GitHub Actions exact-SHA Run 34794878832 success。B-31/B-88/B-89 正式 CLOSED；三處 non-behavioral verifier-reporting truth sync accepted；前一輪 paired test assertion S1 正確 fail-closed 並由 S1 resolution 修復；TASKBOARD.NEXT_WORK 推進至 B-41 後經使用者裁決校正至 B-68；B-01 零實作；判定 Macro PASS (ACCEPT ALL)。
 - `a41166e`（B-68 Dependency Closure Phase 1 External Macro PASS）已於 2026-09-14 由外部審計官全面審查獨立核對通過：3 檔 authorized scope，本地 verify_all 5 Gates 全 PASS，GitHub Actions exact-SHA Run 34838936881 success。B-67 output contract 恢復與 main integration guard 驗證通過；B-68 Final malformed-scope Runtime Canary PASS（C1 dependency scripts/build_prompt_evidence.py UPDATE 漏列時由 production impact_scan check 精確攔截 exit != 0，S1 DEPENDENCY_SCOPE_MISSING，零 mutation，worktree clean）；B-68 正式 CLOSED；B-41/B-01 零實作（NOT STARTED）；判定 Macro PASS (ACCEPT ALL)。
+- `23dd01f`（B-68 Final Macro Closure & B-96 Specification Registration）已於 2026-09-14 由外部審計官全面審查獨立核對通過：5 檔 authorized scope，本地 verify_all 5 Gates 全 PASS，GitHub Actions exact-SHA Run 34843106839 success。B-68 Final Macro Closure state sync accepted；B-96 Specification Registration accepted；B-68 正式 CLOSED；B-96 REGISTERED / NOT IMPLEMENTED；NEXT_WORK 推進至 B-41；B-41 / B-01 保持待辦零實作（NOT STARTED）；判定 Macro PASS (ACCEPT ALL)。
 
 ### 5.2 待辦
 
@@ -3042,7 +3043,8 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - B-68 Dependency Closure External Macro PASS / CLOSED。
   - malformed-scope Runtime Canary PASS。
   - session-local User Prompt Compiler Mode specification 已登錄於 TASKBOARD，尚未實作。
-  - B-41 尚未啟動 (NOT STARTED)。
+  - B-41 bounded implementation candidate 已產生，待 External Macro Audit (IMPLEMENTED PENDING EXTERNAL MACRO AUDIT)。
+  - B-69 保持待辦 (PENDING NON-BLOCKING)。
   - B-01 尚未啟動 (NOT STARTED)。
   - Production routing ready。
   - 當前與下一步工作任務權威（Current / next work authority）仍只由 `docs/TASKBOARD.md` 的 `**NEXT_WORK**` pointer 保存與導航，交接區不複製 task ID 或待辦佇列。
@@ -3209,3 +3211,24 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
       - B-96 不做：User Owner safety override、bypass preflight、bypass B-68、bypass destructive-Git policy、Macro Auditor replacement、automatic Macro PASS、global User Mode persistence、cross-Agent mode sharing、new global state database、new secret manager、new Agent scheduler、global concurrency lock、LINE migration、TG migration、`$$自動化$$` redesign、`$$Allow All$$` expansion、B-56 replacement、E-04 replacement、Prompt Manifest v2、semantic dependency engine。
     - **權威宣告（Authority Statement）**：
       - 本 Specification Snapshot 保存已裁決 architecture / acceptance / non-goals，目的為讓未來 B-96 直接施工，避免重新研究。但 current task status、execution order 與 NEXT_WORK 仍唯一以 `docs/TASKBOARD.md` 為權威來源。
+
+64. **B-41 Slim Bootstrap / Runtime Reconciliation Decision（B-41 輕量引導與執行期對帳決策）**（2026-09-14）
+    - **背景與定性**：本項為 B-41 runtime/user reconciliation 與 Slim Bootstrap / Router 架構裁決之歷史紀錄留痕（Historical Decision Snapshot），非當前任務佇列。當前任務、狀態與執行優先序之唯一權威仍為 `docs/TASKBOARD.md`。
+    - **歷史構想取代（Original Full-Mirror Superseded）**：早期 B-41 建立 repo 規則全文鏡像（full rule mirror）之構想已正式廢除；在雙控制平面分離非對稱架構下，不得在倉庫外部建立第二份大型規則副本。
+    - **執行期對帳實證（Runtime / User Reconciliation Evidence）**：
+      - 當前 Antigravity IDE UI 未觀察到使用者可設定之 Project Instructions / Rules 編輯介面。
+      - 全域規則 `$HOME/.gemini/GEMINI.md` 經查證不存在（ABSENT）。
+      - 工作區 `GEMINI.md` 經查證不存在（ABSENT）。
+      - `AGENTS.md` 與 `.agents/rules/` 為倉庫擁有（repo-owned）之執行者控制平面。
+      - IDE 內部產品系統提示詞（internal system prompt）無法由程式碼機器讀取，不屬於專案可治理層次，不得建立宣稱可比對 UI 狀態之虛假 CI CHECK。
+    - **架構裁決（Architecture Decision）**：
+      - 現有 `.claude/README.md` 已為 Claude Control Plane Router，正式指定為倉庫擁有之正規輕量啟動與復原路由（canonical slim bootstrap / recovery router），優先重用既有資產，不另建 `.claude/slim-bootstrap.md`。
+      - `docs/HANDOVER.md` 為輔助專案整體路由（supporting project router），維持 VERIFY_ONLY 零修改。
+      - `.claude/README.md` 僅追加最小 Cold-Start / Recovery Bootstrap 導引章節，不持久硬編碼動態指標（HEAD、NEXT_WORK、checkpoint、CI Run、計數等）。
+      - 外部執行環境若存在任何指令層，僅可作為極小啟動路由，不得作為 full mirror；若產生衝突依 S1 / 使用者協調處理。
+    - **B-69 實證留痕（B-69 False-Zero Search Evidence）**：
+      - B-41 Cold-Start Discovery 中記錄 Antigravity IDE Search 對確實存在之 B-41 出現兩次 false-zero，而以 explicit UTF-8 `Select-String` / `Get-Content` 均正常命中；判定為現有 B-69 跨環境／工具比對實證，標記為 non-blocking，不阻擋 B-41 / B-01，不另設新 task，production dependency authority 仍以 `scripts/impact_scan.py` 為準。
+    - **主線狀態**：
+      - B-01 維持待辦（NOT STARTED），本批零實作。
+    - **權威宣告（Authority Statement）**：
+      - 本節為 append-only 歷史決策留痕，當前任務狀態、優先序與 `**NEXT_WORK**` 之唯一權威仍為 `docs/TASKBOARD.md`。

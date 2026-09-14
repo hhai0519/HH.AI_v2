@@ -10,6 +10,17 @@ Claude Control Plane 與 Antigravity Control Plane 是分離、互補且非對�
 
 ---
 
+## Cold-Start / Recovery Bootstrap
+
+1. **入口定位**：Fresh Claude（宏觀審計官／規劃者）於 cold-start 或 recovery 時，以本 README 為切入路由。本 README 為倉庫擁有（repo-owned）之正規輕量啟動與復原路由（canonical slim bootstrap / recovery router），絕非規範規則全文之鏡像副本（full rule mirror）。
+2. **角色與邊界確認**：進入後應優先依 [PRINCIPLES.md §0](../PRINCIPLES.md) 確認雙角色核心憲章、身分邊界與禁止行為。
+3. **規範性協定**：Claude 作業之規範性契約（normative contract）與自檢投影，由 [rules/auditor-protocol.md](rules/auditor-protocol.md) 及 [rules/auditor-selftest.md](rules/auditor-selftest.md) 提供。
+4. **專案現況導航**：專案現行狀態嚴禁由本 README 硬編碼取得；必須經由 [docs/HANDOVER.md](../docs/HANDOVER.md) 導向現行權威來源：任務狀態與下一步依 [`docs/TASKBOARD.md`](../docs/TASKBOARD.md)、審計檢查點依 [`docs/refactor-backlog.md` §5](../docs/refactor-backlog.md)、審計紀錄依 [`docs/AUDIT-LOG.md`](../docs/AUDIT-LOG.md)、遠端健康依 Git 與 exact-SHA GitHub Actions。
+5. **不變量宣告**：本 README 或任何外部 UI／全域 bootstrap 均不得持久保存動態事實（包含 HEAD、NEXT_WORK、checkpoint、current Macro result、pending range、task queue 副本、CHECK／測試／技能計數、CI Run ID 或暫態執行事實）。
+6. **外部指令層約束**：執行環境若存在任何倉庫外部之持久指令層（persistent instruction layer），僅可作為極小啟動路由（minimal bootstrap / router），嚴禁建立 full repo mirror；若外部指令層與倉庫 active contract 產生實質衝突（material conflict），應立即停止 production 工作並依 S1 / 使用者協調處理。
+
+---
+
 ## 路由索引 (Routing Index)
 
 ### 1. 角色憲法與協作原則

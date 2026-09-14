@@ -12,7 +12,7 @@
 
 **NEXT_WORK**：B-41
 
-**最後更新**：2026-09-14，B-68 Dependency Closure External Macro PASS / CLOSED；B-96 specification registered；Next: B-41
+**最後更新**：2026-09-14，B-41 Slim Bootstrap Router bounded candidate landed；Awaiting External Macro Audit；Next: B-41
 
 ---
 
@@ -112,7 +112,7 @@ A 節目前狀態以本表各列與 `NEXT_WORK` 之 current repo truth 為準；
 | B-38 | 可封存 | **驗證腳本加 `--quiet` / `--json` 模式** | 原始 Claude context pollution 已由 B-36 Repo Evidence Channel 徹底消除，終端機輸出不進入對話，可予封存 |
 | B-39 | 可封存 | **獨立性的來源從審計官轉移到 CI** | CI 獨立性核心已由 Canonical Entrypoint (verify_all.py) + GitHub Actions exact SHA Verify + ADR-0020 實質完成。 |
 | B-40 | 已完成 | **`PRINCIPLES.md` §1 的判別演算法缺審計官出口** | 層級表未列 `.claude/rules/`（907 行），四個判別問句的答案也沒有它——第 2 問只給執行者的兩個目的地。任何「給審計官的規則」依序自問只能落到第 4 問（ADR）。**現任審計官即因此提議開 ADR-0020，是 §5.7 第七次。這是演算法缺陷不是個別疏忽。** 本批已修 §1；**CHECK 17（ADR 規範混雜偵測）排批 2**——實測 19 份 ADR 有 10 份 Decision 區塊含祈使句且無分層搬移標記，其中 ADR-0017（4 處）正是 C-01 衝突的成因、ADR-0013（10 處）正是 C-03 要拆的那份。**2026-09-07 實測落地**：`PRINCIPLES.md` §1 層級表已列 `.claude/rules/`，四個判別問句第 2 問已有「給審計官的」出口 |
-| B-41 | 待辦 | **Project Instructions 是唯一不在 repo 的一層** | PRE-B01 GATE。先重新核對目前 UI Project Instructions 是否仍符合已裁決 Slim Bootstrap/Router 設計。不得建立 repo 規則的第二份完整 mirror。剩餘設計目標為：建立 repo-owned canonical slim bootstrap payload / recovery source，再以 runtime/user reconciliation 確認 UI 層指向或符合該 slim payload。CI 無法直接讀取 UI state，不得建立宣稱可直接比較 UI 的假 CHECK。 |
+| B-41 | 進行中 | **Project Instructions 是唯一不在 repo 的一層** | B-41 bounded implementation 已落地 candidate，等待 External Macro Audit。Current architecture：.claude/README.md designated as repo-owned canonical slim bootstrap / recovery router；docs/HANDOVER.md supporting router / VERIFY_ONLY；no full mirror；no .claude/slim-bootstrap.md；no workspace GEMINI.md；no $HOME/.gemini/GEMINI.md creation；no fake UI CI CHECK；runtime/user reconciliation confirmed current environment has no observable user-configured out-of-repo rule layer；internal IDE system prompt remains non-project / non-machine-readable；B-01 NOT STARTED。成功後仍需 External Macro Audit 才可 B-41 CLOSED、NEXT_WORK → B-01。 |
 | B-42 | 已完成 | **CHECK 16 靜默跳過無法解析的列，且 docstring 與實作不符** | CHECK 16 與 _validate_exec_log_transition 已於 B-92 完整重寫修復，無法解析即 FAIL，docstring 一致並具單元測試。 |
 | B-43 | 已完成 | **CHECK 15 的 pending 集合在正常流程恆為空** | CHECK 15 輸出已明確區分「無待核對」與「待核對無交集」，單元測試全通。 |
 | B-44 | 已完成 | **看板 C-04 狀態未隨裁決更新** | 使用者已於 2026-09-06 同意 Runtime 層方向，但批 1 的提示詞改了 C-01／02／03 卻漏了 C-04。**審計官漏項**，會導致下一個接手者重新提問已裁決事項（§9.4 第 4 項要防的情形）。本批已修 |
@@ -140,7 +140,7 @@ A 節目前狀態以本表各列與 `NEXT_WORK` 之 current repo truth 為準；
 | B-66 | 已完成 | **根因定案：審計官的輸出是一次連續生成，宣告卻聲稱它是多步驗證的產物** | 2026-09-06 盤點八批共 16 件錯誤（第二投時已增為 19 件），壓到一層是同一件事——擬定修改、寫錨點、宣告已驗證、寫預期值，四者在同一段生成流裡完成，讀者（含審計官自己）分不出哪些數字來自工具、哪些來自生成。**這解釋了為何加強措辭七週無效**：措辭也是文字，進入同一段生成後被同一個機制繞過。**只有外部產物有效，因為它不是模型生成的**。原則落點 `PRINCIPLES.md` §2.10，排批 2b-4 |
 | B-67 | 已完成 | **`scripts/build_prompt_evidence.py`** | 以批次規格為單一來源，產出錨點 `count()` 逐條實測、**E11 清單與總數（由 `len()` 產生）**、(b)(d) 行數與圍欄數、套用到暫存副本後的 (e) 模擬結果，以及 **EXPECT 區塊的 ID 序列驗證**。本批完成 |
 | B-68 | 已完成 | **`scripts/impact_scan.py`** | PRE-B01 / governance reliability。B-68 Dependency Closure / Deterministic Impact Scan 已完成 External Macro Audit PASS。正式能力包括：Git tracked deterministic impact discovery、exact dependency evidence、query/result complete closure、missing / phantom fail-closed、semantic disposition by Macro only、UPDATE dependency machine-paired against Allowed Scope、BPE scanner failure fail-closed、canonical CLI truth、Executor pre-mutation replay、S1 DEPENDENCY_DRIFT、S1 DEPENDENCY_SCOPE_MISSING、S1 DEPENDENCY_SCOPE_EXPANSION。External validation chain：2eca candidate → F1-F4 counterexamples reproduced → 34da repair → B-67 output regression discovered → a411 bounded correction → final malformed-scope runtime canary PASS。Final Runtime Canary 證明錯誤 Auditor prompt 將 UPDATE dependency 漏出 Allowed Scope 時，Executor 可在任何 repo mutation 前由 production impact_scan 獨立 fail-closed。B-67 保持已完成。B-41 / B-01 未在 B-68 中開始。 |
-| B-69 | 待辦 | **跨環境比對原語規則** | 設計任何比對原語前必須問「換 OS／locale／工具鏈會給出相同答案嗎」；依賴行尾、字元編碼、路徑分隔符、時區、排序或工具實作者不得使用；跨環境一律比對正規化文字而非位元組。依 current repo 查證仍具殘留需求，維持待辦 |
+| B-69 | 待辦 | **跨環境比對原語規則** | 設計任何比對原語前必須問「換 OS／locale／工具鏈會給出相同答案嗎」；依賴行尾、字元編碼、路徑分隔符、時區、排序或工具實作者不得使用；跨環境一律比對正規化文字而非位元組。依 current repo 查證仍具殘留需求，維持待辦。實證補充（2026-09-14 B-41 Cold-Start Discovery）：Antigravity IDE Search 對確實存在的 B-41 兩次回報 false-zero，而以 explicit UTF-8 之 Select-String / Get-Content 均可正常命中，證明 IDE Search zero 不得單獨作為 ABSENT 判據，production dependency discovery 仍以 scripts/impact_scan.py 為權威；本 finding 判定為 non-blocking，不阻擋 B-41 / B-01，不另設新 task。 |
 | B-70 | 待辦 | **配對清單改為腳本產生** | 原 B-60 CHECK 編號配置部分已過時，但 pairing-list-by-memory 的核心問題仍存在。current prompt-preflight §3.1 仍為人工維護 pairing table，且 B-45 的 C section ↔ §5.3 residual pairing registration 尚未機械收斂。因此 B-70 保持 genuine pending。本項不是 Pre-B01 blocker，不得因此阻擋 B-01。 |
 | B-71 | 可封存 | **零漏網目前不達標，且存在倖存者偏差** | 「零漏網未達標」umbrella 項目；有效殘留風險已各自收納至 concrete tasks (B-31, B-53, B-54, B-87, B-88, B-89)，予以封存且不刪除具體項目 |
 | B-72 | 已完成 | **`PRINCIPLES.md` §2.10「每一個數字都必須有它的產生者」** | 使用者 2026-09-06 提出「每次宣告的數據都親自從 GitHub 重新取得」，審計官逐項檢驗 16 件錯誤後修正範圍：**只能修 1 件、部分修 3 件、修不掉 12 件**——審計官本來就每輪重 clone，多數錯誤不是讀取問題而是「寫了沒有產生者的數字」。正確規則為：**寫進提示詞的每一個數字，都必須是本輪某次工具呼叫的輸出**。四種合法來源：repo 現況→新鮮 clone；文件的自我描述（清單長度、項數）→腳本 `len()`；套用後的未來狀態→本地模擬；外部系統狀態→該系統 API。**「從 GitHub 重讀」只是第一種。** 排批 2b-4 |
