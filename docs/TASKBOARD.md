@@ -10,9 +10,9 @@
 `待裁決`（需使用者決定）／`已完成`（仍可能被引用）／
 `可封存`（不影響後續工作，待使用者確認後移入封存區）
 
-**NEXT_WORK**：B-41
+**NEXT_WORK**：B-97
 
-**最後更新**：2026-09-14，B-41 Slim Bootstrap Router bounded candidate landed；Awaiting External Macro Audit；Next: B-41
+**最後更新**：2026-09-14，B-41 External Macro PASS / CLOSED；B-97 Pre-B01 Comprehensive Release Audit registered；Next: B-97；B-01 NOT STARTED。
 
 ---
 
@@ -72,7 +72,7 @@ A 節目前狀態以本表各列與 `NEXT_WORK` 之 current repo truth 為準；
 
 | ID | 狀態 | 項目 | 備註 |
 |---|---|---|---|
-| B-01 | 待辦 | ADR-0002／0004／0010 分層搬移（NOT STARTED） | Claude 負責 production prompt 與 Macro Audit，Antigravity 負責 implementation。targeted upstream comparison 已完成且無 blocker；full B-28/B-29 comparison 依使用者裁決延後，不再是 blocker。開始 B-01 前仍等待：B-41、External Macro Reviewer 放行 |
+| B-01 | 待辦 | ADR-0002／0004／0010 分層搬移（NOT STARTED） | Claude 負責 production prompt 與 Macro Audit，Antigravity 負責 implementation。targeted upstream comparison 已完成且無 blocker；full B-28/B-29 comparison 依使用者裁決延後，除非 B-97 發現 upstream baseline changed、B-01 scope expanded 或其他客觀 trigger 否則不得無條件重開。B-41 已 External Macro PASS / CLOSED。開始 B-01 前唯一新增 release gate：B-97 Pre-B01 Comprehensive Pending-Task & Repository Release Audit；只有在 B-97 External Macro PRE-B01 RELEASE PASS 後才可允許 NEXT_WORK → B-01 與 production mutation |
 | B-02 | 已完成 | `check_consistency.py` 增補檢查（CHECK 8-15） | CHECK 8 看板 HEAD 落後、9 交接區 HEAD 落後、10 §X.Y 章節引用有效性、11 §6.1 與 selftest E 對應、12 AUDIT-LOG latest audit evidence 必須位於 current HEAD ancestry（允許多個合法 pending repair commits，raw ancestry distance 不再是 FAIL threshold）、13 檔尾換行、14 簡體字、15 提示詞衝突字串。本批擴充至 15 項，全數通過 |
 | B-03 | 待辦 | 新建 `SOP/SOP_03_Skill_Lifecycle_and_Quality.md` | 收納舊 `SOP_00` §一／§三／§四與舊 `SOP_03` §4.2／§4.3，見第 18 點 |
 | B-04 | 待辦 | `validate_skills.py` 加 description 觸發詞警告 ＋ 測試 | 警告非錯誤，現存多個技能會失敗 |
@@ -112,7 +112,7 @@ A 節目前狀態以本表各列與 `NEXT_WORK` 之 current repo truth 為準；
 | B-38 | 可封存 | **驗證腳本加 `--quiet` / `--json` 模式** | 原始 Claude context pollution 已由 B-36 Repo Evidence Channel 徹底消除，終端機輸出不進入對話，可予封存 |
 | B-39 | 可封存 | **獨立性的來源從審計官轉移到 CI** | CI 獨立性核心已由 Canonical Entrypoint (verify_all.py) + GitHub Actions exact SHA Verify + ADR-0020 實質完成。 |
 | B-40 | 已完成 | **`PRINCIPLES.md` §1 的判別演算法缺審計官出口** | 層級表未列 `.claude/rules/`（907 行），四個判別問句的答案也沒有它——第 2 問只給執行者的兩個目的地。任何「給審計官的規則」依序自問只能落到第 4 問（ADR）。**現任審計官即因此提議開 ADR-0020，是 §5.7 第七次。這是演算法缺陷不是個別疏忽。** 本批已修 §1；**CHECK 17（ADR 規範混雜偵測）排批 2**——實測 19 份 ADR 有 10 份 Decision 區塊含祈使句且無分層搬移標記，其中 ADR-0017（4 處）正是 C-01 衝突的成因、ADR-0013（10 處）正是 C-03 要拆的那份。**2026-09-07 實測落地**：`PRINCIPLES.md` §1 層級表已列 `.claude/rules/`，四個判別問句第 2 問已有「給審計官的」出口 |
-| B-41 | 進行中 | **Project Instructions 是唯一不在 repo 的一層** | B-41 bounded implementation 已落地 candidate，等待 External Macro Audit。Current architecture：.claude/README.md designated as repo-owned canonical slim bootstrap / recovery router；docs/HANDOVER.md supporting router / VERIFY_ONLY；no full mirror；no .claude/slim-bootstrap.md；no workspace GEMINI.md；no $HOME/.gemini/GEMINI.md creation；no fake UI CI CHECK；runtime/user reconciliation confirmed current environment has no observable user-configured out-of-repo rule layer；internal IDE system prompt remains non-project / non-machine-readable；B-01 NOT STARTED。成功後仍需 External Macro Audit 才可 B-41 CLOSED、NEXT_WORK → B-01。 |
+| B-41 | 已完成 | **Project Instructions 是唯一不在 repo 的一層** | B-41 Slim Bootstrap / Runtime Reconciliation External Macro PASS / CLOSED；.claude/README.md 正式作為 repo-owned canonical slim bootstrap / recovery router；docs/HANDOVER.md 保持 supporting router / VERIFY_ONLY；full mirror superseded；no .claude/slim-bootstrap.md；no workspace/global GEMINI creation；no fake UI CI CHECK；dynamic state remains runtime-routed；B-69 search false-zero evidence recorded as existing / non-blocking；exact-SHA Verify Run 34852512530 completed / success；B-01 zero implementation。 |
 | B-42 | 已完成 | **CHECK 16 靜默跳過無法解析的列，且 docstring 與實作不符** | CHECK 16 與 _validate_exec_log_transition 已於 B-92 完整重寫修復，無法解析即 FAIL，docstring 一致並具單元測試。 |
 | B-43 | 已完成 | **CHECK 15 的 pending 集合在正常流程恆為空** | CHECK 15 輸出已明確區分「無待核對」與「待核對無交集」，單元測試全通。 |
 | B-44 | 已完成 | **看板 C-04 狀態未隨裁決更新** | 使用者已於 2026-09-06 同意 Runtime 層方向，但批 1 的提示詞改了 C-01／02／03 卻漏了 C-04。**審計官漏項**，會導致下一個接手者重新提問已裁決事項（§9.4 第 4 項要防的情形）。本批已修 |
@@ -168,6 +168,7 @@ A 節目前狀態以本表各列與 `NEXT_WORK` 之 current repo truth 為準；
 | B-94 | 已完成 | **Antigravity Runtime Rule Loadability / UI Freshness Reconciliation** | 執行三層規則機器對帳：repo/disk chars=9973，blob identity PASS（9adda8a）；使用者 IDE reload 後 UI=9973/12000，stale editor buffer 根因確認；Runtime Rule Freshness Reconciliation 正式關閉（CLOSED）。 |
 | B-95 | 已完成 | **Material Finding → TASKBOARD Promotion Contract** | Material Finding → TASKBOARD Promotion Contract 已完成 External Macro Audit PASS，same-round persistence / EVERY_ROUND disposition / Executor mechanical preflight 正式生效。 |
 | B-96 | 待辦 | **`$$使用者$$` Session-local User Prompt Compiler Mode** | 使用者已完成架構裁決。此功能為僅限目前 Antigravity conversation/session 的 Natural-Language → Governed Execution Adapter；`$$使用者$$` 啟用，沒有 `$$結束使用者$$`，關閉 Agent/conversation 即失效，新 Agent 預設 OFF。User Mode 將輸入分為 READ_ONLY / REPO_MUTATION / EXTERNAL_ACTION / SPECIAL_COMMAND；repo mutation 必須先唯讀 discovery + B-68 impact scan，再編譯完整 production prompt、等待使用者確認，確認後仍通過既有 Prompt Manifest / dependency replay / Allowed Scope / Git / Gate preflight，不構成任何 safety override。特殊 `$$` 指令永遠優先走 `SOP/SOP_00A_Master_Index.json` canonical router。完整已裁決施工規格見 `docs/refactor-backlog.md` Item 63。NOT IMPLEMENTED。 |
+| B-97 | 待辦 | **Pre-B01 Comprehensive Pending-Task & Repository Release Audit** | 使用者明確要求之一次性 Pre-B01 release gate，在任何 B-01 mutation 前執行；第一階段必須為 READ_ONLY；必須 machine-derive TASKBOARD 所有 unfinished rows（待辦、進行中、待裁決），每一筆皆由 External Macro Reviewer 親自判定 Pre-B01 disposition；必須對 current repository 進行宏觀全面 release audit；material finding 依 B-95 promotion contract 處置；blocking finding 可在具 current evidence 時 preempt B-01；non-blocking finding 留在 TASKBOARD，不因理論完整性自動 preempt；C-06 必須重新 surface current truth 與選項，在使用者未改變裁決前維持 non-blocking；B-01 在 B-97 External Macro PRE-B01 RELEASE PASS 前不得開始。本批 REGISTERED ONLY，尚未執行 audit。完整規格見 `docs/refactor-backlog.md` Item 65。 |
 
 ---
 

@@ -2825,7 +2825,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 5.1 上一批狀態
 
-上次核對通過的 HEAD：23dd01f
+上次核對通過的 HEAD：9b698de
 
 - `23af193`（執行者前置檢查 ＋ 回滾程序 ＋ `AUDIT-LOG.md` ＋ 四缺口修正）
   已於 2026-09-02 由審計官核對通過：6 檔異動（含 2 個新檔）、零夾帶、
@@ -3001,6 +3001,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 - `3023267`（B-31/B-88/B-89 Closure & Reporting Truth Sync）已於 2026-09-14 由外部審計官全面審查獨立核對通過：4 檔 authorized scope，本地 verify_all 5 Gates 全 PASS，GitHub Actions exact-SHA Run 34794878832 success。B-31/B-88/B-89 正式 CLOSED；三處 non-behavioral verifier-reporting truth sync accepted；前一輪 paired test assertion S1 正確 fail-closed 並由 S1 resolution 修復；TASKBOARD.NEXT_WORK 推進至 B-41 後經使用者裁決校正至 B-68；B-01 零實作；判定 Macro PASS (ACCEPT ALL)。
 - `a41166e`（B-68 Dependency Closure Phase 1 External Macro PASS）已於 2026-09-14 由外部審計官全面審查獨立核對通過：3 檔 authorized scope，本地 verify_all 5 Gates 全 PASS，GitHub Actions exact-SHA Run 34838936881 success。B-67 output contract 恢復與 main integration guard 驗證通過；B-68 Final malformed-scope Runtime Canary PASS（C1 dependency scripts/build_prompt_evidence.py UPDATE 漏列時由 production impact_scan check 精確攔截 exit != 0，S1 DEPENDENCY_SCOPE_MISSING，零 mutation，worktree clean）；B-68 正式 CLOSED；B-41/B-01 零實作（NOT STARTED）；判定 Macro PASS (ACCEPT ALL)。
 - `23dd01f`（B-68 Final Macro Closure & B-96 Specification Registration）已於 2026-09-14 由外部審計官全面審查獨立核對通過：5 檔 authorized scope，本地 verify_all 5 Gates 全 PASS，GitHub Actions exact-SHA Run 34843106839 success。B-68 Final Macro Closure state sync accepted；B-96 Specification Registration accepted；B-68 正式 CLOSED；B-96 REGISTERED / NOT IMPLEMENTED；NEXT_WORK 推進至 B-41；B-41 / B-01 保持待辦零實作（NOT STARTED）；判定 Macro PASS (ACCEPT ALL)。
+- `9b698de`（B-41 Slim Bootstrap Router Landing）已於 2026-09-14 由外部審計官全面審查獨立核對通過：6 檔 authorized scope，本地 verify_all 5 Gates 全 PASS，GitHub Actions exact-SHA Run 34852512530 success。B-41 Slim Bootstrap Router bounded landing accepted；.claude/README.md 正式作為 repo-owned canonical slim bootstrap / recovery router；docs/HANDOVER.md 保持 supporting router / VERIFY_ONLY；full mirror superseded；no .claude/slim-bootstrap.md；no workspace/global GEMINI creation；no fake UI CI CHECK；dynamic state remains runtime-routed；B-69 false-zero evidence recorded as existing / non-blocking；B-01 零實作；使用者明確要求新增 B-97 release gate；B-41 正式 CLOSED；B-97 登錄待辦；NEXT_WORK 推進至 B-97；B-01 保持待辦零實作（NOT STARTED）；判定 Macro PASS (ACCEPT ALL)。
 
 ### 5.2 待辦
 
@@ -3043,7 +3044,8 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - B-68 Dependency Closure External Macro PASS / CLOSED。
   - malformed-scope Runtime Canary PASS。
   - session-local User Prompt Compiler Mode specification 已登錄於 TASKBOARD，尚未實作。
-  - B-41 bounded implementation candidate 已產生，待 External Macro Audit (IMPLEMENTED PENDING EXTERNAL MACRO AUDIT)。
+  - B-41 Slim Bootstrap / Runtime Reconciliation External Macro PASS / CLOSED。
+  - B-97 Pre-B01 Comprehensive Release Audit 已登錄為一次性 Release Gate 待辦 (REGISTERED / PENDING)，audit 尚未開始。
   - B-69 保持待辦 (PENDING NON-BLOCKING)。
   - B-01 尚未啟動 (NOT STARTED)。
   - Production routing ready。
@@ -3232,3 +3234,47 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
       - B-01 維持待辦（NOT STARTED），本批零實作。
     - **權威宣告（Authority Statement）**：
       - 本節為 append-only 歷史決策留痕，當前任務狀態、優先序與 `**NEXT_WORK**` 之唯一權威仍為 `docs/TASKBOARD.md`。
+
+65. **B-97 Pre-B01 Comprehensive Pending-Task & Repository Release Audit — Specification Snapshot**（2026-09-14）
+    - **背景與權威宣告（Background & Authority Statement）**：
+      - 本 Item 65 保存使用者已裁決之 Pre-B01 release-gate specification（施工規格快照），非第二任務佇列（No Second Queue）。當前任務狀態、執行優先序與 `**NEXT_WORK**` 之唯一權威來源仍為 `docs/TASKBOARD.md`。
+    - **A. 目的（Purpose）**：
+      - 進入 B-01 前，進行最後一次窮盡的未完成待辦檢討（exhaustive unfinished-task review）與全庫宏觀發布審計（repository-wide macro release audit），避免因 `TASKBOARD.NEXT_WORK` 機械推進至 B-01 而跳過仍具實質證據（material evidence）之重要前置問題。
+    - **B. 一次性閘門邊界（One-Time Gate Boundary）**：
+      - B-97 是一次性的 B-01 Release Gate，不是永久新增第三層審查者、不是永久新增靜態閘門、不是週期性發布框架（recurring release framework）、不是新任務佇列、不是新控制平面，亦非預設新增 CHECK。完成 B-97 後不應自動複製至每個未來批次。
+    - **C. 第一階段必須唯讀（Phase 1 Must Be READ_ONLY）**：
+      - B-97 第一階段只能執行：`git fetch origin`、檢視 current main、讀取 repo、確定性搜尋、impact discovery、無副作用之測試與金絲雀驗證、GitHub remote state 查核、上游基準檢驗。嚴禁修改 repo、commit、push、開始 B-01 或順手修復 findings。先產出機器客觀證據，再由 External Macro Reviewer 進行處置裁決。
+    - **D. 窮盡未完成待辦清單（Exhaustive Pending-Task Inventory）**：
+      - B-97 執行當下不得使用手寫固定數量或歷史計數（如「34 筆」），必須於 current base 從 `docs/TASKBOARD.md` machine-derive 導出所有 unfinished rows（涵蓋「待辦」、「進行中」、「待裁決」或 current schema 等義狀態）。
+      - 不得因待辦數量多而採抽樣檢查，每一筆皆必須由 External Macro Reviewer 親自判定 Pre-B01 disposition。
+      - 建議處置語彙：`PRE_B01_REQUIRED`、`TARGET_B01`、`POST_B01`、`DEFERRED_BY_USER`、`USER_DECISION_NONBLOCKING`、`EXISTING_BLOCKER`、`ARCHIVABLE / COMPLETED`（僅在 current evidence 真正支持時使用）。
+      - 每一筆紀錄至少包含：task ID、current status、current repo evidence、與 B-01 關聯性、Pre-B01 disposition、簡短理由、是否阻塞 B-01。
+    - **E. 全庫宏觀審計面向（Repository-Wide Macro Audit Dimensions）**：
+      - B-97 必須在 current main 宏觀檢查至少 11 個面向：
+        1. Authority / state truth：TASKBOARD.NEXT_WORK、backlog §5.1 / §5.3 / §5.4、AUDIT-LOG、EXEC-LOG、HANDOVER/router、防範 dynamic truth 重複。
+        2. Active control planes：PRINCIPLES、AGENTS、.agents/rules、.claude/rules、.claude/README、規則載入量（rule loadability）、自動生成追溯表、排除隱性第二權威。
+        3. Verification integrity：canonical verify_all、current CHECK 1..20 清單、scripts tests、webapp tests、fail-closed 行為、false-green 防回歸、generated fingerprint、verifier reporting truth 一致性。
+        4. Dependency Closure：scripts/impact_scan.py、B-68 replay path、UPDATE ⊆ Allowed Scope 配對、Prompt Manifest / preflight 攔截能力、無已知繞過路徑。
+        5. Git / remote truth：HEAD / origin/main 一致性、exact-SHA Verify、branch protection 與 required status checks 現況、C-06 current state。
+        6. B-01 target readiness：ADR-0002、ADR-0004、ADR-0010、AGENTS.md §5、.agents/rules/skills-architecture.md、.agents/rules/powershell-encoding-protocol.md；確認 B-01 維持 NOT STARTED、無 target 靜默漂移、無遺漏配對依賴。
+        7. Upstream comparison freshness：檢查最新 mattpocock/skills upstream SHA，比對既定 B-01 approved baseline（`3cca18b`）；僅在出現客觀 trigger 時才重開 B-28/B-29。
+        8. Special-command / routing truth：SOP/SOP_00A_Master_Index.json、既有 `$$` 路由、PENDING_MIGRATION 現況、排除虛假完成之路由。
+        9. Security / secret / machine-specific state：無未經清理之憑證、無機器專屬本機路徑進入生產契約、無破壞性 Git 授權漂移。
+        10. Cross-environment / tool correctness：考量 B-69 真實 false-zero 證據，IDE Search zero 不得單獨作為 ABSENT 判據，權威掃描一律採用確定性 repo 工具。
+        11. Mainline continuation efficiency：僅辨識具備 current evidence 且實質影響 B-01 正確性、可靠性、機械續行與主線推進效率之 material finding；杜絕為求形式優雅而空想之投機任務。
+    - **F. 實質發現處置路由（Material Finding Routing）**：
+      - 每一項 finding 必須依 B-95 規格指定 `FINDING_DISPOSITION`（NONE / CURRENT / EXISTING <task-id> / NEW <task-id>）。若實質影響 correctness、security、architecture、routing/state truth、audit truth、CI/verifier truth、runtime loadability、repo/runtime consistency 或 B-01 next-task reliability，必須 TASKBOARD-visible，不得隱匿於文字報告。Blocking finding 可在具 current evidence 時 preempt B-01；non-blocking finding 正常登錄但不自動 preempt。
+    - **G. 禁止人為治理停止線（No Artificial Governance Stop Line）**：
+      - 不設「只允許再修 N 個 governance task」之人為硬上限，亦不得為理論完整性而無限擴張；唯一判斷標準為 current evidence ＋ material value。
+    - **H. C-06 處置（C-06 Handling）**：
+      - 重新核對 main branch required status checks current truth；C-06 仍向使用者清楚揭示選項（A. direct-push + post-push Verify；B. Require PR + Verify before merge）。B-97 不得代選，在使用者未改變決策前維持 `USER_DECISION_NONBLOCKING`，不得因 C-06 尚未裁決而自動拒絕 B-01 release。
+    - **I. B-28 / B-29 重開規則（B-28 / B-29 Reopening Rule）**：
+      - 完整上游比對目前仍為 `DEFERRED_BY_USER`。僅在客觀 trigger 出現時重開（upstream baseline SHA 變更、B-01 target scope 擴大、或 targeted comparison 前提被推翻），不得僅因 B-97 為通盤審計即無條件重做。
+    - **J. 發布裁決（Release Decision）**：
+      - B-97 最終由 External Macro Reviewer 明確判定 `PRE-B01 RELEASE STATUS` 為 `PASS` 或 `HOLD`。PASS 需滿足：unfinished task inventory 全數完成處置、current main exact-SHA CI 通過、無未處置之 material blocker、所有 material findings 均 TASKBOARD-visible、B-01 target/scope readiness 獨立查證成立、使用者決策正確分類、無隱性狀態衝突。若 HOLD，必須具體條列 blocking task/finding 與所需修復。
+    - **K. B-01 啟動邊界（B-01 Start Boundary）**：
+      - 在 B-97 External Macro PRE-B01 RELEASE PASS 前，嚴禁 NEXT_WORK → B-01、嚴禁 B-01 implementation、嚴禁 B-01 mutation 與 commit。待 B-97 release PASS 完成 state closure 後，才允許 `NEXT_WORK = B-01`。
+    - **L. 結案定義（Definition of Done）**：
+      - B-97 完成必須同時具備：1. 完整 machine-derived unfinished-task inventory；2. 每一筆 unfinished row 完成 Macro disposition；3. 全庫宏觀審計完成；4. current exact-SHA CI 證據；5. C-06 current truth surfaced；6. B-01 ADR/target readiness 驗證；7. 上游基準新鮮度驗證；8. 所有 material findings 完成 B-95 處置；9. 審計期間 B-01 保持零修改；10. External Macro Reviewer 正式宣告 PRE-B01 RELEASE PASS。此時 B-97 方可 CLOSED。
+    - **M. 歷史起始評估留痕（Historical Starting Assessment）**：
+      - 記錄在 B-97 正式執行前之 Macro preliminary review 中，既有 unfinished items 初步未發現除 B-41 closure 外已證實之 Pre-B01 blocker。此為 preliminary historical assessment，不得取代 B-97 於未來 current base 重新 machine-derive 全部未完成項目，亦不得 hardcode 數量作為未來權威。
