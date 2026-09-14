@@ -425,3 +425,57 @@ def test_bpe_impact_scan_create_file_not_treated_as_replace_dependency(tmp_path)
     assert discovery["mode"] == "NONE"
     assert discovery["reason"] == "No replace MODs in spec"
     assert len(discovery["results"]) == 0
+
+
+def test_bpe_impact_scan_failure_fails_closed(monkeypatch, tmp_path):
+    """F1: replace MOD 遇到 scanner 拋出例外時，必須 FAIL CLOSED，不得回傳 mode=NONE。"""
+    import subprocess
+    subprocess.run(["git", "init"], cwd=tmp_path, check=True, capture_output=True)
+
+    mod = {
+        "id": "1",
+        "file": "src.py",
+        "mode": "replace",
+        "anchor": "def old_func():\n    pass\n",
+        "payload": "def new_func():\n    pass\n"
+    }
+
+    def _mock_run_discovery(repo_root, queries):
+        raise RuntimeError("Simulated impact_scan scanner failure / crash")
+
+    import impact_scan
+    monkeypatch.setattr(impact_scan, "run_discovery", _mock_run_discovery)
+
+    with pytest.raises(RuntimeError) as exc_info:
+        scan_spec_dependencies([mod], str(tmp_path))
+    assert "Impact scan failed" in str(exc_info.value)
+
+
+def test_bpe_cli_fails_closed_on_dependency_scan_failure(monkeypatch, tmp_path):
+    """F1: BPE CLI / main 在 dependency scan 失敗時必須以 non-zero 退出。"""
+    import subprocess
+    subprocess.run(["git", "init"], cwd=tmp_path, check=True, capture_output=True)
+
+    spec_file = tmp_path / "test.spec.txt"
+    spec_file.write_text("""base: 0000000000000000000000000000000000000000
+=== MOD 1 ===
+file: src.py
+mode: replace
+--- ANCHOR ---
+old content
+--- PAYLOAD ---
+new content
+""", encoding="utf-8")
+
+    src = tmp_path / "src.py"
+    src.write_text("old content\n", encoding="utf-8")
+
+    def _mock_run_discovery(repo_root, queries):
+        raise RuntimeError("Fatal scanner error")
+
+    import impact_scan
+    monkeypatch.setattr(impact_scan, "run_discovery", _mock_run_discovery)
+
+    with pytest.raises(SystemExit) as exc_info:
+        main([str(spec_file), "--repo-root", str(tmp_path), "--check-only"])
+    assert exc_info.value.code != 0

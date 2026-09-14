@@ -235,15 +235,77 @@ def run_discovery(repo_root: str, queries: list[dict]) -> dict:
     return evidence
 
 
-def run_check_replay(repo_root: str, evidence: dict) -> tuple[bool, list[str]]:
+def load_and_validate_allowed_scope(scope_file: str) -> set[str]:
+    """
+    載入並嚴格驗證 Allowed Scope JSON 檔案 (B-68 Phase 1)。
+    Fail-closed 規則：
+    - 檔案必須存在且可讀
+    - 合法 JSON 格式
+    - 頂層必須為物件且 schema_version == 1
+    - 必須包含 'allowed_scope' 陣列
+    - 項目必須為非空字串
+    - 不得包含重複路徑
+    - 不得為絕對路徑
+    - 不得包含路徑遍歷 ('..')
+    回傳以 POSIX slash 正規化之 repo-relative paths set。
+    """
+    if not os.path.isfile(scope_file):
+        raise ImpactScanError(f"Allowed Scope 檔案不存在: {scope_file}")
+
+    try:
+        with open(scope_file, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    except Exception as e:
+        raise ImpactScanError(f"Allowed Scope JSON 解析失敗: {e}")
+
+    if not isinstance(data, dict):
+        raise ImpactScanError("Allowed Scope 頂層必須為 JSON 物件")
+
+    if data.get("schema_version") != 1:
+        raise ImpactScanError(f"不支援的 Allowed Scope schema_version: {data.get('schema_version')}（必須為 1）")
+
+    scope_list = data.get("allowed_scope")
+    if not isinstance(scope_list, list):
+        raise ImpactScanError("Allowed Scope 必須包含 'allowed_scope' 陣列")
+
+    normalized_scope = set()
+    seen = set()
+    for idx, item in enumerate(scope_list):
+        if not isinstance(item, str):
+            raise ImpactScanError(f"Allowed Scope 索引 {idx} 項目必須為字串: {type(item)}")
+        raw_p = item.strip()
+        if not raw_p:
+            raise ImpactScanError(f"Allowed Scope 索引 {idx} 不得為空字串")
+        if item in seen:
+            raise ImpactScanError(f"Allowed Scope 包含重複路徑: '{item}'")
+        seen.add(item)
+
+        # 絕對路徑檢查
+        if os.path.isabs(raw_p) or (len(raw_p) >= 2 and raw_p[1] == ":") or raw_p.startswith("/") or raw_p.startswith("\\"):
+            raise ImpactScanError(f"Allowed Scope 不得包含絕對路徑: '{item}'")
+
+        norm_p = raw_p.replace("\\", "/")
+        parts = norm_p.split("/")
+        if ".." in parts:
+            raise ImpactScanError(f"Allowed Scope 不得包含路徑遍歷 ('..'): '{item}'")
+
+        clean_p = "/".join(p for p in parts if p and p != ".")
+        normalized_scope.add(clean_p)
+
+    return normalized_scope
+
+
+def run_check_replay(repo_root: str, evidence: dict, allowed_scope: set[str] | list[str] | None = None) -> tuple[bool, list[str]]:
     """
     執行 CHECK / REPLAY 階段：
     輸入帶有 dispositions 的 evidence JSON，重新掃描 repo 並嚴格驗證：
     1. schema_version == 1
     2. base_oid 完全符合 current HEAD
     3. mode 檢驗（支援 NONE 與 REQUIRED）
-    4. actual hit set 與 evidence dependency set 完全相符（無 missing、無 phantom）
-    5. 每筆 dependency 都具有合法 disposition (UPDATE, VERIFY_ONLY, HISTORICAL_NO_CHANGE)
+    4. queries 與 results 完整一對一 closure（無整筆缺失、無重複 result、無未定義 query_id）
+    5. actual hit set 與 evidence dependency set 完全相符（無 missing、無 phantom）
+    6. 每筆 dependency 都具有合法 disposition (UPDATE, VERIFY_ONLY, HISTORICAL_NO_CHANGE)
+    7. mode=REQUIRED 時，machine-check 所有 disposition=UPDATE dependencies ⊆ Allowed Scope
     回傳 (is_pass, list_of_errors)。
     """
     errors = []
@@ -278,6 +340,12 @@ def run_check_replay(repo_root: str, evidence: dict) -> tuple[bool, list[str]]:
         return True, []
 
     # mode == REQUIRED
+    norm_allowed_scope = None
+    if allowed_scope is not None:
+        norm_allowed_scope = {p.replace("\\", "/").strip("/") for p in allowed_scope}
+    else:
+        errors.append("mode=REQUIRED 必須提供 Allowed Scope 驗證 (allowed_scope is None)")
+
     raw_queries = evidence.get("queries")
     if raw_queries is None:
         # 嘗試由 results 反向提取
@@ -292,6 +360,8 @@ def run_check_replay(repo_root: str, evidence: dict) -> tuple[bool, list[str]]:
     except ImpactScanError as e:
         return False, [f"Evidence queries 格式驗證失敗: {e}"]
 
+    expected_qids = {q["id"] for q in queries}
+
     # 執行新鮮掃描
     try:
         fresh_evidence = run_discovery(repo_root, queries)
@@ -304,14 +374,25 @@ def run_check_replay(repo_root: str, evidence: dict) -> tuple[bool, list[str]]:
     if not isinstance(ev_results, list):
         return False, ["Evidence 缺少 'results' 陣列"]
 
+    seen_result_qids = set()
+
     # 提取 evidence 中的 dependencies 與 dispositions
     for ev_res in ev_results:
+        if not isinstance(ev_res, dict):
+            errors.append(f"Evidence result 不是物件: {ev_res}")
+            continue
+
         qid = ev_res.get("query_id")
         if not qid:
             errors.append(f"Evidence result 缺少 query_id: {ev_res}")
             continue
 
-        if qid not in fresh_results_by_id:
+        if qid in seen_result_qids:
+            errors.append(f"Evidence 包含重複的 result query_id: '{qid}'")
+            continue
+        seen_result_qids.add(qid)
+
+        if qid not in expected_qids:
             errors.append(f"Evidence 包含未定義之 query_id: '{qid}'")
             continue
 
@@ -361,13 +442,22 @@ def run_check_replay(repo_root: str, evidence: dict) -> tuple[bool, list[str]]:
         for ph in phantom:
             errors.append(f"Query '{qid}' 包含幽靈依賴路徑: '{ph}'（evidence 列出但實際追蹤庫中未命中）")
 
-        # 檢查每筆命中之 disposition 是否合法
+        # 檢查每筆命中之 disposition 是否合法，並對 UPDATE 做 Allowed Scope 檢驗
         for p in sorted(list(actual_paths & evidence_paths)):
             disp = ev_dispositions.get(p)
             if disp is None:
                 errors.append(f"Query '{qid}' 之依賴路徑 '{p}' 缺少 disposition 處置宣告")
             elif disp not in VALID_DISPOSITIONS:
                 errors.append(f"Query '{qid}' 之依賴路徑 '{p}' 具有非法 disposition: '{disp}'（合法值: {sorted(list(VALID_DISPOSITIONS))}）")
+            elif disp == "UPDATE" and norm_allowed_scope is not None:
+                p_clean = p.replace("\\", "/").strip("/")
+                if p_clean not in norm_allowed_scope:
+                    errors.append(f"Query '{qid}' 之 UPDATE 依賴路徑 '{p}' 未包含於 Allowed Scope 中")
+
+    # 檢查是否整筆 query result 缺失
+    missing_result_qids = expected_qids - seen_result_qids
+    for mqid in sorted(list(missing_result_qids)):
+        errors.append(f"Query '{mqid}' 遺漏對應之 result（整筆 query result 缺失）")
 
     if errors:
         return False, errors
@@ -400,6 +490,7 @@ def main(argv=None):
     parser.add_argument("--queries-file", "-qf", default=None, help="查詢定義 JSON 檔案路徑")
     parser.add_argument("--query", "-q", action="append", default=[], help="單一查詢定義 'id:kind:value'（可重複指定）")
     parser.add_argument("--evidence-file", "-ef", default=None, help="Evidence JSON 檔案路徑（用於 check/replay）")
+    parser.add_argument("--allowed-scope-file", "-asf", default=None, help="Allowed Scope JSON 檔案路徑（用於 check/replay）")
     parser.add_argument("--output", "-o", default=None, help="輸出檔案路徑（預設標準輸出）")
 
     args = parser.parse_args(argv)
@@ -466,7 +557,13 @@ def main(argv=None):
             with open(args.evidence_file, "r", encoding="utf-8") as f:
                 evidence = json.load(f)
 
-            is_pass, errors = run_check_replay(repo_root, evidence)
+            allowed_scope = None
+            if args.allowed_scope_file:
+                allowed_scope = load_and_validate_allowed_scope(args.allowed_scope_file)
+            elif evidence.get("mode", "REQUIRED") == "REQUIRED":
+                raise ImpactScanError("mode=REQUIRED 必須指定 --allowed-scope-file")
+
+            is_pass, errors = run_check_replay(repo_root, evidence, allowed_scope=allowed_scope)
             if is_pass:
                 print("[PASS] Impact evidence replay verified: exact dependency closure matched.")
                 return 0

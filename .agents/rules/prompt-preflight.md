@@ -4,9 +4,9 @@
 
 ---
 
-## 1. 為什麼有這一條
+## 1. 目的
 
-`docs/adr/0007-macro-auditor-role.md` 立論為「執行者不能審自己」，對稱原則是「審計官也不能審自己」。本規則建立執行者端對提示詞結構的機械前置驗證機制，防止錯誤或不完整指令進入執行。
+依 `docs/adr/0007-macro-auditor-role.md` 對稱原則，建立執行者對提示詞結構的機械前置驗證機制，防止錯誤或不完整指令進入執行。
 
 ---
 
@@ -35,12 +35,16 @@
 
 ### 2.2 依賴閉包機械重放（Dependency Closure Replay Hard Rule）
 
-若提示詞宣告 E24 = PASS 且依賴模式為 `mode = REQUIRED`，執行者在任何 repo mutation 前必須以 `python scripts/impact_scan.py --check <evidence>` 執行獨立重放比對：
-1. 缺依賴證據或 JSON 格式錯誤：判定為 `PROMPT STRUCTURE ERROR`，停止執行。
-2. 掃描重放比對不符（有漏掃或幽靈依賴）：停機判定為 `S1 DEPENDENCY_DRIFT`。
-3. 任何依賴項未聲明 disposition：停機判定為 `S1 DEPENDENCY_DRIFT`。
-4. 標註為 `UPDATE` 之依賴項未列入本批 Allowed Scope：停機判定為 `S1 DEPENDENCY_SCOPE_MISSING`。
-5. 實作中證明 `VERIFY_ONLY` 依賴實際必須修改：不得擅自修改，停機判定為 `S1 DEPENDENCY_SCOPE_EXPANSION`。
+若提示詞宣告 E24 = PASS 且依賴模式為 `mode = REQUIRED`，執行者在任何 repo mutation 前必須執行獨立重放比對：
+1. 將提示詞內之 Dependency Impact Evidence 寫入 repo 外 scratch JSON。
+2. 將提示詞之 Final Allowed Scope 寫入 repo 外 scratch allowed-scope JSON。
+3. 執行 production canonical command：
+   `python scripts/impact_scan.py check --evidence-file <evidence.json> --allowed-scope-file <allowed_scope.json>`
+4. 若 exit != 0：不得進行任何 repo mutation，依錯誤分類路由：
+   - 缺證據／allowed scope 或格式錯誤：判定為 `PROMPT STRUCTURE ERROR`，停止執行。
+   - 依賴命中或 query closure 不符（漏掃／幽靈／整筆結果缺漏）：停機判定為 `S1 DEPENDENCY_DRIFT`。
+   - 標註為 `UPDATE` 之依賴未列入 Allowed Scope：停機判定為 `S1 DEPENDENCY_SCOPE_MISSING`。
+5. 實作後若證明 `VERIFY_ONLY` 依賴實際必須修改：不得擅自修改，停機判定為 `S1 DEPENDENCY_SCOPE_EXPANSION`。
 執行者僅驗證確定性機器證據與 Allowed Scope 配對，絕對不得對審計官之 disposition 進行語意重複審查。
 
 ---
@@ -58,11 +62,11 @@
 | 2 | 基準與工作區確認 | 載明基準 commit full OID，並要求確認工作區乾淨（working tree clean） |
 | 3 | 批次模式宣告 | 明確宣告 `batch_mode: GOAL_SPEC` 或 `batch_mode: EXACT_SPEC` |
 | 4 | 目標與邊界 | 載明 Goal、Allowed Scope、Forbidden Scope 與 Acceptance Criteria |
-| 5 | 確定性驗證閘門 | 載明標準驗證指令與 Gate 清單（如 `verify_all.py`）；不得以手寫行數等衍生值作 blocking truth |
-| 6 | `git add` 明確路徑 | 明確禁止 `git add -A` 或 `.`，採逐檔明確路徑提交。GOAL_SPEC 實際路徑由執行者自 diff 產生；EXACT_SPEC 依規格 targets |
-| 7 | 破壞性操作防護 | 明確禁止未授權之 force push、reset --hard 或歷史重寫 |
+| 5 | 確定性驗證閘門 | 載明標準驗證指令與 Gate 清單（如 `verify_all.py`）；不以衍生值作 blocking truth |
+| 6 | `git add` 明確路徑 | 禁止 `git add -A` 或 `.`，採明確路徑。GOAL_SPEC 自 diff 產生；EXACT_SPEC 依規格 |
+| 7 | 破壞性操作防護 | 禁止未授權之 force push、reset --hard 或歷史重寫 |
 | 8 | 遠端健康查驗 | 包含執行後查驗 GitHub Actions exact SHA 綠燈之要求 |
-| 9 | Material Finding 處置 | 必須宣告 `FINDING_DISPOSITION`（NONE / CURRENT <ID> / EXISTING <ID> / NEW <ID>，見 §3.9） |
+| 9 | Material Finding 處置 | 必須宣告 `FINDING_DISPOSITION`（NONE / CURRENT / EXISTING / NEW，見 §3.9） |
 
 ### 3.0B EXACT_SPEC 專屬必備要素（僅在 EXACT_SPEC 模式下檢查）
 
@@ -181,12 +185,7 @@ GOAL_SPEC 模式不得要求 E-1～E-4，其正確性由單元測試、Gate 驗�
 4. (d) 允許修改範圍（Allowed Scope 白名單）
 5. (e) 標準驗證指令與 Gate 清單（canonical validation commands）
 
-五項機械比對：
-- **證據區塊存在**：缺區塊或缺任一必備元素即停
-- **基準 OID 一致**：實測第 0 步 HEAD 等於宣告之 base OID
-- **批次模式合法**：確認 `batch_mode` 宣告且符合契約
-- **規格 SHA 一致**：僅 EXACT_SPEC 檢查規格 sha256 與宣稱值一致；GOAL_SPEC 為 N/A
-- **範圍與驗證指令齊備**：修改目標完全落在 Allowed Scope 內，且包含標準驗證指令
+五項機械比對：證據區塊存在、基準 OID 一致（HEAD == base）、批次模式合法、規格 SHA 一致（EXACT_SPEC）、範圍與驗證指令齊備（完全落在 Allowed Scope 且含標準指令）。缺一即停。
 
 **核心原則（Machine Truth）**：
 行數、圍欄數、測試數、CHECK 數皆為工具產出之衍生診斷值（derived diagnostic truth）。**提示詞不得將衍生數值抄寫為 blocking truth，執行者亦不得因衍生數值不符而停機。** 變更安全由 Batch Spec 與 machine tools 守護。
@@ -208,11 +207,7 @@ GOAL_SPEC 模式不得要求 E-1～E-4，其正確性由單元測試、Gate 驗�
 ## 3.8 你的檢查結果必須留在 repo
 
 每批完成後，在 `docs/EXEC-LOG.md` 追加一列五欄：`| 批次 commit | 日期 | 檢查範圍 | 結果 | 攔截紀錄 |`。
-- **檢查範圍**：實際執行的節次，如「§3 共同九項、§3.1、§3.2、§3.4 全項、§3.6、§3.9」
-- **結果**：通過或不通過
-- **攔截紀錄**：本批攔截項目；無則寫「無」
-
-`docs/EXEC-LOG.md` 為執行者端自我檢查之持久證據。CHECK 16 獨立守護其新鮮度與完整性。首列 `BOOTSTRAP` 為唯一例外。
+`docs/EXEC-LOG.md` 為執行者自我檢查之持久證據，由 CHECK 16 獨立守護其新鮮度與完整性。首列 `BOOTSTRAP` 為唯一例外。
 
 ---
 
@@ -224,14 +219,10 @@ GOAL_SPEC 模式不得要求 E-1～E-4，其正確性由單元測試、Gate 驗�
 - `FINDING_DISPOSITION: EXISTING <ID>`
 - `FINDING_DISPOSITION: NEW <ID>`
 
-執行者（Antigravity）僅執行以下機械交叉比對，不做語意重新審計（semantic re-audit）：
-1. **宣告為 `NEW <ID>` 時**：提示詞必須同時滿足三項要素：
-   - 狀態領域處置聲明 `TASKBOARD = UPDATE`（或含 TASKBOARD 更新指令）
-   - Allowed Scope 包含 `docs/TASKBOARD.md`
-   - 提示詞本文明確要求建立該 `<ID>`
-   缺任一項即判定為 `PROMPT STRUCTURE ERROR`，立即停機回報。
-2. **宣告為 `CURRENT <ID>` 或 `EXISTING <ID>` 時**：若提示詞同時要求更新 TASKBOARD，不得建立同 `<ID>` 之 duplicate row。
-3. **宣告為 `NONE` 時**：僅代表審計官宣稱本輪無新 material finding。執行者不得自行判斷審計官是否漏看 finding。
+執行者僅執行機械交叉比對，不做語意重新審計：
+1. **宣告為 `NEW <ID>` 時**：提示詞必須同時滿足 TASKBOARD=UPDATE、Allowed Scope 含 `docs/TASKBOARD.md`、本文明確要求建立 `<ID>`。缺一即 `PROMPT STRUCTURE ERROR`。
+2. **宣告為 `CURRENT <ID>` 或 `EXISTING <ID>` 時**：若更新 TASKBOARD，不得建立同 `<ID>` 之重複列。
+3. **宣告為 `NONE` 時**：代表無新 material finding；執行者不臆測。
 
 ---
 
@@ -264,4 +255,4 @@ GOAL_SPEC 模式不得要求 E-1～E-4，其正確性由單元測試、Gate 驗�
 
 ## 6. 這條規則保護的是誰
 
-本規則保護專案工程紀律：審計官不越權動檔，執行者不做未授權架構決策；執行者機械驗證提示詞結構，審計官獨立核對結果，確保偏離皆被對稱攔截。
+本規則保護專案工程紀律：審計官不越權動檔，執行者不做未授權架構決策；雙向機械驗證確保偏離皆被對稱攔截。

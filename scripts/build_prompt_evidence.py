@@ -553,11 +553,16 @@ def scan_spec_dependencies(mods, repo_root):
     if not queries:
         return {"schema_version": 1, "mode": "NONE", "reason": "No valid replace anchors found", "results": []}
 
+    _rr = subprocess.run(["git", "rev-parse", "--git-dir"],
+                         cwd=repo_root, capture_output=True, text=True)
+    if _rr.returncode != 0:
+        return {"schema_version": 1, "mode": "NONE", "reason": "Not a git repository (non-git test environment)", "results": []}
+
     try:
         from impact_scan import run_discovery
         return run_discovery(repo_root, queries)
     except Exception as e:
-        return {"schema_version": 1, "mode": "NONE", "reason": f"Impact scan unavailable: {e}", "results": []}
+        raise RuntimeError(f"Impact scan failed: {e}") from e
 
 
 def format_dependency_discovery(discovery: dict) -> str:
@@ -658,8 +663,11 @@ def main(argv=None):
         sys.exit(1)
 
     print(format_e11(mods, anchor_results))
-    print(format_bcd(mods, repo_root))
-    discovery = scan_spec_dependencies(mods, repo_root)
+    try:
+        discovery = scan_spec_dependencies(mods, repo_root)
+    except Exception as e:
+        print(f"[錯誤] 反向依賴掃描失敗: {e}；S1，停止", file=sys.stderr)
+        sys.exit(2)
     print(format_dependency_discovery(discovery))
 
     if not args.check_only:

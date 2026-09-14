@@ -42,6 +42,7 @@ from impact_scan import (
     SCHEMA_VERSION,
     get_head_oid,
     get_tracked_files,
+    load_and_validate_allowed_scope,
     run_check_replay,
     run_discovery,
     validate_queries,
@@ -121,7 +122,7 @@ def test_canary_a_b_real_regression(tmp_path):
             }
         ]
     }
-    is_pass, errors = run_check_replay(repo, incomplete_evidence)
+    is_pass, errors = run_check_replay(repo, incomplete_evidence, allowed_scope={"scripts/example.py", "scripts/tests/test_example.py"})
     assert not is_pass
     assert any("scripts/tests/test_example.py" in err and "遺漏實際依賴路徑" in err for err in errors)
 
@@ -143,7 +144,7 @@ def test_canary_a_b_real_regression(tmp_path):
             }
         ]
     }
-    is_pass, errors = run_check_replay(repo, complete_evidence)
+    is_pass, errors = run_check_replay(repo, complete_evidence, allowed_scope={"scripts/example.py", "scripts/tests/test_example.py"})
     assert is_pass
     assert len(errors) == 0
 
@@ -305,7 +306,7 @@ def test_canary_k_missing_dependency(tmp_path):
             }
         ]
     }
-    is_pass, errors = run_check_replay(repo, evidence)
+    is_pass, errors = run_check_replay(repo, evidence, allowed_scope={"file1.py", "file2.py"})
     assert not is_pass
     assert any("file2.py" in err and "遺漏實際依賴路徑" in err for err in errors)
 
@@ -335,7 +336,7 @@ def test_canary_l_phantom_dependency(tmp_path):
             }
         ]
     }
-    is_pass, errors = run_check_replay(repo, evidence)
+    is_pass, errors = run_check_replay(repo, evidence, allowed_scope={"file1.py", "ghost_file.py"})
     assert not is_pass
     assert any("ghost_file.py" in err and "包含幽靈依賴路徑" in err for err in errors)
 
@@ -360,7 +361,7 @@ def test_canary_m_base_oid_mismatch(tmp_path):
             }
         ]
     }
-    is_pass, errors = run_check_replay(repo, evidence)
+    is_pass, errors = run_check_replay(repo, evidence, allowed_scope={"file.py"})
     assert not is_pass
     assert any("Base OID mismatch" in err for err in errors)
 
@@ -393,7 +394,7 @@ def test_canary_n_all_dependencies_exactly_represented(tmp_path):
             }
         ]
     }
-    is_pass, errors = run_check_replay(repo, evidence)
+    is_pass, errors = run_check_replay(repo, evidence, allowed_scope={"src/a.py"})
     assert is_pass
     assert len(errors) == 0
 
@@ -465,3 +466,335 @@ def test_mode_none_with_reason(tmp_path):
     is_pass, errors = run_check_replay(repo, ev_no_reason)
     assert not is_pass
     assert any("reason" in err for err in errors)
+
+
+# ==============================================================================
+# F2: Query/Result Closure Tests
+# ==============================================================================
+
+def test_f2_whole_query_result_omission_fails_replay(tmp_path):
+    """F2: queries = q1 + q2，但 results 只給 q1（整筆 q2 result 遺漏）時必須 FAIL。"""
+    repo = str(tmp_path)
+    init_git_repo(repo)
+    head_oid = commit_files(repo, {
+        "file1.py": "TOKEN_Q1 = 1\n",
+        "file2.py": "TOKEN_Q2 = 2\n"
+    })
+
+    queries = [
+        {"id": "q1", "kind": "literal", "value": "TOKEN_Q1"},
+        {"id": "q2", "kind": "literal", "value": "TOKEN_Q2"}
+    ]
+
+    # results 只有 q1，完全缺失 q2
+    evidence = {
+        "schema_version": SCHEMA_VERSION,
+        "base_oid": head_oid,
+        "mode": "REQUIRED",
+        "queries": queries,
+        "results": [
+            {
+                "query_id": "q1",
+                "query_kind": "literal",
+                "query_value": "TOKEN_Q1",
+                "dependencies": [{"path": "file1.py", "disposition": "UPDATE"}]
+            }
+        ]
+    }
+    is_pass, errors = run_check_replay(repo, evidence, allowed_scope={"file1.py", "file2.py"})
+    assert not is_pass
+    assert any("q2" in err and "遺漏對應之 result" in err for err in errors)
+
+
+def test_f2_duplicate_query_result_fails_replay(tmp_path):
+    """F2: results 出現重複之 query_id 時必須 FAIL。"""
+    repo = str(tmp_path)
+    init_git_repo(repo)
+    head_oid = commit_files(repo, {"file1.py": "TOKEN_Q1 = 1\n"})
+
+    queries = [{"id": "q1", "kind": "literal", "value": "TOKEN_Q1"}]
+    evidence = {
+        "schema_version": SCHEMA_VERSION,
+        "base_oid": head_oid,
+        "mode": "REQUIRED",
+        "queries": queries,
+        "results": [
+            {
+                "query_id": "q1",
+                "query_kind": "literal",
+                "query_value": "TOKEN_Q1",
+                "dependencies": [{"path": "file1.py", "disposition": "UPDATE"}]
+            },
+            {
+                "query_id": "q1",
+                "query_kind": "literal",
+                "query_value": "TOKEN_Q1",
+                "dependencies": [{"path": "file1.py", "disposition": "UPDATE"}]
+            }
+        ]
+    }
+    is_pass, errors = run_check_replay(repo, evidence, allowed_scope={"file1.py"})
+    assert not is_pass
+    assert any("重複的 result query_id" in err for err in errors)
+
+
+def test_f2_complete_query_results_passes_replay(tmp_path):
+    """F2: q1 + q2 各恰好一個 result 且依賴完整時通過。"""
+    repo = str(tmp_path)
+    init_git_repo(repo)
+    head_oid = commit_files(repo, {
+        "file1.py": "TOKEN_Q1 = 1\n",
+        "file2.py": "TOKEN_Q2 = 2\n"
+    })
+
+    queries = [
+        {"id": "q1", "kind": "literal", "value": "TOKEN_Q1"},
+        {"id": "q2", "kind": "literal", "value": "TOKEN_Q2"}
+    ]
+    evidence = {
+        "schema_version": SCHEMA_VERSION,
+        "base_oid": head_oid,
+        "mode": "REQUIRED",
+        "queries": queries,
+        "results": [
+            {
+                "query_id": "q1",
+                "query_kind": "literal",
+                "query_value": "TOKEN_Q1",
+                "dependencies": [{"path": "file1.py", "disposition": "UPDATE"}]
+            },
+            {
+                "query_id": "q2",
+                "query_kind": "literal",
+                "query_value": "TOKEN_Q2",
+                "dependencies": [{"path": "file2.py", "disposition": "UPDATE"}]
+            }
+        ]
+    }
+    is_pass, errors = run_check_replay(repo, evidence, allowed_scope={"file1.py", "file2.py"})
+    assert is_pass
+    assert len(errors) == 0
+
+
+# ==============================================================================
+# F3: Allowed Scope Machine Pairing Tests
+# ==============================================================================
+
+def test_f3_update_dependencies_all_in_allowed_scope_passes(tmp_path):
+    """F3: 所有 UPDATE 依賴均位於 Allowed Scope 內 -> PASS。"""
+    repo = str(tmp_path)
+    init_git_repo(repo)
+    head_oid = commit_files(repo, {
+        "scripts/a.py": "SYM = 1\n",
+        "scripts/b.py": "SYM = 2\n"
+    })
+
+    evidence = {
+        "schema_version": SCHEMA_VERSION,
+        "base_oid": head_oid,
+        "mode": "REQUIRED",
+        "queries": [{"id": "q1", "kind": "symbol", "value": "SYM"}],
+        "results": [
+            {
+                "query_id": "q1",
+                "dependencies": [
+                    {"path": "scripts/a.py", "disposition": "UPDATE"},
+                    {"path": "scripts/b.py", "disposition": "UPDATE"}
+                ]
+            }
+        ]
+    }
+    is_pass, errors = run_check_replay(repo, evidence, allowed_scope={"scripts/a.py", "scripts/b.py"})
+    assert is_pass
+    assert len(errors) == 0
+
+
+def test_f3_update_dependency_missing_from_allowed_scope_fails(tmp_path):
+    """F3: 任一 UPDATE 依賴未列入 Allowed Scope -> FAIL。"""
+    repo = str(tmp_path)
+    init_git_repo(repo)
+    head_oid = commit_files(repo, {
+        "scripts/a.py": "SYM = 1\n",
+        "scripts/b.py": "SYM = 2\n"
+    })
+
+    evidence = {
+        "schema_version": SCHEMA_VERSION,
+        "base_oid": head_oid,
+        "mode": "REQUIRED",
+        "queries": [{"id": "q1", "kind": "symbol", "value": "SYM"}],
+        "results": [
+            {
+                "query_id": "q1",
+                "dependencies": [
+                    {"path": "scripts/a.py", "disposition": "UPDATE"},
+                    {"path": "scripts/b.py", "disposition": "UPDATE"}
+                ]
+            }
+        ]
+    }
+    # scripts/b.py 未列入 allowed_scope
+    is_pass, errors = run_check_replay(repo, evidence, allowed_scope={"scripts/a.py"})
+    assert not is_pass
+    assert any("scripts/b.py" in err and "未包含於 Allowed Scope 中" in err for err in errors)
+
+
+def test_f3_verify_only_not_in_allowed_scope_passes(tmp_path):
+    """F3: VERIFY_ONLY 依賴不要求存在於 Allowed Scope -> PASS。"""
+    repo = str(tmp_path)
+    init_git_repo(repo)
+    head_oid = commit_files(repo, {
+        "scripts/a.py": "SYM = 1\n",
+        "docs/guide.md": "SYM = 2\n"
+    })
+
+    evidence = {
+        "schema_version": SCHEMA_VERSION,
+        "base_oid": head_oid,
+        "mode": "REQUIRED",
+        "queries": [{"id": "q1", "kind": "symbol", "value": "SYM"}],
+        "results": [
+            {
+                "query_id": "q1",
+                "dependencies": [
+                    {"path": "scripts/a.py", "disposition": "UPDATE"},
+                    {"path": "docs/guide.md", "disposition": "VERIFY_ONLY"}
+                ]
+            }
+        ]
+    }
+    # docs/guide.md 不在 allowed_scope
+    is_pass, errors = run_check_replay(repo, evidence, allowed_scope={"scripts/a.py"})
+    assert is_pass
+    assert len(errors) == 0
+
+
+def test_f3_historical_no_change_not_in_allowed_scope_passes(tmp_path):
+    """F3: HISTORICAL_NO_CHANGE 不要求存在於 Allowed Scope -> PASS。"""
+    repo = str(tmp_path)
+    init_git_repo(repo)
+    head_oid = commit_files(repo, {
+        "scripts/a.py": "SYM = 1\n",
+        "docs/batches/old.spec.txt": "SYM = 2\n"
+    })
+
+    evidence = {
+        "schema_version": SCHEMA_VERSION,
+        "base_oid": head_oid,
+        "mode": "REQUIRED",
+        "queries": [{"id": "q1", "kind": "symbol", "value": "SYM"}],
+        "results": [
+            {
+                "query_id": "q1",
+                "dependencies": [
+                    {"path": "scripts/a.py", "disposition": "UPDATE"},
+                    {"path": "docs/batches/old.spec.txt", "disposition": "HISTORICAL_NO_CHANGE"}
+                ]
+            }
+        ]
+    }
+    is_pass, errors = run_check_replay(repo, evidence, allowed_scope={"scripts/a.py"})
+    assert is_pass
+    assert len(errors) == 0
+
+
+def test_f3_required_mode_missing_allowed_scope_fails_closed(tmp_path):
+    """F3: mode=REQUIRED 缺少 allowed scope input 時必須 FAIL CLOSED。"""
+    repo = str(tmp_path)
+    init_git_repo(repo)
+    head_oid = commit_files(repo, {"file.py": "A = 1\n"})
+
+    evidence = {
+        "schema_version": SCHEMA_VERSION,
+        "base_oid": head_oid,
+        "mode": "REQUIRED",
+        "queries": [{"id": "q1", "kind": "literal", "value": "A"}],
+        "results": [
+            {
+                "query_id": "q1",
+                "dependencies": [{"path": "file.py", "disposition": "UPDATE"}]
+            }
+        ]
+    }
+    is_pass, errors = run_check_replay(repo, evidence, allowed_scope=None)
+    assert not is_pass
+    assert any("必須提供 Allowed Scope" in err for err in errors)
+
+
+def test_f3_malformed_allowed_scope_json_fails_closed(tmp_path):
+    """F3: malformed allowed-scope JSON 必須拋出 ImpactScanError (FAIL CLOSED)。"""
+    import json
+    f = tmp_path / "bad_scope.json"
+
+    # 非 JSON
+    f.write_text("not json", encoding="utf-8")
+    with pytest.raises(ImpactScanError) as exc_info:
+        load_and_validate_allowed_scope(str(f))
+    assert "解析失敗" in str(exc_info.value)
+
+    # 缺少 allowed_scope 陣列
+    f.write_text(json.dumps({"schema_version": 1}), encoding="utf-8")
+    with pytest.raises(ImpactScanError) as exc_info:
+        load_and_validate_allowed_scope(str(f))
+    assert "必須包含 'allowed_scope' 陣列" in str(exc_info.value)
+
+    # schema_version 不符
+    f.write_text(json.dumps({"schema_version": 2, "allowed_scope": ["a.py"]}), encoding="utf-8")
+    with pytest.raises(ImpactScanError) as exc_info:
+        load_and_validate_allowed_scope(str(f))
+    assert "schema_version" in str(exc_info.value)
+
+    # 包含重複路徑
+    f.write_text(json.dumps({"schema_version": 1, "allowed_scope": ["a.py", "a.py"]}), encoding="utf-8")
+    with pytest.raises(ImpactScanError) as exc_info:
+        load_and_validate_allowed_scope(str(f))
+    assert "重複路徑" in str(exc_info.value)
+
+    # 包含空路徑
+    f.write_text(json.dumps({"schema_version": 1, "allowed_scope": ["  "]}), encoding="utf-8")
+    with pytest.raises(ImpactScanError) as exc_info:
+        load_and_validate_allowed_scope(str(f))
+    assert "不得為空字串" in str(exc_info.value)
+
+
+def test_f3_path_traversal_and_absolute_path_fails_closed(tmp_path):
+    """F3: path traversal / absolute path 必須拋出 ImpactScanError (FAIL CLOSED)。"""
+    import json
+    f = tmp_path / "scope.json"
+
+    # 路徑遍歷 ..
+    f.write_text(json.dumps({"schema_version": 1, "allowed_scope": ["../secret.txt"]}), encoding="utf-8")
+    with pytest.raises(ImpactScanError) as exc_info:
+        load_and_validate_allowed_scope(str(f))
+    assert "路徑遍歷" in str(exc_info.value)
+
+    # 絕對路徑
+    f.write_text(json.dumps({"schema_version": 1, "allowed_scope": ["/etc/passwd"]}), encoding="utf-8")
+    with pytest.raises(ImpactScanError) as exc_info:
+        load_and_validate_allowed_scope(str(f))
+    assert "絕對路徑" in str(exc_info.value)
+
+
+def test_f3_allowed_scope_with_extra_state_paths_passes(tmp_path):
+    """F3: Allowed Scope 允許包含額外路徑（如 state、generated），不因額外路徑 FAIL (subset check)。"""
+    repo = str(tmp_path)
+    init_git_repo(repo)
+    head_oid = commit_files(repo, {"file.py": "VAL = 42\n"})
+
+    evidence = {
+        "schema_version": SCHEMA_VERSION,
+        "base_oid": head_oid,
+        "mode": "REQUIRED",
+        "queries": [{"id": "q1", "kind": "literal", "value": "VAL"}],
+        "results": [
+            {
+                "query_id": "q1",
+                "dependencies": [{"path": "file.py", "disposition": "UPDATE"}]
+            }
+        ]
+    }
+    # allowed_scope 包含 extra paths
+    scope = {"file.py", "docs/TASKBOARD.md", "docs/EXEC-LOG.md", "new_file.py"}
+    is_pass, errors = run_check_replay(repo, evidence, allowed_scope=scope)
+    assert is_pass
+    assert len(errors) == 0

@@ -60,41 +60,35 @@
 | .agents/rules/git-and-reporting.md | 254 | ## 3. 查證紀律 | FILE | `docs/HANDOVER.md` | docs/HANDOVER.md | RESOLVED |
 | .agents/rules/git-and-reporting.md | 256 | ## 3. 查證紀律 | FILE | `PRINCIPLES.md` | PRINCIPLES.md | RESOLVED |
 | .agents/rules/powershell-encoding-protocol.md | 48 | ## 3. PowerShell 強制 UTF-8 宣告 (PowerShell UTF-8 Lock) | FILE | `.agents/rules/git-and-reporting.md` | .agents/rules/git-and-reporting.md | RESOLVED |
-| .agents/rules/prompt-preflight.md | 9 | ## 1. 為什麼有這一條 | ADR | docs/adr/0007-macro-auditor-role.md | docs/adr/0007-macro-auditor-role.md | RESOLVED |
+| .agents/rules/prompt-preflight.md | 9 | ## 1. 目的 | ADR | docs/adr/0007-macro-auditor-role.md | docs/adr/0007-macro-auditor-role.md | RESOLVED |
 | .agents/rules/prompt-preflight.md | 23 | ## 2. 這是審查，不是建議 | FILE | `.agents/rules/role-boundaries.md` | .agents/rules/role-boundaries.md | RESOLVED |
 | .agents/rules/prompt-preflight.md | 23 | ## 2. 這是審查，不是建議 | SECTION | §7 | .agents/rules/role-boundaries.md#§7 | RESOLVED |
-| .agents/rules/prompt-preflight.md | 65 | ### 3.0A 所有模式共同必備要素（缺一即停） | SECTION | §3.9 | .agents/rules/prompt-preflight.md#§3.9 | RESOLVED |
-| .agents/rules/prompt-preflight.md | 74 | ### 3.0B EXACT_SPEC 專屬必備要素（僅在 EXACT_SPEC 模式下檢查） | CHECK | CHECK 17 | scripts/check_consistency.py | RESOLVED |
-| .agents/rules/prompt-preflight.md | 89 | ## 3.1 配對規則（缺一即停） | FILE | `docs/AUDIT-LOG.md` | docs/AUDIT-LOG.md | RESOLVED |
-| .agents/rules/prompt-preflight.md | 89 | ## 3.1 配對規則（缺一即停） | SECTION | §5.1 | docs/refactor-backlog.md#§5.1 | RESOLVED |
-| .agents/rules/prompt-preflight.md | 91 | ## 3.1 配對規則（缺一即停） | FILE | `docs/AUDIT-LOG.md` | docs/AUDIT-LOG.md | RESOLVED |
-| .agents/rules/prompt-preflight.md | 91 | ## 3.1 配對規則（缺一即停） | FILE | `docs/refactor-backlog.md` | docs/refactor-backlog.md | RESOLVED |
-| .agents/rules/prompt-preflight.md | 91 | ## 3.1 配對規則（缺一即停） | SECTION | §5.1 | docs/refactor-backlog.md#§5.1 | RESOLVED |
-| .agents/rules/prompt-preflight.md | 113 | ### B. EXACT_SPEC 覆蓋鏈 | CHECK | CHECK 17 | scripts/check_consistency.py | RESOLVED |
-| .agents/rules/prompt-preflight.md | 113 | ### B. EXACT_SPEC 覆蓋鏈 | FILE | `scripts/verify_all.py` | scripts/verify_all.py | RESOLVED |
-| .agents/rules/prompt-preflight.md | 119 | ## 3.3 遇到疑問而非缺失時 | FILE | `.agents/rules/role-boundaries.md` | .agents/rules/role-boundaries.md | RESOLVED |
-| .agents/rules/prompt-preflight.md | 119 | ## 3.3 遇到疑問而非缺失時 | SECTION | §7 | .agents/rules/role-boundaries.md#§7 | RESOLVED |
-| .agents/rules/prompt-preflight.md | 120 | ## 3.3 遇到疑問而非缺失時 | FILE | `docs/EXEC-LOG.md` | docs/EXEC-LOG.md | RESOLVED |
-| .agents/rules/prompt-preflight.md | 123 | ## 3.3 遇到疑問而非缺失時 | FILE | `docs/EXEC-LOG.md` | docs/EXEC-LOG.md | RESOLVED |
-| .agents/rules/prompt-preflight.md | 152 | ## 3.4 審計官自檢聲明的交叉驗證 | SECTION | §3.1 | .agents/rules/prompt-preflight.md#§3.1 | RESOLVED |
-| .agents/rules/prompt-preflight.md | 152 | ## 3.4 審計官自檢聲明的交叉驗證 | SECTION | §3.2 | .agents/rules/prompt-preflight.md#§3.2 | RESOLVED |
-| .agents/rules/prompt-preflight.md | 161 | ## 3.4 審計官自檢聲明的交叉驗證 | SECTION | §5.1 | docs/refactor-backlog.md#§5.1 | RESOLVED |
-| .agents/rules/prompt-preflight.md | 171 | ## 3.5 執行者檢查證據持久化（已落地） | CHECK | CHECK 16 | scripts/check_consistency.py | RESOLVED |
-| .agents/rules/prompt-preflight.md | 171 | ## 3.5 執行者檢查證據持久化（已落地） | FILE | `docs/EXEC-LOG.md` | docs/EXEC-LOG.md | RESOLVED |
-| .agents/rules/prompt-preflight.md | 171 | ## 3.5 執行者檢查證據持久化（已落地） | SECTION | §3.8 | .agents/rules/prompt-preflight.md#§3.8 | RESOLVED |
-| .agents/rules/prompt-preflight.md | 204 | ## 3.7 E 節每一項都可機械驗證，沒有例外 | FILE | `.claude/rules/auditor-selftest.md` | .claude/rules/auditor-selftest.md | RESOLVED |
-| .agents/rules/prompt-preflight.md | 204 | ## 3.7 E 節每一項都可機械驗證，沒有例外 | SECTION | §3.4 | .agents/rules/prompt-preflight.md#§3.4 | RESOLVED |
-| .agents/rules/prompt-preflight.md | 204 | ## 3.7 E 節每一項都可機械驗證，沒有例外 | SECTION | §3.4 | .agents/rules/prompt-preflight.md#§3.4 | RESOLVED |
+| .agents/rules/prompt-preflight.md | 69 | ### 3.0A 所有模式共同必備要素（缺一即停） | SECTION | §3.9 | .agents/rules/prompt-preflight.md#§3.9 | RESOLVED |
+| .agents/rules/prompt-preflight.md | 78 | ### 3.0B EXACT_SPEC 專屬必備要素（僅在 EXACT_SPEC 模式下檢查） | CHECK | CHECK 17 | scripts/check_consistency.py | RESOLVED |
+| .agents/rules/prompt-preflight.md | 93 | ## 3.1 配對規則（缺一即停） | FILE | `docs/AUDIT-LOG.md` | docs/AUDIT-LOG.md | RESOLVED |
+| .agents/rules/prompt-preflight.md | 93 | ## 3.1 配對規則（缺一即停） | SECTION | §5.1 | docs/refactor-backlog.md#§5.1 | RESOLVED |
+| .agents/rules/prompt-preflight.md | 95 | ## 3.1 配對規則（缺一即停） | FILE | `docs/AUDIT-LOG.md` | docs/AUDIT-LOG.md | RESOLVED |
+| .agents/rules/prompt-preflight.md | 95 | ## 3.1 配對規則（缺一即停） | FILE | `docs/refactor-backlog.md` | docs/refactor-backlog.md | RESOLVED |
+| .agents/rules/prompt-preflight.md | 95 | ## 3.1 配對規則（缺一即停） | SECTION | §5.1 | docs/refactor-backlog.md#§5.1 | RESOLVED |
+| .agents/rules/prompt-preflight.md | 117 | ### B. EXACT_SPEC 覆蓋鏈 | CHECK | CHECK 17 | scripts/check_consistency.py | RESOLVED |
+| .agents/rules/prompt-preflight.md | 117 | ### B. EXACT_SPEC 覆蓋鏈 | FILE | `scripts/verify_all.py` | scripts/verify_all.py | RESOLVED |
+| .agents/rules/prompt-preflight.md | 123 | ## 3.3 遇到疑問而非缺失時 | FILE | `.agents/rules/role-boundaries.md` | .agents/rules/role-boundaries.md | RESOLVED |
+| .agents/rules/prompt-preflight.md | 123 | ## 3.3 遇到疑問而非缺失時 | SECTION | §7 | .agents/rules/role-boundaries.md#§7 | RESOLVED |
+| .agents/rules/prompt-preflight.md | 124 | ## 3.3 遇到疑問而非缺失時 | FILE | `docs/EXEC-LOG.md` | docs/EXEC-LOG.md | RESOLVED |
+| .agents/rules/prompt-preflight.md | 127 | ## 3.3 遇到疑問而非缺失時 | FILE | `docs/EXEC-LOG.md` | docs/EXEC-LOG.md | RESOLVED |
+| .agents/rules/prompt-preflight.md | 156 | ## 3.4 審計官自檢聲明的交叉驗證 | SECTION | §3.1 | .agents/rules/prompt-preflight.md#§3.1 | RESOLVED |
+| .agents/rules/prompt-preflight.md | 156 | ## 3.4 審計官自檢聲明的交叉驗證 | SECTION | §3.2 | .agents/rules/prompt-preflight.md#§3.2 | RESOLVED |
+| .agents/rules/prompt-preflight.md | 165 | ## 3.4 審計官自檢聲明的交叉驗證 | SECTION | §5.1 | docs/refactor-backlog.md#§5.1 | RESOLVED |
+| .agents/rules/prompt-preflight.md | 175 | ## 3.5 執行者檢查證據持久化（已落地） | CHECK | CHECK 16 | scripts/check_consistency.py | RESOLVED |
+| .agents/rules/prompt-preflight.md | 175 | ## 3.5 執行者檢查證據持久化（已落地） | FILE | `docs/EXEC-LOG.md` | docs/EXEC-LOG.md | RESOLVED |
+| .agents/rules/prompt-preflight.md | 175 | ## 3.5 執行者檢查證據持久化（已落地） | SECTION | §3.8 | .agents/rules/prompt-preflight.md#§3.8 | RESOLVED |
+| .agents/rules/prompt-preflight.md | 203 | ## 3.7 E 節每一項都可機械驗證，沒有例外 | FILE | `.claude/rules/auditor-selftest.md` | .claude/rules/auditor-selftest.md | RESOLVED |
+| .agents/rules/prompt-preflight.md | 203 | ## 3.7 E 節每一項都可機械驗證，沒有例外 | SECTION | §3.4 | .agents/rules/prompt-preflight.md#§3.4 | RESOLVED |
+| .agents/rules/prompt-preflight.md | 203 | ## 3.7 E 節每一項都可機械驗證，沒有例外 | SECTION | §3.4 | .agents/rules/prompt-preflight.md#§3.4 | RESOLVED |
+| .agents/rules/prompt-preflight.md | 209 | ## 3.8 你的檢查結果必須留在 repo | FILE | `docs/EXEC-LOG.md` | docs/EXEC-LOG.md | RESOLVED |
+| .agents/rules/prompt-preflight.md | 210 | ## 3.8 你的檢查結果必須留在 repo | CHECK | CHECK 16 | scripts/check_consistency.py | RESOLVED |
 | .agents/rules/prompt-preflight.md | 210 | ## 3.8 你的檢查結果必須留在 repo | FILE | `docs/EXEC-LOG.md` | docs/EXEC-LOG.md | RESOLVED |
-| .agents/rules/prompt-preflight.md | 211 | ## 3.8 你的檢查結果必須留在 repo | SECTION | §3 | .agents/rules/prompt-preflight.md#§3 | RESOLVED |
-| .agents/rules/prompt-preflight.md | 211 | ## 3.8 你的檢查結果必須留在 repo | SECTION | §3.1 | .agents/rules/prompt-preflight.md#§3.1 | RESOLVED |
-| .agents/rules/prompt-preflight.md | 211 | ## 3.8 你的檢查結果必須留在 repo | SECTION | §3.2 | .agents/rules/prompt-preflight.md#§3.2 | RESOLVED |
-| .agents/rules/prompt-preflight.md | 211 | ## 3.8 你的檢查結果必須留在 repo | SECTION | §3.4 | .agents/rules/prompt-preflight.md#§3.4 | RESOLVED |
-| .agents/rules/prompt-preflight.md | 211 | ## 3.8 你的檢查結果必須留在 repo | SECTION | §3.6 | .agents/rules/prompt-preflight.md#§3.6 | RESOLVED |
-| .agents/rules/prompt-preflight.md | 211 | ## 3.8 你的檢查結果必須留在 repo | SECTION | §3.9 | .agents/rules/prompt-preflight.md#§3.9 | RESOLVED |
-| .agents/rules/prompt-preflight.md | 215 | ## 3.8 你的檢查結果必須留在 repo | CHECK | CHECK 16 | scripts/check_consistency.py | RESOLVED |
-| .agents/rules/prompt-preflight.md | 215 | ## 3.8 你的檢查結果必須留在 repo | FILE | `docs/EXEC-LOG.md` | docs/EXEC-LOG.md | RESOLVED |
-| .agents/rules/prompt-preflight.md | 230 | ## 3.9 FINDING_DISPOSITION 機械檢查契約 | FILE | `docs/TASKBOARD.md` | docs/TASKBOARD.md | RESOLVED |
+| .agents/rules/prompt-preflight.md | 223 | ## 3.9 FINDING_DISPOSITION 機械檢查契約 | FILE | `docs/TASKBOARD.md` | docs/TASKBOARD.md | RESOLVED |
 | .agents/rules/role-boundaries.md | 5 | # 角色邊界規則 | FILE | `PRINCIPLES.md` | PRINCIPLES.md | RESOLVED |
 | .agents/rules/role-boundaries.md | 5 | # 角色邊界規則 | SECTION | §0 | PRINCIPLES.md#§0 | RESOLVED |
 | .agents/rules/role-boundaries.md | 16 | ## 1. 你的身分 | FILE | `PRINCIPLES.md` | PRINCIPLES.md | RESOLVED |

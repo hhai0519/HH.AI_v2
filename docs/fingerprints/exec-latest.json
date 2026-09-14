@@ -1,5 +1,5 @@
 {
-  "base_head": "3023267",
+  "base_head": "2eca546",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 0,
@@ -36,7 +36,7 @@
       "fences": 0,
       "headings": [
         "# 提示詞前置驗證規範（Prompt Preflight Protocol）",
-        "## 1. 為什麼有這一條",
+        "## 1. 目的",
         "## 2. 這是審查，不是建議",
         "### 2.1 最前置硬規則：Prompt Manifest 機械驗證（Hard Rule）",
         "### 2.2 依賴閉包機械重放（Dependency Closure Replay Hard Rule）",
@@ -59,8 +59,8 @@
         "## 5. 例外",
         "## 6. 這條規則保護的是誰"
       ],
-      "lines": 267,
-      "sha256": "8e2d810b4062cbecfb3123bdac72470b56ff735744dae2ea53b70ac6c3ccb79f"
+      "lines": 258,
+      "sha256": "908ba3c427c55f54563b966b93c6cfcd3141db8ceda8ca5f21f5a578fa866ad6"
     },
     ".agents/rules/role-boundaries.md": {
       "fences": 0,
@@ -156,7 +156,7 @@
         "### 11.6 [已退役／不需執行] 歷史 `audited-*` tag 之留痕保存（RETIRED / NOT REQUIRED）"
       ],
       "lines": 447,
-      "sha256": "76bd6deac53d74eac2354a636222c65a3f6c91636ab48fc3a840e3ce21f8d796"
+      "sha256": "fe7e067731085c9a65f0b5b3c137e8f4c804a6614d44f0953e06fedfb080581a"
     },
     ".claude/rules/auditor-selftest.md": {
       "fences": 0,
@@ -171,7 +171,7 @@
         "## F. 額度（每一輪回覆的開頭與結尾）"
       ],
       "lines": 130,
-      "sha256": "11f648850334a42d08e4582d227f574ec01f4fa9d1819b7853274a53d73ef73d"
+      "sha256": "33c86b409cb85b65225d9775f02df07d15ef625180d534cde21cec6ed621cf5b"
     },
     ".github/workflows/verify.yml": {
       "fences": 0,
@@ -510,16 +510,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 119,
-      "sha256": "cfba1b575886b43ba0a799eb38219528d2d2da991979d9f050d2780f2853fd80"
+      "lines": 120,
+      "sha256": "20d5c57dece4926064073e10293045e05a6af06126404015c44528fe56f760ba"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 91,
-      "sha256": "3acf9f2c346e11ac4e377d25519410efad4cdb68996dc7003113535c7709b4ef"
+      "lines": 92,
+      "sha256": "ebc14466d16c5e0c6adb9b1c4ed0508455d36b8777f7f89ac64a64b3b660461b"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -555,7 +555,7 @@
         "## 封存區"
       ],
       "lines": 238,
-      "sha256": "a468f748791b7bc019137deb13ae5bbedb7f60e44df605d77a5392fdd1d29d9c"
+      "sha256": "62525b2b14c622d1f113fdd7c06ca37795ed016ce66075cc98982dfbabfaf086"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -883,8 +883,8 @@
         "### 5.3 待使用者裁決",
         "### 5.4 進行中／等待回報"
       ],
-      "lines": 3128,
-      "sha256": "6d202380ea324f60228924dde864fda9ba72e347d85b5902d9c8eb9466884b9e"
+      "lines": 3125,
+      "sha256": "00511214b028a2d9476cd4b8de5e6e6f97729959af5ecdd5aa176fd6052ab95f"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -900,8 +900,8 @@
       "headings": [
         "# -*- coding: utf-8 -*-"
       ],
-      "lines": 675,
-      "sha256": "5dbc7ca4842d2dcb9e98e7b925649e86277c7b1e128b1db7f7feab034723bb5f"
+      "lines": 683,
+      "sha256": "1ad032e480f89e771cfdd3e0087828ad72c9616aae4ec51d61eceb884ea8f32f"
     },
     "scripts/check_consistency.py": {
       "fences": 0,
@@ -937,8 +937,8 @@
       "headings": [
         "# -*- coding: utf-8 -*-"
       ],
-      "lines": 488,
-      "sha256": "d0ba8bccd314962a075b9f4b0b1385c7c1d6c4737ff27d28a9517c97e0251b8d"
+      "lines": 585,
+      "sha256": "1020ab1918c9e8d8005a602eb9d7aee58a0484a978868b1a0f7d19cfe85f1297"
     },
     "scripts/tests/test_anchor.py": {
       "fences": 0,
@@ -954,8 +954,8 @@
         "## 第二級標題",
         "# 修改後標題"
       ],
-      "lines": 427,
-      "sha256": "2081169b7d6be4eaede227647c2a0a37546b761fb47cffaed56452c1cd0665b8"
+      "lines": 481,
+      "sha256": "38dbb14583505f98d9a1646dec20c8fe8225144ae5e623745682df7a80fea521"
     },
     "scripts/tests/test_check_17_18.py": {
       "fences": 0,
@@ -1001,10 +1001,16 @@
     "scripts/tests/test_impact_scan.py": {
       "fences": 0,
       "headings": [
-        "# -*- coding: utf-8 -*-"
+        "# -*- coding: utf-8 -*-",
+        "# ==============================================================================",
+        "# F2: Query/Result Closure Tests",
+        "# ==============================================================================",
+        "# ==============================================================================",
+        "# F3: Allowed Scope Machine Pairing Tests",
+        "# =============================================================================="
       ],
-      "lines": 467,
-      "sha256": "6d497b2983c6cf12165a5300bbcef85dafc821100d714369d3f3d1c226226138"
+      "lines": 800,
+      "sha256": "06ac6718617d0ff74603edf9fcb930d9505ba6a3e30fefbf8ea0f4203fa516db"
     },
     "scripts/tests/test_prompt_manifest.py": {
       "fences": 0,
@@ -1126,7 +1132,7 @@
       "sha256": "35bf7dbfa3c7d291b550c3c97a6ae398a22b1dc3624c1d2fc1e4db6963d6e115"
     }
   },
-  "generated_at": "2026-09-14T09:53:23Z",
+  "generated_at": "2026-09-14T10:32:38Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

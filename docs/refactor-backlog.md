@@ -3037,13 +3037,10 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - generated rule traceability External Macro PASS / CLOSED。
   - Executor prompt-preflight machine enforcement External Macro PASS / CLOSED。
   - Prompt Manifest runtime interception 已由兩種 malformed-prompt canary 實證。
-  - Pre-B01 taskboard truth reconciliation External Macro PASS / CLOSED（B-87 CLOSED）。
-  - Pre-B01 deterministic false-green batch B-31 / B-88 / B-89 External Macro PASS / CLOSED。
-  - verifier-reporting truth 已於 closure 同步。
-  - B-68 Dependency Closure / Deterministic Impact Scan Phase 1 執行中，待 External Macro Audit 與 runtime malformed-scope canary。
-  - B-41 尚未啟動。
-  - B-01 尚未啟動。
-  - B-28/B-29 full upstream comparison 不再是 Pre-B01 blocker（使用者裁決延後 post-B01）。
+  - B-31 / B-88 / B-89 CLOSED。
+  - B-68 initial 2eca candidate Machine PASS / External Macro bounded repair required；F1-F4 reproduced；B-68 micro-fix 待 External Macro Audit 與 runtime malformed-scope canary。
+  - B-41 尚未啟動 (NOT STARTED)。
+  - B-01 尚未啟動 (NOT STARTED)。
   - Production routing ready。
   - 當前與下一步工作任務權威（Current / next work authority）仍只由 `docs/TASKBOARD.md` 的 `**NEXT_WORK**` pointer 保存與導航，交接區不複製 task ID 或待辦佇列。
   - 待使用者裁決事項依 §5.3。
