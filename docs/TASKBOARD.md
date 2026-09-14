@@ -10,9 +10,9 @@
 `待裁決`（需使用者決定）／`已完成`（仍可能被引用）／
 `可封存`（不影響後續工作，待使用者確認後移入封存區）
 
-**NEXT_WORK**：B-68
+**NEXT_WORK**：B-41
 
-**最後更新**：2026-09-14，B-68 BPE Output Contract Regression Micro-Fix In Progress / Next: B-68
+**最後更新**：2026-09-14，B-68 Dependency Closure External Macro PASS / CLOSED；B-96 specification registered；Next: B-41
 
 ---
 
@@ -139,7 +139,7 @@ A 節目前狀態以本表各列與 `NEXT_WORK` 之 current repo truth 為準；
 | B-65 | 已完成 | **雜湊一段跨平台 shell pipeline 的輸出，是錯的閘門原語** | 第二投三檔行數與圍欄數全部相符，唯獨雜湊不符。審計官重跑後逐行比對執行者貼出的 136 行：**行號序列與內容完全相同**（auditor-protocol 60 條、handover-selftest 39 條、prompt-preflight 12 條、git-and-reporting 8 條、role-boundaries 5 條、PRINCIPLES 5 條、AGENTS 1 條），另試 CRLF 版仍不符。**雜湊把「內容是否相同」綁死在行尾、locale、工具實作這些與內容無關的變數上**——與 B-46 的 CRLF 是同一形狀，審計官在自己設計的閘門上重犯。處置：(e) 段改為純文字比對（行數／圍欄數、項數、**每個修改檔的最後三條 CHECK 10 INFO 行**），已寫進 §6.1 第 18 項 |
 | B-66 | 已完成 | **根因定案：審計官的輸出是一次連續生成，宣告卻聲稱它是多步驗證的產物** | 2026-09-06 盤點八批共 16 件錯誤（第二投時已增為 19 件），壓到一層是同一件事——擬定修改、寫錨點、宣告已驗證、寫預期值，四者在同一段生成流裡完成，讀者（含審計官自己）分不出哪些數字來自工具、哪些來自生成。**這解釋了為何加強措辭七週無效**：措辭也是文字，進入同一段生成後被同一個機制繞過。**只有外部產物有效，因為它不是模型生成的**。原則落點 `PRINCIPLES.md` §2.10，排批 2b-4 |
 | B-67 | 已完成 | **`scripts/build_prompt_evidence.py`** | 以批次規格為單一來源，產出錨點 `count()` 逐條實測、**E11 清單與總數（由 `len()` 產生）**、(b)(d) 行數與圍欄數、套用到暫存副本後的 (e) 模擬結果，以及 **EXPECT 區塊的 ID 序列驗證**。本批完成 |
-| B-68 | 進行中 | **`scripts/impact_scan.py`** | PRE-B01 / governance reliability。建立 deterministic tracked-repo dependency discovery + evidence replay，將 dependencies-before-Allowed-Scope 從 Auditor 記憶規則提升為 executable path。34da F1-F4 candidate Machine PASS，但 External Macro regression audit 發現既有 B-67 BPE output contract 在 main integration 中遺失：format_bcd() 仍存在但 main 未呼叫，造成 [b]/[d] runtime output 消失。READ-ONLY reproduction confirmed 且缺 main integration regression guard。bounded correction 正在恢復 B-67 (b)(d) main output、main integration regression test 與 EXEC reporting truth。修復 candidate 仍需 External Macro Audit 與 malformed-scope Runtime Canary。B-67 保持已完成（原功能無誤，不 reopen）。B-41/B-01 待辦 (NOT STARTED)。B-96 本批不得正式建立。 |
+| B-68 | 已完成 | **`scripts/impact_scan.py`** | PRE-B01 / governance reliability。B-68 Dependency Closure / Deterministic Impact Scan 已完成 External Macro Audit PASS。正式能力包括：Git tracked deterministic impact discovery、exact dependency evidence、query/result complete closure、missing / phantom fail-closed、semantic disposition by Macro only、UPDATE dependency machine-paired against Allowed Scope、BPE scanner failure fail-closed、canonical CLI truth、Executor pre-mutation replay、S1 DEPENDENCY_DRIFT、S1 DEPENDENCY_SCOPE_MISSING、S1 DEPENDENCY_SCOPE_EXPANSION。External validation chain：2eca candidate → F1-F4 counterexamples reproduced → 34da repair → B-67 output regression discovered → a411 bounded correction → final malformed-scope runtime canary PASS。Final Runtime Canary 證明錯誤 Auditor prompt 將 UPDATE dependency 漏出 Allowed Scope 時，Executor 可在任何 repo mutation 前由 production impact_scan 獨立 fail-closed。B-67 保持已完成。B-41 / B-01 未在 B-68 中開始。 |
 | B-69 | 待辦 | **跨環境比對原語規則** | 設計任何比對原語前必須問「換 OS／locale／工具鏈會給出相同答案嗎」；依賴行尾、字元編碼、路徑分隔符、時區、排序或工具實作者不得使用；跨環境一律比對正規化文字而非位元組。依 current repo 查證仍具殘留需求，維持待辦 |
 | B-70 | 待辦 | **配對清單改為腳本產生** | 原 B-60 CHECK 編號配置部分已過時，但 pairing-list-by-memory 的核心問題仍存在。current prompt-preflight §3.1 仍為人工維護 pairing table，且 B-45 的 C section ↔ §5.3 residual pairing registration 尚未機械收斂。因此 B-70 保持 genuine pending。本項不是 Pre-B01 blocker，不得因此阻擋 B-01。 |
 | B-71 | 可封存 | **零漏網目前不達標，且存在倖存者偏差** | 「零漏網未達標」umbrella 項目；有效殘留風險已各自收納至 concrete tasks (B-31, B-53, B-54, B-87, B-88, B-89)，予以封存且不刪除具體項目 |
@@ -167,6 +167,7 @@ A 節目前狀態以本表各列與 `NEXT_WORK` 之 current repo truth 為準；
 | B-93 | 已完成 | **Verification Integrity / False-Green Fail-Closed Hardening** | Verification Integrity / False-Green Fail-Closed Hardening 已完成 External Macro Audit PASS，exact-target final micro-fix closed。 |
 | B-94 | 已完成 | **Antigravity Runtime Rule Loadability / UI Freshness Reconciliation** | 執行三層規則機器對帳：repo/disk chars=9973，blob identity PASS（9adda8a）；使用者 IDE reload 後 UI=9973/12000，stale editor buffer 根因確認；Runtime Rule Freshness Reconciliation 正式關閉（CLOSED）。 |
 | B-95 | 已完成 | **Material Finding → TASKBOARD Promotion Contract** | Material Finding → TASKBOARD Promotion Contract 已完成 External Macro Audit PASS，same-round persistence / EVERY_ROUND disposition / Executor mechanical preflight 正式生效。 |
+| B-96 | 待辦 | **`$$使用者$$` Session-local User Prompt Compiler Mode** | 使用者已完成架構裁決。此功能為僅限目前 Antigravity conversation/session 的 Natural-Language → Governed Execution Adapter；`$$使用者$$` 啟用，沒有 `$$結束使用者$$`，關閉 Agent/conversation 即失效，新 Agent 預設 OFF。User Mode 將輸入分為 READ_ONLY / REPO_MUTATION / EXTERNAL_ACTION / SPECIAL_COMMAND；repo mutation 必須先唯讀 discovery + B-68 impact scan，再編譯完整 production prompt、等待使用者確認，確認後仍通過既有 Prompt Manifest / dependency replay / Allowed Scope / Git / Gate preflight，不構成任何 safety override。特殊 `$$` 指令永遠優先走 `SOP/SOP_00A_Master_Index.json` canonical router。完整已裁決施工規格見 `docs/refactor-backlog.md` Item 63。NOT IMPLEMENTED。 |
 
 ---
 

@@ -2825,7 +2825,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 5.1 上一批狀態
 
-上次核對通過的 HEAD：3023267
+上次核對通過的 HEAD：a41166e
 
 - `23af193`（執行者前置檢查 ＋ 回滾程序 ＋ `AUDIT-LOG.md` ＋ 四缺口修正）
   已於 2026-09-02 由審計官核對通過：6 檔異動（含 2 個新檔）、零夾帶、
@@ -2999,6 +2999,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 - `b2256fd`（B-87 Phase 1 Bounded Micro-Fix & Closure）已於 2026-09-13 由外部審計官全面審查獨立核對通過：5 檔 authorized scope，本地 verify_all 5 Gates 全 PASS，GitHub Actions exact-SHA Run 34768119758 success。B-70 正確恢復為 genuine pending；B-57 stale B-71 引用修復；B-87 Phase 1 reconciliation accepted；generic path-existence CHECK proposal 因 false-green risk 明確 rejected / superseded；B-87 結案處置判定為可封存；B-01 零實作；判定 Macro PASS (ACCEPT ALL)。
 - `3665516`（B-31 Tracked-Scope Bounded Micro-Fix & Closure）已於 2026-09-14 由外部審計官全面審查獨立核對通過：7 檔 authorized scope，本地 verify_all 5 Gates 全 PASS，GitHub Actions exact-SHA Run 34792068482 success。CHECK 19 改採 Git tracked inventory 為單一權威來源，.gitattributes BOM negative canary FAIL/PASS、untracked/ignored non-authority、fail-closed 完整覆蓋；B-88 PASS；B-89 PASS；B-87 already CLOSED-AS-SUPERSEDED；three non-behavioral verifier reporting strings are synchronized by the following closure batch；B-01 零實作；判定 Macro PASS (ACCEPT ALL)。
 - `3023267`（B-31/B-88/B-89 Closure & Reporting Truth Sync）已於 2026-09-14 由外部審計官全面審查獨立核對通過：4 檔 authorized scope，本地 verify_all 5 Gates 全 PASS，GitHub Actions exact-SHA Run 34794878832 success。B-31/B-88/B-89 正式 CLOSED；三處 non-behavioral verifier-reporting truth sync accepted；前一輪 paired test assertion S1 正確 fail-closed 並由 S1 resolution 修復；TASKBOARD.NEXT_WORK 推進至 B-41 後經使用者裁決校正至 B-68；B-01 零實作；判定 Macro PASS (ACCEPT ALL)。
+- `a41166e`（B-68 Dependency Closure Phase 1 External Macro PASS）已於 2026-09-14 由外部審計官全面審查獨立核對通過：3 檔 authorized scope，本地 verify_all 5 Gates 全 PASS，GitHub Actions exact-SHA Run 34838936881 success。B-67 output contract 恢復與 main integration guard 驗證通過；B-68 Final malformed-scope Runtime Canary PASS（C1 dependency scripts/build_prompt_evidence.py UPDATE 漏列時由 production impact_scan check 精確攔截 exit != 0，S1 DEPENDENCY_SCOPE_MISSING，零 mutation，worktree clean）；B-68 正式 CLOSED；B-41/B-01 零實作（NOT STARTED）；判定 Macro PASS (ACCEPT ALL)。
 
 ### 5.2 待辦
 
@@ -3038,7 +3039,9 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - Executor prompt-preflight machine enforcement External Macro PASS / CLOSED。
   - Prompt Manifest runtime interception 已由兩種 malformed-prompt canary 實證。
   - B-31 / B-88 / B-89 CLOSED。
-  - B-68 34da candidate Machine PASS / External Macro HOLD；B-67 output regression machine reproduced；bounded correction 待 External Macro audit；runtime malformed-scope canary 尚未執行。
+  - B-68 Dependency Closure External Macro PASS / CLOSED。
+  - malformed-scope Runtime Canary PASS。
+  - session-local User Prompt Compiler Mode specification 已登錄於 TASKBOARD，尚未實作。
   - B-41 尚未啟動 (NOT STARTED)。
   - B-01 尚未啟動 (NOT STARTED)。
   - Production routing ready。
@@ -3123,3 +3126,86 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 62. **User Governance Priority Decision（使用者治理優先原則裁決）**（2026-09-14）
     - **裁決內容**：不設定人工 governance 停止線。治理規範若有 current evidence 且完成後能實質提升主線 correctness、reliability、automation 或效率，應處理清楚；但不得因理論完美、形式對稱或 speculative possibility 無限放大治理範圍。
     - **性質界定**：本裁決為排程與執行原則（scheduling / execution rationale），絕非第二工作佇列；當前任務權威唯一以 `docs/TASKBOARD.md` 為準。
+
+63. **B-96 `$$使用者$$` Session-local User Prompt Compiler Mode — Specification Snapshot**（2026-09-14）
+    - **背景與定性**：本項為使用者已正式裁決之設計快照與未來施工規格（Specification Snapshot / Implementation Contract），非當前任務佇列。當前任務、狀態與執行優先序之唯一權威仍為 `docs/TASKBOARD.md`，本 Item 不得自行決定 NEXT_WORK。
+    - **核心目標**：建立 Natural-Language → Governed Execution Adapter，讓使用者能直接以自然語言與 Antigravity Agent 互動，由 Antigravity 使用自身 quota 完成 repository inspection、deterministic discovery、dependency scan、scope derivation、prompt compilation、implementation、testing、debugging，降低 Claude / Macro Auditor 在 repo-wide mechanical discovery、mundane prompt construction、deterministic scanning 的 token/quota 消耗。Macro Auditor 保留 semantic decisions、architecture、security、genuine scope decisions 與 Macro Audit。B-96 不是 User Override、不是 safety bypass、不是 Macro Auditor replacement、不構成權限提升（permission escalation）。
+    - **啟動指令與生命週期（Activation & Lifetime）**：
+      - 唯一啟用指令：`$$使用者$$`。
+      - 啟用後目前 Antigravity Agent conversation/session 進入 User Mode，第一行固定顯示 `[使用者模式：ON]`。預期回覆等義：「進入使用者模式。後續一般需求將自動轉換成符合 HH.AI_v2 現行規格的提示詞。READ_ONLY 工作可直接執行；repository mutation 會先完成唯讀探索與依賴分析，再提供正式提示詞供使用者確認；特殊 $$ 指令仍依既有 Router 執行。未經確認，不得執行 repository mutation。」
+      - **重要最終使用者裁決**：不存在 `$$結束使用者$$`，不得建立該指令。
+      - User Mode 唯一正常終止方式：關閉目前 Antigravity Agent / conversation / session。
+      - 新的 Agent / conversation 預設 OFF，必須重新收到 `$$使用者$$` 才可啟用。不得跨 Agent、跨 conversation、跨 session 保存 User Mode。
+    - **狀態儲存邊界（State Storage Boundary）**：
+      - User Mode state 只能是 session-local runtime state。
+      - 不得寫入 TASKBOARD、AUDIT-LOG、EXEC-LOG、Git config、repo config、shared persistent mode DB、runtime global state、user-global memory 或其他 Agent state 作為 mode ON/OFF authority。關閉 session 即自然失效。
+    - **倉庫身分綁定（Repository Identity Binding）**：
+      - User Mode 必須綁定 current repository identity。
+      - 若同一個 Agent conversation 切換至另一個 repository/workspace，User Mode state 與所有 pending candidates 立即視為 invalid，不得將舊 repo 之 candidate/confirmation 套用至新 repo，必須要求重新輸入 `$$使用者$$`。
+    - **使用者可見狀態（User-visible State）**：
+      - 每一輪回覆第一行固定等義顯示：`[使用者模式：ON]`；等待 confirmation 時：`[使用者模式：ON｜AWAITING_CONFIRMATION｜UPM-xxxxxx]`。
+      - 若因 conversation truncation / prefix clearing / context loss 無法可靠證明 mode 是否仍 ON、latest candidate 為哪一版、或使用者 approval 指向何 candidate，則 fail-safe 顯示：「使用者模式狀態無法可靠確認。請重新輸入 $$使用者$$。未執行任何 repository mutation。」不得猜測。
+    - **四路路由分類（Four-Way Routing）**：
+      1. **READ_ONLY**：查看檔案、分析 bug、repo search、dependency discovery、讀狀態、安全測試/分析。可直接使用 Antigravity quota 執行，不得產生 tracked repo mutation。
+      2. **REPO_MUTATION**：修改程式/文件、refactor、bug fix、新增 feature、commit/push。不得直接修改，必須循：Intent → READ_ONLY discovery → deterministic impact scan → dependency disposition boundary → candidate Allowed Scope → compile production prompt → User confirmation → existing production preflight → mutation / implementation → tests / Gates / Git / CI。
+      3. **EXTERNAL_ACTION**：發送外部訊息、啟停服務、呼叫具 side effect API、修改外部帳號/系統等對外操作。不得因「不改 Git」就誤分類成 READ_ONLY，必須遵守對應 skill/SOP/授權/確認/金鑰邊界。
+      4. **SPECIAL_COMMAND**：任何 canonical `$$...$$` command 不得進 natural-language compiler，優先交給 `SOP/SOP_00A_Master_Index.json` canonical router。
+    - **路由優先級（Routing Priority）**：
+      1. 已登錄 canonical $$special command$$
+      2. $$使用者$$ activation
+      3. User Mode 一般自然語言
+      4. Normal Agent behavior
+      - 若輸入形狀為 `$$xxxx$$` 但 canonical router 未登錄：不得猜測、不得 fuzzy match、不得當一般自然語言、不得自動轉 mutation prompt，應等義回覆：`UNKNOWN_SPECIAL_COMMAND`。
+    - **特殊指令相容性（Special Command Compatibility）**：
+      - User Mode ON 時，以下及未來 Master Index canonical triggers 仍優先走 router：`$$自動化$$`、`$$自動化_微型模型$$`、`$$自動化_通用研究$$`、`$$自動化_量化實驗$$`、`$$Line帳號$$`、`$$TG帳號$$`、`$$Allow All$$`、`$$allowall$$`、`$$LINE連線$$`、`$$LINE連線: <自訂名稱>$$`、`$$TG連線$$`。不得被 compiler 重新解釋為一般 repo request。
+      - 若 canonical route 為 PENDING_MIGRATION，應回報「route 已辨識但 target state = PENDING_MIGRATION」，不得誤報 PROMPT STRUCTURE ERROR。B-96 不負責完成 LINE/TG migration，不 duplicate E-04 / B-56 既有職責。
+    - **`$$自動化$$` 與 `$$Allow All$$` 邊界**：
+      - `$$自動化$$`（既有 domain/research orchestration 指令）與 `$$使用者$$`（session-local natural-language prompt compiler mode）為不同能力，不得合併、互相 alias 或互相覆蓋。
+      - `$$使用者$$` 不得擴張 `$$Allow All$$` 現有能力；Allowed Scope、destructive Git、歷史重寫、金鑰處理、domain authorization 等安全邊界維持不變。
+    - **倉庫修改編譯器與候選提示詞（Repository Mutation Compiler & Candidate Prompt）**：
+      - 收到 repo mutation 要求不得立即修改。第一階段只能 READ_ONLY 探索（inspect repo, read active rules, fetch current HEAD, inspect current task/context, run B-68 impact discovery, find tests/reverse refs, determine mechanical dependencies, prepare candidate scope）。
+      - 若存在 genuine semantic / architecture / security / project-direction choice，不得自行決定，直接向使用者提出選項與影響，使用者裁決後才繼續 compile。不要求每次都回 Claude。
+      - 無 semantic blocker 後，產出完整符合 current HH.AI_v2 production contract 的 candidate prompt（包含 Prompt Manifest, current base OID, Goal, Invariants, Allowed Scope, Forbidden Scope, dependency evidence, dispositions, acceptance criteria, tests, canonical Gates, Git / CI lifecycle, error routing）。
+      - 回報等義：「已轉成符合規格的提示詞如下：<完整 production prompt> 請確認是否執行。」未確認前 tracked repo mutation = 0。
+    - **候選提示詞身分與確認語意（Candidate Identity & Confirmation Semantics）**：
+      - 每份 pending candidate 建立 session-local identity（如 `UPM-xxxxxx`），deterministic derive 自 repository identity, base OID, compiled production prompt, dependency evidence, Allowed Scope。不進 Git、不進 TASKBOARD、不進 global state、不跨 Agent。任何需求變動，old candidate 立即 INVALIDATED。
+      - 合法 confirmation intent（如「同意」「確認」「確認執行」「執行」「可以執行」），嚴禁 substring match（例如「我不同意」不得誤觸發）。
+      - Confirmation 只能批准最新一份 pending candidate。若包含新需求（例如「同意，但是再加 XXX」），視為 requirement changed，old candidate INVALIDATED → 重新 discovery → 重新 compile → 新 candidate → 再次等確認，不得執行舊 candidate。
+    - **基準漂移機械復原（Base Drift Mechanical Recovery）**：
+      - candidate 產生後，在 User confirmation 與 mutation 前重新確認 HEAD, origin/main, worktree, repo identity。若 base drift，不得執行舊 candidate，自動進行 mechanical recovery：no mutation → invalidate candidate → fetch current state → READ_ONLY rediscovery → re-run B-68 impact scan → compile new candidate → 重新請使用者確認。不需自動升級 Macro Auditor，除非新 base 產生 genuine S1 semantic choice。
+    - **現有生產安全規範永不繞過（Existing Production Safety Is Never Bypassed）**：
+      - User「同意」只代表批准 candidate 進入正式 production preflight，絕非批准跳過 safety。仍必須執行：Prompt Manifest validation、complete incoming prompt validation、prompt-preflight、B-68 dependency replay、UPDATE ⊆ Allowed Scope、base/origin/clean worktree checks、explicit staging、tests、canonical verify_all、Git / exact-SHA CI。若 User Mode 自己產出的 prompt 有錯，照常 fail-closed。
+    - **角色邊界、金鑰、外部動作與並行代理**：
+      - Antigravity 自主範圍：inspect, discovery, impact scan, reverse ref scan, test discovery, candidate scope, prompt compilation, implementation, debugging, M1-M3, test/Gate repair。
+      - 禁止自主：Macro PASS, architecture policy reversal, ADR override, security exception, destructive Git authorization, semantic project direction, hidden scope expansion, disposition semantic rewrite。遇 genuine semantic choice 直接詢問使用者。
+      - Secrets：不得因轉 prompt 複製 secret 到 TASKBOARD、EXEC-LOG、AUDIT-LOG、backlog、Git 或 candidate prompt prose，使用既有 env/secret 機制或 session-local placeholder（如 `<SECRET_FROM_USER_SESSION>`）。B-96 不建立新 secret manager。
+      - External Actions：遵守對應 skill/SOP 安全邊界與 user confirmation 要求，不以無 repo mutation 作為 bypass。
+      - Parallel Agents：不建立 global lock，依賴 base OID、fetch origin/main、clean worktree、B-68 replay、pre-commit recheck 確保碰撞時不得 silent overwrite。
+    - **漸進式揭露架構與 User-invoked 分類**：
+      - 未來實作優先採：`SOP/SOP_00A_Master_Index.json` → exact `$$使用者$$` trigger → `skills/orchestration/user-prompt-compiler/`（小型 hot-path `SKILL.md` + 詳細 `REFERENCE.md`），不建立大型 always-loaded rule mirror。
+      - 依 `AGENTS.md` §5 分類為 User-invoked（`disable-model-invocation: true`），必須由人類手動輸入，模型不得自主呼叫。
+    - **完成定義與驗收金絲雀（Definition of Done / Runtime Canaries）**：
+      1. Normal Agent 未收到 `$$使用者$$` → User Mode OFF。
+      2. 收到 `$$使用者$$` → User Mode ON，零 repo mutation。
+      3. ON + READ_ONLY request → 可直接分析，零 tracked mutation。
+      4. ON + REPO_MUTATION request → 先 discovery，只產 candidate prompt，未確認前零 mutation。
+      5. 合法 confirmation → 才進 production preflight。
+      6. 「我不同意」→ 不得誤判 approval。
+      7. 「同意，但是再加 XXX」→ old candidate invalidated，不得執行舊 prompt。
+      8. candidate base drift → invalidate + rediscover + recompile。
+      9. Allowed Scope 故意漏 UPDATE dependency → B-68 mutation-before S1 fail-closed。
+      10. `$$自動化$$` while User Mode ON → canonical special router。
+      11. `$$LINE連線$$` while ON → canonical route；如仍 PENDING_MIGRATION 則回 PENDING_MIGRATION truth，不得 Prompt Manifest 誤擋。
+      12. `$$TG連線$$` 同上。
+      13. unknown `$$command$$` → UNKNOWN_SPECIAL_COMMAND。
+      14. Agent/conversation 關閉 → User Mode 結束。
+      15. new Agent → User Mode OFF。
+      16. context / candidate identity 無法可靠確認 → fail-safe require `$$使用者$$` reactivation，零 mutation。
+      17. repository identity change → mode/candidate invalidated。
+      18. secret input → no persistent secret duplication。
+      19. external side effect → domain authorization path，不得 READ_ONLY shortcut。
+      20. User-generated candidate 本身有錯 → existing Prompt Manifest / B-68 / preflight 照常攔截。
+    - **明確非目標（Explicit Non-Goals）**：
+      - B-96 不做：User Owner safety override、bypass preflight、bypass B-68、bypass destructive-Git policy、Macro Auditor replacement、automatic Macro PASS、global User Mode persistence、cross-Agent mode sharing、new global state database、new secret manager、new Agent scheduler、global concurrency lock、LINE migration、TG migration、`$$自動化$$` redesign、`$$Allow All$$` expansion、B-56 replacement、E-04 replacement、Prompt Manifest v2、semantic dependency engine。
+    - **權威宣告（Authority Statement）**：
+      - 本 Specification Snapshot 保存已裁決 architecture / acceptance / non-goals，目的為讓未來 B-96 直接施工，避免重新研究。但 current task status、execution order 與 NEXT_WORK 仍唯一以 `docs/TASKBOARD.md` 為權威來源。
