@@ -1,5 +1,5 @@
 {
-  "base_head": "3665516",
+  "base_head": "3023267",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 0,
@@ -33,12 +33,13 @@
       "sha256": "f84f800b79ba5187dcb6b85db55ae5b1e465b672d3377286d6330695705d6ccf"
     },
     ".agents/rules/prompt-preflight.md": {
-      "fences": 4,
+      "fences": 0,
       "headings": [
         "# 提示詞前置驗證規範（Prompt Preflight Protocol）",
         "## 1. 為什麼有這一條",
         "## 2. 這是審查，不是建議",
         "### 2.1 最前置硬規則：Prompt Manifest 機械驗證（Hard Rule）",
+        "### 2.2 依賴閉包機械重放（Dependency Closure Replay Hard Rule）",
         "## 3. 必要結構元素（缺一即停，Mode-Aware）",
         "### 3.0A 所有模式共同必備要素（缺一即停）",
         "### 3.0B EXACT_SPEC 專屬必備要素（僅在 EXACT_SPEC 模式下檢查）",
@@ -58,8 +59,8 @@
         "## 5. 例外",
         "## 6. 這條規則保護的是誰"
       ],
-      "lines": 277,
-      "sha256": "d222b3bb08404851ec9c6dfc2b2da29d707874b27758bd67e2df5113df42a9b9"
+      "lines": 267,
+      "sha256": "8e2d810b4062cbecfb3123bdac72470b56ff735744dae2ea53b70ac6c3ccb79f"
     },
     ".agents/rules/role-boundaries.md": {
       "fences": 0,
@@ -154,8 +155,8 @@
         "### 11.5 審計狀態之單一事實來源（Audit State SSOT）",
         "### 11.6 [已退役／不需執行] 歷史 `audited-*` tag 之留痕保存（RETIRED / NOT REQUIRED）"
       ],
-      "lines": 443,
-      "sha256": "b2aa6938fcb62de4fecf5156a46c0b3f90219a7cfcfbcae7558741621bf51e16"
+      "lines": 447,
+      "sha256": "76bd6deac53d74eac2354a636222c65a3f6c91636ab48fc3a840e3ce21f8d796"
     },
     ".claude/rules/auditor-selftest.md": {
       "fences": 0,
@@ -169,8 +170,8 @@
         "## E. 交付（產出提示詞之前）",
         "## F. 額度（每一輪回覆的開頭與結尾）"
       ],
-      "lines": 129,
-      "sha256": "c9f3729e2d1a1ed9d9ae81020c30867aa89c4387d55324c9669c9eb745ccfeff"
+      "lines": 130,
+      "sha256": "11f648850334a42d08e4582d227f574ec01f4fa9d1819b7853274a53d73ef73d"
     },
     ".github/workflows/verify.yml": {
       "fences": 0,
@@ -509,16 +510,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 118,
-      "sha256": "1aafa07f5f053bc133a0d2d01feb0e4500f454bf744913acf801e5d2a25346f2"
+      "lines": 119,
+      "sha256": "cfba1b575886b43ba0a799eb38219528d2d2da991979d9f050d2780f2853fd80"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 90,
-      "sha256": "a615af08ee645a06fea1affcc4380c3a07bbd0d087274e09fd7b57e92794c6c1"
+      "lines": 91,
+      "sha256": "3acf9f2c346e11ac4e377d25519410efad4cdb68996dc7003113535c7709b4ef"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -554,7 +555,7 @@
         "## 封存區"
       ],
       "lines": 238,
-      "sha256": "db6aa2eb6416d60e4225c9529cc8cbfe07071397e1cd1d97b0e84d0e8596dafe"
+      "sha256": "a468f748791b7bc019137deb13ae5bbedb7f60e44df605d77a5392fdd1d29d9c"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -882,8 +883,8 @@
         "### 5.3 待使用者裁決",
         "### 5.4 進行中／等待回報"
       ],
-      "lines": 3121,
-      "sha256": "0c06b1c35a903fac7b2891a6a748c7b4dd88cf8d3e482042b532722a0c0e639e"
+      "lines": 3128,
+      "sha256": "6d202380ea324f60228924dde864fda9ba72e347d85b5902d9c8eb9466884b9e"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -899,8 +900,8 @@
       "headings": [
         "# -*- coding: utf-8 -*-"
       ],
-      "lines": 619,
-      "sha256": "1bba83ebf730fb901a20d20d8fc29ef85b0abc8f1554e3ae940d0b94ef0ac1ea"
+      "lines": 675,
+      "sha256": "5dbc7ca4842d2dcb9e98e7b925649e86277c7b1e128b1db7f7feab034723bb5f"
     },
     "scripts/check_consistency.py": {
       "fences": 0,
@@ -931,6 +932,14 @@
       "lines": 516,
       "sha256": "c7316579689d2b9f68669ace3edc9900d0916b9069343a1954f5b4460e5f70ba"
     },
+    "scripts/impact_scan.py": {
+      "fences": 0,
+      "headings": [
+        "# -*- coding: utf-8 -*-"
+      ],
+      "lines": 488,
+      "sha256": "d0ba8bccd314962a075b9f4b0b1385c7c1d6c4737ff27d28a9517c97e0251b8d"
+    },
     "scripts/tests/test_anchor.py": {
       "fences": 0,
       "headings": [],
@@ -945,8 +954,8 @@
         "## 第二級標題",
         "# 修改後標題"
       ],
-      "lines": 370,
-      "sha256": "58d22b2ac0b48a7dd682ca6c5f050aa6f654b2b94a86902057c1bc11cdb7e6cb"
+      "lines": 427,
+      "sha256": "2081169b7d6be4eaede227647c2a0a37546b761fb47cffaed56452c1cd0665b8"
     },
     "scripts/tests/test_check_17_18.py": {
       "fences": 0,
@@ -988,6 +997,14 @@
       "headings": [],
       "lines": 119,
       "sha256": "113e2d181ef5675c8ac30ac6b31eb100f82eb138c0532c663b975f1b1dd55b82"
+    },
+    "scripts/tests/test_impact_scan.py": {
+      "fences": 0,
+      "headings": [
+        "# -*- coding: utf-8 -*-"
+      ],
+      "lines": 467,
+      "sha256": "6d497b2983c6cf12165a5300bbcef85dafc821100d714369d3f3d1c226226138"
     },
     "scripts/tests/test_prompt_manifest.py": {
       "fences": 0,
@@ -1109,7 +1126,7 @@
       "sha256": "35bf7dbfa3c7d291b550c3c97a6ae398a22b1dc3624c1d2fc1e4db6963d6e115"
     }
   },
-  "generated_at": "2026-09-14T01:05:43Z",
+  "generated_at": "2026-09-14T09:53:23Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

@@ -14,7 +14,7 @@
 
 收到提示詞後，**在執行任何修改前**，先對提示詞做結構檢查。未通過即停機回報，不猜測、不補齊。
 
-| 屬於本規則（機械檢查） | 不屬於本規則（語意判斷） |
+| 本規則機械檢查 | 非本規則語意判斷 |
 |---|---|
 | 提示詞是否有 `git pull origin main` | 這批該不該做 |
 | 錨點字串在目標檔案出現次數 | 錨點選得好不好 |
@@ -31,6 +31,17 @@
 4. 若 exit == 0：才進入後續既有語意與機械前置檢查流程。
 
 本驗證器不取代現有 M1/M2/M3/S1 錯誤路由；它將第一層提示詞結構檢驗從 Agent 記憶移至確定性程式碼。
+
+
+### 2.2 依賴閉包機械重放（Dependency Closure Replay Hard Rule）
+
+若提示詞宣告 E24 = PASS 且依賴模式為 `mode = REQUIRED`，執行者在任何 repo mutation 前必須以 `python scripts/impact_scan.py --check <evidence>` 執行獨立重放比對：
+1. 缺依賴證據或 JSON 格式錯誤：判定為 `PROMPT STRUCTURE ERROR`，停止執行。
+2. 掃描重放比對不符（有漏掃或幽靈依賴）：停機判定為 `S1 DEPENDENCY_DRIFT`。
+3. 任何依賴項未聲明 disposition：停機判定為 `S1 DEPENDENCY_DRIFT`。
+4. 標註為 `UPDATE` 之依賴項未列入本批 Allowed Scope：停機判定為 `S1 DEPENDENCY_SCOPE_MISSING`。
+5. 實作中證明 `VERIFY_ONLY` 依賴實際必須修改：不得擅自修改，停機判定為 `S1 DEPENDENCY_SCOPE_EXPANSION`。
+執行者僅驗證確定性機器證據與 Allowed Scope 配對，絕對不得對審計官之 disposition 進行語意重複審查。
 
 ---
 
@@ -106,11 +117,11 @@ GOAL_SPEC 模式不得要求 E-1～E-4，其正確性由單元測試、Gate 驗�
 ## 3.3 遇到疑問而非缺失時
 
 若發現的是實作疑問或非結構性疑慮，屬於判斷，依 `.agents/rules/role-boundaries.md` §7 分流：
-1. **M1**（衍生值落差）：自己重新推導計算、記錄於 `docs/EXEC-LOG.md`、繼續。
-2. **M2**（暫態/網路）：重試或走確定性回退、繼續。
-3. **M3**（Allowed Scope 內實作、測試、Gate 或 CI 失敗）：執行者自主修復閉環（最多 3 輪）。
-4. **偶發性觀察（incidental observation）**：若不阻礙 Goal、Acceptance、安全與正確性，記錄於 `docs/EXEC-LOG.md` 後繼續。
-5. **僅有真正 S1 阻擋事項**（如 base drift、需改動 Allowed Scope 外路徑、驗收條件自相矛盾、破壞性 Git 操作、重大架構或安全決策）→ **才停機升級 S1**。格式：`S1 <簡短分類> | evidence location / blocker`。
+1. **M1**（衍生值落差）：自己重新計算、記錄於 `docs/EXEC-LOG.md`、繼續。
+2. **M2**（暫態/網路）：重試或確定性回退、繼續。
+3. **M3**（Allowed Scope 內實作、測試、Gate/CI 失敗）：自主修復閉環（最多 3 輪）。
+4. **偶發性觀察**：不阻礙目標與正確性者，記錄於 `docs/EXEC-LOG.md` 後繼續。
+5. **僅有真正 S1 阻擋事項**（base drift、需改 Scope 外路徑、驗收矛盾、破壞性操作、重大決策）→ **停機升級 S1**。格式：`S1 <分類> | evidence / blocker`。
 
 不得因語意好奇、格式喜好或偶發觀察擅自停機消耗 Macro Auditor。
 
@@ -149,6 +160,7 @@ GOAL_SPEC 模式不得要求 E-1～E-4，其正確性由單元測試、Gate 驗�
 | E21 衍生數值不作 blocking truth | 基準 commit 與實測一致；machine-derived values 由工具產出，不得抄為 blocking truth |
 | E22 審計狀態權威檢查 | 未要求建立 audited tag；審計狀態以 AUDIT-LOG、refactor-backlog §5.1 與 GitHub Actions 為 SSOT |
 | E23 批次規格進 repo | EXACT_SPEC 附規格路徑與 sha256 且列入 git add；GOAL_SPEC 不要求規格進 repo |
+| E24 依賴閉包檢驗 | 若宣告 E24 = PASS 且 mode=REQUIRED，mutation 前重跑 impact_scan replay 比對；缺證據或格式錯為 PROMPT STRUCTURE ERROR；replay 不符／缺處置／UPDATE 未進 Allowed Scope 為 S1 DEPENDENCY_* |
 
 **自檢聲明不接受任何豁免。** 比對為「否」時一律停止回報，標為 ⚠️ 或「刻意不做」均不構成豁免。偏離規則之唯一合法路徑為先行開批修改規則本身。
 
@@ -180,13 +192,10 @@ GOAL_SPEC 模式不得要求 E-1～E-4，其正確性由單元測試、Gate 驗�
 行數、圍欄數、測試數、CHECK 數皆為工具產出之衍生診斷值（derived diagnostic truth）。**提示詞不得將衍生數值抄寫為 blocking truth，執行者亦不得因衍生數值不符而停機。** 變更安全由 Batch Spec 與 machine tools 守護。
 
 **執行期規則新鮮度契約（Runtime Rule Freshness Contract）**：
-1. GitHub CI 驗證 committed repository rule artifact，非 Antigravity IDE Rule UI runtime cache。
-2. Executor 每批必須從 local filesystem 實體檔案重新讀取 active rules；Rule UI 快取不得取代 explicit reread。
-3. 若 IDE Rule UI 顯示內容／字元數與 local disk + HEAD blob 不一致：
-   - HEAD / local disk 為 repository truth。
-   - UI 視為 stale runtime cache，嚴禁將 stale UI 內容存回 repo。
-   - 進入下一個 production task 前 reload / reopen rule context 或使用 fresh session。
-4. 此屬 runtime freshness，不能宣稱 GitHub CI 可以驗證 IDE cache。
+1. GitHub CI 驗證 committed repo rule artifact，非 IDE Rule UI runtime cache。
+2. Executor 每批必須從 local disk 實體檔案重讀 active rules；UI 快取不得取代 explicit reread。
+3. 若 IDE Rule UI 與 local disk / HEAD 不一致：以 local disk 為準，UI 視為 stale cache 嚴禁存回 repo；進入下個 task 前 reload context。
+4. 此屬 runtime freshness，不能宣稱 CI 可驗證 IDE cache。
 
 ---
 
@@ -228,37 +237,18 @@ GOAL_SPEC 模式不得要求 E-1～E-4，其正確性由單元測試、Gate 驗�
 
 ## 4. 錨點唯一性驗證（僅 EXACT_SPEC 動手前必做）
 
-> 註：本節僅適用於 `EXACT_SPEC` 模式。`GOAL_SPEC` 模式下由執行者自主實作，不強制要求錨點前置驗證。
+> 註：僅適用於 `EXACT_SPEC` 模式。`GOAL_SPEC` 由執行者自主實作，不強制要求錨點前置驗證。
 
-在寫入前，對提示詞**每一個**錨點字串驗證：
-
-```python
-import io
-t = io.open(目標檔案, encoding="utf-8").read()
-print(t.count(錨點字串))   # 必須恰好是 1
-```
-
+在寫入前，對提示詞每個錨點字串驗證在目標檔案中 `count == 1`：
 - **count = 0** → 錨點不存在，停止並回報
 - **count > 1** → 錨點不唯一，停止並回報命中位置
-- **全部為 1** → 才開始寫入
-
-不得自行找看起來最像的地方套用。
+- **全部為 1** → 才開始寫入；不得自行找位置套用。
 
 ---
 
 ## 4.1 寫入後的原文驗證（動手後必做）
 
-每完成一個「替換」或「插入」修改，立刻驗證：
-
-```python
-t = io.open(目標檔案, encoding="utf-8").read()
-print(t.count(指定的新內容))   # 必須恰好是 1
-```
-
-- **count = 1** → 寫入正確
-- **count = 0** → 寫入與指令不符，**停止並回報**
-
-前置驗證確認「找得到」，後置驗證確認「改對了」。
+完成「替換」或「插入」修改後，立刻驗證指定新內容在目標檔案中 `count == 1`（0 則寫入不符，停止並回報）。前置確認「找得到」，後置確認「改對了」。
 
 ---
 
@@ -274,4 +264,4 @@ print(t.count(指定的新內容))   # 必須恰好是 1
 
 ## 6. 這條規則保護的是誰
 
-本規則保護專案工程紀律。雙方各司其職：審計官不越權動檔案，執行者不做未授權架構決策；執行者機械驗證提示詞結構，審計官獨立核對執行結果，確保任何一方之偏離皆能被對稱機制攔截。
+本規則保護專案工程紀律：審計官不越權動檔，執行者不做未授權架構決策；執行者機械驗證提示詞結構，審計官獨立核對結果，確保偏離皆被對稱攔截。

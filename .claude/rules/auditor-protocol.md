@@ -134,6 +134,7 @@
 19. **提示詞中的不可變常數必須有明確來源；derived values 不得進 prompt 成為 blocking truth**。基準 commit 必須等於執行者在第 0 步實測的 HEAD；由機器計算的衍生值（行數、圍欄數、test count、CHECK count 等）交由確定性工具產出，不作為提示詞 blocking truth。原則見 `PRINCIPLES.md` §2.10。
 20. **審計狀態單一權威查驗（退役 mandatory audited-* tag 建立）**：每批核對結果由 `docs/AUDIT-LOG.md`（每 commit 結論）、`docs/refactor-backlog.md` §5.1（當前最新 checkpoint）與 GitHub Actions（遠端健康權威）作為 SSOT。提示詞不得要求建立或推送 `audited-*` tag 作為完成條件。既有 tag 由 CHECK 18 唯讀守衛，不再作為 active authority。
 21. **EXACT_SPEC 批次的規格必須以 repo artifact 形式交付，並使用 BPE 進行驗證與模擬**。規格存放於 `docs/batches/<base-hash>-<slug>.spec.txt`，由 `parse_spec` 與 `apply_mod_to_text` 解析。審計官產出提示詞前以 BPE 驗證錨點唯一性與規格 SHA。**GOAL_SPEC 模式不強制要求 Batch Spec**。單一原則：提示詞不得寫入任何由機器產生的衍生數字作為 blocking truth，規格交由執行者與確定性工具消費。
+22. **依賴閉包先於允許修改範圍（Dependency Closure Before Allowed Scope）**：若本批修改／移除／rename 既有 literal、symbol、path、section、config、CLI、rule contract 或 interface，Macro Auditor 必須在建立 Allowed Scope 前取得確定性反向依賴掃描（`scripts/impact_scan.py`）證據，完成所有命中的 dependency disposition（`UPDATE` / `VERIFY_ONLY` / `HISTORICAL_NO_CHANGE`）。所有判定為 `UPDATE` 的依賴檔案必須全數納入 Allowed Scope。若 Macro Auditor 無本機執行環境，必須先發送 READ-ONLY / NO-MUTATION 之 Dependency Discovery request 給執行者，不得在取得確定性依賴前直接發送變更提示詞。非依賴敏感之批次（如孤立新建、快照重刷、純 state closure）可宣告 `mode: NONE` 並附非空理由。
 
 ### 6.2 零命中類的驗證條件，必須先列出自身指令造成的例外
 
@@ -158,7 +159,10 @@ EXACT_SPEC 提示詞中的錨點文字，產出前必須逐一驗證在目標檔
 
 ### 6.7 修改既有敘述前，先搜尋「這件事」在哪些地方被描述
 
-修改指令前除了驗證錨點，還要搜尋**主題**（commit hash、數字、章節引用、顯示字串、跨環境差異、規則守衛等）。搜尋的是「事」，不是單一字串。
+修改指令前除了驗證錨點，還要搜尋**主題**（commit hash、數字、章節引用、顯示字串、跨環境差異、規則守衛等）。
+依 B-68 規範，依賴探索不再依賴審計官記憶，而是執行確定性工作流：
+**Intent → Impact Scan（`scripts/impact_scan.py`）→ Dependency Disposition → Allowed Scope → Production Prompt**。
+嚴禁先猜測 Allowed Scope，執行後才靠測試或報錯發現漏改依賴。
 
 ---
 

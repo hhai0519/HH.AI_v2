@@ -528,6 +528,60 @@ def simulate_and_verify(mods, expects, repo_root):
         shutil.rmtree(temp_dir, ignore_errors=True)
 
 
+
+def scan_spec_dependencies(mods, repo_root):
+    """
+    對 Batch Spec 中的 MOD 執行確定性反向依賴掃描 (B-68 Phase 1)。
+    - 對於 replace MOD：針對其 anchor（被替換之原有內容）建立 query 執行反向依賴掃描。
+    - 對於 create_file 或 insert 類 MOD：不假造 replace 依賴。
+    - 僅輸出 dependency discovery 結果，絕對不產生語意處置 (semantic disposition)。
+    """
+    replace_mods = [m for m in mods if m.get("mode") == "replace"]
+    if not replace_mods:
+        return {"schema_version": 1, "mode": "NONE", "reason": "No replace MODs in spec", "results": []}
+
+    queries = []
+    for idx, mod in enumerate(replace_mods):
+        anchor = mod.get("anchor", "")
+        if anchor:
+            queries.append({
+                "id": f"mod_{mod.get('id', idx + 1)}_replace_anchor",
+                "kind": "literal",
+                "value": anchor
+            })
+
+    if not queries:
+        return {"schema_version": 1, "mode": "NONE", "reason": "No valid replace anchors found", "results": []}
+
+    try:
+        from impact_scan import run_discovery
+        return run_discovery(repo_root, queries)
+    except Exception as e:
+        return {"schema_version": 1, "mode": "NONE", "reason": f"Impact scan unavailable: {e}", "results": []}
+
+
+def format_dependency_discovery(discovery: dict) -> str:
+    """格式化反向依賴掃描發現（Discovery Evidence），不產生 semantic disposition。"""
+    lines = ["\n[DEPENDENCY_DISCOVERY]"]
+    mode = discovery.get("mode", "REQUIRED")
+    if mode == "NONE":
+        lines.append(f"mode=NONE (reason: {discovery.get('reason', 'N/A')})")
+        return "\n".join(lines)
+
+    results = discovery.get("results", [])
+    if not results:
+        lines.append("無依賴命中")
+        return "\n".join(lines)
+
+    for r in results:
+        qid = r.get("query_id")
+        matched = r.get("matched_paths", [])
+        lines.append(f"[QUERY] {qid}  命中 {len(matched)} 處追蹤檔案:")
+        for p in matched:
+            lines.append(f"  - {p}")
+    return "\n".join(lines)
+
+
 def main(argv=None):
     if argv is None:
         argv = sys.argv[1:]
@@ -605,6 +659,8 @@ def main(argv=None):
 
     print(format_e11(mods, anchor_results))
     print(format_bcd(mods, repo_root))
+    discovery = scan_spec_dependencies(mods, repo_root)
+    print(format_dependency_discovery(discovery))
 
     if not args.check_only:
         sim_ok = simulate_and_verify(mods, expects, repo_root)

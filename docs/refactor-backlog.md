@@ -2825,7 +2825,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 5.1 上一批狀態
 
-上次核對通過的 HEAD：3665516
+上次核對通過的 HEAD：3023267
 
 - `23af193`（執行者前置檢查 ＋ 回滾程序 ＋ `AUDIT-LOG.md` ＋ 四缺口修正）
   已於 2026-09-02 由審計官核對通過：6 檔異動（含 2 個新檔）、零夾帶、
@@ -2998,6 +2998,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 - `a3201f3`（B-87 Phase 1 Comprehensive Taskboard Truth Reconciliation）已於 2026-09-13 執行完成：5 檔異動、零夾帶，獨立驗證五項全過，CI Run 34765468962 success，Machine PASS / Macro NEEDS BOUNDED MICRO-FIX。
 - `b2256fd`（B-87 Phase 1 Bounded Micro-Fix & Closure）已於 2026-09-13 由外部審計官全面審查獨立核對通過：5 檔 authorized scope，本地 verify_all 5 Gates 全 PASS，GitHub Actions exact-SHA Run 34768119758 success。B-70 正確恢復為 genuine pending；B-57 stale B-71 引用修復；B-87 Phase 1 reconciliation accepted；generic path-existence CHECK proposal 因 false-green risk 明確 rejected / superseded；B-87 結案處置判定為可封存；B-01 零實作；判定 Macro PASS (ACCEPT ALL)。
 - `3665516`（B-31 Tracked-Scope Bounded Micro-Fix & Closure）已於 2026-09-14 由外部審計官全面審查獨立核對通過：7 檔 authorized scope，本地 verify_all 5 Gates 全 PASS，GitHub Actions exact-SHA Run 34792068482 success。CHECK 19 改採 Git tracked inventory 為單一權威來源，.gitattributes BOM negative canary FAIL/PASS、untracked/ignored non-authority、fail-closed 完整覆蓋；B-88 PASS；B-89 PASS；B-87 already CLOSED-AS-SUPERSEDED；three non-behavioral verifier reporting strings are synchronized by the following closure batch；B-01 零實作；判定 Macro PASS (ACCEPT ALL)。
+- `3023267`（B-31/B-88/B-89 Closure & Reporting Truth Sync）已於 2026-09-14 由外部審計官全面審查獨立核對通過：4 檔 authorized scope，本地 verify_all 5 Gates 全 PASS，GitHub Actions exact-SHA Run 34794878832 success。B-31/B-88/B-89 正式 CLOSED；三處 non-behavioral verifier-reporting truth sync accepted；前一輪 paired test assertion S1 正確 fail-closed 並由 S1 resolution 修復；TASKBOARD.NEXT_WORK 推進至 B-41 後經使用者裁決校正至 B-68；B-01 零實作；判定 Macro PASS (ACCEPT ALL)。
 
 ### 5.2 待辦
 
@@ -3039,11 +3040,13 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - Pre-B01 taskboard truth reconciliation External Macro PASS / CLOSED（B-87 CLOSED）。
   - Pre-B01 deterministic false-green batch B-31 / B-88 / B-89 External Macro PASS / CLOSED。
   - verifier-reporting truth 已於 closure 同步。
+  - B-68 Dependency Closure / Deterministic Impact Scan Phase 1 執行中，待 External Macro Audit 與 runtime malformed-scope canary。
+  - B-41 尚未啟動。
+  - B-01 尚未啟動。
   - B-28/B-29 full upstream comparison 不再是 Pre-B01 blocker（使用者裁決延後 post-B01）。
   - Production routing ready。
   - 當前與下一步工作任務權威（Current / next work authority）仍只由 `docs/TASKBOARD.md` 的 `**NEXT_WORK**` pointer 保存與導航，交接區不複製 task ID 或待辦佇列。
   - 待使用者裁決事項依 §5.3。
-  - B-01 尚未啟動。
   - Antigravity IDE runtime rule UI freshness 仍需由 runtime reload / fresh session 保證，不能由 CI 直接證明。
 - **待使用者裁決事項**：有（依 §5.3，包含 GitHub main preventive required-check enforcement 決策，屬 non-blocking user decision）。
 - **剩餘工作權威**：以 `docs/TASKBOARD.md` 為唯一 remaining-work authority。
@@ -3119,3 +3122,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
       - B-87 狀態正式轉為「可封存」（CLOSED）。
       - 全庫未新增 generic completion inference 或第二份 task state store。
     - **注意**：本節為 append-only 歷史證據留痕，當前任務權威唯一以 `docs/TASKBOARD.md` 為準。
+
+62. **User Governance Priority Decision（使用者治理優先原則裁決）**（2026-09-14）
+    - **裁決內容**：不設定人工 governance 停止線。治理規範若有 current evidence 且完成後能實質提升主線 correctness、reliability、automation 或效率，應處理清楚；但不得因理論完美、形式對稱或 speculative possibility 無限放大治理範圍。
+    - **性質界定**：本裁決為排程與執行原則（scheduling / execution rationale），絕非第二工作佇列；當前任務權威唯一以 `docs/TASKBOARD.md` 為準。

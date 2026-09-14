@@ -28,6 +28,8 @@ from build_prompt_evidence import (
     format_e11,
     format_bcd,
     simulate_and_verify,
+    scan_spec_dependencies,
+    format_dependency_discovery,
     main,
     SpecParseError,
 )
@@ -368,3 +370,58 @@ range: 1-5
     assert "[EXPECT] TASKBOARD.md" in out
     assert "不符" in out
     assert "缺號: [4]" in out or "4" in out
+
+
+def test_bpe_impact_scan_integration_replace_mod(tmp_path):
+    """B-68: EXACT_SPEC replace anchor 能調用共同 impact primitive，且僅輸出 discovery evidence（無 semantic disposition）。"""
+    import subprocess
+    repo = str(tmp_path)
+    subprocess.run(["git", "init"], cwd=repo, check=True, capture_output=True)
+    subprocess.run(["git", "config", "user.name", "Test User"], cwd=repo, check=True, capture_output=True)
+    subprocess.run(["git", "config", "user.email", "test@example.com"], cwd=repo, check=True, capture_output=True)
+
+    src_file = os.path.join(repo, "src.py")
+    with open(src_file, "w", encoding="utf-8") as f:
+        f.write('MSG = "ORIGINAL_DISPLAY_LITERAL"\n')
+    subprocess.run(["git", "add", "src.py"], cwd=repo, check=True, capture_output=True)
+    subprocess.run(["git", "commit", "-m", "init"], cwd=repo, check=True, capture_output=True)
+
+    mod = {
+        "id": "1",
+        "file": "src.py",
+        "mode": "replace",
+        "anchor": 'MSG = "ORIGINAL_DISPLAY_LITERAL"',
+        "payload": 'MSG = "NEW_DISPLAY_LITERAL"'
+    }
+
+    discovery = scan_spec_dependencies([mod], repo)
+    assert discovery["mode"] == "REQUIRED"
+    assert len(discovery["results"]) == 1
+    res = discovery["results"][0]
+    assert res["matched_paths"] == ["src.py"]
+    # 絕不自動產生 semantic disposition (UPDATE / VERIFY_ONLY / HISTORICAL_NO_CHANGE)
+    assert "disposition" not in res
+    for m in res.get("matches", []):
+        assert "disposition" not in m
+
+    formatted = format_dependency_discovery(discovery)
+    assert "[DEPENDENCY_DISCOVERY]" in formatted
+    assert "src.py" in formatted
+    assert "UPDATE" not in formatted
+    assert "VERIFY_ONLY" not in formatted
+
+
+def test_bpe_impact_scan_create_file_not_treated_as_replace_dependency(tmp_path):
+    """B-68: create_file MOD 不得被錯誤當成 replace dependency，不假造 dependency。"""
+    mod = {
+        "id": "1",
+        "file": "new_file.py",
+        "mode": "create_file",
+        "anchor": None,
+        "payload": "print('hello')\n"
+    }
+
+    discovery = scan_spec_dependencies([mod], str(tmp_path))
+    assert discovery["mode"] == "NONE"
+    assert discovery["reason"] == "No replace MODs in spec"
+    assert len(discovery["results"]) == 0

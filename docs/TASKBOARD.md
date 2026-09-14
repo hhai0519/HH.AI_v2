@@ -10,9 +10,9 @@
 `待裁決`（需使用者決定）／`已完成`（仍可能被引用）／
 `可封存`（不影響後續工作，待使用者確認後移入封存區）
 
-**NEXT_WORK**：B-41
+**NEXT_WORK**：B-68
 
-**最後更新**：2026-09-14，B-31/B-88/B-89 External Macro PASS Closure / Next: B-41
+**最後更新**：2026-09-14，B-68 Dependency Closure Phase 1 In Progress / Next: B-68
 
 ---
 
@@ -123,7 +123,7 @@ A 節目前狀態以本表各列與 `NEXT_WORK` 之 current repo truth 為準；
 | B-49 | 可封存 | **CI 獨立查證的規則化與機械化** | 被 ADR-0020、AGENTS.md §10、git-and-reporting.md §2.5 與 README Verify badge supersede。 |
 | B-50 | 已完成 | **`prompt-preflight.md` §3.4 的交叉驗證可被審計官以「知情偏離」宣告繞過** | 2026-09-06 審計官在 2a-fix 把 E8 標為 ⚠️ 並附理由，執行者接受並未停止，導致 CHECK 12 在 CI 上 FAIL。§3.7 明寫「十八項全部可機械驗證，沒有任何一項需要你憑信任接受」，但 E8 就此變成信任項——與該節建立時要消滅的 E11 造假是同一個洞。而 `role-boundaries.md` §2 又禁止執行者判斷規範是否應存在，執行者被夾在中間。**修法：E8 比對為否時一律停止、不接受任何理由；審計官需偏離 §6.1-8 時，唯一合法路徑是先另開一批修改規則本身。** 排批 2b。**2026-09-07 實測落地**：`.agents/rules/prompt-preflight.md` §3.4 已含「自檢聲明不接受任何豁免」，實測 1 處 |
 | B-51 | 已完成 | **判準含 HEAD 的檢查，本地與 CI 的答案結構性差 1** | 已於 Transient Red Reduction 完成：check_9_handover_head 強化 candidate 自引防護（不得為當前 HEAD）；check_consistency.py 實作 --as-if-committed 預演模式，使 commit 前即可準確預測 commit 後拓撲（HEAD=candidate, HEAD~1=當前HEAD, HEAD~2=當前HEAD~1），提前攔截 stale handoff pointer 與週期落後，消除本地與 CI 差 1 的可預測中間紅燈 |
-| B-52 | 已完成 | **同形錯誤連續三批：改動或跳過某物之前，未查誰依賴它** | 批 1 改 `check_consistency.py` 顯示字串未查測試斷言引用；批 2a 設計跨平台位元組比對未查 git 跨平台轉換；批 2a-fix 宣告偏離 §6.1-8 未查其機械守衛 CHECK 12。`auditor-protocol.md` §6.7 已有此規則但措辭只舉「數字」「章節引用」為例。**處置：§6.7 的搜尋對象清單擴為四類**——被測試斷言引用的字串／會被執行環境改動的東西（換行、編碼、路徑分隔符）／有機械守衛的規則／本地與 CI 判準會分歧的東西。依 §5.7 同步進 §6.1、selftest E 節、preflight §3 三處。**原 B-24 併入本項**。**2026-09-07 實測落地**：`.claude/rules/auditor-protocol.md` §6.7 已含「要偏離任何一條規則」，實測 1 處，清單共 7 條 |
+| B-52 | 已完成 | **同形錯誤連續三批：改動或跳過某物之前，未查誰依賴它** | B-52 建立 §6.7 dependency-search 原則與歷史事故分類；其『讓 dependency discovery 不再依 Auditor 記憶』之 executable residual 由 B-68 正式承接。 |
 | B-53 | 待辦 | **CHECK 4、7 仍內嵌於 `run_checks()`，待完成剩餘檢查器抽取與回歸測試** | CHECK 1、2、5、6 已於 B-93 抽成 production helpers，CHECK 3 已具獨立 production function，且上述函式皆已具備 direct regression canaries。目前 CHECK 4、7 仍留在 `run_checks()` inline。本項保持「待辦」，但 scope 收斂為 remaining inline checks 抽取與 residual regression coverage，待後續批次處理。不得錯誤標記已完成。 |
 | B-54 | 待辦 | **零項 CHECK 驗證 SOP 層內容或跨層矛盾** | 16 項中 6 項對著稽核迴圈自己（8／9／11／12／15／16）、5 項通用格式（1／2／3／13／14）、3 項 `skills/`（4／6／7）、2 項路由引用（5／10）。**SOP 的 1,305 行內容與規範層之間的矛盾完全無守衛。** 已知兩例（`SOP_02` 清歷史 vs `.agents/rules/git-and-reporting.md` 禁 force push、`SOP_04` 第 167 行與 `SOP_06` 第 133 行 vs ADR-0017）皆為人工偶然發現。處置：建 `docs/managed-facts.yaml` ＋ **CHECK 21 跨層矛盾偵測**。排批 2e |
 | B-55 | 待辦 | **治理層已分裂成兩個速度** | 實測最後修改日：稽核迴圈檔案 09-05～09-06；作業層 SOP_01／02／05／06／09／11／12／13 停在 2026-08-25（12 天）；**`.agents/rules/skills-architecture.md` 停在 2026-08-13（24 天，全庫最舊）——而它正是 B-01 的目標檔案**。處置：**CHECK 23 文件時效偵測**。排批 2e |
@@ -139,7 +139,7 @@ A 節目前狀態以本表各列與 `NEXT_WORK` 之 current repo truth 為準；
 | B-65 | 已完成 | **雜湊一段跨平台 shell pipeline 的輸出，是錯的閘門原語** | 第二投三檔行數與圍欄數全部相符，唯獨雜湊不符。審計官重跑後逐行比對執行者貼出的 136 行：**行號序列與內容完全相同**（auditor-protocol 60 條、handover-selftest 39 條、prompt-preflight 12 條、git-and-reporting 8 條、role-boundaries 5 條、PRINCIPLES 5 條、AGENTS 1 條），另試 CRLF 版仍不符。**雜湊把「內容是否相同」綁死在行尾、locale、工具實作這些與內容無關的變數上**——與 B-46 的 CRLF 是同一形狀，審計官在自己設計的閘門上重犯。處置：(e) 段改為純文字比對（行數／圍欄數、項數、**每個修改檔的最後三條 CHECK 10 INFO 行**），已寫進 §6.1 第 18 項 |
 | B-66 | 已完成 | **根因定案：審計官的輸出是一次連續生成，宣告卻聲稱它是多步驗證的產物** | 2026-09-06 盤點八批共 16 件錯誤（第二投時已增為 19 件），壓到一層是同一件事——擬定修改、寫錨點、宣告已驗證、寫預期值，四者在同一段生成流裡完成，讀者（含審計官自己）分不出哪些數字來自工具、哪些來自生成。**這解釋了為何加強措辭七週無效**：措辭也是文字，進入同一段生成後被同一個機制繞過。**只有外部產物有效，因為它不是模型生成的**。原則落點 `PRINCIPLES.md` §2.10，排批 2b-4 |
 | B-67 | 已完成 | **`scripts/build_prompt_evidence.py`** | 以批次規格為單一來源，產出錨點 `count()` 逐條實測、**E11 清單與總數（由 `len()` 產生）**、(b)(d) 行數與圍欄數、套用到暫存副本後的 (e) 模擬結果，以及 **EXPECT 區塊的 ID 序列驗證**。本批完成 |
-| B-68 | 待辦 | **`scripts/impact_scan.py`** | 對將被改動的字串／章節／檔案做全庫反向引用掃描，涵蓋 `.claude/rules/auditor-protocol.md` §6.7 的四類依賴（測試斷言／執行環境敏感物／機械守衛／跨層副本）。由 BPE 自動呼叫，把「主動想起要查」變成「腳本一定會跑」。排批 2b-4 |
+| B-68 | 進行中 | **`scripts/impact_scan.py`** | PRE-B01 / governance reliability。建立 deterministic tracked-repo dependency discovery + evidence replay，將 dependencies-before-Allowed-Scope 從 Auditor 記憶規則提升為 executable path。適用 Claude / GPT / future Macro Auditor。Phase 1 僅 exact deterministic dependency，不做 semantic inference。candidate 完成後等待 External Macro 與 runtime malformed-scope canary。 |
 | B-69 | 待辦 | **跨環境比對原語規則** | 設計任何比對原語前必須問「換 OS／locale／工具鏈會給出相同答案嗎」；依賴行尾、字元編碼、路徑分隔符、時區、排序或工具實作者不得使用；跨環境一律比對正規化文字而非位元組。依 current repo 查證仍具殘留需求，維持待辦 |
 | B-70 | 待辦 | **配對清單改為腳本產生** | 原 B-60 CHECK 編號配置部分已過時，但 pairing-list-by-memory 的核心問題仍存在。current prompt-preflight §3.1 仍為人工維護 pairing table，且 B-45 的 C section ↔ §5.3 residual pairing registration 尚未機械收斂。因此 B-70 保持 genuine pending。本項不是 Pre-B01 blocker，不得因此阻擋 B-01。 |
 | B-71 | 可封存 | **零漏網目前不達標，且存在倖存者偏差** | 「零漏網未達標」umbrella 項目；有效殘留風險已各自收納至 concrete tasks (B-31, B-53, B-54, B-87, B-88, B-89)，予以封存且不刪除具體項目 |
