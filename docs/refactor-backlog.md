@@ -2825,7 +2825,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 5.1 上一批狀態
 
-上次核對通過的 HEAD：9b698de
+上次核對通過的 HEAD：cfdebc2
 
 - `23af193`（執行者前置檢查 ＋ 回滾程序 ＋ `AUDIT-LOG.md` ＋ 四缺口修正）
   已於 2026-09-02 由審計官核對通過：6 檔異動（含 2 個新檔）、零夾帶、
@@ -3002,6 +3002,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 - `a41166e`（B-68 Dependency Closure Phase 1 External Macro PASS）已於 2026-09-14 由外部審計官全面審查獨立核對通過：3 檔 authorized scope，本地 verify_all 5 Gates 全 PASS，GitHub Actions exact-SHA Run 34838936881 success。B-67 output contract 恢復與 main integration guard 驗證通過；B-68 Final malformed-scope Runtime Canary PASS（C1 dependency scripts/build_prompt_evidence.py UPDATE 漏列時由 production impact_scan check 精確攔截 exit != 0，S1 DEPENDENCY_SCOPE_MISSING，零 mutation，worktree clean）；B-68 正式 CLOSED；B-41/B-01 零實作（NOT STARTED）；判定 Macro PASS (ACCEPT ALL)。
 - `23dd01f`（B-68 Final Macro Closure & B-96 Specification Registration）已於 2026-09-14 由外部審計官全面審查獨立核對通過：5 檔 authorized scope，本地 verify_all 5 Gates 全 PASS，GitHub Actions exact-SHA Run 34843106839 success。B-68 Final Macro Closure state sync accepted；B-96 Specification Registration accepted；B-68 正式 CLOSED；B-96 REGISTERED / NOT IMPLEMENTED；NEXT_WORK 推進至 B-41；B-41 / B-01 保持待辦零實作（NOT STARTED）；判定 Macro PASS (ACCEPT ALL)。
 - `9b698de`（B-41 Slim Bootstrap Router Landing）已於 2026-09-14 由外部審計官全面審查獨立核對通過：6 檔 authorized scope，本地 verify_all 5 Gates 全 PASS，GitHub Actions exact-SHA Run 34852512530 success。B-41 Slim Bootstrap Router bounded landing accepted；.claude/README.md 正式作為 repo-owned canonical slim bootstrap / recovery router；docs/HANDOVER.md 保持 supporting router / VERIFY_ONLY；full mirror superseded；no .claude/slim-bootstrap.md；no workspace/global GEMINI creation；no fake UI CI CHECK；dynamic state remains runtime-routed；B-69 false-zero evidence recorded as existing / non-blocking；B-01 零實作；使用者明確要求新增 B-97 release gate；B-41 正式 CLOSED；B-97 登錄待辦；NEXT_WORK 推進至 B-97；B-01 保持待辦零實作（NOT STARTED）；判定 Macro PASS (ACCEPT ALL)。
+- `cfdebc2`（B-41 Final Closure and B-97 Release Audit Registration）已於 2026-09-16 由 GPT 代理審查官（使用者授權）獨立核對通過：5 檔 authorized scope，本地 verify_all 5 Gates 全 PASS，GitHub Actions exact-SHA Run 34860687555 success。B-41 closure 與 B-97 registration state sync accepted；B-41 CLOSED；B-97 REGISTERED / audit 尚未開始；B-01 NOT STARTED；A1 使用 user-authorized equivalent evidence：GitHub API + Executor full-clone cross-check；no blocking finding in audited commit；判定 Macro PASS (ACCEPT ALL)。
 
 ### 5.2 待辦
 
@@ -3278,3 +3279,14 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
       - B-97 完成必須同時具備：1. 完整 machine-derived unfinished-task inventory；2. 每一筆 unfinished row 完成 Macro disposition；3. 全庫宏觀審計完成；4. current exact-SHA CI 證據；5. C-06 current truth surfaced；6. B-01 ADR/target readiness 驗證；7. 上游基準新鮮度驗證；8. 所有 material findings 完成 B-95 處置；9. 審計期間 B-01 保持零修改；10. External Macro Reviewer 正式宣告 PRE-B01 RELEASE PASS。此時 B-97 方可 CLOSED。
     - **M. 歷史起始評估留痕（Historical Starting Assessment）**：
       - 記錄在 B-97 正式執行前之 Macro preliminary review 中，既有 unfinished items 初步未發現除 B-41 closure 外已證實之 Pre-B01 blocker。此為 preliminary historical assessment，不得取代 B-97 於未來 current base 重新 machine-derive 全部未完成項目，亦不得 hardcode 數量作為未來權威。
+
+66. **Step 1 Security Event / B-98 Disposition & Context Economy / B-75 Scope Refinement**（2026-09-16）
+    - **A. Step 1 Security Event 與 B-98 登錄（Security Event & B-98 Disposition）**：
+      - **事件性質**：2026-09-16 Step 1 READ_ONLY alignment 期間，執行者為探索本機 GitHub API 能力而執行環境變數列舉，致使一個 GitHub credential 的完整 secret value 被輸出至 execution transcript。
+      - **根本原因**：`secret-bearing environment output / redaction control gap`（執行者端缺乏明確且可機械守護之 secret-safe external API inspection 與輸出淨化契約，非 GitHub GET API 本身不安全）。
+      - **已完成人工作業遏阻（Containment）**：暴露之 credential 已立即撤銷；替代 credential 已由使用者自行建立與驗證；包含 secret 之 PowerShell 歷史紀錄已由使用者處置完畢；secret value 嚴格禁止進入 repo、commit、EXEC-LOG 或對話。
+      - **任務登錄**：登錄 NEW B-98（`Executor Secret / Credential Output Hardening`），狀態為待辦。確立憑證存在性檢查僅限輸出布林值或 PRESENT/ABSENT，嚴禁列舉或輸出 secret-bearing environment variable values，並規範後續 remote health 必須採用 secret-safe auth 路徑。B-98 不阻塞本次 closure，亦不自動阻塞 B-97。
+    - **B. 使用者 Context Economy 需求與 B-75 範圍精煉（Context Economy & B-75 Scope Refinement）**：
+      - **使用者需求**：使用者提出降低長期協作之 context token 負擔，要求提示詞產出與溝通具備上下文經濟性，同時維持「使用者仍然取得一份完整、可一鍵複製給 Antigravity 的提示詞」之核心不變量，不得要求使用者手動組裝多份 prompt fragment。
+      - **處置路由**：依 `EXISTING B-75` 收斂，將既有 B-75 任務範圍由「每批重寫 boilerplate」擴充精煉為 `Macro ↔ User ↔ Executor Context Economy`，禁止另建第二個重複之 context-economy task。
+      - **設計方向**：以 conversation delta-first 加上 repo-canonical reusable contract 為規劃方向，將穩定之 boilerplate / contract 優先收斂至 repo 權威來源，機器衍生證據留在 repo 與 GitHub Actions 以 SHA/reference 定位，冷啟動優先由 canonical router 導航重建；正式 implementation 尚未開始。

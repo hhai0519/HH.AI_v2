@@ -12,7 +12,7 @@
 
 **NEXT_WORK**：B-97
 
-**最後更新**：2026-09-14，B-41 External Macro PASS / CLOSED；B-97 Pre-B01 Comprehensive Release Audit registered；Next: B-97；B-01 NOT STARTED。
+**最後更新**：2026-09-16，External Macro PASS / state sync；B-98 registered（待辦）；B-75 Context Economy scope refined（待辦）；Next: B-97；B-01 NOT STARTED。
 
 ---
 
@@ -146,7 +146,7 @@ A 節目前狀態以本表各列與 `NEXT_WORK` 之 current repo truth 為準；
 | B-72 | 已完成 | **`PRINCIPLES.md` §2.10「每一個數字都必須有它的產生者」** | 使用者 2026-09-06 提出「每次宣告的數據都親自從 GitHub 重新取得」，審計官逐項檢驗 16 件錯誤後修正範圍：**只能修 1 件、部分修 3 件、修不掉 12 件**——審計官本來就每輪重 clone，多數錯誤不是讀取問題而是「寫了沒有產生者的數字」。正確規則為：**寫進提示詞的每一個數字，都必須是本輪某次工具呼叫的輸出**。四種合法來源：repo 現況→新鮮 clone；文件的自我描述（清單長度、項數）→腳本 `len()`；套用後的未來狀態→本地模擬；外部系統狀態→該系統 API。**「從 GitHub 重讀」只是第一種。** 排批 2b-4 |
 | B-73 | 已完成 | **`§8.4-2` 的「每輪最多一次 clone」是上限，沒有下限**（**使用者發現**） | 審計官每輪重 clone 靠自律不靠規則，下一個接手者可能用開場那次 clone 撐三輪。處置：`.claude/rules/auditor-protocol.md` §6.1 新增一項補下限「HEAD 可能移動即必須重 clone」，並要求自檢聲明能指出每個數字由哪一次工具呼叫產生。依 §5.7 同批落到 `handover-selftest.md` 與 `prompt-preflight.md` §3.4。排批 2b-4 |
 | B-74 | 已完成 | **執行者只回報無法從 commit 重生的東西**（**使用者發現**） | 執行者精簡回報已由 Mechanical-Truth Migration (4c6aee4) 實質完成落地，移除 machine-derived 數字重複比對。 |
-| B-75 | 待辦 | **提示詞約四成是每批重寫的樣板** | 【動手前必讀】、【第 0 步】、【回覆格式】、驗證步驟的通用部分、自檢聲明 E1／E5／E6／E7／E9／E12／E14／E15 每批幾乎逐字相同。**樣板每批重寫一次，就是每批有一次寫錯的機會**——攔截點未指定時點、預期零命中寫錯兩件都發生在樣板段落。處置：抽成 `.agents/rules/batch-template.md`，執行者從 repo 讀，提示詞只寫差異。排批 2b-4 |
+| B-75 | 待辦 | **Macro ↔ User ↔ Executor Context Economy** | 範圍由單純樣板重寫擴充精煉為三方上下文經濟性。核心目標：不降低 correctness、audit independence、evidence quality 或 fail-closed 行為前提下，降低協作重複上下文。保留使用者需求不變量：使用者仍取得一份完整、可一鍵複製給 Antigravity 的提示詞，嚴禁要求使用者手動組裝 prompt fragments。規劃方向：stable boilerplate / contract 優先移入 repo canonical source；最終 prompt 仍為完整單一 artifact；conversation 採 delta-first；已確認 baseline 不反覆重貼；machine-derived raw evidence 留在 repo / GitHub 以 SHA/reference 定位，不搬回 conversation；cold-start/handoff 優先由 canonical router 重建；評估交接提示詞瘦身或 repo-routed bootstrap；原 batch-template.md 保留為候選方案之一。本輪只做 planning-scope refinement，不實作。 |
 | B-76 | 可封存 | **審計官的核對階段未腳本化** | 原 audit_verify.py 並未實作；其核心需求已由 canonical verify_all 與 GitHub remote audit workflow 取代。 |
 | B-77 | 已完成 | **BPE 的輸出不得被審計官修改** | B-64 的直接推論：BPE 產生證據後若「順手修潤措辭」，就重現「模擬的對象不等於送出的文字」。處置：`.claude/rules/auditor-protocol.md` §6.1 第 18 項延伸一句——**BPE 輸出後不得修改，要改就改批次規格再重跑**。排批 2b-4 |
 | B-78 | 待辦 | **`scripts/apply_batch.py`：消除散文這一層有損的重新編碼** | 原 apply_batch.py 未實作；現有 CHECK 17 提供 correctness containment，剩餘價值主要為效率與降低一次性 apply-script parsing，延後主重構後再評估。 |
@@ -169,6 +169,7 @@ A 節目前狀態以本表各列與 `NEXT_WORK` 之 current repo truth 為準；
 | B-95 | 已完成 | **Material Finding → TASKBOARD Promotion Contract** | Material Finding → TASKBOARD Promotion Contract 已完成 External Macro Audit PASS，same-round persistence / EVERY_ROUND disposition / Executor mechanical preflight 正式生效。 |
 | B-96 | 待辦 | **`$$使用者$$` Session-local User Prompt Compiler Mode** | 使用者已完成架構裁決。此功能為僅限目前 Antigravity conversation/session 的 Natural-Language → Governed Execution Adapter；`$$使用者$$` 啟用，沒有 `$$結束使用者$$`，關閉 Agent/conversation 即失效，新 Agent 預設 OFF。User Mode 將輸入分為 READ_ONLY / REPO_MUTATION / EXTERNAL_ACTION / SPECIAL_COMMAND；repo mutation 必須先唯讀 discovery + B-68 impact scan，再編譯完整 production prompt、等待使用者確認，確認後仍通過既有 Prompt Manifest / dependency replay / Allowed Scope / Git / Gate preflight，不構成任何 safety override。特殊 `$$` 指令永遠優先走 `SOP/SOP_00A_Master_Index.json` canonical router。完整已裁決施工規格見 `docs/refactor-backlog.md` Item 63。NOT IMPLEMENTED。 |
 | B-97 | 待辦 | **Pre-B01 Comprehensive Pending-Task & Repository Release Audit** | 使用者明確要求之一次性 Pre-B01 release gate，在任何 B-01 mutation 前執行；第一階段必須為 READ_ONLY；必須 machine-derive TASKBOARD 所有 unfinished rows（待辦、進行中、待裁決），每一筆皆由 External Macro Reviewer 親自判定 Pre-B01 disposition；必須對 current repository 進行宏觀全面 release audit；material finding 依 B-95 promotion contract 處置；blocking finding 可在具 current evidence 時 preempt B-01；non-blocking finding 留在 TASKBOARD，不因理論完整性自動 preempt；C-06 必須重新 surface current truth 與選項，在使用者未改變裁決前維持 non-blocking；B-01 在 B-97 External Macro PRE-B01 RELEASE PASS 前不得開始。本批 REGISTERED ONLY，尚未執行 audit。完整規格見 `docs/refactor-backlog.md` Item 65。 |
+| B-98 | 待辦 | **Executor Secret / Credential Output Hardening** | 2026-09-16 Step 1 READ_ONLY alignment 中，Executor 為查詢 GitHub 狀態列舉環境變數，致使一個 GitHub credential 完整 secret value 輸出至 execution transcript（零 secret value 記錄於 repo）。已完成人工作業遏阻：exposed credential 已撤銷、replacement credential 已由使用者建立驗證、PowerShell 歷史紀錄已處置。未解決 system gap：缺少明確且可機械守護的 secret-safe external API inspection/output contract。驗收方向：憑證存在性檢查僅限輸出 boolean / PRESENT / ABSENT，嚴禁列舉 secret-bearing 環境變數值，嚴禁將 token/password 寫入 transcript、conversation、EXEC-LOG、repo、scratch 或 metadata；troubleshooting 採 secret-safe auth path；評估確定性 guard / canary。本輪僅登錄，採 secret-safe remote-health 路徑下不阻塞本次 closure 與 B-97；B-97 release audit 時重新做 security disposition。 |
 
 ---
 
