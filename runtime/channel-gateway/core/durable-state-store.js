@@ -88,7 +88,50 @@ function validateJsonCompatiblePayload(val, seen = new Set(), pathStr = 'payload
 
     try {
       if (Array.isArray(val)) {
-        for (let i = 0; i < val.length; i++) {
+        const proto = Object.getPrototypeOf(val);
+        if (proto !== Array.prototype) {
+          throw new TypeError(`${pathStr}: array must not be a subclass instance`);
+        }
+
+        const len = val.length;
+        if (typeof len !== 'number' || !Number.isSafeInteger(len) || len < 0) {
+          throw new TypeError(`${pathStr}: array length must be a non-negative safe integer`);
+        }
+
+        for (let i = 0; i < len; i++) {
+          const idxStr = String(i);
+          if (!Object.prototype.hasOwnProperty.call(val, idxStr)) {
+            throw new TypeError(`${pathStr}[${i}]: sparse arrays with holes are not allowed`);
+          }
+          const desc = Object.getOwnPropertyDescriptor(val, idxStr);
+          if (!desc) {
+            throw new TypeError(`${pathStr}[${i}]: unable to read element descriptor`);
+          }
+          if (desc.get !== undefined || desc.set !== undefined || !('value' in desc)) {
+            throw new TypeError(`${pathStr}[${i}]: accessor properties on array indices are not allowed`);
+          }
+          if (desc.enumerable !== true) {
+            throw new TypeError(`${pathStr}[${i}]: array elements must be enumerable`);
+          }
+        }
+
+        const ownKeys = Reflect.ownKeys(val);
+        for (const key of ownKeys) {
+          if (typeof key === 'symbol') {
+            throw new TypeError(`${pathStr}: Symbol-keyed properties on arrays are not allowed`);
+          }
+
+          if (key === 'length') {
+            continue;
+          }
+
+          const num = Number(key);
+          if (!Number.isInteger(num) || num < 0 || num >= len || String(num) !== key) {
+            throw new TypeError(`${pathStr}: extra own property '${String(key)}' on array is not allowed`);
+          }
+        }
+
+        for (let i = 0; i < len; i++) {
           validateJsonCompatiblePayload(val[i], seen, `${pathStr}[${i}]`);
         }
         return;
@@ -100,9 +143,26 @@ function validateJsonCompatiblePayload(val, seen = new Set(), pathStr = 'payload
         throw new TypeError(`${pathStr}: object must be a plain object, received ${ctorName}`);
       }
 
-      const keys = Object.keys(val);
-      for (const key of keys) {
-        validateJsonCompatiblePayload(val[key], seen, `${pathStr}.${key}`);
+      const ownKeys = Reflect.ownKeys(val);
+      for (const key of ownKeys) {
+        if (typeof key === 'symbol') {
+          throw new TypeError(`${pathStr}: Symbol-keyed properties are not allowed`);
+        }
+
+        const desc = Object.getOwnPropertyDescriptor(val, key);
+        if (!desc) {
+          throw new TypeError(`${pathStr}.${key}: unable to read property descriptor`);
+        }
+
+        if (desc.get !== undefined || desc.set !== undefined || !('value' in desc)) {
+          throw new TypeError(`${pathStr}.${key}: accessor properties (getters/setters) are not allowed`);
+        }
+
+        if (desc.enumerable !== true) {
+          throw new TypeError(`${pathStr}.${key}: non-enumerable properties are not allowed`);
+        }
+
+        validateJsonCompatiblePayload(desc.value, seen, `${pathStr}.${key}`);
       }
     } finally {
       seen.delete(val);
@@ -124,7 +184,22 @@ function validateEnvelope(envelope) {
     throw new TypeError('Envelope must be a non-null plain object');
   }
 
-  for (const key of Object.keys(envelope)) {
+  const envProto = Object.getPrototypeOf(envelope);
+  if (envProto !== Object.prototype && envProto !== null) {
+    throw new TypeError('Envelope must be a plain object');
+  }
+
+  const envKeys = Reflect.ownKeys(envelope);
+  for (const key of envKeys) {
+    if (typeof key === 'symbol') {
+      throw new Error(`Unknown envelope key: '${String(key)}'`);
+    }
+
+    const desc = Object.getOwnPropertyDescriptor(envelope, key);
+    if (!desc || desc.enumerable !== true || desc.get !== undefined || desc.set !== undefined) {
+      throw new Error(`Invalid envelope property descriptor for '${key}'`);
+    }
+
     if (!ALLOWED_ENVELOPE_KEYS.has(key)) {
       throw new Error(`Unknown envelope key: '${key}'`);
     }
@@ -158,8 +233,8 @@ function validateEnvelope(envelope) {
     throw new TypeError('payload must be a non-null plain object');
   }
 
-  const proto = Object.getPrototypeOf(envelope.payload);
-  if (proto !== Object.prototype && proto !== null) {
+  const payloadProto = Object.getPrototypeOf(envelope.payload);
+  if (payloadProto !== Object.prototype && payloadProto !== null) {
     throw new TypeError('payload must be a plain object');
   }
 

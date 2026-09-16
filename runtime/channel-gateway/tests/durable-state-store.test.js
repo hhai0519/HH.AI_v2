@@ -576,3 +576,245 @@ test('DurableStateStore - 28. production module uses shared atomic writer 而不
     'Must not call fs.writeFileSync directly in durable-state-store'
   );
 });
+
+test('DurableStateStore - 29. plain object with Symbol-keyed own property -> rejected', () => {
+  const harness = createTempHarness();
+  try {
+    const store = new DurableStateStore(harness.stateRoot);
+    const p = { visible: 1 };
+    p[Symbol('hidden')] = 2;
+    assert.throws(
+      () => store.save(p),
+      /Symbol-keyed properties are not allowed/
+    );
+  } finally {
+    harness.cleanup();
+  }
+});
+
+test('DurableStateStore - 30. nested object with Symbol-keyed property -> rejected', () => {
+  const harness = createTempHarness();
+  try {
+    const store = new DurableStateStore(harness.stateRoot);
+    const nested = { child: {} };
+    nested.child[Symbol('nestedHidden')] = 'secret';
+    assert.throws(
+      () => store.save(nested),
+      /Symbol-keyed properties are not allowed/
+    );
+  } finally {
+    harness.cleanup();
+  }
+});
+
+test('DurableStateStore - 31. non-enumerable own property -> rejected', () => {
+  const harness = createTempHarness();
+  try {
+    const store = new DurableStateStore(harness.stateRoot);
+    const p = { visible: 'hello' };
+    Object.defineProperty(p, 'hidden', {
+      value: 'secret',
+      enumerable: false,
+      configurable: true,
+      writable: true,
+    });
+    assert.throws(
+      () => store.save(p),
+      /non-enumerable properties are not allowed/
+    );
+  } finally {
+    harness.cleanup();
+  }
+});
+
+test('DurableStateStore - 32. nested non-enumerable own property -> rejected', () => {
+  const harness = createTempHarness();
+  try {
+    const store = new DurableStateStore(harness.stateRoot);
+    const p = { nested: { ok: true } };
+    Object.defineProperty(p.nested, 'hidden', {
+      value: 123,
+      enumerable: false,
+      configurable: true,
+      writable: true,
+    });
+    assert.throws(
+      () => store.save(p),
+      /non-enumerable properties are not allowed/
+    );
+  } finally {
+    harness.cleanup();
+  }
+});
+
+test('DurableStateStore - 33. non-enumerable own toJSON function -> rejected', () => {
+  const harness = createTempHarness();
+  try {
+    const store = new DurableStateStore(harness.stateRoot);
+    const p = { data: 42 };
+    Object.defineProperty(p, 'toJSON', {
+      value: () => ({ transformed: true }),
+      enumerable: false,
+      configurable: true,
+      writable: true,
+    });
+    assert.throws(
+      () => store.save(p),
+      /non-enumerable properties are not allowed/
+    );
+  } finally {
+    harness.cleanup();
+  }
+});
+
+test('DurableStateStore - 34. enumerable accessor getter property -> rejected', () => {
+  const harness = createTempHarness();
+  try {
+    const store = new DurableStateStore(harness.stateRoot);
+    const p = {};
+    Object.defineProperty(p, 'computed', {
+      get() {
+        return 'dynamic';
+      },
+      enumerable: true,
+      configurable: true,
+    });
+    assert.throws(
+      () => store.save(p),
+      /accessor properties \(getters\/setters\) are not allowed/
+    );
+  } finally {
+    harness.cleanup();
+  }
+});
+
+test('DurableStateStore - 35. array with Symbol-keyed extra property -> rejected', () => {
+  const harness = createTempHarness();
+  try {
+    const store = new DurableStateStore(harness.stateRoot);
+    const arr = [1, 2, 3];
+    arr[Symbol('extra')] = 'val';
+    assert.throws(
+      () => store.save({ list: arr }),
+      /Symbol-keyed properties on arrays are not allowed/
+    );
+  } finally {
+    harness.cleanup();
+  }
+});
+
+test('DurableStateStore - 36. array with named extra property: arr.extra = value -> rejected', () => {
+  const harness = createTempHarness();
+  try {
+    const store = new DurableStateStore(harness.stateRoot);
+    const arr = [1, 2];
+    arr.extra = 3;
+    assert.throws(
+      () => store.save({ list: arr }),
+      /extra own property 'extra' on array is not allowed/
+    );
+  } finally {
+    harness.cleanup();
+  }
+});
+
+test('DurableStateStore - 37. array accessor index -> rejected', () => {
+  const harness = createTempHarness();
+  try {
+    const store = new DurableStateStore(harness.stateRoot);
+    const arr = [1, 2];
+    Object.defineProperty(arr, '0', {
+      get() {
+        return 99;
+      },
+      enumerable: true,
+      configurable: true,
+    });
+    assert.throws(
+      () => store.save({ list: arr }),
+      /accessor properties on array indices are not allowed/
+    );
+  } finally {
+    harness.cleanup();
+  }
+});
+
+test('DurableStateStore - 38. sparse array -> rejected', () => {
+  const harness = createTempHarness();
+  try {
+    const store = new DurableStateStore(harness.stateRoot);
+    // eslint-disable-next-line no-sparse-arrays
+    const sparse = [1, , 3];
+    assert.throws(
+      () => store.save({ list: sparse }),
+      /sparse arrays with holes are not allowed/
+    );
+
+    const emptyHole = new Array(3);
+    assert.throws(
+      () => store.save({ list: emptyHole }),
+      /sparse arrays with holes are not allowed/
+    );
+  } finally {
+    harness.cleanup();
+  }
+});
+
+test('DurableStateStore - 39. ordinary dense nested array 仍 accepted', () => {
+  const harness = createTempHarness();
+  try {
+    const store = new DurableStateStore(harness.stateRoot);
+    const payload = {
+      matrix: [
+        [1, 2, 3],
+        [4, 5, 6],
+      ],
+      empty: [],
+      mixed: [true, 'text', null, 42.5, { inside: [10, 20] }],
+    };
+
+    const result = store.save(payload);
+    assert.equal(result.revision, 1);
+
+    const loaded = store.load();
+    assert.deepStrictEqual(loaded.payload, payload);
+  } finally {
+    harness.cleanup();
+  }
+});
+
+test('DurableStateStore - 40. ordinary plain nested objects round-trip 仍完全相等', () => {
+  const harness = createTempHarness();
+  try {
+    const store = new DurableStateStore(harness.stateRoot);
+    const payload = {
+      user: 'alice',
+      meta: {
+        active: true,
+        count: 100,
+        nested: {
+          flag: false,
+          value: null,
+          items: ['a', 'b', 'c'],
+        },
+      },
+    };
+
+    const saved1 = store.save(payload);
+    assert.equal(saved1.revision, 1);
+
+    const loaded1 = store.load();
+    assert.deepStrictEqual(loaded1.payload, payload);
+
+    // Save revision 2
+    payload.meta.count = 101;
+    const saved2 = store.save(payload);
+    assert.equal(saved2.revision, 2);
+
+    const loaded2 = store.load();
+    assert.deepStrictEqual(loaded2.payload, payload);
+  } finally {
+    harness.cleanup();
+  }
+});
+

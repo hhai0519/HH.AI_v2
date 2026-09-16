@@ -3062,7 +3062,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - B-99 Qualification-Based Macro Auditor & Repo-Visible Handoff（CLOSED / MACRO PASS）。
   - B-97 Pre-B01 Comprehensive Release Audit 已完成（CLOSED / PRE-B01 RELEASE PASS）。
   - B-01 ADR-0002／0004／0010 分層搬移及 Active-Contract 語意修復已完成（CLOSED / MACRO PASS）。
-  - E-03 Runtime 執行層架構推進（IN PROGRESS）：Wave 2D = MACRO PASS / ACCEPTED；Wave 2E Atomic Durable State Store Foundation = IN PROGRESS / PENDING EXTERNAL MACRO AUDIT；Gateway live integration = NOT STARTED；LINE implementation = D12 delayed / explicit user trigger；B-98 / B-30 / B-33 / F-05 remain open at their established prerequisite boundaries。
+  - E-03 Runtime 執行層架構推進（IN PROGRESS）：Wave 2D = MACRO PASS / ACCEPTED；Wave 2E = MACHINE PASS / MACRO HOLD / BOUNDED REPAIR（lossless JSON own-property validation underway）；Gateway live integration = NOT STARTED；LINE implementation = D12 delayed / explicit user trigger；B-98 / B-30 / B-33 / F-05 remain open at their established prerequisite boundaries。
   - C-06 維持待使用者裁決（USER_DECISION_NONBLOCKING，遠端 ruleset 與 required checks 現況已確認）。
   - B-28 / B-29 上游 trigger 重新評估完成，無 B-01 blocker，維持 DEFERRED_BY_USER / POST_B01。
   - B-54 保持待辦（POST_B01 / NONBLOCKING，SOP_12 機器專屬路徑 concrete example 已登錄）。
@@ -3574,5 +3574,23 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
       - Wave 2D = MACRO PASS / ACCEPTED；Wave 2E Atomic Durable State Store Foundation = IN PROGRESS / PENDING EXTERNAL MACRO AUDIT。
       - Gateway live 整合尚未開始（NOT STARTED）；B-98 / B-30 / B-33 / F-05 維持開啟狀態於既定前置邊界。
       - 本 candidate 等待 External Macro Reviewer 獨立審核；NEXT_WORK 保持 E-03。
+
+81. **E-03 Channel Gateway Wave 2E Initial Audit Result & Lossless JSON Validation Bounded Repair**（2026-09-17）
+    - **候選與外部審查結論**：前一施工候選 `0959d0afd8c0197005d1fdc9d016fdce5eda2b17`（Wave 2E Atomic Durable State Store Foundation）經 External Macro Reviewer（GPT 代理審查官（使用者授權））全面審查。A1 qualification 採 A1 = EQUIVALENT（GitHub API + Executor clone cross-check）成立；exact-SHA Actions Verify Run `35117776121` completed/success（20 checks PASS，319 unit PASS，13 webapp PASS，5 Gates PASS）。
+    - **外部審查裁決與材料瑕疵**：`MACRO AUDIT = HOLD`，`ACCEPT STATUS = BOUNDED REPAIR REQUIRED`，`FINDING_DISPOSITION = CURRENT E-03`；Findings：F1 為 Lossless JSON payload validation incomplete: `validateJsonCompatiblePayload()` 原先對物件採 `Object.keys()` 遍歷，無法拒絕 symbol-keyed 屬性、不可列舉（non-enumerable）屬性或 accessor getter/setter 等可能被 `JSON.stringify` 靜默遺失或竄改之狀態；checkpoint 保持 `eac38683`，維持 E-03 進行中並執行微修。
+    - **無損 JSON 屬性檢驗微修邊界（Lossless JSON Own-Property Validation Repair）**：
+      - 修改 `runtime/channel-gateway/core/durable-state-store.js`：
+        - 採用 `Reflect.ownKeys` 嚴格檢查所有自有屬性，拒絕任何 Symbol 鍵名（`typeof key === 'symbol'`）。
+        - 檢查每個自有屬性的 property descriptor：必須為普通資料屬性（data descriptor），嚴格拒絕 accessor 屬性（getters/setters），且必須為可列舉（`enumerable === true`）。
+        - 嚴格陣列檢驗：禁止陣列子類別實例、禁止 Symbol 鍵、禁止稀疏陣列洞（sparse holes）、禁止索引 accessor 或非可列舉索引、禁止額外命名屬性（如 `arr.extra = 1`）。
+        - 封套 `validateEnvelope` 同步採用 `Reflect.ownKeys` 杜絕未知屬性或 non-enumerable/symbol/accessor 注入。
+      - 擴充 canonical tests（`tests/durable-state-store.test.js` 新增測試 29 至 40，全檔共 40 tests 全數通過）。
+      - 純微修邊界：零領域連結（無 domain hydration / restart recovery），零外部副作用（no live bot / network / port / credential / OS startup）。
+    - **當前生命週期狀態**：
+      - 本批為 Phase 2 Wave 2E 微修候選，工作區僅限於授權之無損 JSON 驗證與狀態同步。
+      - Wave 2D = MACRO PASS / ACCEPTED；Wave 2E = MACHINE PASS / MACRO HOLD / BOUNDED REPAIR。
+      - Gateway live 整合尚未開始（NOT STARTED）；B-98 / B-30 / B-33 / F-05 維持開啟狀態於既定前置邊界。
+      - 本 repair candidate 自身等待 External Macro Reviewer 獨立審核；NEXT_WORK 保持 E-03。
+
 
 
