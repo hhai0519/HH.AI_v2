@@ -134,14 +134,24 @@ SKILL.md 本體只放：
 
 ---
 
-## 5. User-invoked vs Model-invoked
+## 5. User-invoked vs Model-invoked 與 Bucket 觸發積極度分級
 
 每個技能分成兩種可被誰觸發：
 
-- **User-invoked（只能人類手動觸發）**：frontmatter 加 `disable-model-invocation: true`。description 寫成給人看的一句話摘要，不需要塞觸發詞列表。用於：一次性設定類（如 `meta/setup-hhai-skills`）、有風險的操作類技能。
+- **User-invoked（只能人類手動觸發）**：frontmatter 加 `disable-model-invocation: true`。description 寫成給人看的一句話摘要，不需要塞觸發詞列表。用於：一次性設定類（如 `meta/setup-hhai-skills`）、有外部副作用或金融風險的操作類技能。
 - **Model-invoked（模型可自主呼叫，預設）**：不加上面那個欄位。description 要包含豐富的觸發詞，讓模型能自主判斷何時呼叫。
 
 判斷標準：「模型自己遇到這種情境時，能不能安全地自主呼叫這個技能？」能 → model-invoked；不能（例如會實際下單、刪除資料、發送對外訊息）→ user-invoked。
+
+### 5.1 Bucket 風險等級與觸發積極度（Active Contract）
+
+依 bucket 風險程度採用不同的觸發積極度（決策歷史見 `docs/adr/0002-skill-invocation-aggressiveness.md`）：
+
+1. **低風險 buckets（`orchestration/`、`analysis/`、`execution/`、`platform/`）**：
+   - 採**積極模型呼叫（Proactive Model Invocation）**方針：當技能與當前任務情境相關時，模型應當主動使用，不要求使用者逐次明確指示，確保既有分析與工具最佳實踐被充分運用。
+2. **高風險 bucket（`agents/`）**：
+   - 採**嚴格保守呼叫原則（Conservative Invocation Policy）**：`agents/` bucket 下的技能具備外部真實副作用（如實際交易下單、生產資料庫寫入、對外通訊發布）。
+   - 必須嚴格依「模型自主呼叫是否具備完全安全性」判定，**絕對禁止**因「可能有幫助」而放寬或預設自主呼叫；凡具真實副作用且未獲明確自治授權者，一律設為 `disable-model-invocation: true`。
 
 ---
 

@@ -60,6 +60,7 @@
 | .agents/rules/git-and-reporting.md | 254 | ## 3. 查證紀律 | FILE | `docs/HANDOVER.md` | docs/HANDOVER.md | RESOLVED |
 | .agents/rules/git-and-reporting.md | 256 | ## 3. 查證紀律 | FILE | `PRINCIPLES.md` | PRINCIPLES.md | RESOLVED |
 | .agents/rules/powershell-encoding-protocol.md | 48 | ## 3. PowerShell 強制 UTF-8 宣告 (PowerShell UTF-8 Lock) | FILE | `.agents/rules/git-and-reporting.md` | .agents/rules/git-and-reporting.md | RESOLVED |
+| .agents/rules/powershell-encoding-protocol.md | 61 | ## 5. 命令列參數與多行文字傳遞協定 (Parameter Passing & Payload Protocol) | ADR | ADR-0010 | docs/adr/0010-powershell-parameter-passing-pitfalls.md | RESOLVED |
 | .agents/rules/prompt-preflight.md | 9 | ## 1. 目的 | ADR | docs/adr/0007-macro-auditor-role.md | docs/adr/0007-macro-auditor-role.md | RESOLVED |
 | .agents/rules/prompt-preflight.md | 23 | ## 2. 這是審查，不是建議 | FILE | `.agents/rules/role-boundaries.md` | .agents/rules/role-boundaries.md | RESOLVED |
 | .agents/rules/prompt-preflight.md | 23 | ## 2. 這是審查，不是建議 | SECTION | §7 | .agents/rules/role-boundaries.md#§7 | RESOLVED |
@@ -125,7 +126,10 @@
 | .agents/rules/skills-architecture.md | 16 | # 規則：技能架構強制規範 | FILE | `README.md` | README.md | RESOLVED |
 | .agents/rules/skills-architecture.md | 17 | # 規則：技能架構強制規範 | FILE | `README.md` | README.md | RESOLVED |
 | .agents/rules/skills-architecture.md | 18 | # 規則：技能架構強制規範 | FILE | `skills/orchestration/agency-orchestrator/SKILL.md` | skills/orchestration/agency-orchestrator/SKILL.md | RESOLVED |
-| .agents/rules/skills-architecture.md | 21 | # 規則：技能架構強制規範 | FILE | `AGENTS.md` | AGENTS.md | RESOLVED |
+| .agents/rules/skills-architecture.md | 24 | ## 1. 技能呼叫分類準則 (Invocation Classification Rule) | ADR | ADR-0002 | docs/adr/0002-skill-invocation-aggressiveness.md | RESOLVED |
+| .agents/rules/skills-architecture.md | 24 | ## 1. 技能呼叫分類準則 (Invocation Classification Rule) | SECTION | §5 | AGENTS.md#§5 | RESOLVED |
+| .agents/rules/skills-architecture.md | 39 | ## 2. 指定資料來源與工具失效防護鐵律 (Anti-Silent-Substitution Rule) | ADR | ADR-0004 | docs/adr/0004-notebooklm-fallback-rule-recovery.md | RESOLVED |
+| .agents/rules/skills-architecture.md | 55 | ## 3. 禁制清單 | FILE | `AGENTS.md` | AGENTS.md | RESOLVED |
 | .claude/rules/auditor-protocol.md | 9 | # 宏觀審計官作業協定 | ADR | ADR-0021 | docs/adr/0021-qualification-based-macro-auditor-role.md | RESOLVED |
 | .claude/rules/auditor-protocol.md | 11 | # 宏觀審計官作業協定 | FILE | `.claude/rules/auditor-selftest.md` | .claude/rules/auditor-selftest.md | RESOLVED |
 | .claude/rules/auditor-protocol.md | 12 | # 宏觀審計官作業協定 | FILE | `AGENTS.md` | AGENTS.md | RESOLVED |
@@ -335,21 +339,22 @@
 | AGENTS.md | 43 | ## 0. 工程紀律規則（最高優先） | FILE | `PRINCIPLES.md` | PRINCIPLES.md | RESOLVED |
 | AGENTS.md | 43 | ## 0. 工程紀律規則（最高優先） | SECTION | §0 | PRINCIPLES.md#§0 | RESOLVED |
 | AGENTS.md | 49 | ## 0. 工程紀律規則（最高優先） | FILE | `.agents/rules/role-boundaries.md` | .agents/rules/role-boundaries.md | RESOLVED |
-| AGENTS.md | 158 | ## 6a. 資料夾層級的範圍受限規則 | FILE | `README.md` | README.md | RESOLVED |
-| AGENTS.md | 159 | ## 6a. 資料夾層級的範圍受限規則 | FILE | `AGENTS.md` | AGENTS.md | RESOLVED |
-| AGENTS.md | 161 | ## 6a. 資料夾層級的範圍受限規則 | FILE | `AGENTS.md` | AGENTS.md | RESOLVED |
-| AGENTS.md | 170 | ## 6a. 資料夾層級的範圍受限規則 | ADR | docs/adr/0000-adr-template.md | docs/adr/0000-adr-template.md | RESOLVED |
-| AGENTS.md | 170 | ## 6a. 資料夾層級的範圍受限規則 | FILE | `AGENTS.md` | AGENTS.md | RESOLVED |
-| AGENTS.md | 177 | ## 7. README 同步規則 | FILE | `README.md` | README.md | RESOLVED |
-| AGENTS.md | 178 | ## 7. README 同步規則 | FILE | `README.md` | README.md | RESOLVED |
-| AGENTS.md | 183 | ## 7. README 同步規則 | FILE | `skills/README.md` | skills/README.md | RESOLVED |
-| AGENTS.md | 188 | ## 7. README 同步規則 | FILE | `docs/refactor-backlog.md` | docs/refactor-backlog.md | RESOLVED |
-| AGENTS.md | 204 | ## 8. 遷移舊技能時的規則 | ADR | docs/adr/0018-vendored-external-assets.md | docs/adr/0018-vendored-external-assets.md | RESOLVED |
-| AGENTS.md | 217 | ## 9. 驗證 | FILE | `scripts/validate_skills.py` | scripts/validate_skills.py | RESOLVED |
-| AGENTS.md | 218 | ## 9. 驗證 | FILE | `scripts/check_consistency.py` | scripts/check_consistency.py | RESOLVED |
-| AGENTS.md | 228 | ## 9. 驗證 | FILE | `scripts/verify_all.py` | scripts/verify_all.py | RESOLVED |
-| AGENTS.md | 234 | ## 10. Remote Project Health Authority（遠端健康權威） | ADR | docs/adr/0020-github-actions-remote-health-authority.md | docs/adr/0020-github-actions-remote-health-authority.md | RESOLVED |
-| AGENTS.md | 236 | ## 10. Remote Project Health Authority（遠端健康權威） | FILE | `scripts/verify_all.py` | scripts/verify_all.py | RESOLVED |
+| AGENTS.md | 148 | ### 5.1 Bucket 風險等級與觸發積極度（Active Contract） | ADR | docs/adr/0002-skill-invocation-aggressiveness.md | docs/adr/0002-skill-invocation-aggressiveness.md | RESOLVED |
+| AGENTS.md | 168 | ## 6a. 資料夾層級的範圍受限規則 | FILE | `README.md` | README.md | RESOLVED |
+| AGENTS.md | 169 | ## 6a. 資料夾層級的範圍受限規則 | FILE | `AGENTS.md` | AGENTS.md | RESOLVED |
+| AGENTS.md | 171 | ## 6a. 資料夾層級的範圍受限規則 | FILE | `AGENTS.md` | AGENTS.md | RESOLVED |
+| AGENTS.md | 180 | ## 6a. 資料夾層級的範圍受限規則 | ADR | docs/adr/0000-adr-template.md | docs/adr/0000-adr-template.md | RESOLVED |
+| AGENTS.md | 180 | ## 6a. 資料夾層級的範圍受限規則 | FILE | `AGENTS.md` | AGENTS.md | RESOLVED |
+| AGENTS.md | 187 | ## 7. README 同步規則 | FILE | `README.md` | README.md | RESOLVED |
+| AGENTS.md | 188 | ## 7. README 同步規則 | FILE | `README.md` | README.md | RESOLVED |
+| AGENTS.md | 193 | ## 7. README 同步規則 | FILE | `skills/README.md` | skills/README.md | RESOLVED |
+| AGENTS.md | 198 | ## 7. README 同步規則 | FILE | `docs/refactor-backlog.md` | docs/refactor-backlog.md | RESOLVED |
+| AGENTS.md | 214 | ## 8. 遷移舊技能時的規則 | ADR | docs/adr/0018-vendored-external-assets.md | docs/adr/0018-vendored-external-assets.md | RESOLVED |
+| AGENTS.md | 227 | ## 9. 驗證 | FILE | `scripts/validate_skills.py` | scripts/validate_skills.py | RESOLVED |
+| AGENTS.md | 228 | ## 9. 驗證 | FILE | `scripts/check_consistency.py` | scripts/check_consistency.py | RESOLVED |
+| AGENTS.md | 238 | ## 9. 驗證 | FILE | `scripts/verify_all.py` | scripts/verify_all.py | RESOLVED |
+| AGENTS.md | 244 | ## 10. Remote Project Health Authority（遠端健康權威） | ADR | docs/adr/0020-github-actions-remote-health-authority.md | docs/adr/0020-github-actions-remote-health-authority.md | RESOLVED |
+| AGENTS.md | 246 | ## 10. Remote Project Health Authority（遠端健康權威） | FILE | `scripts/verify_all.py` | scripts/verify_all.py | RESOLVED |
 | MISSION.md | 27 | ## 完成的定義 | FILE | `AGENTS.md` | AGENTS.md | RESOLVED |
 | MISSION.md | 28 | ## 完成的定義 | FILE | `scripts/validate_skills.py` | scripts/validate_skills.py | RESOLVED |
 | MISSION.md | 28 | ## 完成的定義 | FILE | `scripts/verify_all.py` | scripts/verify_all.py | RESOLVED |

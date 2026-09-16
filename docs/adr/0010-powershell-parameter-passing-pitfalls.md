@@ -40,6 +40,8 @@ node reply_tg.js 8810338764 reply.txt ...
 
 ## Decision
 
+歷史決策（2026-08-24）：
+
 1. **不要透過環境變數傳遞回覆文字**：在 `powershell -Command "..."` 形式的
    指令中設定並讀取環境變數，會遭遇前端 Shell 提前展開的問題。改用
    「先用 write_to_file 工具把內容寫入實體檔案，再把檔案路徑傳給腳本」
@@ -53,6 +55,11 @@ node reply_tg.js 8810338764 reply.txt ...
    設計會讓路徑錯誤表現為「Task 卡住不動」而不是「明確報錯」，排查時
    容易誤判成網路或權限問題。如果發現某個 Task 長時間停在 RUNNING 且
    沒有輸出，優先檢查是不是路徑沒對上而卡在等 stdin。
+
+> **現行可執行規範單一權威來源 (Active Contract Authority)**：
+> 本決策之通用命令列操作、參數傳遞與編碼安全規範已收斂至：
+> - [.agents/rules/powershell-encoding-protocol.md §5](../../.agents/rules/powershell-encoding-protocol.md)（命令列參數與多行文字傳遞協定）
+> 本 ADR 僅作為歷史事故排查紀錄與架構決策脈絡留存，不再充當現行執行指令來源。
 
 ## Consequences
 

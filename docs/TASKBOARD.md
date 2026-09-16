@@ -14,7 +14,7 @@
 
 **NEXT_WORK**：B-01
 
-**最後更新**：2026-09-16，B-97 Pre-B01 Comprehensive Pending-Task & Repository Release Audit 已完成（PRE-B01 RELEASE STATUS = PASS）；ACTIVE_MACRO_AUDITOR 維持 GPT 代理審查官（使用者授權）；Next: B-01；B-01 待辦但仍 NOT STARTED；state-closure 等待 External Macro Audit 前不得開始 B-01。
+**最後更新**：2026-09-16，B-01 ADR-0002／0004／0010 分層搬移執行中；ACTIVE_MACRO_AUDITOR 維持 GPT 代理審查官（使用者授權）；B-01 施工候選已就緒並等待 External Macro Audit。
 
 ---
 
@@ -74,7 +74,7 @@ A 節目前狀態以本表各列與 `NEXT_WORK` 之 current repo truth 為準；
 
 | ID | 狀態 | 項目 | 備註 |
 |---|---|---|---|
-| B-01 | 待辦 | ADR-0002／0004／0010 分層搬移（NOT STARTED） | Claude 負責 production prompt 與 Macro Audit，Antigravity 負責 implementation。targeted upstream comparison 已完成且無 blocker；full B-28/B-29 comparison 依使用者裁決延後，除非 B-97 發現 upstream baseline changed、B-01 scope expanded 或其他客觀 trigger 否則不得無條件重開。B-41 已 External Macro PASS / CLOSED。B-97 PRE-B01 RELEASE PASS established; implementation NOT STARTED; may begin only after B-97 state-closure commit receives External Macro PASS. |
+| B-01 | 進行中 | ADR-0002／0004／0010 分層搬移 | B-97 PRE-B01 RELEASE PASS 與 closure audit 均已成立；B-01 production implementation candidate 已執行（ADR-0002/0004/0010 分層搬移至 AGENTS.md §5、skills-architecture.md、powershell-encoding-protocol.md，ADRs 轉為歷史留痕與指向現行規範）；等待 External Macro Audit；未取得 Macro PASS 前不得標已完成、不得推進 NEXT_WORK。 |
 | B-02 | 已完成 | `check_consistency.py` 增補檢查（CHECK 8-15） | CHECK 8 看板 HEAD 落後、9 交接區 HEAD 落後、10 §X.Y 章節引用有效性、11 §6.1 與 selftest E 對應、12 AUDIT-LOG latest audit evidence 必須位於 current HEAD ancestry（允許多個合法 pending repair commits，raw ancestry distance 不再是 FAIL threshold）、13 檔尾換行、14 簡體字、15 提示詞衝突字串。本批擴充至 15 項，全數通過 |
 | B-03 | 待辦 | 新建 `SOP/SOP_03_Skill_Lifecycle_and_Quality.md` | 收納舊 `SOP_00` §一／§三／§四與舊 `SOP_03` §4.2／§4.3，見第 18 點 |
 | B-04 | 待辦 | `validate_skills.py` 加 description 觸發詞警告 ＋ 測試 | 警告非錯誤，現存多個技能會失敗 |

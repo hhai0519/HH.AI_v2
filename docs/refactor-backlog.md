@@ -2825,7 +2825,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 5.1 上一批狀態
 
-上次核對通過的 HEAD：eceda26
+上次核對通過的 HEAD：76cfe7b
 
 - `23af193`（執行者前置檢查 ＋ 回滾程序 ＋ `AUDIT-LOG.md` ＋ 四缺口修正）
   已於 2026-09-02 由審計官核對通過：6 檔異動（含 2 個新檔）、零夾帶、
@@ -3007,6 +3007,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 - `e8fdb74`（24f7896 Macro PASS State Sync）已於 2026-09-16 由 GPT 代理審查官（使用者授權）獨立核對通過：5 檔 authorized scope，本地 verify_all 5 Gates 全 PASS，GitHub Actions exact-SHA Run 34999645394 success。24f7896 Macro PASS State Sync accepted；state/evidence-only closure accepted；TASKBOARD unchanged in e8fdb747 commit；canonical verification passed；FINDING_DISPOSITION = NONE for e8fdb747 itself；判定 Macro PASS (ACCEPT ALL)。
 - `09d2ccb`（B-99 Qualification-Based Macro Auditor & Repo-Visible Handoff 及 A1 Equivalent Contract Consistency Repair）已於 2026-09-16 由 GPT 代理審查官（使用者授權）全面審查獨立核對通過：涵蓋 e8fdb74..09d2ccb 完整 pending range（含 a101ed8 初審 HOLD 與 09d2ccb bounded repair）；A1 EQUIVALENT 查證通過；exact-SHA Actions Run 35048408214 (status completed, conclusion success)；B-99 正式結案（CLOSED / Macro PASS）。
 - `eceda26`（B-99 Macro PASS Closure & B-97 Pointer Sync 及 B-97 Phase 1 唯讀發布審計）已於 2026-09-16 由 GPT 代理審查官（使用者授權）全面審查獨立核對通過：5 檔 authorized scope，本地 verify_all 5 Gates 全 PASS，GitHub Actions exact-SHA Run 35049350295 success。B-99 state closure accepted；B-97 Phase 1 READ_ONLY 全庫審計完成；41 筆 active-lifecycle rows 全部完成處置；B-01 target readiness PASS；上游 trigger 重新評估無 blocker；C-06 remote truth 已確認並維持 USER_DECISION_NONBLOCKING；實質發現依 B-95 處置完畢；B-01 保持零實作（NOT STARTED）；判定 PRE-B01 RELEASE STATUS = PASS。
+- `76cfe7b`（B-97 PRE-B01 Release PASS State Closure）已於 2026-09-16 由 GPT 代理審查官（使用者授權）全面審查獨立核對通過：5 檔 authorized scope，本地 verify_all 5 Gates 全 PASS，GitHub Actions exact-SHA Run 35051382469 success。B-97 PRE-B01 Release PASS State Closure accepted；MACRO AUDIT = PASS，ACCEPT STATUS = ACCEPT ALL，FINDING_DISPOSITION = NONE；PRE-B01 RELEASE STATUS = PASS — FINALIZED；B-97 正式 CLOSED；B-01 AUTHORIZED TO START。
 
 ### 5.2 待辦
 
@@ -3052,7 +3053,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - B-41 Slim Bootstrap / Runtime Reconciliation External Macro PASS / CLOSED。
   - B-99 Qualification-Based Macro Auditor & Repo-Visible Handoff（CLOSED / MACRO PASS）。
   - B-97 Pre-B01 Comprehensive Release Audit 已完成（CLOSED / PRE-B01 RELEASE PASS）。
-  - B-01 推進為下一步工作但尚未啟動 (NEXT / NOT STARTED / awaiting External Macro PASS for closure commit before mutation)。
+  - B-01 施工候選已就緒並等待外部宏觀審計 (IN PROGRESS / IMPLEMENTATION CANDIDATE / PENDING EXTERNAL MACRO AUDIT)。
   - C-06 維持待使用者裁決（USER_DECISION_NONBLOCKING，遠端 ruleset 與 required checks 現況已確認）。
   - B-28 / B-29 上游 trigger 重新評估完成，無 B-01 blocker，維持 DEFERRED_BY_USER / POST_B01。
   - B-54 保持待辦（POST_B01 / NONBLOCKING，SOP_12 機器專屬路徑 concrete example 已登錄）。
@@ -3394,4 +3395,19 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
         `B-01 TARGET READINESS = ESTABLISHED`
       - B-97 正式 CLOSED；NEXT_WORK 推進至 B-01。
       - 本 Item 為 historical audit result 留痕，非第二任務佇列；B-01 於本 closure commit 經外部 Macro Audit 通過前仍維持待辦、零實作（NOT STARTED）。
+
+69. **B-01 ADR-0002 / ADR-0004 / ADR-0010 Active-Contract Layering — Implementation Candidate**（2026-09-16）
+    - **背景與目標**：B-97 全庫審計與狀態收攏已由 External Macro Reviewer 宣告 PRE-B01 RELEASE STATUS = PASS — FINALIZED（Run 35051382469 success），正式授權 B-01 施工。本批將長久留存於 ADR 留痕層之現行可執行規範搬移至正確 Active Contract 層，達成「ADR = WHY / 歷史決策留痕」與「AGENTS / .agents/rules = WHAT / 現行可執行合約」之分工。
+    - **Source → Active 映射落實**：
+      - **ADR-0002** → `AGENTS.md §5.1` & `.agents/rules/skills-architecture.md §1`：低風險 buckets（`orchestration/`、`analysis/`、`execution/`、`platform/`）採積極模型呼叫（Proactive Model Invocation）；高風險 bucket（`agents/`）採嚴格保守原則（Conservative Invocation Policy），凡具真實副作用者一律 `disable-model-invocation: true`，不得因「可能有幫助」而放寬。
+      - **ADR-0004** → `.agents/rules/skills-architecture.md §2`：指定資料來源與工具失效防護鐵律（Anti-Silent-Substitution Rule），當指定來源失敗或憑證失效時，嚴禁靜默替代為一般 web search，必須失效即停並主動向使用者回報；歷史 4 個分析技能遷移保留條款留痕。
+      - **ADR-0010** → `.agents/rules/powershell-encoding-protocol.md §5`：命令列參數與多行文字傳遞協定，嚴禁透過 `$env:*` 傳遞多行文字，優先採寫入 UTF-8 實體檔再傳路徑模式，路徑必須為動態解析之完整絕對路徑（嚴禁硬編碼本機路徑），並警示下游 stdin fallback 造成 process hang 之排查。
+    - **ADR Layering Invariant**：
+      - 三份 ADR（0002、0004、0010）狀態均維持 `Accepted`，保留完整 Context、事故背景、權衡與決策理由，並在 Decision 節加入現行權威指標（Active Contract Authority）指向對應規範檔案，消除第二權威來源。
+    - **依賴探索與驗證（Dependency Discovery & Replay）**：
+      - 依 B-68 規範執行 `impact_scan.py discover` 對 25 組關鍵字完成確定性掃描；88 筆匹配路徑完成處置標註；`impact_scan.py check` 重放驗證通過（exact dependency closure matched，UPDATE dependencies ⊆ Allowed Scope）。
+    - **當前生命週期狀態**：
+      - 本批為 B-01 production implementation candidate，工作區修改僅限授權範圍（6 semantic source/target + 5 state/evidence + generated traceability）。
+      - 依規範本批次不宣稱 B-01 CLOSED，TASKBOARD.NEXT_WORK 維持 B-01，等待 External Macro Reviewer（GPT 代理審查官（使用者授權））執行獨立審計。
+
 

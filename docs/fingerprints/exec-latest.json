@@ -1,5 +1,5 @@
 {
-  "base_head": "eceda26",
+  "base_head": "76cfe7b",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 0,
@@ -27,10 +27,11 @@
         "## 2. 禁止使用 Hex 拼湊法 (No Char-Code Concatenation)",
         "## 3. PowerShell 強制 UTF-8 宣告 (PowerShell UTF-8 Lock)",
         "# 強制 UTF-8 宣告 — 置於腳本第一行，禁止省略",
-        "## 4. 腳本選用決策樹 (Decision Tree)"
+        "## 4. 腳本選用決策樹 (Decision Tree)",
+        "## 5. 命令列參數與多行文字傳遞協定 (Parameter Passing & Payload Protocol)"
       ],
-      "lines": 57,
-      "sha256": "f84f800b79ba5187dcb6b85db55ae5b1e465b672d3377286d6330695705d6ccf"
+      "lines": 77,
+      "sha256": "30cb2990dc2518b33417c22f07c4e09da95692bc0e8aaa528122c09e6f9e570d"
     },
     ".agents/rules/prompt-preflight.md": {
       "fences": 0,
@@ -96,10 +97,13 @@
     ".agents/rules/skills-architecture.md": {
       "fences": 0,
       "headings": [
-        "# 規則：技能架構強制規範"
+        "# 規則：技能架構強制規範",
+        "## 1. 技能呼叫分類準則 (Invocation Classification Rule)",
+        "## 2. 指定資料來源與工具失效防護鐵律 (Anti-Silent-Substitution Rule)",
+        "## 3. 禁制清單"
       ],
-      "lines": 24,
-      "sha256": "538753b98588a16fba6863eac219b9073373620b6d25c27411c2fddad5cc7b84"
+      "lines": 59,
+      "sha256": "a3945c328a96649efa8a5ead8ad690ae9d8217f31500f0c3351f05305250f991"
     },
     ".claude/rules/auditor-protocol.md": {
       "fences": 6,
@@ -189,7 +193,8 @@
         "### semantic_firewall 有兩種寫法",
         "## 3. 漸進式揭露（Progressive Disclosure）",
         "## 4. 技能之間的依賴",
-        "## 5. User-invoked vs Model-invoked",
+        "## 5. User-invoked vs Model-invoked 與 Bucket 觸發積極度分級",
+        "### 5.1 Bucket 風險等級與觸發積極度（Active Contract）",
         "## 6. Router 技能",
         "## 6a. 資料夾層級的範圍受限規則",
         "## 7. README 同步規則",
@@ -199,8 +204,8 @@
         "### 10.1 遠端健康查證與回報規範",
         "### 10.2 禁止文字摘要辯論 (Anti-Debate Policy)"
       ],
-      "lines": 254,
-      "sha256": "55a80f2f64c75642ad9e3dc87ec71c1b033b2e4812778ff1123f86c4f8e1b059"
+      "lines": 264,
+      "sha256": "e6a06d7d550fba1148fa5711b83b8f98a56d338cf377451573fabd3ae49990bc"
     },
     "MISSION.md": {
       "fences": 0,
@@ -510,16 +515,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 131,
-      "sha256": "70af3e613a8fff43547eb8cc048ac87fae6f5f7c356c763f09d3878367f90a19"
+      "lines": 132,
+      "sha256": "28ff235926c715165e8a18f1adc945e9206116e582f7d27dc033f2729629c11e"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 102,
-      "sha256": "2786bc95759a0b5b9df2129215f915533dab1d84483f88d17c0d77a3132f9f61"
+      "lines": 104,
+      "sha256": "524b85a59cb0d8bef88a7604e824c3dba312a2424f418f7333dff493581aa530"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -555,7 +560,7 @@
         "## 封存區"
       ],
       "lines": 244,
-      "sha256": "f65153dd64e6b78ecaf3323e674bb76183edf0f7a5aba3da3ff18aa8d3517262"
+      "sha256": "9afa6a1a9cfffb6503b72b068f3edec6f186ac4a1f8ea4103f02d5c47b3fa1c0"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -587,8 +592,8 @@
         "## Decision",
         "## Consequences"
       ],
-      "lines": 31,
-      "sha256": "1f0b1d49c1ac1f7edcd90adfc176adb6f9f9a4bf8bdacfbb454459c80c420c4d"
+      "lines": 38,
+      "sha256": "6144c4970edcf2b58edc533a9922dd9a0b151526661988dc26bace60c7b152be"
     },
     "docs/adr/0003-jules-integration-via-extension.md": {
       "fences": 0,
@@ -609,8 +614,8 @@
         "## Decision",
         "## Consequences"
       ],
-      "lines": 46,
-      "sha256": "c1135cd57ffcd9b17eee6d70aa5f47f6a3cb49c28f5c75f460cd5b9edef5c607"
+      "lines": 53,
+      "sha256": "50d1e7657c3af11b078166761e958d98c89e5c6364dc2640917083038423c4c7"
     },
     "docs/adr/0005-high-risk-skill-three-layer-review.md": {
       "fences": 0,
@@ -680,8 +685,8 @@
         "## Decision",
         "## Consequences"
       ],
-      "lines": 67,
-      "sha256": "198060698db39d2a736b3c48725a2db4acf1ed001487a233a7ecd23bf764124c"
+      "lines": 74,
+      "sha256": "54b34c8ac0f7e8e363bacfeac5d439fae728d2c736f70a3c50a67c0316338629"
     },
     "docs/adr/0011-omnichannel-architecture-evolution.md": {
       "fences": 2,
@@ -894,8 +899,8 @@
         "### 5.3 待使用者裁決",
         "### 5.4 進行中／等待回報"
       ],
-      "lines": 3397,
-      "sha256": "97430c1204b15279bff3e7a1c4342dae42738cc9dd0ed14393b99388400f0fab"
+      "lines": 3413,
+      "sha256": "a541b7af03b8c9b15261280ad232456a4f40c9ab1c9decc321ef02013e80dd5d"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1143,7 +1148,7 @@
       "sha256": "35bf7dbfa3c7d291b550c3c97a6ae398a22b1dc3624c1d2fc1e4db6963d6e115"
     }
   },
-  "generated_at": "2026-09-16T03:18:30Z",
+  "generated_at": "2026-09-16T03:47:22Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

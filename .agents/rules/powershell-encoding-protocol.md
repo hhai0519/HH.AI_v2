@@ -55,3 +55,23 @@ $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
 │         └─ 若環境不允許 → PowerShell + 強制 UTF-8 宣告 (見第3節)
 └─ NO  → 任意語言皆可，但仍建議 UTF-8 宣告
 ```
+
+## 5. 命令列參數與多行文字傳遞協定 (Parameter Passing & Payload Protocol)
+
+*(由 ADR-0010 PowerShell 參數傳遞陷阱與回覆腳本實戰事故總結)*
+
+在跨進程、巢狀 Shell 或命令列呼叫時，必須嚴格遵守以下操作原則：
+
+1. **禁止透過環境變數傳遞多行或使用者生成之文字**：
+   - 在 Nested PowerShell / 前端 Shell (`powershell -Command "..."`) 情境下，不得假設 `$env:*` 能安全攜帶多行文字或動態 payload。
+   - 前端 Shell 會在命令傳入 PowerShell 直譯器之前提前展開環境變數，若內容包含換行或引號，將被展開為空值或截斷，造成語法解析崩潰（例如命令被展開成無效的 `= @'...'`）。
+2. **採「先寫 UTF-8 實體檔，再傳檔案路徑」標準模式**：
+   - 凡涉及多行回覆、動態文字或含 CJK 字元之 payload 傳遞，一律優先使用 `write_to_file` 或標準 UTF-8 檔案寫入實體檔案，再將該檔案路徑作為命令列參數傳遞給目標腳本。
+   - 此模式同時免疫 Shell 提前展開風險與 Windows 命令列參數 CJK 編碼損壞風險。
+3. **路徑參數必須使用解析後之完整絕對路徑 (Fully Resolved Absolute Path)**：
+   - 傳遞給消費檔案之腳本（如 reply 腳本或資料處理工具）的路徑參數，必須使用完整絕對路徑，嚴禁依賴 caller 當前工作目錄之相對路徑（避免執行者位於根目錄而檔案位於子目錄時路徑不符）。
+   - **可攜性邊界警語**：「必須使用絕對路徑」是指執行時以當前環境 machine-check 動態解析後的絕對路徑傳遞，**絕對禁止**把特定開發機路徑（例如 `C:\Users\<someone>\...`）硬編碼進版本控制文件或程式碼中。
+4. **下游 Stdin Fallback 的卡死風險排查 (Process Hang via Stdin Fallback)**：
+   - 若下游腳本設計為「找不到指定檔案時退回 stdin 輸入」，當路徑傳遞錯誤時，進程不會立即報錯退出，而是會無限期等待 stdin 輸入，表現為 Task 長時間停滯在 RUNNING 且零輸出。
+   - 遇此類進程卡死排查時，優先檢查檔案路徑是否正確解析並存在，不得誤判為網路或權限問題；未來新實作之腳本應優先設計為檔案缺失時立即報錯退出 (Fail-Closed)，避免無聲退回 stdin。
+
