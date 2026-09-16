@@ -134,24 +134,29 @@ SKILL.md 本體只放：
 
 ---
 
-## 5. User-invoked vs Model-invoked 與 Bucket 觸發積極度分級
+## 5. User-invoked vs Model-invoked 與觸發優先序
 
 每個技能分成兩種可被誰觸發：
 
-- **User-invoked（只能人類手動觸發）**：frontmatter 加 `disable-model-invocation: true`。description 寫成給人看的一句話摘要，不需要塞觸發詞列表。用於：一次性設定類（如 `meta/setup-hhai-skills`）、有外部副作用或金融風險的操作類技能。
-- **Model-invoked（模型可自主呼叫，預設）**：不加上面那個欄位。description 要包含豐富的觸發詞，讓模型能自主判斷何時呼叫。
+- **User-invoked（只能人類手動觸發）**：frontmatter 加 `disable-model-invocation: true`。description 寫成給人看的一句話摘要，不需要塞觸發詞列表。用於：一次性設定類（如 `meta/setup-hhai-skills`）、有外部副作用、資料庫異動、外部通訊或金融風險的操作類技能。
+- **Model-invoked（模型可自主呼叫）**：不加上面那個欄位。description 要包含豐富的觸發詞，讓模型能自主判斷何時呼叫。
 
-判斷標準：「模型自己遇到這種情境時，能不能安全地自主呼叫這個技能？」能 → model-invoked；不能（例如會實際下單、刪除資料、發送對外訊息）→ user-invoked。
+判斷標準：「模型自己遇到這種情境時，能不能安全地自主呼叫這個技能？」能 → model-invoked；不能（例如會實際下單、刪除資料、寫入生產資料庫、操控外部服務發送訊息）→ user-invoked。
 
-### 5.1 Bucket 風險等級與觸發積極度（Active Contract）
+### 5.1 安全優先級與 Bucket 觸發積極度（Active Contract）
 
-依 bucket 風險程度採用不同的觸發積極度（決策歷史見 `docs/adr/0002-skill-invocation-aggressiveness.md`）：
+本專案採行明確之單一安全優先序（Precedence Order）：
 
-1. **低風險 buckets（`orchestration/`、`analysis/`、`execution/`、`platform/`）**：
-   - 採**積極模型呼叫（Proactive Model Invocation）**方針：當技能與當前任務情境相關時，模型應當主動使用，不要求使用者逐次明確指示，確保既有分析與工具最佳實踐被充分運用。
-2. **高風險 bucket（`agents/`）**：
-   - 採**嚴格保守呼叫原則（Conservative Invocation Policy）**：`agents/` bucket 下的技能具備外部真實副作用（如實際交易下單、生產資料庫寫入、對外通訊發布）。
-   - 必須嚴格依「模型自主呼叫是否具備完全安全性」判定，**絕對禁止**因「可能有幫助」而放寬或預設自主呼叫；凡具真實副作用且未獲明確自治授權者，一律設為 `disable-model-invocation: true`。
+`個別技能安全閘門（Per-Skill Safety Gate） > Bucket 觸發積極度（Bucket Invocation Aggressiveness）`
+
+1. **第一步：普遍性個別技能安全判定（Universal Per-Skill Safety Gate）**：
+   - 無論技能位於哪一個 bucket，皆必須先以安全標準審視：「模型自己遇到這種情境時，能不能安全自主呼叫？」
+   - 凡具備外部真實副作用（如發送對外訊息、修改外部系統、執行金融交易、寫入或刪除資料庫、操控第三方應用等）之技能，**一律設為 `disable-model-invocation: true`（User-invoked）**，絕不因所屬 bucket 而放寬。
+   - **Bucket 所屬不得作為自主呼叫之授權依據**：例如 `platform/` 包含外部應用串接，本質為混合風險（Mixed-Risk）bucket；如 `platform/connect-apps`、`platform/postgres` 即為合法的 User-invoked 技能。同一 bucket 內可安全共存 User-invoked 與 Model-invoked 兩類技能。
+2. **第二步：已判定為 Model-invoked 技能之 Bucket 積極度指引**：
+   - 僅有已通過第一步安全審查、確定為純唯讀/無危害/可安全自主執行且被歸類為 Model-invoked 之技能，才套用 bucket 積極度方針（決策脈絡見 `docs/adr/0002-skill-invocation-aggressiveness.md`）：
+     - **`orchestration/`、`analysis/`、`execution/`、`platform/`（唯讀/安全輔助部分）**：採**積極模型呼叫（Proactive Model Invocation）**精神。當技能與當前任務情境相關時，模型應當主動使用，不要求使用者逐次明確指示，確保最佳實踐被充分運用。
+     - **`agents/`**：維持歷史決策之**嚴格保守原則（Conservative Invocation Policy）**。凡具真實副作用且未獲明確自治授權者，嚴禁因「可能有幫助」而放寬自主呼叫。
 
 ---
 

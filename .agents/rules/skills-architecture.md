@@ -21,16 +21,15 @@
 
 ## 1. 技能呼叫分類準則 (Invocation Classification Rule)
 
-依據 `AGENTS.md §5` 與 ADR-0002 之規範，新增、修改或遷移技能時，必須依 bucket 風險等級嚴格設定 `disable-model-invocation` 欄位與 description：
+依據 `AGENTS.md §5`、`§5.1` 與 ADR-0002 規範，新增、修改或遷移技能時，必須遵循「個別技能安全閘門優先於 Bucket 積極度（Per-Skill Safety Gate > Bucket Aggressiveness）」原則設定 `disable-model-invocation` 欄位與 description：
 
-1. **低風險 buckets（`orchestration/`、`analysis/`、`execution/`、`platform/`）**：
-   - 採積極模型呼叫（Proactive Model Invocation）。
-   - 預設不設定 `disable-model-invocation: true`。
-   - `description` 必須包含完整且具體的情境與觸發詞，讓 Agent 在相關情境下主動運用，確保技能最佳實踐被充分呼叫。
-2. **高風險 bucket（`agents/`）**：
-   - 採嚴格保守呼叫原則（Conservative Invocation Policy）。
-   - 判斷核心：「模型自己遇到這種情境時，能不能安全地自主呼叫？」
-   - 凡具備外部真實副作用（如實際下單交易、生產資料庫寫入、對外通訊發布）之技能，**嚴禁**因「可能有幫助」而放寬自主呼叫；一律設為 `disable-model-invocation: true`（User-invoked），僅限人類明確手動指示或授權流程觸發。
+1. **普遍性個別技能安全閘門（Universal Safety Gate，第一優先）**：
+   - 判定核心：「模型自己遇到這種情境時，能不能安全自主呼叫？」
+   - 任何 bucket（包含 `platform/`、`execution/`、`orchestration/`、`analysis/`）之技能，若具有外部真實副作用（如對外通訊、發送郵件、修改外部系統、寫入或刪除生產資料庫、金融交易等），**一律設為 `disable-model-invocation: true`（User-invoked）**，絕不因 bucket 分類而放寬。
+   - 現行 `skills/platform/` 中已存在之 User-invoked 技能（如 `connect-apps`、`postgres`、`mcp-gateway`）完全符合本規範，不得被視為違規。
+2. **已核准 Model-invoked 技能之積極度指引（第二優先）**：
+   - **`orchestration/`、`analysis/`、`execution/`、`platform/` 中可安全自主執行之技能**：採積極模型呼叫精神（Proactive Model Invocation）。`description` 應提供豐富且具體的任務情境與觸發詞，讓 Agent 在相關情境下主動運用，無需使用者逐次明示。
+   - **`agents/`**：採嚴格保守呼叫原則（Conservative Invocation Policy）。凡涉及真實外部操作或未獲明確自治授權者，**嚴禁**因「可能有幫助」而設為自主呼叫，必須維持 `disable-model-invocation: true`。
 
 ---
 

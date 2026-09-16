@@ -14,7 +14,7 @@
 
 **NEXT_WORK**：B-01
 
-**最後更新**：2026-09-16，B-01 ADR-0002／0004／0010 分層搬移執行中；ACTIVE_MACRO_AUDITOR 維持 GPT 代理審查官（使用者授權）；B-01 施工候選已就緒並等待 External Macro Audit。
+**最後更新**：2026-09-16，B-01 ADR-0002／0004／0010 分層搬移執行中；ACTIVE_MACRO_AUDITOR 維持 GPT 代理審查官（使用者授權）；Machine PASS / Macro HOLD；CURRENT B-01 bounded semantic repair F1-F2 進行中。
 
 ---
 
@@ -74,7 +74,7 @@ A 節目前狀態以本表各列與 `NEXT_WORK` 之 current repo truth 為準；
 
 | ID | 狀態 | 項目 | 備註 |
 |---|---|---|---|
-| B-01 | 進行中 | ADR-0002／0004／0010 分層搬移 | B-97 PRE-B01 RELEASE PASS 與 closure audit 均已成立；B-01 production implementation candidate 已執行（ADR-0002/0004/0010 分層搬移至 AGENTS.md §5、skills-architecture.md、powershell-encoding-protocol.md，ADRs 轉為歷史留痕與指向現行規範）；等待 External Macro Audit；未取得 Macro PASS 前不得標已完成、不得推進 NEXT_WORK。 |
+| B-01 | 進行中 | ADR-0002／0004／0010 分層搬移 | Machine PASS / Macro HOLD；CURRENT B-01 bounded semantic repair F1-F2進行中。 |
 | B-02 | 已完成 | `check_consistency.py` 增補檢查（CHECK 8-15） | CHECK 8 看板 HEAD 落後、9 交接區 HEAD 落後、10 §X.Y 章節引用有效性、11 §6.1 與 selftest E 對應、12 AUDIT-LOG latest audit evidence 必須位於 current HEAD ancestry（允許多個合法 pending repair commits，raw ancestry distance 不再是 FAIL threshold）、13 檔尾換行、14 簡體字、15 提示詞衝突字串。本批擴充至 15 項，全數通過 |
 | B-03 | 待辦 | 新建 `SOP/SOP_03_Skill_Lifecycle_and_Quality.md` | 收納舊 `SOP_00` §一／§三／§四與舊 `SOP_03` §4.2／§4.3，見第 18 點 |
 | B-04 | 待辦 | `validate_skills.py` 加 description 觸發詞警告 ＋ 測試 | 警告非錯誤，現存多個技能會失敗 |

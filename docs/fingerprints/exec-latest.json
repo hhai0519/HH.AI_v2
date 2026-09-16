@@ -1,5 +1,5 @@
 {
-  "base_head": "76cfe7b",
+  "base_head": "b2b5d1d",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 0,
@@ -30,8 +30,8 @@
         "## 4. 腳本選用決策樹 (Decision Tree)",
         "## 5. 命令列參數與多行文字傳遞協定 (Parameter Passing & Payload Protocol)"
       ],
-      "lines": 77,
-      "sha256": "30cb2990dc2518b33417c22f07c4e09da95692bc0e8aaa528122c09e6f9e570d"
+      "lines": 78,
+      "sha256": "5d16885dc08af94c9832c9aa5a3a4851c902c259de35dd15fbcc2a857829b81f"
     },
     ".agents/rules/prompt-preflight.md": {
       "fences": 0,
@@ -102,8 +102,8 @@
         "## 2. 指定資料來源與工具失效防護鐵律 (Anti-Silent-Substitution Rule)",
         "## 3. 禁制清單"
       ],
-      "lines": 59,
-      "sha256": "a3945c328a96649efa8a5ead8ad690ae9d8217f31500f0c3351f05305250f991"
+      "lines": 58,
+      "sha256": "f69a76470ce2b40b02b5e697dd3323f47348658e3977228a6164b0505a26995c"
     },
     ".claude/rules/auditor-protocol.md": {
       "fences": 6,
@@ -193,8 +193,8 @@
         "### semantic_firewall 有兩種寫法",
         "## 3. 漸進式揭露（Progressive Disclosure）",
         "## 4. 技能之間的依賴",
-        "## 5. User-invoked vs Model-invoked 與 Bucket 觸發積極度分級",
-        "### 5.1 Bucket 風險等級與觸發積極度（Active Contract）",
+        "## 5. User-invoked vs Model-invoked 與觸發優先序",
+        "### 5.1 安全優先級與 Bucket 觸發積極度（Active Contract）",
         "## 6. Router 技能",
         "## 6a. 資料夾層級的範圍受限規則",
         "## 7. README 同步規則",
@@ -204,8 +204,8 @@
         "### 10.1 遠端健康查證與回報規範",
         "### 10.2 禁止文字摘要辯論 (Anti-Debate Policy)"
       ],
-      "lines": 264,
-      "sha256": "e6a06d7d550fba1148fa5711b83b8f98a56d338cf377451573fabd3ae49990bc"
+      "lines": 269,
+      "sha256": "ee65d2b4b856a33a2131e0f0d40b245b2d1f98203b5922db5416e7caf6a55b7e"
     },
     "MISSION.md": {
       "fences": 0,
@@ -515,16 +515,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 132,
-      "sha256": "28ff235926c715165e8a18f1adc945e9206116e582f7d27dc033f2729629c11e"
+      "lines": 134,
+      "sha256": "fce3250005f2295160ccba2321f8d52e430d22c72b18ad38fafead404c4d6cbc"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 104,
-      "sha256": "524b85a59cb0d8bef88a7604e824c3dba312a2424f418f7333dff493581aa530"
+      "lines": 106,
+      "sha256": "39363a8ea2e5a655a0bd2e3731244227f8cc7508dbb005d00ed21863a6fbf7c4"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -560,7 +560,7 @@
         "## 封存區"
       ],
       "lines": 244,
-      "sha256": "9afa6a1a9cfffb6503b72b068f3edec6f186ac4a1f8ea4103f02d5c47b3fa1c0"
+      "sha256": "bce1022dae04017deb2522f78cde4b7f3e49ba3d3b7606f0c694061610501aad"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -899,8 +899,8 @@
         "### 5.3 待使用者裁決",
         "### 5.4 進行中／等待回報"
       ],
-      "lines": 3413,
-      "sha256": "a541b7af03b8c9b15261280ad232456a4f40c9ab1c9decc321ef02013e80dd5d"
+      "lines": 3421,
+      "sha256": "ce27f3213356794e211564f224d3aace59f30ccd1f04d57c5b61dbcc12bddfef"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1148,7 +1148,7 @@
       "sha256": "35bf7dbfa3c7d291b550c3c97a6ae398a22b1dc3624c1d2fc1e4db6963d6e115"
     }
   },
-  "generated_at": "2026-09-16T03:47:22Z",
+  "generated_at": "2026-09-16T04:01:22Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

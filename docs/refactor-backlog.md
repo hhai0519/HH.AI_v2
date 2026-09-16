@@ -3053,7 +3053,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - B-41 Slim Bootstrap / Runtime Reconciliation External Macro PASS / CLOSED。
   - B-99 Qualification-Based Macro Auditor & Repo-Visible Handoff（CLOSED / MACRO PASS）。
   - B-97 Pre-B01 Comprehensive Release Audit 已完成（CLOSED / PRE-B01 RELEASE PASS）。
-  - B-01 施工候選已就緒並等待外部宏觀審計 (IN PROGRESS / IMPLEMENTATION CANDIDATE / PENDING EXTERNAL MACRO AUDIT)。
+  - B-01 施工候選初審 Machine PASS / Macro HOLD，現行語意優先序與 Shell 邊界修復中 (IN PROGRESS / MACHINE PASS / MACRO HOLD / BOUNDED REPAIR REQUIRED)。
   - C-06 維持待使用者裁決（USER_DECISION_NONBLOCKING，遠端 ruleset 與 required checks 現況已確認）。
   - B-28 / B-29 上游 trigger 重新評估完成，無 B-01 blocker，維持 DEFERRED_BY_USER / POST_B01。
   - B-54 保持待辦（POST_B01 / NONBLOCKING，SOP_12 機器專屬路徑 concrete example 已登錄）。
@@ -3409,5 +3409,13 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
     - **當前生命週期狀態**：
       - 本批為 B-01 production implementation candidate，工作區修改僅限授權範圍（6 semantic source/target + 5 state/evidence + generated traceability）。
       - 依規範本批次不宣稱 B-01 CLOSED，TASKBOARD.NEXT_WORK 維持 B-01，等待 External Macro Reviewer（GPT 代理審查官（使用者授權））執行獨立審計。
+
+70. **B-01 Active-Contract Semantic Precedence & Shell Scope — Bounded Repair**（2026-09-16）
+    - **背景與外部裁決**：B-01 施工候選 `b2b5d1d` 經 GPT 代理審查官（使用者授權）全面審查，本地與遠端 CI 機構閘門全綠（Verify Run 35053205905 success），但發現兩項現行合約語意矛盾與過度一般化瑕疵，裁決 `MACRO AUDIT = HOLD`、`ACCEPT STATUS = BOUNDED REPAIR REQUIRED`、`FINDING_DISPOSITION = CURRENT B-01`。審計檢查點維持 `76cfe7b`，不得推進 `b2b5d1d`。
+    - **發現事項與處置規範**：
+      - **F1（呼叫安全優先序與混合風險 Bucket）**：修正 `AGENTS.md §5.1` 與 `.agents/rules/skills-architecture.md §1`，確立單一優先序「個別技能安全閘門優先於 Bucket 積極度（Per-Skill Safety Gate > Bucket Aggressiveness）」。凡具真實外部副作用之技能一律 User-invoked；`platform/` 本質為混合風險（Mixed-Risk），現行 `connect-apps`、`postgres`、`mcp-gateway` 等 User-invoked 技能完全合規；僅有已安全判定為 Model-invoked 之技能方套用積極呼叫指引。
+      - **F2（收斂 ADR-0010 巢狀 Shell 參數展開邊界）**：修正 `.agents/rules/powershell-encoding-protocol.md §5`，將環境變數展開風險限縮至 Nested PowerShell / `powershell -Command` / 字串插值等前層解析邊界；使用工具中立之檔案寫入機制；不宣稱所有環境變數在所有情境不可用，亦不宣稱所有 Shell 必提前展開。
+    - **當前生命週期狀態**：
+      - 本批為 CURRENT B-01 bounded semantic repair，修復成果待 External Macro Auditor 獨立複審；未取得 Macro PASS 前維持 B-01 進行中、NEXT_WORK 維持 B-01。
 
 
