@@ -1,5 +1,5 @@
 {
-  "base_head": "85d9a3a",
+  "base_head": "c73dd28",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 0,
@@ -515,16 +515,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 136,
-      "sha256": "2e793bec6b9bc657c4c5fde67fe02e7344e22702b9ec68e24bc8d7e103280f02"
+      "lines": 137,
+      "sha256": "4fec8616833d53d4e04c97f60bbc17bd319aa9afc0aa45f6f9cd9e6b68c92ea6"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 108,
-      "sha256": "30fbe9e031fb96ab198c43d78b5573b9775fa3f9b51d7fecfb19429f3ee98bf4"
+      "lines": 109,
+      "sha256": "90e87f1cfa4988b5a488e0ddc12778202f0d0e5f802b04325a8f73530bd03301"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -560,7 +560,7 @@
         "## 封存區"
       ],
       "lines": 244,
-      "sha256": "daead8ba727ad8cccc8b5a65e0ab6aade6636f79c446b87c22bc522597c4d398"
+      "sha256": "c23137f982c705962afb54ff6ced92ab7fb863fb474f5b129e3f1ba6938526a7"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -899,8 +899,8 @@
         "### 5.3 待使用者裁決",
         "### 5.4 進行中／等待回報"
       ],
-      "lines": 3429,
-      "sha256": "46ec6955b596be7a0d33ef5114bae3e2abb483478bc2156ab9563668b9c84427"
+      "lines": 3448,
+      "sha256": "b0e56a87ee2115276ce284a33285f0e017d43b5f401948921bd29db4c5f07c2c"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1048,6 +1048,20 @@
       "lines": 271,
       "sha256": "ed8b641d9a3741ef2ff1cf97cf7af32029fa04dcebd22500c2b6adf370d797c5"
     },
+    "scripts/tests/test_shared_primitives.py": {
+      "fences": 0,
+      "headings": [
+        "# -*- coding: utf-8 -*-",
+        "# ==============================================================================",
+        "# DLP Sanitizer Tests (Primitive 1)",
+        "# ==============================================================================",
+        "# ==============================================================================",
+        "# AtomicFS Tests (Primitive 2)",
+        "# =============================================================================="
+      ],
+      "lines": 222,
+      "sha256": "211a9758dfb171b95d6e33b3fcb7e3e9def586d08fa4e3cdb4ba01038adb45ae"
+    },
     "scripts/tests/test_spec_create_file.py": {
       "fences": 0,
       "headings": [
@@ -1148,7 +1162,7 @@
       "sha256": "35bf7dbfa3c7d291b550c3c97a6ae398a22b1dc3624c1d2fc1e4db6963d6e115"
     }
   },
-  "generated_at": "2026-09-16T04:12:49Z",
+  "generated_at": "2026-09-16T05:59:40Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

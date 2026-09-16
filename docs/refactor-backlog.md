@@ -2825,7 +2825,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 5.1 上一批狀態
 
-上次核對通過的 HEAD：85d9a3a
+上次核對通過的 HEAD：c73dd28
 
 - `23af193`（執行者前置檢查 ＋ 回滾程序 ＋ `AUDIT-LOG.md` ＋ 四缺口修正）
   已於 2026-09-02 由審計官核對通過：6 檔異動（含 2 個新檔）、零夾帶、
@@ -3009,6 +3009,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 - `eceda26`（B-99 Macro PASS Closure & B-97 Pointer Sync 及 B-97 Phase 1 唯讀發布審計）已於 2026-09-16 由 GPT 代理審查官（使用者授權）全面審查獨立核對通過：5 檔 authorized scope，本地 verify_all 5 Gates 全 PASS，GitHub Actions exact-SHA Run 35049350295 success。B-99 state closure accepted；B-97 Phase 1 READ_ONLY 全庫審計完成；41 筆 active-lifecycle rows 全部完成處置；B-01 target readiness PASS；上游 trigger 重新評估無 blocker；C-06 remote truth 已確認並維持 USER_DECISION_NONBLOCKING；實質發現依 B-95 處置完畢；B-01 保持零實作（NOT STARTED）；判定 PRE-B01 RELEASE STATUS = PASS。
 - `76cfe7b`（B-97 PRE-B01 Release PASS State Closure）已於 2026-09-16 由 GPT 代理審查官（使用者授權）全面審查獨立核對通過：5 檔 authorized scope，本地 verify_all 5 Gates 全 PASS，GitHub Actions exact-SHA Run 35051382469 success。B-97 PRE-B01 Release PASS State Closure accepted；MACRO AUDIT = PASS，ACCEPT STATUS = ACCEPT ALL，FINDING_DISPOSITION = NONE；PRE-B01 RELEASE STATUS = PASS — FINALIZED；B-97 正式 CLOSED；B-01 AUTHORIZED TO START。
 - `85d9a3a`（B-01 ADR-0002/0004/0010 分層搬移及 Active-Contract 語意優先序與 Shell 邊界修復）已於 2026-09-16 由 GPT 代理審查官（使用者授權）全面審查獨立核對通過：涵蓋 76cfe7b..85d9a3a 完整 pending range（含 b2b5d1d 初審 HOLD 與 85d9a3a bounded repair）；A1 EQUIVALENT 查證通過；exact-SHA Actions Run 35054093786 (status completed, conclusion success)；B-01 正式結案（CLOSED / Macro PASS）。
+- `c73dd28`（B-01 Macro PASS Closure and E-03 Pointer Sync）已於 2026-09-16 由 GPT 代理審查官（使用者授權）獨立核對通過：5 檔 authorized scope，本地 verify_all 5 Gates 全 PASS，GitHub Actions exact-SHA Run 35054817604 success。B-01 closure state sync accepted；E-03 推進至 NEXT_WORK；E-03 Phase 1 + Phase 1B READ_ONLY evidence review completed（PASS / corrected inventory accepted），授權進入 Phase 2；判定 Macro PASS (ACCEPT ALL)。
 
 ### 5.2 待辦
 
@@ -3055,7 +3056,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - B-99 Qualification-Based Macro Auditor & Repo-Visible Handoff（CLOSED / MACRO PASS）。
   - B-97 Pre-B01 Comprehensive Release Audit 已完成（CLOSED / PRE-B01 RELEASE PASS）。
   - B-01 ADR-0002／0004／0010 分層搬移及 Active-Contract 語意修復已完成（CLOSED / MACRO PASS）。
-  - E-03 Runtime 執行層架構推進（NEXT / READ_ONLY DEPENDENCY INVENTORY NOT STARTED）。
+  - E-03 Runtime 執行層架構推進（IN PROGRESS）：Phase 1 READ_ONLY inventory = PASS；Phase 1B correction addendum = PASS；Phase 2 Wave 1A Shared Pure Primitives = IN PROGRESS / PENDING EXTERNAL MACRO AUDIT；LINE architecture = USER DECISION REQUIRED LATER / NONBLOCKING FOR WAVE 1A；B-30 = confirmed prerequisite before live integration / not part of Wave 1A；B-33 = confirmed intersection / not part of Wave 1A。
   - C-06 維持待使用者裁決（USER_DECISION_NONBLOCKING，遠端 ruleset 與 required checks 現況已確認）。
   - B-28 / B-29 上游 trigger 重新評估完成，無 B-01 blocker，維持 DEFERRED_BY_USER / POST_B01。
   - B-54 保持待辦（POST_B01 / NONBLOCKING，SOP_12 機器專屬路徑 concrete example 已登錄）。
@@ -3424,6 +3425,24 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
     - **背景與審查範圍**：GPT 代理審查官（使用者授權）完成 B-01 全量審查，audited range 為 `76cfe7b115a3913a868a1957cbec704f183b62eb..85d9a3a9efe51e0d361c85149a93901404f2a8f2`（共 2 commits：`b2b5d1d` 初審 Machine PASS / Macro HOLD，`85d9a3a` 完成 F1/F2 bounded semantic repair，F1/F2 於審查範圍內完全解決）。
     - **外部審查裁決**：A1 qualification 採 `A1 = EQUIVALENT`（GitHub API + Executor clone cross-check），exact-SHA Actions Verify Run `35054093786` (status completed, conclusion success)，canonical verification 5 Gates 全過；裁決 `MACRO AUDIT = PASS`，`ACCEPT STATUS = ACCEPT ALL`，`FINDING_DISPOSITION = NONE`；`B-01 = ELIGIBLE FOR CLOSURE`。
     - **結案與推進**：B-01 於本狀態同步批次完成後正式結案（CLOSED / MACRO PASS）；下一階段主線任務依看板與 backlog 佇列推進至 `E-03`（Runtime 執行層 — Phase 1 只讀依賴調研，READ_ONLY DEPENDENCY INVENTORY）；本狀態同步批次零 Runtime 修改（no runtime mutation in this closure batch），E-03 本批維持待辦尚未開始（NOT STARTED）。
+
+72. **E-03 Phase 1 & 1B Read-Only Inventory Review & Phase 2 Wave 1A Implementation Candidate**（2026-09-16）
+    - **背景與外部審查結論**：E-03 Phase 1 READ_ONLY 依賴調研與 Phase 1B 修正附錄經 External Macro Reviewer（GPT 代理審查官（使用者授權））全面審查，判定 `E-03 PHASE 1 + PHASE 1B = PASS`，`ACCEPT STATUS = ACCEPT WITH CORRECTED INVENTORY`，正式授權進入 Phase 2。
+    - **確定之架構事實修正（Phase 1B Corrected Truths）**：
+      - Telegram dist 目錄雖未進版控，但操作腳本 `Start-TelegramBot.ps1` 具備相依性與 build 復原能力。
+      - `start_line.js` 非一次性腳本（NOT one-shot），取得控制權並啟動 DB 心跳後，持續執行 `poll_inbox.js` 輪詢直到訊息處理、轉移或失敗退出。
+      - 根目錄六進程 `ecosystem.config.js` 非生產拓撲藍圖；現行運行拓撲為 LINE 透過 `Start-LineBot.ps1` 呼叫巢狀 `line-bot-project/ecosystem.config.js` (`line-bridge`)，Telegram 透過 `Start-TelegramBot.ps1` 呼叫巢狀 `telegram-bot-project/ecosystem.telegram.config.js` (`tg-bridge-zero-delay`)。
+      - `line-daemon` 為舊版根目錄 PM2 項目，`start_line.js` 本身仍為現行非 PM2 控制器；`tg-daemon` 為衝突/過期拓撲；根目錄 `line-tunnel` 與 `sync-tunnel` 為舊 Cloudflare 鏈路，非現行正常啟動路徑。
+      - `Modules/shared/dlpSanitizer.js` 擁有實際 runtime 邏輯，Telegram `dlpSanitizer.ts` 為型別包裝層。
+    - **Wave 1A 純共享原語邊界（Zero-Third-Party Shared Pure Primitives）**：
+      - 本批刻意限縮於第三方 package 依賴為零之純共享原語，不引入 `package.json`，不建立 npm workspace，不執行 npm install。
+      - 建立 `shared/dlpSanitizer.js`（CommonJS 格式相容 legacy DLP 邏輯與排除規則）與 `shared/dlpSanitizer.d.ts`（最小型別宣告，不複製正規表達式）。
+      - 建立 `shared/atomicFs.js`（抽取 legacy LINE `reply.js` 與 Telegram `reply_tg.js` 共通之 `writeStateAtomic` 為單一權威實作）。
+      - 新增 canonical tracked tests（`scripts/tests/test_shared_primitives.py`）。
+      - LINE 架構決策保留至後續處理（nonblocking for Wave 1A）；B-30 與 B-33 確認為後續 live 整合之前置相依，非 Wave 1A 範圍。
+    - **當前生命週期狀態**：
+      - 本批為 Phase 2 Wave 1A 施工候選，工作區無任何 runtime consumer wiring 或第三方程式庫引入。
+      - 本 candidate commit 等待 External Macro Reviewer 獨立審核。
 
 
 
