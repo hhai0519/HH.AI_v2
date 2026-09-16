@@ -3057,7 +3057,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - B-99 Qualification-Based Macro Auditor & Repo-Visible Handoff（CLOSED / MACRO PASS）。
   - B-97 Pre-B01 Comprehensive Release Audit 已完成（CLOSED / PRE-B01 RELEASE PASS）。
   - B-01 ADR-0002／0004／0010 分層搬移及 Active-Contract 語意修復已完成（CLOSED / MACRO PASS）。
-  - E-03 Runtime 執行層架構重設與推進（IN PROGRESS）：Wave 1A Shared Pure Primitives = MACRO PASS；Phase 1/1B/1B2 調研審查通過；架構正式確立為 SINGLE CHANNEL GATEWAY（ADR-0022），目標路徑為 runtime/channel-gateway/，舊 Telegram-only 目標於實作前正式廢棄；production implementation = NOT STARTED pending architecture decision persistence audit；LINE 實作依 D12 維持 USER-TRIGGERED / LAST；M2～M8 完成既有任務路由無重複任務。
+  - E-03 Runtime 執行層架構推進（IN PROGRESS）：ADR-0022 = MACHINE PASS / MACRO HOLD / BOUNDED FIDELITY REPAIR；Gateway implementation = NOT STARTED；LINE = USER-TRIGGERED / LAST。
   - C-06 維持待使用者裁決（USER_DECISION_NONBLOCKING，遠端 ruleset 與 required checks 現況已確認）。
   - B-28 / B-29 上游 trigger 重新評估完成，無 B-01 blocker，維持 DEFERRED_BY_USER / POST_B01。
   - B-54 保持待辦（POST_B01 / NONBLOCKING，SOP_12 機器專屬路徑 concrete example 已登錄）。
@@ -3464,6 +3464,17 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
       - 本批為 architecture / governance decision persistence，工作區無任何 Gateway 生產程式碼變更（no runtime code in this batch）。
       - Gateway 生產實作尚未開始（NOT STARTED），等待本治理候選通過 External Macro Reviewer 獨立審核。
       - NEXT_WORK 保持 E-03。
+
+74. **E-03 ADR-0022 Canonical Decision Fidelity — Bounded Repair（通訊閘道決策精確度邊界修復）**（2026-09-16）
+    - **背景與外部審查結論**：前一治理候選 `2830c7f`（ADR-0022 Channel Gateway 架構決策持久化）經 External Macro Reviewer（GPT 代理審查官（使用者授權））全面審查。Machine verification 5 Gates 全過，exact-SHA Actions Verify Run `35096761114` completed/success（CHECK 1..20 PASS，310 unit PASS，13 webapp PASS）。
+    - **外部審查裁決**：`MACRO AUDIT = HOLD`，`ACCEPT STATUS = BOUNDED REPAIR REQUIRED`，`FINDING_DISPOSITION = CURRENT E-03`。審計檢查點維持 `c2df1b0`，不得推進至 `2830c7f`。
+    - **發現事項與邊界修復（F1 / F2）**：
+      - **F1（D26 帳號切換細節補齊）**：在 `docs/adr/0022-channel-gateway-architecture.md` D26 完整補回使用者已裁決之 12 項子契約（非敏感標籤存本機設定檔、Token/Secret 絕不進庫、IDE 選擇目標帳號、LINE 依剩餘 push quota 由高至低排序、由 Gateway 呼叫 LINE quota API、非重啟熱切換、切換即接管遵守 D7、訊息與接收帳號強綁定、預設未決訊息於 IDE 列出後捨棄、獨立白名單、外發授權帳號綁定、獨立歸檔、測試帳號視為一般登錄帳號、正式 TG 切換前維持預設停用杜絕 409 Conflict）。
+      - **F2（D18 LINE 外發附件推播額度影響）**：在 ADR-0022 D18 補明 LINE 外發附件之時效性 HTTPS 下載連結遞送屬 LINE push message，會消耗該 LINE 官方帳號之 push quota，作為 D26 額度展示與排序之架構依據。
+    - **當前生命週期狀態**：
+      - 本批為 CURRENT E-03 bounded repair，無任何 Gateway 生產程式碼變更（no Gateway production mutation）。
+      - Gateway 生產實作尚未開始（NOT STARTED），E-03 維持進行中，NEXT_WORK 保持 E-03。
+      - 本修復成果等待 External Macro Reviewer 獨立複審。
 
 
 

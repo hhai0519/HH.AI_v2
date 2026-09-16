@@ -56,7 +56,7 @@
 - **D15（獨立極小依賴閉包）**：`runtime/channel-gateway/` 擁有專屬之 `package.json`，僅宣告實際運行閉包所需之依賴（生產安裝採 `npm ci --omit=dev`），嚴禁沿用 Remoat 完整套件清單。實作時應評估 Node 原生能力是否可取代 `axios`、`dotenv`、`express`、`helmet`（此為評估義務，非預先刪除宣告）。
 - **D16（語音功能排除）**：新架構不支援語音訊息，不得引入 Whisper 或 ffmpeg 等重量級外部資產。
 - **D17（進線附件處理分工）**：使用者傳送至 Agent 之附件（照片、PDF、Office 檔案等），Gateway 僅負責安全下載、正規化檔名並將本機絕對路徑與 MIME Type 交付 Agent。檔案解析與實質處理交由既有技能模組，Gateway 不安裝文件解析套件。
-- **D18（外發附件安全傳輸）**：Agent 傳送至使用者之附件：Telegram 支援原生直接上傳；LINE 因缺乏通用檔案訊息類型，未來 LINE 適配器將採用不可猜測、具時效性之 HTTPS 下載連結（依 D12 延後實作）。
+- **D18（外發附件安全傳輸）**：Agent 傳送至使用者之附件：Telegram 支援原生直接上傳；LINE 因缺乏通用檔案訊息類型，未來 LINE 適配器將採用不可猜測（unguessable）、具時效性（expiring）之 HTTPS 下載連結（依 D12 延後實作）。並且：每次送出該下載連結均屬 LINE push message，因此會消耗該 LINE Official Account 的 push quota。這亦是 D26 中 LINE 帳號 remaining push quota 展示與排序之架構輸入依據之一。
 
 ### 5. 外發檔案授權防線 (Outbound File Authorization, D19–D21)
 
@@ -80,7 +80,19 @@
   1. `runtime/channel-gateway/`：具備獨立 `package.json`，內含 `core/`、`adapters/`、`bin/`、`tests/`；不得在 `runtime/` 下建立 `telegram-bot/` 或 `line-bot/` 作為頂層架構；未來 LINE Worker 程式碼亦不設於 repo 根目錄；
   2. `shared/`：保留 Wave 1A 已驗證之純共享原語資產（`shared/dlpSanitizer.js`、`shared/dlpSanitizer.d.ts`、`shared/atomicFs.js`）；
   3. `skills/platform/`：僅存放技能合約、說明文件與呼叫界面，不包含通訊服務常駐實體。
-- **D26（Gateway 控管之非重啟熱切換）**：保留 `$$TG帳號$$` 與 `$$Line帳號$$` 特權指令，但實作改由 Gateway 集中管控之熱切換（Hot Switching）。Agent 嚴禁覆寫 `.env` 或重啟 PM2。非敏感帳號標籤存於設定檔，Token 與密鑰存於安全憑證庫；切換帳號同時完成接管；進線訊息與接收帳號嚴格綁定；舊活躍帳號之未決訊息列出後予以捨棄；白名單、授權與歸檔依帳號完全隔離；正式 Telegram 帳號在正式 Cutover 前維持禁用狀態以杜絕 409 Conflict。
+- **D26（Gateway 控管之非重啟熱切換）**：保留 `$$TG帳號$$` 與 `$$Line帳號$$` 特權指令，但實作改由 Gateway 集中管控之熱切換（Hot Switching），完整涵蓋以下已裁決細節：
+  1. **帳號登錄邊界**：非敏感帳號標籤（non-secret account label）與說明（description）存於版本庫外之本機設定檔（Local Config）；Token 與 Channel Secret 絕對不得以純文字存於本機設定檔，嚴禁進入版本庫，版本庫僅收錄設定範本。
+  2. **帳號選擇流程**：Agent 發出 `$$TG帳號$$` 或 `$$Line帳號$$` 後，由 Gateway 列出該平台已登錄帳號清單，使用者於 IDE 端選擇目標帳號。
+  3. **LINE 額度顯示與排序**：LINE 帳號清單必須顯示剩餘推播額度（remaining push quota），並依剩餘額度由高至低自動排序；額度資料由 Gateway 直接呼叫 LINE quota API 取得，不再依賴舊有 `get_line_quotas.js` 腳本。
+  4. **非重啟熱切換 (Hot Switch)**：Gateway 停止舊活躍帳號（active account）之接收並啟用新帳號接收，整個 Gateway 進程絕對不得重啟（no process restart）；Agent 嚴禁覆寫 `.env`，亦嚴禁重啟 PM2。
+  5. **切換即接管 (Switch = Takeover)**：帳號切換完成時同時取得該通道之控制權，接管通知嚴格遵守 D7 規範。
+  6. **訊息與接收帳號嚴格綁定**：進線訊息與其接收帳號（receiving account）強綁定，訊息僅能由當初接收該訊息之帳號回覆，嚴禁由不同帳號代回。
+  7. **預設未決訊息處理**：切換時舊活躍帳號尚未處理之訊息（包含佇列中與處理中 pending messages），於 IDE 端完整列出後予以捨棄（discard）；使用者可選擇重新傳送至新活躍帳號。
+  8. **獨立白名單**：各帳號配置各自獨立之授權白名單（Allowlist per account）。
+  9. **外發授權帳號綁定**：D20 之外發檔案授權由當下活躍帳號發出，授權審計紀錄（Authorization Audit Record）必須明確記錄帳號身分（account identity）。
+  10. **獨立對話歸檔**：各帳號歸檔目錄依帳號標籤完全獨立隔離（Archive per account）。
+  11. **測試帳號地位平等**：Test Bot 視為一般已登錄帳號（ordinary registered account），不建立特殊架構分支。
+  12. **正式 Telegram 帳號過渡防護**：正式 Telegram 帳號在正式 Cutover 前預設處於停用狀態（default disabled）；Gateway 在切換前絕對不得啟用舊 bridge 正在使用之正式 Token，杜絕 Telegram 409 Conflict。
 
 ---
 
