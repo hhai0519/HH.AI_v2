@@ -12,9 +12,9 @@
 
 **ACTIVE_MACRO_AUDITOR**：GPT 代理審查官（使用者授權）
 
-**NEXT_WORK**：B-99
+**NEXT_WORK**：B-97
 
-**最後更新**：2026-09-16，B-99 Qualification-Based Macro Auditor & Repo-Visible Handoff 實作進行中；ACTIVE_MACRO_AUDITOR 設為 GPT 代理審查官（使用者授權）；Next: B-99；B-97 formal audit NOT STARTED；B-01 NOT STARTED。
+**最後更新**：2026-09-16，B-99 Qualification-Based Macro Auditor & Repo-Visible Handoff 已完成（CLOSED / Macro PASS）；ACTIVE_MACRO_AUDITOR 維持 GPT 代理審查官（使用者授權）；Next: B-97；B-97 formal audit NOT STARTED；B-01 NOT STARTED。
 
 ---
 
@@ -172,7 +172,7 @@ A 節目前狀態以本表各列與 `NEXT_WORK` 之 current repo truth 為準；
 | B-96 | 待辦 | **`$$使用者$$` Session-local User Prompt Compiler Mode** | 使用者已完成架構裁決。此功能為僅限目前 Antigravity conversation/session 的 Natural-Language → Governed Execution Adapter；`$$使用者$$` 啟用，沒有 `$$結束使用者$$`，關閉 Agent/conversation 即失效，新 Agent 預設 OFF。User Mode 將輸入分為 READ_ONLY / REPO_MUTATION / EXTERNAL_ACTION / SPECIAL_COMMAND；repo mutation 必須先唯讀 discovery + B-68 impact scan，再編譯完整 production prompt、等待使用者確認，確認後仍通過既有 Prompt Manifest / dependency replay / Allowed Scope / Git / Gate preflight，不構成任何 safety override。特殊 `$$` 指令永遠優先走 `SOP/SOP_00A_Master_Index.json` canonical router。完整已裁決施工規格見 `docs/refactor-backlog.md` Item 63。NOT IMPLEMENTED。 |
 | B-97 | 待辦 | **Pre-B01 Comprehensive Pending-Task & Repository Release Audit** | 使用者明確要求之一次性 Pre-B01 release gate，在任何 B-01 mutation 前執行；第一階段必須為 READ_ONLY；必須 machine-derive TASKBOARD 所有 unfinished rows（待辦、進行中、待裁決），每一筆皆由 External Macro Reviewer 親自判定 Pre-B01 disposition；必須對 current repository 進行宏觀全面 release audit；material finding 依 B-95 promotion contract 處置；blocking finding 可在具 current evidence 時 preempt B-01；non-blocking finding 留在 TASKBOARD，不因理論完整性自動 preempt；C-06 必須重新 surface current truth 與選項，在使用者未改變裁決前維持 non-blocking；B-01 在 B-97 External Macro PRE-B01 RELEASE PASS 前不得開始。本批 REGISTERED ONLY，尚未執行 audit。完整規格見 `docs/refactor-backlog.md` Item 65。 |
 | B-98 | 待辦 | **Executor Secret / Credential Output Hardening** | 2026-09-16 Step 1 READ_ONLY alignment 中，Executor 為查詢 GitHub 狀態列舉環境變數，致使一個 GitHub credential 完整 secret value 輸出至 execution transcript（零 secret value 記錄於 repo）。已完成人工作業遏阻：exposed credential 已撤銷、replacement credential 已由使用者建立驗證、PowerShell 歷史紀錄已處置。未解決 system gap：缺少明確且可機械守護的 secret-safe external API inspection/output contract。驗收方向：憑證存在性檢查僅限輸出 boolean / PRESENT / ABSENT，嚴禁列舉 secret-bearing 環境變數值，嚴禁將 token/password 寫入 transcript、conversation、EXEC-LOG、repo、scratch 或 metadata；troubleshooting 採 secret-safe auth path；評估確定性 guard / canary。本輪僅登錄，採 secret-safe remote-health 路徑下不阻塞本次 closure 與 B-97；B-97 release audit 時重新做 security disposition。 |
-| B-99 | 進行中 | **Qualification-Based Macro Auditor & Repo-Visible Handoff** | 實作資格認定制宏觀審計官（qualification-based / provider-neutral Macro role）；任一時點 exactly one ACTIVE_MACRO_AUDITOR；僅使用者有權指派／替換／交接／撤銷；執行者與審計官同 Agent / session 永久互斥（Executor cannot audit itself）；A1 支援 FULL_CLONE 與 strict EQUIVALENT；看板 repo-visible ACTIVE_MACRO_AUDITOR 單一事實來源；保留 .claude/ 為相容控制平面；建立 ADR-0021；完成實作後維持進行中等待獨立 Macro Audit。 |
+| B-99 | 已完成 | **Qualification-Based Macro Auditor & Repo-Visible Handoff** | B-99 Qualification-Based Macro Auditor & Repo-Visible Handoff 已取得 External Macro PASS；ADR-0021 / provider-neutral qualification / exactly-one ACTIVE_MACRO_AUDITOR / user-only assignment / same-session exclusion / A1 FULL_CLONE + strict EQUIVALENT / `.claude/` compatibility path / CHECK 8 singleton 均 accepted。 |
 
 ---
 

@@ -2825,7 +2825,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 5.1 上一批狀態
 
-上次核對通過的 HEAD：e8fdb74
+上次核對通過的 HEAD：09d2ccb
 
 - `23af193`（執行者前置檢查 ＋ 回滾程序 ＋ `AUDIT-LOG.md` ＋ 四缺口修正）
   已於 2026-09-02 由審計官核對通過：6 檔異動（含 2 個新檔）、零夾帶、
@@ -3005,6 +3005,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 - `cfdebc2`（B-41 Final Closure and B-97 Release Audit Registration）已於 2026-09-16 由 GPT 代理審查官（使用者授權）獨立核對通過：5 檔 authorized scope，本地 verify_all 5 Gates 全 PASS，GitHub Actions exact-SHA Run 34860687555 success。B-41 closure 與 B-97 registration state sync accepted；B-41 CLOSED；B-97 REGISTERED / audit 尚未開始；B-01 NOT STARTED；A1 使用 user-authorized equivalent evidence：GitHub API + Executor full-clone cross-check；no blocking finding in audited commit；判定 Macro PASS (ACCEPT ALL)。
 - `24f7896`（cfdebc2 Macro PASS State Sync, B-98 Security Finding Registration & B-75 Context Economy Scope Refinement）已於 2026-09-16 由 GPT 代理審查官（使用者授權）獨立核對通過：5 檔 authorized scope，本地 verify_all 5 Gates 全 PASS，GitHub Actions exact-SHA Run 34998074551 success。cfdebc audit-state sync accepted；B-98 registration accepted；B-75 refinement accepted；B-98 / B-75 保持待辦、零實作；NEXT_WORK 保持 B-97；B-01 NOT STARTED；B-97 formal audit 尚未開始；no new material finding；判定 Macro PASS (ACCEPT ALL)。
 - `e8fdb74`（24f7896 Macro PASS State Sync）已於 2026-09-16 由 GPT 代理審查官（使用者授權）獨立核對通過：5 檔 authorized scope，本地 verify_all 5 Gates 全 PASS，GitHub Actions exact-SHA Run 34999645394 success。24f7896 Macro PASS State Sync accepted；state/evidence-only closure accepted；TASKBOARD unchanged in e8fdb747 commit；canonical verification passed；FINDING_DISPOSITION = NONE for e8fdb747 itself；判定 Macro PASS (ACCEPT ALL)。
+- `09d2ccb`（B-99 Qualification-Based Macro Auditor & Repo-Visible Handoff 及 A1 Equivalent Contract Consistency Repair）已於 2026-09-16 由 GPT 代理審查官（使用者授權）全面審查獨立核對通過：涵蓋 e8fdb74..09d2ccb 完整 pending range（含 a101ed8 初審 HOLD 與 09d2ccb bounded repair）；A1 EQUIVALENT 查證通過；exact-SHA Actions Run 35048408214 (status completed, conclusion success)；B-99 正式結案（CLOSED / Macro PASS）。
 
 ### 5.2 待辦
 
@@ -3048,11 +3049,11 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - malformed-scope Runtime Canary PASS。
   - session-local User Prompt Compiler Mode specification 已登錄於 TASKBOARD，尚未實作。
   - B-41 Slim Bootstrap / Runtime Reconciliation External Macro PASS / CLOSED。
-  - B-99 Qualification-Based Macro Auditor & Repo-Visible Handoff（Machine PASS / Macro HOLD，bounded A1 dual-mode consistency repair in progress）。
-  - B-97 Pre-B01 Comprehensive Release Audit 已登錄為一次性 Release Gate 待辦 (REGISTERED / PENDING)，formal audit 尚未開始 (NOT STARTED)。
+  - B-99 Qualification-Based Macro Auditor & Repo-Visible Handoff（CLOSED / MACRO PASS）。
+  - B-97 Pre-B01 Comprehensive Release Audit 已登錄為一次性 Release Gate 待辦 (NEXT / NOT STARTED)。
   - B-98 / B-75 保持待辦、零實作 (PENDING / NOT IMPLEMENTED)。
   - B-69 保持待辦 (PENDING NON-BLOCKING)。
-  - B-01 尚未啟動 (NOT STARTED)。
+  - B-01 尚未啟動 (NOT STARTED / blocked until B-97 PRE-B01 RELEASE PASS)。
   - Production routing ready。
   - 當前與下一步工作任務權威（Current / next work authority）仍只由 `docs/TASKBOARD.md` 的 `**NEXT_WORK**` pointer 保存與導航，交接區不複製 task ID 或待辦佇列。
   - 待使用者裁決事項依 §5.3。
