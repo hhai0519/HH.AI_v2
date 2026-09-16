@@ -2825,7 +2825,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 5.1 上一批狀態
 
-上次核對通過的 HEAD：76cfe7b
+上次核對通過的 HEAD：85d9a3a
 
 - `23af193`（執行者前置檢查 ＋ 回滾程序 ＋ `AUDIT-LOG.md` ＋ 四缺口修正）
   已於 2026-09-02 由審計官核對通過：6 檔異動（含 2 個新檔）、零夾帶、
@@ -3008,6 +3008,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 - `09d2ccb`（B-99 Qualification-Based Macro Auditor & Repo-Visible Handoff 及 A1 Equivalent Contract Consistency Repair）已於 2026-09-16 由 GPT 代理審查官（使用者授權）全面審查獨立核對通過：涵蓋 e8fdb74..09d2ccb 完整 pending range（含 a101ed8 初審 HOLD 與 09d2ccb bounded repair）；A1 EQUIVALENT 查證通過；exact-SHA Actions Run 35048408214 (status completed, conclusion success)；B-99 正式結案（CLOSED / Macro PASS）。
 - `eceda26`（B-99 Macro PASS Closure & B-97 Pointer Sync 及 B-97 Phase 1 唯讀發布審計）已於 2026-09-16 由 GPT 代理審查官（使用者授權）全面審查獨立核對通過：5 檔 authorized scope，本地 verify_all 5 Gates 全 PASS，GitHub Actions exact-SHA Run 35049350295 success。B-99 state closure accepted；B-97 Phase 1 READ_ONLY 全庫審計完成；41 筆 active-lifecycle rows 全部完成處置；B-01 target readiness PASS；上游 trigger 重新評估無 blocker；C-06 remote truth 已確認並維持 USER_DECISION_NONBLOCKING；實質發現依 B-95 處置完畢；B-01 保持零實作（NOT STARTED）；判定 PRE-B01 RELEASE STATUS = PASS。
 - `76cfe7b`（B-97 PRE-B01 Release PASS State Closure）已於 2026-09-16 由 GPT 代理審查官（使用者授權）全面審查獨立核對通過：5 檔 authorized scope，本地 verify_all 5 Gates 全 PASS，GitHub Actions exact-SHA Run 35051382469 success。B-97 PRE-B01 Release PASS State Closure accepted；MACRO AUDIT = PASS，ACCEPT STATUS = ACCEPT ALL，FINDING_DISPOSITION = NONE；PRE-B01 RELEASE STATUS = PASS — FINALIZED；B-97 正式 CLOSED；B-01 AUTHORIZED TO START。
+- `85d9a3a`（B-01 ADR-0002/0004/0010 分層搬移及 Active-Contract 語意優先序與 Shell 邊界修復）已於 2026-09-16 由 GPT 代理審查官（使用者授權）全面審查獨立核對通過：涵蓋 76cfe7b..85d9a3a 完整 pending range（含 b2b5d1d 初審 HOLD 與 85d9a3a bounded repair）；A1 EQUIVALENT 查證通過；exact-SHA Actions Run 35054093786 (status completed, conclusion success)；B-01 正式結案（CLOSED / Macro PASS）。
 
 ### 5.2 待辦
 
@@ -3053,7 +3054,8 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - B-41 Slim Bootstrap / Runtime Reconciliation External Macro PASS / CLOSED。
   - B-99 Qualification-Based Macro Auditor & Repo-Visible Handoff（CLOSED / MACRO PASS）。
   - B-97 Pre-B01 Comprehensive Release Audit 已完成（CLOSED / PRE-B01 RELEASE PASS）。
-  - B-01 施工候選初審 Machine PASS / Macro HOLD，現行語意優先序與 Shell 邊界修復中 (IN PROGRESS / MACHINE PASS / MACRO HOLD / BOUNDED REPAIR REQUIRED)。
+  - B-01 ADR-0002／0004／0010 分層搬移及 Active-Contract 語意修復已完成（CLOSED / MACRO PASS）。
+  - E-03 Runtime 執行層架構推進（NEXT / READ_ONLY DEPENDENCY INVENTORY NOT STARTED）。
   - C-06 維持待使用者裁決（USER_DECISION_NONBLOCKING，遠端 ruleset 與 required checks 現況已確認）。
   - B-28 / B-29 上游 trigger 重新評估完成，無 B-01 blocker，維持 DEFERRED_BY_USER / POST_B01。
   - B-54 保持待辦（POST_B01 / NONBLOCKING，SOP_12 機器專屬路徑 concrete example 已登錄）。
@@ -3417,5 +3419,11 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
       - **F2（收斂 ADR-0010 巢狀 Shell 參數展開邊界）**：修正 `.agents/rules/powershell-encoding-protocol.md §5`，將環境變數展開風險限縮至 Nested PowerShell / `powershell -Command` / 字串插值等前層解析邊界；使用工具中立之檔案寫入機制；不宣稱所有環境變數在所有情境不可用，亦不宣稱所有 Shell 必提前展開。
     - **當前生命週期狀態**：
       - 本批為 CURRENT B-01 bounded semantic repair，修復成果待 External Macro Auditor 獨立複審；未取得 Macro PASS 前維持 B-01 進行中、NEXT_WORK 維持 B-01。
+
+71. **B-01 Final Macro PASS / Closure Eligibility**（2026-09-16）
+    - **背景與審查範圍**：GPT 代理審查官（使用者授權）完成 B-01 全量審查，audited range 為 `76cfe7b115a3913a868a1957cbec704f183b62eb..85d9a3a9efe51e0d361c85149a93901404f2a8f2`（共 2 commits：`b2b5d1d` 初審 Machine PASS / Macro HOLD，`85d9a3a` 完成 F1/F2 bounded semantic repair，F1/F2 於審查範圍內完全解決）。
+    - **外部審查裁決**：A1 qualification 採 `A1 = EQUIVALENT`（GitHub API + Executor clone cross-check），exact-SHA Actions Verify Run `35054093786` (status completed, conclusion success)，canonical verification 5 Gates 全過；裁決 `MACRO AUDIT = PASS`，`ACCEPT STATUS = ACCEPT ALL`，`FINDING_DISPOSITION = NONE`；`B-01 = ELIGIBLE FOR CLOSURE`。
+    - **結案與推進**：B-01 於本狀態同步批次完成後正式結案（CLOSED / MACRO PASS）；下一階段主線任務依看板與 backlog 佇列推進至 `E-03`（Runtime 執行層 — Phase 1 只讀依賴調研，READ_ONLY DEPENDENCY INVENTORY）；本狀態同步批次零 Runtime 修改（no runtime mutation in this closure batch），E-03 本批維持待辦尚未開始（NOT STARTED）。
+
 
 

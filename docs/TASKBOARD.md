@@ -12,9 +12,9 @@
 
 **ACTIVE_MACRO_AUDITOR**：GPT 代理審查官（使用者授權）
 
-**NEXT_WORK**：B-01
+**NEXT_WORK**：E-03
 
-**最後更新**：2026-09-16，B-01 ADR-0002／0004／0010 分層搬移執行中；ACTIVE_MACRO_AUDITOR 維持 GPT 代理審查官（使用者授權）；Machine PASS / Macro HOLD；CURRENT B-01 bounded semantic repair F1-F2 進行中。
+**最後更新**：2026-09-16，B-01 ADR-0002／0004／0010 分層搬移結案（CLOSED / External Macro PASS）；NEXT_WORK 推進至 E-03；E-03 READ_ONLY 依賴調研尚未開始；本狀態同步批次等待外部審查。
 
 ---
 
@@ -74,7 +74,7 @@ A 節目前狀態以本表各列與 `NEXT_WORK` 之 current repo truth 為準；
 
 | ID | 狀態 | 項目 | 備註 |
 |---|---|---|---|
-| B-01 | 進行中 | ADR-0002／0004／0010 分層搬移 | Machine PASS / Macro HOLD；CURRENT B-01 bounded semantic repair F1-F2進行中。 |
+| B-01 | 已完成 | ADR-0002／0004／0010 分層搬移 | B-01 ADR-0002/0004/0010 active-contract layering完成；initial candidate b2b5d1d Machine PASS / Macro HOLD；85d9a3a bounded F1/F2 repair完成；完整 range取得 External Macro PASS / ACCEPT ALL。 |
 | B-02 | 已完成 | `check_consistency.py` 增補檢查（CHECK 8-15） | CHECK 8 看板 HEAD 落後、9 交接區 HEAD 落後、10 §X.Y 章節引用有效性、11 §6.1 與 selftest E 對應、12 AUDIT-LOG latest audit evidence 必須位於 current HEAD ancestry（允許多個合法 pending repair commits，raw ancestry distance 不再是 FAIL threshold）、13 檔尾換行、14 簡體字、15 提示詞衝突字串。本批擴充至 15 項，全數通過 |
 | B-03 | 待辦 | 新建 `SOP/SOP_03_Skill_Lifecycle_and_Quality.md` | 收納舊 `SOP_00` §一／§三／§四與舊 `SOP_03` §4.2／§4.3，見第 18 點 |
 | B-04 | 待辦 | `validate_skills.py` 加 description 觸發詞警告 ＋ 測試 | 警告非錯誤，現存多個技能會失敗 |
@@ -207,7 +207,7 @@ A 節目前狀態以本表各列與 `NEXT_WORK` 之 current repo truth 為準；
 |---|---|---|---|
 | E-01 | 待辦 | 技能尚未遷移（§二 A 節） | 逐一比對 A-1「確定要遷移的」清單 |
 | E-02 | 待辦 | Persona 認知顧問 15 個（§二 B 節） | 架構已定為方案 A（設定檔非技能，不放 `skills/`），遷移未執行 |
-| E-03 | 待辦 | **Runtime 執行層（§二 C 節）** | **重構最大的一塊**，尚未開始。C-04 已裁決採用方向（runtime/ + shared/ + skills/），下一步為開展只讀依賴調研（READ-ONLY DEPENDENCY INVENTORY）。 |
+| E-03 | 待辦 | **Runtime 執行層（§二 C 節）** | **重構最大的一塊**，尚未開始。C-04 已裁決採用方向（runtime/ + shared/ + skills/），下一步為開展只讀依賴調研（READ-ONLY DEPENDENCY INVENTORY）。NEXT_WORK after B-01 closure; NOT STARTED until closure commit receives External Macro PASS. |
 | E-04 | 待辦 | `$$` 指令定義收斂（§二 D 節） | `$$LINE連線$$`／`$$TG連線$$` 散落三個檔案且內容互相矛盾 |
 | E-05 | 待辦 | Data/ 資料層逐項裁決（§二 E 節） | 尚有 `Data/logs/`（必須遷移）、`reports/`、`Agent_Reflections.md`、`TODO.md`、`Execution_Plans/`、`_archive_legacy_docs/` 待裁決 |
 

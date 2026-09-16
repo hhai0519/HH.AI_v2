@@ -1,5 +1,5 @@
 {
-  "base_head": "b2b5d1d",
+  "base_head": "85d9a3a",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 0,
@@ -515,16 +515,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 134,
-      "sha256": "fce3250005f2295160ccba2321f8d52e430d22c72b18ad38fafead404c4d6cbc"
+      "lines": 136,
+      "sha256": "2e793bec6b9bc657c4c5fde67fe02e7344e22702b9ec68e24bc8d7e103280f02"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 106,
-      "sha256": "39363a8ea2e5a655a0bd2e3731244227f8cc7508dbb005d00ed21863a6fbf7c4"
+      "lines": 108,
+      "sha256": "30fbe9e031fb96ab198c43d78b5573b9775fa3f9b51d7fecfb19429f3ee98bf4"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -560,7 +560,7 @@
         "## 封存區"
       ],
       "lines": 244,
-      "sha256": "bce1022dae04017deb2522f78cde4b7f3e49ba3d3b7606f0c694061610501aad"
+      "sha256": "daead8ba727ad8cccc8b5a65e0ab6aade6636f79c446b87c22bc522597c4d398"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -899,8 +899,8 @@
         "### 5.3 待使用者裁決",
         "### 5.4 進行中／等待回報"
       ],
-      "lines": 3421,
-      "sha256": "ce27f3213356794e211564f224d3aace59f30ccd1f04d57c5b61dbcc12bddfef"
+      "lines": 3429,
+      "sha256": "46ec6955b596be7a0d33ef5114bae3e2abb483478bc2156ab9563668b9c84427"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1148,7 +1148,7 @@
       "sha256": "35bf7dbfa3c7d291b550c3c97a6ae398a22b1dc3624c1d2fc1e4db6963d6e115"
     }
   },
-  "generated_at": "2026-09-16T04:01:22Z",
+  "generated_at": "2026-09-16T04:12:49Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {
