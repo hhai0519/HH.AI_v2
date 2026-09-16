@@ -1,5 +1,5 @@
 {
-  "base_head": "e8fdb74",
+  "base_head": "a101ed8",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 0,
@@ -129,7 +129,7 @@
         "## 7. 自我審查",
         "### 7.1 證據必須落地成檔案",
         "## 8. 額度紀律",
-        "### 8.1 每輪開頭標示建議模型",
+        "### 8.1 每輪開頭標示建議能力／推理級別",
         "### 8.2 換對話的時機（可數的指標）",
         "### 8.3 降低消耗的既定做法",
         "### 8.4 不得為了省額度而做的兩件事",
@@ -155,8 +155,8 @@
         "### 11.5 審計狀態之單一事實來源（Audit State SSOT）",
         "### 11.6 [已退役／不需執行] 歷史 `audited-*` tag 之留痕保存（RETIRED / NOT REQUIRED）"
       ],
-      "lines": 456,
-      "sha256": "2abc70a96eb9d7b301ed478c6e8fca9ecfdd35cdc0f30c6fc5388c96355b9be8"
+      "lines": 475,
+      "sha256": "e42b0e67e009292067552d502148f0f1ae85c98088707b979440e6a02fe57525"
     },
     ".claude/rules/auditor-selftest.md": {
       "fences": 0,
@@ -171,7 +171,7 @@
         "## F. 額度（每一輪回覆的開頭與結尾）"
       ],
       "lines": 131,
-      "sha256": "802ac2c715d1ac806435a6f69f7403f88292bfdf38ed75efb9ac9654ad660860"
+      "sha256": "701bab416e73f8c5967ecb80af0443aa0418a8a39b375e76afc82daeba44d386"
     },
     ".github/workflows/verify.yml": {
       "fences": 0,
@@ -510,16 +510,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 128,
-      "sha256": "8f2f1acfb512df9a9d818451df319c2fc6f503a2d1a33abd7d54db4108cfb290"
+      "lines": 129,
+      "sha256": "b46f72ac964185f63a954809386b6e37b7ddbee18432634b35b1a03ac118726b"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 99,
-      "sha256": "f7cbe5961b96715a7696b00286837f0084cd121bb0b352b63c7a6757ce2a7931"
+      "lines": 100,
+      "sha256": "5b54810c344797b7ac6fd4deab9350aec4c3298ec05dc6419b616f3050b07abd"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -827,7 +827,7 @@
         "## Consequences"
       ],
       "lines": 52,
-      "sha256": "2e999761f33f6712bde7f00a4761191b21be18500a5373772097a7d235cf4f5d"
+      "sha256": "6898ed892470a307e9847eec9805eda46a2b2ce3cd5539268af636afee7da91f"
     },
     "docs/mcp-environment-guide.md": {
       "fences": 0,
@@ -895,7 +895,7 @@
         "### 5.4 進行中／等待回報"
       ],
       "lines": 3311,
-      "sha256": "dac67fb3bb0511aa6400d2c46c8b5712e582d2dd89bb9549253c9fd2fffb5fe7"
+      "sha256": "431d9006e7d2b7d0de81e63a96704ea0d2e0d8efa96cb5082bb576ba0c98aced"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1143,7 +1143,7 @@
       "sha256": "35bf7dbfa3c7d291b550c3c97a6ae398a22b1dc3624c1d2fc1e4db6963d6e115"
     }
   },
-  "generated_at": "2026-09-16T02:13:58Z",
+  "generated_at": "2026-09-16T02:31:30Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

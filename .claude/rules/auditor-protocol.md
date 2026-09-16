@@ -19,7 +19,18 @@
 在每批次完成 push 後，宏觀審計官必須基於客觀機器證據獨立完成核對，不依賴執行者產出的文字報告作為審計依據。
 依 ADR-0021，審查模式與 A1 資格查證正式支援兩種模式：
 1. **FULL_CLONE**：宏觀審計官自身工作環境實際具有完整 clone（`is-shallow = false`），自行查證真實檔案內容與 GitHub Actions 機器證據。
-2. **strict EQUIVALENT**：宏觀審計官自身獨立從 GitHub 取得目標 full OID、parent OID、compare 範圍、commit list、changed files、exact-SHA 檔案內容與 Actions Verify 結果，並由執行者 local full clone（non-shallow, HEAD==origin/main）提供交叉比對驗證，兩者關鍵事實完全一致方可成立。
+2. **strict EQUIVALENT**：宏觀審計官自身獨立從 GitHub 取得目標機器事實，並由執行者端 local full clone 進行交叉比對驗證。成立 A1 EQUIVALENT 必須同時滿足以下 8 項關鍵機器證據集合（任一關鍵事實缺失即判定為 `FAIL / NOT ESTABLISHED`）：
+   1. target full OID
+   2. target parent OID
+   3. checkpoint..HEAD / compare 關聯與範圍
+   4. commit list
+   5. changed files
+   6. 審計所需之 exact-SHA 檔案內容
+   7. exact-SHA 之 GitHub Actions Verify 驗證結果
+   8. 執行者端 local full clone 交叉驗證：
+      - `is-shallow = false`
+      - `HEAD == origin/main`
+      - 目標事實欄位逐一相符（field-by-field match）
 
 執行者負責遷移執行與個別技能的三層核對（見 `docs/adr/0005-high-risk-skill-three-layer-review.md`）；
 審計官負責跨批次的全域一致性與架構治理。
@@ -67,8 +78,11 @@
 
 ### 5.1 不採用執行端的任何數字
 
-行數、命中數、檔案數一律自己 clone 實測。
-執行端的回報只用來對照差異，不作為事實來源。
+宏觀審計官必須自己獨立產生或取得機器事實（machine facts），不得採信執行者的文字數字作為事實來源。
+合法客觀事實來源依 A1 模式決定：
+- **FULL_CLONE**：宏觀審計官自身於 local full clone 透過確定性指令實測。
+- **EQUIVALENT**：宏觀審計官自行透過 GitHub API、連接器或確定性遠端機器證據取得；執行者的 local full clone 僅供交叉比對驗證。
+禁止將「獨立查證（independent verification）」誤寫或窄化為「必須擁有 local clone」。執行端的回報只用來對照差異，絕不作為 Macro truth。
 
 ### 5.2 盤點時用結構錨點，不用內文詞彙
 
@@ -187,19 +201,19 @@ Macro Auditor 負責 disposition 語意裁決，執行者以 production scanner 
 
 審計官應依可數的事實進行額度控管與模型選擇（遵循 `PRINCIPLES.md` §0.5 A5）。
 
-### 8.1 每輪開頭標示建議模型
+### 8.1 每輪開頭標示建議能力／推理級別
 
-每一則回覆的第一行標示建議模型與理由：
-`[建議模型：Sonnet 5 High｜本輪為例行核對 + 提示詞產出]`
+每一則回覆的第一行標示建議能力／推理級別（capability / reasoning tier）與理由：
+`[建議推理級別：Standard Tier / High Capability｜本輪為例行核對 + 提示詞產出]`
 
-| 級別 | 適用 |
+| 級別 (Capability / Reasoning Tier) | 適用情境 (Application Scenario) |
 |---|---|
-| Opus 5 High | 架構決策、推翻先前裁決、全庫宏觀審計、策略規劃 |
-| Opus 5 Medium | 核對出問題的批次、跨檔案追根因 |
-| Sonnet 5 High | 例行批次核對 ＋ 產出下一份提示詞（常態） |
-| Sonnet 5 Medium | 純記錄更新、格式修正、交接區填寫 |
+| Highest Available Tier / Deepest Reasoning | 架構決策、推翻先前裁決、全庫宏觀審計、策略規劃 |
+| High Tier / Deep Reasoning | 核對出問題的批次、跨檔案追根因、複雜邊界推導 |
+| Standard Tier / High Capability | 例行批次核對 ＋ 產出下一份提示詞（常態） |
+| Low / Fast Tier | 純記錄更新、格式修正、交接區填寫 |
 
-核對執行者回報的輪次，最低 Sonnet 5 High，不得用 Medium。
+核對執行者回報的輪次，最低 Standard Tier / High Capability，不得使用 Low / Fast Tier。
 
 ### 8.2 換對話的時機（可數的指標）
 
@@ -216,11 +230,13 @@ Macro Auditor 負責 disposition 語意裁決，執行者以 production scanner 
 
 1. **對話不要求執行者貼檔案內容、`git diff` 或工具完整輸出**，由 repo 與 Actions 保留客觀證據。
 2. **探索性掃描交給執行者，驗證性審查審計官自己做**。
-3. **每輪最多一次 clone**，多項檢查合併執行。
+3. **單輪驗證資源預算**：依 A1 模式嚴格控管——
+   - **FULL_CLONE**：每輪最多一次 clone 或 repository refresh，多項檢查合併執行。
+   - **EQUIVALENT**：每輪使用一次有界的 GitHub 機器證據更新（bounded GitHub evidence refresh）與等效遠端驗證。
 
 ### 8.4 不得為了省額度而做的兩件事
 
-1. **不得跳過獨立 clone 核對**。
+1. **不得跳過獨立版本庫驗證（Independent Repository Verification）**：無論採 FULL_CLONE 或 EQUIVALENT 模式，均不得跳過獨立客觀驗證，嚴禁將執行者回報（Executor report）當作 Macro truth。
 2. **不得為了省額度而合併批次**。
 
 ---
@@ -256,7 +272,7 @@ Macro Auditor 負責 disposition 語意裁決，執行者以 production scanner 
 （暫時性狀況與同步狀態）
 
 接手後第一件事
-執行 git log -1 --format=%h 取得實際 HEAD，與上面的 HEAD 比對：
+依當前 A1 模式取得實際 HEAD（FULL_CLONE 使用 local git 如 git rev-parse / git log；EQUIVALENT 獨立自 GitHub API commit/branch endpoint 取得），並與上面的 checkpoint 比對：
 - 相同 → 沒有未核對的批次，從 docs/TASKBOARD.md 的 **NEXT_WORK** pointer 取得下一步工作（§5.2 僅為指標）
 - 不同 → 存在 pending macro-audit range（由 checkpoint..HEAD machine derive），先完成該 range 宏觀審核再往下
 ```
@@ -268,9 +284,12 @@ Macro Auditor 負責 disposition 語意裁決，執行者以 production scanner 
 舊 Agent 中斷或對話遺失時，新 Agent 按以下順序判定：
 1. 讀 §5.4「進行中／等待回報」——掌握進行中狀態。
 2. 讀 §5.1 第一行「上次核對通過的 HEAD」。
-3. **執行 `git log -1 --format=%h` 取得實際 HEAD 並與第 2 步比對：**
-   - **相同** → 無 pending macro-audit，從 `docs/TASKBOARD.md` 的 `**NEXT_WORK**` pointer 取得下一步工作（§5.2 僅為指標）。
-   - **不同** → 存在 pending macro-audit range（由 `checkpoint..HEAD` machine derive），先完成該 range 宏觀審核再往下。
+3. **依當前 A1 模式取得實際 HEAD 並與第 2 步 checkpoint 比對**：
+   - FULL_CLONE：使用 local `git rev-parse HEAD` 或 `git log -1 --format=%h`。
+   - EQUIVALENT：獨立自 GitHub current branch / commit endpoint 取得 actual full HEAD。
+   - 兩者依比對結果判定：
+     - **相同** → 無 pending macro-audit，從 `docs/TASKBOARD.md` 的 `**NEXT_WORK**` pointer 取得下一步工作（§5.2 僅為指標）。
+     - **不同** → 存在 pending macro-audit range（由 `checkpoint..HEAD` machine derive），先完成該 range 宏觀審核再往下。
 4. 讀 §5.3「待裁決」——不重複提問已裁決事項。
 5. 交接區若與實際 repo 矛盾，**一律以 repo 為準**並明說矛盾處。
 
@@ -286,7 +305,7 @@ Macro Auditor 負責 disposition 語意裁決，執行者以 production scanner 
 1. **確認審計官身分與資格**：確認自身為使用者授權且符合 `docs/TASKBOARD.md` 之 `**ACTIVE_MACRO_AUDITOR**` 唯一定義者，且確認本 session 非執行者 session（同 session 互斥）。
 2. **A1 資格查證**：
    - 模式一 (FULL_CLONE)：實際執行過完整 clone 與開場動作（確定性指令如 `git rev-parse --is-shallow-repository` 輸出為 `false`，提供 `FULL_CLONE OK` 機器宣告，不得要求 raw output）。
-   - 模式二 (EQUIVALENT)：自身獨立取得 GitHub API 證據（target OID, parent OID, compare, Actions Verify），並由執行者 local full clone 交叉驗證，提供 `A1 = EQUIVALENT (GitHub API + Executor clone cross-check)` 宣告。
+   - 模式二 (EQUIVALENT)：自身獨立取得 GitHub API 證據（8 項關鍵證據：target full OID, parent OID, compare/range, commit list, changed files, exact-SHA file contents, exact-SHA Actions Verify），並由執行者 local full clone (non-shallow, HEAD==origin/main) 提供逐項欄位相符之交叉驗證，提供 `A1 = EQUIVALENT (GitHub API + Executor clone cross-check)` 宣告。
 3. **明確說出目前的 HEAD**，以及它與交接區 §5.1 記載是否一致。
 4. **明確說出下一步要做什麼**，以 `docs/TASKBOARD.md` 的 `**NEXT_WORK**` pointer 所指任務為準。
 5. **說明待裁決事項狀態**，不重新分析已裁決事項。

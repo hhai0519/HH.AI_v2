@@ -34,7 +34,7 @@
 5. **A1 雙軌資格模式 (A1 Dual Qualification Modes)**：
    正式支援兩種確定性 A1 資格模式：
    - **A1 FULL_CLONE**：宏觀審計官自身工作環境實際具有完整 clone（`git rev-parse --is-shallow-repository` 為 `false`），自行查證歷史與 exact-SHA GitHub 證據。
-   - **A1 EQUIVALENT**：宏觀審計官必須自行從 GitHub 取得目標 full OID、parent OID、compare 範圍、changed files 與 exact-SHA Actions Verify 機器證據，並由執行者端 local full clone（non-shallow, HEAD==origin/main）提供交叉驗證，兩者關鍵事實完全一致方可成立。A1 EQUIVALENT 絕非單純信任執行者口頭報告，任一關鍵事實無法獨立取得即判定為 `FAIL / NOT ESTABLISHED`。
+   - **A1 EQUIVALENT**：宏觀審計官必須自行從 GitHub 取得目標機器事實，並由執行者端 local full clone 進行交叉比對驗證。A1 EQUIVALENT 絕非單純信任執行者口頭報告，必須完整涵蓋 8 項關鍵機器證據集合（1. target full OID；2. target parent OID；3. checkpoint..HEAD / compare 關聯與範圍；4. commit list；5. changed files；6. 審計所需之 exact-SHA 檔案內容；7. exact-SHA Actions Verify 結果；8. 執行者端 local full clone non-shallow、HEAD == origin/main 且目標事實欄位逐一相符），任一關鍵事實無法獨立取得即判定為 `FAIL / NOT ESTABLISHED`。
 6. **版本庫可見之審計官單一事實來源 (Repo-Visible ACTIVE_MACRO_AUDITOR)**：
    於現行活動任務看板 `docs/TASKBOARD.md` 頂層設立唯一的 `**ACTIVE_MACRO_AUDITOR**` 標記，作為當前活躍審計官指派之單一事實來源（SSOT）。該標記受 CHECK 8 機械守衛，嚴禁夾帶任何 Git truth（HEAD、commit hash、range、CI run ID），路由文件僅能導航至該標記，不得複製其值。
 
