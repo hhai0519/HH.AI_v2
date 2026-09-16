@@ -14,7 +14,7 @@
 
 **NEXT_WORK**：E-03
 
-**最後更新**：2026-09-16，Wave 2B 經外部審查通過；Wave 2C 本機資料路徑配置契約施工中；Gateway live work 尚未開始；待 External Macro Audit。
+**最後更新**：2026-09-16，Wave 2C 經外部審查通過；Wave 2D 本機設定載入與啟動路徑驗證施工中；Gateway live work 尚未開始；待 External Macro Audit。
 
 ---
 
@@ -207,7 +207,7 @@ A 節目前狀態以本表各列與 `NEXT_WORK` 之 current repo truth 為準；
 |---|---|---|---|
 | E-01 | 待辦 | 技能尚未遷移（§二 A 節） | 逐一比對 A-1「確定要遷移的」清單 |
 | E-02 | 待辦 | Persona 認知顧問 15 個（§二 B 節） | 架構已定為方案 A（設定檔非技能，不放 `skills/`），遷移未執行 |
-| E-03 | 進行中 | **Runtime 執行層（§二 C 節）** | Wave 2B = Macro PASS / accepted；checkpoint = fe6baba；Wave 2C = Repo-External Data Location Config Contract candidate underway；no live bot / network / port / credential work；pending External Macro Audit |
+| E-03 | 進行中 | **Runtime 執行層（§二 C 節）** | Wave 2C = Macro PASS / accepted；checkpoint = aa0977f；Wave 2D = repo-external config loader + startup validation underway；no bot / network / port / credential work；pending External Macro Audit |
 | E-04 | 待辦 | `$$` 指令定義收斂（§二 D 節） | `$$LINE連線$$`／`$$TG連線$$` 散落三個檔案且內容互相矛盾；依 ADR-0022/D14 於 Gateway 正式 cutover 時才切換路由，非開發期 |
 | E-05 | 待辦 | Data/ 資料層逐項裁決（§二 E 節） | 尚有 `Data/logs/`（必須遷移）、`reports/`、`Agent_Reflections.md`、`TODO.md`、`Execution_Plans/`、`_archive_legacy_docs/` 待裁決 |
 

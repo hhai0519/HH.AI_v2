@@ -2825,7 +2825,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 5.1 上一批狀態
 
-上次核對通過的 HEAD：fe6baba
+上次核對通過的 HEAD：aa0977f
 
 - `23af193`（執行者前置檢查 ＋ 回滾程序 ＋ `AUDIT-LOG.md` ＋ 四缺口修正）
   已於 2026-09-02 由審計官核對通過：6 檔異動（含 2 個新檔）、零夾帶、
@@ -3014,6 +3014,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 - `f522148`（E-03 Complete Channel Gateway Decision Fidelity）已於 2026-09-16 由 GPT 代理審查官（使用者授權）全面審查獨立核對通過：涵蓋 c2df1b0..f522148 完整 pending range（含 2830c7f 初審 HOLD 與 f522148 bounded repair）；A1 EQUIVALENT 查證通過；ADR-0022 決策保真度 F1（D26 12 項子契約）與 F2（D18 LINE 推播額度影響）完全解決；ADR-0022 CHANNEL GATEWAY ARCHITECTURE PERSISTENCE = FINALIZED；exact-SHA Actions Verify Run 35097747792 completed / success；MACRO AUDIT = PASS，ACCEPT STATUS = ACCEPT ALL，FINDING_DISPOSITION = NONE。
 - `7d379f6`（E-03 Enforce Channel and Account Reply Boundaries）已於 2026-09-16 由 GPT 代理審查官（使用者授權）全面審查獨立核對通過：涵蓋 f522148..7d379f6 完整 pending range（含 278d142 初審 HOLD 與 7d379f6 bounded domain invariant repair）；A1 EQUIVALENT 查證通過；F1（AccountRegistry 通道邊界強制）與 F2（接收帳號回覆強綁定）完全解決；Wave 2A = ACCEPTED；exact-SHA Actions Verify Run 35101712841 completed / success；MACRO AUDIT = PASS，ACCEPT STATUS = ACCEPT ALL，FINDING_DISPOSITION = NONE。
 - `fe6baba`（E-03 Channel Gateway Wave 2B Pure Account Switch Orchestration）已於 2026-09-16 由 GPT 代理審查官（使用者授權）全面審查獨立核對通過：10 檔 authorized scope；A1 EQUIVALENT 查證通過；實作 AccountSwitchCoordinator，嚴格強制註冊表與通道控制器邊界一致（CHANNEL_CONTROL_MISMATCH）；實作 D26 切換即接管與原子式前置檢驗；異帳號切換 A→B 接管捨棄 A claimed 訊息、discardQueuedForAccount 捨棄 A queued 訊息並保留 B queued 訊息；同帳號選擇 A→A 接管但保留 queued 訊息；無前一活躍帳號 null→B 成功啟用並接管；新增 18 項 canonical Node 測試全數通過（40/40 tests PASS）；Python CI 橋接測試 6 passed；exact-SHA Actions Verify Run 35103490957 completed / success；MACRO AUDIT = PASS，ACCEPT STATUS = ACCEPT ALL，FINDING_DISPOSITION = NONE。
+- `aa0977f`（E-03 Channel Gateway Wave 2C Data Location Config Contract）已於 2026-09-16 由 GPT 代理審查官（使用者授權）全面審查獨立核對通過：10 檔 authorized scope；A1 EQUIVALENT 查證通過；實作 validateResolvedDataLocationConfig 與 DATA_LOCATION_SCHEMA_VERSION=1；嚴格綱要驗證僅允許 schemaVersion 與 dataLocations；路徑驗證強制 4 個單例目錄與 protectedRoots 均為非空白絕對路徑（相容 Windows 與 POSIX）；建立無機敏範本 config.example.json；零第三方依賴；canonical verification 5 Gates 全數通過（20 checks PASS，317 unit PASS，13 webapp PASS）；exact-SHA Actions Verify Run 35105625352 completed / success；MACRO AUDIT = PASS，ACCEPT STATUS = ACCEPT ALL，FINDING_DISPOSITION = NONE；new accepted checkpoint = aa0977f；protectedRoots operational minimum coverage 依決策留待 D19-D21 安全驗收要求。
 
 ### 5.2 待辦
 
@@ -3060,7 +3061,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - B-99 Qualification-Based Macro Auditor & Repo-Visible Handoff（CLOSED / MACRO PASS）。
   - B-97 Pre-B01 Comprehensive Release Audit 已完成（CLOSED / PRE-B01 RELEASE PASS）。
   - B-01 ADR-0002／0004／0010 分層搬移及 Active-Contract 語意修復已完成（CLOSED / MACRO PASS）。
-  - E-03 Runtime 執行層架構推進（IN PROGRESS）：Wave 2B = MACRO PASS / ACCEPTED；Wave 2C Data Location Config Contract = IN PROGRESS / PENDING EXTERNAL MACRO AUDIT；Gateway live integration = NOT STARTED；LINE implementation = D12 delayed / explicit user trigger；B-98 / B-30 / B-33 / F-05 remain open at their established prerequisite boundaries。
+  - E-03 Runtime 執行層架構推進（IN PROGRESS）：Wave 2C = MACRO PASS / ACCEPTED；Wave 2D Repo-External Config Loader + Startup Path Validation = IN PROGRESS / PENDING EXTERNAL MACRO AUDIT；Gateway live integration = NOT STARTED；LINE implementation = D12 delayed / explicit user trigger；B-98 / B-30 / B-33 / F-05 remain open at their established prerequisite boundaries。
   - C-06 維持待使用者裁決（USER_DECISION_NONBLOCKING，遠端 ruleset 與 required checks 現況已確認）。
   - B-28 / B-29 上游 trigger 重新評估完成，無 B-01 blocker，維持 DEFERRED_BY_USER / POST_B01。
   - B-54 保持待辦（POST_B01 / NONBLOCKING，SOP_12 機器專屬路徑 concrete example 已登錄）。
@@ -3536,6 +3537,22 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
     - **當前生命週期狀態**：
       - 本批為 Phase 2 Wave 2C 施工候選，工作區僅限於授權之純路徑配置契約與狀態同步。
       - Wave 2B = MACRO PASS / ACCEPTED；Wave 2C Data Location Config Contract = IN PROGRESS / PENDING EXTERNAL MACRO AUDIT。
+      - Gateway live 整合尚未開始（NOT STARTED）；B-98 / B-30 / B-33 / F-05 維持開啟狀態於既定前置邊界。
+      - 本 candidate 等待 External Macro Reviewer 獨立審核；NEXT_WORK 保持 E-03。
+
+79. **E-03 Channel Gateway Wave 2C Final Macro PASS & Wave 2D Repo-External Config Loader Candidate**（2026-09-16）
+    - **背景與外部審查結論**：前一施工候選 `aa0977f9c56c31a6963a86de0d08318c1b1d5716`（Wave 2C Data Location Config Contract）經 External Macro Reviewer（GPT 代理審查官（使用者授權））全面審查。A1 qualification 採 A1 = EQUIVALENT（GitHub API + Executor clone cross-check）成立；exact-SHA Actions Verify Run `35105625352` completed/success（20 checks PASS，317 unit PASS，13 webapp PASS，5 Gates PASS）。
+    - **外部審查裁決**：`MACRO AUDIT = PASS`，`ACCEPT STATUS = ACCEPT ALL`，`FINDING_DISPOSITION = NONE`；validateResolvedDataLocationConfig 純領域契約獲全面接受；`Wave 2C = ACCEPTED`；checkpoint 推進至 `aa0977f`；正式授權開展 Wave 2D 外部設定載入與啟動路徑驗證（Wave 2D Repo-External Config Loader + Startup Path Validation = AUTHORIZED）。
+    - **Wave 2D 外部設定載入與啟動路徑驗證邊界（Repo-External Config Loader + Startup Path Validation）**：
+      - 實作受控檔案讀取模組 `runtime/channel-gateway/core/local-config-loader.js`（`loadDataLocationConfigFromFile`、`validateStartupDataLocations`）。
+      - 顯式絕對路徑契約：configPath 必須為顯式傳入之非空白絕對路徑，不猜測路徑、不讀 process.env、不自動 fallback 至 template。
+      - 儲存庫外部強邊界（repo-external enforcement）：以名義路徑與 canonical realpath 雙重檢驗 configPath 是否位於 repoRoot 內部；symlink 外部指入 repo 嚴格拒絕。
+      - 啟動路徑驗證：驗證 4 個寫入根目錄（archiveRoot, attachmentTempRoot, stateRoot, logsRoot）存在、為目錄且具備讀寫權限；protectedRoots 至少 1 個 entry 且存在、為目錄、具讀取權限；零自動建立（zero mkdirSync）；回傳 realpathSync 正規化路徑物件，不修改原輸入。
+      - 建立 canonical tracked tests（`tests/local-config-loader.test.js` 涵蓋 21 項測試）及更新 Python CI 橋接測試（`scripts/tests/test_channel_gateway_core.py`）。
+      - 零第三方依賴：僅使用 node:fs 與 node:path；零環境變數讀取；零真實憑證；零網路/Port；零持久化訊息佇列。
+    - **當前生命週期狀態**：
+      - 本批為 Phase 2 Wave 2D 施工候選，工作區僅限於授權之本機設定載入與啟動路徑檢驗。
+      - Wave 2C = MACRO PASS / ACCEPTED；Wave 2D Repo-External Config Loader + Startup Path Validation = IN PROGRESS / PENDING EXTERNAL MACRO AUDIT。
       - Gateway live 整合尚未開始（NOT STARTED）；B-98 / B-30 / B-33 / F-05 維持開啟狀態於既定前置邊界。
       - 本 candidate 等待 External Macro Reviewer 獨立審核；NEXT_WORK 保持 E-03。
 
