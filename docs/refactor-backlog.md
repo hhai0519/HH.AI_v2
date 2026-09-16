@@ -2825,7 +2825,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 5.1 上一批狀態
 
-上次核對通過的 HEAD：eac38683
+上次核對通過的 HEAD：994c455
 
 - `23af193`（執行者前置檢查 ＋ 回滾程序 ＋ `AUDIT-LOG.md` ＋ 四缺口修正）
   已於 2026-09-02 由審計官核對通過：6 檔異動（含 2 個新檔）、零夾帶、
@@ -3016,6 +3016,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 - `fe6baba`（E-03 Channel Gateway Wave 2B Pure Account Switch Orchestration）已於 2026-09-16 由 GPT 代理審查官（使用者授權）全面審查獨立核對通過：10 檔 authorized scope；A1 EQUIVALENT 查證通過；實作 AccountSwitchCoordinator，嚴格強制註冊表與通道控制器邊界一致（CHANNEL_CONTROL_MISMATCH）；實作 D26 切換即接管與原子式前置檢驗；異帳號切換 A→B 接管捨棄 A claimed 訊息、discardQueuedForAccount 捨棄 A queued 訊息並保留 B queued 訊息；同帳號選擇 A→A 接管但保留 queued 訊息；無前一活躍帳號 null→B 成功啟用並接管；新增 18 項 canonical Node 測試全數通過（40/40 tests PASS）；Python CI 橋接測試 6 passed；exact-SHA Actions Verify Run 35103490957 completed / success；MACRO AUDIT = PASS，ACCEPT STATUS = ACCEPT ALL，FINDING_DISPOSITION = NONE。
 - `aa0977f`（E-03 Channel Gateway Wave 2C Data Location Config Contract）已於 2026-09-16 由 GPT 代理審查官（使用者授權）全面審查獨立核對通過：10 檔 authorized scope；A1 EQUIVALENT 查證通過；實作 validateResolvedDataLocationConfig 與 DATA_LOCATION_SCHEMA_VERSION=1；嚴格綱要驗證僅允許 schemaVersion 與 dataLocations；路徑驗證強制 4 個單例目錄與 protectedRoots 均為非空白絕對路徑（相容 Windows 與 POSIX）；建立無機敏範本 config.example.json；零第三方依賴；canonical verification 5 Gates 全數通過（20 checks PASS，317 unit PASS，13 webapp PASS）；exact-SHA Actions Verify Run 35105625352 completed / success；MACRO AUDIT = PASS，ACCEPT STATUS = ACCEPT ALL，FINDING_DISPOSITION = NONE；new accepted checkpoint = aa0977f；protectedRoots operational minimum coverage 依決策留待 D19-D21 安全驗收要求。
 - `eac38683`（E-03 Channel Gateway Wave 2D Repo-External Config Loader + Startup Path Validation）已於 2026-09-16 由 GPT 代理審查官（使用者授權）全面審查獨立核對通過：9 檔 authorized scope；A1 EQUIVALENT 查證通過；實作 local-config-loader.js（loadDataLocationConfigFromFile、validateStartupDataLocations）；強制 repoRoot 外部限制（名義路徑與 canonical realpath 雙重阻擋，拒絕指向 repo 內部之 symlink）；嚴格 JSON 解析與 Wave 2C 綱要驗證；啟動前驗證 4 個單例資料目錄存在且具備讀寫權限；protectedRoots 至少 1 個目錄且具備讀取權限；零自動建立目錄（zero mkdirSync）；回傳 realpathSync 正規化路徑物件，不修改原輸入；新增 21 項 canonical Node 測試（全庫 77 tests PASS / 2 skipped）；Python CI 橋接測試全數 PASS（8 passed）；exact-SHA Actions Verify Run 35107752002 completed / success；MACRO AUDIT = PASS，ACCEPT STATUS = ACCEPT ALL，FINDING_DISPOSITION = NONE；new accepted checkpoint = eac38683。
+- `994c455`（E-03 Channel Gateway Wave 2E Atomic Durable State Store Foundation & Lossless JSON Bounded Repair）已於 2026-09-17 由 GPT 代理審查官（使用者授權）全面審查獨立核對通過：涵蓋 eac38683..994c455 完整 pending range（共 2 commits：0959d0a 初審 Machine PASS / Macro HOLD，F1 為 Lossless JSON own-property validation incomplete，由 994c455d435bda6c72138706f8f16faa7c036776 徹底解決）；A1 EQUIVALENT 查證通過；exact-SHA Actions Verify Run 35158545662 completed / success（20 checks PASS，319 unit tests PASS，13 webapp tests PASS，5 Gates PASS）；Wave 2E = ACCEPTED；new accepted checkpoint = 994c455。
 
 ### 5.2 待辦
 
@@ -3062,7 +3063,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - B-99 Qualification-Based Macro Auditor & Repo-Visible Handoff（CLOSED / MACRO PASS）。
   - B-97 Pre-B01 Comprehensive Release Audit 已完成（CLOSED / PRE-B01 RELEASE PASS）。
   - B-01 ADR-0002／0004／0010 分層搬移及 Active-Contract 語意修復已完成（CLOSED / MACRO PASS）。
-  - E-03 Runtime 執行層架構推進（IN PROGRESS）：Wave 2D = MACRO PASS / ACCEPTED；Wave 2E = MACHINE PASS / MACRO HOLD / BOUNDED REPAIR（lossless JSON own-property validation underway）；Gateway live integration = NOT STARTED；LINE implementation = D12 delayed / explicit user trigger；B-98 / B-30 / B-33 / F-05 remain open at their established prerequisite boundaries。
+  - E-03 Runtime 執行層架構推進（IN PROGRESS）：Wave 2E = MACRO PASS / ACCEPTED；Wave 2F Channel Control Durable Snapshot & Safe Restart Recovery = IN PROGRESS / PENDING EXTERNAL MACRO AUDIT；Gateway live integration = NOT STARTED；LINE implementation = D12 delayed / explicit user trigger；B-98 / B-30 / B-33 / F-05 remain open at their established prerequisite boundaries。
   - C-06 維持待使用者裁決（USER_DECISION_NONBLOCKING，遠端 ruleset 與 required checks 現況已確認）。
   - B-28 / B-29 上游 trigger 重新評估完成，無 B-01 blocker，維持 DEFERRED_BY_USER / POST_B01。
   - B-54 保持待辦（POST_B01 / NONBLOCKING，SOP_12 機器專屬路徑 concrete example 已登錄）。
@@ -3591,6 +3592,26 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
       - Wave 2D = MACRO PASS / ACCEPTED；Wave 2E = MACHINE PASS / MACRO HOLD / BOUNDED REPAIR。
       - Gateway live 整合尚未開始（NOT STARTED）；B-98 / B-30 / B-33 / F-05 維持開啟狀態於既定前置邊界。
       - 本 repair candidate 自身等待 External Macro Reviewer 獨立審核；NEXT_WORK 保持 E-03。
+
+82. **E-03 Channel Gateway Wave 2E Final Macro PASS & Wave 2F Channel Control Durable Snapshot Candidate**（2026-09-17）
+    - **背景與外部審查結論**：前一微修候選 `994c455d435bda6c72138706f8f16faa7c036776`（E-03 Enforce Lossless Durable JSON State）經 External Macro Reviewer（GPT 代理審查官（使用者授權））全面審查。審查範圍為 `eac38683a76d482ba8edf80d325aaecd952d9fe0..994c455d435bda6c72138706f8f16faa7c036776`（共 2 commits：0959d0a 初審 Machine PASS / Macro HOLD，F1 由 994c455 徹底修復）。A1 qualification 採 A1 = EQUIVALENT（GitHub API + Executor clone cross-check）成立；exact-SHA Actions Verify Run `35158545662` completed/success（20 checks PASS，319 unit tests PASS，13 webapp tests PASS，5 Gates PASS）。
+    - **外部審查裁決**：`MACRO AUDIT = PASS`，`ACCEPT STATUS = ACCEPT ALL`，`FINDING_DISPOSITION = NONE`；0959d0a F1 完全解決；`Wave 2E = ACCEPTED`；checkpoint 推進至 `994c455`；NEXT_WORK 保持 E-03；正式授權開展 Wave 2F 通道控制持久化快照與安全重啟復原（Wave 2F Channel Control Durable Snapshot & Safe Restart Recovery = AUTHORIZED）。
+    - **Wave 2F 快照與安全重啟復原邊界（Channel Control Durable Snapshot & Safe Restart Recovery）**：
+      - 實作快照與重啟復原純領域模組 `runtime/channel-gateway/core/channel-state-recovery.js`。
+      - 嚴格快照綱要（`CHANNEL_SNAPSHOT_SCHEMA_VERSION = 1`）：僅允許 `schemaVersion`、`channelId`、`fencingToken`、`messages`，嚴格刻意排除 `currentHolder` 與 `lastHeartbeatAt`，杜絕重啟後復活舊 holder 或 heartbeat freshness。
+      - 訊息快照正規化與無損驗證：所有訊息僅允許正規欄位（`id`, `receivingAccountId`, `status`, `claimedBy`, `claimedAtToken`, `discardReason`, `metadata`, `discardedByHolder`, `discardedAtToken`），未用欄位以 null 表達，拒絕未知鍵；使用 Wave 2E `validateJsonCompatiblePayload` 檢驗 metadata；依 status 嚴格檢驗狀態不變量（QUEUED 無 claim/discard；CLAIMED 之 token 與 snapshot fencingToken 完全相符；REPLIED/DISCARDED token 不得超過 snapshot fencingToken）。
+      - 匯出快照（`buildChannelControlSnapshot`）：驗證輸入為 ChannelControl 實例，產生深度複製之純 JSON 物件，不暴露內部引用。
+      - 安全重啟復原（`recoverChannelControlFromSnapshot`）：嚴格驗證 untrusted snapshot 物件（不 mutate 輸入）；建立新 `ChannelControl`，恢復 `fencingToken`（不歸零、不額外遞增），重設 `currentHolder = null`、`lastHeartbeatAt = null`；深度復原訊息：`QUEUED` 訊息維持保留（符合 D10 unattended backlog）；`CLAIMED` 訊息依 D9 安全語意轉為 `DISCARDED`（`discardReason = 'GATEWAY_RESTART'`，記錄 `discardedByHolder` 與 `discardedAtToken`），並回傳安全通知後設資料 `discardedOnRecovery`（不含 body）；`REPLIED` 與既有 `DISCARDED` 訊息維持終態。
+      - 柵欄連續性（Fencing continuity）：復原後保持原 token N，舊 holder 嘗試 poll/reply 一律遭拒；下一次合法 takeover 時推進為 N + 1，確保舊 token 徹底過期。
+      - 積壓語意（Backlog semantics）：復原後 backlog 僅計算 QUEUED 訊息，重啟捨棄之 CLAIMED 訊息不計入 backlog。
+      - 刻意延後與純領域邊界：零 `AccountRegistry` 持久化或水合；零自動存檔/讀檔連線（無 automatic transition-to-file wiring）；零第三方依賴；零網路/Port/Token/Secret/OS startup/Timer。
+      - 建立 canonical tracked tests（`tests/channel-state-recovery.test.js` 涵蓋 32 項測試）及更新 Python CI 橋接測試（`scripts/tests/test_channel_gateway_core.py`，全庫 7 份測試套件）。
+    - **當前生命週期狀態**：
+      - 本批為 Phase 2 Wave 2F 施工候選，工作區僅限於授權之通道控制快照與安全重啟復原。
+      - Wave 2E = MACRO PASS / ACCEPTED；Wave 2F Channel Control Durable Snapshot & Safe Restart Recovery = IN PROGRESS / PENDING EXTERNAL MACRO AUDIT。
+      - Gateway live 整合尚未開始（NOT STARTED）；B-98 / B-30 / B-33 / F-05 維持開啟狀態於既定前置邊界。
+      - 本 candidate 等待 External Macro Reviewer 獨立審核；NEXT_WORK 保持 E-03。
+
 
 
 

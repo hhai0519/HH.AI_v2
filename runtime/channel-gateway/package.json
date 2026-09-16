@@ -5,6 +5,6 @@
   "description": "Channel Gateway pure control core foundation",
   "main": "core/channel-control.js",
   "scripts": {
-    "test": "node --test tests/channel-control.test.js tests/account-registry.test.js tests/account-switch.test.js tests/data-location-config.test.js tests/local-config-loader.test.js tests/durable-state-store.test.js"
+    "test": "node --test tests/channel-control.test.js tests/account-registry.test.js tests/account-switch.test.js tests/data-location-config.test.js tests/local-config-loader.test.js tests/durable-state-store.test.js tests/channel-state-recovery.test.js"
   }
 }
