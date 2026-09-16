@@ -1,0 +1,10 @@
+{
+  "name": "hh-ai-channel-gateway",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Channel Gateway pure control core foundation",
+  "main": "core/channel-control.js",
+  "scripts": {
+    "test": "node --test tests/channel-control.test.js tests/account-registry.test.js"
+  }
+}

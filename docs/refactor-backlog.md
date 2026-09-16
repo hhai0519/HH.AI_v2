@@ -2825,7 +2825,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 5.1 上一批狀態
 
-上次核對通過的 HEAD：c2df1b0
+上次核對通過的 HEAD：f522148
 
 - `23af193`（執行者前置檢查 ＋ 回滾程序 ＋ `AUDIT-LOG.md` ＋ 四缺口修正）
   已於 2026-09-02 由審計官核對通過：6 檔異動（含 2 個新檔）、零夾帶、
@@ -3057,7 +3057,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - B-99 Qualification-Based Macro Auditor & Repo-Visible Handoff（CLOSED / MACRO PASS）。
   - B-97 Pre-B01 Comprehensive Release Audit 已完成（CLOSED / PRE-B01 RELEASE PASS）。
   - B-01 ADR-0002／0004／0010 分層搬移及 Active-Contract 語意修復已完成（CLOSED / MACRO PASS）。
-  - E-03 Runtime 執行層架構推進（IN PROGRESS）：ADR-0022 = MACHINE PASS / MACRO HOLD / BOUNDED FIDELITY REPAIR；Gateway implementation = NOT STARTED；LINE = USER-TRIGGERED / LAST。
+  - E-03 Runtime 執行層架構推進（IN PROGRESS）：ADR-0022 architecture persistence = MACRO PASS / FINALIZED；Wave 2A Pure Control Core Foundation = IN PROGRESS / PENDING EXTERNAL MACRO AUDIT；Gateway live integration = NOT STARTED；LINE implementation = D12 delayed / explicit user trigger；B-98 / B-30 / B-33 / F-05 remain open at their established prerequisite boundaries。
   - C-06 維持待使用者裁決（USER_DECISION_NONBLOCKING，遠端 ruleset 與 required checks 現況已確認）。
   - B-28 / B-29 上游 trigger 重新評估完成，無 B-01 blocker，維持 DEFERRED_BY_USER / POST_B01。
   - B-54 保持待辦（POST_B01 / NONBLOCKING，SOP_12 機器專屬路徑 concrete example 已登錄）。
@@ -3474,7 +3474,22 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
     - **當前生命週期狀態**：
       - 本批為 CURRENT E-03 bounded repair，無任何 Gateway 生產程式碼變更（no Gateway production mutation）。
       - Gateway 生產實作尚未開始（NOT STARTED），E-03 維持進行中，NEXT_WORK 保持 E-03。
-      - 本修復成果等待 External Macro Reviewer 獨立複審。
+      - 本修復成果經 External Macro Reviewer 獨立複審判定 MACRO AUDIT = PASS。
+
+75. **E-03 Channel Gateway Architecture Decision Final Macro PASS & Wave 2A Pure Control Core Foundation Candidate**（2026-09-16）
+    - **背景與外部審查結論**：前一治理候選與邊界修復（`2830c7f` .. `f522148`，共 2 commits）經 External Macro Reviewer（GPT 代理審查官（使用者授權））全面審查。A1 qualification 採 A1 = EQUIVALENT（GitHub API + Executor clone cross-check）成立；exact-SHA Actions Verify Run 35097747792 completed/success（20 checks PASS，310 unit PASS，13 webapp PASS，5 Gates PASS）。
+    - **外部審查裁決**：`MACRO AUDIT = PASS`，`ACCEPT STATUS = ACCEPT ALL`，`FINDING_DISPOSITION = NONE`；F1/F2 於審查範圍內完全解決；`ADR-0022 CHANNEL GATEWAY ARCHITECTURE PERSISTENCE = FINALIZED`；checkpoint 推進至 `f522148`；正式授權開展 Gateway 生產基礎（Gateway production foundation = AUTHORIZED）。
+    - **Wave 2A 純控制核心邊界（Pure Control Core Foundation）**：
+      - 建立 `runtime/channel-gateway/` 零依賴 package 基礎（`package.json` 與 `package-lock.json`，dependencies = 0，devDependencies = 0，無任何第三方套件）。
+      - 實作純領域狀態轉換模型 `core/channel-control.js`（通道鎖定單元、明確接管語意、單調 fencing token、防過期回覆、接管與心跳逾期訊息捨棄/保留語意、無 holder 進線隊列與 backlog 計數）。
+      - 實作非敏感帳號註冊模型 `core/account-registry.js`（嚴格白名單 schema、拒絕任意 unknown/secret keys、同一時間至多一個活躍帳號、停用帳號不得啟用、Test Bot 平等地位）。
+      - 建立 canonical tracked tests（`tests/channel-control.test.js` 與 `tests/account-registry.test.js`）及 CI 橋接測試（`scripts/tests/test_channel_gateway_core.py`）。
+      - 本批嚴禁並無連線 Telegram/LINE、無 HTTP listener、無 Gateway port、無真實金鑰讀取、無 durable persistence、無 attachment transport、無 archive writer、無 LINE Worker。
+    - **當前生命週期狀態**：
+      - 本批為 Phase 2 Wave 2A 施工候選，工作區僅限於授權之純控制核心與狀態同步。
+      - Gateway live 整合尚未開始（NOT STARTED）；LINE 實作依 D12 延後或由使用者明確觸發；B-98 / B-30 / B-33 / F-05 維持開啟狀態於既定前置邊界。
+      - 本 candidate 等待 External Macro Reviewer 獨立審核；NEXT_WORK 保持 E-03。
+
 
 
 

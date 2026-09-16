@@ -14,7 +14,7 @@
 
 **NEXT_WORK**：E-03
 
-**最後更新**：2026-09-16，ADR-0022 架構方向已確立；前次審查 Machine PASS / Macro HOLD，現正進行 F1/F2 規範精確度修復；Gateway 生產實作尚未開始（NOT STARTED）；LINE 實作依 D12 延後或由使用者明確觸發。
+**最後更新**：2026-09-16，ADR-0022 架構決策經外部審查通過；Wave 2A Pure Control Core Foundation 候選施工中；無 live bot / network / port / credential 工作；待 External Macro Audit。
 
 ---
 
@@ -207,7 +207,7 @@ A 節目前狀態以本表各列與 `NEXT_WORK` 之 current repo truth 為準；
 |---|---|---|---|
 | E-01 | 待辦 | 技能尚未遷移（§二 A 節） | 逐一比對 A-1「確定要遷移的」清單 |
 | E-02 | 待辦 | Persona 認知顧問 15 個（§二 B 節） | 架構已定為方案 A（設定檔非技能，不放 `skills/`），遷移未執行 |
-| E-03 | 進行中 | **Runtime 執行層（§二 C 節）** | Wave 1A PASS/ACCEPTED；Phase 1/1B/1B2 調研完成；ADR-0022 架構方向已確立；2830c7f Machine PASS / Macro HOLD，現正進行 F1/F2 規範精確度修復；Gateway 生產實作尚未開始（NOT STARTED）；LINE 實作依 D12 延後或由使用者明確觸發 |
+| E-03 | 進行中 | **Runtime 執行層（§二 C 節）** | ADR-0022 persistence final Macro PASS；checkpoint f522148；Wave 2A Pure Control Core Foundation candidate underway；no live bot / network / port / credential work；pending External Macro Audit |
 | E-04 | 待辦 | `$$` 指令定義收斂（§二 D 節） | `$$LINE連線$$`／`$$TG連線$$` 散落三個檔案且內容互相矛盾；依 ADR-0022/D14 於 Gateway 正式 cutover 時才切換路由，非開發期 |
 | E-05 | 待辦 | Data/ 資料層逐項裁決（§二 E 節） | 尚有 `Data/logs/`（必須遷移）、`reports/`、`Agent_Reflections.md`、`TODO.md`、`Execution_Plans/`、`_archive_legacy_docs/` 待裁決 |
 
