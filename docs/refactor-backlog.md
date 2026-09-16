@@ -2825,7 +2825,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 5.1 上一批狀態
 
-上次核對通過的 HEAD：aa0977f
+上次核對通過的 HEAD：eac38683
 
 - `23af193`（執行者前置檢查 ＋ 回滾程序 ＋ `AUDIT-LOG.md` ＋ 四缺口修正）
   已於 2026-09-02 由審計官核對通過：6 檔異動（含 2 個新檔）、零夾帶、
@@ -3015,6 +3015,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 - `7d379f6`（E-03 Enforce Channel and Account Reply Boundaries）已於 2026-09-16 由 GPT 代理審查官（使用者授權）全面審查獨立核對通過：涵蓋 f522148..7d379f6 完整 pending range（含 278d142 初審 HOLD 與 7d379f6 bounded domain invariant repair）；A1 EQUIVALENT 查證通過；F1（AccountRegistry 通道邊界強制）與 F2（接收帳號回覆強綁定）完全解決；Wave 2A = ACCEPTED；exact-SHA Actions Verify Run 35101712841 completed / success；MACRO AUDIT = PASS，ACCEPT STATUS = ACCEPT ALL，FINDING_DISPOSITION = NONE。
 - `fe6baba`（E-03 Channel Gateway Wave 2B Pure Account Switch Orchestration）已於 2026-09-16 由 GPT 代理審查官（使用者授權）全面審查獨立核對通過：10 檔 authorized scope；A1 EQUIVALENT 查證通過；實作 AccountSwitchCoordinator，嚴格強制註冊表與通道控制器邊界一致（CHANNEL_CONTROL_MISMATCH）；實作 D26 切換即接管與原子式前置檢驗；異帳號切換 A→B 接管捨棄 A claimed 訊息、discardQueuedForAccount 捨棄 A queued 訊息並保留 B queued 訊息；同帳號選擇 A→A 接管但保留 queued 訊息；無前一活躍帳號 null→B 成功啟用並接管；新增 18 項 canonical Node 測試全數通過（40/40 tests PASS）；Python CI 橋接測試 6 passed；exact-SHA Actions Verify Run 35103490957 completed / success；MACRO AUDIT = PASS，ACCEPT STATUS = ACCEPT ALL，FINDING_DISPOSITION = NONE。
 - `aa0977f`（E-03 Channel Gateway Wave 2C Data Location Config Contract）已於 2026-09-16 由 GPT 代理審查官（使用者授權）全面審查獨立核對通過：10 檔 authorized scope；A1 EQUIVALENT 查證通過；實作 validateResolvedDataLocationConfig 與 DATA_LOCATION_SCHEMA_VERSION=1；嚴格綱要驗證僅允許 schemaVersion 與 dataLocations；路徑驗證強制 4 個單例目錄與 protectedRoots 均為非空白絕對路徑（相容 Windows 與 POSIX）；建立無機敏範本 config.example.json；零第三方依賴；canonical verification 5 Gates 全數通過（20 checks PASS，317 unit PASS，13 webapp PASS）；exact-SHA Actions Verify Run 35105625352 completed / success；MACRO AUDIT = PASS，ACCEPT STATUS = ACCEPT ALL，FINDING_DISPOSITION = NONE；new accepted checkpoint = aa0977f；protectedRoots operational minimum coverage 依決策留待 D19-D21 安全驗收要求。
+- `eac38683`（E-03 Channel Gateway Wave 2D Repo-External Config Loader + Startup Path Validation）已於 2026-09-16 由 GPT 代理審查官（使用者授權）全面審查獨立核對通過：9 檔 authorized scope；A1 EQUIVALENT 查證通過；實作 local-config-loader.js（loadDataLocationConfigFromFile、validateStartupDataLocations）；強制 repoRoot 外部限制（名義路徑與 canonical realpath 雙重阻擋，拒絕指向 repo 內部之 symlink）；嚴格 JSON 解析與 Wave 2C 綱要驗證；啟動前驗證 4 個單例資料目錄存在且具備讀寫權限；protectedRoots 至少 1 個目錄且具備讀取權限；零自動建立目錄（zero mkdirSync）；回傳 realpathSync 正規化路徑物件，不修改原輸入；新增 21 項 canonical Node 測試（全庫 77 tests PASS / 2 skipped）；Python CI 橋接測試全數 PASS（8 passed）；exact-SHA Actions Verify Run 35107752002 completed / success；MACRO AUDIT = PASS，ACCEPT STATUS = ACCEPT ALL，FINDING_DISPOSITION = NONE；new accepted checkpoint = eac38683。
 
 ### 5.2 待辦
 
@@ -3061,7 +3062,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - B-99 Qualification-Based Macro Auditor & Repo-Visible Handoff（CLOSED / MACRO PASS）。
   - B-97 Pre-B01 Comprehensive Release Audit 已完成（CLOSED / PRE-B01 RELEASE PASS）。
   - B-01 ADR-0002／0004／0010 分層搬移及 Active-Contract 語意修復已完成（CLOSED / MACRO PASS）。
-  - E-03 Runtime 執行層架構推進（IN PROGRESS）：Wave 2C = MACRO PASS / ACCEPTED；Wave 2D Repo-External Config Loader + Startup Path Validation = IN PROGRESS / PENDING EXTERNAL MACRO AUDIT；Gateway live integration = NOT STARTED；LINE implementation = D12 delayed / explicit user trigger；B-98 / B-30 / B-33 / F-05 remain open at their established prerequisite boundaries。
+  - E-03 Runtime 執行層架構推進（IN PROGRESS）：Wave 2D = MACRO PASS / ACCEPTED；Wave 2E Atomic Durable State Store Foundation = IN PROGRESS / PENDING EXTERNAL MACRO AUDIT；Gateway live integration = NOT STARTED；LINE implementation = D12 delayed / explicit user trigger；B-98 / B-30 / B-33 / F-05 remain open at their established prerequisite boundaries。
   - C-06 維持待使用者裁決（USER_DECISION_NONBLOCKING，遠端 ruleset 與 required checks 現況已確認）。
   - B-28 / B-29 上游 trigger 重新評估完成，無 B-01 blocker，維持 DEFERRED_BY_USER / POST_B01。
   - B-54 保持待辦（POST_B01 / NONBLOCKING，SOP_12 機器專屬路徑 concrete example 已登錄）。
@@ -3555,4 +3556,23 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
       - Wave 2C = MACRO PASS / ACCEPTED；Wave 2D Repo-External Config Loader + Startup Path Validation = IN PROGRESS / PENDING EXTERNAL MACRO AUDIT。
       - Gateway live 整合尚未開始（NOT STARTED）；B-98 / B-30 / B-33 / F-05 維持開啟狀態於既定前置邊界。
       - 本 candidate 等待 External Macro Reviewer 獨立審核；NEXT_WORK 保持 E-03。
+
+80. **E-03 Channel Gateway Wave 2D Final Macro PASS & Wave 2E Atomic Durable State Store Candidate**（2026-09-16）
+    - **背景與外部審查結論**：前一施工候選 `eac38683a76d482ba8edf80d325aaecd952d9fe0`（Wave 2D Repo-External Config Loader + Startup Path Validation）經 External Macro Reviewer（GPT 代理審查官（使用者授權））全面審查。A1 qualification 採 A1 = EQUIVALENT（GitHub API + Executor clone cross-check）成立；exact-SHA Actions Verify Run `35107752002` completed/success（20 checks PASS，318 unit PASS，13 webapp PASS，5 Gates PASS）。
+    - **外部審查裁決**：`MACRO AUDIT = PASS`，`ACCEPT STATUS = ACCEPT ALL`，`FINDING_DISPOSITION = NONE`；local-config-loader 外部檔案載入與啟動路徑驗證契約獲全面接受；`Wave 2D = ACCEPTED`；checkpoint 推進至 `eac38683`；正式授權開展 Wave 2E 本機持久化狀態儲存基礎（Wave 2E Atomic Durable State Store Foundation = AUTHORIZED）。
+    - **Wave 2E 本機持久化狀態儲存基礎邊界（Atomic Durable State Store Foundation）**：
+      - 實作本機持久化狀態儲存原語 `runtime/channel-gateway/core/durable-state-store.js`（`DurableStateStore`）。
+      - 建構子強制 stateRoot 存在、為目錄且具備讀寫權限，取得 canonical realpath，零目錄自動建立（zero mkdirSync），固定狀態檔名 `channel-gateway-state.json` 杜絕 path traversal。
+      - 嚴格版號封套（envelope schema）：`schemaVersion: 1`、`revision`（非負安全整數）、`payload`（非空純物件），拒絕任意未知頂層金鑰。
+      - 遞迴 JSON 相容性驗證：嚴格檢驗 payload 內容，拒絕 undefined、function、symbol、BigInt、NaN、Infinity、循環參照或 Date/Map/Set/類別實例，杜絕 silent drop。
+      - 讀取狀態：檔案不存在時回傳 null（代表初次啟動無狀態）；存在時透過 lstat 阻擋符號連結、檢驗正規檔案與 realpath 邊界，解析失敗或格式異常一律 fail-closed，不自動修復或刪除損毀檔案。
+      - 寫入狀態：嚴格重用 `shared/atomicFs.js`（`writeStateAtomic`）進行跨平台原子更名寫入，版本號自 1 起算單調遞增（N -> N + 1）。
+      - 建立 canonical tracked tests（`tests/durable-state-store.test.js` 涵蓋 28 項測試）及更新 Python CI 橋接測試（`scripts/tests/test_channel_gateway_core.py`）。
+      - 純儲存原語邊界：零領域連結（無 ChannelControl、AccountRegistry、AccountSwitchCoordinator 載入邏輯或重啟策略），零 process.env，零憑證，零網路/Port，零 OS 啟動服務。
+    - **當前生命週期狀態**：
+      - 本批為 Phase 2 Wave 2E 施工候選，工作區僅限於授權之本機狀態儲存原語與狀態同步。
+      - Wave 2D = MACRO PASS / ACCEPTED；Wave 2E Atomic Durable State Store Foundation = IN PROGRESS / PENDING EXTERNAL MACRO AUDIT。
+      - Gateway live 整合尚未開始（NOT STARTED）；B-98 / B-30 / B-33 / F-05 維持開啟狀態於既定前置邊界。
+      - 本 candidate 等待 External Macro Reviewer 獨立審核；NEXT_WORK 保持 E-03。
+
 

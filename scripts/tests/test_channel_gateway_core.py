@@ -27,6 +27,7 @@ REGISTRY_TEST_PATH = os.path.join(GATEWAY_DIR, "tests", "account-registry.test.j
 ACCOUNT_SWITCH_TEST_PATH = os.path.join(GATEWAY_DIR, "tests", "account-switch.test.js")
 DATA_LOCATION_CONFIG_TEST_PATH = os.path.join(GATEWAY_DIR, "tests", "data-location-config.test.js")
 LOCAL_CONFIG_LOADER_TEST_PATH = os.path.join(GATEWAY_DIR, "tests", "local-config-loader.test.js")
+DURABLE_STATE_STORE_TEST_PATH = os.path.join(GATEWAY_DIR, "tests", "durable-state-store.test.js")
 
 
 def test_channel_gateway_package_json_zero_dependencies():
@@ -148,6 +149,24 @@ def test_channel_gateway_node_tests_local_config_loader():
     assert "fail 0" in res.stdout
 
 
+def test_channel_gateway_node_tests_durable_state_store():
+    """Requirement C: Run durable-state-store.test.js via Node test runner."""
+    assert os.path.isfile(DURABLE_STATE_STORE_TEST_PATH), f"Test file missing: {DURABLE_STATE_STORE_TEST_PATH}"
+
+    res = subprocess.run(
+        ["node", "--test", os.path.relpath(DURABLE_STATE_STORE_TEST_PATH, REPO_ROOT).replace("\\", "/")],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        encoding="utf-8",
+        errors="replace"
+    )
+    assert res.returncode == 0, (
+        f"durable-state-store.test.js failed with code {res.returncode}:\n"
+        f"STDOUT:\n{res.stdout}\nSTDERR:\n{res.stderr}"
+    )
+    assert "fail 0" in res.stdout
+
+
 def test_channel_gateway_combined_node_test_runner():
     """Requirement C & E: Run all Channel Gateway test files together with explicit paths."""
     rel_control = os.path.relpath(CONTROL_TEST_PATH, REPO_ROOT).replace("\\", "/")
@@ -155,9 +174,10 @@ def test_channel_gateway_combined_node_test_runner():
     rel_switch = os.path.relpath(ACCOUNT_SWITCH_TEST_PATH, REPO_ROOT).replace("\\", "/")
     rel_location = os.path.relpath(DATA_LOCATION_CONFIG_TEST_PATH, REPO_ROOT).replace("\\", "/")
     rel_loader = os.path.relpath(LOCAL_CONFIG_LOADER_TEST_PATH, REPO_ROOT).replace("\\", "/")
+    rel_store = os.path.relpath(DURABLE_STATE_STORE_TEST_PATH, REPO_ROOT).replace("\\", "/")
 
     res = subprocess.run(
-        ["node", "--test", rel_control, rel_registry, rel_switch, rel_location, rel_loader],
+        ["node", "--test", rel_control, rel_registry, rel_switch, rel_location, rel_loader, rel_store],
         cwd=REPO_ROOT,
         capture_output=True,
         encoding="utf-8",
@@ -168,6 +188,7 @@ def test_channel_gateway_combined_node_test_runner():
         f"STDOUT:\n{res.stdout}\nSTDERR:\n{res.stderr}"
     )
     assert "fail 0" in res.stdout
+
 
 
 
