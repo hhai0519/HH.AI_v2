@@ -1,5 +1,5 @@
 {
-  "base_head": "24f7896",
+  "base_head": "e8fdb74",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 0,
@@ -15,7 +15,7 @@
         "## 3. 查證紀律"
       ],
       "lines": 278,
-      "sha256": "2d2e98438100b872019ac42c332b1c731ea654093f47f3efb8c1e35ded28f932"
+      "sha256": "1e5bbfe76c25e96c85feab53eb1a0ac18d555d52b9c3fdb0f707051e61ded846"
     },
     ".agents/rules/powershell-encoding-protocol.md": {
       "fences": 6,
@@ -77,7 +77,7 @@
         "## 7. 什麼時候該停下來回報，什麼時候該自己處理"
       ],
       "lines": 179,
-      "sha256": "e1671b1853442c3ae5a09450f5294e6bad21bdcbbe56b3bdb24536ad1dc9f06b"
+      "sha256": "59452cf7f554c20310ebd8d60d5a7eada567ca4117fa184af66618f589d3aab5"
     },
     ".agents/rules/skill-engineering-guardrails.md": {
       "fences": 0,
@@ -105,7 +105,7 @@
       "fences": 6,
       "headings": [
         "# 宏觀審計官作業協定",
-        "## 1. 職責範圍",
+        "## 1. 職責範圍與查證模式",
         "## 2. 四個審計維度",
         "## 3. Gatekeeping 規則",
         "## 4. 報告格式",
@@ -113,7 +113,7 @@
         "### 5.1 不採用執行端的任何數字",
         "### 5.2 盤點時用結構錨點，不用內文詞彙",
         "### 5.3 搜尋詞用最短核心片段",
-        "### 5.4 逐行 diff 兩個 clone，不只讀回報",
+        "### 5.4 逐行 diff 兩個 clone 或獨立 GitHub 查證，不只讀回報",
         "### 5.5 淘汰或取代的理由，必須逐項驗證",
         "### 5.6 反例測試要涵蓋真實輸入的格式",
         "### 5.7 規則的層級決定它會不會被執行",
@@ -155,23 +155,23 @@
         "### 11.5 審計狀態之單一事實來源（Audit State SSOT）",
         "### 11.6 [已退役／不需執行] 歷史 `audited-*` tag 之留痕保存（RETIRED / NOT REQUIRED）"
       ],
-      "lines": 447,
-      "sha256": "fe7e067731085c9a65f0b5b3c137e8f4c804a6614d44f0953e06fedfb080581a"
+      "lines": 456,
+      "sha256": "2abc70a96eb9d7b301ed478c6e8fca9ecfdd35cdc0f30c6fc5388c96355b9be8"
     },
     ".claude/rules/auditor-selftest.md": {
       "fences": 0,
       "headings": [
         "# 宏觀審計官自檢清單",
         "## 觸發時機對照表 (Trigger Map)",
-        "## A. 載入（做完開場動作後立刻自答）",
+        "## A. 載入與資格確認（做完開場動作後立刻自答）",
         "## B. 定位（確認「現在在哪」）",
         "## C. 範圍（確認「該做什麼、不該做什麼」）",
         "## D. 身分（每一輪都適用，不只接手時）",
         "## E. 交付（產出提示詞之前）",
         "## F. 額度（每一輪回覆的開頭與結尾）"
       ],
-      "lines": 130,
-      "sha256": "33c86b409cb85b65225d9775f02df07d15ef625180d534cde21cec6ed621cf5b"
+      "lines": 131,
+      "sha256": "802ac2c715d1ac806435a6f69f7403f88292bfdf38ed75efb9ac9654ad660860"
     },
     ".github/workflows/verify.yml": {
       "fences": 0,
@@ -218,7 +218,7 @@
       "headings": [
         "# HH.AI v2 — 決策與協作原則",
         "## 0. 角色分工（本文件其他所有原則的前提）",
-        "### 0.1 身分不可切換",
+        "### 0.1 身分不可切換與資格認定制 (Qualification-Based Macro Role)",
         "### 0.2 本文件其他原則都預設這個分工",
         "### 0.3 「審計」一詞有四種意思，不可混用",
         "### 0.4 各層的分工",
@@ -248,8 +248,8 @@
         "### 4.4 責任歸屬",
         "## 5. 更新紀錄"
       ],
-      "lines": 375,
-      "sha256": "8ace5bcd19ef601883a0d608fc91c6cb54f2ac342e8ac8652e85741f1c0cd032"
+      "lines": 381,
+      "sha256": "f592e510a17e56ae300bc9744d3b7f9f2e45b981ed5f89d0f9e49582ce9ff000"
     },
     "SOP/README.md": {
       "fences": 0,
@@ -489,7 +489,7 @@
         "### 8.2 歷史清理紅線 (Cleanup Invariants)"
       ],
       "lines": 217,
-      "sha256": "118ae9138be54db3b053f6c74ef4e3b0f8b26ee1145451dacd2a0ecf5923663d"
+      "sha256": "73e6a7d17d768752bff1a1f000ace48f4259f1ed0fb9602c601ed3b79dee58ee"
     },
     "docs/ARCHIVE-INDEX.md": {
       "fences": 0,
@@ -510,16 +510,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 127,
-      "sha256": "aca7b44496873d6c0f5ca4a8b5a4325f4e1a0cc4bdeb80890cd694a182ae96f5"
+      "lines": 128,
+      "sha256": "8f2f1acfb512df9a9d818451df319c2fc6f503a2d1a33abd7d54db4108cfb290"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 98,
-      "sha256": "95f9571051eebd978ada0f73f0aa361c9fe2928e6c6bc8ee98d8891aa493415d"
+      "lines": 99,
+      "sha256": "f7cbe5961b96715a7696b00286837f0084cd121bb0b352b63c7a6757ce2a7931"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -527,7 +527,7 @@
         "# HH.AI_v2 Project Handover Router",
         "## 導覽索引 (Navigation Directory)",
         "### 1. 專案使命與核心原則 (Mission & Principles)",
-        "### 2. 宏觀審計官接手導引 (Macro Auditor / Claude Control Plane)",
+        "### 2. 宏觀審計官接手導引 (Macro Auditor Control Plane)",
         "### 3. 執行者接手導引 (Executor / Antigravity Control Plane)",
         "### 4. 下一步工作與待辦 (Next Work & Tasks)",
         "### 5. 目前進度與審計狀態 (Current Progress & Audited Checkpoint)",
@@ -538,8 +538,8 @@
         "### 10. 歸檔與歷史資料 (Archive & Historical Material)",
         "### 11. 規範驗證入口 (Canonical Verification)"
       ],
-      "lines": 60,
-      "sha256": "13641e4d58f0c4da4c921ca18b60b34c16ee7ec98405be7dc4c8c1f5b4948f15"
+      "lines": 61,
+      "sha256": "9a9638670a1dd1f57bd827de8542db0206b8c4df8dd4bdb9c4da4f08ca794448"
     },
     "docs/TASKBOARD.md": {
       "fences": 0,
@@ -554,8 +554,8 @@
         "## G. 舊 repo 未盤點區塊（2026-09-02 新發現）",
         "## 封存區"
       ],
-      "lines": 241,
-      "sha256": "6691ac1e742169bd6aa3b9f6bac7988b174f07c113d2c61fda50707a1edb9a06"
+      "lines": 244,
+      "sha256": "8598dc4b511f01995711a4f970292b6e634926ad43aa496d320ccac2c9402e6d"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -818,6 +818,17 @@
       "lines": 54,
       "sha256": "87df0368aaa8a13721f3451a0feb688859bd1651c1e45c6b767e8abf9753e941"
     },
+    "docs/adr/0021-qualification-based-macro-auditor-role.md": {
+      "fences": 0,
+      "headings": [
+        "# ADR-0021: 資格認定制宏觀審計官與版本庫可見交接架構 (Qualification-Based Macro Auditor & Repo-Visible Handoff)",
+        "## Context",
+        "## Decision",
+        "## Consequences"
+      ],
+      "lines": 52,
+      "sha256": "2e999761f33f6712bde7f00a4761191b21be18500a5373772097a7d235cf4f5d"
+    },
     "docs/mcp-environment-guide.md": {
       "fences": 0,
       "headings": [
@@ -883,8 +894,8 @@
         "### 5.3 待使用者裁決",
         "### 5.4 進行中／等待回報"
       ],
-      "lines": 3293,
-      "sha256": "2e99af6a160aa5b9e84b0c240b658a3d4a06daaed126ca2cac3cf872def30bf9"
+      "lines": 3311,
+      "sha256": "dac67fb3bb0511aa6400d2c46c8b5712e582d2dd89bb9549253c9fd2fffb5fe7"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -911,8 +922,8 @@
         "# 已知指向錯誤的歷史 tag。本清單只能縮短、不得加長。",
         "# 修復批次完成後必須清空；清單中的 tag 若已修復卻未移除，CHECK 18 會 FAIL。"
       ],
-      "lines": 2127,
-      "sha256": "fd78ca99ce9433a2b2d858b8dfa37bb02c808029a4a2609228796b296d1a766d"
+      "lines": 2167,
+      "sha256": "1fb99e7cf0f207d34e4f477051bb1e52f3c3015f029a71a8acf8b9ac04d20aa2"
     },
     "scripts/fingerprint.py": {
       "fences": 0,
@@ -989,8 +1000,8 @@
         "# CHECK 20 Tests: Markdown Table Continuity (B-88)",
         "# ---------------------------------------------------------------------------"
       ],
-      "lines": 1097,
-      "sha256": "d5c9f4ebb7555e0aece6150232874fb4e74b09a88bb8510930b14aa56077a103"
+      "lines": 1175,
+      "sha256": "c8c02d6921aab054e3296c4abf385c46a68b08837e3b45e74233ce1435932a5e"
     },
     "scripts/tests/test_fingerprint.py": {
       "fences": 0,
@@ -1132,7 +1143,7 @@
       "sha256": "35bf7dbfa3c7d291b550c3c97a6ae398a22b1dc3624c1d2fc1e4db6963d6e115"
     }
   },
-  "generated_at": "2026-09-15T17:06:19Z",
+  "generated_at": "2026-09-16T02:13:58Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

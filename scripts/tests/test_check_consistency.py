@@ -51,6 +51,7 @@ def _setup_check_9_env(tmp_path, checkpoint_hash, audit_rows, bl_extra=""):
 def _make_taskboard_content(
     last_updated="**最後更新**：2026-09-13，Router / Anti-Loop / State Placement Hardening",
     next_work="**NEXT_WORK**：G-90",
+    active_macro_auditor="**ACTIVE_MACRO_AUDITOR**：GPT 代理審查官（使用者授權）",
     tasks=None,
 ):
     if tasks is None:
@@ -60,6 +61,8 @@ def _make_taskboard_content(
             ("G-92", "可封存", "Synthetic archivable task"),
         ]
     rows = ["# 看板", last_updated]
+    if active_macro_auditor is not None:
+        rows.append(active_macro_auditor)
     if next_work is not None:
         rows.append(next_work)
     rows.append("")
@@ -223,6 +226,7 @@ def test_check_8_pass_narrative_text_mentioning_next_work(tmp_path):
     content = (
         "# 看板\n"
         "**最後更新**：2026-09-13，Router / Anti-Loop / State Placement Hardening\n"
+        "**ACTIVE_MACRO_AUDITOR**：GPT 代理審查官（使用者授權）\n"
         "**NEXT_WORK**：G-90\n\n"
         "> 請讀 `**NEXT_WORK**` pointer\n"
         "文件說明 **NEXT_WORK**：由 TASKBOARD 管理\n\n"
@@ -316,6 +320,80 @@ def test_check_8_fail_pointer_contains_git_truth(tmp_path):
     fails, infos = check_8_taskboard_head(str(tmp_path))
     assert len(fails) >= 1
     assert any("HEAD" in f or "commit" in f for f in fails)
+
+
+def test_check_8_active_macro_auditor_pass(tmp_path):
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    tb = docs / "TASKBOARD.md"
+    tb.write_text(
+        _make_taskboard_content(active_macro_auditor="**ACTIVE_MACRO_AUDITOR**：GPT 代理審查官（使用者授權）"),
+        encoding="utf-8",
+    )
+    fails, infos = check_8_taskboard_head(str(tmp_path))
+    assert len(fails) == 0
+    assert any("ACTIVE_MACRO_AUDITOR = GPT 代理審查官（使用者授權）" in i for i in infos)
+
+
+def test_check_8_fail_missing_active_macro_auditor(tmp_path):
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    tb = docs / "TASKBOARD.md"
+    tb.write_text(
+        _make_taskboard_content(active_macro_auditor=None),
+        encoding="utf-8",
+    )
+    fails, infos = check_8_taskboard_head(str(tmp_path))
+    assert len(fails) >= 1
+    assert any("未找到『ACTIVE_MACRO_AUDITOR』標記" in f for f in fails)
+
+
+def test_check_8_fail_duplicate_active_macro_auditor(tmp_path):
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    tb = docs / "TASKBOARD.md"
+    dup = "**ACTIVE_MACRO_AUDITOR**：Reviewer A\n**ACTIVE_MACRO_AUDITOR**：Reviewer B"
+    tb.write_text(
+        _make_taskboard_content(active_macro_auditor=dup),
+        encoding="utf-8",
+    )
+    fails, infos = check_8_taskboard_head(str(tmp_path))
+    assert len(fails) >= 1
+    assert any("找到多個『ACTIVE_MACRO_AUDITOR』標記" in f for f in fails)
+
+
+def test_check_8_fail_empty_active_macro_auditor(tmp_path):
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    tb = docs / "TASKBOARD.md"
+    tb.write_text(
+        _make_taskboard_content(active_macro_auditor="**ACTIVE_MACRO_AUDITOR**："),
+        encoding="utf-8",
+    )
+    fails, infos = check_8_taskboard_head(str(tmp_path))
+    assert len(fails) >= 1
+    assert any("『ACTIVE_MACRO_AUDITOR』標記值不得為空" in f for f in fails)
+
+
+@pytest.mark.parametrize("bad_value,expected_err", [
+    ("**ACTIVE_MACRO_AUDITOR**：HEAD Reviewer", "不得包含 HEAD 關鍵字"),
+    ("**ACTIVE_MACRO_AUDITOR**：checkpoint reviewer", "不得包含 checkpoint/commit 關鍵字"),
+    ("**ACTIVE_MACRO_AUDITOR**：commit reviewer", "不得包含 checkpoint/commit 關鍵字"),
+    ("**ACTIVE_MACRO_AUDITOR**：Reviewer range 1234..5678", "不得包含 commit range (..)"),
+    ("**ACTIVE_MACRO_AUDITOR**：Reviewer Run #12345", "不得包含 CI run ID"),
+    ("**ACTIVE_MACRO_AUDITOR**：Reviewer `e8fdb7479311b44c2c25022aab3fdf068a7b3d4f`", "不得保存 Git commit hash"),
+])
+def test_check_8_fail_active_macro_auditor_git_truth_contamination(tmp_path, bad_value, expected_err):
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    tb = docs / "TASKBOARD.md"
+    tb.write_text(
+        _make_taskboard_content(active_macro_auditor=bad_value),
+        encoding="utf-8",
+    )
+    fails, infos = check_8_taskboard_head(str(tmp_path))
+    assert len(fails) >= 1
+    assert any(expected_err in f for f in fails)
 
 
 # ---------------------------------------------------------------------------

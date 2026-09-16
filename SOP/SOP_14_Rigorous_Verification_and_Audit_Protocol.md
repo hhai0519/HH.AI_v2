@@ -136,8 +136,8 @@ dependencies: [".agents/rules/skill-engineering-guardrails.md", "SOP_05_System_P
   差別在於那份規則規範「修改時要搜遍全庫」，本節規範「發現錯誤時的判斷順序」。
   前者防漏改，後者防誤判與治標。
 - 本節的「根因處理順序」適用於任何發現錯誤的角色，包括執行者。
-  但**「宏觀審計官」是獨立於執行者的角色，只有 Claude 擔任**——
-  定義見 `PRINCIPLES.md` §0，理由見 `docs/adr/0007-macro-auditor-role.md`。
+  但**「宏觀審計官」是獨立於執行者的角色，採資格認定與使用者授權制**——
+  定義見 `PRINCIPLES.md` §0，理由見 `docs/adr/0007-macro-auditor-role.md` 與 `docs/adr/0021-qualification-based-macro-auditor-role.md`。
   Antigravity IDE Agent 不得自任該角色，也不得以本節為據宣稱自己
   完成了宏觀審計。**本節規範「發現錯誤之後怎麼判斷」，不授予任何人身分。**
 
@@ -157,13 +157,13 @@ dependencies: [".agents/rules/skill-engineering-guardrails.md", "SOP_05_System_P
 
 ### 7.2 三層核對
 
-1. 詳細 changed paths、驗證結果與 remote health 狀態一律寫入 `docs/EXEC-LOG.md` 與 Git commit；對話回覆正常成功維持單行 `COMMIT <full-sha> | CI PASS | S1 NONE`。宏觀審計官直接自 GitHub 遠端取得 exact diff 與實體檔案證據，**嚴禁預設要求執行者在對話貼出修改後完整檔案內容或 raw diff**（僅在遠端不可得時例外提供最小必要片段）。
+1. 詳細 changed paths、驗證結果與 remote health 狀態一律寫入 `docs/EXEC-LOG.md` 與 Git commit；對話回覆正常成功維持單行 `COMMIT <full-sha> | CI PASS | S1 NONE`。宏觀審計官直接自 GitHub 遠端取得 exact diff 與實體檔案證據（或採 A1 EQUIVALENT 交叉驗證），**嚴禁預設要求執行者在對話貼出修改後完整檔案內容或 raw diff**（僅在遠端不可得時例外提供最小必要片段）。
 2. 審計官獨立查核是否有：
    - 牴觸本專案核心原則的規則（尤其「遇到不確定情況要不要問人」這類）
    - 尚未處理的硬編碼符號／觸發詞
    - 檔案內部自相矛盾或重複的區塊
    - 遷移後失效的絕對路徑、外部引用
-3. 回報 push 完成後，直接自遠端 repo 核對實體檔案內容與 GitHub Actions 狀態，不依賴執行者口頭宣稱。
+3. 回報 push 完成後，直接自遠端 repo / GitHub Actions 核對實體檔案內容與狀態，不依賴執行者口頭宣稱。
 
 ### 7.3 與既有紀律的關係
 

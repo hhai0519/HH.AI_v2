@@ -74,7 +74,7 @@
 | 目錄 | 適用對象 | 控制平面定位與權威 |
 |---|---|---|
 | `.agents/`（含根目錄 `AGENTS.md`） | 你（執行者） | Antigravity Control Plane。系統自動載入，為你的行為準則與權威本體，必須嚴格遵守 |
-| `.claude/` | 審計官 | Claude Control Plane。審計官作業標準與操作投影，**不得當作你的行為指令** |
+| `.claude/` | 宏觀審計官 | Macro Auditor Control Plane。審計官作業標準與操作投影（歷史相容實體路徑），**不得當作你的行為指令** |
 
 `.claude/rules/auditor-protocol.md` 裡有「審計維度」「Gatekeeping」
 「報告格式」等內容——那是**審計官檢查你的產出時**用的標準，

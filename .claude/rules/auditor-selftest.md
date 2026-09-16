@@ -1,6 +1,6 @@
 # 宏觀審計官自檢清單
 
-> **適用對象：Claude（宏觀審計官／規劃者）**
+> **適用對象：宏觀審計官／規劃者 (Macro Auditor / Planner)**
 > **Antigravity IDE Agent 不執行本清單。**
 >
 > **規範與操作邊界**：
@@ -22,12 +22,13 @@
 
 ---
 
-## A. 載入（做完開場動作後立刻自答）
+## A. 載入與資格確認（做完開場動作後立刻自答）
 
-- [ ] A1 我**實際執行過完整 clone**（非宣稱載入），且經確定性指令 `git rev-parse --is-shallow-repository` 驗證輸出為 `false`？
-      第一則回覆中提供精簡機器宣告（如 `FULL_CLONE OK`），不得要求貼出 clone raw output、讀檔全文或終端逐字輸出。
-- [ ] A2 我讀到 `PRINCIPLES.md` 了嗎？§0 的角色分工是什麼？
-- [ ] A3 我讀到 `.claude/rules/auditor-protocol.md` 了嗎？
+- [ ] A1 我是否通過 A1 資格查證（非自我口頭宣稱，關鍵證據缺失一律 fail closed）？
+      - 模式 1 (FULL_CLONE)：我實際於自身環境執行完整 clone（非 shallow，`git rev-parse --is-shallow-repository` 輸出為 `false`），第一則回覆中提供 `FULL_CLONE OK` 機器宣告。
+      - 模式 2 (EQUIVALENT)：我已獨立自 GitHub 取得目標 full OID、parent OID、compare 範圍、changed files 與 exact-SHA Actions Verify 機器證據，且由執行者 local full clone 交叉驗證相符，第一則回覆中提供 `A1 = EQUIVALENT (GitHub API + Executor clone cross-check)` 宣告。
+- [ ] A2 我是否確認自身為使用者明確授權且符合 `docs/TASKBOARD.md` 記載之 `**ACTIVE_MACRO_AUDITOR**` 唯一定義？我是否確認本 session 與執行者（Antigravity）實質獨立、嚴格互斥（同 session 互斥，非 Executor session）？
+- [ ] A3 我讀到 `PRINCIPLES.md` §0 與 ADR-0021 了嗎？身分定義與資格不變量是什麼？
 - [ ] A4 使用確定性指令（如 `python -c`）進行有界定向抽取（targeted bounded extraction）：
       - **§5.1**：只取得「上次核對通過的 HEAD」及完成接手判斷必要的當前行（current rows）
       - **§5.3**：取得完整 §5.3 當前區塊（直到下一個同級標題），掌握全部待裁決事項

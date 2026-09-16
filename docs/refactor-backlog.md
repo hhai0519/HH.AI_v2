@@ -2825,7 +2825,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 5.1 上一批狀態
 
-上次核對通過的 HEAD：24f7896
+上次核對通過的 HEAD：e8fdb74
 
 - `23af193`（執行者前置檢查 ＋ 回滾程序 ＋ `AUDIT-LOG.md` ＋ 四缺口修正）
   已於 2026-09-02 由審計官核對通過：6 檔異動（含 2 個新檔）、零夾帶、
@@ -3004,6 +3004,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 - `9b698de`（B-41 Slim Bootstrap Router Landing）已於 2026-09-14 由外部審計官全面審查獨立核對通過：6 檔 authorized scope，本地 verify_all 5 Gates 全 PASS，GitHub Actions exact-SHA Run 34852512530 success。B-41 Slim Bootstrap Router bounded landing accepted；.claude/README.md 正式作為 repo-owned canonical slim bootstrap / recovery router；docs/HANDOVER.md 保持 supporting router / VERIFY_ONLY；full mirror superseded；no .claude/slim-bootstrap.md；no workspace/global GEMINI creation；no fake UI CI CHECK；dynamic state remains runtime-routed；B-69 false-zero evidence recorded as existing / non-blocking；B-01 零實作；使用者明確要求新增 B-97 release gate；B-41 正式 CLOSED；B-97 登錄待辦；NEXT_WORK 推進至 B-97；B-01 保持待辦零實作（NOT STARTED）；判定 Macro PASS (ACCEPT ALL)。
 - `cfdebc2`（B-41 Final Closure and B-97 Release Audit Registration）已於 2026-09-16 由 GPT 代理審查官（使用者授權）獨立核對通過：5 檔 authorized scope，本地 verify_all 5 Gates 全 PASS，GitHub Actions exact-SHA Run 34860687555 success。B-41 closure 與 B-97 registration state sync accepted；B-41 CLOSED；B-97 REGISTERED / audit 尚未開始；B-01 NOT STARTED；A1 使用 user-authorized equivalent evidence：GitHub API + Executor full-clone cross-check；no blocking finding in audited commit；判定 Macro PASS (ACCEPT ALL)。
 - `24f7896`（cfdebc2 Macro PASS State Sync, B-98 Security Finding Registration & B-75 Context Economy Scope Refinement）已於 2026-09-16 由 GPT 代理審查官（使用者授權）獨立核對通過：5 檔 authorized scope，本地 verify_all 5 Gates 全 PASS，GitHub Actions exact-SHA Run 34998074551 success。cfdebc audit-state sync accepted；B-98 registration accepted；B-75 refinement accepted；B-98 / B-75 保持待辦、零實作；NEXT_WORK 保持 B-97；B-01 NOT STARTED；B-97 formal audit 尚未開始；no new material finding；判定 Macro PASS (ACCEPT ALL)。
+- `e8fdb74`（24f7896 Macro PASS State Sync）已於 2026-09-16 由 GPT 代理審查官（使用者授權）獨立核對通過：5 檔 authorized scope，本地 verify_all 5 Gates 全 PASS，GitHub Actions exact-SHA Run 34999645394 success。24f7896 Macro PASS State Sync accepted；state/evidence-only closure accepted；TASKBOARD unchanged in e8fdb747 commit；canonical verification passed；FINDING_DISPOSITION = NONE for e8fdb747 itself；判定 Macro PASS (ACCEPT ALL)。
 
 ### 5.2 待辦
 
@@ -3047,7 +3048,9 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - malformed-scope Runtime Canary PASS。
   - session-local User Prompt Compiler Mode specification 已登錄於 TASKBOARD，尚未實作。
   - B-41 Slim Bootstrap / Runtime Reconciliation External Macro PASS / CLOSED。
-  - B-97 Pre-B01 Comprehensive Release Audit 已登錄為一次性 Release Gate 待辦 (REGISTERED / PENDING)，audit 尚未開始。
+  - B-99 Qualification-Based Macro Auditor & Repo-Visible Handoff 實作進行中／待審計（in progress / pending Macro Audit）。
+  - B-97 Pre-B01 Comprehensive Release Audit 已登錄為一次性 Release Gate 待辦 (REGISTERED / PENDING)，formal audit 尚未開始 (NOT STARTED)。
+  - B-98 / B-75 保持待辦、零實作 (PENDING / NOT IMPLEMENTED)。
   - B-69 保持待辦 (PENDING NON-BLOCKING)。
   - B-01 尚未啟動 (NOT STARTED)。
   - Production routing ready。
@@ -3291,3 +3294,18 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
       - **使用者需求**：使用者提出降低長期協作之 context token 負擔，要求提示詞產出與溝通具備上下文經濟性，同時維持「使用者仍然取得一份完整、可一鍵複製給 Antigravity 的提示詞」之核心不變量，不得要求使用者手動組裝多份 prompt fragment。
       - **處置路由**：依 `EXISTING B-75` 收斂，將既有 B-75 任務範圍由「每批重寫 boilerplate」擴充精煉為 `Macro ↔ User ↔ Executor Context Economy`，禁止另建第二個重複之 context-economy task。
       - **設計方向**：以 conversation delta-first 加上 repo-canonical reusable contract 為規劃方向，將穩定之 boilerplate / contract 優先收斂至 repo 權威來源，機器衍生證據留在 repo 與 GitHub Actions 以 SHA/reference 定位，冷啟動優先由 canonical router 導航重建；正式 implementation 尚未開始。
+
+67. **Qualification-Based Macro Auditor Architecture & Repo-Visible Handoff (B-99 / ADR-0021)**（2026-09-16）
+    - **背景與架構處置（Background & Architecture Disposition）**：
+      - **Step 3 READ_ONLY 相依性探索**：經 Step 3 READ_ONLY dependency discovery 全面清查現行規則與程式相依，確認既有架構硬編碼「Claude == 宏觀審計官」已與現行專案出現經使用者授權、能獨立完成 Macro evidence verification 之 reviewer（GPT 代理審查官）之事實產生衝突；且 repo 缺乏單一現行 Macro 指標、provider-neutral 資格合約與正式 A1 等效途徑。
+      - **B-95 處置路由**：Macro Auditor 正式裁決 `FINDING_DISPOSITION: NEW B-99`，建立 `B-99 Qualification-Based Macro Auditor & Repo-Visible Handoff`，不併入 B-75、B-96、B-97 或 B-98。
+      - **使用者核准架構決策（§4.1–§4.5 Approved Architecture Decisions）**：
+        1. **Qualification-Based Macro Auditor (§4.1)**：Macro Auditor 為專案角色而非模型品牌，不得以模型品牌作為資格判據；取得資格必須同時具備使用者授權、與執行者獨立、完成 selftest、通過 A1 qualification、能獨立取得 current GitHub / exact-SHA evidence、且 repo-visible assignment 指向該 reviewer。
+        2. **Exactly One Active Macro Auditor (§4.2)**：任一 repo-visible current state 只能存在 exactly one `ACTIVE_MACRO_AUDITOR`；僅使用者具有 assign / replace / handoff / revoke 權限，任何 Agent / session / prompt 不得自行取得或搶占。
+        3. **Same-Agent & Same-Session Mutual Exclusion (§4.3)**：永久保留 ADR-0007「執行者不得自審」之核心不變量；同一 Agent / conversation / session 若為 Executor，不得在該 session 切換為 Macro Auditor；同一 Macro Auditor session 亦不得切換為 Executor。
+        4. **`.claude/` Retained Compatibility Path (§4.4)**：保留 `.claude/` 實體目錄作為歷史相容路徑（語意為 Macro Auditor Control Plane），不建立 `.gpt/` 或 `.auditor/` 鏡像目錄，目錄名稱不再構成 Claude-only 資格限制。
+        5. **A1 Dual Qualification Modes (§4.5)**：正式支援 `A1 FULL_CLONE`（自身環境 full clone + is-shallow=false）與 `A1 EQUIVALENT`（Macro 獨立由 GitHub API 取得 OID / compare / changed-files / file contents / Actions Verify 結果 ＋ Executor 本機 full clone 提供 cross-check；兩者均非信任執行者口頭報告）。
+    - **架構決策紀錄（ADR-0021）**：
+      - 建立 `docs/adr/0021-qualification-based-macro-auditor-role.md`（Accepted），正式 supersede ADR-0007 之歷史品牌選擇（Claude），永久繼承其核心審計獨立性與互斥不變量；ADR-0007 保持歷史原文不修改。
+    - **倉庫可見交接與元資料純度（Repo-Visible Handoff & Metadata Purity）**：
+      - 於 `docs/TASKBOARD.md` 頂部確立單一權威指標 `**ACTIVE_MACRO_AUDITOR**：GPT 代理審查官（使用者授權）`，不得包含 Git truth（HEAD、checkpoint、commit hash、CI Run ID 等）；擴充 CHECK 8 進行機械防護。

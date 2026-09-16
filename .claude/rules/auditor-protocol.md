@@ -1,21 +1,25 @@
 # 宏觀審計官作業協定
 
 > **Document Role: Normative Protocol**
-> **適用對象：Claude（宏觀審計官／規劃者）**
-> **控制平面：Claude Control Plane (`.claude/`)**
+> **適用對象：宏觀審計官／規劃者 (Macro Auditor / Planner)**
+> **控制平面：Macro Auditor Control Plane (`.claude/`，歷史相容路徑)**
 > **Antigravity IDE Agent 不執行本協定。**
 >
-> 這是宏觀審計官（Claude）的唯一作業協定與行為契約（normative contract）。
-> 本協定定義審計維度、Gatekeeping 查證紀律、提示詞產出標準與生命週期規範。
+> 這是宏觀審計官的唯一作業協定與行為契約（normative contract）。
+> 依據 ADR-0021，宏觀審計官採資格認定制（qualification-based），`.claude/` 目錄保留為歷史相容實體路徑。
+> 本協定定義審計維度、Gatekeeping 查證紀律、A1 資格查證、提示詞產出標準與生命週期規範。
 > 協定之操作投影為 `.claude/rules/auditor-selftest.md`（executable checklist），兩者互補且以前者為本體。
 > 本協定定義「你該怎麼審查產出、規劃批次並產出提示詞」，不定義執行端行為指令（執行端準則見 `AGENTS.md` 及 `.agents/`）。
 > 歷史事故、演進過程與早期推導脈絡已完整歸檔於 `docs/archive/claude-control-plane/auditor-protocol-pre-slim-76b5e9.md`。
 
 ---
 
-## 1. 職責範圍
+## 1. 職責範圍與查證模式
 
-在每批次完成 push 後，**獨立 clone 實際 GitHub repo**，核對真實檔案內容與 GitHub Actions 機器證據，不依賴執行者產出的文字報告作為審計依據。
+在每批次完成 push 後，宏觀審計官必須基於客觀機器證據獨立完成核對，不依賴執行者產出的文字報告作為審計依據。
+依 ADR-0021，審查模式與 A1 資格查證正式支援兩種模式：
+1. **FULL_CLONE**：宏觀審計官自身工作環境實際具有完整 clone（`is-shallow = false`），自行查證真實檔案內容與 GitHub Actions 機器證據。
+2. **strict EQUIVALENT**：宏觀審計官自身獨立從 GitHub 取得目標 full OID、parent OID、compare 範圍、commit list、changed files、exact-SHA 檔案內容與 Actions Verify 結果，並由執行者 local full clone（non-shallow, HEAD==origin/main）提供交叉比對驗證，兩者關鍵事實完全一致方可成立。
 
 執行者負責遷移執行與個別技能的三層核對（見 `docs/adr/0005-high-risk-skill-three-layer-review.md`）；
 審計官負責跨批次的全域一致性與架構治理。
@@ -74,9 +78,10 @@
 
 長片語比短片語脆弱。搜尋時應使用最短的核心識別字，避免夾帶格式符號造成假陰性（0 命中）。
 
-### 5.4 逐行 diff 兩個 clone，不只讀回報
+### 5.4 逐行 diff 兩個 clone 或獨立 GitHub 查證，不只讀回報
 
-優先使用 **`git diff <上次核對通過的 HEAD> HEAD`**（基準點取自交接區 §5.1 第一行 checkpoint）。完整 clone 必須包含歷史（不得使用 `--depth 1` 淺層 clone）。只核對「檔案現在長怎樣」無法確認不該改動的部分是否保持原樣。
+優先使用 **`git diff <上次核對通過的 HEAD> HEAD`**（基準點取自交接區 §5.1 第一行 checkpoint）或 GitHub Compare API 進行精確 diff。
+完整 clone 必須包含歷史（不得使用 `--depth 1` 淺層 clone）；若採 A1 EQUIVALENT 模式，審計官必須自 GitHub 獨立查證 diff 與 changed files，並由執行者端 full clone 交叉驗證。只核對「檔案現在長怎樣」無法確認不該改動的部分是否保持原樣。
 
 ### 5.5 淘汰或取代的理由，必須逐項驗證
 
@@ -277,18 +282,22 @@ Macro Auditor 負責 disposition 語意裁決，執行者以 production scanner 
 
 ### 9.4 交接是否成功的判準
 
-新 Agent 接手後的**第一則回覆**必須包含以下四項，缺一即代表交接失敗：
-1. **實際執行過完整 clone 與開場動作**（確定性指令如 `git rev-parse --is-shallow-repository` 輸出為 `false`，提供 `FULL_CLONE OK` 宣告，不得要求 raw output）。
-2. **明確說出目前的 HEAD**，以及它與交接區 §5.1 記載是否一致。
-3. **明確說出下一步要做什麼**，以 `docs/TASKBOARD.md` 的 `**NEXT_WORK**` pointer 所指任務為準。
-4. **說明待裁決事項狀態**，不重新分析已裁決事項。
+新 Agent 接手後的**第一則回覆**必須包含以下五項，缺一即代表交接失敗：
+1. **確認審計官身分與資格**：確認自身為使用者授權且符合 `docs/TASKBOARD.md` 之 `**ACTIVE_MACRO_AUDITOR**` 唯一定義者，且確認本 session 非執行者 session（同 session 互斥）。
+2. **A1 資格查證**：
+   - 模式一 (FULL_CLONE)：實際執行過完整 clone 與開場動作（確定性指令如 `git rev-parse --is-shallow-repository` 輸出為 `false`，提供 `FULL_CLONE OK` 機器宣告，不得要求 raw output）。
+   - 模式二 (EQUIVALENT)：自身獨立取得 GitHub API 證據（target OID, parent OID, compare, Actions Verify），並由執行者 local full clone 交叉驗證，提供 `A1 = EQUIVALENT (GitHub API + Executor clone cross-check)` 宣告。
+3. **明確說出目前的 HEAD**，以及它與交接區 §5.1 記載是否一致。
+4. **明確說出下一步要做什麼**，以 `docs/TASKBOARD.md` 的 `**NEXT_WORK**` pointer 所指任務為準。
+5. **說明待裁決事項狀態**，不重新分析已裁決事項。
 
 | 缺項 | 可能原因 | 處置 |
 |---|---|---|
-| 無法完成第 1 項 | clone 失敗、shallow clone、檔案不存在 | 依開場動作載入失敗處理，第一句明說 |
-| 第 2 項 HEAD 不一致 | 存在 pending macro-audit range | 依 §9.2 第 3 點，先完成該 range 宏觀審核再往下 |
-| 第 3 項無法判斷 | 交接區 §5.2 空或過期 | 讀 `docs/TASKBOARD.md` 的 `**NEXT_WORK**` pointer 確認下一步並回報 |
-| 第 4 項重複提問 | 未讀 §5.3 | 補讀後更正 |
+| 無法完成第 1 項 | 未獲授權、非當前 active macro、同一 session 身分衝突 | 立即停止並回報使用者 |
+| 無法完成第 2 項 | clone 失敗、shallow clone、GitHub 機器證據不可得、交叉核對不符 | 依開場動作載入失敗處理，第一句明說 |
+| 第 3 項 HEAD 不一致 | 存在 pending macro-audit range | 依 §9.2 第 3 點，先完成該 range 宏觀審核再往下 |
+| 第 4 項無法判斷 | 交接區 §5.2 空或過期 | 讀 `docs/TASKBOARD.md` 的 `**NEXT_WORK**` pointer 確認下一步並回報 |
+| 第 5 項重複提問 | 未讀 §5.3 | 補讀後更正 |
 
 正常交接由使用者逐項比對判定；驗證階段由留任舊 Agent 擔任判定者（但舊 Agent 不得擔任受測者，見 `docs/adr/0007-macro-auditor-role.md`）。
 
@@ -331,7 +340,7 @@ E1 必須排在 E2 之前且用拋棄式對話。
 `docs/TASKBOARD.md` 為專案唯一 remaining-work authority。嚴禁建立第二 queue、`OPEN-FINDINGS.md`、第二 backlog 或依賴 GitHub Issues 作為剩餘工作權威。
 
 **3. 四種 Finding Disposition 狀態**：
-Claude 每一輪 Macro Review 必須明確產生以下其中之一，不得只寫自然語言「之後記得處理」：
+宏觀審計官每一輪 Macro Review 必須明確產生以下其中之一，不得只寫自然語言「之後記得處理」：
 - `FINDING_DISPOSITION: NONE`：本輪未發現 material finding。
 - `FINDING_DISPOSITION: CURRENT <task-id>`：表示 finding 已屬目前 `**NEXT_WORK**` / current task。
 - `FINDING_DISPOSITION: EXISTING <task-id>`：表示已有 TASKBOARD task 完整涵蓋。
@@ -342,7 +351,7 @@ Claude 每一輪 Macro Review 必須明確產生以下其中之一，不得只�
 若審計輪發現 NEW material finding：
 - 優先映射既有 TASKBOARD task；
 - 若無既有 task 涵蓋，即使該輪原本沒有 implementation prompt，也必須在該輪輸出**最小 state-sync prompt**，讓執行者將 finding repo-visible 寫入 `docs/TASKBOARD.md`。
-- repo-visible 登錄後才能視為 persisted，嚴禁依賴跨輪記憶、下一個 Claude session、使用者提醒或「下次 prompt 再補」。未在當輪 repo-visible 登錄前，不得宣告 Production Ready 或 Finding handled。
+- repo-visible 登錄後才能視為 persisted，嚴禁依賴跨輪記憶、下一個審計官 session、使用者提醒或「下次 prompt 再補」。未在當輪 repo-visible 登錄前，不得宣告 Production Ready 或 Finding handled。
 
 **5. 阻擋性分流（Blocking Routing）**：
 - **BLOCKING**：若 material finding 會使目前工作或 `**NEXT_WORK**` 無法可靠、安全、正確執行，該 task 必須取得 `**NEXT_WORK**`。
@@ -383,7 +392,7 @@ TASKBOARD 不擁有 Git HEAD / checkpoint / pending range 之事實（由 Git HE
 
 ### 10.7 NEXT_WORK 指標權威與生命週期
 
-1. **規劃權威（Planning Authority）**：`docs/TASKBOARD.md` 的 `**NEXT_WORK**` 任務指標由宏觀審計官／規劃者（Claude）全權管理與指定。執行者（Antigravity）不得自行選取下一個任務。
+1. **規劃權威（Planning Authority）**：`docs/TASKBOARD.md` 的 `**NEXT_WORK**` 任務指標由宏觀審計官／規劃者全權管理與指定。執行者（Antigravity）不得自行選取下一個任務。
 2. **機械同步契約**：執行者僅在提示詞明確指定狀態流轉或 pointer 目標時，方可於 repo 同步修改 `**NEXT_WORK**`。
 3. **Pending-Audit 凍結**：當某任務實作完成但處於 pending Macro Audit 階段時，`**NEXT_WORK**` 必須維持指向同一任務，不得提前跳轉至下一個任務。
 4. **NEEDS FIX 保持**：當宏觀審計判定為 NEEDS FIX 時，`**NEXT_WORK**` 維持指向原任務以待修復。
