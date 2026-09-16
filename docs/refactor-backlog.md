@@ -2825,7 +2825,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 5.1 上一批狀態
 
-上次核對通過的 HEAD：7d379f6
+上次核對通過的 HEAD：fe6baba
 
 - `23af193`（執行者前置檢查 ＋ 回滾程序 ＋ `AUDIT-LOG.md` ＋ 四缺口修正）
   已於 2026-09-02 由審計官核對通過：6 檔異動（含 2 個新檔）、零夾帶、
@@ -3013,6 +3013,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 - `c2df1b0`（E-03 Phase 2 Wave 1A Shared Pure Primitives Foundation）已於 2026-09-16 由 GPT 代理審查官（使用者授權）獨立核對通過：9 檔 authorized scope；A1 EQUIVALENT 查證通過；建立 shared/dlpSanitizer.js、shared/dlpSanitizer.d.ts、shared/atomicFs.js；零第三方 runtime dependencies；canonical verification 5 Gates 全數通過；exact-SHA Actions CI success；判定 Macro PASS (ACCEPT ALL)。
 - `f522148`（E-03 Complete Channel Gateway Decision Fidelity）已於 2026-09-16 由 GPT 代理審查官（使用者授權）全面審查獨立核對通過：涵蓋 c2df1b0..f522148 完整 pending range（含 2830c7f 初審 HOLD 與 f522148 bounded repair）；A1 EQUIVALENT 查證通過；ADR-0022 決策保真度 F1（D26 12 項子契約）與 F2（D18 LINE 推播額度影響）完全解決；ADR-0022 CHANNEL GATEWAY ARCHITECTURE PERSISTENCE = FINALIZED；exact-SHA Actions Verify Run 35097747792 completed / success；MACRO AUDIT = PASS，ACCEPT STATUS = ACCEPT ALL，FINDING_DISPOSITION = NONE。
 - `7d379f6`（E-03 Enforce Channel and Account Reply Boundaries）已於 2026-09-16 由 GPT 代理審查官（使用者授權）全面審查獨立核對通過：涵蓋 f522148..7d379f6 完整 pending range（含 278d142 初審 HOLD 與 7d379f6 bounded domain invariant repair）；A1 EQUIVALENT 查證通過；F1（AccountRegistry 通道邊界強制）與 F2（接收帳號回覆強綁定）完全解決；Wave 2A = ACCEPTED；exact-SHA Actions Verify Run 35101712841 completed / success；MACRO AUDIT = PASS，ACCEPT STATUS = ACCEPT ALL，FINDING_DISPOSITION = NONE。
+- `fe6baba`（E-03 Channel Gateway Wave 2B Pure Account Switch Orchestration）已於 2026-09-16 由 GPT 代理審查官（使用者授權）全面審查獨立核對通過：10 檔 authorized scope；A1 EQUIVALENT 查證通過；實作 AccountSwitchCoordinator，嚴格強制註冊表與通道控制器邊界一致（CHANNEL_CONTROL_MISMATCH）；實作 D26 切換即接管與原子式前置檢驗；異帳號切換 A→B 接管捨棄 A claimed 訊息、discardQueuedForAccount 捨棄 A queued 訊息並保留 B queued 訊息；同帳號選擇 A→A 接管但保留 queued 訊息；無前一活躍帳號 null→B 成功啟用並接管；新增 18 項 canonical Node 測試全數通過（40/40 tests PASS）；Python CI 橋接測試 6 passed；exact-SHA Actions Verify Run 35103490957 completed / success；MACRO AUDIT = PASS，ACCEPT STATUS = ACCEPT ALL，FINDING_DISPOSITION = NONE。
 
 ### 5.2 待辦
 
@@ -3059,7 +3060,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - B-99 Qualification-Based Macro Auditor & Repo-Visible Handoff（CLOSED / MACRO PASS）。
   - B-97 Pre-B01 Comprehensive Release Audit 已完成（CLOSED / PRE-B01 RELEASE PASS）。
   - B-01 ADR-0002／0004／0010 分層搬移及 Active-Contract 語意修復已完成（CLOSED / MACRO PASS）。
-  - E-03 Runtime 執行層架構推進（IN PROGRESS）：Wave 2A = MACRO PASS / ACCEPTED；Wave 2B Pure Account Switch Orchestration = IN PROGRESS / PENDING EXTERNAL MACRO AUDIT；Gateway live integration = NOT STARTED；LINE implementation = D12 delayed / explicit user trigger；B-98 / B-30 / B-33 / F-05 remain open at their established prerequisite boundaries。
+  - E-03 Runtime 執行層架構推進（IN PROGRESS）：Wave 2B = MACRO PASS / ACCEPTED；Wave 2C Data Location Config Contract = IN PROGRESS / PENDING EXTERNAL MACRO AUDIT；Gateway live integration = NOT STARTED；LINE implementation = D12 delayed / explicit user trigger；B-98 / B-30 / B-33 / F-05 remain open at their established prerequisite boundaries。
   - C-06 維持待使用者裁決（USER_DECISION_NONBLOCKING，遠端 ruleset 與 required checks 現況已確認）。
   - B-28 / B-29 上游 trigger 重新評估完成，無 B-01 blocker，維持 DEFERRED_BY_USER / POST_B01。
   - B-54 保持待辦（POST_B01 / NONBLOCKING，SOP_12 機器專屬路徑 concrete example 已登錄）。
@@ -3520,3 +3521,21 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
       - Wave 2A = MACRO PASS / ACCEPTED；Wave 2B Pure Account Switch Orchestration = IN PROGRESS / PENDING EXTERNAL MACRO AUDIT。
       - Gateway live 整合尚未開始（NOT STARTED）；B-98 / B-30 / B-33 / F-05 維持開啟狀態於既定前置邊界。
       - 本 candidate 等待 External Macro Reviewer 獨立審核；NEXT_WORK 保持 E-03。
+
+78. **E-03 Channel Gateway Wave 2B Final Macro PASS & Wave 2C Data Location Config Contract Candidate**（2026-09-16）
+    - **背景與外部審查結論**：前一施工候選 `fe6baba`（Wave 2B Pure Account Switch Orchestration）經 External Macro Reviewer（GPT 代理審查官（使用者授權））全面審查。A1 qualification 採 A1 = EQUIVALENT（GitHub API + Executor clone cross-check）成立；exact-SHA Actions Verify Run `35103490957` completed/success（20 checks PASS，316 unit PASS，13 webapp PASS，5 Gates PASS）。
+    - **外部審查裁決**：`MACRO AUDIT = PASS`，`ACCEPT STATUS = ACCEPT ALL`，`FINDING_DISPOSITION = NONE`；AccountSwitchCoordinator 與切換接管語意全數獲接受；`Wave 2B = ACCEPTED`；checkpoint 推進至 `fe6baba`；正式授權開展 Wave 2C 本機資料路徑配置契約（Wave 2C Data Location Config Contract = AUTHORIZED）。
+    - **Wave 2C 本機資料路徑配置契約邊界（Data Location Config Contract）**：
+      - 實作純領域驗證模組 `runtime/channel-gateway/core/data-location-config.js`（`validateResolvedDataLocationConfig`，`DATA_LOCATION_SCHEMA_VERSION = 1`）。
+      - 嚴格綱要驗證（strict schema）：頂層僅允許 `schemaVersion`（必為 1）與 `dataLocations`；`dataLocations` 僅允許 4 個單例路徑（`archiveRoot`、`attachmentTempRoot`、`stateRoot`、`logsRoot`）與陣列路徑 `protectedRoots`；拒絕任意未知欄位與敏感憑證欄位。
+      - 跨平台絕對路徑檢驗（cross-platform absolute path validation）：使用 `path.win32.isAbsolute(v) || path.posix.isAbsolute(v)`，確保 Windows 與 POSIX 合法路徑在跨平台環境均能確定性驗證；嚴格拒絕相對路徑、空字串與空白字串。
+      - 不變性保證（immutability）：不修改輸入物件，回傳字串已修剪、陣列已淺拷貝之正規化複本。
+      - 設定範本建立：`runtime/channel-gateway/config.example.json` 採顯式佔位符（`__ARCHIVE_ROOT__` 等），不含真實本機路徑、金鑰或帳號資訊。
+      - 建立 canonical tracked tests（`tests/data-location-config.test.js` 涵蓋 16 項規格驗證）及 Python CI 橋接測試（`scripts/tests/test_channel_gateway_core.py`）。
+      - 純領域驗證邊界：零第三方套件依賴，無檔案系統讀寫、無環境變數存取、無目錄建立、無路徑存在性/權限檢查、無憑證載入、無 Bot 帳號、無網路監聽/Port、無作業系統啟動服務。
+    - **當前生命週期狀態**：
+      - 本批為 Phase 2 Wave 2C 施工候選，工作區僅限於授權之純路徑配置契約與狀態同步。
+      - Wave 2B = MACRO PASS / ACCEPTED；Wave 2C Data Location Config Contract = IN PROGRESS / PENDING EXTERNAL MACRO AUDIT。
+      - Gateway live 整合尚未開始（NOT STARTED）；B-98 / B-30 / B-33 / F-05 維持開啟狀態於既定前置邊界。
+      - 本 candidate 等待 External Macro Reviewer 獨立審核；NEXT_WORK 保持 E-03。
+

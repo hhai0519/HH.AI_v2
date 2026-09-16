@@ -7,7 +7,8 @@ Canonical CI unit test gate integration for Channel Gateway pure control core.
 Validates:
 A. runtime/channel-gateway/package.json exists with zero dependencies and zero devDependencies.
 B. runtime/channel-gateway/package-lock.json exists.
-C. Subprocess execution of Node built-in test runner for channel-control.test.js and account-registry.test.js.
+C. Subprocess execution of Node built-in test runner for channel-control, account-registry,
+   account-switch, and data-location-config test suites.
 D. No network, no npm install, no service startup.
 E. Cross-platform compatibility on Windows and Linux CI (explicit file paths).
 """
@@ -24,6 +25,7 @@ PACKAGE_LOCK_PATH = os.path.join(GATEWAY_DIR, "package-lock.json")
 CONTROL_TEST_PATH = os.path.join(GATEWAY_DIR, "tests", "channel-control.test.js")
 REGISTRY_TEST_PATH = os.path.join(GATEWAY_DIR, "tests", "account-registry.test.js")
 ACCOUNT_SWITCH_TEST_PATH = os.path.join(GATEWAY_DIR, "tests", "account-switch.test.js")
+DATA_LOCATION_CONFIG_TEST_PATH = os.path.join(GATEWAY_DIR, "tests", "data-location-config.test.js")
 
 
 def test_channel_gateway_package_json_zero_dependencies():
@@ -109,14 +111,33 @@ def test_channel_gateway_node_tests_account_switch():
     assert "fail 0" in res.stdout
 
 
+def test_channel_gateway_node_tests_data_location_config():
+    """Requirement C: Run data-location-config.test.js via Node test runner."""
+    assert os.path.isfile(DATA_LOCATION_CONFIG_TEST_PATH), f"Test file missing: {DATA_LOCATION_CONFIG_TEST_PATH}"
+
+    res = subprocess.run(
+        ["node", "--test", os.path.relpath(DATA_LOCATION_CONFIG_TEST_PATH, REPO_ROOT).replace("\\", "/")],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        encoding="utf-8",
+        errors="replace"
+    )
+    assert res.returncode == 0, (
+        f"data-location-config.test.js failed with code {res.returncode}:\n"
+        f"STDOUT:\n{res.stdout}\nSTDERR:\n{res.stderr}"
+    )
+    assert "fail 0" in res.stdout
+
+
 def test_channel_gateway_combined_node_test_runner():
     """Requirement C & E: Run all Channel Gateway test files together with explicit paths."""
     rel_control = os.path.relpath(CONTROL_TEST_PATH, REPO_ROOT).replace("\\", "/")
     rel_registry = os.path.relpath(REGISTRY_TEST_PATH, REPO_ROOT).replace("\\", "/")
     rel_switch = os.path.relpath(ACCOUNT_SWITCH_TEST_PATH, REPO_ROOT).replace("\\", "/")
+    rel_location = os.path.relpath(DATA_LOCATION_CONFIG_TEST_PATH, REPO_ROOT).replace("\\", "/")
 
     res = subprocess.run(
-        ["node", "--test", rel_control, rel_registry, rel_switch],
+        ["node", "--test", rel_control, rel_registry, rel_switch, rel_location],
         cwd=REPO_ROOT,
         capture_output=True,
         encoding="utf-8",
@@ -127,4 +148,5 @@ def test_channel_gateway_combined_node_test_runner():
         f"STDOUT:\n{res.stdout}\nSTDERR:\n{res.stderr}"
     )
     assert "fail 0" in res.stdout
+
 

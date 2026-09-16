@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "dataLocations": {
+    "archiveRoot": "__ARCHIVE_ROOT__",
+    "attachmentTempRoot": "__ATTACHMENT_TEMP_ROOT__",
+    "stateRoot": "__STATE_ROOT__",
+    "logsRoot": "__LOGS_ROOT__",
+    "protectedRoots": [
+      "__HH_AI_V2_ROOT__",
+      "__LEGACY_REPO_ROOT__",
+      "__USER_CONFIG_ROOT__",
+      "__CREDENTIAL_ROOT__"
+    ]
+  }
+}
