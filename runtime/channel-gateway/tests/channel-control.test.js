@@ -203,17 +203,17 @@ test('ChannelControl - 11. stale holder reply authorization rejected', () => {
   control.takeover('synthetic-agent-2');
 
   // Agent 1 attempts to authorize reply with stale token and stale identity
-  const staleAuth1 = control.authorizeReply('synthetic-agent-1', 1, 'syn-msg-reply');
+  const staleAuth1 = control.authorizeReply('synthetic-agent-1', 1, 'syn-msg-reply', 'acct-syn-1');
   assert.strictEqual(staleAuth1.authorized, false);
   assert.strictEqual(staleAuth1.reason, 'NOT_CURRENT_HOLDER');
 
   // Agent 2 with stale token attempt
-  const staleAuth2 = control.authorizeReply('synthetic-agent-2', 1, 'syn-msg-reply');
+  const staleAuth2 = control.authorizeReply('synthetic-agent-2', 1, 'syn-msg-reply', 'acct-syn-1');
   assert.strictEqual(staleAuth2.authorized, false);
   assert.strictEqual(staleAuth2.reason, 'STALE_FENCING_TOKEN');
 
   // Even with valid current token, msg-reply was discarded on takeover
-  const staleAuth3 = control.authorizeReply('synthetic-agent-2', 2, 'syn-msg-reply');
+  const staleAuth3 = control.authorizeReply('synthetic-agent-2', 2, 'syn-msg-reply', 'acct-syn-1');
   assert.strictEqual(staleAuth3.authorized, false);
   assert.strictEqual(staleAuth3.reason, 'MESSAGE_NOT_CLAIMED');
 });
@@ -247,4 +247,71 @@ test('ChannelControl - 13. backlog count reflects queued messages accurately', (
 
   control.pollMessages('synthetic-agent-1', 1, 1);
   assert.strictEqual(control.getBacklogCount(), 0);
+});
+
+test('ChannelControl - F2.1 correct holder + current fencing token + claimed message + same receiving account -> authorized = true', () => {
+  const control = new ChannelControl('telegram');
+  control.takeover('synthetic-agent-1');
+  control.enqueueMessage({ id: 'msg-bind-1', receivingAccountId: 'bot-account-A' });
+  control.pollMessages('synthetic-agent-1', 1);
+
+  const auth = control.authorizeReply('synthetic-agent-1', 1, 'msg-bind-1', 'bot-account-A');
+  assert.strictEqual(auth.authorized, true);
+  assert.strictEqual(auth.messageId, 'msg-bind-1');
+  assert.strictEqual(auth.channelId, 'telegram');
+  assert.strictEqual(auth.receivingAccountId, 'bot-account-A');
+  assert.strictEqual(auth.replyingAccountId, 'bot-account-A');
+
+  const msg = control.messages.find((m) => m.id === 'msg-bind-1');
+  assert.strictEqual(msg.status, 'replied');
+});
+
+test('ChannelControl - F2.2 correct holder + current fencing token + claimed message + DIFFERENT replying account -> authorized = false, reason = ACCOUNT_MISMATCH', () => {
+  const control = new ChannelControl('telegram');
+  control.takeover('synthetic-agent-1');
+  control.enqueueMessage({ id: 'msg-bind-2', receivingAccountId: 'bot-account-A' });
+  control.pollMessages('synthetic-agent-1', 1);
+
+  const auth = control.authorizeReply('synthetic-agent-1', 1, 'msg-bind-2', 'bot-account-B');
+  assert.strictEqual(auth.authorized, false);
+  assert.strictEqual(auth.reason, 'ACCOUNT_MISMATCH');
+});
+
+test('ChannelControl - F2.3 cross-account rejection preserves CLAIMED status and does not mutate receivingAccountId', () => {
+  const control = new ChannelControl('telegram');
+  control.takeover('synthetic-agent-1');
+  control.enqueueMessage({ id: 'msg-bind-3', receivingAccountId: 'bot-account-A' });
+  control.pollMessages('synthetic-agent-1', 1);
+
+  const auth = control.authorizeReply('synthetic-agent-1', 1, 'msg-bind-3', 'bot-account-DIFFERENT');
+  assert.strictEqual(auth.authorized, false);
+  assert.strictEqual(auth.reason, 'ACCOUNT_MISMATCH');
+
+  const msg = control.messages.find((m) => m.id === 'msg-bind-3');
+  assert.strictEqual(msg.status, 'claimed');
+  assert.strictEqual(msg.receivingAccountId, 'bot-account-A');
+});
+
+test('ChannelControl - F2.4 stale holder rejected even with same account', () => {
+  const control = new ChannelControl('telegram');
+  control.takeover('synthetic-agent-1');
+  control.enqueueMessage({ id: 'msg-bind-4', receivingAccountId: 'bot-account-A' });
+  control.pollMessages('synthetic-agent-1', 1);
+
+  control.takeover('synthetic-agent-2');
+
+  const auth = control.authorizeReply('synthetic-agent-1', 1, 'msg-bind-4', 'bot-account-A');
+  assert.strictEqual(auth.authorized, false);
+  assert.strictEqual(auth.reason, 'NOT_CURRENT_HOLDER');
+});
+
+test('ChannelControl - F2.5 stale fencing token rejected even with correct holder and same account', () => {
+  const control = new ChannelControl('telegram');
+  control.takeover('synthetic-agent-1');
+  control.enqueueMessage({ id: 'msg-bind-5', receivingAccountId: 'bot-account-A' });
+  control.pollMessages('synthetic-agent-1', 1);
+
+  const auth = control.authorizeReply('synthetic-agent-1', 999, 'msg-bind-5', 'bot-account-A');
+  assert.strictEqual(auth.authorized, false);
+  assert.strictEqual(auth.reason, 'STALE_FENCING_TOKEN');
 });

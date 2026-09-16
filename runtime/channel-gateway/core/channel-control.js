@@ -274,15 +274,16 @@ class ChannelControl {
   }
 
   /**
-   * Validate and authorize a reply (D8).
-   * Stale holder / stale fencing token must be rejected.
+   * Validate and authorize a reply (D8, D26).
+   * Stale holder / stale fencing token / account mismatch must be rejected.
    *
    * @param {string} holderId
    * @param {number} fencingToken
    * @param {string|number} messageId
+   * @param {string} replyingAccountId - Account identity attempting to reply
    * @returns {object} Authorization result
    */
-  authorizeReply(holderId, fencingToken, messageId) {
+  authorizeReply(holderId, fencingToken, messageId, replyingAccountId) {
     if (!this.currentHolder || this.currentHolder !== holderId) {
       return {
         authorized: false,
@@ -320,6 +321,21 @@ class ChannelControl {
       };
     }
 
+    if (!replyingAccountId || typeof replyingAccountId !== 'string' || !replyingAccountId.trim()) {
+      return {
+        authorized: false,
+        reason: 'ACCOUNT_MISMATCH',
+      };
+    }
+
+    const cleanReplyingAccountId = replyingAccountId.trim();
+    if (msg.receivingAccountId !== cleanReplyingAccountId) {
+      return {
+        authorized: false,
+        reason: 'ACCOUNT_MISMATCH',
+      };
+    }
+
     msg.status = MESSAGE_STATUS.REPLIED;
 
     return {
@@ -327,6 +343,7 @@ class ChannelControl {
       messageId: msg.id,
       channelId: this.channelId,
       receivingAccountId: msg.receivingAccountId,
+      replyingAccountId: cleanReplyingAccountId,
     };
   }
 }

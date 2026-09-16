@@ -3057,7 +3057,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - B-99 Qualification-Based Macro Auditor & Repo-Visible Handoff（CLOSED / MACRO PASS）。
   - B-97 Pre-B01 Comprehensive Release Audit 已完成（CLOSED / PRE-B01 RELEASE PASS）。
   - B-01 ADR-0002／0004／0010 分層搬移及 Active-Contract 語意修復已完成（CLOSED / MACRO PASS）。
-  - E-03 Runtime 執行層架構推進（IN PROGRESS）：ADR-0022 architecture persistence = MACRO PASS / FINALIZED；Wave 2A Pure Control Core Foundation = IN PROGRESS / PENDING EXTERNAL MACRO AUDIT；Gateway live integration = NOT STARTED；LINE implementation = D12 delayed / explicit user trigger；B-98 / B-30 / B-33 / F-05 remain open at their established prerequisite boundaries。
+  - E-03 Runtime 執行層架構推進（IN PROGRESS）：ADR-0022 architecture persistence = MACRO PASS / FINALIZED；Wave 2A = MACHINE PASS / MACRO HOLD / BOUNDED REPAIR；Gateway live integration = NOT STARTED；LINE implementation = D12 delayed / explicit user trigger；B-98 / B-30 / B-33 / F-05 remain open at their established prerequisite boundaries。
   - C-06 維持待使用者裁決（USER_DECISION_NONBLOCKING，遠端 ruleset 與 required checks 現況已確認）。
   - B-28 / B-29 上游 trigger 重新評估完成，無 B-01 blocker，維持 DEFERRED_BY_USER / POST_B01。
   - B-54 保持待辦（POST_B01 / NONBLOCKING，SOP_12 機器專屬路徑 concrete example 已登錄）。
@@ -3489,6 +3489,18 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
       - 本批為 Phase 2 Wave 2A 施工候選，工作區僅限於授權之純控制核心與狀態同步。
       - Gateway live 整合尚未開始（NOT STARTED）；LINE 實作依 D12 延後或由使用者明確觸發；B-98 / B-30 / B-33 / F-05 維持開啟狀態於既定前置邊界。
       - 本 candidate 等待 External Macro Reviewer 獨立審核；NEXT_WORK 保持 E-03。
+
+76. **E-03 Channel Gateway Wave 2A Pure Control Core — Bounded Domain Invariant Repair**（2026-09-16）
+    - **背景與外部審查結論**：前一施工候選 `278d142`（Wave 2A Pure Control Core Foundation）經 External Macro Reviewer（GPT 代理審查官（使用者授權））全面審查。Machine verification 5 Gates 全過，exact-SHA Actions Verify Run `35099648998` completed/success（CHECK 1..20 PASS，315 unit PASS，13 webapp PASS）。
+    - **外部審查裁決**：`MACRO AUDIT = HOLD`，`ACCEPT STATUS = BOUNDED REPAIR REQUIRED`，`FINDING_DISPOSITION = CURRENT E-03`。審計檢查點維持 `f522148`，不得推進至 `278d142`。
+    - **發現事項與邊界修復（F1 / F2）**：
+      - **F1（AccountRegistry 通道邊界強制）**：修正 `runtime/channel-gateway/core/account-registry.js`，constructor 明確驗證 non-empty channel 字串；accountData 省略 channel 時自動賦予 registry channel；若明確提供 channel 則必須 exact 匹配 registry channel，否則拋出 `CHANNEL_MISMATCH` 錯誤；禁止跨通道登錄。
+      - **F2（接收帳號回覆強綁定）**：修正 `runtime/channel-gateway/core/channel-control.js` 之 `authorizeReply(holderId, fencingToken, messageId, replyingAccountId)` API，嚴格要求 replyingAccountId 非空字串；比對 `msg.receivingAccountId === replyingAccountId`，不符則回傳 `ACCOUNT_MISMATCH` 且保持訊息狀態為 CLAIMED，杜絕不同 bot account 代回；一致時方授權並轉為 REPLIED。
+    - **當前生命週期狀態**：
+      - 本批為 CURRENT E-03 bounded repair，工作區無任何外部副作用（no live bot / network / port / credential work / persistence / transport / listener / OS startup）。
+      - Gateway live 整合尚未開始（NOT STARTED），E-03 維持進行中，NEXT_WORK 保持 E-03。
+      - 本修復成果等待 External Macro Reviewer 獨立複審。
+
 
 
 

@@ -41,10 +41,13 @@ const FORBIDDEN_SECRET_NAMES = new Set([
 
 class AccountRegistry {
   /**
-   * @param {string} [channel] - Optional channel/platform identifier (e.g. 'telegram', 'line')
+   * @param {string} [channel] - Channel/platform identifier (e.g. 'telegram', 'line'). Defaults to 'default'.
    */
   constructor(channel = 'default') {
-    this.channel = channel;
+    if (!channel || typeof channel !== 'string' || !channel.trim()) {
+      throw new TypeError('channel must be a non-empty string');
+    }
+    this.channel = channel.trim();
     this.accounts = new Map();
     this.activeAccountId = null;
   }
@@ -102,12 +105,17 @@ class AccountRegistry {
 
   /**
    * Register a new account with non-secret metadata.
+   * Enforces registry channel boundary (ADR-0022 D26).
    *
    * @param {object} accountData
    * @returns {object} Registered non-secret account metadata
    */
   register(accountData) {
     const validated = AccountRegistry.validateMetadata(accountData);
+
+    if (validated.channel !== undefined && validated.channel !== this.channel) {
+      throw new Error(`CHANNEL_MISMATCH: Account channel '${validated.channel}' does not match registry channel '${this.channel}'`);
+    }
 
     if (this.accounts.has(validated.id)) {
       throw new Error(`Account with id '${validated.id}' is already registered`);
@@ -118,7 +126,7 @@ class AccountRegistry {
       label: validated.label,
       description: validated.description,
       enabled: validated.enabled,
-      channel: validated.channel || this.channel,
+      channel: this.channel,
     };
 
     this.accounts.set(record.id, record);

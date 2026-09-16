@@ -232,3 +232,95 @@ test('AccountRegistry - 21. ordinary Test Bot requires no special account type',
   assert.strictEqual(registry.getActive().id, 'syn-telegram-test-bot');
   assert.strictEqual(registry.getActive().isActive, true);
 });
+
+test('AccountRegistry - F1.1 Telegram registry + omitted account channel -> output channel = telegram', () => {
+  const registry = new AccountRegistry('telegram');
+  const acc = registry.register({
+    id: 'tg-bot-omitted',
+    label: 'TG Bot Omitted Channel',
+    description: 'Channel omitted in input metadata',
+    enabled: true,
+  });
+  assert.strictEqual(acc.channel, 'telegram');
+  assert.strictEqual(registry.get('tg-bot-omitted').channel, 'telegram');
+});
+
+test('AccountRegistry - F1.2 Telegram registry + explicit channel telegram -> accepted', () => {
+  const registry = new AccountRegistry('telegram');
+  const acc = registry.register({
+    id: 'tg-bot-explicit',
+    label: 'TG Bot Explicit Channel',
+    description: 'Channel explicitly set to telegram',
+    enabled: true,
+    channel: 'telegram',
+  });
+  assert.strictEqual(acc.channel, 'telegram');
+});
+
+test('AccountRegistry - F1.3 Telegram registry + explicit channel line -> rejected', () => {
+  const registry = new AccountRegistry('telegram');
+  assert.throws(
+    () => {
+      registry.register({
+        id: 'line-bot-in-tg',
+        label: 'Line Bot in TG Registry',
+        description: 'Should be rejected due to channel mismatch',
+        enabled: true,
+        channel: 'line',
+      });
+    },
+    {
+      message: /CHANNEL_MISMATCH/,
+    }
+  );
+});
+
+test('AccountRegistry - F1.4 LINE registry + explicit channel telegram -> rejected', () => {
+  const registry = new AccountRegistry('line');
+  assert.throws(
+    () => {
+      registry.register({
+        id: 'tg-bot-in-line',
+        label: 'TG Bot in LINE Registry',
+        description: 'Should be rejected due to channel mismatch',
+        enabled: true,
+        channel: 'telegram',
+      });
+    },
+    {
+      message: /CHANNEL_MISMATCH/,
+    }
+  );
+});
+
+test('AccountRegistry - F1.5 invalid / blank registry channel -> rejected', () => {
+  assert.throws(
+    () => new AccountRegistry(''),
+    {
+      name: 'TypeError',
+      message: /channel must be a non-empty string/,
+    }
+  );
+  assert.throws(
+    () => new AccountRegistry('   '),
+    {
+      name: 'TypeError',
+      message: /channel must be a non-empty string/,
+    }
+  );
+  assert.throws(
+    () => new AccountRegistry(null),
+    {
+      name: 'TypeError',
+      message: /channel must be a non-empty string/,
+    }
+  );
+  assert.throws(
+    () => new AccountRegistry(123),
+    {
+      name: 'TypeError',
+      message: /channel must be a non-empty string/,
+    }
+  );
+});
+
