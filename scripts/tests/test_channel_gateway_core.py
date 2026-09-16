@@ -23,6 +23,7 @@ PACKAGE_JSON_PATH = os.path.join(GATEWAY_DIR, "package.json")
 PACKAGE_LOCK_PATH = os.path.join(GATEWAY_DIR, "package-lock.json")
 CONTROL_TEST_PATH = os.path.join(GATEWAY_DIR, "tests", "channel-control.test.js")
 REGISTRY_TEST_PATH = os.path.join(GATEWAY_DIR, "tests", "account-registry.test.js")
+ACCOUNT_SWITCH_TEST_PATH = os.path.join(GATEWAY_DIR, "tests", "account-switch.test.js")
 
 
 def test_channel_gateway_package_json_zero_dependencies():
@@ -69,7 +70,7 @@ def test_channel_gateway_node_tests_channel_control():
         f"channel-control.test.js failed with code {res.returncode}:\n"
         f"STDOUT:\n{res.stdout}\nSTDERR:\n{res.stderr}"
     )
-    assert "pass 13" in res.stdout or "fail 0" in res.stdout
+    assert "fail 0" in res.stdout
 
 
 def test_channel_gateway_node_tests_account_registry():
@@ -87,16 +88,35 @@ def test_channel_gateway_node_tests_account_registry():
         f"account-registry.test.js failed with code {res.returncode}:\n"
         f"STDOUT:\n{res.stdout}\nSTDERR:\n{res.stderr}"
     )
-    assert "pass 8" in res.stdout or "fail 0" in res.stdout
+    assert "fail 0" in res.stdout
+
+
+def test_channel_gateway_node_tests_account_switch():
+    """Requirement C: Run account-switch.test.js via Node test runner."""
+    assert os.path.isfile(ACCOUNT_SWITCH_TEST_PATH), f"Test file missing: {ACCOUNT_SWITCH_TEST_PATH}"
+
+    res = subprocess.run(
+        ["node", "--test", os.path.relpath(ACCOUNT_SWITCH_TEST_PATH, REPO_ROOT).replace("\\", "/")],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        encoding="utf-8",
+        errors="replace"
+    )
+    assert res.returncode == 0, (
+        f"account-switch.test.js failed with code {res.returncode}:\n"
+        f"STDOUT:\n{res.stdout}\nSTDERR:\n{res.stderr}"
+    )
+    assert "fail 0" in res.stdout
 
 
 def test_channel_gateway_combined_node_test_runner():
     """Requirement C & E: Run all Channel Gateway test files together with explicit paths."""
     rel_control = os.path.relpath(CONTROL_TEST_PATH, REPO_ROOT).replace("\\", "/")
     rel_registry = os.path.relpath(REGISTRY_TEST_PATH, REPO_ROOT).replace("\\", "/")
+    rel_switch = os.path.relpath(ACCOUNT_SWITCH_TEST_PATH, REPO_ROOT).replace("\\", "/")
 
     res = subprocess.run(
-        ["node", "--test", rel_control, rel_registry],
+        ["node", "--test", rel_control, rel_registry, rel_switch],
         cwd=REPO_ROOT,
         capture_output=True,
         encoding="utf-8",
@@ -107,3 +127,4 @@ def test_channel_gateway_combined_node_test_runner():
         f"STDOUT:\n{res.stdout}\nSTDERR:\n{res.stderr}"
     )
     assert "fail 0" in res.stdout
+

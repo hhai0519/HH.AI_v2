@@ -2825,7 +2825,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 5.1 上一批狀態
 
-上次核對通過的 HEAD：f522148
+上次核對通過的 HEAD：7d379f6
 
 - `23af193`（執行者前置檢查 ＋ 回滾程序 ＋ `AUDIT-LOG.md` ＋ 四缺口修正）
   已於 2026-09-02 由審計官核對通過：6 檔異動（含 2 個新檔）、零夾帶、
@@ -3011,6 +3011,8 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 - `85d9a3a`（B-01 ADR-0002/0004/0010 分層搬移及 Active-Contract 語意優先序與 Shell 邊界修復）已於 2026-09-16 由 GPT 代理審查官（使用者授權）全面審查獨立核對通過：涵蓋 76cfe7b..85d9a3a 完整 pending range（含 b2b5d1d 初審 HOLD 與 85d9a3a bounded repair）；A1 EQUIVALENT 查證通過；exact-SHA Actions Run 35054093786 (status completed, conclusion success)；B-01 正式結案（CLOSED / Macro PASS）。
 - `c73dd28`（B-01 Macro PASS Closure and E-03 Pointer Sync）已於 2026-09-16 由 GPT 代理審查官（使用者授權）獨立核對通過：5 檔 authorized scope，本地 verify_all 5 Gates 全 PASS，GitHub Actions exact-SHA Run 35054817604 success。B-01 closure state sync accepted；E-03 推進至 NEXT_WORK；E-03 Phase 1 + Phase 1B READ_ONLY evidence review completed（PASS / corrected inventory accepted），授權進入 Phase 2；判定 Macro PASS (ACCEPT ALL)。
 - `c2df1b0`（E-03 Phase 2 Wave 1A Shared Pure Primitives Foundation）已於 2026-09-16 由 GPT 代理審查官（使用者授權）獨立核對通過：9 檔 authorized scope；A1 EQUIVALENT 查證通過；建立 shared/dlpSanitizer.js、shared/dlpSanitizer.d.ts、shared/atomicFs.js；零第三方 runtime dependencies；canonical verification 5 Gates 全數通過；exact-SHA Actions CI success；判定 Macro PASS (ACCEPT ALL)。
+- `f522148`（E-03 Complete Channel Gateway Decision Fidelity）已於 2026-09-16 由 GPT 代理審查官（使用者授權）全面審查獨立核對通過：涵蓋 c2df1b0..f522148 完整 pending range（含 2830c7f 初審 HOLD 與 f522148 bounded repair）；A1 EQUIVALENT 查證通過；ADR-0022 決策保真度 F1（D26 12 項子契約）與 F2（D18 LINE 推播額度影響）完全解決；ADR-0022 CHANNEL GATEWAY ARCHITECTURE PERSISTENCE = FINALIZED；exact-SHA Actions Verify Run 35097747792 completed / success；MACRO AUDIT = PASS，ACCEPT STATUS = ACCEPT ALL，FINDING_DISPOSITION = NONE。
+- `7d379f6`（E-03 Enforce Channel and Account Reply Boundaries）已於 2026-09-16 由 GPT 代理審查官（使用者授權）全面審查獨立核對通過：涵蓋 f522148..7d379f6 完整 pending range（含 278d142 初審 HOLD 與 7d379f6 bounded domain invariant repair）；A1 EQUIVALENT 查證通過；F1（AccountRegistry 通道邊界強制）與 F2（接收帳號回覆強綁定）完全解決；Wave 2A = ACCEPTED；exact-SHA Actions Verify Run 35101712841 completed / success；MACRO AUDIT = PASS，ACCEPT STATUS = ACCEPT ALL，FINDING_DISPOSITION = NONE。
 
 ### 5.2 待辦
 
@@ -3057,7 +3059,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - B-99 Qualification-Based Macro Auditor & Repo-Visible Handoff（CLOSED / MACRO PASS）。
   - B-97 Pre-B01 Comprehensive Release Audit 已完成（CLOSED / PRE-B01 RELEASE PASS）。
   - B-01 ADR-0002／0004／0010 分層搬移及 Active-Contract 語意修復已完成（CLOSED / MACRO PASS）。
-  - E-03 Runtime 執行層架構推進（IN PROGRESS）：ADR-0022 architecture persistence = MACRO PASS / FINALIZED；Wave 2A = MACHINE PASS / MACRO HOLD / BOUNDED REPAIR；Gateway live integration = NOT STARTED；LINE implementation = D12 delayed / explicit user trigger；B-98 / B-30 / B-33 / F-05 remain open at their established prerequisite boundaries。
+  - E-03 Runtime 執行層架構推進（IN PROGRESS）：Wave 2A = MACRO PASS / ACCEPTED；Wave 2B Pure Account Switch Orchestration = IN PROGRESS / PENDING EXTERNAL MACRO AUDIT；Gateway live integration = NOT STARTED；LINE implementation = D12 delayed / explicit user trigger；B-98 / B-30 / B-33 / F-05 remain open at their established prerequisite boundaries。
   - C-06 維持待使用者裁決（USER_DECISION_NONBLOCKING，遠端 ruleset 與 required checks 現況已確認）。
   - B-28 / B-29 上游 trigger 重新評估完成，無 B-01 blocker，維持 DEFERRED_BY_USER / POST_B01。
   - B-54 保持待辦（POST_B01 / NONBLOCKING，SOP_12 機器專屬路徑 concrete example 已登錄）。
@@ -3499,9 +3501,22 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
     - **當前生命週期狀態**：
       - 本批為 CURRENT E-03 bounded repair，工作區無任何外部副作用（no live bot / network / port / credential work / persistence / transport / listener / OS startup）。
       - Gateway live 整合尚未開始（NOT STARTED），E-03 維持進行中，NEXT_WORK 保持 E-03。
-      - 本修復成果等待 External Macro Reviewer 獨立複審。
-
-
-
-
-
+  
+77. **E-03 Channel Gateway Wave 2A Final Macro PASS & Wave 2B Pure Account Switch Orchestration Candidate**（2026-09-16）
+    - **背景與外部審查結論**：前一施工候選與邊界修復（`f522148` .. `7d379f6`，共 2 commits：`278d142` 與 `7d379f6`）經 External Macro Reviewer（GPT 代理審查官（使用者授權））全面審查。A1 qualification 採 A1 = EQUIVALENT（GitHub API + Executor clone cross-check）成立；exact-SHA Actions Verify Run `35101712841` completed/success（20 checks PASS，315 unit PASS，13 webapp PASS，5 Gates PASS）。
+    - **外部審查裁決**：`MACRO AUDIT = PASS`，`ACCEPT STATUS = ACCEPT ALL`，`FINDING_DISPOSITION = NONE`；278d142 F1/F2 於審查範圍內完全解決；`Wave 2A = ACCEPTED`；checkpoint 推進至 `7d379f6`；正式授權開展 Wave 2B 純帳號切換調度（Wave 2B Pure Account Switch Orchestration = AUTHORIZED）。
+    - **Wave 2B 純帳號切換調度邊界（Pure Account Switch Orchestration）**：
+      - 實作純領域調度器 `runtime/channel-gateway/core/account-switch.js`（`AccountSwitchCoordinator`），嚴格強制註冊表與通道控制器邊界一致（`registry.channel === control.channelId`，不符則 fail-fast 拋出 `CHANNEL_CONTROL_MISMATCH`）。
+      - 實作原子式前置檢驗（atomic prevalidation）：目標帳號不存在或停用時 ZERO MUTATION（active account 不變、holder 不變、fencing token 不變、訊息狀態不變）。
+      - 貫徹 ADR-0022 D26「切換即接管（Switch = Takeover）」語意：每次成功之帳號選擇或切換均執行 `control.takeover(holderId)` 遞增 fencing token。
+      - 實作異帳號切換（A → B）：依 D9 接管捨棄 A 之 CLAIMED 訊息；依 D26 透過最小 pure API `discardQueuedForAccount` 捨棄 A 之 QUEUED 訊息；目標 B 成為 active account；保留 B 原有 QUEUED 訊息；回傳 `discardedOldAccountMessages` 清單供上層呈現。
+      - 實作同帳號選擇（A → A）：`accountChanged = false`，執行接管遞增 fencing token，保留 A 原有 QUEUED 訊息（不執行 account change 捨棄）。
+      - 實作無前一活躍帳號（null → B）：B 成為 active account，執行接管，保留 B 原有 QUEUED 訊息。
+      - 對 `ChannelControl` 擴充最小 pure API `discardQueuedForAccount(receivingAccountId, reason)`，避免 coordinator 直接修改內部陣列。
+      - 建立 canonical tracked tests（`tests/account-switch.test.js` 涵蓋 18 項規格驗證）及 Python CI 橋接測試（`scripts/tests/test_channel_gateway_core.py`）。
+      - 零外部副作用：無真實金鑰、無 secret、無 network、無 port、無 Telegram API、無 LINE API、無 persistence、無 local config file I/O、無 OS startup。
+    - **當前生命週期狀態**：
+      - 本批為 Phase 2 Wave 2B 施工候選，工作區僅限於授權之純領域調度核心與狀態同步。
+      - Wave 2A = MACRO PASS / ACCEPTED；Wave 2B Pure Account Switch Orchestration = IN PROGRESS / PENDING EXTERNAL MACRO AUDIT。
+      - Gateway live 整合尚未開始（NOT STARTED）；B-98 / B-30 / B-33 / F-05 維持開啟狀態於既定前置邊界。
+      - 本 candidate 等待 External Macro Reviewer 獨立審核；NEXT_WORK 保持 E-03。

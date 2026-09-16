@@ -14,7 +14,7 @@
 
 **NEXT_WORK**：E-03
 
-**最後更新**：2026-09-16，Wave 2A 經初審 Machine PASS / Macro HOLD；bounded repair (F1 註冊表通道邊界, F2 回覆接收帳號綁定) 施工中；Gateway live work 尚未開始；待 External Macro Audit。
+**最後更新**：2026-09-16，Wave 2A 經外部審查通過；Wave 2B 純帳號切換調度施工中；Gateway live work 尚未開始；待 External Macro Audit。
 
 ---
 
@@ -207,7 +207,7 @@ A 節目前狀態以本表各列與 `NEXT_WORK` 之 current repo truth 為準；
 |---|---|---|---|
 | E-01 | 待辦 | 技能尚未遷移（§二 A 節） | 逐一比對 A-1「確定要遷移的」清單 |
 | E-02 | 待辦 | Persona 認知顧問 15 個（§二 B 節） | 架構已定為方案 A（設定檔非技能，不放 `skills/`），遷移未執行 |
-| E-03 | 進行中 | **Runtime 執行層（§二 C 節）** | Wave 2A = Machine PASS / Macro HOLD；bounded repair (F1 registry channel boundary, F2 reply receiving-account binding) underway；Gateway live work = NOT STARTED；pending External Macro Audit |
+| E-03 | 進行中 | **Runtime 執行層（§二 C 節）** | Wave 2A = Macro PASS / accepted；checkpoint = 7d379f6；Wave 2B = Pure Account Switch Orchestration candidate underway；no live bot / network / port / credential work；pending External Macro Audit |
 | E-04 | 待辦 | `$$` 指令定義收斂（§二 D 節） | `$$LINE連線$$`／`$$TG連線$$` 散落三個檔案且內容互相矛盾；依 ADR-0022/D14 於 Gateway 正式 cutover 時才切換路由，非開發期 |
 | E-05 | 待辦 | Data/ 資料層逐項裁決（§二 E 節） | 尚有 `Data/logs/`（必須遷移）、`reports/`、`Agent_Reflections.md`、`TODO.md`、`Execution_Plans/`、`_archive_legacy_docs/` 待裁決 |
 

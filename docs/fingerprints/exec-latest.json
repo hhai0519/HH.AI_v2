@@ -1,5 +1,5 @@
 {
-  "base_head": "278d142",
+  "base_head": "7d379f6",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 0,
@@ -515,16 +515,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 143,
-      "sha256": "5278d41655d90a541576f4c50ee89c2ac61ad9e68f891050852a3fd80f6188f4"
+      "lines": 144,
+      "sha256": "2ee62179e0721f5f795772a77c3c18b4bd16356c873558bb67ccc6ebcf486f14"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 113,
-      "sha256": "6aaa1c5a90832536decfad8edd7fd5d5bcb2555558eecf130366d2886b375672"
+      "lines": 114,
+      "sha256": "41a6b59913b79c25668d0497d2b9e5b34514b10bef1c85431f7c242e060d00ee"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -560,7 +560,7 @@
         "## 封存區"
       ],
       "lines": 244,
-      "sha256": "14d533decb44d9b40fd2fb0309c8d72a0aa7271f98acfa4ca59ba806407d25c7"
+      "sha256": "c8101e709e0a94578a565e0fab8ce44681fd738abd1483ad7d75e669358e9db2"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -921,8 +921,8 @@
         "### 5.3 待使用者裁決",
         "### 5.4 進行中／等待回報"
       ],
-      "lines": 3507,
-      "sha256": "8d2fa13417d7a4830d41c60cbfc3aac7c4c707781188199671b6968dc2332e43"
+      "lines": 3522,
+      "sha256": "4c5387e040850ab022b3004dcb39c32d94a2769c35a37e83ac57bd5f2aea110b"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1000,8 +1000,8 @@
       "headings": [
         "# -*- coding: utf-8 -*-"
       ],
-      "lines": 109,
-      "sha256": "df5c11d880b32522b9b3d67358f6710bc083ccf9eac42a17cc081f97f53040a1"
+      "lines": 130,
+      "sha256": "6258f338281056cf30eb1a38b3d82d770acf09b30b95f0bee43294faf47af65b"
     },
     "scripts/tests/test_check_17_18.py": {
       "fences": 0,
@@ -1192,7 +1192,7 @@
       "sha256": "35bf7dbfa3c7d291b550c3c97a6ae398a22b1dc3624c1d2fc1e4db6963d6e115"
     }
   },
-  "generated_at": "2026-09-16T13:22:58Z",
+  "generated_at": "2026-09-16T13:39:26Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

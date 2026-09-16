@@ -223,6 +223,37 @@ class ChannelControl {
   }
 
   /**
+   * Discard queued messages for a specific receiving account (D26).
+   * Used during account switch orchestration without mutating internal array directly.
+   *
+   * @param {string} receivingAccountId - Target receiving account whose queued messages are discarded
+   * @param {string} [reason='ACCOUNT_SWITCH'] - Deterministic discard reason
+   * @returns {Array<object>} Safe metadata list of discarded messages
+   */
+  discardQueuedForAccount(receivingAccountId, reason = 'ACCOUNT_SWITCH') {
+    if (!receivingAccountId || typeof receivingAccountId !== 'string' || !receivingAccountId.trim()) {
+      throw new TypeError('receivingAccountId must be a non-empty string');
+    }
+    const cleanAccountId = receivingAccountId.trim();
+    const discarded = [];
+
+    for (const msg of this.messages) {
+      if (msg.receivingAccountId === cleanAccountId && msg.status === MESSAGE_STATUS.QUEUED) {
+        msg.status = MESSAGE_STATUS.DISCARDED;
+        msg.discardReason = reason;
+        discarded.push({
+          id: msg.id,
+          receivingAccountId: msg.receivingAccountId,
+          status: msg.status,
+          discardReason: msg.discardReason,
+        });
+      }
+    }
+
+    return discarded;
+  }
+
+  /**
    * Poll and claim queued messages (D6).
    * Cannot acquire control when there is no holder.
    *
