@@ -2825,7 +2825,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 5.1 上一批狀態
 
-上次核對通過的 HEAD：09d2ccb
+上次核對通過的 HEAD：eceda26
 
 - `23af193`（執行者前置檢查 ＋ 回滾程序 ＋ `AUDIT-LOG.md` ＋ 四缺口修正）
   已於 2026-09-02 由審計官核對通過：6 檔異動（含 2 個新檔）、零夾帶、
@@ -3006,6 +3006,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 - `24f7896`（cfdebc2 Macro PASS State Sync, B-98 Security Finding Registration & B-75 Context Economy Scope Refinement）已於 2026-09-16 由 GPT 代理審查官（使用者授權）獨立核對通過：5 檔 authorized scope，本地 verify_all 5 Gates 全 PASS，GitHub Actions exact-SHA Run 34998074551 success。cfdebc audit-state sync accepted；B-98 registration accepted；B-75 refinement accepted；B-98 / B-75 保持待辦、零實作；NEXT_WORK 保持 B-97；B-01 NOT STARTED；B-97 formal audit 尚未開始；no new material finding；判定 Macro PASS (ACCEPT ALL)。
 - `e8fdb74`（24f7896 Macro PASS State Sync）已於 2026-09-16 由 GPT 代理審查官（使用者授權）獨立核對通過：5 檔 authorized scope，本地 verify_all 5 Gates 全 PASS，GitHub Actions exact-SHA Run 34999645394 success。24f7896 Macro PASS State Sync accepted；state/evidence-only closure accepted；TASKBOARD unchanged in e8fdb747 commit；canonical verification passed；FINDING_DISPOSITION = NONE for e8fdb747 itself；判定 Macro PASS (ACCEPT ALL)。
 - `09d2ccb`（B-99 Qualification-Based Macro Auditor & Repo-Visible Handoff 及 A1 Equivalent Contract Consistency Repair）已於 2026-09-16 由 GPT 代理審查官（使用者授權）全面審查獨立核對通過：涵蓋 e8fdb74..09d2ccb 完整 pending range（含 a101ed8 初審 HOLD 與 09d2ccb bounded repair）；A1 EQUIVALENT 查證通過；exact-SHA Actions Run 35048408214 (status completed, conclusion success)；B-99 正式結案（CLOSED / Macro PASS）。
+- `eceda26`（B-99 Macro PASS Closure & B-97 Pointer Sync 及 B-97 Phase 1 唯讀發布審計）已於 2026-09-16 由 GPT 代理審查官（使用者授權）全面審查獨立核對通過：5 檔 authorized scope，本地 verify_all 5 Gates 全 PASS，GitHub Actions exact-SHA Run 35049350295 success。B-99 state closure accepted；B-97 Phase 1 READ_ONLY 全庫審計完成；41 筆 active-lifecycle rows 全部完成處置；B-01 target readiness PASS；上游 trigger 重新評估無 blocker；C-06 remote truth 已確認並維持 USER_DECISION_NONBLOCKING；實質發現依 B-95 處置完畢；B-01 保持零實作（NOT STARTED）；判定 PRE-B01 RELEASE STATUS = PASS。
 
 ### 5.2 待辦
 
@@ -3050,10 +3051,13 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - session-local User Prompt Compiler Mode specification 已登錄於 TASKBOARD，尚未實作。
   - B-41 Slim Bootstrap / Runtime Reconciliation External Macro PASS / CLOSED。
   - B-99 Qualification-Based Macro Auditor & Repo-Visible Handoff（CLOSED / MACRO PASS）。
-  - B-97 Pre-B01 Comprehensive Release Audit 已登錄為一次性 Release Gate 待辦 (NEXT / NOT STARTED)。
-  - B-98 / B-75 保持待辦、零實作 (PENDING / NOT IMPLEMENTED)。
+  - B-97 Pre-B01 Comprehensive Release Audit 已完成（CLOSED / PRE-B01 RELEASE PASS）。
+  - B-01 推進為下一步工作但尚未啟動 (NEXT / NOT STARTED / awaiting External Macro PASS for closure commit before mutation)。
+  - C-06 維持待使用者裁決（USER_DECISION_NONBLOCKING，遠端 ruleset 與 required checks 現況已確認）。
+  - B-28 / B-29 上游 trigger 重新評估完成，無 B-01 blocker，維持 DEFERRED_BY_USER / POST_B01。
+  - B-54 保持待辦（POST_B01 / NONBLOCKING，SOP_12 機器專屬路徑 concrete example 已登錄）。
+  - B-98 / B-75 保持待辦、零實作 (POST_B01 / NONBLOCKING / NOT IMPLEMENTED)。
   - B-69 保持待辦 (PENDING NON-BLOCKING)。
-  - B-01 尚未啟動 (NOT STARTED / blocked until B-97 PRE-B01 RELEASE PASS)。
   - Production routing ready。
   - 當前與下一步工作任務權威（Current / next work authority）仍只由 `docs/TASKBOARD.md` 的 `**NEXT_WORK**` pointer 保存與導航，交接區不複製 task ID 或待辦佇列。
   - 待使用者裁決事項依 §5.3。
@@ -3310,3 +3314,84 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
       - 建立 `docs/adr/0021-qualification-based-macro-auditor-role.md`（Accepted），正式 supersede ADR-0007 之歷史品牌選擇（Claude），永久繼承其核心審計獨立性與互斥不變量；ADR-0007 保持歷史原文不修改。
     - **倉庫可見交接與元資料純度（Repo-Visible Handoff & Metadata Purity）**：
       - 於 `docs/TASKBOARD.md` 頂部確立單一權威指標 `**ACTIVE_MACRO_AUDITOR**：GPT 代理審查官（使用者授權）`，不得包含 Git truth（HEAD、checkpoint、commit hash、CI Run ID 等）；擴充 CHECK 8 進行機械防護。
+
+68. **B-97 Pre-B01 Comprehensive Pending-Task & Repository Release Audit — Final Result**（2026-09-16）
+    - **背景與審計基線（Background & Audited Base）**：
+      - 本批在 exact audited state `eceda26d495642d9b27864ebcfaebf751544dacd`（parent `09d2ccb4915d4e65665a68ac6511c1886c37cf77`）由執行者嚴格依 Item 65 規格執行 Phase 1 READ_ONLY 全庫發布審計與未完成待辦盤點；審計期間工作區保持 100% clean、零檔案修改、零 commit/push/tag/branch 異動，B-01 程式碼實作確為零（ZERO IMPLEMENTATION）。
+      - 遠端 GitHub Actions Verify Run 35049350295 查證通過（completed / success）；本地 Canonical Entrypoint `scripts/verify_all.py` 5 大 Correctness Gates 全數通過（CHECK 1..20 PASS, 294 unit tests PASS, 13 webapp tests PASS）。
+    - **A. 未完成待辦全量機器盤點與 Macro 處置（41-Row Task Inventory & Macro Disposition）**：
+      - 依 Item 65.D「禁止手寫預設數量、必須 machine-derive current base 所有非完成列」之規定，自 `docs/TASKBOARD.md` 完整導出 41 筆非完成任務（核心 `待辦` 34 筆 ＋ `待裁決` 1 筆，另保守納入 `已裁決` 5 筆與 `已裁決（方向）` 1 筆）。
+      - 由 External Macro Reviewer（GPT 代理審查官（使用者授權））親自完成逐筆審查，裁決 Pre-B01 release disposition 如下表：
+
+      | Task | Pre-B01 Disposition | 理由摘要 |
+      |---|---|---|
+      | A-29 | ARCHIVABLE / COMPLETED | 歷史 CHECK 15 刪除事項已裁決棄用，缺口已登錄為 B-17 |
+      | B-01 | TARGET_B01 | 本次發布閘門之目標工作，維持待辦零實作 |
+      | B-03 | POST_B01 | SOP_03 規範建立，非 B-01 前置阻礙 |
+      | B-04 | POST_B01 | validate_skills 觸發詞 warning，非 B-01 前置 |
+      | B-10 | POST_B01 | Jules 協作規範，獨立於 B-01 ADR 搬移 |
+      | B-16 | DEFERRED_BY_USER / POST_B01 | 歷史宣稱回溯，使用者已裁決交接後執行 |
+      | B-17 | POST_B01 | 章節語意變更偵測，長效檢查器強化 |
+      | B-28 | DEFERRED_BY_USER / POST_B01 — upstream trigger re-evaluated | 上游觸發重新評估確認無 B-01 blocker，維持使用者裁決延後 |
+      | B-29 | DEFERRED_BY_USER / POST_B01 — upstream trigger re-evaluated | 同上，完整對照表與機械檢查維持延後 |
+      | B-30 | POST_B01 | Playwright 連接埠掃描常數，排批 4 |
+      | B-32 | POST_B01 | ADR-0013 觸發詞矩陣重寫，排批 4 |
+      | B-33 | POST_B01 | Port 規範缺口，排批 4 |
+      | B-53 | POST_B01 | CHECK 4/7 inline 檢查器抽取，不阻擋主線 |
+      | B-54 | POST_B01 — existing non-blocking finding routed here | SOP 跨層矛盾守衛，已納入 SOP_12 路徑實例 |
+      | B-55 | POST_B01 | 文件時效偵測，排批 2e |
+      | B-56 | POST_B01 | SOP_00A 索引維護防呆，排批 2e |
+      | B-59 | POST_B01 | ARCHIVE-INDEX 雙向可達性守衛，排批 2d |
+      | B-69 | POST_B01 / NONBLOCKING | 跨環境比對原則，已確認為 non-blocking |
+      | B-70 | POST_B01 | 配對清單腳本化，non-blocking |
+      | B-75 | POST_B01 | Context Economy 範圍已精煉，維持待辦零實作 |
+      | B-78 | DEFERRED_BY_USER / POST_B01 | apply_batch 腳本化，延後至主重構後評估 |
+      | B-96 | POST_B01 | $$使用者$$ 模式規格已定，未實作 |
+      | B-97 | PRE_B01_REQUIRED → SATISFIED | 本次發布審計閘門，審計通過轉已完成 |
+      | B-98 | POST_B01 — existing security finding, NONBLOCKING | 執行者外部輸出安全硬化，non-blocking |
+      | C-01 | POST_B01 | Port 分配已裁決以 ADR-0017 為準，排批 4 |
+      | C-02 | POST_B01 | SOP_02 清歷史已裁決禁 force push，排批 4 |
+      | C-03 | POST_B01 | ADR-0013 已裁決逐節處置，排批 4 |
+      | C-04 | POST_B01 | Runtime 架構三層方向已裁決，細節待批 6 |
+      | C-05 | ARCHIVABLE / COMPLETED | D-01 判定者裁決事項，測試已完成 PASS |
+      | C-06 | USER_DECISION_NONBLOCKING | 遠端 main 分支保護策略，待使用者裁決 |
+      | E-01 | POST_B01 | 舊技能遷移主線，規劃於 B-01 後執行 |
+      | E-02 | POST_B01 | Persona 顧問遷移主線，規劃於 B-01 後執行 |
+      | E-03 | POST_B01 | Runtime 執行層遷移主線，規劃於 B-01 後執行 |
+      | E-04 | POST_B01 | $$ 指令收斂主線，隨技能遷移執行 |
+      | E-05 | POST_B01 | Data 資料層裁決與遷移主線，後續執行 |
+      | F-01 | POST_B01 | 三層索引描述漂移，指定為 Jules 首航任務 |
+      | F-02 | POST_B01 | 配額熔斷錨定處置，獨立於 B-01 |
+      | F-03 | POST_B01 | 多代理自治閉環立案，長遠架構規劃 |
+      | F-04 | POST_B01 | karpathy 專案探勘，明確標註低優先 |
+      | F-05 | POST_B01 | ADR-0012 補記 SKIP_LOCK，文件微更新 |
+      | F-06 | POST_B01 | 歸檔引用更新，runtime 遷移後執行 |
+
+    - **B. 全庫 11 個面向審計結果（11 Repository-Wide Dimensions Audit）**：
+      1. **Authority / State Truth**：CLEAR。TASKBOARD 為唯一當前與下一步權威，NEXT_WORK 與 ACTIVE_MACRO_AUDITOR 唯一，零第二佇列。
+      2. **Active Control Planes**：CLEAR。層級結構穩固，provider-neutral 資格合約與 A1 雙軌模式成立，rule-traceability fresh 且有效。
+      3. **Verification Integrity**：CLEAR。Canonical `verify_all.py` 5 大 Gates 全 PASS，negative canaries 完備，無 false-green。
+      4. **Dependency Closure**：CLEAR。`impact_scan.py discover` 對 17 組核心關鍵字完成確定性掃描，無遺漏依賴。
+      5. **Git / Remote Truth**：CLEAR。HEAD == origin/main，full clone，exact-SHA Verify Run 35049350295 completed/success。
+      6. **B-01 Target Readiness**：CLEAR。ADR-0002/0004/0010 與規範目標檔案全數存在、結構健全、零語意漂移，B-01 程式碼實作確為零。
+      7. **Upstream Comparison Freshness**：客觀 trigger 成立（3cca18b -> 959a8e9，+3 commits）；targeted comparison 確認僅涉及 upstream in-progress `retro` 技能之確定性檢查概念，未影響技能架構或 B-01 目標 ADR；判定無 blocker。
+      8. **Special-Command / Routing Truth**：CLEAR。11 個 `$$` 路由中 7 個 ACTIVE 且目標存在，4 個 PENDING_MIGRATION 明確標註且未假造完成。
+      9. **Security / Machine-Specific State**：全庫掃描零憑證/私鑰洩漏；SOP_12 記錄之本機路徑轉入 B-54 作為 concrete example；B-98 外部輸出安全硬化維持 non-blocking。
+      10. **Cross-Environment / Tool Correctness**：CLEAR。一律採用確定性工具與正規化比對，排除 IDE Search false-zero 干擾。
+      11. **Mainline Continuation Efficiency**：CLEAR。僅辨識具實質價值之 findings，杜絕投機性治理擴張。
+    - **C. 實質發現處置路由（Material Findings Routing per B-95）**：
+      - **Finding 1A & 1B (Upstream Trigger)**：路由至 `EXISTING B-28` / `EXISTING B-29`。記錄客觀 trigger 成立與 targeted re-evaluation 結果；維持 DEFERRED_BY_USER / POST_B01。
+      - **Finding 2 (Machine-Specific Paths)**：路由至 `EXISTING B-54`。將 SOP_12 第 65、103、111–114 行之本機路徑作為跨層矛盾守衛之第三個實例登錄；維持 POST_B01 / NONBLOCKING。
+      - **Finding 3 (Executor Secret Hardening)**：路由至 `EXISTING B-98`。維持 POST_B01 / NONBLOCKING；本批全流程驗證 secret-safe 外部查詢可行。
+      - **Finding 4 (Pending-Task Metadata Drift)**：路由至 `CURRENT B-97`。於 TASKBOARD 修正 B-54/55/56/59 中過期之 CHECK 編號與硬編碼數量，落實 B-60 之 machine-derived ID 規範。
+    - **D. C-06 遠端現況查證（C-06 Remote Truth）**：
+      - 查證 GitHub Ruleset ID 21301111 處於 active 狀態，僅保護 `deletion` 與 `non_fast_forward`；required status checks 為 off，PR-before-merge 非強制；direct fast-forward push 目前技術上仍完全可行。
+      - C-06 保持 `USER_DECISION_NONBLOCKING`，待使用者未來需要時裁決 A/B 方案，不阻擋 B-01 發布。
+    - **E. 最終發布裁決（Release Decision & Next Step）**：
+      - External Macro Reviewer（GPT 代理審查官（使用者授權））正式宣告：
+        `PRE-B01 RELEASE STATUS = PASS`
+        `B-97 SUBSTANTIVE AUDIT = PASS`
+        `B-01 TARGET READINESS = ESTABLISHED`
+      - B-97 正式 CLOSED；NEXT_WORK 推進至 B-01。
+      - 本 Item 為 historical audit result 留痕，非第二任務佇列；B-01 於本 closure commit 經外部 Macro Audit 通過前仍維持待辦、零實作（NOT STARTED）。
+
