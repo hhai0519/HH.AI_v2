@@ -2825,7 +2825,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 5.1 上一批狀態
 
-上次核對通過的 HEAD：c73dd28
+上次核對通過的 HEAD：c2df1b0
 
 - `23af193`（執行者前置檢查 ＋ 回滾程序 ＋ `AUDIT-LOG.md` ＋ 四缺口修正）
   已於 2026-09-02 由審計官核對通過：6 檔異動（含 2 個新檔）、零夾帶、
@@ -3010,6 +3010,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 - `76cfe7b`（B-97 PRE-B01 Release PASS State Closure）已於 2026-09-16 由 GPT 代理審查官（使用者授權）全面審查獨立核對通過：5 檔 authorized scope，本地 verify_all 5 Gates 全 PASS，GitHub Actions exact-SHA Run 35051382469 success。B-97 PRE-B01 Release PASS State Closure accepted；MACRO AUDIT = PASS，ACCEPT STATUS = ACCEPT ALL，FINDING_DISPOSITION = NONE；PRE-B01 RELEASE STATUS = PASS — FINALIZED；B-97 正式 CLOSED；B-01 AUTHORIZED TO START。
 - `85d9a3a`（B-01 ADR-0002/0004/0010 分層搬移及 Active-Contract 語意優先序與 Shell 邊界修復）已於 2026-09-16 由 GPT 代理審查官（使用者授權）全面審查獨立核對通過：涵蓋 76cfe7b..85d9a3a 完整 pending range（含 b2b5d1d 初審 HOLD 與 85d9a3a bounded repair）；A1 EQUIVALENT 查證通過；exact-SHA Actions Run 35054093786 (status completed, conclusion success)；B-01 正式結案（CLOSED / Macro PASS）。
 - `c73dd28`（B-01 Macro PASS Closure and E-03 Pointer Sync）已於 2026-09-16 由 GPT 代理審查官（使用者授權）獨立核對通過：5 檔 authorized scope，本地 verify_all 5 Gates 全 PASS，GitHub Actions exact-SHA Run 35054817604 success。B-01 closure state sync accepted；E-03 推進至 NEXT_WORK；E-03 Phase 1 + Phase 1B READ_ONLY evidence review completed（PASS / corrected inventory accepted），授權進入 Phase 2；判定 Macro PASS (ACCEPT ALL)。
+- `c2df1b0`（E-03 Phase 2 Wave 1A Shared Pure Primitives Foundation）已於 2026-09-16 由 GPT 代理審查官（使用者授權）獨立核對通過：9 檔 authorized scope；A1 EQUIVALENT 查證通過；建立 shared/dlpSanitizer.js、shared/dlpSanitizer.d.ts、shared/atomicFs.js；零第三方 runtime dependencies；canonical verification 5 Gates 全數通過；exact-SHA Actions CI success；判定 Macro PASS (ACCEPT ALL)。
 
 ### 5.2 待辦
 
@@ -3056,7 +3057,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - B-99 Qualification-Based Macro Auditor & Repo-Visible Handoff（CLOSED / MACRO PASS）。
   - B-97 Pre-B01 Comprehensive Release Audit 已完成（CLOSED / PRE-B01 RELEASE PASS）。
   - B-01 ADR-0002／0004／0010 分層搬移及 Active-Contract 語意修復已完成（CLOSED / MACRO PASS）。
-  - E-03 Runtime 執行層架構推進（IN PROGRESS）：Phase 1 READ_ONLY inventory = PASS；Phase 1B correction addendum = PASS；Phase 2 Wave 1A Shared Pure Primitives = IN PROGRESS / PENDING EXTERNAL MACRO AUDIT；LINE architecture = USER DECISION REQUIRED LATER / NONBLOCKING FOR WAVE 1A；B-30 = confirmed prerequisite before live integration / not part of Wave 1A；B-33 = confirmed intersection / not part of Wave 1A。
+  - E-03 Runtime 執行層架構重設與推進（IN PROGRESS）：Wave 1A Shared Pure Primitives = MACRO PASS；Phase 1/1B/1B2 調研審查通過；架構正式確立為 SINGLE CHANNEL GATEWAY（ADR-0022），目標路徑為 runtime/channel-gateway/，舊 Telegram-only 目標於實作前正式廢棄；production implementation = NOT STARTED pending architecture decision persistence audit；LINE 實作依 D12 維持 USER-TRIGGERED / LAST；M2～M8 完成既有任務路由無重複任務。
   - C-06 維持待使用者裁決（USER_DECISION_NONBLOCKING，遠端 ruleset 與 required checks 現況已確認）。
   - B-28 / B-29 上游 trigger 重新評估完成，無 B-01 blocker，維持 DEFERRED_BY_USER / POST_B01。
   - B-54 保持待辦（POST_B01 / NONBLOCKING，SOP_12 機器專屬路徑 concrete example 已登錄）。
@@ -3443,6 +3444,26 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
     - **當前生命週期狀態**：
       - 本批為 Phase 2 Wave 1A 施工候選，工作區無任何 runtime consumer wiring 或第三方程式庫引入。
       - 本 candidate commit 等待 External Macro Reviewer 獨立審核。
+
+73. **E-03 Channel Gateway Architecture Decision Persistence & Plan Reset（Channel Gateway 單一通訊閘道架構決策持久化與計畫重設）**（2026-09-16）
+    - **背景與外部審查結論**：E-03 Phase 2 Wave 1A（`c2df1b0`）建立之純共享原語經 External Macro Reviewer（GPT 代理審查官（使用者授權））全面審查，判定 `A1 = EQUIVALENT` 成立，5 大驗證閘門與 exact-SHA CI 通過，裁決 `MACRO AUDIT = PASS`，`ACCEPT STATUS = ACCEPT ALL`，`FINDING_DISPOSITION = NONE`；Wave 1A 共享原語（`shared/dlpSanitizer.js`、`shared/atomicFs.js`）持續有效。隨後 Phase 1B/1B2 READ_ONLY 調研完成 exact caller census 與 package ownership 修正。
+    - **使用者 D1～D26 架構裁決**：專案擁有者（使用者 HH）於 2026-09-16 正式裁決通訊層全面轉型為單一 Channel Gateway 架構，取代舊有 LINE 與 Telegram 雙獨立橋接：
+      - 確立目標存放路徑為 `runtime/channel-gateway/`，原先暫訂之 `runtime/telegram-bot/` 於實作前正式廢棄。
+      - 維持 Agent-in-the-Loop 與官方合規原則（D2，依官方條款規定排除第三方軟體存取服務風險，不宣稱已證實之停權案例），不採 CDP 注入或 CLI wrapper。
+      - 作業系統啟動託管 Gateway 生命週期（D4），Agent 不再啟動通訊進程，ADR-0009 啟動繞道不再為現行規則。
+      - 鎖定與職責單元為 Channel，僅明確特權指令具接管意圖，防過期回覆防護，無值守隊列暫存（D5–D10）。
+      - LINE 未來目標態採 Cloudflare Worker Mailbox + Pull 模式，廢除穿透隧道；LINE 實作依 D12 延後或由使用者明確觸發（D11–D14）。
+      - 獨立極小依賴閉包與 `package.json`，不支援語音訊息，檔案進線正規化交付，外發附件安全傳輸（D15–D18）。
+      - 建立手機端雙向檔案外發授權防線、Realpath 檢驗、副本偵測與 Hard Deny List，未授權前預設關閉（D19–D21）。
+      - 對話歸檔中心化且僅由 Gateway 寫入，廢除模糊主題比對（D22–D23）。
+      - 本機設定中心化，三層代碼清晰劃分，Gateway 管控非重啟熱切換（D24–D26）。
+    - **既有 ADR 關聯與實質發現路由（M2–M8）**：
+      - 新建 ADR-0022 記錄完整 D1～D26 決策；既有 ADR-0009、ADR-0011、ADR-0015、ADR-0017 原文保留歷史背景。
+      - 宏觀審計實質發現 M2～M8 嚴格登錄至既有任務（M2 路由至 E-03+E-04；M3 路由至 B-30+B-33；M4 路由至 E-03；M5 路由至 E-03 SECURITY ACCEPTANCE；M6 路由至 E-03；M7 路由至 E-03+F-05；M8 路由至 E-04/E-03/F-06），零重複任務產生。
+    - **當前生命週期狀態**：
+      - 本批為 architecture / governance decision persistence，工作區無任何 Gateway 生產程式碼變更（no runtime code in this batch）。
+      - Gateway 生產實作尚未開始（NOT STARTED），等待本治理候選通過 External Macro Reviewer 獨立審核。
+      - NEXT_WORK 保持 E-03。
 
 
 

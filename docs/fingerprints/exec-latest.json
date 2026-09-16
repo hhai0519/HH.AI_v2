@@ -1,5 +1,5 @@
 {
-  "base_head": "c73dd28",
+  "base_head": "c2df1b0",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 0,
@@ -515,16 +515,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 137,
-      "sha256": "4fec8616833d53d4e04c97f60bbc17bd319aa9afc0aa45f6f9cd9e6b68c92ea6"
+      "lines": 138,
+      "sha256": "270a40d877a50fce3284c5e965a2b6affe29d892c4606104296ae062010708e9"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 109,
-      "sha256": "90e87f1cfa4988b5a488e0ddc12778202f0d0e5f802b04325a8f73530bd03301"
+      "lines": 110,
+      "sha256": "d094af46f5ab4417879f5a79527e07d4049c55574a16ccbec412eddb66e0459b"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -560,7 +560,7 @@
         "## 封存區"
       ],
       "lines": 244,
-      "sha256": "c23137f982c705962afb54ff6ced92ab7fb863fb474f5b129e3f1ba6938526a7"
+      "sha256": "4b29db99728351635802cd283cd0d5bb1376f1054968ec76dfa9365c922be493"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -834,6 +834,28 @@
       "lines": 52,
       "sha256": "6898ed892470a307e9847eec9805eda46a2b2ce3cd5539268af636afee7da91f"
     },
+    "docs/adr/0022-channel-gateway-architecture.md": {
+      "fences": 0,
+      "headings": [
+        "# ADR-0022: Channel Gateway 單一通訊閘道架構與 Omni-Channel 演進 (Channel Gateway Architecture)",
+        "## Context",
+        "## Decision",
+        "### 1. 核心定位與生命週期 (Core & Lifecycle, D1–D4)",
+        "### 2. 控制權接管與狀態管理 (Channel Control & Takeover, D5–D10)",
+        "### 3. LINE 架構與 Telegram 平滑過渡 (LINE & Transition, D11–D14)",
+        "### 4. 套件邊界與附件管理 (Packages & Attachments, D15–D18)",
+        "### 5. 外發檔案授權防線 (Outbound File Authorization, D19–D21)",
+        "### 6. 對話歸檔與主題管理 (Conversation Archive & Topics, D22–D23)",
+        "### 7. 本機配置、代碼分層與熱切換 (Local Config, Layout & Account Switch, D24–D26)",
+        "## 歷史憑證處置政策 (Legacy Hardcoded Credentials)",
+        "## Relationship to Existing ADRs",
+        "## 外部審計發現處置路由 (Macro Finding Routing M2–M8)",
+        "## 上線前既有任務交會相依 (Pre-Live Existing Task Intersections)",
+        "## Consequences"
+      ],
+      "lines": 142,
+      "sha256": "1b400453c4bf111746d608a0462b5c81e4d5ab6ed42e54f053df11bea682464a"
+    },
     "docs/mcp-environment-guide.md": {
       "fences": 0,
       "headings": [
@@ -899,8 +921,8 @@
         "### 5.3 待使用者裁決",
         "### 5.4 進行中／等待回報"
       ],
-      "lines": 3448,
-      "sha256": "b0e56a87ee2115276ce284a33285f0e017d43b5f401948921bd29db4c5f07c2c"
+      "lines": 3469,
+      "sha256": "f2de1f80bef72fdb62949c6fef5b8be501b659c1b3ccbb91d2f1e0eae61dc8b6"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1162,7 +1184,7 @@
       "sha256": "35bf7dbfa3c7d291b550c3c97a6ae398a22b1dc3624c1d2fc1e4db6963d6e115"
     }
   },
-  "generated_at": "2026-09-16T05:59:40Z",
+  "generated_at": "2026-09-16T12:34:46Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

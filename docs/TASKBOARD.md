@@ -14,7 +14,7 @@
 
 **NEXT_WORK**：E-03
 
-**最後更新**：2026-09-16，E-03 Phase 1 & 1B 調研審查通過（PASS）；Phase 2 Wave 1A Shared Pure Primitives 施工候選進行中；等待外部宏觀審計。
+**最後更新**：2026-09-16，E-03 Wave 1A Macro PASS；Phase 1/1B/1B2 調研完成；使用者裁決 D1～D26 Channel Gateway 架構（ADR-0022）；本批架構治理存檔進行中；待外部宏觀審計。
 
 ---
 
@@ -103,10 +103,10 @@ A 節目前狀態以本表各列與 `NEXT_WORK` 之 current repo truth 為準；
 | B-27 | 已完成 | **「動手前必讀」機制從未被驗證，三份規則檔有兩份虛構** | 2026-09-06 實測：執行者貼出的 `prompt-preflight.md` 與 `git-and-reporting.md` 章節標題、§1 全部條目、§2 整節內容皆與實際檔案不符（`prompt-preflight.md` 那張 14 列「歷史失效清單」表在實際檔案中不存在）；§3.4 表漏 E12 卻聲稱驗證了 E12。`role-boundaries.md` 屬實。**回報與實際不符的第六類：規則來源虛構**，最嚴重，因為後續所有檢查都建立在被虛構的規則上。處置：本批提示詞已加入章節序列比對；根本解法為 B-35 指紋機制。**2026-09-07 實測落地**：規則層「章節序列」共 3 處（`.claude/rules/auditor-protocol.md` 1 處、`.agents/rules/prompt-preflight.md` 2 處），動手前必讀已含章節序列比對 |
 | B-28 | 待辦 | **`AGENTS.md` 宣稱遵循 mattpocock/skills，但零審查機制、零版本記載** | DEFER POST-B01 / trigger-based reopening，不阻塞 B-01。使用者已正式裁決 full upstream comparison 延後；targeted comparison 已確認無 B-01 blocker。2026-09-16 B-97 objective trigger 已成立（3cca18b -> 959a8e9）並完成 bounded targeted re-evaluation；current delta 僅限 retro 技能，不影響 B-01 target assumptions，因此 full upstream comparison 仍依使用者原裁決 defer Post-B01。 |
 | B-29 | 待辦 | **上游一致性對照表 ＋ 機械檢查** | DEFER POST-B01 / trigger-based reopening，不阻塞 B-01。使用者已正式裁決完整對照表與機械檢查延後；targeted comparison 已確認無 B-01 blocker。2026-09-16 同 B-28 upstream trigger 重新評估；full upstream matrix 依使用者裁決 defer Post-B01。 |
-| B-30 | 待辦 | **playwright 掃描清單含 3000／3001，運行風險已存在** | `skills/execution/playwright-automation/lib/helpers.js:381` 的 `commonPorts` 含 LINE／TG bridge 埠。ADR-0017 預警過但寫「尚未遷移」，**實測已遷移**，ADR 狀態描述過期。使用者裁決改為「明確指定目標 port 而非自動掃描」。排批 4；confirmed E-03 live-integration prerequisite |
+| B-30 | 待辦 | **playwright 掃描清單含 3000／3001，運行風險已存在** | `skills/execution/playwright-automation/lib/helpers.js:381` 的 `commonPorts` 含 LINE／TG bridge 埠。ADR-0017 預警過但寫「尚未遷移」，**實測已遷移**，ADR 狀態描述過期。使用者裁決改為「明確指定目標 port 而非自動掃描」。排批 4；confirmed E-03 live-integration prerequisite；依 ADR-0022 屬 Gateway/網頁整合前置項 |
 | B-31 | 已完成 | **ADR-0013 §2C BOM 污染偵測未被取代** | CHECK 19 已採 Git tracked inventory 作為 deterministic BOM scope authority；.gitattributes BOM、untracked/ignored non-authority、inventory/read failure fail-closed 均已有 regression coverage，External Macro Audit PASS。 |
 | B-32 | 待辦 | **ADR-0013 §6 觸發詞排他性矩陣** | 與 Watchdog 無關的夾帶內容，且使用已廢除的「Cognitive Agent」分類。需重寫為 v2 bucket 語彙並實作跨技能觸發詞重疊偵測。排批 4 |
-| B-33 | 待辦 | **Port 規範的三個缺口** | 舊 repo `.env.example:12` 的 `NEXT_PUBLIC_APP_URL=3000` 殘留未修（待 E-03 遷入處理）；ADR-0017 未涵蓋 6379 Redis 與 9222／9223 Chrome CDP（v2 內 SOP_04 與 SOP_06 之 Port 衝突已於 `acc5890` 修復）。排批 4；confirmed E-03 intersection prerequisite |
+| B-33 | 待辦 | **Port 規範的三個缺口** | 舊 repo `.env.example:12` 的 `NEXT_PUBLIC_APP_URL=3000` 殘留未修（待 E-03 遷入處理）；ADR-0017 未涵蓋 6379 Redis 與 9222／9223 Chrome CDP（v2 內 SOP_04 與 SOP_06 之 Port 衝突已於 `acc5890` 修復）。排批 4；confirmed E-03 intersection prerequisite；依 ADR-0022 屬 Gateway Port 配置與文件收斂前置項 |
 | B-34 | 已完成 | **看板 C-01 的行號與衝突性質記錯** | 宣稱「`SOP_06` 第 100 行說 line-bridge = 3000」是衝突，實測該行敘述與 ADR-0017 完全一致；真正衝突在第 133 行。B-16 的又一實例。本批已於 C-01 列更正 |
 | B-35 | 可封存 | **雙代理事實指紋與 Dashboard** | Stage 1 指紋與驗證已實作；Stage 2/3 (dashboard.html/GitHub Pages) 被 ADR-0020 與 GitHub Actions Remote Health Dashboard 完全取代。 |
 | B-36 | 已完成 | **廢除口頭回報，回報即 commit** | 執行者不再產出供轉貼的文字報告，檢查結果與疑問一律寫入 `docs/EXEC-LOG.md` 並 push，對話僅回一行 commit hash。根因：五類回報失真加 B-27 的第六類全部發生在「文字報告」這一環，且它是審計官 token 消耗最大的單一來源。**自本批生效** |
@@ -171,7 +171,7 @@ A 節目前狀態以本表各列與 `NEXT_WORK` 之 current repo truth 為準；
 | B-95 | 已完成 | **Material Finding → TASKBOARD Promotion Contract** | Material Finding → TASKBOARD Promotion Contract 已完成 External Macro Audit PASS，same-round persistence / EVERY_ROUND disposition / Executor mechanical preflight 正式生效。 |
 | B-96 | 待辦 | **`$$使用者$$` Session-local User Prompt Compiler Mode** | 使用者已完成架構裁決。此功能為僅限目前 Antigravity conversation/session 的 Natural-Language → Governed Execution Adapter；`$$使用者$$` 啟用，沒有 `$$結束使用者$$`，關閉 Agent/conversation 即失效，新 Agent 預設 OFF。User Mode 將輸入分為 READ_ONLY / REPO_MUTATION / EXTERNAL_ACTION / SPECIAL_COMMAND；repo mutation 必須先唯讀 discovery + B-68 impact scan，再編譯完整 production prompt、等待使用者確認，確認後仍通過既有 Prompt Manifest / dependency replay / Allowed Scope / Git / Gate preflight，不構成任何 safety override。特殊 `$$` 指令永遠優先走 `SOP/SOP_00A_Master_Index.json` canonical router。完整已裁決施工規格見 `docs/refactor-backlog.md` Item 63。NOT IMPLEMENTED。 |
 | B-97 | 已完成 | **Pre-B01 Comprehensive Pending-Task & Repository Release Audit** | Phase 1 READ_ONLY comprehensive inventory + repository-wide audit completed；41 active-lifecycle rows 全部 disposition；B-01 target readiness PASS；所有 material findings 已依 B-95 routed；PRE-B01 RELEASE PASS。 |
-| B-98 | 待辦 | **Executor Secret / Credential Output Hardening** | 2026-09-16 Step 1 READ_ONLY alignment 中，Executor 為查詢 GitHub 狀態列舉環境變數，致使一個 GitHub credential 完整 secret value 輸出至 execution transcript（零 secret value 記錄於 repo）。已完成人工作業遏阻：exposed credential 已撤銷、replacement credential 已由使用者建立驗證、PowerShell 歷史紀錄已處置。未解決 system gap：缺少明確且可機械守護的 secret-safe external API inspection/output contract。驗收方向：憑證存在性檢查僅限輸出 boolean / PRESENT / ABSENT，嚴禁列舉 secret-bearing 環境變數值，嚴禁將 token/password 寫入 transcript、conversation、EXEC-LOG、repo、scratch 或 metadata；troubleshooting 採 secret-safe auth path；評估確定性 guard / canary。本輪僅登錄，採 secret-safe remote-health 路徑下不阻塞本次 closure 與 B-97；B-97 release disposition = POST_B01 / NONBLOCKING。 |
+| B-98 | 待辦 | **Executor Secret / Credential Output Hardening** | 2026-09-16 Step 1 READ_ONLY alignment 中，Executor 為查詢 GitHub 狀態列舉環境變數，致使一個 GitHub credential 完整 secret value 輸出至 execution transcript（零 secret value 記錄於 repo）。已完成人工作業遏阻：exposed credential 已撤銷、replacement credential 已由使用者建立驗證、PowerShell 歷史紀錄已處置。未解決 system gap：缺少明確且可機械守護的 secret-safe external API inspection/output contract。驗收方向：憑證存在性檢查僅限輸出 boolean / PRESENT / ABSENT，嚴禁列舉 secret-bearing 環境變數值，嚴禁將 token/password 寫入 transcript、conversation、EXEC-LOG、repo、scratch 或 metadata；troubleshooting 採 secret-safe auth path；評估確定性 guard / canary。本輪僅登錄，採 secret-safe remote-health 路徑下不阻塞本次 closure 與 B-97；B-97 release disposition = POST_B01 / NONBLOCKING；依 ADR-0022 於首次涉及真實金鑰之測試 Bot 連線前必須完成。 |
 | B-99 | 已完成 | **Qualification-Based Macro Auditor & Repo-Visible Handoff** | B-99 Qualification-Based Macro Auditor & Repo-Visible Handoff 已取得 External Macro PASS；ADR-0021 / provider-neutral qualification / exactly-one ACTIVE_MACRO_AUDITOR / user-only assignment / same-session exclusion / A1 FULL_CLONE + strict EQUIVALENT / `.claude/` compatibility path / CHECK 8 singleton 均 accepted。 |
 
 ---
@@ -207,8 +207,8 @@ A 節目前狀態以本表各列與 `NEXT_WORK` 之 current repo truth 為準；
 |---|---|---|---|
 | E-01 | 待辦 | 技能尚未遷移（§二 A 節） | 逐一比對 A-1「確定要遷移的」清單 |
 | E-02 | 待辦 | Persona 認知顧問 15 個（§二 B 節） | 架構已定為方案 A（設定檔非技能，不放 `skills/`），遷移未執行 |
-| E-03 | 進行中 | **Runtime 執行層（§二 C 節）** | Phase 1 READ_ONLY dependency inventory PASS；Phase 1B correction PASS；Phase 2 Wave 1A shared pure primitives candidate underway；pending External Macro Audit |
-| E-04 | 待辦 | `$$` 指令定義收斂（§二 D 節） | `$$LINE連線$$`／`$$TG連線$$` 散落三個檔案且內容互相矛盾 |
+| E-03 | 進行中 | **Runtime 執行層（§二 C 節）** | Wave 1A PASS/ACCEPTED；Phase 1/1B/1B2 調研審查修正通過；使用者 D1-D26 Channel Gateway 架構已確立（ADR-0022），舊 Telegram-only 目標於實作前由單一 Channel Gateway（目標根目錄 `runtime/channel-gateway/`）取代；本批進行架構決策持久化與計畫重設，Gateway 生產實作尚未開始（NOT STARTED），等待本治理批次 External Macro Audit；LINE 實作依 D12 延後或由使用者明確觸發 |
+| E-04 | 待辦 | `$$` 指令定義收斂（§二 D 節） | `$$LINE連線$$`／`$$TG連線$$` 散落三個檔案且內容互相矛盾；依 ADR-0022/D14 於 Gateway 正式 cutover 時才切換路由，非開發期 |
 | E-05 | 待辦 | Data/ 資料層逐項裁決（§二 E 節） | 尚有 `Data/logs/`（必須遷移）、`reports/`、`Agent_Reflections.md`、`TODO.md`、`Execution_Plans/`、`_archive_legacy_docs/` 待裁決 |
 
 ---
@@ -221,8 +221,8 @@ A 節目前狀態以本表各列與 `NEXT_WORK` 之 current repo truth 為準；
 | F-02 | 待辦 | 配額熔斷的錨定缺口與 `quota_monitor.py` 處置 | 第 12 點。`SOP_01` §2.2 的 10% 熔斷是無人值守模式的唯一煞車 |
 | F-03 | 待辦 | 多代理自治閉環（LOOP）立案 | 第 13 點。內外兩層閉環目前都未完整運作 |
 | F-04 | 待辦 | `karpathy` 其他專案探勘 | 第 14 點。**低優先、需時間盒**，技能遷移與 runtime 收尾後才執行 |
-| F-05 | 待辦 | ADR-0012 補記 `SKIP_LOCK` | `docs/archive/handover/HANDOVER-pre-router-568209e.md` §5.5（historical source）。`autoresearch-agent` 用 `SKIP_LOCK=1` 繞過全域鎖，ADR 未記載 |
-| F-06 | 待辦 | `json-to-flex-renderer` 指向舊 repo 路徑 | `docs/archive/handover/HANDOVER-pre-router-568209e.md` §5.5（historical source）。屬合法註記，但 runtime 遷移後必須回頭更新 |
+| F-05 | 待辦 | ADR-0012 補記 `SKIP_LOCK` | `docs/archive/handover/HANDOVER-pre-router-568209e.md` §5.5（historical source）。`autoresearch-agent` 用 `SKIP_LOCK=1` 繞過全域鎖，ADR 未記載；依 ADR-0022 屬雙平台並行值守前置項 |
+| F-06 | 待辦 | `json-to-flex-renderer` 指向舊 repo 路徑 | `docs/archive/handover/HANDOVER-pre-router-568209e.md` §5.5（historical source）。屬合法註記，但 runtime 遷移後必須回頭更新；依 ADR-0022 M8 路由於後續 LINE 實作時更新 |
 | F-07 | 已完成 | **`docs/HANDOVER.md` 十項過期與不一致** | 2026-09-01 審計官接手第一輪即發現，但修正提示詞兩週未產出。已於 `d1e389b` 十項一次修完，詳見 `refactor-backlog.md` 第 33 點 |
 | F-08 | 已完成 | 交接區與看板的職責切分 | §5.2 的清單副本已刪除，只留指向；分工寫入 `auditor-protocol.md` §10（交接區回答「現在在哪」、看板回答「還有什麼」）。見第 33 點 B 段 |
 
