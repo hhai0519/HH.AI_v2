@@ -2825,7 +2825,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 5.1 上一批狀態
 
-上次核對通過的 HEAD：a45634386d5abff5766c6af8af8f084fd4a15fed
+上次核對通過的 HEAD：0cc4dfc69d7cc7d9e8eebf6e3eceb21e34794534
 
 - `23af193`（執行者前置檢查 ＋ 回滾程序 ＋ `AUDIT-LOG.md` ＋ 四缺口修正）
   已於 2026-09-02 由審計官核對通過：6 檔異動（含 2 個新檔）、零夾帶、
@@ -4003,4 +4003,67 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
       - 下一切片（NEXT_SLICE）：Inbound Identity & Cursor Semantics ADR。
       - T9、T11-main、Local API、Outbox、HMAC、Telegram、LINE 等生產實作保持未開始（NOT STARTED）。
       - G3 涉及之 B-69、B-28、B-29、B-17 保持待辦（HOLD，禁止在本批歸檔或關閉）。
+      - 本候選提交後等待 External Macro Reviewer（GPT 代理審查官（使用者授權））獨立審核，不得 self-audit。
+---
+
+### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）
+
+| Candidate | 機械證據 (Mechanical Evidence) | 處置 (Disposition) | 權威落點 (Canonical Landing) | 阻擋階段 (Blocking Phase) |
+|---|---|---|---|---|
+| **G1-R1** | `docs/TASKBOARD.md` 頂部與各列動態字串對照 | `RESOLVED` | `TASKBOARD` 頂部唯一保存 mutable value，`TG-MVP-02` 移除動態標籤 | NONBLOCKING |
+| **G1-R2** | commit `0cc4dfc...`, Actions Run 35247744577 PASS | `RESOLVED` | `TG-MVP-01` 狀態更新為 `已完成` | NONBLOCKING |
+| **G1-R3** | B-98, B-30, B-33, E-04, F-05, F-06, F-02 對應 E-03 Roadmap | `RESOLVED` | `TASKBOARD` 各 global row 與 Roadmap slices 雙向指標 | NONBLOCKING |
+| **G1-R4** | Canonical vocabulary (`待辦`, `進行中`, `待裁決`, `已完成`, `可封存`) | `RESOLVED` | `TG-MVP-03` 狀態更正為 `待辦`，Goal/Authority 保留決策文字 | NONBLOCKING |
+| **Candidate A (B-98)** | `docs/TASKBOARD.md:181`, transcript exposure, plaintext config check | `CURRENT` | `TG-MVP-06` | Real Bot token / HMAC secret 前 |
+| **Candidate B (B-30 / B-33)** | `docs/TASKBOARD.md:106, 109`, port 3000/3001 衝突 | `CURRENT` | `TG-MVP-07` | Live Gateway 整合前 |
+| **Candidate C (B-69)** | `docs/TASKBOARD.md:145`, line endings, tool behavior, grep/tail non-canonical | `TRIGGER_BASED_DEFERRED` (NONBLOCKING GLOBAL PENDING，不封存) | `TASKBOARD B-69` (待裁決項 `C-07`) | NONBLOCKING |
+| **Candidate D (B-75)** | `docs/TASKBOARD.md:151`, quota interruption, handoff invariants | `CURRENT` | `TASKBOARD B-75` | NONBLOCKING |
+| **Candidate E (JULES)** | Item 97 TODO G, remote branch `wip-jules-...`, clean origin/main | `FOLD -> B-75 + B-10` (Track only，目前 disabled) | `TASKBOARD B-75`, `B-10` | NONBLOCKING (Jules 重新啟用前) |
+| **Candidate F (NOTEBOOKLM)** | `notebooklm-mcp.exe` Code Integrity Event 3077 | `OPERATIONAL_RESIDUAL` | `TASKBOARD B-100 (R-A)` | NONBLOCKING |
+| **Candidate G (FALSE_GREEN)** | B-93, Item 97 TODO A, Item 99 T8B-F1 orphan channel mutation | `CURRENT GOVERNANCE RESIDUAL` | `TASKBOARD B-100 (R-B)` | NONBLOCKING |
+| **Candidate H (LANGUAGE_GUARD)** | B-89, CHECK 14 tracked file scan vs runtime narration guard | `CURRENT GOVERNANCE / UX RESIDUAL` | `TASKBOARD B-100 (R-C)` | NONBLOCKING |
+| **Candidate I (E-04)** | `docs/TASKBOARD.md:213`, ADR-0022 D14 | `CUTOVER` | `TG-CUT-01` | Telegram Cutover 階段 |
+| **Candidate J (F-05)** | `docs/TASKBOARD.md:251`, ADR-0012, ADR-0022 | `LINE_PHASE` | `LINE-01` | 雙平台並行值守前 |
+| **Candidate K (F-06)** | `docs/TASKBOARD.md:252`, ADR-0022 M8 | `LINE_PHASE` | `LINE-05` | LINE 整合階段 |
+| **Candidate L (D17)** | ADR-0022 D17, 使用者裁決 D-U4 | `POST_MVP` (非取消) | `TG-POST-01` (`M-TG-POST-MVP`) | POST-MVP |
+| **Candidate M (D19–D21)** | ADR-0022 D19–D21, 使用者裁決 D-U4 | `POST_MVP` (非取消) | `TG-POST-02` (`M-TG-POST-MVP`) | POST-MVP |
+| **Candidate N (D22 / D23 / D24 / D26)** | ADR-0022 D22–D26 | `CURRENT` | D22/D23 -> `TG-MVP-14`, D24 -> `TG-MVP-07A`, D26 -> `TG-CUT-02` + `LINE-04` | 各對應實作切片 |
+| **Candidate O (B-96)** | `docs/TASKBOARD.md:179` | `POST_TELEGRAM` (保留不刪除) | `TASKBOARD B-96` | Telegram 上線後 |
+| **Candidate P (B-17)** | `docs/TASKBOARD.md:93` | `USER_DECISION_PENDING` (Macro 建議: `TRIGGER_BASED_DEFERRED`，不封存) | `TASKBOARD C-07` | NONBLOCKING |
+| **Candidate Q (B-28 / B-29)** | `docs/TASKBOARD.md:104, 105` | `USER_DECISION_PENDING` (Macro 建議: `TRIGGER_BASED_DEFERRED`，不封存) | `TASKBOARD C-07` | NONBLOCKING |
+| **Candidate R (F-02)** | `docs/TASKBOARD.md:248`, SOP_01 §2.2 | `FOLD -> B-75` (追蹤: `F-02 → B-75`) | `TASKBOARD B-75` (LINE-04 更新依據為 B-75) | LINE 階段 |
+| **Candidate S1 (觸發積極度)** | `AGENTS.md` §5.1, ADR-0002 | `COMPLETED` (Active contract established) | `AGENTS.md` §5.1, ADR-0002 | 已完成 (CLOSED) |
+| **Candidate S2 (失效即停)** | `.agents/rules/skills-architecture.md` §2, ADR-0004 | `COMPLETED` (Fail-Closed contract active) | `.agents/rules/skills-architecture.md` §2, ADR-0004 | 已完成 (CLOSED) |
+| **Candidate S3 (PowerShell 參數)** | `.agents/rules/powershell-encoding-protocol.md`, ADR-0010 | `COMPLETED` (Strict encoding & absolute path active) | `.agents/rules/powershell-encoding-protocol.md`, ADR-0010 | 已完成 (CLOSED) |
+| **STALE-1 (舊 Bridge 技能)** | `docs/refactor-backlog.md:36, 37` | `SUPERSEDED_BY ADR-0022 D1` (保留歷史留痕，不重啟舊架構) | `ADR-0022 D1`, RECON Matrix | 已由新 Gateway 架構取代 |
+| **STALE-2 (Runtime 尚未開始)** | `docs/refactor-backlog.md:98` | `SUPERSEDED_BY TASKBOARD E-03 Roadmap` (保留歷史留痕，進度以 Roadmap 為準) | `docs/TASKBOARD.md` E-03 Roadmap, RECON Matrix | 已推進至 T8B/G1 |
+| **STALE-3 (Data/logs 必須遷移)** | `docs/TASKBOARD.md:214` | `USER_DECISION_PENDING` (D-U2 不得進 repo，處置待裁決) | `TASKBOARD C-08`, `E-05` | E-05 資料層遷移前 |
+| **ORPHAN-1 (備份保留)** | `sqlite-state-repository.js:145` (backup 包含 content) | `FOLD -> TG-MVP-09A` | `TG-MVP-09A` | Real Telegram go-live 前 |
+| **ORPHAN-2 (SQLite 路徑防護)** | `.gitignore` (缺少 *.sqlite3) | `FOLD -> TG-MVP-09A` | `TG-MVP-09A` | Real Telegram go-live 前 |
+| **ORPHAN-3 (CI 供應鏈)** | `.github/workflows/verify.yml` (未固定 action SHA / permissions) | `POST_NONBLOCKING` (納入橫向傘狀任務) | `TASKBOARD B-100 (R-D)` | NONBLOCKING |
+| **ORPHAN-4 (node:sqlite 守望)** | Node.js 24 pinned, node:sqlite experimental status | `FOLD -> TG-MVP-09A` (Future Node upgrade watchpoint) | `TG-MVP-09A` | Real Telegram go-live 前與未來 Node 升級 |
+
+101. **E-03 G1 外部宏觀審計正式通過與 RECON-01 歷史待辦需求機械對帳（RECON-01 Historical Pending Requirement Reconciliation）**（2026-09-18）
+    - **G1 外部宏觀審計正式結論（External Macro PASS）**：
+      - 審查範圍：`a45634386d5abff5766c6af8af8f084fd4a15fed..0cc4dfc69d7cc7d9e8eebf6e3eceb21e34794534`（共 1 commit：`0cc4dfc69d7cc7d9e8eebf6e3eceb21e34794534` G1 Reconcile E-03 Roadmap Truth）。
+      - 審查人員：GPT 代理審查官（使用者授權）。
+      - A1 qualification：採 A1 = EQUIVALENT（GitHub API + Executor clone cross-check）成立。
+      - exact-SHA GitHub Actions：Run `35247744577`（status completed, conclusion success，jobs: verify = success, gateway-windows = success；Ubuntu canonical: 20 checks PASS，334 unit PASS，13 webapp PASS，ALL 5 Gates PASS；Windows: Node 24.21.0, Gateway bridge 24/24 PASS）。
+      - 判定結論：MACHINE / CI = PASS；MACRO AUDIT = PASS；G1 = ACCEPTED；ACCEPT STATUS = ACCEPT ALL；FINDING_DISPOSITION = NONE。
+      - 全新 accepted checkpoint 正式推進確立為：`0cc4dfc69d7cc7d9e8eebf6e3eceb21e34794534`。
+      - 四項非阻擋追蹤項（G1-R1、G1-R2、G1-R3、G1-R4）由本批 RECON-01 完整處理收斂。
+    - **歷史待辦需求機械對帳與落地（Historical Pending Requirements Reconciliation）**：
+      - **G1 追蹤項收斂**：G1-R1 確立冷啟動合約並確保僅看板頂部保存 mutable value；G1-R2 將 TG-MVP-01 更新為已完成；G1-R3 建立 global task 與 Roadmap slices 之雙向對應；G1-R4 將 TG-MVP-03 狀態對齊正規詞彙（`待辦`，保留決策文字）。
+      - **A–S 全面機械對帳**：B-98（TG-MVP-06）、B-30/B-33（TG-MVP-07）、B-69（TRIGGER_BASED_DEFERRED，不封存）、B-75（收納 F-02 與 Jules 復原）、Jules（DISABLED，待治理）、NotebookLM（Event 3077，不降安全政策，納入 B-100 R-A）、False-Green 假綠燈（B-100 R-B）、Agent 語言守護（B-100 R-C）、E-04（TG-CUT-01）、F-05（LINE-01）、F-06（LINE-05）、D17（TG-POST-01）、D19–D21（TG-POST-02）、D22/D23（TG-MVP-14）、D24（TG-MVP-07A）、D26（TG-CUT-02 / LINE-04）、B-96（POST_TELEGRAM）、B-17/B-28/B-29（待使用者裁決 C-07，不封存）、F-02（併入 B-75，LINE-04 依據更新）；S1..S3 經實測全數於現行 repo 權威規則與 ADR 確立完成（COMPLETED）。
+      - **過期架構明確標記（STALE-1..3）**：舊 bridge 技能已由 ADR-0022 D1 取代；舊 backlog「Runtime 尚未開始」已由 E-03 Roadmap 取代；E-05「Data/logs 必須遷移」依 D-U2 更正為處置待裁決（C-08）。
+      - **孤兒需求收納（ORPHAN-1..4）**：備份保留（ORPHAN-1）、SQLite 路徑防護（ORPHAN-2）、node:sqlite 守望（ORPHAN-4）全數納入新切片 TG-MVP-09A（State Database & Backup Hygiene）；CI 供應鏈可重現性（ORPHAN-3）納入 B-100 R-D。
+      - **看板結構擴充**：新增橫向殘留傘狀任務 `B-100`（NONBLOCKING）；新增待裁決項 `C-07`（B-17/B-28/B-29 處置）與 `C-08`（Data/logs 處置）；Roadmap 新增切片 `TG-MVP-01A`（RECON-01 本批）、`TG-MVP-01B`（G2 權威落地）、`TG-MVP-07A`（D24 設定檔）、`TG-MVP-09A`（資料庫備份衛生）與全新群組 `M-TG-POST-MVP`（TG-POST-01 附件、TG-POST-02 外發授權與 DLP）。
+    - **當前生命週期狀態**：
+      - 本批為 RECON-01 歷史待辦需求機械對帳候選（GOVERNANCE / DOCUMENTATION ONLY）。
+      - E-03 進行中（IN PROGRESS）。
+      - accepted checkpoint 確立為 `0cc4dfc69d7cc7d9e8eebf6e3eceb21e34794534`。
+      - G1 = ACCEPTED。
+      - RECON-01 (TG-MVP-01A) = RECONCILIATION IN PROGRESS / PENDING EXTERNAL MACRO FINAL AUDIT。
+      - 下一切片（NEXT_SLICE）：TG-MVP-02（Inbound Identity & Cursor Semantics ADR）。
+      - 零生產程式碼異動，零 ADR 語意修改，零 MISSION 修改。
       - 本候選提交後等待 External Macro Reviewer（GPT 代理審查官（使用者授權））獨立審核，不得 self-audit。
