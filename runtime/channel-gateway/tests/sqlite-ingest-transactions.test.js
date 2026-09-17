@@ -222,7 +222,7 @@ test('T8B Test 3: Unattended Channel Initialization & D6 Holder Invariant (CANAR
   }
 });
 
-test('T8B Test 4: Idempotent Deduplication & Cursor No-Op (CANARY 4, 5, 6, 7)', () => {
+test('T8B Test 4: Idempotent Deduplication & Zero-Mutation No-Op (CANARY 4, 5, 6, 7, T8B-F1)', () => {
   const harness = createTempHarness();
   try {
     const repo = SqliteStateRepository.open(harness.stateRoot);
@@ -239,7 +239,23 @@ test('T8B Test 4: Idempotent Deduplication & Cursor No-Op (CANARY 4, 5, 6, 7)', 
     assert.strictEqual(firstRes.duplicate, false);
     const originalSeq = firstRes.sequence;
 
-    // Second ingest: same accountId and platformMsgId, but different cursor, content, and channel
+    // Verify chan_secondary does NOT exist prior to duplicate attempt
+    assert.strictEqual(repo.getChannelState('chan_secondary'), null);
+
+    // Snapshot logical tables before duplicate call to verify strict zero-mutation
+    const rawDb = new DatabaseSync(repo.databasePath);
+    let beforeChannels;
+    let beforeInbox;
+    let beforeCursors;
+    try {
+      beforeChannels = rawDb.prepare('SELECT * FROM channel_control ORDER BY channel_id ASC;').all();
+      beforeInbox = rawDb.prepare('SELECT * FROM inbox ORDER BY sequence ASC;').all();
+      beforeCursors = rawDb.prepare('SELECT * FROM ingest_cursor ORDER BY account_id ASC;').all();
+    } finally {
+      rawDb.close();
+    }
+
+    // Second ingest: same accountId and platformMsgId, but different cursor, content, and an unseen channel
     const secondRes = repo.ingestMessage({
       accountId: 'acc_dedupe_1',
       platformMsgId: 'm_alpha',
@@ -255,21 +271,42 @@ test('T8B Test 4: Idempotent Deduplication & Cursor No-Op (CANARY 4, 5, 6, 7)', 
     assert.strictEqual(secondRes.accountId, 'acc_dedupe_1');
     assert.strictEqual(secondRes.platformMsgId, 'm_alpha');
 
+    // Negative canary: chan_secondary must NOT exist in channel_control (zero orphan channel mutation)
+    assert.strictEqual(repo.getChannelState('chan_secondary'), null);
+
     // CRITICAL CANARY: cursor MUST NOT be updated on duplicate replay
     assert.strictEqual(repo.getIngestCursor('acc_dedupe_1'), 'cursor_100');
 
-    // Verify inbox state: exact one row, original content preserved
-    const rawDb = new DatabaseSync(repo.databasePath);
+    // Direct SQLite table inspection
+    const rawDbAfter = new DatabaseSync(repo.databasePath);
     try {
-      const rows = rawDb
-        .prepare('SELECT sequence, channel_id, content FROM inbox WHERE account_id = ? AND platform_msg_id = ?;')
+      const chanCountRow = rawDbAfter
+        .prepare('SELECT count(*) AS cnt FROM channel_control WHERE channel_id = ?;')
+        .get('chan_secondary');
+      assert.strictEqual(chanCountRow.cnt, 0);
+
+      const rows = rawDbAfter
+        .prepare(
+          'SELECT sequence, channel_id, account_id, platform_msg_id, content, status FROM inbox WHERE account_id = ? AND platform_msg_id = ?;'
+        )
         .all('acc_dedupe_1', 'm_alpha');
       assert.strictEqual(rows.length, 1);
       assert.strictEqual(rows[0].sequence, originalSeq);
       assert.strictEqual(rows[0].channel_id, 'chan_primary');
+      assert.strictEqual(rows[0].account_id, 'acc_dedupe_1');
+      assert.strictEqual(rows[0].platform_msg_id, 'm_alpha');
       assert.strictEqual(rows[0].content, '原始訊息內容');
+      assert.strictEqual(rows[0].status, 'queued');
+
+      // Strong zero-mutation check: logical rows must be deep equal before and after duplicate call
+      const afterChannels = rawDbAfter.prepare('SELECT * FROM channel_control ORDER BY channel_id ASC;').all();
+      const afterInbox = rawDbAfter.prepare('SELECT * FROM inbox ORDER BY sequence ASC;').all();
+      const afterCursors = rawDbAfter.prepare('SELECT * FROM ingest_cursor ORDER BY account_id ASC;').all();
+      assert.deepStrictEqual(afterChannels, beforeChannels);
+      assert.deepStrictEqual(afterInbox, beforeInbox);
+      assert.deepStrictEqual(afterCursors, beforeCursors);
     } finally {
-      rawDb.close();
+      rawDbAfter.close();
     }
 
     repo.close();

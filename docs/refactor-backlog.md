@@ -3067,7 +3067,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - B-99 Qualification-Based Macro Auditor & Repo-Visible Handoff（CLOSED / MACRO PASS）。
   - B-97 Pre-B01 Comprehensive Release Audit 已完成（CLOSED / PRE-B01 RELEASE PASS）。
   - B-01 ADR-0002／0004／0010 分層搬移及 Active-Contract 語意修復已完成（CLOSED / MACRO PASS）。
-  - E-03 Runtime 執行層架構推進（IN PROGRESS）：T3/T17 = Node Runtime Pin + Windows CI + Automatic Test Discovery Enforcement Macro PASS / ACCEPTED；T6 = SQLite Repository Foundation Macro PASS / ACCEPTED；T11A = Verified SQLite Pre-Migration Online Backup Primitive Macro PASS / ACCEPTED；T7A = SQLite Migration 2 & Canonical Durable Schema Validation Macro PASS / ACCEPTED；T7B = Macro PASS / ACCEPTED；T8A = Macro PASS / ACCEPTED，accepted checkpoint 確立為 3dd3716ff5a85854ce6620018620bb80d3e4462f；T8B = Atomic Durable Ingest + Cursor Transaction IN PROGRESS / PENDING EXTERNAL MACRO AUDIT；T18 = poll limit folded into T7B，message content persistence completed in T8B；T8（其餘）/T9/T11-main = NOT STARTED；D29 Wave 2H = CANCELLED / MUST NOT RESUME；R2（Reply Result Uncertainty Handling）與 R3（Local API Form）= USER DECISION PENDING；Gateway live 整合尚未開始（NOT STARTED）；B-98 / B-30 / B-33 / F-05 維持開啟狀態於既定前置邊界。
+  - E-03 Runtime 執行層架構推進（IN PROGRESS）：T3/T17 = Node Runtime Pin + Windows CI + Automatic Test Discovery Enforcement Macro PASS / ACCEPTED；T6 = SQLite Repository Foundation Macro PASS / ACCEPTED；T11A = Verified SQLite Pre-Migration Online Backup Primitive Macro PASS / ACCEPTED；T7A = SQLite Migration 2 & Canonical Durable Schema Validation Macro PASS / ACCEPTED；T7B = Macro PASS / ACCEPTED；T8A = Macro PASS / ACCEPTED，accepted checkpoint 確立為 3dd3716ff5a85854ce6620018620bb80d3e4462f；T8B = Machine PASS / Macro HOLD / T8B-F1 DUPLICATE ZERO-MUTATION REPAIR IN PROGRESS；T18 = poll limit folded into T7B，message content persistence completed in T8B；T8（其餘）/T9/T11-main = NOT STARTED；D29 Wave 2H = CANCELLED / MUST NOT RESUME；R2（Reply Result Uncertainty Handling）與 R3（Local API Form）= USER DECISION PENDING；Gateway live 整合尚未開始（NOT STARTED）；B-98 / B-30 / B-33 / F-05 維持開啟狀態於既定前置邊界。
   - C-06 維持待使用者裁決（USER_DECISION_NONBLOCKING，遠端 ruleset 與 required checks 現況已確認）。
   - B-28 / B-29 上游 trigger 重新評估完成，無 B-01 blocker，維持 DEFERRED_BY_USER / POST_B01。
   - B-54 保持待辦（POST_B01 / NONBLOCKING，SOP_12 機器專屬路徑 concrete example 已登錄）。
@@ -3943,3 +3943,21 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
       - T8B = ATOMIC INGEST IMPLEMENTATION IN PROGRESS / PENDING EXTERNAL MACRO FINAL AUDIT。
       - T9、T11-main 保持 NOT STARTED；Gateway live 整合尚未開始（NOT STARTED）；R2 與 R3 維持 USER DECISION PENDING；B-98 維持 pending；Wave 2H 維持 CANCELLED。
       - 本修復候選等待 External Macro Reviewer 獨立審核，不得 self-audit。
+
+99. **E-03 T8B 初審 Machine PASS / Macro HOLD 與 T8B-F1 重複進線零突變修復候選**（2026-09-17）
+    - **T8B 初審結論與 Finding T8B-F1（DUPLICATE PATH NOT ZERO-MUTATION）**：
+      - 候選提交 `f4679a545e4f702a1681018a547e39d3c68cc68a`（E-03 Add Atomic SQLite Ingest）經 External Macro Reviewer（GPT 代理審查官（使用者授權））審查。exact-SHA Actions Verify Run `35235809865` completed / success（jobs: verify = success, gateway-windows = success；Ubuntu canonical: 20 checks PASS，334 unit PASS，13 webapp PASS，ALL 5 Gates PASS；Windows: Node 24.21.0, Gateway bridge 24/24 PASS，`sqlite-ingest-transactions.test.js` 自動發現並執行，未註冊跳過為 0）。機器與 CI 閘門全數通過（MACHINE / CI = PASS）。
+      - 外部宏觀審查判定審查狀態為 `MACRO AUDIT = HOLD`，`ACCEPT STATUS = ONE BOUNDED PRODUCTION + TEST REPAIR REQUIRED`，`FINDING_DISPOSITION = CURRENT E-03 / T8B`。
+      - **Finding T8B-F1 具體缺陷**：原 `ingestMessage()` 交易內部順序為先執行 `ensure channel_control` 建立通道，後執行重複識別查找；若 duplicate 呼叫傳入一個原本不存在的不同 `channelId`，會在確認重複前即於 `channel_control` 插入該未見通道（`holder=NULL, fencing_token=0`），造成非預期的孤兒通道狀態突變，違反「DUPLICATE = ZERO MUTATION」以及 JSDoc 宣告之零突變契約。
+      - **修復方案與實作（E-03 Enforce Zero-Mutation Duplicate Ingest）**：
+        - 於 `runtime/channel-gateway/core/sqlite-state-repository.js` 重新排序交易控制流程：以 `SELECT sequence, channel_id, account_id, platform_msg_id FROM inbox WHERE account_id = ? AND platform_msg_id = ?` 優先執行 canonical 去重檢查；若為重複則立即回傳 `duplicate: true` 且保證 ZERO INSERT / ZERO UPDATE / ZERO channel ensure / ZERO cursor mutation；僅有非重複新訊息才往下執行通道初始化、收件插入與游標更新。
+        - 於 `runtime/channel-gateway/tests/sqlite-ingest-transactions.test.js` 擴充 Test 4，精確驗證 duplicate 傳入未見通道時，`channel_control` 計數維持 0，`getChannelState` 回傳 null；並於重複呼叫前後抓取 `channel_control`、`inbox` 與 `ingest_cursor` 邏輯列快照，機械驗證全狀態深層相等（deepStrictEqual zero-mutation）。
+      - **事故追蹤登錄**：此缺陷同時屬於 Governance False-Green Coverage Gap（TODO A）之實例（CI 綠燈但隱含非預期狀態突變），持續追蹤於既有 TODO A，不修改 check_consistency.py。
+      - **當前生命週期狀態**：
+        - 本批為 E-03 T8B-F1 Duplicate Zero-Mutation Repair 施工候選。
+        - E-03 進行中（IN PROGRESS）。
+        - accepted checkpoint 維持 `3dd3716ff5a85854ce6620018620bb80d3e4462f`（不得自我推進至 f4679a5 或 repair candidate）。
+        - T8A = ACCEPTED。
+        - T8B = BOUNDED REPAIR IN PROGRESS / PENDING EXTERNAL MACRO FINAL AUDIT。
+        - T9、T11-main 保持 NOT STARTED；Gateway live 整合尚未開始（NOT STARTED）；R2 與 R3 維持 USER DECISION PENDING；B-98 維持 pending；Wave 2H 維持 CANCELLED。
+        - 本修復候選等待 External Macro Reviewer 獨立審核，不得 self-audit。

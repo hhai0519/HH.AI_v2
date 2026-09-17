@@ -1984,7 +1984,27 @@ class SqliteStateRepository {
     const curVal = validateCursorValue(input.cursorValue);
 
     return this.#runTransaction((db) => {
-      // 1. Ensure channel existence (unattended message persistence under D10)
+      // 1. Check canonical duplicate identity: UNIQUE(account_id, platform_msg_id) FIRST
+      // Duplicates must be strictly zero-mutation: no channel ensure, no inbox insert, no cursor change.
+      const selectExisting = db.prepare(
+        'SELECT sequence, channel_id, account_id, platform_msg_id FROM inbox WHERE account_id = ? AND platform_msg_id = ?;'
+      );
+      const existing = selectExisting.get(accId, pMsgId);
+
+      if (existing) {
+        // Duplicate identity: idempotent zero-mutation no-op, cursor MUST NOT be updated
+        return {
+          success: true,
+          duplicate: true,
+          sequence: existing.sequence,
+          channelId: existing.channel_id,
+          accountId: accId,
+          platformMsgId: pMsgId,
+        };
+      }
+
+      // 2. Ensure channel existence (unattended message persistence under D10)
+      // Executed ONLY for non-duplicate messages to prevent orphan channel_control rows
       const selectChan = db.prepare(
         'SELECT channel_id, current_holder, fencing_token FROM channel_control WHERE channel_id = ?;'
       );
@@ -1994,24 +2014,6 @@ class SqliteStateRepository {
           'INSERT INTO channel_control (channel_id, current_holder, fencing_token, last_heartbeat_at) VALUES (?, NULL, 0, NULL);'
         );
         insertChan.run(chId);
-      }
-
-      // 2. Check canonical duplicate identity: UNIQUE(account_id, platform_msg_id)
-      const selectExisting = db.prepare(
-        'SELECT sequence, channel_id, account_id, platform_msg_id FROM inbox WHERE account_id = ? AND platform_msg_id = ?;'
-      );
-      const existing = selectExisting.get(accId, pMsgId);
-
-      if (existing) {
-        // Duplicate identity: idempotent no-op, cursor MUST NOT be updated
-        return {
-          success: true,
-          duplicate: true,
-          sequence: existing.sequence,
-          channelId: existing.channel_id,
-          accountId: accId,
-          platformMsgId: pMsgId,
-        };
       }
 
       // 3. Insert new queued message
