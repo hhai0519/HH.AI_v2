@@ -2825,7 +2825,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 5.1 上一批狀態
 
-上次核對通過的 HEAD：750eaeb
+上次核對通過的 HEAD：b15d5bf
 
 - `23af193`（執行者前置檢查 ＋ 回滾程序 ＋ `AUDIT-LOG.md` ＋ 四缺口修正）
   已於 2026-09-02 由審計官核對通過：6 檔異動（含 2 個新檔）、零夾帶、
@@ -3018,6 +3018,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 - `eac38683`（E-03 Channel Gateway Wave 2D Repo-External Config Loader + Startup Path Validation）已於 2026-09-16 由 GPT 代理審查官（使用者授權）全面審查獨立核對通過：9 檔 authorized scope；A1 EQUIVALENT 查證通過；實作 local-config-loader.js（loadDataLocationConfigFromFile、validateStartupDataLocations）；強制 repoRoot 外部限制（名義路徑與 canonical realpath 雙重阻擋，拒絕指向 repo 內部之 symlink）；嚴格 JSON 解析與 Wave 2C 綱要驗證；啟動前驗證 4 個單例資料目錄存在且具備讀寫權限；protectedRoots 至少 1 個目錄且具備讀取權限；零自動建立目錄（zero mkdirSync）；回傳 realpathSync 正規化路徑物件，不修改原輸入；新增 21 項 canonical Node 測試（全庫 77 tests PASS / 2 skipped）；Python CI 橋接測試全數 PASS（8 passed）；exact-SHA Actions Verify Run 35107752002 completed / success；MACRO AUDIT = PASS，ACCEPT STATUS = ACCEPT ALL，FINDING_DISPOSITION = NONE；new accepted checkpoint = eac38683。
 - `994c455`（E-03 Channel Gateway Wave 2E Atomic Durable State Store Foundation & Lossless JSON Bounded Repair）已於 2026-09-17 由 GPT 代理審查官（使用者授權）全面審查獨立核對通過：涵蓋 eac38683..994c455 完整 pending range（共 2 commits：0959d0a 初審 Machine PASS / Macro HOLD，F1 為 Lossless JSON own-property validation incomplete，由 994c455d435bda6c72138706f8f16faa7c036776 徹底解決）；A1 EQUIVALENT 查證通過；exact-SHA Actions Verify Run 35158545662 completed / success（20 checks PASS，319 unit tests PASS，13 webapp tests PASS，5 Gates PASS）；Wave 2E = ACCEPTED；new accepted checkpoint = 994c455。
 - `750eaeb`（E-03 Validate Live Metadata Before Snapshot Clone）已於 2026-09-17 由 GPT 代理審查官（使用者授權）全面審查獨立核對通過：涵蓋 994c455..750eaeb 完整 pending range（共 2 commits：e1f06fd 初審 Machine PASS / Macro HOLD，F1 為 live metadata validated after lossy clone，由 750eaeb160eae2b4f29801ba04d53d1452a59275 徹底解決）；A1 EQUIVALENT 查證通過；exact-SHA Actions Verify Run 35170928666 completed / success（20 checks PASS，320 unit PASS，13 webapp PASS，5 Gates PASS）；Wave 2F = ACCEPTED；new accepted checkpoint = 750eaeb。
+- `b15d5bf`（E-03 Channel Gateway Wave 2G Multi-Channel Durable State Persistence Bridge & T1 Windows node:sqlite Technical Spike Review）已於 2026-09-17 由 GPT 代理審查官（使用者授權）全面審查獨立核對通過：涵蓋 750eaeb..b15d5bf 完整 pending range；A1 EQUIVALENT 查證通過；Wave 2G = ACCEPTED；T1 Windows node:sqlite Technical Spike = GO（D28 prerequisite satisfied，V1-V6 + V8 PASS，V7 reference partial / R3 undecided；F1 process protocol deviation non-blocking / added to B-98；F2 V7 not approval）；new accepted checkpoint = b15d5bf。
 
 ### 5.2 待辦
 
@@ -3064,7 +3065,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - B-99 Qualification-Based Macro Auditor & Repo-Visible Handoff（CLOSED / MACRO PASS）。
   - B-97 Pre-B01 Comprehensive Release Audit 已完成（CLOSED / PRE-B01 RELEASE PASS）。
   - B-01 ADR-0002／0004／0010 分層搬移及 Active-Contract 語意修復已完成（CLOSED / MACRO PASS）。
-  - E-03 Runtime 執行層架構推進（IN PROGRESS）：Wave 2F = MACRO PASS / ACCEPTED；Wave 2G = Multi-Channel Durable State Persistence Bridge（IN PROGRESS / PENDING EXTERNAL MACRO AUDIT）；Gateway live integration = NOT STARTED；LINE implementation = D12 delayed / explicit user trigger；B-98 / B-30 / B-33 / F-05 remain open at their established prerequisite boundaries。
+  - E-03 Runtime 執行層架構推進（IN PROGRESS）：Wave 2G = MACRO PASS / ACCEPTED；D27 確立 node:sqlite 唯一狀態權威；D28 T1 Windows node:sqlite Technical Spike = GO（V1-V6 + V8 PASS，V7 reference partial / R3 undecided；F1 process protocol deviation non-blocking / added to B-98；F2 V7 not approval）；D29 Wave 2H 停止且不得恢復；D30 分層治理；本批執行 SQLite State Route Governance Landing (T2+T4+T5)；next route: governance landing → T3/T17 → T6；Gateway live 整合尚未開始（NOT STARTED）；R2 與 R3 維持 USER DECISION PENDING；B-98 / B-30 / B-33 / F-05 維持開啟狀態於既定前置邊界。
   - C-06 維持待使用者裁決（USER_DECISION_NONBLOCKING，遠端 ruleset 與 required checks 現況已確認）。
   - B-28 / B-29 上游 trigger 重新評估完成，無 B-01 blocker，維持 DEFERRED_BY_USER / POST_B01。
   - B-54 保持待辦（POST_B01 / NONBLOCKING，SOP_12 機器專屬路徑 concrete example 已登錄）。
@@ -3650,3 +3651,36 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
       - Wave 2F = MACRO PASS / ACCEPTED；Wave 2G Multi-Channel Durable State Persistence Bridge = IN PROGRESS / PENDING EXTERNAL MACRO AUDIT。
       - Gateway live 整合尚未開始（NOT STARTED）；B-98 / B-30 / B-33 / F-05 維持開啟狀態於既定前置邊界。
       - 本 candidate 等待 External Macro Reviewer 獨立審核；NEXT_WORK 保持 E-03。
+
+85. **E-03 Wave 2G Final Macro PASS, T1 Windows node:sqlite Technical Spike & SQLite State Route Governance Landing (T2+T4+T5)**（2026-09-17）
+    - **Wave 2G 外部審查結論**：前一施工候選 `b15d5bf9aae59f06e5db12d3438a4e9e2a43102d`（E-03 Add Multi-Channel Durable State Bridge）經 External Macro Reviewer（GPT 代理審查官（使用者授權））全面審查。A1 qualification 採 A1 = EQUIVALENT（GitHub API + Executor clone cross-check）成立；Wave 2G = ACCEPTED；accepted checkpoint 推進至 `b15d5bf`；NEXT_WORK 保持 E-03。
+    - **T1 Windows node:sqlite Technical Spike 成果**：
+      - 依使用者 D28 裁決，正式實作 SQLite 前在 Windows 實體環境進行完整技術驗證（READ_ONLY spike，零 repo mutation，工作區於外部 scratch）。
+      - 測試環境：Windows 11 (10.0.26200)，SSD，Windows Defender Antivirus & Realtime Protection ENABLED，Global Node v24.18.0，Portable Node v24.21.0，SQLite 3.53.4。
+      - 驗證結果：TECHNICAL GATE = GO，D28 REQUIRED GATE = SATISFIED。
+      - 核心指標：
+        - V1（內建模組可用性）：Node built-in `node:sqlite` 與 `DatabaseSync` 成功載入（PASS）。
+        - V2（外鍵與嚴格綱要）：`foreign_keys=ON`、`PRAGMA synchronous=FULL`、`PRAGMA journal_mode=WAL`、STRICT 綱要與外鍵約束全部生效（PASS）。
+        - V3（寫入延遲）：單列提交 p50 0.98ms / p95 2.56ms / p99 3.44ms（門檻 <20ms）；claim50 交易 p50 1.26ms / p95 3.78ms / p99 7.18ms（門檻 <50ms）（PASS）。
+        - V4（行程崩潰一致性）：200 次隨機 kill 迴圈中，未提交交易皆無殘留（200/200 UNCOMMITTED_ABSENT），已提交交易全部完整保留（200/200 COMMITTED_PRESERVED），零重複訊息，資料庫完整性檢驗全數通過（200/200 INTEGRITY_OK）（PASS）。
+        - V5（長時間並發讀寫壓力）：606 秒持續壓力，2,326 次寫入交易，19,406 次讀取查詢，SQLITE_BUSY = 0，未復原鎖定錯誤 = 0，WAL checkpoint PASS，關閉後 shm/wal 控制代碼正常釋放（PASS）。
+        - V6（路徑守衛）：OneDrive 路徑自動拒絕，UNC 網路路徑自動拒絕，本機資料目錄允許（PASS）。
+        - V7（本機具名管道互斥，參考用途）：同名管道第二次 listen 觸發 `EADDRINUSE`，但 ACL 與遠端連線安全為 NOT_TESTABLE；因此 V7 僅屬 partial reference evidence，絕不得解讀為 named pipe approved，R3 維持 USER DECISION PENDING。
+        - V8（線上熱備份）：`VACUUM INTO` 線上備份 500 列資料，備份檔 integrity_check = ok（PASS）。
+      - 過程發現（Non-blocking Findings）：
+        - F1（腳本讀取環境變數偏離）：T1 輔助腳本使用了 `os.environ.get('LOCALAPPDATA')` 且一次將 scratch 路徑輸出至 transcript，違反原始規格之不得讀取/輸出 env 變數值；但因無 credential 洩漏且技術數據不受影響，判定為 non-blocking to technical GO，作為現有 B-98 hardening 之額外證據，不另立重複 task，B-98 維持 pending。
+        - F2（R3 裁決未定）：V7 不能作為 R3 裁決依據，R3 保持待使用者裁決。
+    - **使用者重大裁決（User Decisions D27–D30）**：
+      - D27：Gateway 運作與控制狀態改採 `node:sqlite` 為唯一 authoritative state source，目標取代現有 JSON 持久化層（`durable-state-store.js`、`channel-state-recovery.js`、`channel-state-persistence.js`）。對話歷史存檔（D22）與附件（D17）仍屬檔案系統，不屬 SQLite 狀態契約。
+      - D28：正式實作前需通過 Windows spike，現已 GO 且滿足。
+      - D29：Wave 2H 停止且不得恢復，不得建立 `durable-channel-controller.js`；commit boundary 改由未來 SQLite 交易（T7）實現。
+      - D30：治理採分層架構（ADR 決策理由 + scoped AGENTS 現行規則 + mechanical enforcement + future operational SOP）；本批落實前兩層與 repo state sync，SOP 延後建立。
+    - **治理落實（Governance Landing T2 + T4 + T5）**：
+      - 新增 ADR-0023（`docs/adr/0023-channel-gateway-state-store-sqlite.md`）：Accepted，記錄 D27–D30、T1 spike 實機數據、取代 ADR-0022 之 JSON snapshot choice（不修改 ADR-0022 歷史本文）、凍結現存 JSON 模組為 transitional frozen assets、明確 R2/R3 undecided。
+      - 新增目錄層級治理規則 `runtime/channel-gateway/AGENTS.md`：規範唯一運作狀態來源、PRAGMA 契約（WAL, FULL, foreign_keys, busy_timeout 啟動時 read-back 驗證 fail-closed）、交易邊界（commit 成功始回傳）、幂等進線（`UNIQUE(account_id, platform_msg_id)`）、SQL 安全（禁字串拼接）、前向綱要遷移與驗證備份、備份禁 raw copy（採 VACUUM INTO）、路徑守衛（禁 OneDrive/UNC）、Node 前置限制（待 T3 落地）、與 D22/D17 檔案系統例外。
+      - 泛化根目錄 `AGENTS.md` §6a 為通用 Directory-Scoped Rules；修正 §9 過時之「沒有 npm run test」陳述，確立 `verify_all.py` 為全庫唯一標準入口，service-local tests（如 Gateway `npm test`）透過 canonical bridge 納入。
+    - **當前生命週期狀態**：
+      - E-03 進行中（IN PROGRESS）。
+      - accepted checkpoint = `b15d5bf`。
+      - 後續排程：T3/T17（.nvmrc / CI Node version pin / 自動測試探索）→ T6（SQLite repository 實作）→ T7（交易邊界）→ T8（幂等進線）→ T9（淘汰 JSON 模組）。
+      - Gateway live 整合尚未開始（NOT STARTED）；R2 與 R3 維持 USER DECISION PENDING；B-98 維持 pending。

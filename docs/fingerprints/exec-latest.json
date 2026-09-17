@@ -1,5 +1,5 @@
 {
-  "base_head": "750eaeb",
+  "base_head": "b15d5bf",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 0,
@@ -196,7 +196,7 @@
         "## 5. User-invoked vs Model-invoked 與觸發優先序",
         "### 5.1 安全優先級與 Bucket 觸發積極度（Active Contract）",
         "## 6. Router 技能",
-        "## 6a. 資料夾層級的範圍受限規則",
+        "## 6a. 資料夾層級的範圍受限規則 (Directory-Scoped Rules)",
         "## 7. README 同步規則",
         "## 8. 遷移舊技能時的規則",
         "## 9. 驗證",
@@ -204,8 +204,8 @@
         "### 10.1 遠端健康查證與回報規範",
         "### 10.2 禁止文字摘要辯論 (Anti-Debate Policy)"
       ],
-      "lines": 269,
-      "sha256": "ee65d2b4b856a33a2131e0f0d40b245b2d1f98203b5922db5416e7caf6a55b7e"
+      "lines": 271,
+      "sha256": "e1b9c5684b6f6e23831259473d787aba5985a201c932a8022b6c9c5c5b98eeca"
     },
     "MISSION.md": {
       "fences": 0,
@@ -515,16 +515,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 152,
-      "sha256": "5dd7fef073443002d0a0f3cc2fa609a09efd0e71ec3878623528c01559ca4aeb"
+      "lines": 153,
+      "sha256": "1a2e6d45d45d43ae4385093e865ac23b62efe9f86605477cb92495fc4b88a438"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 121,
-      "sha256": "f0cd7e372c24cd7baffd3ea48de462fe2fd21e99db9615a470fc8b0b7d4e4194"
+      "lines": 122,
+      "sha256": "af8f4f46726f1b3051c16161e3bf4a4c780696030307ec3fe025e2ee503265e1"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -560,7 +560,7 @@
         "## 封存區"
       ],
       "lines": 244,
-      "sha256": "7dcd73108cd55b6d7004e92ec811e1041c44ed04cabc134cac405b0cf66e48a8"
+      "sha256": "c18f0c578bedbbecbd00941bd63b8691620546c4f32e342de5ec792883f08ac4"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -856,6 +856,24 @@
       "lines": 154,
       "sha256": "b1fbb71a42d3b30864432b7370e64e450ce790e7928e6a513a69680bc3445ddf"
     },
+    "docs/adr/0023-channel-gateway-state-store-sqlite.md": {
+      "fences": 0,
+      "headings": [
+        "# ADR-0023: Channel Gateway 採用 node:sqlite 作為唯一運作狀態來源 (Channel Gateway SQLite State Store)",
+        "## Context",
+        "## Decision",
+        "### 1. 唯一權威運作狀態來源 (D27)",
+        "### 2. 檔案系統歸檔邊界排除 (D22 Exclusion)",
+        "### 3. Windows 實機驗證滿足 (D28 & T1 Spike Results)",
+        "### 4. 與 ADR-0022 之關係 (Relationship with ADR-0022)",
+        "### 5. 既有 JSON 持久化模組之地位 (Legacy JSON Modules Status)",
+        "### 6. Wave 2H 之處置 (D29 Cancellation)",
+        "### 7. 待決議事項現況 (Pending Decisions: R2 & R3)",
+        "## Consequences"
+      ],
+      "lines": 78,
+      "sha256": "a07a2429728032c03c17b86e658f586306bb933949aa5ede45bfc339f1789cc4"
+    },
     "docs/mcp-environment-guide.md": {
       "fences": 0,
       "headings": [
@@ -921,8 +939,8 @@
         "### 5.3 待使用者裁決",
         "### 5.4 進行中／等待回報"
       ],
-      "lines": 3652,
-      "sha256": "2262abd2f3597cae43a32e8863c24da64665315446e956d219a63a897638fdce"
+      "lines": 3686,
+      "sha256": "9dbb3d0136823e99e7329de7672370ba3cc7a2f82b50738afdf0204bf016e248"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1192,7 +1210,7 @@
       "sha256": "35bf7dbfa3c7d291b550c3c97a6ae398a22b1dc3624c1d2fc1e4db6963d6e115"
     }
   },
-  "generated_at": "2026-09-17T01:52:50Z",
+  "generated_at": "2026-09-17T04:29:51Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

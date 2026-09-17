@@ -168,21 +168,20 @@ SKILL.md 本體只放：
 
 ---
 
-## 6a. 資料夾層級的範圍受限規則
+## 6a. 資料夾層級的範圍受限規則 (Directory-Scoped Rules)
 
-每個 `skills/<bucket>/` 底下，除了 `README.md`（給人看的索引），還有一份
-`AGENTS.md`（給 agent 看的範圍受限規則），內容包含這個 bucket 的定位、
-在這裡工作要注意什麼、常見錯誤。Antigravity 進到某個 bucket 資料夾工作時，
-應該優先讀那個資料夾自己的 `AGENTS.md`，而不是只依賴根目錄這份。
+為了維持漸進式揭露（Progressive Disclosure）並遵循「避免大型文件」原則，本專案允許並採用目錄層級的範圍受限規則文件（`AGENTS.md`），明確涵蓋：
+- 技能分類桶：`skills/<bucket>/AGENTS.md`（包含該 bucket 之定位、工作注意事項與常見錯誤）
+- 服務執行層：`runtime/<service>/AGENTS.md`（包含該服務專屬之架構規範、運作狀態來源、PRAGMA/交易邊界與安全規則）
 
-**這是刻意的設計選擇**：與其把所有規則塞進一份越來越大的根目錄文件（那樣會違反
-本文件強調的「避免大型文件」原則），不如把 bucket 專屬的規則放在 bucket 自己的
-資料夾裡，各自保持精簡。新增 bucket 專屬規則時，改對應的 `skills/<bucket>/AGENTS.md`，
-不要往根目錄這份塞。
+**執行規則**：
+1. Agent 進入特定目錄或子目錄工作時，必須主動讀取該目錄適用的 scoped `AGENTS.md`，並以其專屬規範為準。
+2. 專屬規則留在目錄自己的 `AGENTS.md` 內，不要往根目錄這份全域文件塞，保持各自精簡。
+3. 並非所有目錄都必須建立 `AGENTS.md`；僅在該目錄具有獨立之 service-specific 或 bucket-specific 治理需求時始行建立。
 
-重要的架構決策（例如「為什麼是這 7 個 bucket」、「為什麼某類邏輯遷移時不重寫」）
+重要的架構決策（例如「為什麼是這 7 個 bucket」、「為什麼 Channel Gateway 狀態儲存採用 SQLite」）
 留痕在 `docs/adr/`，用 ADR（Architecture Decision Record）格式記錄，模板見
-`docs/adr/0000-adr-template.md`。這樣根目錄 `AGENTS.md` 只需要寫「現在的規則是什麼」，
+`docs/adr/0000-adr-template.md`。這樣根目錄及各 scoped `AGENTS.md` 只需要寫「現在的規則是什麼」，
 不用同時解釋「為什麼」，文件才能保持精簡好讀。
 
 ---
@@ -237,8 +236,11 @@ python3 scripts/verify_all.py
 
 任何一項失敗即以非零 exit code 退出。**所有驗證全數通過（exit 0）才視為完成。**
 
-本專案為 Python 專案，**沒有 `npm run test`**。唯一的 Node 相依是
-`skills/execution/playwright-automation/` 內的 vendored 套件，不參與專案測試。
+全專案唯一的標準驗證入口始終為 `python3 scripts/verify_all.py`。
+特定 runtime 服務可自帶服務層級的本地測試指令（例如 `runtime/channel-gateway` 具備 `npm test`），
+但此類 service-local tests 絕非全庫驗證的替代品（non-replacement），
+而必須透過專案標準測試橋接（canonical bridge，如 `scripts/tests/test_channel_gateway_core.py`）納入全庫閘門，
+統一由 `scripts/verify_all.py` 執行。
 雲端代理（如 Google Jules）在獨立 VM 執行時只能依賴本節判斷如何驗證，
 新增測試套件或變更測試方式時，應維護 `scripts/verify_all.py` 中的閘門定義。
 

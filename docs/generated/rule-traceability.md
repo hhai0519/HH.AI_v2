@@ -341,21 +341,24 @@
 | AGENTS.md | 43 | ## 0. 工程紀律規則（最高優先） | SECTION | §0 | PRINCIPLES.md#§0 | RESOLVED |
 | AGENTS.md | 49 | ## 0. 工程紀律規則（最高優先） | FILE | `.agents/rules/role-boundaries.md` | .agents/rules/role-boundaries.md | RESOLVED |
 | AGENTS.md | 157 | ### 5.1 安全優先級與 Bucket 觸發積極度（Active Contract） | ADR | docs/adr/0002-skill-invocation-aggressiveness.md | docs/adr/0002-skill-invocation-aggressiveness.md | RESOLVED |
-| AGENTS.md | 173 | ## 6a. 資料夾層級的範圍受限規則 | FILE | `README.md` | README.md | RESOLVED |
-| AGENTS.md | 174 | ## 6a. 資料夾層級的範圍受限規則 | FILE | `AGENTS.md` | AGENTS.md | RESOLVED |
-| AGENTS.md | 176 | ## 6a. 資料夾層級的範圍受限規則 | FILE | `AGENTS.md` | AGENTS.md | RESOLVED |
-| AGENTS.md | 185 | ## 6a. 資料夾層級的範圍受限規則 | ADR | docs/adr/0000-adr-template.md | docs/adr/0000-adr-template.md | RESOLVED |
-| AGENTS.md | 185 | ## 6a. 資料夾層級的範圍受限規則 | FILE | `AGENTS.md` | AGENTS.md | RESOLVED |
+| AGENTS.md | 173 | ## 6a. 資料夾層級的範圍受限規則 (Directory-Scoped Rules) | FILE | `AGENTS.md` | AGENTS.md | RESOLVED |
+| AGENTS.md | 178 | ## 6a. 資料夾層級的範圍受限規則 (Directory-Scoped Rules) | FILE | `AGENTS.md` | AGENTS.md | RESOLVED |
+| AGENTS.md | 179 | ## 6a. 資料夾層級的範圍受限規則 (Directory-Scoped Rules) | FILE | `AGENTS.md` | AGENTS.md | RESOLVED |
+| AGENTS.md | 180 | ## 6a. 資料夾層級的範圍受限規則 (Directory-Scoped Rules) | FILE | `AGENTS.md` | AGENTS.md | RESOLVED |
+| AGENTS.md | 184 | ## 6a. 資料夾層級的範圍受限規則 (Directory-Scoped Rules) | ADR | docs/adr/0000-adr-template.md | docs/adr/0000-adr-template.md | RESOLVED |
+| AGENTS.md | 184 | ## 6a. 資料夾層級的範圍受限規則 (Directory-Scoped Rules) | FILE | `AGENTS.md` | AGENTS.md | RESOLVED |
+| AGENTS.md | 191 | ## 7. README 同步規則 | FILE | `README.md` | README.md | RESOLVED |
 | AGENTS.md | 192 | ## 7. README 同步規則 | FILE | `README.md` | README.md | RESOLVED |
-| AGENTS.md | 193 | ## 7. README 同步規則 | FILE | `README.md` | README.md | RESOLVED |
-| AGENTS.md | 198 | ## 7. README 同步規則 | FILE | `skills/README.md` | skills/README.md | RESOLVED |
-| AGENTS.md | 203 | ## 7. README 同步規則 | FILE | `docs/refactor-backlog.md` | docs/refactor-backlog.md | RESOLVED |
-| AGENTS.md | 219 | ## 8. 遷移舊技能時的規則 | ADR | docs/adr/0018-vendored-external-assets.md | docs/adr/0018-vendored-external-assets.md | RESOLVED |
-| AGENTS.md | 232 | ## 9. 驗證 | FILE | `scripts/validate_skills.py` | scripts/validate_skills.py | RESOLVED |
-| AGENTS.md | 233 | ## 9. 驗證 | FILE | `scripts/check_consistency.py` | scripts/check_consistency.py | RESOLVED |
+| AGENTS.md | 197 | ## 7. README 同步規則 | FILE | `skills/README.md` | skills/README.md | RESOLVED |
+| AGENTS.md | 202 | ## 7. README 同步規則 | FILE | `docs/refactor-backlog.md` | docs/refactor-backlog.md | RESOLVED |
+| AGENTS.md | 218 | ## 8. 遷移舊技能時的規則 | ADR | docs/adr/0018-vendored-external-assets.md | docs/adr/0018-vendored-external-assets.md | RESOLVED |
+| AGENTS.md | 231 | ## 9. 驗證 | FILE | `scripts/validate_skills.py` | scripts/validate_skills.py | RESOLVED |
+| AGENTS.md | 232 | ## 9. 驗證 | FILE | `scripts/check_consistency.py` | scripts/check_consistency.py | RESOLVED |
+| AGENTS.md | 242 | ## 9. 驗證 | FILE | `scripts/tests/test_channel_gateway_core.py` | scripts/tests/test_channel_gateway_core.py | RESOLVED |
 | AGENTS.md | 243 | ## 9. 驗證 | FILE | `scripts/verify_all.py` | scripts/verify_all.py | RESOLVED |
-| AGENTS.md | 249 | ## 10. Remote Project Health Authority（遠端健康權威） | ADR | docs/adr/0020-github-actions-remote-health-authority.md | docs/adr/0020-github-actions-remote-health-authority.md | RESOLVED |
-| AGENTS.md | 251 | ## 10. Remote Project Health Authority（遠端健康權威） | FILE | `scripts/verify_all.py` | scripts/verify_all.py | RESOLVED |
+| AGENTS.md | 245 | ## 9. 驗證 | FILE | `scripts/verify_all.py` | scripts/verify_all.py | RESOLVED |
+| AGENTS.md | 251 | ## 10. Remote Project Health Authority（遠端健康權威） | ADR | docs/adr/0020-github-actions-remote-health-authority.md | docs/adr/0020-github-actions-remote-health-authority.md | RESOLVED |
+| AGENTS.md | 253 | ## 10. Remote Project Health Authority（遠端健康權威） | FILE | `scripts/verify_all.py` | scripts/verify_all.py | RESOLVED |
 | MISSION.md | 27 | ## 完成的定義 | FILE | `AGENTS.md` | AGENTS.md | RESOLVED |
 | MISSION.md | 28 | ## 完成的定義 | FILE | `scripts/validate_skills.py` | scripts/validate_skills.py | RESOLVED |
 | MISSION.md | 28 | ## 完成的定義 | FILE | `scripts/verify_all.py` | scripts/verify_all.py | RESOLVED |
