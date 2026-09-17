@@ -2825,7 +2825,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 5.1 上一批狀態
 
-上次核對通過的 HEAD：f54b5f1b4ec1acbb32c12555dc4c163fc5da7693
+上次核對通過的 HEAD：5dc27e81fe33d21fd54b805a7f843e63900eb65a
 
 - `23af193`（執行者前置檢查 ＋ 回滾程序 ＋ `AUDIT-LOG.md` ＋ 四缺口修正）
   已於 2026-09-02 由審計官核對通過：6 檔異動（含 2 個新檔）、零夾帶、
@@ -3067,7 +3067,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - B-99 Qualification-Based Macro Auditor & Repo-Visible Handoff（CLOSED / MACRO PASS）。
   - B-97 Pre-B01 Comprehensive Release Audit 已完成（CLOSED / PRE-B01 RELEASE PASS）。
   - B-01 ADR-0002／0004／0010 分層搬移及 Active-Contract 語意修復已完成（CLOSED / MACRO PASS）。
-  - E-03 Runtime 執行層架構推進（IN PROGRESS）：T3/T17 = Node Runtime Pin + Windows CI + Automatic Test Discovery Enforcement Macro PASS / ACCEPTED；accepted checkpoint 保持 f54b5f1b4ec1acbb32c12555dc4c163fc5da7693；T6 = SQLite Repository Foundation Macro PASS / ACCEPTED；T11A = Verified SQLite Pre-Migration Online Backup Primitive Macro PASS / ACCEPTED；T7A = SQLite Migration 2 & Canonical Durable Schema Validation Macro PASS / ACCEPTED；T7B = Machine PASS / Macro HOLD / FINAL NEGATIVE-CANARY REPAIR IN PROGRESS；T18 = poll limit validation folded into T7B, message content persistence pending T8；T8/T9/T11-main = NOT STARTED；D29 Wave 2H = CANCELLED / MUST NOT RESUME；R2 = Reply Result Uncertainty Handling（USER DECISION PENDING）；R3 = Local API Form（USER DECISION PENDING）；Gateway live 整合尚未開始（NOT STARTED）；B-98 / B-30 / B-33 / F-05 維持開啟狀態於既定前置邊界。
+  - E-03 Runtime 執行層架構推進（IN PROGRESS）：T3/T17 = Node Runtime Pin + Windows CI + Automatic Test Discovery Enforcement Macro PASS / ACCEPTED；T6 = SQLite Repository Foundation Macro PASS / ACCEPTED；T11A = Verified SQLite Pre-Migration Online Backup Primitive Macro PASS / ACCEPTED；T7A = SQLite Migration 2 & Canonical Durable Schema Validation Macro PASS / ACCEPTED；T7B = Macro PASS / ACCEPTED，accepted checkpoint 確立為 5dc27e81fe33d21fd54b805a7f843e63900eb65a；T8A = Machine PASS / Semantic PASS / Macro HOLD / GOVERNANCE-EVIDENCE REPAIR IN PROGRESS（Finding T8A-F1 GOVERNANCE / EVIDENCE DRIFT）；T8B = NOT STARTED / BLOCKED UNTIL T8A FINAL MACRO PASS；T18 = poll limit folded into T7B，message content persistence pending T8；T8（其餘）/T9/T11-main = NOT STARTED；D29 Wave 2H = CANCELLED / MUST NOT RESUME；R2（Reply Result Uncertainty Handling）與 R3（Local API Form）= USER DECISION PENDING；Gateway live 整合尚未開始（NOT STARTED）；B-98 / B-30 / B-33 / F-05 維持開啟狀態於既定前置邊界。
   - C-06 維持待使用者裁決（USER_DECISION_NONBLOCKING，遠端 ruleset 與 required checks 現況已確認）。
   - B-28 / B-29 上游 trigger 重新評估完成，無 B-01 blocker，維持 DEFERRED_BY_USER / POST_B01。
   - B-54 保持待辦（POST_B01 / NONBLOCKING，SOP_12 機器專屬路徑 concrete example 已登錄）。
@@ -3898,3 +3898,32 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
       - T7B = FINAL NEGATIVE-CANARY REPAIR IN PROGRESS / PENDING EXTERNAL MACRO AUDIT。
       - T8、T9、T11-main = NOT STARTED；Gateway live = NOT STARTED；R2 與 R3 維持 USER DECISION PENDING；B-98 維持 pending；Wave 2H 維持 CANCELLED。
       - 本修復候選等待 External Macro Reviewer 獨立審核，不得 self-audit。
+
+97. **E-03 T7B 外部宏觀審計通過、T8A Ingress Foundation 施工與治理證據修復候選**（2026-09-17）
+    - **T7B 外部宏觀審計結論（External Macro PASS）**：前段 T7B 施工候選審查範圍 `f54b5f1b4ec1acbb32c12555dc4c163fc5da7693..5dc27e81fe33d21fd54b805a7f843e63900eb65a`（共 2 commits：b261de7 初審 Machine PASS / Macro HOLD，T7B-F1 為負向授權與重啟持久性金絲雀不完整，由 `5dc27e81fe33d21fd54b805a7f843e63900eb65a` 徹底解決）經 External Macro Reviewer（GPT 代理審查官（使用者授權））全面審查。A1 qualification 採 A1 = EQUIVALENT（GitHub API + Executor clone cross-check）成立；exact-SHA Actions Verify Run `35215572491` completed/success（jobs: verify = success, gateway-windows = success；Ubuntu canonical: 20 checks PASS，333 unit PASS，13 webapp PASS，ALL 5 Gates PASS；Windows: Node 24.21.0, Gateway bridge 23/23 PASS）；T7B-F1 完全解決；審查結論：`MACRO AUDIT = PASS`，`ACCEPT STATUS = ACCEPT ALL`，`FINDING_DISPOSITION = NONE`，`T7B = ACCEPTED`；新 accepted checkpoint 正式確立為 `5dc27e81fe33d21fd54b805a7f843e63900eb65a`；T8A 施工阻擋正式解除（CLEARED）。
+    - **T8A 施工候選架構與實作（2d649d2）**：
+      - **綱要版本升級與向前遷移註冊**：`SQLITE_STATE_SCHEMA_VERSION = 3`；Migration 1 與 Migration 2 保持不可變歷史原樣，新增 Migration 3 定義。
+      - **入站收件表格升級（inbox v3）**：v2 身份識別欄位 `receiving_account_id` 與 `message_id` 於 Migration 3 轉換為 `account_id` 與 `platform_msg_id`；新增 `content TEXT` 欄位（歷史列遷移填入 NULL）；規範性去重唯一約束為 `UNIQUE(account_id, platform_msg_id)`。
+      - **攝取游標表格綱要（ingest_cursor）**：建立 `ingest_cursor` STRICT 表格，欄位為 `account_id TEXT PRIMARY KEY CHECK(length(trim(account_id)) > 0)` 與 `cursor_value TEXT NOT NULL CHECK(length(trim(cursor_value)) > 0)`，並具備規範性非空 CHECK 約束。
+      - **遷移前經驗證備份連線**：開啟既有 v2 資料庫時，執行 Migration 3 前調用 `executeVerifiedBackup` 建立 `backup-v2-*.sqlite3` 備份；若遷移失敗則交易 rollback 並安全保留備份。
+      - **測試矩陣全數通過**：新增 Tests 60–68 涵蓋 Migration 3 驗收矩陣，全庫測試通過。
+    - **T8A 初審結論與 Finding T8A-F1（GOVERNANCE / EVIDENCE DRIFT）**：
+      - 候選範圍 `5dc27e81fe33d21fd54b805a7f843e63900eb65a..9dcf0c91da44c1021fa30e0231178f2c10ca95c0`（共 2 commits：2d649d2 實作候選；9dcf0c9 CI 指紋修復）經 External Macro Reviewer（GPT 代理審查官（使用者授權））審查。exact-SHA Actions Verify Run `35220663271` completed/success（jobs: verify = success, gateway-windows = success；Ubuntu 5 Gates PASS；Windows bridge 23/23 PASS）；語意審查 SCHEMA_VERSION=3、MIGRATIONS=[1,2,3]、V2_BACKUP_BEFORE_V3、INBOX_IDENTITY、CONTENT_COLUMN、INGEST_CURSOR、T7B_REGRESSION 全數通過（MACHINE / CI = PASS，SEMANTIC IMPLEMENTATION = PASS）。
+      - 外部審查判定宏觀治理與證據存在漂移（`MACRO AUDIT = HOLD`，`ACCEPT STATUS = BOUNDED GOVERNANCE / EVIDENCE REPAIR REQUIRED`，`FINDING_DISPOSITION = CURRENT E-03`）：Finding T8A-F1 記錄（1）前一執行者於 EXEC-LOG 2d649d2 條目對 schema 描述不準確（誤稱 ingest_cursor 為 channel_id/cursor/updated_at、誤稱 migration 3 移除 sender_id/raw_payload）；（2）TASKBOARD 與 refactor-backlog 尚未反映 T7B Final PASS 及 T8A pending state。accepted checkpoint 維持 `5dc27e81fe33d21fd54b805a7f843e63900eb65a`，不得推進至 2d649d2、9dcf0c9 或修復候選，T8B 維持 NOT AUTHORIZED。
+    - **事故追蹤與待辦事項（Incident Findings & Follow-ups）**：
+      - **TODO A（治理假綠燈覆蓋缺口 / Governance False-Green Coverage Gap）**：T7B 已由 External Macro PASS，但 repo 中之 TASKBOARD、AUDIT-LOG、§5.1 仍停留在舊生命週期狀態，而 canonical CI 仍全綠。歸類為語意與治理假綠燈覆蓋缺口。現有 CHECK 8/9/12 均合法允許 pending range，不可粗暴改為有 pending 即 FAIL；未來需研究如何機械偵測「批次必要之治理狀態轉移未被同步」而不破壞 pending range 架構。本批僅記錄追蹤，不修改 check_consistency.py。
+      - **TODO B（對話語言守衛缺口 / Agent Conversational Language Guard Gap）**：前一 Agent 曾輸出日文工作敘述。現有 CHECK 14 僅能掃描 tracked Markdown 檔案，但 Agent 對話與暫態工作敘述不在掃描邊界內。未來需設計跨 provider 之繁體中文（台灣）輸出契約與對話守衛。本批僅記錄追蹤。
+      - **TODO C（Provider 配額中斷接手協定 / Provider Quota Interruption Recovery）**：Gemini 與 Sonnet 先後於長批次中遭遇配額耗盡中斷，存在工作區不完整與交接上下文遺失風險。歸入既有 B-75（Macro ↔ User ↔ Executor Context Economy）作為其擴充範疇：建立跨 provider 額度中斷接手協定（repo truth first、no destructive reset、dirty-worktree 分流、repo-external phase journal、new-agent takeover prompt、安全耗盡前提前停止）。
+      - **TODO D（執行者證據精確度 / Executor Evidence Accuracy）**：T8A 程式碼實作正確，但執行者散文與 EXEC-LOG 證據對 schema 事實摘要錯誤。歸入既有 B-54（managed facts）與 B-17（semantic drift），未來設計由程式碼機械導出事實（machine-derived evidence）之機制，降低 handoff 報告污染。
+      - **TODO E（跨平台 Shell 可攜性 / Cross-Platform Shell Portability）**：Windows PowerShell 環境下使用 Unix 專屬指令（grep 等）造成 tooling-only 失敗。歸入既有 B-69（跨環境比對原語規則），提示詞與執行者指引明確要求在 Windows canonical execution path 避免未驗證之 Unix 指令（grep、sed、awk），優先使用 Python、Select-String、Get-Content。
+      - **TODO F（T8A 治理與證據漂移修復 / Finding T8A-F1）**：本批完成 TASKBOARD 元數據純度修復、AUDIT-LOG 留痕補正、refactor-backlog §5.1 與 §5.4 同步、EXEC-LOG 證據更正；本修復候選標記為 PENDING EXTERNAL MACRO FINAL AUDIT，不得 self-close。
+    - **當前生命週期狀態**：
+      - 本批為 E-03 T8A SQLite Ingress Schema Migration Foundation 治理狀態與證據修復候選。
+      - E-03 進行中（IN PROGRESS）。
+      - accepted checkpoint 確立為 `5dc27e81fe33d21fd54b805a7f843e63900eb65a`（不得填入 2d649d2、9dcf0c9 或修復候選）。
+      - T7B = ACCEPTED。
+      - T8A = GOVERNANCE-EVIDENCE REPAIR IN PROGRESS / PENDING EXTERNAL MACRO FINAL AUDIT。
+      - T8B = NOT STARTED / BLOCKED UNTIL T8A FINAL MACRO PASS。
+      - T8（其餘）、T9、T11-main 保持 NOT STARTED；Gateway live 整合尚未開始（NOT STARTED）；R2 與 R3 維持 USER DECISION PENDING；B-98 維持 pending；Wave 2H 維持 CANCELLED。
+      - 本修復候選等待 External Macro Reviewer 獨立審核，不得 self-audit。
+
