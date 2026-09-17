@@ -3067,7 +3067,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - B-99 Qualification-Based Macro Auditor & Repo-Visible Handoff（CLOSED / MACRO PASS）。
   - B-97 Pre-B01 Comprehensive Release Audit 已完成（CLOSED / PRE-B01 RELEASE PASS）。
   - B-01 ADR-0002／0004／0010 分層搬移及 Active-Contract 語意修復已完成（CLOSED / MACRO PASS）。
-  - E-03 Runtime 執行層架構推進（IN PROGRESS）：T3/T17 = Node Runtime Pin + Windows CI + Automatic Test Discovery Enforcement Macro PASS / ACCEPTED；accepted checkpoint 推進至 f54b5f1b4ec1acbb32c12555dc4c163fc5da7693；T6 = SQLite Repository Foundation Macro PASS / ACCEPTED；T11A = Verified SQLite Pre-Migration Online Backup Primitive Macro PASS / ACCEPTED；T7A = SQLite Migration 2 & Canonical Durable Schema Validation Macro PASS / ACCEPTED；T7B = Core Durable Channel Transactions IN PROGRESS / PENDING EXTERNAL MACRO AUDIT；T18 = poll limit validation folded into T7B candidate, message content persistence pending T8；T8/T9/T11-main = NOT STARTED；D29 Wave 2H = CANCELLED / MUST NOT RESUME；R2 = Reply Result Uncertainty Handling（USER DECISION PENDING）；R3 = Local API Form（USER DECISION PENDING）；Gateway live 整合尚未開始（NOT STARTED）；B-98 / B-30 / B-33 / F-05 維持開啟狀態於既定前置邊界。
+  - E-03 Runtime 執行層架構推進（IN PROGRESS）：T3/T17 = Node Runtime Pin + Windows CI + Automatic Test Discovery Enforcement Macro PASS / ACCEPTED；accepted checkpoint 保持 f54b5f1b4ec1acbb32c12555dc4c163fc5da7693；T6 = SQLite Repository Foundation Macro PASS / ACCEPTED；T11A = Verified SQLite Pre-Migration Online Backup Primitive Macro PASS / ACCEPTED；T7A = SQLite Migration 2 & Canonical Durable Schema Validation Macro PASS / ACCEPTED；T7B = Machine PASS / Macro HOLD / FINAL NEGATIVE-CANARY REPAIR IN PROGRESS；T18 = poll limit validation folded into T7B, message content persistence pending T8；T8/T9/T11-main = NOT STARTED；D29 Wave 2H = CANCELLED / MUST NOT RESUME；R2 = Reply Result Uncertainty Handling（USER DECISION PENDING）；R3 = Local API Form（USER DECISION PENDING）；Gateway live 整合尚未開始（NOT STARTED）；B-98 / B-30 / B-33 / F-05 維持開啟狀態於既定前置邊界。
   - C-06 維持待使用者裁決（USER_DECISION_NONBLOCKING，遠端 ruleset 與 required checks 現況已確認）。
   - B-28 / B-29 上游 trigger 重新評估完成，無 B-01 blocker，維持 DEFERRED_BY_USER / POST_B01。
   - B-54 保持待辦（POST_B01 / NONBLOCKING，SOP_12 機器專屬路徑 concrete example 已登錄）。
@@ -3872,3 +3872,29 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
       - T8（入站冪等與游標）、T9（淘汰 JSON 模組）、T11-main（完整檔案路徑守衛）保持 NOT STARTED。
       - Gateway live 整合尚未開始（NOT STARTED）；R2 與 R3 維持 USER DECISION PENDING；B-98 維持 pending；Wave 2H 維持 CANCELLED。
       - 本候選等待 External Macro Reviewer 獨立審核，不得 self-audit。
+
+96. **E-03 T7B Complete Durable Transaction Negative Canaries Candidate**（2026-09-17）
+    - **T7B 初審審計結論與 Finding T7B-F1**：前段 T7B 實作候選 `b261de739af4a250bd6939827d605daf931e296a`（E-03 Add SQLite Channel Transactions）經 External Macro Reviewer（GPT 代理審查官（使用者授權））全面審查。Parent 為 `f54b5f1b4ec1acbb32c12555dc4c163fc5da7693`（range commits = 1）。A1 qualification 採 A1 = EQUIVALENT（GitHub API + Executor clone cross-check）成立；exact-SHA Actions Verify Run `35211349114` completed/success（jobs: verify = success, gateway-windows = success；Ubuntu canonical: 20 checks PASS，333 unit tests PASS，13 webapp PASS，ALL 5 Gates PASS；Windows: Node 24.21.0, Gateway bridge 23/23 PASS，new sqlite-channel-transactions.test.js dynamically discovered and executed）。生產代碼語意審查全數通過（COMMIT_BEFORE_SUCCESS = PASS, TAKEOVER = PASS, HEARTBEAT = PASS, EXPIRY = PASS, FIFO_CLAIM = PASS, MULTI_CONNECTION_FENCING = PASS, REPLY_AUTH_READ_ONLY = PASS；no production defect established）。機器驗證全部通過（MACHINE / CI = PASS），但外部審查判定負向授權與重啟持久性驗證矩陣尚缺金絲雀（MACRO AUDIT = HOLD，ACCEPT STATUS = ONE BOUNDED TEST REPAIR REQUIRED，FINDING_DISPOSITION = CURRENT E-03）：
+      - **Finding T7B-F1（NEGATIVE AUTHORIZATION / RESTART CANARY COVERAGE INCOMPLETE）**：validateReplyAuthorization 尚缺 claimed_by 不符（CLAIM_MISMATCH）、claimed_at_token 不符（CLAIM_MISMATCH）、discarded 訊息狀態（MESSAGE_NOT_CLAIMED）之負向金絲雀；重啟持久性尚缺 heartbeat timestamp 跨關閉重啟持久性、expiry 狀態／claimed 捨棄／queued 積壓保留跨關閉重啟持久性、以及非目標狀態（已 discarded 與 replied 列）不受 takeover/expiry 影響之語意金絲雀。accepted checkpoint 維持 `f54b5f1b4ec1acbb32c12555dc4c163fc5da7693`，不得填入 `b261de7` 或修復候選，T8 維持 NOT AUTHORIZED。
+    - **T7B-F1 有邊界測試修復實作**：
+      - **零生產代碼變更**：`runtime/channel-gateway/core/sqlite-state-repository.js` 完全未修改，已確立之生產代碼語意全數維持。
+      - **測試輔助函式擴充**：`seedInboxMessage` 支援選用額外欄位（`claimedBy`、`claimedAtToken`、`discardReason`、`discardedByHolder`、`discardedAtToken`），相容既有 4/5 參數呼叫。
+      - **負向授權金絲雀（CANARY 1, 2, 3, 4）**：
+        - Test 17（CANARY 1）：seed `claimed` 狀態但 `claimed_by = 'holder_other'`，`validateReplyAuthorization` 回傳 `{ authorized: false, reason: 'CLAIM_MISMATCH' }`，資料庫列維持 `claimed` 零異動。
+        - Test 18（CANARY 2）：seed `claimed` 狀態且持有人相符但 `claimed_at_token = 0`，回傳 `{ authorized: false, reason: 'CLAIM_MISMATCH' }`，資料庫列維持 `claimed` 零異動。
+        - Test 19（CANARY 3）：seed `discarded` 狀態訊息，回傳 `{ authorized: false, reason: 'MESSAGE_NOT_CLAIMED', status: 'discarded' }`，資料庫列維持 `discarded` 零異動。
+      - **重啟持久性金絲雀（CANARY 5, 6, 7）**：
+        - Test 20（CANARY 5）：`repo1` 執行 `heartbeatChannel` 寫入確定性時間戳後 `close()`；`repo2` 重新開啟，`getChannelState` 機械驗證持有人、fencing token 與 `lastHeartbeatAt` 跨重啟完整保留。
+        - Test 21（CANARY 6, 7）：`repo1` 領取訊息後執行 `expireChannelHolder`，確認成功後 `close()`；`repo2` 重新開啟，`getChannelState` 驗證 `currentHolder = null`、`lastHeartbeatAt = null`、`fencingToken` 不變、queued `backlogCount = 1`；唯讀驗證前一 claimed 訊息轉為 `discarded`（`discard_reason = 'HEARTBEAT_EXPIRY'`）。
+      - **非目標狀態保留金絲雀（CANARY 8）**：
+        - Test 22（CANARY 8）：在 takeover 與 expiry 交易前後，synthetic 已捨棄（`discarded`）與已回覆（`replied`）列之狀態與 discard metadata 均完全保留，未被重新更新或改寫。
+      - **架構約束金絲雀（CANARY 9, 10, 11, 12）**：Test 16 驗證 `schemaVersion = 2`、`schema_migrations` 歷史為 `[1, 2]`、無 T8 ingress API、無 outbox、無回覆狀態完成標記。
+      - **測試矩陣全數通過**：`sqlite-channel-transactions.test.js` 擴充至 22 項測試（全庫 269 tests，266 pass，3 allowed Windows skips，0 fail，零未註冊跳過）；Python 測試橋接 23/23 PASS。
+    - **當前生命週期狀態**：
+      - 本批為 E-03 T7B Complete Durable Transaction Negative Canaries 測試修復候選。
+      - E-03 進行中（IN PROGRESS）。
+      - accepted checkpoint 保持 `f54b5f1b4ec1acbb32c12555dc4c163fc5da7693`（不得填入 b261de7 或 repair candidate）。
+      - T7A = ACCEPTED。
+      - T7B = FINAL NEGATIVE-CANARY REPAIR IN PROGRESS / PENDING EXTERNAL MACRO AUDIT。
+      - T8、T9、T11-main = NOT STARTED；Gateway live = NOT STARTED；R2 與 R3 維持 USER DECISION PENDING；B-98 維持 pending；Wave 2H 維持 CANCELLED。
+      - 本修復候選等待 External Macro Reviewer 獨立審核，不得 self-audit。

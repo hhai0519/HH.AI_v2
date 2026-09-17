@@ -58,13 +58,33 @@ function createTempHarness() {
  * Synthetic helper to seed messages into inbox via a separate connection,
  * respecting the strict boundary that no production enqueue API exists in T7B.
  */
-function seedInboxMessage(databasePath, channelId, messageId, receivingAccountId = 'acc_default', status = 'queued') {
+function seedInboxMessage(
+  databasePath,
+  channelId,
+  messageId,
+  receivingAccountId = 'acc_default',
+  status = 'queued',
+  extra = {}
+) {
   const rawDb = new DatabaseSync(databasePath);
   try {
     const stmt = rawDb.prepare(
-      'INSERT INTO inbox (channel_id, message_id, receiving_account_id, status) VALUES (?, ?, ?, ?);'
+      `INSERT INTO inbox (
+        channel_id, message_id, receiving_account_id, status,
+        claimed_by, claimed_at_token, discard_reason, discarded_by_holder, discarded_at_token
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);`
     );
-    stmt.run(channelId, String(messageId), receivingAccountId, status);
+    stmt.run(
+      channelId,
+      String(messageId),
+      receivingAccountId,
+      status,
+      extra.claimedBy ?? null,
+      extra.claimedAtToken ?? null,
+      extra.discardReason ?? null,
+      extra.discardedByHolder ?? null,
+      extra.discardedAtToken ?? null
+    );
   } finally {
     rawDb.close();
   }
@@ -711,8 +731,274 @@ test('SqliteChannelTransactions - 16. architectural invariants: schema version 2
         const tNames = tRows.map((r) => r.name);
         assert.strictEqual(tNames.includes('ingest_cursor'), false);
         assert.strictEqual(tNames.includes('outbox'), false);
+
+        // CANARY 10: MIGRATIONS remain [1, 2]
+        const mRows = rawDb.prepare('SELECT version FROM schema_migrations ORDER BY version ASC;').all();
+        assert.deepStrictEqual(mRows.map((r) => r.version), [1, 2]);
       } finally {
         rawDb.close();
+      }
+    } finally {
+      repo.close();
+    }
+  } finally {
+    harness.cleanup();
+  }
+});
+
+// 17. Reply authorization rejects claimed_by mismatch with CLAIM_MISMATCH (CANARY 1, 4)
+test('SqliteChannelTransactions - 17. reply authorization rejects claimed_by mismatch with CLAIM_MISMATCH (CANARY 1, 4)', () => {
+  const harness = createTempHarness();
+  try {
+    const repo = new SqliteStateRepository(harness.stateRoot);
+    try {
+      repo.takeoverChannel('line:group:100', 'holder_A');
+      seedInboxMessage(repo.databasePath, 'line:group:100', 'msg_mismatch_holder', 'acc_1', 'claimed', {
+        claimedBy: 'holder_other',
+        claimedAtToken: 1,
+      });
+
+      const res = repo.validateReplyAuthorization('line:group:100', 'holder_A', 1, 'msg_mismatch_holder', 'acc_1');
+      assert.strictEqual(res.authorized, false);
+      assert.strictEqual(res.reason, 'CLAIM_MISMATCH');
+
+      // Verify DB row was NOT mutated (CANARY 4: read-only)
+      const rawDb = new DatabaseSync(repo.databasePath, { readOnly: true });
+      try {
+        const row = rawDb.prepare("SELECT status, claimed_by, claimed_at_token FROM inbox WHERE message_id = 'msg_mismatch_holder';").get();
+        assert.strictEqual(row.status, 'claimed');
+        assert.strictEqual(row.claimed_by, 'holder_other');
+        assert.strictEqual(row.claimed_at_token, 1);
+      } finally {
+        rawDb.close();
+      }
+    } finally {
+      repo.close();
+    }
+  } finally {
+    harness.cleanup();
+  }
+});
+
+// 18. Reply authorization rejects claimed_at_token mismatch with CLAIM_MISMATCH (CANARY 2, 4)
+test('SqliteChannelTransactions - 18. reply authorization rejects claimed_at_token mismatch with CLAIM_MISMATCH (CANARY 2, 4)', () => {
+  const harness = createTempHarness();
+  try {
+    const repo = new SqliteStateRepository(harness.stateRoot);
+    try {
+      repo.takeoverChannel('line:group:100', 'holder_A');
+      seedInboxMessage(repo.databasePath, 'line:group:100', 'msg_mismatch_token', 'acc_1', 'claimed', {
+        claimedBy: 'holder_A',
+        claimedAtToken: 0,
+      });
+
+      const res = repo.validateReplyAuthorization('line:group:100', 'holder_A', 1, 'msg_mismatch_token', 'acc_1');
+      assert.strictEqual(res.authorized, false);
+      assert.strictEqual(res.reason, 'CLAIM_MISMATCH');
+
+      // Verify DB row was NOT mutated (CANARY 4: read-only)
+      const rawDb = new DatabaseSync(repo.databasePath, { readOnly: true });
+      try {
+        const row = rawDb.prepare("SELECT status, claimed_by, claimed_at_token FROM inbox WHERE message_id = 'msg_mismatch_token';").get();
+        assert.strictEqual(row.status, 'claimed');
+        assert.strictEqual(row.claimed_by, 'holder_A');
+        assert.strictEqual(row.claimed_at_token, 0);
+      } finally {
+        rawDb.close();
+      }
+    } finally {
+      repo.close();
+    }
+  } finally {
+    harness.cleanup();
+  }
+});
+
+// 19. Reply authorization rejects discarded message with MESSAGE_NOT_CLAIMED (CANARY 3, 4)
+test('SqliteChannelTransactions - 19. reply authorization rejects discarded message with MESSAGE_NOT_CLAIMED (CANARY 3, 4)', () => {
+  const harness = createTempHarness();
+  try {
+    const repo = new SqliteStateRepository(harness.stateRoot);
+    try {
+      repo.takeoverChannel('line:group:100', 'holder_A');
+      seedInboxMessage(repo.databasePath, 'line:group:100', 'msg_discarded', 'acc_1', 'discarded', {
+        discardReason: 'HEARTBEAT_EXPIRY',
+        discardedByHolder: 'holder_A',
+        discardedAtToken: 1,
+      });
+
+      const res = repo.validateReplyAuthorization('line:group:100', 'holder_A', 1, 'msg_discarded', 'acc_1');
+      assert.strictEqual(res.authorized, false);
+      assert.strictEqual(res.reason, 'MESSAGE_NOT_CLAIMED');
+      assert.strictEqual(res.status, 'discarded');
+
+      // Verify DB row was NOT mutated (CANARY 4: read-only)
+      const rawDb = new DatabaseSync(repo.databasePath, { readOnly: true });
+      try {
+        const row = rawDb.prepare("SELECT status, discard_reason FROM inbox WHERE message_id = 'msg_discarded';").get();
+        assert.strictEqual(row.status, 'discarded');
+        assert.strictEqual(row.discard_reason, 'HEARTBEAT_EXPIRY');
+      } finally {
+        rawDb.close();
+      }
+    } finally {
+      repo.close();
+    }
+  } finally {
+    harness.cleanup();
+  }
+});
+
+// 20. Heartbeat timestamp survives repository restart (CANARY 5)
+test('SqliteChannelTransactions - 20. heartbeat timestamp survives repository restart (CANARY 5)', () => {
+  const harness = createTempHarness();
+  try {
+    const repo1 = new SqliteStateRepository(harness.stateRoot);
+    repo1.takeoverChannel('line:group:100', 'holder_alpha', { timestamp: 1700000000 });
+    const hbRes = repo1.heartbeatChannel('line:group:100', 'holder_alpha', 1, { timestamp: 1700055555 });
+    assert.strictEqual(hbRes.success, true);
+    assert.strictEqual(hbRes.lastHeartbeatAt, 1700055555);
+    repo1.close();
+
+    // Reopen repository
+    const repo2 = new SqliteStateRepository(harness.stateRoot);
+    try {
+      const state = repo2.getChannelState('line:group:100');
+      assert.deepStrictEqual(state, {
+        channelId: 'line:group:100',
+        currentHolder: 'holder_alpha',
+        fencingToken: 1,
+        lastHeartbeatAt: 1700055555,
+        backlogCount: 0,
+      });
+    } finally {
+      repo2.close();
+    }
+  } finally {
+    harness.cleanup();
+  }
+});
+
+// 21. Expiry state, discarded claimed rows, and queued backlog survive restart (CANARY 6, 7)
+test('SqliteChannelTransactions - 21. expiry state, discarded claimed rows, and queued backlog survive restart (CANARY 6, 7)', () => {
+  const harness = createTempHarness();
+  try {
+    const repo1 = new SqliteStateRepository(harness.stateRoot);
+    repo1.takeoverChannel('line:group:100', 'holder_alpha');
+    seedInboxMessage(repo1.databasePath, 'line:group:100', 'msg_claimed_1', 'acc_1');
+    seedInboxMessage(repo1.databasePath, 'line:group:100', 'msg_queued_1', 'acc_1');
+
+    // Claim msg_claimed_1
+    const claimRes = repo1.claimMessages('line:group:100', 'holder_alpha', 1, 1);
+    assert.strictEqual(claimRes.claimedMessages.length, 1);
+
+    // Expire holder
+    const expRes = repo1.expireChannelHolder('line:group:100');
+    assert.strictEqual(expRes.success, true);
+    assert.strictEqual(expRes.expiredHolder, 'holder_alpha');
+    assert.strictEqual(expRes.fencingToken, 1);
+    assert.strictEqual(expRes.backlogCount, 1);
+    repo1.close();
+
+    // Reopen repository
+    const repo2 = new SqliteStateRepository(harness.stateRoot);
+    try {
+      const state = repo2.getChannelState('line:group:100');
+      assert.deepStrictEqual(state, {
+        channelId: 'line:group:100',
+        currentHolder: null,
+        fencingToken: 1,
+        lastHeartbeatAt: null,
+        backlogCount: 1,
+      });
+
+      // Read-only DB verify
+      const rawDb = new DatabaseSync(repo2.databasePath, { readOnly: true });
+      try {
+        const rows = rawDb.prepare('SELECT message_id, status, discard_reason, discarded_by_holder, discarded_at_token FROM inbox ORDER BY sequence ASC;').all();
+        assert.strictEqual(rows.length, 2);
+        assert.strictEqual(rows[0].message_id, 'msg_claimed_1');
+        assert.strictEqual(rows[0].status, 'discarded');
+        assert.strictEqual(rows[0].discard_reason, 'HEARTBEAT_EXPIRY');
+        assert.strictEqual(rows[0].discarded_by_holder, 'holder_alpha');
+        assert.strictEqual(rows[0].discarded_at_token, 1);
+
+        assert.strictEqual(rows[1].message_id, 'msg_queued_1');
+        assert.strictEqual(rows[1].status, 'queued');
+        assert.strictEqual(rows[1].discard_reason, null);
+      } finally {
+        rawDb.close();
+      }
+    } finally {
+      repo2.close();
+    }
+  } finally {
+    harness.cleanup();
+  }
+});
+
+// 22. Takeover and expiry preserve already-discarded and replied rows (CANARY 8)
+test('SqliteChannelTransactions - 22. takeover and expiry preserve already-discarded and replied rows (CANARY 8)', () => {
+  const harness = createTempHarness();
+  try {
+    const repo = new SqliteStateRepository(harness.stateRoot);
+    try {
+      repo.takeoverChannel('line:group:100', 'holder_init');
+
+      // Seed already discarded and replied messages
+      seedInboxMessage(repo.databasePath, 'line:group:100', 'msg_prev_discarded', 'acc_1', 'discarded', {
+        discardReason: 'PRIOR_REASON',
+        discardedByHolder: 'holder_prev',
+        discardedAtToken: 0,
+      });
+      seedInboxMessage(repo.databasePath, 'line:group:100', 'msg_already_replied', 'acc_1', 'replied');
+      seedInboxMessage(repo.databasePath, 'line:group:100', 'msg_active_claim', 'acc_1');
+
+      // Claim msg_active_claim
+      repo.claimMessages('line:group:100', 'holder_init', 1, 1);
+
+      // 1. Takeover by holder_new
+      const toRes = repo.takeoverChannel('line:group:100', 'holder_new');
+      assert.strictEqual(toRes.success, true);
+      assert.strictEqual(toRes.discardedMessages.length, 1);
+      assert.strictEqual(toRes.discardedMessages[0].messageId, 'msg_active_claim');
+
+      // Verify msg_prev_discarded and msg_already_replied were NOT altered
+      const rawDb = new DatabaseSync(repo.databasePath, { readOnly: true });
+      try {
+        const dRow = rawDb.prepare("SELECT status, discard_reason, discarded_by_holder, discarded_at_token FROM inbox WHERE message_id = 'msg_prev_discarded';").get();
+        assert.strictEqual(dRow.status, 'discarded');
+        assert.strictEqual(dRow.discard_reason, 'PRIOR_REASON');
+        assert.strictEqual(dRow.discarded_by_holder, 'holder_prev');
+        assert.strictEqual(dRow.discarded_at_token, 0);
+
+        const rRow = rawDb.prepare("SELECT status, discard_reason FROM inbox WHERE message_id = 'msg_already_replied';").get();
+        assert.strictEqual(rRow.status, 'replied');
+        assert.strictEqual(rRow.discard_reason, null);
+      } finally {
+        rawDb.close();
+      }
+
+      // 2. Now claim and expire on holder_new
+      seedInboxMessage(repo.databasePath, 'line:group:100', 'msg_claim_2', 'acc_1');
+      repo.claimMessages('line:group:100', 'holder_new', 2, 1);
+      const expRes = repo.expireChannelHolder('line:group:100');
+      assert.strictEqual(expRes.success, true);
+
+      // Verify again: msg_prev_discarded and msg_already_replied still unaltered
+      const rawDb2 = new DatabaseSync(repo.databasePath, { readOnly: true });
+      try {
+        const dRow = rawDb2.prepare("SELECT status, discard_reason, discarded_by_holder, discarded_at_token FROM inbox WHERE message_id = 'msg_prev_discarded';").get();
+        assert.strictEqual(dRow.status, 'discarded');
+        assert.strictEqual(dRow.discard_reason, 'PRIOR_REASON');
+        assert.strictEqual(dRow.discarded_by_holder, 'holder_prev');
+        assert.strictEqual(dRow.discarded_at_token, 0);
+
+        const rRow = rawDb2.prepare("SELECT status, discard_reason FROM inbox WHERE message_id = 'msg_already_replied';").get();
+        assert.strictEqual(rRow.status, 'replied');
+        assert.strictEqual(rRow.discard_reason, null);
+      } finally {
+        rawDb2.close();
       }
     } finally {
       repo.close();
