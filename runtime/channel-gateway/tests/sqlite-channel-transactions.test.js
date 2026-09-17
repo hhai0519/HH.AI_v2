@@ -710,9 +710,9 @@ test('SqliteChannelTransactions - 16. architectural invariants: schema version 3
     try {
       assert.strictEqual(repo.schemaVersion, 3, 'CANARY 18: applied schema version is 3');
 
-      // CANARY 19: No production ingress API
+      // CANARY 19: Authorized ingestMessage in T8B; arbitrary other ingress remains absent
+      assert.strictEqual(typeof repo.ingestMessage, 'function');
       assert.strictEqual(repo.enqueueMessage, undefined);
-      assert.strictEqual(repo.ingestMessage, undefined);
       assert.strictEqual(repo.receiveMessage, undefined);
       assert.strictEqual(repo.insertInboundMessage, undefined);
 

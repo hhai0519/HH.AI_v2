@@ -1048,6 +1048,46 @@ function validateClaimLimit(limit) {
   return limit;
 }
 
+function validateAccountId(accountId) {
+  if (typeof accountId !== 'string') {
+    throw new TypeError('accountId must be a string (fail-closed)');
+  }
+  const trimmed = accountId.trim();
+  if (trimmed.length === 0) {
+    throw new Error('accountId must be a non-empty string (fail-closed)');
+  }
+  return trimmed;
+}
+
+function validatePlatformMsgId(platformMsgId) {
+  if (platformMsgId === null || platformMsgId === undefined) {
+    throw new Error('platformMsgId is required (fail-closed)');
+  }
+  const str = String(platformMsgId).trim();
+  if (str.length === 0) {
+    throw new Error('platformMsgId must not be empty (fail-closed)');
+  }
+  return str;
+}
+
+function validateCursorValue(cursorValue) {
+  if (cursorValue === null || cursorValue === undefined) {
+    throw new Error('cursorValue is required (fail-closed)');
+  }
+  const str = String(cursorValue).trim();
+  if (str.length === 0) {
+    throw new Error('cursorValue must not be empty (fail-closed)');
+  }
+  return str;
+}
+
+function validateMessageContent(content) {
+  if (typeof content !== 'string') {
+    throw new TypeError('content must be a string (fail-closed)');
+  }
+  return content;
+}
+
 class SqliteStateRepository {
   /** @type {DatabaseSync|null} */
   #db = null;
@@ -1894,6 +1934,125 @@ class SqliteStateRepository {
       lastHeartbeatAt: ctrlRow.last_heartbeat_at,
       backlogCount,
     };
+  }
+
+  /**
+   * Ingests an inbound message atomically with per-account cursor tracking (T8B).
+   *
+   * Invariants (D10, D30, T8B):
+   * - Atomically persists inbound message and advances cursor in a SINGLE immediate transaction.
+   * - Ensures channel existence in channel_control without taking over holder (holder=NULL, token=0).
+   * - Preserves existing holder, fencing_token, and heartbeat if channel already exists.
+   * - Idempotent deduplication based on canonical identity (account_id, platform_msg_id):
+   *     - If (account_id, platform_msg_id) already exists:
+   *         - Returns { success: true, duplicate: true, sequence, channelId, accountId, platformMsgId }.
+   *         - Zero mutation: does NOT insert duplicate, does NOT update content/status/channel.
+   *         - CRITICAL: DUPLICATE MUST NOT UPDATE CURSOR.
+   *     - If new identity:
+   *         - Inserts inbox row with status='queued', exact content (untrimmed).
+   *         - Upserts ingest_cursor(account_id, cursor_value) in SAME transaction.
+   *         - Returns { success: true, duplicate: false, sequence, channelId, accountId, platformMsgId, cursorValue }.
+   * - Rejects invalid inputs before any transaction mutation.
+   * - Result returned only after COMMIT succeeds.
+   *
+   * @param {{
+   *   accountId: string,
+   *   platformMsgId: string|number,
+   *   channelId: string,
+   *   content: string,
+   *   cursorValue: string|number
+   * }} input
+   * @returns {{
+   *   success: true,
+   *   duplicate: boolean,
+   *   sequence: number,
+   *   channelId: string,
+   *   accountId: string,
+   *   platformMsgId: string,
+   *   cursorValue?: string
+   * }}
+   */
+  ingestMessage(input) {
+    if (!input || typeof input !== 'object' || Array.isArray(input)) {
+      throw new TypeError('ingestMessage input must be a non-null object (fail-closed)');
+    }
+
+    const accId = validateAccountId(input.accountId);
+    const pMsgId = validatePlatformMsgId(input.platformMsgId);
+    const chId = validateChannelId(input.channelId);
+    const content = validateMessageContent(input.content);
+    const curVal = validateCursorValue(input.cursorValue);
+
+    return this.#runTransaction((db) => {
+      // 1. Ensure channel existence (unattended message persistence under D10)
+      const selectChan = db.prepare(
+        'SELECT channel_id, current_holder, fencing_token FROM channel_control WHERE channel_id = ?;'
+      );
+      const chanRow = selectChan.get(chId);
+      if (!chanRow) {
+        const insertChan = db.prepare(
+          'INSERT INTO channel_control (channel_id, current_holder, fencing_token, last_heartbeat_at) VALUES (?, NULL, 0, NULL);'
+        );
+        insertChan.run(chId);
+      }
+
+      // 2. Check canonical duplicate identity: UNIQUE(account_id, platform_msg_id)
+      const selectExisting = db.prepare(
+        'SELECT sequence, channel_id, account_id, platform_msg_id FROM inbox WHERE account_id = ? AND platform_msg_id = ?;'
+      );
+      const existing = selectExisting.get(accId, pMsgId);
+
+      if (existing) {
+        // Duplicate identity: idempotent no-op, cursor MUST NOT be updated
+        return {
+          success: true,
+          duplicate: true,
+          sequence: existing.sequence,
+          channelId: existing.channel_id,
+          accountId: accId,
+          platformMsgId: pMsgId,
+        };
+      }
+
+      // 3. Insert new queued message
+      const insertMsg = db.prepare(
+        "INSERT INTO inbox (channel_id, account_id, platform_msg_id, content, status) VALUES (?, ?, ?, ?, 'queued');"
+      );
+      const msgResult = insertMsg.run(chId, accId, pMsgId, content);
+      const sequence = Number(msgResult.lastInsertRowid);
+
+      // 4. Update/insert ingest cursor in SAME transaction
+      const upsertCursor = db.prepare(
+        'INSERT INTO ingest_cursor (account_id, cursor_value) VALUES (?, ?) ON CONFLICT(account_id) DO UPDATE SET cursor_value = excluded.cursor_value;'
+      );
+      upsertCursor.run(accId, curVal);
+
+      return {
+        success: true,
+        duplicate: false,
+        sequence,
+        channelId: chId,
+        accountId: accId,
+        platformMsgId: pMsgId,
+        cursorValue: curVal,
+      };
+    });
+  }
+
+  /**
+   * Minimal strictly READ-ONLY lookup of per-account ingest cursor.
+   *
+   * @param {string} accountId
+   * @returns {string|null} Cursor string if exists, or null
+   */
+  getIngestCursor(accountId) {
+    if (!this.#isOpen || !this.#db) {
+      throw new Error('Repository is closed (cannot read cursor on closed repository)');
+    }
+    const accId = validateAccountId(accountId);
+    const stmt = this.#db.prepare('SELECT cursor_value FROM ingest_cursor WHERE account_id = ?;');
+    const row = stmt.get(accId);
+    return row ? row.cursor_value : null;
   }
 
   /**

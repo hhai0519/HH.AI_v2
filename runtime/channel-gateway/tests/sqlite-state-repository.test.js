@@ -1548,26 +1548,25 @@ test('SqliteStateRepository - 51. T8A: architectural boundaries: ingest_cursor p
         assert.strictEqual(found, undefined, `Forbidden table '${tName}' must not exist in T8A`);
       }
 
-      // 3. T8A architectural boundaries: forbidden production ingress / mutation methods must not exist
+      // 3. T8 architectural boundaries: forbidden production ingress / mutation methods must not exist
       const forbiddenMethods = [
         'enqueueMessage',
-        'ingestMessage',
         'advanceCursor',
         'pollMessages',
         'authorizeReply',
         'discardQueuedForAccount',
       ];
       for (const m of forbiddenMethods) {
-        assert.strictEqual(repo[m], undefined, `Forbidden method '${m}' must not be exposed in T8A`);
+        assert.strictEqual(repo[m], undefined, `Forbidden method '${m}' must not be exposed`);
         assert.strictEqual(
           SqliteStateRepository.prototype[m],
           undefined,
-          `Forbidden method '${m}' must not exist on prototype in T8A`
+          `Forbidden method '${m}' must not exist on prototype`
         );
       }
 
-      // T7B transaction methods must be present as functions
-      const t7bMethods = [
+      // T7B and T8B methods must be present as functions
+      const authorizedMethods = [
         'takeoverChannel',
         'heartbeatChannel',
         'expireChannelHolder',
@@ -1575,12 +1574,14 @@ test('SqliteStateRepository - 51. T8A: architectural boundaries: ingest_cursor p
         'claimMessages',
         'validateReplyAuthorization',
         'getChannelState',
+        'ingestMessage',
+        'getIngestCursor',
       ];
-      for (const m of t7bMethods) {
+      for (const m of authorizedMethods) {
         assert.strictEqual(
           typeof repo[m],
           'function',
-          `T7B transaction method '${m}' must be exposed as function`
+          `Authorized method '${m}' must be exposed as function`
         );
       }
     } finally {

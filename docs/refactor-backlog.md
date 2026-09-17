@@ -2825,7 +2825,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 5.1 上一批狀態
 
-上次核對通過的 HEAD：5dc27e81fe33d21fd54b805a7f843e63900eb65a
+上次核對通過的 HEAD：3dd3716ff5a85854ce6620018620bb80d3e4462f
 
 - `23af193`（執行者前置檢查 ＋ 回滾程序 ＋ `AUDIT-LOG.md` ＋ 四缺口修正）
   已於 2026-09-02 由審計官核對通過：6 檔異動（含 2 個新檔）、零夾帶、
@@ -3067,7 +3067,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - B-99 Qualification-Based Macro Auditor & Repo-Visible Handoff（CLOSED / MACRO PASS）。
   - B-97 Pre-B01 Comprehensive Release Audit 已完成（CLOSED / PRE-B01 RELEASE PASS）。
   - B-01 ADR-0002／0004／0010 分層搬移及 Active-Contract 語意修復已完成（CLOSED / MACRO PASS）。
-  - E-03 Runtime 執行層架構推進（IN PROGRESS）：T3/T17 = Node Runtime Pin + Windows CI + Automatic Test Discovery Enforcement Macro PASS / ACCEPTED；T6 = SQLite Repository Foundation Macro PASS / ACCEPTED；T11A = Verified SQLite Pre-Migration Online Backup Primitive Macro PASS / ACCEPTED；T7A = SQLite Migration 2 & Canonical Durable Schema Validation Macro PASS / ACCEPTED；T7B = Macro PASS / ACCEPTED，accepted checkpoint 確立為 5dc27e81fe33d21fd54b805a7f843e63900eb65a；T8A = Machine PASS / Semantic PASS / Macro HOLD / GOVERNANCE-EVIDENCE REPAIR IN PROGRESS（Finding T8A-F1 GOVERNANCE / EVIDENCE DRIFT）；T8B = NOT STARTED / BLOCKED UNTIL T8A FINAL MACRO PASS；T18 = poll limit folded into T7B，message content persistence pending T8；T8（其餘）/T9/T11-main = NOT STARTED；D29 Wave 2H = CANCELLED / MUST NOT RESUME；R2（Reply Result Uncertainty Handling）與 R3（Local API Form）= USER DECISION PENDING；Gateway live 整合尚未開始（NOT STARTED）；B-98 / B-30 / B-33 / F-05 維持開啟狀態於既定前置邊界。
+  - E-03 Runtime 執行層架構推進（IN PROGRESS）：T3/T17 = Node Runtime Pin + Windows CI + Automatic Test Discovery Enforcement Macro PASS / ACCEPTED；T6 = SQLite Repository Foundation Macro PASS / ACCEPTED；T11A = Verified SQLite Pre-Migration Online Backup Primitive Macro PASS / ACCEPTED；T7A = SQLite Migration 2 & Canonical Durable Schema Validation Macro PASS / ACCEPTED；T7B = Macro PASS / ACCEPTED；T8A = Macro PASS / ACCEPTED，accepted checkpoint 確立為 3dd3716ff5a85854ce6620018620bb80d3e4462f；T8B = Atomic Durable Ingest + Cursor Transaction IN PROGRESS / PENDING EXTERNAL MACRO AUDIT；T18 = poll limit folded into T7B，message content persistence completed in T8B；T8（其餘）/T9/T11-main = NOT STARTED；D29 Wave 2H = CANCELLED / MUST NOT RESUME；R2（Reply Result Uncertainty Handling）與 R3（Local API Form）= USER DECISION PENDING；Gateway live 整合尚未開始（NOT STARTED）；B-98 / B-30 / B-33 / F-05 維持開啟狀態於既定前置邊界。
   - C-06 維持待使用者裁決（USER_DECISION_NONBLOCKING，遠端 ruleset 與 required checks 現況已確認）。
   - B-28 / B-29 上游 trigger 重新評估完成，無 B-01 blocker，維持 DEFERRED_BY_USER / POST_B01。
   - B-54 保持待辦（POST_B01 / NONBLOCKING，SOP_12 機器專屬路徑 concrete example 已登錄）。
@@ -3926,4 +3926,20 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
       - T8A = GOVERNANCE-EVIDENCE REPAIR IN PROGRESS / PENDING EXTERNAL MACRO FINAL AUDIT。
       - T8B = NOT STARTED / BLOCKED UNTIL T8A FINAL MACRO PASS。
       - T8（其餘）、T9、T11-main 保持 NOT STARTED；Gateway live 整合尚未開始（NOT STARTED）；R2 與 R3 維持 USER DECISION PENDING；B-98 維持 pending；Wave 2H 維持 CANCELLED。
+      - 本修復候選等待 External Macro Reviewer 獨立審核，不得 self-audit。
+98. **E-03 T8A 外部宏觀審計通過與 T8B 原子持久化攝取及游標交易施工候選**（2026-09-17）
+    - **T8A 外部宏觀審計結論（External Macro PASS）**：審查範圍 5dc27e81fe33d21fd54b805a7f843e63900eb65a..3dd3716ff5a85854ce6620018620bb80d3e4462f（共 3 commits：2d649d2 實作候選；9dcf0c9 CI 指紋修復；3dd3716 治理與證據修復候選）經 External Macro Reviewer（GPT 代理審查官（使用者授權））獨立審核。A1 qualification 採 A1 = EQUIVALENT（GitHub API + Executor clone cross-check）成立；exact-SHA Actions Verify Run 35232107765 completed / success（jobs: verify = success, gateway-windows = success；Ubuntu canonical: 20 checks PASS，333 unit PASS，13 webapp PASS，5 Gates PASS；Windows: Node 24.21.0, Gateway bridge 23/23 PASS）；T8A-F1 徹底解決；審查結論：MACRO AUDIT = PASS，ACCEPT STATUS = ACCEPT ALL，FINDING_DISPOSITION = NONE，T8A = ACCEPTED；新 accepted checkpoint 正式確立為 3dd3716ff5a85854ce6620018620bb80d3e4462f；T8B 施工阻擋正式解除（AUTHORIZED）。
+    - **T8B 施工候選架構與實作（E-03 Add Atomic SQLite Ingest）**：
+      - **綱要凍結於 v3**：維持 SQLITE_STATE_SCHEMA_VERSION = 3 與 MIGRATIONS = [1, 2, 3] 不變，零 DDL 異動。
+      - **生產級入站攝取 API**：於 SqliteStateRepository 新增 ingestMessage(input)，輸入包含 ccountId、platformMsgId、channelId、content、cursorValue，嚴格前置驗證（拒絕空字串/空白/非字串/非物件）。
+      - **單一即時交易保證（BEGIN IMMEDIATE）**：在同一交易內原子性完成：（1）channel_control 通道初始化（若不存在則寫入 holder=NULL, token=0，不取得持有人，對齊 D6/D10 無人值守訊息持久性）；（2）UNIQUE(account_id, platform_msg_id) 冪等去重判斷（若重複則回傳 duplicate: true 且零異動，特別保障 DUPLICATE MUST NOT UPDATE CURSOR）；（3）新訊息寫入 inbox（status='queued'，精確保存原始 content 不 trim）；（4）同步寫入/更新 ingest_cursor（ON CONFLICT DO UPDATE）。
+      - **唯讀游標查詢 API**：新增 getIngestCursor(accountId) 唯讀查詢，禁止 standalone dvanceCursor() 以維護原子性。
+      - **測試矩陣全數通過**：新增 sqlite-ingest-transactions.test.js 涵蓋 12 大測試矩陣，全庫測試從 278 擴充至 290 項，Python 測試橋接 24/24 PASS。
+    - **當前生命週期狀態**：
+      - 本批為 E-03 T8B Atomic Durable Ingest + Cursor Transaction 實作候選。
+      - E-03 進行中（IN PROGRESS）。
+      - accepted checkpoint 確立為 3dd3716ff5a85854ce6620018620bb80d3e4462f（不得填入 T8B candidate）。
+      - T8A = ACCEPTED。
+      - T8B = ATOMIC INGEST IMPLEMENTATION IN PROGRESS / PENDING EXTERNAL MACRO FINAL AUDIT。
+      - T9、T11-main 保持 NOT STARTED；Gateway live 整合尚未開始（NOT STARTED）；R2 與 R3 維持 USER DECISION PENDING；B-98 維持 pending；Wave 2H 維持 CANCELLED。
       - 本修復候選等待 External Macro Reviewer 獨立審核，不得 self-audit。
