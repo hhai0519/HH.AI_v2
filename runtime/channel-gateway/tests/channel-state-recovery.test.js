@@ -597,3 +597,217 @@ test('ChannelStateRecovery - 32. normal empty state snapshot/recovery works', ()
   assert.equal(recovered.messages.length, 0);
   assert.equal(discardedOnRecovery.length, 0);
 });
+
+test('ChannelStateRecovery - 33. live metadata with undefined property rejected before clone', () => {
+  const control = new ChannelControl('telegram');
+  control.enqueueMessage({
+    id: 'm-undef',
+    receivingAccountId: 'bot-1',
+    metadata: { bad: undefined },
+  });
+
+  assert.throws(
+    () => buildChannelControlSnapshot(control),
+    /undefined is not JSON-compatible/
+  );
+});
+
+test('ChannelStateRecovery - 34. live metadata with Symbol-keyed own property rejected before clone', () => {
+  const control = new ChannelControl('telegram');
+  const metadata = { visible: 1 };
+  metadata[Symbol('hidden')] = 2;
+
+  control.enqueueMessage({
+    id: 'm-sym',
+    receivingAccountId: 'bot-1',
+    metadata,
+  });
+
+  assert.throws(
+    () => buildChannelControlSnapshot(control),
+    /Symbol-keyed properties are not allowed/
+  );
+});
+
+test('ChannelStateRecovery - 35. live metadata with non-enumerable own property rejected before clone', () => {
+  const control = new ChannelControl('telegram');
+  const metadata = { visible: 1 };
+  Object.defineProperty(metadata, 'hidden', {
+    value: 2,
+    enumerable: false,
+    configurable: true,
+  });
+
+  control.enqueueMessage({
+    id: 'm-nonenum',
+    receivingAccountId: 'bot-1',
+    metadata,
+  });
+
+  assert.throws(
+    () => buildChannelControlSnapshot(control),
+    /non-enumerable properties are not allowed/
+  );
+});
+
+test('ChannelStateRecovery - 36. live metadata with enumerable accessor getter rejected before clone', () => {
+  const control = new ChannelControl('telegram');
+  let getterCallCount = 0;
+  const metadata = {};
+  Object.defineProperty(metadata, 'dynamicVal', {
+    enumerable: true,
+    get() {
+      getterCallCount++;
+      return 42;
+    },
+  });
+
+  control.enqueueMessage({
+    id: 'm-accessor',
+    receivingAccountId: 'bot-1',
+    metadata,
+  });
+
+  assert.throws(
+    () => buildChannelControlSnapshot(control),
+    /accessor properties \(getters\/setters\) are not allowed/
+  );
+  // Proves pre-clone inspection rejected descriptor without JSON.stringify invoking getter
+  assert.equal(getterCallCount, 0);
+});
+
+test('ChannelStateRecovery - 37. live nested Date rejected before clone, not converted to ISO string', () => {
+  const control = new ChannelControl('telegram');
+  control.enqueueMessage({
+    id: 'm-date',
+    receivingAccountId: 'bot-1',
+    metadata: {
+      nested: {
+        when: new Date(),
+      },
+    },
+  });
+
+  assert.throws(
+    () => buildChannelControlSnapshot(control),
+    /plain object, received Date/
+  );
+});
+
+test('ChannelStateRecovery - 38. live metadata own toJSON function rejected before clone', () => {
+  const control = new ChannelControl('telegram');
+  control.enqueueMessage({
+    id: 'm-tojson',
+    receivingAccountId: 'bot-1',
+    metadata: {
+      orig: 1,
+      toJSON() {
+        return { transformed: 2 };
+      },
+    },
+  });
+
+  assert.throws(
+    () => buildChannelControlSnapshot(control),
+    /function is not JSON-compatible/
+  );
+});
+
+test('ChannelStateRecovery - 39. live metadata null, array, and custom object rejected fail-closed', () => {
+  // Case 1: metadata is null
+  const c1 = new ChannelControl('telegram');
+  c1.enqueueMessage({ id: 'm1', receivingAccountId: 'bot-1' });
+  c1.messages[0].metadata = null;
+  assert.throws(
+    () => buildChannelControlSnapshot(c1),
+    /must be a non-null plain object/
+  );
+
+  // Case 2: metadata is array
+  const c2 = new ChannelControl('telegram');
+  c2.enqueueMessage({ id: 'm2', receivingAccountId: 'bot-1' });
+  c2.messages[0].metadata = ['array', 'not', 'allowed'];
+  assert.throws(
+    () => buildChannelControlSnapshot(c2),
+    /must be a non-null plain object/
+  );
+
+  // Case 3: metadata is custom class instance
+  class CustomMetadata {
+    constructor() {
+      this.field = 123;
+    }
+  }
+  const c3 = new ChannelControl('telegram');
+  c3.enqueueMessage({ id: 'm3', receivingAccountId: 'bot-1' });
+  c3.messages[0].metadata = new CustomMetadata();
+  assert.throws(
+    () => buildChannelControlSnapshot(c3),
+    /must be a plain object, received CustomMetadata/
+  );
+});
+
+test('ChannelStateRecovery - 40. normal nested plain metadata exports deep copy and resists live mutation', () => {
+  const control = new ChannelControl('telegram');
+  const initialMeta = {
+    nested: {
+      tags: ['tag1', 'tag2'],
+      count: 10,
+      active: true,
+    },
+  };
+
+  control.enqueueMessage({
+    id: 'm-normal',
+    receivingAccountId: 'bot-1',
+    metadata: initialMeta,
+  });
+
+  const snapshot = buildChannelControlSnapshot(control);
+  assert.equal(snapshot.messages.length, 1);
+  assert.deepStrictEqual(snapshot.messages[0].metadata, {
+    nested: {
+      tags: ['tag1', 'tag2'],
+      count: 10,
+      active: true,
+    },
+  });
+
+  // Mutate original live message metadata
+  control.messages[0].metadata.nested.tags.push('mutated');
+  control.messages[0].metadata.nested.count = 999;
+
+  // Snapshot must remain untainted
+  assert.deepStrictEqual(snapshot.messages[0].metadata.nested.tags, ['tag1', 'tag2']);
+  assert.equal(snapshot.messages[0].metadata.nested.count, 10);
+});
+
+test('ChannelStateRecovery - 41. normal metadata round-trip build -> validate -> recover is completely equivalent', () => {
+  const control = new ChannelControl('telegram');
+  const complexMeta = {
+    orderId: 'ORD-12345',
+    details: {
+      items: [
+        { sku: 'A1', qty: 2, price: 10.5 },
+        { sku: 'B2', qty: 1, price: 99.0 },
+      ],
+      nullable: null,
+      enabled: false,
+    },
+  };
+
+  control.enqueueMessage({
+    id: 'm-roundtrip',
+    receivingAccountId: 'bot-1',
+    metadata: complexMeta,
+  });
+
+  const snapshot = buildChannelControlSnapshot(control);
+  validateChannelControlSnapshot(snapshot);
+  const { control: recovered } = recoverChannelControlFromSnapshot(snapshot);
+
+  assert.equal(recovered.messages.length, 1);
+  assert.deepStrictEqual(recovered.messages[0].metadata, complexMeta);
+  assert.notEqual(recovered.messages[0].metadata, control.messages[0].metadata);
+  assert.notEqual(recovered.messages[0].metadata, snapshot.messages[0].metadata);
+});

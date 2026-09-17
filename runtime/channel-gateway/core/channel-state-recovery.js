@@ -296,6 +296,41 @@ function validateChannelControlSnapshot(snapshot) {
 }
 
 /**
+ * Strictly validates original live metadata before any JSON serialization or cloning,
+ * then returns a deep-copied plain JSON-compatible object.
+ *
+ * Required ordering per ADR-0022 / Wave 2F repair:
+ * 1. Must be a non-null plain object (Object.prototype or null prototype, not array).
+ * 2. Validate original live metadata via validateJsonCompatiblePayload(metadata, new Set(), pathStr).
+ * 3. Only after validation passes, perform lossless JSON deep-copy via JSON.parse(JSON.stringify(metadata)).
+ * 4. Return deep-copied plain data.
+ *
+ * Rejects undefined, Symbol keys, non-enumerable properties, accessors (getters/setters),
+ * functions, Date, BigInt, NaN, Infinity, circular references, class instances, toJSON.
+ *
+ * @param {*} metadata - Untrusted live metadata from message
+ * @param {string} pathStr - Diagnostic path string
+ * @returns {object} Deep-copied plain JSON-compatible metadata
+ */
+function cloneValidatedMetadata(metadata, pathStr = 'metadata') {
+  if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) {
+    throw new TypeError(`${pathStr}: must be a non-null plain object`);
+  }
+
+  const proto = Object.getPrototypeOf(metadata);
+  if (proto !== Object.prototype && proto !== null) {
+    const ctorName = metadata.constructor ? metadata.constructor.name : 'custom prototype';
+    throw new TypeError(`${pathStr}: must be a plain object, received ${ctorName}`);
+  }
+
+  // Pre-clone validation: inspects original live object descriptors and values
+  validateJsonCompatiblePayload(metadata, new Set(), pathStr);
+
+  // Safe to deep-copy lossless JSON-compatible payload
+  return JSON.parse(JSON.stringify(metadata));
+}
+
+/**
  * Builds a clean, deep-copied canonical snapshot from a live ChannelControl instance.
  *
  * @param {ChannelControl} control
@@ -307,7 +342,15 @@ function buildChannelControlSnapshot(control) {
   }
 
   const canonicalMessages = [];
-  for (const msg of control.messages) {
+  for (let i = 0; i < control.messages.length; i++) {
+    const msg = control.messages[i];
+    if (!msg || typeof msg !== 'object') {
+      throw new TypeError(`messages[${i}]: message must be an object`);
+    }
+
+    // Pre-clone validation: strictly validates original live metadata before deep-copy
+    const clonedMetadata = cloneValidatedMetadata(msg.metadata, `messages[${i}].metadata`);
+
     canonicalMessages.push({
       id: msg.id,
       receivingAccountId: msg.receivingAccountId,
@@ -315,7 +358,7 @@ function buildChannelControlSnapshot(control) {
       claimedBy: msg.claimedBy !== undefined ? msg.claimedBy : null,
       claimedAtToken: msg.claimedAtToken !== undefined ? msg.claimedAtToken : null,
       discardReason: msg.discardReason !== undefined ? msg.discardReason : null,
-      metadata: JSON.parse(JSON.stringify(msg.metadata || {})),
+      metadata: clonedMetadata,
       discardedByHolder: msg.discardedByHolder !== undefined ? msg.discardedByHolder : null,
       discardedAtToken: msg.discardedAtToken !== undefined ? msg.discardedAtToken : null,
     });
@@ -350,7 +393,8 @@ function recoverChannelControlFromSnapshot(snapshot) {
   const discardedOnRecovery = [];
   const recoveredMessages = [];
 
-  for (const msg of snapshot.messages) {
+  for (let i = 0; i < snapshot.messages.length; i++) {
+    const msg = snapshot.messages[i];
     const recoveredMsg = {
       id: msg.id,
       receivingAccountId: msg.receivingAccountId,
@@ -358,7 +402,7 @@ function recoverChannelControlFromSnapshot(snapshot) {
       claimedBy: msg.claimedBy,
       claimedAtToken: msg.claimedAtToken,
       discardReason: msg.discardReason,
-      metadata: JSON.parse(JSON.stringify(msg.metadata)),
+      metadata: cloneValidatedMetadata(msg.metadata, `messages[${i}].metadata`),
       discardedByHolder: msg.discardedByHolder,
       discardedAtToken: msg.discardedAtToken,
     };
@@ -391,6 +435,7 @@ function recoverChannelControlFromSnapshot(snapshot) {
 
 module.exports = {
   CHANNEL_SNAPSHOT_SCHEMA_VERSION,
+  cloneValidatedMetadata,
   validateChannelControlSnapshot,
   buildChannelControlSnapshot,
   recoverChannelControlFromSnapshot,

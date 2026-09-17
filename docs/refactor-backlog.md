@@ -3063,7 +3063,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - B-99 Qualification-Based Macro Auditor & Repo-Visible Handoff（CLOSED / MACRO PASS）。
   - B-97 Pre-B01 Comprehensive Release Audit 已完成（CLOSED / PRE-B01 RELEASE PASS）。
   - B-01 ADR-0002／0004／0010 分層搬移及 Active-Contract 語意修復已完成（CLOSED / MACRO PASS）。
-  - E-03 Runtime 執行層架構推進（IN PROGRESS）：Wave 2E = MACRO PASS / ACCEPTED；Wave 2F Channel Control Durable Snapshot & Safe Restart Recovery = IN PROGRESS / PENDING EXTERNAL MACRO AUDIT；Gateway live integration = NOT STARTED；LINE implementation = D12 delayed / explicit user trigger；B-98 / B-30 / B-33 / F-05 remain open at their established prerequisite boundaries。
+  - E-03 Runtime 執行層架構推進（IN PROGRESS）：Wave 2E = MACRO PASS / ACCEPTED；Wave 2F = MACHINE PASS / MACRO HOLD / BOUNDED REPAIR（pre-clone lossless metadata validation underway）；Gateway live integration = NOT STARTED；LINE implementation = D12 delayed / explicit user trigger；B-98 / B-30 / B-33 / F-05 remain open at their established prerequisite boundaries。
   - C-06 維持待使用者裁決（USER_DECISION_NONBLOCKING，遠端 ruleset 與 required checks 現況已確認）。
   - B-28 / B-29 上游 trigger 重新評估完成，無 B-01 blocker，維持 DEFERRED_BY_USER / POST_B01。
   - B-54 保持待辦（POST_B01 / NONBLOCKING，SOP_12 機器專屬路徑 concrete example 已登錄）。
@@ -3611,6 +3611,25 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
       - Wave 2E = MACRO PASS / ACCEPTED；Wave 2F Channel Control Durable Snapshot & Safe Restart Recovery = IN PROGRESS / PENDING EXTERNAL MACRO AUDIT。
       - Gateway live 整合尚未開始（NOT STARTED）；B-98 / B-30 / B-33 / F-05 維持開啟狀態於既定前置邊界。
       - 本 candidate 等待 External Macro Reviewer 獨立審核；NEXT_WORK 保持 E-03。
+
+83. **E-03 Channel Gateway Wave 2F Initial Audit Result & Pre-Clone Metadata Validation Bounded Repair**（2026-09-17）
+    - **候選與外部審查結論**：前一施工候選 `e1f06fda449dc8140cc45e49599f65fa1453e804`（Wave 2F Channel Control Durable Snapshot & Safe Restart Recovery）經 External Macro Reviewer（GPT 代理審查官（使用者授權））全面審查。A1 qualification 採 A1 = EQUIVALENT（GitHub API + Executor clone cross-check）成立；exact-SHA Actions Verify Run `35159917238` completed/success（20 checks PASS，320 unit PASS，13 webapp PASS，5 Gates PASS）。
+    - **外部審查裁決與材料瑕疵**：`MACRO AUDIT = HOLD`，`ACCEPT STATUS = BOUNDED REPAIR REQUIRED`，`FINDING_DISPOSITION = CURRENT E-03`；Findings：F1 為 LIVE METADATA VALIDATED AFTER LOSSY CLONE：`buildChannelControlSnapshot()` 原先在對訊息 metadata 執行 `JSON.parse(JSON.stringify(msg.metadata || {}))` 深拷貝後，才在 snapshot 層級呼叫驗證函式，導致 live JavaScript 物件中之 undefined 屬性、Symbol 鍵、不可列舉屬性、accessor getters、Date 或自訂 toJSON 可能在嚴格驗證前已被 serializer 靜默遺失或竄改；checkpoint 保持 `994c455`，維持 E-03 進行中並執行微修。
+    - **複製前無損 Metadata 驗證微修邊界（Pre-Clone Lossless Metadata Validation Repair）**：
+      - 修改 `runtime/channel-gateway/core/channel-state-recovery.js`：
+        - 新增 `cloneValidatedMetadata(metadata, pathStr)` 輔助函式，強制在任何 `JSON.stringify`、`JSON.parse` 或深拷貝前，先驗證原始 live metadata。
+        - 嚴格型別檢驗：metadata 必須為非 null 純物件（`proto === Object.prototype || proto === null`），嚴格拒絕陣列或非物件實例；杜絕 `msg.metadata || {}` 容錯回退（fail-closed）。
+        - 呼叫 `validateJsonCompatiblePayload(metadata, new Set(), pathStr)` 針對原始 live metadata 進行自有屬性與描述元完整檢驗，杜絕 symbol 鍵、非可列舉屬性、getter/setter accessor、自訂 toJSON、Date/Map/Set/class 實例或循環參照。
+        - 僅在原始物件檢驗通過後，始執行無損深拷貝（`JSON.parse(JSON.stringify(metadata))`）。
+        - 保留快照整體雙層驗證：`cloneValidatedMetadata` 前置檢查 ＋ `validateChannelControlSnapshot` 後置整體結構檢驗。
+      - 擴充 canonical tests（`tests/channel-state-recovery.test.js` 新增測試 33 至 41，全檔共 41 tests 全數通過）。
+      - 純微修邊界：零領域契約擴大（`channel-control.js` 與 `durable-state-store.js` 零修改），零外部副作用（no live bot / network / port / credential / OS startup）。
+    - **當前生命週期狀態**：
+      - 本批為 Phase 2 Wave 2F 微修候選，工作區僅限於授權之複製前 metadata 驗證與狀態同步。
+      - Wave 2E = MACRO PASS / ACCEPTED；Wave 2F = MACHINE PASS / MACRO HOLD / BOUNDED REPAIR。
+      - Gateway live 整合尚未開始（NOT STARTED）；B-98 / B-30 / B-33 / F-05 維持開啟狀態於既定前置邊界。
+      - 本 repair candidate 自身等待 External Macro Reviewer 獨立審核；NEXT_WORK 保持 E-03。
+
 
 
 
