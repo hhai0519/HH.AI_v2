@@ -1,5 +1,5 @@
 {
-  "base_head": "b261de7",
+  "base_head": "2d649d2",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 0,
@@ -523,8 +523,8 @@
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 133,
-      "sha256": "4cedd9a6382ffd3316281b21320c901853137bda5d72ef2b33c86240dcf0f6fa"
+      "lines": 134,
+      "sha256": "0bdd3b10fdcc2bb83e92a866133a233978e219cd11e8bbcdf7df29b1fe947881"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -1210,7 +1210,7 @@
       "sha256": "35bf7dbfa3c7d291b550c3c97a6ae398a22b1dc3624c1d2fc1e4db6963d6e115"
     }
   },
-  "generated_at": "2026-09-17T11:23:36Z",
+  "generated_at": "2026-09-17T12:20:19Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {
