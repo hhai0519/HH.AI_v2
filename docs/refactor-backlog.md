@@ -2825,7 +2825,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 5.1 上一批狀態
 
-上次核對通過的 HEAD：994c455
+上次核對通過的 HEAD：750eaeb
 
 - `23af193`（執行者前置檢查 ＋ 回滾程序 ＋ `AUDIT-LOG.md` ＋ 四缺口修正）
   已於 2026-09-02 由審計官核對通過：6 檔異動（含 2 個新檔）、零夾帶、
@@ -3017,6 +3017,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 - `aa0977f`（E-03 Channel Gateway Wave 2C Data Location Config Contract）已於 2026-09-16 由 GPT 代理審查官（使用者授權）全面審查獨立核對通過：10 檔 authorized scope；A1 EQUIVALENT 查證通過；實作 validateResolvedDataLocationConfig 與 DATA_LOCATION_SCHEMA_VERSION=1；嚴格綱要驗證僅允許 schemaVersion 與 dataLocations；路徑驗證強制 4 個單例目錄與 protectedRoots 均為非空白絕對路徑（相容 Windows 與 POSIX）；建立無機敏範本 config.example.json；零第三方依賴；canonical verification 5 Gates 全數通過（20 checks PASS，317 unit PASS，13 webapp PASS）；exact-SHA Actions Verify Run 35105625352 completed / success；MACRO AUDIT = PASS，ACCEPT STATUS = ACCEPT ALL，FINDING_DISPOSITION = NONE；new accepted checkpoint = aa0977f；protectedRoots operational minimum coverage 依決策留待 D19-D21 安全驗收要求。
 - `eac38683`（E-03 Channel Gateway Wave 2D Repo-External Config Loader + Startup Path Validation）已於 2026-09-16 由 GPT 代理審查官（使用者授權）全面審查獨立核對通過：9 檔 authorized scope；A1 EQUIVALENT 查證通過；實作 local-config-loader.js（loadDataLocationConfigFromFile、validateStartupDataLocations）；強制 repoRoot 外部限制（名義路徑與 canonical realpath 雙重阻擋，拒絕指向 repo 內部之 symlink）；嚴格 JSON 解析與 Wave 2C 綱要驗證；啟動前驗證 4 個單例資料目錄存在且具備讀寫權限；protectedRoots 至少 1 個目錄且具備讀取權限；零自動建立目錄（zero mkdirSync）；回傳 realpathSync 正規化路徑物件，不修改原輸入；新增 21 項 canonical Node 測試（全庫 77 tests PASS / 2 skipped）；Python CI 橋接測試全數 PASS（8 passed）；exact-SHA Actions Verify Run 35107752002 completed / success；MACRO AUDIT = PASS，ACCEPT STATUS = ACCEPT ALL，FINDING_DISPOSITION = NONE；new accepted checkpoint = eac38683。
 - `994c455`（E-03 Channel Gateway Wave 2E Atomic Durable State Store Foundation & Lossless JSON Bounded Repair）已於 2026-09-17 由 GPT 代理審查官（使用者授權）全面審查獨立核對通過：涵蓋 eac38683..994c455 完整 pending range（共 2 commits：0959d0a 初審 Machine PASS / Macro HOLD，F1 為 Lossless JSON own-property validation incomplete，由 994c455d435bda6c72138706f8f16faa7c036776 徹底解決）；A1 EQUIVALENT 查證通過；exact-SHA Actions Verify Run 35158545662 completed / success（20 checks PASS，319 unit tests PASS，13 webapp tests PASS，5 Gates PASS）；Wave 2E = ACCEPTED；new accepted checkpoint = 994c455。
+- `750eaeb`（E-03 Validate Live Metadata Before Snapshot Clone）已於 2026-09-17 由 GPT 代理審查官（使用者授權）全面審查獨立核對通過：涵蓋 994c455..750eaeb 完整 pending range（共 2 commits：e1f06fd 初審 Machine PASS / Macro HOLD，F1 為 live metadata validated after lossy clone，由 750eaeb160eae2b4f29801ba04d53d1452a59275 徹底解決）；A1 EQUIVALENT 查證通過；exact-SHA Actions Verify Run 35170928666 completed / success（20 checks PASS，320 unit PASS，13 webapp PASS，5 Gates PASS）；Wave 2F = ACCEPTED；new accepted checkpoint = 750eaeb。
 
 ### 5.2 待辦
 
@@ -3063,7 +3064,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - B-99 Qualification-Based Macro Auditor & Repo-Visible Handoff（CLOSED / MACRO PASS）。
   - B-97 Pre-B01 Comprehensive Release Audit 已完成（CLOSED / PRE-B01 RELEASE PASS）。
   - B-01 ADR-0002／0004／0010 分層搬移及 Active-Contract 語意修復已完成（CLOSED / MACRO PASS）。
-  - E-03 Runtime 執行層架構推進（IN PROGRESS）：Wave 2E = MACRO PASS / ACCEPTED；Wave 2F = MACHINE PASS / MACRO HOLD / BOUNDED REPAIR（pre-clone lossless metadata validation underway）；Gateway live integration = NOT STARTED；LINE implementation = D12 delayed / explicit user trigger；B-98 / B-30 / B-33 / F-05 remain open at their established prerequisite boundaries。
+  - E-03 Runtime 執行層架構推進（IN PROGRESS）：Wave 2F = MACRO PASS / ACCEPTED；Wave 2G = Multi-Channel Durable State Persistence Bridge（IN PROGRESS / PENDING EXTERNAL MACRO AUDIT）；Gateway live integration = NOT STARTED；LINE implementation = D12 delayed / explicit user trigger；B-98 / B-30 / B-33 / F-05 remain open at their established prerequisite boundaries。
   - C-06 維持待使用者裁決（USER_DECISION_NONBLOCKING，遠端 ruleset 與 required checks 現況已確認）。
   - B-28 / B-29 上游 trigger 重新評估完成，無 B-01 blocker，維持 DEFERRED_BY_USER / POST_B01。
   - B-54 保持待辦（POST_B01 / NONBLOCKING，SOP_12 機器專屬路徑 concrete example 已登錄）。
@@ -3628,9 +3629,24 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
       - 本批為 Phase 2 Wave 2F 微修候選，工作區僅限於授權之複製前 metadata 驗證與狀態同步。
       - Wave 2E = MACRO PASS / ACCEPTED；Wave 2F = MACHINE PASS / MACRO HOLD / BOUNDED REPAIR。
       - Gateway live 整合尚未開始（NOT STARTED）；B-98 / B-30 / B-33 / F-05 維持開啟狀態於既定前置邊界。
-      - 本 repair candidate 自身等待 External Macro Reviewer 獨立審核；NEXT_WORK 保持 E-03。
 
-
-
-
-
+84. **E-03 Channel Gateway Wave 2F Final Macro PASS & Wave 2G Multi-Channel Durable State Persistence Bridge Candidate**（2026-09-17）
+    - **Wave 2F 外部審查結論**：前一微修候選 `750eaeb160eae2b4f29801ba04d53d1452a59275`（E-03 Validate Live Metadata Before Snapshot Clone）經 External Macro Reviewer（GPT 代理審查官（使用者授權））全面審查。A1 qualification 採 A1 = EQUIVALENT（GitHub API + Executor clone cross-check）成立；exact-SHA Actions Verify Run `35170928666` completed/success（20 checks PASS，320 unit PASS，13 webapp PASS，5 Gates PASS）；e1f06fd F1 於審查範圍內完全解決；MACRO AUDIT = PASS，ACCEPT STATUS = ACCEPT ALL，FINDING_DISPOSITION = NONE；Wave 2F = ACCEPTED；accepted checkpoint 推進至 `750eaeb160eae2b4f29801ba04d53d1452a59275`；NEXT_WORK 保持 E-03。
+    - **Wave 2G 多通道持久化橋接實作（Multi-Channel Durable State Persistence Bridge）**：
+      - 建立持久化橋接模組 `runtime/channel-gateway/core/channel-state-persistence.js`，將 `DurableStateStore` 與 `ChannelControl` 快照/安全復原無縫組裝為多通道單元。
+      - 多通道持久化綱要（`CHANNEL_STATE_PAYLOAD_SCHEMA_VERSION = 1`）：頂層僅允許 `schemaVersion`（exact 1）與 `channels`（陣列），陣列中每個元素必須通過 `validateChannelControlSnapshot()` 嚴格快照檢驗，且通道識別碼 `channelId` 嚴格禁止重複（杜絕同通道狀態衝突）。
+      - 確定性規範排序（Canonical Lexical Sort）：持久化前依 `snapshot.channelId` 進行確定性字面排序，避免因通道寫入順序差異造成無意義的檔案變更；內部訊息序列維持既有穩定排序。
+      - 持久化儲存庫（`DurableChannelStateRepository`）：以依賴注入方式接收 `DurableStateStore` 實例，禁止模組自行讀取組態或建立路徑。
+      - 單一通道安全儲存（`saveChannel(control)`）：前置呼叫 `buildChannelControlSnapshot(control)`，確保若 live metadata 不合法，在讀寫持久化檔案前即立即拋錯失敗（fail-closed）；讀取既有 envelope（若無檔案則以空 channels 起始），替換當前 channelId 之快照或追加新快照，嚴格保留其他所有通道快照；經綱要驗證後呼叫 `store.save(nextPayload)` 恰好一次，回傳 operation summary。
+      - 跨通道完整性（Cross-channel preservation）：機械保證儲存 Telegram 不影響 LINE，儲存 LINE 亦不遺失 Telegram；杜絕 last-writer-wins 覆蓋全庫通道狀態。
+      - 初次啟動與通道載入（`loadOrCreateChannel(channelId)`）：檔案不存在時回傳 `firstStart = true` 且不建立空檔案；檔案存在但找不到該通道時回傳 `firstStart = true` 且不破壞其他通道亦不自動儲存；通道存在時透過 `recoverChannelControlFromSnapshot` 安全復原。
+      - 重啟轉換單次立即回寫（Persist restart conversion exactly once）：若重啟復原產生 `discardedOnRecovery`（CLAIMED → DISCARDED / GATEWAY_RESTART），在回傳 control 前立即建立新快照、替換該通道、保留其他通道、回寫持久化檔案並標記 `recoveryPersisted = true`，使 revision 正確遞增 1；若回寫失敗則 fail-closed 拒絕回傳 usable control；再次載入同一檔案時為純讀取復原（Read-only recovery idempotence），不重複捨棄亦不遞增 revision。
+      - 純讀取復原不遞增修訂版次（Read-only recovery idempotence）：無 CLAIMED 轉換時不觸發寫入，維持原版次，避免無意義之 revision bump。
+      - 嚴格失敗關閉（Strict failure fail-closed）：既有檔案若綱要不符、重複 channelId、未知鍵或損毀，一律 fail-closed，嚴禁忽略或部分修復。
+      - 邊界嚴格控制：零 `AccountRegistry` 持久化或水合；零 transition 自動綁定（no transition auto-wiring）；零 monkey-patch；零網路/Port/Token/Secret/OS startup/Timer。
+      - 建立 canonical tracked tests（`tests/channel-state-persistence.test.js` 涵蓋 30 項測試，全庫 8 份 Node 測試共 188 tests 全數通過）及更新 Python CI 橋接測試（`scripts/tests/test_channel_gateway_core.py`）。
+    - **當前生命週期狀態**：
+      - 本批為 Phase 2 Wave 2G 施工候選，工作區僅限於授權之多通道持久化橋接。
+      - Wave 2F = MACRO PASS / ACCEPTED；Wave 2G Multi-Channel Durable State Persistence Bridge = IN PROGRESS / PENDING EXTERNAL MACRO AUDIT。
+      - Gateway live 整合尚未開始（NOT STARTED）；B-98 / B-30 / B-33 / F-05 維持開啟狀態於既定前置邊界。
+      - 本 candidate 等待 External Macro Reviewer 獨立審核；NEXT_WORK 保持 E-03。

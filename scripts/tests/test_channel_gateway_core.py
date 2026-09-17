@@ -29,6 +29,7 @@ DATA_LOCATION_CONFIG_TEST_PATH = os.path.join(GATEWAY_DIR, "tests", "data-locati
 LOCAL_CONFIG_LOADER_TEST_PATH = os.path.join(GATEWAY_DIR, "tests", "local-config-loader.test.js")
 DURABLE_STATE_STORE_TEST_PATH = os.path.join(GATEWAY_DIR, "tests", "durable-state-store.test.js")
 CHANNEL_STATE_RECOVERY_TEST_PATH = os.path.join(GATEWAY_DIR, "tests", "channel-state-recovery.test.js")
+CHANNEL_STATE_PERSISTENCE_TEST_PATH = os.path.join(GATEWAY_DIR, "tests", "channel-state-persistence.test.js")
 
 
 def test_channel_gateway_package_json_zero_dependencies():
@@ -186,6 +187,24 @@ def test_channel_gateway_node_tests_channel_state_recovery():
     assert "fail 0" in res.stdout
 
 
+def test_channel_gateway_node_tests_channel_state_persistence():
+    """Requirement C: Run channel-state-persistence.test.js via Node test runner."""
+    assert os.path.isfile(CHANNEL_STATE_PERSISTENCE_TEST_PATH), f"Test file missing: {CHANNEL_STATE_PERSISTENCE_TEST_PATH}"
+
+    res = subprocess.run(
+        ["node", "--test", os.path.relpath(CHANNEL_STATE_PERSISTENCE_TEST_PATH, REPO_ROOT).replace("\\", "/")],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        encoding="utf-8",
+        errors="replace"
+    )
+    assert res.returncode == 0, (
+        f"channel-state-persistence.test.js failed with code {res.returncode}:\n"
+        f"STDOUT:\n{res.stdout}\nSTDERR:\n{res.stderr}"
+    )
+    assert "fail 0" in res.stdout
+
+
 def test_channel_gateway_combined_node_test_runner():
     """Requirement C & E: Run all Channel Gateway test files together with explicit paths."""
     rel_control = os.path.relpath(CONTROL_TEST_PATH, REPO_ROOT).replace("\\", "/")
@@ -195,6 +214,7 @@ def test_channel_gateway_combined_node_test_runner():
     rel_loader = os.path.relpath(LOCAL_CONFIG_LOADER_TEST_PATH, REPO_ROOT).replace("\\", "/")
     rel_store = os.path.relpath(DURABLE_STATE_STORE_TEST_PATH, REPO_ROOT).replace("\\", "/")
     rel_recovery = os.path.relpath(CHANNEL_STATE_RECOVERY_TEST_PATH, REPO_ROOT).replace("\\", "/")
+    rel_persistence = os.path.relpath(CHANNEL_STATE_PERSISTENCE_TEST_PATH, REPO_ROOT).replace("\\", "/")
 
     res = subprocess.run(
         [
@@ -207,6 +227,7 @@ def test_channel_gateway_combined_node_test_runner():
             rel_loader,
             rel_store,
             rel_recovery,
+            rel_persistence,
         ],
         cwd=REPO_ROOT,
         capture_output=True,
