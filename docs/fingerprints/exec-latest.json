@@ -1,5 +1,5 @@
 {
-  "base_head": "90dc71c",
+  "base_head": "234918c",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 0,
@@ -180,8 +180,8 @@
     ".github/workflows/verify.yml": {
       "fences": 0,
       "headings": [],
-      "lines": 28,
-      "sha256": "a6ad5222f292f44e8d3f6f2d3919772c1fffd3c281c91bce808dcfb24f26f200"
+      "lines": 60,
+      "sha256": "e9339444e4758338e2c865d441503582021b2b81a9ec4daf32ede3cc0c13dffb"
     },
     "AGENTS.md": {
       "fences": 10,
@@ -515,16 +515,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 154,
-      "sha256": "691c7e00e3abbc2406b4dd2ca208817ba49d12b7e0f2ebffdcd8ae2bc56a7bca"
+      "lines": 155,
+      "sha256": "658195de5c3de1eccddca7fae7b7b92e911624ef9aa78d9e15fd6907c9f96c60"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 123,
-      "sha256": "d14017983d5b7b172df325f15ced624a1dd72df1231e11b19568c8d93bf245d2"
+      "lines": 124,
+      "sha256": "a80af782ee968451070e99c8b74c40dbd193efe642fb5f3f3b34436b91f75b9f"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -560,7 +560,7 @@
         "## 封存區"
       ],
       "lines": 244,
-      "sha256": "1f83e8883eb359d4c2194e76662e5e81609d192461635d1b8ded69ea329e560f"
+      "sha256": "34d6b0230eeeb43ee41f86d7a72a0aeb3d6ee6df0da3d803438219935c06dcda"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -939,8 +939,8 @@
         "### 5.3 待使用者裁決",
         "### 5.4 進行中／等待回報"
       ],
-      "lines": 3702,
-      "sha256": "934ded46145ef5cec4913060f68c00abd98b43d58ebd0d6818885c294f24b6d7"
+      "lines": 3718,
+      "sha256": "4eeee0fe18d60c14df7e7604f5fa0a3f9f5f53c04919c29385d083e77588822b"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1018,8 +1018,8 @@
       "headings": [
         "# -*- coding: utf-8 -*-"
       ],
-      "lines": 246,
-      "sha256": "7fd4045769dcd1ee2bb36c2e3961dcea20a1a26b169269863fdc44f6b174f615"
+      "lines": 435,
+      "sha256": "50e730c7eb3346e53c22f2fe1a07eff7fd0e2921faf60b308be0447a11ddcc29"
     },
     "scripts/tests/test_check_17_18.py": {
       "fences": 0,
@@ -1210,7 +1210,7 @@
       "sha256": "35bf7dbfa3c7d291b550c3c97a6ae398a22b1dc3624c1d2fc1e4db6963d6e115"
     }
   },
-  "generated_at": "2026-09-17T04:43:59Z",
+  "generated_at": "2026-09-17T05:52:48Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

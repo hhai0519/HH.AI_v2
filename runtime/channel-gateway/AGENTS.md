@@ -55,10 +55,16 @@
 - 嚴禁將資料庫建立於 OneDrive、同步資料夾、或 UNC 網路掛載路徑上。
 - 路徑保護守衛（Path Guard）必須由程式機械式強制檢驗（如偵測 UNC 路徑與已知同步根目錄）。
 
-## 9. Node.js 版本前置條件 (Node Prerequisite)
+## 9. Node.js 版本與測試治理契約 (Node Prerequisite & Test Governance)
 
-- 在 T3 階段（版本釘選與 CI 支援）完成前，SQLite 正式實作受 Node.js 版本與 Windows CI 前置條件阻擋，不得擅自新增 production 程式碼。
-- T3 落地後，版本庫釘選之 Node 版本（`.nvmrc`、`package.json` engines、CI 設定）即為權威依據。
+- `.nvmrc`（`24.21.0`）為版本庫測試與 CI 釘選之 Canonical Node 版本；`package.json` engines（`>=24.15.0 <25`）為本機相容性下限。
+- Ubuntu Canonical Verify 與 Windows Gateway CI 均必須透過 `.nvmrc` 釘選 Node 24 執行。
+- Gateway Node 測試一律由 `tests/*.test.js` 自動探索（Automatic Discovery），嚴禁回到手工登錄測試檔名。
+- 測試跳過政策採 **零未註冊跳過（Zero Unregistered Skips）**：
+  - Linux / Ubuntu 環境之核准跳過清單為 EMPTY（任何 skip 一律 FAIL）。
+  - Windows 環境僅允許 `test-policy.json` 精確列出之平台能力限制跳過（Capability Skips）；清單項目代表許可（Permission）而非強制計數（Expected Count）。
+  - 任何未註冊之 skip 或未完成之 TODO 一律視為 FAIL-CLOSED。
+  - 新增任何 skip 許可必須經過有邊界之架構治理變更（Bounded Governance Change），執行者嚴禁自行擴充白名單。
 
 ## 10. 資料保留與清理邊界 (Retention & Cleanup)
 

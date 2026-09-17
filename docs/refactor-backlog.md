@@ -2825,7 +2825,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 5.1 上一批狀態
 
-上次核對通過的 HEAD：b15d5bf
+上次核對通過的 HEAD：234918c87e05626245c8204f2e36a98d9bd87bc6
 
 - `23af193`（執行者前置檢查 ＋ 回滾程序 ＋ `AUDIT-LOG.md` ＋ 四缺口修正）
   已於 2026-09-02 由審計官核對通過：6 檔異動（含 2 個新檔）、零夾帶、
@@ -3019,6 +3019,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 - `994c455`（E-03 Channel Gateway Wave 2E Atomic Durable State Store Foundation & Lossless JSON Bounded Repair）已於 2026-09-17 由 GPT 代理審查官（使用者授權）全面審查獨立核對通過：涵蓋 eac38683..994c455 完整 pending range（共 2 commits：0959d0a 初審 Machine PASS / Macro HOLD，F1 為 Lossless JSON own-property validation incomplete，由 994c455d435bda6c72138706f8f16faa7c036776 徹底解決）；A1 EQUIVALENT 查證通過；exact-SHA Actions Verify Run 35158545662 completed / success（20 checks PASS，319 unit tests PASS，13 webapp tests PASS，5 Gates PASS）；Wave 2E = ACCEPTED；new accepted checkpoint = 994c455。
 - `750eaeb`（E-03 Validate Live Metadata Before Snapshot Clone）已於 2026-09-17 由 GPT 代理審查官（使用者授權）全面審查獨立核對通過：涵蓋 994c455..750eaeb 完整 pending range（共 2 commits：e1f06fd 初審 Machine PASS / Macro HOLD，F1 為 live metadata validated after lossy clone，由 750eaeb160eae2b4f29801ba04d53d1452a59275 徹底解決）；A1 EQUIVALENT 查證通過；exact-SHA Actions Verify Run 35170928666 completed / success（20 checks PASS，320 unit PASS，13 webapp PASS，5 Gates PASS）；Wave 2F = ACCEPTED；new accepted checkpoint = 750eaeb。
 - `b15d5bf`（E-03 Channel Gateway Wave 2G Multi-Channel Durable State Persistence Bridge & T1 Windows node:sqlite Technical Spike Review）已於 2026-09-17 由 GPT 代理審查官（使用者授權）全面審查獨立核對通過：涵蓋 750eaeb..b15d5bf 完整 pending range；A1 EQUIVALENT 查證通過；Wave 2G = ACCEPTED；T1 Windows node:sqlite Technical Spike = GO（D28 prerequisite satisfied，V1-V6 + V8 PASS，V7 reference partial / R3 undecided；F1 process protocol deviation non-blocking / added to B-98；F2 V7 not approval）；new accepted checkpoint = b15d5bf。
+- `234918c`（E-03 SQLite State Route Governance Landing & R2/R3 Decision-Routing Fidelity Repair）已於 2026-09-17 由 GPT 代理審查官（使用者授權）全面審查獨立核對通過：涵蓋 b15d5bf..234918c 完整 pending range（共 2 commits：90dc71c 初審 Machine PASS / Macro HOLD，F1 為 R2/R3 authoritative decision semantics misrouted，由 234918c87e05626245c8204f2e36a98d9bd87bc6 徹底解決）；A1 EQUIVALENT 查證通過；exact-SHA Actions Verify Run 35183142134 completed / success（20 checks PASS，321 unit PASS，13 webapp PASS，5 Gates PASS）；SQLite Governance Landing = ACCEPTED；new accepted checkpoint = 234918c87e05626245c8204f2e36a98d9bd87bc6。
 
 ### 5.2 待辦
 
@@ -3065,7 +3066,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - B-99 Qualification-Based Macro Auditor & Repo-Visible Handoff（CLOSED / MACRO PASS）。
   - B-97 Pre-B01 Comprehensive Release Audit 已完成（CLOSED / PRE-B01 RELEASE PASS）。
   - B-01 ADR-0002／0004／0010 分層搬移及 Active-Contract 語意修復已完成（CLOSED / MACRO PASS）。
-  - E-03 Runtime 執行層架構推進（IN PROGRESS）：Wave 2G = MACRO PASS / ACCEPTED；SQLite Governance Landing 初審候選 90dc71c 經審查為 Machine PASS / Macro HOLD（BOUNDED REPAIR REQUIRED，CURRENT E-03）；F1 為 ADR-0023 決策識別碼語意偏離；現執行 R2/R3 決策路徑微修；R2 = reply-result uncertainty handling（USER DECISION PENDING）；R3 = local API form（USER DECISION PENDING）；accepted checkpoint 保持 b15d5bf；next route: governance landing repair → T3/T17 → T6；Gateway live 整合尚未開始（NOT STARTED）；B-98 / B-30 / B-33 / F-05 維持開啟狀態於既定前置邊界。
+  - E-03 Runtime 執行層架構推進（IN PROGRESS）：SQLite Governance Landing = Macro PASS / ACCEPTED；accepted checkpoint 推進至 234918c87e05626245c8204f2e36a98d9bd87bc6；現執行 T3/T17（Node Runtime Pin + Windows CI + Automatic Test Discovery Enforcement，PENDING EXTERNAL MACRO AUDIT）；D29 Wave 2H = CANCELLED / MUST NOT RESUME；R2 = Reply Result Uncertainty Handling（USER DECISION PENDING）；R3 = Local API Form（USER DECISION PENDING）；next route: T3/T17 → T6；Gateway live 整合尚未開始（NOT STARTED）；B-98 / B-30 / B-33 / F-05 維持開啟狀態於既定前置邊界。
   - C-06 維持待使用者裁決（USER_DECISION_NONBLOCKING，遠端 ruleset 與 required checks 現況已確認）。
   - B-28 / B-29 上游 trigger 重新評估完成，無 B-01 blocker，維持 DEFERRED_BY_USER / POST_B01。
   - B-54 保持待辦（POST_B01 / NONBLOCKING，SOP_12 機器專屬路徑 concrete example 已登錄）。
@@ -3700,3 +3701,18 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
       - accepted checkpoint 保持 `b15d5bf`。
       - Gateway live 整合尚未開始（NOT STARTED）；R2 與 R3 維持 USER DECISION PENDING；B-98 維持 pending。
       - 本修復候選等待 External Macro Reviewer 獨立審核，不得 self-audit。
+
+87. **E-03 SQLite State Route Governance Macro PASS & T3/T17 Node Pin / Windows CI / Test Discovery Enforcement**（2026-09-17）
+    - **前一施工候選審查結論**：前一施工審查範圍 `b15d5bf9aae59f06e5db12d3438a4e9e2a43102d..234918c87e05626245c8204f2e36a98d9bd87bc6`（共 2 commits，包含 90dc71c 初審 HOLD 與 234918c R2/R3 決策路徑微修）經 External Macro Reviewer（GPT 代理審查官（使用者授權））全面審查。A1 qualification 採 A1 = EQUIVALENT（GitHub API + Executor clone cross-check）成立；exact-SHA Actions Verify Run `35183142134` completed/success（20 checks PASS，321 unit PASS，13 webapp PASS，5 Gates PASS）；`MACRO AUDIT = PASS`，`ACCEPT STATUS = ACCEPT ALL`，`FINDING_DISPOSITION = NONE`；90dc71c F1 完全解決；SQLite Governance Landing = ACCEPTED；accepted checkpoint 推進至 `234918c87e05626245c8204f2e36a98d9bd87bc6`。
+    - **T3/T17 核心目標與治理邊界**：
+      - **Canonical Node Version Pin**：根目錄新增 `.nvmrc` 內容 exact `24.21.0`，作為 repo tested / CI pinned Node 版本；`runtime/channel-gateway/package.json` 新增 `"engines": { "node": ">=24.15.0 <25" }` 作為本機相容下限；`package-lock.json` 完成 canonical metadata sync（zero dependencies, zero devDependencies）。
+      - **自動測試探索 (Automatic Discovery)**：`package.json` test script 改為 `node --test --test-reporter=tap "tests/*.test.js"`；Python canonical bridge (`scripts/tests/test_channel_gateway_core.py`) 移除所有硬編碼 test 路徑，改以 `discover_gateway_test_files()` 動態探索 `runtime/channel-gateway/tests/*.test.js`，參數化每檔執行與整體執行。
+      - **零未註冊跳過政策 (Zero Unregistered Skips)**：依 Macro Auditor 裁決 Option A，新增 `runtime/channel-gateway/test-policy.json` 嚴格宣告 win32 平台 3 項能力限制跳過（symlink EPERM 與 chmod unreadable 目錄限制）；Linux / Ubuntu 維持 approved skips 為 EMPTY（任何跳過一律 FAIL）；Python bridge 實作嚴格 TAP 解析與 negative policy canaries（Canary A–F）驗證 fail-closed。
+      - **跨平台 CI 擴充**：`.github/workflows/verify.yml` 之 `verify` job 納入 `setup-node@v4`（讀取 `.nvmrc`）；新增 `gateway-windows` job 於 `windows-latest` 執行 Python bridge，機械驗證 Windows 下 Node 24、node:sqlite smoke、零依賴、所有測試執行與零未註冊跳過。
+      - **治理文件同步**：`runtime/channel-gateway/AGENTS.md` 更新第 9 節反映 Node 24 pin、自動探索與零未註冊跳過治理契約。
+    - **當前生命週期狀態**：
+      - 本批為 E-03 T3/T17 實作候選。
+      - E-03 進行中（IN PROGRESS）。
+      - accepted checkpoint 推進至 `234918c87e05626245c8204f2e36a98d9bd87bc6`。
+      - D29 Wave 2H 取消且不得恢復；T6 SQLite repository 尚未開始；Gateway live 整合尚未開始（NOT STARTED）；R2 與 R3 維持 USER DECISION PENDING；B-98 維持 pending。
+      - 本候選等待 External Macro Reviewer 獨立審核，不得 self-audit。

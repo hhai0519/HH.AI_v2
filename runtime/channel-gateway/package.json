@@ -4,7 +4,10 @@
   "private": true,
   "description": "Channel Gateway pure control core foundation",
   "main": "core/channel-control.js",
+  "engines": {
+    "node": ">=24.15.0 <25"
+  },
   "scripts": {
-    "test": "node --test tests/channel-control.test.js tests/account-registry.test.js tests/account-switch.test.js tests/data-location-config.test.js tests/local-config-loader.test.js tests/durable-state-store.test.js tests/channel-state-recovery.test.js tests/channel-state-persistence.test.js"
+    "test": "node --test --test-reporter=tap \"tests/*.test.js\""
   }
 }
