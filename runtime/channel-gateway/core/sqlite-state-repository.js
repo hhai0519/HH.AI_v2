@@ -38,6 +38,7 @@
 
 const fs = require('node:fs');
 const path = require('node:path');
+const crypto = require('node:crypto');
 const { DatabaseSync } = require('node:sqlite');
 const { isAbsolutePath } = require('./data-location-config');
 
@@ -466,6 +467,200 @@ class SqliteStateRepository {
    */
   get isOpen() {
     return Boolean(this.#isOpen);
+  }
+
+  /**
+   * Creates a verified online backup of the SQLite database via VACUUM INTO.
+   *
+   * Invariants:
+   * - Repository must be currently open; fails closed if closed.
+   * - Source database remains open, usable, and unmodified.
+   * - No caller path override: destination filename is generated internally using
+   *   a safe naming pattern confined strictly to canonicalStateRoot.
+   * - Destination existence is inspected with lstatSync: only ENOENT is accepted.
+   *   Any existing regular file, symlink, or directory fails closed (no overwrite).
+   * - SQL safety: uses parameterized prepared statement `VACUUM INTO ?;` with parameter binding.
+   * - Backup file post-verification: must be a regular file, non-symlink, resolving inside canonicalStateRoot.
+   * - Read-only integrity verification: opened with DatabaseSync({ readOnly: true, enableForeignKeyConstraints: true }).
+   *   Verifies:
+   *     1. PRAGMA integrity_check === 'ok'
+   *     2. schema_migrations table canonical STRICT shape
+   *     3. Applied migration history strictly matches source
+   *     4. No unexpected user tables beyond what exists in source
+   * - Returns clean success metadata ({ success: true, backupPath, sourceSchemaVersion, integrity: 'ok' }).
+   *   Exposes no raw database handles or prepared statements.
+   * - If verification fails, best-effort cleanup of destination is performed only if verified
+   *   to be a regular non-symlink file within canonicalStateRoot.
+   *
+   * @returns {{ success: true, backupPath: string, sourceSchemaVersion: number, integrity: string }}
+   */
+  createVerifiedBackup() {
+    if (!this.#isOpen || !this.#db) {
+      throw new Error('Repository is closed (cannot create backup from closed repository)');
+    }
+
+    const uniqueId = crypto.randomUUID();
+    const backupFilename = `channel-gateway-state.backup-v${this.#schemaVersion}-${uniqueId}.sqlite3`;
+    const backupDestination = path.join(this.#canonicalStateRoot, backupFilename);
+
+    // Pre-execution path confinement check
+    const nominalRel = path.relative(this.#canonicalStateRoot, backupDestination);
+    if (nominalRel === '..' || nominalRel.startsWith('..' + path.sep) || path.isAbsolute(nominalRel)) {
+      throw new Error(
+        `Backup destination path escapes canonical state root: '${backupDestination}' is outside '${this.#canonicalStateRoot}'`
+      );
+    }
+
+    // Destination existence check: only ENOENT is accepted
+    let destLstat = null;
+    try {
+      destLstat = fs.lstatSync(backupDestination);
+    } catch (err) {
+      if (!err || err.code !== 'ENOENT') {
+        throw new Error(
+          `Failed to inspect backup destination path '${backupDestination}': ${err.message}`
+        );
+      }
+    }
+    if (destLstat !== null) {
+      throw new Error(
+        `Backup destination already exists (refusing overwrite/reuse): '${backupDestination}'`
+      );
+    }
+
+    // Execute VACUUM INTO using parameterized prepared statement
+    try {
+      const vacuumStmt = this.#db.prepare('VACUUM INTO ?;');
+      vacuumStmt.run(backupDestination);
+    } catch (err) {
+      throw new Error(`VACUUM INTO failed for destination '${backupDestination}': ${err.message}`);
+    }
+
+    // Post-execution destination verification
+    let postStat;
+    try {
+      postStat = fs.lstatSync(backupDestination);
+    } catch (err) {
+      throw new Error(
+        `Backup file not found after VACUUM INTO: '${backupDestination}' (${err.message})`
+      );
+    }
+
+    if (postStat.isSymbolicLink()) {
+      throw new Error(`Backup file must not be a symbolic link: '${backupDestination}'`);
+    }
+    if (!postStat.isFile()) {
+      throw new Error(`Backup file must be a regular file: '${backupDestination}'`);
+    }
+
+    let canonicalBackup;
+    try {
+      canonicalBackup = fs.realpathSync(backupDestination);
+    } catch (err) {
+      throw new Error(
+        `Failed to resolve canonical path for backup file: '${backupDestination}' (${err.message})`
+      );
+    }
+
+    const realRel = path.relative(this.#canonicalStateRoot, canonicalBackup);
+    if (realRel === '..' || realRel.startsWith('..' + path.sep) || path.isAbsolute(realRel)) {
+      throw new Error(
+        `Backup file resolves outside canonical state root: '${canonicalBackup}' is not within '${this.#canonicalStateRoot}'`
+      );
+    }
+
+    // Read-only reopening and integrity verification
+    let backupDb = null;
+    try {
+      backupDb = new DatabaseSync(backupDestination, {
+        readOnly: true,
+        enableForeignKeyConstraints: true,
+      });
+
+      // A. PRAGMA integrity_check
+      const integrityRows = backupDb.prepare('PRAGMA integrity_check;').all();
+      if (!integrityRows || integrityRows.length !== 1) {
+        throw new Error(
+          `PRAGMA integrity_check failed: expected 1 row, got ${integrityRows ? integrityRows.length : 0}`
+        );
+      }
+      const integrityVal = integrityRows[0].integrity_check ?? Object.values(integrityRows[0])[0];
+      if (integrityVal !== 'ok') {
+        throw new Error(`PRAGMA integrity_check reported error: ${integrityVal}`);
+      }
+
+      // B. Canonical schema_migrations shape
+      verifyCanonicalSchemaMigrationsShape(backupDb);
+
+      // C. Applied migration history match
+      const backupVersions = readAppliedMigrationVersions(backupDb);
+      const sourceVersions = readAppliedMigrationVersions(this.#db);
+
+      if (backupVersions.length !== sourceVersions.length) {
+        throw new Error(
+          `Backup migration history count mismatch: backup has ${backupVersions.length}, source has ${sourceVersions.length}`
+        );
+      }
+      for (let i = 0; i < backupVersions.length; i++) {
+        if (backupVersions[i] !== sourceVersions[i]) {
+          throw new Error(
+            `Backup migration history mismatch at index ${i}: backup=${backupVersions[i]}, source=${sourceVersions[i]}`
+          );
+        }
+      }
+
+      // D. User table list comparison: backup must not contain user tables not in source
+      const getTableNames = (dbConn) => {
+        const rows = dbConn.prepare(
+          "SELECT name FROM sqlite_schema WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name ASC;"
+        ).all();
+        return rows ? rows.map((r) => r.name) : [];
+      };
+
+      const sourceTables = getTableNames(this.#db);
+      const backupTables = getTableNames(backupDb);
+
+      if (backupTables.length !== sourceTables.length) {
+        throw new Error(
+          `Backup tables count mismatch: backup has [${backupTables.join(', ')}], source has [${sourceTables.join(', ')}]`
+        );
+      }
+      for (let i = 0; i < backupTables.length; i++) {
+        if (backupTables[i] !== sourceTables[i]) {
+          throw new Error(
+            `Backup table mismatch at index ${i}: backup has '${backupTables[i]}', source has '${sourceTables[i]}'`
+          );
+        }
+      }
+    } catch (verifErr) {
+      // Best-effort cleanup of destination ONLY IF confirmed regular file inside stateRoot
+      try {
+        const stat = fs.lstatSync(backupDestination);
+        if (stat.isFile() && !stat.isSymbolicLink()) {
+          const real = fs.realpathSync(backupDestination);
+          const rel = path.relative(this.#canonicalStateRoot, real);
+          if (rel !== '..' && !rel.startsWith('..' + path.sep) && !path.isAbsolute(rel)) {
+            fs.unlinkSync(backupDestination);
+          }
+        }
+      } catch (_) {
+        // Best effort: do not sacrifice path safety
+      }
+      throw new Error(`Backup verification failed: ${verifErr.message}`);
+    } finally {
+      if (backupDb) {
+        try {
+          backupDb.close();
+        } catch (_) {}
+      }
+    }
+
+    return {
+      success: true,
+      backupPath: backupDestination,
+      sourceSchemaVersion: this.#schemaVersion,
+      integrity: 'ok',
+    };
   }
 
   /**

@@ -2825,7 +2825,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 5.1 上一批狀態
 
-上次核對通過的 HEAD：c1fd25d166bdc854dc602f54ac8522de25326e26
+上次核對通過的 HEAD：50db6364fd3d15d5fc5d74d6b6acbb40aed7d751
 
 - `23af193`（執行者前置檢查 ＋ 回滾程序 ＋ `AUDIT-LOG.md` ＋ 四缺口修正）
   已於 2026-09-02 由審計官核對通過：6 檔異動（含 2 個新檔）、零夾帶、
@@ -3067,7 +3067,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - B-99 Qualification-Based Macro Auditor & Repo-Visible Handoff（CLOSED / MACRO PASS）。
   - B-97 Pre-B01 Comprehensive Release Audit 已完成（CLOSED / PRE-B01 RELEASE PASS）。
   - B-01 ADR-0002／0004／0010 分層搬移及 Active-Contract 語意修復已完成（CLOSED / MACRO PASS）。
-  - E-03 Runtime 執行層架構推進（IN PROGRESS）：T3/T17 = Node Runtime Pin + Windows CI + Automatic Test Discovery Enforcement Macro PASS / ACCEPTED；accepted checkpoint 保持 c1fd25d166bdc854dc602f54ac8522de25326e26；現執行 T6（SQLite Repository Foundation，Machine PASS / Macro HOLD / FINAL BOUNDED REPAIR IN PROGRESS）；T7 = NOT STARTED；D29 Wave 2H = CANCELLED / MUST NOT RESUME；R2 = Reply Result Uncertainty Handling（USER DECISION PENDING）；R3 = Local API Form（USER DECISION PENDING）；T6 僅建立 repository connection lifecycle 與 schema foundation，不建立 domain transaction (T7)、ingest idempotency (T8)、JSON retirement (T9) 或 full path guard (T11)；Gateway live 整合尚未開始（NOT STARTED）；B-98 / B-30 / B-33 / F-05 維持開啟狀態於既定前置邊界。
+  - E-03 Runtime 執行層架構推進（IN PROGRESS）：T3/T17 = Node Runtime Pin + Windows CI + Automatic Test Discovery Enforcement Macro PASS / ACCEPTED；accepted checkpoint 推進至 50db6364fd3d15d5fc5d74d6b6acbb40aed7d751；T6 = SQLite Repository Foundation Macro PASS / ACCEPTED；T11A = Verified Pre-Migration Online Backup Primitive IN PROGRESS / PENDING EXTERNAL MACRO AUDIT；T7 = NOT STARTED / BLOCKED UNTIL T11A ACCEPTED；T8/T9/T11-main = NOT STARTED；D29 Wave 2H = CANCELLED / MUST NOT RESUME；R2 = Reply Result Uncertainty Handling（USER DECISION PENDING）；R3 = Local API Form（USER DECISION PENDING）；Gateway live 整合尚未開始（NOT STARTED）；B-98 / B-30 / B-33 / F-05 維持開啟狀態於既定前置邊界。
   - C-06 維持待使用者裁決（USER_DECISION_NONBLOCKING，遠端 ruleset 與 required checks 現況已確認）。
   - B-28 / B-29 上游 trigger 重新評估完成，無 B-01 blocker，維持 DEFERRED_BY_USER / POST_B01。
   - B-54 保持待辦（POST_B01 / NONBLOCKING，SOP_12 機器專屬路徑 concrete example 已登錄）。
@@ -3767,3 +3767,24 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
       - T6 = FINAL BOUNDED REPAIR IN PROGRESS。
       - T7、T8、T9、T11 尚未開始；Gateway live 整合尚未開始（NOT STARTED）；R2 與 R3 維持 USER DECISION PENDING；B-98 維持 pending。
       - 本修復候選等待 External Macro Reviewer 獨立審核，不得 self-audit。
+
+91. **E-03 T6 SQLite Repository Foundation Acceptance & T11A Verified Pre-Migration Online Backup Primitive**（2026-09-17）
+    - **T6 最終審查結論**：完整審查範圍 `c1fd25d166bdc854dc602f54ac8522de25326e26..50db6364fd3d15d5fc5d74d6b6acbb40aed7d751`（涵蓋 3 個 commits：`e27dff9`、`c527bcc`、`50db636`）經 External Macro Reviewer（GPT 代理審查官（使用者授權））全面審查核定。A1 qualification 採 A1 = EQUIVALENT（GitHub API + Executor clone cross-check）成立；exact-SHA Actions Verify Run `35199802327` completed/success（jobs: verify = success, gateway-windows = success；Ubuntu canonical: 20 checks PASS，332 unit tests PASS，13 webapp PASS，ALL 5 Gates PASS；Windows: Node 24.21.0，Gateway bridge 22/22 PASS，sqlite-state-repository.test.js 自動探索通過）；F1（dangling symlink 分類）、F2（canonical STRICT 1-column schema）、F3（通用前向遷移 runner）、F4（ECMAScript private fields 私有狀態）全數 RESOLVED；判定 `MACRO AUDIT = PASS`，`ACCEPT STATUS = ACCEPT ALL`，`FINDING_DISPOSITION = NONE`，`T6 = ACCEPTED`；新核准 checkpoint 推進至 `50db6364fd3d15d5fc5d74d6b6acbb40aed7d751`。非阻塞性觀察：完整檔案系統 TOCTOU / sync / UNC / OneDrive 路徑守衛維持歸屬 T11 主切片。
+    - **T11A 經驗證線上備份原語（Verified Pre-Migration Online Backup Primitive）**：依據 `runtime/channel-gateway/AGENTS.md` §6（任何 schema migration 前必須具備經驗證之備份）與 §7（禁止使用作業系統檔案複製，必須使用 SQLite VACUUM INTO 或驗證之線上備份 API），作為未來 T7 migration 2 導入前的必要前置切片（prerequisite slice）。
+    - **核心架構與實作**：
+      - `SqliteStateRepository` 新增最小公開方法 `createVerifiedBackup()`，不接受呼叫端任意指定目標路徑、檔名、SQL 或選項。
+      - 內部安全命名 pattern：`channel-gateway-state.backup-v<sourceVersion>-<uniqueId>.sqlite3`，使用 `crypto.randomUUID()`，嚴格限定於 `canonicalStateRoot` 之子路徑。
+      - 執行前目標檢查：使用 `fs.lstatSync` 檢驗，僅 `ENOENT` 視為合法 absent；若目標已存在（無論 regular file、symlink 或目錄）一律 fail-closed 拒絕覆寫。
+      - SQL 安全：使用參數化 Prepared Statement `db.prepare('VACUUM INTO ?;').run(backupDestination)`，絕無字串拼接。
+      - 來源連線不變性：來源資料庫保持 open、可用、版本不變，不執行 in-place VACUUM。
+      - 線上唯讀檢驗契約：以 `DatabaseSync(backupDestination, { readOnly: true, enableForeignKeyConstraints: true })` 開啟備份，機械驗證：1. `PRAGMA integrity_check` 單列回傳 exact 'ok'；2. `schema_migrations` 符合 canonical STRICT 1-column PK 規格；3. 歷史遷移紀錄與來源完全相符（目前為 `[1]`）；4. 使用者表格清單與來源完全相符（目前僅 `schema_migrations`，無額外 domain tables）；5. 驗證完成後安全關閉連線。
+      - 回傳乾淨規格化成功物件 `{ success: true, backupPath, sourceSchemaVersion, integrity: 'ok' }`，零 raw handle 暴露；若檢驗失敗執行保守清理並拋出異常。
+    - **當前生命週期狀態**：
+      - 本批為 E-03 T11A 實作候選。
+      - E-03 進行中（IN PROGRESS）。
+      - accepted checkpoint = `50db6364fd3d15d5fc5d74d6b6acbb40aed7d751`。
+      - T6 = ACCEPTED。
+      - T11A = IN PROGRESS / PENDING EXTERNAL MACRO AUDIT。
+      - T7（交易邊界與 migration 2）阻塞於 T11A 外部 Macro PASS；T8、T9、T11 主切片尚未開始。
+      - Gateway live 整合尚未開始（NOT STARTED）；R2 與 R3 維持 USER DECISION PENDING；B-98 維持 pending。
+      - 本候選等待 External Macro Reviewer 獨立審核，不得 self-audit。

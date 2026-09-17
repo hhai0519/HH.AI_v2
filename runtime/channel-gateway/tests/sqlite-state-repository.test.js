@@ -13,6 +13,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const os = require('node:os');
+const crypto = require('node:crypto');
 const { DatabaseSync } = require('node:sqlite');
 
 const {
@@ -796,6 +797,273 @@ test('SqliteStateRepository - 33. F3: existing valid DB [1] executes 0 pending m
     } finally {
       rawDb.close();
     }
+  } finally {
+    harness.cleanup();
+  }
+});
+
+// 34. T11A: createVerifiedBackup succeeds on open valid repository and returns canonical metadata
+test('SqliteStateRepository - 34. T11A: createVerifiedBackup succeeds and returns canonical metadata', () => {
+  const harness = createTempHarness();
+  try {
+    const repo = new SqliteStateRepository(harness.stateRoot);
+    const result = repo.createVerifiedBackup();
+
+    assert.strictEqual(result.success, true);
+    assert.strictEqual(typeof result.backupPath, 'string');
+    assert.strictEqual(result.sourceSchemaVersion, 1);
+    assert.strictEqual(result.integrity, 'ok');
+
+    // Return metadata exposes no raw handles
+    assert.strictEqual(result.db, undefined);
+    assert.strictEqual(result.rawDb, undefined);
+    assert.strictEqual(result._db, undefined);
+
+    repo.close();
+  } finally {
+    harness.cleanup();
+  }
+});
+
+// 35. T11A: backup path confinement, naming pattern, and filesystem attributes
+test('SqliteStateRepository - 35. T11A: backup path confinement, safe naming, and regular file attributes', () => {
+  const harness = createTempHarness();
+  try {
+    const repo = new SqliteStateRepository(harness.stateRoot);
+    const result = repo.createVerifiedBackup();
+
+    // 1. Backup path is distinct from source path
+    assert.notStrictEqual(result.backupPath, repo.databasePath);
+
+    // 2. Confined within canonical stateRoot
+    const canonicalRoot = fs.realpathSync(harness.stateRoot);
+    const rel = path.relative(canonicalRoot, result.backupPath);
+    assert.strictEqual(rel.startsWith('..'), false);
+    assert.strictEqual(path.isAbsolute(rel), false);
+
+    // 3. Filename matches safe pattern
+    const basename = path.basename(result.backupPath);
+    const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    const match = basename.match(/^channel-gateway-state\.backup-v1-([0-9a-f-]+)\.sqlite3$/);
+    assert.ok(match, `Backup filename '${basename}' must match pattern channel-gateway-state.backup-v1-<uuid>.sqlite3`);
+    assert.ok(uuidPattern.test(match[1]), `UUID segment '${match[1]}' must be valid UUID`);
+
+    // 4. File attributes: regular file, non-symlink
+    const stat = fs.lstatSync(result.backupPath);
+    assert.strictEqual(stat.isFile(), true);
+    assert.strictEqual(stat.isSymbolicLink(), false);
+
+    repo.close();
+  } finally {
+    harness.cleanup();
+  }
+});
+
+// 36. T11A: source repository lifecycle unchanged after backup
+test('SqliteStateRepository - 36. T11A: source repository remains open, schema version unchanged, usable after backup', () => {
+  const harness = createTempHarness();
+  try {
+    const repo = new SqliteStateRepository(harness.stateRoot);
+    const backupResult = repo.createVerifiedBackup();
+    assert.strictEqual(backupResult.success, true);
+
+    // Source remains open
+    assert.strictEqual(repo.isOpen, true);
+    assert.strictEqual(repo.schemaVersion, 1);
+    assert.strictEqual(repo.databasePath, path.join(fs.realpathSync(harness.stateRoot), SQLITE_DATABASE_FILENAME));
+
+    // Source migration history unchanged [1]
+    const rawDb = new DatabaseSync(repo.databasePath, { readOnly: true });
+    try {
+      const rows = rawDb.prepare('SELECT version FROM schema_migrations ORDER BY version ASC;').all();
+      assert.strictEqual(rows.length, 1);
+      assert.strictEqual(rows[0].version, 1);
+    } finally {
+      rawDb.close();
+    }
+
+    repo.close();
+    assert.strictEqual(repo.isOpen, false);
+  } finally {
+    harness.cleanup();
+  }
+});
+
+// 37. T11A: backup database read-only verification: integrity_check, schema shape, migration history, no domain tables
+test('SqliteStateRepository - 37. T11A: backup read-only verification passes integrity_check, canonical schema, history [1]', () => {
+  const harness = createTempHarness();
+  try {
+    const repo = new SqliteStateRepository(harness.stateRoot);
+    const backupResult = repo.createVerifiedBackup();
+    repo.close();
+
+    // Verify backup independently via DatabaseSync in readOnly mode
+    const backupDb = new DatabaseSync(backupResult.backupPath, { readOnly: true });
+    try {
+      // 1. integrity_check exact 'ok'
+      const integrityRows = backupDb.prepare('PRAGMA integrity_check;').all();
+      assert.strictEqual(integrityRows.length, 1);
+      const integrityVal = integrityRows[0].integrity_check ?? Object.values(integrityRows[0])[0];
+      assert.strictEqual(integrityVal, 'ok');
+
+      // 2. schema_migrations canonical STRICT shape
+      const tableList = backupDb.prepare("PRAGMA table_list('schema_migrations');").all();
+      const tableEntry = tableList.find((e) => e.name === 'schema_migrations');
+      assert.ok(tableEntry, 'schema_migrations must exist in backup');
+      assert.strictEqual(Number(tableEntry.strict), 1, 'backup schema_migrations must be STRICT');
+
+      const colInfo = backupDb.prepare("PRAGMA table_info('schema_migrations');").all();
+      assert.strictEqual(colInfo.length, 1);
+      assert.strictEqual(colInfo[0].name, 'version');
+      assert.strictEqual(colInfo[0].type.toUpperCase(), 'INTEGER');
+      assert.ok(Number(colInfo[0].pk) > 0);
+
+      // 3. migration history exact [1]
+      const rows = backupDb.prepare('SELECT version FROM schema_migrations ORDER BY version ASC;').all();
+      assert.strictEqual(rows.length, 1);
+      assert.strictEqual(rows[0].version, 1);
+
+      // 4. no domain tables in current T6/T11A foundation
+      const tables = backupDb.prepare(
+        "SELECT name FROM sqlite_schema WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name ASC;"
+      ).all();
+      assert.strictEqual(tables.length, 1);
+      assert.strictEqual(tables[0].name, 'schema_migrations');
+    } finally {
+      backupDb.close();
+    }
+  } finally {
+    harness.cleanup();
+  }
+});
+
+// 38. T11A: sequential backups create distinct files
+test('SqliteStateRepository - 38. T11A: sequential backups generate distinct backup files', () => {
+  const harness = createTempHarness();
+  try {
+    const repo = new SqliteStateRepository(harness.stateRoot);
+    const backup1 = repo.createVerifiedBackup();
+    const backup2 = repo.createVerifiedBackup();
+
+    assert.notStrictEqual(backup1.backupPath, backup2.backupPath);
+    assert.ok(fs.existsSync(backup1.backupPath));
+    assert.ok(fs.existsSync(backup2.backupPath));
+
+    repo.close();
+  } finally {
+    harness.cleanup();
+  }
+});
+
+// 39. T11A: closed repository rejects createVerifiedBackup fail-closed
+test('SqliteStateRepository - 39. T11A: closed repository rejects createVerifiedBackup fail-closed', () => {
+  const harness = createTempHarness();
+  try {
+    const repo = new SqliteStateRepository(harness.stateRoot);
+    repo.close();
+
+    assert.throws(
+      () => repo.createVerifiedBackup(),
+      /closed/i
+    );
+  } finally {
+    harness.cleanup();
+  }
+});
+
+// 40. T11A: caller arguments for destination path/filename are ignored
+test('SqliteStateRepository - 40. T11A: caller arguments for destination/filename are ignored', () => {
+  const harness = createTempHarness();
+  try {
+    const repo = new SqliteStateRepository(harness.stateRoot);
+    const maliciousDestination = path.join(os.tmpdir(), 'malicious-escaped-backup.sqlite3');
+
+    const result = repo.createVerifiedBackup(maliciousDestination, { customPath: true });
+
+    // Backup is NOT written to caller's provided path
+    assert.notStrictEqual(result.backupPath, maliciousDestination);
+    assert.strictEqual(fs.existsSync(maliciousDestination), false);
+
+    // Backup is confined to stateRoot
+    const canonicalRoot = fs.realpathSync(harness.stateRoot);
+    const rel = path.relative(canonicalRoot, result.backupPath);
+    assert.strictEqual(rel.startsWith('..'), false);
+
+    repo.close();
+  } finally {
+    harness.cleanup();
+  }
+});
+
+// 41. T11A: pre-existing destination entry fails closed (refuses overwrite)
+test('SqliteStateRepository - 41. T11A: pre-existing destination entry fails closed without overwriting', () => {
+  const harness = createTempHarness();
+  const fixedUuid = '11111111-2222-3333-4444-555555555555';
+  const origRandomUUID = crypto.randomUUID;
+  try {
+    const repo = new SqliteStateRepository(harness.stateRoot);
+    const canonicalRoot = fs.realpathSync(harness.stateRoot);
+    const existingBackupPath = path.join(
+      canonicalRoot,
+      `channel-gateway-state.backup-v1-${fixedUuid}.sqlite3`
+    );
+
+    // Pre-create destination file with sentinel content
+    fs.writeFileSync(existingBackupPath, 'SENTINEL_DO_NOT_OVERWRITE', 'utf8');
+
+    // Mock randomUUID to hit the pre-created destination
+    crypto.randomUUID = () => fixedUuid;
+
+    assert.throws(
+      () => repo.createVerifiedBackup(),
+      /already exists/i
+    );
+
+    // Verify sentinel content was not overwritten or truncated
+    const content = fs.readFileSync(existingBackupPath, 'utf8');
+    assert.strictEqual(content, 'SENTINEL_DO_NOT_OVERWRITE');
+
+    repo.close();
+  } finally {
+    crypto.randomUUID = origRandomUUID;
+    harness.cleanup();
+  }
+});
+
+// 42. T11A: Parameterized VACUUM INTO behavior canary
+test('SqliteStateRepository - 42. T11A: parameterized VACUUM INTO behavior canary', () => {
+  const harness = createTempHarness();
+  try {
+    // 1. Production code inspect: VACUUM INTO must use bound parameter '?'
+    const moduleSource = fs.readFileSync(
+      path.join(__dirname, '../core/sqlite-state-repository.js'),
+      'utf8'
+    );
+    assert.ok(
+      /db\.prepare\(\s*['"]VACUUM\s+INTO\s+\?;\s*['"]\s*\)/i.test(moduleSource),
+      'Production source must use parameterized prepared statement VACUUM INTO ?;'
+    );
+    assert.strictEqual(
+      /VACUUM\s+INTO\s+['"`]\$\{/.test(moduleSource),
+      false,
+      'Production source must NEVER concatenate destination into VACUUM INTO SQL'
+    );
+
+    // 2. Behavioral proof: node:sqlite DatabaseSync natively executes VACUUM INTO ? with bound parameter
+    const testDbPath = path.join(harness.stateRoot, 'test_param_source.sqlite3');
+    const testDestPath = path.join(harness.stateRoot, 'test_param_dest.sqlite3');
+    const rawDb = new DatabaseSync(testDbPath);
+    rawDb.exec('CREATE TABLE test_table (v INTEGER PRIMARY KEY) STRICT;');
+    rawDb.prepare('INSERT INTO test_table (v) VALUES (?);').run(42);
+
+    const vacuumStmt = rawDb.prepare('VACUUM INTO ?;');
+    vacuumStmt.run(testDestPath);
+    rawDb.close();
+
+    const verifyDb = new DatabaseSync(testDestPath, { readOnly: true });
+    const row = verifyDb.prepare('SELECT v FROM test_table;').get();
+    assert.strictEqual(row.v, 42);
+    verifyDb.close();
   } finally {
     harness.cleanup();
   }
