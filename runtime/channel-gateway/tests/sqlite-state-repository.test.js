@@ -22,6 +22,9 @@ const {
   SQLite_STATE_SCHEMA_VERSION,
   SQLITE_BUSY_TIMEOUT_MS,
   SQLITE_DATABASE_FILENAME,
+  CHANNEL_CONTROL_SCHEMA_SQL,
+  INBOX_SCHEMA_SQL,
+  normalizeCanonicalSchemaSql,
 } = require('../core/sqlite-state-repository');
 
 function createTempHarness() {
@@ -1585,4 +1588,244 @@ test('SqliteStateRepository - 52. T7A: public createVerifiedBackup on v2 reposit
   } finally {
     harness.cleanup();
   }
+});
+
+// 53. T7A-F1 Regression: Synthetic weakened-v2 database without CHECK constraints and without AUTOINCREMENT is rejected fail-closed
+test('SqliteStateRepository - 53. T7A-F1: synthetic weakened-v2 DB without CHECKs and without AUTOINCREMENT rejected fail-closed', () => {
+  const harness = createTempHarness();
+  try {
+    const dbPath = path.join(harness.stateRoot, SQLITE_DATABASE_FILENAME);
+    const rawDb = new DatabaseSync(dbPath);
+    try {
+      rawDb.exec('PRAGMA journal_mode = WAL;');
+      rawDb.exec('PRAGMA foreign_keys = ON;');
+      rawDb.exec('CREATE TABLE schema_migrations (version INTEGER PRIMARY KEY) STRICT;');
+      rawDb.exec('INSERT INTO schema_migrations (version) VALUES (1), (2);');
+      // Weakened channel_control: STRICT, same 4 columns, same PK/default, BUT NO CHECK constraints
+      rawDb.exec(`
+        CREATE TABLE channel_control (
+          channel_id TEXT PRIMARY KEY,
+          current_holder TEXT,
+          fencing_token INTEGER NOT NULL DEFAULT 0,
+          last_heartbeat_at INTEGER
+        ) STRICT;
+      `);
+      // Weakened inbox: STRICT, same 10 columns, same FK, same UNIQUE, BUT sequence INTEGER PRIMARY KEY (no AUTOINCREMENT), NO CHECK constraints
+      rawDb.exec(`
+        CREATE TABLE inbox (
+          sequence INTEGER PRIMARY KEY,
+          channel_id TEXT NOT NULL,
+          message_id TEXT NOT NULL,
+          receiving_account_id TEXT NOT NULL,
+          status TEXT NOT NULL,
+          claimed_by TEXT,
+          claimed_at_token INTEGER,
+          discard_reason TEXT,
+          discarded_by_holder TEXT,
+          discarded_at_token INTEGER,
+          UNIQUE(channel_id, message_id),
+          FOREIGN KEY(channel_id) REFERENCES channel_control(channel_id) ON DELETE RESTRICT
+        ) STRICT;
+      `);
+    } finally {
+      rawDb.close();
+    }
+
+    assert.throws(
+      () => new SqliteStateRepository(harness.stateRoot),
+      /fail-closed/i,
+      'Reopening weakened v2 database missing CHECKs and AUTOINCREMENT must fail closed'
+    );
+  } finally {
+    harness.cleanup();
+  }
+});
+
+// 54. T7A-F1 Targeted: channel_control missing fencing_token >= 0 CHECK constraint is rejected fail-closed
+test('SqliteStateRepository - 54. T7A-F1: channel_control missing fencing_token CHECK constraint rejected fail-closed', () => {
+  const harness = createTempHarness();
+  try {
+    const dbPath = path.join(harness.stateRoot, SQLITE_DATABASE_FILENAME);
+    const rawDb = new DatabaseSync(dbPath);
+    try {
+      rawDb.exec('PRAGMA journal_mode = WAL;');
+      rawDb.exec('PRAGMA foreign_keys = ON;');
+      rawDb.exec('CREATE TABLE schema_migrations (version INTEGER PRIMARY KEY) STRICT;');
+      rawDb.exec('INSERT INTO schema_migrations (version) VALUES (1), (2);');
+      rawDb.exec(`
+        CREATE TABLE channel_control (
+          channel_id TEXT PRIMARY KEY CHECK(length(trim(channel_id)) > 0),
+          current_holder TEXT CHECK(current_holder IS NULL OR length(trim(current_holder)) > 0),
+          fencing_token INTEGER NOT NULL DEFAULT 0,
+          last_heartbeat_at INTEGER
+        ) STRICT;
+      `);
+      rawDb.exec(INBOX_SCHEMA_SQL);
+    } finally {
+      rawDb.close();
+    }
+
+    assert.throws(
+      () => new SqliteStateRepository(harness.stateRoot),
+      /fencing_token.*CHECK|canonical DDL/i,
+      'channel_control missing fencing_token CHECK constraint must fail closed'
+    );
+  } finally {
+    harness.cleanup();
+  }
+});
+
+// 55. T7A-F1 Targeted: inbox missing status enum CHECK constraint is rejected fail-closed
+test('SqliteStateRepository - 55. T7A-F1: inbox missing status enum CHECK constraint rejected fail-closed', () => {
+  const harness = createTempHarness();
+  try {
+    const dbPath = path.join(harness.stateRoot, SQLITE_DATABASE_FILENAME);
+    const rawDb = new DatabaseSync(dbPath);
+    try {
+      rawDb.exec('PRAGMA journal_mode = WAL;');
+      rawDb.exec('PRAGMA foreign_keys = ON;');
+      rawDb.exec('CREATE TABLE schema_migrations (version INTEGER PRIMARY KEY) STRICT;');
+      rawDb.exec('INSERT INTO schema_migrations (version) VALUES (1), (2);');
+      rawDb.exec(CHANNEL_CONTROL_SCHEMA_SQL);
+      rawDb.exec(`
+        CREATE TABLE inbox (
+          sequence INTEGER PRIMARY KEY AUTOINCREMENT,
+          channel_id TEXT NOT NULL,
+          message_id TEXT NOT NULL CHECK(length(trim(message_id)) > 0),
+          receiving_account_id TEXT NOT NULL CHECK(length(trim(receiving_account_id)) > 0),
+          status TEXT NOT NULL,
+          claimed_by TEXT,
+          claimed_at_token INTEGER CHECK(claimed_at_token IS NULL OR claimed_at_token >= 0),
+          discard_reason TEXT,
+          discarded_by_holder TEXT,
+          discarded_at_token INTEGER CHECK(discarded_at_token IS NULL OR discarded_at_token >= 0),
+          UNIQUE(channel_id, message_id),
+          FOREIGN KEY(channel_id) REFERENCES channel_control(channel_id) ON DELETE RESTRICT
+        ) STRICT;
+      `);
+    } finally {
+      rawDb.close();
+    }
+
+    assert.throws(
+      () => new SqliteStateRepository(harness.stateRoot),
+      /status enum.*CHECK|canonical DDL/i,
+      'inbox missing status enum CHECK constraint must fail closed'
+    );
+  } finally {
+    harness.cleanup();
+  }
+});
+
+// 56. T7A-F1 Targeted: inbox missing AUTOINCREMENT on sequence column is rejected fail-closed
+test('SqliteStateRepository - 56. T7A-F1: inbox missing AUTOINCREMENT on sequence column rejected fail-closed', () => {
+  const harness = createTempHarness();
+  try {
+    const dbPath = path.join(harness.stateRoot, SQLITE_DATABASE_FILENAME);
+    const rawDb = new DatabaseSync(dbPath);
+    try {
+      rawDb.exec('PRAGMA journal_mode = WAL;');
+      rawDb.exec('PRAGMA foreign_keys = ON;');
+      rawDb.exec('CREATE TABLE schema_migrations (version INTEGER PRIMARY KEY) STRICT;');
+      rawDb.exec('INSERT INTO schema_migrations (version) VALUES (1), (2);');
+      rawDb.exec(CHANNEL_CONTROL_SCHEMA_SQL);
+      rawDb.exec(`
+        CREATE TABLE inbox (
+          sequence INTEGER PRIMARY KEY,
+          channel_id TEXT NOT NULL,
+          message_id TEXT NOT NULL CHECK(length(trim(message_id)) > 0),
+          receiving_account_id TEXT NOT NULL CHECK(length(trim(receiving_account_id)) > 0),
+          status TEXT NOT NULL CHECK(status IN ('queued', 'claimed', 'discarded', 'replied')),
+          claimed_by TEXT,
+          claimed_at_token INTEGER CHECK(claimed_at_token IS NULL OR claimed_at_token >= 0),
+          discard_reason TEXT,
+          discarded_by_holder TEXT,
+          discarded_at_token INTEGER CHECK(discarded_at_token IS NULL OR discarded_at_token >= 0),
+          UNIQUE(channel_id, message_id),
+          FOREIGN KEY(channel_id) REFERENCES channel_control(channel_id) ON DELETE RESTRICT
+        ) STRICT;
+      `);
+    } finally {
+      rawDb.close();
+    }
+
+    assert.throws(
+      () => new SqliteStateRepository(harness.stateRoot),
+      /AUTOINCREMENT|canonical DDL/i,
+      'inbox missing AUTOINCREMENT must fail closed'
+    );
+  } finally {
+    harness.cleanup();
+  }
+});
+
+// 57. T7A-F1 Positive Reopen: canonical v2 database reopen succeeds and preserves schema contract
+test('SqliteStateRepository - 57. T7A-F1: canonical v2 database reopen succeeds and preserves schema', () => {
+  const harness = createTempHarness();
+  try {
+    const repo1 = new SqliteStateRepository(harness.stateRoot);
+    assert.strictEqual(repo1.schemaVersion, 2);
+    assert.strictEqual(repo1.isOpen, true);
+    repo1.close();
+
+    const repo2 = new SqliteStateRepository(harness.stateRoot);
+    assert.strictEqual(repo2.schemaVersion, 2);
+    assert.strictEqual(repo2.isOpen, true);
+    repo2.close();
+  } finally {
+    harness.cleanup();
+  }
+});
+
+// 58. T7A-F1 Backup Safety: weakened v2 database cannot be opened to produce verified backup
+test('SqliteStateRepository - 58. T7A-F1: weakened v2 database cannot be opened to produce verified backup', () => {
+  const harness = createTempHarness();
+  try {
+    const dbPath = path.join(harness.stateRoot, SQLITE_DATABASE_FILENAME);
+    const rawDb = new DatabaseSync(dbPath);
+    try {
+      rawDb.exec('PRAGMA journal_mode = WAL;');
+      rawDb.exec('PRAGMA foreign_keys = ON;');
+      rawDb.exec('CREATE TABLE schema_migrations (version INTEGER PRIMARY KEY) STRICT;');
+      rawDb.exec('INSERT INTO schema_migrations (version) VALUES (1), (2);');
+      rawDb.exec(`
+        CREATE TABLE channel_control (
+          channel_id TEXT PRIMARY KEY,
+          current_holder TEXT,
+          fencing_token INTEGER NOT NULL DEFAULT 0,
+          last_heartbeat_at INTEGER
+        ) STRICT;
+      `);
+      rawDb.exec(INBOX_SCHEMA_SQL);
+    } finally {
+      rawDb.close();
+    }
+
+    assert.throws(
+      () => new SqliteStateRepository(harness.stateRoot),
+      /fail-closed/i,
+      'Weakened v2 repository open must fail closed, preventing verified backup generation'
+    );
+  } finally {
+    harness.cleanup();
+  }
+});
+
+// 59. T7A-F1 SQL Normalizer: normalizeCanonicalSchemaSql handles formatting, casing, and preserves literals
+test('SqliteStateRepository - 59. T7A-F1: normalizeCanonicalSchemaSql handles formatting, casing, and preserves string literals', () => {
+  assert.strictEqual(normalizeCanonicalSchemaSql(null), '');
+  assert.strictEqual(normalizeCanonicalSchemaSql(''), '');
+
+  const sql1 = `
+    CREATE TABLE test (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      status TEXT CHECK ( status IN ( 'queued', 'claimed' ) )
+    ) STRICT;
+  `;
+  const sql2 = "create table test(id integer primary key autoincrement, status text check(status in ('queued', 'claimed'))) strict";
+  assert.strictEqual(normalizeCanonicalSchemaSql(sql1), normalizeCanonicalSchemaSql(sql2));
+
+  // Case of string literal must be preserved (case-sensitive enum)
+  const sqlBadEnum = "create table test(id integer primary key autoincrement, status text check(status in ('QUEUED', 'claimed'))) strict";
+  assert.notStrictEqual(normalizeCanonicalSchemaSql(sql1), normalizeCanonicalSchemaSql(sqlBadEnum));
 });

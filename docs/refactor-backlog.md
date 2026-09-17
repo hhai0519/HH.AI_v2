@@ -3828,3 +3828,24 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
       - T7B（交易式 takeover/claim/poll/reply API）保持 NOT STARTED，阻塞於 T7A 外部 Macro PASS。
       - T8、T9、T11 主切片尚未開始；Gateway live 整合尚未開始（NOT STARTED）；R2 與 R3 維持 USER DECISION PENDING；B-98 維持 pending。
       - 本候選等待 External Macro Reviewer 獨立審核，不得 self-audit。
+
+94. **E-03 T7A Canonical Durable Schema Validation Bounded Repair**（2026-09-17）
+    - **T7A 初審審計結論與 Finding T7A-F1**：前段 T7A 實作候選 `ea529d60d467b04d63c826529bbe47b9ef361a24`（E-03 Add SQLite Channel State Schema）經 External Macro Reviewer（GPT 代理審查官（使用者授權））審查。exact-SHA Actions Verify Run `35207118984` completed/success（jobs: verify = success, gateway-windows = success；Ubuntu canonical: 20 checks PASS，332 unit tests PASS，13 webapp PASS，ALL 5 Gates PASS；Windows: Node 24.21.0, Gateway bridge 22/22 PASS）。機器驗證全部通過（MACHINE / CI = PASS），但宏觀審查發現結構性缺口（MACRO AUDIT = HOLD，ACCEPT STATUS = ONE BOUNDED REPAIR REQUIRED，FINDING_DISPOSITION = CURRENT E-03）：
+      - **Finding T7A-F1（CANONICAL DOMAIN SCHEMA VALIDATION INCOMPLETE）**：`verifyCanonicalDomainSchemaShape` 僅透過 PRAGMA `table_list` 與 `table_info` 驗證了 STRICT、欄位數、型別、PK、FK 與 UNIQUE，但因 SQLite PRAGMA `table_info` 不暴露 CHECK 約束與 AUTOINCREMENT，既有 v2 資料庫重開時若 CHECK 約束或 AUTOINCREMENT 被移除或削弱，儲存庫無法偵測並可能視為合法開啟，存在 fail-closed 驗證缺口。accepted checkpoint 維持 `b27ea204a10764d9c25ff37e1f108ee7cf41b39b`，不得填入 `ea529d60` 或修復候選，T7B 維持 NOT AUTHORIZED。
+    - **T7A-F1 有邊界修復實作**：
+      - **Canonical DDL 常數與共享契約**：定義模組級常數 `CHANNEL_CONTROL_SCHEMA_SQL` 與 `INBOX_SCHEMA_SQL`，由 Migration 2 執行邏輯與 `verifyCanonicalDomainSchemaShape` 驗證器共用單一事實來源，防止 migration DDL 與 validation contract 漂移。
+      - **確定性 SQL 正規化器（normalizeCanonicalSchemaSql）**：實作專屬正規化器，單純處理空格折疊、標點符號間距、分號清理與關鍵字大寫化，且完整保留單引號字串常面值（如 `'queued'` 等 enum 值之大小寫區分），不引入外部語法解析器或 npm 依賴。
+      - **全契約機械式驗證**：`verifyCanonicalDomainSchemaShape(db)` 保留既有全部 PRAGMA 結構驗證（table_list STRICT、table_info columns/types/PK/defaults、foreign_key_list、index_list compound UNIQUE），並自 `sqlite_schema` 讀取表格 DDL，機械驗證：
+        - `channel_control`：`CHECK(length(trim(channel_id)) > 0)`、`CHECK(current_holder IS NULL OR length(trim(current_holder)) > 0)`、`CHECK(fencing_token >= 0)`。
+        - `inbox`：`sequence INTEGER PRIMARY KEY AUTOINCREMENT`、`CHECK(length(trim(message_id)) > 0)`、`CHECK(length(trim(receiving_account_id)) > 0)`、`CHECK(status IN ('queued', 'claimed', 'discarded', 'replied'))`、`CHECK(claimed_at_token IS NULL OR claimed_at_token >= 0)`、`CHECK(discarded_at_token IS NULL OR discarded_at_token >= 0)`。
+        - 任何約束移除、削弱或 DDL 不符 canonical 契約一律 FAIL-CLOSED 拋錯。
+      - **回歸測試矩陣**：擴充至 59 項測試（全庫 247 tests，244 pass，3 allowed Windows skips，0 fail，零未註冊跳過）；新增 Test 53（synthetic weakened-v2 DB 缺乏 CHECKs 與 AUTOINCREMENT 拒絕）、Test 54（缺乏 fencing CHECK 拒絕）、Test 55（缺乏 status enum CHECK 拒絕）、Test 56（缺乏 AUTOINCREMENT 拒絕）、Test 57（canonical v2 DB 重開通過）、Test 58（weakened v2 DB 無法開啟亦無法產生 verified backup）、Test 59（正規化器格式與大小寫保留驗證）。
+    - **當前生命週期狀態**：
+      - 本批為 E-03 T7A Canonical Durable Schema Validation Bounded Repair 實作候選。
+      - E-03 進行中（IN PROGRESS）。
+      - accepted checkpoint 保持 `b27ea204a10764d9c25ff37e1f108ee7cf41b39b`（不得填入 ea529d60 或 repair candidate）。
+      - T11A = ACCEPTED。
+      - T7A = CANONICAL SCHEMA VALIDATION REPAIR IN PROGRESS / PENDING EXTERNAL MACRO AUDIT。
+      - T7B = NOT STARTED / BLOCKED UNTIL T7A ACCEPTED。
+      - T8、T9、T11-main = NOT STARTED；Gateway live = NOT STARTED；R2 與 R3 維持 USER DECISION PENDING；B-98 維持 pending；Wave 2H 維持 CANCELLED。
+      - 本修復候選等待 External Macro Reviewer 獨立審核，不得 self-audit。

@@ -1,7 +1,7 @@
 /**
  * runtime/channel-gateway/core/sqlite-state-repository.js
  *
- * ADR-0023 / E-03 T6: Channel Gateway SQLite Authoritative State Repository & Schema Foundation.
+ * ADR-0023 / E-03 T6/T7A: Channel Gateway SQLite Authoritative State Repository & Durable Channel State Schema.
  *
  * Invariants:
  * - Built-in node:sqlite (DatabaseSync) only; zero npm dependencies.
@@ -26,8 +26,8 @@
  *     - Runner records version in schema_migrations via prepared statement within immediate transaction.
  *     - Existing DB missing schema_migrations fails closed.
  *     - Canonical schema_migrations shape verified via PRAGMA table_list and PRAGMA table_info (STRICT, 1 column, PK).
- *     - Gap, non-integer, <=0, duplicate, or future version > 1 fails closed.
- * - No domain tables or columns in T6 foundation.
+ *     - Gap, non-integer, <=0, duplicate, or future version > SQLITE_STATE_SCHEMA_VERSION fails closed.
+ * - Canonical domain tables (channel_control, inbox) in T7A with strict DDL, CHECK, FK, and AUTOINCREMENT validation.
  * - SQL safety: parameterized prepared statements for any valued queries; no dynamic SQL string concatenation.
  * - No raw DatabaseSync handle escape hatch (no rawDb, exec, query exports).
  * - True read-only introspection via ECMAScript private fields (#db, #databasePath, #schemaVersion, #isOpen, #canonicalStateRoot).
@@ -47,6 +47,93 @@ const SQLITE_BUSY_TIMEOUT_MS = 5000;
 const SQLITE_DATABASE_FILENAME = 'channel-gateway-state.sqlite3';
 
 /**
+ * Canonical DDL definitions for domain tables introduced in schema version 2.
+ * Shared between migration 2 runner and verifyCanonicalDomainSchemaShape validator.
+ */
+const CHANNEL_CONTROL_SCHEMA_SQL = `
+CREATE TABLE channel_control (
+  channel_id TEXT PRIMARY KEY
+    CHECK(length(trim(channel_id)) > 0),
+  current_holder TEXT
+    CHECK(
+      current_holder IS NULL OR
+      length(trim(current_holder)) > 0
+    ),
+  fencing_token INTEGER NOT NULL DEFAULT 0
+    CHECK(fencing_token >= 0),
+  last_heartbeat_at INTEGER
+) STRICT;
+`;
+
+const INBOX_SCHEMA_SQL = `
+CREATE TABLE inbox (
+  sequence INTEGER PRIMARY KEY AUTOINCREMENT,
+  channel_id TEXT NOT NULL,
+  message_id TEXT NOT NULL
+    CHECK(length(trim(message_id)) > 0),
+  receiving_account_id TEXT NOT NULL
+    CHECK(length(trim(receiving_account_id)) > 0),
+  status TEXT NOT NULL
+    CHECK(status IN (
+      'queued',
+      'claimed',
+      'discarded',
+      'replied'
+    )),
+  claimed_by TEXT,
+  claimed_at_token INTEGER
+    CHECK(
+      claimed_at_token IS NULL OR
+      claimed_at_token >= 0
+    ),
+  discard_reason TEXT,
+  discarded_by_holder TEXT,
+  discarded_at_token INTEGER
+    CHECK(
+      discarded_at_token IS NULL OR
+      discarded_at_token >= 0
+    ),
+  UNIQUE(channel_id, message_id),
+  FOREIGN KEY(channel_id)
+    REFERENCES channel_control(channel_id)
+    ON DELETE RESTRICT
+) STRICT;
+`;
+
+/**
+ * Normalizes CREATE TABLE DDL SQL deterministically for canonical schema comparison.
+ * Collapses whitespace, trims, normalizes punctuation spacing, strips trailing semicolons,
+ * and normalizes keyword case outside single-quoted string literals.
+ *
+ * @param {string} sql
+ * @returns {string}
+ */
+function normalizeCanonicalSchemaSql(sql) {
+  if (typeof sql !== 'string') return '';
+  const parts = sql.split(/('(?:''|[^'])*')/g);
+  for (let i = 0; i < parts.length; i++) {
+    if (i % 2 === 0) {
+      parts[i] = parts[i]
+        .replace(/;/g, ' ')
+        .replace(/\s+/g, ' ')
+        .replace(/\s*\(\s*/g, ' ( ')
+        .replace(/\s*\)\s*/g, ' ) ')
+        .replace(/\s*,\s*/g, ' , ')
+        .replace(/\s*>=+\s*/g, ' >= ')
+        .replace(/\s*<=+\s*/g, ' <= ')
+        .replace(/\s*(?<![<>=])>(?![=])\s*/g, ' > ')
+        .replace(/\s*(?<![<>=])<(?![=])\s*/g, ' < ')
+        .replace(/\s*(?<![<>=!])=(?![=])\s*/g, ' = ')
+        .toUpperCase();
+    }
+  }
+  return parts
+    .join('')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
  * Ordered, forward-only migration definitions.
  * Each migration must be continuous starting from 1 up to SQLITE_STATE_SCHEMA_VERSION.
  */
@@ -60,67 +147,8 @@ const MIGRATIONS = Object.freeze([
   Object.freeze({
     version: 2,
     apply(db) {
-      db.exec(`
-        CREATE TABLE channel_control (
-          channel_id TEXT PRIMARY KEY
-            CHECK(length(trim(channel_id)) > 0),
-
-          current_holder TEXT
-            CHECK(
-              current_holder IS NULL OR
-              length(trim(current_holder)) > 0
-            ),
-
-          fencing_token INTEGER NOT NULL DEFAULT 0
-            CHECK(fencing_token >= 0),
-
-          last_heartbeat_at INTEGER
-        ) STRICT;
-
-        CREATE TABLE inbox (
-          sequence INTEGER PRIMARY KEY AUTOINCREMENT,
-
-          channel_id TEXT NOT NULL,
-
-          message_id TEXT NOT NULL
-            CHECK(length(trim(message_id)) > 0),
-
-          receiving_account_id TEXT NOT NULL
-            CHECK(length(trim(receiving_account_id)) > 0),
-
-          status TEXT NOT NULL
-            CHECK(status IN (
-              'queued',
-              'claimed',
-              'discarded',
-              'replied'
-            )),
-
-          claimed_by TEXT,
-
-          claimed_at_token INTEGER
-            CHECK(
-              claimed_at_token IS NULL OR
-              claimed_at_token >= 0
-            ),
-
-          discard_reason TEXT,
-
-          discarded_by_holder TEXT,
-
-          discarded_at_token INTEGER
-            CHECK(
-              discarded_at_token IS NULL OR
-              discarded_at_token >= 0
-            ),
-
-          UNIQUE(channel_id, message_id),
-
-          FOREIGN KEY(channel_id)
-            REFERENCES channel_control(channel_id)
-            ON DELETE RESTRICT
-        ) STRICT;
-      `);
+      db.exec(CHANNEL_CONTROL_SCHEMA_SQL);
+      db.exec(INBOX_SCHEMA_SQL);
     },
   }),
 ]);
@@ -446,6 +474,56 @@ function verifyCanonicalDomainSchemaShape(db) {
   }
   if (!hasUniqueCompound) {
     throw new Error('inbox must define UNIQUE(channel_id, message_id) constraint (fail-closed)');
+  }
+
+  // 5. Verify canonical DDL and CHECK / AUTOINCREMENT constraints via sqlite_schema
+  const schemaStmt = db.prepare("SELECT sql FROM sqlite_schema WHERE type = 'table' AND name = ?;");
+
+  const ccSqlRow = schemaStmt.get('channel_control');
+  if (!ccSqlRow || typeof ccSqlRow.sql !== 'string') {
+    throw new Error('channel_control table definition not found in sqlite_schema (fail-closed)');
+  }
+  const normCC = normalizeCanonicalSchemaSql(ccSqlRow.sql);
+  const expCC = normalizeCanonicalSchemaSql(CHANNEL_CONTROL_SCHEMA_SQL);
+  if (!normCC.includes('CHECK ( FENCING_TOKEN >= 0 )')) {
+    throw new Error('channel_control missing fencing_token >= 0 CHECK constraint (fail-closed)');
+  }
+  if (!normCC.includes('CHECK ( LENGTH ( TRIM ( CHANNEL_ID ) ) > 0 )')) {
+    throw new Error('channel_control missing channel_id nonblank CHECK constraint (fail-closed)');
+  }
+  if (!normCC.includes('CHECK ( CURRENT_HOLDER IS NULL OR LENGTH ( TRIM ( CURRENT_HOLDER ) ) > 0 )')) {
+    throw new Error('channel_control missing current_holder CHECK constraint (fail-closed)');
+  }
+  if (normCC !== expCC) {
+    throw new Error('channel_control schema definition does not match canonical DDL contract (fail-closed)');
+  }
+
+  const inboxSqlRow = schemaStmt.get('inbox');
+  if (!inboxSqlRow || typeof inboxSqlRow.sql !== 'string') {
+    throw new Error('inbox table definition not found in sqlite_schema (fail-closed)');
+  }
+  const normInbox = normalizeCanonicalSchemaSql(inboxSqlRow.sql);
+  const expInbox = normalizeCanonicalSchemaSql(INBOX_SCHEMA_SQL);
+  if (!normInbox.includes('AUTOINCREMENT')) {
+    throw new Error('inbox sequence column missing AUTOINCREMENT (fail-closed)');
+  }
+  if (!normInbox.includes("CHECK ( STATUS IN ( 'queued' , 'claimed' , 'discarded' , 'replied' ) )")) {
+    throw new Error('inbox missing status enum CHECK constraint (fail-closed)');
+  }
+  if (!normInbox.includes('CHECK ( LENGTH ( TRIM ( MESSAGE_ID ) ) > 0 )')) {
+    throw new Error('inbox missing message_id nonblank CHECK constraint (fail-closed)');
+  }
+  if (!normInbox.includes('CHECK ( LENGTH ( TRIM ( RECEIVING_ACCOUNT_ID ) ) > 0 )')) {
+    throw new Error('inbox missing receiving_account_id nonblank CHECK constraint (fail-closed)');
+  }
+  if (!normInbox.includes('CHECK ( CLAIMED_AT_TOKEN IS NULL OR CLAIMED_AT_TOKEN >= 0 )')) {
+    throw new Error('inbox missing claimed_at_token >= 0 CHECK constraint (fail-closed)');
+  }
+  if (!normInbox.includes('CHECK ( DISCARDED_AT_TOKEN IS NULL OR DISCARDED_AT_TOKEN >= 0 )')) {
+    throw new Error('inbox missing discarded_at_token >= 0 CHECK constraint (fail-closed)');
+  }
+  if (normInbox !== expInbox) {
+    throw new Error('inbox schema definition does not match canonical DDL contract (fail-closed)');
   }
 }
 
@@ -1016,4 +1094,7 @@ module.exports = {
   SQLITE_BUSY_TIMEOUT_MS,
   SQLITE_DATABASE_FILENAME,
   SqliteStateRepository,
+  CHANNEL_CONTROL_SCHEMA_SQL,
+  INBOX_SCHEMA_SQL,
+  normalizeCanonicalSchemaSql,
 };
