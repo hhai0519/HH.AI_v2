@@ -1529,23 +1529,38 @@ test('SqliteStateRepository - 51. T7A: architectural boundaries: no ingest_curso
         }
       }
 
-      // 3. SqliteStateRepository exposes NO domain transaction methods yet (deferred to T7B)
+      // 3. T7B architectural boundaries: forbidden production ingress / mutation methods must not exist (deferred to T8/R2/D26)
       const forbiddenMethods = [
-        'takeoverChannel',
-        'heartbeatChannel',
-        'expireHolder',
         'enqueueMessage',
-        'claimMessages',
+        'ingestMessage',
         'pollMessages',
         'authorizeReply',
         'discardQueuedForAccount',
       ];
       for (const m of forbiddenMethods) {
-        assert.strictEqual(repo[m], undefined, `Domain transaction method '${m}' must not be exposed in T7A`);
+        assert.strictEqual(repo[m], undefined, `Forbidden method '${m}' must not be exposed in T7B`);
         assert.strictEqual(
           SqliteStateRepository.prototype[m],
           undefined,
-          `Domain transaction method '${m}' must not exist on prototype in T7A`
+          `Forbidden method '${m}' must not exist on prototype in T7B`
+        );
+      }
+
+      // T7B transaction methods must be present as functions
+      const t7bMethods = [
+        'takeoverChannel',
+        'heartbeatChannel',
+        'expireChannelHolder',
+        'expireHolder',
+        'claimMessages',
+        'validateReplyAuthorization',
+        'getChannelState',
+      ];
+      for (const m of t7bMethods) {
+        assert.strictEqual(
+          typeof repo[m],
+          'function',
+          `T7B transaction method '${m}' must be exposed as function`
         );
       }
     } finally {

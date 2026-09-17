@@ -2825,7 +2825,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 5.1 上一批狀態
 
-上次核對通過的 HEAD：b27ea204a10764d9c25ff37e1f108ee7cf41b39b
+上次核對通過的 HEAD：f54b5f1b4ec1acbb32c12555dc4c163fc5da7693
 
 - `23af193`（執行者前置檢查 ＋ 回滾程序 ＋ `AUDIT-LOG.md` ＋ 四缺口修正）
   已於 2026-09-02 由審計官核對通過：6 檔異動（含 2 個新檔）、零夾帶、
@@ -3067,7 +3067,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - B-99 Qualification-Based Macro Auditor & Repo-Visible Handoff（CLOSED / MACRO PASS）。
   - B-97 Pre-B01 Comprehensive Release Audit 已完成（CLOSED / PRE-B01 RELEASE PASS）。
   - B-01 ADR-0002／0004／0010 分層搬移及 Active-Contract 語意修復已完成（CLOSED / MACRO PASS）。
-  - E-03 Runtime 執行層架構推進（IN PROGRESS）：T3/T17 = Node Runtime Pin + Windows CI + Automatic Test Discovery Enforcement Macro PASS / ACCEPTED；accepted checkpoint 推進至 b27ea204a10764d9c25ff37e1f108ee7cf41b39b；T6 = SQLite Repository Foundation Macro PASS / ACCEPTED；T11A = Verified SQLite Pre-Migration Online Backup Primitive Macro PASS / ACCEPTED；T7A = Migration 2 + Durable Channel State Schema + Pre-Migration Backup Wiring IN PROGRESS / PENDING EXTERNAL MACRO AUDIT；T7B = NOT STARTED / BLOCKED UNTIL T7A ACCEPTED；T8/T9/T11-main = NOT STARTED；D29 Wave 2H = CANCELLED / MUST NOT RESUME；R2 = Reply Result Uncertainty Handling（USER DECISION PENDING）；R3 = Local API Form（USER DECISION PENDING）；Gateway live 整合尚未開始（NOT STARTED）；B-98 / B-30 / B-33 / F-05 維持開啟狀態於既定前置邊界。
+  - E-03 Runtime 執行層架構推進（IN PROGRESS）：T3/T17 = Node Runtime Pin + Windows CI + Automatic Test Discovery Enforcement Macro PASS / ACCEPTED；accepted checkpoint 推進至 f54b5f1b4ec1acbb32c12555dc4c163fc5da7693；T6 = SQLite Repository Foundation Macro PASS / ACCEPTED；T11A = Verified SQLite Pre-Migration Online Backup Primitive Macro PASS / ACCEPTED；T7A = SQLite Migration 2 & Canonical Durable Schema Validation Macro PASS / ACCEPTED；T7B = Core Durable Channel Transactions IN PROGRESS / PENDING EXTERNAL MACRO AUDIT；T18 = poll limit validation folded into T7B candidate, message content persistence pending T8；T8/T9/T11-main = NOT STARTED；D29 Wave 2H = CANCELLED / MUST NOT RESUME；R2 = Reply Result Uncertainty Handling（USER DECISION PENDING）；R3 = Local API Form（USER DECISION PENDING）；Gateway live 整合尚未開始（NOT STARTED）；B-98 / B-30 / B-33 / F-05 維持開啟狀態於既定前置邊界。
   - C-06 維持待使用者裁決（USER_DECISION_NONBLOCKING，遠端 ruleset 與 required checks 現況已確認）。
   - B-28 / B-29 上游 trigger 重新評估完成，無 B-01 blocker，維持 DEFERRED_BY_USER / POST_B01。
   - B-54 保持待辦（POST_B01 / NONBLOCKING，SOP_12 機器專屬路徑 concrete example 已登錄）。
@@ -3849,3 +3849,26 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
       - T7B = NOT STARTED / BLOCKED UNTIL T7A ACCEPTED。
       - T8、T9、T11-main = NOT STARTED；Gateway live = NOT STARTED；R2 與 R3 維持 USER DECISION PENDING；B-98 維持 pending；Wave 2H 維持 CANCELLED。
       - 本修復候選等待 External Macro Reviewer 獨立審核，不得 self-audit。
+
+95. **E-03 T7B Core Durable Channel Transactions Candidate**（2026-09-17）
+    - **T7A 外部宏觀審計結論**：前段 T7A 實作候選審查範圍 `b27ea204a10764d9c25ff37e1f108ee7cf41b39b..f54b5f1b4ec1acbb32c12555dc4c163fc5da7693`（共 2 commits：ea529d6 初審 Machine PASS / Macro HOLD，T7A-F1 為 canonical schema validator 未驗證 CHECK 約束與 AUTOINCREMENT，由 `f54b5f1b4ec1acbb32c12555dc4c163fc5da7693` 徹底解決）經 External Macro Reviewer（GPT 代理審查官（使用者授權））全面審查。A1 qualification 採 A1 = EQUIVALENT（GitHub API + Executor clone cross-check）成立；exact-SHA Actions Verify Run `35208696143` completed/success（jobs: verify = success, gateway-windows = success；Ubuntu canonical: 20 checks PASS，332 unit PASS，13 webapp PASS，ALL 5 Gates PASS；Windows: Node 24.21.0, Gateway bridge 22/22 PASS）；T7A-F1 完全解決；審查結論：`MACRO AUDIT = PASS`，`ACCEPT STATUS = ACCEPT ALL`，`FINDING_DISPOSITION = NONE`，`T7A = ACCEPTED`；新 accepted checkpoint 正式確立為 `f54b5f1b4ec1acbb32c12555dc4c163fc5da7693`；T7B 阻擋正式解除（CLEARED）。
+    - **T7B 施工候選架構與實作（Core Durable Channel Transactions）**：
+      - **綱要凍結**：`SQLITE_STATE_SCHEMA_VERSION = 2`，`MIGRATIONS = [1, 2]` 維持不變；無 migration 3，無任何 schema / DDL 異動。
+      - **模組私有交易執行器（#runTransaction）**：於 `SqliteStateRepository` 建立 `#runTransaction(op)`，以 `BEGIN IMMEDIATE` 開啟交易，確保於 `COMMIT` 成功後始回傳成功結果予呼叫端；任何錯誤執行 best-effort `ROLLBACK` 並拋出異常，杜絕未 commit 即洩漏成功結果。
+      - **明確通道接管（takeoverChannel）**：對齊 D5/D6/D9，原子性建立或替換 `channel_control` 持有人並將 `fencing_token` 單調遞增（初次為 1，既有 old+1，超過 MAX_SAFE_INTEGER fail-closed）；同交易內將所有該通道 `claimed` 狀態之訊息標記為 `discarded`（`discard_reason = 'TAKEOVER'`，記錄 `discarded_by_holder` 與 `discarded_at_token`，保留 `claimed_by` 與 `claimed_at_token` 作為歷史稽核中繼資料）；queued 訊息嚴格保留。
+      - **通道心跳更新（heartbeatChannel）**：對齊 D6/D8，僅現行持有者且 fencing token 精確相符時更新 `last_heartbeat_at`；若通道不存在、持有者為 null 或不符回傳 `HOLDER_MISMATCH`，token 不符回傳 `STALE_FENCING_TOKEN`，絕無隱式接管且零資料庫異動。
+      - **通道過期清理（expireChannelHolder / expireHolder）**：對齊 D6/D9，持有者過期時將所有 claimed 訊息標記為 `discarded`（`discard_reason = 'HEARTBEAT_EXPIRY'`），清空持有者與心跳時間（`current_holder = NULL, last_heartbeat_at = NULL`），`fencing_token` 不增加；queued 訊息保留；重複過期回傳 `NO_ACTIVE_HOLDER`。
+      - **FIFO 訊息領取（claimMessages）**：對齊 D6/D8/T18，驗證 limit 為大於 0 之安全正整數（拒絕 Infinity/NaN/負數/小數/字串），依 `sequence ASC` FIFO 順序領取 queued 訊息轉換為 claimed 並寫入持有者與 token，回傳剩餘 backlog 計數；非持有人或 stale token 拒絕領取且零異動。
+      - **純唯讀回覆授權驗證（validateReplyAuthorization）**：對齊 D8/D26/R2，嚴格為唯讀檢查，檢驗 channel holder、fencing token、message 存在性、claimed 狀態、claim 持有人與 token、以及 receiving account 與 replying account 一致性；無論授權成功或失敗，絕不更新 inbox、絕不將狀態改為 `replied`、不建立 outbox、不記錄 delivery result。
+      - **唯讀狀態審視（getChannelState）**：提供通道現行 holder、fencing token、心跳時間與 backlog count 唯讀審視。
+      - **架構邊界守則**：T7B 不實作生產級 ingress API（`enqueueMessage` / `ingestMessage` 留待 T8）；不實作訊息 payload/content 儲存（留待 T8）；不實作 account switch 交易（留待 D26 後續切片）；不實作 outbox 或回覆遞送完成標記（R2/R3 維持 USER DECISION PENDING）；不恢復 Wave 2H。
+      - **測試套件與自動探索**：新增獨立測試檔 `runtime/channel-gateway/tests/sqlite-channel-transactions.test.js`（16 項測試），涵蓋全部 24 項語意金絲雀（CANARY 1–24）、暫時性觸發器確定性回滾驗證（takeover 與 claim 回滾）、跨連線 durable fencing 驗證、以及關閉重啟持久性驗證；全庫測試由 automatic discovery 自動收錄執行通過（263 tests, 260 pass, 3 allowed skips, 0 fail）。
+    - **當前生命週期狀態**：
+      - 本批為 E-03 T7B Core Durable Channel Transactions 實作候選。
+      - E-03 進行中（IN PROGRESS）。
+      - accepted checkpoint 推進至 `f54b5f1b4ec1acbb32c12555dc4c163fc5da7693`。
+      - T7A = ACCEPTED。
+      - T7B = IN PROGRESS / PENDING EXTERNAL MACRO AUDIT。
+      - T8（入站冪等與游標）、T9（淘汰 JSON 模組）、T11-main（完整檔案路徑守衛）保持 NOT STARTED。
+      - Gateway live 整合尚未開始（NOT STARTED）；R2 與 R3 維持 USER DECISION PENDING；B-98 維持 pending；Wave 2H 維持 CANCELLED。
+      - 本候選等待 External Macro Reviewer 獨立審核，不得 self-audit。

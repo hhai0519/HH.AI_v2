@@ -761,6 +761,77 @@ function executeVerifiedBackup(db, canonicalStateRoot, expectedSourceSchemaVersi
   };
 }
 
+/**
+ * Bounded internal input validators for channel state operations (ADR-0023 / T7B).
+ */
+function validateChannelId(channelId) {
+  if (typeof channelId !== 'string') {
+    throw new TypeError('channelId must be a string');
+  }
+  const trimmed = channelId.trim();
+  if (trimmed.length === 0) {
+    throw new Error('channelId must be a non-empty string (fail-closed)');
+  }
+  return trimmed;
+}
+
+function validateHolderId(holderId) {
+  if (typeof holderId !== 'string') {
+    throw new TypeError('holderId must be a string');
+  }
+  const trimmed = holderId.trim();
+  if (trimmed.length === 0) {
+    throw new Error('holderId must be a non-empty string (fail-closed)');
+  }
+  return trimmed;
+}
+
+function validateFencingToken(token) {
+  if (typeof token !== 'number' || !Number.isSafeInteger(token) || token < 0) {
+    throw new Error('fencingToken must be a non-negative safe integer (fail-closed)');
+  }
+  return token;
+}
+
+function validateMessageId(messageId) {
+  if (messageId === null || messageId === undefined) {
+    throw new Error('messageId is required (fail-closed)');
+  }
+  const str = String(messageId).trim();
+  if (str.length === 0) {
+    throw new Error('messageId must not be empty (fail-closed)');
+  }
+  return str;
+}
+
+function validateReplyingAccountId(accountId) {
+  if (typeof accountId !== 'string') {
+    throw new TypeError('replyingAccountId must be a string');
+  }
+  const trimmed = accountId.trim();
+  if (trimmed.length === 0) {
+    throw new Error('replyingAccountId must be a non-empty string (fail-closed)');
+  }
+  return trimmed;
+}
+
+function validateOptionalTimestamp(ts) {
+  if (ts === undefined || ts === null) {
+    return null;
+  }
+  if (typeof ts !== 'number' || !Number.isSafeInteger(ts) || ts < 0) {
+    throw new Error('timestamp must be a non-negative safe integer or null (fail-closed)');
+  }
+  return ts;
+}
+
+function validateClaimLimit(limit) {
+  if (typeof limit !== 'number' || !Number.isSafeInteger(limit) || limit <= 0) {
+    throw new Error('limit must be a positive safe integer (fail-closed)');
+  }
+  return limit;
+}
+
 class SqliteStateRepository {
   /** @type {DatabaseSync|null} */
   #db = null;
@@ -1067,6 +1138,546 @@ class SqliteStateRepository {
     }
 
     return executeVerifiedBackup(this.#db, this.#canonicalStateRoot, this.#schemaVersion);
+  }
+
+  /**
+   * Private transaction execution runner.
+   * Executes op inside an immediate transaction.
+   * Ensures COMMIT succeeds before any successful mutation result is returned to caller.
+   * In case of any error during operation or commit, performs best-effort rollback and rethrows.
+   *
+   * @param {function(DatabaseSync): any} op
+   * @returns {any}
+   */
+  #runTransaction(op) {
+    if (!this.#isOpen || !this.#db) {
+      throw new Error('Repository is closed (cannot perform transaction on closed repository)');
+    }
+    const db = this.#db;
+    db.exec('BEGIN IMMEDIATE;');
+    let result;
+    try {
+      result = op(db);
+      db.exec('COMMIT;');
+    } catch (err) {
+      try {
+        db.exec('ROLLBACK;');
+      } catch (_) {}
+      throw err;
+    }
+    return result;
+  }
+
+  /**
+   * Explicit channel takeover operation.
+   * Updates or establishes channel holder and increments fencing token.
+   * Discards any claimed unreplied messages for this channel with discard_reason = 'TAKEOVER'.
+   * Preserves queued backlog messages.
+   *
+   * Invariants (D5, D6, D9):
+   * - Executes atomically inside BEGIN IMMEDIATE.
+   * - First takeover initializes fencing_token = 1, previousHolder = null.
+   * - Existing row increments fencing_token by 1; fails closed if old token >= Number.MAX_SAFE_INTEGER.
+   * - Discards all claimed messages for channel_id with discard_reason = 'TAKEOVER',
+   *   recording discarded_by_holder = newHolder and discarded_at_token = newFencingToken.
+   * - Does not alter queued, discarded, or replied messages.
+   * - Returns success result strictly after COMMIT succeeds.
+   *
+   * @param {string} channelId
+   * @param {string} holderId
+   * @param {{ timestamp?: number|null }} [metadata={}]
+   * @returns {{
+   *   success: true,
+   *   channelId: string,
+   *   holder: string,
+   *   fencingToken: number,
+   *   previousHolder: string|null,
+   *   discardedMessages: Array<{
+   *     sequence: number,
+   *     messageId: string,
+   *     receivingAccountId: string,
+   *     status: 'discarded',
+   *     discardReason: 'TAKEOVER',
+   *     claimedBy: string|null,
+   *     claimedAtToken: number|null,
+   *   }>,
+   *   backlogCount: number
+   * }}
+   */
+  takeoverChannel(channelId, holderId, metadata = {}) {
+    const cId = validateChannelId(channelId);
+    const hId = validateHolderId(holderId);
+    const ts = validateOptionalTimestamp(
+      metadata && typeof metadata === 'object' ? metadata.timestamp : undefined
+    );
+
+    return this.#runTransaction((db) => {
+      const selectStmt = db.prepare(
+        'SELECT channel_id, current_holder, fencing_token FROM channel_control WHERE channel_id = ?;'
+      );
+      const existing = selectStmt.get(cId);
+
+      let newFencingToken;
+      let previousHolder = null;
+
+      if (!existing) {
+        newFencingToken = 1;
+        const insertStmt = db.prepare(
+          'INSERT INTO channel_control (channel_id, current_holder, fencing_token, last_heartbeat_at) VALUES (?, ?, ?, ?);'
+        );
+        insertStmt.run(cId, hId, newFencingToken, ts);
+      } else {
+        previousHolder = existing.current_holder;
+        const prevToken = existing.fencing_token;
+        if (
+          typeof prevToken !== 'number' ||
+          !Number.isSafeInteger(prevToken) ||
+          prevToken < 0 ||
+          prevToken >= Number.MAX_SAFE_INTEGER
+        ) {
+          throw new Error(
+            `fencing_token invalid or exceeded MAX_SAFE_INTEGER: ${prevToken} (fail-closed)`
+          );
+        }
+        newFencingToken = prevToken + 1;
+        const updateStmt = db.prepare(
+          'UPDATE channel_control SET current_holder = ?, fencing_token = ?, last_heartbeat_at = ? WHERE channel_id = ?;'
+        );
+        updateStmt.run(hId, newFencingToken, ts, cId);
+      }
+
+      // Discard claimed messages for this channel
+      const selectClaimed = db.prepare(
+        "SELECT sequence, message_id, receiving_account_id, status, claimed_by, claimed_at_token FROM inbox WHERE channel_id = ? AND status = 'claimed' ORDER BY sequence ASC;"
+      );
+      const claimedRows = selectClaimed.all(cId);
+
+      if (claimedRows.length > 0) {
+        const updateClaimed = db.prepare(
+          "UPDATE inbox SET status = 'discarded', discard_reason = 'TAKEOVER', discarded_by_holder = ?, discarded_at_token = ? WHERE channel_id = ? AND status = 'claimed';"
+        );
+        updateClaimed.run(hId, newFencingToken, cId);
+      }
+
+      const discardedMessages = claimedRows.map((r) => ({
+        sequence: r.sequence,
+        messageId: r.message_id,
+        receivingAccountId: r.receiving_account_id,
+        status: 'discarded',
+        discardReason: 'TAKEOVER',
+        claimedBy: r.claimed_by,
+        claimedAtToken: r.claimed_at_token,
+      }));
+
+      const countQueued = db.prepare(
+        "SELECT count(*) AS cnt FROM inbox WHERE channel_id = ? AND status = 'queued';"
+      );
+      const queuedRow = countQueued.get(cId);
+      const backlogCount = queuedRow ? queuedRow.cnt : 0;
+
+      return {
+        success: true,
+        channelId: cId,
+        holder: hId,
+        fencingToken: newFencingToken,
+        previousHolder,
+        discardedMessages,
+        backlogCount,
+      };
+    });
+  }
+
+  /**
+   * Channel heartbeat renewal operation.
+   * Updates last_heartbeat_at timestamp if caller is current holder with matching fencing token.
+   *
+   * Invariants (D6, D8):
+   * - Cannot implicitly acquire holder or create channel row.
+   * - Rejects with HOLDER_MISMATCH if no channel row, holder is null, or holder differs.
+   * - Rejects with STALE_FENCING_TOKEN if holder matches but token differs.
+   * - Zero mutations on mismatch.
+   * - Result returned only after transaction completion.
+   *
+   * @param {string} channelId
+   * @param {string} holderId
+   * @param {number} fencingToken
+   * @param {{ timestamp?: number|null }} [metadata={}]
+   * @returns {{
+   *   success: boolean,
+   *   reason?: string,
+   *   currentHolder?: string|null,
+   *   expectedToken?: number,
+   *   receivedToken?: number,
+   *   channelId?: string,
+   *   holder?: string,
+   *   fencingToken?: number,
+   *   lastHeartbeatAt?: number|null
+   * }}
+   */
+  heartbeatChannel(channelId, holderId, fencingToken, metadata = {}) {
+    const cId = validateChannelId(channelId);
+    const hId = validateHolderId(holderId);
+    const fToken = validateFencingToken(fencingToken);
+    const ts = validateOptionalTimestamp(
+      metadata && typeof metadata === 'object' ? metadata.timestamp : undefined
+    );
+
+    return this.#runTransaction((db) => {
+      const selectStmt = db.prepare(
+        'SELECT channel_id, current_holder, fencing_token FROM channel_control WHERE channel_id = ?;'
+      );
+      const row = selectStmt.get(cId);
+
+      if (!row || row.current_holder === null || row.current_holder !== hId) {
+        return {
+          success: false,
+          reason: 'HOLDER_MISMATCH',
+          currentHolder: row ? row.current_holder : null,
+        };
+      }
+
+      if (row.fencing_token !== fToken) {
+        return {
+          success: false,
+          reason: 'STALE_FENCING_TOKEN',
+          expectedToken: row.fencing_token,
+          receivedToken: fToken,
+        };
+      }
+
+      const updateStmt = db.prepare(
+        'UPDATE channel_control SET last_heartbeat_at = ? WHERE channel_id = ?;'
+      );
+      updateStmt.run(ts, cId);
+
+      return {
+        success: true,
+        channelId: cId,
+        holder: hId,
+        fencingToken: fToken,
+        lastHeartbeatAt: ts,
+      };
+    });
+  }
+
+  /**
+   * Heartbeat expiry operation for a channel.
+   * Clears current holder and heartbeat, discards claimed unreplied messages with discard_reason = 'HEARTBEAT_EXPIRY'.
+   *
+   * Invariants (D6, D9):
+   * - If no active holder, returns NO_ACTIVE_HOLDER with zero mutation.
+   * - Discards all claimed messages for channel_id with discard_reason = 'HEARTBEAT_EXPIRY',
+   *   recording discarded_by_holder = expiredHolder and discarded_at_token = currentToken.
+   * - Preserves queued messages.
+   * - Resets current_holder to NULL and last_heartbeat_at to NULL.
+   * - Fencing token is NOT incremented.
+   * - Result returned only after COMMIT succeeds.
+   *
+   * @param {string} channelId
+   * @returns {{
+   *   success: boolean,
+   *   reason?: string,
+   *   channelId?: string,
+   *   expiredHolder?: string,
+   *   fencingToken?: number,
+   *   discardedMessages?: Array<object>,
+   *   backlogCount?: number
+   * }}
+   */
+  expireChannelHolder(channelId) {
+    const cId = validateChannelId(channelId);
+
+    return this.#runTransaction((db) => {
+      const selectStmt = db.prepare(
+        'SELECT channel_id, current_holder, fencing_token FROM channel_control WHERE channel_id = ?;'
+      );
+      const row = selectStmt.get(cId);
+
+      if (!row || row.current_holder === null) {
+        return {
+          success: false,
+          reason: 'NO_ACTIVE_HOLDER',
+        };
+      }
+
+      const expiredHolder = row.current_holder;
+      const currentToken = row.fencing_token;
+
+      // Discard claimed rows
+      const selectClaimed = db.prepare(
+        "SELECT sequence, message_id, receiving_account_id, status, claimed_by, claimed_at_token FROM inbox WHERE channel_id = ? AND status = 'claimed' ORDER BY sequence ASC;"
+      );
+      const claimedRows = selectClaimed.all(cId);
+
+      if (claimedRows.length > 0) {
+        const updateClaimed = db.prepare(
+          "UPDATE inbox SET status = 'discarded', discard_reason = 'HEARTBEAT_EXPIRY', discarded_by_holder = ?, discarded_at_token = ? WHERE channel_id = ? AND status = 'claimed';"
+        );
+        updateClaimed.run(expiredHolder, currentToken, cId);
+      }
+
+      const discardedMessages = claimedRows.map((r) => ({
+        sequence: r.sequence,
+        messageId: r.message_id,
+        receivingAccountId: r.receiving_account_id,
+        status: 'discarded',
+        discardReason: 'HEARTBEAT_EXPIRY',
+        claimedBy: r.claimed_by,
+        claimedAtToken: r.claimed_at_token,
+      }));
+
+      const updateCtrl = db.prepare(
+        'UPDATE channel_control SET current_holder = NULL, last_heartbeat_at = NULL WHERE channel_id = ?;'
+      );
+      updateCtrl.run(cId);
+
+      const countQueued = db.prepare(
+        "SELECT count(*) AS cnt FROM inbox WHERE channel_id = ? AND status = 'queued';"
+      );
+      const queuedRow = countQueued.get(cId);
+      const backlogCount = queuedRow ? queuedRow.cnt : 0;
+
+      return {
+        success: true,
+        channelId: cId,
+        expiredHolder,
+        fencingToken: currentToken,
+        discardedMessages,
+        backlogCount,
+      };
+    });
+  }
+
+  /**
+   * Alias for expireChannelHolder(channelId).
+   *
+   * @param {string} channelId
+   */
+  expireHolder(channelId) {
+    return this.expireChannelHolder(channelId);
+  }
+
+  /**
+   * Claims queued messages in FIFO order (by sequence ASC) up to limit.
+   *
+   * Invariants (D6, D8, T18):
+   * - Requires active holder and exact fencing token match.
+   * - Cannot implicitly takeover or acquire holder.
+   * - Rejects with NOT_CURRENT_HOLDER or STALE_FENCING_TOKEN without mutation.
+   * - limit must be a positive safe integer (fails closed if non-integer, <= 0, NaN, Infinity).
+   * - Atomically transitions queued messages to claimed with claimed_by and claimed_at_token.
+   * - Returns claimedMessages strictly in sequence ASC order.
+   * - Returns remainingBacklogCount.
+   * - Returns result only after COMMIT succeeds.
+   *
+   * @param {string} channelId
+   * @param {string} holderId
+   * @param {number} fencingToken
+   * @param {number} limit
+   * @returns {{
+   *   success: boolean,
+   *   reason?: string,
+   *   claimedMessages: Array<object>,
+   *   channelId?: string,
+   *   holder?: string,
+   *   fencingToken?: number,
+   *   remainingBacklogCount?: number
+   * }}
+   */
+  claimMessages(channelId, holderId, fencingToken, limit) {
+    const cId = validateChannelId(channelId);
+    const hId = validateHolderId(holderId);
+    const fToken = validateFencingToken(fencingToken);
+    const lim = validateClaimLimit(limit);
+
+    return this.#runTransaction((db) => {
+      const selectStmt = db.prepare(
+        'SELECT channel_id, current_holder, fencing_token FROM channel_control WHERE channel_id = ?;'
+      );
+      const row = selectStmt.get(cId);
+
+      if (!row || row.current_holder === null || row.current_holder !== hId) {
+        return {
+          success: false,
+          reason: 'NOT_CURRENT_HOLDER',
+          claimedMessages: [],
+        };
+      }
+
+      if (row.fencing_token !== fToken) {
+        return {
+          success: false,
+          reason: 'STALE_FENCING_TOKEN',
+          claimedMessages: [],
+        };
+      }
+
+      const selectQueued = db.prepare(
+        "SELECT sequence, channel_id, message_id, receiving_account_id, status FROM inbox WHERE channel_id = ? AND status = 'queued' ORDER BY sequence ASC LIMIT ?;"
+      );
+      const queuedRows = selectQueued.all(cId, lim);
+
+      if (queuedRows.length > 0) {
+        const updateClaim = db.prepare(
+          "UPDATE inbox SET status = 'claimed', claimed_by = ?, claimed_at_token = ? WHERE sequence = ?;"
+        );
+        for (const q of queuedRows) {
+          updateClaim.run(hId, fToken, q.sequence);
+        }
+      }
+
+      const claimedMessages = queuedRows.map((r) => ({
+        sequence: r.sequence,
+        channelId: r.channel_id,
+        messageId: r.message_id,
+        receivingAccountId: r.receiving_account_id,
+        status: 'claimed',
+        claimedBy: hId,
+        claimedAtToken: fToken,
+      }));
+
+      const countQueued = db.prepare(
+        "SELECT count(*) AS cnt FROM inbox WHERE channel_id = ? AND status = 'queued';"
+      );
+      const queuedRow = countQueued.get(cId);
+      const remainingBacklogCount = queuedRow ? queuedRow.cnt : 0;
+
+      return {
+        success: true,
+        channelId: cId,
+        holder: hId,
+        fencingToken: fToken,
+        claimedMessages,
+        remainingBacklogCount,
+      };
+    });
+  }
+
+  /**
+   * Strictly READ-ONLY validation of reply authorization.
+   *
+   * Invariants (D8, D26, R2):
+   * - ZERO side effects: does NOT update inbox, does NOT mark replied, does NOT create outbox.
+   * - Validates:
+   *     1. channel current_holder === holderId (NOT_CURRENT_HOLDER)
+   *     2. fencing_token === fencingToken (STALE_FENCING_TOKEN)
+   *     3. message exists in channel (MESSAGE_NOT_FOUND)
+   *     4. message status === 'claimed' (MESSAGE_NOT_CLAIMED)
+   *     5. message claimed_by === holderId and claimed_at_token === fencingToken (CLAIM_MISMATCH)
+   *     6. receiving_account_id === replyingAccountId (ACCOUNT_MISMATCH)
+   * - If all pass, returns { authorized: true, messageId, channelId, receivingAccountId, replyingAccountId }.
+   * - Message status remains 'claimed' in SQLite store.
+   *
+   * @param {string} channelId
+   * @param {string} holderId
+   * @param {number} fencingToken
+   * @param {string|number} messageId
+   * @param {string} replyingAccountId
+   * @returns {{
+   *   authorized: boolean,
+   *   reason?: string,
+   *   status?: string,
+   *   messageId?: string,
+   *   channelId?: string,
+   *   receivingAccountId?: string,
+   *   replyingAccountId?: string
+   * }}
+   */
+  validateReplyAuthorization(channelId, holderId, fencingToken, messageId, replyingAccountId) {
+    if (!this.#isOpen || !this.#db) {
+      throw new Error(
+        'Repository is closed (cannot validate reply authorization on closed repository)'
+      );
+    }
+
+    const cId = validateChannelId(channelId);
+    const hId = validateHolderId(holderId);
+    const fToken = validateFencingToken(fencingToken);
+    const mId = validateMessageId(messageId);
+    const rAcc = validateReplyingAccountId(replyingAccountId);
+
+    const selectCtrl = this.#db.prepare(
+      'SELECT channel_id, current_holder, fencing_token FROM channel_control WHERE channel_id = ?;'
+    );
+    const ctrlRow = selectCtrl.get(cId);
+
+    if (!ctrlRow || ctrlRow.current_holder !== hId) {
+      return { authorized: false, reason: 'NOT_CURRENT_HOLDER' };
+    }
+
+    if (ctrlRow.fencing_token !== fToken) {
+      return { authorized: false, reason: 'STALE_FENCING_TOKEN' };
+    }
+
+    const selectMsg = this.#db.prepare(
+      'SELECT sequence, channel_id, message_id, receiving_account_id, status, claimed_by, claimed_at_token FROM inbox WHERE channel_id = ? AND message_id = ?;'
+    );
+    const msgRow = selectMsg.get(cId, mId);
+
+    if (!msgRow) {
+      return { authorized: false, reason: 'MESSAGE_NOT_FOUND' };
+    }
+
+    if (msgRow.status !== 'claimed') {
+      return { authorized: false, reason: 'MESSAGE_NOT_CLAIMED', status: msgRow.status };
+    }
+
+    if (msgRow.claimed_by !== hId || msgRow.claimed_at_token !== fToken) {
+      return { authorized: false, reason: 'CLAIM_MISMATCH' };
+    }
+
+    if (msgRow.receiving_account_id !== rAcc) {
+      return { authorized: false, reason: 'ACCOUNT_MISMATCH' };
+    }
+
+    return {
+      authorized: true,
+      messageId: mId,
+      channelId: cId,
+      receivingAccountId: msgRow.receiving_account_id,
+      replyingAccountId: rAcc,
+    };
+  }
+
+  /**
+   * Minimal read-only inspection of channel state.
+   *
+   * @param {string} channelId
+   * @returns {{
+   *   channelId: string,
+   *   currentHolder: string|null,
+   *   fencingToken: number,
+   *   lastHeartbeatAt: number|null,
+   *   backlogCount: number
+   * }|null}
+   */
+  getChannelState(channelId) {
+    if (!this.#isOpen || !this.#db) {
+      throw new Error('Repository is closed (cannot inspect state on closed repository)');
+    }
+
+    const cId = validateChannelId(channelId);
+    const selectCtrl = this.#db.prepare(
+      'SELECT channel_id, current_holder, fencing_token, last_heartbeat_at FROM channel_control WHERE channel_id = ?;'
+    );
+    const ctrlRow = selectCtrl.get(cId);
+    if (!ctrlRow) {
+      return null;
+    }
+
+    const countQueued = this.#db.prepare(
+      "SELECT count(*) AS cnt FROM inbox WHERE channel_id = ? AND status = 'queued';"
+    );
+    const queuedRow = countQueued.get(cId);
+    const backlogCount = queuedRow ? queuedRow.cnt : 0;
+
+    return {
+      channelId: ctrlRow.channel_id,
+      currentHolder: ctrlRow.current_holder,
+      fencingToken: ctrlRow.fencing_token,
+      lastHeartbeatAt: ctrlRow.last_heartbeat_at,
+      backlogCount,
+    };
   }
 
   /**
