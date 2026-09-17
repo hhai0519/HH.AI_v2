@@ -2825,7 +2825,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 5.1 上一批狀態
 
-上次核對通過的 HEAD：3dd3716ff5a85854ce6620018620bb80d3e4462f
+上次核對通過的 HEAD：a45634386d5abff5766c6af8af8f084fd4a15fed
 
 - `23af193`（執行者前置檢查 ＋ 回滾程序 ＋ `AUDIT-LOG.md` ＋ 四缺口修正）
   已於 2026-09-02 由審計官核對通過：6 檔異動（含 2 個新檔）、零夾帶、
@@ -3067,7 +3067,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - B-99 Qualification-Based Macro Auditor & Repo-Visible Handoff（CLOSED / MACRO PASS）。
   - B-97 Pre-B01 Comprehensive Release Audit 已完成（CLOSED / PRE-B01 RELEASE PASS）。
   - B-01 ADR-0002／0004／0010 分層搬移及 Active-Contract 語意修復已完成（CLOSED / MACRO PASS）。
-  - E-03 Runtime 執行層架構推進（IN PROGRESS）：T3/T17 = Node Runtime Pin + Windows CI + Automatic Test Discovery Enforcement Macro PASS / ACCEPTED；T6 = SQLite Repository Foundation Macro PASS / ACCEPTED；T11A = Verified SQLite Pre-Migration Online Backup Primitive Macro PASS / ACCEPTED；T7A = SQLite Migration 2 & Canonical Durable Schema Validation Macro PASS / ACCEPTED；T7B = Macro PASS / ACCEPTED；T8A = Macro PASS / ACCEPTED，accepted checkpoint 確立為 3dd3716ff5a85854ce6620018620bb80d3e4462f；T8B = Machine PASS / Macro HOLD / T8B-F1 DUPLICATE ZERO-MUTATION REPAIR IN PROGRESS；T18 = poll limit folded into T7B，message content persistence completed in T8B；T8（其餘）/T9/T11-main = NOT STARTED；D29 Wave 2H = CANCELLED / MUST NOT RESUME；R2（Reply Result Uncertainty Handling）與 R3（Local API Form）= USER DECISION PENDING；Gateway live 整合尚未開始（NOT STARTED）；B-98 / B-30 / B-33 / F-05 維持開啟狀態於既定前置邊界。
+  - E-03 Runtime 執行層架構推進（IN PROGRESS）：現行詳細生命週期、架構決策與各切片進度之單一事實來源由 docs/TASKBOARD.md 之「E-03 ROADMAP」統一維護；交接區不保留第二份長狀態副本。各項相依前置邊界（B-98 / B-30 / B-33 / F-05 等）與交接不變量（handoff invariants）以 TASKBOARD 為準。
   - C-06 維持待使用者裁決（USER_DECISION_NONBLOCKING，遠端 ruleset 與 required checks 現況已確認）。
   - B-28 / B-29 上游 trigger 重新評估完成，無 B-01 blocker，維持 DEFERRED_BY_USER / POST_B01。
   - B-54 保持待辦（POST_B01 / NONBLOCKING，SOP_12 機器專屬路徑 concrete example 已登錄）。
@@ -3961,3 +3961,46 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
         - T8B = BOUNDED REPAIR IN PROGRESS / PENDING EXTERNAL MACRO FINAL AUDIT。
         - T9、T11-main 保持 NOT STARTED；Gateway live 整合尚未開始（NOT STARTED）；R2 與 R3 維持 USER DECISION PENDING；B-98 維持 pending；Wave 2H 維持 CANCELLED。
         - 本修復候選等待 External Macro Reviewer 獨立審核，不得 self-audit。
+
+100. **E-03 T8B 外部宏觀審計正式通過與 G1 路線圖真相重整（G1 Reconcile E-03 Roadmap Truth）**（2026-09-18）
+    - **T8B 外部宏觀審計正式結論（External Macro PASS）**：
+      - 審查範圍：`3dd3716ff5a85854ce6620018620bb80d3e4462f..a45634386d5abff5766c6af8af8f084fd4a15fed`（共 2 commits：`f4679a545e4f702a1681018a547e39d3c68cc68a` T8B 初始候選 / Macro HOLD / T8B-F1；`a45634386d5abff5766c6af8af8f084fd4a15fed` T8B-F1 零突變修復）。
+      - 審查人員：GPT 代理審查官（使用者授權）。
+      - A1 qualification：採 A1 = EQUIVALENT（GitHub API + Executor clone cross-check）成立。
+      - exact-SHA GitHub Actions：Run `35238168813`（status completed, conclusion success，jobs: verify = success, gateway-windows = success；Ubuntu canonical: 20 checks PASS，334 unit PASS，13 webapp PASS，ALL 5 Gates PASS；Windows: Node 24.21.0, Gateway bridge 24/24 PASS，`sqlite-ingest-transactions.test.js` 自動發現並執行，未註冊跳過為 0）。
+      - 判定結論：T8B-F1 = RESOLVED；MACRO AUDIT = PASS；ACCEPT STATUS = ACCEPT ALL；FINDING_DISPOSITION = NONE；T8B = ACCEPTED。
+      - 全新 accepted checkpoint 正式推進確立為：`a45634386d5abff5766c6af8af8f084fd4a15fed`。
+    - **重大發現與架構缺口升格（Material Findings & Architectural Gaps Promotion）**：
+      - **F1（Reply Authorization Identity-Key Mismatch）**：
+        - 缺陷事實：`schema v3` 正式規範 inbox 唯一性為 `UNIQUE(account_id, platform_msg_id)`；但目前 `validateReplyAuthorization()` 查找原始訊息 SQL 為 `WHERE channel_id = ? AND platform_msg_id = ?`，於取回後才比對 `account_id`。若相同 channel 下不同 account 出現相同 `platform_msg_id`，`.get()` 可能先抓到另一帳號記錄，導致合法回覆被錯誤判定為 `ACCOUNT_MISMATCH` 拒絕。
+        - 處置（Disposition）：VERIFIED / CURRENT E-03 / MUST FIX BEFORE ADAPTER OR LOCAL API。本批僅正式登錄列管，嚴禁未授權修改生產程式碼。
+      - **C1 / C2 / C3（入站事件身份識別與游標語意缺口）**：
+        - **C1**：重複進線不推進游標（Duplicate path does not advance cursor）為已驗證實作事實，但平台層級 defect 是否成立取決於 C3 身份映射規則（Disposition: PARTIAL DESIGN FINDING Phase 2 Identity/Cursor authority）。
+        - **C2**：現行新訊息攝取游標 upsert 為無條件覆寫，通用 repository 可接受較小游標（Disposition: VERIFIED DESIGN GAP Phase 2）。
+        - **C3**：repo 目前缺乏 Telegram/LINE 之 `platform_msg_id`、`cursor_value`、編輯/收回（edit/unsend）策略與游標比較器（cursor comparator）之權威定義（Disposition: VERIFIED DESIGN GAP Phase 2 FIRST AUTHORITY SLICE）。
+        - 順序約束：路線圖嚴禁預設「重複一律必須推進游標」；必須先制定 C3 事件身份與游標語意 ADR，再依此實作 C1/C2。
+      - **F2 / INCIDENT-CI-04（本地宣稱 PASS 但遠端 CI 失敗事故）**：
+        - Commit `2d649d2ecbf76bfd1e32f447a11cd91463d350d6` 於提交訊息宣稱 5 大閘門通過，但遠端 Actions Run `35219867846` 失敗；後續由 `9dcf0c91...` 修復收斂。登錄為歷史 CI 事故，作為 C-06 預防性閘門（preventive required-check gate）之歷史證據。
+    - **使用者重大裁決留痕（User Decisions Recorded — Status Only, No Implementation）**：
+      - **D-U2**：個人工作資料不進 repo（Persona 個人內容、Agent_Reflections、TODO、reports、logs 均 repo-external）。（USER DECIDED / G2 LANDING PENDING）
+      - **D-U3 / C-06**：Option B。main 未來必須由預防性 GitHub required check gate 保護。（USER DECIDED / G2 IMPLEMENTATION PENDING）
+      - **D-U4**：Telegram MVP 範圍確定為文字收發（text in/out）、通道接管（channel takeover）、對話封存（conversation archive）。D17 附件與 D19–D21 外發檔案授權不屬第一版 Telegram MVP。（USER DECIDED / ROADMAP AUTHORITY）
+      - **D-U6**：風險分級宏觀審計（risk-tiered Macro audit）已決定。（USER DECIDED / G2 LANDING PENDING）
+      - **D-U7**：MISSION 完成定義必須加入 Channel Gateway Telegram 上線與正式切換。（USER DECIDED / G2 LANDING PENDING）
+      - **R2**：能力感知安全重試 ＋ 持久化 SQLite Outbox（Capability-Aware Safe Retry + Durable SQLite Outbox）。狀態更正為：`USER DECIDED / REPO ARCHITECTURE LANDING PENDING / NOT IMPLEMENTED`（嚴禁再標記為 USER DECISION PENDING）。
+      - **R3**：僅限本機迴路 HTTP v1（Loopback HTTP v1 127.0.0.1 only HMAC-authenticated design；Named Pipe 未獲選/延後）。狀態更正為：`USER DECIDED / REPO ARCHITECTURE LANDING PENDING / NOT IMPLEMENTED`（嚴禁再標記為 USER DECISION PENDING）。
+      - **R2-3**：配送不確定通知（UNCERTAIN notification）採 Option B：Gateway 內部持久化；由當前或下一位 Agent 於 IDE 中查看；手機端不發送 delivery-uncertain 通知。（USER DECIDED OPTION B）
+    - **動態投影去重與生命週期單一事實來源（Dynamic Projection Deduplication）**：
+      - 全面收斂看板與 backlog 之動態狀態重複副本。`docs/TASKBOARD.md` 的「E-03 ROADMAP」確立為唯一詳細當前狀態權威。
+      - `docs/TASKBOARD.md`「最後更新」與 E-03 頂層列、`docs/refactor-backlog.md` §5.4 皆改為簡短指標，指向 E-03 Roadmap。
+      - 確立冷啟動合約（Cold-Start Contract）：全新 Agent 單讀 TASKBOARD 即可確定 `NEXT_WORK = E-03` 與 `NEXT_SLICE = Inbound Identity & Cursor Semantics ADR`。
+    - **當前生命週期狀態**：
+      - 本批為 G1 E-03 Route Truth Reconciliation 治理狀態與路線圖重整候選（GOVERNANCE / DOCUMENTATION ONLY）。
+      - E-03 進行中（IN PROGRESS）。
+      - accepted checkpoint 確立為 `a45634386d5abff5766c6af8af8f084fd4a15fed`（不得填入 G1 candidate）。
+      - T8B = ACCEPTED。
+      - G1 = GOVERNANCE RECONCILIATION IN PROGRESS / PENDING EXTERNAL MACRO FINAL AUDIT。
+      - 下一切片（NEXT_SLICE）：Inbound Identity & Cursor Semantics ADR。
+      - T9、T11-main、Local API、Outbox、HMAC、Telegram、LINE 等生產實作保持未開始（NOT STARTED）。
+      - G3 涉及之 B-69、B-28、B-29、B-17 保持待辦（HOLD，禁止在本批歸檔或關閉）。
+      - 本候選提交後等待 External Macro Reviewer（GPT 代理審查官（使用者授權））獨立審核，不得 self-audit。

@@ -1,5 +1,5 @@
 {
-  "base_head": "f4679a5",
+  "base_head": "a456343",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 0,
@@ -515,16 +515,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 168,
-      "sha256": "fbac7f89d47519bf6d6ec847a7170ea8346a58d220e845861436cb2160cfdbbf"
+      "lines": 170,
+      "sha256": "ce015569f7555e433a722e6627fef00962527b9d6334070d8bef3641b15e8973"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 130,
-      "sha256": "d3a2cd3b84bcaebfd97ddc232943e6403fe47de377d9eba7962b7a12a9b83493"
+      "lines": 131,
+      "sha256": "0bf7418e623312ea3bd48a25dd9febd6944ee2d688ed3c16608f092d2eccab5d"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -555,12 +555,16 @@
         "## C. 待使用者裁決",
         "## D. 驗證階段（§9.5）",
         "## E. 舊 repo 遷移主線（`refactor-backlog.md` §二 A–F）",
+        "### E-03 執行層專屬路線圖（E-03 ROADMAP — CANONICAL CURRENT-STATE AUTHORITY）",
+        "#### 1. M-TG-MVP（Telegram MVP 第一版核心）",
+        "#### 2. M-TG-CUTOVER（Telegram 正式切換與舊版停用）",
+        "#### 3. M-LINE（LINE 平台整合與雙平台值守）",
         "## F. 追蹤項（`refactor-backlog.md` 三、各點）",
         "## G. 舊 repo 未盤點區塊（2026-09-02 新發現）",
         "## 封存區"
       ],
-      "lines": 244,
-      "sha256": "75775c8da5f7cb6028de1d8c434647ea4884cdadfeb0589fd3997f5195c047e3"
+      "lines": 300,
+      "sha256": "458299cda301b704af229c5a8d72087c8fbcd56642ade9f253fbd9fa70be3e53"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -939,8 +943,8 @@
         "### 5.3 待使用者裁決",
         "### 5.4 進行中／等待回報"
       ],
-      "lines": 3963,
-      "sha256": "debacda52cb8dcef52407a48426c9b47a2d87d4dd5eb0a98be86efee97acab36"
+      "lines": 4006,
+      "sha256": "d72159f8edfd00906d2d070067a0afc616b8dd48f5a46a3ccea28577f8413ac2"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1210,7 +1214,7 @@
       "sha256": "35bf7dbfa3c7d291b550c3c97a6ae398a22b1dc3624c1d2fc1e4db6963d6e115"
     }
   },
-  "generated_at": "2026-09-17T15:05:35Z",
+  "generated_at": "2026-09-17T16:35:34Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

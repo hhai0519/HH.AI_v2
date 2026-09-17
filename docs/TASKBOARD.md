@@ -14,7 +14,9 @@
 
 **NEXT_WORK**：E-03
 
-**最後更新**：2026-09-17，ACTIVE_MACRO_AUDITOR = GPT 代理審查官（使用者授權）；T3/T17 = Node Runtime Pin + Windows CI + Automatic Test Discovery Macro PASS / ACCEPTED；T6 = SQLite Repository Foundation Macro PASS / ACCEPTED；T11A = Verified SQLite Pre-Migration Online Backup Primitive Macro PASS / ACCEPTED；T7A = SQLite Migration 2 & Canonical Durable Schema Validation Macro PASS / ACCEPTED；T7B = Macro PASS / ACCEPTED；T8A = Macro PASS / ACCEPTED；T8B = Machine PASS / Macro HOLD / T8B-F1 DUPLICATE ZERO-MUTATION REPAIR IN PROGRESS；T18 = poll limit folded into T7B，message content persistence completed in T8B；T8（其餘）/T9/T11-main = NOT STARTED；D29 Wave 2H = CANCELLED / MUST NOT RESUME；R2（Reply Result Uncertainty Handling）與 R3（Local API Form）= USER DECISION PENDING；Gateway live = NOT STARTED；B-98 unchanged / pending。
+**NEXT_SLICE**：Inbound Identity & Cursor Semantics ADR
+
+**最後更新**：2026-09-18，ACTIVE_MACRO_AUDITOR = GPT 代理審查官（使用者授權）；T8B = Macro PASS / ACCEPTED；E-03 詳情與現行權威見下方 E-03 Roadmap。
 
 ---
 
@@ -185,7 +187,7 @@ A 節目前狀態以本表各列與 `NEXT_WORK` 之 current repo truth 為準；
 | C-03 | 已裁決 | **ADR-0013 處置** | **2026-09-06 使用者裁決採用甲案**（逐節處置）：§1／§2ABD／§7 棄用並註明去向；**§2C BOM 污染偵測實作為新 CHECK**（實測 `scripts/*.py` 查無 BOM 偵測，未被取代）；§3 安全邊界搬進 `.agents/rules/role-boundaries.md`；§4／§5 凍結待 E-03；**§6 觸發詞排他性矩陣獨立為 B-32**。執行排批 4 |
 | C-04 | 已裁決（方向） | **攔截項三：Runtime 層架構選擇** | **2026-09-06 使用者裁決方向**：採 `runtime/`（常駐服務程式碼）＋ `shared/`（共用模組）＋ `skills/`（只放技能文件）三層。此結構與上游 `mattpocock/skills` 的組織原則一致（`skills/` 只放技能，其餘各有頂層目錄），但 **`runtime/` 與 `shared/` 為本專案自訂，上游無對應物**——上游是純技能 repo，無任何常駐服務。**細節（PM2 六進程、`Modules/` 18 檔、`scripts/` 16 檔的實際依賴關係與硬編碼路徑）待批 6 調研後再裁決**。見 `refactor-backlog.md` §二 C 節與 `docs/adr/0015-line-tunnel-chain-failure.md` |
 | C-05 | 已裁決 | **D-01 E1 的判定者** | §9.4 原規定驗證階段判定者為「留任的舊 Agent」，但設計 E1 題目的 session 已離場。**2026-09-05 使用者裁決採用**：題目與答案卷由使用者保管，判定者為現任審計官——判定者既非出題者亦非受測者，較原設計更乾淨 |
-| C-06 | 待裁決 | **是否將 GitHub Verify 升級為 main 的 preventive required check** | 目前 GitHub main branch required-status-check enforcement 為 off。選項：A. 維持 current direct-push + post-push Verify（Executor throughput 高，但 bad commit 可先到 main 再由 CI 變紅）；B. Require PR + Verify success before merge to main（CI 未綠不能進 main，但增加 PR/merge lifecycle）。B-97 confirmed 2026-09-16：active ruleset (ID: 21301111) protects deletion/non-fast-forward only；required status checks 仍 off；direct fast-forward push 目前技術上允許；decision remains nonblocking，不阻塞 B-01。 |
+| C-06 | 已裁決 | **是否將 GitHub Verify 升級為 main 的 preventive required check** | **使用者已裁決採 Option B**：main 未來必須由 preventive GitHub gate 保護（Require PR + Verify success before merge to main，CI 未綠不能進 main）。實作落地排定於 G2 執行，本批不實作。歷史事故 INCIDENT-CI-04（Run 35219867846 本地宣稱 PASS 但遠端 CI 失敗）作為此決策之關鍵依據。 |
 
 ---
 
@@ -207,9 +209,63 @@ A 節目前狀態以本表各列與 `NEXT_WORK` 之 current repo truth 為準；
 |---|---|---|---|
 | E-01 | 待辦 | 技能尚未遷移（§二 A 節） | 逐一比對 A-1「確定要遷移的」清單 |
 | E-02 | 待辦 | Persona 認知顧問 15 個（§二 B 節） | 架構已定為方案 A（設定檔非技能，不放 `skills/`），遷移未執行 |
-| E-03 | 進行中 | **Runtime 執行層（§二 C 節）** | T3/T17 = Node Runtime Pin + Windows CI + Automatic Test Discovery Macro PASS / ACCEPTED；T6 = SQLite Repository Foundation Macro PASS / ACCEPTED；T11A = Verified SQLite Pre-Migration Online Backup Primitive Macro PASS / ACCEPTED；T7A = SQLite Migration 2 & Canonical Durable Schema Validation Macro PASS / ACCEPTED；T7B = Macro PASS / ACCEPTED；T8A = Macro PASS / ACCEPTED；T8B = Machine PASS / Macro HOLD / T8B-F1 DUPLICATE ZERO-MUTATION REPAIR IN PROGRESS；T18 = poll limit folded into T7B，message content persistence completed in T8B；T8（其餘）/T9/T11-main = NOT STARTED；D29 Wave 2H = CANCELLED / MUST NOT RESUME；R2（Reply Result Uncertainty Handling）與 R3（Local API Form）= USER DECISION PENDING；Gateway live = NOT STARTED；B-98 unchanged / pending before real secret use；待 External Macro Audit |
+| E-03 | 進行中 | **Runtime 執行層（§二 C 節）** | 詳細切片生命週期、架構狀態與進度之單一事實來源請見下方「E-03 ROADMAP — CANONICAL CURRENT-STATE AUTHORITY」；看板頂層列不再維護長動態副本。當前切片為 G1（路線圖真相重整）；下一切片（NEXT_SLICE）為 Inbound Identity & Cursor Semantics ADR。 |
 | E-04 | 待辦 | `$$` 指令定義收斂（§二 D 節） | `$$LINE連線$$`／`$$TG連線$$` 散落三個檔案且內容互相矛盾；依 ADR-0022/D14 於 Gateway 正式 cutover 時才切換路由，非開發期 |
 | E-05 | 待辦 | Data/ 資料層逐項裁決（§二 E 節） | 尚有 `Data/logs/`（必須遷移）、`reports/`、`Agent_Reflections.md`、`TODO.md`、`Execution_Plans/`、`_archive_legacy_docs/` 待裁決 |
+
+
+### E-03 執行層專屬路線圖（E-03 ROADMAP — CANONICAL CURRENT-STATE AUTHORITY）
+
+> **單一事實來源宣告**：本區塊為 E-03 執行層當前詳細生命週期、架構決策與實作切片進度之唯一權威來源。
+> 看板「最後更新」與 E-03 頂層任務列僅保留精簡指標，不重複複製長動態狀態。
+> **冷啟動契約**：全新 Agent 單讀本看板即可確定 **NEXT_WORK = E-03** 與 **NEXT_SLICE = TG-MVP-02（Inbound Identity & Cursor Semantics ADR）**。
+> **架構決策狀態**：
+> - **R2（安全重試 ＋ 持久化 Outbox）**：`USER DECIDED / REPO ARCHITECTURE LANDING PENDING / NOT IMPLEMENTED`。
+> - **R3（Loopback HTTP v1 127.0.0.1 HMAC 授權）**：`USER DECIDED / REPO ARCHITECTURE LANDING PENDING / NOT IMPLEMENTED`（Named Pipe 未獲選/延後）。
+> - **R2-3（配送不確定通知）**：`USER DECIDED OPTION B`（Gateway 持久化，Agent 於 IDE 查看，手機不推播）。
+> - **D-U4（Telegram MVP 邊界）**：僅限文字收發（text in/out）、接管（takeover）、封存（archive）；D17 附件與 D19–D21 外發檔案排除。
+> - **D-U2 / D-U6 / D-U7**：`USER DECIDED / G2 LANDING PENDING`（個人資料不進 repo、分級審查、MISSION 切換定義）。
+
+#### 1. M-TG-MVP（Telegram MVP 第一版核心）
+
+| Slice | 狀態 | 目標 | 依據／權威 | 前置相依 | 完成證據 |
+|---|---|---|---|---|---|
+| TG-MVP-01 | 進行中 | **G1 路線圖真相重整**（G1 Route Truth Reconciliation）：同步 T8B 審查通過、推進 checkpoint 至 a456343、升格重大發現（F1、C1/C2/C3、INCIDENT-CI-04）、記錄使用者裁決（R2/R3/C-06 等）、去重動態狀態字串。 | G1 規格書、D-U4、B-68 | T8B Final Macro PASS (`a45634386d5abff5766c6af8af8f084fd4a15fed`) | G1 commit + Actions CI 綠燈 + AUDIT-LOG / backlog §5.1 / TASKBOARD 投影同步 |
+| TG-MVP-02 | 待辦 | **入站事件身份識別與游標語意 ADR**（Inbound Identity & Cursor Semantics ADR，**NEXT_SLICE**）：確立 Telegram 與 LINE 之 `platform_msg_id`、`cursor_value`、編輯/收回（edit/unsend）策略與游標比較器規範，確立 C3 權威定義。 | C3 / C1 / C2 設計缺口、ADR-0023 | TG-MVP-01 (G1) | 新增 canonical Inbound Identity & Cursor ADR |
+| TG-MVP-03 | 已裁決待落地 | **R2/R3 架構決策 ADR 落地**（R2/R3 Architecture ADR）：記錄 R2（Capability-Aware Retry + Durable Outbox）與 R3（Loopback HTTP v1 127.0.0.1 HMAC；Named Pipe 延後；R2-3 Option B IDE 查看）決策。注意：僅 ADR 落地，不含程式碼實作。 | 使用者正式裁決 R2、R3、R2-3、ADR-0022 | TG-MVP-01 (G1) | 新增或更新 R2/R3 ADR 文件 |
+| TG-MVP-04 | 待辦 | **F1 回覆授權身份鍵修復**（F1 Reply Authorization Identity Repair）：修正 `validateReplyAuthorization()` SQL 查詢，將單純 `channel_id + platform_msg_id` 查找改為納入 `account_id`，對齊 schema v3 `UNIQUE(account_id, platform_msg_id)` 複合鍵，避免合法回覆被誤判 ACCOUNT_MISMATCH。 | F1 Material Finding、schema v3 inbox 定義 | TG-MVP-02 (Identity ADR) | `sqlite-state-repository.js` 修正 + 測試案例驗證多帳號相同 message id 授權正確性 |
+| TG-MVP-05 | 待辦 | **游標與事件身份執行層修復**（Cursor / event identity runtime repair）：依據 C3 ADR 規範實作游標推進與事件比較邏輯，解決 C1（duplicate path 游標行為）與 C2（upsert 無條件覆寫）缺口。 | C1 / C2 / C3、TG-MVP-02 ADR | TG-MVP-02 (Identity ADR) | Generic repository 游標推進單元測試與交易驗證 |
+| TG-MVP-06 | 待辦 | **B-98 憑證與機密強化**（B-98 Secret/Credential Hardening）：在啟用真實 Telegram Bot Token 或 Local API HMAC secret 前，落實金鑰與機密存取安全邊界，防止 token 洩漏。 | 看板 B-98、安全防護原則 | TG-MVP-01 (G1) | 機密管理機制建立，通過安全檢查 |
+| TG-MVP-07 | 待辦 | **B-30 + B-33 Gateway 固定通訊埠與顯式目標收斂**（Gateway fixed port / explicit target convergence）：清理舊 repo 殘留之 port 3000/3001 衝突，確立 Gateway 專屬監聽 port 與目標端點規範。 | 看板 B-30、B-33、ADR-0022 | TG-MVP-01 (G1) | Port 配置統一，無殘留衝突硬編碼 |
+| TG-MVP-08 | 待辦 | **T9 封存並退役舊版凍結 JSON 運作模組**（T9 retire frozen JSON operational modules）：退役舊版基於 JSON 檔案的通道狀態模組，全面轉移至 SQLite Repository。 | 看板 E-03、ADR-0022、ADR-0023 | TG-MVP-01 (G1) | 舊 JSON 運作模組安全移除或封存，無 dangling import |
+| TG-MVP-09 | 待辦 | **T11-main 正式線上備份整合**（T11-main）：保持 repo 既有定義，將 T11A 所驗證之 SQLite online backup primitive 整合進正式運作流程與備份排程。 | T11A 完成證據、SQLite 線上備份規範 | TG-MVP-01 (G1) | 正式備份流程測試通過 |
+| TG-MVP-10 | 待辦 | **Telegram 測試機器人入站適配器**（Telegram Test-Bot inbound adapter）：實作 Telegram 長輪詢（long polling）入站適配器，將 Telegram update 轉換為標準 inbox 訊息並呼叫 `ingestMessage()`。 | ADR-0022、TG-MVP-02 (Identity ADR)、TG-MVP-06 (B-98) | TG-MVP-02, TG-MVP-05, TG-MVP-06 | Test Bot 入站訊息成功持久化至 SQLite inbox，游標正確推進 |
+| TG-MVP-11 | 待辦 | **本機迴路 Local API v1 實作**（Loopback Local API v1）：實作僅限 127.0.0.1 監聽、具備 HMAC 簽章驗證之 HTTP 入口，供本機 Agent 發送出站回覆與查詢狀態。 | 使用者裁決 R3、TG-MVP-03 (R3 ADR)、TG-MVP-06 (B-98)、TG-MVP-04 (F1) | TG-MVP-03, TG-MVP-04, TG-MVP-06 | Local API HTTP 伺服器單元與整合測試，驗證 127.0.0.1 綁定、HMAC 驗證與回覆授權 |
+| TG-MVP-12 | 待辦 | **持久化 SQLite Outbox 實作**（Durable SQLite Outbox）：實作具備能力感知安全重試（Capability-Aware Safe Retry）之出站佇列，保證出站訊息不遺失，斷線時持久化保存。 | 使用者裁決 R2、TG-MVP-03 (R2 ADR)、TG-MVP-04 (F1) | TG-MVP-03, TG-MVP-04 | Outbox 資料表遷移與出站佇列重試交易測試 |
+| TG-MVP-13 | 待辦 | **Telegram 出站文字發送適配器**（Telegram outbound text delivery）：由 Outbox worker 取出待送文字訊息，透過 Telegram Bot API 送出並標記完成或重試。 | 使用者裁決 D-U4（限文字 text in/out，排除附件與外發檔案）、ADR-0022 | TG-MVP-10, TG-MVP-12 | 測試機器人文字回覆成功送達 Telegram 聊天室 |
+| TG-MVP-14 | 待辦 | **對話封存機制**（D22/D23 conversation archive）：實作對話紀錄之持久化封存，確保歷史對話可供檢索。 | D22, D23, D-U4 | TG-MVP-10, TG-MVP-13 | 對話歷史封存單元測試與檢索測試通過 |
+| TG-MVP-15 | 待辦 | **Telegram MVP 端到端測試機器人驗收**（Telegram MVP E2E / Test Bot）：驗收文字雙向收發（text in/out）、通道接管（takeover）、對話封存（archive）。嚴禁將 D17 附件與 D19–D21 外發檔案塞入 MVP。 | 使用者裁決 D-U4、ADR-0022 | TG-MVP-01 至 TG-MVP-14 | 完整 E2E 測試劇本在測試機器人環境全數 PASS |
+
+#### 2. M-TG-CUTOVER（Telegram 正式切換與舊版停用）
+
+| Slice | 狀態 | 目標 | 依據／權威 | 前置相依 | 完成證據 |
+|---|---|---|---|---|---|
+| TG-CUT-01 | 待辦 | **E-04 指令路由切換**（E-04 routing cutover）：收斂 `$$TG連線$$` 指令，正式將 Telegram 流量切換至 Channel Gateway。 | E-04、ADR-0022/D14 | TG-MVP-15 (MVP E2E PASS) | 路由指令對齊 Gateway 控制合約 |
+| TG-CUT-02 | 待辦 | **D26 正式帳號切換**（D26 formal account switch）：由測試機器人帳號切換為正式 Telegram Bot 帳號配置。 | D26、B-98 | TG-CUT-01 | 正式帳號設定驗證通過 |
+| TG-CUT-03 | 待辦 | **舊版正式 Telegram 服務停用**（legacy formal TG stop）：安全關閉並停用舊版 Telegram 運作行程，避免雙重監聽或衝突。 | ADR-0022、PM2 進程治理 | TG-CUT-02 | 舊版服務完全停止且無殘留進程 |
+| TG-CUT-04 | 待辦 | **Gateway 正式金鑰啟用**（Gateway formal token activation）：啟用正式環境 Token 並啟動生產監聽。 | B-98、安全性規範 | TG-CUT-03 | 生產 Gateway 正式連線 Telegram |
+| TG-CUT-05 | 待辦 | **回滾合約與切換演練**（rollback contract）：建立緊急回滾至舊版機制與程序手冊，完成 cutover 演練。 | ADR-0022、SOP 緊急應變 | TG-CUT-04 | 回滾演練通過，上線正式切換完成（D-U7 達成） |
+
+#### 3. M-LINE（LINE 平台整合與雙平台值守）
+
+| Slice | 狀態 | 目標 | 依據／權威 | 前置相依 | 完成證據 |
+|---|---|---|---|---|---|
+| LINE-01 | 待辦 | **F-05 雙平台值守前置項**（F-05 before concurrent dual-platform duty）：補記 ADR-0012 `SKIP_LOCK=1` 繞過全域鎖問題，在並行雙平台值守前確保鎖機制正確性。 | 看板 F-05、ADR-0012、ADR-0022 | TG-CUT-05 (Telegram 上線完成) | F-05 結案，雙平台全域鎖行為明確 |
+| LINE-02 | 待辦 | **D11 工作者信箱實作**（D11 Worker Mailbox）：實作無人值守與工作者信箱機制。 | D11、ADR-0022 | LINE-01 | Worker Mailbox 單元測試通過 |
+| LINE-03 | 待辦 | **LINE 入站與出站適配器實作**（LINE adapter）：實作 Webhook 入站接收與 LINE Messaging API 出站發送。 | ADR-0022、C3 Identity ADR | LINE-02, TG-MVP-02 | LINE 訊息收發與持久化測試通過 |
+| LINE-04 | 待辦 | **D26 LINE 帳號與配額行為控制**（D26 LINE account/quota behavior）：落實 LINE 官方帳號免費訊息額度監控與流控機制。 | D26、F-02 配額監控 | LINE-03 | 額度超限保護與流控測試通過 |
+| LINE-05 | 待辦 | **F-06 渲染器路徑收斂**（F-06 renderer path convergence）：更新 `json-to-flex-renderer` 依賴路徑，由舊 repo 路徑遷移至新架構。 | 看板 F-06、ADR-0022 M8 路由 | LINE-03 | Flex Message 渲染測試通過 |
+| LINE-06 | 待辦 | **LINE 整合驗收與排定順序遵循**（D12 LINE LAST / explicit request）：確認 LINE 整合為最後順位且依使用者明確要求啟用。 | D12（LINE LAST）、ADR-0022 | LINE-01 至 LINE-05 | 雙平台並行運作驗收通過 |
 
 ---
 
