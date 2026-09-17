@@ -14,7 +14,7 @@
 
 **NEXT_WORK**：E-03
 
-**最後更新**：2026-09-17，SQLite Governance Landing = Macro PASS / accepted；T3/T17 = Node Runtime Pin + Windows CI + Automatic Test Discovery IN PROGRESS / PENDING EXTERNAL MACRO AUDIT；D29 Wave 2H = CANCELLED / MUST NOT RESUME；R2（Reply Result Uncertainty Handling）與 R3（Local API Form）維持 USER DECISION PENDING；Gateway live work 尚未開始；B-98 維持 pending；待 External Macro Audit。
+**最後更新**：2026-09-17，T3/T17 = Node Runtime Pin + Windows CI + Automatic Test Discovery Macro PASS / ACCEPTED；T6 = SQLite Repository / Schema Foundation IN PROGRESS / PENDING EXTERNAL MACRO AUDIT；D29 Wave 2H = CANCELLED / MUST NOT RESUME；R2（Reply Result Uncertainty Handling）與 R3（Local API Form）維持 USER DECISION PENDING；Gateway live = NOT STARTED；B-98 unchanged / pending；待 External Macro Audit。
 
 ---
 
@@ -207,7 +207,7 @@ A 節目前狀態以本表各列與 `NEXT_WORK` 之 current repo truth 為準；
 |---|---|---|---|
 | E-01 | 待辦 | 技能尚未遷移（§二 A 節） | 逐一比對 A-1「確定要遷移的」清單 |
 | E-02 | 待辦 | Persona 認知顧問 15 個（§二 B 節） | 架構已定為方案 A（設定檔非技能，不放 `skills/`），遷移未執行 |
-| E-03 | 進行中 | **Runtime 執行層（§二 C 節）** | SQLite Governance Landing = Macro PASS / accepted；checkpoint = 234918c；T3/T17 = Node Runtime Pin + Windows CI + Automatic Test Discovery IN PROGRESS / PENDING EXTERNAL MACRO AUDIT；D29 Wave 2H = CANCELLED / MUST NOT RESUME；R2 = Reply Result Uncertainty Handling（USER DECISION PENDING）；R3 = Local API Form（USER DECISION PENDING）；Gateway live = NOT STARTED；B-98 unchanged / pending before real secret use；pending External Macro Audit |
+| E-03 | 進行中 | **Runtime 執行層（§二 C 節）** | T3/T17 = Node Runtime Pin + Windows CI + Automatic Test Discovery Macro PASS / ACCEPTED；checkpoint = c1fd25d；T6 = SQLite Repository / Schema Foundation IN PROGRESS / PENDING EXTERNAL MACRO AUDIT；D29 Wave 2H = CANCELLED / MUST NOT RESUME；R2 = Reply Result Uncertainty Handling（USER DECISION PENDING）；R3 = Local API Form（USER DECISION PENDING）；Gateway live = NOT STARTED；B-98 unchanged / pending before real secret use；pending External Macro Audit |
 | E-04 | 待辦 | `$$` 指令定義收斂（§二 D 節） | `$$LINE連線$$`／`$$TG連線$$` 散落三個檔案且內容互相矛盾；依 ADR-0022/D14 於 Gateway 正式 cutover 時才切換路由，非開發期 |
 | E-05 | 待辦 | Data/ 資料層逐項裁決（§二 E 節） | 尚有 `Data/logs/`（必須遷移）、`reports/`、`Agent_Reflections.md`、`TODO.md`、`Execution_Plans/`、`_archive_legacy_docs/` 待裁決 |
 

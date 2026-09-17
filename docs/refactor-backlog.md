@@ -2825,7 +2825,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 5.1 上一批狀態
 
-上次核對通過的 HEAD：234918c87e05626245c8204f2e36a98d9bd87bc6
+上次核對通過的 HEAD：c1fd25d166bdc854dc602f54ac8522de25326e26
 
 - `23af193`（執行者前置檢查 ＋ 回滾程序 ＋ `AUDIT-LOG.md` ＋ 四缺口修正）
   已於 2026-09-02 由審計官核對通過：6 檔異動（含 2 個新檔）、零夾帶、
@@ -3020,6 +3020,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 - `750eaeb`（E-03 Validate Live Metadata Before Snapshot Clone）已於 2026-09-17 由 GPT 代理審查官（使用者授權）全面審查獨立核對通過：涵蓋 994c455..750eaeb 完整 pending range（共 2 commits：e1f06fd 初審 Machine PASS / Macro HOLD，F1 為 live metadata validated after lossy clone，由 750eaeb160eae2b4f29801ba04d53d1452a59275 徹底解決）；A1 EQUIVALENT 查證通過；exact-SHA Actions Verify Run 35170928666 completed / success（20 checks PASS，320 unit PASS，13 webapp PASS，5 Gates PASS）；Wave 2F = ACCEPTED；new accepted checkpoint = 750eaeb。
 - `b15d5bf`（E-03 Channel Gateway Wave 2G Multi-Channel Durable State Persistence Bridge & T1 Windows node:sqlite Technical Spike Review）已於 2026-09-17 由 GPT 代理審查官（使用者授權）全面審查獨立核對通過：涵蓋 750eaeb..b15d5bf 完整 pending range；A1 EQUIVALENT 查證通過；Wave 2G = ACCEPTED；T1 Windows node:sqlite Technical Spike = GO（D28 prerequisite satisfied，V1-V6 + V8 PASS，V7 reference partial / R3 undecided；F1 process protocol deviation non-blocking / added to B-98；F2 V7 not approval）；new accepted checkpoint = b15d5bf。
 - `234918c`（E-03 SQLite State Route Governance Landing & R2/R3 Decision-Routing Fidelity Repair）已於 2026-09-17 由 GPT 代理審查官（使用者授權）全面審查獨立核對通過：涵蓋 b15d5bf..234918c 完整 pending range（共 2 commits：90dc71c 初審 Machine PASS / Macro HOLD，F1 為 R2/R3 authoritative decision semantics misrouted，由 234918c87e05626245c8204f2e36a98d9bd87bc6 徹底解決）；A1 EQUIVALENT 查證通過；exact-SHA Actions Verify Run 35183142134 completed / success（20 checks PASS，321 unit PASS，13 webapp PASS，5 Gates PASS）；SQLite Governance Landing = ACCEPTED；new accepted checkpoint = 234918c87e05626245c8204f2e36a98d9bd87bc6。
+- `c1fd25d`（E-03 Pin Gateway Node and Harden Test Discovery）已於 2026-09-17 由 GPT 代理審查官（使用者授權）全面審查獨立核對通過：涵蓋 234918c..c1fd25d 完整 pending range（共 1 commit）；A1 EQUIVALENT 查證通過；exact-SHA Actions Verify Run 35187602617 completed / success（jobs: verify = success, gateway-windows = success；Ubuntu canonical: 20 checks PASS，331 unit tests PASS，13 webapp PASS，ALL 5 Gates PASS；Windows: Node 24.21.0，Gateway bridge 21/21 PASS）；ZERO UNREGISTERED SKIPS policy verified；T3/T17 = ACCEPTED；new accepted checkpoint = c1fd25d166bdc854dc602f54ac8522de25326e26。
 
 ### 5.2 待辦
 
@@ -3066,7 +3067,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - B-99 Qualification-Based Macro Auditor & Repo-Visible Handoff（CLOSED / MACRO PASS）。
   - B-97 Pre-B01 Comprehensive Release Audit 已完成（CLOSED / PRE-B01 RELEASE PASS）。
   - B-01 ADR-0002／0004／0010 分層搬移及 Active-Contract 語意修復已完成（CLOSED / MACRO PASS）。
-  - E-03 Runtime 執行層架構推進（IN PROGRESS）：SQLite Governance Landing = Macro PASS / ACCEPTED；accepted checkpoint 推進至 234918c87e05626245c8204f2e36a98d9bd87bc6；現執行 T3/T17（Node Runtime Pin + Windows CI + Automatic Test Discovery Enforcement，PENDING EXTERNAL MACRO AUDIT）；D29 Wave 2H = CANCELLED / MUST NOT RESUME；R2 = Reply Result Uncertainty Handling（USER DECISION PENDING）；R3 = Local API Form（USER DECISION PENDING）；next route: T3/T17 → T6；Gateway live 整合尚未開始（NOT STARTED）；B-98 / B-30 / B-33 / F-05 維持開啟狀態於既定前置邊界。
+  - E-03 Runtime 執行層架構推進（IN PROGRESS）：T3/T17 = Node Runtime Pin + Windows CI + Automatic Test Discovery Enforcement Macro PASS / ACCEPTED；accepted checkpoint 推進至 c1fd25d166bdc854dc602f54ac8522de25326e26；現執行 T6（SQLite Repository / Schema Foundation，PENDING EXTERNAL MACRO AUDIT）；D29 Wave 2H = CANCELLED / MUST NOT RESUME；R2 = Reply Result Uncertainty Handling（USER DECISION PENDING）；R3 = Local API Form（USER DECISION PENDING）；T6 僅建立 repository connection lifecycle 與 schema foundation，不建立 domain transaction (T7)、ingest idempotency (T8)、JSON retirement (T9) 或 full path guard (T11)；Gateway live 整合尚未開始（NOT STARTED）；B-98 / B-30 / B-33 / F-05 維持開啟狀態於既定前置邊界。
   - C-06 維持待使用者裁決（USER_DECISION_NONBLOCKING，遠端 ruleset 與 required checks 現況已確認）。
   - B-28 / B-29 上游 trigger 重新評估完成，無 B-01 blocker，維持 DEFERRED_BY_USER / POST_B01。
   - B-54 保持待辦（POST_B01 / NONBLOCKING，SOP_12 機器專屬路徑 concrete example 已登錄）。
@@ -3715,4 +3716,27 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
       - E-03 進行中（IN PROGRESS）。
       - accepted checkpoint 推進至 `234918c87e05626245c8204f2e36a98d9bd87bc6`。
       - D29 Wave 2H 取消且不得恢復；T6 SQLite repository 尚未開始；Gateway live 整合尚未開始（NOT STARTED）；R2 與 R3 維持 USER DECISION PENDING；B-98 維持 pending。
+      - 本候選等待 External Macro Reviewer 獨立審核，不得 self-audit。
+
+88. **E-03 T3/T17 Final Macro PASS & T6 SQLite Repository & Schema Foundation Candidate**（2026-09-17）
+    - **T3/T17 外部審查結論**：前一施工候選 `c1fd25d166bdc854dc602f54ac8522de25326e26`（E-03 Pin Gateway Node and Harden Test Discovery）經 External Macro Reviewer（GPT 代理審查官（使用者授權））全面審查。審查範圍為 `234918c87e05626245c8204f2e36a98d9bd87bc6..c1fd25d166bdc854dc602f54ac8522de25326e26`（共 1 commit）。A1 qualification 採 A1 = EQUIVALENT（GitHub API + Executor clone cross-check）成立；exact-SHA Actions Verify Run `35187602617` completed/success（jobs: verify = success, gateway-windows = success；Ubuntu canonical: 20 checks PASS，331 unit tests PASS，13 webapp PASS，ALL 5 Gates PASS；Windows: Node 24.21.0，Gateway bridge 21/21 PASS）；Skip policy: ZERO UNREGISTERED SKIPS policy verified；Evidence distinction: Local Executor Windows observed 3 registered capability skips, exact-SHA GitHub Windows job mechanically proves zero unregistered skips（3 is not a required invariant, registry entries are permissions not expected counts）；`MACRO AUDIT = PASS`，`ACCEPT STATUS = ACCEPT ALL`，`FINDING_DISPOSITION = NONE`；T3/T17 = ACCEPTED；accepted checkpoint 推進至 `c1fd25d166bdc854dc602f54ac8522de25326e26`；NEXT_WORK 保持 E-03。
+    - **T6 核心目標與邊界（SQLite Repository & Schema Foundation）**：
+      - 新增最小生產級儲存庫模組 `runtime/channel-gateway/core/sqlite-state-repository.js`：
+        - 採用 Node 內建 `node:sqlite`（`DatabaseSync`），零 npm 相依套件，extension loading 嚴格未啟用。
+        - 單一輸入契約：僅接受 `stateRoot`（字串、非空、絕對路徑、已存在之本機目錄、可讀寫、經 `fs.realpathSync` 正規化）；嚴禁 auto mkdir。
+        - 固定資料庫檔名：`channel-gateway-state.sqlite3`，禁止 caller 自訂任意檔名。
+        - 既有檔案邊界：若 DB 已存在，透過 `fs.lstatSync` 檢驗必須為 regular file（拒絕 symlink、目錄或 non-regular 裝置），且 canonical realpath 必須位於 canonical stateRoot 內。
+        - 強制 PRAGMA 契約與讀回驗證：每次 open 設定 `journal_mode = WAL`、`synchronous = FULL`、`foreign_keys = ON`、`busy_timeout = 5000`（基於 T1 Windows spike 經 606 秒 0 unrecovered lock 實測數據收斂）；逐項讀回驗證若不符則 fail-closed 拋錯並關閉連線。
+        - 綱要遷移基礎：建立 `schema_migrations (version INTEGER PRIMARY KEY) STRICT`，新 DB 以 immediate 交易寫入 version 1；既有 DB 若缺表、版本為空、非整數、<=0、重複、中斷或出現未支援之 future version > 1，一律 fail-closed 拒絕接管。
+        - 唯讀審視與生命週期：提供 `databasePath`、`schemaVersion`（來自已驗證 DB 狀態）、`isOpen` 及冪等 `close()`；關閉後不可繼續使用；零 raw DB escape hatch（不公開 DB 物件、不提供 raw exec/query API）。
+      - 新增單元測試套件 `runtime/channel-gateway/tests/sqlite-state-repository.test.js`（涵蓋 23 項測試，synthetic temp DB，Windows 與 Linux 零跳過）。
+      - 自動探索契約維持：npm test 與 Python bridge 自動收錄新測試檔，無須手動註冊。
+      - 嚴格架構邊界：T6 僅建立 repository connection 與 migration/version foundation；不得建立領域 repository API（takeover, heartbeat, enqueue, poll, claim, outbox 等）；不得將 ChannelControl 接進 SQLite（此屬 T7/T8）；不得讀取或遷移 `channel-gateway-state.json`（T9 處理）；T11 完整路徑守衛尚未實作；不得恢復 Wave 2H。
+    - **當前生命週期狀態**：
+      - 本批為 E-03 T6 實作候選。
+      - E-03 進行中（IN PROGRESS）。
+      - accepted checkpoint = `c1fd25d166bdc854dc602f54ac8522de25326e26`。
+      - T6 = IN PROGRESS / PENDING EXTERNAL MACRO AUDIT。
+      - T7（交易邊界）、T8（冪等進線）、T9（淘汰 JSON 模組）、T11（完整路徑守衛）仍未開始。
+      - Gateway live 整合尚未開始（NOT STARTED）；R2 與 R3 維持 USER DECISION PENDING；B-98 維持 pending。
       - 本候選等待 External Macro Reviewer 獨立審核，不得 self-audit。

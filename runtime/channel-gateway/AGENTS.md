@@ -17,10 +17,10 @@
 - `PRAGMA journal_mode = WAL;`（讀回必須為 `wal`）
 - `PRAGMA synchronous = FULL;`（讀回必須為 `2`）
 - `PRAGMA foreign_keys = ON;`（讀回必須為 `1`）
-- `PRAGMA busy_timeout = <repo-defined value>;`
+- `PRAGMA busy_timeout = 5000;`（讀回必須為 `5000`）
 
 啟動時若任一項讀回值不符，必須 **FAIL-CLOSED** 立即中止啟動。
-具體之 `busy_timeout` 數值由 T6 階段之實作規格決定（T1 Spike 實測 5000ms 僅為實驗證據，非永久魔法數值）。
+T6 階段正式採用 `busy_timeout = 5000`（5000ms），其基礎為 T1 Windows spike 經 606 秒 Defender 並行讀寫實測 0 unrecovered lock 驗證之數值。
 
 ## 3. 交易邊界強制 (Transaction Boundary)
 
