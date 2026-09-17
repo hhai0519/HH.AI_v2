@@ -734,3 +734,69 @@ test('SqliteStateRepository - 31. PRAGMA busy_timeout contract verified on open'
     harness.cleanup();
   }
 });
+
+// 32. F3: Single generic pending migration runner across new and existing paths
+test('SqliteStateRepository - 32. F3: unified pending migration runner architecture canary', () => {
+  const moduleSource = fs.readFileSync(
+    path.join(__dirname, '../core/sqlite-state-repository.js'),
+    'utf8'
+  );
+
+  // 1. Generic runner function exists
+  assert.ok(
+    /function\s+runPendingMigrations\s*\(\s*db\s*,\s*currentVersion\s*,\s*targetVersion\s*\)/.test(moduleSource),
+    'Production source must declare generic runPendingMigrations(db, currentVersion, targetVersion)'
+  );
+
+  // 2. Generic runner is NOT scoped inside if (isNew)
+  // Check that runPendingMigrations is called outside of the if (isNew) block
+  assert.ok(
+    /runPendingMigrations\s*\(\s*db\s*,\s*currentVersion\s*,\s*SQLITE_STATE_SCHEMA_VERSION\s*\)/.test(moduleSource),
+    'Production constructor must call runPendingMigrations with currentVersion and SQLITE_STATE_SCHEMA_VERSION'
+  );
+
+  // 3. Pending selection semantics: version > currentVersion && version <= targetVersion
+  assert.ok(
+    /version\s*>\s*currentVersion\s*&&\s*[^.]*version\s*<=\s*targetVersion/.test(moduleSource) ||
+    /m\.version\s*>\s*currentVersion\s*&&\s*m\.version\s*<=\s*targetVersion/.test(moduleSource),
+    'Pending migration selection must use: version > currentVersion && version <= targetVersion'
+  );
+
+  // 4. MIGRATIONS registry remains version 1 only
+  assert.strictEqual(
+    /version:\s*2\b/.test(moduleSource),
+    false,
+    'Production source must NOT contain migration version 2'
+  );
+});
+
+// 33. F3: Existing DB passes through generic runner with 0 pending migrations
+test('SqliteStateRepository - 33. F3: existing valid DB [1] executes 0 pending migrations and preserves schema', () => {
+  const harness = createTempHarness();
+  try {
+    // First open: creates new DB and applies migration 1
+    const repo1 = new SqliteStateRepository(harness.stateRoot);
+    assert.strictEqual(repo1.isOpen, true);
+    assert.strictEqual(repo1.schemaVersion, 1);
+    repo1.close();
+
+    // Second open: existing DB with currentVersion = 1 runs through runPendingMigrations(db, 1, 1)
+    // Pending list is empty, zero migrations run, schema remains canonical and valid
+    const repo2 = new SqliteStateRepository(harness.stateRoot);
+    assert.strictEqual(repo2.isOpen, true);
+    assert.strictEqual(repo2.schemaVersion, 1);
+    repo2.close();
+
+    // Verify raw DB has exactly version 1
+    const rawDb = new DatabaseSync(path.join(harness.stateRoot, SQLITE_DATABASE_FILENAME));
+    try {
+      const rows = rawDb.prepare('SELECT version FROM schema_migrations ORDER BY version ASC;').all();
+      assert.strictEqual(rows.length, 1);
+      assert.strictEqual(rows[0].version, 1);
+    } finally {
+      rawDb.close();
+    }
+  } finally {
+    harness.cleanup();
+  }
+});

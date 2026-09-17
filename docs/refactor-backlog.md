@@ -3067,7 +3067,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - B-99 Qualification-Based Macro Auditor & Repo-Visible Handoff（CLOSED / MACRO PASS）。
   - B-97 Pre-B01 Comprehensive Release Audit 已完成（CLOSED / PRE-B01 RELEASE PASS）。
   - B-01 ADR-0002／0004／0010 分層搬移及 Active-Contract 語意修復已完成（CLOSED / MACRO PASS）。
-  - E-03 Runtime 執行層架構推進（IN PROGRESS）：T3/T17 = Node Runtime Pin + Windows CI + Automatic Test Discovery Enforcement Macro PASS / ACCEPTED；accepted checkpoint 保持 c1fd25d166bdc854dc602f54ac8522de25326e26；現執行 T6（SQLite Repository Foundation，Machine PASS / Macro HOLD / BOUNDED REPAIR IN PROGRESS）；T7 = NOT STARTED；D29 Wave 2H = CANCELLED / MUST NOT RESUME；R2 = Reply Result Uncertainty Handling（USER DECISION PENDING）；R3 = Local API Form（USER DECISION PENDING）；T6 僅建立 repository connection lifecycle 與 schema foundation，不建立 domain transaction (T7)、ingest idempotency (T8)、JSON retirement (T9) 或 full path guard (T11)；Gateway live 整合尚未開始（NOT STARTED）；B-98 / B-30 / B-33 / F-05 維持開啟狀態於既定前置邊界。
+  - E-03 Runtime 執行層架構推進（IN PROGRESS）：T3/T17 = Node Runtime Pin + Windows CI + Automatic Test Discovery Enforcement Macro PASS / ACCEPTED；accepted checkpoint 保持 c1fd25d166bdc854dc602f54ac8522de25326e26；現執行 T6（SQLite Repository Foundation，Machine PASS / Macro HOLD / FINAL BOUNDED REPAIR IN PROGRESS）；T7 = NOT STARTED；D29 Wave 2H = CANCELLED / MUST NOT RESUME；R2 = Reply Result Uncertainty Handling（USER DECISION PENDING）；R3 = Local API Form（USER DECISION PENDING）；T6 僅建立 repository connection lifecycle 與 schema foundation，不建立 domain transaction (T7)、ingest idempotency (T8)、JSON retirement (T9) 或 full path guard (T11)；Gateway live 整合尚未開始（NOT STARTED）；B-98 / B-30 / B-33 / F-05 維持開啟狀態於既定前置邊界。
   - C-06 維持待使用者裁決（USER_DECISION_NONBLOCKING，遠端 ruleset 與 required checks 現況已確認）。
   - B-28 / B-29 上游 trigger 重新評估完成，無 B-01 blocker，維持 DEFERRED_BY_USER / POST_B01。
   - B-54 保持待辦（POST_B01 / NONBLOCKING，SOP_12 機器專屬路徑 concrete example 已登錄）。
@@ -3753,5 +3753,17 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
       - E-03 進行中（IN PROGRESS）。
       - accepted checkpoint 保持 `c1fd25d166bdc854dc602f54ac8522de25326e26`（不得填入 e27dff9 或 repair candidate）。
       - T6 = BOUNDED REPAIR IN PROGRESS。
+      - T7、T8、T9、T11 尚未開始；Gateway live 整合尚未開始（NOT STARTED）；R2 與 R3 維持 USER DECISION PENDING；B-98 維持 pending。
+      - 本修復候選等待 External Macro Reviewer 獨立審核，不得 self-audit。
+
+90. **E-03 T6 Complete SQLite Forward Migration Foundation Candidate**（2026-09-17）
+    - **T6 施工候選審查結論**：前一施工候選 `c527bcc876c41ca9c0a5e1d1f51314ea87c45c3e`（E-03 Harden SQLite Repository Foundation）經 External Macro Reviewer（GPT 代理審查官（使用者授權））審查。A1 qualification 採 A1 = EQUIVALENT（GitHub API + Executor clone cross-check）成立；exact-SHA Actions Verify Run `35191051632` completed/success（jobs: verify = success, gateway-windows = success；Ubuntu canonical: 20 checks PASS，332 unit tests PASS，13 webapp PASS，ALL 5 Gates PASS；Windows: Node 24.21.0，Gateway bridge 22/22 PASS）；Machine / CI Gates 全部通過。External Macro 審查判定為 `MACRO AUDIT = HOLD`，`ACCEPT STATUS = ONE BOUNDED REPAIR REQUIRED`，`FINDING_DISPOSITION = CURRENT E-03 / T6`。
+    - **Disposition & Finding F3**：F1（dangling symlink）、F2（canonical schema shape）、F4（private repository state）判定 RESOLVED；殘留材料瑕疵 F3 未完全解決：原 MIGRATIONS loop 僅包覆在 `if (isNew)` 分支內，既有合法資料庫（existing valid database）缺乏 pending forward migration 執行路徑。
+    - **F3 最終收斂修復**：建立單一通用內部 forward runner（`runPendingMigrations(db, currentVersion, targetVersion)`）與版本歷史讀取函式（`readAppliedMigrationVersions(db)`）。新 DB（currentVersion=0）與既有 DB（currentVersion=last applied version）均呼叫同一 forward runner；runner 嚴格依序套用 `currentVersion < migration.version <= targetVersion` 之待套用遷移，每個 migration 各自於 `BEGIN IMMEDIATE ... COMMIT` 交易內執行並寫入 `schema_migrations` 版號紀錄；既有合法 DB（current=1）進入同一通用 runner 時自然導出 pending=[] 零操作且不重跑 migration 1；未來綱要合法擴展時同一路徑可自然承接 pending migrations；新增測試至 33 項（全庫 221 tests，Windows 與 Linux 零跳過）；Python bridge 22/22 PASS。
+    - **當前生命週期狀態**：
+      - 本批為 E-03 T6 Complete SQLite Forward Migration Foundation 實作候選。
+      - E-03 進行中（IN PROGRESS）。
+      - accepted checkpoint 保持 `c1fd25d166bdc854dc602f54ac8522de25326e26`（不得填入 e27dff9、c527bcc 或 repair candidate）。
+      - T6 = FINAL BOUNDED REPAIR IN PROGRESS。
       - T7、T8、T9、T11 尚未開始；Gateway live 整合尚未開始（NOT STARTED）；R2 與 R3 維持 USER DECISION PENDING；B-98 維持 pending。
       - 本修復候選等待 External Macro Reviewer 獨立審核，不得 self-audit。

@@ -19,10 +19,11 @@
  *     PRAGMA foreign_keys = ON; (readback 1)
  *     PRAGMA busy_timeout = 5000; (readback 5000)
  *   Any readback mismatch triggers fail-closed error and immediate close.
- * - Migration foundation:
- *     - Ordered, forward-only, transactional runner.
+ * - Unified forward-only transactional migration runner:
+ *     - Single generic runPendingMigrations(db, currentVersion, targetVersion) path for both new and existing databases.
+ *     - Pending migrations selected by: version > currentVersion && version <= targetVersion.
  *     - Migration 1 creates canonical table: schema_migrations (version INTEGER PRIMARY KEY) STRICT.
- *     - Runner records version in schema_migrations via prepared statement.
+ *     - Runner records version in schema_migrations via prepared statement within immediate transaction.
  *     - Existing DB missing schema_migrations fails closed.
  *     - Canonical schema_migrations shape verified via PRAGMA table_list and PRAGMA table_info (STRICT, 1 column, PK).
  *     - Gap, non-integer, <=0, duplicate, or future version > 1 fails closed.
@@ -135,6 +136,82 @@ function verifyCanonicalSchemaMigrationsShape(db) {
   }
   if (!col0.pk || Number(col0.pk) <= 0) {
     throw new Error("schema_migrations column 'version' must be PRIMARY KEY (fail-closed)");
+  }
+}
+
+/**
+ * Reads and strictly validates applied schema_migrations records.
+ *
+ * @param {DatabaseSync} db
+ * @returns {number[]} Array of applied versions in ascending order
+ */
+function readAppliedMigrationVersions(db) {
+  const rows = db.prepare('SELECT version FROM schema_migrations ORDER BY version ASC;').all();
+  if (!rows || rows.length === 0) {
+    throw new Error('schema_migrations table is empty (fail-closed)');
+  }
+
+  const versions = [];
+  const seen = new Set();
+  for (const row of rows) {
+    const v = row.version;
+    if (typeof v !== 'number' || !Number.isInteger(v) || !Number.isSafeInteger(v) || v <= 0) {
+      throw new Error(`Invalid schema version: ${v} (fail-closed)`);
+    }
+    if (seen.has(v)) {
+      throw new Error(`Duplicate schema version: ${v} (fail-closed)`);
+    }
+    seen.add(v);
+    versions.push(v);
+  }
+
+  // Must be continuous starting from 1 with no gaps
+  for (let i = 0; i < versions.length; i++) {
+    const expected = i + 1;
+    if (versions[i] !== expected) {
+      throw new Error(
+        `Invalid migration sequence: expected version ${expected} at index ${i}, found ${versions[i]} (fail-closed)`
+      );
+    }
+  }
+
+  return versions;
+}
+
+/**
+ * Generic forward migration runner.
+ * Applies any migrations where version > currentVersion && version <= targetVersion.
+ * Each migration is applied inside its own immediate transaction.
+ *
+ * @param {DatabaseSync} db
+ * @param {number} currentVersion
+ * @param {number} targetVersion
+ */
+function runPendingMigrations(db, currentVersion, targetVersion) {
+  if (typeof currentVersion !== 'number' || !Number.isInteger(currentVersion) || currentVersion < 0) {
+    throw new Error(`Invalid currentVersion: ${currentVersion} (fail-closed)`);
+  }
+  if (typeof targetVersion !== 'number' || !Number.isInteger(targetVersion) || targetVersion <= 0) {
+    throw new Error(`Invalid targetVersion: ${targetVersion} (fail-closed)`);
+  }
+
+  const pending = MIGRATIONS.filter(
+    (m) => m.version > currentVersion && m.version <= targetVersion
+  );
+
+  for (const migration of pending) {
+    db.exec('BEGIN IMMEDIATE;');
+    try {
+      migration.apply(db);
+      const insertStmt = db.prepare('INSERT INTO schema_migrations (version) VALUES (?);');
+      insertStmt.run(migration.version);
+      db.exec('COMMIT;');
+    } catch (mErr) {
+      try {
+        db.exec('ROLLBACK;');
+      } catch (_) {}
+      throw new Error(`Failed to apply migration ${migration.version}: ${mErr.message}`);
+    }
   }
 }
 
@@ -284,37 +361,63 @@ class SqliteStateRepository {
       // 3. Forward-only transactional migration runner / verification
       validateMigrationRegistry(MIGRATIONS, SQLITE_STATE_SCHEMA_VERSION);
 
+      let currentVersion = 0;
+
       if (isNew) {
-        // Apply migrations forward starting from version 1
-        for (const migration of MIGRATIONS) {
-          db.exec('BEGIN IMMEDIATE;');
-          try {
-            migration.apply(db);
-            const insertStmt = db.prepare('INSERT INTO schema_migrations (version) VALUES (?);');
-            insertStmt.run(migration.version);
-            db.exec('COMMIT;');
-          } catch (mErr) {
-            try {
-              db.exec('ROLLBACK;');
-            } catch (_) {}
-            throw new Error(`Failed to apply migration ${migration.version}: ${mErr.message}`);
-          }
-        }
+        // New DB: starts at version 0; schema_migrations table does not exist yet
+        currentVersion = 0;
       } else {
-        // Existing DB: must already have schema_migrations table
+        // Existing DB:
+        // A. Must already have schema_migrations table
         const tableList = db.prepare("PRAGMA table_list('schema_migrations');").all();
         const hasTable = tableList && tableList.some((e) => e.name === 'schema_migrations');
         if (!hasTable) {
           throw new Error('Existing database is missing schema_migrations table (fail-closed)');
         }
+
+        // B. Verify canonical table shape before reading history
+        verifyCanonicalSchemaMigrationsShape(db);
+
+        // C & D. Read migration history and verify valid sequential structure
+        const appliedVersions = readAppliedMigrationVersions(db);
+
+        // Fail-closed on future schema versions
+        if (appliedVersions.some((v) => v > SQLITE_STATE_SCHEMA_VERSION)) {
+          throw new Error(
+            `Future schema version detected: [${appliedVersions.join(', ')}] exceeds supported version ${SQLITE_STATE_SCHEMA_VERSION} (fail-closed)`
+          );
+        }
+
+        // E. Current version is the latest applied migration version
+        currentVersion = appliedVersions[appliedVersions.length - 1];
       }
+
+      // Unified runner path: applies pending migrations (currentVersion < v <= targetVersion)
+      // for both new and existing databases through the same forward runner.
+      runPendingMigrations(db, currentVersion, SQLITE_STATE_SCHEMA_VERSION);
 
       // 4. Verify canonical table shape (STRICT, single integer PK column)
       verifyCanonicalSchemaMigrationsShape(db);
 
-      // 5. Verify schema state and read back version
-      this.#schemaVersion = this.#readAndVerifySchemaVersion(db);
+      // 5. Verify no domain tables exist (T6 foundation boundary)
+      const nonInternalTables = db.prepare(
+        "SELECT name FROM sqlite_schema WHERE type = 'table' AND name NOT LIKE 'sqlite_%';"
+      ).all();
+      for (const t of nonInternalTables) {
+        if (t.name !== 'schema_migrations') {
+          throw new Error(`Unexpected table in schema: '${t.name}' (no domain tables allowed in T6)`);
+        }
+      }
 
+      // 6. Verify final applied version state matches target schema version
+      const finalVersions = readAppliedMigrationVersions(db);
+      if (finalVersions[finalVersions.length - 1] !== SQLITE_STATE_SCHEMA_VERSION) {
+        throw new Error(
+          `Schema version mismatch: expected ${SQLITE_STATE_SCHEMA_VERSION}, got ${finalVersions[finalVersions.length - 1]} (fail-closed)`
+        );
+      }
+
+      this.#schemaVersion = finalVersions[finalVersions.length - 1];
       this.#db = db;
       this.#isOpen = true;
     } catch (err) {
@@ -333,57 +436,6 @@ class SqliteStateRepository {
    */
   static open(stateRoot) {
     return new SqliteStateRepository(stateRoot);
-  }
-
-  /**
-   * Reads and strictly validates schema_migrations records.
-   *
-   * @private
-   * @param {DatabaseSync} db
-   * @returns {number} The current validated schema version
-   */
-  #readAndVerifySchemaVersion(db) {
-    const nonInternalTables = db.prepare(
-      "SELECT name FROM sqlite_schema WHERE type = 'table' AND name NOT LIKE 'sqlite_%';"
-    ).all();
-    for (const t of nonInternalTables) {
-      if (t.name !== 'schema_migrations') {
-        throw new Error(`Unexpected table in schema: '${t.name}' (no domain tables allowed in T6)`);
-      }
-    }
-
-    const rows = db.prepare('SELECT version FROM schema_migrations ORDER BY version ASC;').all();
-    if (!rows || rows.length === 0) {
-      throw new Error('schema_migrations table is empty (fail-closed)');
-    }
-
-    const versions = [];
-    const seen = new Set();
-    for (const row of rows) {
-      const v = row.version;
-      if (typeof v !== 'number' || !Number.isInteger(v) || !Number.isSafeInteger(v) || v <= 0) {
-        throw new Error(`Invalid schema version: ${v} (fail-closed)`);
-      }
-      if (seen.has(v)) {
-        throw new Error(`Duplicate schema version: ${v} (fail-closed)`);
-      }
-      seen.add(v);
-      versions.push(v);
-    }
-
-    if (versions.some((v) => v > SQLITE_STATE_SCHEMA_VERSION)) {
-      throw new Error(
-        `Future schema version detected: [${versions.join(', ')}] exceeds supported version ${SQLITE_STATE_SCHEMA_VERSION} (fail-closed)`
-      );
-    }
-
-    if (versions.length !== 1 || versions[0] !== SQLITE_STATE_SCHEMA_VERSION) {
-      throw new Error(
-        `Invalid migration sequence: received [${versions.join(', ')}], expected [${SQLITE_STATE_SCHEMA_VERSION}] (fail-closed)`
-      );
-    }
-
-    return versions[versions.length - 1];
   }
 
   /**
