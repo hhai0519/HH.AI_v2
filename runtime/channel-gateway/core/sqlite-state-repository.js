@@ -216,6 +216,32 @@ function runPendingMigrations(db, currentVersion, targetVersion) {
   }
 }
 
+/**
+ * Reads all non-internal user table names in ascending alphabetical order.
+ *
+ * @param {DatabaseSync} db
+ * @returns {string[]}
+ */
+function getCanonicalUserTableNames(db) {
+  const rows = db.prepare(
+    "SELECT name FROM sqlite_schema WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name ASC;"
+  ).all();
+  return rows ? rows.map((r) => r.name) : [];
+}
+
+/**
+ * Reads SQLite PRAGMA data_version as a concurrent mutation drift indicator.
+ *
+ * @param {DatabaseSync} db
+ * @returns {number|null}
+ */
+function getDataVersion(db) {
+  const row = db.prepare('PRAGMA data_version;').get();
+  if (!row) return null;
+  const val = row.data_version ?? Object.values(row)[0];
+  return typeof val === 'number' ? val : null;
+}
+
 class SqliteStateRepository {
   /** @type {DatabaseSync|null} */
   #db = null;
@@ -474,6 +500,12 @@ class SqliteStateRepository {
    *
    * Invariants:
    * - Repository must be currently open; fails closed if closed.
+   * - Pre-backup source baseline capture:
+   *     1. Validates canonical schema_migrations shape on source DB.
+   *     2. Captures sourceVersionsBefore (plain copied array of applied migration versions).
+   *     3. Enforces sourceVersionsBefore[last] === this.#schemaVersion; fails closed on version drift.
+   *     4. Captures sourceTablesBefore (plain copied array of user table names).
+   *     5. Captures sourceDataVersionBefore (PRAGMA data_version) for concurrency drift detection.
    * - Source database remains open, usable, and unmodified.
    * - No caller path override: destination filename is generated internally using
    *   a safe naming pattern confined strictly to canonicalStateRoot.
@@ -485,8 +517,12 @@ class SqliteStateRepository {
    *   Verifies:
    *     1. PRAGMA integrity_check === 'ok'
    *     2. schema_migrations table canonical STRICT shape
-   *     3. Applied migration history strictly matches source
-   *     4. No unexpected user tables beyond what exists in source
+   *     3. Applied migration history strictly matches sourceVersionsBefore
+   *     4. User table list strictly matches sourceTablesBefore
+   * - Post-backup source stability verification:
+   *     1. sourceVersionsAfter strictly equals sourceVersionsBefore
+   *     2. sourceTablesAfter strictly equals sourceTablesBefore
+   *     3. sourceDataVersionAfter strictly equals sourceDataVersionBefore
    * - Returns clean success metadata ({ success: true, backupPath, sourceSchemaVersion, integrity: 'ok' }).
    *   Exposes no raw database handles or prepared statements.
    * - If verification fails, best-effort cleanup of destination is performed only if verified
@@ -499,11 +535,30 @@ class SqliteStateRepository {
       throw new Error('Repository is closed (cannot create backup from closed repository)');
     }
 
+    // 1. Pre-backup source baseline capture
+    verifyCanonicalSchemaMigrationsShape(this.#db);
+
+    const sourceVersionsBefore = Array.from(readAppliedMigrationVersions(this.#db));
+    if (sourceVersionsBefore.length === 0) {
+      throw new Error('Source schema_migrations is empty (fail-closed)');
+    }
+
+    const latestSourceVersion = sourceVersionsBefore[sourceVersionsBefore.length - 1];
+    if (latestSourceVersion !== this.#schemaVersion) {
+      throw new Error(
+        `Source schema version drift detected (fail-closed): database state has latest version ${latestSourceVersion} but repository was opened at version ${this.#schemaVersion}`
+      );
+    }
+
+    const sourceTablesBefore = Array.from(getCanonicalUserTableNames(this.#db));
+    const sourceDataVersionBefore = getDataVersion(this.#db);
+
+    // 2. Generate safe internal backup filename
     const uniqueId = crypto.randomUUID();
     const backupFilename = `channel-gateway-state.backup-v${this.#schemaVersion}-${uniqueId}.sqlite3`;
     const backupDestination = path.join(this.#canonicalStateRoot, backupFilename);
 
-    // Pre-execution path confinement check
+    // 3. Pre-execution path confinement check
     const nominalRel = path.relative(this.#canonicalStateRoot, backupDestination);
     if (nominalRel === '..' || nominalRel.startsWith('..' + path.sep) || path.isAbsolute(nominalRel)) {
       throw new Error(
@@ -511,7 +566,7 @@ class SqliteStateRepository {
       );
     }
 
-    // Destination existence check: only ENOENT is accepted
+    // 4. Destination existence check: only ENOENT is accepted
     let destLstat = null;
     try {
       destLstat = fs.lstatSync(backupDestination);
@@ -528,7 +583,7 @@ class SqliteStateRepository {
       );
     }
 
-    // Execute VACUUM INTO using parameterized prepared statement
+    // 5. Execute VACUUM INTO using parameterized prepared statement
     try {
       const vacuumStmt = this.#db.prepare('VACUUM INTO ?;');
       vacuumStmt.run(backupDestination);
@@ -536,7 +591,7 @@ class SqliteStateRepository {
       throw new Error(`VACUUM INTO failed for destination '${backupDestination}': ${err.message}`);
     }
 
-    // Post-execution destination verification
+    // 6. Post-execution destination verification
     let postStat;
     try {
       postStat = fs.lstatSync(backupDestination);
@@ -569,7 +624,7 @@ class SqliteStateRepository {
       );
     }
 
-    // Read-only reopening and integrity verification
+    // 7. Read-only reopening and integrity verification
     let backupDb = null;
     try {
       backupDb = new DatabaseSync(backupDestination, {
@@ -589,46 +644,73 @@ class SqliteStateRepository {
         throw new Error(`PRAGMA integrity_check reported error: ${integrityVal}`);
       }
 
-      // B. Canonical schema_migrations shape
+      // B. Canonical schema_migrations shape on backup
       verifyCanonicalSchemaMigrationsShape(backupDb);
 
-      // C. Applied migration history match
+      // C. Applied migration history must match sourceVersionsBefore
       const backupVersions = readAppliedMigrationVersions(backupDb);
-      const sourceVersions = readAppliedMigrationVersions(this.#db);
-
-      if (backupVersions.length !== sourceVersions.length) {
+      if (backupVersions.length !== sourceVersionsBefore.length) {
         throw new Error(
-          `Backup migration history count mismatch: backup has ${backupVersions.length}, source has ${sourceVersions.length}`
+          `Backup migration history count mismatch: backup has ${backupVersions.length}, source baseline had ${sourceVersionsBefore.length}`
         );
       }
       for (let i = 0; i < backupVersions.length; i++) {
-        if (backupVersions[i] !== sourceVersions[i]) {
+        if (backupVersions[i] !== sourceVersionsBefore[i]) {
           throw new Error(
-            `Backup migration history mismatch at index ${i}: backup=${backupVersions[i]}, source=${sourceVersions[i]}`
+            `Backup migration history mismatch at index ${i}: backup=${backupVersions[i]}, source baseline=${sourceVersionsBefore[i]}`
           );
         }
       }
 
-      // D. User table list comparison: backup must not contain user tables not in source
-      const getTableNames = (dbConn) => {
-        const rows = dbConn.prepare(
-          "SELECT name FROM sqlite_schema WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name ASC;"
-        ).all();
-        return rows ? rows.map((r) => r.name) : [];
-      };
-
-      const sourceTables = getTableNames(this.#db);
-      const backupTables = getTableNames(backupDb);
-
-      if (backupTables.length !== sourceTables.length) {
+      // D. User table list must match sourceTablesBefore
+      const backupTables = getCanonicalUserTableNames(backupDb);
+      if (backupTables.length !== sourceTablesBefore.length) {
         throw new Error(
-          `Backup tables count mismatch: backup has [${backupTables.join(', ')}], source has [${sourceTables.join(', ')}]`
+          `Backup tables count mismatch: backup has [${backupTables.join(', ')}], source baseline had [${sourceTablesBefore.join(', ')}]`
         );
       }
       for (let i = 0; i < backupTables.length; i++) {
-        if (backupTables[i] !== sourceTables[i]) {
+        if (backupTables[i] !== sourceTablesBefore[i]) {
           throw new Error(
-            `Backup table mismatch at index ${i}: backup has '${backupTables[i]}', source has '${sourceTables[i]}'`
+            `Backup table mismatch at index ${i}: backup has '${backupTables[i]}', source baseline has '${sourceTablesBefore[i]}'`
+          );
+        }
+      }
+
+      // E. Re-verify source database stability (post-backup verification)
+      const sourceVersionsAfter = readAppliedMigrationVersions(this.#db);
+      if (sourceVersionsAfter.length !== sourceVersionsBefore.length) {
+        throw new Error(
+          `Source migration history count changed during backup: was ${sourceVersionsBefore.length}, now ${sourceVersionsAfter.length} (fail-closed)`
+        );
+      }
+      for (let i = 0; i < sourceVersionsAfter.length; i++) {
+        if (sourceVersionsAfter[i] !== sourceVersionsBefore[i]) {
+          throw new Error(
+            `Source migration version changed during backup at index ${i}: was ${sourceVersionsBefore[i]}, now ${sourceVersionsAfter[i]} (fail-closed)`
+          );
+        }
+      }
+
+      const sourceTablesAfter = getCanonicalUserTableNames(this.#db);
+      if (sourceTablesAfter.length !== sourceTablesBefore.length) {
+        throw new Error(
+          `Source table count changed during backup: was [${sourceTablesBefore.join(', ')}], now [${sourceTablesAfter.join(', ')}] (fail-closed)`
+        );
+      }
+      for (let i = 0; i < sourceTablesAfter.length; i++) {
+        if (sourceTablesAfter[i] !== sourceTablesBefore[i]) {
+          throw new Error(
+            `Source table changed during backup at index ${i}: was '${sourceTablesBefore[i]}', now '${sourceTablesAfter[i]}' (fail-closed)`
+          );
+        }
+      }
+
+      if (sourceDataVersionBefore !== null) {
+        const sourceDataVersionAfter = getDataVersion(this.#db);
+        if (sourceDataVersionAfter !== sourceDataVersionBefore) {
+          throw new Error(
+            `Source data_version changed during backup: was ${sourceDataVersionBefore}, now ${sourceDataVersionAfter} (concurrent mutation detected, fail-closed)`
           );
         }
       }

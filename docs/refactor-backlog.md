@@ -3067,7 +3067,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - B-99 Qualification-Based Macro Auditor & Repo-Visible Handoff（CLOSED / MACRO PASS）。
   - B-97 Pre-B01 Comprehensive Release Audit 已完成（CLOSED / PRE-B01 RELEASE PASS）。
   - B-01 ADR-0002／0004／0010 分層搬移及 Active-Contract 語意修復已完成（CLOSED / MACRO PASS）。
-  - E-03 Runtime 執行層架構推進（IN PROGRESS）：T3/T17 = Node Runtime Pin + Windows CI + Automatic Test Discovery Enforcement Macro PASS / ACCEPTED；accepted checkpoint 推進至 50db6364fd3d15d5fc5d74d6b6acbb40aed7d751；T6 = SQLite Repository Foundation Macro PASS / ACCEPTED；T11A = Verified Pre-Migration Online Backup Primitive IN PROGRESS / PENDING EXTERNAL MACRO AUDIT；T7 = NOT STARTED / BLOCKED UNTIL T11A ACCEPTED；T8/T9/T11-main = NOT STARTED；D29 Wave 2H = CANCELLED / MUST NOT RESUME；R2 = Reply Result Uncertainty Handling（USER DECISION PENDING）；R3 = Local API Form（USER DECISION PENDING）；Gateway live 整合尚未開始（NOT STARTED）；B-98 / B-30 / B-33 / F-05 維持開啟狀態於既定前置邊界。
+  - E-03 Runtime 執行層架構推進（IN PROGRESS）：T3/T17 = Node Runtime Pin + Windows CI + Automatic Test Discovery Enforcement Macro PASS / ACCEPTED；accepted checkpoint 保持 50db6364fd3d15d5fc5d74d6b6acbb40aed7d751；T6 = SQLite Repository Foundation Macro PASS / ACCEPTED；T11A = Machine PASS / Macro HOLD / SOURCE-BASELINE BOUNDED REPAIR IN PROGRESS；T7 = NOT STARTED / BLOCKED UNTIL T11A ACCEPTED；T8/T9/T11-main = NOT STARTED；D29 Wave 2H = CANCELLED / MUST NOT RESUME；R2 = Reply Result Uncertainty Handling（USER DECISION PENDING）；R3 = Local API Form（USER DECISION PENDING）；Gateway live 整合尚未開始（NOT STARTED）；B-98 / B-30 / B-33 / F-05 維持開啟狀態於既定前置邊界。
   - C-06 維持待使用者裁決（USER_DECISION_NONBLOCKING，遠端 ruleset 與 required checks 現況已確認）。
   - B-28 / B-29 上游 trigger 重新評估完成，無 B-01 blocker，維持 DEFERRED_BY_USER / POST_B01。
   - B-54 保持待辦（POST_B01 / NONBLOCKING，SOP_12 機器專屬路徑 concrete example 已登錄）。
@@ -3788,3 +3788,22 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
       - T7（交易邊界與 migration 2）阻塞於 T11A 外部 Macro PASS；T8、T9、T11 主切片尚未開始。
       - Gateway live 整合尚未開始（NOT STARTED）；R2 與 R3 維持 USER DECISION PENDING；B-98 維持 pending。
       - 本候選等待 External Macro Reviewer 獨立審核，不得 self-audit。
+
+92. **E-03 T11A SQLite Backup Source Baseline Hardening Repair Candidate**（2026-09-17）
+    - **T11A 施工候選審查結論**：前一施工候選 `79125ffeace97536aad3fedbbff6d19b2f5113f4`（E-03 Add Verified SQLite Migration Backup）經 External Macro Reviewer（GPT 代理審查官（使用者授權））全面審查。Parent 為 `50db6364fd3d15d5fc5d74d6b6acbb40aed7d751`（range commits = 1）。A1 qualification 採 A1 = EQUIVALENT（GitHub API + Executor clone cross-check）成立；exact-SHA Actions Verify Run `35202243870` completed/success（jobs: verify = success, gateway-windows = success；Ubuntu canonical: 20 checks PASS，332 unit PASS，13 webapp PASS，ALL 5 Gates PASS；Windows: Windows Server 2025, Node 24.21.0, Gateway bridge 22/22 PASS）；Machine findings: VACUUM_INTO parameter binding = PASS, READONLY backup verification = PASS, integrity_check = PASS, path confinement = PASS, no overwrite = PASS；Machine / CI Gates 全部通過。但 External Macro 審查判定為 `MACRO AUDIT = HOLD`，`ACCEPT STATUS = ONE BOUNDED REPAIR REQUIRED`，`FINDING_DISPOSITION = CURRENT E-03`。
+    - **Finding T11A-F1**：source migration history baseline 原實作於 VACUUM INTO 完成後才首次自來源 DB 讀取；若在 repository 開啟後外部連線對來源 DB 寫入更高版本遷移（如 version 2），backupVersions 與 sourceVersions 在事後讀取時雖然一致（均為 `[1, 2]`），但 repository 仍回傳 `sourceSchemaVersion = 1`，造成已驗證狀態之內部矛盾（verified-state contradiction），無法證明備份等同於備份發起前的來源基準。
+    - **T11A-F1 有界修復核心架構與實作**：
+      - **Pre-VACUUM Source Baseline Capture**：在執行 `VACUUM INTO` 之前，先針對來源連線執行 `verifyCanonicalSchemaMigrationsShape(this.#db)`，捕獲不可變之拷貝陣列 `sourceVersionsBefore = Array.from(readAppliedMigrationVersions(this.#db))` 與 `sourceTablesBefore = Array.from(getCanonicalUserTableNames(this.#db))`，並透過 `PRAGMA data_version;` 捕獲 `sourceDataVersionBefore` 作為外部併發變更金絲雀。
+      - **Source Version Drift Validation**：驗證 `sourceVersionsBefore` 非空且最新套用版本 `sourceVersionsBefore[last]` 必須嚴格等於當前 repository 開啟時之 `this.#schemaVersion`（目前為 1）；若外部連線已寫入更高版本（如 `[1, 2]`）或其他漂移狀態，一律 fail-closed 拋錯拒絕發起 VACUUM INTO。
+      - **Strict Pre-Baseline Comparison**：VACUUM 成功後，以唯讀模式開啟備份檔，其 `backupVersions` 與 `backupTables` 嚴格與 pre-baseline（`sourceVersionsBefore` 及 `sourceTablesBefore`）比對，不得以事後讀取之來源狀態作為比對標的。
+      - **Post-Backup Source Stability Check**：在回傳成功前，重新讀取來源 DB 之 `sourceVersionsAfter`、`sourceTablesAfter` 與 `sourceDataVersionAfter`，若任一項目與備份前 baseline 不符（代表備份期間來源發生漂移或併發外部 commit），一律 fail-closed 拒絕回傳成功並執行保守清理。
+      - **Regression Tests & Canaries**：測試新增至 45 項（全庫 233 tests，0 fail，3 allowed skips，零未註冊跳過）；新增 Test 43 確定性驗證外部連線插入 version 2 時 fail-closed 攔截；Test 44 驗證 pre-baseline 捕獲序列與穩定性比較；Test 45 驗證正常 v1 來源備份產生一致之中繼資料與歷史。
+    - **當前生命週期狀態**：
+      - 本批為 E-03 T11A Source Baseline Hardening Repair 實作候選。
+      - E-03 進行中（IN PROGRESS）。
+      - accepted checkpoint 保持 `50db6364fd3d15d5fc5d74d6b6acbb40aed7d751`（不得填入 79125ff 或 repair candidate）。
+      - T6 = ACCEPTED。
+      - T11A = SOURCE-BASELINE BOUNDED REPAIR IN PROGRESS / PENDING EXTERNAL MACRO AUDIT。
+      - T7（交易邊界與 migration 2 wiring）保持 NOT STARTED，嚴格阻塞於 T11A accepted checkpoint 建立。
+      - T8、T9、T11 主切片尚未開始；Gateway live 整合尚未開始（NOT STARTED）；R2 與 R3 維持 USER DECISION PENDING；B-98 維持 pending。
+      - 本修復候選等待 External Macro Reviewer 獨立審核，不得 self-audit。

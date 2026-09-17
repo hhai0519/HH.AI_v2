@@ -1068,3 +1068,110 @@ test('SqliteStateRepository - 42. T11A: parameterized VACUUM INTO behavior canar
     harness.cleanup();
   }
 });
+
+// 43. T11A-F1 Regression: external schema_migrations mutation before backup fails closed
+test('SqliteStateRepository - 43. T11A-F1 Regression: external schema_migrations mutation before backup fails closed', () => {
+  const harness = createTempHarness();
+  try {
+    const repo = new SqliteStateRepository(harness.stateRoot);
+    assert.strictEqual(repo.schemaVersion, 1);
+
+    // Keep repo open; simulate external connection inserting migration version 2
+    const externalDb = new DatabaseSync(repo.databasePath);
+    try {
+      externalDb.prepare('INSERT INTO schema_migrations (version) VALUES (2);').run();
+    } finally {
+      externalDb.close();
+    }
+
+    // createVerifiedBackup must detect version drift (1 vs 2) and throw fail-closed
+    assert.throws(
+      () => repo.createVerifiedBackup(),
+      /drift|schema version/i
+    );
+
+    repo.close();
+  } finally {
+    harness.cleanup();
+  }
+});
+
+// 44. T11A-F1: pre-vacuum source baseline capture and post-backup stability verification canary
+test('SqliteStateRepository - 44. T11A-F1: pre-vacuum source baseline capture and post-backup stability verification canary', () => {
+  const moduleSource = fs.readFileSync(
+    path.join(__dirname, '../core/sqlite-state-repository.js'),
+    'utf8'
+  );
+
+  // 1. Source baseline captured before VACUUM INTO execution
+  const vacuumStmtIndex = moduleSource.indexOf("prepare('VACUUM INTO ?;')");
+  const sourceVersionsBeforeIndex = moduleSource.indexOf('const sourceVersionsBefore');
+  const sourceTablesBeforeIndex = moduleSource.indexOf('const sourceTablesBefore');
+  const sourceDataVersionBeforeIndex = moduleSource.indexOf('const sourceDataVersionBefore');
+
+  assert.ok(vacuumStmtIndex > 0, 'Production source must contain prepare("VACUUM INTO ?;")');
+  assert.ok(sourceVersionsBeforeIndex > 0, 'Production source must define sourceVersionsBefore');
+  assert.ok(sourceTablesBeforeIndex > 0, 'Production source must define sourceTablesBefore');
+  assert.ok(
+    sourceVersionsBeforeIndex < vacuumStmtIndex,
+    'sourceVersionsBefore must be captured before VACUUM INTO execution'
+  );
+  assert.ok(
+    sourceTablesBeforeIndex < vacuumStmtIndex,
+    'sourceTablesBefore must be captured before VACUUM INTO execution'
+  );
+  if (sourceDataVersionBeforeIndex > 0) {
+    assert.ok(
+      sourceDataVersionBeforeIndex < vacuumStmtIndex,
+      'sourceDataVersionBefore must be captured before VACUUM INTO execution'
+    );
+  }
+
+  // 2. Backup verification compares against sourceVersionsBefore and sourceTablesBefore
+  assert.ok(
+    moduleSource.includes('backupVersions.length !== sourceVersionsBefore.length') ||
+    moduleSource.includes('backupVersions[i] !== sourceVersionsBefore[i]'),
+    'backupVersions must be compared against sourceVersionsBefore'
+  );
+  assert.ok(
+    moduleSource.includes('backupTables.length !== sourceTablesBefore.length') ||
+    moduleSource.includes('backupTables[i] !== sourceTablesBefore[i]'),
+    'backupTables must be compared against sourceTablesBefore'
+  );
+
+  // 3. Post-backup source stability check
+  assert.ok(
+    moduleSource.includes('sourceVersionsAfter'),
+    'Production source must verify sourceVersionsAfter for stability'
+  );
+  assert.ok(
+    moduleSource.includes('sourceTablesAfter'),
+    'Production source must verify sourceTablesAfter for stability'
+  );
+});
+
+// 45. T11A: normal v1 source produces consistent backup and verified metadata
+test('SqliteStateRepository - 45. T11A: normal v1 source produces consistent backup and verified metadata', () => {
+  const harness = createTempHarness();
+  try {
+    const repo = new SqliteStateRepository(harness.stateRoot);
+    assert.strictEqual(repo.schemaVersion, 1);
+
+    const result = repo.createVerifiedBackup();
+    assert.strictEqual(result.success, true);
+    assert.strictEqual(result.sourceSchemaVersion, 1);
+    assert.strictEqual(result.integrity, 'ok');
+
+    const backupDb = new DatabaseSync(result.backupPath, { readOnly: true });
+    try {
+      const rows = backupDb.prepare('SELECT version FROM schema_migrations ORDER BY version ASC;').all();
+      assert.deepStrictEqual(rows.map((r) => r.version), [1]);
+    } finally {
+      backupDb.close();
+    }
+
+    repo.close();
+  } finally {
+    harness.cleanup();
+  }
+});
