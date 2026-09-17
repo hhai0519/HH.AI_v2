@@ -70,15 +70,16 @@ function seedInboxMessage(
   try {
     const stmt = rawDb.prepare(
       `INSERT INTO inbox (
-        channel_id, message_id, receiving_account_id, status,
+        channel_id, account_id, platform_msg_id, status, content,
         claimed_by, claimed_at_token, discard_reason, discarded_by_holder, discarded_at_token
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);`
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);`
     );
     stmt.run(
       channelId,
-      String(messageId),
       receivingAccountId,
+      String(messageId),
       status,
+      extra.content ?? null,
       extra.claimedBy ?? null,
       extra.claimedAtToken ?? null,
       extra.discardReason ?? null,
@@ -191,7 +192,7 @@ test('SqliteChannelTransactions - 3. takeover discards claimed messages with TAK
       // Verify directly from DB
       const rawDb = new DatabaseSync(repo.databasePath, { readOnly: true });
       try {
-        const rows = rawDb.prepare('SELECT message_id, status, discard_reason, discarded_by_holder, discarded_at_token FROM inbox ORDER BY sequence ASC;').all();
+        const rows = rawDb.prepare('SELECT platform_msg_id, status, discard_reason, discarded_by_holder, discarded_at_token FROM inbox ORDER BY sequence ASC;').all();
         assert.strictEqual(rows.length, 3);
         assert.strictEqual(rows[0].status, 'discarded');
         assert.strictEqual(rows[0].discard_reason, 'TAKEOVER');
@@ -460,7 +461,7 @@ test('SqliteChannelTransactions - 9. validateReplyAuthorization matrix: zero DB 
       // CANARY 14, 15: Zero side-effect verification: msg_claimed must STILL be 'claimed' in SQLite!
       const rawDb = new DatabaseSync(repo.databasePath, { readOnly: true });
       try {
-        const msgRow = rawDb.prepare("SELECT status FROM inbox WHERE message_id = 'msg_claimed';").get();
+        const msgRow = rawDb.prepare("SELECT status FROM inbox WHERE platform_msg_id = 'msg_claimed';").get();
         assert.strictEqual(msgRow.status, 'claimed', 'Successful authorization MUST NOT mutate inbox status to replied');
       } finally {
         rawDb.close();
@@ -510,7 +511,7 @@ test('SqliteChannelTransactions - 10. takeover failure triggers full rollback wi
       // Verify inbox msg_1 is STILL claimed and was NOT partially discarded
       const rawDb = new DatabaseSync(repo.databasePath, { readOnly: true });
       try {
-        const row = rawDb.prepare("SELECT status, discard_reason FROM inbox WHERE message_id = 'msg_1';").get();
+        const row = rawDb.prepare("SELECT status, discard_reason FROM inbox WHERE platform_msg_id = 'msg_1';").get();
         assert.strictEqual(row.status, 'claimed');
         assert.strictEqual(row.discard_reason, null);
       } finally {
@@ -538,7 +539,7 @@ test('SqliteChannelTransactions - 11. claim failure triggers full rollback witho
       const schemaDb = new DatabaseSync(repo.databasePath);
       try {
         schemaDb.exec(
-          "CREATE TRIGGER test_abort_second_claim BEFORE UPDATE OF status ON inbox WHEN NEW.message_id = 'msg_claim_2' BEGIN SELECT RAISE(ABORT, 'forced test abort on second claim'); END;"
+          "CREATE TRIGGER test_abort_second_claim BEFORE UPDATE OF status ON inbox WHEN NEW.platform_msg_id = 'msg_claim_2' BEGIN SELECT RAISE(ABORT, 'forced test abort on second claim'); END;"
         );
       } finally {
         schemaDb.close();
@@ -553,7 +554,7 @@ test('SqliteChannelTransactions - 11. claim failure triggers full rollback witho
       // Re-read inbox: BOTH messages must still be 'queued'! Zero partial claims
       const rawDb = new DatabaseSync(repo.databasePath, { readOnly: true });
       try {
-        const rows = rawDb.prepare('SELECT message_id, status FROM inbox ORDER BY sequence ASC;').all();
+        const rows = rawDb.prepare('SELECT platform_msg_id, status FROM inbox ORDER BY sequence ASC;').all();
         assert.strictEqual(rows.length, 2);
         assert.strictEqual(rows[0].status, 'queued', 'msg_claim_1 must be rolled back to queued');
         assert.strictEqual(rows[1].status, 'queued', 'msg_claim_2 must remain queued');
@@ -700,14 +701,14 @@ test('SqliteChannelTransactions - 15. closed repository rejects all operations f
 });
 
 // 16. Architectural invariants and boundaries (CANARY 17-24)
-test('SqliteChannelTransactions - 16. architectural invariants: schema version 2, no ingress/outbox/account-switch', () => {
-  assert.strictEqual(SQLITE_STATE_SCHEMA_VERSION, 2, 'CANARY 17: schema version must remain 2');
+test('SqliteChannelTransactions - 16. architectural invariants: schema version 3, no ingress/outbox/account-switch', () => {
+  assert.strictEqual(SQLITE_STATE_SCHEMA_VERSION, 3, 'CANARY 17: schema version must remain 3');
 
   const harness = createTempHarness();
   try {
     const repo = new SqliteStateRepository(harness.stateRoot);
     try {
-      assert.strictEqual(repo.schemaVersion, 2, 'CANARY 18: applied schema version is 2');
+      assert.strictEqual(repo.schemaVersion, 3, 'CANARY 18: applied schema version is 3');
 
       // CANARY 19: No production ingress API
       assert.strictEqual(repo.enqueueMessage, undefined);
@@ -724,17 +725,17 @@ test('SqliteChannelTransactions - 16. architectural invariants: schema version 2
       // CANARY 22: R2 safe - no reply mutation completion
       assert.strictEqual(repo.authorizeReply, undefined);
 
-      // CANARY 23: No T8 cursor or composite dedupe
+      // CANARY 23: T8A ingest_cursor table exists; outbox remains absent
       const rawDb = new DatabaseSync(repo.databasePath, { readOnly: true });
       try {
         const tRows = rawDb.prepare("SELECT name FROM sqlite_schema WHERE type = 'table';").all();
         const tNames = tRows.map((r) => r.name);
-        assert.strictEqual(tNames.includes('ingest_cursor'), false);
+        assert.strictEqual(tNames.includes('ingest_cursor'), true);
         assert.strictEqual(tNames.includes('outbox'), false);
 
-        // CANARY 10: MIGRATIONS remain [1, 2]
+        // CANARY 10: MIGRATIONS remain [1, 2, 3]
         const mRows = rawDb.prepare('SELECT version FROM schema_migrations ORDER BY version ASC;').all();
-        assert.deepStrictEqual(mRows.map((r) => r.version), [1, 2]);
+        assert.deepStrictEqual(mRows.map((r) => r.version), [1, 2, 3]);
       } finally {
         rawDb.close();
       }
@@ -765,7 +766,7 @@ test('SqliteChannelTransactions - 17. reply authorization rejects claimed_by mis
       // Verify DB row was NOT mutated (CANARY 4: read-only)
       const rawDb = new DatabaseSync(repo.databasePath, { readOnly: true });
       try {
-        const row = rawDb.prepare("SELECT status, claimed_by, claimed_at_token FROM inbox WHERE message_id = 'msg_mismatch_holder';").get();
+        const row = rawDb.prepare("SELECT status, claimed_by, claimed_at_token FROM inbox WHERE platform_msg_id = 'msg_mismatch_holder';").get();
         assert.strictEqual(row.status, 'claimed');
         assert.strictEqual(row.claimed_by, 'holder_other');
         assert.strictEqual(row.claimed_at_token, 1);
@@ -799,7 +800,7 @@ test('SqliteChannelTransactions - 18. reply authorization rejects claimed_at_tok
       // Verify DB row was NOT mutated (CANARY 4: read-only)
       const rawDb = new DatabaseSync(repo.databasePath, { readOnly: true });
       try {
-        const row = rawDb.prepare("SELECT status, claimed_by, claimed_at_token FROM inbox WHERE message_id = 'msg_mismatch_token';").get();
+        const row = rawDb.prepare("SELECT status, claimed_by, claimed_at_token FROM inbox WHERE platform_msg_id = 'msg_mismatch_token';").get();
         assert.strictEqual(row.status, 'claimed');
         assert.strictEqual(row.claimed_by, 'holder_A');
         assert.strictEqual(row.claimed_at_token, 0);
@@ -835,7 +836,7 @@ test('SqliteChannelTransactions - 19. reply authorization rejects discarded mess
       // Verify DB row was NOT mutated (CANARY 4: read-only)
       const rawDb = new DatabaseSync(repo.databasePath, { readOnly: true });
       try {
-        const row = rawDb.prepare("SELECT status, discard_reason FROM inbox WHERE message_id = 'msg_discarded';").get();
+        const row = rawDb.prepare("SELECT status, discard_reason FROM inbox WHERE platform_msg_id = 'msg_discarded';").get();
         assert.strictEqual(row.status, 'discarded');
         assert.strictEqual(row.discard_reason, 'HEARTBEAT_EXPIRY');
       } finally {
@@ -915,15 +916,15 @@ test('SqliteChannelTransactions - 21. expiry state, discarded claimed rows, and 
       // Read-only DB verify
       const rawDb = new DatabaseSync(repo2.databasePath, { readOnly: true });
       try {
-        const rows = rawDb.prepare('SELECT message_id, status, discard_reason, discarded_by_holder, discarded_at_token FROM inbox ORDER BY sequence ASC;').all();
+        const rows = rawDb.prepare('SELECT platform_msg_id, status, discard_reason, discarded_by_holder, discarded_at_token FROM inbox ORDER BY sequence ASC;').all();
         assert.strictEqual(rows.length, 2);
-        assert.strictEqual(rows[0].message_id, 'msg_claimed_1');
+        assert.strictEqual(rows[0].platform_msg_id, 'msg_claimed_1');
         assert.strictEqual(rows[0].status, 'discarded');
         assert.strictEqual(rows[0].discard_reason, 'HEARTBEAT_EXPIRY');
         assert.strictEqual(rows[0].discarded_by_holder, 'holder_alpha');
         assert.strictEqual(rows[0].discarded_at_token, 1);
 
-        assert.strictEqual(rows[1].message_id, 'msg_queued_1');
+        assert.strictEqual(rows[1].platform_msg_id, 'msg_queued_1');
         assert.strictEqual(rows[1].status, 'queued');
         assert.strictEqual(rows[1].discard_reason, null);
       } finally {
@@ -966,13 +967,13 @@ test('SqliteChannelTransactions - 22. takeover and expiry preserve already-disca
       // Verify msg_prev_discarded and msg_already_replied were NOT altered
       const rawDb = new DatabaseSync(repo.databasePath, { readOnly: true });
       try {
-        const dRow = rawDb.prepare("SELECT status, discard_reason, discarded_by_holder, discarded_at_token FROM inbox WHERE message_id = 'msg_prev_discarded';").get();
+        const dRow = rawDb.prepare("SELECT status, discard_reason, discarded_by_holder, discarded_at_token FROM inbox WHERE platform_msg_id = 'msg_prev_discarded';").get();
         assert.strictEqual(dRow.status, 'discarded');
         assert.strictEqual(dRow.discard_reason, 'PRIOR_REASON');
         assert.strictEqual(dRow.discarded_by_holder, 'holder_prev');
         assert.strictEqual(dRow.discarded_at_token, 0);
 
-        const rRow = rawDb.prepare("SELECT status, discard_reason FROM inbox WHERE message_id = 'msg_already_replied';").get();
+        const rRow = rawDb.prepare("SELECT status, discard_reason FROM inbox WHERE platform_msg_id = 'msg_already_replied';").get();
         assert.strictEqual(rRow.status, 'replied');
         assert.strictEqual(rRow.discard_reason, null);
       } finally {
@@ -988,13 +989,13 @@ test('SqliteChannelTransactions - 22. takeover and expiry preserve already-disca
       // Verify again: msg_prev_discarded and msg_already_replied still unaltered
       const rawDb2 = new DatabaseSync(repo.databasePath, { readOnly: true });
       try {
-        const dRow = rawDb2.prepare("SELECT status, discard_reason, discarded_by_holder, discarded_at_token FROM inbox WHERE message_id = 'msg_prev_discarded';").get();
+        const dRow = rawDb2.prepare("SELECT status, discard_reason, discarded_by_holder, discarded_at_token FROM inbox WHERE platform_msg_id = 'msg_prev_discarded';").get();
         assert.strictEqual(dRow.status, 'discarded');
         assert.strictEqual(dRow.discard_reason, 'PRIOR_REASON');
         assert.strictEqual(dRow.discarded_by_holder, 'holder_prev');
         assert.strictEqual(dRow.discarded_at_token, 0);
 
-        const rRow = rawDb2.prepare("SELECT status, discard_reason FROM inbox WHERE message_id = 'msg_already_replied';").get();
+        const rRow = rawDb2.prepare("SELECT status, discard_reason FROM inbox WHERE platform_msg_id = 'msg_already_replied';").get();
         assert.strictEqual(rRow.status, 'replied');
         assert.strictEqual(rRow.discard_reason, null);
       } finally {

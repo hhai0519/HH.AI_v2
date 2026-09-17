@@ -42,13 +42,13 @@ const crypto = require('node:crypto');
 const { DatabaseSync } = require('node:sqlite');
 const { isAbsolutePath } = require('./data-location-config');
 
-const SQLITE_STATE_SCHEMA_VERSION = 2;
+const SQLITE_STATE_SCHEMA_VERSION = 3;
 const SQLITE_BUSY_TIMEOUT_MS = 5000;
 const SQLITE_DATABASE_FILENAME = 'channel-gateway-state.sqlite3';
 
 /**
  * Canonical DDL definitions for domain tables introduced in schema version 2.
- * Shared between migration 2 runner and verifyCanonicalDomainSchemaShape validator.
+ * Preserved for migration 2 runner and v2 backup validation.
  */
 const CHANNEL_CONTROL_SCHEMA_SQL = `
 CREATE TABLE channel_control (
@@ -65,7 +65,7 @@ CREATE TABLE channel_control (
 ) STRICT;
 `;
 
-const INBOX_SCHEMA_SQL = `
+const INBOX_V2_SCHEMA_SQL = `
 CREATE TABLE inbox (
   sequence INTEGER PRIMARY KEY AUTOINCREMENT,
   channel_id TEXT NOT NULL,
@@ -101,6 +101,56 @@ CREATE TABLE inbox (
 `;
 
 /**
+ * Canonical DDL definitions for domain tables in schema version 3.
+ * Inbox identity is now (account_id, platform_msg_id) with content column.
+ * Ingest cursor table tracks per-account fetch cursor.
+ */
+const INBOX_SCHEMA_SQL = `
+CREATE TABLE inbox (
+  sequence INTEGER PRIMARY KEY AUTOINCREMENT,
+  channel_id TEXT NOT NULL,
+  account_id TEXT NOT NULL
+    CHECK(length(trim(account_id)) > 0),
+  platform_msg_id TEXT NOT NULL
+    CHECK(length(trim(platform_msg_id)) > 0),
+  status TEXT NOT NULL
+    CHECK(status IN (
+      'queued',
+      'claimed',
+      'discarded',
+      'replied'
+    )),
+  content TEXT,
+  claimed_by TEXT,
+  claimed_at_token INTEGER
+    CHECK(
+      claimed_at_token IS NULL OR
+      claimed_at_token >= 0
+    ),
+  discard_reason TEXT,
+  discarded_by_holder TEXT,
+  discarded_at_token INTEGER
+    CHECK(
+      discarded_at_token IS NULL OR
+      discarded_at_token >= 0
+    ),
+  UNIQUE(account_id, platform_msg_id),
+  FOREIGN KEY(channel_id)
+    REFERENCES channel_control(channel_id)
+    ON DELETE RESTRICT
+) STRICT;
+`;
+
+const INGEST_CURSOR_SCHEMA_SQL = `
+CREATE TABLE ingest_cursor (
+  account_id TEXT PRIMARY KEY
+    CHECK(length(trim(account_id)) > 0),
+  cursor_value TEXT NOT NULL
+    CHECK(length(trim(cursor_value)) > 0)
+) STRICT;
+`;
+
+/**
  * Normalizes CREATE TABLE DDL SQL deterministically for canonical schema comparison.
  * Collapses whitespace, trims, normalizes punctuation spacing, strips trailing semicolons,
  * and normalizes keyword case outside single-quoted string literals.
@@ -128,9 +178,9 @@ function normalizeCanonicalSchemaSql(sql) {
     }
   }
   return parts
-    .join('')
-    .replace(/\s+/g, ' ')
-    .trim();
+  .join('')
+  .replace(/\s+/g, ' ')
+  .trim();
 }
 
 /**
@@ -148,7 +198,44 @@ const MIGRATIONS = Object.freeze([
     version: 2,
     apply(db) {
       db.exec(CHANNEL_CONTROL_SCHEMA_SQL);
+      db.exec(INBOX_V2_SCHEMA_SQL);
+    },
+  }),
+  Object.freeze({
+    version: 3,
+    apply(db) {
+      db.exec('ALTER TABLE inbox RENAME TO inbox_v2_legacy;');
       db.exec(INBOX_SCHEMA_SQL);
+      db.exec(`
+INSERT INTO inbox (
+  sequence,
+  channel_id,
+  account_id,
+  platform_msg_id,
+  status,
+  content,
+  claimed_by,
+  claimed_at_token,
+  discard_reason,
+  discarded_by_holder,
+  discarded_at_token
+)
+SELECT
+  sequence,
+  channel_id,
+  receiving_account_id,
+  message_id,
+  status,
+  NULL,
+  claimed_by,
+  claimed_at_token,
+  discard_reason,
+  discarded_by_holder,
+  discarded_at_token
+FROM inbox_v2_legacy;
+`);
+      db.exec('DROP TABLE inbox_v2_legacy;');
+      db.exec(INGEST_CURSOR_SCHEMA_SQL);
     },
   }),
 ]);
@@ -360,8 +447,21 @@ function getDataVersion(db) {
  *
  * @param {DatabaseSync} db
  */
-function verifyCanonicalDomainSchemaShape(db) {
-  // 1. Verify channel_control
+/**
+ * Verifies that the domain tables have the exact canonical DDL shape.
+ * Supports:
+ * - Version 2 (pre-migration historical shape, used during pre-migration backup validation)
+ * - Version 3 (canonical shape with account_id/platform_msg_id/content inbox and ingest_cursor)
+ *
+ * @param {DatabaseSync} db
+ * @param {number} [version=SQLITE_STATE_SCHEMA_VERSION]
+ */
+function verifyCanonicalDomainSchemaShape(db, version = SQLITE_STATE_SCHEMA_VERSION) {
+  if (version !== 2 && version !== 3) {
+    throw new Error(`Unsupported schema version for domain shape verification: ${version} (fail-closed)`);
+  }
+
+  // 1. Verify channel_control (unchanged across v2 and v3)
   const ccList = db.prepare("PRAGMA table_list('channel_control');").all();
   const ccEntry = ccList ? ccList.find((e) => e.name === 'channel_control') : null;
   if (!ccEntry || ccEntry.type !== 'table' || Number(ccEntry.strict) !== 1) {
@@ -400,83 +500,6 @@ function verifyCanonicalDomainSchemaShape(db) {
     }
   }
 
-  // 2. Verify inbox
-  const inboxList = db.prepare("PRAGMA table_list('inbox');").all();
-  const inboxEntry = inboxList ? inboxList.find((e) => e.name === 'inbox') : null;
-  if (!inboxEntry || inboxEntry.type !== 'table' || Number(inboxEntry.strict) !== 1) {
-    throw new Error('inbox must exist as a STRICT table (fail-closed)');
-  }
-  const inboxCols = db.prepare("PRAGMA table_info('inbox');").all();
-  if (!inboxCols || inboxCols.length !== 10) {
-    throw new Error(
-      `inbox must have exactly 10 columns, found ${inboxCols ? inboxCols.length : 0} (fail-closed)`
-    );
-  }
-  const inboxExpected = {
-    sequence: { type: 'INTEGER', notnull: 0, pk: 1 },
-    channel_id: { type: 'TEXT', notnull: 1, pk: 0 },
-    message_id: { type: 'TEXT', notnull: 1, pk: 0 },
-    receiving_account_id: { type: 'TEXT', notnull: 1, pk: 0 },
-    status: { type: 'TEXT', notnull: 1, pk: 0 },
-    claimed_by: { type: 'TEXT', notnull: 0, pk: 0 },
-    claimed_at_token: { type: 'INTEGER', notnull: 0, pk: 0 },
-    discard_reason: { type: 'TEXT', notnull: 0, pk: 0 },
-    discarded_by_holder: { type: 'TEXT', notnull: 0, pk: 0 },
-    discarded_at_token: { type: 'INTEGER', notnull: 0, pk: 0 },
-  };
-  for (const col of inboxCols) {
-    const exp = inboxExpected[col.name];
-    if (!exp) {
-      throw new Error(`Unexpected column '${col.name}' in inbox (fail-closed)`);
-    }
-    if (
-      col.type.toUpperCase() !== exp.type ||
-      Number(col.notnull) !== exp.notnull ||
-      Number(col.pk) !== exp.pk
-    ) {
-      throw new Error(
-        `Column '${col.name}' in inbox mismatch: expected type=${exp.type}, notnull=${exp.notnull}, pk=${exp.pk}; got type=${col.type}, notnull=${col.notnull}, pk=${col.pk} (fail-closed)`
-      );
-    }
-  }
-
-  // 3. Verify inbox foreign key to channel_control
-  const fks = db.prepare("PRAGMA foreign_key_list('inbox');").all();
-  const fk = fks
-    ? fks.find(
-        (k) =>
-          k.table === 'channel_control' &&
-          k.from === 'channel_id' &&
-          k.to === 'channel_id'
-      )
-    : null;
-  if (!fk || !fk.on_delete || fk.on_delete.toUpperCase() !== 'RESTRICT') {
-    throw new Error(
-      'inbox must define FOREIGN KEY (channel_id) REFERENCES channel_control(channel_id) ON DELETE RESTRICT (fail-closed)'
-    );
-  }
-
-  // 4. Verify unique constraint on (channel_id, message_id)
-  const idxList = db.prepare("PRAGMA index_list('inbox');").all();
-  let hasUniqueCompound = false;
-  if (idxList) {
-    const indexInfoStmt = db.prepare('SELECT name FROM pragma_index_info(?);');
-    for (const idx of idxList) {
-      if (Number(idx.unique) === 1) {
-        const info = indexInfoStmt.all(idx.name);
-        const cols = info ? info.map((c) => c.name) : [];
-        if (cols.length === 2 && cols[0] === 'channel_id' && cols[1] === 'message_id') {
-          hasUniqueCompound = true;
-          break;
-        }
-      }
-    }
-  }
-  if (!hasUniqueCompound) {
-    throw new Error('inbox must define UNIQUE(channel_id, message_id) constraint (fail-closed)');
-  }
-
-  // 5. Verify canonical DDL and CHECK / AUTOINCREMENT constraints via sqlite_schema
   const schemaStmt = db.prepare("SELECT sql FROM sqlite_schema WHERE type = 'table' AND name = ?;");
 
   const ccSqlRow = schemaStmt.get('channel_control');
@@ -498,23 +521,40 @@ function verifyCanonicalDomainSchemaShape(db) {
     throw new Error('channel_control schema definition does not match canonical DDL contract (fail-closed)');
   }
 
+  // 2. Verify inbox
+  const inboxList = db.prepare("PRAGMA table_list('inbox');").all();
+  const inboxEntry = inboxList ? inboxList.find((e) => e.name === 'inbox') : null;
+  if (!inboxEntry || inboxEntry.type !== 'table' || Number(inboxEntry.strict) !== 1) {
+    throw new Error('inbox must exist as a STRICT table (fail-closed)');
+  }
+
+  // Foreign key to channel_control is required in both v2 and v3
+  const fks = db.prepare("PRAGMA foreign_key_list('inbox');").all();
+  const fk = fks
+    ? fks.find(
+        (k) =>
+          k.table === 'channel_control' &&
+          k.from === 'channel_id' &&
+          k.to === 'channel_id'
+      )
+    : null;
+  if (!fk || !fk.on_delete || fk.on_delete.toUpperCase() !== 'RESTRICT') {
+    throw new Error(
+      'inbox must define FOREIGN KEY (channel_id) REFERENCES channel_control(channel_id) ON DELETE RESTRICT (fail-closed)'
+    );
+  }
+
   const inboxSqlRow = schemaStmt.get('inbox');
   if (!inboxSqlRow || typeof inboxSqlRow.sql !== 'string') {
     throw new Error('inbox table definition not found in sqlite_schema (fail-closed)');
   }
   const normInbox = normalizeCanonicalSchemaSql(inboxSqlRow.sql);
-  const expInbox = normalizeCanonicalSchemaSql(INBOX_SCHEMA_SQL);
+
   if (!normInbox.includes('AUTOINCREMENT')) {
     throw new Error('inbox sequence column missing AUTOINCREMENT (fail-closed)');
   }
   if (!normInbox.includes("CHECK ( STATUS IN ( 'queued' , 'claimed' , 'discarded' , 'replied' ) )")) {
     throw new Error('inbox missing status enum CHECK constraint (fail-closed)');
-  }
-  if (!normInbox.includes('CHECK ( LENGTH ( TRIM ( MESSAGE_ID ) ) > 0 )')) {
-    throw new Error('inbox missing message_id nonblank CHECK constraint (fail-closed)');
-  }
-  if (!normInbox.includes('CHECK ( LENGTH ( TRIM ( RECEIVING_ACCOUNT_ID ) ) > 0 )')) {
-    throw new Error('inbox missing receiving_account_id nonblank CHECK constraint (fail-closed)');
   }
   if (!normInbox.includes('CHECK ( CLAIMED_AT_TOKEN IS NULL OR CLAIMED_AT_TOKEN >= 0 )')) {
     throw new Error('inbox missing claimed_at_token >= 0 CHECK constraint (fail-closed)');
@@ -522,8 +562,184 @@ function verifyCanonicalDomainSchemaShape(db) {
   if (!normInbox.includes('CHECK ( DISCARDED_AT_TOKEN IS NULL OR DISCARDED_AT_TOKEN >= 0 )')) {
     throw new Error('inbox missing discarded_at_token >= 0 CHECK constraint (fail-closed)');
   }
-  if (normInbox !== expInbox) {
-    throw new Error('inbox schema definition does not match canonical DDL contract (fail-closed)');
+
+  const idxList = db.prepare("PRAGMA index_list('inbox');").all();
+  const indexInfoStmt = db.prepare('SELECT name FROM pragma_index_info(?);');
+
+  if (version === 2) {
+    const inboxCols = db.prepare("PRAGMA table_info('inbox');").all();
+    if (!inboxCols || inboxCols.length !== 10) {
+      throw new Error(
+        `inbox must have exactly 10 columns in v2, found ${inboxCols ? inboxCols.length : 0} (fail-closed)`
+      );
+    }
+    const inboxExpectedV2 = {
+      sequence: { type: 'INTEGER', notnull: 0, pk: 1 },
+      channel_id: { type: 'TEXT', notnull: 1, pk: 0 },
+      message_id: { type: 'TEXT', notnull: 1, pk: 0 },
+      receiving_account_id: { type: 'TEXT', notnull: 1, pk: 0 },
+      status: { type: 'TEXT', notnull: 1, pk: 0 },
+      claimed_by: { type: 'TEXT', notnull: 0, pk: 0 },
+      claimed_at_token: { type: 'INTEGER', notnull: 0, pk: 0 },
+      discard_reason: { type: 'TEXT', notnull: 0, pk: 0 },
+      discarded_by_holder: { type: 'TEXT', notnull: 0, pk: 0 },
+      discarded_at_token: { type: 'INTEGER', notnull: 0, pk: 0 },
+    };
+    for (const col of inboxCols) {
+      const exp = inboxExpectedV2[col.name];
+      if (!exp) {
+        throw new Error(`Unexpected column '${col.name}' in inbox v2 (fail-closed)`);
+      }
+      if (
+        col.type.toUpperCase() !== exp.type ||
+        Number(col.notnull) !== exp.notnull ||
+        Number(col.pk) !== exp.pk
+      ) {
+        throw new Error(
+          `Column '${col.name}' in inbox mismatch: expected type=${exp.type}, notnull=${exp.notnull}, pk=${exp.pk}; got type=${col.type}, notnull=${col.notnull}, pk=${col.pk} (fail-closed)`
+        );
+      }
+    }
+
+    let hasUniqueCompound = false;
+    if (idxList) {
+      for (const idx of idxList) {
+        if (Number(idx.unique) === 1) {
+          const info = indexInfoStmt.all(idx.name);
+          const cols = info ? info.map((c) => c.name) : [];
+          if (cols.length === 2 && cols[0] === 'channel_id' && cols[1] === 'message_id') {
+            hasUniqueCompound = true;
+            break;
+          }
+        }
+      }
+    }
+    if (!hasUniqueCompound) {
+      throw new Error('inbox must define UNIQUE(channel_id, message_id) constraint (fail-closed)');
+    }
+
+    if (!normInbox.includes('CHECK ( LENGTH ( TRIM ( MESSAGE_ID ) ) > 0 )')) {
+      throw new Error('inbox missing message_id nonblank CHECK constraint (fail-closed)');
+    }
+    if (!normInbox.includes('CHECK ( LENGTH ( TRIM ( RECEIVING_ACCOUNT_ID ) ) > 0 )')) {
+      throw new Error('inbox missing receiving_account_id nonblank CHECK constraint (fail-closed)');
+    }
+    const expInboxV2 = normalizeCanonicalSchemaSql(INBOX_V2_SCHEMA_SQL);
+    if (normInbox !== expInboxV2) {
+      throw new Error('inbox schema definition does not match canonical DDL contract (fail-closed)');
+    }
+  } else {
+    // version === 3
+    const inboxCols = db.prepare("PRAGMA table_info('inbox');").all();
+    if (!inboxCols || inboxCols.length !== 11) {
+      throw new Error(
+        `inbox must have exactly 11 columns in v3, found ${inboxCols ? inboxCols.length : 0} (fail-closed)`
+      );
+    }
+    const inboxExpectedV3 = {
+      sequence: { type: 'INTEGER', notnull: 0, pk: 1 },
+      channel_id: { type: 'TEXT', notnull: 1, pk: 0 },
+      account_id: { type: 'TEXT', notnull: 1, pk: 0 },
+      platform_msg_id: { type: 'TEXT', notnull: 1, pk: 0 },
+      status: { type: 'TEXT', notnull: 1, pk: 0 },
+      content: { type: 'TEXT', notnull: 0, pk: 0 },
+      claimed_by: { type: 'TEXT', notnull: 0, pk: 0 },
+      claimed_at_token: { type: 'INTEGER', notnull: 0, pk: 0 },
+      discard_reason: { type: 'TEXT', notnull: 0, pk: 0 },
+      discarded_by_holder: { type: 'TEXT', notnull: 0, pk: 0 },
+      discarded_at_token: { type: 'INTEGER', notnull: 0, pk: 0 },
+    };
+    for (const col of inboxCols) {
+      const exp = inboxExpectedV3[col.name];
+      if (!exp) {
+        throw new Error(`Unexpected column '${col.name}' in inbox v3 (fail-closed)`);
+      }
+      if (
+        col.type.toUpperCase() !== exp.type ||
+        Number(col.notnull) !== exp.notnull ||
+        Number(col.pk) !== exp.pk
+      ) {
+        throw new Error(
+          `Column '${col.name}' in inbox mismatch: expected type=${exp.type}, notnull=${exp.notnull}, pk=${exp.pk}; got type=${col.type}, notnull=${col.notnull}, pk=${col.pk} (fail-closed)`
+        );
+      }
+    }
+
+    let hasUniqueCompound = false;
+    if (idxList) {
+      for (const idx of idxList) {
+        if (Number(idx.unique) === 1) {
+          const info = indexInfoStmt.all(idx.name);
+          const cols = info ? info.map((c) => c.name) : [];
+          if (cols.length === 2 && cols[0] === 'account_id' && cols[1] === 'platform_msg_id') {
+            hasUniqueCompound = true;
+            break;
+          }
+        }
+      }
+    }
+    if (!hasUniqueCompound) {
+      throw new Error('inbox must define UNIQUE(account_id, platform_msg_id) constraint (fail-closed)');
+    }
+
+    if (!normInbox.includes('CHECK ( LENGTH ( TRIM ( ACCOUNT_ID ) ) > 0 )')) {
+      throw new Error('inbox missing account_id nonblank CHECK constraint (fail-closed)');
+    }
+    if (!normInbox.includes('CHECK ( LENGTH ( TRIM ( PLATFORM_MSG_ID ) ) > 0 )')) {
+      throw new Error('inbox missing platform_msg_id nonblank CHECK constraint (fail-closed)');
+    }
+    const expInboxV3 = normalizeCanonicalSchemaSql(INBOX_SCHEMA_SQL);
+    if (normInbox !== expInboxV3) {
+      throw new Error('inbox schema definition does not match canonical DDL contract (fail-closed)');
+    }
+
+    // 3. Verify ingest_cursor for v3
+    const curList = db.prepare("PRAGMA table_list('ingest_cursor');").all();
+    const curEntry = curList ? curList.find((e) => e.name === 'ingest_cursor') : null;
+    if (!curEntry || curEntry.type !== 'table' || Number(curEntry.strict) !== 1) {
+      throw new Error('ingest_cursor must exist as a STRICT table (fail-closed)');
+    }
+    const curCols = db.prepare("PRAGMA table_info('ingest_cursor');").all();
+    if (!curCols || curCols.length !== 2) {
+      throw new Error(
+        `ingest_cursor must have exactly 2 columns, found ${curCols ? curCols.length : 0} (fail-closed)`
+      );
+    }
+    const curExpected = {
+      account_id: { type: 'TEXT', notnull: 1, pk: 1 },
+      cursor_value: { type: 'TEXT', notnull: 1, pk: 0 },
+    };
+    for (const col of curCols) {
+      const exp = curExpected[col.name];
+      if (!exp) {
+        throw new Error(`Unexpected column '${col.name}' in ingest_cursor (fail-closed)`);
+      }
+      if (
+        col.type.toUpperCase() !== exp.type ||
+        Number(col.notnull) !== exp.notnull ||
+        Number(col.pk) !== exp.pk
+      ) {
+        throw new Error(
+          `Column '${col.name}' in ingest_cursor mismatch: expected type=${exp.type}, notnull=${exp.notnull}, pk=${exp.pk}; got type=${col.type}, notnull=${col.notnull}, pk=${col.pk} (fail-closed)`
+        );
+      }
+    }
+
+    const curSqlRow = schemaStmt.get('ingest_cursor');
+    if (!curSqlRow || typeof curSqlRow.sql !== 'string') {
+      throw new Error('ingest_cursor table definition not found in sqlite_schema (fail-closed)');
+    }
+    const normCur = normalizeCanonicalSchemaSql(curSqlRow.sql);
+    const expCur = normalizeCanonicalSchemaSql(INGEST_CURSOR_SCHEMA_SQL);
+    if (!normCur.includes('CHECK ( LENGTH ( TRIM ( ACCOUNT_ID ) ) > 0 )')) {
+      throw new Error('ingest_cursor missing account_id nonblank CHECK constraint (fail-closed)');
+    }
+    if (!normCur.includes('CHECK ( LENGTH ( TRIM ( CURSOR_VALUE ) ) > 0 )')) {
+      throw new Error('ingest_cursor missing cursor_value nonblank CHECK constraint (fail-closed)');
+    }
+    if (normCur !== expCur) {
+      throw new Error('ingest_cursor schema definition does not match canonical DDL contract (fail-closed)');
+    }
   }
 }
 
@@ -548,7 +764,7 @@ function executeVerifiedBackup(db, canonicalStateRoot, expectedSourceSchemaVersi
   // 1. Pre-backup source baseline capture
   verifyCanonicalSchemaMigrationsShape(db);
   if (expectedSourceSchemaVersion >= 2) {
-    verifyCanonicalDomainSchemaShape(db);
+    verifyCanonicalDomainSchemaShape(db, expectedSourceSchemaVersion);
   }
 
   const sourceVersionsBefore = Array.from(readAppliedMigrationVersions(db));
@@ -660,7 +876,7 @@ function executeVerifiedBackup(db, canonicalStateRoot, expectedSourceSchemaVersi
     // B. Canonical schema_migrations shape on backup
     verifyCanonicalSchemaMigrationsShape(backupDb);
     if (expectedSourceSchemaVersion >= 2) {
-      verifyCanonicalDomainSchemaShape(backupDb);
+      verifyCanonicalDomainSchemaShape(backupDb, expectedSourceSchemaVersion);
     }
 
     // C. Applied migration history must match sourceVersionsBefore
@@ -1023,12 +1239,12 @@ class SqliteStateRepository {
       // 4. Verify canonical schema_migrations shape (STRICT, single integer PK column)
       verifyCanonicalSchemaMigrationsShape(db);
 
-      // 5. Verify canonical domain schema shape for v2
-      verifyCanonicalDomainSchemaShape(db);
+      // 5. Verify canonical domain schema shape for v3
+      verifyCanonicalDomainSchemaShape(db, SQLITE_STATE_SCHEMA_VERSION);
 
       // 6. Verify exact user table set
       const userTables = getCanonicalUserTableNames(db);
-      const expectedTables = ['channel_control', 'inbox', 'schema_migrations'];
+      const expectedTables = ['channel_control', 'inbox', 'ingest_cursor', 'schema_migrations'];
       if (
         userTables.length !== expectedTables.length ||
         !userTables.every((t, i) => t === expectedTables[i])
@@ -1248,7 +1464,7 @@ class SqliteStateRepository {
 
       // Discard claimed messages for this channel
       const selectClaimed = db.prepare(
-        "SELECT sequence, message_id, receiving_account_id, status, claimed_by, claimed_at_token FROM inbox WHERE channel_id = ? AND status = 'claimed' ORDER BY sequence ASC;"
+        "SELECT sequence, platform_msg_id, account_id, status, claimed_by, claimed_at_token FROM inbox WHERE channel_id = ? AND status = 'claimed' ORDER BY sequence ASC;"
       );
       const claimedRows = selectClaimed.all(cId);
 
@@ -1261,8 +1477,8 @@ class SqliteStateRepository {
 
       const discardedMessages = claimedRows.map((r) => ({
         sequence: r.sequence,
-        messageId: r.message_id,
-        receivingAccountId: r.receiving_account_id,
+        messageId: r.platform_msg_id,
+        receivingAccountId: r.account_id,
         status: 'discarded',
         discardReason: 'TAKEOVER',
         claimedBy: r.claimed_by,
@@ -1405,7 +1621,7 @@ class SqliteStateRepository {
 
       // Discard claimed rows
       const selectClaimed = db.prepare(
-        "SELECT sequence, message_id, receiving_account_id, status, claimed_by, claimed_at_token FROM inbox WHERE channel_id = ? AND status = 'claimed' ORDER BY sequence ASC;"
+        "SELECT sequence, platform_msg_id, account_id, status, claimed_by, claimed_at_token FROM inbox WHERE channel_id = ? AND status = 'claimed' ORDER BY sequence ASC;"
       );
       const claimedRows = selectClaimed.all(cId);
 
@@ -1418,8 +1634,8 @@ class SqliteStateRepository {
 
       const discardedMessages = claimedRows.map((r) => ({
         sequence: r.sequence,
-        messageId: r.message_id,
-        receivingAccountId: r.receiving_account_id,
+        messageId: r.platform_msg_id,
+        receivingAccountId: r.account_id,
         status: 'discarded',
         discardReason: 'HEARTBEAT_EXPIRY',
         claimedBy: r.claimed_by,
@@ -1513,7 +1729,7 @@ class SqliteStateRepository {
       }
 
       const selectQueued = db.prepare(
-        "SELECT sequence, channel_id, message_id, receiving_account_id, status FROM inbox WHERE channel_id = ? AND status = 'queued' ORDER BY sequence ASC LIMIT ?;"
+        "SELECT sequence, channel_id, platform_msg_id, account_id, status FROM inbox WHERE channel_id = ? AND status = 'queued' ORDER BY sequence ASC LIMIT ?;"
       );
       const queuedRows = selectQueued.all(cId, lim);
 
@@ -1529,8 +1745,8 @@ class SqliteStateRepository {
       const claimedMessages = queuedRows.map((r) => ({
         sequence: r.sequence,
         channelId: r.channel_id,
-        messageId: r.message_id,
-        receivingAccountId: r.receiving_account_id,
+        messageId: r.platform_msg_id,
+        receivingAccountId: r.account_id,
         status: 'claimed',
         claimedBy: hId,
         claimedAtToken: fToken,
@@ -1610,7 +1826,7 @@ class SqliteStateRepository {
     }
 
     const selectMsg = this.#db.prepare(
-      'SELECT sequence, channel_id, message_id, receiving_account_id, status, claimed_by, claimed_at_token FROM inbox WHERE channel_id = ? AND message_id = ?;'
+      'SELECT sequence, channel_id, platform_msg_id, account_id, status, claimed_by, claimed_at_token FROM inbox WHERE channel_id = ? AND platform_msg_id = ?;'
     );
     const msgRow = selectMsg.get(cId, mId);
 
@@ -1626,7 +1842,7 @@ class SqliteStateRepository {
       return { authorized: false, reason: 'CLAIM_MISMATCH' };
     }
 
-    if (msgRow.receiving_account_id !== rAcc) {
+    if (msgRow.account_id !== rAcc) {
       return { authorized: false, reason: 'ACCOUNT_MISMATCH' };
     }
 
@@ -1634,7 +1850,7 @@ class SqliteStateRepository {
       authorized: true,
       messageId: mId,
       channelId: cId,
-      receivingAccountId: msgRow.receiving_account_id,
+      receivingAccountId: msgRow.account_id,
       replyingAccountId: rAcc,
     };
   }
@@ -1707,5 +1923,7 @@ module.exports = {
   SqliteStateRepository,
   CHANNEL_CONTROL_SCHEMA_SQL,
   INBOX_SCHEMA_SQL,
+  INBOX_V2_SCHEMA_SQL,
+  INGEST_CURSOR_SCHEMA_SQL,
   normalizeCanonicalSchemaSql,
 };
