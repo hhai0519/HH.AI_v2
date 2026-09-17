@@ -42,7 +42,7 @@ const crypto = require('node:crypto');
 const { DatabaseSync } = require('node:sqlite');
 const { isAbsolutePath } = require('./data-location-config');
 
-const SQLITE_STATE_SCHEMA_VERSION = 1;
+const SQLITE_STATE_SCHEMA_VERSION = 2;
 const SQLITE_BUSY_TIMEOUT_MS = 5000;
 const SQLITE_DATABASE_FILENAME = 'channel-gateway-state.sqlite3';
 
@@ -55,6 +55,72 @@ const MIGRATIONS = Object.freeze([
     version: 1,
     apply(db) {
       db.exec('CREATE TABLE schema_migrations (version INTEGER PRIMARY KEY) STRICT;');
+    },
+  }),
+  Object.freeze({
+    version: 2,
+    apply(db) {
+      db.exec(`
+        CREATE TABLE channel_control (
+          channel_id TEXT PRIMARY KEY
+            CHECK(length(trim(channel_id)) > 0),
+
+          current_holder TEXT
+            CHECK(
+              current_holder IS NULL OR
+              length(trim(current_holder)) > 0
+            ),
+
+          fencing_token INTEGER NOT NULL DEFAULT 0
+            CHECK(fencing_token >= 0),
+
+          last_heartbeat_at INTEGER
+        ) STRICT;
+
+        CREATE TABLE inbox (
+          sequence INTEGER PRIMARY KEY AUTOINCREMENT,
+
+          channel_id TEXT NOT NULL,
+
+          message_id TEXT NOT NULL
+            CHECK(length(trim(message_id)) > 0),
+
+          receiving_account_id TEXT NOT NULL
+            CHECK(length(trim(receiving_account_id)) > 0),
+
+          status TEXT NOT NULL
+            CHECK(status IN (
+              'queued',
+              'claimed',
+              'discarded',
+              'replied'
+            )),
+
+          claimed_by TEXT,
+
+          claimed_at_token INTEGER
+            CHECK(
+              claimed_at_token IS NULL OR
+              claimed_at_token >= 0
+            ),
+
+          discard_reason TEXT,
+
+          discarded_by_holder TEXT,
+
+          discarded_at_token INTEGER
+            CHECK(
+              discarded_at_token IS NULL OR
+              discarded_at_token >= 0
+            ),
+
+          UNIQUE(channel_id, message_id),
+
+          FOREIGN KEY(channel_id)
+            REFERENCES channel_control(channel_id)
+            ON DELETE RESTRICT
+        ) STRICT;
+      `);
     },
   }),
 ]);
@@ -242,6 +308,381 @@ function getDataVersion(db) {
   return typeof val === 'number' ? val : null;
 }
 
+/**
+ * Verifies that the domain tables (channel_control, inbox) have the exact canonical DDL shape:
+ * - Both tables exist with type 'table' and STRICT mode enabled
+ * - channel_control has exactly 4 columns:
+ *     channel_id (TEXT, PK, NOT NULL)
+ *     current_holder (TEXT, nullable)
+ *     fencing_token (INTEGER, NOT NULL, DEFAULT 0)
+ *     last_heartbeat_at (INTEGER, nullable)
+ * - inbox has exactly 10 columns:
+ *     sequence (INTEGER, PK AUTOINCREMENT)
+ *     channel_id (TEXT, NOT NULL)
+ *     message_id (TEXT, NOT NULL)
+ *     receiving_account_id (TEXT, NOT NULL)
+ *     status (TEXT, NOT NULL)
+ *     claimed_by (TEXT, nullable)
+ *     claimed_at_token (INTEGER, nullable)
+ *     discard_reason (TEXT, nullable)
+ *     discarded_by_holder (TEXT, nullable)
+ *     discarded_at_token (INTEGER, nullable)
+ * - inbox has FOREIGN KEY (channel_id) REFERENCES channel_control(channel_id) ON DELETE RESTRICT
+ * - inbox has UNIQUE(channel_id, message_id) constraint
+ *
+ * @param {DatabaseSync} db
+ */
+function verifyCanonicalDomainSchemaShape(db) {
+  // 1. Verify channel_control
+  const ccList = db.prepare("PRAGMA table_list('channel_control');").all();
+  const ccEntry = ccList ? ccList.find((e) => e.name === 'channel_control') : null;
+  if (!ccEntry || ccEntry.type !== 'table' || Number(ccEntry.strict) !== 1) {
+    throw new Error('channel_control must exist as a STRICT table (fail-closed)');
+  }
+  const ccCols = db.prepare("PRAGMA table_info('channel_control');").all();
+  if (!ccCols || ccCols.length !== 4) {
+    throw new Error(
+      `channel_control must have exactly 4 columns, found ${ccCols ? ccCols.length : 0} (fail-closed)`
+    );
+  }
+  const ccExpected = {
+    channel_id: { type: 'TEXT', notnull: 1, pk: 1 },
+    current_holder: { type: 'TEXT', notnull: 0, pk: 0 },
+    fencing_token: { type: 'INTEGER', notnull: 1, pk: 0, dflt_value: '0' },
+    last_heartbeat_at: { type: 'INTEGER', notnull: 0, pk: 0 },
+  };
+  for (const col of ccCols) {
+    const exp = ccExpected[col.name];
+    if (!exp) {
+      throw new Error(`Unexpected column '${col.name}' in channel_control (fail-closed)`);
+    }
+    if (
+      col.type.toUpperCase() !== exp.type ||
+      Number(col.notnull) !== exp.notnull ||
+      Number(col.pk) !== exp.pk
+    ) {
+      throw new Error(
+        `Column '${col.name}' in channel_control mismatch: expected type=${exp.type}, notnull=${exp.notnull}, pk=${exp.pk}; got type=${col.type}, notnull=${col.notnull}, pk=${col.pk} (fail-closed)`
+      );
+    }
+    if (exp.dflt_value !== undefined && String(col.dflt_value) !== exp.dflt_value) {
+      throw new Error(
+        `Column '${col.name}' in channel_control mismatch: expected dflt_value='${exp.dflt_value}', got '${col.dflt_value}' (fail-closed)`
+      );
+    }
+  }
+
+  // 2. Verify inbox
+  const inboxList = db.prepare("PRAGMA table_list('inbox');").all();
+  const inboxEntry = inboxList ? inboxList.find((e) => e.name === 'inbox') : null;
+  if (!inboxEntry || inboxEntry.type !== 'table' || Number(inboxEntry.strict) !== 1) {
+    throw new Error('inbox must exist as a STRICT table (fail-closed)');
+  }
+  const inboxCols = db.prepare("PRAGMA table_info('inbox');").all();
+  if (!inboxCols || inboxCols.length !== 10) {
+    throw new Error(
+      `inbox must have exactly 10 columns, found ${inboxCols ? inboxCols.length : 0} (fail-closed)`
+    );
+  }
+  const inboxExpected = {
+    sequence: { type: 'INTEGER', notnull: 0, pk: 1 },
+    channel_id: { type: 'TEXT', notnull: 1, pk: 0 },
+    message_id: { type: 'TEXT', notnull: 1, pk: 0 },
+    receiving_account_id: { type: 'TEXT', notnull: 1, pk: 0 },
+    status: { type: 'TEXT', notnull: 1, pk: 0 },
+    claimed_by: { type: 'TEXT', notnull: 0, pk: 0 },
+    claimed_at_token: { type: 'INTEGER', notnull: 0, pk: 0 },
+    discard_reason: { type: 'TEXT', notnull: 0, pk: 0 },
+    discarded_by_holder: { type: 'TEXT', notnull: 0, pk: 0 },
+    discarded_at_token: { type: 'INTEGER', notnull: 0, pk: 0 },
+  };
+  for (const col of inboxCols) {
+    const exp = inboxExpected[col.name];
+    if (!exp) {
+      throw new Error(`Unexpected column '${col.name}' in inbox (fail-closed)`);
+    }
+    if (
+      col.type.toUpperCase() !== exp.type ||
+      Number(col.notnull) !== exp.notnull ||
+      Number(col.pk) !== exp.pk
+    ) {
+      throw new Error(
+        `Column '${col.name}' in inbox mismatch: expected type=${exp.type}, notnull=${exp.notnull}, pk=${exp.pk}; got type=${col.type}, notnull=${col.notnull}, pk=${col.pk} (fail-closed)`
+      );
+    }
+  }
+
+  // 3. Verify inbox foreign key to channel_control
+  const fks = db.prepare("PRAGMA foreign_key_list('inbox');").all();
+  const fk = fks
+    ? fks.find(
+        (k) =>
+          k.table === 'channel_control' &&
+          k.from === 'channel_id' &&
+          k.to === 'channel_id'
+      )
+    : null;
+  if (!fk || !fk.on_delete || fk.on_delete.toUpperCase() !== 'RESTRICT') {
+    throw new Error(
+      'inbox must define FOREIGN KEY (channel_id) REFERENCES channel_control(channel_id) ON DELETE RESTRICT (fail-closed)'
+    );
+  }
+
+  // 4. Verify unique constraint on (channel_id, message_id)
+  const idxList = db.prepare("PRAGMA index_list('inbox');").all();
+  let hasUniqueCompound = false;
+  if (idxList) {
+    const indexInfoStmt = db.prepare('SELECT name FROM pragma_index_info(?);');
+    for (const idx of idxList) {
+      if (Number(idx.unique) === 1) {
+        const info = indexInfoStmt.all(idx.name);
+        const cols = info ? info.map((c) => c.name) : [];
+        if (cols.length === 2 && cols[0] === 'channel_id' && cols[1] === 'message_id') {
+          hasUniqueCompound = true;
+          break;
+        }
+      }
+    }
+  }
+  if (!hasUniqueCompound) {
+    throw new Error('inbox must define UNIQUE(channel_id, message_id) constraint (fail-closed)');
+  }
+}
+
+/**
+ * Internal verified backup runner.
+ * Creates an online snapshot of db via parameterized VACUUM INTO,
+ * validates integrity, schema migrations, domain tables, and source stability.
+ *
+ * @param {DatabaseSync} db
+ * @param {string} canonicalStateRoot
+ * @param {number} expectedSourceSchemaVersion
+ * @returns {{ success: true, backupPath: string, sourceSchemaVersion: number, integrity: string }}
+ */
+function executeVerifiedBackup(db, canonicalStateRoot, expectedSourceSchemaVersion) {
+  if (!db) {
+    throw new Error('Database connection must be provided for backup (fail-closed)');
+  }
+  if (typeof expectedSourceSchemaVersion !== 'number' || expectedSourceSchemaVersion <= 0) {
+    throw new Error(`Invalid expectedSourceSchemaVersion: ${expectedSourceSchemaVersion} (fail-closed)`);
+  }
+
+  // 1. Pre-backup source baseline capture
+  verifyCanonicalSchemaMigrationsShape(db);
+  if (expectedSourceSchemaVersion >= 2) {
+    verifyCanonicalDomainSchemaShape(db);
+  }
+
+  const sourceVersionsBefore = Array.from(readAppliedMigrationVersions(db));
+  if (sourceVersionsBefore.length === 0) {
+    throw new Error('Source schema_migrations is empty (fail-closed)');
+  }
+
+  const latestSourceVersion = sourceVersionsBefore[sourceVersionsBefore.length - 1];
+  if (latestSourceVersion !== expectedSourceSchemaVersion) {
+    throw new Error(
+      `Source schema version drift detected (fail-closed): database state has latest version ${latestSourceVersion} but expected version ${expectedSourceSchemaVersion}`
+    );
+  }
+
+  const sourceTablesBefore = Array.from(getCanonicalUserTableNames(db));
+  const sourceDataVersionBefore = getDataVersion(db);
+
+  // 2. Generate safe internal backup filename
+  const uniqueId = crypto.randomUUID();
+  const backupFilename = `channel-gateway-state.backup-v${expectedSourceSchemaVersion}-${uniqueId}.sqlite3`;
+  const backupDestination = path.join(canonicalStateRoot, backupFilename);
+
+  // 3. Pre-execution path confinement check
+  const nominalRel = path.relative(canonicalStateRoot, backupDestination);
+  if (nominalRel === '..' || nominalRel.startsWith('..' + path.sep) || path.isAbsolute(nominalRel)) {
+    throw new Error(
+      `Backup destination path escapes canonical state root: '${backupDestination}' is outside '${canonicalStateRoot}'`
+    );
+  }
+
+  // 4. Destination existence check: only ENOENT is accepted
+  let destLstat = null;
+  try {
+    destLstat = fs.lstatSync(backupDestination);
+  } catch (err) {
+    if (!err || err.code !== 'ENOENT') {
+      throw new Error(
+        `Failed to inspect backup destination path '${backupDestination}': ${err.message}`
+      );
+    }
+  }
+  if (destLstat !== null) {
+    throw new Error(
+      `Backup destination already exists (refusing overwrite/reuse): '${backupDestination}'`
+    );
+  }
+
+  // 5. Execute VACUUM INTO using parameterized prepared statement
+  try {
+    const vacuumStmt = db.prepare('VACUUM INTO ?;');
+    vacuumStmt.run(backupDestination);
+  } catch (err) {
+    throw new Error(`VACUUM INTO failed for destination '${backupDestination}': ${err.message}`);
+  }
+
+  // 6. Post-execution destination verification
+  let postStat;
+  try {
+    postStat = fs.lstatSync(backupDestination);
+  } catch (err) {
+    throw new Error(
+      `Backup file not found after VACUUM INTO: '${backupDestination}' (${err.message})`
+    );
+  }
+
+  if (postStat.isSymbolicLink()) {
+    throw new Error(`Backup file must not be a symbolic link: '${backupDestination}'`);
+  }
+  if (!postStat.isFile()) {
+    throw new Error(`Backup file must be a regular file: '${backupDestination}'`);
+  }
+
+  let canonicalBackup;
+  try {
+    canonicalBackup = fs.realpathSync(backupDestination);
+  } catch (err) {
+    throw new Error(
+      `Failed to resolve canonical path for backup file: '${backupDestination}' (${err.message})`
+    );
+  }
+
+  const realRel = path.relative(canonicalStateRoot, canonicalBackup);
+  if (realRel === '..' || realRel.startsWith('..' + path.sep) || path.isAbsolute(realRel)) {
+    throw new Error(
+      `Backup file resolves outside canonical state root: '${canonicalBackup}' is not within '${canonicalStateRoot}'`
+    );
+  }
+
+  // 7. Read-only reopening and integrity verification
+  let backupDb = null;
+  try {
+    backupDb = new DatabaseSync(backupDestination, {
+      readOnly: true,
+      enableForeignKeyConstraints: true,
+    });
+
+    // A. PRAGMA integrity_check
+    const integrityRows = backupDb.prepare('PRAGMA integrity_check;').all();
+    if (!integrityRows || integrityRows.length !== 1) {
+      throw new Error(
+        `PRAGMA integrity_check failed: expected 1 row, got ${integrityRows ? integrityRows.length : 0}`
+      );
+    }
+    const integrityVal = integrityRows[0].integrity_check ?? Object.values(integrityRows[0])[0];
+    if (integrityVal !== 'ok') {
+      throw new Error(`PRAGMA integrity_check reported error: ${integrityVal}`);
+    }
+
+    // B. Canonical schema_migrations shape on backup
+    verifyCanonicalSchemaMigrationsShape(backupDb);
+    if (expectedSourceSchemaVersion >= 2) {
+      verifyCanonicalDomainSchemaShape(backupDb);
+    }
+
+    // C. Applied migration history must match sourceVersionsBefore
+    const backupVersions = readAppliedMigrationVersions(backupDb);
+    if (backupVersions.length !== sourceVersionsBefore.length) {
+      throw new Error(
+        `Backup migration history count mismatch: backup has ${backupVersions.length}, source baseline had ${sourceVersionsBefore.length}`
+      );
+    }
+    for (let i = 0; i < backupVersions.length; i++) {
+      if (backupVersions[i] !== sourceVersionsBefore[i]) {
+        throw new Error(
+          `Backup migration history mismatch at index ${i}: backup=${backupVersions[i]}, source baseline=${sourceVersionsBefore[i]}`
+        );
+      }
+    }
+
+    // D. User table list must match sourceTablesBefore
+    const backupTables = getCanonicalUserTableNames(backupDb);
+    if (backupTables.length !== sourceTablesBefore.length) {
+      throw new Error(
+        `Backup tables count mismatch: backup has [${backupTables.join(', ')}], source baseline had [${sourceTablesBefore.join(', ')}]`
+      );
+    }
+    for (let i = 0; i < backupTables.length; i++) {
+      if (backupTables[i] !== sourceTablesBefore[i]) {
+        throw new Error(
+          `Backup table mismatch at index ${i}: backup has '${backupTables[i]}', source baseline has '${sourceTablesBefore[i]}'`
+        );
+      }
+    }
+
+    // E. Re-verify source database stability (post-backup verification)
+    const sourceVersionsAfter = readAppliedMigrationVersions(db);
+    if (sourceVersionsAfter.length !== sourceVersionsBefore.length) {
+      throw new Error(
+        `Source migration history count changed during backup: was ${sourceVersionsBefore.length}, now ${sourceVersionsAfter.length} (fail-closed)`
+      );
+    }
+    for (let i = 0; i < sourceVersionsAfter.length; i++) {
+      if (sourceVersionsAfter[i] !== sourceVersionsBefore[i]) {
+        throw new Error(
+          `Source migration version changed during backup at index ${i}: was ${sourceVersionsBefore[i]}, now ${sourceVersionsAfter[i]} (fail-closed)`
+        );
+      }
+    }
+
+    const sourceTablesAfter = getCanonicalUserTableNames(db);
+    if (sourceTablesAfter.length !== sourceTablesBefore.length) {
+      throw new Error(
+        `Source table count changed during backup: was [${sourceTablesBefore.join(', ')}], now [${sourceTablesAfter.join(', ')}] (fail-closed)`
+      );
+    }
+    for (let i = 0; i < sourceTablesAfter.length; i++) {
+      if (sourceTablesAfter[i] !== sourceTablesBefore[i]) {
+        throw new Error(
+          `Source table changed during backup at index ${i}: was '${sourceTablesBefore[i]}', now '${sourceTablesAfter[i]}' (fail-closed)`
+        );
+      }
+    }
+
+    if (sourceDataVersionBefore !== null) {
+      const sourceDataVersionAfter = getDataVersion(db);
+      if (sourceDataVersionAfter !== sourceDataVersionBefore) {
+        throw new Error(
+          `Source data_version changed during backup: was ${sourceDataVersionBefore}, now ${sourceDataVersionAfter} (concurrent mutation detected, fail-closed)`
+        );
+      }
+    }
+  } catch (verifErr) {
+    // Best-effort cleanup of destination ONLY IF confirmed regular file inside stateRoot
+    try {
+      const stat = fs.lstatSync(backupDestination);
+      if (stat.isFile() && !stat.isSymbolicLink()) {
+        const real = fs.realpathSync(backupDestination);
+        const rel = path.relative(canonicalStateRoot, real);
+        if (rel !== '..' && !rel.startsWith('..' + path.sep) && !path.isAbsolute(rel)) {
+          fs.unlinkSync(backupDestination);
+        }
+      }
+    } catch (_) {
+      // Best effort: do not sacrifice path safety
+    }
+    throw new Error(`Backup verification failed: ${verifErr.message}`);
+  } finally {
+    if (backupDb) {
+      try {
+        backupDb.close();
+      } catch (_) {}
+    }
+  }
+
+  return {
+    success: true,
+    backupPath: backupDestination,
+    sourceSchemaVersion: expectedSourceSchemaVersion,
+    integrity: 'ok',
+  };
+}
+
 class SqliteStateRepository {
   /** @type {DatabaseSync|null} */
   #db = null;
@@ -419,24 +860,36 @@ class SqliteStateRepository {
         currentVersion = appliedVersions[appliedVersions.length - 1];
       }
 
+      // Pre-migration backup wiring:
+      // If existing DB has pending migrations (currentVersion > 0 && currentVersion < SQLITE_STATE_SCHEMA_VERSION),
+      // create verified pre-migration backup BEFORE running pending migrations.
+      if (currentVersion > 0 && currentVersion < SQLITE_STATE_SCHEMA_VERSION) {
+        executeVerifiedBackup(db, this.#canonicalStateRoot, currentVersion);
+      }
+
       // Unified runner path: applies pending migrations (currentVersion < v <= targetVersion)
       // for both new and existing databases through the same forward runner.
       runPendingMigrations(db, currentVersion, SQLITE_STATE_SCHEMA_VERSION);
 
-      // 4. Verify canonical table shape (STRICT, single integer PK column)
+      // 4. Verify canonical schema_migrations shape (STRICT, single integer PK column)
       verifyCanonicalSchemaMigrationsShape(db);
 
-      // 5. Verify no domain tables exist (T6 foundation boundary)
-      const nonInternalTables = db.prepare(
-        "SELECT name FROM sqlite_schema WHERE type = 'table' AND name NOT LIKE 'sqlite_%';"
-      ).all();
-      for (const t of nonInternalTables) {
-        if (t.name !== 'schema_migrations') {
-          throw new Error(`Unexpected table in schema: '${t.name}' (no domain tables allowed in T6)`);
-        }
+      // 5. Verify canonical domain schema shape for v2
+      verifyCanonicalDomainSchemaShape(db);
+
+      // 6. Verify exact user table set
+      const userTables = getCanonicalUserTableNames(db);
+      const expectedTables = ['channel_control', 'inbox', 'schema_migrations'];
+      if (
+        userTables.length !== expectedTables.length ||
+        !userTables.every((t, i) => t === expectedTables[i])
+      ) {
+        throw new Error(
+          `User tables mismatch: expected [${expectedTables.join(', ')}], found [${userTables.join(', ')}] (fail-closed)`
+        );
       }
 
-      // 6. Verify final applied version state matches target schema version
+      // 7. Verify final applied version state matches target schema version
       const finalVersions = readAppliedMigrationVersions(db);
       if (finalVersions[finalVersions.length - 1] !== SQLITE_STATE_SCHEMA_VERSION) {
         throw new Error(
@@ -535,214 +988,7 @@ class SqliteStateRepository {
       throw new Error('Repository is closed (cannot create backup from closed repository)');
     }
 
-    // 1. Pre-backup source baseline capture
-    verifyCanonicalSchemaMigrationsShape(this.#db);
-
-    const sourceVersionsBefore = Array.from(readAppliedMigrationVersions(this.#db));
-    if (sourceVersionsBefore.length === 0) {
-      throw new Error('Source schema_migrations is empty (fail-closed)');
-    }
-
-    const latestSourceVersion = sourceVersionsBefore[sourceVersionsBefore.length - 1];
-    if (latestSourceVersion !== this.#schemaVersion) {
-      throw new Error(
-        `Source schema version drift detected (fail-closed): database state has latest version ${latestSourceVersion} but repository was opened at version ${this.#schemaVersion}`
-      );
-    }
-
-    const sourceTablesBefore = Array.from(getCanonicalUserTableNames(this.#db));
-    const sourceDataVersionBefore = getDataVersion(this.#db);
-
-    // 2. Generate safe internal backup filename
-    const uniqueId = crypto.randomUUID();
-    const backupFilename = `channel-gateway-state.backup-v${this.#schemaVersion}-${uniqueId}.sqlite3`;
-    const backupDestination = path.join(this.#canonicalStateRoot, backupFilename);
-
-    // 3. Pre-execution path confinement check
-    const nominalRel = path.relative(this.#canonicalStateRoot, backupDestination);
-    if (nominalRel === '..' || nominalRel.startsWith('..' + path.sep) || path.isAbsolute(nominalRel)) {
-      throw new Error(
-        `Backup destination path escapes canonical state root: '${backupDestination}' is outside '${this.#canonicalStateRoot}'`
-      );
-    }
-
-    // 4. Destination existence check: only ENOENT is accepted
-    let destLstat = null;
-    try {
-      destLstat = fs.lstatSync(backupDestination);
-    } catch (err) {
-      if (!err || err.code !== 'ENOENT') {
-        throw new Error(
-          `Failed to inspect backup destination path '${backupDestination}': ${err.message}`
-        );
-      }
-    }
-    if (destLstat !== null) {
-      throw new Error(
-        `Backup destination already exists (refusing overwrite/reuse): '${backupDestination}'`
-      );
-    }
-
-    // 5. Execute VACUUM INTO using parameterized prepared statement
-    try {
-      const vacuumStmt = this.#db.prepare('VACUUM INTO ?;');
-      vacuumStmt.run(backupDestination);
-    } catch (err) {
-      throw new Error(`VACUUM INTO failed for destination '${backupDestination}': ${err.message}`);
-    }
-
-    // 6. Post-execution destination verification
-    let postStat;
-    try {
-      postStat = fs.lstatSync(backupDestination);
-    } catch (err) {
-      throw new Error(
-        `Backup file not found after VACUUM INTO: '${backupDestination}' (${err.message})`
-      );
-    }
-
-    if (postStat.isSymbolicLink()) {
-      throw new Error(`Backup file must not be a symbolic link: '${backupDestination}'`);
-    }
-    if (!postStat.isFile()) {
-      throw new Error(`Backup file must be a regular file: '${backupDestination}'`);
-    }
-
-    let canonicalBackup;
-    try {
-      canonicalBackup = fs.realpathSync(backupDestination);
-    } catch (err) {
-      throw new Error(
-        `Failed to resolve canonical path for backup file: '${backupDestination}' (${err.message})`
-      );
-    }
-
-    const realRel = path.relative(this.#canonicalStateRoot, canonicalBackup);
-    if (realRel === '..' || realRel.startsWith('..' + path.sep) || path.isAbsolute(realRel)) {
-      throw new Error(
-        `Backup file resolves outside canonical state root: '${canonicalBackup}' is not within '${this.#canonicalStateRoot}'`
-      );
-    }
-
-    // 7. Read-only reopening and integrity verification
-    let backupDb = null;
-    try {
-      backupDb = new DatabaseSync(backupDestination, {
-        readOnly: true,
-        enableForeignKeyConstraints: true,
-      });
-
-      // A. PRAGMA integrity_check
-      const integrityRows = backupDb.prepare('PRAGMA integrity_check;').all();
-      if (!integrityRows || integrityRows.length !== 1) {
-        throw new Error(
-          `PRAGMA integrity_check failed: expected 1 row, got ${integrityRows ? integrityRows.length : 0}`
-        );
-      }
-      const integrityVal = integrityRows[0].integrity_check ?? Object.values(integrityRows[0])[0];
-      if (integrityVal !== 'ok') {
-        throw new Error(`PRAGMA integrity_check reported error: ${integrityVal}`);
-      }
-
-      // B. Canonical schema_migrations shape on backup
-      verifyCanonicalSchemaMigrationsShape(backupDb);
-
-      // C. Applied migration history must match sourceVersionsBefore
-      const backupVersions = readAppliedMigrationVersions(backupDb);
-      if (backupVersions.length !== sourceVersionsBefore.length) {
-        throw new Error(
-          `Backup migration history count mismatch: backup has ${backupVersions.length}, source baseline had ${sourceVersionsBefore.length}`
-        );
-      }
-      for (let i = 0; i < backupVersions.length; i++) {
-        if (backupVersions[i] !== sourceVersionsBefore[i]) {
-          throw new Error(
-            `Backup migration history mismatch at index ${i}: backup=${backupVersions[i]}, source baseline=${sourceVersionsBefore[i]}`
-          );
-        }
-      }
-
-      // D. User table list must match sourceTablesBefore
-      const backupTables = getCanonicalUserTableNames(backupDb);
-      if (backupTables.length !== sourceTablesBefore.length) {
-        throw new Error(
-          `Backup tables count mismatch: backup has [${backupTables.join(', ')}], source baseline had [${sourceTablesBefore.join(', ')}]`
-        );
-      }
-      for (let i = 0; i < backupTables.length; i++) {
-        if (backupTables[i] !== sourceTablesBefore[i]) {
-          throw new Error(
-            `Backup table mismatch at index ${i}: backup has '${backupTables[i]}', source baseline has '${sourceTablesBefore[i]}'`
-          );
-        }
-      }
-
-      // E. Re-verify source database stability (post-backup verification)
-      const sourceVersionsAfter = readAppliedMigrationVersions(this.#db);
-      if (sourceVersionsAfter.length !== sourceVersionsBefore.length) {
-        throw new Error(
-          `Source migration history count changed during backup: was ${sourceVersionsBefore.length}, now ${sourceVersionsAfter.length} (fail-closed)`
-        );
-      }
-      for (let i = 0; i < sourceVersionsAfter.length; i++) {
-        if (sourceVersionsAfter[i] !== sourceVersionsBefore[i]) {
-          throw new Error(
-            `Source migration version changed during backup at index ${i}: was ${sourceVersionsBefore[i]}, now ${sourceVersionsAfter[i]} (fail-closed)`
-          );
-        }
-      }
-
-      const sourceTablesAfter = getCanonicalUserTableNames(this.#db);
-      if (sourceTablesAfter.length !== sourceTablesBefore.length) {
-        throw new Error(
-          `Source table count changed during backup: was [${sourceTablesBefore.join(', ')}], now [${sourceTablesAfter.join(', ')}] (fail-closed)`
-        );
-      }
-      for (let i = 0; i < sourceTablesAfter.length; i++) {
-        if (sourceTablesAfter[i] !== sourceTablesBefore[i]) {
-          throw new Error(
-            `Source table changed during backup at index ${i}: was '${sourceTablesBefore[i]}', now '${sourceTablesAfter[i]}' (fail-closed)`
-          );
-        }
-      }
-
-      if (sourceDataVersionBefore !== null) {
-        const sourceDataVersionAfter = getDataVersion(this.#db);
-        if (sourceDataVersionAfter !== sourceDataVersionBefore) {
-          throw new Error(
-            `Source data_version changed during backup: was ${sourceDataVersionBefore}, now ${sourceDataVersionAfter} (concurrent mutation detected, fail-closed)`
-          );
-        }
-      }
-    } catch (verifErr) {
-      // Best-effort cleanup of destination ONLY IF confirmed regular file inside stateRoot
-      try {
-        const stat = fs.lstatSync(backupDestination);
-        if (stat.isFile() && !stat.isSymbolicLink()) {
-          const real = fs.realpathSync(backupDestination);
-          const rel = path.relative(this.#canonicalStateRoot, real);
-          if (rel !== '..' && !rel.startsWith('..' + path.sep) && !path.isAbsolute(rel)) {
-            fs.unlinkSync(backupDestination);
-          }
-        }
-      } catch (_) {
-        // Best effort: do not sacrifice path safety
-      }
-      throw new Error(`Backup verification failed: ${verifErr.message}`);
-    } finally {
-      if (backupDb) {
-        try {
-          backupDb.close();
-        } catch (_) {}
-      }
-    }
-
-    return {
-      success: true,
-      backupPath: backupDestination,
-      sourceSchemaVersion: this.#schemaVersion,
-      integrity: 'ok',
-    };
+    return executeVerifiedBackup(this.#db, this.#canonicalStateRoot, this.#schemaVersion);
   }
 
   /**

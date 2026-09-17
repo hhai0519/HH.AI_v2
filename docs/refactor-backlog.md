@@ -2825,7 +2825,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 5.1 上一批狀態
 
-上次核對通過的 HEAD：50db6364fd3d15d5fc5d74d6b6acbb40aed7d751
+上次核對通過的 HEAD：b27ea204a10764d9c25ff37e1f108ee7cf41b39b
 
 - `23af193`（執行者前置檢查 ＋ 回滾程序 ＋ `AUDIT-LOG.md` ＋ 四缺口修正）
   已於 2026-09-02 由審計官核對通過：6 檔異動（含 2 個新檔）、零夾帶、
@@ -3067,7 +3067,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - B-99 Qualification-Based Macro Auditor & Repo-Visible Handoff（CLOSED / MACRO PASS）。
   - B-97 Pre-B01 Comprehensive Release Audit 已完成（CLOSED / PRE-B01 RELEASE PASS）。
   - B-01 ADR-0002／0004／0010 分層搬移及 Active-Contract 語意修復已完成（CLOSED / MACRO PASS）。
-  - E-03 Runtime 執行層架構推進（IN PROGRESS）：T3/T17 = Node Runtime Pin + Windows CI + Automatic Test Discovery Enforcement Macro PASS / ACCEPTED；accepted checkpoint 保持 50db6364fd3d15d5fc5d74d6b6acbb40aed7d751；T6 = SQLite Repository Foundation Macro PASS / ACCEPTED；T11A = Machine PASS / Macro HOLD / SOURCE-BASELINE BOUNDED REPAIR IN PROGRESS；T7 = NOT STARTED / BLOCKED UNTIL T11A ACCEPTED；T8/T9/T11-main = NOT STARTED；D29 Wave 2H = CANCELLED / MUST NOT RESUME；R2 = Reply Result Uncertainty Handling（USER DECISION PENDING）；R3 = Local API Form（USER DECISION PENDING）；Gateway live 整合尚未開始（NOT STARTED）；B-98 / B-30 / B-33 / F-05 維持開啟狀態於既定前置邊界。
+  - E-03 Runtime 執行層架構推進（IN PROGRESS）：T3/T17 = Node Runtime Pin + Windows CI + Automatic Test Discovery Enforcement Macro PASS / ACCEPTED；accepted checkpoint 推進至 b27ea204a10764d9c25ff37e1f108ee7cf41b39b；T6 = SQLite Repository Foundation Macro PASS / ACCEPTED；T11A = Verified SQLite Pre-Migration Online Backup Primitive Macro PASS / ACCEPTED；T7A = Migration 2 + Durable Channel State Schema + Pre-Migration Backup Wiring IN PROGRESS / PENDING EXTERNAL MACRO AUDIT；T7B = NOT STARTED / BLOCKED UNTIL T7A ACCEPTED；T8/T9/T11-main = NOT STARTED；D29 Wave 2H = CANCELLED / MUST NOT RESUME；R2 = Reply Result Uncertainty Handling（USER DECISION PENDING）；R3 = Local API Form（USER DECISION PENDING）；Gateway live 整合尚未開始（NOT STARTED）；B-98 / B-30 / B-33 / F-05 維持開啟狀態於既定前置邊界。
   - C-06 維持待使用者裁決（USER_DECISION_NONBLOCKING，遠端 ruleset 與 required checks 現況已確認）。
   - B-28 / B-29 上游 trigger 重新評估完成，無 B-01 blocker，維持 DEFERRED_BY_USER / POST_B01。
   - B-54 保持待辦（POST_B01 / NONBLOCKING，SOP_12 機器專屬路徑 concrete example 已登錄）。
@@ -3807,3 +3807,24 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
       - T7（交易邊界與 migration 2 wiring）保持 NOT STARTED，嚴格阻塞於 T11A accepted checkpoint 建立。
       - T8、T9、T11 主切片尚未開始；Gateway live 整合尚未開始（NOT STARTED）；R2 與 R3 維持 USER DECISION PENDING；B-98 維持 pending。
       - 本修復候選等待 External Macro Reviewer 獨立審核，不得 self-audit。
+
+93. **E-03 T7A SQLite Migration 2 & Durable Channel State Schema Candidate**（2026-09-17）
+    - **T11A 外部宏觀審計結論**：前段 T11A 施工候選審查範圍 `50db6364fd3d15d5fc5d74d6b6acbb40aed7d751..b27ea204a10764d9c25ff37e1f108ee7cf41b39b`（共 2 commits：79125ff 初審 Machine PASS / Macro HOLD，T11A-F1 為 source baseline 與版本漂移驗證缺陷，由 `b27ea204a10764d9c25ff37e1f108ee7cf41b39b` 徹底解決）經 External Macro Reviewer（GPT 代理審查官（使用者授權））全面審查。A1 qualification 採 A1 = EQUIVALENT（GitHub API + Executor clone cross-check）成立；exact-SHA Actions Verify Run `35203633698` completed/success（jobs: verify = success, gateway-windows = success；Ubuntu canonical: 20 checks PASS，332 unit PASS，13 webapp PASS，ALL 5 Gates PASS；Windows: Node 24.21.0, Gateway bridge 22/22 PASS）；T11A-F1 完全解決；審查結論：`MACRO AUDIT = PASS`，`ACCEPT STATUS = ACCEPT ALL`，`FINDING_DISPOSITION = NONE`，`T11A = ACCEPTED`；新 accepted checkpoint 正式確立為 `b27ea204a10764d9c25ff37e1f108ee7cf41b39b`；T7 阻擋正式解除（CLEARED）。
+    - **T7A 施工候選架構與實作**：
+      - **綱要版本升級與向前遷移註冊**：`SQLITE_STATE_SCHEMA_VERSION = 2`；Migration 1 保持不可變歷史原樣，新增 Migration 2 定義，嚴格禁止修改或 squash 既有遷移歷史。
+      - **通道控制表格綱要（channel_control）**：建立 `channel_control` STRICT 表格，欄位包含 `channel_id` TEXT PRIMARY KEY CHECK(length(trim(channel_id)) > 0)、`current_holder` TEXT CHECK(current_holder IS NULL OR length(trim(current_holder)) > 0)、`fencing_token` INTEGER NOT NULL DEFAULT 0 CHECK(fencing_token >= 0)、`last_heartbeat_at` INTEGER。嚴禁儲存 secret 或 token 憑證；`fencing_token` 為耐久單調遞增整數。
+      - **入站收件表格綱要（inbox）**：建立 `inbox` STRICT 表格，欄位包含 `sequence` INTEGER PRIMARY KEY AUTOINCREMENT（提供確定性 FIFO 領取順序）、`channel_id` TEXT NOT NULL、`message_id` TEXT NOT NULL CHECK(length(trim(message_id)) > 0)、`receiving_account_id` TEXT NOT NULL CHECK(length(trim(receiving_account_id)) > 0)、`status` TEXT NOT NULL CHECK(status IN ('queued', 'claimed', 'discarded', 'replied'))、`claimed_by` TEXT、`claimed_at_token` INTEGER CHECK(claimed_at_token IS NULL OR claimed_at_token >= 0)、`discard_reason` TEXT、`discarded_by_holder` TEXT、`discarded_at_token` INTEGER CHECK(discarded_at_token IS NULL OR discarded_at_token >= 0)、`UNIQUE(channel_id, message_id)`、`FOREIGN KEY(channel_id) REFERENCES channel_control(channel_id) ON DELETE RESTRICT`。
+      - **既有資料庫遷移前經驗證備份連線（Pre-Migration Backup Wiring）**：當開啟既有資料庫且偵測到 `currentVersion > 0 && currentVersion < SQLITE_STATE_SCHEMA_VERSION`（即現行 v1 資料庫）時，在執行任何 pending migration 前，必須先調用內部備份核心 `executeVerifiedBackup(db, this.#canonicalStateRoot, currentVersion)` 完成經驗證之 v1 備份（`backup-v1-*.sqlite3`，來源綱要版本 1，歷史紀錄 `[1]`，表格僅 `schema_migrations`，完整性驗證 ok）；若備份失敗立即中斷，嚴禁發起遷移。
+      - **遷移失敗交易回滾與備份保留**：若 Migration 2 在執行時發生錯誤，交易立即 rollback，live DB 歷史保持 `[1]`，不留下半建立之 domain 綱要；遷移前建立之 verified v1 備份安全保留於磁碟；儲存庫開啟 fail-closed 拋錯。
+      - **全新資料庫與已升級重啟契約**：全新資料庫（`currentVersion = 0`）因無使用者資料，不建立 pre-migration backup（不產生 `backup-v0`），直接向前依序套用 migration 1 與 2，最終歷史為 `[1, 2]`；已為 v2 之資料庫重啟時，pending migrations 為空，不觸發遷移亦不產生備份。
+      - **嚴格範疇邊界遵守**：本批零 domain transaction methods（不實作 `takeoverChannel`、`claimMessages`、`pollMessages` 等，留待 T7B）；不修改 `channel-control.js`、`account-registry.js` 或 `account-switch.js`；零 T8 攝取游標（no `ingest_cursor`、no `UNIQUE(account_id, platform_msg_id)`）；零 outbox 實作；不決定 R2/R3；不重啟 Wave 2H；零新增第三方依賴。
+      - **測試矩陣與自動探索**：`sqlite-state-repository.test.js` 擴充至 52 項測試（全數通過，0 fail，3 allowed Windows skips，零未註冊跳過）；涵蓋 Section 22 所定全部 25 項測試情境（包含 DDL STRICT shape、CHECK 約束阻擋、外鍵強制約束、FIFO 序列自增、確定性失敗回滾、v1→v2 自動遷移與備份、v2 公開備份中繼資料等）；Python 測試橋接 22/22 PASS。
+    - **當前生命週期狀態**：
+      - 本批為 E-03 T7A SQLite Migration 2 & Durable Channel State Schema 實作候選。
+      - E-03 進行中（IN PROGRESS）。
+      - accepted checkpoint 推進至 `b27ea204a10764d9c25ff37e1f108ee7cf41b39b`。
+      - T11A = ACCEPTED。
+      - T7A = IN PROGRESS / PENDING EXTERNAL MACRO AUDIT。
+      - T7B（交易式 takeover/claim/poll/reply API）保持 NOT STARTED，阻塞於 T7A 外部 Macro PASS。
+      - T8、T9、T11 主切片尚未開始；Gateway live 整合尚未開始（NOT STARTED）；R2 與 R3 維持 USER DECISION PENDING；B-98 維持 pending。
+      - 本候選等待 External Macro Reviewer 獨立審核，不得 self-audit。

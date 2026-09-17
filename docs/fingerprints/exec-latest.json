@@ -1,5 +1,5 @@
 {
-  "base_head": "79125ff",
+  "base_head": "b27ea20",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 0,
@@ -516,15 +516,15 @@
         "### 事故清單與根因處置紀錄"
       ],
       "lines": 161,
-      "sha256": "c73e71cf59b30677889257d0cb22a8bb50d811024f5af00ef9dda3bd5ca5bc8a"
+      "sha256": "9ac9c0b52ca4933830a0df8563b3323e2f46551d6f8edf374fb9d452ace4202b"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 129,
-      "sha256": "02f293fb756e21bb60c46515303e3ba68e30f4822f62c75b38072469911dcf19"
+      "lines": 130,
+      "sha256": "851999d20fbaf51cdb22aeacaec69dce33570012f187728659fafe67e69637e7"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -560,7 +560,7 @@
         "## 封存區"
       ],
       "lines": 244,
-      "sha256": "504534771daa6ad6215809ec5a864527e59c58ca8a75bd322b0fe3e5849e70d0"
+      "sha256": "ddc5198de0f8072729e33d5cdd8c12b4a1215b9b1833653dde1d48daeb784169"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -939,8 +939,8 @@
         "### 5.3 待使用者裁決",
         "### 5.4 進行中／等待回報"
       ],
-      "lines": 3809,
-      "sha256": "1a886c428b3ae53aebbaccb9ea4261d969bacbff4807ccf87c714439cc6e8396"
+      "lines": 3830,
+      "sha256": "239496173830ec04699046944cfe3fcdda35285ee0f6072500bdea3022113213"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1210,7 +1210,7 @@
       "sha256": "35bf7dbfa3c7d291b550c3c97a6ae398a22b1dc3624c1d2fc1e4db6963d6e115"
     }
   },
-  "generated_at": "2026-09-17T09:08:27Z",
+  "generated_at": "2026-09-17T09:46:56Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {
