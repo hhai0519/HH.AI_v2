@@ -511,3 +511,226 @@ test('SqliteStateRepository - 23. DB file existing as directory is rejected', ()
     harness.cleanup();
   }
 });
+
+// 24. F1 Regression: Dangling DB symlink rejected and outside target not created
+test('SqliteStateRepository - 24. F1: dangling DB symlink rejected without creating outside target', () => {
+  const harness = createTempHarness();
+  try {
+    const linkPath = path.join(harness.stateRoot, SQLITE_DATABASE_FILENAME);
+    const outsideTarget = path.join(harness.baseDir, 'outside-target.sqlite3');
+
+    let symlinkCreated = false;
+    try {
+      fs.symlinkSync(outsideTarget, linkPath, 'file');
+      symlinkCreated = true;
+    } catch (symErr) {
+      // Symlink creation not permitted on this host (e.g. unprivileged Windows)
+      symlinkCreated = false;
+    }
+
+    if (symlinkCreated) {
+      // Host supports symlink creation: run active behavioral regression
+      assert.strictEqual(fs.existsSync(outsideTarget), false, 'Outside target must start absent');
+      assert.throws(
+        () => new SqliteStateRepository(harness.stateRoot),
+        /symbolic link/i
+      );
+      assert.strictEqual(
+        fs.existsSync(outsideTarget),
+        false,
+        'Outside target must remain absent after rejection'
+      );
+    } else {
+      // Host lacks symlink privilege: run non-skip bounded source & semantic canary
+      const moduleSource = fs.readFileSync(
+        path.join(__dirname, '../core/sqlite-state-repository.js'),
+        'utf8'
+      );
+      assert.strictEqual(
+        /existsSync\s*\(\s*this\.\s*#?databasePath\s*\)/.test(moduleSource),
+        false,
+        'Production source must NOT use existsSync for databasePath classification'
+      );
+      assert.ok(
+        /fs\.lstatSync\s*\(\s*this\.#databasePath\s*\)/.test(moduleSource),
+        'Production source must use lstatSync on databasePath'
+      );
+      assert.ok(
+        /code\s*===\s*['"]ENOENT['"]/.test(moduleSource),
+        'Production source must check err.code === "ENOENT" for new database classification'
+      );
+    }
+  } finally {
+    harness.cleanup();
+  }
+});
+
+// 25. F2 Regression: Canonical schema_migrations shape validation
+test('SqliteStateRepository - 25. F2: non-STRICT schema_migrations rejected', () => {
+  const harness = createTempHarness();
+  try {
+    const dbPath = path.join(harness.stateRoot, SQLITE_DATABASE_FILENAME);
+    const rawDb = new DatabaseSync(dbPath);
+    // Non-strict table
+    rawDb.exec('CREATE TABLE schema_migrations (version INTEGER PRIMARY KEY);');
+    rawDb.prepare('INSERT INTO schema_migrations (version) VALUES (1);').run();
+    rawDb.close();
+
+    assert.throws(
+      () => new SqliteStateRepository(harness.stateRoot),
+      /STRICT/i
+    );
+  } finally {
+    harness.cleanup();
+  }
+});
+
+test('SqliteStateRepository - 26. F2: STRICT schema_migrations without PRIMARY KEY rejected', () => {
+  const harness = createTempHarness();
+  try {
+    const dbPath = path.join(harness.stateRoot, SQLITE_DATABASE_FILENAME);
+    const rawDb = new DatabaseSync(dbPath);
+    // Strict table without PRIMARY KEY
+    rawDb.exec('CREATE TABLE schema_migrations (version INTEGER) STRICT;');
+    rawDb.prepare('INSERT INTO schema_migrations (version) VALUES (1);').run();
+    rawDb.close();
+
+    assert.throws(
+      () => new SqliteStateRepository(harness.stateRoot),
+      /PRIMARY KEY/i
+    );
+  } finally {
+    harness.cleanup();
+  }
+});
+
+test('SqliteStateRepository - 27. F2: STRICT schema_migrations with extra columns rejected', () => {
+  const harness = createTempHarness();
+  try {
+    const dbPath = path.join(harness.stateRoot, SQLITE_DATABASE_FILENAME);
+    const rawDb = new DatabaseSync(dbPath);
+    // Strict table with extra column
+    rawDb.exec('CREATE TABLE schema_migrations (version INTEGER PRIMARY KEY, extra TEXT) STRICT;');
+    rawDb.prepare('INSERT INTO schema_migrations (version, extra) VALUES (?, ?);').run(1, 'unexpected');
+    rawDb.close();
+
+    assert.throws(
+      () => new SqliteStateRepository(harness.stateRoot),
+      /exactly 1 column/i
+    );
+  } finally {
+    harness.cleanup();
+  }
+});
+
+test('SqliteStateRepository - 28. F2: canonical STRICT schema_migrations with PK accepted', () => {
+  const harness = createTempHarness();
+  try {
+    const dbPath = path.join(harness.stateRoot, SQLITE_DATABASE_FILENAME);
+    const rawDb = new DatabaseSync(dbPath);
+    rawDb.exec('CREATE TABLE schema_migrations (version INTEGER PRIMARY KEY) STRICT;');
+    rawDb.prepare('INSERT INTO schema_migrations (version) VALUES (1);').run();
+    rawDb.close();
+
+    const repo = new SqliteStateRepository(harness.stateRoot);
+    assert.strictEqual(repo.isOpen, true);
+    assert.strictEqual(repo.schemaVersion, 1);
+    repo.close();
+  } finally {
+    harness.cleanup();
+  }
+});
+
+// 29. F3 Regression: Forward-only migration foundation
+test('SqliteStateRepository - 29. F3: forward-only migration runner and registry invariants', () => {
+  const harness = createTempHarness();
+  try {
+    const repo = new SqliteStateRepository(harness.stateRoot);
+    assert.strictEqual(repo.schemaVersion, SQLITE_STATE_SCHEMA_VERSION);
+
+    // Verify repository does NOT expose down migration or reset APIs
+    assert.strictEqual(repo.down, undefined);
+    assert.strictEqual(repo.rollback, undefined);
+    assert.strictEqual(repo.resetSchema, undefined);
+    assert.strictEqual(repo.migrateDown, undefined);
+
+    repo.close();
+  } finally {
+    harness.cleanup();
+  }
+});
+
+// 30. F4 Regression: Read-only introspection & ECMAScript private fields
+test('SqliteStateRepository - 30. F4: mutable lifecycle fields are private and not exposed as own properties', () => {
+  const harness = createTempHarness();
+  try {
+    const repo = new SqliteStateRepository(harness.stateRoot);
+    const ownProps = Object.getOwnPropertyNames(repo);
+
+    // Must NOT expose internal mutable properties
+    assert.strictEqual(ownProps.includes('_databasePath'), false);
+    assert.strictEqual(ownProps.includes('_schemaVersion'), false);
+    assert.strictEqual(ownProps.includes('_isOpen'), false);
+    assert.strictEqual(ownProps.includes('_canonicalStateRoot'), false);
+    assert.strictEqual(ownProps.includes('_db'), false);
+    assert.strictEqual(ownProps.length, 0, 'Instance should not have exposed own properties');
+
+    // Assignment to getters must throw or fail without changing state
+    assert.throws(
+      () => {
+        repo.isOpen = false;
+      },
+      TypeError
+    );
+    assert.throws(
+      () => {
+        repo.schemaVersion = 999;
+      },
+      TypeError
+    );
+    assert.throws(
+      () => {
+        repo.databasePath = '/tmp/hijack';
+      },
+      TypeError
+    );
+
+    // Setting expando _isOpen must not affect actual isOpen or close behavior
+    repo._isOpen = false;
+    assert.strictEqual(repo.isOpen, true, 'Internal isOpen must remain true');
+    repo.close();
+    assert.strictEqual(repo.isOpen, false, 'close() must successfully close');
+
+    // Closed repository must reject schemaVersion access
+    assert.throws(() => repo.schemaVersion, /closed/);
+  } finally {
+    harness.cleanup();
+  }
+});
+
+// 31. PRAGMA busy_timeout fail-closed verification
+test('SqliteStateRepository - 31. PRAGMA busy_timeout contract verified on open', () => {
+  const harness = createTempHarness();
+  try {
+    const repo = new SqliteStateRepository(harness.stateRoot);
+    assert.strictEqual(SQLITE_BUSY_TIMEOUT_MS, 5000);
+    assert.strictEqual(repo.isOpen, true);
+    repo.close();
+
+    const moduleSource = fs.readFileSync(
+      path.join(__dirname, '../core/sqlite-state-repository.js'),
+      'utf8'
+    );
+    assert.ok(
+      moduleSource.includes('PRAGMA busy_timeout = 5000;') ||
+      moduleSource.includes('PRAGMA busy_timeout = ${SQLITE_BUSY_TIMEOUT_MS};'),
+      'Source must configure PRAGMA busy_timeout to 5000'
+    );
+    assert.ok(
+      moduleSource.includes('busyTimeout !== SQLITE_BUSY_TIMEOUT_MS'),
+      'Source must fail-closed on busyTimeout readback mismatch'
+    );
+  } finally {
+    harness.cleanup();
+  }
+});

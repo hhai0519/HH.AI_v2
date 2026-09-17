@@ -3067,7 +3067,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - B-99 Qualification-Based Macro Auditor & Repo-Visible Handoff（CLOSED / MACRO PASS）。
   - B-97 Pre-B01 Comprehensive Release Audit 已完成（CLOSED / PRE-B01 RELEASE PASS）。
   - B-01 ADR-0002／0004／0010 分層搬移及 Active-Contract 語意修復已完成（CLOSED / MACRO PASS）。
-  - E-03 Runtime 執行層架構推進（IN PROGRESS）：T3/T17 = Node Runtime Pin + Windows CI + Automatic Test Discovery Enforcement Macro PASS / ACCEPTED；accepted checkpoint 推進至 c1fd25d166bdc854dc602f54ac8522de25326e26；現執行 T6（SQLite Repository / Schema Foundation，PENDING EXTERNAL MACRO AUDIT）；D29 Wave 2H = CANCELLED / MUST NOT RESUME；R2 = Reply Result Uncertainty Handling（USER DECISION PENDING）；R3 = Local API Form（USER DECISION PENDING）；T6 僅建立 repository connection lifecycle 與 schema foundation，不建立 domain transaction (T7)、ingest idempotency (T8)、JSON retirement (T9) 或 full path guard (T11)；Gateway live 整合尚未開始（NOT STARTED）；B-98 / B-30 / B-33 / F-05 維持開啟狀態於既定前置邊界。
+  - E-03 Runtime 執行層架構推進（IN PROGRESS）：T3/T17 = Node Runtime Pin + Windows CI + Automatic Test Discovery Enforcement Macro PASS / ACCEPTED；accepted checkpoint 保持 c1fd25d166bdc854dc602f54ac8522de25326e26；現執行 T6（SQLite Repository Foundation，Machine PASS / Macro HOLD / BOUNDED REPAIR IN PROGRESS）；T7 = NOT STARTED；D29 Wave 2H = CANCELLED / MUST NOT RESUME；R2 = Reply Result Uncertainty Handling（USER DECISION PENDING）；R3 = Local API Form（USER DECISION PENDING）；T6 僅建立 repository connection lifecycle 與 schema foundation，不建立 domain transaction (T7)、ingest idempotency (T8)、JSON retirement (T9) 或 full path guard (T11)；Gateway live 整合尚未開始（NOT STARTED）；B-98 / B-30 / B-33 / F-05 維持開啟狀態於既定前置邊界。
   - C-06 維持待使用者裁決（USER_DECISION_NONBLOCKING，遠端 ruleset 與 required checks 現況已確認）。
   - B-28 / B-29 上游 trigger 重新評估完成，無 B-01 blocker，維持 DEFERRED_BY_USER / POST_B01。
   - B-54 保持待辦（POST_B01 / NONBLOCKING，SOP_12 機器專屬路徑 concrete example 已登錄）。
@@ -3740,3 +3740,18 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
       - T7（交易邊界）、T8（冪等進線）、T9（淘汰 JSON 模組）、T11（完整路徑守衛）仍未開始。
       - Gateway live 整合尚未開始（NOT STARTED）；R2 與 R3 維持 USER DECISION PENDING；B-98 維持 pending。
       - 本候選等待 External Macro Reviewer 獨立審核，不得 self-audit。
+
+89. **E-03 T6 SQLite Repository Foundation Candidate Audit (Macro HOLD) & Bounded Hardening Repair**（2026-09-17）
+    - **T6 施工候選審查結論**：前一施工候選 `e27dff9f11a9c0573e91001410cc16df66c65c6c`（E-03 Add SQLite Repository Foundation）經 External Macro Reviewer（GPT 代理審查官（使用者授權））全面審查。A1 qualification 採 A1 = EQUIVALENT（GitHub API + Executor clone cross-check）成立；exact-SHA Actions Verify Run `35189713923` completed/success（jobs: verify = success, gateway-windows = success；Ubuntu canonical: 20 checks PASS，332 unit tests PASS，13 webapp PASS，ALL 5 Gates PASS；Windows: Node 24.21.0，Gateway bridge 22/22 PASS，新 sqlite-state-repository.test.js 動態探索執行通過）；Machine / CI Gates 全部通過。但 External Macro 審查判定為 `MACRO AUDIT = HOLD`，`ACCEPT STATUS = BOUNDED REPAIR REQUIRED`，`FINDING_DISPOSITION = CURRENT E-03 / T6`。
+    - **Findings (F1–F4)**：
+      - **F1（Dangling Symlink Bypass）**：`existsSync(databasePath)` 在 dangling symlink 目標不存在時回傳 false，誤判為 new database，使 `DatabaseSync` 沿 symlink 於 `stateRoot` 外建立 target DB，違反路徑邊界。修復：全面改用 `fs.lstatSync(databasePath)` 進行目錄項目分類，僅於 `err.code === 'ENOENT'` 判定為 new DB；若項目存在且為 symlink 或非 regular file 一律 fail-closed 拒絕。
+      - **F2（Canonical schema_migrations Shape）**：既有 DB 僅驗證表名與版本列，未驗證 DDL 規格。修復：透過 `PRAGMA table_list` 與 `PRAGMA table_info` 機械驗證表名為 `schema_migrations`、type 為 `table`、`STRICT` 模式啟用、且唯一定義 1 個名為 `version` 之 `INTEGER PRIMARY KEY` 欄位；任何額外欄位或非 STRICT 結構一律 fail-closed。
+      - **F3（Forward-Only Ordered Migration Foundation）**：原實作以 if/else 特判 v1，尚未建立正式 migration substrate。修復：建立 forward-only、ordered、transactional migration registry 與 runner（Continuous 1..`SQLITE_STATE_SCHEMA_VERSION`）；每個 migration 於 `BEGIN IMMEDIATE ... COMMIT` 交易內執行並記錄版本；既有 DB 缺表一律 fail-closed 不得自動 bootstrap。
+      - **F4（Read-Only Introspection & ECMAScript Private Fields）**：原實作 `_databasePath`、`_schemaVersion`、`_isOpen` 等為 own properties，可被外部竄改甚至阻礙 `close()` 執行。修復：所有內部可變狀態全面改為 ECMAScript private fields（`#db`、`#databasePath`、`#schemaVersion`、`#isOpen`、`#canonicalStateRoot`），公開介面僅保留 read-only getters（`databasePath`、`schemaVersion`、`isOpen`），無任何 own property 洩漏。
+    - **當前生命週期狀態**：
+      - 本批為 E-03 T6 Bounded Hardening Repair 實作候選。
+      - E-03 進行中（IN PROGRESS）。
+      - accepted checkpoint 保持 `c1fd25d166bdc854dc602f54ac8522de25326e26`（不得填入 e27dff9 或 repair candidate）。
+      - T6 = BOUNDED REPAIR IN PROGRESS。
+      - T7、T8、T9、T11 尚未開始；Gateway live 整合尚未開始（NOT STARTED）；R2 與 R3 維持 USER DECISION PENDING；B-98 維持 pending。
+      - 本修復候選等待 External Macro Reviewer 獨立審核，不得 self-audit。

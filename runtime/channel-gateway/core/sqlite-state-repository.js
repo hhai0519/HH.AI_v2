@@ -9,7 +9,9 @@
  * - Strict stateRoot validation: non-empty string, absolute, existing directory, readable, writable.
  * - No auto-creation: NEVER calls fs.mkdirSync or creates stateRoot.
  * - Fixed DB filename: channel-gateway-state.sqlite3 (zero caller override).
- * - Existing DB file validation: must be a regular file, non-symlink, resolving inside canonical stateRoot.
+ * - Entry existence classification via fs.lstatSync:
+ *     - Only err.code === 'ENOENT' indicates new database.
+ *     - If entry exists: must be a regular file, non-symlink (dangling or resolving), resolving inside canonical stateRoot.
  * - Extension loading strictly disabled (no allowExtension, no loadExtension).
  * - Mandatory PRAGMAs on every open:
  *     PRAGMA journal_mode = WAL; (readback 'wal')
@@ -17,12 +19,17 @@
  *     PRAGMA foreign_keys = ON; (readback 1)
  *     PRAGMA busy_timeout = 5000; (readback 5000)
  *   Any readback mismatch triggers fail-closed error and immediate close.
- * - Schema versioning: schema_migrations (version INTEGER PRIMARY KEY) STRICT.
- * - New DB initialization: transactional (BEGIN IMMEDIATE ... COMMIT), inserts version 1.
- * - Existing DB handling: missing schema_migrations, gap, non-integer, <=0, duplicate, or future version > 1 fails closed.
+ * - Migration foundation:
+ *     - Ordered, forward-only, transactional runner.
+ *     - Migration 1 creates canonical table: schema_migrations (version INTEGER PRIMARY KEY) STRICT.
+ *     - Runner records version in schema_migrations via prepared statement.
+ *     - Existing DB missing schema_migrations fails closed.
+ *     - Canonical schema_migrations shape verified via PRAGMA table_list and PRAGMA table_info (STRICT, 1 column, PK).
+ *     - Gap, non-integer, <=0, duplicate, or future version > 1 fails closed.
  * - No domain tables or columns in T6 foundation.
  * - SQL safety: parameterized prepared statements for any valued queries; no dynamic SQL string concatenation.
  * - No raw DatabaseSync handle escape hatch (no rawDb, exec, query exports).
+ * - True read-only introspection via ECMAScript private fields (#db, #databasePath, #schemaVersion, #isOpen, #canonicalStateRoot).
  * - Idempotent close() lifecycle; unusable after close.
  */
 
@@ -37,9 +44,115 @@ const SQLITE_STATE_SCHEMA_VERSION = 1;
 const SQLITE_BUSY_TIMEOUT_MS = 5000;
 const SQLITE_DATABASE_FILENAME = 'channel-gateway-state.sqlite3';
 
+/**
+ * Ordered, forward-only migration definitions.
+ * Each migration must be continuous starting from 1 up to SQLITE_STATE_SCHEMA_VERSION.
+ */
+const MIGRATIONS = Object.freeze([
+  Object.freeze({
+    version: 1,
+    apply(db) {
+      db.exec('CREATE TABLE schema_migrations (version INTEGER PRIMARY KEY) STRICT;');
+    },
+  }),
+]);
+
+/**
+ * Validates the internal migration definitions.
+ *
+ * @param {ReadonlyArray<{version: number, apply: Function}>} migrations
+ * @param {number} targetVersion
+ */
+function validateMigrationRegistry(migrations, targetVersion) {
+  if (!Array.isArray(migrations) || migrations.length === 0) {
+    throw new Error('Migration registry must be a non-empty array (fail-closed)');
+  }
+  for (let i = 0; i < migrations.length; i++) {
+    const m = migrations[i];
+    const expectedVer = i + 1;
+    if (!m || typeof m !== 'object') {
+      throw new Error(`Migration entry at index ${i} is invalid (fail-closed)`);
+    }
+    if (m.version !== expectedVer) {
+      throw new Error(
+        `Migration sequence must be continuous starting from 1: expected version ${expectedVer}, got ${m.version} (fail-closed)`
+      );
+    }
+    if (typeof m.apply !== 'function') {
+      throw new Error(`Migration version ${m.version} missing apply function (fail-closed)`);
+    }
+  }
+  const maxVer = migrations[migrations.length - 1].version;
+  if (maxVer !== targetVersion) {
+    throw new Error(
+      `Migration registry max version ${maxVer} does not match target schema version ${targetVersion} (fail-closed)`
+    );
+  }
+}
+
+/**
+ * Verifies that the schema_migrations table has the exact canonical DDL shape:
+ * - Type is 'table'
+ * - STRICT mode is enabled
+ * - Exactly 1 column named 'version' of declared type 'INTEGER' which is PRIMARY KEY
+ *
+ * @param {DatabaseSync} db
+ */
+function verifyCanonicalSchemaMigrationsShape(db) {
+  const tableList = db.prepare("PRAGMA table_list('schema_migrations');").all();
+  if (!tableList || tableList.length === 0) {
+    throw new Error('schema_migrations table does not exist in schema (fail-closed)');
+  }
+  const tableEntry = tableList.find((entry) => entry.name === 'schema_migrations');
+  if (!tableEntry) {
+    throw new Error('schema_migrations entry not found in table_list (fail-closed)');
+  }
+  if (tableEntry.type !== 'table') {
+    throw new Error(
+      `schema_migrations must be a table, got type '${tableEntry.type}' (fail-closed)`
+    );
+  }
+  if (!tableEntry.strict || Number(tableEntry.strict) !== 1) {
+    throw new Error('schema_migrations must be created with STRICT mode (fail-closed)');
+  }
+
+  const columns = db.prepare("PRAGMA table_info('schema_migrations');").all();
+  if (!columns || columns.length !== 1) {
+    throw new Error(
+      `schema_migrations must have exactly 1 column, found ${columns ? columns.length : 0} (fail-closed)`
+    );
+  }
+  const col0 = columns[0];
+  if (col0.name !== 'version') {
+    throw new Error(
+      `schema_migrations column 0 must be named 'version', found '${col0.name}' (fail-closed)`
+    );
+  }
+  if (String(col0.type).toUpperCase() !== 'INTEGER') {
+    throw new Error(
+      `schema_migrations column 'version' declared type must be INTEGER, found '${col0.type}' (fail-closed)`
+    );
+  }
+  if (!col0.pk || Number(col0.pk) <= 0) {
+    throw new Error("schema_migrations column 'version' must be PRIMARY KEY (fail-closed)");
+  }
+}
+
 class SqliteStateRepository {
   /** @type {DatabaseSync|null} */
   #db = null;
+
+  /** @type {string} */
+  #canonicalStateRoot;
+
+  /** @type {string} */
+  #databasePath;
+
+  /** @type {number|null} */
+  #schemaVersion = null;
+
+  /** @type {boolean} */
+  #isOpen = false;
 
   /**
    * @param {string} stateRoot - Absolute path to an existing, writable stateRoot directory.
@@ -80,58 +193,63 @@ class SqliteStateRepository {
       );
     }
 
-    this._canonicalStateRoot = fs.realpathSync(nominal);
-    this._databasePath = path.join(this._canonicalStateRoot, SQLITE_DATABASE_FILENAME);
+    this.#canonicalStateRoot = fs.realpathSync(nominal);
+    this.#databasePath = path.join(this.#canonicalStateRoot, SQLITE_DATABASE_FILENAME);
 
-    const isNew = !fs.existsSync(this._databasePath);
+    // F1 / T6 repair: Directory-entry existence classification via lstatSync only.
+    // Never use fs.existsSync(databasePath), which treats dangling symlinks as absent.
+    let isNew = false;
+    let dbLstat = null;
+    try {
+      dbLstat = fs.lstatSync(this.#databasePath);
+    } catch (err) {
+      if (err && err.code === 'ENOENT') {
+        isNew = true;
+      } else {
+        throw new Error(
+          `Failed to inspect database path '${this.#databasePath}': ${err.message}`
+        );
+      }
+    }
 
     if (!isNew) {
-      let lstat;
-      try {
-        lstat = fs.lstatSync(this._databasePath);
-      } catch (err) {
+      if (dbLstat.isSymbolicLink()) {
         throw new Error(
-          `Failed to stat database file: '${this._databasePath}' (${err.message})`
+          `Database file must not be a symbolic link: '${this.#databasePath}'`
         );
       }
 
-      if (lstat.isSymbolicLink()) {
+      if (!dbLstat.isFile()) {
         throw new Error(
-          `Database file must not be a symbolic link: '${this._databasePath}'`
-        );
-      }
-
-      if (!lstat.isFile()) {
-        throw new Error(
-          `Database file must be a regular file: '${this._databasePath}'`
+          `Database file must be a regular file: '${this.#databasePath}'`
         );
       }
 
       let canonicalDb;
       try {
-        canonicalDb = fs.realpathSync(this._databasePath);
+        canonicalDb = fs.realpathSync(this.#databasePath);
       } catch (err) {
         throw new Error(
-          `Failed to resolve canonical path for database file: '${this._databasePath}' (${err.message})`
+          `Failed to resolve canonical path for database file: '${this.#databasePath}' (${err.message})`
         );
       }
 
-      const rel = path.relative(this._canonicalStateRoot, canonicalDb);
+      const rel = path.relative(this.#canonicalStateRoot, canonicalDb);
       if (rel === '..' || rel.startsWith('..' + path.sep) || path.isAbsolute(rel)) {
         throw new Error(
-          `Database file resolves outside canonical state root: '${canonicalDb}' is not within '${this._canonicalStateRoot}'`
+          `Database file resolves outside canonical state root: '${canonicalDb}' is not within '${this.#canonicalStateRoot}'`
         );
       }
     }
 
     let db;
     try {
-      db = new DatabaseSync(this._databasePath, {
+      db = new DatabaseSync(this.#databasePath, {
         timeout: SQLITE_BUSY_TIMEOUT_MS,
         enableForeignKeyConstraints: true,
       });
     } catch (err) {
-      throw new Error(`Failed to open SQLite database at '${this._databasePath}': ${err.message}`);
+      throw new Error(`Failed to open SQLite database at '${this.#databasePath}': ${err.message}`);
     }
 
     try {
@@ -163,34 +281,42 @@ class SqliteStateRepository {
         );
       }
 
-      // 3. Schema initialization or verification
+      // 3. Forward-only transactional migration runner / verification
+      validateMigrationRegistry(MIGRATIONS, SQLITE_STATE_SCHEMA_VERSION);
+
       if (isNew) {
-        db.exec('BEGIN IMMEDIATE;');
-        try {
-          db.exec('CREATE TABLE schema_migrations (version INTEGER PRIMARY KEY) STRICT;');
-          const insertStmt = db.prepare('INSERT INTO schema_migrations (version) VALUES (?);');
-          insertStmt.run(SQLITE_STATE_SCHEMA_VERSION);
-          db.exec('COMMIT;');
-        } catch (initErr) {
+        // Apply migrations forward starting from version 1
+        for (const migration of MIGRATIONS) {
+          db.exec('BEGIN IMMEDIATE;');
           try {
-            db.exec('ROLLBACK;');
-          } catch (_) {}
-          throw initErr;
+            migration.apply(db);
+            const insertStmt = db.prepare('INSERT INTO schema_migrations (version) VALUES (?);');
+            insertStmt.run(migration.version);
+            db.exec('COMMIT;');
+          } catch (mErr) {
+            try {
+              db.exec('ROLLBACK;');
+            } catch (_) {}
+            throw new Error(`Failed to apply migration ${migration.version}: ${mErr.message}`);
+          }
         }
       } else {
-        const tableCheck = db.prepare(
-          "SELECT name FROM sqlite_schema WHERE type = 'table' AND name = 'schema_migrations';"
-        ).get();
-        if (!tableCheck) {
+        // Existing DB: must already have schema_migrations table
+        const tableList = db.prepare("PRAGMA table_list('schema_migrations');").all();
+        const hasTable = tableList && tableList.some((e) => e.name === 'schema_migrations');
+        if (!hasTable) {
           throw new Error('Existing database is missing schema_migrations table (fail-closed)');
         }
       }
 
-      // 4. Verify schema state and read back version
-      this._schemaVersion = this._readAndVerifySchemaVersion(db);
+      // 4. Verify canonical table shape (STRICT, single integer PK column)
+      verifyCanonicalSchemaMigrationsShape(db);
+
+      // 5. Verify schema state and read back version
+      this.#schemaVersion = this.#readAndVerifySchemaVersion(db);
 
       this.#db = db;
-      this._isOpen = true;
+      this.#isOpen = true;
     } catch (err) {
       try {
         db.close();
@@ -216,14 +342,7 @@ class SqliteStateRepository {
    * @param {DatabaseSync} db
    * @returns {number} The current validated schema version
    */
-  _readAndVerifySchemaVersion(db) {
-    const tableCheck = db.prepare(
-      "SELECT name FROM sqlite_schema WHERE type = 'table' AND name = 'schema_migrations';"
-    ).get();
-    if (!tableCheck) {
-      throw new Error('Database is missing schema_migrations table (fail-closed)');
-    }
-
+  #readAndVerifySchemaVersion(db) {
     const nonInternalTables = db.prepare(
       "SELECT name FROM sqlite_schema WHERE type = 'table' AND name NOT LIKE 'sqlite_%';"
     ).all();
@@ -273,7 +392,7 @@ class SqliteStateRepository {
    * @returns {string}
    */
   get databasePath() {
-    return this._databasePath;
+    return this.#databasePath;
   }
 
   /**
@@ -282,10 +401,10 @@ class SqliteStateRepository {
    * @returns {number}
    */
   get schemaVersion() {
-    if (!this._isOpen) {
+    if (!this.#isOpen) {
       throw new Error('Repository is closed');
     }
-    return this._schemaVersion;
+    return this.#schemaVersion;
   }
 
   /**
@@ -294,7 +413,7 @@ class SqliteStateRepository {
    * @returns {boolean}
    */
   get isOpen() {
-    return Boolean(this._isOpen);
+    return Boolean(this.#isOpen);
   }
 
   /**
@@ -302,10 +421,10 @@ class SqliteStateRepository {
    * Idempotent: safe to call multiple times.
    */
   close() {
-    if (!this._isOpen) {
+    if (!this.#isOpen) {
       return;
     }
-    this._isOpen = false;
+    this.#isOpen = false;
     if (this.#db) {
       try {
         this.#db.close();
