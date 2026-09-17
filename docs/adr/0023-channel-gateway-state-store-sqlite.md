@@ -64,8 +64,8 @@ ADR-0022 仍保留為 Channel Gateway 之歷史與總體架構權威（Historica
 
 ### 7. 待決議事項現況 (Pending Decisions: R2 & R3)
 
-- **R2（本地 IPC 協定選型）**：維持 **待使用者裁決（USER DECISION PENDING）**，本 ADR 不代為決定。
-- **R3（單一實例與連線授權）**：維持 **待使用者裁決（USER DECISION PENDING）**。T1 Spike 之 V7 項目僅證明同名具名管道（Named Pipe）二次綁定引發 `EADDRINUSE` 具備單一實例互斥效果，但因 Windows 無特殊權限環境下 ACL 檢查與遠端管道連線為 `NOT_TESTABLE`，證據尚不足以直接核准具名管道作為最終方案。
+- **R2（回覆結果不明時的處理 / Reply Result Uncertainty Handling）**：維持 **待使用者裁決（USER DECISION PENDING）**。本 ADR 不代為決定；其決策時點在 future outbound/outbox Wave 之前由使用者裁決。原研究文件曾提出之建議方向（如文字訊息至少送一次並標註可能重複、檔案訊息待確認後重新授權）僅屬參考指引，不得提升為已接受之決策。
+- **R3（本機 API 形式 / Local API Form）**：維持 **待使用者裁決（USER DECISION PENDING）**。候選架構為 Windows 具名管道（Named Pipe）與 Loopback API（搭配本機 Token、Host 白名單與拒絕 Origin 標頭）。T1 Spike 之 V7 項目僅證明同名具名管道二次綁定引發 `EADDRINUSE`，但因 Windows 無特殊權限環境下 ACL 安全檢查與遠端管道連線行為皆為 `NOT_TESTABLE`，證據尚不足以核准具名管道作為最終方案。
 
 ## Consequences
 

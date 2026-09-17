@@ -1,5 +1,5 @@
 {
-  "base_head": "b15d5bf",
+  "base_head": "90dc71c",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 0,
@@ -515,16 +515,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 153,
-      "sha256": "1a2e6d45d45d43ae4385093e865ac23b62efe9f86605477cb92495fc4b88a438"
+      "lines": 154,
+      "sha256": "691c7e00e3abbc2406b4dd2ca208817ba49d12b7e0f2ebffdcd8ae2bc56a7bca"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 122,
-      "sha256": "af8f4f46726f1b3051c16161e3bf4a4c780696030307ec3fe025e2ee503265e1"
+      "lines": 123,
+      "sha256": "d14017983d5b7b172df325f15ced624a1dd72df1231e11b19568c8d93bf245d2"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -560,7 +560,7 @@
         "## 封存區"
       ],
       "lines": 244,
-      "sha256": "c18f0c578bedbbecbd00941bd63b8691620546c4f32e342de5ec792883f08ac4"
+      "sha256": "1f83e8883eb359d4c2194e76662e5e81609d192461635d1b8ded69ea329e560f"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -872,7 +872,7 @@
         "## Consequences"
       ],
       "lines": 78,
-      "sha256": "a07a2429728032c03c17b86e658f586306bb933949aa5ede45bfc339f1789cc4"
+      "sha256": "fe7f60d8e92366123c4c3321d435739f8d27aa53751774d9e09a32e06b16d930"
     },
     "docs/mcp-environment-guide.md": {
       "fences": 0,
@@ -939,8 +939,8 @@
         "### 5.3 待使用者裁決",
         "### 5.4 進行中／等待回報"
       ],
-      "lines": 3686,
-      "sha256": "9dbb3d0136823e99e7329de7672370ba3cc7a2f82b50738afdf0204bf016e248"
+      "lines": 3702,
+      "sha256": "934ded46145ef5cec4913060f68c00abd98b43d58ebd0d6818885c294f24b6d7"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1210,7 +1210,7 @@
       "sha256": "35bf7dbfa3c7d291b550c3c97a6ae398a22b1dc3624c1d2fc1e4db6963d6e115"
     }
   },
-  "generated_at": "2026-09-17T04:29:51Z",
+  "generated_at": "2026-09-17T04:43:59Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

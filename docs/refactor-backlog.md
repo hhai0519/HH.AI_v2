@@ -3065,7 +3065,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - B-99 Qualification-Based Macro Auditor & Repo-Visible Handoff（CLOSED / MACRO PASS）。
   - B-97 Pre-B01 Comprehensive Release Audit 已完成（CLOSED / PRE-B01 RELEASE PASS）。
   - B-01 ADR-0002／0004／0010 分層搬移及 Active-Contract 語意修復已完成（CLOSED / MACRO PASS）。
-  - E-03 Runtime 執行層架構推進（IN PROGRESS）：Wave 2G = MACRO PASS / ACCEPTED；D27 確立 node:sqlite 唯一狀態權威；D28 T1 Windows node:sqlite Technical Spike = GO（V1-V6 + V8 PASS，V7 reference partial / R3 undecided；F1 process protocol deviation non-blocking / added to B-98；F2 V7 not approval）；D29 Wave 2H 停止且不得恢復；D30 分層治理；本批執行 SQLite State Route Governance Landing (T2+T4+T5)；next route: governance landing → T3/T17 → T6；Gateway live 整合尚未開始（NOT STARTED）；R2 與 R3 維持 USER DECISION PENDING；B-98 / B-30 / B-33 / F-05 維持開啟狀態於既定前置邊界。
+  - E-03 Runtime 執行層架構推進（IN PROGRESS）：Wave 2G = MACRO PASS / ACCEPTED；SQLite Governance Landing 初審候選 90dc71c 經審查為 Machine PASS / Macro HOLD（BOUNDED REPAIR REQUIRED，CURRENT E-03）；F1 為 ADR-0023 決策識別碼語意偏離；現執行 R2/R3 決策路徑微修；R2 = reply-result uncertainty handling（USER DECISION PENDING）；R3 = local API form（USER DECISION PENDING）；accepted checkpoint 保持 b15d5bf；next route: governance landing repair → T3/T17 → T6；Gateway live 整合尚未開始（NOT STARTED）；B-98 / B-30 / B-33 / F-05 維持開啟狀態於既定前置邊界。
   - C-06 維持待使用者裁決（USER_DECISION_NONBLOCKING，遠端 ruleset 與 required checks 現況已確認）。
   - B-28 / B-29 上游 trigger 重新評估完成，無 B-01 blocker，維持 DEFERRED_BY_USER / POST_B01。
   - B-54 保持待辦（POST_B01 / NONBLOCKING，SOP_12 機器專屬路徑 concrete example 已登錄）。
@@ -3684,3 +3684,19 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
       - accepted checkpoint = `b15d5bf`。
       - 後續排程：T3/T17（.nvmrc / CI Node version pin / 自動測試探索）→ T6（SQLite repository 實作）→ T7（交易邊界）→ T8（幂等進線）→ T9（淘汰 JSON 模組）。
       - Gateway live 整合尚未開始（NOT STARTED）；R2 與 R3 維持 USER DECISION PENDING；B-98 維持 pending。
+
+86. **E-03 SQLite State Governance Initial Macro Review & R2/R3 Decision-Routing Bounded Repair**（2026-09-17）
+    - **前一施工候選審查結論**：前一施工候選 `90dc71ce88e90e3c0bc48e385206f2c0528682c7`（E-03 Land SQLite State Governance）經 External Macro Reviewer（GPT 代理審查官（使用者授權））全面審查。A1 qualification 採 A1 = EQUIVALENT（GitHub API + Executor clone cross-check）成立；exact-SHA Actions Verify Run `35182239616` completed/success（20 checks PASS，321 unit PASS，13 webapp PASS，5 Gates PASS）。
+    - **外部審查裁決與材料瑕疵**：`MACRO AUDIT = HOLD`，`ACCEPT STATUS = BOUNDED REPAIR REQUIRED`，`FINDING_DISPOSITION = CURRENT E-03`；Findings：F1 為 R2 / R3 USER-DECISION SEMANTICS MISROUTED IN ADR-0023：`docs/adr/0023-channel-gateway-state-store-sqlite.md` 第 7 節誤將 R2 寫為本地 IPC 協定選型、將 R3 寫為單一實例與連線授權，偏離使用者權威裁決定義；checkpoint 保持 `b15d5bf`，維持 E-03 進行中並執行微修。
+    - **決策路徑保真度微修邊界（Decision-Routing Fidelity Repair）**：
+      - 修正 `docs/adr/0023-channel-gateway-state-store-sqlite.md` 第 7 節：
+        - **R2（回覆結果不明時的處理 / Reply Result Uncertainty Handling）**：確立其用途為在 future outbound/outbox Wave 之前由使用者裁決；原研究文件之文字/檔案重送建議僅為參考指引，不得提升為已接受決策；維持 `USER DECISION PENDING`。
+        - **R3（本機 API 形式 / Local API Form）**：候選架構明確為 Windows 具名管道（Named Pipe）vs Loopback API（搭配本機 Token、Host 白名單與拒絕 Origin 標頭）；重申 V7 項目同名二次監聽引發 EADDRINUSE 僅為局部參考證據，ACL 安全檢查與遠端連線行為在 Windows 實機為 `NOT_TESTABLE`，不足以核准具名管道；維持 `USER DECISION PENDING`。
+      - 保持所有已確立之 SQLite 治理不變（D27 唯一狀態權威、D28 Windows spike GO、D29 Wave 2H 取消、D30 分層治理、JSON 模組過渡凍結、T3 版本釘選前置、PRAGMA WAL/FULL/foreign_keys 啟動 read-back 驗證、交易邊界、冪等進線、前向綱要遷移、備份禁 raw copy、路徑守衛禁 OneDrive/UNC）。
+      - 未修改根目錄 `AGENTS.md` 或 `runtime/channel-gateway/AGENTS.md`，未修改歷史 `ADR-0022` 本文，零生產代碼修改。
+    - **當前生命週期狀態**：
+      - 本批為 E-03 治理微修候選，工作區嚴格限於 R2/R3 決策路徑保真度修復與狀態同步。
+      - E-03 進行中（IN PROGRESS）。
+      - accepted checkpoint 保持 `b15d5bf`。
+      - Gateway live 整合尚未開始（NOT STARTED）；R2 與 R3 維持 USER DECISION PENDING；B-98 維持 pending。
+      - 本修復候選等待 External Macro Reviewer 獨立審核，不得 self-audit。
