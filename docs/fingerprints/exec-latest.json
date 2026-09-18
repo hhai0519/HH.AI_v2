@@ -1,5 +1,5 @@
 {
-  "base_head": "079f2ed",
+  "base_head": "e60fedb",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -533,16 +533,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 181,
-      "sha256": "0b8ba4a099b522496ef5635a21eba7704c5643059be3f4de0f6109a0b107ce10"
+      "lines": 182,
+      "sha256": "62d8b0b2a9345378f62df699d71dc264733add8eddaf56c7ccf590bc35dadb35"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 143,
-      "sha256": "c1498b88b4fe53b4fa695f5845f758a482c63496f57ae44360b110117ab507d9"
+      "lines": 144,
+      "sha256": "2ab66398a7f1e60ffa1803e722c371604a19f86b405f6717655f43c35d521352"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -583,7 +583,7 @@
         "## 封存區"
       ],
       "lines": 318,
-      "sha256": "8676cec89726b1a9f3037a1e990b2ef253cbdf43f93490cb806edaf1fc690fcc"
+      "sha256": "92e944975b2a3e91307154c55fa041f64375bba75c1bbff55e3c2e6d3a60ebcf"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -954,6 +954,25 @@
       "lines": 496,
       "sha256": "732fc7274ce4d06658aabf1c4b5e1cd97b517f44bf007a85326c240a40a3f173"
     },
+    "docs/adr/0026-gateway-secret-provider-windows-credential-manager.md": {
+      "fences": 0,
+      "headings": [
+        "# ADR-0026: Gateway 機密提供者與 Windows 認證管理員架構契約 (Gateway Secret Provider & Windows Credential Manager)",
+        "## Context",
+        "## Decision",
+        "### 1. 提供者型態與持久化層級 (Credential Type & Persistence)",
+        "### 2. 確定性非機敏 TargetName 命名空間 (Deterministic Target Namespace)",
+        "### 3. 精確查找與零列舉原則 (Exact Lookup & Zero Enumeration)",
+        "### 4. 固定具名 Windows 使用者身分契約 (Fixed Named Windows-User Identity Contract)",
+        "### 5. 行程與記憶體安全邊界 (IPC, Process & Memory Safety Boundary)",
+        "### 6. 自動化測試與 CI 合成規範 (Synthetic Testing & CI Contract)",
+        "## Alternatives Considered",
+        "## Consequences",
+        "## Relationship to Existing Architecture"
+      ],
+      "lines": 103,
+      "sha256": "a27f8b858eac62e00984d56678642c6fc618224ed8e253fc7ca7254b335aa522"
+    },
     "docs/mcp-environment-guide.md": {
       "fences": 0,
       "headings": [
@@ -1020,8 +1039,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 4354,
-      "sha256": "d1fedf7e04864fe5a8fda5dcef88730d738d810904219380472d0f02c4b7191a"
+      "lines": 4391,
+      "sha256": "aa7428ac98b48a229761268fd4fd6513504d01025b177a014cdad8a15809f757"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1346,7 +1365,7 @@
       "sha256": "35bf7dbfa3c7d291b550c3c97a6ae398a22b1dc3624c1d2fc1e4db6963d6e115"
     }
   },
-  "generated_at": "2026-09-18T09:45:57Z",
+  "generated_at": "2026-09-18T10:43:35Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

@@ -75,10 +75,20 @@ T6 階段正式採用 `busy_timeout = 5000`（5000ms），其基礎為 T1 Window
 
 - 訊息保留期過期清理必須與 ADR-0022 D22 之對話歸檔完成契約（Archive Completion Contract）協調，嚴禁在確認歸檔成功前先行刪除資料庫狀態。
 
-## 11. 機敏資訊防護 (Secrets Protection)
+## 11. 機敏資訊防護與機密提供者契約 (Secrets Protection & SecretProvider Contract)
 
 - SQLite 資料庫嚴禁儲存 Telegram Token、LINE Secret、GitHub Credential 或任何明文密碼與私鑰。
-- 帳號非機敏後設資料與金鑰儲存必須嚴格遵循 ADR-0022 D26 及未來外部憑證契約。
+- 帳號非機敏後設資料與金鑰儲存必須嚴格遵循 ADR-0022 D26、ADR-0026 及外部憑證契約。
+- **SecretProvider 擁有權**：SecretProvider 為 Gateway 獨佔擁有之執行期基礎設施（Gateway-owned），禁止洩漏給 Agent。
+- **v1 具體提供者**：v1 唯一核准具體提供者為 **Windows Credential Manager（`CRED_TYPE_GENERIC`）**。
+- **精確 TargetName 查找**：僅允許精確正規化 TargetName 查找（`HH.AI_v2/channel-gateway/v1/...`），嚴禁列舉（no enumeration）憑證庫。
+- **零備援提供者與零回退**：嚴禁環境變數回退（no env fallback）、嚴禁 Local Config 明文機密、嚴禁 AccountRegistry 機密值、嚴禁 DPAPI 檔案回退；憑證缺失一律 Fail-Closed。
+- **零第三方依賴**：不引入 npm 機密管理套件或原生 Node 模組，由 Windows 內建 API 與受管橋接執行。
+- **固定具名 Windows 使用者身分不變式**：生產 Gateway 與憑證配置必須運行於同一固定具名 Windows 使用者身分（fixed named Windows-user context），嚴禁以 S4U 或 LocalSystem/NetworkService 無使用者環境執行真實金鑰。
+- **執行期專用 Buffer 暴露**：SecretProvider 輸出嚴格為二進位 `Buffer`，僅限執行期內部消費，禁止序列化為 JSON，禁止轉為字串印出。
+- **消費者最佳努力歸零**：取用機密之 Consumer 在使用完畢後，應以最佳努力原則立即執行 `buf.fill(0)` 抹除，不宣稱完美記憶體抹除保證。
+- **測試純合成性**：自動化測試一律使用動態合成金鑰，測試完成立即清理刪除；嚴禁在 CI 或測試中使用真實生產機密。
+- **真實金鑰配置邊界**：真實 Telegram/LINE/HMAC 憑證配置為管理員於 Agent 對話外部之手動操作，嚴禁將真實金鑰作為 CLI 參數、環境變數或提示詞文字傳入 Agent。
 
 ## 12. 檔案系統歸檔例外 (Filesystem Exception)
 

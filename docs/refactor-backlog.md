@@ -2825,7 +2825,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 5.1 上一批狀態
 
-上次核對通過的 HEAD：cdd9d7c5eeca5185e47e7365d42a3a3dc0a61eb1
+上次核對通過的 HEAD：e60fedb6fbaade0ec725d28fc83f1e47cfb13943
 
 - `23af193`（執行者前置檢查 ＋ 回滾程序 ＋ `AUDIT-LOG.md` ＋ 四缺口修正）
   已於 2026-09-02 由審計官核對通過：6 檔異動（含 2 個新檔）、零夾帶、
@@ -3080,14 +3080,13 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - R3 僅綁定 127.0.0.1 之 Loopback HTTP v1 與 HMAC-SHA-256 雙向認證架構確立（USER DECIDED / ADR-0025 LANDED / NOT IMPLEMENTED；Windows 具名管道正式延後未獲選）。
 - TG-MVP-04 F1 回覆授權身份鍵修復：已完成（ACCEPTED / CLOSED，修正 validateReplyAuthorization SQL 複合鍵查詢與金絲雀測試，accepted checkpoint = 18867eb5af7c4b90df8946c22977350bf7ec5086）。
 - TG-MVP-05 游標推進防衛與事件身分分離修復：已完成（ACCEPTED / CLOSED，commit `cdd9d7c5eeca5185e47e7365d42a3a3dc0a61eb1`，Actions Run 35311601796 success，External Macro PASS / ACCEPT ALL；TG-MVP-05-F1 已徹底解決 RESOLVED；accepted checkpoint 推進至 `cdd9d7c5eeca5185e47e7365d42a3a3dc0a61eb1`）。
-- TG-MVP-06 B-98 機密輸出強化與提交守衛：進行中（IN PROGRESS / MACRO HOLD；079f candidate Actions Run 35327963222 machine/CI success，F1-A 與 F1-B RESOLVED，External Macro HOLD，TG-MVP-06-F2 CURRENT，exit-code evidence drift correction in progress；實作 binding rule SECRET-1..8、safe presence helper、Git index staged scanner、tracked pre-commit hook、CHECK 21 機密防護守衛，verify_all 保持 5 Gates，repair candidate pending External Macro re-audit）。
-  - TG-MVP-06-F1-A：已解決（RESOLVED）。
-  - TG-MVP-06-F1-B：已解決（RESOLVED）。
-  - TG-MVP-06-F2：CURRENT（Secret Presence Exit-Code Evidence Drift repair candidate in progress）。
-  - B-98：進行中（IN PROGRESS）。
-  - B-101 / TG-MVP-06A：待辦（PENDING / NOT AUTHORIZED，選定具體 Gateway secret provider 與執行期機密取用邊界，TG-MVP-06 刻意不實作）。
-  - TG-MVP-07 與後續切片：不得開始（NOT AUTHORIZED / NOT STARTED）。
-  - E-03：進行中（IN PROGRESS，accepted checkpoint = cdd9d7c5eeca5185e47e7365d42a3a3dc0a61eb1）。
+- TG-MVP-06 B-98 機密輸出強化與提交守衛：已完成（ACCEPTED / CLOSED，commit `e60fedb6fbaade0ec725d28fc83f1e47cfb13943`，Actions Run 35331712071 success，External Macro PASS / ACCEPT ALL；TG-MVP-06-F1-A、TG-MVP-06-F1-B、TG-MVP-06-F2 全數徹底解決 RESOLVED；new material finding = NONE；accepted checkpoint 推進至 `e60fedb6fbaade0ec725d28fc83f1e47cfb13943`；B-98 正式關閉 CLOSED）。
+- TG-MVP-06A / B-101 Gateway 機密提供者與執行期機密取用邊界：進行中（IN PROGRESS / PENDING EXTERNAL MACRO AUDIT；External Macro architecture decision 選定 Windows Credential Manager Generic Credential CRED_TYPE_GENERIC, CRED_PERSIST_LOCAL_MACHINE 作為 v1 Gateway concrete Secret Provider；實作 secret-provider.js、windows-credential-manager-provider.js、PowerShell CredReadW bridge windows-credential-manager-read.ps1、ADR-0026；exact canonical target lookup；零列舉；零 env fallback；零 Local Config secret；零 AccountRegistry secretRef 突變；zero npm dependency；fixed named Windows-user identity invariant；runtime-only Buffer 曝光與 best-effort consumer zeroization；synthetic-only Windows integration tests；零真實憑證讀寫存取；candidate 待外部宏觀審計，不得 self-audit）。
+  - B-98：已完成（CLOSED）。
+  - B-101：進行中（IN PROGRESS / PENDING EXTERNAL MACRO AUDIT）。
+  - TG-MVP-06A：進行中（IN PROGRESS / PENDING EXTERNAL MACRO AUDIT）。
+  - TG-MVP-07 與後續切片：尚未開始（NOT AUTHORIZED / NOT STARTED）。
+  - E-03：進行中（IN PROGRESS，accepted checkpoint = e60fedb6fbaade0ec725d28fc83f1e47cfb13943）。
   - B-28 / B-29 上游 trigger 重新評估完成，無 B-01 blocker，維持 DEFERRED_BY_USER / POST_B01。
   - B-54 保持待辦（POST_B01 / NONBLOCKING，SOP_12 機器專屬路徑 concrete example 已登錄）。
   - B-75 保持待辦、零實作 (POST_B01 / NONBLOCKING / NOT IMPLEMENTED)。
@@ -4352,3 +4351,41 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - 通過基準保持：accepted checkpoint 保持為 `cdd9d7c5eeca5185e47e7365d42a3a3dc0a61eb1`，不得推進至 079f2ed 或本 repair candidate。
   - 本批為純文件與審計事實更正，零執行期程式碼修改（zero security runtime modification）、零測試修改、零規則修改。
   - 本 repair candidate 提交後仍處於 PENDING EXTERNAL MACRO RE-AUDIT，TG-MVP-06 尚未結案，TG-MVP-06A 尚未授權。
+
+112. **TG-MVP-06A Gateway 機密提供者與執行期機密取用邊界實作候選（Gateway Secret Provider & Runtime Secret Consumption Boundary Candidate）**（2026-09-18）
+- **外部宏觀審計 PASS 與狀態同步（External Macro PASS & State Sync）**：
+  - 目標候選：`e60fedb6fbaade0ec725d28fc83f1e47cfb13943`。
+  - 父提交：`079f2ed1d8e6649acf33e67fc7542c1b7e59c425`。
+  - 審查範圍：`cdd9d7c5eeca5185e47e7365d42a3a3dc0a61eb1..e60fedb6fbaade0ec725d28fc83f1e47cfb13943`（共 4 commits）。
+  - 審查人員：GPT 代理審查官（使用者授權）。
+  - A1 資格查證：採 A1 = EQUIVALENT（GitHub API + Executor clone cross-check）成立。
+  - 遠端機器證據：GitHub Actions Run `35331712071`（completed / success，jobs: verify = success, gateway-windows = success）。
+  - 技術與文件發現裁決：TG-MVP-06-F1-A = RESOLVED，TG-MVP-06-F1-B = RESOLVED，TG-MVP-06-F2 = RESOLVED，new material finding = NONE。
+  - 審查結論：MACHINE / CI = PASS；MACRO AUDIT = PASS；ACCEPT STATUS = ACCEPT ALL；TG-MVP-06 = ACCEPTED；B-98 = CLOSED。
+  - 通過基準推進：accepted checkpoint 正式推進至 `e60fedb6fbaade0ec725d28fc83f1e47cfb13943`。
+- **B-101 / TG-MVP-06A 具體機密提供者決策與落地實作（Concrete Provider Implementation）**：
+  - 複用 42 項唯讀探索證據，依 External Macro architecture decision 選定 Windows Credential Manager Generic Credential（`CRED_TYPE_GENERIC`，`CRED_PERSIST_LOCAL_MACHINE`）作為 v1 Gateway concrete Secret Provider。
+  - `CRED_PERSIST_LOCAL_MACHINE` 語意澄清：持久化跨同一本機使用者登入會話（persistence across logon sessions for the same Windows user on the same machine），絕非授權跨使用者存取，亦非全機共用。
+  - Windows 身分不變量（Fixed Named-User Identity Invariant）：真實機密 Channel Gateway 必須在固定具名 Windows 使用者安全身分下執行；佈建憑證之帳號必須與執行 Gateway 之帳號完全一致；禁止 LocalSystem、LocalService、NetworkService、S4U 執行真實機密 Gateway；不將架構硬綁定於特定使用者名稱；不讀取或記錄 username / SID / real credential。
+  - 確定性非機密目標命名空間（Deterministic Canonical Targets）：
+    - 命名空間固定前綴：`HH.AI_v2/channel-gateway/v1`
+    - Telegram Bot Token: `HH.AI_v2/channel-gateway/v1/telegram/<encoded-account-id>/bot-token`
+    - LINE Access Token: `HH.AI_v2/channel-gateway/v1/line/<encoded-account-id>/channel-access-token`
+    - LINE Channel Secret: `HH.AI_v2/channel-gateway/v1/line/<encoded-account-id>/channel-secret`
+    - Local API HMAC: `HH.AI_v2/channel-gateway/v1/local-api/hmac`
+    - Account ID 採用 RFC 3986 / URI 編碼，徹底杜絕分隔符注入（separator injection / traversal）；TargetName 屬於非機密公開中繼資料。
+  - Provider-Neutral 核心合約（`runtime/channel-gateway/core/secret-provider.js`）：
+    - 純 JS 領域模型，零 OS API 調用、零檔案系統調用、零環境變數機密查找、零憑證枚舉、零第三方依賴。
+    - 擁有 SecretRef 結構、確定性目標生成、參數防衛（拒絕控制字元、NUL、跨層路徑、非支援通道或用途）、穩定錯誤型態（`SecretProviderError`）。
+  - Windows 具體提供者（`runtime/channel-gateway/core/windows-credential-manager-provider.js`）：
+    - 僅支援 win32，非 win32 立即 fail-closed 拋出 `UNSUPPORTED_PLATFORM`；僅接受 canonical SecretRef；僅以內部確定性推導之 TargetName 進行 exact lookup；絕不枚舉憑證庫；無任何 fallback chain。
+    - 以 Node child-process 引數陣列調用 PowerShell bridge，強制 `shell: false`、`windowsHide: true`、私有 stdio pipe，絕不外顯至 Agent terminal。
+    - 嚴格建構最小化非機密環境變數（SystemRoot, PATHEXT, COMSPEC, windir 等），絕不轉發機敏或非必要父進程環境變數。
+    - 錯誤訊息深度脫敏：拋出之 Error message 絕不拼接 raw stdout/stderr/exception message，僅保留穩定語意代碼與安全原因描述。
+    - 記憶體合約：回傳純 `Buffer`，提供者內部不保留快取；規範消費者遵循 best-effort `buffer.fill(0)` 歸零合約，不偽稱完美歸零。
+  - Win32 API 橋接腳本（`runtime/channel-gateway/bin/windows-credential-manager-read.ps1`）：
+    - 透過 P/Invoke 調用 `advapi32.dll` 之 `CredReadW` 與 `CredFree` 原生 Win32 API。
+    - 僅查詢單一 exact TargetName，`Type = 1 (CRED_TYPE_GENERIC)`；成功時透過標準輸出管道直接輸出二進位位元組流（BinaryWriter stdout stream）；零除錯資訊輸出；失敗時退出非零（2: NOT_FOUND, 3: ACCESS_DENIED, 1: ERROR），不向 stderr 回顯憑證內容或目標名稱。
+  - 零相依合約（Zero Dependency Invariant）：`package.json` 與 `package-lock.json` 保持 ZERO DIFF，零 npm 或原生 ffi/keytar 套件引入。
+  - 合成 Windows 整合測試：`runtime/channel-gateway/tests/windows-credential-manager-provider.test.js` 在 Windows 環境動態生成隨機 GUID 之合成 Generic 憑證寫入 Win32 CredMan，透過實際 Provider 讀取驗證 Buffer 相符且不列印機密，finally 區塊確保自動刪除清理並 zeroize 測試 Buffer；非 Windows 環境自動依規範通過。
+  - 邊界確認：零真實機密讀取、零真實機密寫入、零真實機密輸出；本候選提交後標記為 PENDING EXTERNAL MACRO AUDIT，執行者不得自審。

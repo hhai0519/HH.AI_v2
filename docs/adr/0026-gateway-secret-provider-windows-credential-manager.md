@@ -1,0 +1,103 @@
+# ADR-0026: Gateway 機密提供者與 Windows 認證管理員架構契約 (Gateway Secret Provider & Windows Credential Manager)
+
+- Status: Accepted Architecture Decision / Implementation Candidate Pending External Macro Audit
+- Date: 2026-09-18
+- Decision Owner: External Macro Auditor & 使用者 HH
+
+## Context
+
+在 Channel Gateway 架構（ADR-0022）、本機外部設定檔規範（D24）、非機敏帳號登錄模型（D26）、入站事件身分規範（ADR-0024）與出站可靠度及本機迴路 Local API 安全規範（ADR-0025）確立後，Channel Gateway 進入具備真實金鑰連線能力（Telegram Bot Token、LINE Channel Access Token、LINE Channel Secret、Local API HMAC Secret）之關鍵前置階段（B-101 / TG-MVP-06A）：
+
+1. **零金鑰入庫與非明文設定約束**：ADR-0016、ADR-0022 D26 與 `.agents/rules/secret-output-safety.md` 嚴格禁止將真實 Token 或機密明文寫入版本庫，亦嚴格禁止以純文字形式存放於版本庫外之本機設定檔（Local Config）。
+2. **AccountRegistry 領域模型純粹性**：`runtime/channel-gateway/core/account-registry.js` 為純非機敏領域模型，強制拒絕 `token`、`secret`、`password` 等機敏欄位。為支援多帳號熱切換（Hot Switching，D26），執行期必須能在不重啟 Gateway 進程的前提下，為當下活躍帳號取得對應之憑證。
+3. **Local API HMAC 金鑰安全邊界**：ADR-0025 §15 確立 Agent 呼叫 Local API 時必須透過本機包裝程式（Client Wrapper CLI）在記憶體中讀取金鑰並計算簽章，Agent 僅傳入與檢視無機敏之業務參數。Gateway 與包裝程式均需具備統一且安全的機密取得機制。
+4. **現行機密提供者缺口**：在 TG-MVP-06 discovery 中已確認 Gateway SecretProvider 為 `ABSENT`，具體提供者為 `UNDECIDED`；且 `docs/mcp-environment-guide.md` 之 Windows User 環境變數指引不治理 Channel Gateway。因此必須在任何真實金鑰消費者實作前，正式選定並落地具體之作業系統級機密提供者架構。
+
+---
+
+## Decision
+
+專案正式採行 **Windows Credential Manager（Windows 認證管理員）** 之 **`CRED_TYPE_GENERIC`** 作為 Channel Gateway v1 之具體機密提供者，並確立以下核心架構契約：
+
+### 1. 提供者型態與持久化層級 (Credential Type & Persistence)
+
+- **憑證型態**：採用 Windows 認證管理員泛型憑證（`CRED_TYPE_GENERIC = 1`）。
+- **持久化層級**：採用本機持久化（`CRED_PERSIST_LOCAL_MACHINE = 2`）。
+- **語意範疇**：`CRED_PERSIST_LOCAL_MACHINE` 代表同一台實體電腦上同一具名 Windows 使用者在跨次登入（logon sessions）與重開機間之持久化保存；**絕不授權跨使用者（cross-user）機密存取**，亦不啟用企業漫遊憑證（`CRED_PERSIST_ENTERPRISE`）。
+
+### 2. 確定性非機敏 TargetName 命名空間 (Deterministic Target Namespace)
+
+憑證 TargetName 採確定性路徑生成，不依賴 `AccountRegistry` 存放可變之 secretRef 欄位，杜絕目錄遍歷與分隔符注入：
+
+- **根命名空間前綴**：`HH.AI_v2/channel-gateway/v1`
+- **Telegram 帳號 Bot Token**：
+  `HH.AI_v2/channel-gateway/v1/telegram/<encoded-account-id>/bot-token`
+- **LINE 帳號 Channel Access Token**：
+  `HH.AI_v2/channel-gateway/v1/line/<encoded-account-id>/channel-access-token`
+- **LINE 帳號 Channel Secret**：
+  `HH.AI_v2/channel-gateway/v1/line/<encoded-account-id>/channel-secret`
+- **Local API 全域 HMAC Secret**：
+  `HH.AI_v2/channel-gateway/v1/local-api/hmac`
+- **編碼防護**：`account_id` 強制經過百分比編碼（`encodeURIComponent`）且嚴格拒絕 ASCII 控制字元與 NUL 字元，防止路徑分隔符注入（`../`、`/`、`\\`）混淆目標。TargetName 本身為完全非機敏之後設資料。
+
+### 3. 精確查找與零列舉原則 (Exact Lookup & Zero Enumeration)
+
+- **精確查找**：SecretProvider 僅支援透過上述確定性 TargetName 進行單一精確查詢（`CredReadW`）。
+- **嚴禁枚舉**：嚴格禁止呼叫 `CredEnumerate`、`cmdkey /list` 或列出 Windows 認證管理員內之任何憑證清單。
+- **無備援與無回退原則 (No Fallback Provider)**：
+  - 專案不實施「若認證管理員找不到則改查環境變數／.env／檔案」之回退鏈。
+  - 凡遇憑證缺失、權限不足或系統錯誤，一律 **Fail-Closed** 中止並拋出穩定之 `SecretProviderError`。
+
+### 4. 固定具名 Windows 使用者身分契約 (Fixed Named Windows-User Identity Contract)
+
+- **固定身分**：Channel Gateway 執行真實金鑰時，必須運行於固定具名 Windows 使用者安全身分（Fixed Named Windows-User context）下；配置憑證的使用者與運行 Gateway 之行程身分必須完全相同。
+- **禁止環境**：嚴禁以 `LocalSystem`、`LocalService`、`NetworkService` 或 `S4U`（Service-for-User）無使用者環境執行真實金鑰 Gateway，因認證管理員與 DPAPI 金鑰綁定於具體使用者設定檔。
+- **託管相容性**：Gateway 生命週期維持 ADR-0022 D4 由作業系統託管（Windows Startup、工作排程器或使用者身分服務），但設定必須綁定具名使用者。架構不硬編碼特定使用者名稱或 SID。
+
+### 5. 行程與記憶體安全邊界 (IPC, Process & Memory Safety Boundary)
+
+- **非 Shell 原生引數執行**：Node.js 與 PowerShell 橋接（`windows-credential-manager-read.ps1`）透過 `child_process.spawnSync` 陣列傳遞，強制 `shell: false`，杜絕任何 shell 命令字串插值注入。
+- **純管道 stdout 傳輸**：機密二進位資料僅透過管道 stdout 由 PowerShell 直傳 Node 記憶體；標準輸出禁止輸出任何說明文字或版權標語（使用 `-NoLogo`）。
+- **環境變數淨化**：子行程環境僅傳入啟動 PowerShell 必需之非機敏系統變數（`SystemRoot`、`PATH`、`TEMP` 等），嚴禁將 Gateway 記憶體中任何憑證或環境變數向下傳遞。
+- **執行期二進位 Buffer 暴露**：SecretProvider 回傳型態嚴格為 `Buffer`，禁止轉為字串或 JSON 序列化。
+- **消費者最佳努力歸零**：取用機密之 Consumer 擁有 Buffer 生命週期，於使用完畢後應以最佳努力原則（Best-effort）呼叫 `buf.fill(0)` 抹除，不宣稱不可能之完美垃圾回收抹除保證。
+- **零提供者內部快取**：SecretProvider v1 內部不維護持久快取，各消費者依架構授權管理生命週期。
+
+### 6. 自動化測試與 CI 合成規範 (Synthetic Testing & CI Contract)
+
+- **零真實金鑰測試**：本地與 CI 自動化測試絕對不讀取、不建立、不依賴真實生產金鑰。
+- **動態合成整合測試**：Windows 平台整合測試一律於執行時動態產生隨機 GUID 之合成泛型憑證，讀取驗證後於 `finally` 區塊立即執行 `CredDeleteW` 清理並驗證刪除後 Fail-Closed。
+- **非 Windows 平台相容**：非 Windows 環境（如 Linux CI）下，Provider 驗證 `UNSUPPORTED_PLATFORM` 拒絕路徑，保證零未註冊測試跳過（Zero Unregistered Skips）。
+
+---
+
+## Alternatives Considered
+
+1. **Windows User 層級環境變數（Windows User Environment Variables）**：
+   - *優點*：Node 原生 `process.env` 即可讀取，無須外部行程。
+   - *否決理由*：環境變數在 Windows 登錄檔（`HKCU\Environment`）中以純文字儲存；子行程易意外繼承；且專案規則 `.agents/rules/secret-output-safety.md` 對環境變數枚舉採取高度警戒防護，容易誘發資訊洩漏事故。故不選為 v1 核心機密儲存。
+2. **DPAPI 外部加密檔案（DPAPI-Protected Repo-External File）**：
+   - *優點*：靜態加密保護，綁定目前 Windows 使用者金鑰。
+   - *否決理由*：Node.js 標準庫缺乏原生 DPAPI 綁定；且需自訂二進位/JSON 檔案封裝格式、備份與檔案鎖處理。相較之下，Windows 認證管理員為作業系統標準憑證庫，語意更精確。DPAPI 列為未來未選取之架構替代方案，**不作為 v1 回退提供者**。
+3. **第三方 Keyring / Native C++ Node Addon（如 `keytar`、`ffi-napi`）**：
+   - *優點*：跨平台抽象程式庫。
+   - *否決理由*：引入原生編譯相依性（`node-gyp`、Visual Studio Build Tools、Python 構建鏈），極易破壞輕量化部署與 CI 可重現性；違反 ADR-0022 D15 極小依賴原則。
+
+---
+
+## Consequences
+
+- **金鑰安全規格升級**：專案所有通訊金鑰全面脫離純文字檔案與環境變數，由 Windows 認證管理員保護。
+- **多帳號熱切換就緒**：依據確定性 TargetName 規則，Gateway 切換帳號時可即時解析新活躍帳號金鑰，滿足 ADR-0022 D26.4 零重啟要求。
+- **金鑰輪換零代碼修改**：更換 Bot Token 或 Channel Secret 時，僅需更新認證管理員對應 TargetName，版本庫程式碼與設定檔零異動。
+- **身分與平台約束明確**：明確約束生產部署必須為固定具名 Windows 使用者環境，杜絕在 S4U 或 LocalSystem 下因認證管理員缺失而引發的靜默失敗。
+- **零依賴閉包維持**：`runtime/channel-gateway/package.json` 維持零第三方依賴，由 Windows 原生系統能力達成安全閉環。
+
+---
+
+## Relationship to Existing Architecture
+
+- **與 ADR-0016（機密洩漏防線）之關係**：落實 ADR-0016 關於金鑰不入庫、不在工作目錄留存明文之規範。
+- **與 ADR-0022（Channel Gateway 架構）之關係**：實現 D26 帳號金鑰外部非明文儲存與熱切換要求；保持 D15 零額外依賴。
+- **與 ADR-0025（Local API 安全）之關係**：為 §15 Client Wrapper 與 Loopback HTTP 伺服器提供共用之 HMAC 金鑰安全取得基底。
+- **與 E-03 路線圖之關係**：閉合 B-101，解除 `TG-MVP-10`、`TG-MVP-11`、`TG-CUT-04` 之機密提供者前置依賴。
