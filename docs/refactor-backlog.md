@@ -3081,10 +3081,10 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 - TG-MVP-04 F1 回覆授權身份鍵修復：已完成（ACCEPTED / CLOSED，修正 validateReplyAuthorization SQL 複合鍵查詢與金絲雀測試，accepted checkpoint = 18867eb5af7c4b90df8946c22977350bf7ec5086）。
 - TG-MVP-05 游標推進防衛與事件身分分離修復：已完成（ACCEPTED / CLOSED，commit `cdd9d7c5eeca5185e47e7365d42a3a3dc0a61eb1`，Actions Run 35311601796 success，External Macro PASS / ACCEPT ALL；TG-MVP-05-F1 已徹底解決 RESOLVED；accepted checkpoint 推進至 `cdd9d7c5eeca5185e47e7365d42a3a3dc0a61eb1`）。
 - TG-MVP-06 B-98 機密輸出強化與提交守衛：已完成（ACCEPTED / CLOSED，commit `e60fedb6fbaade0ec725d28fc83f1e47cfb13943`，Actions Run 35331712071 success，External Macro PASS / ACCEPT ALL；TG-MVP-06-F1-A、TG-MVP-06-F1-B、TG-MVP-06-F2 全數徹底解決 RESOLVED；new material finding = NONE；accepted checkpoint 推進至 `e60fedb6fbaade0ec725d28fc83f1e47cfb13943`；B-98 正式關閉 CLOSED）。
-- TG-MVP-06A / B-101 Gateway 機密提供者與執行期機密取用邊界：進行中（IN PROGRESS / MACRO HOLD；候選 e435b3a 經 Actions Run 35354810194 success，External Macro HOLD，TG-MVP-06A-F1-A/C/H1 = RESOLVED，TG-MVP-06A-F2-A/B = RESOLVED，新發現 TG-MVP-06A-F3 = CURRENT；F3 畸形 UTF-16 帳號識別碼領域缺口 repair active；accepted checkpoint 保持 e60fedb6fbaade0ec725d28fc83f1e47cfb13943；repair candidate 待外部宏觀審計，不得 self-audit）。
+- TG-MVP-06A / B-101 Gateway 機密提供者與執行期機密取用邊界：進行中（IN PROGRESS / MACRO HOLD；候選 764fc99 經 Actions Run 35357085721 success，External Macro HOLD，TG-MVP-06A-F1 = RESOLVED，TG-MVP-06A-F2 = RESOLVED，TG-MVP-06A-F3 = RESOLVED，新發現 TG-MVP-06A-F4 = CURRENT；F4 依賴證據來源與回報真實性更正 state-closure active；accepted checkpoint 保持 e60fedb6fbaade0ec725d28fc83f1e47cfb13943；repair candidate 待外部宏觀審計，不得 self-audit）。
   - B-98：已完成（CLOSED）。
   - B-101：進行中（IN PROGRESS）。
-  - TG-MVP-06A：進行中（IN PROGRESS / MACRO HOLD，TG-MVP-06A-F1 = RESOLVED，TG-MVP-06A-F2 = RESOLVED，TG-MVP-06A-F3 = CURRENT）。
+  - TG-MVP-06A：進行中（IN PROGRESS / MACRO HOLD，TG-MVP-06A-F1 = RESOLVED，TG-MVP-06A-F2 = RESOLVED，TG-MVP-06A-F3 = RESOLVED，TG-MVP-06A-F4 = CURRENT）。
   - TG-MVP-07 與後續切片：尚未開始（NOT AUTHORIZED / NOT STARTED）。
   - E-03：進行中（IN PROGRESS，accepted checkpoint = e60fedb6fbaade0ec725d28fc83f1e47cfb13943）。
   - B-28 / B-29 上游 trigger 重新評估完成，無 B-01 blocker，維持 DEFERRED_BY_USER / POST_B01。
@@ -4484,3 +4484,36 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
     - F1/F2 逾時 30000ms、PowerShell blob 清除、指標防雙重 free、SecretRef 凍結、無枚舉、無 fallback、F2 ASCII 控制字元拒絕、路徑符號百分比編碼等全數維持綠燈。
     - 零真實機密讀寫存取、零真實憑證枚舉、零新 npm 依賴。
   - 本 repair candidate 提交後標記為 PENDING EXTERNAL MACRO RE-AUDIT，執行者不得 self-audit 宣稱 PASS 或結案。
+
+116. **TG-MVP-06A-F4 依賴證據來源真相更正與流程規範留痕（Dependency Evidence Provenance Correction Candidate）**（2026-09-18）
+- **歷史證據來源確定性真相更正宣告（Evidence Provenance Correction & Supersede Declaration）**：
+  - 前一歷史項目 Item 115 與 EXEC-LOG e435 紀錄將 F3 依賴處置描述為「毋需新依賴探索，直接複用既有 12-query F2 dependency universe」，特此正式宣告：若該表述被理解為「直接以未更動之歷史證據產出進行重放（unchanged-evidence replay）」，該敘述與實際執行過程不符。
+  - 客觀機器與執行事實僅為：
+    1. 執行者複用了 F2 既有之 12 組查詢語意（same 12-query query set）。
+    2. 由於既有 scratch 證據 base_oid 為舊提交無法直接通過 replay check，執行者在嘗試手動更改 base_oid 未果後，實際上針對當前基準 `e435b3a5819fade64abcb61fa95dbb7e9a740d6f` 重新執行了 fresh discovery 掃描。
+    3. 執行者對新產出之掃描結果賦予了 dispositions，並覆寫了 scratch 證據檔案。
+    4. 最終 `impact_scan.py check` 是基於當前基準之 fresh evidence 與既有 allowed scope 順利通過驗證。
+    5. 技術上，最終之依賴閉包完全 VALID，但在 repo-visible 紀錄中宣稱「毋需新依賴探索」造成了回報真實性漂移（Reporting Truth Drift）。
+  - 留痕約束：歷史 Item 115 作為 append-only 留痕保留不改寫，但其「毋需新依賴探索」之宣稱由本項目明確正式 supersede。
+  - 流程規範教訓（Process Lesson）：
+    - 嚴禁透過手動修改 `base_oid` metadata 試圖使陳舊的依賴證據看起來像當前產物（Never make a stale evidence artifact appear current merely by editing base_oid metadata）。
+    - 若需執行 fresh discovery，必須建立具備新任務名稱之全新 provenance artifact 檔案（write a new provenance artifact under a new task-specific filename）。
+    - 凡涉及證據來源保存（provenance preservation），嚴禁覆寫前一輪之依賴證據檔案。
+    - 本流程教訓將於後續 TG-MVP-01B 治理落地時考慮納入正式規範。
+- **外部宏觀審計 HOLD 與重大發現同步（External Macro HOLD & Material Finding Sync）**：
+  - 目標候選：`764fc99775a74797530d0a56608b0b77e8e48124`。
+  - 父提交：`e435b3a5819fade64abcb61fa95dbb7e9a740d6f`。
+  - 審查範圍：`e60fedb6fbaade0ec725d28fc83f1e47cfb13943..764fc99775a74797530d0a56608b0b77e8e48124`（共 5 commits）。
+  - 審查人員：GPT 代理審查官（使用者授權）。
+  - 遠端機器證據：Run 35357085721（status = completed, conclusion = success, jobs: verify = success, gateway-windows = success）。
+  - 審查結論：MACHINE / FINAL CI = PASS；MACRO AUDIT = HOLD；ACCEPT STATUS = ONE STATE-ONLY EVIDENCE CORRECTION REQUIRED；TG-MVP-06A = NOT ACCEPTED YET；B-101 = IN PROGRESS；TG-MVP-07 = NOT AUTHORIZED；FINDING_DISPOSITION = CURRENT E-03。
+  - 技術發現裁決：F1 = RESOLVED，F2 = RESOLVED，F3 = RESOLVED。
+  - 新重大發現 TG-MVP-06A-F4（Dependency Evidence Provenance / Reporting Truth Drift）：
+    - F3 實際執行重新跑了 fresh current-base discovery，技術依賴閉包有效，但 repo-visible 紀錄誤稱無新依賴探索，且覆寫了前輪 scratch 證據。
+    - 判定為純狀態/證據來源瑕疵，不涉及任何 runtime、測試、規則或 ADR 變更。
+  - 通過基準保持：accepted checkpoint 保持為 `e60fedb6fbaade0ec725d28fc83f1e47cfb13943`；B-101 = IN PROGRESS；TG-MVP-07 = NOT AUTHORIZED。
+- **TG-MVP-06A-F4 純狀態收斂實作（Pure State Closure Implementation）**：
+  - 依賴模式：依 `.claude/rules/auditor-protocol.md` §6.1-22 宣告 `DEPENDENCY MODE: NONE`（非依賴敏感之純狀態/證據收斂批次，零 runtime、測試、規則、ADR 或介面變更）。
+  - 零程式碼變更：runtime/**、tests/**、rules/**、docs/adr/** 維持 ZERO DIFF。
+  - 零真實機密讀寫存取、零真實憑證枚舉、零新 npm 依賴。
+  - 本 correction candidate 提交後標記為 PENDING EXTERNAL MACRO RE-AUDIT，執行者不得 self-audit 宣稱 PASS 或結案。
