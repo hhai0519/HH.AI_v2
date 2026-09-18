@@ -1601,7 +1601,7 @@ def check_16_exec_log_cadence(root_dir=None, git_count=None):
         lag = git_count
     else:
         try:
-            res = subprocess.run(["git", "rev-list", "--count", f"{latest_hash}..HEAD"], cwd=root_dir, capture_output=True, text=True)
+            res = subprocess.run(["git", "rev-list", "--no-merges", "--count", f"{latest_hash}..HEAD"], cwd=root_dir, capture_output=True, text=True)
             if res.returncode == 0:
                 lag = int(res.stdout.strip())
             else:

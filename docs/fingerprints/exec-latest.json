@@ -1,5 +1,5 @@
 {
-  "base_head": "fe9b507",
+  "base_head": "007a158",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -202,8 +202,8 @@
     ".github/workflows/verify.yml": {
       "fences": 0,
       "headings": [],
-      "lines": 63,
-      "sha256": "dd9a145a59d3a6a7110c514c09ca7d97349a1bc13a8bdc4e43784ab58f98db71"
+      "lines": 66,
+      "sha256": "f23346744abb404fbda65310fae5147cc5c511f723c5504da21b0b61e486aca2"
     },
     "AGENTS.md": {
       "fences": 10,
@@ -1072,7 +1072,7 @@
         "# 修復批次完成後必須清空；清單中的 tag 若已修復卻未移除，CHECK 18 會 FAIL。"
       ],
       "lines": 2353,
-      "sha256": "fb9db9a004b9883307637f513b5c722744e2222921955cb2d7d835bf269a8e6c"
+      "sha256": "7970a521b19e0a82464248eab0cc155aef41c696dfef8fed292719bb98a6ee16"
     },
     "scripts/fingerprint.py": {
       "fences": 0,
@@ -1372,7 +1372,7 @@
       "sha256": "35bf7dbfa3c7d291b550c3c97a6ae398a22b1dc3624c1d2fc1e4db6963d6e115"
     }
   },
-  "generated_at": "2026-09-18T17:05:49Z",
+  "generated_at": "2026-09-18T17:27:19Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {
