@@ -1008,3 +1008,161 @@ test('SqliteChannelTransactions - 22. takeover and expiry preserve already-disca
     harness.cleanup();
   }
 });
+
+// 23. Reply authorization multi-account collision canary and wrong-account isolation (CANARY 25, 26)
+test('SqliteChannelTransactions - 23. reply authorization disambiguates multi-account collision and isolates wrong account (CANARY 25, 26)', () => {
+  const harness = createTempHarness();
+  try {
+    const repo = new SqliteStateRepository(harness.stateRoot);
+    try {
+      repo.takeoverChannel('line:group:collision', 'holder_shared');
+
+      // Seed two distinct rows with same channel_id and same platform_msg_id under different accounts (valid schema v3)
+      seedInboxMessage(
+        repo.databasePath,
+        'line:group:collision',
+        'shared_platform_msg_99',
+        'acc_alpha',
+        'claimed',
+        {
+          claimedBy: 'holder_shared',
+          claimedAtToken: 1,
+        }
+      );
+      seedInboxMessage(
+        repo.databasePath,
+        'line:group:collision',
+        'shared_platform_msg_99',
+        'acc_beta',
+        'claimed',
+        {
+          claimedBy: 'holder_shared',
+          claimedAtToken: 1,
+        }
+      );
+
+      // 1. Caller for acc_alpha selects exact acc_alpha row
+      const resAlpha = repo.validateReplyAuthorization(
+        'line:group:collision',
+        'holder_shared',
+        1,
+        'shared_platform_msg_99',
+        'acc_alpha'
+      );
+      assert.strictEqual(resAlpha.authorized, true);
+      assert.strictEqual(resAlpha.messageId, 'shared_platform_msg_99');
+      assert.strictEqual(resAlpha.channelId, 'line:group:collision');
+      assert.strictEqual(resAlpha.receivingAccountId, 'acc_alpha');
+      assert.strictEqual(resAlpha.replyingAccountId, 'acc_alpha');
+
+      // 2. Caller for acc_beta selects exact acc_beta row without collision interference
+      const resBeta = repo.validateReplyAuthorization(
+        'line:group:collision',
+        'holder_shared',
+        1,
+        'shared_platform_msg_99',
+        'acc_beta'
+      );
+      assert.strictEqual(resBeta.authorized, true);
+      assert.strictEqual(resBeta.messageId, 'shared_platform_msg_99');
+      assert.strictEqual(resBeta.channelId, 'line:group:collision');
+      assert.strictEqual(resBeta.receivingAccountId, 'acc_beta');
+      assert.strictEqual(resBeta.replyingAccountId, 'acc_beta');
+
+      // 3. Caller for acc_gamma (wrong account): primary exact miss, secondary channel probe hits -> ACCOUNT_MISMATCH
+      const resGamma = repo.validateReplyAuthorization(
+        'line:group:collision',
+        'holder_shared',
+        1,
+        'shared_platform_msg_99',
+        'acc_gamma'
+      );
+      assert.strictEqual(resGamma.authorized, false);
+      assert.strictEqual(resGamma.reason, 'ACCOUNT_MISMATCH');
+      // Cross-account isolation: does NOT expose state or claim metadata of other accounts
+      assert.strictEqual(resGamma.status, undefined);
+      assert.strictEqual(resGamma.claimedBy, undefined);
+      assert.strictEqual(resGamma.claimedAtToken, undefined);
+
+      // 4. Zero-mutation verification: verify both rows remain intact and unaltered in SQLite
+      const rawDb = new DatabaseSync(repo.databasePath, { readOnly: true });
+      try {
+        const rows = rawDb.prepare(
+          "SELECT account_id, platform_msg_id, status, claimed_by, claimed_at_token FROM inbox WHERE channel_id = 'line:group:collision' AND platform_msg_id = 'shared_platform_msg_99' ORDER BY sequence ASC;"
+        ).all();
+        assert.strictEqual(rows.length, 2);
+        assert.strictEqual(rows[0].account_id, 'acc_alpha');
+        assert.strictEqual(rows[0].status, 'claimed');
+        assert.strictEqual(rows[0].claimed_by, 'holder_shared');
+        assert.strictEqual(rows[0].claimed_at_token, 1);
+        assert.strictEqual(rows[1].account_id, 'acc_beta');
+        assert.strictEqual(rows[1].status, 'claimed');
+        assert.strictEqual(rows[1].claimed_by, 'holder_shared');
+        assert.strictEqual(rows[1].claimed_at_token, 1);
+      } finally {
+        rawDb.close();
+      }
+    } finally {
+      repo.close();
+    }
+  } finally {
+    harness.cleanup();
+  }
+});
+
+// 24. Reply authorization channel boundary canary: cross-channel message cannot be authorized or probe-mismatched
+test('SqliteChannelTransactions - 24. reply authorization enforces strict channel boundary and rejects cross-channel message with MESSAGE_NOT_FOUND', () => {
+  const harness = createTempHarness();
+  try {
+    const repo = new SqliteStateRepository(harness.stateRoot);
+    try {
+      // Establish two separate channels
+      repo.takeoverChannel('line:channel:primary', 'holder_1');
+      repo.takeoverChannel('line:channel:secondary', 'holder_2');
+
+      // Seed message into primary channel only
+      seedInboxMessage(
+        repo.databasePath,
+        'line:channel:primary',
+        'msg_primary_only',
+        'acc_primary',
+        'claimed',
+        {
+          claimedBy: 'holder_1',
+          claimedAtToken: 1,
+        }
+      );
+
+      // Attempt authorization on secondary channel for message that only exists in primary channel
+      const res = repo.validateReplyAuthorization(
+        'line:channel:secondary',
+        'holder_2',
+        1,
+        'msg_primary_only',
+        'acc_primary'
+      );
+      // Strict channel boundary: must return MESSAGE_NOT_FOUND, never ACCOUNT_MISMATCH, never cross-channel auth
+      assert.strictEqual(res.authorized, false);
+      assert.strictEqual(res.reason, 'MESSAGE_NOT_FOUND');
+
+      // Verify zero mutation on primary message
+      const rawDb = new DatabaseSync(repo.databasePath, { readOnly: true });
+      try {
+        const row = rawDb.prepare(
+          "SELECT channel_id, account_id, status, claimed_by, claimed_at_token FROM inbox WHERE platform_msg_id = 'msg_primary_only';"
+        ).get();
+        assert.strictEqual(row.channel_id, 'line:channel:primary');
+        assert.strictEqual(row.account_id, 'acc_primary');
+        assert.strictEqual(row.status, 'claimed');
+        assert.strictEqual(row.claimed_by, 'holder_1');
+        assert.strictEqual(row.claimed_at_token, 1);
+      } finally {
+        rawDb.close();
+      }
+    } finally {
+      repo.close();
+    }
+  } finally {
+    harness.cleanup();
+  }
+});

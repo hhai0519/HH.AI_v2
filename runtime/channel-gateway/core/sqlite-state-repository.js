@@ -1810,17 +1810,17 @@ class SqliteStateRepository {
   }
 
   /**
-   * Strictly READ-ONLY validation of reply authorization.
+   * Strictly READ-ONLY validation of reply authorization (ADR-0023, ADR-0024 F1).
    *
-   * Invariants (D8, D26, R2):
+   * Invariants (D8, D26, R2, F1):
    * - ZERO side effects: does NOT update inbox, does NOT mark replied, does NOT create outbox.
    * - Validates:
    *     1. channel current_holder === holderId (NOT_CURRENT_HOLDER)
    *     2. fencing_token === fencingToken (STALE_FENCING_TOKEN)
-   *     3. message exists in channel (MESSAGE_NOT_FOUND)
-   *     4. message status === 'claimed' (MESSAGE_NOT_CLAIMED)
-   *     5. message claimed_by === holderId and claimed_at_token === fencingToken (CLAIM_MISMATCH)
-   *     6. receiving_account_id === replyingAccountId (ACCOUNT_MISMATCH)
+   *     3. canonical message identity (account_id, platform_msg_id) exists in channel (MESSAGE_NOT_FOUND)
+   *     4. cross-account collision existence probe in same channel (ACCOUNT_MISMATCH)
+   *     5. message status === 'claimed' (MESSAGE_NOT_CLAIMED)
+   *     6. message claimed_by === holderId and claimed_at_token === fencingToken (CLAIM_MISMATCH)
    * - If all pass, returns { authorized: true, messageId, channelId, receivingAccountId, replyingAccountId }.
    * - Message status remains 'claimed' in SQLite store.
    *
@@ -1866,11 +1866,19 @@ class SqliteStateRepository {
     }
 
     const selectMsg = this.#db.prepare(
-      'SELECT sequence, channel_id, platform_msg_id, account_id, status, claimed_by, claimed_at_token FROM inbox WHERE channel_id = ? AND platform_msg_id = ?;'
+      'SELECT sequence, channel_id, platform_msg_id, account_id, status, claimed_by, claimed_at_token FROM inbox WHERE account_id = ? AND platform_msg_id = ? AND channel_id = ?;'
     );
-    const msgRow = selectMsg.get(cId, mId);
+    const msgRow = selectMsg.get(rAcc, mId, cId);
 
     if (!msgRow) {
+      // Secondary probe in same channel to distinguish cross-account mismatch from message not found
+      const probeMsg = this.#db.prepare(
+        'SELECT 1 FROM inbox WHERE channel_id = ? AND platform_msg_id = ? LIMIT 1;'
+      );
+      const probeRow = probeMsg.get(cId, mId);
+      if (probeRow) {
+        return { authorized: false, reason: 'ACCOUNT_MISMATCH' };
+      }
       return { authorized: false, reason: 'MESSAGE_NOT_FOUND' };
     }
 
@@ -1880,10 +1888,6 @@ class SqliteStateRepository {
 
     if (msgRow.claimed_by !== hId || msgRow.claimed_at_token !== fToken) {
       return { authorized: false, reason: 'CLAIM_MISMATCH' };
-    }
-
-    if (msgRow.account_id !== rAcc) {
-      return { authorized: false, reason: 'ACCOUNT_MISMATCH' };
     }
 
     return {

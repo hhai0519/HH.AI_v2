@@ -2825,7 +2825,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 5.1 上一批狀態
 
-上次核對通過的 HEAD：93a316f93dadf6e5a1199dc7da0542016742112c
+上次核對通過的 HEAD：4db5d498fa035e14c8628540ce269627aa038ea1
 
 - `23af193`（執行者前置檢查 ＋ 回滾程序 ＋ `AUDIT-LOG.md` ＋ 四缺口修正）
   已於 2026-09-02 由審計官核對通過：6 檔異動（含 2 個新檔）、零夾帶、
@@ -3073,13 +3073,12 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - C-06 使用者已裁決採 Option B（USER DECIDED OPTION B / G2 LANDING PENDING，排定於 TG-MVP-01B / G2 落地）。
 - RECON-01 / TG-MVP-01A 歷史待辦需求機械對帳：已完成（ACCEPTED / CLOSED）。
 - TG-MVP-02 入站事件身份識別與游標語意 ADR：已完成（ACCEPTED / CLOSED，產出 docs/adr/0024-inbound-identity-cursor-semantics.md，accepted checkpoint = 93a316f93dadf6e5a1199dc7da0542016742112c）。
-- TG-MVP-03 出站可靠度與本機 API 安全架構 ADR：進行中（IN PROGRESS / MACRO HOLD / F1 REPAIR IN PROGRESS，產出 docs/adr/0025-outbound-reliability-loopback-api-security.md）。
-  - 當前重大發現：TG-MVP-03-F1（CURRENT，握手會話開機矛盾與正規封框未完全定義修復中）。
+- TG-MVP-03 出站可靠度與本機 API 安全架構 ADR：已完成（ACCEPTED / CLOSED，產出 docs/adr/0025-outbound-reliability-loopback-api-security.md，accepted checkpoint = 4db5d498fa035e14c8628540ce269627aa038ea1）。
+  - 重大發現處置：TG-MVP-03-F1 已完全解決（RESOLVED，握手會話開機解耦，位元組層級 LF 正規封框與 raw body hash 完整定義，經 External Macro re-audit 通過）。
   - R2 出站能力感知安全重試與持久化 SQLite Outbox 架構確立（USER DECIDED / ADR-0025 LANDED / NOT IMPLEMENTED）。
   - R2-3 不確定狀態處理採選項 B（USER DECIDED OPTION B / ADR-0025 LANDED）。
   - R3 僅綁定 127.0.0.1 之 Loopback HTTP v1 與 HMAC-SHA-256 雙向認證架構確立（USER DECIDED / ADR-0025 LANDED / NOT IMPLEMENTED；Windows 具名管道正式延後未獲選）。
-  - TG-MVP-03 結案仍待 F1 架構修復與 External Macro PASS。
-  - 下一切片（TG-MVP-04）尚未授權／待辦（NOT AUTHORIZED / NOT STARTED）。
+- TG-MVP-04 F1 回覆授權身份鍵修復：進行中（IN PROGRESS / PENDING EXTERNAL MACRO AUDIT，修正 validateReplyAuthorization SQL 複合鍵查詢與金絲雀測試）。
   - B-28 / B-29 上游 trigger 重新評估完成，無 B-01 blocker，維持 DEFERRED_BY_USER / POST_B01。
   - B-54 保持待辦（POST_B01 / NONBLOCKING，SOP_12 機器專屬路徑 concrete example 已登錄）。
   - B-98 / B-75 保持待辦、零實作 (POST_B01 / NONBLOCKING / NOT IMPLEMENTED)。
@@ -4179,3 +4178,27 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - TG-MVP-03 進行中（IN PROGRESS / MACRO HOLD / F1 REPAIR IN PROGRESS）。
   - TG-MVP-04 維持待辦／未授權（NOT AUTHORIZED / NOT STARTED）。
   - 本修復候選提交後標記為 PENDING EXTERNAL MACRO RE-AUDIT，執行者不得 self-audit。
+106. **TG-MVP-03 外部宏觀審計 PASS 結論同步與 TG-MVP-04 F1 回覆授權身份鍵修復候選（TG-MVP-04 Runtime Repair Candidate）**（2026-09-18）
+- **外部宏觀審計 PASS 裁決同步（External Macro PASS Verdict Sync）**：
+  - 目標候選：`4db5d498fa035e14c8628540ce269627aa038ea1`（TG-MVP-03-F1 握手開機矛盾與正規封框修復候選）。
+  - 審查人員：GPT 代理審查官（使用者授權）。
+  - A1 資格查證：採 A1 = EQUIVALENT（GitHub API + Executor clone cross-check）成立。
+  - 審查範圍：`93a316f93dadf6e5a1199dc7da0542016742112c..4db5d498fa035e14c8628540ce269627aa038ea1`（共 2 commits：d598a27 初審 Macro HOLD / TG-MVP-03-F1，4db5d49 F1 有界架構修復完成）。
+  - 遠端機器事實：GitHub Actions Run `35306399675`（completed / success，verify = success, gateway-windows = success）。
+  - 外部審計結論：MACHINE / CI = PASS；MACRO AUDIT = PASS；Accept status = ACCEPT ALL；TG-MVP-03-F1 = RESOLVED；new material finding = NONE；TG-MVP-03 = ACCEPTED。
+  - 通過基準推進：accepted checkpoint 正式推進至 `4db5d498fa035e14c8628540ce269627aa038ea1`，TG-MVP-03 正式結案（CLOSED），授權啟動 TG-MVP-04。
+- **TG-MVP-04 F1 回覆授權身份鍵修復實作（Runtime Correctness Repair）**：
+  - 核心身份查找修正：修正 `validateReplyAuthorization()` 之訊息查詢，將單純 `channel_id + platform_msg_id` 查找改為同時包含 `account_id`、`platform_msg_id` 與 `channel_id`（`WHERE account_id = ? AND platform_msg_id = ? AND channel_id = ?`），對齊 schema v3 `UNIQUE(account_id, platform_msg_id)` 邏輯訊息唯一約束。
+  - 次級存在性探測保護 ACCOUNT_MISMATCH 語意：當主要精確查詢未命中時，於同一請求通道內執行唯讀布林存在性探測（`SELECT 1 FROM inbox WHERE channel_id = ? AND platform_msg_id = ? LIMIT 1`），若存在其他帳號之同名訊息則回傳 `ACCOUNT_MISMATCH`，嚴格隔絕其他帳號之訊息狀態、領取者與 token 等中繼資料（cross-account information boundary）；若同一通道不存在該訊息則回傳 `MESSAGE_NOT_FOUND`。
+  - 通道邊界嚴格限制：跨通道訊息絕不被探測判定為 ACCOUNT_MISMATCH，一律回傳 `MESSAGE_NOT_FOUND`，維護租約與通道權限邊界。
+  - 方法介面與不變量維持：保留方法簽章與參數順序；維持既有輸入驗證器；嚴格為純唯讀操作（零資料庫突變、零交易突變）；保留成功回傳結構。
+  - 單元測試套件擴充：新增 Test 23（CANARY 25, 26）多帳號相同 message id 碰撞解耦金絲雀與錯誤帳號資訊隔絕測試；新增 Test 24 通道邊界隔離金絲雀；全庫 292 項 Gateway 測試全數通過（289 pass, 3 allowed skips, 0 unregistered skips）。
+- **架構邊界與生命週期不變量**：
+  - 綱要凍結：`SQLITE_STATE_SCHEMA_VERSION = 3` 維持不變，零資料庫遷移，零資料表結構異動。
+  - 零既有 ADR 語意修改。
+  - 零 Outbox 與 Local API 實作（留待 TG-MVP-11 與 TG-MVP-12）。
+  - C-07 與 C-08 維持待使用者裁決（UNDECIDED）。
+  - TG-MVP-03 已完成（ACCEPTED / CLOSED）。
+  - TG-MVP-04 進行中（IN PROGRESS / PENDING EXTERNAL MACRO AUDIT）。
+  - 看板頂部下一切片（NEXT_SLICE）：TG-MVP-05（Cursor / event identity runtime repair）。
+  - 本候選提交後標記為 PENDING EXTERNAL MACRO AUDIT，執行者不得 self-audit。
