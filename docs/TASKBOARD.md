@@ -16,7 +16,7 @@
 
 **NEXT_SLICE**：TG-MVP-04（F1 Reply Authorization Identity Repair）
 
-**最後更新**：2026-09-18，ACTIVE_MACRO_AUDITOR = GPT 代理審查官（使用者授權）；TG-MVP-02 已獲 External Macro PASS / ACCEPTED；TG-MVP-03 架構切片進行中；E-03 詳細生命週期權威見下方 E-03 Roadmap。
+**最後更新**：2026-09-18，ACTIVE_MACRO_AUDITOR = GPT 代理審查官（使用者授權）；TG-MVP-03 External Macro HOLD；bounded HMAC protocol repair active；TG-MVP-04 尚未授權；詳細 lifecycle 仍以 E-03 Roadmap 為準。
 
 ---
 
@@ -240,7 +240,7 @@ A 節目前狀態以本表各列與 `NEXT_WORK` 之 current repo truth 為準；
 | TG-MVP-01A | 已完成 | **RECON-01 歷史待辦需求機械對帳與治理收斂**（RECON-01 Historical Pending Requirement Reconciliation）：對帳歷史待辦事項（A–S）、過期架構標記（STALE-1..3）、孤兒需求（ORPHAN-1..4）至權威落點；同步 G1 審核通過裁決與 checkpoint；建立 M-TG-POST-MVP 與橫向殘留傘狀任務；零生產程式碼修改。 | RECON-01 規格書、使用者授權 | TG-MVP-01 | commit 1f98818af8ed38df2b3401685deee159e11a2080，Actions Run 35295573430 success，External Macro PASS / ACCEPT ALL（accepted checkpoint = 1f98818af8ed38df2b3401685deee159e11a2080） |
 | TG-MVP-01B | 待辦 | **G2 權威規則落地**（G2 Authority Landing）：落實使用者已裁決之治理與架構規則，包含 D-U2 個人工作資料邊界、D-U6 風險分級審查規範、D-U7 MISSION Telegram 上線完成定義、C-06 Option B 預防性 GitHub required check gate。本批僅建立 landing point，零規則/workflow/MISSION 異動。 | 使用者裁決 D-U2、D-U6、D-U7、C-06 Option B | TG-MVP-01A (RECON-01) | G2 治理文件與規則落地驗證 |
 | TG-MVP-02 | 已完成 | **入站事件身份識別與游標語意 ADR**（Inbound Identity & Cursor Semantics ADR）：確立 Telegram 與 LINE 之 `platform_msg_id`、`cursor_value`、編輯/收回（edit/unsend）策略與游標比較器規範，確立 C3 權威定義。 | C3 / C1 / C2 設計缺口、ADR-0023 | TG-MVP-01A (RECON-01) | commit 93a316f93dadf6e5a1199dc7da0542016742112c，Actions Run 35304018843 success，External Macro PASS / ACCEPT ALL（accepted checkpoint = 93a316f93dadf6e5a1199dc7da0542016742112c） |
-| TG-MVP-03 | 進行中 | **R2/R3 架構決策 ADR 落地**（R2/R3 Architecture ADR）：記錄 R2（Capability-Aware Retry + Durable Outbox）與 R3（Loopback HTTP v1 127.0.0.1 HMAC；Named Pipe 延後；R2-3 Option B IDE 查看）決策。注意：僅 ADR 落地，不含程式碼實作。 | 使用者正式裁決 R2、R3、R2-3、ADR-0022 | TG-MVP-01 (G1) | docs/adr/0025-outbound-reliability-loopback-api-security.md 建立，等待 External Macro Audit PASS |
+| TG-MVP-03 | 進行中 | **R2/R3 架構決策 ADR 落地**（R2/R3 Architecture ADR）：記錄 R2（Capability-Aware Retry + Durable Outbox）與 R3（Loopback HTTP v1 127.0.0.1 HMAC；Named Pipe 延後；R2-3 Option B IDE 查看）決策。注意：僅 ADR 落地，不含程式碼實作。 | 使用者正式裁決 R2、R3、R2-3、ADR-0022 | TG-MVP-01 (G1) | External Macro HOLD (TG-MVP-03-F1)，HMAC 握手與正規封框修復進行中，等待 External Macro Audit PASS |
 | TG-MVP-04 | 待辦 | **F1 回覆授權身份鍵修復**（F1 Reply Authorization Identity Repair）：修正 `validateReplyAuthorization()` SQL 查詢，將單純 `channel_id + platform_msg_id` 查找改為納入 `account_id`，對齊 schema v3 `UNIQUE(account_id, platform_msg_id)` 複合鍵，避免合法回覆被誤判 ACCOUNT_MISMATCH。 | F1 Material Finding、schema v3 inbox 定義 | TG-MVP-02 (Identity ADR) | `sqlite-state-repository.js` 修正 + 測試案例驗證多帳號相同 message id 授權正確性 |
 | TG-MVP-05 | 待辦 | **游標與事件身份執行層修復**（Cursor / event identity runtime repair）：依據 C3 ADR 規範實作游標推進與事件比較邏輯，解決 C1（duplicate path 游標行為）與 C2（upsert 無條件覆寫）缺口。 | C1 / C2 / C3、TG-MVP-02 ADR | TG-MVP-02 (Identity ADR) | Generic repository 游標推進單元測試與交易驗證 |
 | TG-MVP-06 | 待辦 | **B-98 憑證與機密強化**（B-98 Secret/Credential Hardening）：在啟用真實 Telegram Bot Token 或 Local API HMAC secret 前，落實金鑰與機密存取安全邊界，防止 token 洩漏。 | 看板 B-98、安全防護原則 | TG-MVP-01 (G1) | 機密管理機制建立，通過安全檢查 |

@@ -197,65 +197,214 @@ Local API v1 必須機械防護以下威脅：
 
 ---
 
-### 16. 請求認證協定 (Request Authentication Protocol)
+### 16. Local API 協定版本與安全標頭編碼契約 (Protocol Version & Header Encoding Contract)
 
-Local API 採 HMAC-SHA-256 認證協定：
+Local API 正式定義協定版本與標頭格式：
 
-1. **標頭傳遞**：所有認證參數僅透過 HTTP 標頭（Headers）傳遞，嚴禁透過 Query String、Cookie 或 Body 傳遞憑證。
-2. **簽章綁定欄位**：請求簽章必須確定性綁定以下欄位：
-   - 協定版本（如 `HHAI-HMAC-SHA256`）
-   - 大寫 HTTP 方法（`METHOD`）
-   - 精確路徑（`PATH`）
-   - 時間戳記（`X-HHAI-Timestamp`，整數秒）
-   - 單次隨機數（`X-HHAI-Nonce`）
-   - 請求內文雜湊（`SHA-256(Body)`，十六進位字串）
-   - 會話識別碼（`X-HHAI-Session-Id`）
-3. **禁止 Query String**：機敏端點一律不使用 Query String，避免記錄或洩漏。
-
----
-
-### 17. 時間戳記新鮮度與重放防護 (Freshness & Nonce Cache)
-
-1. **新鮮度視窗**：伺服器檢驗請求時間戳記，超出固定安全視窗（如 ±30 秒，由 TG-MVP-11 鎖定為常數）者立即拒絕。
-2. **Nonce 唯一性**：在有效時間視窗與會話內，伺服器維護已使用 Nonce 快取；重複 Nonce 立即拒絕。
-
----
-
-### 18. 認證握手與同連線會話綁定 (Authenticated Hello & Same TCP Connection)
-
-為防禦通訊埠劫持與未授權探測，協定要求連線層與應用層雙重綁定：
-
-1. **握手流程**：
-   - 客戶端與 `127.0.0.1:<port>` 建立 TCP 連線；
-   - 客戶端發送簽名之握手請求至 `/v1/hello`；
-   - Gateway 驗證金鑰後，產生隨機會話識別碼（Session Challenge），回傳已簽章之握手回應；
-   - 客戶端驗證回應簽章確認 Gateway 身分。
-2. **同連線會話綁定**：後續所有機敏請求必須在 **同一條已驗證之 TCP 連線** 上執行，且簽章需綁定該會話識別碼。
-3. **斷線重置**：TCP 連線一旦中斷、重置或關閉，該會話立即失效。重新連線後必須重新發起握手認證。嚴禁將會話挑戰碼作為跨連線的通用權杖。
+1. **協定版本**：
+   - Local API 協定版本正式標記為 `HHAI-LOCAL-API-V1`。
+   - 所有已認證 HTTP 請求與回應必須攜帶標頭：`X-HHAI-Version: 1`。
+   - 收到任何其他版本或未攜帶版本標頭者，伺服器一律 Fail-Closed 拒絕。
+   - 簽章正規化網域前綴（Domain Separation Prefixes）固定為：
+     - 請求簽章：`HHAI-REQ-V1`
+     - 回應簽章：`HHAI-RESP-V1`
+     - 兩者絕對不可互換。
+2. **時間戳記（Timestamp）**：
+   - 標頭：`X-HHAI-Timestamp`。
+   - 格式：ASCII 十進位 Unix Epoch 整數秒（如 `1773835200`）。
+   - 嚴禁正負號（`+`、`-`）、空白字元、小數點或替代進位表示法。
+3. **單次隨機數（Nonce）**：
+   - 標頭：`X-HHAI-Nonce`。
+   - 格式：128 位元密碼學安全隨機數（CSPRNG），嚴格編碼為恰好 32 個小寫十六進位 ASCII 字元（`[0-9a-f]{32}`）。
+4. **會話識別碼（Session ID）**：
+   - 標頭：`X-HHAI-Session-Id`。
+   - 格式：於正式會話中，由 Gateway 產生的 128 位元密碼學隨機數，嚴格編碼為恰好 32 個小寫十六進位 ASCII 字元（`[0-9a-f]{32}`）。
+   - 權限邊界：會話識別碼本質非機密金鑰（Not a secret），其本身不能單獨授權任何請求；合法授權永遠僅來自有效的 HMAC-SHA-256 簽章以及與目前底層 TCP 連線之實體綁定。
+5. **簽章（Signature）**：
+   - 標頭：`X-HHAI-Signature`。
+   - 格式：以共用 Local API HMAC 金鑰計算之 HMAC-SHA-256 摘要，嚴格編碼為恰好 64 個小寫十六進位 ASCII 字元（`[0-9a-f]{64}`）。
+6. **內文雜湊（Body Hash）**：
+   - 格式：實體內文 bytes 之 SHA-256 摘要，嚴格編碼為恰好 64 個小寫十六進位 ASCII 字元（`[0-9a-f]{64}`）。
+7. **標頭唯一性與無重複保證**：
+   - 標頭 `X-HHAI-Version`、`X-HHAI-Timestamp`、`X-HHAI-Nonce`、`X-HHAI-Session-Id`、`X-HHAI-Signature` 在同一 HTTP 請求或回應中絕對不得重複出現。
+   - 標頭名稱依 HTTP 規範採大小寫不敏感（Case-insensitive）解析，但實作必須解析出唯一語意值；凡偵測到重複之安全性標頭，一律 Fail-Closed 拒絕請求。
 
 ---
 
-### 19. 回應雙向認證 (Response Authentication)
+### 17. 正規化位元組編碼與封框安全契約 (Canonical Byte Encoding & Framing Safety)
 
-所有 Local API 回應均由 Gateway 產生 HMAC-SHA-256 簽章標頭：
+所有 HMAC-SHA-256 簽章之輸入 bytes 必須依循以下確定性規範：
 
-- 簽章綁定：協定版本、HTTP 狀態碼、原始請求 Nonce、會話識別碼、回應時間戳記與回應內文 SHA-256 雜湊。
-- 客戶端包裝程式必須先驗證回應簽章，成功後始得將資料交付 Agent，杜絕偽冒伺服器之回應注入。
+1. **正規化字串組裝與編碼**：
+   - 先依據精確欄位順序組裝成正規化 ASCII/UTF-8 字串，再以 UTF-8 編碼轉換為二進位 bytes 作為 HMAC 運算之輸入資料。
+2. **欄位分隔字元（Field Separator）**：
+   - 欄位之間嚴格使用單一 LF 字元（`\n`，位元組 `0x0A`）進行分隔。
+   - 嚴禁使用 CRLF（`\r\n`）、CR（`0x0D`）或任何作業系統特定換行符號。
+   - **最後一個欄位之後嚴禁包含結尾 LF（No Terminal LF）**。
+3. **欄位值限制與無歧義性**：
+   - 所有詮釋資料欄位必須為單行純 ASCII 字串，嚴禁包含 LF（`0x0A`）、CR（`0x0D`）或 NUL（`0x00`）。
+   - 由於所有可變欄位均具備嚴格格式白名單或定長限制，單一 LF 封框不具任何分隔字元注入歧義。
+4. **HTTP 方法與路徑正規化**：
+   - `METHOD`：使用大寫且位於白名單之 HTTP 方法（如 `POST`、`GET`）。
+   - `PATH`：使用原樣路徑（origin-form，如 `/v1/hello`、`/v1/reply`），嚴禁帶有 scheme、authority、fragment 或 query string。
+   - 任何已認證端點之請求目標若包含問號字元（`?`），伺服器必須立即拒絕，嚴禁在去除 query 後再行驗證。
+5. **原始實體內文雜湊契約（Raw Entity-Body Hash Contract）**：
+   - 內文雜湊必須針對伺服器於 HTTP 封框解碼後、JSON 反序列化（parse）前實際接收到的精確實體位元組序列（exact entity-body bytes）計算 SHA-256。
+   - 客戶端在發送前，必須先建立單一外發 body Buffer，對該 Buffer 計算雜湊並發送該完全相同之 Buffer；嚴禁對一份 JSON 運算雜湊卻送出重新序列化的 bytes。
+   - 伺服器接收到原始 bytes 後，先驗證大小上限、計算 SHA-256 雜湊並驗證 HMAC 簽章，全數通過後始得進行業務 JSON 解析。
+   - 注意：此傳輸層實體內文雜湊僅保護當前 HTTP 請求內容之完整性，與 R2 業務去重之規範載荷雜湊（Canonical Payload Hash）為完全獨立機制，兩者不得混淆。
+6. **HTTP 內文封框安全（Framing Safety）**：
+   - 凡請求帶有 `Transfer-Encoding` 標頭者一律拒絕，嚴禁接受 chunked 傳輸內文（防範 HTTP Request Smuggling 攻擊）。
+   - 任何帶有內文之端點，請求標頭中必須恰好包含一個合法且相符之 `Content-Length`，長度不符或衝突者立即拒絕。
+   - 握手請求 `POST /v1/hello` 強制要求 `Content-Length: 0` 且內文為 0 位元組；其內文雜湊固定為空位元組序列之 SHA-256 摘要。
 
 ---
 
-### 20. 主機名稱、來源標頭與路徑白名單
+### 18. 握手請求正規格式與開機矛盾修復 (Canonical HELLO Request & Replay Domain)
+
+本節正式解決會話尚未建立時之握手開機矛盾（Bootstrap Contradiction）：
+
+1. **無會話識別碼原則（No Session ID in Hello）**：
+   - 握手請求 `POST /v1/hello` 發生於會話識別碼產生之前，因此 **HELLO 請求絕對不得攜帶 `X-HHAI-Session-Id` 標頭**。
+   - 凡發送至 `/v1/hello` 卻攜帶 `X-HHAI-Session-Id` 標頭之請求，伺服器一律直接拒絕。
+   - 握手請求仍必須透過共用 Local API HMAC 金鑰完成認證。
+2. **Canonical HELLO 請求精確欄位順序（7 項欄位）**：
+   ```text
+   HHAI-REQ-V1
+   HELLO
+   POST
+   /v1/hello
+   <TIMESTAMP>
+   <NONCE>
+   <BODY_SHA256>
+   ```
+   - 依序以單一 LF（`0x0A`）連接以上 7 項字串，尾部無換行。
+   - 絕對不存在虛構 session、空白占位符（placeholder）或全零識別碼。
+   - 簽章運算：`HMAC-SHA-256(secret, UTF8(canonical_hello_request))`。
+3. **HELLO 獨立重放快取網域（HELLO Replay Domain）**：
+   - 由於握手時尚無會話，HELLO Nonce 重放防護不可依賴會話內快取。
+   - 伺服器維護全域有界之 HELLO 重放快取，以 Nonce 為鍵，快取存活時間不短於時間戳記有效視窗。
+   - **快取防毒與驗證流水線**：伺服器依序執行：
+     1. 標頭語法與結構檢查；
+     2. `Host`、`Origin` 與路徑檢查；
+     3. 時間戳記語法與新鮮度驗證；
+     4. 內文封框與內文雜湊驗證；
+     5. HMAC 簽章驗證；
+     6. HELLO Nonce 重放檢驗；
+     7. 簽章與重放檢驗全數通過後，始在底層連線上建立新會話。
+   - 凡 HMAC 驗證失敗之請求，絕對不得寫入重放快取，防止惡意攻擊者透過無效簽章請求投毒佔用合法 Nonce。
+
+---
+
+### 19. 會話建立、同連線綁定與正規會話請求 (Session Creation & Canonical SESSION Request)
+
+1. **會話建立與 Socket 實體綁定**：
+   - 僅在通過合法 HELLO 驗證後，Gateway 始產生 128 位元隨機會話識別碼（32 個小寫十六進位字元）。
+   - 該會話授權狀態必須與伺服器端目前承載該連線之底層 Socket / TCP 連線物件嚴格綁定。
+   - 判定連線身分不得僅依賴客戶端 IP、客戶端 Port、Host 標頭或 Session ID 本身。
+   - 底層 TCP 連線一旦中斷（close）、重置（reset）、發生傳輸錯誤或重新建立連線，該會話立即失效。重新連線後必須重新執行握手認證。
+2. **會話請求攜帶要求**：
+   - 握手完成後的所有後續機敏業務請求，必須攜帶標頭：`X-HHAI-Session-Id`。
+   - 請求所帶之會話識別碼必須與目前 TCP 連線上已完成認證之會話完全一致；若在未認證連線使用、或嘗試跨 TCP 連線重用已存在之 Session ID，一律直接拒絕（Session ID 絕非可跨連線重用之 Bearer Token）。
+3. **Canonical SESSION 請求精確欄位順序（8 項欄位）**：
+   ```text
+   HHAI-REQ-V1
+   SESSION
+   <METHOD>
+   <PATH>
+   <TIMESTAMP>
+   <NONCE>
+   <SESSION_ID>
+   <BODY_SHA256>
+   ```
+   - 依序以單一 LF（`0x0A`）連接以上 8 項字串，尾部無換行。
+   - 簽章運算：`HMAC-SHA-256(secret, UTF8(canonical_session_request))`。
+4. **SESSION 重放快取網域（Session Replay Domain）**：
+   - 會話請求之 Nonce 命名空間嚴格局限於目前會話，正規重放鍵為 `(session_id, nonce)`。
+   - 同一會話內若出現重複 Nonce 立即拒絕；不同會話間允許獨立之 Nonce 空間。
+   - 會話關閉時，其會話專屬之 Nonce 狀態可隨會話一同銷毀，但在快取清理時不得允許存活會話在新鮮度視窗內重複接受舊 Nonce。
+
+---
+
+### 20. 回應雙向認證與正規回應格式 (Canonical Response Authentication)
+
+所有已認證之 Local API 回應（包含握手回應、會話回應及可安全形成認證之錯誤回應）均必須由 Gateway 產生 HMAC-SHA-256 簽章標頭：
+
+1. **Canonical RESPONSE 精確欄位順序（9 項欄位）**：
+   ```text
+   HHAI-RESP-V1
+   <MODE>
+   <STATUS_CODE>
+   <REQUEST_METHOD>
+   <REQUEST_PATH>
+   <REQUEST_NONCE>
+   <RESPONSE_TIMESTAMP>
+   <SESSION_ID>
+   <BODY_SHA256>
+   ```
+   - `MODE`：固定為 `HELLO` 或 `SESSION`。
+   - `STATUS_CODE`：十進位 ASCII HTTP 狀態碼（如 `200`、`400`）。
+   - `REQUEST_METHOD` / `REQUEST_PATH` / `REQUEST_NONCE`：對應原始請求經結構驗證後之規範值。
+   - `RESPONSE_TIMESTAMP`：伺服器產生回應時之獨立時間戳記（整數秒）。
+   - `SESSION_ID`：
+     - HELLO 成功回應：填入剛剛產生之新會話識別碼；
+     - SESSION 回應：填入當前連線之會話識別碼；
+     - 若為尚未建立會話前之早期失敗（Early Failure），因無會話識別碼存在，伺服器不得偽造會話，應回傳最小未認證錯誤並中斷連線，且客戶端絕不得將其視為有效之 Gateway 成功回應。
+   - `BODY_SHA256`：回應實體內文 bytes 之 SHA-256 摘要（小寫 64-hex）。
+   - 依序以單一 LF 連接以上 9 項字串，尾部無換行。
+   - 簽章運算：`HMAC-SHA-256(secret, UTF8(canonical_response))`，置於回應標頭 `X-HHAI-Signature`。
+2. **成功 HELLO 回應規格**：
+   - 回應標頭至少包含：`X-HHAI-Version: 1`、`X-HHAI-Timestamp`、`X-HHAI-Session-Id`、`X-HHAI-Signature`。
+   - 內文可為 0 位元組（`Content-Length: 0`）。
+   - 回應簽章已將剛產生的新 Session ID 納入 HMAC 覆蓋範圍；客戶端必須先驗證回應簽章成功後，始得接受該 Session ID 並將連線標記為已認證。
+   - 此機制確保即使惡意行程搶先佔用通訊埠並假造 Session ID，在沒有 shared HMAC secret 的情況下，客戶端亦能立即識別偽冒伺服器並中斷連線。
+3. **SESSION 業務回應驗證**：
+   - 客戶端包裝程式在將業務回應交付 Agent 前，必須先驗證協定版本、會話一致性、請求關聯（Nonce/Method/Path）、回應時間戳記新鮮度與回應 HMAC 簽章，全數合法後始得輸出結果。
+
+---
+
+### 21. 驗證流水線、錯誤處理與測試向量 (Pipeline, Errors & Test Vectors)
+
+1. **嚴格無副作用邊界（Side-Effect Boundary）**：
+   - 任何機敏業務操作，在以下所有安全性前置檢驗全數通過前，絕對不得產生任何業務副作用：
+     1. 方法與路徑白名單比對；
+     2. `Host` 標頭嚴格比對；
+     3. `Origin` 標頭絕對排除；
+     4. 傳輸封框（無 chunked、單一 Content-Length）；
+     5. 內文大小上限檢驗；
+     6. 安全標頭語法與無重複檢驗；
+     7. 協定版本相符性；
+     8. 時間戳記新鮮度；
+     9. 實體內文雜湊比對；
+     10. HMAC-SHA-256 簽章驗證；
+     11. Nonce 重放防護檢驗；
+     12. 會話與底層 TCP Socket 綁定驗證（SESSION 模式）。
+   - 只有在全部檢驗通過後，伺服器始得將內文 parse 為業務指令並交由業務模組處理。
+2. **錯誤處理與防洩漏邊界**：
+   - 未通過認證之失敗請求，對外僅回傳有界之通用錯誤訊息（如 HTTP 400 Bad Request 或 HTTP 401 Unauthorized）。
+   - 嚴禁向外回傳任何機密衍生資料、預期之 MAC 摘要、正規化簽章字串、重放快取狀態、會話內部結構或金鑰存在性資訊。
+   - 伺服器內部日誌僅記錄經過消毒（Sanitized）之診斷原因，嚴禁記錄金鑰或原始簽章素材。
+3. **明確簽章測試向量（Explicit Test Vectors）**：
+   - `TG-MVP-11` 在實作生產伺服器前，必須先建立確定性之單元測試向量，使用 **確定性虛構測試金鑰（FAKE TEST SECRET ONLY）** 鎖定以下位元組層級規格：
+     - HELLO 請求正規化字串位元組與預期 HMAC 摘要；
+     - SESSION 請求正規化字串位元組與預期 HMAC 摘要；
+     - HELLO 回應正規化字串位元組與預期 HMAC 摘要；
+     - SESSION 回應正規化字串位元組與預期 HMAC 摘要；
+     - 任何簽章欄位篡改（如改動方法、路徑、時間戳、Nonce 或內文）均導致驗證失敗；
+     - 以 CRLF 取代 LF 換行導致驗證失敗；
+     - 傳輸內文字元微調但 JSON 語意相同時，因原始 bytes 雜湊變更導致簽章驗證失敗；
+     - 相同 Session ID 於另一 TCP 連線發起請求時立即遭拒絕。
+   - ADR 規範本體不硬編碼特定衍生數值，由未來實作測試確定性產生並鎖定。
+
+---
+
+### 22. 主機名稱、來源標頭與常數時間比對 (Host, Origin & Constant-Time Verification)
 
 1. **Host 標頭嚴格比對**：HTTP 請求之 `Host` 標頭必須精確等於 `127.0.0.1:<configured-port>`，其餘主機名稱一律拒絕（防止 DNS Rebinding）。
 2. **嚴格拒絕 Origin 標頭**：凡帶有 `Origin` 標頭之請求一律直接拒絕（防止瀏覽器跨來源存取）；Local API 不提供 CORS 標頭。
 3. **顯式方法與路徑白名單**：僅開放明確定義之業務端點，未知方法或路徑立即拒絕；嚴禁實作通用代理（Generic Proxy）或任意檔案/指令執行端點。
-
----
-
-### 21. 內文安全與常數時間比對
-
-1. **內文限制**：機敏請求僅接受預期之 Content-Type（如 `application/json`），伺服器在解析前強制限制最大位元組大小，超限立即 Fail-Closed。
-2. **常數時間比對**：所有 HMAC 簽章比對必須採用常數時間比對演算法（如 `crypto.timingSafeEqual`），嚴禁使用普通字串 `==` 比較，防止計時側信道攻擊（Timing Attacks）。
+4. **內文限制**：機敏請求僅接受預期之 Content-Type（如 `application/json`），伺服器在解析前強制限制最大位元組大小，超限立即 Fail-Closed。
+5. **常數時間比對**：所有 HMAC 簽章比對必須採用常數時間比對演算法（如 `crypto.timingSafeEqual`），嚴禁使用普通字串 `==` 比較，防止計時側信道攻擊（Timing Attacks）。
 
 ---
 
@@ -315,6 +464,12 @@ Local API 採 HMAC-SHA-256 認證協定：
 - **CANARY R3-J**：配置之通訊埠已被佔用時，啟動 Fail-Closed，禁止自動尋找下一個埠號。
 - **CANARY R3-K**：通訊埠被無金鑰之惡意程式搶佔時，客戶端因回應簽章驗證失敗而安全中斷。
 - **CANARY R3-L**：金鑰絕對不出現於一般日誌、錯誤訊息或 Agent 可見之輸出中。
+- **CANARY R3-M**：HELLO 請求若帶有 `X-HHAI-Session-Id` 標頭，伺服器直接拒絕。
+- **CANARY R3-N**：請求若帶有 `Transfer-Encoding` 標頭，伺服器直接拒絕。
+- **CANARY R3-O**：存在重複之安全標頭時，伺服器一律 Fail-Closed 拒絕。
+- **CANARY R3-P**：無效 HMAC 之 HELLO 請求不得寫入重放快取造成合法 Nonce 遭阻斷。
+- **CANARY R3-Q**：成功 HELLO 回應之簽章完整覆蓋新產生之 Session ID，客戶端驗證成功後始接受。
+- **CANARY R3-R**：正規化字串換行採 CRLF 取代 LF 時，簽章比對立即失敗。
 
 ---
 

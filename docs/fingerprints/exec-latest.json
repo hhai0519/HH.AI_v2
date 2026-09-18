@@ -1,5 +1,5 @@
 {
-  "base_head": "93a316f",
+  "base_head": "d598a27",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 0,
@@ -515,16 +515,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 174,
-      "sha256": "19e9dd99914a16d279056d4d7cde10081746e2392a3770abc7678a151e49da1f"
+      "lines": 175,
+      "sha256": "76cf099f22ff1ca8c64f8300d200124b466342ccdc7848b5c238c1e79919462b"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 135,
-      "sha256": "117bbc73bbc01c1cd4f638a93f86dc71fde9fbb5a8ef4980d8ee4c12c3c5c722"
+      "lines": 136,
+      "sha256": "90efcd7cf797639912f60af9a9e460da3d440e9eb2557010ebcfb1c6a3841794"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -565,7 +565,7 @@
         "## 封存區"
       ],
       "lines": 316,
-      "sha256": "84aa0f2700ea3c085329789387e6705d362e533619ba9f93e2cb705566bb5e55"
+      "sha256": "5044b50e96a1f8106bd6641270075d7055dfd54ad3ec7dac6a1b1d60e93a184d"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -898,7 +898,7 @@
       "sha256": "3f43010ad79b8b8a2d51e0a9e7a0a44a1367a964635e4283a3f6b562f077a5bc"
     },
     "docs/adr/0025-outbound-reliability-loopback-api-security.md": {
-      "fences": 0,
+      "fences": 6,
       "headings": [
         "# ADR-0025: Outbound Delivery Reliability and Loopback Local API Security",
         "## Context",
@@ -918,12 +918,13 @@
         "### 13. 通訊埠綁定與 Windows 安全邊界",
         "### 14. 通訊埠配置來源與相依性邊界",
         "### 15. 機密安全與操作管線邊界 (Secret Boundary)",
-        "### 16. 請求認證協定 (Request Authentication Protocol)",
-        "### 17. 時間戳記新鮮度與重放防護 (Freshness & Nonce Cache)",
-        "### 18. 認證握手與同連線會話綁定 (Authenticated Hello & Same TCP Connection)",
-        "### 19. 回應雙向認證 (Response Authentication)",
-        "### 20. 主機名稱、來源標頭與路徑白名單",
-        "### 21. 內文安全與常數時間比對",
+        "### 16. Local API 協定版本與安全標頭編碼契約 (Protocol Version & Header Encoding Contract)",
+        "### 17. 正規化位元組編碼與封框安全契約 (Canonical Byte Encoding & Framing Safety)",
+        "### 18. 握手請求正規格式與開機矛盾修復 (Canonical HELLO Request & Replay Domain)",
+        "### 19. 會話建立、同連線綁定與正規會話請求 (Session Creation & Canonical SESSION Request)",
+        "### 20. 回應雙向認證與正規回應格式 (Canonical Response Authentication)",
+        "### 21. 驗證流水線、錯誤處理與測試向量 (Pipeline, Errors & Test Vectors)",
+        "### 22. 主機名稱、來源標頭與常數時間比對 (Host, Origin & Constant-Time Verification)",
         "## Architecture Relationships",
         "## Explicit Non-Goals",
         "## Architecture Acceptance Canaries",
@@ -931,8 +932,8 @@
         "### R3 Loopback Local API Canaries",
         "## External Platform & Runtime Facts"
       ],
-      "lines": 341,
-      "sha256": "009980ff4c7902931a11e774885d2b6818a613806785e0f1bfde7d886636ba27"
+      "lines": 496,
+      "sha256": "732fc7274ce4d06658aabf1c4b5e1cd97b517f44bf007a85326c240a40a3f173"
     },
     "docs/mcp-environment-guide.md": {
       "fences": 0,
@@ -1000,8 +1001,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 4151,
-      "sha256": "ccd87be6202d9e14b248e3e0045c74b19dd2e9809430635aee081394a1212c8a"
+      "lines": 4181,
+      "sha256": "ce31a8e4235154a587773921185a7452f8646286871e2a1c39ea74eb1fcd8860"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1271,7 +1272,7 @@
       "sha256": "35bf7dbfa3c7d291b550c3c97a6ae398a22b1dc3624c1d2fc1e4db6963d6e115"
     }
   },
-  "generated_at": "2026-09-18T04:00:17Z",
+  "generated_at": "2026-09-18T04:15:10Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

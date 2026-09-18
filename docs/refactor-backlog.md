@@ -3073,10 +3073,13 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - C-06 使用者已裁決採 Option B（USER DECIDED OPTION B / G2 LANDING PENDING，排定於 TG-MVP-01B / G2 落地）。
 - RECON-01 / TG-MVP-01A 歷史待辦需求機械對帳：已完成（ACCEPTED / CLOSED）。
 - TG-MVP-02 入站事件身份識別與游標語意 ADR：已完成（ACCEPTED / CLOSED，產出 docs/adr/0024-inbound-identity-cursor-semantics.md，accepted checkpoint = 93a316f93dadf6e5a1199dc7da0542016742112c）。
-- TG-MVP-03 出站可靠度與本機 API 安全架構 ADR：進行中（IN PROGRESS / PENDING EXTERNAL MACRO AUDIT，產出 docs/adr/0025-outbound-reliability-loopback-api-security.md）。
+- TG-MVP-03 出站可靠度與本機 API 安全架構 ADR：進行中（IN PROGRESS / MACRO HOLD / F1 REPAIR IN PROGRESS，產出 docs/adr/0025-outbound-reliability-loopback-api-security.md）。
+  - 當前重大發現：TG-MVP-03-F1（CURRENT，握手會話開機矛盾與正規封框未完全定義修復中）。
   - R2 出站能力感知安全重試與持久化 SQLite Outbox 架構確立（USER DECIDED / ADR-0025 LANDED / NOT IMPLEMENTED）。
   - R2-3 不確定狀態處理採選項 B（USER DECIDED OPTION B / ADR-0025 LANDED）。
   - R3 僅綁定 127.0.0.1 之 Loopback HTTP v1 與 HMAC-SHA-256 雙向認證架構確立（USER DECIDED / ADR-0025 LANDED / NOT IMPLEMENTED；Windows 具名管道正式延後未獲選）。
+  - TG-MVP-03 結案仍待 F1 架構修復與 External Macro PASS。
+  - 下一切片（TG-MVP-04）尚未授權／待辦（NOT AUTHORIZED / NOT STARTED）。
   - B-28 / B-29 上游 trigger 重新評估完成，無 B-01 blocker，維持 DEFERRED_BY_USER / POST_B01。
   - B-54 保持待辦（POST_B01 / NONBLOCKING，SOP_12 機器專屬路徑 concrete example 已登錄）。
   - B-98 / B-75 保持待辦、零實作 (POST_B01 / NONBLOCKING / NOT IMPLEMENTED)。
@@ -4149,3 +4152,30 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - TG-MVP-03 進行中（IN PROGRESS / PENDING EXTERNAL MACRO AUDIT）。
   - 看板頂部下一切片（NEXT_SLICE）：TG-MVP-04（F1 Reply Authorization Identity Repair）。
   - 本候選提交後等待 External Macro Reviewer（GPT 代理審查官（使用者授權））獨立審核，執行者不得 self-audit。
+
+105. **TG-MVP-03 外部宏觀審計 HOLD 結論同步與 HMAC 握手會話開機矛盾及正規封框修復（TG-MVP-03-F1 Bounded Architecture Repair）**（2026-09-18）
+- **外部宏觀審計 HOLD 裁決同步（External Macro HOLD Verdict Sync）**：
+  - 目標候選：`d598a270b3c5cadf28f4658c61d6c735ad970fcf`（TG-MVP-03 出站可靠度與本機 API 安全架構 ADR 候選）。
+  - 審查人員：GPT 代理審查官（使用者授權）。
+  - A1 資格查證：採 A1 = EQUIVALENT（GitHub API + Executor clone cross-check）成立。
+  - 審查範圍：`93a316f93dadf6e5a1199dc7da0542016742112c..d598a270b3c5cadf28f4658c61d6c735ad970fcf`（Parent: `93a316f93dadf6e5a1199dc7da0542016742112c`，共 1 commit）。
+  - 遠端機器事實：GitHub Actions Run `35305371626`（completed / success，verify = success, gateway-windows = success）。
+  - 外部審計結論：MACHINE / CI = PASS；MACRO AUDIT = HOLD；Accept status = ONE BOUNDED ARCHITECTURE REPAIR REQUIRED；Finding disposition = CURRENT E-03 / TG-MVP-03。
+  - 發現重大架構瑕疵 TG-MVP-03-F1（HELLO / SESSION SIGNATURE BOOTSTRAP AND CANONICAL HMAC FRAMING INCOMPLETE）：F1-A 為握手開機矛盾（Section 16 要求簽章綁定 Session-Id，但 hello 發出時尚未建立 session），F1-B 為位元組層級正規化封框未完全定義（缺乏精確欄位順序、UTF-8 單一 LF 分隔、禁止尾部換行、請求與回應正規位元組格式）。
+  - 通過基準維護：accepted checkpoint 保持 `93a316f93dadf6e5a1199dc7da0542016742112c`，不得推進 checkpoint，TG-MVP-04 凍結不得開始。
+- **TG-MVP-03-F1 有界架構修復落地（ADR-0025 Bounded Architecture Repair）**：
+  - 協定版本與標頭編碼：確立協定版本 `HHAI-LOCAL-API-V1` 與標頭 `X-HHAI-Version: 1`；簽章網域字串鎖定 `HHAI-REQ-V1` 與 `HHAI-RESP-V1`；安全標頭格式鎖定（整數秒時間戳記、32 位元小寫十六進位 Nonce、32 位元小寫十六進位 Session ID、64 位元小寫十六進位簽章與內文雜湊）；嚴禁重複標頭。
+  - 正規化位元組編碼：先組裝 canonical ASCII/UTF-8 字串再進行 UTF-8 編碼；欄位以單一 LF（0x0A）連接，嚴禁 CRLF 與平台換行；最後欄位後嚴禁尾部 LF；詮釋資料欄位限制單行 ASCII 且禁止 CR/LF/NUL；大寫 HTTP 方法與原樣路徑（origin-form），帶有 `?` 一律拒絕。
+  - 原始內文雜湊契約：對解碼後、JSON 解析前之實體內文 bytes 計算 SHA-256，客戶端與伺服器強制使用同一 Buffer；拒絕 `Transfer-Encoding`；強制單一合法 `Content-Length`；`POST /v1/hello` 強制 `Content-Length: 0` 且 body 為 0 位元組（雜湊為空序列之 SHA-256）。
+  - HELLO 請求解決開機矛盾：`POST /v1/hello` 發生於會話前，嚴禁攜帶 `X-HHAI-Session-Id`（帶入即拒絕），仍以共用金鑰計算 HMAC；7 欄位嚴格順序（`HHAI-REQ-V1\nHELLO\nPOST\n/v1/hello\n<TIMESTAMP>\n<NONCE>\n<BODY_SHA256>`）；獨立有界 HELLO 重放快取，無效 HMAC 不污染快取；驗證通過始產生 128 位元隨機會話識別碼並與目前 TCP 連線綁定。
+  - SESSION 請求與同連線綁定：後續機敏請求強制攜帶 `X-HHAI-Session-Id`；8 欄位嚴格順序（`HHAI-REQ-V1\nSESSION\n<METHOD>\n<PATH>\n<TIMESTAMP>\n<NONCE>\n<SESSION_ID>\n<BODY_SHA256>`）；重放命名空間鎖定 `(session_id, nonce)`；連線中斷會話立即失效，嚴禁跨連線使用。
+  - 回應雙向認證：所有認證回應均帶 HMAC-SHA-256 簽章；9 欄位嚴格順序（`HHAI-RESP-V1\n<MODE>\n<STATUS_CODE>\n<REQUEST_METHOD>\n<REQUEST_PATH>\n<REQUEST_NONCE>\n<RESPONSE_TIMESTAMP>\n<SESSION_ID>\n<BODY_SHA256>`）；HELLO 成功回應覆蓋新會話識別碼，客戶端驗證通過始接受會話。
+  - 驗證順序與錯誤邊界：所有安全性檢驗通過前嚴禁產生業務副作用；未認證失敗僅回傳有界通用錯誤，嚴禁洩漏金鑰或簽章資料；TG-MVP-11 必須使用 FAKE TEST SECRET 建立確定性測試向量鎖定位元組與摘要。
+  - 既有決策保持不變：維持 R2 安全重試、SQLite Outbox、NO BLIND RESEND、R2-3 Option B、LINE/Telegram 契約、R3 127.0.0.1 監聽、Named Pipe 延後、TG-MVP-11 依賴 TG-MVP-07A。
+- **架構邊界與生命週期不變量**：
+  - 零生產程式碼異動（零 Outbox、零 Local API 伺服器、零 HMAC 程式碼、零金鑰儲存、零 nonce store、零 Named Pipe、零 TG-MVP-04 實作）。
+  - C-07 與 C-08 維持待使用者裁決（UNDECIDED）。
+  - TG-MVP-02 已完成（ACCEPTED / CLOSED）。
+  - TG-MVP-03 進行中（IN PROGRESS / MACRO HOLD / F1 REPAIR IN PROGRESS）。
+  - TG-MVP-04 維持待辦／未授權（NOT AUTHORIZED / NOT STARTED）。
+  - 本修復候選提交後標記為 PENDING EXTERNAL MACRO RE-AUDIT，執行者不得 self-audit。
