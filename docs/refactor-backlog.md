@@ -2825,7 +2825,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 5.1 上一批狀態
 
-上次核對通過的 HEAD：0cc4dfc69d7cc7d9e8eebf6e3eceb21e34794534
+上次核對通過的 HEAD：1f98818af8ed38df2b3401685deee159e11a2080
 
 - `23af193`（執行者前置檢查 ＋ 回滾程序 ＋ `AUDIT-LOG.md` ＋ 四缺口修正）
   已於 2026-09-02 由審計官核對通過：6 檔異動（含 2 個新檔）、零夾帶、
@@ -3071,7 +3071,8 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - B-01 ADR-0002／0004／0010 分層搬移及 Active-Contract 語意修復已完成（CLOSED / MACRO PASS）。
   - E-03 Runtime 執行層架構推進（IN PROGRESS）：現行詳細生命週期、架構決策與各切片進度之單一事實來源由 docs/TASKBOARD.md 之「E-03 ROADMAP」統一維護；交接區不保留第二份長狀態副本。各項相依前置邊界（B-98 / B-30 / B-33 / F-05 等）與交接不變量（handoff invariants）以 TASKBOARD 為準。
   - C-06 使用者已裁決採 Option B（USER DECIDED OPTION B / G2 LANDING PENDING，排定於 TG-MVP-01B / G2 落地）。
-- RECON-01 歷史待辦需求機械對帳（TG-MVP-01A）：進行中（IN PROGRESS），bounded repair candidate pending External Macro re-audit。
+- RECON-01 / TG-MVP-01A 歷史待辦需求機械對帳：已完成（ACCEPTED / CLOSED，accepted checkpoint = 1f98818af8ed38df2b3401685deee159e11a2080）。
+- TG-MVP-02 入站事件身份識別與游標語意 ADR：進行中（IN PROGRESS / PENDING EXTERNAL MACRO AUDIT，產出 docs/adr/0024-inbound-identity-cursor-semantics.md）。
   - B-28 / B-29 上游 trigger 重新評估完成，無 B-01 blocker，維持 DEFERRED_BY_USER / POST_B01。
   - B-54 保持待辦（POST_B01 / NONBLOCKING，SOP_12 機器專屬路徑 concrete example 已登錄）。
   - B-98 / B-75 保持待辦、零實作 (POST_B01 / NONBLOCKING / NOT IMPLEMENTED)。
@@ -4090,3 +4091,31 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - C-07 與 C-08 維持待使用者裁決（UNDECIDED）。
   - TG-MVP-02 與 TG-MVP-03 尚未開始（UNSTARTED）。
   - 本修復候選提交後標記為 PENDING EXTERNAL MACRO RE-AUDIT，執行者不得 self-audit。
+
+103. **RECON-01 外部宏觀審計正式通過同步與 TG-MVP-02 入站事件身份識別與游標語意 ADR 建立（TG-MVP-02 Inbound Identity & Cursor Semantics ADR）**（2026-09-18）
+- **RECON-01 外部宏觀審計正式通過裁決同步（External Macro PASS Sync）**：
+  - 目標候選：`1f98818af8ed38df2b3401685deee159e11a2080`（RECON-01 有界現況修復候選）。
+  - 審查範圍：`0cc4dfc69d7cc7d9e8eebf6e3eceb21e34794534..1f98818af8ed38df2b3401685deee159e11a2080`（共 2 commits：0281bb4 initial candidate / Macro HOLD, 1f98818 bounded repair）。
+  - 審查人員：GPT 代理審查官（使用者授權）。
+  - A1 資格查證：採 A1 = EQUIVALENT（GitHub API + Executor clone cross-check）成立。
+  - 遠端機器事實：GitHub Actions Run `35295573430`（completed / success，verify = success, gateway-windows = success）。
+  - 審計發現處置：F1-A RESOLVED, F1-B RESOLVED, F1-C RESOLVED, F1-D RESOLVED, new material finding = NONE。
+  - 判定結論：MACHINE / CI = PASS；MACRO AUDIT = PASS；ACCEPT STATUS = ACCEPT ALL；RECON-01 / TG-MVP-01A = ACCEPTED。
+  - 全新 accepted checkpoint 正式推進確立為：`1f98818af8ed38df2b3401685deee159e11a2080`。
+- **TG-MVP-02 架構決策落地（ADR-0024 Inbound Event Identity and Cursor Semantics）**：
+  - 建立規範文件：`docs/adr/0024-inbound-identity-cursor-semantics.md`。
+  - 核心實體分離：明確區分 `account_id`（帳號命名空間邊界）、`platform_event_id`（傳輸事件唯一身分）、`platform_msg_id`（邏輯訊息身分）與 `cursor_value`（傳輸拉取接續標記）；正規事件去重鍵確立為 `(account_id, platform_event_id)`。
+  - Telegram 平台契約：`platform_event_id = update_id`；邏輯訊息採 chat 命名空間 `tg:<chat_id>:<message_id>`；訊息編輯具備新 `update_id` 但關聯原訊息；Telegram 標準 Bot API 確立 `TELEGRAM_GENERIC_UNSEND = NOT OBSERVABLE`；游標語意為 `update_id + 1`，嚴格置於事件持久化完成之後，游標比較器採 `candidate > stored` 始推進、倒退 fail-closed；記錄跨週隨機 ID 限制。
+  - LINE 平台契約：`platform_event_id = webhookEventId`（重送維持同 ID）；邏輯訊息為 `message.id`；收回事件具有獨立 event ID 並指向 `unsend.messageId`，實作必須使目標內文不可被正常檢視或取用；LINE Webhook 確立 `cursor capability = NONE`，嚴禁偽造高水位游標，亂序重送不丟棄合法事件。
+  - 缺口處置（C1/C2/C3）：C3 正式由 ADR-0024 裁決完成（RESOLVED）；C1 與 C2 架構處置確立，執行層修復排定於 TG-MVP-05。
+  - 邊界防護：F1 回覆授權修復排定於 TG-MVP-04，本批不修改 `validateReplyAuthorization()`。
+  - 確立 10 大強制驗收金絲雀（CANARY A 至 J）。
+- **當前生命週期狀態**：
+  - 本批為 TG-MVP-02 架構切片候選（ARCHITECTURE / DOCUMENTATION ONLY）。
+  - E-03 進行中（IN PROGRESS）。
+  - accepted checkpoint 推進確立為 `1f98818af8ed38df2b3401685deee159e11a2080`。
+  - TG-MVP-01A = 已完成（ACCEPTED / CLOSED）。
+  - TG-MVP-02 = 進行中（IN PROGRESS / PENDING EXTERNAL MACRO AUDIT）。
+  - 看板頂部下一切片（NEXT_SLICE）：TG-MVP-03（R2/R3 Architecture ADR）。
+  - 零生產程式碼異動，零既有 ADR 修改，零規則修改，零 MISSION 修改。
+  - 本候選提交後等待 External Macro Reviewer（GPT 代理審查官（使用者授權））獨立審核，不得 self-audit。

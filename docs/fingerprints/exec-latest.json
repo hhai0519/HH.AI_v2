@@ -1,5 +1,5 @@
 {
-  "base_head": "0281bb4",
+  "base_head": "1f98818",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 0,
@@ -515,16 +515,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 172,
-      "sha256": "5748fc076e8318a75300a9808662181c3b25182b760c8d8f4d3a31f074b9ab01"
+      "lines": 173,
+      "sha256": "1256b71202a5cc7168f9bbb288bb8ab8eec60b726223605f1eba27c87502602c"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 133,
-      "sha256": "9e62f82ffe8be275b6cd64b41fdd34ae6c0396df45e3f1129b0c58a8257cbe5d"
+      "lines": 134,
+      "sha256": "401f021f0b1ec5f4ee439f647a4a9be25f7747048981012902ec23198b45456a"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -565,7 +565,7 @@
         "## 封存區"
       ],
       "lines": 316,
-      "sha256": "35109ec7a03cfbb9cd15a4e2d18a110c51ff34c2795c776d05b046cb1c8a9b1a"
+      "sha256": "6f338196399deabe5da07312841b9304d6b05a31c3d409e2945779f9d60ff05f"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -879,6 +879,24 @@
       "lines": 78,
       "sha256": "fe7f60d8e92366123c4c3321d435739f8d27aa53751774d9e09a32e06b16d930"
     },
+    "docs/adr/0024-inbound-identity-cursor-semantics.md": {
+      "fences": 2,
+      "headings": [
+        "# ADR-0024: Inbound Event Identity and Cursor Semantics",
+        "## Context",
+        "## Decision",
+        "### 1. 核心實體模型分離 (Core Entity Separation)",
+        "### 2. 概念入站事件封套 (Conceptual Inbound Event Envelope)",
+        "### 3. Telegram 身分與游標契約 (Telegram Contract)",
+        "### 4. LINE 身分與游標契約 (LINE Contract)",
+        "### 5. C1 / C2 / C3 架構裁決與處置",
+        "### 6. 現行綱要與後續邊界 (Schema v3 & Follow-Up Routing)",
+        "### 7. 平台官方查證事實 (Independently Verified Platform Facts)",
+        "## Consequences"
+      ],
+      "lines": 177,
+      "sha256": "3f43010ad79b8b8a2d51e0a9e7a0a44a1367a964635e4283a3f6b562f077a5bc"
+    },
     "docs/mcp-environment-guide.md": {
       "fences": 0,
       "headings": [
@@ -945,8 +963,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 4092,
-      "sha256": "0428318669e00300834395dbf3a34807924dc8074a83971b4bfb6f0afc7fb63c"
+      "lines": 4121,
+      "sha256": "b66985ddcfa6d7fc68c4c612e17251dda4de9be2d01023592d79f8d166d35d36"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1216,7 +1234,7 @@
       "sha256": "35bf7dbfa3c7d291b550c3c97a6ae398a22b1dc3624c1d2fc1e4db6963d6e115"
     }
   },
-  "generated_at": "2026-09-18T01:28:33Z",
+  "generated_at": "2026-09-18T03:36:26Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {
