@@ -12,6 +12,8 @@ const assert = require('node:assert');
 const {
   TARGET_NAMESPACE_PREFIX,
   SECRET_PURPOSES,
+  CANONICAL_TARGET_REGEX,
+  assertCanonicalTargetGrammar,
   SecretRef,
   SecretProvider,
   SecretProviderError,
@@ -217,4 +219,161 @@ test('SecretProvider - 13. base class getSecret throws error', () => {
     () => provider.getSecret(ref),
     { code: 'PROVIDER_PROTOCOL_ERROR' }
   );
+});
+
+test('SecretRef - 14. instances are frozen and immutable (F1-C)', () => {
+  const ref = SecretRef.telegramBotToken('immutable-bot');
+  assert.strictEqual(Object.isFrozen(ref), true);
+
+  // In strict mode, modifying a property throws TypeError
+  assert.throws(
+    () => {
+      ref.channel = 'line';
+    },
+    { name: 'TypeError' }
+  );
+  assert.throws(
+    () => {
+      ref.accountId = 'hijacked';
+    },
+    { name: 'TypeError' }
+  );
+  assert.throws(
+    () => {
+      ref.newProp = 'injected';
+    },
+    { name: 'TypeError' }
+  );
+  assert.strictEqual(ref.channel, 'telegram');
+  assert.strictEqual(ref.accountId, 'immutable-bot');
+});
+
+test('SecretRef - 15. attempted mutation cannot alter canonical target semantics (F1-C)', () => {
+  const ref = SecretRef.lineChannelAccessToken('orig-acc');
+  const origTarget = ref.getTargetName();
+
+  assert.throws(
+    () => {
+      ref.encodedAccountId = 'tampered';
+    },
+    { name: 'TypeError' }
+  );
+  assert.strictEqual(ref.getTargetName(), origTarget);
+  assert.strictEqual(SecretRef.deriveCanonicalTarget(ref), origTarget);
+});
+
+test('SecretRef - 16. subclass override of getTargetName cannot become authority (F1-C)', () => {
+  class MaliciousSubclassSecretRef extends SecretRef {
+    getTargetName() {
+      return 'HH.AI_v2/channel-gateway/v1/telegram/hijacked-target/bot-token';
+    }
+  }
+
+  const evilRef = new MaliciousSubclassSecretRef({
+    channel: 'telegram',
+    purpose: SECRET_PURPOSES.TELEGRAM_BOT_TOKEN,
+    accountId: 'legit-account',
+  });
+
+  // Direct getTargetName returns the overridden string on subclass instance
+  assert.strictEqual(evilRef.getTargetName(), 'HH.AI_v2/channel-gateway/v1/telegram/hijacked-target/bot-token');
+
+  // But contract validation must reject subclass instances
+  assert.throws(
+    () => SecretProvider.validateSecretRef(evilRef),
+    { code: 'INVALID_SECRET_REFERENCE' }
+  );
+
+  // And canonical derivation must reject subclass instances
+  assert.throws(
+    () => SecretRef.deriveCanonicalTarget(evilRef),
+    { code: 'INVALID_SECRET_REFERENCE' }
+  );
+});
+
+test('SecretRef - 17. canonical derivation is deterministic and independent of instance methods', () => {
+  const ref1 = SecretRef.telegramBotToken('det-acc-01');
+  const ref2 = SecretRef.telegramBotToken('det-acc-01');
+
+  const derived1 = SecretRef.deriveCanonicalTarget(ref1);
+  const derived2 = SecretRef.deriveCanonicalTarget(ref2);
+
+  assert.strictEqual(derived1, derived2);
+  assert.strictEqual(
+    derived1,
+    'HH.AI_v2/channel-gateway/v1/telegram/det-acc-01/bot-token'
+  );
+});
+
+test('SecretRef - 18. canonical grammar accepts all four valid families', () => {
+  const families = [
+    'HH.AI_v2/channel-gateway/v1/telegram/valid-bot-01/bot-token',
+    'HH.AI_v2/channel-gateway/v1/line/valid-line-01/channel-access-token',
+    'HH.AI_v2/channel-gateway/v1/line/valid-line-01/channel-secret',
+    'HH.AI_v2/channel-gateway/v1/local-api/hmac',
+    // With percent encoding in account
+    'HH.AI_v2/channel-gateway/v1/telegram/valid%20bot%2001/bot-token',
+  ];
+
+  for (const target of families) {
+    assert.doesNotThrow(() => assertCanonicalTargetGrammar(target));
+    assert.strictEqual(CANONICAL_TARGET_REGEX.test(target), true);
+  }
+});
+
+test('SecretRef - 19. canonical grammar rejects unauthorized families, suffixes, or segments', () => {
+  const invalidTargets = [
+    // Extra path segment
+    'HH.AI_v2/channel-gateway/v1/telegram/acc/bot-token/extra',
+    'HH.AI_v2/channel-gateway/v1/local-api/hmac/extra',
+    // Wrong namespace
+    'OTHER_NS/channel-gateway/v1/telegram/acc/bot-token',
+    'HH.AI_v2/channel-gateway/v2/telegram/acc/bot-token',
+    // Unknown purpose suffix
+    'HH.AI_v2/channel-gateway/v1/telegram/acc/admin-token',
+    'HH.AI_v2/channel-gateway/v1/line/acc/bot-token',
+    // Missing segments
+    'HH.AI_v2/channel-gateway/v1/telegram/bot-token',
+    'HH.AI_v2/channel-gateway/v1/local-api',
+  ];
+
+  for (const target of invalidTargets) {
+    assert.throws(
+      () => assertCanonicalTargetGrammar(target),
+      { code: 'INVALID_SECRET_REFERENCE' }
+    );
+    assert.strictEqual(CANONICAL_TARGET_REGEX.test(target), false);
+  }
+});
+
+test('SecretRef - 20. canonical grammar rejects control chars, whitespace, quotes, backslashes, queries, and bad escapes', () => {
+  const rejectedTargets = [
+    // Control characters
+    'HH.AI_v2/channel-gateway/v1/telegram/acc\x00/bot-token',
+    'HH.AI_v2/channel-gateway/v1/telegram/acc\r\n/bot-token',
+    // Whitespace
+    'HH.AI_v2/channel-gateway/v1/telegram/acc with space/bot-token',
+    ' HH.AI_v2/channel-gateway/v1/local-api/hmac',
+    'HH.AI_v2/channel-gateway/v1/local-api/hmac ',
+    // Quotes
+    'HH.AI_v2/channel-gateway/v1/telegram/acc\'quote/bot-token',
+    'HH.AI_v2/channel-gateway/v1/telegram/acc"quote/bot-token',
+    // Backslashes
+    'HH.AI_v2/channel-gateway/v1/telegram/acc\\slash/bot-token',
+    // Query / hash syntax
+    'HH.AI_v2/channel-gateway/v1/local-api/hmac?query=1',
+    'HH.AI_v2/channel-gateway/v1/local-api/hmac#hash',
+    // Invalid percent escape
+    'HH.AI_v2/channel-gateway/v1/telegram/acc%2/bot-token',
+    'HH.AI_v2/channel-gateway/v1/telegram/acc%ZZ/bot-token',
+    'HH.AI_v2/channel-gateway/v1/telegram/acc%%/bot-token',
+  ];
+
+  for (const target of rejectedTargets) {
+    assert.throws(
+      () => assertCanonicalTargetGrammar(target),
+      { code: 'INVALID_SECRET_REFERENCE' }
+    );
+    assert.strictEqual(CANONICAL_TARGET_REGEX.test(target), false);
+  }
 });

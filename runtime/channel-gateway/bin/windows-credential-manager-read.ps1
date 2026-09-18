@@ -11,6 +11,10 @@
 # - Zero informational text or headers on standard output.
 # - Binary secret payload emitted directly to standard output stream only.
 # - Never writes secret bytes or raw payload to standard error.
+# - Defense-in-depth: Rejects targets outside canonical HH.AI_v2 namespace grammar.
+# - Single native ownership model: CredFree called exactly once on all post-acquisition exit paths.
+# - Pointer zeroed immediately after native release ($pCred = [IntPtr]::Zero).
+# - Managed secret byte array best-effort zeroized in cleanup ([Array]::Clear).
 # - Fail-closed exit codes:
 #     0: Success (raw bytes written to stdout)
 #     2: ERROR_NOT_FOUND (1168)
@@ -20,7 +24,10 @@
 [CmdletBinding()]
 param (
     [Parameter(Mandatory = $true, Position = 0)]
-    [string]$TargetName
+    [string]$TargetName,
+
+    [Parameter(Mandatory = $false)]
+    [string]$TestFaultStage = $null
 )
 
 $ErrorActionPreference = 'Stop'
@@ -29,8 +36,10 @@ if ([string]::IsNullOrWhiteSpace($TargetName)) {
     exit 1
 }
 
-# Control character rejection in TargetName
-if ($TargetName -match '[\x00-\x1F\x7F]') {
+# Canonical HH.AI_v2 TargetName grammar assertion (Defense-in-Depth)
+$canonicalTargetPattern = '^HH\.AI_v2/channel-gateway/v1/(?:telegram/(?:[A-Za-z0-9_.~!*()-]|%[0-9A-Fa-f]{2})+/bot-token|line/(?:[A-Za-z0-9_.~!*()-]|%[0-9A-Fa-f]{2})+/(?:channel-access-token|channel-secret)|local-api/hmac)$'
+
+if ($TargetName -notmatch $canonicalTargetPattern) {
     exit 1
 }
 
@@ -72,6 +81,7 @@ try {
 }
 
 $pCred = [IntPtr]::Zero
+$blob = $null
 $CRED_TYPE_GENERIC = 1
 
 $success = [WinCredBridge]::CredRead($TargetName, $CRED_TYPE_GENERIC, 0, [ref]$pCred)
@@ -89,25 +99,38 @@ if (-not $success) {
     exit 1
 }
 
+$exitCode = 1
 try {
     $cred = [System.Runtime.InteropServices.Marshal]::PtrToStructure($pCred, [Type][CREDENTIAL])
     $blobSize = $cred.CredentialBlobSize
     if ($blobSize -eq 0) {
-        [WinCredBridge]::CredFree($pCred)
-        exit 0
+        $exitCode = 0
+    } else {
+        $blob = New-Object byte[] $blobSize
+        [System.Runtime.InteropServices.Marshal]::Copy($cred.CredentialBlob, $blob, 0, $blobSize)
+
+        $stdoutStream = [Console]::OpenStandardOutput()
+
+        # Test seam: simulate stdout write failure after native acquisition
+        if ($TestFaultStage -eq 'stdout') {
+            throw [System.IO.IOException]::new("Simulated stdout failure after acquisition")
+        }
+
+        $stdoutStream.Write($blob, 0, $blob.Length)
+        $stdoutStream.Flush()
+        $exitCode = 0
     }
-
-    $blob = New-Object byte[] $blobSize
-    [System.Runtime.InteropServices.Marshal]::Copy($cred.CredentialBlob, $blob, 0, $blobSize)
-    [WinCredBridge]::CredFree($pCred)
-
-    $stdoutStream = [Console]::OpenStandardOutput()
-    $stdoutStream.Write($blob, 0, $blob.Length)
-    $stdoutStream.Flush()
-    exit 0
 } catch {
+    $exitCode = 1
+} finally {
     if ($pCred -ne [IntPtr]::Zero) {
         [WinCredBridge]::CredFree($pCred)
+        $pCred = [IntPtr]::Zero
     }
-    exit 1
+    if ($null -ne $blob) {
+        [Array]::Clear($blob, 0, $blob.Length)
+        $blob = $null
+    }
 }
+
+exit $exitCode

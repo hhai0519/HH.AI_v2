@@ -35,6 +35,26 @@ const VALID_ERROR_CODES = new Set([
 ]);
 
 const CONTROL_CHAR_REGEX = /[\x00-\x1F\x7F]/;
+const FORBIDDEN_ACCOUNT_CHARS = /[\x00-\x1F\x7F'"\\?#\s]/;
+
+const CANONICAL_TARGET_REGEX = Object.freeze(
+  /^HH\.AI_v2\/channel-gateway\/v1\/(?:telegram\/(?:[A-Za-z0-9_.~!*()-]|%[0-9A-Fa-f]{2})+\/bot-token|line\/(?:[A-Za-z0-9_.~!*()-]|%[0-9A-Fa-f]{2})+\/(?:channel-access-token|channel-secret)|local-api\/hmac)$/
+);
+
+/**
+ * Asserts that a targetName matches the canonical HH.AI_v2 Credential Manager grammar.
+ * Fails closed with INVALID_SECRET_REFERENCE on mismatch.
+ *
+ * @param {string} targetName
+ */
+function assertCanonicalTargetGrammar(targetName) {
+  if (typeof targetName !== 'string' || !CANONICAL_TARGET_REGEX.test(targetName)) {
+    throw new SecretProviderError(
+      'TargetName violates canonical HH.AI_v2 Credential Manager grammar',
+      'INVALID_SECRET_REFERENCE'
+    );
+  }
+}
 
 /**
  * Custom error hierarchy for secret provider failures.
@@ -70,7 +90,7 @@ function encodeAccountId(accountId) {
   if (!trimmed) {
     throw new SecretProviderError('accountId cannot be empty or blank', 'INVALID_SECRET_REFERENCE');
   }
-  if (CONTROL_CHAR_REGEX.test(trimmed)) {
+  if (CONTROL_CHAR_REGEX.test(trimmed) || FORBIDDEN_ACCOUNT_CHARS.test(trimmed)) {
     throw new SecretProviderError('accountId contains forbidden control characters', 'INVALID_SECRET_REFERENCE');
   }
   return encodeURIComponent(trimmed);
@@ -78,6 +98,7 @@ function encodeAccountId(accountId) {
 
 /**
  * Non-secret, deterministic credential reference domain model.
+ * Closed domain model: instances are deeply frozen and immutable upon construction.
  */
 class SecretRef {
   /**
@@ -131,6 +152,9 @@ class SecretRef {
       this.accountId = accountId.trim();
       this.encodedAccountId = encoded;
     }
+
+    // Freeze instance to enforce immutability boundary (F1-C)
+    Object.freeze(this);
   }
 
   /**
@@ -150,6 +174,25 @@ class SecretRef {
       default:
         throw new SecretProviderError(`Unsupported secret purpose: '${this.purpose}'`, 'INVALID_SECRET_REFERENCE');
     }
+  }
+
+  /**
+   * Re-derives the canonical TargetName from validated semantic fields.
+   * Caller method overrides are never consulted (F1-C).
+   *
+   * @param {SecretRef} secretRef
+   * @returns {string} Canonical target name
+   */
+  static deriveCanonicalTarget(secretRef) {
+    SecretProvider.validateSecretRef(secretRef);
+    const canonical = new SecretRef({
+      channel: secretRef.channel,
+      purpose: secretRef.purpose,
+      accountId: secretRef.accountId,
+    });
+    const target = SecretRef.prototype.getTargetName.call(canonical);
+    assertCanonicalTargetGrammar(target);
+    return target;
   }
 
   // Static Factory Helpers
@@ -190,13 +233,19 @@ class SecretRef {
  */
 class SecretProvider {
   /**
-   * Validates a SecretRef object.
+   * Validates a SecretRef object. Rejects null, non-instances, and non-exact prototypes.
    * @param {any} secretRef
    * @returns {SecretRef}
    */
   static validateSecretRef(secretRef) {
     if (!secretRef || !(secretRef instanceof SecretRef)) {
       throw new SecretProviderError('secretRef must be an instance of SecretRef', 'INVALID_SECRET_REFERENCE');
+    }
+    if (Object.getPrototypeOf(secretRef) !== SecretRef.prototype) {
+      throw new SecretProviderError(
+        'secretRef must be an exact SecretRef instance; subclasses and prototype overrides are rejected',
+        'INVALID_SECRET_REFERENCE'
+      );
     }
     return secretRef;
   }
@@ -215,6 +264,8 @@ module.exports = {
   TARGET_NAMESPACE_PREFIX,
   SECRET_PURPOSES,
   VALID_ERROR_CODES,
+  CANONICAL_TARGET_REGEX,
+  assertCanonicalTargetGrammar,
   SecretProviderError,
   SecretRef,
   SecretProvider,

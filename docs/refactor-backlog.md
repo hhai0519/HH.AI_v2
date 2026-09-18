@@ -3081,10 +3081,10 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 - TG-MVP-04 F1 回覆授權身份鍵修復：已完成（ACCEPTED / CLOSED，修正 validateReplyAuthorization SQL 複合鍵查詢與金絲雀測試，accepted checkpoint = 18867eb5af7c4b90df8946c22977350bf7ec5086）。
 - TG-MVP-05 游標推進防衛與事件身分分離修復：已完成（ACCEPTED / CLOSED，commit `cdd9d7c5eeca5185e47e7365d42a3a3dc0a61eb1`，Actions Run 35311601796 success，External Macro PASS / ACCEPT ALL；TG-MVP-05-F1 已徹底解決 RESOLVED；accepted checkpoint 推進至 `cdd9d7c5eeca5185e47e7365d42a3a3dc0a61eb1`）。
 - TG-MVP-06 B-98 機密輸出強化與提交守衛：已完成（ACCEPTED / CLOSED，commit `e60fedb6fbaade0ec725d28fc83f1e47cfb13943`，Actions Run 35331712071 success，External Macro PASS / ACCEPT ALL；TG-MVP-06-F1-A、TG-MVP-06-F1-B、TG-MVP-06-F2 全數徹底解決 RESOLVED；new material finding = NONE；accepted checkpoint 推進至 `e60fedb6fbaade0ec725d28fc83f1e47cfb13943`；B-98 正式關閉 CLOSED）。
-- TG-MVP-06A / B-101 Gateway 機密提供者與執行期機密取用邊界：進行中（IN PROGRESS / PENDING EXTERNAL MACRO AUDIT；External Macro architecture decision 選定 Windows Credential Manager Generic Credential CRED_TYPE_GENERIC, CRED_PERSIST_LOCAL_MACHINE 作為 v1 Gateway concrete Secret Provider；實作 secret-provider.js、windows-credential-manager-provider.js、PowerShell CredReadW bridge windows-credential-manager-read.ps1、ADR-0026；exact canonical target lookup；零列舉；零 env fallback；零 Local Config secret；零 AccountRegistry secretRef 突變；zero npm dependency；fixed named Windows-user identity invariant；runtime-only Buffer 曝光與 best-effort consumer zeroization；synthetic-only Windows integration tests；零真實憑證讀寫存取；candidate 待外部宏觀審計，不得 self-audit）。
+- TG-MVP-06A / B-101 Gateway 機密提供者與執行期機密取用邊界：進行中（IN PROGRESS / MACRO HOLD；首候選 d3a31fc 經 Actions Run 35336376440 success，External Macro HOLD，TG-MVP-06A-F1 處置為 CURRENT；F1-A 原生指標重複釋放雙重 free、F1-B 未受限同步 bridge 超時、F1-C 呼叫端受控 SecretRef 目標權威邊界 repair active，同批強化 F1-H1 PowerShell byte[] 最佳努力清除 same-batch hardening；accepted checkpoint 保持 e60fedb6fbaade0ec725d28fc83f1e47cfb13943；repair candidate 待外部宏觀審計，不得 self-audit）。
   - B-98：已完成（CLOSED）。
-  - B-101：進行中（IN PROGRESS / PENDING EXTERNAL MACRO AUDIT）。
-  - TG-MVP-06A：進行中（IN PROGRESS / PENDING EXTERNAL MACRO AUDIT）。
+  - B-101：進行中（IN PROGRESS）。
+  - TG-MVP-06A：進行中（IN PROGRESS / MACRO HOLD，TG-MVP-06A-F1 = CURRENT，F1-A/B/C repair active，F1-H1 same-batch hardening）。
   - TG-MVP-07 與後續切片：尚未開始（NOT AUTHORIZED / NOT STARTED）。
   - E-03：進行中（IN PROGRESS，accepted checkpoint = e60fedb6fbaade0ec725d28fc83f1e47cfb13943）。
   - B-28 / B-29 上游 trigger 重新評估完成，無 B-01 blocker，維持 DEFERRED_BY_USER / POST_B01。
@@ -4389,3 +4389,36 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - 零相依合約（Zero Dependency Invariant）：`package.json` 與 `package-lock.json` 保持 ZERO DIFF，零 npm 或原生 ffi/keytar 套件引入。
   - 合成 Windows 整合測試：`runtime/channel-gateway/tests/windows-credential-manager-provider.test.js` 在 Windows 環境動態生成隨機 GUID 之合成 Generic 憑證寫入 Win32 CredMan，透過實際 Provider 讀取驗證 Buffer 相符且不列印機密，finally 區塊確保自動刪除清理並 zeroize 測試 Buffer；非 Windows 環境自動依規範通過。
   - 邊界確認：零真實機密讀取、零真實機密寫入、零真實機密輸出；本候選提交後標記為 PENDING EXTERNAL MACRO AUDIT，執行者不得自審。
+
+113. **TG-MVP-06A-F1 機密提供者安全捆綁修復候選（Credential Provider Safety Bundle Repair Candidate）**（2026-09-18）
+- **外部宏觀審計 HOLD 與重大發現同步（External Macro HOLD & Material Finding Sync）**：
+  - 目標候選：`d3a31fc8c6a89e548e942f0fe0b43f37999ea0ef`。
+  - 父提交：`e60fedb6fbaade0ec725d28fc83f1e47cfb13943`。
+  - 審查範圍：`e60fedb6fbaade0ec725d28fc83f1e47cfb13943..d3a31fc8c6a89e548e942f0fe0b43f37999ea0ef`（共 1 commit）。
+  - 審查人員：GPT 代理審查官（使用者授權）。
+  - A1 資格查證：採 A1 = EQUIVALENT（GitHub API + Executor clone cross-check）成立。
+  - 遠端機器證據：GitHub Actions Run `35336376440`（completed / success，jobs: verify = success, gateway-windows = success）。
+  - 審查結論：MACHINE / CI = PASS；MACRO AUDIT = HOLD；ACCEPT STATUS = BOUNDED NATIVE / PROVIDER SAFETY REPAIR REQUIRED；FINDING_DISPOSITION = CURRENT E-03。
+  - 重大發現 TG-MVP-06A-F1：
+    - F1-A（原生指標重複釋放 / double-free）：Win32 `windows-credential-manager-read.ps1` 原本在正常路徑呼叫 `CredFree` 後未歸零指標，若後續 stdout 輸出失敗再次於 `finally` 呼叫 `CredFree`，導致 reachable native double-free。
+    - F1-B（未受限同步 bridge 調用超時 / unbounded synchronous bridge call）：`windows-credential-manager-provider.js` 調用 `spawnSync` 未配置 timeout，可能導致 Node 事件循環在無窮掛起時阻斷。
+    - F1-C（呼叫端受控 SecretRef 目標權威邊界 / caller-controlled SecretRef target authority）：Provider 信任 `secretRef.getTargetName()` 方法回傳值，且未凍結物件或防禦子類別覆寫，呼叫端可構造惡意 subclass 繞過目標推導。
+    - F1-H1（同批強化 / same-batch hardening）：PowerShell 讀取機密暫存之 managed byte[] 緩衝區未於 cleanup 進行最佳努力清除。
+  - 通過基準保持：accepted checkpoint 保持為 `e60fedb6fbaade0ec725d28fc83f1e47cfb13943`，不得推進至 d3a31fc 或本 repair candidate；TG-MVP-06A = NOT ACCEPTED YET；B-101 = IN PROGRESS；TG-MVP-07 = NOT AUTHORIZED。
+- **TG-MVP-06A-F1 安全修復與強化實作（Safety Bundle Repair & Hardening Implementation）**：
+  - F1-A 原生指標單一所有權與防重複釋放（Single Native Ownership Model）：
+    - 重構 `runtime/channel-gateway/bin/windows-credential-manager-read.ps1`：原生指標 `$pCred` 僅在 `finally` 區塊中釋放（exactly-once cleanup site），正常路徑絕不呼叫 `CredFree`；釋放後立即將指標歸零 `$pCred = [IntPtr]::Zero`；完整覆蓋 post-acquire failure 矩陣（PtrToStructure failure、zero-size blob、Marshal.Copy failure、stdout open/write/flush failure、normal success），確保在任何失敗或成功路徑下原生記憶體皆被釋放且絕不 double-free。
+  - F1-H1 PowerShell 暫存位元組最佳努力清除（PowerShell Managed Byte Array Clearing）：
+    - 在 `windows-credential-manager-read.ps1` 中於 `finally` 區塊對託管位元組陣列呼叫 `[Array]::Clear($blob, 0, $blob.Length)`，確保輸出嘗試後立即進行最佳努力清除；不偽稱完美零化。
+  - F1-B 受限同步調用超時與穩定錯誤映射（Bounded Bridge Timeout & Stable Error Mapping）：
+    - 修改 `runtime/channel-gateway/core/windows-credential-manager-provider.js`：定義 v1 預設超時常數 `DEFAULT_BRIDGE_TIMEOUT_MS = 10000`（10 秒），建構子支援有界測試超時覆寫（1ms 至 60000ms）；`spawnSync` 明確配置 `timeout`；當子進程超時或回傳 `ETIMEDOUT` 時，安全映射為穩定非機敏錯誤 `PROVIDER_UNAVAILABLE`，絕不將原始 Error 物件、stdout 或 stderr 拼入異常字串。
+    - 架構邊界規範：確立 SecretProvider 僅允許在帳號啟用、切換、消費者初始化或顯式更新等受限生命週期點調用，嚴禁作為高頻熱路徑（hot-path）每則訊息同步讀取。
+  - F1-C 規範化 SecretRef 凍結、原型防禦與 Provider 重新推導（Canonical SecretRef Trust Boundary）：
+    - 修改 `runtime/channel-gateway/core/secret-provider.js`：`SecretRef` 建構完成後立即執行 `Object.freeze(this)`，使物件完全不可變；`SecretProvider.validateSecretRef` 嚴格檢驗 `Object.getPrototypeOf(secretRef) === SecretRef.prototype`，拒絕任何 caller-created subclass 或 prototype override；實作 `SecretRef.deriveCanonicalTarget()` 與正則表達式 `CANONICAL_TARGET_REGEX`，強制規範目標語法；`windows-credential-manager-provider.js` 絕不信任 caller 的 `secretRef.getTargetName()`，一律由內部從已驗證語意重新推導 canonical TargetName 並於調用前斷言語法合法性。
+    - 深度防禦（Defense-in-Depth）：`windows-credential-manager-read.ps1` 同步加入目標名稱正則語法驗證，若非規範允許之命名空間與路徑一律拒絕執行。
+  - 核心反例與失敗路徑測試：
+    - 擴充 `runtime/channel-gateway/tests/secret-provider.test.js` 與 `windows-credential-manager-provider.test.js`：涵蓋 SecretRef 凍結驗證、修改失敗驗證、子類別覆寫阻擋、規範目標推導決定性、4 大有效命名空間語法接受、非法命名空間/控制字元/空白/反斜線/無效跳脫拒絕、spawnSync 超時配置、超時映射 PROVIDER_UNAVAILABLE、錯誤訊息無子進程洩漏、橋接腳本單一 CredFree 結構斷言、原生取得後 stdout 失敗之反例整合測試（證明無 double-free 且安全清理）。
+- **架構邊界與生命週期不變量（Architecture Boundary & Lifecycle Invariants）**：
+  - 零真實機密讀寫存取、零真實憑證枚舉、零新 npm 依賴。
+  - Credential Manager provider architecture、CRED_TYPE_GENERIC、CRED_PERSIST_LOCAL_MACHINE、B-98、TG-MVP-06、TG-MVP-07、TG-MVP-01B、C-07 / C-08 保持完全不變。
+  - 本 repair candidate 提交後標記為 PENDING EXTERNAL MACRO RE-AUDIT，執行者不得 self-audit 宣稱 PASS 或結案。

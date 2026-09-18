@@ -87,6 +87,10 @@ T6 階段正式採用 `busy_timeout = 5000`（5000ms），其基礎為 T1 Window
 - **固定具名 Windows 使用者身分不變式**：生產 Gateway 與憑證配置必須運行於同一固定具名 Windows 使用者身分（fixed named Windows-user context），嚴禁以 S4U 或 LocalSystem/NetworkService 無使用者環境執行真實金鑰。
 - **執行期專用 Buffer 暴露**：SecretProvider 輸出嚴格為二進位 `Buffer`，僅限執行期內部消費，禁止序列化為 JSON，禁止轉為字串印出。
 - **消費者最佳努力歸零**：取用機密之 Consumer 在使用完畢後，應以最佳努力原則立即執行 `buf.fill(0)` 抹除，不宣稱完美記憶體抹除保證。
+- **SecretRef 封閉不可變領域模型**：`SecretRef` 為封閉領域模型，建構後即透過 `Object.freeze` 深層凍結不可變；嚴格拒絕子類別（subclass）與原型覆寫。
+- **提供者權威推導與目標語法斷言**：提供者嚴禁信任呼叫端傳入之 `getTargetName()`，必須自已驗證之語意欄位（channel, purpose, accountId）在內部重新推導規範 TargetName，並於啟動橋接前硬性斷言符合 `HH.AI_v2/channel-gateway/v1/...` 規範語法。
+- **同步橋接有限逾時與熱路徑禁止**：PowerShell 同步橋接必須設定有界逾時（預設 10000ms），逾時失敗一律 Fail-Closed 映射為 `PROVIDER_UNAVAILABLE`；SecretProvider 解析僅允許於生命週期受控點（帳號啟用、帳號切換、消費者初始化、明確憑證重新整理）執行，**嚴禁於熱路徑（hot path）訊息處理中作為每訊息同步查詢**。
+- **原生指標單一擁有權與暫存位元組清理**：PowerShell 橋接腳本對 `CredRead` 取得之原生指標 `$pCred` 採 `finally` 單一擁有權釋放（`CredFree` 恰好一次）且立即歸零（`$pCred = [IntPtr]::Zero`）；其複製之受管機密位元組陣列 `$blob` 於輸出後在 `finally` 區塊以最佳努力原則立即執行 `[Array]::Clear` 歸零。
 - **測試純合成性**：自動化測試一律使用動態合成金鑰，測試完成立即清理刪除；嚴禁在 CI 或測試中使用真實生產機密。
 - **真實金鑰配置邊界**：真實 Telegram/LINE/HMAC 憑證配置為管理員於 Agent 對話外部之手動操作，嚴禁將真實金鑰作為 CLI 參數、環境變數或提示詞文字傳入 Agent。
 

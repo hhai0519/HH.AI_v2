@@ -25,8 +25,13 @@ const path = require('node:path');
 const child_process = require('node:child_process');
 const {
   SecretProvider,
+  SecretRef,
   SecretProviderError,
+  assertCanonicalTargetGrammar,
 } = require('./secret-provider');
+
+const DEFAULT_TIMEOUT_MS = 10000;
+const MAX_TIMEOUT_MS = 60000;
 
 class WindowsCredentialManagerSecretProvider extends SecretProvider {
   /**
@@ -35,11 +40,29 @@ class WindowsCredentialManagerSecretProvider extends SecretProvider {
    * @param {string} [options.scriptPath] - Custom bridge script path for testing
    * @param {string} [options.powershellPath] - Custom powershell.exe path for testing
    * @param {function} [options.spawnSync] - Custom spawnSync implementation for testing
+   * @param {number} [options.timeoutMs] - Bounded timeout in milliseconds for bridge execution
    */
   constructor(options = {}) {
     super();
     this.platform = options.platform || process.platform;
     this.spawnSync = options.spawnSync || child_process.spawnSync;
+
+    if (options.timeoutMs !== undefined) {
+      if (
+        typeof options.timeoutMs !== 'number' ||
+        !Number.isInteger(options.timeoutMs) ||
+        options.timeoutMs <= 0 ||
+        options.timeoutMs > MAX_TIMEOUT_MS
+      ) {
+        throw new SecretProviderError(
+          `Invalid timeoutMs: must be a positive integer <= ${MAX_TIMEOUT_MS}`,
+          'PROVIDER_PROTOCOL_ERROR'
+        );
+      }
+      this.timeoutMs = options.timeoutMs;
+    } else {
+      this.timeoutMs = DEFAULT_TIMEOUT_MS;
+    }
 
     if (this.platform !== 'win32') {
       throw new SecretProviderError(
@@ -84,8 +107,10 @@ class WindowsCredentialManagerSecretProvider extends SecretProvider {
       );
     }
 
+    // Validate ref and re-derive canonical target; caller overrides are ignored (F1-C)
     SecretProvider.validateSecretRef(secretRef);
-    const targetName = secretRef.getTargetName();
+    const targetName = SecretRef.deriveCanonicalTarget(secretRef);
+    assertCanonicalTargetGrammar(targetName);
 
     const systemRoot = process.env.SystemRoot || 'C:\\Windows';
     const childEnv = {
@@ -113,6 +138,7 @@ class WindowsCredentialManagerSecretProvider extends SecretProvider {
         env: childEnv,
         windowsHide: true,
         maxBuffer: 1024 * 1024,
+        timeout: this.timeoutMs,
       });
     } catch (err) {
       throw new SecretProviderError(
@@ -122,6 +148,12 @@ class WindowsCredentialManagerSecretProvider extends SecretProvider {
     }
 
     if (result.error) {
+      if (result.error.code === 'ETIMEDOUT') {
+        throw new SecretProviderError(
+          'Windows Credential Manager bridge timed out',
+          'PROVIDER_UNAVAILABLE'
+        );
+      }
       throw new SecretProviderError(
         'Error executing Windows Credential Manager bridge',
         'PROVIDER_UNAVAILABLE'
@@ -167,4 +199,6 @@ class WindowsCredentialManagerSecretProvider extends SecretProvider {
 
 module.exports = {
   WindowsCredentialManagerSecretProvider,
+  DEFAULT_TIMEOUT_MS,
+  MAX_TIMEOUT_MS,
 };

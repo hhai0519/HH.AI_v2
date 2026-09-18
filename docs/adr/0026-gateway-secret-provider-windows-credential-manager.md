@@ -39,6 +39,9 @@
 - **Local API 全域 HMAC Secret**：
   `HH.AI_v2/channel-gateway/v1/local-api/hmac`
 - **編碼防護**：`account_id` 強制經過百分比編碼（`encodeURIComponent`）且嚴格拒絕 ASCII 控制字元與 NUL 字元，防止路徑分隔符注入（`../`、`/`、`\\`）混淆目標。TargetName 本身為完全非機敏之後設資料。
+- **SecretRef 封閉不可變領域模型與規範重導 (SecretRef Immutability & Re-derivation)**：`SecretRef` 為封閉領域模型，建構後即透過 `Object.freeze(this)` 凍結不可變。提供者絕對不以呼叫端傳入之 `secretRef.getTargetName()` 為權威，而是自已驗證之語意欄位（`channel`, `purpose`, `accountId`）在內部重新推導規範目標，杜絕子類別覆寫與原型篡改。
+- **最終規範語法硬性斷言 (Final Target Grammar Assertion)**：提供者在調用 PowerShell 橋接前，必須硬性斷言目標符合 `HH.AI_v2/channel-gateway/v1/(telegram/...|line/...|local-api/hmac)` 規範語法，任何額外路徑段、未知後綴、空白、引號或非法百分比編碼立即 Fail-Closed 拋出 `INVALID_SECRET_REFERENCE`。
+- **PowerShell 橋接縱深防禦目標檢查 (Bridge Defense-in-Depth Target Validation)**：PowerShell 橋接腳本內部亦以正則表達式嚴格拒絕非規範命名空間 TargetName，杜絕作為任意憑證庫讀取器。
 
 ### 3. 精確查找與零列舉原則 (Exact Lookup & Zero Enumeration)
 
@@ -58,6 +61,10 @@
 
 - **非 Shell 原生引數執行**：Node.js 與 PowerShell 橋接（`windows-credential-manager-read.ps1`）透過 `child_process.spawnSync` 陣列傳遞，強制 `shell: false`，杜絕任何 shell 命令字串插值注入。
 - **純管道 stdout 傳輸**：機密二進位資料僅透過管道 stdout 由 PowerShell 直傳 Node 記憶體；標準輸出禁止輸出任何說明文字或版權標語（使用 `-NoLogo`）。
+- **同步橋接有限逾時與 Fail-Closed (Bounded Bridge Timeout)**：`child_process.spawnSync` 強制配置有限逾時（預設 10000ms），逾時失敗一律 Fail-Closed 映射為穩定之 `PROVIDER_UNAVAILABLE`，絕不將原始錯誤物件、超時堆疊、子進程輸出拼接進錯誤訊息。
+- **同步提供者解析之生命週期邊界 (Synchronous Provider Resolution Boundary)**：由於 `spawnSync` 阻塞 Node.js 事件迴圈，SecretProvider 解析僅允許於受控之生命週期邊界點（帳號啟用、帳號切換、消費者初始化、明確憑證重新整理）執行；**嚴禁設計為熱路徑（hot-path）訊息處理中之每訊息/每事件同步查詢**。v1 提供者內部不維護長效快取，取用機密之 Consumer 生命週期負責管理其合理 Buffer 存續期間。
+- **原生指標單一擁有權契約 (Single Native Ownership Contract)**：PowerShell 橋接腳本對 `CredRead` 取得之原生指標 `$pCred` 採單一擁有權模型；所有釋放操作集中於 `finally` 區塊執行（`CredFree` 恰好調用一次），釋放後指標立即重置為 Zero（`$pCred = [IntPtr]::Zero`），正常成功路徑與各 catch 分支皆不重複釋放，杜絕 double-free。
+- **PowerShell 受管機密位元組暫存抹除 (PowerShell Secret Byte[] Clearing)**：PowerShell 於複製原生指標資料至受管位元組陣列 `$blob` 後，在同一 `finally` 清理區塊以最佳努力原則調用 `[Array]::Clear($blob, 0, $blob.Length)` 抹除暫存記憶體，不宣稱不可能之完美 GC 抹除保證。
 - **環境變數淨化**：子行程環境僅傳入啟動 PowerShell 必需之非機敏系統變數（`SystemRoot`、`PATH`、`TEMP` 等），嚴禁將 Gateway 記憶體中任何憑證或環境變數向下傳遞。
 - **執行期二進位 Buffer 暴露**：SecretProvider 回傳型態嚴格為 `Buffer`，禁止轉為字串或 JSON 序列化。
 - **消費者最佳努力歸零**：取用機密之 Consumer 擁有 Buffer 生命週期，於使用完畢後應以最佳努力原則（Best-effort）呼叫 `buf.fill(0)` 抹除，不宣稱不可能之完美垃圾回收抹除保證。

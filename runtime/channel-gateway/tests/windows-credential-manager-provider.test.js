@@ -11,6 +11,8 @@
 
 const test = require('node:test');
 const assert = require('node:assert');
+const fs = require('node:fs');
+const path = require('node:path');
 const child_process = require('node:child_process');
 const { SecretRef } = require('../core/secret-provider');
 const {
@@ -61,6 +63,7 @@ test('WindowsCredManProvider - B. bridge invocation has shell=false, target exac
   // Verify command array execution without shell
   assert.strictEqual(capturedOptions.shell, undefined); // Default is false, no shell:true
   assert.strictEqual(capturedOptions.windowsHide, true);
+  assert.strictEqual(capturedOptions.timeout, 10000); // Bounded timeout configured (F1-B)
 
   // Verify args contain exact target and no secret
   assert.strictEqual(capturedArgs.includes('-File'), true);
@@ -377,4 +380,271 @@ if ($ok) { exit 0 } else { exit 1 }
     () => realProvider.getSecret(secretRef),
     { code: 'SECRET_NOT_FOUND' }
   );
+});
+
+test('WindowsCredManProvider - K. spawn options contain bounded timeout and custom timeoutMs (F1-B)', () => {
+  let capturedOptions = null;
+  const mockSpawn = (cmd, args, opts) => {
+    capturedOptions = opts;
+    return { status: 0, stdout: Buffer.from('data'), stderr: Buffer.from('') };
+  };
+
+  // 1. Default timeout
+  const defaultProvider = new WindowsCredentialManagerSecretProvider({
+    platform: 'win32',
+    powershellPath: process.execPath,
+    scriptPath: __filename,
+    spawnSync: mockSpawn,
+  });
+  defaultProvider.getSecret(SecretRef.localApiHmac());
+  assert.strictEqual(capturedOptions.timeout, 10000);
+
+  // 2. Custom valid timeoutMs
+  const customProvider = new WindowsCredentialManagerSecretProvider({
+    platform: 'win32',
+    powershellPath: process.execPath,
+    scriptPath: __filename,
+    spawnSync: mockSpawn,
+    timeoutMs: 5000,
+  });
+  customProvider.getSecret(SecretRef.localApiHmac());
+  assert.strictEqual(capturedOptions.timeout, 5000);
+
+  // 3. Invalid timeoutMs values fail closed
+  assert.throws(
+    () => new WindowsCredentialManagerSecretProvider({ platform: 'win32', timeoutMs: 0 }),
+    { code: 'PROVIDER_PROTOCOL_ERROR' }
+  );
+  assert.throws(
+    () => new WindowsCredentialManagerSecretProvider({ platform: 'win32', timeoutMs: -100 }),
+    { code: 'PROVIDER_PROTOCOL_ERROR' }
+  );
+  assert.throws(
+    () => new WindowsCredentialManagerSecretProvider({ platform: 'win32', timeoutMs: 100000 }),
+    { code: 'PROVIDER_PROTOCOL_ERROR' }
+  );
+  assert.throws(
+    () => new WindowsCredentialManagerSecretProvider({ platform: 'win32', timeoutMs: '10000' }),
+    { code: 'PROVIDER_PROTOCOL_ERROR' }
+  );
+});
+
+test('WindowsCredManProvider - L. synthetic timeout error ETIMEDOUT maps to stable PROVIDER_UNAVAILABLE (F1-B)', () => {
+  const mockSpawn = () => {
+    const err = new Error('timed out after 10000ms');
+    err.code = 'ETIMEDOUT';
+    return { error: err, status: null, signal: 'SIGTERM' };
+  };
+
+  const provider = new WindowsCredentialManagerSecretProvider({
+    platform: 'win32',
+    powershellPath: process.execPath,
+    scriptPath: __filename,
+    spawnSync: mockSpawn,
+  });
+
+  try {
+    provider.getSecret(SecretRef.telegramBotToken('acc1'));
+    assert.fail('Should have thrown');
+  } catch (err) {
+    assert.strictEqual(err.code, 'PROVIDER_UNAVAILABLE');
+    assert.strictEqual(err.message.includes('timed out'), true);
+    // Never leaks raw error stack or internal child details
+    assert.strictEqual(err.message.includes('SIGTERM'), false);
+    assert.strictEqual(err.message.includes('Error: timed out'), false);
+  }
+});
+
+test('WindowsCredManProvider - M. subclass getTargetName override and mutation cannot redirect lookup (F1-C)', () => {
+  let spawned = false;
+  const mockSpawn = () => {
+    spawned = true;
+    return { status: 0, stdout: Buffer.from('data'), stderr: Buffer.from('') };
+  };
+
+  const provider = new WindowsCredentialManagerSecretProvider({
+    platform: 'win32',
+    powershellPath: process.execPath,
+    scriptPath: __filename,
+    spawnSync: mockSpawn,
+  });
+
+  class SubclassSecretRef extends SecretRef {
+    getTargetName() {
+      return 'HH.AI_v2/channel-gateway/v1/telegram/injected-account/bot-token';
+    }
+  }
+
+  const subRef = new SubclassSecretRef({
+    channel: 'telegram',
+    purpose: 'telegram-bot-token',
+    accountId: 'orig-account',
+  });
+
+  assert.throws(
+    () => provider.getSecret(subRef),
+    { code: 'INVALID_SECRET_REFERENCE' }
+  );
+  assert.strictEqual(spawned, false, 'spawnSync must not be called when subclass is passed');
+});
+
+test('WindowsCredManProvider - N. invalid canonical target fails closed before child spawn (F1-C)', () => {
+  let spawned = false;
+  const mockSpawn = () => {
+    spawned = true;
+    return { status: 0, stdout: Buffer.from('data'), stderr: Buffer.from('') };
+  };
+
+  const provider = new WindowsCredentialManagerSecretProvider({
+    platform: 'win32',
+    powershellPath: process.execPath,
+    scriptPath: __filename,
+    spawnSync: mockSpawn,
+  });
+
+  assert.throws(
+    () => provider.getSecret(null),
+    { code: 'INVALID_SECRET_REFERENCE' }
+  );
+  assert.throws(
+    () => provider.getSecret({ channel: 'telegram', purpose: 'telegram-bot-token', accountId: 'acc' }),
+    { code: 'INVALID_SECRET_REFERENCE' }
+  );
+  assert.strictEqual(spawned, false);
+});
+
+test('WindowsCredManProvider - O. PowerShell bridge structural assertion guards single ownership and cleanup (F1-A / F1-H1)', () => {
+  const scriptPath = path.resolve(__dirname, '..', 'bin', 'windows-credential-manager-read.ps1');
+  assert.strictEqual(fs.existsSync(scriptPath), true);
+  const content = fs.readFileSync(scriptPath, 'utf8');
+
+  // Guard 1: CredFree appears exactly once in the script (inside finally)
+  const credFreeMatches = content.match(/\[WinCredBridge\]::CredFree/g) || [];
+  assert.strictEqual(credFreeMatches.length, 1, 'CredFree must have exactly one ownership/free site');
+
+  // Guard 2: Pointer is zeroed in finally
+  assert.strictEqual(content.includes('$pCred = [IntPtr]::Zero'), true);
+
+  // Guard 3: Managed array is cleared via [Array]::Clear in finally
+  assert.strictEqual(content.includes('[Array]::Clear($blob, 0, $blob.Length)'), true);
+
+  // Guard 4: Canonical target regex pattern is present
+  assert.strictEqual(content.includes('$canonicalTargetPattern'), true);
+});
+
+test('WindowsCredManProvider - P. post-acquire stdout failure counterexample avoids double-free (F1-A / §22)', () => {
+  if (process.platform !== 'win32') {
+    return;
+  }
+
+  const uniqueAccountId = 'syn-fault-' + Date.now() + '-' + Math.floor(Math.random() * 10000);
+  const secretRef = SecretRef.telegramBotToken(uniqueAccountId);
+  const targetName = secretRef.getTargetName();
+  const syntheticSecretText = 'FaultTestPayload_' + Math.random().toString(36).slice(2);
+
+  const runEncodedPs = (script) => {
+    const b64 = Buffer.from(script, 'utf16le').toString('base64');
+    return child_process.spawnSync('powershell.exe', [
+      '-NoLogo',
+      '-NoProfile',
+      '-NonInteractive',
+      '-ExecutionPolicy', 'Bypass',
+      '-EncodedCommand', b64
+    ], { stdio: ['ignore', 'pipe', 'pipe'], encoding: 'utf8' });
+  };
+
+  const writeScript = `
+$sig = @'
+using System;
+using System.Runtime.InteropServices;
+[StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+public struct CREDENTIAL {
+    public uint Flags;
+    public uint Type;
+    public string TargetName;
+    public string Comment;
+    public System.Runtime.InteropServices.ComTypes.FILETIME LastWritten;
+    public uint CredentialBlobSize;
+    public IntPtr CredentialBlob;
+    public uint Persist;
+    public uint AttributeCount;
+    public IntPtr Attributes;
+    public string TargetAlias;
+    public string UserName;
+}
+public class WinCredFaultHelper {
+    [DllImport("advapi32.dll", EntryPoint = "CredWriteW", CharSet = CharSet.Unicode, SetLastError = true)]
+    public static extern bool CredWrite([In] ref CREDENTIAL userCred, uint flags);
+    [DllImport("advapi32.dll", EntryPoint = "CredDeleteW", CharSet = CharSet.Unicode, SetLastError = true)]
+    public static extern bool CredDelete(string target, uint type, uint flags);
+}
+'@
+if (-not ([System.Management.Automation.PSTypeName]'WinCredFaultHelper').Type) {
+    Add-Type -TypeDefinition $sig
+}
+
+$target = '${targetName}'
+$bytes = [System.Text.Encoding]::UTF8.GetBytes('${syntheticSecretText}')
+$h = [System.Runtime.InteropServices.Marshal]::AllocHGlobal($bytes.Length)
+[System.Runtime.InteropServices.Marshal]::Copy($bytes, 0, $h, $bytes.Length)
+
+$c = New-Object CREDENTIAL
+$c.Type = 1 # CRED_TYPE_GENERIC
+$c.TargetName = $target
+$c.CredentialBlob = $h
+$c.CredentialBlobSize = $bytes.Length
+$c.Persist = 2 # CRED_PERSIST_LOCAL_MACHINE
+$c.UserName = "HHAI_FaultTest"
+
+$ok = [WinCredFaultHelper]::CredWrite([ref]$c, 0)
+[System.Runtime.InteropServices.Marshal]::FreeHGlobal($h)
+if ($ok) { exit 0 } else { exit 1 }
+`;
+
+  const deleteScript = `
+$sig = @'
+using System;
+using System.Runtime.InteropServices;
+public class WinCredFaultDelHelper {
+    [DllImport("advapi32.dll", EntryPoint = "CredDeleteW", CharSet = CharSet.Unicode, SetLastError = true)]
+    public static extern bool CredDelete(string target, uint type, uint flags);
+}
+'@
+if (-not ([System.Management.Automation.PSTypeName]'WinCredFaultDelHelper').Type) {
+    Add-Type -TypeDefinition $sig
+}
+$ok = [WinCredFaultDelHelper]::CredDelete('${targetName}', 1, 0)
+if ($ok) { exit 0 } else { exit 1 }
+`;
+
+  // 1. Write synthetic credential
+  const writeRes = runEncodedPs(writeScript);
+  assert.strictEqual(writeRes.status, 0, 'Synthetic credential write should succeed');
+
+  try {
+    // 2. Invoke bridge script with -TestFaultStage stdout
+    const scriptPath = path.resolve(__dirname, '..', 'bin', 'windows-credential-manager-read.ps1');
+    const faultRes = child_process.spawnSync('powershell.exe', [
+      '-NoLogo',
+      '-NoProfile',
+      '-NonInteractive',
+      '-ExecutionPolicy', 'Bypass',
+      '-File', scriptPath,
+      targetName,
+      '-TestFaultStage', 'stdout',
+    ], { stdio: ['ignore', 'pipe', 'pipe'] });
+
+    // 3. Assert fail-closed exit code 1
+    assert.strictEqual(faultRes.status, 1, 'Bridge with fault seam must exit code 1');
+    // 4. Assert process did not crash with native double-free / AV code (e.g. 0xC0000005, 0xC0000374)
+    assert.strictEqual(faultRes.signal, null, 'Process must terminate normally without crash signal');
+    // 5. Assert zero secret bytes emitted to stdout or stderr
+    assert.strictEqual(faultRes.stdout.length, 0, 'Stdout must be empty on failure');
+    const stderrStr = (faultRes.stderr || Buffer.alloc(0)).toString('utf8');
+    assert.strictEqual(stderrStr.includes(syntheticSecretText), false, 'Stderr must never leak secret bytes');
+  } finally {
+    // 6. Clean up synthetic credential
+    const delRes = runEncodedPs(deleteScript);
+    assert.strictEqual(delRes.status, 0, 'Synthetic credential cleanup should succeed');
+  }
 });
