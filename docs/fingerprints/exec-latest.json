@@ -1,5 +1,5 @@
 {
-  "base_head": "4db5d49",
+  "base_head": "18867eb",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 0,
@@ -515,16 +515,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 176,
-      "sha256": "44ebb13197e06ac6997505a6e2026501d29c6b00d924553b4939717c57bf4318"
+      "lines": 177,
+      "sha256": "e4690544f0b1ae2396fc3d5dbb3803daa57f53a3b577c0ac68990aa4ca89fca6"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 137,
-      "sha256": "b68971898605fd580d1261f2351004b51da187c7718d208e2848f1f1283f7ae6"
+      "lines": 138,
+      "sha256": "83d59cf0cca8c7553f77dc133a7aa7891f9fb7c872f2694cd563f4a00b4eff52"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -565,7 +565,7 @@
         "## 封存區"
       ],
       "lines": 316,
-      "sha256": "8348c84ebe94dd19623fedf3281e656f64113047cf42f300bccbf8b5ab73ff91"
+      "sha256": "8a9be1a46e6ab294d638cde5db60ca7f175a21e61514cd817b0dd6913b2dba47"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -877,7 +877,7 @@
         "## Consequences"
       ],
       "lines": 81,
-      "sha256": "554ff16f7420e42ab884542f5ca9a99f476e1080bc59a1c9e5669290f4276ef7"
+      "sha256": "89a6e10317327f3e6901888b3faeb1248231447441b189e90e83250078ddc9ec"
     },
     "docs/adr/0024-inbound-identity-cursor-semantics.md": {
       "fences": 2,
@@ -890,12 +890,12 @@
         "### 3. Telegram 身分與游標契約 (Telegram Contract)",
         "### 4. LINE 身分與游標契約 (LINE Contract)",
         "### 5. C1 / C2 / C3 架構裁決與處置",
-        "### 6. 現行綱要與後續邊界 (Schema v3 & Follow-Up Routing)",
+        "### 6. 現行綱要與後續邊界 (Schema Baseline & Follow-Up Routing)",
         "### 7. 平台官方查證事實 (Independently Verified Platform Facts)",
         "## Consequences"
       ],
-      "lines": 177,
-      "sha256": "3f43010ad79b8b8a2d51e0a9e7a0a44a1367a964635e4283a3f6b562f077a5bc"
+      "lines": 178,
+      "sha256": "16419ad615d6a8e22d05be88e03d7f53d28602612d08035838cc8d18b62b125b"
     },
     "docs/adr/0025-outbound-reliability-loopback-api-security.md": {
       "fences": 6,
@@ -1001,8 +1001,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 4204,
-      "sha256": "29bdf2f435249bf2f69567d5df7cc738fa19618e971d6f9bfca12fdbecf29e05"
+      "lines": 4236,
+      "sha256": "e41e6b9f411b068a3a53975aa4f8fb4aeaad5fcc9349f95afa7e58658b92ced0"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1272,7 +1272,7 @@
       "sha256": "35bf7dbfa3c7d291b550c3c97a6ae398a22b1dc3624c1d2fc1e4db6963d6e115"
     }
   },
-  "generated_at": "2026-09-18T04:33:44Z",
+  "generated_at": "2026-09-18T05:11:58Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

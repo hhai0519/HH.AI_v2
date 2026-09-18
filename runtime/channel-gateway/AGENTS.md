@@ -27,10 +27,15 @@ T6 階段正式採用 `busy_timeout = 5000`（5000ms），其基礎為 T1 Window
 - 通道控制接管（takeover）、訊息領取（claim）、狀態變更等任何具備狀態轉移副作用之操作，必須在 SQLite 交易 **COMMIT 成功後**，始得將 success 結果回傳給呼叫端。
 - 在 SQLite 交易邊界機制（T7 階段）正式建立前，嚴禁重啟或復活舊 Wave 2H 基於 JSON 快照的協調器。
 
-## 4. 冪等攝取與游標原子性 (Idempotent Ingest & Cursor Atomicity)
+## 4. 事件去重、邏輯訊息身分與游標原子性 (Event Dedup, Message Identity & Cursor Atomicity)
 
-- 收件防重以 `UNIQUE(account_id, platform_msg_id)` 為硬性約束。
-- 訊息攝取與接收游標（Ingest Cursor）推進必須置於同一 SQLite 交易內完成，杜絕長輪詢重啟重複拉取或斷線漏訊。
+- **事件去重 (Event Deduplication)**：事件層級防重之 Canonical Key 為 `(account_id, platform_event_id)`，由 `inbound_event` 資料表之 `UNIQUE(account_id, platform_event_id)` 提供硬性 DB 約束。
+- **邏輯訊息身分 (Logical Message Identity)**：`inbox` 表之 `UNIQUE(account_id, platform_msg_id)` 保留為邏輯訊息身分約束，用途為邏輯訊息查詢、回覆授權（Reply Authorization）及編輯/收回關聯（Edit/Unsend Correlation），不得再視為事件去重鍵。
+- **真實重複事件 (True Duplicate Event)**：相同 `(account_id, platform_event_id)` 之重放為冪等零副作用（Zero Mutation）：不新增事件、不異動收件箱、不確保/建立通道控制列、不推進或變更游標。
+- **相同訊息不同事件 (Same Message ID, New Event ID)**：相同 `platform_msg_id` 但不同 `platform_event_id`（如編輯或更新事件）不得因邏輯訊息 ID 相同而直接判定為重複事件。
+- **游標能力與交易邊界 (Cursor Capability & Transaction Boundary)**：
+  - 具游標能力（Cursor-enabled）之平台：事件/訊息持久化結果與游標推進決策必須在同一 SQLite 交易內完成，杜絕長輪詢重啟重複拉取或斷線漏訊。
+  - 無游標能力（No-cursor）之平台（如 LINE）：不得偽造游標數值或時間戳，亦不得建立偽造之 `ingest_cursor` 記錄。
 - 帳號切換（Account Switch）與 Bot 身分切換之游標與去重，亦必須納入交易邊界處理。
 
 ## 5. SQL 查詢安全 (SQL Safety)

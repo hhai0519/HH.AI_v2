@@ -10,7 +10,7 @@
 
 1. **交易邊界與狀態原子性**：JSON 快照在每次狀態異動時需對整個多通道集合進行全量序列化與磁碟寫入；隨著通道訊息與狀態擴展，無法提供細粒度的行級鎖定與原子交易（ACID）。
 2. **重啟復原與當機一致性**：當進程在寫入中途遭強制終止時，即使原子更名能避免檔案損毀，未提交與已提交狀態難以在單一檔案內達成精確的 Rollback / Commit 分離。
-3. **訊息防重與去重約束**：在接收訊息時，JSON 陣列需手動以 JavaScript 集合檢查去重，缺乏資料庫原生 `UNIQUE(account_id, platform_msg_id)` 約束之硬性保障。
+3. **訊息防重與去重約束**：在接收訊息時，JSON 陣列需手動以 JavaScript 集合檢查去重，缺乏資料庫原生 `UNIQUE(account_id, platform_msg_id)` 約束之硬性保障。（架構補充：該 constraint 仍保留為收件箱邏輯訊息身分；事件層級去重語意已由後續 ADR-0024 supersede，正規事件去重鍵為 `(account_id, platform_event_id)`，runtime landing 由 TG-MVP-05 schema v4 `inbound_event` 完成）。
 4. **游標與訊息攝取原子性**：長輪詢（Long-Polling）或 Webhook 接收時之接收游標（Ingest Cursor）更新必須與訊息寫入同一交易邊界，否則面臨重啟重複拉取或漏訊風險。
 5. **未來發送隊列（Outbox）**：未來出站訊息之發送狀態機需要可靠的行級狀態流轉，非全量快照所能高效承載。
 

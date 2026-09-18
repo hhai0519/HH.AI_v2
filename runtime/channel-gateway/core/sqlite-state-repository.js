@@ -42,7 +42,7 @@ const crypto = require('node:crypto');
 const { DatabaseSync } = require('node:sqlite');
 const { isAbsolutePath } = require('./data-location-config');
 
-const SQLITE_STATE_SCHEMA_VERSION = 3;
+const SQLITE_STATE_SCHEMA_VERSION = 4;
 const SQLITE_BUSY_TIMEOUT_MS = 5000;
 const SQLITE_DATABASE_FILENAME = 'channel-gateway-state.sqlite3';
 
@@ -151,6 +151,33 @@ CREATE TABLE ingest_cursor (
 `;
 
 /**
+ * Canonical DDL definitions for domain tables in schema version 4.
+ * Inbound event ledger tracks per-event ingress with (account_id, platform_event_id) uniqueness.
+ */
+const INBOUND_EVENT_SCHEMA_SQL = `
+CREATE TABLE inbound_event (
+  event_sequence INTEGER PRIMARY KEY AUTOINCREMENT,
+  account_id TEXT NOT NULL
+    CHECK(length(trim(account_id)) > 0),
+  platform_event_id TEXT NOT NULL
+    CHECK(length(trim(platform_event_id)) > 0),
+  event_type TEXT NOT NULL
+    CHECK(event_type IN ('MESSAGE', 'EDIT', 'UNSEND', 'IGNORED')),
+  channel_id TEXT,
+  platform_msg_id TEXT,
+  CHECK(
+    (event_type = 'IGNORED' AND channel_id IS NULL AND platform_msg_id IS NULL)
+    OR
+    (event_type IN ('MESSAGE', 'EDIT', 'UNSEND') AND channel_id IS NOT NULL AND length(trim(channel_id)) > 0 AND platform_msg_id IS NOT NULL AND length(trim(platform_msg_id)) > 0)
+  ),
+  UNIQUE(account_id, platform_event_id),
+  FOREIGN KEY(channel_id)
+    REFERENCES channel_control(channel_id)
+    ON DELETE RESTRICT
+) STRICT;
+`;
+
+/**
  * Normalizes CREATE TABLE DDL SQL deterministically for canonical schema comparison.
  * Collapses whitespace, trims, normalizes punctuation spacing, strips trailing semicolons,
  * and normalizes keyword case outside single-quoted string literals.
@@ -236,6 +263,12 @@ FROM inbox_v2_legacy;
 `);
       db.exec('DROP TABLE inbox_v2_legacy;');
       db.exec(INGEST_CURSOR_SCHEMA_SQL);
+    },
+  }),
+  Object.freeze({
+    version: 4,
+    apply(db) {
+      db.exec(INBOUND_EVENT_SCHEMA_SQL);
     },
   }),
 ]);
@@ -452,12 +485,13 @@ function getDataVersion(db) {
  * Supports:
  * - Version 2 (pre-migration historical shape, used during pre-migration backup validation)
  * - Version 3 (canonical shape with account_id/platform_msg_id/content inbox and ingest_cursor)
+ * - Version 4 (canonical shape with inbound_event ledger)
  *
  * @param {DatabaseSync} db
  * @param {number} [version=SQLITE_STATE_SCHEMA_VERSION]
  */
 function verifyCanonicalDomainSchemaShape(db, version = SQLITE_STATE_SCHEMA_VERSION) {
-  if (version !== 2 && version !== 3) {
+  if (version !== 2 && version !== 3 && version !== 4) {
     throw new Error(`Unsupported schema version for domain shape verification: ${version} (fail-closed)`);
   }
 
@@ -740,8 +774,105 @@ function verifyCanonicalDomainSchemaShape(db, version = SQLITE_STATE_SCHEMA_VERS
     if (normCur !== expCur) {
       throw new Error('ingest_cursor schema definition does not match canonical DDL contract (fail-closed)');
     }
+
+    // 4. Verify inbound_event for v4
+    if (version === 4) {
+      const eventList = db.prepare("PRAGMA table_list('inbound_event');").all();
+      const eventEntry = eventList ? eventList.find((e) => e.name === 'inbound_event') : null;
+      if (!eventEntry || eventEntry.type !== 'table' || Number(eventEntry.strict) !== 1) {
+        throw new Error('inbound_event must exist as a STRICT table (fail-closed)');
+      }
+      const eventCols = db.prepare("PRAGMA table_info('inbound_event');").all();
+      if (!eventCols || eventCols.length !== 6) {
+        throw new Error(
+          `inbound_event must have exactly 6 columns, found ${eventCols ? eventCols.length : 0} (fail-closed)`
+        );
+      }
+      const eventExpected = {
+        event_sequence: { type: 'INTEGER', notnull: 0, pk: 1 },
+        account_id: { type: 'TEXT', notnull: 1, pk: 0 },
+        platform_event_id: { type: 'TEXT', notnull: 1, pk: 0 },
+        event_type: { type: 'TEXT', notnull: 1, pk: 0 },
+        channel_id: { type: 'TEXT', notnull: 0, pk: 0 },
+        platform_msg_id: { type: 'TEXT', notnull: 0, pk: 0 },
+      };
+      for (const col of eventCols) {
+        const exp = eventExpected[col.name];
+        if (!exp) {
+          throw new Error(`Unexpected column '${col.name}' in inbound_event (fail-closed)`);
+        }
+        if (
+          col.type.toUpperCase() !== exp.type ||
+          Number(col.notnull) !== exp.notnull ||
+          Number(col.pk) !== exp.pk
+        ) {
+          throw new Error(
+            `Column '${col.name}' in inbound_event mismatch: expected type=${exp.type}, notnull=${exp.notnull}, pk=${exp.pk}; got type=${col.type}, notnull=${col.notnull}, pk=${col.pk} (fail-closed)`
+          );
+        }
+      }
+
+      // Foreign key to channel_control
+      const eventFks = db.prepare("PRAGMA foreign_key_list('inbound_event');").all();
+      const eventFk = eventFks
+        ? eventFks.find(
+            (k) =>
+              k.table === 'channel_control' &&
+              k.from === 'channel_id' &&
+              k.to === 'channel_id'
+          )
+        : null;
+      if (!eventFk || !eventFk.on_delete || eventFk.on_delete.toUpperCase() !== 'RESTRICT') {
+        throw new Error(
+          'inbound_event must define FOREIGN KEY (channel_id) REFERENCES channel_control(channel_id) ON DELETE RESTRICT (fail-closed)'
+        );
+      }
+
+      // UNIQUE(account_id, platform_event_id)
+      const eventIdxList = db.prepare("PRAGMA index_list('inbound_event');").all();
+      let hasEventUniqueCompound = false;
+      if (eventIdxList) {
+        for (const idx of eventIdxList) {
+          if (Number(idx.unique) === 1) {
+            const info = indexInfoStmt.all(idx.name);
+            const cols = info ? info.map((c) => c.name) : [];
+            if (cols.length === 2 && cols[0] === 'account_id' && cols[1] === 'platform_event_id') {
+              hasEventUniqueCompound = true;
+              break;
+            }
+          }
+        }
+      }
+      if (!hasEventUniqueCompound) {
+        throw new Error('inbound_event must define UNIQUE(account_id, platform_event_id) constraint (fail-closed)');
+      }
+
+      const eventSqlRow = schemaStmt.get('inbound_event');
+      if (!eventSqlRow || typeof eventSqlRow.sql !== 'string') {
+        throw new Error('inbound_event table definition not found in sqlite_schema (fail-closed)');
+      }
+      const normEvent = normalizeCanonicalSchemaSql(eventSqlRow.sql);
+      const expEvent = normalizeCanonicalSchemaSql(INBOUND_EVENT_SCHEMA_SQL);
+
+      if (!normEvent.includes('AUTOINCREMENT')) {
+        throw new Error('inbound_event event_sequence column missing AUTOINCREMENT (fail-closed)');
+      }
+      if (!normEvent.includes('CHECK ( LENGTH ( TRIM ( ACCOUNT_ID ) ) > 0 )')) {
+        throw new Error('inbound_event missing account_id nonblank CHECK constraint (fail-closed)');
+      }
+      if (!normEvent.includes('CHECK ( LENGTH ( TRIM ( PLATFORM_EVENT_ID ) ) > 0 )')) {
+        throw new Error('inbound_event missing platform_event_id nonblank CHECK constraint (fail-closed)');
+      }
+      if (!normEvent.includes("CHECK ( EVENT_TYPE IN ( 'MESSAGE' , 'EDIT' , 'UNSEND' , 'IGNORED' ) )")) {
+        throw new Error('inbound_event missing event_type enum CHECK constraint (fail-closed)');
+      }
+      if (normEvent !== expEvent) {
+        throw new Error('inbound_event schema definition does not match canonical DDL contract (fail-closed)');
+      }
+    }
   }
 }
+
 
 /**
  * Internal verified backup runner.
@@ -1070,15 +1201,47 @@ function validatePlatformMsgId(platformMsgId) {
   return str;
 }
 
-function validateCursorValue(cursorValue) {
-  if (cursorValue === null || cursorValue === undefined) {
-    throw new Error('cursorValue is required (fail-closed)');
+function validatePlatformEventId(platformEventId) {
+  if (platformEventId === null || platformEventId === undefined) {
+    throw new Error('platformEventId is required (fail-closed)');
   }
-  const str = String(cursorValue).trim();
+  if (typeof platformEventId !== 'string' && typeof platformEventId !== 'number') {
+    throw new TypeError('platformEventId must be a string or number (fail-closed)');
+  }
+  const str = String(platformEventId).trim();
   if (str.length === 0) {
-    throw new Error('cursorValue must not be empty (fail-closed)');
+    throw new Error('platformEventId must not be empty (fail-closed)');
   }
   return str;
+}
+
+function validateCursorValue(cursorValue) {
+  if (cursorValue === undefined) {
+    throw new Error('cursorValue must not be undefined (fail-closed)');
+  }
+  if (cursorValue === null) {
+    return null;
+  }
+  if (typeof cursorValue === 'number') {
+    if (!Number.isInteger(cursorValue) || cursorValue < 0 || !Number.isSafeInteger(cursorValue)) {
+      throw new Error('Numeric cursorValue must be a non-negative safe integer (fail-closed)');
+    }
+    return String(cursorValue);
+  }
+  if (typeof cursorValue === 'string') {
+    if (!/^(0|[1-9][0-9]*)$/.test(cursorValue)) {
+      throw new Error(`cursorValue must be a canonical non-negative decimal string: received '${cursorValue}' (fail-closed)`);
+    }
+    return cursorValue;
+  }
+  throw new TypeError('cursorValue must be a string, number, or null (fail-closed)');
+}
+
+function compareCanonicalDecimals(a, b) {
+  if (a === b) return 0;
+  if (a.length > b.length) return 1;
+  if (a.length < b.length) return -1;
+  return a > b ? 1 : -1;
 }
 
 function validateMessageContent(content) {
@@ -1279,12 +1442,18 @@ class SqliteStateRepository {
       // 4. Verify canonical schema_migrations shape (STRICT, single integer PK column)
       verifyCanonicalSchemaMigrationsShape(db);
 
-      // 5. Verify canonical domain schema shape for v3
+      // 5. Verify canonical domain schema shape for target schema version
       verifyCanonicalDomainSchemaShape(db, SQLITE_STATE_SCHEMA_VERSION);
 
-      // 6. Verify exact user table set
+      // 6. Verify exact user table set for schema v4
       const userTables = getCanonicalUserTableNames(db);
-      const expectedTables = ['channel_control', 'inbox', 'ingest_cursor', 'schema_migrations'];
+      const expectedTables = [
+        'channel_control',
+        'inbound_event',
+        'inbox',
+        'ingest_cursor',
+        'schema_migrations',
+      ];
       if (
         userTables.length !== expectedTables.length ||
         !userTables.every((t, i) => t === expectedTables[i])
@@ -1941,39 +2110,50 @@ class SqliteStateRepository {
   }
 
   /**
-   * Ingests an inbound message atomically with per-account cursor tracking (T8B).
+   * Ingests an inbound message atomically with per-event ledger and per-account cursor tracking (T8B v4).
    *
-   * Invariants (D10, D30, T8B):
-   * - Atomically persists inbound message and advances cursor in a SINGLE immediate transaction.
-   * - Ensures channel existence in channel_control without taking over holder (holder=NULL, token=0).
-   * - Preserves existing holder, fencing_token, and heartbeat if channel already exists.
-   * - Idempotent deduplication based on canonical identity (account_id, platform_msg_id):
-   *     - If (account_id, platform_msg_id) already exists:
-   *         - Returns { success: true, duplicate: true, sequence, channelId, accountId, platformMsgId }.
-   *         - Zero mutation: does NOT insert duplicate, does NOT update content/status/channel.
-   *         - CRITICAL: DUPLICATE MUST NOT UPDATE CURSOR.
-   *     - If new identity:
-   *         - Inserts inbox row with status='queued', exact content (untrimmed).
-   *         - Upserts ingest_cursor(account_id, cursor_value) in SAME transaction.
-   *         - Returns { success: true, duplicate: false, sequence, channelId, accountId, platformMsgId, cursorValue }.
+   * Invariants (ADR-0024):
+   * - Atomically persists inbound event in inbound_event and advances cursor in a SINGLE immediate transaction.
+   * - Event-level deduplication based on canonical key (account_id, platform_event_id):
+   *     - If (account_id, platform_event_id) already exists in inbound_event:
+   *         - If event_type !== 'MESSAGE' or channel_id !== input.channelId or platform_msg_id !== input.platformMsgId:
+   *             - Throws EVENT_IDENTITY_CONFLICT (fail-closed).
+   *         - True duplicate event: idempotent zero mutation (no channel ensure, no inbox insert, no cursor change).
+   *         - Returns { success: true, duplicate: true, eventSequence, messageCreated: false, sequence, channelId, accountId, platformEventId, platformMsgId, cursorValue, cursorAction: 'NONE' }.
+   * - For new event:
+   *     - Evaluates cursor decision (NONE if cursorValue === null; ADVANCE / NOOP / fail-closed CURSOR_REGRESSION).
+   *     - Stored cursor must be canonical decimal; if invalid, throws STORED_CURSOR_INVALID (fail-closed).
+   *     - Checks logical message (account_id, platform_msg_id) in inbox:
+   *         - If exists under a different channel: throws LOGICAL_MESSAGE_CHANNEL_MISMATCH (fail-closed).
+   *     - Ensures channel existence in channel_control (unattended persistence).
+   *     - Inserts inbound_event row with event_type='MESSAGE'.
+   *     - If logical message does not exist in inbox: inserts inbox row with status='queued', messageCreated=true.
+   *       If already exists in inbox (same channel): messageCreated=false, preserves existing inbox content/status/claims.
+   *     - If cursorAction === 'ADVANCE': upserts ingest_cursor(account_id, cursor_value).
+   *     - Returns { success: true, duplicate: false, eventSequence, messageCreated, sequence, channelId, accountId, platformEventId, platformMsgId, cursorValue, cursorAction }.
    * - Rejects invalid inputs before any transaction mutation.
    * - Result returned only after COMMIT succeeds.
    *
    * @param {{
    *   accountId: string,
+   *   platformEventId: string|number,
    *   platformMsgId: string|number,
    *   channelId: string,
    *   content: string,
-   *   cursorValue: string|number
+   *   cursorValue: string|number|null
    * }} input
    * @returns {{
    *   success: true,
    *   duplicate: boolean,
-   *   sequence: number,
+   *   eventSequence: number,
+   *   messageCreated: boolean,
+   *   sequence: number|null,
    *   channelId: string,
    *   accountId: string,
+   *   platformEventId: string,
    *   platformMsgId: string,
-   *   cursorValue?: string
+   *   cursorValue: string|null,
+   *   cursorAction: 'ADVANCE'|'NOOP'|'NONE'
    * }}
    */
   ingestMessage(input) {
@@ -1982,35 +2162,86 @@ class SqliteStateRepository {
     }
 
     const accId = validateAccountId(input.accountId);
+    const pEventId = validatePlatformEventId(input.platformEventId);
     const pMsgId = validatePlatformMsgId(input.platformMsgId);
     const chId = validateChannelId(input.channelId);
     const content = validateMessageContent(input.content);
     const curVal = validateCursorValue(input.cursorValue);
 
     return this.#runTransaction((db) => {
-      // 1. Check canonical duplicate identity: UNIQUE(account_id, platform_msg_id) FIRST
-      // Duplicates must be strictly zero-mutation: no channel ensure, no inbox insert, no cursor change.
-      const selectExisting = db.prepare(
-        'SELECT sequence, channel_id, account_id, platform_msg_id FROM inbox WHERE account_id = ? AND platform_msg_id = ?;'
+      // 1. Check canonical event duplicate identity: UNIQUE(account_id, platform_event_id)
+      const selectExistingEvent = db.prepare(
+        'SELECT event_sequence, account_id, platform_event_id, event_type, channel_id, platform_msg_id FROM inbound_event WHERE account_id = ? AND platform_event_id = ?;'
       );
-      const existing = selectExisting.get(accId, pMsgId);
+      const existingEvent = selectExistingEvent.get(accId, pEventId);
 
-      if (existing) {
-        // Duplicate identity: idempotent zero-mutation no-op, cursor MUST NOT be updated
+      if (existingEvent) {
+        if (
+          existingEvent.event_type !== 'MESSAGE' ||
+          existingEvent.channel_id !== chId ||
+          existingEvent.platform_msg_id !== pMsgId
+        ) {
+          throw new Error('EVENT_IDENTITY_CONFLICT: Existing event in inbound_event has conflicting identity or target (fail-closed)');
+        }
+
+        // True duplicate event: idempotent zero-mutation no-op, cursor MUST NOT be updated
+        const existingMsg = db.prepare(
+          'SELECT sequence FROM inbox WHERE account_id = ? AND platform_msg_id = ?;'
+        ).get(accId, pMsgId);
+
         return {
           success: true,
           duplicate: true,
-          sequence: existing.sequence,
-          channelId: existing.channel_id,
+          eventSequence: existingEvent.event_sequence,
+          messageCreated: false,
+          sequence: existingMsg ? existingMsg.sequence : null,
+          channelId: chId,
           accountId: accId,
+          platformEventId: pEventId,
           platformMsgId: pMsgId,
+          cursorValue: curVal,
+          cursorAction: curVal === null ? 'NONE' : 'NOOP',
         };
       }
 
-      // 2. Ensure channel existence (unattended message persistence under D10)
-      // Executed ONLY for non-duplicate messages to prevent orphan channel_control rows
+      // 2. Cursor decision for new event
+      let cursorAction = 'NONE';
+      if (curVal !== null) {
+        const selectCursor = db.prepare('SELECT cursor_value FROM ingest_cursor WHERE account_id = ?;');
+        const cursorRow = selectCursor.get(accId);
+        const storedCursor = cursorRow ? cursorRow.cursor_value : null;
+
+        if (storedCursor === null) {
+          cursorAction = 'ADVANCE';
+        } else {
+          if (!/^(0|[1-9][0-9]*)$/.test(storedCursor)) {
+            throw new Error(`STORED_CURSOR_INVALID: Stored cursor '${storedCursor}' is not a canonical decimal string (fail-closed)`);
+          }
+          const cmp = compareCanonicalDecimals(curVal, storedCursor);
+          if (cmp > 0) {
+            cursorAction = 'ADVANCE';
+          } else if (cmp === 0) {
+            cursorAction = 'NOOP';
+          } else {
+            throw new Error(`CURSOR_REGRESSION: candidate cursor '${curVal}' < stored cursor '${storedCursor}' (fail-closed)`);
+          }
+        }
+      }
+
+      // 3. Logical message check: (account_id, platform_msg_id)
+      const selectExistingMsg = db.prepare(
+        'SELECT sequence, channel_id, account_id, platform_msg_id FROM inbox WHERE account_id = ? AND platform_msg_id = ?;'
+      );
+      const existingMsg = selectExistingMsg.get(accId, pMsgId);
+      if (existingMsg && existingMsg.channel_id !== chId) {
+        throw new Error(
+          `LOGICAL_MESSAGE_CHANNEL_MISMATCH: Logical message exists in channel '${existingMsg.channel_id}' but received for channel '${chId}' (fail-closed)`
+        );
+      }
+
+      // 4. Ensure channel existence in channel_control (unattended persistence)
       const selectChan = db.prepare(
-        'SELECT channel_id, current_holder, fencing_token FROM channel_control WHERE channel_id = ?;'
+        'SELECT channel_id FROM channel_control WHERE channel_id = ?;'
       );
       const chanRow = selectChan.get(chId);
       if (!chanRow) {
@@ -2020,27 +2251,149 @@ class SqliteStateRepository {
         insertChan.run(chId);
       }
 
-      // 3. Insert new queued message
-      const insertMsg = db.prepare(
-        "INSERT INTO inbox (channel_id, account_id, platform_msg_id, content, status) VALUES (?, ?, ?, ?, 'queued');"
+      // 5. Insert inbound_event row (MESSAGE)
+      const insertEvent = db.prepare(
+        "INSERT INTO inbound_event (account_id, platform_event_id, event_type, channel_id, platform_msg_id) VALUES (?, ?, 'MESSAGE', ?, ?);"
       );
-      const msgResult = insertMsg.run(chId, accId, pMsgId, content);
-      const sequence = Number(msgResult.lastInsertRowid);
+      const eventResult = insertEvent.run(accId, pEventId, chId, pMsgId);
+      const eventSequence = Number(eventResult.lastInsertRowid);
 
-      // 4. Update/insert ingest cursor in SAME transaction
-      const upsertCursor = db.prepare(
-        'INSERT INTO ingest_cursor (account_id, cursor_value) VALUES (?, ?) ON CONFLICT(account_id) DO UPDATE SET cursor_value = excluded.cursor_value;'
-      );
-      upsertCursor.run(accId, curVal);
+      // 6. Handle logical inbox message
+      let sequence;
+      let messageCreated = false;
+      if (!existingMsg) {
+        const insertMsg = db.prepare(
+          "INSERT INTO inbox (channel_id, account_id, platform_msg_id, content, status) VALUES (?, ?, ?, ?, 'queued');"
+        );
+        const msgResult = insertMsg.run(chId, accId, pMsgId, content);
+        sequence = Number(msgResult.lastInsertRowid);
+        messageCreated = true;
+      } else {
+        sequence = existingMsg.sequence;
+        messageCreated = false;
+      }
+
+      // 7. Update cursor in SAME transaction if ADVANCE
+      if (cursorAction === 'ADVANCE') {
+        const upsertCursor = db.prepare(
+          'INSERT INTO ingest_cursor (account_id, cursor_value) VALUES (?, ?) ON CONFLICT(account_id) DO UPDATE SET cursor_value = excluded.cursor_value;'
+        );
+        upsertCursor.run(accId, curVal);
+      }
 
       return {
         success: true,
         duplicate: false,
+        eventSequence,
+        messageCreated,
         sequence,
         channelId: chId,
         accountId: accId,
+        platformEventId: pEventId,
         platformMsgId: pMsgId,
         cursorValue: curVal,
+        cursorAction,
+      };
+    });
+  }
+
+  /**
+   * Records a durable terminal record for an unsupported inbound event (T8B v4).
+   * Prevents poison polling loops in adapters by durably advancing cursor and logging IGNORED event.
+   *
+   * @param {{
+   *   accountId: string,
+   *   platformEventId: string|number,
+   *   cursorValue: string|number|null
+   * }} input
+   * @returns {{
+   *   success: true,
+   *   duplicate: boolean,
+   *   eventSequence: number,
+   *   accountId: string,
+   *   platformEventId: string,
+   *   cursorValue: string|null,
+   *   cursorAction: 'ADVANCE'|'NOOP'|'NONE'
+   * }}
+   */
+  recordIgnoredEvent(input) {
+    if (!input || typeof input !== 'object' || Array.isArray(input)) {
+      throw new TypeError('recordIgnoredEvent input must be a non-null object (fail-closed)');
+    }
+
+    const accId = validateAccountId(input.accountId);
+    const pEventId = validatePlatformEventId(input.platformEventId);
+    const curVal = validateCursorValue(input.cursorValue);
+
+    return this.#runTransaction((db) => {
+      // 1. Dedup lookup
+      const selectEvent = db.prepare(
+        'SELECT event_sequence, account_id, platform_event_id, event_type FROM inbound_event WHERE account_id = ? AND platform_event_id = ?;'
+      );
+      const existing = selectEvent.get(accId, pEventId);
+
+      if (existing) {
+        if (existing.event_type !== 'IGNORED') {
+          throw new Error('EVENT_IDENTITY_CONFLICT: Existing event in inbound_event is not IGNORED (fail-closed)');
+        }
+        return {
+          success: true,
+          duplicate: true,
+          eventSequence: existing.event_sequence,
+          accountId: accId,
+          platformEventId: pEventId,
+          cursorValue: curVal,
+          cursorAction: curVal === null ? 'NONE' : 'NOOP',
+        };
+      }
+
+      // 2. Cursor decision for new event
+      let cursorAction = 'NONE';
+      if (curVal !== null) {
+        const selectCursor = db.prepare('SELECT cursor_value FROM ingest_cursor WHERE account_id = ?;');
+        const cursorRow = selectCursor.get(accId);
+        const storedCursor = cursorRow ? cursorRow.cursor_value : null;
+
+        if (storedCursor === null) {
+          cursorAction = 'ADVANCE';
+        } else {
+          if (!/^(0|[1-9][0-9]*)$/.test(storedCursor)) {
+            throw new Error(`STORED_CURSOR_INVALID: Stored cursor '${storedCursor}' is not a canonical decimal string (fail-closed)`);
+          }
+          const cmp = compareCanonicalDecimals(curVal, storedCursor);
+          if (cmp > 0) {
+            cursorAction = 'ADVANCE';
+          } else if (cmp === 0) {
+            cursorAction = 'NOOP';
+          } else {
+            throw new Error(`CURSOR_REGRESSION: candidate cursor '${curVal}' < stored cursor '${storedCursor}' (fail-closed)`);
+          }
+        }
+      }
+
+      // 3. Insert inbound_event row (IGNORED: channel_id and platform_msg_id are NULL)
+      const insertEvent = db.prepare(
+        "INSERT INTO inbound_event (account_id, platform_event_id, event_type, channel_id, platform_msg_id) VALUES (?, ?, 'IGNORED', NULL, NULL);"
+      );
+      const res = insertEvent.run(accId, pEventId);
+      const eventSequence = Number(res.lastInsertRowid);
+
+      // 4. Update cursor in SAME transaction if ADVANCE
+      if (cursorAction === 'ADVANCE') {
+        const upsertCursor = db.prepare(
+          'INSERT INTO ingest_cursor (account_id, cursor_value) VALUES (?, ?) ON CONFLICT(account_id) DO UPDATE SET cursor_value = excluded.cursor_value;'
+        );
+        upsertCursor.run(accId, curVal);
+      }
+
+      return {
+        success: true,
+        duplicate: false,
+        eventSequence,
+        accountId: accId,
+        platformEventId: pEventId,
+        cursorValue: curVal,
+        cursorAction,
       };
     });
   }
@@ -2090,5 +2443,8 @@ module.exports = {
   INBOX_SCHEMA_SQL,
   INBOX_V2_SCHEMA_SQL,
   INGEST_CURSOR_SCHEMA_SQL,
+  INBOUND_EVENT_SCHEMA_SQL,
   normalizeCanonicalSchemaSql,
+  validatePlatformEventId,
+  compareCanonicalDecimals,
 };

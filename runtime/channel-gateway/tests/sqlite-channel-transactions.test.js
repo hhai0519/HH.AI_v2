@@ -701,17 +701,18 @@ test('SqliteChannelTransactions - 15. closed repository rejects all operations f
 });
 
 // 16. Architectural invariants and boundaries (CANARY 17-24)
-test('SqliteChannelTransactions - 16. architectural invariants: schema version 3, no ingress/outbox/account-switch', () => {
-  assert.strictEqual(SQLITE_STATE_SCHEMA_VERSION, 3, 'CANARY 17: schema version must remain 3');
+test('SqliteChannelTransactions - 16. architectural invariants: schema version 4, event-ingest boundary, no outbox, no account-switch', () => {
+  assert.strictEqual(SQLITE_STATE_SCHEMA_VERSION, 4, 'CANARY 17: schema version must remain 4');
 
   const harness = createTempHarness();
   try {
     const repo = new SqliteStateRepository(harness.stateRoot);
     try {
-      assert.strictEqual(repo.schemaVersion, 3, 'CANARY 18: applied schema version is 3');
+      assert.strictEqual(repo.schemaVersion, 4, 'CANARY 18: applied schema version is 4');
 
-      // CANARY 19: Authorized ingestMessage in T8B; arbitrary other ingress remains absent
+      // CANARY 19: Authorized ingress in T8B / v4; arbitrary other ingress remains absent
       assert.strictEqual(typeof repo.ingestMessage, 'function');
+      assert.strictEqual(typeof repo.recordIgnoredEvent, 'function');
       assert.strictEqual(repo.enqueueMessage, undefined);
       assert.strictEqual(repo.receiveMessage, undefined);
       assert.strictEqual(repo.insertInboundMessage, undefined);
@@ -725,17 +726,18 @@ test('SqliteChannelTransactions - 16. architectural invariants: schema version 3
       // CANARY 22: R2 safe - no reply mutation completion
       assert.strictEqual(repo.authorizeReply, undefined);
 
-      // CANARY 23: T8A ingest_cursor table exists; outbox remains absent
+      // CANARY 23: ingest_cursor and inbound_event tables exist; outbox remains absent
       const rawDb = new DatabaseSync(repo.databasePath, { readOnly: true });
       try {
         const tRows = rawDb.prepare("SELECT name FROM sqlite_schema WHERE type = 'table';").all();
         const tNames = tRows.map((r) => r.name);
         assert.strictEqual(tNames.includes('ingest_cursor'), true);
+        assert.strictEqual(tNames.includes('inbound_event'), true);
         assert.strictEqual(tNames.includes('outbox'), false);
 
-        // CANARY 10: MIGRATIONS remain [1, 2, 3]
+        // CANARY 10: MIGRATIONS remain [1, 2, 3, 4]
         const mRows = rawDb.prepare('SELECT version FROM schema_migrations ORDER BY version ASC;').all();
-        assert.deepStrictEqual(mRows.map((r) => r.version), [1, 2, 3]);
+        assert.deepStrictEqual(mRows.map((r) => r.version), [1, 2, 3, 4]);
       } finally {
         rawDb.close();
       }

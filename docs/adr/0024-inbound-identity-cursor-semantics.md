@@ -130,12 +130,13 @@ LINE 通道採用 Webhook 模型：
 
 ---
 
-### 6. 現行綱要與後續邊界 (Schema v3 & Follow-Up Routing)
+### 6. 現行綱要與後續邊界 (Schema Baseline & Follow-Up Routing)
 
-1. **現況事實保留**：目前生產環境仍維持 `schema v3`（`inbox` 具備 `UNIQUE(account_id, platform_msg_id)`，`ingest_cursor` 無條件覆寫）。本 ADR 不偽稱程式碼已修改。
-2. **執行層修復（TG-MVP-05）**：`TG-MVP-05` 負責實作新事件身分分離、游標比較器、LINE 無游標相容與不支援事件終態處置。具體資料表設計與遷移版本屬實作者決定，但必須滿足本 ADR 之語意契約。
-3. **回覆授權修復（TG-MVP-04 / F1）**：`validateReplyAuthorization()` 之修復排定於 `TG-MVP-04`，查找邏輯必須對齊本 ADR 之 `account_id + platform_msg_id` 邏輯訊息鍵。
-4. **明確非目標（Explicit Non-Goals）**：本 ADR 不包含任何 SQLite 遷移、程式碼修改、適配器實作、F1 修復、R2 Outbox、R3 Local API 或密鑰配置。
+1. **歷史基準與動態狀態（Historical Baseline vs Runtime State）**：ADR adoption 時之 runtime baseline 為 `schema v3`（`inbox` 具備 `UNIQUE(account_id, platform_msg_id)`，`ingest_cursor` 無條件覆寫）。該 baseline 不是永久 schema-version pin，current runtime implementation state 由 repository code 與 TASKBOARD 判定。
+2. **執行層修復（TG-MVP-05 Runtime Landing）**：`TG-MVP-05` 作為事件身分帳本（event identity ledger）、游標比較器（cursor comparator）、LINE 無游標存儲相容（LINE no-cursor repository compatibility）與不支援事件終態處置（IGNORED durable terminal handling）之 runtime landing。
+3. **EDIT / UNSEND 業務邊界（LINE-03 Routing）**：`TG-MVP-05` 僅建立 event identity storage foundation；LINE platform-specific 之 EDIT / UNSEND application effect、重送行為與 Webhook 整合正式由後續 `LINE-03` 落地，且 `LINE-03` 依賴 `TG-MVP-05`。本架構不偽稱 `TG-MVP-05` 已完成 LINE adapter。
+4. **回覆授權修復（F1 Timeless Routing）**：F1（`validateReplyAuthorization()` 查找邏輯修復）為獨立 implementation slice，已由 `TG-MVP-04` 處理完畢；current lifecycle evidence 以 TASKBOARD 與 AUDIT-LOG 為準。
+5. **明確非目標（Explicit Non-Goals）**：本 ADR 本身不包含任何 SQLite 遷移、程式碼修改、適配器實作、F1 修復、R2 Outbox、R3 Local API 或密鑰配置。
 
 ---
 

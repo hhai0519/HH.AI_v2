@@ -2825,7 +2825,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 5.1 上一批狀態
 
-上次核對通過的 HEAD：4db5d498fa035e14c8628540ce269627aa038ea1
+上次核對通過的 HEAD：18867eb5af7c4b90df8946c22977350bf7ec5086
 
 - `23af193`（執行者前置檢查 ＋ 回滾程序 ＋ `AUDIT-LOG.md` ＋ 四缺口修正）
   已於 2026-09-02 由審計官核對通過：6 檔異動（含 2 個新檔）、零夾帶、
@@ -3078,7 +3078,8 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - R2 出站能力感知安全重試與持久化 SQLite Outbox 架構確立（USER DECIDED / ADR-0025 LANDED / NOT IMPLEMENTED）。
   - R2-3 不確定狀態處理採選項 B（USER DECIDED OPTION B / ADR-0025 LANDED）。
   - R3 僅綁定 127.0.0.1 之 Loopback HTTP v1 與 HMAC-SHA-256 雙向認證架構確立（USER DECIDED / ADR-0025 LANDED / NOT IMPLEMENTED；Windows 具名管道正式延後未獲選）。
-- TG-MVP-04 F1 回覆授權身份鍵修復：進行中（IN PROGRESS / PENDING EXTERNAL MACRO AUDIT，修正 validateReplyAuthorization SQL 複合鍵查詢與金絲雀測試）。
+- TG-MVP-04 F1 回覆授權身份鍵修復：已完成（ACCEPTED / CLOSED，修正 validateReplyAuthorization SQL 複合鍵查詢與金絲雀測試，accepted checkpoint = 18867eb5af7c4b90df8946c22977350bf7ec5086）。
+- TG-MVP-05 游標推進防衛與事件身分分離修復：進行中（IN PROGRESS / PENDING EXTERNAL MACRO AUDIT，實作 SQLite Schema v4、inbound_event 表、任意長度十進位游標比較器與去重語意）。
   - B-28 / B-29 上游 trigger 重新評估完成，無 B-01 blocker，維持 DEFERRED_BY_USER / POST_B01。
   - B-54 保持待辦（POST_B01 / NONBLOCKING，SOP_12 機器專屬路徑 concrete example 已登錄）。
   - B-98 / B-75 保持待辦、零實作 (POST_B01 / NONBLOCKING / NOT IMPLEMENTED)。
@@ -4201,4 +4202,35 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - TG-MVP-03 已完成（ACCEPTED / CLOSED）。
   - TG-MVP-04 進行中（IN PROGRESS / PENDING EXTERNAL MACRO AUDIT）。
   - 看板頂部下一切片（NEXT_SLICE）：TG-MVP-05（Cursor / event identity runtime repair）。
+  - 本候選提交後標記為 PENDING EXTERNAL MACRO AUDIT，執行者不得 self-audit。
+
+107. **TG-MVP-04 外部宏觀審計 PASS 結論同步與 TG-MVP-05 游標推進防衛與事件身分分離修復候選（TG-MVP-05 Runtime Repair Candidate）**（2026-09-18）
+- **外部宏觀審計 PASS 裁決同步（External Macro PASS Verdict Sync）**：
+  - 目標候選：`18867eb5af7c4b90df8946c22977350bf7ec5086`（TG-MVP-04 F1 回覆授權身份鍵修復候選）。
+  - 審查人員：GPT 代理審查官（使用者授權）。
+  - A1 資格查證：採 A1 = EQUIVALENT（GitHub API + Executor clone cross-check）成立。
+  - 審查範圍：`4db5d498fa035e14c8628540ce269627aa038ea1..18867eb5af7c4b90df8946c22977350bf7ec5086`（共 1 commit）。
+  - 遠端機器事實：GitHub Actions Run `35307539503`（completed / success，verify = success, gateway-windows = success）。
+  - 外部審計結論：MACHINE / CI = PASS；MACRO AUDIT = PASS；Accept status = ACCEPT ALL；F1 = RESOLVED；new material finding = NONE；TG-MVP-04 = ACCEPTED。
+  - 通過基準推進：accepted checkpoint 正式推進至 `18867eb5af7c4b90df8946c22977350bf7ec5086`，TG-MVP-04 正式結案（CLOSED），授權啟動 TG-MVP-05。
+- **S1 依賴範圍合法擴張處置留痕（S1 DEPENDENCY_SCOPE_EXPANSION Handled）**：
+  - pre-commit dependency closure 階段，`verify_all.py` 成功攔截發現 `runtime/channel-gateway/tests/sqlite-channel-transactions.test.js` 包含舊 schema-v3 建築金絲雀硬斷言（Test 16: `AssertionError: 4 !== 3`），上一版提示詞將該檔誤分類為 VERIFY_ONLY。
+  - 執行者成功 fail-closed 升級回報 S1 DEPENDENCY_SCOPE_EXPANSION；經 External Macro Auditor 獨立複核判定 VALID 並正式核准處置（VERIFY_ONLY → UPDATE），Allowed Scope 由 11 檔合法擴張為 12 檔。
+  - 完整保留既有合法未提交修改（no reset / no restore）；建立 `tg_mvp_05_dispositioned_evidence_v2.json` 與 `tg_mvp_05_allowed_scope_v2.json`，經 `impact_scan.py check` 重放驗證 100% PASS；金絲雀測試精確對齊 schema v4（SQLITE_STATE_SCHEMA_VERSION=4, repo.schemaVersion=4, [1, 2, 3, 4] 遷移歷史, inbound_event 表存在, ingest_cursor 表存在, outbox 表不存在, ingestMessage 與 recordIgnoredEvent 函式存在）；無其他範圍擴張。
+- **TG-MVP-05 游標推進防衛與事件身分分離修復實作（Runtime Correctness Repair）**：
+  - 綱要升級與事件表：`SQLITE_STATE_SCHEMA_VERSION = 4`，新增 Migration 4 建立 STRICT 表格 `inbound_event`（`account_id TEXT`, `platform_event_id TEXT`, `event_type TEXT CHECK IN ('MESSAGE', 'EDIT', 'UNSEND', 'IGNORED')`, `platform_msg_id TEXT`, `created_at INTEGER`, `PRIMARY KEY (account_id, platform_event_id)`）；MIGRATIONS 保持連續 `[1, 2, 3, 4]`；遷移前自動產出 verified v3 備份；無合成歷史事件回填。
+  - 身分鍵徹底分離：入站事件去重身分以 `(account_id, platform_event_id)` 唯一識別，收件箱邏輯訊息身分保持 `(account_id, platform_msg_id)` 唯一約束；同一邏輯訊息後續新事件不視為重複事件；跨通道同名邏輯訊息安全 fail-closed。
+  - 任意長度十進位游標比較器：實作 `compareCanonicalDecimals`（不使用 JS Number 避免精度遺失），支援 ADVANCE、NOOP、REGRESSION 狀態；REGRESSION 觸發 `CURSOR_REGRESSION` 錯誤並交易回滾全部事件效果；歷史損壞游標安全 fail-closed；真正的重複事件 zero-mutation 且不推進游標。
+  - LINE 無游標相容性：允許 `cursorValue === null`，不異動 `ingest_cursor` 表。
+  - Telegram 未支援更新處置：實作 `recordIgnoredEvent` 提供原子持久化終態事件記錄，支援事件記錄與游標推進原子綁定。
+  - Scoped AGENTS 規則與 ADR 對齊：`runtime/channel-gateway/AGENTS.md` 對齊 ADR-0024 事件身分；ADR-0023 與 ADR-0024 完成最小窄幅澄清。
+  - 單元測試套件擴充：`sqlite-state-repository.test.js` 增至 73 項，`sqlite-ingest-transactions.test.js` 增至 20 項，`sqlite-channel-transactions.test.js` 24 項對齊 v4；全庫 305 項 Gateway 測試全數通過（302 pass, 3 allowed skips, 0 fail）；Python 測試橋接 24/24 PASS。
+- **架構邊界與生命週期不變量**：
+  - 零 Telegram 網路適配器、LINE Webhook 適配器實作。
+  - 零 LINE EDIT 業務效果、LINE UNSEND 內容遮蔽/墓碑效果宣稱。
+  - 零 Outbox 與 Local API 實作（留待 TG-MVP-11 與 TG-MVP-12）。
+  - C-07 與 C-08 維持待使用者裁決（UNDECIDED）。
+  - TG-MVP-04 已完成（ACCEPTED / CLOSED）。
+  - TG-MVP-05 進行中（IN PROGRESS / PENDING EXTERNAL MACRO AUDIT）。
+  - 看板頂部下一切片（NEXT_SLICE）：TG-MVP-06（B-98 Secret/Credential Hardening），待辦零實作。
   - 本候選提交後標記為 PENDING EXTERNAL MACRO AUDIT，執行者不得 self-audit。
