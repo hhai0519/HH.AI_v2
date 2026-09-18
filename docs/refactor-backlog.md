@@ -3080,8 +3080,10 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - R3 僅綁定 127.0.0.1 之 Loopback HTTP v1 與 HMAC-SHA-256 雙向認證架構確立（USER DECIDED / ADR-0025 LANDED / NOT IMPLEMENTED；Windows 具名管道正式延後未獲選）。
 - TG-MVP-04 F1 回覆授權身份鍵修復：已完成（ACCEPTED / CLOSED，修正 validateReplyAuthorization SQL 複合鍵查詢與金絲雀測試，accepted checkpoint = 18867eb5af7c4b90df8946c22977350bf7ec5086）。
 - TG-MVP-05 游標推進防衛與事件身分分離修復：已完成（ACCEPTED / CLOSED，commit `cdd9d7c5eeca5185e47e7365d42a3a3dc0a61eb1`，Actions Run 35311601796 success，External Macro PASS / ACCEPT ALL；TG-MVP-05-F1 已徹底解決 RESOLVED；accepted checkpoint 推進至 `cdd9d7c5eeca5185e47e7365d42a3a3dc0a61eb1`）。
-- TG-MVP-06 B-98 機密輸出強化與提交守衛：進行中（IN PROGRESS / MACRO HOLD；52ff candidate machine/CI success，External Macro HOLD，TG-MVP-06-F1 CURRENT，F1-A safe presence helper caller-input nondisclosure 與 F1-B hook activation verification repair candidates in progress；實作 binding rule SECRET-1..8、safe presence helper、Git index staged scanner、tracked pre-commit hook、CHECK 21 機密防護守衛，verify_all 保持 5 Gates，repair candidate pending External Macro re-audit）。
-  - TG-MVP-06-F1：CURRENT（F1-A repair candidate in progress，F1-B repair candidate in progress）。
+- TG-MVP-06 B-98 機密輸出強化與提交守衛：進行中（IN PROGRESS / MACRO HOLD；079f candidate Actions Run 35327963222 machine/CI success，F1-A 與 F1-B RESOLVED，External Macro HOLD，TG-MVP-06-F2 CURRENT，exit-code evidence drift correction in progress；實作 binding rule SECRET-1..8、safe presence helper、Git index staged scanner、tracked pre-commit hook、CHECK 21 機密防護守衛，verify_all 保持 5 Gates，repair candidate pending External Macro re-audit）。
+  - TG-MVP-06-F1-A：已解決（RESOLVED）。
+  - TG-MVP-06-F1-B：已解決（RESOLVED）。
+  - TG-MVP-06-F2：CURRENT（Secret Presence Exit-Code Evidence Drift repair candidate in progress）。
   - B-98：進行中（IN PROGRESS）。
   - B-101 / TG-MVP-06A：待辦（PENDING / NOT AUTHORIZED，選定具體 Gateway secret provider 與執行期機密取用邊界，TG-MVP-06 刻意不實作）。
   - TG-MVP-07 與後續切片：不得開始（NOT AUTHORIZED / NOT STARTED）。
@@ -4326,3 +4328,27 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - 全程零真實機密讀取、零真實機密輸出、零真實機密提交；所有測試均為純合成動態構造。
   - 零 Secret Provider 架構實作，B-101 / TG-MVP-06A 維持待辦（NOT AUTHORIZED）。
   - 本 repair candidate 提交後標記為 PENDING EXTERNAL MACRO RE-AUDIT，執行者不得 self-audit 宣稱 PASS 或結案。
+
+111. **TG-MVP-06-F2 機密存在性探針退出碼事實漂移更正（Secret Presence Exit-Code Evidence Correction）**（2026-09-18）
+- **文件事實漂移更正宣告（Evidence Drift Correction & Supersede Declaration）**：
+  - 前一歷史項目 Item 110 在描述 `scripts/secret_presence.py` 行為時，記載「所有無參數、多參數、空值、空白、萬用字元或非法標識符一律 fail-closed（exit 2）」，此 exact exit code 2 之記載不符合現行程式碼實測行為。
+  - 正確事實真相（Canonical Truth）：
+    - 無效參數類別（invalid input）：`return 1`（退出碼為 1）
+    - 環境變數查詢異常（lookup failure）：`return 1`（退出碼為 1）
+    - 查詢成功（success）：`return 0`（退出碼為 0）
+    - 架構與驗收合約（Architectural Contract）：核心安全要求為「NONZERO FAIL-CLOSED」（非零安全失敗），從未且不要求具體退出碼必須為 2。
+  - 權威來源驗證（Canonical Authority Verification）：以現行程式碼 `scripts/secret_presence.py` 與單元測試套件 `scripts/tests/test_secret_hardening.py` 為唯一單一事實來源（兩者一致斷言 `rc == 1`）。
+  - 留痕約束：歷史 Item 110 作為 append-only 留痕保留不改寫，但其 exit 2 之陳述細節由本項目明確正式 supersede。
+- **外部宏觀審計結論與生命週期留痕（External Macro Audit Truth & Lifecycle）**：
+  - 目標候選：`079f2ed1d8e6649acf33e67fc7542c1b7e59c425`。
+  - 父提交：`52ff76136fc10d47d82c3f318318d8cb73f4475b`。
+  - 審查範圍：`cdd9d7c5eeca5185e47e7365d42a3a3dc0a61eb1..079f2ed1d8e6649acf33e67fc7542c1b7e59c425`（共 3 commits）。
+  - 審查人員：GPT 代理審查官（使用者授權）。
+  - A1 資格查證：採 A1 = EQUIVALENT（GitHub API + Executor clone cross-check）成立。
+  - 遠端機器證據：GitHub Actions Run `35327963222`（completed / success，jobs: verify = success, gateway-windows = success）。
+  - 技術發現裁決：TG-MVP-06-F1-A = RESOLVED，TG-MVP-06-F1-B = RESOLVED。
+  - 新重大發現：TG-MVP-06-F2（Secret Presence Exit-Code Evidence Drift）。
+  - 審查結論：MACHINE / CI = PASS；MACRO AUDIT = HOLD；Accept status = ONE BOUNDED AUDIT-TRUTH REPAIR REQUIRED；FINDING_DISPOSITION = CURRENT E-03。
+  - 通過基準保持：accepted checkpoint 保持為 `cdd9d7c5eeca5185e47e7365d42a3a3dc0a61eb1`，不得推進至 079f2ed 或本 repair candidate。
+  - 本批為純文件與審計事實更正，零執行期程式碼修改（zero security runtime modification）、零測試修改、零規則修改。
+  - 本 repair candidate 提交後仍處於 PENDING EXTERNAL MACRO RE-AUDIT，TG-MVP-06 尚未結案，TG-MVP-06A 尚未授權。
