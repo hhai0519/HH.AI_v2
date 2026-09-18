@@ -2825,7 +2825,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 5.1 上一批狀態
 
-上次核對通過的 HEAD：e60fedb6fbaade0ec725d28fc83f1e47cfb13943
+上次核對通過的 HEAD：fe9b507aaccd64222934b0ed1eebe0225fb707a2
 
 - `23af193`（執行者前置檢查 ＋ 回滾程序 ＋ `AUDIT-LOG.md` ＋ 四缺口修正）
   已於 2026-09-02 由審計官核對通過：6 檔異動（含 2 個新檔）、零夾帶、
@@ -3021,6 +3021,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 - `b15d5bf`（E-03 Channel Gateway Wave 2G Multi-Channel Durable State Persistence Bridge & T1 Windows node:sqlite Technical Spike Review）已於 2026-09-17 由 GPT 代理審查官（使用者授權）全面審查獨立核對通過：涵蓋 750eaeb..b15d5bf 完整 pending range；A1 EQUIVALENT 查證通過；Wave 2G = ACCEPTED；T1 Windows node:sqlite Technical Spike = GO（D28 prerequisite satisfied，V1-V6 + V8 PASS，V7 reference partial / R3 undecided；F1 process protocol deviation non-blocking / added to B-98；F2 V7 not approval）；new accepted checkpoint = b15d5bf。
 - `234918c`（E-03 SQLite State Route Governance Landing & R2/R3 Decision-Routing Fidelity Repair）已於 2026-09-17 由 GPT 代理審查官（使用者授權）全面審查獨立核對通過：涵蓋 b15d5bf..234918c 完整 pending range（共 2 commits：90dc71c 初審 Machine PASS / Macro HOLD，F1 為 R2/R3 authoritative decision semantics misrouted，由 234918c87e05626245c8204f2e36a98d9bd87bc6 徹底解決）；A1 EQUIVALENT 查證通過；exact-SHA Actions Verify Run 35183142134 completed / success（20 checks PASS，321 unit PASS，13 webapp PASS，5 Gates PASS）；SQLite Governance Landing = ACCEPTED；new accepted checkpoint = 234918c87e05626245c8204f2e36a98d9bd87bc6。
 - `c1fd25d`（E-03 Pin Gateway Node and Harden Test Discovery）已於 2026-09-17 由 GPT 代理審查官（使用者授權）全面審查獨立核對通過：涵蓋 234918c..c1fd25d 完整 pending range（共 1 commit）；A1 EQUIVALENT 查證通過；exact-SHA Actions Verify Run 35187602617 completed / success（jobs: verify = success, gateway-windows = success；Ubuntu canonical: 20 checks PASS，331 unit tests PASS，13 webapp PASS，ALL 5 Gates PASS；Windows: Node 24.21.0，Gateway bridge 21/21 PASS）；ZERO UNREGISTERED SKIPS policy verified；T3/T17 = ACCEPTED；new accepted checkpoint = c1fd25d166bdc854dc602f54ac8522de25326e26。
+- `fe9b507`（TG-MVP-06A-F4 依賴證據溯源與回報真實性修復）已於 2026-09-18 由外部審計官（使用者授權）全面審查獨立核對通過：涵蓋 e60fedb..fe9b507 完整 cumulative range（共 6 commits：d3a31fc, e79087c, a46aea3, e435b3a, 764fc99, fe9b507）；A1 EQUIVALENT 查證通過；exact-SHA Actions Verify Run 35359354510 completed / success（jobs: verify = success, gateway-windows = success）；F1-A/C/H1 = RESOLVED, F2-A/B = RESOLVED, F3 = RESOLVED, F4 = RESOLVED；NEW MATERIAL FINDING = NONE；TG-MVP-06A = ACCEPTED / CLOSED；B-101 = CLOSED；new accepted checkpoint = fe9b507aaccd64222934b0ed1eebe0225fb707a2。
 
 ### 5.2 待辦
 
@@ -3038,8 +3039,8 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 | 2 | ~~**`SOP_02` 清歷史規定違反第 1 層規則**~~ **已於 2026-09-06 裁決** | 裁決結果見 `docs/TASKBOARD.md` C-02。採甲案：不得 force push；已推送憑證視為永久洩漏，處置為撤銷與輪換；清理歷史僅由使用者本人執行。執行排批 4 |
 | 3 | ~~**ADR-0013 處置**~~ **已於 2026-09-06 裁決** | 裁決結果見 `docs/TASKBOARD.md` C-03。採甲案逐節處置：§1／§2ABD／§7 棄用；§2C BOM 偵測實作為新 CHECK；§3 搬進 `role-boundaries.md`；§4／§5 凍結待 E-03；§6 獨立為 B-32。執行排批 4 |
 | 4 | ~~**是否將 GitHub Verify 升級為 main 的 preventive required check**~~ **已於 2026-09-17 裁決** | 裁決結果見 `docs/TASKBOARD.md` C-06。使用者已裁決採 Option B（main 未來必須由 preventive GitHub gate 保護：Require PR + Verify before merge；CI 未綠不能進 main）。實作落地排定於 TG-MVP-01B / G2 執行，本批不實作。 |
-| 5 | **歷史待辦 B-17 / B-28 / B-29 處置決策（ARCHIVE vs TRIGGER_BASED_DEFERRED）** | 待使用者裁決（見 `docs/TASKBOARD.md` C-07）。審計官與歷史討論針對 B-17（章節語意變更偵測）、B-28（AGENTS.md 上游規範版本記錄）、B-29（上游一致性對照表與機械檢查）提出處置方案。Macro 建議採 TRIGGER_BASED_DEFERRED（依觸發條件延後，不封存）。本項為 non-blocking user decision，等待使用者裁決。 |
-| 6 | **Data/logs 歷史檔案處置決策（repo-external 保留 vs 封存 vs 刪除）** | 待使用者裁決（見 `docs/TASKBOARD.md` C-08）。依使用者裁決 D-U2，個人工作資料與日誌（Persona 個人內容、Agent_Reflections、TODO、reports、logs）一律不進 repo，舊 repo 之 Data/logs/ 不得遷入 HH.AI_v2 repo。至於其歷史檔案應於本機 repo-external 保留、移入封存區、或刪除清理，待使用者裁決。 |
+| 5 | ~~**歷史待辦 B-17 / B-28 / B-29 處置決策（ARCHIVE vs TRIGGER_BASED_DEFERRED）**~~ **已於 2026-09-18 裁決** | 裁決結果見 `docs/TASKBOARD.md` C-07。使用者裁決採 `TRIGGER_BASED_DEFERRED`（依觸發條件延後，不封存）。排定於觸發事件發生時評估，不阻擋重構。 |
+| 6 | ~~**Data/logs 歷史檔案處置決策（repo-external 保留 vs 封存 vs 刪除）**~~ **已於 2026-09-18 裁決** | 裁決結果見 `docs/TASKBOARD.md` C-08。使用者裁決採 `REPO_EXTERNAL_QUARANTINE_THEN_DELETE`（repo 外部隔離保存一週後刪除；HH.AI_v2 repo 內保持零納入、零歷史檔案）。 |
 
 ### 5.4 進行中／等待回報
 
@@ -3081,13 +3082,14 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 - TG-MVP-04 F1 回覆授權身份鍵修復：已完成（ACCEPTED / CLOSED，修正 validateReplyAuthorization SQL 複合鍵查詢與金絲雀測試，accepted checkpoint = 18867eb5af7c4b90df8946c22977350bf7ec5086）。
 - TG-MVP-05 游標推進防衛與事件身分分離修復：已完成（ACCEPTED / CLOSED，commit `cdd9d7c5eeca5185e47e7365d42a3a3dc0a61eb1`，Actions Run 35311601796 success，External Macro PASS / ACCEPT ALL；TG-MVP-05-F1 已徹底解決 RESOLVED；accepted checkpoint 推進至 `cdd9d7c5eeca5185e47e7365d42a3a3dc0a61eb1`）。
 - TG-MVP-06 B-98 機密輸出強化與提交守衛：已完成（ACCEPTED / CLOSED，commit `e60fedb6fbaade0ec725d28fc83f1e47cfb13943`，Actions Run 35331712071 success，External Macro PASS / ACCEPT ALL；TG-MVP-06-F1-A、TG-MVP-06-F1-B、TG-MVP-06-F2 全數徹底解決 RESOLVED；new material finding = NONE；accepted checkpoint 推進至 `e60fedb6fbaade0ec725d28fc83f1e47cfb13943`；B-98 正式關閉 CLOSED）。
-- TG-MVP-06A / B-101 Gateway 機密提供者與執行期機密取用邊界：進行中（IN PROGRESS / MACRO HOLD；候選 764fc99 經 Actions Run 35357085721 success，External Macro HOLD，TG-MVP-06A-F1 = RESOLVED，TG-MVP-06A-F2 = RESOLVED，TG-MVP-06A-F3 = RESOLVED，新發現 TG-MVP-06A-F4 = CURRENT；F4 依賴證據來源與回報真實性更正 state-closure active；accepted checkpoint 保持 e60fedb6fbaade0ec725d28fc83f1e47cfb13943；repair candidate 待外部宏觀審計，不得 self-audit）。
+- TG-MVP-06A / B-101 Gateway 機密提供者與執行期機密取用邊界：已完成（ACCEPTED / CLOSED，commit `fe9b507aaccd64222934b0ed1eebe0225fb707a2`，Actions Run 35359354510 success，External Macro PASS / ACCEPT ALL，F1-F4 全數解決，accepted checkpoint 推進至 `fe9b507aaccd64222934b0ed1eebe0225fb707a2`；B-101 CLOSED）。
   - B-98：已完成（CLOSED）。
-  - B-101：進行中（IN PROGRESS）。
-  - TG-MVP-06A：進行中（IN PROGRESS / MACRO HOLD，TG-MVP-06A-F1 = RESOLVED，TG-MVP-06A-F2 = RESOLVED，TG-MVP-06A-F3 = RESOLVED，TG-MVP-06A-F4 = CURRENT）。
-  - TG-MVP-07 與後續切片：尚未開始（NOT AUTHORIZED / NOT STARTED）。
-  - E-03：進行中（IN PROGRESS，accepted checkpoint = e60fedb6fbaade0ec725d28fc83f1e47cfb13943）。
-  - B-28 / B-29 上游 trigger 重新評估完成，無 B-01 blocker，維持 DEFERRED_BY_USER / POST_B01。
+  - B-101：已完成（CLOSED）。
+  - TG-MVP-06A：已完成（ACCEPTED / CLOSED）。
+  - TG-MVP-01B：進行中（IN PROGRESS，G2 Authority Landing & C-06 Preventive GitHub Gate，落實 D-U2、D-U6、D-U7、C-06 Option B、C-07、C-08、B-100 R-D、Tier-M、E17、CHECK 22 等，候選狀態 pending External Macro Audit）。
+  - TG-MVP-07 與後續切片：待辦（NOT AUTHORIZED until TG-MVP-01B External Macro closure）。
+  - E-03：進行中（IN PROGRESS，accepted checkpoint = fe9b507aaccd64222934b0ed1eebe0225fb707a2）。
+  - B-28 / B-29 上游 trigger 重新評估完成，無 B-01 blocker，依 C-07 維持 TRIGGER_BASED_DEFERRED。
   - B-54 保持待辦（POST_B01 / NONBLOCKING，SOP_12 機器專屬路徑 concrete example 已登錄）。
   - B-75 保持待辦、零實作 (POST_B01 / NONBLOCKING / NOT IMPLEMENTED)。
   - B-69 保持待辦 (PENDING NON-BLOCKING)。
@@ -3095,7 +3097,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - 當前與下一步工作任務權威（Current / next work authority）仍只由 `docs/TASKBOARD.md` 的 `**NEXT_WORK**` pointer 保存與導航，交接區不複製 task ID 或待辦佇列。
   - 待使用者裁決事項依 §5.3。
   - Antigravity IDE runtime rule UI freshness 仍需由 runtime reload / fresh session 保證，不能由 CI 直接證明。
-- **待使用者裁決事項**：有（依 §5.3，包含 C-07 與 C-08，屬 non-blocking user decision）。
+- **待使用者裁決事項**：無（依 §5.3，C-07 與 C-08 皆已於 2026-09-18 裁決）。
 - **剩餘工作權威**：以 `docs/TASKBOARD.md` 為唯一 remaining-work authority。
 
 56. **Post-Governance Taskboard Reconciliation（治理收斂後看板全面對帳）**（2026-09-11）
@@ -4517,3 +4519,17 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - 零程式碼變更：runtime/**、tests/**、rules/**、docs/adr/** 維持 ZERO DIFF。
   - 零真實機密讀寫存取、零真實憑證枚舉、零新 npm 依賴。
   - 本 correction candidate 提交後標記為 PENDING EXTERNAL MACRO RE-AUDIT，執行者不得 self-audit 宣稱 PASS 或結案。
+
+117. **TG-MVP-01B G2 權威規則落地與 C-06 預防性 GitHub Gate（G2 Authority Landing & Preventive GitHub Gate Candidate）**（2026-09-19）
+- **背景與目標**：落實使用者已裁決之 G2 治理與架構規則，將既有直接推送 main 分支模式（Direct Main Push）正式升級為受保護之 PR 工作流模式（Protected PR Production Transport）。
+- **落地成果**：
+  - **D-U2 & C-08 個人工作資料邊界**：於 `.agents/rules/role-boundaries.md` §8 落實個人工作資料與日誌（Persona、Agent_Reflections、TODO、reports、logs）一律留在 repo 外部，舊 repo 之 `Data/logs/` 採 `REPO_EXTERNAL_QUARANTINE_THEN_DELETE` 處置，HH.AI_v2 repo 零遷入、零歷史檔案。
+  - **D-U6 風險分級審查規範**：於 `.claude/rules/auditor-protocol.md` §12 確立風險分級僅調整驗證深度，絕不放寬獨立審計、exact-SHA 遠端機器證據、E24 依賴閉包、範圍控制、機密安全與防破壞操作六大不可免除之安全底線。
+  - **D-U7 MISSION Telegram 上線與正式切換定義**：於 `MISSION.md` ## 完成的定義 明確增列 Channel Gateway Telegram 正式上線與正式切換合約。
+  - **C-06 Option B 預防性 GitHub Gate**：GitHub ruleset 21301111（`HH.AI_V2_main`）新增 `pull_request`（0 approvals）與 `required_status_checks`（嚴格模式，要求 `verify` 與 `gateway-windows` checks，GitHub Actions integration id 15368）。禁止任何直接 push 至 main。
+  - **Tier-M 微修復分類規範**：於 `.claude/rules/auditor-protocol.md` §12.2 與 `.agents/rules/prompt-preflight.md` 確立 Tier-M 為風險／修復分類，維持 `batch_mode: GOAL_SPEC`，嚴格遵守九大適用門檻，證據嚴格對應當前基準，禁止手動改寫 `base_oid`。
+  - **E17 資源失敗路徑生命週期**：擴充 E17 檢查項，明確定義資源所有權、取得狀態、失敗路徑清理（exactly-once）與確定性反例。
+  - **依賴證據溯源規範（Dependency Evidence Provenance）**：落實原始 discovery artifact 不可變、disposition 建立新衍生檔案、嚴禁原地覆寫、嚴禁竄改 `base_oid`。
+  - **B-100 R-D CI 供應鏈可重現性**：`.github/workflows/verify.yml` 宣告 `permissions: contents: read` 並將 Actions 固定為 40-hex commit SHA；`requirements.txt` 將 10 項 Python 套件鎖定精確版本；實作 `scripts/check_consistency.py` CHECK 22 及其 9 個單元測試 canaries。
+  - **C-07 / C-08 使用者決策留痕**：§5.3 與 TASKBOARD 完成 C-07（`TRIGGER_BASED_DEFERRED`）與 C-08（`REPO_EXTERNAL_QUARANTINE_THEN_DELETE`）裁決同步。
+- **候選狀態**：本候選分支與 PR 提交後標記為 PENDING EXTERNAL MACRO AUDIT，執行者不得自審宣稱結案。

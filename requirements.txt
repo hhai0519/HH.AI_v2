@@ -1,9 +1,17 @@
-# HH.AI_v2 Python 相依套件
+# HH.AI_v2 Python 相依套件與精確鎖定版本
 # 用途：環境重建時執行 pip install -r requirements.txt
+# B-100 R-D: CI 供應鏈可重現性鎖定（包含直接相依與 CI 解析之傳遞相依）
 
-# 測試框架（skills/execution/webapp-testing/tests/ 需要）
-pytest>=9.0
+# 直接相依（Direct dependencies）
+pytest==9.1.1
+playwright==1.63.0
 
-# Playwright 瀏覽器自動化（skills/execution/webapp-testing/examples/ 的示範腳本需要）
-# 安裝後另需執行：playwright install chromium
-playwright>=1.40
+# 傳遞相依與平台相依鎖定（Transitive and platform dependencies）
+colorama==0.4.6; sys_platform == "win32"
+greenlet==3.5.6
+iniconfig==2.3.0
+packaging==26.3
+pluggy==1.6.0
+pyee==13.0.1
+pygments==2.21.0
+typing-extensions==4.16.0

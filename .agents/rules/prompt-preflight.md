@@ -6,7 +6,7 @@
 
 ## 1. 目的
 
-依 `docs/adr/0007-macro-auditor-role.md` 對稱原則，建立執行者對提示詞結構的機械前置驗證機制，防止錯誤或不完整指令進入執行。
+依 `docs/adr/0007-macro-auditor-role.md` 對稱原則建立提示詞結構機械驗證機制，防止錯誤指令進入執行。
 
 ---
 
@@ -30,22 +30,30 @@
 3. 若 exit != 0：立即判定為 `PROMPT STRUCTURE ERROR`，停止執行並回報錯誤，**不得進行任何 repo mutation**。
 4. 若 exit == 0：才進入後續既有語意與機械前置檢查流程。
 
-本驗證器不取代現有 M1/M2/M3/S1 錯誤路由；它將第一層提示詞結構檢驗從 Agent 記憶移至確定性程式碼。
+本驗證器不取代 M1/M2/M3/S1 錯誤路由，將提示詞第一層結構檢驗移至確定性程式碼。
 
 
-### 2.2 依賴閉包機械重放（Dependency Closure Replay Hard Rule）
+### 2.2 依賴閉包機械重放與證據溯源規範（Dependency Closure Replay & Evidence Provenance）
+
+依賴證據溯源規範（Evidence Provenance）：
+1. 原始 discovery artifact 為不可變溯源證據，嚴禁原地覆寫。
+2. 處置必須透過建立新衍生 dispositioned artifact 標註。
+3. `base_oid` 為 scanner 客觀產物，嚴禁手動改寫。
+4. 新 HEAD/base 必須產出具備 task-specific 新檔名之全新 discovery artifact。
+5. 重用查詢集合（QUERY SET）絕不得描述為重用證據結果（EVIDENCE RESULT）。
+6. 審計溯源依據之歷史證據檔案一律禁止覆寫。
 
 若提示詞宣告 E24 = PASS 且依賴模式為 `mode = REQUIRED`，執行者在任何 repo mutation 前必須執行獨立重放比對：
 1. 將提示詞內之 Dependency Impact Evidence 寫入 repo 外 scratch JSON。
 2. 將提示詞之 Final Allowed Scope 寫入 repo 外 scratch allowed-scope JSON。
 3. 執行 production canonical command：
    `python scripts/impact_scan.py check --evidence-file <evidence.json> --allowed-scope-file <allowed_scope.json>`
-4. 若 exit != 0：不得進行任何 repo mutation，依錯誤分類路由：
-   - 缺證據／allowed scope 或格式錯誤：判定為 `PROMPT STRUCTURE ERROR`，停止執行。
-   - 依賴命中或 query closure 不符（漏掃／幽靈／整筆結果缺漏）：停機判定為 `S1 DEPENDENCY_DRIFT`。
-   - 標註為 `UPDATE` 之依賴未列入 Allowed Scope：停機判定為 `S1 DEPENDENCY_SCOPE_MISSING`。
-5. 實作後若證明 `VERIFY_ONLY` 依賴實際必須修改：不得擅自修改，停機判定為 `S1 DEPENDENCY_SCOPE_EXPANSION`。
-執行者僅驗證確定性機器證據與 Allowed Scope 配對，絕對不得對審計官之 disposition 進行語意重複審查。
+4. 若 exit != 0：不得 mutation，依錯誤分類路由：
+   - 缺證據／scope 或格式錯：判定為 `PROMPT STRUCTURE ERROR` 停機。
+   - 依賴命中不符（漏掃／幽靈／缺漏）：停機判定為 `S1 DEPENDENCY_DRIFT`。
+   - 標註 `UPDATE` 之依賴未列入 Allowed Scope：停機判定為 `S1 DEPENDENCY_SCOPE_MISSING`。
+5. 實作後若 `VERIFY_ONLY` 依賴必須修改：禁擅改，停機判定為 `S1 DEPENDENCY_SCOPE_EXPANSION`。
+執行者僅驗證機器證據與 Allowed Scope 配對，絕不對審計官 disposition 重複語意審查。
 
 ---
 
@@ -53,6 +61,7 @@
 
 收到提示詞後，首先檢查批次模式宣告：
 - **若未宣告 `batch_mode`**：判定為 `PROMPT STRUCTURE ERROR`（缺少模式宣告），立即停機回報，嚴禁默認 EXACT_SPEC。
+- **Tier-M 分類注意**：Tier-M 為風險／修復分類而非新 `batch_mode`，維持 `batch_mode: GOAL_SPEC`，不擴充 parser 枚舉。證據必須對應當前基準（current base），若 `base_oid` 不符不得重用，嚴禁手動改寫。
 
 ### 3.0A 所有模式共同必備要素（缺一即停）
 
@@ -77,7 +86,7 @@
 | E-3 | 錨點唯一性 | 規格中所有錨點經 BPE 驗證在 base commit 中 count == 1 |
 | E-4 | 規格重放守衛 | 明確要求經由 CHECK 17 進行 parent commit 逐位元重放比對 |
 
-GOAL_SPEC 模式不得要求 E-1～E-4，其正確性由單元測試、Gate 驗證與 GitHub Actions 守護。缺任何必備項，停機回報缺項。
+GOAL_SPEC 模式不得要求 E-1～E-4，其正確性由測試與 Gate 守護。缺必備項即停機回報。
 
 ---
 
@@ -88,11 +97,11 @@ GOAL_SPEC 模式不得要求 E-1～E-4，其正確性由單元測試、Gate 驗�
 | 動作 A | 必須配對的動作 B | 理由 |
 |---|---|---|
 | `git pull origin main` | `git status --porcelain=v1` 為空 | 確保基準乾淨，避免髒檔案混入 |
-| `git push origin main` | 檢查 GitHub Actions 綠燈 | push 只是發送，Actions 綠燈才是完成證明 |
+| `git push`（直推或 feature branch） | 檢查 GitHub Actions 綠燈 | push 只是發送，Actions 綠燈才是證明。C-06 啟用後常態生產禁直推 main，改採 branch → PR → required checks 綠燈 → protected merge → exact main Actions 綠燈流程 |
 | 新增或修改規則檔 | 更新自檢清單（`auditor-selftest.md`） | 規則與自檢必須同步 |
 | 聲明某 commit 通過核對 | 更新 `docs/AUDIT-LOG.md` 與交接區 §5.1 | 審計狀態必須雙向留痕 |
 
-審計狀態單一事實來源為 `docs/AUDIT-LOG.md` 裁決 ⇔ `docs/refactor-backlog.md` §5.1 checkpoint。若提示詞宣告某 commit 通過核對，兩者必須同步指向該 commit，防止審計結論漂移。
+審計狀態單一事實來源為 `docs/AUDIT-LOG.md` 裁決 ⇔ `docs/refactor-backlog.md` §5.1 checkpoint。若宣告某 commit 通過核對，兩者須同步指向該 commit。
 
 ---
 
@@ -120,53 +129,53 @@ GOAL_SPEC 模式不得要求 E-1～E-4，其正確性由單元測試、Gate 驗�
 
 ## 3.3 遇到疑問而非缺失時
 
-若發現的是實作疑問或非結構性疑慮，屬於判斷，依 `.agents/rules/role-boundaries.md` §7 分流：
-1. **M1**（衍生值落差）：自己重新計算、記錄於 `docs/EXEC-LOG.md`、繼續。
+實作疑問或非結構性疑慮屬判斷，依 `.agents/rules/role-boundaries.md` §7 分流：
+1. **M1**（衍生值落差）：自行重算、記於 `docs/EXEC-LOG.md`、繼續。
 2. **M2**（暫態/網路）：重試或確定性回退、繼續。
-3. **M3**（Allowed Scope 內實作、測試、Gate/CI 失敗）：自主修復閉環（最多 3 輪）。
-4. **偶發性觀察**：不阻礙目標與正確性者，記錄於 `docs/EXEC-LOG.md` 後繼續。
-5. **僅有真正 S1 阻擋事項**（base drift、需改 Scope 外路徑、驗收矛盾、破壞性操作、重大決策）→ **停機升級 S1**。格式：`S1 <分類> | evidence / blocker`。
+3. **M3**（Scope 內實作/測試/Gate/CI 失敗）：自主修復閉環（最多 3 輪）。
+4. **偶發性觀察**：不阻礙目標與正確性者，記於 `docs/EXEC-LOG.md` 繼續。
+5. **僅真正 S1 阻擋**（base drift、超 Scope、驗收矛盾、破壞性操作、重大決策）→ **停機升級 S1**：`S1 <分類> | evidence / blocker`。
 
-不得因語意好奇、格式喜好或偶發觀察擅自停機消耗 Macro Auditor。
+禁因語意好奇、格式喜好或偶發觀察擅自停機。
 
 ---
 
 ## 3.4 審計官自檢聲明的交叉驗證
 
-每份正式生產提示詞必須包含【審計官自檢聲明】區塊，逐項列出 `auditor-selftest.md` E 節結果。**Antigravity 僅負責機械交叉比對，絕對不得進行語意重複審查（semantic re-audit）。**
+每份正式生產提示詞須含【審計官自檢聲明】區塊，列出 `auditor-selftest.md` E 節結果。**Antigravity 僅負責機械交叉比對，絕不重複語意審查。**
 
-**執行兩件事：**
-1. **確認區塊存在且項目連號無缺**（E1 起遞增）。缺區塊或缺項即停。
-2. **對可機械驗證項目做交叉比對**——勾了 ✅ 但實際沒有的，即停機回報。
+**執行兩項：**
+1. **確認區塊存在且項目連號無缺**（E1 起遞增），缺即停。
+2. **對可機械驗證項目交叉比對**——勾選 ✅ 但實無者停機回報。
 
 | 聲明項 | 機械比對方法 |
 |---|---|
 | E1 身分宣告 | 提示詞開頭有「你是本專案的執行者」或等義敘述 |
-| E2 基準與規格識別 | 載明基準 commit full OID（EXACT_SPEC 另需規格/SHA）；GOAL_SPEC 需 base OID 與 Allowed Scope，不要求規格與手寫行數 |
+| E2 基準與規格識別 | 載明基準 commit full OID；GOAL_SPEC 需 base OID 與 Allowed Scope，不要求規格與行數；EXACT_SPEC 另需規格與 SHA |
 | E3 錨點原文定位 | EXACT_SPEC 附 structural anchor 原文；GOAL_SPEC 僅定義目標、邊界與驗收準則，不要求錨點 |
-| E4 機器驗證證據落地 | 要求執行 Required Machine Gates 且證據寫入 docs/EXEC-LOG.md / GitHub，未要求對話貼完整 Gate 輸出 |
+| E4 機器驗證證據落地 | 要求執行 Required Machine Gates 且證據記於 docs/EXEC-LOG.md / GitHub，未要求對話貼完整輸出 |
 | E5 `git add` 明確路徑 | 有禁止 `git add -A` / `.` 禁令。GOAL_SPEC 依 diff 逐檔 add；EXACT_SPEC 依規格 targets |
 | E6 結尾格式 | 要求純文字回覆與固定署名行 |
 | E7 回報通道約束 | 未要求正常成功批次貼出 full diff / full file / terminal dump，遵守 Repo Evidence Channel |
-| E8 三項狀態領域處置 | 明確聲明交接區、TASKBOARD 與 AUDIT-LOG 三項處置（UPDATE 或 NO CHANGE 附理由；無新結論時 AUDIT-LOG 宣告 NO CHANGE） |
+| E8 三項狀態領域處置 | 聲明交接區、TASKBOARD 與 AUDIT-LOG 處置（UPDATE 或 NO CHANGE 附理由；無新結論時 AUDIT-LOG 宣告 NO CHANGE） |
 | E9 `git pull` | 有 `git pull origin main` 且指明預期 HEAD |
 | E10 零命中自身檢查 | 若有「字串 X 應為零命中」，檢查 X 是否出現在提示詞自身其他位置——純字串比對 |
 | E11 錨點唯一性驗證 | EXACT_SPEC 檢查：套用前驗證錨點 count == 1；GOAL_SPEC 為 N/A |
 | E12 動手前必讀 | 要求讀取規則檔或執行基準前置檢查 |
-| E13 配對與覆蓋 | 依 §3.1、§3.2 比對。GOAL_SPEC 比對 Allowed Scope ↔ actual diff ↔ explicit git add ↔ gates；EXACT_SPEC 比對 spec ↔ git add |
+| E13 配對與覆蓋 | 依 §3.1、§3.2 比對。GOAL_SPEC 比對 Allowed Scope ↔ diff ↔ explicit git add ↔ gates；EXACT_SPEC 比對 spec ↔ git add |
 | E14 自檢聲明區塊 | 區塊存在且項目連號無缺 |
 | E15 錨點基準來源 | EXACT_SPEC 檢查錨點對應 base commit 與規格上下文；GOAL_SPEC 為 N/A |
 | E16 跨檔引用同行 | 寫入文字中跨檔 `§X.Y` 檔名與章節號在同一行；target 存在且未被 substitution，歷史引用寫 archive 路徑 |
-| E17 結構序列驗收 | 涉及結構變更附明確驗收準則；不得將衍生序列當作通用 blocking 條件 |
+| E17 結構序列與失敗路徑驗收 | 涉及結構變更附明確驗收準則；若取得資源，依 E17 failure-path 標準定義狀態、owner、failure exits、清理次數（exactly-once）與反例；不將衍生序列當通用 blocking 條件 |
 | E18 機械前置證據 | 包含 base full OID、batch mode、Allowed Scope 與標準驗證指令；EXACT_SPEC 額外要求 spec path 與 SHA |
 | E19 移除前複查 | 若含刪除檔案／章節／規則／看板項目，檢查是否附三步複查結果（純存在性比對） |
 | E20 規則層模擬授權 | EXACT_SPEC 規則層變更經 BPE 與 check_consistency 模擬；GOAL_SPEC 由測試與 Gate 守護 |
 | E21 衍生數值不作 blocking truth | 基準 commit 與實測一致；machine-derived values 由工具產出，不得抄為 blocking truth |
 | E22 審計狀態權威檢查 | 未要求建立 audited tag；審計狀態以 AUDIT-LOG、refactor-backlog §5.1 與 GitHub Actions 為 SSOT |
 | E23 批次規格進 repo | EXACT_SPEC 附規格路徑與 sha256 且列入 git add；GOAL_SPEC 不要求規格進 repo |
-| E24 依賴閉包檢驗 | 若宣告 E24 = PASS 且 mode=REQUIRED，mutation 前重跑 impact_scan replay 比對；缺證據或格式錯為 PROMPT STRUCTURE ERROR；replay 不符／缺處置／UPDATE 未進 Allowed Scope 為 S1 DEPENDENCY_* |
+| E24 依賴閉包檢驗 | 若宣告 E24 = PASS 且 mode=REQUIRED，mutation 前重跑 impact_scan replay；缺證據或格式錯為 PROMPT STRUCTURE ERROR；replay 不符／缺處置／UPDATE 漏列為 S1 DEPENDENCY_* |
 
-**自檢聲明不接受任何豁免。** 比對為「否」時一律停止回報，標為 ⚠️ 或「刻意不做」均不構成豁免。偏離規則之唯一合法路徑為先行開批修改規則本身。
+**自檢聲明不接受豁免。** 比對為「否」一律停機回報，標為 ⚠️ 或「刻意不做」不構成豁免。偏離規則唯一合法路徑為開批修改規則本身。
 
 ---
 
@@ -185,15 +194,15 @@ GOAL_SPEC 模式不得要求 E-1～E-4，其正確性由單元測試、Gate 驗�
 4. (d) 允許修改範圍（Allowed Scope 白名單）
 5. (e) 標準驗證指令與 Gate 清單（canonical validation commands）
 
-五項機械比對：證據區塊存在、基準 OID 一致（HEAD == base）、批次模式合法、規格 SHA 一致（EXACT_SPEC）、範圍與驗證指令齊備（完全落在 Allowed Scope 且含標準指令）。缺一即停。
+五項機械比對：證據區塊存在、基準 OID 一致（HEAD == base）、模式合法、規格 SHA 一致（EXACT_SPEC）、範圍與驗證指令齊備。缺一即停。
 
 **核心原則（Machine Truth）**：
-行數、圍欄數、測試數、CHECK 數皆為工具產出之衍生診斷值（derived diagnostic truth）。**提示詞不得將衍生數值抄寫為 blocking truth，執行者亦不得因衍生數值不符而停機。** 變更安全由 Batch Spec 與 machine tools 守護。
+行數、圍欄數、測試數、CHECK 數皆為衍生診斷值。**提示詞不得將衍生數值抄寫為 blocking truth，執行者不得因衍生數值不符停機。** 變更安全由 Batch Spec 與 machine tools 守護。
 
 **執行期規則新鮮度契約（Runtime Rule Freshness Contract）**：
-1. GitHub CI 驗證 committed repo rule artifact，非 IDE Rule UI runtime cache。
-2. Executor 每批必須從 local disk 實體檔案重讀 active rules；UI 快取不得取代 explicit reread。
-3. 若 IDE Rule UI 與 local disk / HEAD 不一致：以 local disk 為準，UI 視為 stale cache 嚴禁存回 repo；進入下個 task 前 reload context。
+1. GitHub CI 驗證 committed repo rule artifact，非 IDE Rule UI cache。
+2. Executor 每批須從 local disk 重讀 active rules；UI 快取不得取代 explicit reread。
+3. 若 IDE Rule UI 與 local disk / HEAD 不一致：以 disk 為準，UI 視為 stale cache 禁存回 repo；進入下個 task 前 reload context。
 4. 此屬 runtime freshness，不能宣稱 CI 可驗證 IDE cache。
 
 ---
@@ -220,9 +229,9 @@ GOAL_SPEC 模式不得要求 E-1～E-4，其正確性由單元測試、Gate 驗�
 - `FINDING_DISPOSITION: NEW <ID>`
 
 執行者僅執行機械交叉比對，不做語意重新審計：
-1. **宣告為 `NEW <ID>` 時**：提示詞必須同時滿足 TASKBOARD=UPDATE、Allowed Scope 含 `docs/TASKBOARD.md`、本文明確要求建立 `<ID>`。缺一即 `PROMPT STRUCTURE ERROR`。
-2. **宣告為 `CURRENT <ID>` 或 `EXISTING <ID>` 時**：若更新 TASKBOARD，不得建立同 `<ID>` 之重複列。
-3. **宣告為 `NONE` 時**：代表無新 material finding；執行者不臆測。
+1. **宣告 `NEW <ID>`**：須同時滿足 TASKBOARD=UPDATE、Allowed Scope 含 `docs/TASKBOARD.md`、本文明確要求建立 `<ID>`。缺一即 `PROMPT STRUCTURE ERROR`。
+2. **宣告 `CURRENT <ID>` 或 `EXISTING <ID>`**：若更新 TASKBOARD，不得建立同 `<ID>` 之重複列。
+3. **宣告 `NONE`**：代表無新 material finding；不臆測。
 
 ---
 
@@ -230,7 +239,7 @@ GOAL_SPEC 模式不得要求 E-1～E-4，其正確性由單元測試、Gate 驗�
 
 > 註：僅適用於 `EXACT_SPEC` 模式。`GOAL_SPEC` 由執行者自主實作，不強制要求錨點前置驗證。
 
-在寫入前，對提示詞每個錨點字串驗證在目標檔案中 `count == 1`：
+寫入前驗證每個錨點在目標檔案中 `count == 1`：
 - **count = 0** → 錨點不存在，停止並回報
 - **count > 1** → 錨點不唯一，停止並回報命中位置
 - **全部為 1** → 才開始寫入；不得自行找位置套用。
@@ -239,15 +248,15 @@ GOAL_SPEC 模式不得要求 E-1～E-4，其正確性由單元測試、Gate 驗�
 
 ## 4.1 寫入後的原文驗證（動手後必做）
 
-完成「替換」或「插入」修改後，立刻驗證指定新內容在目標檔案中 `count == 1`（0 則寫入不符，停止並回報）。前置確認「找得到」，後置確認「改對了」。
+修改後立刻驗證指定新內容在目標中 `count == 1`（0 則寫入不符，停機回報）。前置確認找得到，後置確認改對了。
 
 ---
 
 ## 5. 例外
 
-以下情況不適用第 3 節，直接依提示詞執行：
-- 提示詞明確標示為「只讀不改」的批次（不產生 commit）
-- 提示詞明確標示為「緊急修正」並說明略過原因
+以下情況不適用第 3 節：
+- 標示為「只讀不改」批次（不產生 commit）
+- 標示為「緊急修正」並說明略過原因
 
 第 4 節的錨點驗證沒有例外。
 
@@ -255,4 +264,4 @@ GOAL_SPEC 模式不得要求 E-1～E-4，其正確性由單元測試、Gate 驗�
 
 ## 6. 這條規則保護的是誰
 
-本規則保護專案工程紀律：審計官不越權動檔，執行者不做未授權架構決策；雙向機械驗證確保偏離皆被對稱攔截。
+本規則保護工程紀律：審計官不越權動檔，執行者不做未授權架構決策；雙向機械驗證確保偏離被對稱攔截。

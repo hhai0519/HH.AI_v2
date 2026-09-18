@@ -26,5 +26,6 @@ while redesigning how that knowledge is organized.
 - 重複知識是否都被抽成共用內容，而不是散落在多個技能裡各寫一次
 - 新增一個技能時，是否能直接照著 `AGENTS.md` 的規範走，不用重新思考格式
 - 全庫標準驗證入口 `scripts/verify_all.py` 是否通過（包含 `scripts/validate_skills.py` 等技能架構檢查）
+- Channel Gateway Telegram 正式上線，並依正式切換合約（canonical cutover contract）完成 cutover 正式切換（D-U7）
 
 決策與協作原則見 [PRINCIPLES.md](./PRINCIPLES.md)，詳細架構規範見 [AGENTS.md](./AGENTS.md)。

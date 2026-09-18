@@ -146,7 +146,7 @@
 12. **每份提示詞必須包含 machine-readable prompt manifest（由 `scripts/validate_prompt_manifest.py` 驗證）與「審計官自檢聲明」區塊**，逐項列出 `auditor-selftest.md` E 節的自檢結果。這是自檢與提示詞結構檢驗的外部產物，執行者依 `.agents/rules/prompt-preflight.md` §2.1 與 `.agents/rules/prompt-preflight.md` §3.4 進行機械驗證與交叉比對。
 13. **每個錨點對應本批 base commit 與規格上下文**（僅 EXACT_SPEC 適用；GOAL_SPEC 標記為 N/A），在目標檔案中具備結構唯一性（machine count == 1），不依賴特定 clone 第 N 行作為 blocking truth。
 14. **寫入含 `§X.Y` 的文字時，若引用的是他檔章節，必須在同一行寫出明確檔名**（CHECK 10 逐行檢驗，未標明檔名視為同檔引用；explicit target file identity 不得被 verifier substitution，target section 必須存在於該 explicit target，若引用歷史已淘汰規範必須明確寫出 archive 路徑）。
-15. **每個插入型修改若涉及結構序列，必須附明確驗收準則**（例如章節或項目序列嚴格遞增），不得將 LLM 預測所有 post-state 衍生序列當作通用 blocking requirement。
+15. **每個插入型修改若涉及結構序列，必須附明確驗收準則**（例如章節或項目序列嚴格遞增），不得將 LLM 預測所有 post-state 衍生序列當作通用 blocking requirement。此外，當生產程式碼取得具備所有權語意之資源（如 native pointer、file handle、child process、資料庫 transaction、socket / HTTP 連線、lock、session 或等價資源）時，提示詞驗收準則在實質適用時必須明確定義：(a) 取得成功狀態；(b) 資源持有者（owner）；(c) 所有後續 failure exits；(d) 釋放／清理次數（release/cleanup count，相關時須明確為 exactly-once cleanup）；(e) 超時與取消路徑（timeout/cancellation path）；(f) 取得成功但後續失敗之反例（acquire-success / later-failure counterexample）。一般非資源操作之修改不要求此類繁瑣規範。
 16. **每份提示詞必須包含「機械前置證據與邊界宣告（Mode-Aware Preflight）」**：所有模式共同包含：(a) 基準 Commit Full OID；(b) 批次模式（`batch_mode`：GOAL_SPEC 或 EXACT_SPEC）；(c) 允許修改範圍（Allowed Scope）；(d) 標準驗證指令與 Gate 清單。EXACT_SPEC 另需規格路徑與規格 SHA-256；GOAL_SPEC 則載明目標、不變量與驗收準則。刪除手寫檔案行數、圍欄數等 blocking 要求。
 17. **提示詞若包含任何「移除」，必須附上移除前複查的三步結果**（反向引用掃描、唯一內容確認、重新讀檔的獨立複查；原則見 `PRINCIPLES.md` §2.9）。複查結果逐項列出，不得概括代過。
 18. **提示詞若為 EXACT_SPEC 且修改規範層檔案，必須以同一份批次規格進行模擬，並以確定性工具輸出為準**。使用 `scripts/build_prompt_evidence.py`（BPE）驗證規格與模擬，但不得將套用後行數、圍欄數、項數或預測輸出預抄至提示詞作為 blocking truth。GOAL_SPEC 模式由驗收測試與 `scripts/verify_all.py` 守護，不需規格模擬。
@@ -154,6 +154,7 @@
 20. **審計狀態單一權威查驗（退役 mandatory audited-* tag 建立）**：每批核對結果由 `docs/AUDIT-LOG.md`（每 commit 結論）、`docs/refactor-backlog.md` §5.1（當前最新 checkpoint）與 GitHub Actions（遠端健康權威）作為 SSOT。提示詞不得要求建立或推送 `audited-*` tag 作為完成條件。既有 tag 由 CHECK 18 唯讀守衛，不再作為 active authority。
 21. **EXACT_SPEC 批次的規格必須以 repo artifact 形式交付，並使用 BPE 進行驗證與模擬**。規格存放於 `docs/batches/<base-hash>-<slug>.spec.txt`，由 `parse_spec` 與 `apply_mod_to_text` 解析。審計官產出提示詞前以 BPE 驗證錨點唯一性與規格 SHA。**GOAL_SPEC 模式不強制要求 Batch Spec**。單一原則：提示詞不得寫入任何由機器產生的衍生數字作為 blocking truth，規格交由執行者與確定性工具消費。
 22. **依賴閉包先於允許修改範圍（Dependency Closure Before Allowed Scope）**：若本批修改／移除／rename 既有 literal、symbol、path、section、config、CLI、rule contract 或 interface，Macro Auditor 必須在建立 Allowed Scope 前取得確定性反向依賴掃描（`scripts/impact_scan.py`）證據，完成所有命中的 dependency disposition（`UPDATE` / `VERIFY_ONLY` / `HISTORICAL_NO_CHANGE`）。所有判定為 `UPDATE` 的依賴檔案必須全數納入 Allowed Scope。執行者重放時由 production 工具機械驗證 `UPDATE dependency ⊆ Allowed Scope`。Macro Auditor 負責 disposition 語意決策，執行者不得重新語意審查。若 Macro Auditor 無本機執行環境，必須先發送 READ-ONLY / NO-MUTATION 之 Dependency Discovery request 給執行者，不得在取得確定性依賴前直接發送變更提示詞。非依賴敏感之批次（如孤立新建、快照重刷、純 state closure）可宣告 `mode: NONE` 並附非空理由。
+    **依賴證據溯源規範（Dependency Evidence Provenance）**：(A) 原始 discovery artifact（raw discovery）為不可變之溯源證據（immutable provenance evidence）；(B) 處置（disposition）必須透過建立新的衍生 dispositioned artifact 標註，嚴禁原地覆寫原始 discovery 檔案；(C) `base_oid` 為 scanner 產出的客觀事實，嚴禁手動改寫；(D) 新的 HEAD/base 必須產出具備 task-specific 新檔名之全新 discovery artifact；(E) 查詢集合（QUERY SET）的重用絕不得被描述為證據結果（EVIDENCE RESULT）的重用；(F) 凡作為審計溯源依據之歷史證據檔案，一律禁止覆寫。
 
 ### 6.2 零命中類的驗證條件，必須先列出自身指令造成的例外
 
@@ -473,3 +474,35 @@ revert 後必須同批完成三件事：
 ### 11.6 [已退役／不需執行] 歷史 `audited-*` tag 之留痕保存（RETIRED / NOT REQUIRED）
 
 9 個歷史名實不符的 tag 刻意保留為歷史事故證據，不執行破壞性遠端清理（0 remote tag deleted, 0 remote tag rewritten），既有 tag 不影響正確性、審計狀態、交接或遠端健康。詳細歷史處置紀錄見歸檔快照 `docs/archive/claude-control-plane/auditor-protocol-pre-slim-76b5e9.md`。
+
+---
+
+## 12. 風險分級宏觀審計與 Tier-M 微修復規範 (Risk-Tiered Macro Audit & Tier-M, D-U6)
+
+### 12.1 風險分級宏觀審計核心原則 (D-U6)
+
+1. **形式規則（Formal Rule）**：風險分級（Risk Tier）改變的是**驗證深度（verification depth）**，而非**角色獨立性（role independence）**。
+2. **六大不可免除之安全底線**：任何風險分級皆不得免除：
+   - 獨立宏觀審計（Independent Macro Audit）
+   - exact-SHA 遠端機器證據（Exact-SHA remote evidence）
+   - E24 依賴閉包（E24 dependency closure）
+   - 變更範圍控制（Scope control / Allowed Scope）
+   - 機密防護安全（Secret safety / zero secret leakage）
+   - 破壞性操作防護（Destructive-operation safeguards）。
+3. **SOP_14 對齊**：`SOP/SOP_14_Rigorous_Verification_and_Audit_Protocol.md` 維持 VERIFY_ONLY；其既有風險導向執行模型已與本原則部分對齊，維持全庫單一驗證權威。
+
+### 12.2 Tier-M 微修復分類規範 (Tier-M Micro Repair)
+
+1. **性質定義**：Tier-M 是**風險／修復分類（risk / repair classification）**，**絕非**新的 `batch_mode`。
+2. **批次模式不變量**：Tier-M 批次依然宣告 `batch_mode: GOAL_SPEC`，不建立新的 validator 或 parser 批次模式，不擴充 manifest parser 之模式枚舉。
+3. **九大適用門檻（全部成立始得適用）**：
+   1. 具體 material finding 已經確立（exact material finding already established）。
+   2. 無新架構選擇（no new architecture choice）。
+   3. 無 schema migration。
+   4. 無 public-interface 變更。
+   5. 無跨系統／外部安全架構變更（no cross-system/external security architecture change）。
+   6. 修復完全落在緊鄰前一批已審計之依賴宇宙內（repair remains inside the immediately preceding audited dependency universe）。
+   7. 依賴證據必須針對當前基準（dependency evidence is for the CURRENT base）。
+   8. 存在確定性反例或回歸測試（deterministic counterexample or regression test exists）。
+   9. 無範圍擴張（no scope expansion）。
+4. **當前基準證據與禁止手動改寫**：若既有證據之 `base_oid` 不等於當前 base，Tier-M **不具備**證據重用資格（NOT eligible for evidence replay）；必須重新產出全新 discovery artifact 並取得 Macro disposition，方得界定生產範圍。Tier-M 嚴禁手動改寫 `base_oid`。

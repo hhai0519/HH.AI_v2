@@ -177,3 +177,18 @@ post-commit 的 correctness CHECK 或測試 FAIL → **S1 停止**；
 執行者與審計官都不得以「本地是綠的」「重跑一次就好了」為理由
 略過、停用、改判或繞過遠端的 FAIL。
 CI 紅燈只有兩條合法出路：修到它綠，或由審計官開新批次處置。
+
+---
+
+## 8. 個人工作資料與日誌邊界（Personal Work Data Boundary — D-U2）
+
+依使用者裁決 D-U2，個人工作資料與日誌一律不進版本庫（repo-external），必須留在版本庫之外：
+1. **涵蓋範疇**：
+   - Persona 個人內容
+   - Agent_Reflections
+   - TODO
+   - reports
+   - logs
+   - Data/logs
+2. **遷移禁止**：遷移舊專案或外部資料時，上述個人工作資料與日誌嚴禁遷入 `HH.AI_v2` 版本庫。
+3. **生命週期處置**：舊專案之 `Data/logs` 依使用者裁決 C-08 採「本機 repo-external 隔離封存，待 E-05 查證無參考與鑑識保留需求後始得授權刪除（REPO_EXTERNAL_QUARANTINE_THEN_DELETE）」，執行者不得自行將其納入版本庫，亦不得擅自立即刪除。
