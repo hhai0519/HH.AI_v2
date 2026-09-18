@@ -3079,7 +3079,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - R2-3 不確定狀態處理採選項 B（USER DECIDED OPTION B / ADR-0025 LANDED）。
   - R3 僅綁定 127.0.0.1 之 Loopback HTTP v1 與 HMAC-SHA-256 雙向認證架構確立（USER DECIDED / ADR-0025 LANDED / NOT IMPLEMENTED；Windows 具名管道正式延後未獲選）。
 - TG-MVP-04 F1 回覆授權身份鍵修復：已完成（ACCEPTED / CLOSED，修正 validateReplyAuthorization SQL 複合鍵查詢與金絲雀測試，accepted checkpoint = 18867eb5af7c4b90df8946c22977350bf7ec5086）。
-- TG-MVP-05 游標推進防衛與事件身分分離修復：進行中（IN PROGRESS / PENDING EXTERNAL MACRO AUDIT，實作 SQLite Schema v4、inbound_event 表、任意長度十進位游標比較器與去重語意）。
+- TG-MVP-05 游標推進防衛與事件身分分離修復：進行中（IN PROGRESS / MACRO HOLD / TG-MVP-05-F1 AUDIT-TRUTH REPAIR IN PROGRESS；TG-MVP-05-F1 = CURRENT；FINDING_DISPOSITION = CURRENT E-03；07a077d candidate 經 Actions Run 35309998016 驗證 MACHINE / CI = PASS 但 MACRO AUDIT = HOLD，未獲接受；accepted checkpoint 保持 18867eb5af7c4b90df8946c22977350bf7ec5086；C1/C2/C3 runtime 實作已於 candidate 完成，但 TG-MVP-05 結案仍取決於 F1 證據修復與 External Macro PASS；TG-MVP-06 NOT AUTHORIZED / NOT STARTED）。
   - B-28 / B-29 上游 trigger 重新評估完成，無 B-01 blocker，維持 DEFERRED_BY_USER / POST_B01。
   - B-54 保持待辦（POST_B01 / NONBLOCKING，SOP_12 機器專屬路徑 concrete example 已登錄）。
   - B-98 / B-75 保持待辦、零實作 (POST_B01 / NONBLOCKING / NOT IMPLEMENTED)。
@@ -4234,3 +4234,35 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - TG-MVP-05 進行中（IN PROGRESS / PENDING EXTERNAL MACRO AUDIT）。
   - 看板頂部下一切片（NEXT_SLICE）：TG-MVP-06（B-98 Secret/Credential Hardening），待辦零實作。
   - 本候選提交後標記為 PENDING EXTERNAL MACRO AUDIT，執行者不得 self-audit。
+
+108. **TG-MVP-05-F1 綱要事實描述更正與外部宏觀審計 HOLD 結論留痕（TG-MVP-05-F1 Repo-Visible Schema Truth Correction）**（2026-09-18）
+- **歷史條目事實勘誤說明（Historical Correction & Supersede Declaration）**：
+  - 前一歷史條目 Item 107 之 `inbound_event` 括號內綱要描述存在不正確事實（inaccurate schema description）：誤將 `created_at INTEGER` 描述為欄位，且誤將 `(account_id, platform_event_id)` 描述為 PRIMARY KEY。
+  - 依本專案 append-only 留痕契約，歷史 Item 107 保留其原始文字不予改寫，但該處錯誤綱要細節由本條目（Item 108）明確宣告正式 supersede，不得再作為 current architecture truth。
+  - 正式權威來源為 `runtime/channel-gateway/core/sqlite-state-repository.js` 之 `INBOUND_EVENT_SCHEMA_SQL` 以及 `runtime/channel-gateway/tests/sqlite-state-repository.test.js`。
+- **真實規範執行期綱要事實（Correct Canonical Runtime Truth）**：
+  - SQLite schema version = 4。
+  - Migration 4：僅新增 STRICT 資料表 `inbound_event`。
+  - 欄位結構（Semantic Columns）：
+    - `event_sequence INTEGER PRIMARY KEY AUTOINCREMENT`
+    - `account_id TEXT NOT NULL`（具備非空白 CHECK）
+    - `platform_event_id TEXT NOT NULL`（具備非空白 CHECK）
+    - `event_type TEXT NOT NULL`（列舉限定 CHECK：`'MESSAGE'`, `'EDIT'`, `'UNSEND'`, `'IGNORED'`）
+    - `channel_id TEXT`（可為 NULL）
+    - `platform_msg_id TEXT`（可為 NULL）
+  - 條件性目標約束（Conditional Target CHECK）：
+    - `event_type = 'IGNORED'` → `channel_id IS NULL AND platform_msg_id IS NULL`
+    - `event_type IN ('MESSAGE', 'EDIT', 'UNSEND')` → `channel_id` 與 `platform_msg_id` 均為 non-null 且 nonblank
+  - 事件去重約束：`UNIQUE(account_id, platform_event_id)`（此為事件去重 UNIQUE key，絕非 table primary key）。
+  - 通道外鍵約束：`FOREIGN KEY(channel_id) REFERENCES channel_control(channel_id) ON DELETE RESTRICT`。
+  - 完全不存在 `created_at` 欄位。
+  - 資料表 PRIMARY KEY 唯有 `event_sequence`。
+- **外部審查結論與生命週期留痕（External Macro HOLD & Lifecycle Truth）**：
+  - 目標候選：`07a077d7001681dd31b63c64cdaa07174911d104`。
+  - 審查人員：GPT 代理審查官（使用者授權）。
+  - A1 資格查證：採 A1 = EQUIVALENT（GitHub API + Executor clone cross-check）成立。
+  - 遠端機器證據：GitHub Actions Run `35309998016`（completed / success，jobs: verify = success, gateway-windows = success）。
+  - 審查結論：MACHINE / CI = PASS；MACRO AUDIT = HOLD；Accept status = ONE BOUNDED AUDIT-TRUTH REPAIR REQUIRED；FINDING_DISPOSITION = CURRENT E-03；Material finding = TG-MVP-05-F1 (REPO-VISIBLE SCHEMA TRUTH DRIFT)。
+  - 通過基準保持：accepted checkpoint 保持為 `18867eb5af7c4b90df8946c22977350bf7ec5086`，不得推進至 07a077d 或本 repair candidate。
+  - 本批為純有界治理與事實證據更正（zero runtime / test / ADR / rule changes）。
+  - repair candidate 仍處於 PENDING EXTERNAL MACRO RE-AUDIT，TG-MVP-05 尚未結案，TG-MVP-06 尚未授權。
