@@ -38,9 +38,10 @@
   `HH.AI_v2/channel-gateway/v1/line/<encoded-account-id>/channel-secret`
 - **Local API 全域 HMAC Secret**：
   `HH.AI_v2/channel-gateway/v1/local-api/hmac`
-- **帳號識別碼領域對齊與確定性百分比編碼 (Account-ID Domain Alignment & Percent Encoding)**：`AccountRegistry` 與 `SecretRef` 共享完全一致之帳號識別碼正規化領域：
-  - 於任何 trim 正規化前，強制拒絕所有 raw ASCII 控制字元（`U+0000..U+001F`）與 `DEL`（`U+007F`），杜絕以先行 strip 隱匿非法字元。
-  - 合法領域接受所有內部可列印字符，包含一般空白、反斜線 `\`、問號 `?`、井字號 `#`、單雙引號 `'` `"` 以及 Unicode 字符。
+- **帳號識別碼領域對齊、正規 Unicode 與確定性百分比編碼 (Account-ID Domain Alignment, Unicode Well-Formedness & Percent Encoding)**：`AccountRegistry` 與 `SecretRef` 共享完全一致之帳號識別碼正規化領域：
+  - 帳號識別碼必須為正規 Unicode 純量序列（Well-formed UTF-16 sequence / Unicode scalar representation）。於任何 trim 正規化與百分比編碼前，強制拒絕所有 raw ASCII 控制字元（`U+0000..U+001F`）、`DEL`（`U+007F`）以及孤立代理字元（lone surrogate code units: `U+D800..U+DBFF` 與 `U+DC00..U+DFFF`），杜絕以先行 strip 隱匿非法字元。
+  - 嚴禁使用 `toWellFormed()` 等靜默替換機制（silent replacement）將損毀代理字元替換為 `U+FFFD`，身分識別正規化絕不容許將相異之損毀輸入別名化為同一合法帳號；不合規輸入一律 Fail-Closed 拒絕。
+  - 合法領域接受所有內部可列印字符，包含一般空白、反斜線 `\`、問號 `?`、井字號 `#`、單雙引號 `'` `"`、合法 Unicode 字符以及合法輔助平面代理對（如 Emoji，例如 `😀` 編碼為 `%F0%9F%98%80`）。
   - TargetName 路徑元件採決定性百分比編碼：以 `encodeURIComponent` 為基底，並強制將單引號 `'` 規範化編碼為 `%27`。
   - 字面 `%` 視為資料本身而非預編碼權威，編碼為 `%25`，防止路徑別名攻擊（如 `alpha%20beta` 與 `alpha beta` 映射至不同 TargetName）。
   - 斜線字元編碼為 `%2F`，杜絕路徑段注入。TargetName 本身為完全非機敏之後設資料。

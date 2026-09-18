@@ -28,6 +28,36 @@ const ALLOWED_METADATA_FIELDS = new Set([
 
 const CONTROL_CHAR_REGEX = /[\x00-\x1F\x7F]/;
 
+/**
+ * Validates that a string contains only well-formed UTF-16 code units (Unicode scalar sequence).
+ * Rejects unpaired high/low surrogates without altering or silently replacing characters.
+ *
+ * @param {string} str
+ * @returns {boolean}
+ */
+function isWellFormedUtf16(str) {
+  if (typeof str !== 'string') {
+    return false;
+  }
+  const len = str.length;
+  for (let i = 0; i < len; i++) {
+    const code = str.charCodeAt(i);
+    if (code >= 0xD800 && code <= 0xDBFF) {
+      if (i + 1 >= len) {
+        return false;
+      }
+      const nextCode = str.charCodeAt(i + 1);
+      if (nextCode < 0xDC00 || nextCode > 0xDFFF) {
+        return false;
+      }
+      i++;
+    } else if (code >= 0xDC00 && code <= 0xDFFF) {
+      return false;
+    }
+  }
+  return true;
+}
+
 const FORBIDDEN_SECRET_NAMES = new Set([
   'token',
   'bottoken',
@@ -85,6 +115,9 @@ class AccountRegistry {
     }
     if (CONTROL_CHAR_REGEX.test(id)) {
       throw new Error('id contains forbidden control characters');
+    }
+    if (!isWellFormedUtf16(id)) {
+      throw new Error('id contains ill-formed Unicode surrogate code units');
     }
     const cleanId = id.trim();
     if (!cleanId) {
@@ -158,6 +191,9 @@ class AccountRegistry {
     }
     if (CONTROL_CHAR_REGEX.test(id)) {
       throw new Error('id contains forbidden control characters');
+    }
+    if (!isWellFormedUtf16(id)) {
+      throw new Error('id contains ill-formed Unicode surrogate code units');
     }
     const cleanId = id.trim();
     if (!cleanId) {
@@ -264,4 +300,5 @@ module.exports = {
   AccountRegistry,
   ALLOWED_METADATA_FIELDS,
   CONTROL_CHAR_REGEX,
+  isWellFormedUtf16,
 };

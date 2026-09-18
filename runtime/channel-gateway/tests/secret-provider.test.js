@@ -486,3 +486,104 @@ test('SecretRef - 24. control-character domain cross-contract rejection parity (
     );
   }
 });
+
+test('SecretRef - 25. ill-formed UTF-16 lone surrogates fail closed with INVALID_SECRET_REFERENCE (not URIError) (F3)', () => {
+  const malformedIds = [
+    '\uD800',
+    '\uDFFF',
+    'alpha\uD800',
+    '\uD800alpha',
+    'alpha\uDFFF',
+    '\uDFFFalpha',
+    'alpha\uD800beta',
+    'alpha\uDFFFbeta',
+    '\uD800\uD800',
+    '\uDC00\uD800',
+  ];
+
+  for (const id of malformedIds) {
+    // Must throw SecretProviderError with INVALID_SECRET_REFERENCE, not raw URIError
+    assert.throws(
+      () => SecretRef.telegramBotToken(id),
+      (err) => {
+        assert(err instanceof SecretProviderError, 'Must be instance of SecretProviderError');
+        assert.strictEqual(err.code, 'INVALID_SECRET_REFERENCE');
+        assert.strictEqual(err.name, 'SecretProviderError');
+        assert(!err.message.includes(id), 'Error message must not leak raw input');
+        return true;
+      }
+    );
+    assert.throws(
+      () => SecretRef.lineChannelAccessToken(id),
+      (err) => {
+        assert(err instanceof SecretProviderError);
+        assert.strictEqual(err.code, 'INVALID_SECRET_REFERENCE');
+        assert(!err.message.includes(id));
+        return true;
+      }
+    );
+    assert.throws(
+      () => SecretRef.lineChannelSecret(id),
+      (err) => {
+        assert(err instanceof SecretProviderError);
+        assert.strictEqual(err.code, 'INVALID_SECRET_REFERENCE');
+        assert(!err.message.includes(id));
+        return true;
+      }
+    );
+    assert.throws(
+      () => encodeAccountId(id),
+      (err) => {
+        assert(err instanceof SecretProviderError);
+        assert.strictEqual(err.code, 'INVALID_SECRET_REFERENCE');
+        assert(!err.message.includes(id));
+        return true;
+      }
+    );
+  }
+});
+
+test('SecretRef - 26. valid emoji surrogate pairs accepted and deterministically percent-encoded (F3)', () => {
+  const emojiId = '😀';
+  const expectedEncoded = '%F0%9F%98%80';
+
+  assert.strictEqual(encodeAccountId(emojiId), expectedEncoded);
+
+  const tgRef = SecretRef.telegramBotToken(emojiId);
+  const expectedTgTarget = `HH.AI_v2/channel-gateway/v1/telegram/${expectedEncoded}/bot-token`;
+  assert.strictEqual(tgRef.getTargetName(), expectedTgTarget);
+  assert.doesNotThrow(() => assertCanonicalTargetGrammar(tgRef.getTargetName()));
+  assert.strictEqual(CANONICAL_TARGET_REGEX.test(tgRef.getTargetName()), true);
+  assert.strictEqual(SecretRef.deriveCanonicalTarget(tgRef), expectedTgTarget);
+
+  const lineAccessRef = SecretRef.lineChannelAccessToken(emojiId);
+  const expectedLineAccessTarget = `HH.AI_v2/channel-gateway/v1/line/${expectedEncoded}/channel-access-token`;
+  assert.strictEqual(lineAccessRef.getTargetName(), expectedLineAccessTarget);
+  assert.doesNotThrow(() => assertCanonicalTargetGrammar(lineAccessRef.getTargetName()));
+  assert.strictEqual(CANONICAL_TARGET_REGEX.test(lineAccessRef.getTargetName()), true);
+  assert.strictEqual(SecretRef.deriveCanonicalTarget(lineAccessRef), expectedLineAccessTarget);
+
+  const lineSecretRef = SecretRef.lineChannelSecret(emojiId);
+  const expectedLineSecretTarget = `HH.AI_v2/channel-gateway/v1/line/${expectedEncoded}/channel-secret`;
+  assert.strictEqual(lineSecretRef.getTargetName(), expectedLineSecretTarget);
+  assert.doesNotThrow(() => assertCanonicalTargetGrammar(lineSecretRef.getTargetName()));
+  assert.strictEqual(CANONICAL_TARGET_REGEX.test(lineSecretRef.getTargetName()), true);
+  assert.strictEqual(SecretRef.deriveCanonicalTarget(lineSecretRef), expectedLineSecretTarget);
+});
+
+test('SecretRef - 27. cross-contract domain total alignment with AccountRegistry (F3)', () => {
+  const registry = new AccountRegistry('telegram');
+  const validSurrogateId = 'bot-😀-測試';
+  const acc = registry.register({
+    id: validSurrogateId,
+    label: 'Emoji Unicode Bot',
+    description: 'Valid cross-contract bot',
+    enabled: true,
+  });
+
+  const ref = SecretRef.telegramBotToken(acc.id);
+  const target = ref.getTargetName();
+  assert.doesNotThrow(() => assertCanonicalTargetGrammar(target));
+  assert.strictEqual(CANONICAL_TARGET_REGEX.test(target), true);
+  assert.strictEqual(SecretRef.deriveCanonicalTarget(ref), target);
+});

@@ -36,6 +36,36 @@ const VALID_ERROR_CODES = new Set([
 
 const CONTROL_CHAR_REGEX = /[\x00-\x1F\x7F]/;
 
+/**
+ * Validates that a string contains only well-formed UTF-16 code units (Unicode scalar sequence).
+ * Rejects unpaired high/low surrogates without altering or silently replacing characters.
+ *
+ * @param {string} str
+ * @returns {boolean}
+ */
+function isWellFormedUtf16(str) {
+  if (typeof str !== 'string') {
+    return false;
+  }
+  const len = str.length;
+  for (let i = 0; i < len; i++) {
+    const code = str.charCodeAt(i);
+    if (code >= 0xD800 && code <= 0xDBFF) {
+      if (i + 1 >= len) {
+        return false;
+      }
+      const nextCode = str.charCodeAt(i + 1);
+      if (nextCode < 0xDC00 || nextCode > 0xDFFF) {
+        return false;
+      }
+      i++;
+    } else if (code >= 0xDC00 && code <= 0xDFFF) {
+      return false;
+    }
+  }
+  return true;
+}
+
 const CANONICAL_TARGET_REGEX = Object.freeze(
   /^HH\.AI_v2\/channel-gateway\/v1\/(?:telegram\/(?:[A-Za-z0-9_.~!*()-]|%[0-9A-Fa-f]{2})+\/bot-token|line\/(?:[A-Za-z0-9_.~!*()-]|%[0-9A-Fa-f]{2})+\/(?:channel-access-token|channel-secret)|local-api\/hmac)$/
 );
@@ -77,7 +107,7 @@ class SecretProviderError extends Error {
 /**
  * Validates and deterministically encodes an account identifier.
  * Prevents separator injection, directory traversal, and control character attacks.
- * Rejects raw ASCII controls/DEL before trim, then percent-encodes with apostrophe as %27.
+ * Rejects raw ASCII controls/DEL and ill-formed UTF-16 surrogates before trim, then percent-encodes with apostrophe as %27.
  *
  * @param {string} accountId
  * @returns {string} Deterministically encoded account ID
@@ -89,11 +119,18 @@ function encodeAccountId(accountId) {
   if (CONTROL_CHAR_REGEX.test(accountId)) {
     throw new SecretProviderError('accountId contains forbidden control characters', 'INVALID_SECRET_REFERENCE');
   }
+  if (!isWellFormedUtf16(accountId)) {
+    throw new SecretProviderError('accountId contains ill-formed Unicode surrogate code units', 'INVALID_SECRET_REFERENCE');
+  }
   const trimmed = accountId.trim();
   if (!trimmed) {
     throw new SecretProviderError('accountId cannot be empty or blank', 'INVALID_SECRET_REFERENCE');
   }
-  return encodeURIComponent(trimmed).replace(/'/g, '%27');
+  try {
+    return encodeURIComponent(trimmed).replace(/'/g, '%27');
+  } catch (err) {
+    throw new SecretProviderError('Failed to encode accountId', 'INVALID_SECRET_REFERENCE');
+  }
 }
 
 /**
@@ -271,4 +308,5 @@ module.exports = {
   SecretProvider,
   encodeAccountId,
   CONTROL_CHAR_REGEX,
+  isWellFormedUtf16,
 };

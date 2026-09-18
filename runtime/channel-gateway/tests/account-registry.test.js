@@ -401,3 +401,68 @@ test('AccountRegistry - 24. ordinary leading/trailing spaces continue following 
   assert.strictEqual(registry.getActive().id, 'trimmed-bot');
 });
 
+test('AccountRegistry - 25. account ID rejects ill-formed UTF-16 lone surrogates fail-closed (F3)', () => {
+  const registry = new AccountRegistry('telegram');
+  const malformedIds = [
+    '\uD800',
+    '\uDFFF',
+    'alpha\uD800',
+    '\uD800alpha',
+    'alpha\uDFFF',
+    '\uDFFFalpha',
+    'alpha\uD800beta',
+    'alpha\uDFFFbeta',
+    '\uD800\uD800',
+    '\uDC00\uD800',
+  ];
+
+  for (const invalidId of malformedIds) {
+    assert.throws(
+      () => registry.register({
+        id: invalidId,
+        label: 'Surrogate Bot',
+        description: 'Should reject lone surrogate',
+        enabled: true,
+      }),
+      (err) => {
+        assert(err instanceof Error);
+        assert.match(err.message, /ill-formed Unicode surrogate code units/);
+        // Error message must never leak raw input
+        assert(!err.message.includes(invalidId));
+        return true;
+      }
+    );
+    assert.throws(
+      () => registry.setActive(invalidId),
+      (err) => {
+        assert(err instanceof Error);
+        assert.match(err.message, /ill-formed Unicode surrogate code units/);
+        assert(!err.message.includes(invalidId));
+        return true;
+      }
+    );
+  }
+});
+
+test('AccountRegistry - 26. account ID accepts valid surrogate pairs (emoji / supplementary Unicode) (F3)', () => {
+  const registry = new AccountRegistry('telegram');
+  const validSurrogateCases = [
+    { id: '😀', label: 'Emoji Bot' },
+    { id: 'bot-😀', label: 'Prefixed Emoji Bot' },
+    { id: 'alpha😀beta', label: 'Interleaved Emoji Bot' },
+    { id: '🚀-rocket-✨', label: 'Multi Emoji Bot' },
+  ];
+
+  for (const c of validSurrogateCases) {
+    const acc = registry.register({
+      id: c.id,
+      label: c.label,
+      description: 'Synthetic valid surrogate pair test',
+      enabled: true,
+    });
+    assert.strictEqual(acc.id, c.id);
+    assert.strictEqual(registry.get(c.id).id, c.id);
+    registry.setActive(c.id);
+    assert.strictEqual(registry.getActive().id, c.id);
+  }
+});

@@ -3081,10 +3081,10 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 - TG-MVP-04 F1 回覆授權身份鍵修復：已完成（ACCEPTED / CLOSED，修正 validateReplyAuthorization SQL 複合鍵查詢與金絲雀測試，accepted checkpoint = 18867eb5af7c4b90df8946c22977350bf7ec5086）。
 - TG-MVP-05 游標推進防衛與事件身分分離修復：已完成（ACCEPTED / CLOSED，commit `cdd9d7c5eeca5185e47e7365d42a3a3dc0a61eb1`，Actions Run 35311601796 success，External Macro PASS / ACCEPT ALL；TG-MVP-05-F1 已徹底解決 RESOLVED；accepted checkpoint 推進至 `cdd9d7c5eeca5185e47e7365d42a3a3dc0a61eb1`）。
 - TG-MVP-06 B-98 機密輸出強化與提交守衛：已完成（ACCEPTED / CLOSED，commit `e60fedb6fbaade0ec725d28fc83f1e47cfb13943`，Actions Run 35331712071 success，External Macro PASS / ACCEPT ALL；TG-MVP-06-F1-A、TG-MVP-06-F1-B、TG-MVP-06-F2 全數徹底解決 RESOLVED；new material finding = NONE；accepted checkpoint 推進至 `e60fedb6fbaade0ec725d28fc83f1e47cfb13943`；B-98 正式關閉 CLOSED）。
-- TG-MVP-06A / B-101 Gateway 機密提供者與執行期機密取用邊界：進行中（IN PROGRESS / MACRO HOLD；候選 a46aea3 經 Actions Run 35350604949 success，External Macro HOLD，TG-MVP-06A-F1-A/C/H1 = RESOLVED，F1-B 逾時機制已實作，新發現 TG-MVP-06A-F2 = CURRENT；F2-A 生產逾時 30000ms 與 live 測試預設對齊、F2-B AccountRegistry 與 SecretRef 帳號識別碼領域對齊 repair active；accepted checkpoint 保持 e60fedb6fbaade0ec725d28fc83f1e47cfb13943；repair candidate 待外部宏觀審計，不得 self-audit）。
+- TG-MVP-06A / B-101 Gateway 機密提供者與執行期機密取用邊界：進行中（IN PROGRESS / MACRO HOLD；候選 e435b3a 經 Actions Run 35354810194 success，External Macro HOLD，TG-MVP-06A-F1-A/C/H1 = RESOLVED，TG-MVP-06A-F2-A/B = RESOLVED，新發現 TG-MVP-06A-F3 = CURRENT；F3 畸形 UTF-16 帳號識別碼領域缺口 repair active；accepted checkpoint 保持 e60fedb6fbaade0ec725d28fc83f1e47cfb13943；repair candidate 待外部宏觀審計，不得 self-audit）。
   - B-98：已完成（CLOSED）。
   - B-101：進行中（IN PROGRESS）。
-  - TG-MVP-06A：進行中（IN PROGRESS / MACRO HOLD，TG-MVP-06A-F1-A = RESOLVED，TG-MVP-06A-F1-C = RESOLVED，TG-MVP-06A-F1-H1 = RESOLVED，TG-MVP-06A-F2 = CURRENT）。
+  - TG-MVP-06A：進行中（IN PROGRESS / MACRO HOLD，TG-MVP-06A-F1 = RESOLVED，TG-MVP-06A-F2 = RESOLVED，TG-MVP-06A-F3 = CURRENT）。
   - TG-MVP-07 與後續切片：尚未開始（NOT AUTHORIZED / NOT STARTED）。
   - E-03：進行中（IN PROGRESS，accepted checkpoint = e60fedb6fbaade0ec725d28fc83f1e47cfb13943）。
   - B-28 / B-29 上游 trigger 重新評估完成，無 B-01 blocker，維持 DEFERRED_BY_USER / POST_B01。
@@ -4458,5 +4458,29 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
     - 所有生成之 TargetName 嚴格通過 `assertCanonicalTargetGrammar` 與 `CANONICAL_TARGET_REGEX`。
   - 回歸安全不變量（Security Invariants）：
     - F1 原生指標單一釋放、指標歸零、託管 blob 最佳努力清除、SecretRef 凍結、子類別拒絕、提供者重新推導規範目標、ETIMEDOUT 映射 PROVIDER_UNAVAILABLE、無 raw payload 洩漏、零 fallback、零枚舉維持閉合。
+    - 零真實機密讀寫存取、零真實憑證枚舉、零新 npm 依賴。
+  - 本 repair candidate 提交後標記為 PENDING EXTERNAL MACRO RE-AUDIT，執行者不得 self-audit 宣稱 PASS 或結案。
+
+115. **TG-MVP-06A-F3 畸形 UTF-16 帳號識別碼領域缺口修復（Ill-Formed UTF-16 Account-ID Domain Gap Candidate）**（2026-09-18）
+- **外部宏觀審計 HOLD 與重大發現同步（External Macro HOLD & Material Finding Sync）**：
+  - 目標候選：`e435b3a5819fade64abcb61fa95dbb7e9a740d6f`。
+  - 父提交：`a46aea39a4b2e05384e3fbf9542c6f8bb35fde05`。
+  - 審查範圍：`e60fedb6fbaade0ec725d28fc83f1e47cfb13943..e435b3a5819fade64abcb61fa95dbb7e9a740d6f`（共 4 commits）。
+  - 審查人員：GPT 代理審查官（使用者授權）。
+  - 遠端機器證據：Run 35354810194（status = completed, conclusion = success, jobs: verify = success, gateway-windows = success）。
+  - 審查結論：MACHINE / FINAL CI = PASS；MACRO AUDIT = HOLD；TG-MVP-06A = NOT ACCEPTED YET；B-101 = IN PROGRESS；TG-MVP-07 = NOT AUTHORIZED；FINDING_DISPOSITION = CURRENT E-03。
+  - 技術發現裁決：F1-A = RESOLVED，F1-C = RESOLVED，F1-H1 = RESOLVED，F2-A = RESOLVED，F2-B = RESOLVED。
+  - 新重大發現 TG-MVP-06A-F3（Ill-Formed UTF-16 Account-ID Domain Gap）：
+    - 雖然先前已拒絕 raw ASCII C0 控制字元與 DEL，但 JavaScript 字串仍可能包含畸形 UTF-16 孤立代理字元（lone surrogate code units: high surrogate `\uD800..\uDBFF` 或 low surrogate `\uDC00..\uDFFF`）。
+    - 原本 `AccountRegistry.register()` 未拒絕孤立代理字元，而 `SecretRef` 中的 `encodeURIComponent(normalizedId)` 遇到 lone surrogate 會拋出 `URIError`，導致 Registry-valid account ID 到 SecretRef canonical TargetName 之跨契約映射非完全（not total）。
+    - 修復架構決策：Canonical account-ID 領域必須嚴格限定為合規之 UTF-16 字串（有效 Unicode scalar sequences）。拒絕任何未成對 high surrogate 與 low surrogate，一律 fail closed。禁止使用 `toWellFormed()` 靜默替換為 `U+FFFD`（避免身份別名衝突 identity aliasing）。合規之 BMP 字元與合規成對 surrogate pairs（如 emoji 等輔助平面字元）維持接受。
+  - 通過基準保持：accepted checkpoint 保持為 `e60fedb6fbaade0ec725d28fc83f1e47cfb13943`；B-101 = IN PROGRESS；TG-MVP-07 = NOT AUTHORIZED。
+- **TG-MVP-06A-F3 領域對齊修復實作（Unicode Scalar Account-ID Alignment Implementation）**：
+  - 依賴重放：重用現有 TG-MVP-06A-F2 12-query 依賴證據與閉包，無需新增 discovery。
+  - `account-registry.js`：實作決定性 `isWellFormedUtf16` 函式，於 trim 前檢查 accountId，遇到 lone surrogate 立即拋出包含 `account ID contains ill-formed Unicode surrogate code units` 之例外，且錯誤訊息絕不洩漏 raw input。合規 surrogate pairs（如 emoji 😀）完整接受並保留。
+  - `secret-provider.js`：於 `encodeAccountId` 之 trim 前同步套用 `isWellFormedUtf16`，遇到 lone surrogate 拋出 `SecretProviderError`（code: `INVALID_SECRET_REFERENCE`），且包裹 `encodeURIComponent` 防護，絕不讓原始 `URIError` 逸出，錯誤訊息絕不洩漏 raw input。
+  - Emoji 百分比編碼：合規 emoji 如 `😀`（`\uD83D\uDE00`，U+1F600）成功通過 Registry 與 SecretRef 轉換為規範 TargetName，UTF-8 percent encoding 為決定性之 `%F0%9F%98%80`，嚴格通過 `assertCanonicalTargetGrammar` 與 `CANONICAL_TARGET_REGEX`。
+  - 回歸安全不變量：
+    - F1/F2 逾時 30000ms、PowerShell blob 清除、指標防雙重 free、SecretRef 凍結、無枚舉、無 fallback、F2 ASCII 控制字元拒絕、路徑符號百分比編碼等全數維持綠燈。
     - 零真實機密讀寫存取、零真實憑證枚舉、零新 npm 依賴。
   - 本 repair candidate 提交後標記為 PENDING EXTERNAL MACRO RE-AUDIT，執行者不得 self-audit 宣稱 PASS 或結案。
