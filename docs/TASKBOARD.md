@@ -16,7 +16,7 @@
 
 **NEXT_SLICE**：TG-MVP-02（Inbound Identity & Cursor Semantics ADR）
 
-**最後更新**：2026-09-18，ACTIVE_MACRO_AUDITOR = GPT 代理審查官（使用者授權）；G1 = Macro PASS / ACCEPTED；RECON-01 歷史需求機械對帳中；E-03 詳情見下方 E-03 Roadmap。
+**最後更新**：2026-09-18，ACTIVE_MACRO_AUDITOR = GPT 代理審查官（使用者授權）；RECON-01 External Macro HOLD 已成立，bounded current-state repair 已執行，候選等待 External Macro re-audit；E-03 詳細生命週期權威見下方 E-03 Roadmap。
 
 ---
 
@@ -212,7 +212,7 @@ A 節目前狀態以本表各列與 `NEXT_WORK` 之 current repo truth 為準；
 |---|---|---|---|
 | E-01 | 待辦 | 技能尚未遷移（§二 A 節） | 逐一比對 A-1「確定要遷移的」清單 |
 | E-02 | 待辦 | Persona 認知顧問 15 個（§二 B 節） | 架構已定為方案 A（設定檔非技能，不放 `skills/`），遷移未執行 |
-| E-03 | 進行中 | **Runtime 執行層（§二 C 節）** | 詳細切片生命週期、架構狀態與進度之單一事實來源請見下方「E-03 ROADMAP — CANONICAL CURRENT-STATE AUTHORITY」；看板頂層列不再維護長動態副本。當前切片為 G1（路線圖真相重整）；下一切片（NEXT_SLICE）為 Inbound Identity & Cursor Semantics ADR。 |
+| E-03 | 進行中 | **Runtime 執行層（§二 C 節）** | 詳細切片生命週期、架構狀態與進度之單一事實來源請見下方「E-03 ROADMAP — CANONICAL CURRENT-STATE AUTHORITY」；看板頂層列不再維護長動態副本與動態切片數值。 |
 | E-04 | 待辦 | `$$` 指令定義收斂（§二 D 節） | `$$LINE連線$$`／`$$TG連線$$` 散落三個檔案且內容互相矛盾；依 ADR-0022/D14 於 Gateway 正式 cutover 時才切換路由（落地對應：E-03 Roadmap TG-CUT-01） |
 | E-05 | 待辦 | Data/ 資料層逐項裁決（§二 E 節） | Data/logs 處置待使用者裁決（D-U2 規範不得遷入 repo，是否 repo-external 保留／封存／刪除見 C-08）；尚有 `reports/`、`Agent_Reflections.md`、`TODO.md`、`Execution_Plans/`、`_archive_legacy_docs/` 待逐項處置 |
 

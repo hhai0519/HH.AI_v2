@@ -3037,7 +3037,9 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 | 1 | ~~**Port 3000 三方衝突**~~ **已於 2026-09-06 裁決** | 裁決結果見 `docs/TASKBOARD.md` C-01。實測為 11 個 port 而非三方衝突；以 ADR-0017 為準，處置範圍由兩處擴大為七處；playwright 掃描清單改為「明確指定目標 port 而非自動掃描」。執行排批 4 |
 | 2 | ~~**`SOP_02` 清歷史規定違反第 1 層規則**~~ **已於 2026-09-06 裁決** | 裁決結果見 `docs/TASKBOARD.md` C-02。採甲案：不得 force push；已推送憑證視為永久洩漏，處置為撤銷與輪換；清理歷史僅由使用者本人執行。執行排批 4 |
 | 3 | ~~**ADR-0013 處置**~~ **已於 2026-09-06 裁決** | 裁決結果見 `docs/TASKBOARD.md` C-03。採甲案逐節處置：§1／§2ABD／§7 棄用；§2C BOM 偵測實作為新 CHECK；§3 搬進 `role-boundaries.md`；§4／§5 凍結待 E-03；§6 獨立為 B-32。執行排批 4 |
-| 4 | **是否將 GitHub Verify 升級為 main 的 preventive required check** | 待使用者裁決（見 `docs/TASKBOARD.md` C-06）。目前 required status checks 為 off，可選：A. 維持 current direct-push + post-push Verify；B. Require PR + Verify before merge。Auditor 建議：若要求任何不合法 rule 絕不曾進 main 則選 B。本項為 non-blocking user decision，不阻塞 B-95 |
+| 4 | ~~**是否將 GitHub Verify 升級為 main 的 preventive required check**~~ **已於 2026-09-17 裁決** | 裁決結果見 `docs/TASKBOARD.md` C-06。使用者已裁決採 Option B（main 未來必須由 preventive GitHub gate 保護：Require PR + Verify before merge；CI 未綠不能進 main）。實作落地排定於 TG-MVP-01B / G2 執行，本批不實作。 |
+| 5 | **歷史待辦 B-17 / B-28 / B-29 處置決策（ARCHIVE vs TRIGGER_BASED_DEFERRED）** | 待使用者裁決（見 `docs/TASKBOARD.md` C-07）。審計官與歷史討論針對 B-17（章節語意變更偵測）、B-28（AGENTS.md 上游規範版本記錄）、B-29（上游一致性對照表與機械檢查）提出處置方案。Macro 建議採 TRIGGER_BASED_DEFERRED（依觸發條件延後，不封存）。本項為 non-blocking user decision，等待使用者裁決。 |
+| 6 | **Data/logs 歷史檔案處置決策（repo-external 保留 vs 封存 vs 刪除）** | 待使用者裁決（見 `docs/TASKBOARD.md` C-08）。依使用者裁決 D-U2，個人工作資料與日誌（Persona 個人內容、Agent_Reflections、TODO、reports、logs）一律不進 repo，舊 repo 之 Data/logs/ 不得遷入 HH.AI_v2 repo。至於其歷史檔案應於本機 repo-external 保留、移入封存區、或刪除清理，待使用者裁決。 |
 
 ### 5.4 進行中／等待回報
 
@@ -3068,7 +3070,8 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - B-97 Pre-B01 Comprehensive Release Audit 已完成（CLOSED / PRE-B01 RELEASE PASS）。
   - B-01 ADR-0002／0004／0010 分層搬移及 Active-Contract 語意修復已完成（CLOSED / MACRO PASS）。
   - E-03 Runtime 執行層架構推進（IN PROGRESS）：現行詳細生命週期、架構決策與各切片進度之單一事實來源由 docs/TASKBOARD.md 之「E-03 ROADMAP」統一維護；交接區不保留第二份長狀態副本。各項相依前置邊界（B-98 / B-30 / B-33 / F-05 等）與交接不變量（handoff invariants）以 TASKBOARD 為準。
-  - C-06 維持待使用者裁決（USER_DECISION_NONBLOCKING，遠端 ruleset 與 required checks 現況已確認）。
+  - C-06 使用者已裁決採 Option B（USER DECIDED OPTION B / G2 LANDING PENDING，排定於 TG-MVP-01B / G2 落地）。
+- RECON-01 歷史待辦需求機械對帳（TG-MVP-01A）：進行中（IN PROGRESS），bounded repair candidate pending External Macro re-audit。
   - B-28 / B-29 上游 trigger 重新評估完成，無 B-01 blocker，維持 DEFERRED_BY_USER / POST_B01。
   - B-54 保持待辦（POST_B01 / NONBLOCKING，SOP_12 機器專屬路徑 concrete example 已登錄）。
   - B-98 / B-75 保持待辦、零實作 (POST_B01 / NONBLOCKING / NOT IMPLEMENTED)。
@@ -3077,7 +3080,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - 當前與下一步工作任務權威（Current / next work authority）仍只由 `docs/TASKBOARD.md` 的 `**NEXT_WORK**` pointer 保存與導航，交接區不複製 task ID 或待辦佇列。
   - 待使用者裁決事項依 §5.3。
   - Antigravity IDE runtime rule UI freshness 仍需由 runtime reload / fresh session 保證，不能由 CI 直接證明。
-- **待使用者裁決事項**：有（依 §5.3，包含 GitHub main preventive required-check enforcement 決策，屬 non-blocking user decision）。
+- **待使用者裁決事項**：有（依 §5.3，包含 C-07 與 C-08，屬 non-blocking user decision）。
 - **剩餘工作權威**：以 `docs/TASKBOARD.md` 為唯一 remaining-work authority。
 
 56. **Post-Governance Taskboard Reconciliation（治理收斂後看板全面對帳）**（2026-09-11）
@@ -4067,3 +4070,23 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
       - 下一切片（NEXT_SLICE）：TG-MVP-02（Inbound Identity & Cursor Semantics ADR）。
       - 零生產程式碼異動，零 ADR 語意修改，零 MISSION 修改。
       - 本候選提交後等待 External Macro Reviewer（GPT 代理審查官（使用者授權））獨立審核，不得 self-audit。
+
+102. **RECON-01 外部宏觀審計 HOLD 結論同步與現況投影修復（RECON-01 Bounded Current-State Repair）**（2026-09-18）
+- **外部宏觀審計 HOLD 裁決同步（External Macro HOLD Verdict Sync）**：
+  - 目標候選：`0281bb470d3962f099674fb0ff14b9fc55e600e5`（RECON-01 歷史待辦需求機械對帳候選）。
+  - 審查人員：GPT 代理審查官（使用者授權）。
+  - A1 資格查證：採 A1 = EQUIVALENT（GitHub API + Executor clone cross-check）成立。
+  - 審查範圍：`0cc4dfc69d7cc7d9e8eebf6e3eceb21e34794534..0281bb470d3962f099674fb0ff14b9fc55e600e5`（Parent: `0cc4dfc69d7cc7d9e8eebf6e3eceb21e34794534`，共 1 commit）。
+  - 遠端機器事實：GitHub Actions Run `35288644114`（completed / success，verify = success, gateway-windows = success）。
+  - 外部審計結論：MACRO AUDIT = HOLD；Accept status = BOUNDED GOVERNANCE / CURRENT-STATE REPAIR REQUIRED；Finding disposition = CURRENT E-03 / TG-MVP-01A。
+  - 通過基準維護：accepted checkpoint 保持 `0cc4dfc69d7cc7d9e8eebf6e3eceb21e34794534`，不得推進 checkpoint。
+- **審計發現與有界現況投影修復（Findings & Bounded Repair Implementation）**：
+  - **F1-A**（backlog §5.3 C-06 舊待裁決狀態）：§5.3 已將 C-06 投影更正為「已裁決」（採 Option B，落地排定於 TG-MVP-01B / G2）。
+  - **F1-B**（backlog §5.3 / §5.4 使用者裁決投影漂移）：§5.3 正確投影當前待裁決項 C-07（B-17/B-28/B-29）與 C-08（Data/logs）；§5.4 移除殘留之 C-06 待裁決描述並更正為 Option B 已裁決。
+  - **F1-C**（TASKBOARD E-03 頂層列陳舊當前切片複本）：移除 E-03 頂層列中陳舊「當前切片為 G1」字串，確立詳細切片生命週期僅由下方 E-03 Roadmap 維護，不保留易失真切片副本。
+  - **F1-D**（TASKBOARD E-03 頂層列重複 NEXT_SLICE 動態數值）：移除 E-03 頂層列中重複之「下一切片（NEXT_SLICE）為 Inbound Identity & Cursor Semantics ADR」，保證僅看板頂部指標保存唯一可變 NEXT_SLICE 數值（使 G1-R1 / RECON-01 CANARY 7 真正滿足）。
+- **架構邊界與生命週期不變量**：
+  - 零生產程式碼異動，零 ADR 語意修改，零規則修改，零 MISSION 修改。
+  - C-07 與 C-08 維持待使用者裁決（UNDECIDED）。
+  - TG-MVP-02 與 TG-MVP-03 尚未開始（UNSTARTED）。
+  - 本修復候選提交後標記為 PENDING EXTERNAL MACRO RE-AUDIT，執行者不得 self-audit。
