@@ -375,6 +375,10 @@ def test_hook_installer_and_execution_lifecycle(tmp_path):
 
     with open(os.path.join(SCRIPTS_DIR, "..", ".githooks", "pre-commit"), "rb") as f:
         hook_dest.write_bytes(f.read())
+    try:
+        os.chmod(hook_dest, 0o755)
+    except Exception:
+        pass
 
     with open(os.path.join(SCRIPTS_DIR, "secret_scan.py"), "rb") as f:
         (scripts_target / "secret_scan.py").write_bytes(f.read())

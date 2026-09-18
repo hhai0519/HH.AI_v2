@@ -163,13 +163,17 @@ def get_repo_root():
     return out.strip()
 
 
-def run_staged_scan():
+def run_staged_scan(repo_root=None):
     """
     Scans the staged prospective commit from the Git index.
     """
+    if repo_root is None:
+        repo_root = get_repo_root()
+
     # Get staged changes with status: A (added), C (copied), M (modified), R (renamed), D (deleted)
     diff_output = subprocess.check_output(
         ['git', 'diff', '--cached', '--name-status', '-z'],
+        cwd=repo_root
     )
 
     if not diff_output:
@@ -216,6 +220,7 @@ def run_staged_scan():
         try:
             blob_bytes = subprocess.check_output(
                 ['git', 'show', f':{path}'],
+                cwd=repo_root,
                 stderr=subprocess.DEVNULL
             )
         except subprocess.CalledProcessError:
@@ -275,7 +280,7 @@ def main():
 
     if args.staged:
         mode = "STAGED"
-        findings = run_staged_scan()
+        findings = run_staged_scan(repo_root)
     else:
         mode = "TRACKED"
         findings = run_tracked_scan(repo_root)

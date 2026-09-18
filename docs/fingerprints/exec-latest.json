@@ -1,5 +1,5 @@
 {
-  "base_head": "cdd9d7c",
+  "base_head": "e70b8a6",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -541,8 +541,8 @@
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 140,
-      "sha256": "b43413429f6d5d7bfde3e0e8222cdc403bb4fd31bbee9e7bb0c289f95e8ce0e9"
+      "lines": 141,
+      "sha256": "7ea541fe7ab4ceb0b77a734103edb636b9bc83f9faef9c4fa99f6086bcb10fbb"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -1082,8 +1082,8 @@
       "headings": [
         "# -*- coding: utf-8 -*-"
       ],
-      "lines": 92,
-      "sha256": "2c05873e0f5eeada5437f786563d48a2ccc877d0c0681fef1672f9fe7c9f3799"
+      "lines": 97,
+      "sha256": "86ff05f474e4920fcae5c93a13ff2572fc2d69f19f564e73e1b72573575fc605"
     },
     "scripts/secret_presence.py": {
       "fences": 0,
@@ -1111,8 +1111,8 @@
         "# 3. Mode Execution: Staged & Tracked",
         "# ---------------------------------------------------------------------------"
       ],
-      "lines": 294,
-      "sha256": "742dae93034bd704f74d2513ff9d9d13b8112e85034e47293de7b8e8786ce21e"
+      "lines": 299,
+      "sha256": "de0ab32c9182723530643f2a9b41d574b03edb2b624c7fe36c135ff6b68bca5a"
     },
     "scripts/tests/test_anchor.py": {
       "fences": 0,
@@ -1229,8 +1229,8 @@
         "# Section 43: Hook & Installer Tests in Temporary Git Repo",
         "# ---------------------------------------------------------------------------"
       ],
-      "lines": 456,
-      "sha256": "369ba30fc8af81d1aceff64a557ee7435bdc1af0b7cde0a19122e3410d6cbcb6"
+      "lines": 460,
+      "sha256": "0db5e80145240fcb4846930095b9725fd17472beaa8fed40945fdf0c9104130e"
     },
     "scripts/tests/test_shared_primitives.py": {
       "fences": 0,
@@ -1346,7 +1346,7 @@
       "sha256": "35bf7dbfa3c7d291b550c3c97a6ae398a22b1dc3624c1d2fc1e4db6963d6e115"
     }
   },
-  "generated_at": "2026-09-18T06:22:55Z",
+  "generated_at": "2026-09-18T06:32:12Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

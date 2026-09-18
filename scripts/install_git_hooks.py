@@ -42,6 +42,11 @@ def install_hooks():
             ['git', 'config', '--local', 'core.hooksPath', CANONICAL_HOOKS_PATH],
             cwd=repo_root
         )
+        if os.name != 'nt':
+            try:
+                os.chmod(hook_file, 0o755)
+            except Exception:
+                pass
         sys.stdout.write(f"HOOK_INSTALL PASS: core.hooksPath set to '{CANONICAL_HOOKS_PATH}'\n")
         return 0
     except subprocess.CalledProcessError as err:
