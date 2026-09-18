@@ -1,5 +1,5 @@
 {
-  "base_head": "007a158",
+  "base_head": "32b89b8",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -202,8 +202,8 @@
     ".github/workflows/verify.yml": {
       "fences": 0,
       "headings": [],
-      "lines": 66,
-      "sha256": "f23346744abb404fbda65310fae5147cc5c511f723c5504da21b0b61e486aca2"
+      "lines": 73,
+      "sha256": "84be5f9e99da4a0fa23a558be2803f34c41f779e72b82274e725978c2f7c0498"
     },
     "AGENTS.md": {
       "fences": 10,
@@ -546,7 +546,7 @@
         "# 執行者檢查紀錄"
       ],
       "lines": 151,
-      "sha256": "0da0f4dea76ffaa2c31b11bfe65876268a0160d035674bdb0280941cf2b7423f"
+      "sha256": "68233417e2a5c2557ee3b94c53983fd32fe8b0b0176bda484aa9b5efdb28f612"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -1372,7 +1372,7 @@
       "sha256": "35bf7dbfa3c7d291b550c3c97a6ae398a22b1dc3624c1d2fc1e4db6963d6e115"
     }
   },
-  "generated_at": "2026-09-18T17:27:19Z",
+  "generated_at": "2026-09-18T17:34:39Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {
