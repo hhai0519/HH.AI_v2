@@ -19,6 +19,13 @@
 - **建立 prospective commit 前確認交接區 HEAD**：若該批次包含交接區元資料更新，確認 `docs/refactor-backlog.md` §5.1 的「上次核對通過的 HEAD」等於 `docs/AUDIT-LOG.md` 中最新且屬當前歷史之 Macro PASS checkpoint。它可以是 HEAD 的較早 ancestor；存在多個 pending repair commits 本身不構成錯誤，不得以 ancestry distance 判定 audit state 過期。候選 commit 自身若未經 Macro Auditor 裁決 PASS，絕對不得自稱為 checkpoint。可使用 `python scripts/check_consistency.py --as-if-committed` 於 commit 前預演驗證，消除本地與 CI 差 1 的可預測中間紅燈（B-51）。
 - **commit message 內若含 `$$` 字元，訊息要用單引號包住**，避免被 shell
   展開成進程 ID。
+- **C-06 啟用後常態生產禁止直推 main（Protected Main Contract）**：
+  在 C-06 預防性 GitHub Gate 啟用後，常態生產作業絕對禁止直接執行 `git push origin main`。
+  新常態生產流程為：
+  accepted/main 基準 → 開設 production branch → commit → push branch → 建立 PR 靶向 main → 等候 required checks（verify 與 gateway-windows）完成且成功 → 執行受保護合併（protected merge，優先 squash，次選 merge commit）→ 取得 exact merged main SHA → 查驗 main push GitHub Actions Verify 成功。
+  絕不繞過保護規則（Never bypass protection）。
+  絕不因便利性新增 bypass actor。
+  遠端健康權威始終為：exact origin/main SHA + GitHub Actions Verify 成功。
 
 ## 2. 回報紀律
 
@@ -234,8 +241,8 @@
 
 ## 2.5 遠端健康查證與 GitHub Actions 閉環規範 (Remote Health Verification)
 
-所有 Agent 在推送到遠端（push）後，必須落實遠端健康查證閉環：
-1. **取得 exact origin/main OID**：確認本地當前 commit 已正確被 remote main 接收。
+所有 Agent 在推送到遠端或受保護 PR 合併後，必須落實遠端健康查證閉環：
+1. **取得 exact origin/main OID**：確認本地當前 commit 或 PR 合併已正確被 remote main 接收（受保護 PR 合併後確認 exact merged main SHA）。
 2. **查證 GitHub Actions Verify（Exact-SHA 閉環）**：
    - **必備五要素**：必須同時證明 (1) remote main 接收目標 commit；(2) workflow 名稱為 `Verify`；(3) `head_sha` 與目標 commit full SHA 完全一致；(4) `status == completed`；(5) `conclusion == success`。
    - **主要查證途徑 (Primary Channel)**：GitHub API / exact-SHA workflow run query（例如查詢 `/actions/runs?head_sha=<exact_sha>`）。

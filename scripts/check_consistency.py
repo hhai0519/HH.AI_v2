@@ -21,8 +21,8 @@
   CHECK 17 — Batch Spec 重放一致性
   CHECK 18 — audited-* tag 名實一致
   CHECK 19 — ADR-0013 §2C UTF-8 BOM 污染偵測
-  CHECK 20 — Markdown 表格連續性
   CHECK 21 — 機密防護與輸出安全守衛 (Secret Leak Guard)
+  CHECK 22 — CI 供應鏈可重現性守衛 (CI Supply-Chain Reproducibility Guard)
 
 本腳本的檢查項來自 2026-08-29 的一次全庫實測掃描，每一項都曾實際命中過真實缺陷，不是憑空設計。
 新增檢查項時，必須先確認該檢查在當前 repo 的誤報率，誤報多的檢查會讓人習慣忽略輸出。
@@ -50,7 +50,7 @@ def run_checks(argv=None):
     as_if_committed = "--as-if-committed" in argv
     if as_if_committed:
         print("[MODE] 啟用 --as-if-committed 本地 commit 拓撲預演模式")
-    total_checks = 21
+    total_checks = 22
     passed = 0
     failed = 0
     
@@ -426,6 +426,22 @@ def run_checks(argv=None):
     else:
         print(f"  [FAIL] {len(c21_fails)} 命中")
         for fail in c21_fails:
+            print(f"    {fail}")
+        failed += 1
+
+    # ---------------------------------------------------------
+    # CHECK 22: CI 供應鏈可重現性守衛
+    # ---------------------------------------------------------
+    print("\nCHECK 22: CI 供應鏈可重現性守衛")
+    c22_fails, c22_infos = check_22_ci_supply_chain(repo_root)
+    for info in c22_infos:
+        print(f"  [INFO] {info}")
+    if len(c22_fails) == 0:
+        print("  [PASS] 0 命中")
+        passed += 1
+    else:
+        print(f"  [FAIL] {len(c22_fails)} 命中")
+        for fail in c22_fails:
             print(f"    {fail}")
         failed += 1
 
@@ -1585,7 +1601,7 @@ def check_16_exec_log_cadence(root_dir=None, git_count=None):
         lag = git_count
     else:
         try:
-            res = subprocess.run(["git", "rev-list", "--count", f"{latest_hash}..HEAD"], cwd=root_dir, capture_output=True, text=True)
+            res = subprocess.run(["git", "rev-list", "--no-merges", "--count", f"{latest_hash}..HEAD"], cwd=root_dir, capture_output=True, text=True)
             if res.returncode == 0:
                 lag = int(res.stdout.strip())
             else:
@@ -2236,6 +2252,99 @@ def check_21_secret_leak_guard(root_dir=None):
             infos.append("全庫 Tracked 檔案機密掃描通過，零機敏特徵命中")
     except Exception as e:
         fails.append(f"scripts/secret_scan.py:0  Tracked 機敏掃描執行失敗: {e}")
+
+    return fails, infos
+
+
+def check_22_ci_supply_chain(root_dir=None):
+    """CHECK 22 — CI 供應鏈可重現性守衛 (CI Supply-Chain Reproducibility Guard)。"""
+    if root_dir is None:
+        root_dir = repo_root
+    fails = []
+    infos = []
+
+    # 1. 檢驗 .github/workflows/verify.yml
+    workflow_path = os.path.join(root_dir, ".github", "workflows", "verify.yml")
+    if not os.path.exists(workflow_path):
+        fails.append(".github/workflows/verify.yml:0  CI workflow 檔案不存在")
+    else:
+        try:
+            with open(workflow_path, "r", encoding="utf-8") as f:
+                wf_lines = f.readlines()
+
+            has_top_level_contents_read = False
+            in_top_permissions = False
+            before_jobs = True
+
+            for line_no, raw_line in enumerate(wf_lines, 1):
+                stripped = raw_line.strip()
+                indent = len(raw_line) - len(raw_line.lstrip())
+
+                if raw_line.startswith("jobs:"):
+                    before_jobs = False
+                    in_top_permissions = False
+
+                if before_jobs:
+                    if raw_line.startswith("permissions:"):
+                        in_top_permissions = True
+                        if "contents: read" in raw_line or "contents:read" in raw_line:
+                            has_top_level_contents_read = True
+                        continue
+                    elif in_top_permissions and indent > 0:
+                        if stripped.startswith("contents:") and "read" in stripped:
+                            has_top_level_contents_read = True
+                    elif in_top_permissions and indent == 0 and stripped:
+                        in_top_permissions = False
+
+                # 檢查寫入權限 (write permission)
+                if re.search(r":\s*write\b", stripped):
+                    fails.append(f".github/workflows/verify.yml:{line_no}  工作流程包含未授權之寫入權限: {stripped}")
+
+                # 檢查 first-party Actions 是否使用 40-hex SHA
+                if "uses:" in stripped:
+                    uses_part = stripped.split("uses:", 1)[1].strip().split("#")[0].strip()
+                    for act in ["actions/checkout", "actions/setup-node", "actions/setup-python"]:
+                        if uses_part.startswith(act):
+                            if "@" not in uses_part:
+                                fails.append(f".github/workflows/verify.yml:{line_no}  Action '{act}' 缺少版本/SHA: {uses_part}")
+                            else:
+                                ref = uses_part.split("@", 1)[1].strip()
+                                if not re.fullmatch(r"^[0-9a-fA-F]{40}$", ref):
+                                    fails.append(f".github/workflows/verify.yml:{line_no}  Action '{act}' 未固定至 40-hex commit SHA (實際為 '{ref}')")
+
+            if not has_top_level_contents_read:
+                fails.append(".github/workflows/verify.yml:0  工作流程缺少頂層 'permissions: contents: read' 宣告")
+            else:
+                infos.append(".github/workflows/verify.yml 頂層權限驗證通過 (contents: read, zero write)")
+
+        except Exception as e:
+            fails.append(f".github/workflows/verify.yml:0  檔案讀取失敗: {e}")
+
+    # 2. 檢驗 requirements.txt
+    req_path = os.path.join(root_dir, "requirements.txt")
+    if not os.path.exists(req_path):
+        fails.append("requirements.txt:0  requirements.txt 檔案不存在")
+    else:
+        try:
+            with open(req_path, "r", encoding="utf-8") as f:
+                req_lines = f.readlines()
+            active_deps = 0
+            for line_no, raw_line in enumerate(req_lines, 1):
+                clean_line = raw_line.split("#", 1)[0].strip()
+                if not clean_line:
+                    continue
+                pkg_spec = clean_line.split(";", 1)[0].strip()
+                if "==" not in pkg_spec or any(op in pkg_spec for op in [">=", "<=", "~=", "!="]) or (">" in pkg_spec and "==" not in pkg_spec) or ("<" in pkg_spec and "==" not in pkg_spec):
+                    fails.append(f"requirements.txt:{line_no}  相依套件未固定精確版本 (必須包含 '==' 且不得使用範圍或通配符): '{clean_line}'")
+                else:
+                    parts = pkg_spec.split("==")
+                    if len(parts) != 2 or not parts[0].strip() or not parts[1].strip() or "*" in parts[1]:
+                        fails.append(f"requirements.txt:{line_no}  相依套件版本格式非法: '{clean_line}'")
+                    else:
+                        active_deps += 1
+            infos.append(f"requirements.txt 共驗證 {active_deps} 項精確鎖定之相依套件")
+        except Exception as e:
+            fails.append(f"requirements.txt:0  檔案讀取失敗: {e}")
 
     return fails, infos
 

@@ -79,6 +79,8 @@
       - 若 NO：`FINDING_DISPOSITION = NONE`
       - 若 YES：是否已明確分類為 `CURRENT <task>`、`EXISTING <task>` 或 `NEW <task>`？
       - 若為 `NEW <task>`：是否已在當輪提示詞要求 repo-visible 登錄 `docs/TASKBOARD.md`？若未登錄，本輪不得宣告 Production Ready。
+- [ ] D5 **風險分級審計與 Tier-M 查核 (D-U6 & Tier-M)**：
+      若本批採用特定風險分級或 Tier-M 微修復，是否確認風險分級僅調整驗證深度而非免除角色獨立性？是否確認未免除獨立審計、exact-SHA 遠端證據、E24 依賴閉包、範圍控制、機密安全與防破壞規則？Tier-M 是否維持 GOAL_SPEC 模式且滿足全部 9 項條件，依賴證據嚴格對應當前 base 且無手動改寫 base_oid？
 
 ---
 
@@ -105,7 +107,7 @@
 - [ ] E14 **提示詞中有 machine-readable prompt manifest（經 `scripts/validate_prompt_manifest.py` 驗證 PASS）及「審計官自檢聲明」區塊，逐項列出本節各項的結果？**（§6.1-12；這是自檢與結構驗證的外部產物，沒有它等同沒做自檢。**新增本節項目時，聲明區塊要同步增列**）
 - [ ] E15 **每個錨點都對應本批 base commit 與規格上下文，具備結構唯一性而非依賴特定第 N 行？**（僅 EXACT_SPEC 適用；GOAL_SPEC 標記為 N/A）（§6.1-13）
 - [ ] E16 **寫入的文字若含跨檔 `§X.Y` 引用，檔名與章節號在同一行且指向正確目標？**（§6.1-14；CHECK 10 逐行檢驗；explicit target path 必須實際存在，不能因同一 ADR number 在另一個 filename 存在就把原 explicit target 判為有效；explicit target 不得被 verifier substitution、target section 必須存在於該檔、歷史引用必須明確寫 archive 路徑，換行斷開或 target 不符皆 FAIL）
-- [ ] E17 **每個插入型修改若涉及結構序列，都定義了明確的驗收準則而非預測所有衍生數值？**（§6.1-15）
+- [ ] E17 **每個插入型修改若涉及結構序列，都定義了明確的驗收準則而非預測所有衍生數值？若取得所有權資源，是否依 E17 failure-path 標準定義取得狀態、owner、failure exits、清理次數（exactly-once）與反例？**（§6.1-15）
 - [ ] E18 **提示詞中有「機械前置證據區塊」，含 base full OID、batch mode、Allowed Scope 與驗證指令（EXACT_SPEC 另含 spec path 與 SHA）？**（§6.1-16；未手寫 line/fence 衍生快照作為 blocking truth）
 - [ ] E19 **提示詞若含任何「移除」，附上了移除前複查的三步結果？**（§6.1-17；反向引用掃描、唯一內容確認、**重新讀檔的獨立複查**；原則見 `PRINCIPLES.md` §2.9）
 - [ ] E20 **EXACT_SPEC 提示詞若修改規範層檔案，已使用同一份批次規格經 BPE 與 check_consistency 模擬，未將 post-apply 衍生數值預抄進提示詞？**（§6.1-18；GOAL_SPEC 不需偽造 spec）

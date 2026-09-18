@@ -20,6 +20,7 @@ from check_consistency import (
     check_19_utf8_bom,
     check_20_markdown_table_continuity,
     check_21_secret_leak_guard,
+    check_22_ci_supply_chain,
 )
 
 
@@ -1176,13 +1177,15 @@ def test_integration_run_checks_includes_19_and_20():
     assert "CHECK 20 - Markdown 表格連續性" in source
 
 
-def test_integration_run_checks_includes_21_and_total_checks_is_21():
+def test_integration_run_checks_includes_22_and_total_checks_is_22():
     import check_consistency
     import inspect
     source = inspect.getsource(check_consistency.run_checks)
-    assert "total_checks = 21" in source
+    assert "total_checks = 22" in source
     assert "check_21_secret_leak_guard" in source
     assert "CHECK 21: 機密防護與輸出安全守衛" in source
+    assert "check_22_ci_supply_chain" in source
+    assert "CHECK 22: CI 供應鏈可重現性守衛" in source
 
 
 def test_check_21_missing_rule_file_fail(tmp_path):
@@ -1289,3 +1292,149 @@ def test_check_21_tracked_secret_fail_and_no_secret_in_output(tmp_path):
     assert len(fails) >= 1
     assert any("SECRET_SCAN BLOCK" in f for f in fails)
     assert not any(raw_synthetic_secret in f for f in fails)
+
+
+# ---------------------------------------------------------------------------
+# CHECK 22 — CI 供應鏈可重現性守衛測試 (Canaries 1-9)
+# ---------------------------------------------------------------------------
+
+def _setup_check_22_env(tmp_path, workflow_content=None, req_content=None):
+    wf_dir = tmp_path / ".github" / "workflows"
+    wf_dir.mkdir(parents=True, exist_ok=True)
+    wf_file = wf_dir / "verify.yml"
+
+    if workflow_content is None:
+        workflow_content = (
+            "name: Verify\n\n"
+            "on:\n"
+            "  push:\n"
+            "    branches: [ main ]\n\n"
+            "permissions:\n"
+            "  contents: read\n\n"
+            "jobs:\n"
+            "  verify:\n"
+            "    runs-on: ubuntu-latest\n"
+            "    steps:\n"
+            "      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262\n"
+            "      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020\n"
+            "      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065\n"
+        )
+    wf_file.write_text(workflow_content, encoding="utf-8")
+
+    req_file = tmp_path / "requirements.txt"
+    if req_content is None:
+        req_content = (
+            "# requirements\n"
+            "pytest==9.1.1\n"
+            "playwright==1.63.0\n"
+            "colorama==0.4.6; sys_platform == 'win32'\n"
+        )
+    req_file.write_text(req_content, encoding="utf-8")
+
+
+def test_check_22_canary_1_exact_pass(tmp_path):
+    _setup_check_22_env(tmp_path)
+    fails, infos = check_22_ci_supply_chain(str(tmp_path))
+    assert len(fails) == 0
+    assert any("頂層權限驗證通過" in i for i in infos)
+    assert any("共驗證 3 項精確鎖定" in i for i in infos)
+
+
+def test_check_22_canary_2_checkout_v4_fail(tmp_path):
+    wf = (
+        "name: Verify\n"
+        "permissions:\n"
+        "  contents: read\n"
+        "jobs:\n"
+        "  verify:\n"
+        "    runs-on: ubuntu-latest\n"
+        "    steps:\n"
+        "      - uses: actions/checkout@v4\n"
+    )
+    _setup_check_22_env(tmp_path, workflow_content=wf)
+    fails, infos = check_22_ci_supply_chain(str(tmp_path))
+    assert any("Action 'actions/checkout' 未固定至 40-hex commit SHA" in f for f in fails)
+
+
+def test_check_22_canary_3_setup_node_v4_fail(tmp_path):
+    wf = (
+        "name: Verify\n"
+        "permissions:\n"
+        "  contents: read\n"
+        "jobs:\n"
+        "  verify:\n"
+        "    runs-on: ubuntu-latest\n"
+        "    steps:\n"
+        "      - uses: actions/setup-node@v4\n"
+    )
+    _setup_check_22_env(tmp_path, workflow_content=wf)
+    fails, infos = check_22_ci_supply_chain(str(tmp_path))
+    assert any("Action 'actions/setup-node' 未固定至 40-hex commit SHA" in f for f in fails)
+
+
+def test_check_22_canary_4_setup_python_v5_fail(tmp_path):
+    wf = (
+        "name: Verify\n"
+        "permissions:\n"
+        "  contents: read\n"
+        "jobs:\n"
+        "  verify:\n"
+        "    runs-on: ubuntu-latest\n"
+        "    steps:\n"
+        "      - uses: actions/setup-python@v5\n"
+    )
+    _setup_check_22_env(tmp_path, workflow_content=wf)
+    fails, infos = check_22_ci_supply_chain(str(tmp_path))
+    assert any("Action 'actions/setup-python' 未固定至 40-hex commit SHA" in f for f in fails)
+
+
+def test_check_22_canary_5_missing_permissions_fail(tmp_path):
+    wf = (
+        "name: Verify\n"
+        "jobs:\n"
+        "  verify:\n"
+        "    runs-on: ubuntu-latest\n"
+        "    steps:\n"
+        "      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262\n"
+    )
+    _setup_check_22_env(tmp_path, workflow_content=wf)
+    fails, infos = check_22_ci_supply_chain(str(tmp_path))
+    assert any("缺少頂層 'permissions: contents: read'" in f for f in fails)
+
+
+def test_check_22_canary_6_contents_write_fail(tmp_path):
+    wf = (
+        "name: Verify\n"
+        "permissions:\n"
+        "  contents: write\n"
+        "jobs:\n"
+        "  verify:\n"
+        "    runs-on: ubuntu-latest\n"
+        "    steps:\n"
+        "      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262\n"
+    )
+    _setup_check_22_env(tmp_path, workflow_content=wf)
+    fails, infos = check_22_ci_supply_chain(str(tmp_path))
+    assert any("包含未授權之寫入權限: contents: write" in f for f in fails)
+
+
+def test_check_22_canary_7_pytest_range_fail(tmp_path):
+    req = "pytest>=9.0\nplaywright==1.63.0\n"
+    _setup_check_22_env(tmp_path, req_content=req)
+    fails, infos = check_22_ci_supply_chain(str(tmp_path))
+    assert any("pytest>=9.0" in f for f in fails)
+
+
+def test_check_22_canary_8_playwright_range_fail(tmp_path):
+    req = "pytest==9.1.1\nplaywright>=1.40\n"
+    _setup_check_22_env(tmp_path, req_content=req)
+    fails, infos = check_22_ci_supply_chain(str(tmp_path))
+    assert any("playwright>=1.40" in f for f in fails)
+
+
+def test_check_22_canary_9_windows_marker_pass(tmp_path):
+    req = "colorama==0.4.6; sys_platform == 'win32'\npytest==9.1.1\n"
+    _setup_check_22_env(tmp_path, req_content=req)
+    fails, infos = check_22_ci_supply_chain(str(tmp_path))
+    assert len(fails) == 0
+    assert any("共驗證 2 項精確鎖定" in i for i in infos)

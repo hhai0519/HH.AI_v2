@@ -1,5 +1,5 @@
 {
-  "base_head": "764fc99",
+  "base_head": "32b89b8",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -15,8 +15,8 @@
         "## 2.5 遠端健康查證與 GitHub Actions 閉環規範 (Remote Health Verification)",
         "## 3. 查證紀律"
       ],
-      "lines": 297,
-      "sha256": "89db3b6c62c0e9b6977a5abe8d7d147232b734e1f455bfa30b1e0bbb009f042c"
+      "lines": 304,
+      "sha256": "e431d3f471f535021274bda95638ca750ecb6ac5b7ecf67d98a8729a0b2cc095"
     },
     ".agents/rules/powershell-encoding-protocol.md": {
       "fences": 6,
@@ -41,7 +41,7 @@
         "## 1. 目的",
         "## 2. 這是審查，不是建議",
         "### 2.1 最前置硬規則：Prompt Manifest 機械驗證（Hard Rule）",
-        "### 2.2 依賴閉包機械重放（Dependency Closure Replay Hard Rule）",
+        "### 2.2 依賴閉包機械重放與證據溯源規範（Dependency Closure Replay & Evidence Provenance）",
         "## 3. 必要結構元素（缺一即停，Mode-Aware）",
         "### 3.0A 所有模式共同必備要素（缺一即停）",
         "### 3.0B EXACT_SPEC 專屬必備要素（僅在 EXACT_SPEC 模式下檢查）",
@@ -61,8 +61,8 @@
         "## 5. 例外",
         "## 6. 這條規則保護的是誰"
       ],
-      "lines": 258,
-      "sha256": "908ba3c427c55f54563b966b93c6cfcd3141db8ceda8ca5f21f5a578fa866ad6"
+      "lines": 267,
+      "sha256": "a8f1780ec43b7214dfdf4ae7fb136961eef11a6e6700808f16334fd2927eb1ca"
     },
     ".agents/rules/role-boundaries.md": {
       "fences": 0,
@@ -76,10 +76,11 @@
         "## 6. 依批次規格修改時，只能走指定的套用路徑",
         "### 6.1 GOAL_SPEC（正常重構與功能實作預設）",
         "### 6.2 EXACT_SPEC（精確替換／規範契約重構）",
-        "## 7. 什麼時候該停下來回報，什麼時候該自己處理"
+        "## 7. 什麼時候該停下來回報，什麼時候該自己處理",
+        "## 8. 個人工作資料與日誌邊界（Personal Work Data Boundary — D-U2）"
       ],
-      "lines": 179,
-      "sha256": "59452cf7f554c20310ebd8d60d5a7eada567ca4117fa184af66618f589d3aab5"
+      "lines": 194,
+      "sha256": "6d900cc5b46ca0b033af3a4cc7f0198521dcf201371260eec2d6069300f5321d"
     },
     ".agents/rules/secret-output-safety.md": {
       "fences": 6,
@@ -175,10 +176,13 @@
         "### 11.3 已審核標記之退役（Retired Historical Audit Markers）",
         "### 11.4 [已退役／歷史記錄] 早期打 tag 判準（Historical Rationale）",
         "### 11.5 審計狀態之單一事實來源（Audit State SSOT）",
-        "### 11.6 [已退役／不需執行] 歷史 `audited-*` tag 之留痕保存（RETIRED / NOT REQUIRED）"
+        "### 11.6 [已退役／不需執行] 歷史 `audited-*` tag 之留痕保存（RETIRED / NOT REQUIRED）",
+        "## 12. 風險分級宏觀審計與 Tier-M 微修復規範 (Risk-Tiered Macro Audit & Tier-M, D-U6)",
+        "### 12.1 風險分級宏觀審計核心原則 (D-U6)",
+        "### 12.2 Tier-M 微修復分類規範 (Tier-M Micro Repair)"
       ],
-      "lines": 475,
-      "sha256": "e42b0e67e009292067552d502148f0f1ae85c98088707b979440e6a02fe57525"
+      "lines": 508,
+      "sha256": "ec319ff98f762cb91d618099e94646e23161266c978dbd254a425b0197817604"
     },
     ".claude/rules/auditor-selftest.md": {
       "fences": 0,
@@ -192,14 +196,14 @@
         "## E. 交付（產出提示詞之前）",
         "## F. 額度（每一輪回覆的開頭與結尾）"
       ],
-      "lines": 131,
-      "sha256": "701bab416e73f8c5967ecb80af0443aa0418a8a39b375e76afc82daeba44d386"
+      "lines": 133,
+      "sha256": "18be617e3558afa17e08684395e92b83c575830f7069065ed8080b1ebab5aa30"
     },
     ".github/workflows/verify.yml": {
       "fences": 0,
       "headings": [],
-      "lines": 60,
-      "sha256": "e9339444e4758338e2c865d441503582021b2b81a9ec4daf32ede3cc0c13dffb"
+      "lines": 73,
+      "sha256": "84be5f9e99da4a0fa23a558be2803f34c41f779e72b82274e725978c2f7c0498"
     },
     "AGENTS.md": {
       "fences": 10,
@@ -233,8 +237,8 @@
         "## 三個優先序",
         "## 完成的定義"
       ],
-      "lines": 30,
-      "sha256": "8214ccc76d2a3c59bd6ca80fe60ed1bbafa671077e2b4d723e79574f5513e45e"
+      "lines": 31,
+      "sha256": "3584558f8dd9017ee34ea0927b954627679237df1e30608bd82440ad6055ad6a"
     },
     "PRINCIPLES.md": {
       "fences": 0,
@@ -533,16 +537,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 186,
-      "sha256": "7f99881ca183f3a7f11544fcc52163b4bc751e907fd5e301b9ba2b88d5ce8950"
+      "lines": 187,
+      "sha256": "5dc9147fb4cb3acb5dd88b4aecade6804d380219f19186372467806c58760f48"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 149,
-      "sha256": "1ef6177e6a7dbcaded437f79ac6a93d4fa833f64f20be02b552f87510d3e6d75"
+      "lines": 151,
+      "sha256": "68233417e2a5c2557ee3b94c53983fd32fe8b0b0176bda484aa9b5efdb28f612"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -583,7 +587,7 @@
         "## 封存區"
       ],
       "lines": 318,
-      "sha256": "4092ea87119ad006ff83e5edcd9e0fd187cfda65f26fca689cc4b509dfa03d7d"
+      "sha256": "1bd254e45058baba9773d46a92c9eca8dfb6aa7156aafb10876e59d9a5c9c621"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1039,8 +1043,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 4519,
-      "sha256": "fb056f29506f431b3288919d8816e63c29f87657d58ab4bedb867ad5d4480748"
+      "lines": 4535,
+      "sha256": "1cbd16e2eafb864e69ddb3d1473fb992927195ec27e7414d48685c4d8d2a36f9"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1067,8 +1071,8 @@
         "# 已知指向錯誤的歷史 tag。本清單只能縮短、不得加長。",
         "# 修復批次完成後必須清空；清單中的 tag 若已修復卻未移除，CHECK 18 會 FAIL。"
       ],
-      "lines": 2244,
-      "sha256": "fb627ab34e4d54d1f8975f06089527288fdd77e2ca0438718cc71780da884348"
+      "lines": 2353,
+      "sha256": "7970a521b19e0a82464248eab0cc155aef41c696dfef8fed292719bb98a6ee16"
     },
     "scripts/fingerprint.py": {
       "fences": 0,
@@ -1188,10 +1192,13 @@
         "# ---------------------------------------------------------------------------",
         "# ---------------------------------------------------------------------------",
         "# CHECK 20 Tests: Markdown Table Continuity (B-88)",
+        "# ---------------------------------------------------------------------------",
+        "# ---------------------------------------------------------------------------",
+        "# CHECK 22 — CI 供應鏈可重現性守衛測試 (Canaries 1-9)",
         "# ---------------------------------------------------------------------------"
       ],
-      "lines": 1291,
-      "sha256": "f0af9364ef1ea8350fa8c5540a7b30995170becc4cd53b089aedc416420db85c"
+      "lines": 1440,
+      "sha256": "366f24fbd14fcfd8fcf7ecfd350ee65332c631342f8eea73d5fa4f592f41ddce"
     },
     "scripts/tests/test_fingerprint.py": {
       "fences": 0,
@@ -1365,7 +1372,7 @@
       "sha256": "35bf7dbfa3c7d291b550c3c97a6ae398a22b1dc3624c1d2fc1e4db6963d6e115"
     }
   },
-  "generated_at": "2026-09-18T14:50:50Z",
+  "generated_at": "2026-09-18T17:34:39Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {
