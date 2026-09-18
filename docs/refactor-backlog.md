@@ -4418,6 +4418,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
     - 深度防禦（Defense-in-Depth）：`windows-credential-manager-read.ps1` 同步加入目標名稱正則語法驗證，若非規範允許之命名空間與路徑一律拒絕執行。
   - 核心反例與失敗路徑測試：
     - 擴充 `runtime/channel-gateway/tests/secret-provider.test.js` 與 `windows-credential-manager-provider.test.js`：涵蓋 SecretRef 凍結驗證、修改失敗驗證、子類別覆寫阻擋、規範目標推導決定性、4 大有效命名空間語法接受、非法命名空間/控制字元/空白/反斜線/無效跳脫拒絕、spawnSync 超時配置、超時映射 PROVIDER_UNAVAILABLE、錯誤訊息無子進程洩漏、橋接腳本單一 CredFree 結構斷言、原生取得後 stdout 失敗之反例整合測試（證明無 double-free 且安全清理）。
+  - M3 CI 環境超時與子進程防禦強化：Windows 合成測試 Test J 傳入 timeoutMs: 30000 測試覆寫，消除 2-vCPU CI runner 上 PowerShell + Add-Type 冷啟動 CLR/csc 編譯逾時；Test J 與 Test P 補齊 windowsHide: true、timeout: 30000 與 powershellPath 絕對路徑防禦；windows-credential-manager-read.ps1 故障注入改用 New-Object System.IO.IOException 確保跨 PowerShell 版本相容性。
 - **架構邊界與生命週期不變量（Architecture Boundary & Lifecycle Invariants）**：
   - 零真實機密讀寫存取、零真實憑證枚舉、零新 npm 依賴。
   - Credential Manager provider architecture、CRED_TYPE_GENERIC、CRED_PERSIST_LOCAL_MACHINE、B-98、TG-MVP-06、TG-MVP-07、TG-MVP-01B、C-07 / C-08 保持完全不變。

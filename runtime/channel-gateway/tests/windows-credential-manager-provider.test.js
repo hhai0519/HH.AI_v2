@@ -277,13 +277,15 @@ test('WindowsCredManProvider - J. Windows live synthetic CredMan integration', (
 
   const runEncodedPs = (script) => {
     const b64 = Buffer.from(script, 'utf16le').toString('base64');
-    return child_process.spawnSync('powershell.exe', [
+    const systemRoot = process.env.SystemRoot || 'C:\\Windows';
+    const powershellPath = path.join(systemRoot, 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe');
+    return child_process.spawnSync(powershellPath, [
       '-NoLogo',
       '-NoProfile',
       '-NonInteractive',
       '-ExecutionPolicy', 'Bypass',
       '-EncodedCommand', b64
-    ], { stdio: ['ignore', 'pipe', 'pipe'], encoding: 'utf8' });
+    ], { stdio: ['ignore', 'pipe', 'pipe'], encoding: 'utf8', windowsHide: true, timeout: 30000 });
   };
 
   const writeScript = `
@@ -352,12 +354,12 @@ if ($ok) { exit 0 } else { exit 1 }
 
   // 1. Write synthetic credential
   const writeRes = runEncodedPs(writeScript);
-  assert.strictEqual(writeRes.status, 0, 'Synthetic credential write should succeed');
+  assert.strictEqual(writeRes.status, 0, `Synthetic credential write should succeed: ${writeRes.stderr}`);
 
   let retrieved = null;
   try {
-    // 2. Read through actual provider
-    const realProvider = new WindowsCredentialManagerSecretProvider();
+    // 2. Read through actual provider (bounded 30s timeoutMs override prevents CI cold-start CLR compilation flake)
+    const realProvider = new WindowsCredentialManagerSecretProvider({ timeoutMs: 30000 });
     retrieved = realProvider.getSecret(secretRef);
 
     // 3. Assert bytes equal in memory
@@ -371,11 +373,11 @@ if ($ok) { exit 0 } else { exit 1 }
 
     // 5. Clean up synthetic credential
     const delRes = runEncodedPs(deleteScript);
-    assert.strictEqual(delRes.status, 0, 'Synthetic credential cleanup should succeed');
+    assert.strictEqual(delRes.status, 0, `Synthetic credential cleanup should succeed: ${delRes.stderr}`);
   }
 
   // 6. Verify missing target fails closed after deletion
-  const realProvider = new WindowsCredentialManagerSecretProvider();
+  const realProvider = new WindowsCredentialManagerSecretProvider({ timeoutMs: 30000 });
   assert.throws(
     () => realProvider.getSecret(secretRef),
     { code: 'SECRET_NOT_FOUND' }
@@ -544,13 +546,15 @@ test('WindowsCredManProvider - P. post-acquire stdout failure counterexample avo
 
   const runEncodedPs = (script) => {
     const b64 = Buffer.from(script, 'utf16le').toString('base64');
-    return child_process.spawnSync('powershell.exe', [
+    const systemRoot = process.env.SystemRoot || 'C:\\Windows';
+    const powershellPath = path.join(systemRoot, 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe');
+    return child_process.spawnSync(powershellPath, [
       '-NoLogo',
       '-NoProfile',
       '-NonInteractive',
       '-ExecutionPolicy', 'Bypass',
       '-EncodedCommand', b64
-    ], { stdio: ['ignore', 'pipe', 'pipe'], encoding: 'utf8' });
+    ], { stdio: ['ignore', 'pipe', 'pipe'], encoding: 'utf8', windowsHide: true, timeout: 30000 });
   };
 
   const writeScript = `
@@ -619,12 +623,14 @@ if ($ok) { exit 0 } else { exit 1 }
 
   // 1. Write synthetic credential
   const writeRes = runEncodedPs(writeScript);
-  assert.strictEqual(writeRes.status, 0, 'Synthetic credential write should succeed');
+  assert.strictEqual(writeRes.status, 0, `Synthetic credential write should succeed: ${writeRes.stderr}`);
 
   try {
     // 2. Invoke bridge script with -TestFaultStage stdout
+    const systemRoot = process.env.SystemRoot || 'C:\\Windows';
+    const powershellPath = path.join(systemRoot, 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe');
     const scriptPath = path.resolve(__dirname, '..', 'bin', 'windows-credential-manager-read.ps1');
-    const faultRes = child_process.spawnSync('powershell.exe', [
+    const faultRes = child_process.spawnSync(powershellPath, [
       '-NoLogo',
       '-NoProfile',
       '-NonInteractive',
@@ -632,10 +638,14 @@ if ($ok) { exit 0 } else { exit 1 }
       '-File', scriptPath,
       targetName,
       '-TestFaultStage', 'stdout',
-    ], { stdio: ['ignore', 'pipe', 'pipe'] });
+    ], {
+      stdio: ['ignore', 'pipe', 'pipe'],
+      windowsHide: true,
+      timeout: 30000,
+    });
 
     // 3. Assert fail-closed exit code 1
-    assert.strictEqual(faultRes.status, 1, 'Bridge with fault seam must exit code 1');
+    assert.strictEqual(faultRes.status, 1, `Bridge with fault seam must exit code 1 (status=${faultRes.status}, err=${faultRes.error}, stderr=${faultRes.stderr})`);
     // 4. Assert process did not crash with native double-free / AV code (e.g. 0xC0000005, 0xC0000374)
     assert.strictEqual(faultRes.signal, null, 'Process must terminate normally without crash signal');
     // 5. Assert zero secret bytes emitted to stdout or stderr
@@ -645,6 +655,6 @@ if ($ok) { exit 0 } else { exit 1 }
   } finally {
     // 6. Clean up synthetic credential
     const delRes = runEncodedPs(deleteScript);
-    assert.strictEqual(delRes.status, 0, 'Synthetic credential cleanup should succeed');
+    assert.strictEqual(delRes.status, 0, `Synthetic credential cleanup should succeed: ${delRes.stderr}`);
   }
 });

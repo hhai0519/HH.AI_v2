@@ -113,7 +113,7 @@ try {
 
         # Test seam: simulate stdout write failure after native acquisition
         if ($TestFaultStage -eq 'stdout') {
-            throw [System.IO.IOException]::new("Simulated stdout failure after acquisition")
+            throw (New-Object System.IO.IOException "Simulated stdout failure after acquisition")
         }
 
         $stdoutStream.Write($blob, 0, $blob.Length)

@@ -1,5 +1,5 @@
 {
-  "base_head": "d3a31fc",
+  "base_head": "e79087c",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -541,8 +541,8 @@
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 145,
-      "sha256": "d326537cecf169fa28fddb6e82ab0ea36ed6c05047d0900a9cfa35bab27fc595"
+      "lines": 146,
+      "sha256": "c06b3a5e28264e177177f779ab7d5b42789b298a5b123bc178d3fc4336561e3f"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -1039,8 +1039,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 4424,
-      "sha256": "ecfec1dec0fc4ecb27e69e9f3cb31ceea3248f4a7157457327ac9349d8b85a37"
+      "lines": 4425,
+      "sha256": "df5f2c73ea331930240c03df9967445cd9e5dd9653b44e5ec267f7a23ea35bab"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1365,7 +1365,7 @@
       "sha256": "35bf7dbfa3c7d291b550c3c97a6ae398a22b1dc3624c1d2fc1e4db6963d6e115"
     }
   },
-  "generated_at": "2026-09-18T13:10:15Z",
+  "generated_at": "2026-09-18T13:28:28Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {
