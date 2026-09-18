@@ -26,6 +26,8 @@ const ALLOWED_METADATA_FIELDS = new Set([
   'channel',
 ]);
 
+const CONTROL_CHAR_REGEX = /[\x00-\x1F\x7F]/;
+
 const FORBIDDEN_SECRET_NAMES = new Set([
   'token',
   'bottoken',
@@ -78,7 +80,14 @@ class AccountRegistry {
 
     const { id, label, description, enabled, channel } = accountData;
 
-    if (!id || typeof id !== 'string' || !id.trim()) {
+    if (typeof id !== 'string') {
+      throw new TypeError('id must be a non-empty string');
+    }
+    if (CONTROL_CHAR_REGEX.test(id)) {
+      throw new Error('id contains forbidden control characters');
+    }
+    const cleanId = id.trim();
+    if (!cleanId) {
       throw new TypeError('id must be a non-empty string');
     }
     if (!label || typeof label !== 'string' || !label.trim()) {
@@ -144,10 +153,16 @@ class AccountRegistry {
    * @returns {object} Activated account metadata
    */
   setActive(id) {
-    if (!id || typeof id !== 'string') {
+    if (typeof id !== 'string') {
       throw new TypeError('id must be a non-empty string');
     }
+    if (CONTROL_CHAR_REGEX.test(id)) {
+      throw new Error('id contains forbidden control characters');
+    }
     const cleanId = id.trim();
+    if (!cleanId) {
+      throw new TypeError('id must be a non-empty string');
+    }
     const account = this.accounts.get(cleanId);
     if (!account) {
       throw new Error(`Account '${cleanId}' not found`);
@@ -248,4 +263,5 @@ class AccountRegistry {
 module.exports = {
   AccountRegistry,
   ALLOWED_METADATA_FIELDS,
+  CONTROL_CHAR_REGEX,
 };

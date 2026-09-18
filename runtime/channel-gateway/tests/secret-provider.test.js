@@ -377,3 +377,112 @@ test('SecretRef - 20. canonical grammar rejects control chars, whitespace, quote
     assert.strictEqual(CANONICAL_TARGET_REGEX.test(target), false);
   }
 });
+
+test('SecretRef - 21. cross-contract AccountRegistry -> SecretRef domain alignment (F2-B)', () => {
+  const registry = new AccountRegistry('telegram');
+  const testCases = [
+    { rawId: 'alpha beta', expectedEncoded: 'alpha%20beta' },
+    { rawId: 'alpha\\beta', expectedEncoded: 'alpha%5Cbeta' },
+    { rawId: 'alpha?beta', expectedEncoded: 'alpha%3Fbeta' },
+    { rawId: 'alpha#beta', expectedEncoded: 'alpha%23beta' },
+    { rawId: 'alpha"beta', expectedEncoded: 'alpha%22beta' },
+    { rawId: "alpha'beta", expectedEncoded: 'alpha%27beta' },
+    { rawId: 'unicode-測試', expectedEncoded: `unicode-${encodeURIComponent('測試')}` },
+  ];
+
+  for (const tc of testCases) {
+    const regAcc = registry.register({
+      id: tc.rawId,
+      label: `Bot ${tc.rawId}`,
+      description: 'Testing cross contract domain alignment',
+      enabled: true,
+    });
+    assert.strictEqual(regAcc.id, tc.rawId);
+
+    // Derived SecretRef accepts the registry id
+    const ref = SecretRef.telegramBotToken(regAcc.id);
+    const target = ref.getTargetName();
+
+    assert.strictEqual(ref.encodedAccountId, tc.expectedEncoded);
+    assert.strictEqual(
+      target,
+      `HH.AI_v2/channel-gateway/v1/telegram/${tc.expectedEncoded}/bot-token`
+    );
+    assert.doesNotThrow(() => assertCanonicalTargetGrammar(target));
+    assert.strictEqual(CANONICAL_TARGET_REGEX.test(target), true);
+  }
+});
+
+test('SecretRef - 22. percent-aliasing prevention: literal % encodes as %25 (F2-B)', () => {
+  const refRawSpace = SecretRef.telegramBotToken('alpha beta');
+  const refPercentSpace = SecretRef.telegramBotToken('alpha%20beta');
+
+  assert.notStrictEqual(refRawSpace.getTargetName(), refPercentSpace.getTargetName());
+  assert.strictEqual(refRawSpace.encodedAccountId, 'alpha%20beta');
+  assert.strictEqual(refPercentSpace.encodedAccountId, 'alpha%2520beta');
+  assert.strictEqual(
+    refPercentSpace.getTargetName(),
+    'HH.AI_v2/channel-gateway/v1/telegram/alpha%2520beta/bot-token'
+  );
+  assert.doesNotThrow(() => assertCanonicalTargetGrammar(refPercentSpace.getTargetName()));
+  assert.strictEqual(CANONICAL_TARGET_REGEX.test(refPercentSpace.getTargetName()), true);
+});
+
+test('SecretRef - 23. slash-containing account ID encodes as %2F without adding path segment (F2-B)', () => {
+  const ref = SecretRef.telegramBotToken('sub/account/id');
+  const target = ref.getTargetName();
+
+  assert.strictEqual(ref.encodedAccountId, 'sub%2Faccount%2Fid');
+  assert.strictEqual(
+    target,
+    'HH.AI_v2/channel-gateway/v1/telegram/sub%2Faccount%2Fid/bot-token'
+  );
+  assert.doesNotThrow(() => assertCanonicalTargetGrammar(target));
+  assert.strictEqual(CANONICAL_TARGET_REGEX.test(target), true);
+  // Verify slash count in target matches exactly 5
+  const slashCount = (target.match(/\//g) || []).length;
+  assert.strictEqual(slashCount, 5);
+});
+
+test('SecretRef - 24. control-character domain cross-contract rejection parity (F2-B)', () => {
+  const registry = new AccountRegistry('telegram');
+  const controlIds = [
+    'alpha\x00beta',
+    'alpha\rbeta',
+    'alpha\nbeta',
+    'alpha\tbeta',
+    'alpha\x7Fbeta',
+    '\x00alpha',
+    'alpha\x00',
+    '\talpha',
+    'alpha\t',
+    '\ralpha',
+    'alpha\r',
+    '\nalpha',
+    'alpha\n',
+  ];
+
+  for (const id of controlIds) {
+    // Both AccountRegistry and SecretRef must reject
+    assert.throws(
+      () => registry.register({ id, label: 'Bot', description: 'desc', enabled: true }),
+      { message: /id contains forbidden control characters/ }
+    );
+    assert.throws(
+      () => SecretRef.telegramBotToken(id),
+      { code: 'INVALID_SECRET_REFERENCE' }
+    );
+    assert.throws(
+      () => SecretRef.lineChannelAccessToken(id),
+      { code: 'INVALID_SECRET_REFERENCE' }
+    );
+    assert.throws(
+      () => SecretRef.lineChannelSecret(id),
+      { code: 'INVALID_SECRET_REFERENCE' }
+    );
+    assert.throws(
+      () => encodeAccountId(id),
+      { code: 'INVALID_SECRET_REFERENCE' }
+    );
+  }
+});

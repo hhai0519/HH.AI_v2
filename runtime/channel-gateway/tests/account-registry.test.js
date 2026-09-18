@@ -324,3 +324,80 @@ test('AccountRegistry - F1.5 invalid / blank registry channel -> rejected', () =
   );
 });
 
+test('AccountRegistry - 22. account ID accepts internal space, backslash, question, hash, quotes, Unicode (F2-B)', () => {
+  const registry = new AccountRegistry('telegram');
+  const validCases = [
+    { id: 'alpha beta', label: 'Space Bot' },
+    { id: 'alpha\\beta', label: 'Backslash Bot' },
+    { id: 'alpha?beta', label: 'Question Bot' },
+    { id: 'alpha#beta', label: 'Hash Bot' },
+    { id: "alpha'beta", label: 'Single Quote Bot' },
+    { id: 'alpha"beta', label: 'Double Quote Bot' },
+    { id: 'unicode-測試', label: 'Unicode Bot' },
+  ];
+
+  for (const c of validCases) {
+    const acc = registry.register({
+      id: c.id,
+      label: c.label,
+      description: 'Synthetic valid domain test',
+      enabled: true,
+    });
+    assert.strictEqual(acc.id, c.id);
+    assert.strictEqual(registry.get(c.id).id, c.id);
+  }
+});
+
+test('AccountRegistry - 23. account ID rejects ASCII controls (NUL, CR, LF, TAB, DEL) including leading/trailing (F2-B)', () => {
+  const registry = new AccountRegistry('telegram');
+  const controlCases = [
+    'alpha\x00beta', // NUL
+    'alpha\rbeta',   // CR
+    'alpha\nbeta',   // LF
+    'alpha\tbeta',   // TAB
+    'alpha\x7Fbeta', // DEL
+    '\x00alpha',     // leading NUL
+    'alpha\x00',     // trailing NUL
+    '\talpha',       // leading TAB
+    'alpha\t',       // trailing TAB
+    '\ralpha',       // leading CR
+    'alpha\r',       // trailing CR
+    '\nalpha',       // leading LF
+    'alpha\n',       // trailing LF
+  ];
+
+  for (const invalidId of controlCases) {
+    assert.throws(
+      () => registry.register({
+        id: invalidId,
+        label: 'Control Bot',
+        description: 'Should reject control character',
+        enabled: true,
+      }),
+      {
+        message: /id contains forbidden control characters/,
+      }
+    );
+    assert.throws(
+      () => registry.setActive(invalidId),
+      {
+        message: /id contains forbidden control characters/,
+      }
+    );
+  }
+});
+
+test('AccountRegistry - 24. ordinary leading/trailing spaces continue following trim normalization (F2-B)', () => {
+  const registry = new AccountRegistry('telegram');
+  const acc = registry.register({
+    id: '   trimmed-bot   ',
+    label: 'Trimmed Bot',
+    description: 'Should trim ordinary spaces',
+    enabled: true,
+  });
+  assert.strictEqual(acc.id, 'trimmed-bot');
+  assert.strictEqual(registry.get('trimmed-bot').id, 'trimmed-bot');
+  registry.setActive('   trimmed-bot   ');
+  assert.strictEqual(registry.getActive().id, 'trimmed-bot');
+});
+

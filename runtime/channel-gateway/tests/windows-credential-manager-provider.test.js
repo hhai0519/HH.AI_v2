@@ -63,7 +63,7 @@ test('WindowsCredManProvider - B. bridge invocation has shell=false, target exac
   // Verify command array execution without shell
   assert.strictEqual(capturedOptions.shell, undefined); // Default is false, no shell:true
   assert.strictEqual(capturedOptions.windowsHide, true);
-  assert.strictEqual(capturedOptions.timeout, 10000); // Bounded timeout configured (F1-B)
+  assert.strictEqual(capturedOptions.timeout, 30000); // Bounded timeout configured (F1-B / F2-A)
 
   // Verify args contain exact target and no secret
   assert.strictEqual(capturedArgs.includes('-File'), true);
@@ -358,8 +358,9 @@ if ($ok) { exit 0 } else { exit 1 }
 
   let retrieved = null;
   try {
-    // 2. Read through actual provider (bounded 30s timeoutMs override prevents CI cold-start CLR compilation flake)
-    const realProvider = new WindowsCredentialManagerSecretProvider({ timeoutMs: 30000 });
+    // 2. Read through actual provider with production default constructor (F2-A parity)
+    const realProvider = new WindowsCredentialManagerSecretProvider();
+    assert.strictEqual(realProvider.timeoutMs, 30000, 'Live provider must use production DEFAULT_TIMEOUT_MS');
     retrieved = realProvider.getSecret(secretRef);
 
     // 3. Assert bytes equal in memory
@@ -376,10 +377,11 @@ if ($ok) { exit 0 } else { exit 1 }
     assert.strictEqual(delRes.status, 0, `Synthetic credential cleanup should succeed: ${delRes.stderr}`);
   }
 
-  // 6. Verify missing target fails closed after deletion
-  const realProvider = new WindowsCredentialManagerSecretProvider({ timeoutMs: 30000 });
+  // 6. Verify missing target fails closed after deletion using production default provider (F2-A parity)
+  const missingProvider = new WindowsCredentialManagerSecretProvider();
+  assert.strictEqual(missingProvider.timeoutMs, 30000, 'Post-delete provider must use production DEFAULT_TIMEOUT_MS');
   assert.throws(
-    () => realProvider.getSecret(secretRef),
+    () => missingProvider.getSecret(secretRef),
     { code: 'SECRET_NOT_FOUND' }
   );
 });
@@ -399,7 +401,7 @@ test('WindowsCredManProvider - K. spawn options contain bounded timeout and cust
     spawnSync: mockSpawn,
   });
   defaultProvider.getSecret(SecretRef.localApiHmac());
-  assert.strictEqual(capturedOptions.timeout, 10000);
+  assert.strictEqual(capturedOptions.timeout, 30000);
 
   // 2. Custom valid timeoutMs
   const customProvider = new WindowsCredentialManagerSecretProvider({

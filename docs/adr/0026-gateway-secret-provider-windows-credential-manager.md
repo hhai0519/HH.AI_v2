@@ -38,7 +38,12 @@
   `HH.AI_v2/channel-gateway/v1/line/<encoded-account-id>/channel-secret`
 - **Local API 全域 HMAC Secret**：
   `HH.AI_v2/channel-gateway/v1/local-api/hmac`
-- **編碼防護**：`account_id` 強制經過百分比編碼（`encodeURIComponent`）且嚴格拒絕 ASCII 控制字元與 NUL 字元，防止路徑分隔符注入（`../`、`/`、`\\`）混淆目標。TargetName 本身為完全非機敏之後設資料。
+- **帳號識別碼領域對齊與確定性百分比編碼 (Account-ID Domain Alignment & Percent Encoding)**：`AccountRegistry` 與 `SecretRef` 共享完全一致之帳號識別碼正規化領域：
+  - 於任何 trim 正規化前，強制拒絕所有 raw ASCII 控制字元（`U+0000..U+001F`）與 `DEL`（`U+007F`），杜絕以先行 strip 隱匿非法字元。
+  - 合法領域接受所有內部可列印字符，包含一般空白、反斜線 `\`、問號 `?`、井字號 `#`、單雙引號 `'` `"` 以及 Unicode 字符。
+  - TargetName 路徑元件採決定性百分比編碼：以 `encodeURIComponent` 為基底，並強制將單引號 `'` 規範化編碼為 `%27`。
+  - 字面 `%` 視為資料本身而非預編碼權威，編碼為 `%25`，防止路徑別名攻擊（如 `alpha%20beta` 與 `alpha beta` 映射至不同 TargetName）。
+  - 斜線字元編碼為 `%2F`，杜絕路徑段注入。TargetName 本身為完全非機敏之後設資料。
 - **SecretRef 封閉不可變領域模型與規範重導 (SecretRef Immutability & Re-derivation)**：`SecretRef` 為封閉領域模型，建構後即透過 `Object.freeze(this)` 凍結不可變。提供者絕對不以呼叫端傳入之 `secretRef.getTargetName()` 為權威，而是自已驗證之語意欄位（`channel`, `purpose`, `accountId`）在內部重新推導規範目標，杜絕子類別覆寫與原型篡改。
 - **最終規範語法硬性斷言 (Final Target Grammar Assertion)**：提供者在調用 PowerShell 橋接前，必須硬性斷言目標符合 `HH.AI_v2/channel-gateway/v1/(telegram/...|line/...|local-api/hmac)` 規範語法，任何額外路徑段、未知後綴、空白、引號或非法百分比編碼立即 Fail-Closed 拋出 `INVALID_SECRET_REFERENCE`。
 - **PowerShell 橋接縱深防禦目標檢查 (Bridge Defense-in-Depth Target Validation)**：PowerShell 橋接腳本內部亦以正則表達式嚴格拒絕非規範命名空間 TargetName，杜絕作為任意憑證庫讀取器。
@@ -61,7 +66,7 @@
 
 - **非 Shell 原生引數執行**：Node.js 與 PowerShell 橋接（`windows-credential-manager-read.ps1`）透過 `child_process.spawnSync` 陣列傳遞，強制 `shell: false`，杜絕任何 shell 命令字串插值注入。
 - **純管道 stdout 傳輸**：機密二進位資料僅透過管道 stdout 由 PowerShell 直傳 Node 記憶體；標準輸出禁止輸出任何說明文字或版權標語（使用 `-NoLogo`）。
-- **同步橋接有限逾時與 Fail-Closed (Bounded Bridge Timeout)**：`child_process.spawnSync` 強制配置有限逾時（預設 10000ms），逾時失敗一律 Fail-Closed 映射為穩定之 `PROVIDER_UNAVAILABLE`，絕不將原始錯誤物件、超時堆疊、子進程輸出拼接進錯誤訊息。
+- **同步橋接有限逾時、生產契約與 Fail-Closed (Bounded Bridge Timeout & Parity)**：`child_process.spawnSync` 強制配置有限逾時，生產預設由 10000ms 提升至 **30000ms**（上限 60000ms）。30 秒預設為生產環境與 Live 整合測試之統一契約；Windows Live 整合測試必須直接調用生產預設建構子，不得使用測試覆寫。歷史紀錄顯示 CI e790 Windows 任務曾失敗，但其確切根本原因並未由機器單一確立；a46 測試路徑曾使用 30 秒覆寫，F2 透過將 30000ms 設為生產預設並強制 Live 測試使用該預設，消除測試與生產之契約漂移。逾時失敗一律 Fail-Closed 映射為穩定之 `PROVIDER_UNAVAILABLE`，絕不將原始錯誤物件、超時堆疊、子進程輸出拼接進錯誤訊息。
 - **同步提供者解析之生命週期邊界 (Synchronous Provider Resolution Boundary)**：由於 `spawnSync` 阻塞 Node.js 事件迴圈，SecretProvider 解析僅允許於受控之生命週期邊界點（帳號啟用、帳號切換、消費者初始化、明確憑證重新整理）執行；**嚴禁設計為熱路徑（hot-path）訊息處理中之每訊息/每事件同步查詢**。v1 提供者內部不維護長效快取，取用機密之 Consumer 生命週期負責管理其合理 Buffer 存續期間。
 - **原生指標單一擁有權契約 (Single Native Ownership Contract)**：PowerShell 橋接腳本對 `CredRead` 取得之原生指標 `$pCred` 採單一擁有權模型；所有釋放操作集中於 `finally` 區塊執行（`CredFree` 恰好調用一次），釋放後指標立即重置為 Zero（`$pCred = [IntPtr]::Zero`），正常成功路徑與各 catch 分支皆不重複釋放，杜絕 double-free。
 - **PowerShell 受管機密位元組暫存抹除 (PowerShell Secret Byte[] Clearing)**：PowerShell 於複製原生指標資料至受管位元組陣列 `$blob` 後，在同一 `finally` 清理區塊以最佳努力原則調用 `[Array]::Clear($blob, 0, $blob.Length)` 抹除暫存記憶體，不宣稱不可能之完美 GC 抹除保證。

@@ -3081,10 +3081,10 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 - TG-MVP-04 F1 回覆授權身份鍵修復：已完成（ACCEPTED / CLOSED，修正 validateReplyAuthorization SQL 複合鍵查詢與金絲雀測試，accepted checkpoint = 18867eb5af7c4b90df8946c22977350bf7ec5086）。
 - TG-MVP-05 游標推進防衛與事件身分分離修復：已完成（ACCEPTED / CLOSED，commit `cdd9d7c5eeca5185e47e7365d42a3a3dc0a61eb1`，Actions Run 35311601796 success，External Macro PASS / ACCEPT ALL；TG-MVP-05-F1 已徹底解決 RESOLVED；accepted checkpoint 推進至 `cdd9d7c5eeca5185e47e7365d42a3a3dc0a61eb1`）。
 - TG-MVP-06 B-98 機密輸出強化與提交守衛：已完成（ACCEPTED / CLOSED，commit `e60fedb6fbaade0ec725d28fc83f1e47cfb13943`，Actions Run 35331712071 success，External Macro PASS / ACCEPT ALL；TG-MVP-06-F1-A、TG-MVP-06-F1-B、TG-MVP-06-F2 全數徹底解決 RESOLVED；new material finding = NONE；accepted checkpoint 推進至 `e60fedb6fbaade0ec725d28fc83f1e47cfb13943`；B-98 正式關閉 CLOSED）。
-- TG-MVP-06A / B-101 Gateway 機密提供者與執行期機密取用邊界：進行中（IN PROGRESS / MACRO HOLD；首候選 d3a31fc 經 Actions Run 35336376440 success，External Macro HOLD，TG-MVP-06A-F1 處置為 CURRENT；F1-A 原生指標重複釋放雙重 free、F1-B 未受限同步 bridge 超時、F1-C 呼叫端受控 SecretRef 目標權威邊界 repair active，同批強化 F1-H1 PowerShell byte[] 最佳努力清除 same-batch hardening；accepted checkpoint 保持 e60fedb6fbaade0ec725d28fc83f1e47cfb13943；repair candidate 待外部宏觀審計，不得 self-audit）。
+- TG-MVP-06A / B-101 Gateway 機密提供者與執行期機密取用邊界：進行中（IN PROGRESS / MACRO HOLD；候選 a46aea3 經 Actions Run 35350604949 success，External Macro HOLD，TG-MVP-06A-F1-A/C/H1 = RESOLVED，F1-B 逾時機制已實作，新發現 TG-MVP-06A-F2 = CURRENT；F2-A 生產逾時 30000ms 與 live 測試預設對齊、F2-B AccountRegistry 與 SecretRef 帳號識別碼領域對齊 repair active；accepted checkpoint 保持 e60fedb6fbaade0ec725d28fc83f1e47cfb13943；repair candidate 待外部宏觀審計，不得 self-audit）。
   - B-98：已完成（CLOSED）。
   - B-101：進行中（IN PROGRESS）。
-  - TG-MVP-06A：進行中（IN PROGRESS / MACRO HOLD，TG-MVP-06A-F1 = CURRENT，F1-A/B/C repair active，F1-H1 same-batch hardening）。
+  - TG-MVP-06A：進行中（IN PROGRESS / MACRO HOLD，TG-MVP-06A-F1-A = RESOLVED，TG-MVP-06A-F1-C = RESOLVED，TG-MVP-06A-F1-H1 = RESOLVED，TG-MVP-06A-F2 = CURRENT）。
   - TG-MVP-07 與後續切片：尚未開始（NOT AUTHORIZED / NOT STARTED）。
   - E-03：進行中（IN PROGRESS，accepted checkpoint = e60fedb6fbaade0ec725d28fc83f1e47cfb13943）。
   - B-28 / B-29 上游 trigger 重新評估完成，無 B-01 blocker，維持 DEFERRED_BY_USER / POST_B01。
@@ -4422,4 +4422,41 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 - **架構邊界與生命週期不變量（Architecture Boundary & Lifecycle Invariants）**：
   - 零真實機密讀寫存取、零真實憑證枚舉、零新 npm 依賴。
   - Credential Manager provider architecture、CRED_TYPE_GENERIC、CRED_PERSIST_LOCAL_MACHINE、B-98、TG-MVP-06、TG-MVP-07、TG-MVP-01B、C-07 / C-08 保持完全不變。
+  - 本 repair candidate 提交後標記為 PENDING EXTERNAL MACRO RE-AUDIT，執行者不得 self-audit 宣稱 PASS 或結案。
+
+114. **TG-MVP-06A-F2 逾時契約對齊、帳號識別碼領域一致性修復與歷史根因真相更正（Timeout Parity, Account-ID Domain Alignment & Root-Cause Truth Correction Candidate）**（2026-09-18）
+- **歷史根因確定性真相更正宣告（Root-Cause Certainty Correction & Supersede Declaration）**：
+  - 前一歷史項目 Item 113 與 EXEC-LOG e790 M3 紀錄將 e790 CI 失敗之確切根因描述為「PowerShell 5.1 啟動並透過 Add-Type 調用 csc.exe 冷編譯 Win32 C# P/Invoke 橋接腳本時間超過 10 秒」，特此正式宣告：該陳述僅為執行者當時之診斷與假設（Executor diagnosis / hypothesis），絕非機器單一確立之權威因果事實（E790_FAILURE_ROOT_CAUSE_MACHINE_ESTABLISHED = false）。
+  - 客觀機器確立事實僅為：
+    1. e790 Run 35348758379: verify success, gateway-windows failure。
+    2. M3 隨後更動了數項 Windows 測試與子進程行為，包含 30000ms timeout 覆寫與 PowerShell 相容性變更。
+    3. a46 Run 35350604949: verify success, gateway-windows success。
+    4. 客觀事實無法機械證明究竟哪一單一 M3 變更促成綠燈。
+  - 留痕約束：歷史 Item 113 作為 append-only 留痕保留不改寫，但其 root-cause certainty 之宣稱細節由本項目明確正式 supersede。
+- **外部宏觀審計 HOLD 與重大發現同步（External Macro HOLD & Material Finding Sync）**：
+  - 目標候選：`a46aea39a4b2e05384e3fbf9542c6f8bb35fde05`。
+  - 父提交：`e79087cf51086ce0bcbdbca702424a96ba457ef4`。
+  - 審查範圍：`e60fedb6fbaade0ec725d28fc83f1e47cfb13943..a46aea39a4b2e05384e3fbf9542c6f8bb35fde05`（共 3 commits）。
+  - 審查人員：GPT 代理審查官（使用者授權）。
+  - A1 資格查證：採 A1 = EQUIVALENT（GitHub API + Executor clone cross-check）成立。
+  - 遠端機器證據：d3a Run 35336376440 success / success, e790 Run 35348758379 verify success / gateway-windows failure, a46 Run 35350604949 verify success / gateway-windows success。
+  - 審查結論：MACHINE / FINAL CI = PASS；MACRO AUDIT = HOLD；ACCEPT STATUS = BOUNDED PRODUCTION REPAIR REQUIRED；FINDING_DISPOSITION = CURRENT E-03。
+  - 技術發現裁決：F1-A = RESOLVED，F1-C = RESOLVED，F1-H1 = RESOLVED，F1-B bounded timeout mechanism = IMPLEMENTED。
+  - 新重大發現 TG-MVP-06A-F2：
+    - F2-A（生產逾時與 live 測試契約漂移 / production timeout parity）：生產預設 DEFAULT_TIMEOUT_MS 為 10000ms，而 Windows live 測試使用 30000ms 覆寫，產生測試與生產契約漂移；修復方案為生產預設提升為 30000ms，live 整合測試直接調用生產預設建構子。
+    - F2-B（AccountRegistry 與 SecretRef 帳號識別碼領域不一致 / account-ID domain mismatch）：AccountRegistry 接受非空字串（包含空白、反斜線、問號、井字號、單雙引號、Unicode），而 SecretRef 原本拒絕多種合法字符；兩者需對齊共享領域，統一於 trim 前拒絕 raw ASCII 控制字元與 DEL，SecretRef 採用決定性百分比編碼（單引號編碼為 %27，字面 % 編碼為 %25 防別名）。
+  - 通過基準保持：accepted checkpoint 保持為 `e60fedb6fbaade0ec725d28fc83f1e47cfb13943`，不得推進至 d3a31fc、e79087c、a46aea3 或本 repair candidate；TG-MVP-06A = NOT ACCEPTED YET；B-101 = IN PROGRESS；TG-MVP-07 = NOT AUTHORIZED。
+- **TG-MVP-06A-F2 雙重契約修復實作（Contract Parity & Domain Alignment Implementation）**：
+  - F2-A 生產逾時與 Live 測試契約對齊：
+    - 修改 `runtime/channel-gateway/core/windows-credential-manager-provider.js`：`DEFAULT_TIMEOUT_MS` 由 10000ms 提升為 30000ms，`MAX_TIMEOUT_MS` 維持 60000ms。
+    - 修改 `runtime/channel-gateway/tests/windows-credential-manager-provider.test.js`：Test J 移除 `{ timeoutMs: 30000 }` 覆寫，直接調用 `new WindowsCredentialManagerSecretProvider()` 並斷言 `realProvider.timeoutMs === 30000`；刪除後 missing target 斷言亦使用生產預設；Test B 與 Test K 同步斷言預設逾時為 30000ms。
+    - 測試輔助子進程維持 bounded 30s 逾時作為測試基礎設施，非生產覆寫。
+  - F2-B AccountRegistry 與 SecretRef 帳號識別碼領域對齊：
+    - 引入正規表達式 `CONTROL_CHAR_REGEX = /[\x00-\x1F\x7F]/`，在 `account-registry.js` 與 `secret-provider.js` 於任何 trim 之前嚴格檢驗並拒絕 raw ASCII 控制字元與 DEL。
+    - 支援一般空白、反斜線 `\`、問號 `?`、井字號 `#`、單引號 `'`、雙引號 `"` 以及 Unicode 字符。
+    - `encodeAccountId` 採用 `encodeURIComponent(trimmed).replace(/'/g, '%27')` 決定性百分比編碼，單引號強制編碼為 `%27`；字面 `%` 編碼為 `%25` 杜絕路徑別名攻擊；斜線編碼為 `%2F` 杜絕多餘路徑段。
+    - 所有生成之 TargetName 嚴格通過 `assertCanonicalTargetGrammar` 與 `CANONICAL_TARGET_REGEX`。
+  - 回歸安全不變量（Security Invariants）：
+    - F1 原生指標單一釋放、指標歸零、託管 blob 最佳努力清除、SecretRef 凍結、子類別拒絕、提供者重新推導規範目標、ETIMEDOUT 映射 PROVIDER_UNAVAILABLE、無 raw payload 洩漏、零 fallback、零枚舉維持閉合。
+    - 零真實機密讀寫存取、零真實憑證枚舉、零新 npm 依賴。
   - 本 repair candidate 提交後標記為 PENDING EXTERNAL MACRO RE-AUDIT，執行者不得 self-audit 宣稱 PASS 或結案。
