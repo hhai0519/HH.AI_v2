@@ -2825,7 +2825,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 5.1 上一批狀態
 
-上次核對通過的 HEAD：18867eb5af7c4b90df8946c22977350bf7ec5086
+上次核對通過的 HEAD：cdd9d7c5eeca5185e47e7365d42a3a3dc0a61eb1
 
 - `23af193`（執行者前置檢查 ＋ 回滾程序 ＋ `AUDIT-LOG.md` ＋ 四缺口修正）
   已於 2026-09-02 由審計官核對通過：6 檔異動（含 2 個新檔）、零夾帶、
@@ -3079,10 +3079,15 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - R2-3 不確定狀態處理採選項 B（USER DECIDED OPTION B / ADR-0025 LANDED）。
   - R3 僅綁定 127.0.0.1 之 Loopback HTTP v1 與 HMAC-SHA-256 雙向認證架構確立（USER DECIDED / ADR-0025 LANDED / NOT IMPLEMENTED；Windows 具名管道正式延後未獲選）。
 - TG-MVP-04 F1 回覆授權身份鍵修復：已完成（ACCEPTED / CLOSED，修正 validateReplyAuthorization SQL 複合鍵查詢與金絲雀測試，accepted checkpoint = 18867eb5af7c4b90df8946c22977350bf7ec5086）。
-- TG-MVP-05 游標推進防衛與事件身分分離修復：進行中（IN PROGRESS / MACRO HOLD / TG-MVP-05-F1 AUDIT-TRUTH REPAIR IN PROGRESS；TG-MVP-05-F1 = CURRENT；FINDING_DISPOSITION = CURRENT E-03；07a077d candidate 經 Actions Run 35309998016 驗證 MACHINE / CI = PASS 但 MACRO AUDIT = HOLD，未獲接受；accepted checkpoint 保持 18867eb5af7c4b90df8946c22977350bf7ec5086；C1/C2/C3 runtime 實作已於 candidate 完成，但 TG-MVP-05 結案仍取決於 F1 證據修復與 External Macro PASS；TG-MVP-06 NOT AUTHORIZED / NOT STARTED）。
+- TG-MVP-05 游標推進防衛與事件身分分離修復：已完成（ACCEPTED / CLOSED，commit `cdd9d7c5eeca5185e47e7365d42a3a3dc0a61eb1`，Actions Run 35311601796 success，External Macro PASS / ACCEPT ALL；TG-MVP-05-F1 已徹底解決 RESOLVED；accepted checkpoint 推進至 `cdd9d7c5eeca5185e47e7365d42a3a3dc0a61eb1`）。
+- TG-MVP-06 B-98 機密輸出強化與提交守衛：進行中（IN PROGRESS / PENDING EXTERNAL MACRO AUDIT；實作 binding rule SECRET-1..8、safe presence helper、Git index staged scanner、tracked pre-commit hook、CHECK 21 機密防護守衛，verify_all 保持 5 Gates）。
+  - B-98：進行中（IN PROGRESS / PENDING EXTERNAL MACRO AUDIT）。
+  - B-101 / TG-MVP-06A：待辦（PENDING / NOT STARTED，選定具體 Gateway secret provider 與執行期機密取用邊界，TG-MVP-06 刻意不實作）。
+  - TG-MVP-07 與後續切片：不得開始（NOT AUTHORIZED / NOT STARTED）。
+  - E-03：進行中（IN PROGRESS，accepted checkpoint = cdd9d7c5eeca5185e47e7365d42a3a3dc0a61eb1）。
   - B-28 / B-29 上游 trigger 重新評估完成，無 B-01 blocker，維持 DEFERRED_BY_USER / POST_B01。
   - B-54 保持待辦（POST_B01 / NONBLOCKING，SOP_12 機器專屬路徑 concrete example 已登錄）。
-  - B-98 / B-75 保持待辦、零實作 (POST_B01 / NONBLOCKING / NOT IMPLEMENTED)。
+  - B-75 保持待辦、零實作 (POST_B01 / NONBLOCKING / NOT IMPLEMENTED)。
   - B-69 保持待辦 (PENDING NON-BLOCKING)。
   - Production routing ready。
   - 當前與下一步工作任務權威（Current / next work authority）仍只由 `docs/TASKBOARD.md` 的 `**NEXT_WORK**` pointer 保存與導航，交接區不複製 task ID 或待辦佇列。
@@ -4266,3 +4271,32 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - 通過基準保持：accepted checkpoint 保持為 `18867eb5af7c4b90df8946c22977350bf7ec5086`，不得推進至 07a077d 或本 repair candidate。
   - 本批為純有界治理與事實證據更正（zero runtime / test / ADR / rule changes）。
   - repair candidate 仍處於 PENDING EXTERNAL MACRO RE-AUDIT，TG-MVP-05 尚未結案，TG-MVP-06 尚未授權。
+
+109. **TG-MVP-05 累積外部宏觀審計 PASS 結論同步與 TG-MVP-06 機密輸出安全強化與提交守衛候選（TG-MVP-06 Secret Hardening Candidate）**（2026-09-18）
+- **TG-MVP-05 外部宏觀審計累積 PASS 裁決同步（TG-MVP-05 Cumulative External Macro PASS Sync）**：
+  - 目標候選：`cdd9d7c5eeca5185e47e7365d42a3a3dc0a61eb1`（TG-MVP-05-F1 綱要事實描述修復候選）。
+  - 父提交：`07a077d7001681dd31b63c64cdaa07174911d104`。
+  - 審查範圍：`18867eb5af7c4b90df8946c22977350bf7ec5086..cdd9d7c5eeca5185e47e7365d42a3a3dc0a61eb1`（共 2 commits）。
+  - 審查人員：GPT 代理審查官（使用者授權）。
+  - A1 資格查證：採 A1 = EQUIVALENT（GitHub API + Executor clone cross-check）成立。
+  - 遠端機器證據：07a Run `35309998016` success，最終目標 cdd9 Run `35311601796` completed / success（verify = success, gateway-windows = success）。
+  - 外部審查結論：MACHINE / CI = PASS；MACRO AUDIT = PASS；Accept status = ACCEPT ALL；TG-MVP-05-F1 = RESOLVED；new material finding = NONE；TG-MVP-05 = ACCEPTED。
+  - 通過基準推進：accepted checkpoint 正式推進至 `cdd9d7c5eeca5185e47e7365d42a3a3dc0a61eb1`，TG-MVP-05 正式結案（CLOSED），授權啟動 TG-MVP-06。
+- **TG-MVP-06 機密輸出強化與提交守衛實作（Secret Output & Commit Guard Implementation）**：
+  - B-98 輸出安全邊界閉合：建立工作區具體拘束力規則 `.agents/rules/secret-output-safety.md`（包含 SECRET-1 至 SECRET-8 八大穩定錨點），明確禁止環境變數枚舉（`dir env:`, `printenv`, `process.env` dump 等），限定機密存在性檢查僅限 PRESENT / ABSENT，嚴禁將機密值寫入 terminal、transcript、conversation、logs、repo 或 scratch，禁止遮罩或部分字串輸出。
+  - 安全存在性探針：建立 `scripts/secret_presence.py`，僅支援精確環境變數名稱查詢，拒絕萬用字元與前綴，嚴禁輸出機密值/長度/雜湊，僅輸出 `<NAME>=PRESENT` 或 `<NAME>=ABSENT`。
+  - ADR-0016 §1–§3 提交守衛落地：
+    - Decision §1：建立版控受管之 `.githooks/pre-commit` 自動執行 index staged 機密掃描，建立 `scripts/install_git_hooks.py` 管理本機 `core.hooksPath`。
+    - Decision §2：建立 `scripts/secret_scan.py`，在 `--staged` 模式下直接讀取 Git index blob 而非 working tree，對所有 staged 檔案（不以副檔名過濾文字檔）執行機密掃描；支援 `--tracked` 模式全庫掃描。
+    - Decision §3：落實 ADR-0016 機密特徵掃描（GitHub、Notion、Telegram Bot Token、Google Cookie、Private Key、Generic Secret Assignment、LINE Credential）與機敏檔名阻擋守衛（cookies, mcp_config, .env*, credentials, key files），支援合成佔位符排除。
+    - 掃描器安全輸出合約：BLOCK 時僅輸出 detector ID、path、line，嚴禁輸出 matched secret、token 或 context line。
+  - CHECK 21 閘門整合：於 `scripts/check_consistency.py` 擴充 CHECK 21（機密防護與輸出安全守衛），機械檢查規則存在性、SECRET-1..8 錨點、pre-commit hook 存在性、hook 呼叫 staged scanner、禁止 no-verify 繞過、tracked baseline 無機密洩漏，total_checks 由 20 增至 21。
+  - Canonical Gates 維持 5 Gates：`scripts/verify_all.py` 保持 ZERO DIFF，CHECK 21 納入 Gate 2，CI 閘門不膨脹。
+  - 規則追溯與 Git 操作規範對齊：`.agents/rules/git-and-reporting.md` 載明禁止 `git commit --no-verify` 與 commit 前機密防護合約；重新產生 `docs/generated/rule-traceability.md` 並通過驗證。
+  - ADR-0016 歷史留痕對齊：更新 `docs/adr/0016-credential-leak-defense-gap.md`，維持歷史事故不變，改寫過期文字為 timeless wording 並記錄 TG-MVP-06 落地候選。
+- **依賴升格與生命週期不變量（B-101 / TG-MVP-06A Promotion & Lifecycle Invariants）**：
+  - 升格新任務 B-101 與路線圖新切片 TG-MVP-06A（Gateway Secret Provider & Runtime Secret Consumption Boundary，待辦）。
+  - TG-MVP-06 刻意不裁決具體 Gateway secret provider（ABSENT / UNDECIDED），不實作 Telegram / LINE / HMAC 執行期消費者。
+  - TG-MVP-10、TG-MVP-11、TG-CUT-04 之前置相依新增 TG-MVP-06A。
+  - 全程無真實機密讀取、輸出或提交，所有測試均使用合成/動態構造之假機密。
+  - 本候選提交後標記為 PENDING EXTERNAL MACRO AUDIT，執行者不得 self-audit。

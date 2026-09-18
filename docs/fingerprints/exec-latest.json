@@ -1,8 +1,8 @@
 {
-  "base_head": "07a077d",
+  "base_head": "cdd9d7c",
   "files": {
     ".agents/rules/git-and-reporting.md": {
-      "fences": 0,
+      "fences": 4,
       "headings": [
         "# 規則：Git 操作與回報紀律",
         "## 1. Git 操作",
@@ -11,11 +11,12 @@
         "## 2.1 撰寫測試時，依規格而非依實作",
         "## 2.2 提示詞指定的寫入內容，逐字照抄",
         "## 2.3 [已退役] commit 與 push 的狀態，早期以指令輸出為準",
+        "## 2.4 提交前機密檢查與 Git Hook 守衛規範 (Secret Commit Guard & Hook Protocol)",
         "## 2.5 遠端健康查證與 GitHub Actions 閉環規範 (Remote Health Verification)",
         "## 3. 查證紀律"
       ],
-      "lines": 278,
-      "sha256": "1e5bbfe76c25e96c85feab53eb1a0ac18d555d52b9c3fdb0f707051e61ded846"
+      "lines": 297,
+      "sha256": "89db3b6c62c0e9b6977a5abe8d7d147232b734e1f455bfa30b1e0bbb009f042c"
     },
     ".agents/rules/powershell-encoding-protocol.md": {
       "fences": 6,
@@ -79,6 +80,23 @@
       ],
       "lines": 179,
       "sha256": "59452cf7f554c20310ebd8d60d5a7eada567ca4117fa184af66618f589d3aab5"
+    },
+    ".agents/rules/secret-output-safety.md": {
+      "fences": 6,
+      "headings": [
+        "# 機敏資訊與輸出安全守衛規則 (Secret Output Safety Guardrails)",
+        "## 1. 核心安全原則",
+        "## SECRET-1 — 嚴禁列舉環境變數狀態 (Never Enumerate Secret-Bearing Environment State)",
+        "## SECRET-2 — 僅限存在性探測 (Presence Only)",
+        "## SECRET-3 — 禁止輸出之表面 (Forbidden Output Surfaces)",
+        "## SECRET-4 — 禁止之傳輸與呼叫路徑 (Forbidden Transport / Invocation Surfaces)",
+        "## SECRET-5 — 排錯與除錯路徑 (Troubleshooting Path)",
+        "## SECRET-6 — 儲存隔離邊界 (Storage Separation)",
+        "## SECRET-7 — 測試與持續整合規範 (Tests & CI Safety)",
+        "## SECRET-8 — 提交前強制守衛 (Commit Guard & Hook Verification)"
+      ],
+      "lines": 121,
+      "sha256": "e171d9f865ce3521abafa678f883bf507d7aa4e9a116adf558d111335c0968d4"
     },
     ".agents/rules/skill-engineering-guardrails.md": {
       "fences": 0,
@@ -515,16 +533,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 178,
-      "sha256": "4f4f85d6473aad32c94b5099bd289e164f9a5a376ce191bba46b46e6afd3c7ab"
+      "lines": 179,
+      "sha256": "6df091ecdbd3322c90c97d55f18603baaecd6a3f864322a7b7100ae147f9b57c"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 139,
-      "sha256": "99af8c6552225ca681c7725fe0d738285d157911da1b3c48869ce6ec95e5b28e"
+      "lines": 140,
+      "sha256": "b43413429f6d5d7bfde3e0e8222cdc403bb4fd31bbee9e7bb0c289f95e8ce0e9"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -564,8 +582,8 @@
         "## G. 舊 repo 未盤點區塊（2026-09-02 新發現）",
         "## 封存區"
       ],
-      "lines": 316,
-      "sha256": "3dd29f6fd8bc8387910375252742e5665e89228c374e6069c71a81609a854df5"
+      "lines": 318,
+      "sha256": "4eea6b7814ca75178fa76d186e69ca56d1cc930219dd20eecc03af5f836eef2c"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -778,10 +796,11 @@
         "### 3. 必須有針對憑證特徵的檢查規則",
         "### 4. SOP_14 的觸發條件應補上「版控操作前」",
         "## Consequences",
-        "## 2026-09-01 落實紀錄"
+        "## 2026-09-01 落實紀錄",
+        "## 2026-09-18 TG-MVP-06 候選實作紀錄"
       ],
-      "lines": 89,
-      "sha256": "5786ce4bf2cc35c3f266928637b0537b8d0b6c87f0ff0e0884045e28fa2fe8fc"
+      "lines": 98,
+      "sha256": "acd7cadc5cba89051974eac6a3cd9dec9e8e1c7c5aeebf6a25eadb812d3acb05"
     },
     "docs/adr/0017-port-allocation.md": {
       "fences": 0,
@@ -1001,8 +1020,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 4268,
-      "sha256": "1234b73d63fa80b9749573c7c6ac212084546d73e9ff934ce723796082ef8e5d"
+      "lines": 4302,
+      "sha256": "5be94d3cf1cbc6dbdd53677e6cadbd8f2a0e027f37c7ca13609c4d7e85077215"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1029,8 +1048,8 @@
         "# 已知指向錯誤的歷史 tag。本清單只能縮短、不得加長。",
         "# 修復批次完成後必須清空；清單中的 tag 若已修復卻未移除，CHECK 18 會 FAIL。"
       ],
-      "lines": 2167,
-      "sha256": "1fb99e7cf0f207d34e4f477051bb1e52f3c3015f029a71a8acf8b9ac04d20aa2"
+      "lines": 2244,
+      "sha256": "fb627ab34e4d54d1f8975f06089527288fdd77e2ca0438718cc71780da884348"
     },
     "scripts/fingerprint.py": {
       "fences": 0,
@@ -1057,6 +1076,43 @@
       ],
       "lines": 585,
       "sha256": "1020ab1918c9e8d8005a602eb9d7aee58a0484a978868b1a0f7d19cfe85f1297"
+    },
+    "scripts/install_git_hooks.py": {
+      "fences": 0,
+      "headings": [
+        "# -*- coding: utf-8 -*-"
+      ],
+      "lines": 92,
+      "sha256": "2c05873e0f5eeada5437f786563d48a2ccc877d0c0681fef1672f9fe7c9f3799"
+    },
+    "scripts/secret_presence.py": {
+      "fences": 0,
+      "headings": [
+        "# -*- coding: utf-8 -*-",
+        "# Standard environment variable name pattern: uppercase/lowercase letters, digits, underscores.",
+        "# Non-empty, does not start with digit."
+      ],
+      "lines": 88,
+      "sha256": "9c8a2a192d04a3a356b102c3b66997ee4427ed8cdb649c98391d81abe5531d8d"
+    },
+    "scripts/secret_scan.py": {
+      "fences": 0,
+      "headings": [
+        "# -*- coding: utf-8 -*-",
+        "# ---------------------------------------------------------------------------",
+        "# 1. Forbidden Filename Guard (§25)",
+        "# ---------------------------------------------------------------------------",
+        "# ---------------------------------------------------------------------------",
+        "# 2. Content Detectors (§24)",
+        "# ---------------------------------------------------------------------------",
+        "# Placeholder keywords that denote obvious test fixtures, documentation examples, or templates",
+        "# Individual signature patterns with detector IDs",
+        "# ---------------------------------------------------------------------------",
+        "# 3. Mode Execution: Staged & Tracked",
+        "# ---------------------------------------------------------------------------"
+      ],
+      "lines": 294,
+      "sha256": "742dae93034bd704f74d2513ff9d9d13b8112e85034e47293de7b8e8786ce21e"
     },
     "scripts/tests/test_anchor.py": {
       "fences": 0,
@@ -1115,8 +1171,8 @@
         "# CHECK 20 Tests: Markdown Table Continuity (B-88)",
         "# ---------------------------------------------------------------------------"
       ],
-      "lines": 1175,
-      "sha256": "c8c02d6921aab054e3296c4abf385c46a68b08837e3b45e74233ce1435932a5e"
+      "lines": 1291,
+      "sha256": "f0af9364ef1ea8350fa8c5540a7b30995170becc4cd53b089aedc416420db85c"
     },
     "scripts/tests/test_fingerprint.py": {
       "fences": 0,
@@ -1157,6 +1213,24 @@
       ],
       "lines": 271,
       "sha256": "ed8b641d9a3741ef2ff1cf97cf7af32029fa04dcebd22500c2b6adf370d797c5"
+    },
+    "scripts/tests/test_secret_hardening.py": {
+      "fences": 0,
+      "headings": [
+        "# -*- coding: utf-8 -*-",
+        "# Ensure scripts directory is on sys.path",
+        "# ---------------------------------------------------------------------------",
+        "# Section 41: secret_presence.py Tests",
+        "# ---------------------------------------------------------------------------",
+        "# ---------------------------------------------------------------------------",
+        "# Section 42: secret_scan.py Detector & Policy Tests",
+        "# ---------------------------------------------------------------------------",
+        "# ---------------------------------------------------------------------------",
+        "# Section 43: Hook & Installer Tests in Temporary Git Repo",
+        "# ---------------------------------------------------------------------------"
+      ],
+      "lines": 456,
+      "sha256": "369ba30fc8af81d1aceff64a557ee7435bdc1af0b7cde0a19122e3410d6cbcb6"
     },
     "scripts/tests/test_shared_primitives.py": {
       "fences": 0,
@@ -1272,7 +1346,7 @@
       "sha256": "35bf7dbfa3c7d291b550c3c97a6ae398a22b1dc3624c1d2fc1e4db6963d6e115"
     }
   },
-  "generated_at": "2026-09-18T05:36:21Z",
+  "generated_at": "2026-09-18T06:22:55Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

@@ -19,6 +19,7 @@ from check_consistency import (
     check_16_exec_log_cadence,
     check_19_utf8_bom,
     check_20_markdown_table_continuity,
+    check_21_secret_leak_guard,
 )
 
 
@@ -1173,3 +1174,118 @@ def test_integration_run_checks_includes_19_and_20():
     assert "check_20_markdown_table_continuity" in source
     assert "CHECK 19 - UTF-8 BOM" in source
     assert "CHECK 20 - Markdown 表格連續性" in source
+
+
+def test_integration_run_checks_includes_21_and_total_checks_is_21():
+    import check_consistency
+    import inspect
+    source = inspect.getsource(check_consistency.run_checks)
+    assert "total_checks = 21" in source
+    assert "check_21_secret_leak_guard" in source
+    assert "CHECK 21: 機密防護與輸出安全守衛" in source
+
+
+def test_check_21_missing_rule_file_fail(tmp_path):
+    fails, infos = check_21_secret_leak_guard(str(tmp_path))
+    assert any("secret-output-safety.md" in f and "不存在" in f for f in fails)
+
+
+def test_check_21_missing_anchor_fail(tmp_path):
+    rules_dir = tmp_path / ".agents" / "rules"
+    rules_dir.mkdir(parents=True)
+    rule_file = rules_dir / "secret-output-safety.md"
+    rule_file.write_text("# Title\nSECRET-1\nSECRET-2\n", encoding="utf-8")
+    fails, infos = check_21_secret_leak_guard(str(tmp_path))
+    assert any("缺少必要錨點" in f and "SECRET-3" in f for f in fails)
+
+
+def test_check_21_missing_hook_fail(tmp_path):
+    rules_dir = tmp_path / ".agents" / "rules"
+    rules_dir.mkdir(parents=True)
+    rule_file = rules_dir / "secret-output-safety.md"
+    rule_file.write_text("\n".join([f"SECRET-{i}" for i in range(1, 9)]), encoding="utf-8")
+    fails, infos = check_21_secret_leak_guard(str(tmp_path))
+    assert any(".githooks/pre-commit" in f and "不存在" in f for f in fails)
+
+
+def test_check_21_hook_missing_staged_scanner_fail(tmp_path):
+    rules_dir = tmp_path / ".agents" / "rules"
+    rules_dir.mkdir(parents=True)
+    rule_file = rules_dir / "secret-output-safety.md"
+    rule_file.write_text("\n".join([f"SECRET-{i}" for i in range(1, 9)]), encoding="utf-8")
+
+    hook_dir = tmp_path / ".githooks"
+    hook_dir.mkdir(parents=True)
+    hook_file = hook_dir / "pre-commit"
+    hook_file.write_text("#!/bin/sh\necho done\n", encoding="utf-8")
+
+    fails, infos = check_21_secret_leak_guard(str(tmp_path))
+    assert any("Hook 未呼叫 scripts/secret_scan.py --staged" in f for f in fails)
+
+
+def test_check_21_hook_with_no_verify_fail(tmp_path):
+    rules_dir = tmp_path / ".agents" / "rules"
+    rules_dir.mkdir(parents=True)
+    rule_file = rules_dir / "secret-output-safety.md"
+    rule_file.write_text("\n".join([f"SECRET-{i}" for i in range(1, 9)]), encoding="utf-8")
+
+    hook_dir = tmp_path / ".githooks"
+    hook_dir.mkdir(parents=True)
+    hook_file = hook_dir / "pre-commit"
+    hook_file.write_text("#!/bin/sh\nscripts/secret_scan.py --staged --no-verify\n", encoding="utf-8")
+
+    fails, infos = check_21_secret_leak_guard(str(tmp_path))
+    assert any("--no-verify" in f for f in fails)
+
+
+def test_check_21_clean_synthetic_repo_pass(tmp_path):
+    import subprocess
+    subprocess.run(["git", "init"], cwd=tmp_path, check=True, capture_output=True)
+
+    rules_dir = tmp_path / ".agents" / "rules"
+    rules_dir.mkdir(parents=True)
+    rule_file = rules_dir / "secret-output-safety.md"
+    rule_file.write_text("\n".join([f"SECRET-{i}" for i in range(1, 9)]), encoding="utf-8")
+
+    hook_dir = tmp_path / ".githooks"
+    hook_dir.mkdir(parents=True)
+    hook_file = hook_dir / "pre-commit"
+    hook_file.write_text("#!/bin/sh\npython scripts/secret_scan.py --staged\n", encoding="utf-8")
+
+    clean_file = tmp_path / "hello.txt"
+    clean_file.write_text("Hello world clean file\n", encoding="utf-8")
+
+    subprocess.run(["git", "add", "."], cwd=tmp_path, check=True, capture_output=True)
+
+    fails, infos = check_21_secret_leak_guard(str(tmp_path))
+    assert len(fails) == 0
+    assert any("8 組錨點完整" in i for i in infos)
+    assert any("pre-commit 存在且呼叫" in i for i in infos)
+    assert any("零機敏特徵命中" in i for i in infos)
+
+
+def test_check_21_tracked_secret_fail_and_no_secret_in_output(tmp_path):
+    import subprocess
+    subprocess.run(["git", "init"], cwd=tmp_path, check=True, capture_output=True)
+
+    rules_dir = tmp_path / ".agents" / "rules"
+    rules_dir.mkdir(parents=True)
+    rule_file = rules_dir / "secret-output-safety.md"
+    rule_file.write_text("\n".join([f"SECRET-{i}" for i in range(1, 9)]), encoding="utf-8")
+
+    hook_dir = tmp_path / ".githooks"
+    hook_dir.mkdir(parents=True)
+    hook_file = hook_dir / "pre-commit"
+    hook_file.write_text("#!/bin/sh\npython scripts/secret_scan.py --staged\n", encoding="utf-8")
+
+    prefix = "".join(["g", "h", "p", "_"])
+    raw_synthetic_secret = prefix + "9" * 36
+    secret_file = tmp_path / "leak.txt"
+    secret_file.write_text(f"leaked_token = {raw_synthetic_secret}\n", encoding="utf-8")
+
+    subprocess.run(["git", "add", "."], cwd=tmp_path, check=True, capture_output=True)
+
+    fails, infos = check_21_secret_leak_guard(str(tmp_path))
+    assert len(fails) >= 1
+    assert any("SECRET_SCAN BLOCK" in f for f in fails)
+    assert not any(raw_synthetic_secret in f for f in fails)

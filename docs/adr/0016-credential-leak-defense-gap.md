@@ -71,9 +71,8 @@ pre-commit hook，無法被「忘記使用」。
 
 ## Consequences
 
-- HH.AI_v2 目前**尚未建立** pre-commit hook。在建立之前，憑證防護
-  完全依賴人工審查與 Agent 的主動判斷，與舊系統的狀態相同。
-  這是已知的缺口，應在 runtime 層遷移時一併補上。
+- ADR 採納時（2026-08-26），專案尚未建立 pre-commit secret guard。在建立之前，憑證防護
+  完全依賴人工審查與 Agent 的主動判斷，為已知安全缺口。
 - 舊專案的 `nlm_cookies.txt` 已推送至公開 GitHub，該 Google session
   憑證應視為已洩漏。使用者已知悉，並規劃於重構完成後統一更換所有金鑰。
 - 本 ADR 記錄的「能力存在但觸發時機錯位」模式，不限於資安。
@@ -87,3 +86,13 @@ pre-commit hook，無法被「忘記使用」。
 Decision §4 要求 `SOP_14` 觸發條件新增「版控操作前」一條，已於本日落實，
 見 `SOP/SOP_14_Rigorous_Verification_and_Audit_Protocol.md` §0。
 §1 至 §3 的規範仍未落地（pre-commit hook 尚未建立），維持原狀。
+
+## 2026-09-18 TG-MVP-06 候選實作紀錄
+
+在 E-03 架構切片 TG-MVP-06（B-98 Secret/Credential Hardening）中，進行以下工程落實候選實作：
+- **Decision §1（自動觸發 Pre-commit Hook）**：於 `.githooks/pre-commit` 建立追蹤之自動化 Hook，並由 `scripts/install_git_hooks.py` 管理本地 `core.hooksPath` 綁定，杜絕手動遺漏。
+- **Decision §2（全暫存區檔案掃描）**：Hook 呼叫 `scripts/secret_scan.py --staged`，直接自 Git index 讀取 prospective blobs，不以副檔名過濾，全面涵蓋所有暫存檔案。
+- **Decision §3（憑證特徵與敏感檔名偵測）**：實作 GitHub PAT、Notion Token、Telegram Bot Token、Google Session Cookie、Private Key、通用 API Key/Secret 賦值與敏感檔名守衛（`*cookies*`、`mcp_config*.json`、`.env*`、`credentials*.json`、`id_rsa` 等），且掃描輸出嚴格遵守零機敏洩漏契約。
+- **Decision §4（SOP_14 觸發條件）**：已於 2026-09-01 落實於 `SOP/SOP_14_Rigorous_Verification_and_Audit_Protocol.md` §0。
+
+*生命週期與權威依據說明*：正式狀態權威由 `docs/TASKBOARD.md` 與 `docs/AUDIT-LOG.md` 管理；本候選變更未經 External Macro PASS 前，不得宣告 ADR-0016 安全缺口已完全閉合或結案。

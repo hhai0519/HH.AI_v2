@@ -1,0 +1,21 @@
+#!/usr/bin/env sh
+# .githooks/pre-commit
+#
+# ADR-0016 / TG-MVP-06: Pre-commit hook for automated staged secret scanning.
+# Purpose: Execute secret_scan.py on all staged prospective commit files.
+
+if command -v python3 >/dev/null 2>&1; then
+    PYTHON_BIN="python3"
+else
+    PYTHON_BIN="python"
+fi
+
+$PYTHON_BIN scripts/secret_scan.py --staged
+RC=$?
+
+if [ $RC -ne 0 ]; then
+    echo "PRE-COMMIT BLOCK: Secret scanning detected potential credential leak." >&2
+    exit $RC
+fi
+
+exit 0

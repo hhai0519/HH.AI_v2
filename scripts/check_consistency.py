@@ -22,6 +22,7 @@
   CHECK 18 — audited-* tag 名實一致
   CHECK 19 — ADR-0013 §2C UTF-8 BOM 污染偵測
   CHECK 20 — Markdown 表格連續性
+  CHECK 21 — 機密防護與輸出安全守衛 (Secret Leak Guard)
 
 本腳本的檢查項來自 2026-08-29 的一次全庫實測掃描，每一項都曾實際命中過真實缺陷，不是憑空設計。
 新增檢查項時，必須先確認該檢查在當前 repo 的誤報率，誤報多的檢查會讓人習慣忽略輸出。
@@ -49,7 +50,7 @@ def run_checks(argv=None):
     as_if_committed = "--as-if-committed" in argv
     if as_if_committed:
         print("[MODE] 啟用 --as-if-committed 本地 commit 拓撲預演模式")
-    total_checks = 20
+    total_checks = 21
     passed = 0
     failed = 0
     
@@ -411,6 +412,23 @@ def run_checks(argv=None):
         for fail in c20_fails:
             print(f"    {fail}")
         failed += 1
+
+    # ---------------------------------------------------------
+    # CHECK 21: 機密防護與輸出安全守衛
+    # ---------------------------------------------------------
+    print("\nCHECK 21: 機密防護與輸出安全守衛")
+    c21_fails, c21_infos = check_21_secret_leak_guard(repo_root)
+    for info in c21_infos:
+        print(f"  [INFO] {info}")
+    if len(c21_fails) == 0:
+        print("  [PASS] 0 命中")
+        passed += 1
+    else:
+        print(f"  [FAIL] {len(c21_fails)} 命中")
+        for fail in c21_fails:
+            print(f"    {fail}")
+        failed += 1
+
     # 總結
     # ---------------------------------------------------------
     print(f"\n========================================")
@@ -2162,6 +2180,65 @@ def check_20_markdown_table_continuity(root_dir=None):
                     fails.append(f"{rel_fp}:0  檔案讀取失敗: {e}")
     infos.append(f"掃描 Markdown 檔案共 {scanned} 個")
     return fails, infos
+
+
+def check_21_secret_leak_guard(root_dir=None):
+    """CHECK 21 — 機密防護與輸出安全守衛 (Secret Leak Guard)。"""
+    if root_dir is None:
+        root_dir = repo_root
+    fails = []
+    infos = []
+
+    # A & B: 驗證 .agents/rules/secret-output-safety.md 存在且包含 SECRET-1 至 SECRET-8 錨點
+    rule_path = os.path.join(root_dir, ".agents", "rules", "secret-output-safety.md")
+    if not os.path.exists(rule_path):
+        fails.append(".agents/rules/secret-output-safety.md:0  工作區機敏安全守衛規範檔案不存在")
+    else:
+        try:
+            with open(rule_path, "r", encoding="utf-8") as f:
+                rule_text = f.read()
+            anchors = [f"SECRET-{i}" for i in range(1, 9)]
+            missing = [a for a in anchors if a not in rule_text]
+            if missing:
+                fails.append(f".agents/rules/secret-output-safety.md:0  缺少必要錨點: {', '.join(missing)}")
+            else:
+                infos.append("工作區機敏規範 .agents/rules/secret-output-safety.md 存在且 8 組錨點完整")
+        except Exception as e:
+            fails.append(f".agents/rules/secret-output-safety.md:0  讀取失敗: {e}")
+
+    # C, D, E: 驗證 .githooks/pre-commit 存在、呼叫 scripts/secret_scan.py --staged 且無 bypass
+    hook_path = os.path.join(root_dir, ".githooks", "pre-commit")
+    if not os.path.exists(hook_path):
+        fails.append(".githooks/pre-commit:0  追蹤之 pre-commit hook 檔案不存在")
+    else:
+        try:
+            with open(hook_path, "r", encoding="utf-8") as f:
+                hook_text = f.read()
+            if "scripts/secret_scan.py --staged" not in hook_text:
+                fails.append(".githooks/pre-commit:0  Hook 未呼叫 scripts/secret_scan.py --staged")
+            if "--no-verify" in hook_text:
+                fails.append(".githooks/pre-commit:0  Hook 包含禁止之 --no-verify 標記")
+            infos.append("Git hook .githooks/pre-commit 存在且呼叫 staged secret scanner")
+        except Exception as e:
+            fails.append(f".githooks/pre-commit:0  讀取失敗: {e}")
+
+    # F & G: 執行 secret_scan tracked-mode 邏輯，確認零 findings，且 failure 訊息不得含 raw secret
+    try:
+        scripts_dir = os.path.join(root_dir, "scripts")
+        if scripts_dir not in sys.path:
+            sys.path.insert(0, scripts_dir)
+        import secret_scan
+        findings = secret_scan.run_tracked_scan(root_dir)
+        if findings:
+            for det_id, p, line_no in findings:
+                fails.append(f"{p}:{line_no}  [SECRET_SCAN BLOCK] 偵測到疑似機敏資訊或禁止檔案 (detector={det_id})")
+        else:
+            infos.append("全庫 Tracked 檔案機密掃描通過，零機敏特徵命中")
+    except Exception as e:
+        fails.append(f"scripts/secret_scan.py:0  Tracked 機敏掃描執行失敗: {e}")
+
+    return fails, infos
+
 
 if __name__ == "__main__":
     run_checks()

@@ -213,6 +213,25 @@
 前四類虛構的是檔案內容、行數與上下文行，會在審計官 clone 核對時被抓到；
 **動作狀態虛構若不主動查 `git log` 就看不見**。
 
+## 2.4 提交前機密檢查與 Git Hook 守衛規範 (Secret Commit Guard & Hook Protocol)
+
+所有 Agent 在執行 `git commit` 前，必須落實機密資訊提交前防護：
+1. **禁止繞過 Hook 驗證**：嚴禁使用 `git commit --no-verify`，嚴禁暫時移除或繞過 Hook，嚴禁因掃描報錯而擅自弱化偵測器。
+2. **Hook 安裝狀態查驗**：提交前必須確保本地 Git hook 處於啟用狀態：
+   ```bash
+   python scripts/install_git_hooks.py --check
+   ```
+   若未啟用，必須先執行 `python scripts/install_git_hooks.py --install`。
+3. **暫存區機密掃描 (Mandatory Staged Scan)**：提交前必須執行全暫存區掃描：
+   ```bash
+   python scripts/secret_scan.py --staged
+   ```
+   若掃描發現任何機敏特徵（Fail-Closed），必須立即停止提交並排查。
+4. **掃描輸出安全紀律**：
+   - 掃描器與執行者回報中，**絕對不得**印出或記錄比對到的原始機敏數值（Raw Matched Secret Value）或上下文整行文字。
+   - 違規回報僅允許記錄：偵測器 ID（Detector ID）、檔案路徑（Path）與行號（Line Number）。
+5. **正常提交自動執行**：直接進行 `git commit` 時，必須讓追蹤中的 `.githooks/pre-commit` 自動觸發並執行上述檢查，未經 Hook 驗證之提交不得宣告成功。
+
 ## 2.5 遠端健康查證與 GitHub Actions 閉環規範 (Remote Health Verification)
 
 所有 Agent 在推送到遠端（push）後，必須落實遠端健康查證閉環：

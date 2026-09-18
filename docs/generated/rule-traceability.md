@@ -14,6 +14,7 @@
 - `.agents/rules/powershell-encoding-protocol.md`
 - `.agents/rules/prompt-preflight.md`
 - `.agents/rules/role-boundaries.md`
+- `.agents/rules/secret-output-safety.md`
 - `.agents/rules/skill-engineering-guardrails.md`
 - `.agents/rules/skills-architecture.md`
 - `.claude/rules/auditor-protocol.md`
@@ -52,13 +53,13 @@
 | .agents/rules/git-and-reporting.md | 188 | ## 2.3 [已退役] commit 與 push 的狀態，早期以指令輸出為準 | SECTION | §2.5 | .agents/rules/git-and-reporting.md#§2.5 | RESOLVED |
 | .agents/rules/git-and-reporting.md | 188 | ## 2.3 [已退役] commit 與 push 的狀態，早期以指令輸出為準 | TASK | B-36 | docs/TASKBOARD.md | RESOLVED |
 | .agents/rules/git-and-reporting.md | 209 | ## 2.3 [已退役] commit 與 push 的狀態，早期以指令輸出為準 | SECTION | §5.1 | docs/refactor-backlog.md#§5.1 | RESOLVED |
-| .agents/rules/git-and-reporting.md | 240 | ## 3. 查證紀律 | FILE | `skills/agents/README.md` | skills/agents/README.md | RESOLVED |
-| .agents/rules/git-and-reporting.md | 252 | ## 3. 查證紀律 | FILE | `docs/HANDOVER.md` | docs/HANDOVER.md | RESOLVED |
-| .agents/rules/git-and-reporting.md | 253 | ## 3. 查證紀律 | FILE | `docs/archive/handover/HANDOVER-pre-router-568209e.md` | docs/archive/handover/HANDOVER-pre-router-568209e.md | RESOLVED |
-| .agents/rules/git-and-reporting.md | 253 | ## 3. 查證紀律 | SECTION | §10.4 | docs/archive/handover/HANDOVER-pre-router-568209e.md#§10.4 | RESOLVED |
-| .agents/rules/git-and-reporting.md | 253 | ## 3. 查證紀律 | SECTION | §11 | docs/archive/handover/HANDOVER-pre-router-568209e.md#§11 | RESOLVED |
-| .agents/rules/git-and-reporting.md | 254 | ## 3. 查證紀律 | FILE | `docs/HANDOVER.md` | docs/HANDOVER.md | RESOLVED |
-| .agents/rules/git-and-reporting.md | 256 | ## 3. 查證紀律 | FILE | `PRINCIPLES.md` | PRINCIPLES.md | RESOLVED |
+| .agents/rules/git-and-reporting.md | 259 | ## 3. 查證紀律 | FILE | `skills/agents/README.md` | skills/agents/README.md | RESOLVED |
+| .agents/rules/git-and-reporting.md | 271 | ## 3. 查證紀律 | FILE | `docs/HANDOVER.md` | docs/HANDOVER.md | RESOLVED |
+| .agents/rules/git-and-reporting.md | 272 | ## 3. 查證紀律 | FILE | `docs/archive/handover/HANDOVER-pre-router-568209e.md` | docs/archive/handover/HANDOVER-pre-router-568209e.md | RESOLVED |
+| .agents/rules/git-and-reporting.md | 272 | ## 3. 查證紀律 | SECTION | §10.4 | docs/archive/handover/HANDOVER-pre-router-568209e.md#§10.4 | RESOLVED |
+| .agents/rules/git-and-reporting.md | 272 | ## 3. 查證紀律 | SECTION | §11 | docs/archive/handover/HANDOVER-pre-router-568209e.md#§11 | RESOLVED |
+| .agents/rules/git-and-reporting.md | 273 | ## 3. 查證紀律 | FILE | `docs/HANDOVER.md` | docs/HANDOVER.md | RESOLVED |
+| .agents/rules/git-and-reporting.md | 275 | ## 3. 查證紀律 | FILE | `PRINCIPLES.md` | PRINCIPLES.md | RESOLVED |
 | .agents/rules/powershell-encoding-protocol.md | 48 | ## 3. PowerShell 強制 UTF-8 宣告 (PowerShell UTF-8 Lock) | FILE | `.agents/rules/git-and-reporting.md` | .agents/rules/git-and-reporting.md | RESOLVED |
 | .agents/rules/powershell-encoding-protocol.md | 61 | ## 5. 命令列參數與多行文字傳遞協定 (Parameter Passing & Payload Protocol) | ADR | ADR-0010 | docs/adr/0010-powershell-parameter-passing-pitfalls.md | RESOLVED |
 | .agents/rules/prompt-preflight.md | 9 | ## 1. 目的 | ADR | docs/adr/0007-macro-auditor-role.md | docs/adr/0007-macro-auditor-role.md | RESOLVED |
@@ -118,6 +119,18 @@
 | .agents/rules/role-boundaries.md | 172 | ## 7. 什麼時候該停下來回報，什麼時候該自己處理 | FILE | `docs/TASKBOARD.md` | docs/TASKBOARD.md | RESOLVED |
 | .agents/rules/role-boundaries.md | 172 | ## 7. 什麼時候該停下來回報，什麼時候該自己處理 | TASK | B-91 | docs/TASKBOARD.md | RESOLVED |
 | .agents/rules/role-boundaries.md | 176 | ## 7. 什麼時候該停下來回報，什麼時候該自己處理 | CHECK | CHECK 17 | scripts/check_consistency.py | RESOLVED |
+| .agents/rules/secret-output-safety.md | 6 | # 機敏資訊與輸出安全守衛規則 (Secret Output Safety Guardrails) | ADR | docs/adr/0016-credential-leak-defense-gap.md | docs/adr/0016-credential-leak-defense-gap.md | RESOLVED |
+| .agents/rules/secret-output-safety.md | 6 | # 機敏資訊與輸出安全守衛規則 (Secret Output Safety Guardrails) | TASK | B-98 | docs/TASKBOARD.md | RESOLVED |
+| .agents/rules/secret-output-safety.md | 39 | ## SECRET-2 — 僅限存在性探測 (Presence Only) | FILE | `scripts/secret_presence.py` | scripts/secret_presence.py | RESOLVED |
+| .agents/rules/secret-output-safety.md | 48 | ## SECRET-3 — 禁止輸出之表面 (Forbidden Output Surfaces) | FILE | `docs/EXEC-LOG.md` | docs/EXEC-LOG.md | RESOLVED |
+| .agents/rules/secret-output-safety.md | 49 | ## SECRET-3 — 禁止輸出之表面 (Forbidden Output Surfaces) | FILE | `docs/AUDIT-LOG.md` | docs/AUDIT-LOG.md | RESOLVED |
+| .agents/rules/secret-output-safety.md | 50 | ## SECRET-3 — 禁止輸出之表面 (Forbidden Output Surfaces) | FILE | `docs/TASKBOARD.md` | docs/TASKBOARD.md | RESOLVED |
+| .agents/rules/secret-output-safety.md | 50 | ## SECRET-3 — 禁止輸出之表面 (Forbidden Output Surfaces) | FILE | `docs/refactor-backlog.md` | docs/refactor-backlog.md | RESOLVED |
+| .agents/rules/secret-output-safety.md | 79 | ## SECRET-5 — 排錯與除錯路徑 (Troubleshooting Path) | FILE | `scripts/secret_presence.py` | scripts/secret_presence.py | RESOLVED |
+| .agents/rules/secret-output-safety.md | 87 | ## SECRET-6 — 儲存隔離邊界 (Storage Separation) | ADR | ADR-0022 | docs/adr/0022-channel-gateway-architecture.md | RESOLVED |
+| .agents/rules/secret-output-safety.md | 88 | ## SECRET-6 — 儲存隔離邊界 (Storage Separation) | ADR | ADR-0022 | docs/adr/0022-channel-gateway-architecture.md | RESOLVED |
+| .agents/rules/secret-output-safety.md | 89 | ## SECRET-6 — 儲存隔離邊界 (Storage Separation) | TASK | B-101 | docs/TASKBOARD.md | RESOLVED |
+| .agents/rules/secret-output-safety.md | 98 | ## SECRET-7 — 測試與持續整合規範 (Tests & CI Safety) | FILE | `scripts/verify_all.py` | scripts/verify_all.py | RESOLVED |
 | .agents/rules/skill-engineering-guardrails.md | 20 | ## 2. 嚴格命名空間映射 (Strict Namespace Binding) | FILE | `scripts/validate_skills.py` | scripts/validate_skills.py | RESOLVED |
 | .agents/rules/skill-engineering-guardrails.md | 43 | ### 情況 A：刪除「整個技能」 (停用/下架) | FILE | `README.md` | README.md | RESOLVED |
 | .agents/rules/skill-engineering-guardrails.md | 44 | ### 情況 A：刪除「整個技能」 (停用/下架) | FILE | `skills/deprecated/README.md` | skills/deprecated/README.md | RESOLVED |

@@ -31,6 +31,14 @@ temp_mcp.json
 .env.local
 .env.*.local
 
+# 外部憑證與金鑰檔案防護（ADR-0016、TG-MVP-06）
+# 注意：.gitignore 是防止意外加入的第一層篩選，commit 時強制由 scripts/secret_scan.py 執行內容與路徑掃描
+credentials*.json
+id_rsa
+id_ed25519
+*.p12
+*.pfx
+
 # Agent 暫存輸出（實際發生過寫進 repo 根目錄的案例）
 # 同樣以 / 前綴限定在根目錄，理由見上方說明。
 /scratch_out.txt
