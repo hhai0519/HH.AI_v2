@@ -64,8 +64,11 @@ ADR-0022 仍保留為 Channel Gateway 之歷史與總體架構權威（Historica
 
 ### 7. 待決議事項現況 (Pending Decisions: R2 & R3)
 
-- **R2（回覆結果不明時的處理 / Reply Result Uncertainty Handling）**：維持 **待使用者裁決（USER DECISION PENDING）**。本 ADR 不代為決定；其決策時點在 future outbound/outbox Wave 之前由使用者裁決。原研究文件曾提出之建議方向（如文字訊息至少送一次並標註可能重複、檔案訊息待確認後重新授權）僅屬參考指引，不得提升為已接受之決策。
-- **R3（本機 API 形式 / Local API Form）**：維持 **待使用者裁決（USER DECISION PENDING）**。候選架構為 Windows 具名管道（Named Pipe）與 Loopback API（搭配本機 Token、Host 白名單與拒絕 Origin 標頭）。T1 Spike 之 V7 項目僅證明同名具名管道二次綁定引發 `EADDRINUSE`，但因 Windows 無特殊權限環境下 ACL 安全檢查與遠端管道連線行為皆為 `NOT_TESTABLE`，證據尚不足以核准具名管道作為最終方案。
+> **架構更新宣告**：本節原待決議事項（R2 & R3）已由使用者正式裁決，並由 **ADR-0025（Outbound Delivery Reliability and Loopback Local API Security）** 正式承接與取代（`ADR-0025 supersedes ADR-0023 §7` 對 R2/R3「仍待使用者裁決」之狀態描述）。本處保留歷史決策脈絡，最新權威規範以 ADR-0025 為準。
+
+- **R2（回覆結果不明時的處理 / Reply Result Uncertainty Handling）**：使用者已正式裁決，規範已於 **ADR-0025** 正式落地（`USER DECIDED / CANONICAL ARCHITECTURE LANDED IN ADR-0025 / NOT IMPLEMENTED`）。採能力感知安全重試（Capability-Aware Safe Retry）與持久化 SQLite Outbox；嚴禁無差別盲目重送（NO BLIND RESEND）。
+- **R2-3（配送不確定性之維運體驗 / Delivery Uncertainty Notification）**：使用者已正式裁決採 **Option B**，規範已於 **ADR-0025** 正式落地（`USER DECIDED OPTION B / CANONICAL DETAILS IN ADR-0025`）。由 Gateway 持久化 UNCERTAIN 狀態供 Agent 於 IDE 檢視，嚴禁向使用者手機發送干擾推播。
+- **R3（本機 API 形式 / Local API Form）**：使用者已正式裁決，規範已於 **ADR-0025** 正式落地（`USER DECIDED / CANONICAL ARCHITECTURE LANDED IN ADR-0025 / NOT IMPLEMENTED`）。採本機迴路 API（Loopback HTTP v1，僅監聽字面值 `127.0.0.1`，具備 HMAC 雙向認證、authenticated hello 握手與同連線會話綁定）；Windows 具名管道（Named Pipe）方案正式延後／未獲選（DEFERRED / NOT SELECTED）。
 
 ## Consequences
 

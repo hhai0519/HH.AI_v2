@@ -2825,7 +2825,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 5.1 上一批狀態
 
-上次核對通過的 HEAD：1f98818af8ed38df2b3401685deee159e11a2080
+上次核對通過的 HEAD：93a316f93dadf6e5a1199dc7da0542016742112c
 
 - `23af193`（執行者前置檢查 ＋ 回滾程序 ＋ `AUDIT-LOG.md` ＋ 四缺口修正）
   已於 2026-09-02 由審計官核對通過：6 檔異動（含 2 個新檔）、零夾帶、
@@ -3071,8 +3071,12 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - B-01 ADR-0002／0004／0010 分層搬移及 Active-Contract 語意修復已完成（CLOSED / MACRO PASS）。
   - E-03 Runtime 執行層架構推進（IN PROGRESS）：現行詳細生命週期、架構決策與各切片進度之單一事實來源由 docs/TASKBOARD.md 之「E-03 ROADMAP」統一維護；交接區不保留第二份長狀態副本。各項相依前置邊界（B-98 / B-30 / B-33 / F-05 等）與交接不變量（handoff invariants）以 TASKBOARD 為準。
   - C-06 使用者已裁決採 Option B（USER DECIDED OPTION B / G2 LANDING PENDING，排定於 TG-MVP-01B / G2 落地）。
-- RECON-01 / TG-MVP-01A 歷史待辦需求機械對帳：已完成（ACCEPTED / CLOSED，accepted checkpoint = 1f98818af8ed38df2b3401685deee159e11a2080）。
-- TG-MVP-02 入站事件身份識別與游標語意 ADR：進行中（IN PROGRESS / PENDING EXTERNAL MACRO AUDIT，產出 docs/adr/0024-inbound-identity-cursor-semantics.md）。
+- RECON-01 / TG-MVP-01A 歷史待辦需求機械對帳：已完成（ACCEPTED / CLOSED）。
+- TG-MVP-02 入站事件身份識別與游標語意 ADR：已完成（ACCEPTED / CLOSED，產出 docs/adr/0024-inbound-identity-cursor-semantics.md，accepted checkpoint = 93a316f93dadf6e5a1199dc7da0542016742112c）。
+- TG-MVP-03 出站可靠度與本機 API 安全架構 ADR：進行中（IN PROGRESS / PENDING EXTERNAL MACRO AUDIT，產出 docs/adr/0025-outbound-reliability-loopback-api-security.md）。
+  - R2 出站能力感知安全重試與持久化 SQLite Outbox 架構確立（USER DECIDED / ADR-0025 LANDED / NOT IMPLEMENTED）。
+  - R2-3 不確定狀態處理採選項 B（USER DECIDED OPTION B / ADR-0025 LANDED）。
+  - R3 僅綁定 127.0.0.1 之 Loopback HTTP v1 與 HMAC-SHA-256 雙向認證架構確立（USER DECIDED / ADR-0025 LANDED / NOT IMPLEMENTED；Windows 具名管道正式延後未獲選）。
   - B-28 / B-29 上游 trigger 重新評估完成，無 B-01 blocker，維持 DEFERRED_BY_USER / POST_B01。
   - B-54 保持待辦（POST_B01 / NONBLOCKING，SOP_12 機器專屬路徑 concrete example 已登錄）。
   - B-98 / B-75 保持待辦、零實作 (POST_B01 / NONBLOCKING / NOT IMPLEMENTED)。
@@ -4119,3 +4123,29 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - 看板頂部下一切片（NEXT_SLICE）：TG-MVP-03（R2/R3 Architecture ADR）。
   - 零生產程式碼異動，零既有 ADR 修改，零規則修改，零 MISSION 修改。
   - 本候選提交後等待 External Macro Reviewer（GPT 代理審查官（使用者授權））獨立審核，不得 self-audit。
+
+104. **TG-MVP-02 外部宏觀審計正式通過同步與 TG-MVP-03 R2/R3 架構決策 ADR 落地（TG-MVP-03 R2/R3 Architecture ADR Landing）**（2026-09-18）
+- **TG-MVP-02 外部宏觀審計正式通過裁決同步（External Macro PASS Sync）**：
+  - 目標候選：`93a316f93dadf6e5a1199dc7da0542016742112c`（TG-MVP-02 入站事件身份識別與游標語意 ADR 候選）。
+  - 審查範圍：`1f98818af8ed38df2b3401685deee159e11a2080..93a316f93dadf6e5a1199dc7da0542016742112c`（Parent: `1f98818af8ed38df2b3401685deee159e11a2080`，共 1 commit）。
+  - 審查人員：GPT 代理審查官（使用者授權）。
+  - A1 資格查證：採 A1 = EQUIVALENT（GitHub API + Executor clone cross-check）成立。
+  - 遠端機器事實：GitHub Actions Run `35304018843`（completed / success，verify = success, gateway-windows = success）。
+  - 審計發現處置：FINDING_DISPOSITION = NONE。
+  - 判定結論：MACHINE / CI = PASS；MACRO AUDIT = PASS；ACCEPT STATUS = ACCEPT ALL；TG-MVP-02 = ACCEPTED。
+  - 全新 accepted checkpoint 正式推進確立為：`93a316f93dadf6e5a1199dc7da0542016742112c`。
+- **TG-MVP-03 架構決策落地（ADR-0025 Outbound Delivery Reliability and Loopback Local API Security）**：
+  - 建立規範文件：`docs/adr/0025-outbound-reliability-loopback-api-security.md`（Status: Accepted）。
+  - 修正歷史陳舊描述：`docs/adr/0023-channel-gateway-state-store-sqlite.md` §7 正式由 ADR-0025 取代其待決議描述，確立 R2 與 R3 已獲使用者裁決並落地為 ADR-0025 架構規範。
+  - R2 核心架構：能力感知安全重試（Capability-Aware Safe Retry）結合持久化 SQLite Outbox；確立核心不變量「禁止盲目重送（NO BLIND RESEND）」；分層獨立內部 client_request_id / SHA-256 canonical payload hash 與平台重試鍵；同 client_request_id 衝突請求嚴格 Fail-Closed；最小狀態模型確立 5 大概念狀態（QUEUED, IN_FLIGHT, ACCEPTED_BY_PLATFORM, UNCERTAIN, FAILED_TERMINAL）；ACCEPTED_BY_PLATFORM 絕不偽稱 recipient-delivered；IN_FLIGHT 崩潰復原缺乏安全冪等憑證一律轉 UNCERTAIN；LINE 官方 retry-key 契約（僅限 push/multicast/narrowcast/broadcast 且具 24 小時時效，reply 端點帶入會回 HTTP 400 嚴禁使用）；Telegram HTTP Bot API sendMessage 無官方客戶端冪等鍵，傳輸結果不明時轉 UNCERTAIN 禁盲目重送。
+  - R2-3 決策落地：正式採納 Option B，UNCERTAIN 狀態僅由 Gateway 持久化並於 IDE 檢視或接管時呈現，不向手機發送不確定推播通知。
+  - R3 核心架構：Loopback HTTP v1 僅嚴格綁定 `127.0.0.1`，Windows 具名管道正式延後未獲選；明確 Node `exclusive: true` 不等同 Winsock SO_EXCLUSIVEADDRUSE 安全保證，通訊埠佔用一律 Fail-Closed 禁止自動 fallback 下一 port；核心安全邊界由 HMAC-SHA-256 雙向認證守護；金鑰絕不入庫、不進日誌與對話；請求認證綁定 method/path/timestamp/nonce/body-hash/session；實作 `/v1/hello` 握手與同 TCP 連線會話綁定，斷線重連強制重新握手；伺服器回應強制帶入 HMAC 抵禦偽冒伺服器；嚴格 Host 與 Origin 檢查、方法與路徑白名單、請求大小限制與常數時間比對。
+  - 前置依賴擴充：TG-MVP-11 Local API 實作之前置相依正式擴充納入 TG-MVP-07A（D24 設定檔擴充 Gateway 通訊埠）。
+  - 確立 24 大架構驗收金絲雀（R2-A 至 R2-L，R3-A 至 R3-L）。
+- **架構邊界與生命週期不變量**：
+  - 零生產程式碼異動（零 Outbox 實作、零 SQLite migration、零 outbound worker、零 Telegram/LINE adapter、零 retry runtime、零 Local API 伺服器、零 HTTP listener、零 HMAC 實作、零金鑰儲存、零 nonce store、零 Named Pipe、零 workflow/GitHub 閘門變更）。
+  - C-07 與 C-08 維持待使用者裁決（UNDECIDED）。
+  - TG-MVP-02 已完成（ACCEPTED / CLOSED）。
+  - TG-MVP-03 進行中（IN PROGRESS / PENDING EXTERNAL MACRO AUDIT）。
+  - 看板頂部下一切片（NEXT_SLICE）：TG-MVP-04（F1 Reply Authorization Identity Repair）。
+  - 本候選提交後等待 External Macro Reviewer（GPT 代理審查官（使用者授權））獨立審核，執行者不得 self-audit。

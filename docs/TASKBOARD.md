@@ -14,9 +14,9 @@
 
 **NEXT_WORK**：E-03
 
-**NEXT_SLICE**：TG-MVP-03（R2/R3 Architecture ADR）
+**NEXT_SLICE**：TG-MVP-04（F1 Reply Authorization Identity Repair）
 
-**最後更新**：2026-09-18，ACTIVE_MACRO_AUDITOR = GPT 代理審查官（使用者授權）；RECON-01 / TG-MVP-01A 已獲 External Macro PASS / ACCEPTED；TG-MVP-02 架構切片進行中；E-03 詳細生命週期權威見下方 E-03 Roadmap。
+**最後更新**：2026-09-18，ACTIVE_MACRO_AUDITOR = GPT 代理審查官（使用者授權）；TG-MVP-02 已獲 External Macro PASS / ACCEPTED；TG-MVP-03 架構切片進行中；E-03 詳細生命週期權威見下方 E-03 Roadmap。
 
 ---
 
@@ -226,9 +226,9 @@ A 節目前狀態以本表各列與 `NEXT_WORK` 之 current repo truth 為準；
 > 2. 若存在（如當前 `TG-MVP-01A`）：不得執行頂部 `NEXT_SLICE`，必須等待該 active slice 完成 External Macro closure；
 > 3. 若不存在進行中切片：始得依據看板頂部 `NEXT_SLICE` 指標執行下一個切片。
 > **架構決策狀態**：
-> - **R2（安全重試 ＋ 持久化 Outbox）**：`USER DECIDED / REPO ARCHITECTURE LANDING PENDING / NOT IMPLEMENTED`。
-> - **R3（Loopback HTTP v1 127.0.0.1 HMAC 授權）**：`USER DECIDED / REPO ARCHITECTURE LANDING PENDING / NOT IMPLEMENTED`（Named Pipe 未獲選/延後）。
-> - **R2-3（配送不確定通知）**：`USER DECIDED OPTION B`（Gateway 持久化，Agent 於 IDE 查看，手機不推播）。
+> - **R2（安全重試 ＋ 持久化 Outbox）**：`USER DECIDED / CANONICAL ARCHITECTURE LANDED IN ADR-0025 / NOT IMPLEMENTED`。
+> - **R3（Loopback HTTP v1 127.0.0.1 HMAC 授權）**：`USER DECIDED / CANONICAL ARCHITECTURE LANDED IN ADR-0025 / NOT IMPLEMENTED`（Named Pipe 未獲選/延後）。
+> - **R2-3（配送不確定通知）**：`USER DECIDED OPTION B / ADR-0025 LANDED`（Gateway 持久化，Agent 於 IDE 查看，手機不推播）。
 > - **D-U4（Telegram MVP 邊界）**：僅限文字收發（text in/out）、接管（takeover）、封存（archive）；D17 附件與 D19–D21 外發檔案排除。
 > - **D-U2 / D-U6 / D-U7**：`USER DECIDED / G2 LANDING PENDING`（個人資料不進 repo、分級審查、MISSION 切換定義）。
 
@@ -239,8 +239,8 @@ A 節目前狀態以本表各列與 `NEXT_WORK` 之 current repo truth 為準；
 | TG-MVP-01 | 已完成 | **G1 路線圖真相重整**（G1 Route Truth Reconciliation）：同步 T8B 審查通過、推進 checkpoint 至 a456343、升格重大發現（F1、C1/C2/C3、INCIDENT-CI-04）、記錄使用者裁決（R2/R3/C-06 等）、去重動態狀態字串。 | G1 規格書、D-U4、B-68 | T8B Final Macro PASS (`a45634386d5abff5766c6af8af8f084fd4a15fed`) | commit `0cc4dfc69d7cc7d9e8eebf6e3eceb21e34794534`，Actions Run 35247744577 success，External Macro PASS（T8B & G1 accepted checkpoint = `0cc4dfc69d7cc7d9e8eebf6e3eceb21e34794534`） |
 | TG-MVP-01A | 已完成 | **RECON-01 歷史待辦需求機械對帳與治理收斂**（RECON-01 Historical Pending Requirement Reconciliation）：對帳歷史待辦事項（A–S）、過期架構標記（STALE-1..3）、孤兒需求（ORPHAN-1..4）至權威落點；同步 G1 審核通過裁決與 checkpoint；建立 M-TG-POST-MVP 與橫向殘留傘狀任務；零生產程式碼修改。 | RECON-01 規格書、使用者授權 | TG-MVP-01 | commit 1f98818af8ed38df2b3401685deee159e11a2080，Actions Run 35295573430 success，External Macro PASS / ACCEPT ALL（accepted checkpoint = 1f98818af8ed38df2b3401685deee159e11a2080） |
 | TG-MVP-01B | 待辦 | **G2 權威規則落地**（G2 Authority Landing）：落實使用者已裁決之治理與架構規則，包含 D-U2 個人工作資料邊界、D-U6 風險分級審查規範、D-U7 MISSION Telegram 上線完成定義、C-06 Option B 預防性 GitHub required check gate。本批僅建立 landing point，零規則/workflow/MISSION 異動。 | 使用者裁決 D-U2、D-U6、D-U7、C-06 Option B | TG-MVP-01A (RECON-01) | G2 治理文件與規則落地驗證 |
-| TG-MVP-02 | 進行中 | **入站事件身份識別與游標語意 ADR**（Inbound Identity & Cursor Semantics ADR）：確立 Telegram 與 LINE 之 `platform_msg_id`、`cursor_value`、編輯/收回（edit/unsend）策略與游標比較器規範，確立 C3 權威定義。 | C3 / C1 / C2 設計缺口、ADR-0023 | TG-MVP-01A (RECON-01) | docs/adr/0024-inbound-identity-cursor-semantics.md 建立，等待 External Macro Audit PASS |
-| TG-MVP-03 | 待辦 | **R2/R3 架構決策 ADR 落地**（R2/R3 Architecture ADR）：記錄 R2（Capability-Aware Retry + Durable Outbox）與 R3（Loopback HTTP v1 127.0.0.1 HMAC；Named Pipe 延後；R2-3 Option B IDE 查看）決策。注意：僅 ADR 落地，不含程式碼實作。 | 使用者正式裁決 R2、R3、R2-3、ADR-0022 | TG-MVP-01 (G1) | 新增或更新 R2/R3 ADR 文件 |
+| TG-MVP-02 | 已完成 | **入站事件身份識別與游標語意 ADR**（Inbound Identity & Cursor Semantics ADR）：確立 Telegram 與 LINE 之 `platform_msg_id`、`cursor_value`、編輯/收回（edit/unsend）策略與游標比較器規範，確立 C3 權威定義。 | C3 / C1 / C2 設計缺口、ADR-0023 | TG-MVP-01A (RECON-01) | commit 93a316f93dadf6e5a1199dc7da0542016742112c，Actions Run 35304018843 success，External Macro PASS / ACCEPT ALL（accepted checkpoint = 93a316f93dadf6e5a1199dc7da0542016742112c） |
+| TG-MVP-03 | 進行中 | **R2/R3 架構決策 ADR 落地**（R2/R3 Architecture ADR）：記錄 R2（Capability-Aware Retry + Durable Outbox）與 R3（Loopback HTTP v1 127.0.0.1 HMAC；Named Pipe 延後；R2-3 Option B IDE 查看）決策。注意：僅 ADR 落地，不含程式碼實作。 | 使用者正式裁決 R2、R3、R2-3、ADR-0022 | TG-MVP-01 (G1) | docs/adr/0025-outbound-reliability-loopback-api-security.md 建立，等待 External Macro Audit PASS |
 | TG-MVP-04 | 待辦 | **F1 回覆授權身份鍵修復**（F1 Reply Authorization Identity Repair）：修正 `validateReplyAuthorization()` SQL 查詢，將單純 `channel_id + platform_msg_id` 查找改為納入 `account_id`，對齊 schema v3 `UNIQUE(account_id, platform_msg_id)` 複合鍵，避免合法回覆被誤判 ACCOUNT_MISMATCH。 | F1 Material Finding、schema v3 inbox 定義 | TG-MVP-02 (Identity ADR) | `sqlite-state-repository.js` 修正 + 測試案例驗證多帳號相同 message id 授權正確性 |
 | TG-MVP-05 | 待辦 | **游標與事件身份執行層修復**（Cursor / event identity runtime repair）：依據 C3 ADR 規範實作游標推進與事件比較邏輯，解決 C1（duplicate path 游標行為）與 C2（upsert 無條件覆寫）缺口。 | C1 / C2 / C3、TG-MVP-02 ADR | TG-MVP-02 (Identity ADR) | Generic repository 游標推進單元測試與交易驗證 |
 | TG-MVP-06 | 待辦 | **B-98 憑證與機密強化**（B-98 Secret/Credential Hardening）：在啟用真實 Telegram Bot Token 或 Local API HMAC secret 前，落實金鑰與機密存取安全邊界，防止 token 洩漏。 | 看板 B-98、安全防護原則 | TG-MVP-01 (G1) | 機密管理機制建立，通過安全檢查 |
@@ -250,7 +250,7 @@ A 節目前狀態以本表各列與 `NEXT_WORK` 之 current repo truth 為準；
 | TG-MVP-09 | 待辦 | **T11-main 正式線上備份整合**（T11-main）：保持 repo 既有定義，將 T11A 所驗證之 SQLite online backup primitive 整合進正式運作流程與備份排程。 | T11A 完成證據、SQLite 線上備份規範 | TG-MVP-01 (G1) | 正式備份流程測試通過 |
 | TG-MVP-09A | 待辦 | **狀態資料庫與備份清理衛生規範**（State Database & Backup Hygiene）：實作 SQLite 路徑 repo-external 強制驗證、repo state 檔案 ignore 防護（.gitignore *.sqlite3 等）、遷移備份保留期限（retention）、備份清理（cleanup）、備份隱私與完整性防護，並建立 future node:sqlite 穩定性與 Node 升級守望點。必須在 real Telegram go-live 前完成。 | ORPHAN-1、ORPHAN-2、ORPHAN-4、ADR-0023 | TG-MVP-09, TG-MVP-07A | 資料庫與備份衛生測試通過，ignore 防護到位 |
 | TG-MVP-10 | 待辦 | **Telegram 測試機器人入站適配器**（Telegram Test-Bot inbound adapter）：實作 Telegram 長輪詢（long polling）入站適配器，將 Telegram update 轉換為標準 inbox 訊息並呼叫 `ingestMessage()`。 | ADR-0022、TG-MVP-02 (Identity ADR)、TG-MVP-06 (B-98) | TG-MVP-02, TG-MVP-05, TG-MVP-06 | Test Bot 入站訊息成功持久化至 SQLite inbox，游標正確推進 |
-| TG-MVP-11 | 待辦 | **本機迴路 Local API v1 實作**（Loopback Local API v1）：實作僅限 127.0.0.1 監聽、具備 HMAC 簽章驗證之 HTTP 入口，供本機 Agent 發送出站回覆與查詢狀態。 | 使用者裁決 R3、TG-MVP-03 (R3 ADR)、TG-MVP-06 (B-98)、TG-MVP-04 (F1) | TG-MVP-03, TG-MVP-04, TG-MVP-06 | Local API HTTP 伺服器單元與整合測試，驗證 127.0.0.1 綁定、HMAC 驗證與回覆授權 |
+| TG-MVP-11 | 待辦 | **本機迴路 Local API v1 實作**（Loopback Local API v1）：實作僅限 127.0.0.1 監聽、具備 HMAC 簽章驗證之 HTTP 入口，供本機 Agent 發送出站回覆與查詢狀態。 | 使用者裁決 R3、TG-MVP-03 (R3 ADR)、TG-MVP-06 (B-98)、TG-MVP-04 (F1)、TG-MVP-07A | TG-MVP-03, TG-MVP-04, TG-MVP-06, TG-MVP-07A | Local API HTTP 伺服器單元與整合測試，驗證 127.0.0.1 綁定、HMAC 驗證與回覆授權 |
 | TG-MVP-12 | 待辦 | **持久化 SQLite Outbox 實作**（Durable SQLite Outbox）：實作具備能力感知安全重試（Capability-Aware Safe Retry）之出站佇列，保證出站訊息不遺失，斷線時持久化保存。 | 使用者裁決 R2、TG-MVP-03 (R2 ADR)、TG-MVP-04 (F1) | TG-MVP-03, TG-MVP-04 | Outbox 資料表遷移與出站佇列重試交易測試 |
 | TG-MVP-13 | 待辦 | **Telegram 出站文字發送適配器**（Telegram outbound text delivery）：由 Outbox worker 取出待送文字訊息，透過 Telegram Bot API 送出並標記完成或重試。 | 使用者裁決 D-U4（限文字 text in/out，排除附件與外發檔案）、ADR-0022 | TG-MVP-10, TG-MVP-12 | 測試機器人文字回覆成功送達 Telegram 聊天室 |
 | TG-MVP-14 | 待辦 | **對話封存機制**（D22/D23 conversation archive）：實作對話紀錄之持久化封存，確保歷史對話可供檢索。 | D22, D23, D-U4 | TG-MVP-10, TG-MVP-13 | 對話歷史封存單元測試與檢索測試通過 |
