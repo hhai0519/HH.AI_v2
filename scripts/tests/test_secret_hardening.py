@@ -41,8 +41,10 @@ def test_presence_exact_named_env_present(monkeypatch, capsys):
     captured = capsys.readouterr()
 
     assert rc == 0
-    assert captured.out.strip() == f"{var_name}=PRESENT"
-    # Never expose secret value in stdout or stderr
+    assert captured.out.strip() == "PRESENT"
+    # Never expose variable name or secret value in stdout or stderr
+    assert var_name not in captured.out
+    assert var_name not in captured.err
     assert raw_val not in captured.out
     assert raw_val not in captured.err
 
@@ -55,7 +57,9 @@ def test_presence_absent_env(monkeypatch, capsys):
     captured = capsys.readouterr()
 
     assert rc == 0
-    assert captured.out.strip() == f"{var_name}=ABSENT"
+    assert captured.out.strip() == "ABSENT"
+    assert var_name not in captured.out
+    assert var_name not in captured.err
 
 
 def test_presence_unrelated_env_not_enumerated(monkeypatch, capsys):
@@ -70,10 +74,12 @@ def test_presence_unrelated_env_not_enumerated(monkeypatch, capsys):
     captured = capsys.readouterr()
 
     assert rc == 0
-    assert captured.out.strip() == f"{query_name}=PRESENT"
-    # Unrelated secret must not be logged, mentioned, or dumped
+    assert captured.out.strip() == "PRESENT"
+    # Unrelated secret and query name must not be logged, mentioned, or dumped
+    assert query_name not in captured.out
     assert unrelated_secret_name not in captured.out
     assert unrelated_secret_val not in captured.out
+    assert unrelated_secret_val not in captured.err
 
 
 def test_presence_invalid_env_name_fail_closed(capsys):
@@ -87,6 +93,12 @@ def test_presence_invalid_env_name_fail_closed(capsys):
     for bad_name in invalid_names:
         rc = secret_presence.check_presence([bad_name])
         assert rc == 1
+        captured = capsys.readouterr()
+        if bad_name.strip():
+            assert bad_name not in captured.out
+            assert bad_name not in captured.err
+            assert bad_name.strip() not in captured.out
+            assert bad_name.strip() not in captured.err
 
 
 def test_presence_wildcard_prefix_rejected(capsys):
@@ -94,6 +106,72 @@ def test_presence_wildcard_prefix_rejected(capsys):
     for wc in wildcards:
         rc = secret_presence.check_presence([wc])
         assert rc == 1
+        captured = capsys.readouterr()
+        assert wc not in captured.out
+        assert wc not in captured.err
+
+
+def test_presence_leading_trailing_whitespace_rejected(capsys):
+    ws_names = ["  HHAI_VAR", "HHAI_VAR  ", "  HHAI_VAR  "]
+    for ws_name in ws_names:
+        rc = secret_presence.check_presence([ws_name])
+        assert rc == 1
+        captured = capsys.readouterr()
+        assert "HHAI_VAR" not in captured.out
+        assert "HHAI_VAR" not in captured.err
+
+
+def test_presence_credential_shaped_valid_argument_not_echoed(capsys):
+    # Dynamically construct credential-like token matching ENV_NAME_PATTERN
+    prefix = "".join(["g", "h", "p", "_"])
+    body = "SYNTHETIC" + "1234567890ABCDEF"
+    cred_token = prefix + body
+
+    rc = secret_presence.check_presence([cred_token])
+    captured = capsys.readouterr()
+
+    assert rc == 0
+    assert captured.out.strip() == "ABSENT"
+    # Caller argument must strictly not be echoed
+    assert cred_token not in captured.out
+    assert cred_token not in captured.err
+    assert body not in captured.out
+    assert body not in captured.err
+
+
+def test_presence_credential_shaped_invalid_argument_not_echoed(capsys):
+    # Dynamically construct credential-like token with invalid characters
+    prefix = "".join(["t", "o", "k", "e", "n", ":"])
+    body = "secret_val_12345"
+    cred_token = prefix + body
+
+    rc = secret_presence.check_presence([cred_token])
+    captured = capsys.readouterr()
+
+    assert rc == 1
+    assert cred_token not in captured.out
+    assert cred_token not in captured.err
+    assert body not in captured.out
+    assert body not in captured.err
+
+
+def test_presence_zero_args_fail_closed(capsys):
+    rc = secret_presence.check_presence([])
+    assert rc == 1
+    captured = capsys.readouterr()
+    assert "SECRET_PRESENCE ERROR" in captured.err
+
+
+def test_presence_multiple_args_fail_closed(capsys):
+    arg1 = "VAR_ONE"
+    arg2 = "VAR_TWO"
+    rc = secret_presence.check_presence([arg1, arg2])
+    assert rc == 1
+    captured = capsys.readouterr()
+    assert arg1 not in captured.out
+    assert arg1 not in captured.err
+    assert arg2 not in captured.out
+    assert arg2 not in captured.err
 
 
 def test_presence_source_does_not_enumerate_environ():
@@ -386,7 +464,7 @@ def test_hook_installer_and_execution_lifecycle(tmp_path):
     with open(os.path.join(SCRIPTS_DIR, "install_git_hooks.py"), "rb") as f:
         (scripts_target / "install_git_hooks.py").write_bytes(f.read())
 
-    # A. Initial check must FAIL
+    # A. Initial check must FAIL (hooksPath not set)
     proc_check_init = subprocess.run(
         [sys.executable, "scripts/install_git_hooks.py", "--check"],
         cwd=repo_dir,
@@ -415,13 +493,74 @@ def test_hook_installer_and_execution_lifecycle(tmp_path):
     assert proc_check_post.returncode == 0
     assert "HOOK_CHECK PASS" in proc_check_post.stdout
 
-    # D. Global git config is unchanged
+    # D. Test --check fails when hook file is missing
+    hook_backup = hook_dest.read_bytes()
+    hook_dest.unlink()
+    proc_missing = subprocess.run(
+        [sys.executable, "scripts/install_git_hooks.py", "--check"],
+        cwd=repo_dir,
+        capture_output=True,
+        text=True
+    )
+    assert proc_missing.returncode != 0
+    assert "HOOK_CHECK FAIL" in proc_missing.stderr
+
+    # E. Test --check fails when hook path is a directory rather than regular file
+    hook_dest.mkdir()
+    proc_dir = subprocess.run(
+        [sys.executable, "scripts/install_git_hooks.py", "--check"],
+        cwd=repo_dir,
+        capture_output=True,
+        text=True
+    )
+    assert proc_dir.returncode != 0
+    assert "HOOK_CHECK FAIL" in proc_dir.stderr
+    hook_dest.rmdir()
+
+    # Restore hook file with standard permission
+    hook_dest.write_bytes(hook_backup)
+    try:
+        os.chmod(hook_dest, 0o755)
+    except Exception:
+        pass
+
+    # F. On POSIX, verify non-executable hook fails --check and --install restores it
+    if os.name != 'nt':
+        os.chmod(hook_dest, 0o644)
+        proc_no_x = subprocess.run(
+            [sys.executable, "scripts/install_git_hooks.py", "--check"],
+            cwd=repo_dir,
+            capture_output=True,
+            text=True
+        )
+        assert proc_no_x.returncode != 0
+        assert "HOOK_CHECK FAIL" in proc_no_x.stderr
+
+        # --install restores executable permissions on POSIX
+        proc_reinstall = subprocess.run(
+            [sys.executable, "scripts/install_git_hooks.py", "--install"],
+            cwd=repo_dir,
+            capture_output=True,
+            text=True
+        )
+        assert proc_reinstall.returncode == 0
+        assert "HOOK_INSTALL PASS" in proc_reinstall.stdout
+
+        proc_check_restored = subprocess.run(
+            [sys.executable, "scripts/install_git_hooks.py", "--check"],
+            cwd=repo_dir,
+            capture_output=True,
+            text=True
+        )
+        assert proc_check_restored.returncode == 0
+        assert "HOOK_CHECK PASS" in proc_check_restored.stdout
+
+    # G. Global git config is unchanged
     global_val = subprocess.run(
         ["git", "config", "--global", "--get", "core.hooksPath"],
         capture_output=True,
         text=True
     ).stdout.strip()
-    # It should either be unset or unchanged by this local test
     local_val = subprocess.run(
         ["git", "config", "--local", "--get", "core.hooksPath"],
         cwd=repo_dir,
@@ -430,7 +569,7 @@ def test_hook_installer_and_execution_lifecycle(tmp_path):
     ).stdout.strip()
     assert local_val == ".githooks"
 
-    # E & G. Clean staged commit succeeds via pre-commit hook
+    # H. Clean staged commit succeeds via pre-commit hook
     clean_file = repo_dir / "clean.txt"
     clean_file.write_text("clean commit content\n", encoding="utf-8")
     subprocess.run(["git", "add", "clean.txt"], cwd=repo_dir, check=True, capture_output=True)
@@ -443,7 +582,7 @@ def test_hook_installer_and_execution_lifecycle(tmp_path):
     )
     assert proc_commit_clean.returncode == 0, f"Clean commit failed: {proc_commit_clean.stderr}"
 
-    # F. Staged secret leak causes commit to FAIL via hook
+    # I. Staged secret leak causes commit to FAIL via hook
     prefix = "".join(["g", "h", "p", "_"])
     raw_token = prefix + "F" * 36
     leak_file = repo_dir / "bad.txt"
@@ -458,3 +597,50 @@ def test_hook_installer_and_execution_lifecycle(tmp_path):
     )
     assert proc_commit_leak.returncode != 0, "Commit with secret must be blocked by hook"
     assert "PRE-COMMIT BLOCK" in proc_commit_leak.stderr or "SECRET_SCAN BLOCK" in proc_commit_leak.stdout
+
+
+def test_hook_installer_posix_permission_branches(monkeypatch, tmp_path):
+    repo_dir = tmp_path / "posix_mock_repo"
+    repo_dir.mkdir()
+    githooks_dir = repo_dir / ".githooks"
+    githooks_dir.mkdir()
+    hook_file = githooks_dir / "pre-commit"
+    hook_file.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+
+    monkeypatch.setattr(install_git_hooks, "get_repo_root", lambda: str(repo_dir).replace('\\', '/'))
+    monkeypatch.setattr(install_git_hooks.os, "name", "posix")
+
+    orig_check_output = subprocess.check_output
+
+    def fake_check_output(cmd, **kwargs):
+        if "core.hooksPath" in cmd:
+            return ".githooks\n"
+        return orig_check_output(cmd, **kwargs)
+
+    monkeypatch.setattr(subprocess, "check_output", fake_check_output)
+
+    # 1. When os.access(..., os.X_OK) returns False on POSIX -> check_hooks fails
+    monkeypatch.setattr(install_git_hooks.os, "access", lambda path, mode: False)
+    rc_check = install_git_hooks.check_hooks()
+    assert rc_check != 0
+
+    # 2. When os.access(..., os.X_OK) returns True on POSIX -> check_hooks passes
+    monkeypatch.setattr(install_git_hooks.os, "access", lambda path, mode: True)
+    rc_check_pass = install_git_hooks.check_hooks()
+    assert rc_check_pass == 0
+
+    # 3. When chmod raises exception on POSIX during install -> install_hooks fails closed (no swallowed error)
+    def bad_chmod(path, mode):
+        raise PermissionError("chmod failed")
+
+    monkeypatch.setattr(install_git_hooks.os, "chmod", bad_chmod)
+    rc_install_fail = install_git_hooks.install_hooks()
+    assert rc_install_fail != 0
+
+
+def test_hook_tracked_mode_in_git_tree():
+    out = subprocess.check_output(
+        ["git", "ls-files", "--stage", ".githooks/pre-commit"],
+        text=True
+    )
+    assert out.startswith("100755"), f"Expected 100755 mode, got: {out}"

@@ -3080,9 +3080,10 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - R3 僅綁定 127.0.0.1 之 Loopback HTTP v1 與 HMAC-SHA-256 雙向認證架構確立（USER DECIDED / ADR-0025 LANDED / NOT IMPLEMENTED；Windows 具名管道正式延後未獲選）。
 - TG-MVP-04 F1 回覆授權身份鍵修復：已完成（ACCEPTED / CLOSED，修正 validateReplyAuthorization SQL 複合鍵查詢與金絲雀測試，accepted checkpoint = 18867eb5af7c4b90df8946c22977350bf7ec5086）。
 - TG-MVP-05 游標推進防衛與事件身分分離修復：已完成（ACCEPTED / CLOSED，commit `cdd9d7c5eeca5185e47e7365d42a3a3dc0a61eb1`，Actions Run 35311601796 success，External Macro PASS / ACCEPT ALL；TG-MVP-05-F1 已徹底解決 RESOLVED；accepted checkpoint 推進至 `cdd9d7c5eeca5185e47e7365d42a3a3dc0a61eb1`）。
-- TG-MVP-06 B-98 機密輸出強化與提交守衛：進行中（IN PROGRESS / PENDING EXTERNAL MACRO AUDIT；實作 binding rule SECRET-1..8、safe presence helper、Git index staged scanner、tracked pre-commit hook、CHECK 21 機密防護守衛，verify_all 保持 5 Gates）。
-  - B-98：進行中（IN PROGRESS / PENDING EXTERNAL MACRO AUDIT）。
-  - B-101 / TG-MVP-06A：待辦（PENDING / NOT STARTED，選定具體 Gateway secret provider 與執行期機密取用邊界，TG-MVP-06 刻意不實作）。
+- TG-MVP-06 B-98 機密輸出強化與提交守衛：進行中（IN PROGRESS / MACRO HOLD；52ff candidate machine/CI success，External Macro HOLD，TG-MVP-06-F1 CURRENT，F1-A safe presence helper caller-input nondisclosure 與 F1-B hook activation verification repair candidates in progress；實作 binding rule SECRET-1..8、safe presence helper、Git index staged scanner、tracked pre-commit hook、CHECK 21 機密防護守衛，verify_all 保持 5 Gates，repair candidate pending External Macro re-audit）。
+  - TG-MVP-06-F1：CURRENT（F1-A repair candidate in progress，F1-B repair candidate in progress）。
+  - B-98：進行中（IN PROGRESS）。
+  - B-101 / TG-MVP-06A：待辦（PENDING / NOT AUTHORIZED，選定具體 Gateway secret provider 與執行期機密取用邊界，TG-MVP-06 刻意不實作）。
   - TG-MVP-07 與後續切片：不得開始（NOT AUTHORIZED / NOT STARTED）。
   - E-03：進行中（IN PROGRESS，accepted checkpoint = cdd9d7c5eeca5185e47e7365d42a3a3dc0a61eb1）。
   - B-28 / B-29 上游 trigger 重新評估完成，無 B-01 blocker，維持 DEFERRED_BY_USER / POST_B01。
@@ -4300,3 +4301,28 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - TG-MVP-10、TG-MVP-11、TG-CUT-04 之前置相依新增 TG-MVP-06A。
   - 全程無真實機密讀取、輸出或提交，所有測試均使用合成/動態構造之假機密。
   - 本候選提交後標記為 PENDING EXTERNAL MACRO AUDIT，執行者不得 self-audit。
+
+110. **TG-MVP-06-F1 機密安全存在性探針與 Hook 啟用驗證修復候選（Secret-Safe Presence / Hook Activation Verification Repair Candidate）**（2026-09-18）
+- **外部宏觀審計 HOLD 與重大發現同步（External Macro HOLD & Material Finding Sync）**：
+  - 目標候選：`52ff76136fc10d47d82c3f318318d8cb73f4475b`。
+  - 父提交：`e70b8a6be73b63a9aae1c87f79b32da7cd89b8c1`。
+  - 審查範圍：`cdd9d7c5eeca5185e47e7365d42a3a3dc0a61eb1..52ff76136fc10d47d82c3f318318d8cb73f4475b`（共 2 commits）。
+  - 審查人員：GPT 代理審查官（使用者授權）。
+  - A1 資格查證：採 A1 = EQUIVALENT（GitHub API + Executor clone cross-check）成立。
+  - 遠端機器證據：第一候選 `e70b8a6` 遠端 Actions Run `35314702071` verify 失敗（Linux POSIX hook 權限與 scanner cwd，historical first-candidate CI failure 已由 `52ff761` bounded M3 repair 結案 CLOSED）；最終候選 `52ff761` 遠端 Actions Run `35315368217` completed / success（jobs: verify = success, gateway-windows = success）。
+  - 外部審查結論：MACHINE / CI = PASS；MACRO AUDIT = HOLD；Accept status = BOUNDED SECURITY CORRECTNESS REPAIR REQUIRED；重大發現 TG-MVP-06-F1（Secret-Safe Presence / Hook Activation Verification）。
+  - 通過基準保持：accepted checkpoint 保持為 `cdd9d7c5eeca5185e47e7365d42a3a3dc0a61eb1`，不得推進至 e70b8a6、52ff761 或本 repair candidate。
+- **TG-MVP-06-F1 雙重缺陷修復實作（F1-A / F1-B Repair Implementation）**：
+  - F1-A 安全存在性探針原始參數回顯修復（safe presence helper caller-input nondisclosure）：
+    - 修改 `scripts/secret_presence.py`：CLI 收斂為每次調用僅接受單一環境變數名稱（exactly one name per invocation），輸出收斂為純粹且精確的 `PRESENT` 或 `ABSENT`，完全不回顯變數名稱、機密值、長度、雜湊或任何遮罩字串；所有無參數、多參數、空值、空白、萬用字元或非法標識符一律 fail-closed（exit 2）並僅輸出固定通用錯誤字串（`SECRET_PRESENCE ERROR invalid-arguments` 等），嚴禁字串插值回顯呼叫者傳入之原始未信任輸入；環境變數查找異常僅輸出固定錯誤；維持 `os.environ.get(exact_name)`，嚴禁環境變數枚舉（無 keys/items/values/iteration）。
+    - 深度防禦（Defense-in-Depth）：即使呼叫者誤將機密當作參數傳入，探針自身亦絕不 echo 或 amplify 該輸入。
+    - 規則對齊：更新 `.agents/rules/secret-output-safety.md` 之 SECRET-2 錨點，對齊單參數與純 PRESENT/ABSENT 合約，重新產生 `docs/generated/rule-traceability.md` 通過驗證。
+  - F1-B Git Hook 啟用與權限驗證強化（hook activation verification repair）：
+    - 修改 `scripts/install_git_hooks.py`：`--check` 模式不僅檢查本機 `core.hooksPath` 為 canonical `.githooks`，更嚴格要求驗證 `.githooks/pre-commit` 檔案存在、為 regular file，且在非 Windows 系統（`os.name != 'nt'`）必須具備 POSIX 執行權限（`os.access(hook, os.X_OK)` 為 true），任一不符立即 fail-closed（exit 1）；`--install` 模式落實相同嚴格順序，且在 POSIX 系統執行 `chmod +x` 若發生異常嚴禁吞沒（no swallowed chmod failures），必須拋出並退出非零，確保只有在可用 hook 成功建立後才設定 `core.hooksPath` 並回報 PASS。
+  - 測試強化：擴充 `scripts/tests/test_secret_hardening.py`，完整涵蓋 F1-A 存在性探針單參數、PRESENT/ABSENT、無回顯、非法/萬用字元/空白/多參數無回顯、動態構造合成機密型參數無回顯、無環境變數枚舉；涵蓋 F1-B `--check` 缺檔、目錄非檔案、POSIX 無執行權限失敗、`--install` 權限修復、不修改全域設定、commit hook 正確攔截合成機密等。所有測試通過。
+- **架構邊界與生命週期不變量（Architecture Boundary & Lifecycle Invariants）**：
+  - CHECK 21 與 `scripts/check_consistency.py` 保持 ZERO DIFF，CI 閘門與 consistency 規則不膨脹。
+  - Canonical Gates 維持 5 Gates，`scripts/verify_all.py` ZERO DIFF。
+  - 全程零真實機密讀取、零真實機密輸出、零真實機密提交；所有測試均為純合成動態構造。
+  - 零 Secret Provider 架構實作，B-101 / TG-MVP-06A 維持待辦（NOT AUTHORIZED）。
+  - 本 repair candidate 提交後標記為 PENDING EXTERNAL MACRO RE-AUDIT，執行者不得 self-audit 宣稱 PASS 或結案。

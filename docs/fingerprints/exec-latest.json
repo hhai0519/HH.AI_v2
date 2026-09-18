@@ -1,5 +1,5 @@
 {
-  "base_head": "e70b8a6",
+  "base_head": "52ff761",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -95,8 +95,8 @@
         "## SECRET-7 — 測試與持續整合規範 (Tests & CI Safety)",
         "## SECRET-8 — 提交前強制守衛 (Commit Guard & Hook Verification)"
       ],
-      "lines": 121,
-      "sha256": "e171d9f865ce3521abafa678f883bf507d7aa4e9a116adf558d111335c0968d4"
+      "lines": 125,
+      "sha256": "1b65e9d1fb58b2051e773ddf855a3ef38861293727ba8acef0e07fd47064e953"
     },
     ".agents/rules/skill-engineering-guardrails.md": {
       "fences": 0,
@@ -533,16 +533,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 179,
-      "sha256": "6df091ecdbd3322c90c97d55f18603baaecd6a3f864322a7b7100ae147f9b57c"
+      "lines": 180,
+      "sha256": "9de42760ed2f9b34ff1d100d05da95afa2618923206d6dd56a8c0ac6b16cd4ab"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 141,
-      "sha256": "7ea541fe7ab4ceb0b77a734103edb636b9bc83f9faef9c4fa99f6086bcb10fbb"
+      "lines": 142,
+      "sha256": "1e39da289cc7ce72dee7a46883edc8ee975d96acc0eb9638feaa03b5163064ff"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -583,7 +583,7 @@
         "## 封存區"
       ],
       "lines": 318,
-      "sha256": "4eea6b7814ca75178fa76d186e69ca56d1cc930219dd20eecc03af5f836eef2c"
+      "sha256": "5cc87f02a2f8b5f46edf5a99c0212d643ea5b8b43f385a3a25e0d1dd8e122d48"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1020,8 +1020,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 4302,
-      "sha256": "5be94d3cf1cbc6dbdd53677e6cadbd8f2a0e027f37c7ca13609c4d7e85077215"
+      "lines": 4328,
+      "sha256": "f181625848327d387257637c6d5d9ffdbcedde8da9159ae05a13cdb48d318a1f"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1082,8 +1082,8 @@
       "headings": [
         "# -*- coding: utf-8 -*-"
       ],
-      "lines": 97,
-      "sha256": "86ff05f474e4920fcae5c93a13ff2572fc2d69f19f564e73e1b72573575fc605"
+      "lines": 137,
+      "sha256": "6833c124bbe8cb19ca11e6fb92d9b9b5e9b561d7921b34977868e392e47fef68"
     },
     "scripts/secret_presence.py": {
       "fences": 0,
@@ -1092,8 +1092,8 @@
         "# Standard environment variable name pattern: uppercase/lowercase letters, digits, underscores.",
         "# Non-empty, does not start with digit."
       ],
-      "lines": 88,
-      "sha256": "9c8a2a192d04a3a356b102c3b66997ee4427ed8cdb649c98391d81abe5531d8d"
+      "lines": 77,
+      "sha256": "ce79ccf2f1f3fc5ec46dac76696d8df85e996a494c27881393e208de88858042"
     },
     "scripts/secret_scan.py": {
       "fences": 0,
@@ -1229,8 +1229,8 @@
         "# Section 43: Hook & Installer Tests in Temporary Git Repo",
         "# ---------------------------------------------------------------------------"
       ],
-      "lines": 460,
-      "sha256": "0db5e80145240fcb4846930095b9725fd17472beaa8fed40945fdf0c9104130e"
+      "lines": 646,
+      "sha256": "f5745d4f4d99740e39a4f37a4e03507b486030d08d19d20ce85cf82ff3484799"
     },
     "scripts/tests/test_shared_primitives.py": {
       "fences": 0,
@@ -1346,7 +1346,7 @@
       "sha256": "35bf7dbfa3c7d291b550c3c97a6ae398a22b1dc3624c1d2fc1e4db6963d6e115"
     }
   },
-  "generated_at": "2026-09-18T06:32:12Z",
+  "generated_at": "2026-09-18T09:03:21Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

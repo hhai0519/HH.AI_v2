@@ -33,10 +33,14 @@
 ## SECRET-2 — 僅限存在性探測 (Presence Only)
 
 任何憑證或金鑰之存在性檢查（Credential Existence Check）：
-1. 輸出僅允許 **`PRESENT`**、**`ABSENT`** 或純布林值（boolean）。
+1. 輸出僅允許精確為 **`PRESENT`**、**`ABSENT`** 或純布林值（boolean）。
 2. 絕對不得輸出金鑰之真實內容（Secret Value）。
 3. 絕對不得輸出長度（Length）、字元計數、雜湊值（Hash/Digest）、前綴/後綴字元（First/Last characters）、或遮蔽後之部分字串（Masked partial value）。
-4. 必須使用專用安全輔助腳本 `scripts/secret_presence.py` 執行精確名稱查詢（Exact-name lookup only），禁止通配符（Wildcards）或前綴遍歷。
+4. 必須使用專用安全輔助腳本 `scripts/secret_presence.py <ENV_NAME>` 執行單一環境變數之精確名稱查詢（Exactly one env name per invocation），禁止多參數、通配符（Wildcards）或前綴遍歷。
+5. 嚴格不回顯原則（Zero Caller-Input Echo）：
+   - 輔助工具標準輸出僅限 `PRESENT` 或 `ABSENT`，環境變數名稱自身（env name）絕對不回顯。
+   - 面對無效參數、格式語法錯誤或查詢異常，一律採非零退出並輸出固定通用錯誤訊息，呼叫者傳入之原始字串（invalid input / caller input）絕對不回顯至 stdout/stderr。
+   - 本工具之輸入防護僅屬縱深防禦（defense-in-depth）；依據 SECRET-4，命令行傳入金鑰依然嚴格禁止，本工具之存在絕不使 command-line secret usage 合法化。
 
 ---
 

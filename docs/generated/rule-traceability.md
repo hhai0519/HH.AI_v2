@@ -121,16 +121,15 @@
 | .agents/rules/role-boundaries.md | 176 | ## 7. 什麼時候該停下來回報，什麼時候該自己處理 | CHECK | CHECK 17 | scripts/check_consistency.py | RESOLVED |
 | .agents/rules/secret-output-safety.md | 6 | # 機敏資訊與輸出安全守衛規則 (Secret Output Safety Guardrails) | ADR | docs/adr/0016-credential-leak-defense-gap.md | docs/adr/0016-credential-leak-defense-gap.md | RESOLVED |
 | .agents/rules/secret-output-safety.md | 6 | # 機敏資訊與輸出安全守衛規則 (Secret Output Safety Guardrails) | TASK | B-98 | docs/TASKBOARD.md | RESOLVED |
-| .agents/rules/secret-output-safety.md | 39 | ## SECRET-2 — 僅限存在性探測 (Presence Only) | FILE | `scripts/secret_presence.py` | scripts/secret_presence.py | RESOLVED |
-| .agents/rules/secret-output-safety.md | 48 | ## SECRET-3 — 禁止輸出之表面 (Forbidden Output Surfaces) | FILE | `docs/EXEC-LOG.md` | docs/EXEC-LOG.md | RESOLVED |
-| .agents/rules/secret-output-safety.md | 49 | ## SECRET-3 — 禁止輸出之表面 (Forbidden Output Surfaces) | FILE | `docs/AUDIT-LOG.md` | docs/AUDIT-LOG.md | RESOLVED |
-| .agents/rules/secret-output-safety.md | 50 | ## SECRET-3 — 禁止輸出之表面 (Forbidden Output Surfaces) | FILE | `docs/TASKBOARD.md` | docs/TASKBOARD.md | RESOLVED |
-| .agents/rules/secret-output-safety.md | 50 | ## SECRET-3 — 禁止輸出之表面 (Forbidden Output Surfaces) | FILE | `docs/refactor-backlog.md` | docs/refactor-backlog.md | RESOLVED |
-| .agents/rules/secret-output-safety.md | 79 | ## SECRET-5 — 排錯與除錯路徑 (Troubleshooting Path) | FILE | `scripts/secret_presence.py` | scripts/secret_presence.py | RESOLVED |
-| .agents/rules/secret-output-safety.md | 87 | ## SECRET-6 — 儲存隔離邊界 (Storage Separation) | ADR | ADR-0022 | docs/adr/0022-channel-gateway-architecture.md | RESOLVED |
-| .agents/rules/secret-output-safety.md | 88 | ## SECRET-6 — 儲存隔離邊界 (Storage Separation) | ADR | ADR-0022 | docs/adr/0022-channel-gateway-architecture.md | RESOLVED |
-| .agents/rules/secret-output-safety.md | 89 | ## SECRET-6 — 儲存隔離邊界 (Storage Separation) | TASK | B-101 | docs/TASKBOARD.md | RESOLVED |
-| .agents/rules/secret-output-safety.md | 98 | ## SECRET-7 — 測試與持續整合規範 (Tests & CI Safety) | FILE | `scripts/verify_all.py` | scripts/verify_all.py | RESOLVED |
+| .agents/rules/secret-output-safety.md | 52 | ## SECRET-3 — 禁止輸出之表面 (Forbidden Output Surfaces) | FILE | `docs/EXEC-LOG.md` | docs/EXEC-LOG.md | RESOLVED |
+| .agents/rules/secret-output-safety.md | 53 | ## SECRET-3 — 禁止輸出之表面 (Forbidden Output Surfaces) | FILE | `docs/AUDIT-LOG.md` | docs/AUDIT-LOG.md | RESOLVED |
+| .agents/rules/secret-output-safety.md | 54 | ## SECRET-3 — 禁止輸出之表面 (Forbidden Output Surfaces) | FILE | `docs/TASKBOARD.md` | docs/TASKBOARD.md | RESOLVED |
+| .agents/rules/secret-output-safety.md | 54 | ## SECRET-3 — 禁止輸出之表面 (Forbidden Output Surfaces) | FILE | `docs/refactor-backlog.md` | docs/refactor-backlog.md | RESOLVED |
+| .agents/rules/secret-output-safety.md | 83 | ## SECRET-5 — 排錯與除錯路徑 (Troubleshooting Path) | FILE | `scripts/secret_presence.py` | scripts/secret_presence.py | RESOLVED |
+| .agents/rules/secret-output-safety.md | 91 | ## SECRET-6 — 儲存隔離邊界 (Storage Separation) | ADR | ADR-0022 | docs/adr/0022-channel-gateway-architecture.md | RESOLVED |
+| .agents/rules/secret-output-safety.md | 92 | ## SECRET-6 — 儲存隔離邊界 (Storage Separation) | ADR | ADR-0022 | docs/adr/0022-channel-gateway-architecture.md | RESOLVED |
+| .agents/rules/secret-output-safety.md | 93 | ## SECRET-6 — 儲存隔離邊界 (Storage Separation) | TASK | B-101 | docs/TASKBOARD.md | RESOLVED |
+| .agents/rules/secret-output-safety.md | 102 | ## SECRET-7 — 測試與持續整合規範 (Tests & CI Safety) | FILE | `scripts/verify_all.py` | scripts/verify_all.py | RESOLVED |
 | .agents/rules/skill-engineering-guardrails.md | 20 | ## 2. 嚴格命名空間映射 (Strict Namespace Binding) | FILE | `scripts/validate_skills.py` | scripts/validate_skills.py | RESOLVED |
 | .agents/rules/skill-engineering-guardrails.md | 43 | ### 情況 A：刪除「整個技能」 (停用/下架) | FILE | `README.md` | README.md | RESOLVED |
 | .agents/rules/skill-engineering-guardrails.md | 44 | ### 情況 A：刪除「整個技能」 (停用/下架) | FILE | `skills/deprecated/README.md` | skills/deprecated/README.md | RESOLVED |
