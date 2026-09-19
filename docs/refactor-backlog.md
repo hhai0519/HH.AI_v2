@@ -2825,7 +2825,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 5.1 上一批狀態
 
-上次核對通過的 HEAD：fe9b507aaccd64222934b0ed1eebe0225fb707a2
+上次核對通過的 HEAD：78fbab3793b3d9a31e552f4939a7fcc27ae1a20d
 
 - `23af193`（執行者前置檢查 ＋ 回滾程序 ＋ `AUDIT-LOG.md` ＋ 四缺口修正）
   已於 2026-09-02 由審計官核對通過：6 檔異動（含 2 個新檔）、零夾帶、
@@ -3022,6 +3022,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 - `234918c`（E-03 SQLite State Route Governance Landing & R2/R3 Decision-Routing Fidelity Repair）已於 2026-09-17 由 GPT 代理審查官（使用者授權）全面審查獨立核對通過：涵蓋 b15d5bf..234918c 完整 pending range（共 2 commits：90dc71c 初審 Machine PASS / Macro HOLD，F1 為 R2/R3 authoritative decision semantics misrouted，由 234918c87e05626245c8204f2e36a98d9bd87bc6 徹底解決）；A1 EQUIVALENT 查證通過；exact-SHA Actions Verify Run 35183142134 completed / success（20 checks PASS，321 unit PASS，13 webapp PASS，5 Gates PASS）；SQLite Governance Landing = ACCEPTED；new accepted checkpoint = 234918c87e05626245c8204f2e36a98d9bd87bc6。
 - `c1fd25d`（E-03 Pin Gateway Node and Harden Test Discovery）已於 2026-09-17 由 GPT 代理審查官（使用者授權）全面審查獨立核對通過：涵蓋 234918c..c1fd25d 完整 pending range（共 1 commit）；A1 EQUIVALENT 查證通過；exact-SHA Actions Verify Run 35187602617 completed / success（jobs: verify = success, gateway-windows = success；Ubuntu canonical: 20 checks PASS，331 unit tests PASS，13 webapp PASS，ALL 5 Gates PASS；Windows: Node 24.21.0，Gateway bridge 21/21 PASS）；ZERO UNREGISTERED SKIPS policy verified；T3/T17 = ACCEPTED；new accepted checkpoint = c1fd25d166bdc854dc602f54ac8522de25326e26。
 - `fe9b507`（TG-MVP-06A-F4 依賴證據溯源與回報真實性修復）已於 2026-09-18 由外部審計官（使用者授權）全面審查獨立核對通過：涵蓋 e60fedb..fe9b507 完整 cumulative range（共 6 commits：d3a31fc, e79087c, a46aea3, e435b3a, 764fc99, fe9b507）；A1 EQUIVALENT 查證通過；exact-SHA Actions Verify Run 35359354510 completed / success（jobs: verify = success, gateway-windows = success）；F1-A/C/H1 = RESOLVED, F2-A/B = RESOLVED, F3 = RESOLVED, F4 = RESOLVED；NEW MATERIAL FINDING = NONE；TG-MVP-06A = ACCEPTED / CLOSED；B-101 = CLOSED；new accepted checkpoint = fe9b507aaccd64222934b0ed1eebe0225fb707a2。
+- `78fbab3`（B-102 INCIDENT-CI-05 治理與管線修復）已於 2026-09-19 由外部審計官（使用者授權）全面審查獨立核對通過：涵蓋 13247f8..78fbab3 完整範圍（PR #26 候選 8cd5eb5，Actions Run 35418065529 pre-merge Macro PASS，經單次授權 squash-merge 進入 main）；A1 EQUIVALENT 查證通過；exact-SHA Actions Verify Run 35439883902 (attempt 1, status completed, conclusion success, verify: success, gateway-windows: success, inner verifier: ALL 5 GATES PASSED)；F1–F5 RESOLVED、Macro-Control-F1 RESOLVED、B-102-F6 RESOLVED，new material finding = NONE；B-102 正式 CLOSED、INCIDENT-CI-05 正式 CLOSED、R6 正式 RESOLVED；new accepted checkpoint = 78fbab3793b3d9a31e552f4939a7fcc27ae1a20d。
 
 ### 5.2 待辦
 
@@ -3042,6 +3043,14 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 | 5 | ~~**歷史待辦 B-17 / B-28 / B-29 處置決策（ARCHIVE vs TRIGGER_BASED_DEFERRED）**~~ **已於 2026-09-18 裁決** | 裁決結果見 `docs/TASKBOARD.md` C-07。使用者裁決採 `TRIGGER_BASED_DEFERRED`（依觸發條件延後，不封存）。排定於觸發事件發生時評估，不阻擋重構。 |
 | 6 | ~~**Data/logs 歷史檔案處置決策（repo-external 保留 vs 封存 vs 刪除）**~~ **已於 2026-09-18 裁決** | 裁決結果見 `docs/TASKBOARD.md` C-08。使用者裁決採 `REPO_EXTERNAL_QUARANTINE_THEN_DELETE`（repo 外部隔離保存一週後刪除；HH.AI_v2 repo 內保持零納入、零歷史檔案）。 |
 | 7 | ~~**D-U11 提交守衛雙重掃描整合**~~ **已於 2026-09-19 確立** | 現行 verify_all Gate 2 (check_consistency) CHECK 21 之 secret_scan.run_tracked_scan() 已滿足提交守衛需求（D-U11 ALREADY SATISFIED），無冗餘掃描器。 |
+| 8 | ~~**D-U10 管線守衛與閘門完整性查驗**~~ **已於 2026-09-19 確立** | 現行 verify_all Gate 2 (check_consistency) CHECK 22 實作完整存在且具備 canaries 測試，滿足管線防護需求，不重作。 |
+| 9 | ~~**D-U12 Jules 角色定位與運作模式**~~ **已於 2026-09-19 裁決** | Jules 角色定位為 Proposer，無權直接寫入 repo；Primary 為 Mode A 唯讀風險掃描，Mode B 補丁提案延後。 |
+| 10 | ~~**D-U13 Jules Bridge 工具鏈政策**~~ **已於 2026-09-19 裁決** | 不安裝 Antigravity Jules Bridge 或 Send2Jules，避免外掛工具破壞治理與角色邊界。 |
+| 11 | ~~**D-U14 / U-A B-104 歷史 PR 清理授權範圍**~~ **已於 2026-09-19 裁決** | 使用者明確授權未來 B-104 清理範圍嚴格限於 open PR #13–#24 及其 12 條 exact head branches；本輪不執行 cleanup，不得將其他分支自動納入。 |
+| 12 | ~~**D-U15 F-03 多代理自治閉環（LOOP-lite）方向**~~ **已於 2026-09-19 裁決** | 確立為 POST-MVP；流程採 Jules proposes → Executor reauthors → Macro judges；禁止 auto merge。 |
+| 13 | ~~**D-U16 / B-105 Jules 重啟前置條件**~~ **已於 2026-09-19 裁決** | 需滿足 B-10 協作規範、@google/jules-mcp 版本鎖定（ADR-0019 decision 4）、CHECK 21 維持有效，於 B-105 進行路由與準備。 |
+| 14 | ~~**U-B 歷史工作流重新執行性質確認**~~ **已於 2026-09-19 確立** | 2026-09-19 三筆 historical failure runs re-run 由使用者本人在 GitHub UI 操作，非 Executor 違規。 |
+| 15 | ~~**B-100 R-B Actions 證據留存與假綠燈防護**~~ **已於 2026-09-19 登錄** | 登錄為 NONBLOCKING 事項；包含事故 raw-log 最小留存、一次性歷史成功 run 假綠燈掃描、machine-establish retention setting。 |
 
 ### 5.4 進行中／等待回報
 
@@ -3087,11 +3096,14 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - B-98：已完成（CLOSED）。
   - B-101：已完成（CLOSED）。
   - TG-MVP-06A：已完成（ACCEPTED / CLOSED）。
-  - TG-MVP-01B：進行中（IN PROGRESS / MACRO HOLD，受 INCIDENT-CI-05 / B-102 治理閘門完整性修復阻擋；候選狀態 pending External Macro Pre-Merge Audit）。
-  - B-102：進行中（IN PROGRESS / BLOCKING，INCIDENT-CI-05 治理閘門完整性修復，分支 incident/ci-05-gate-integrity-repair，移除 verify.yml fail-open wrapper、CHECK 16 祖先驗證、CHECK 22 shell pipeline 守衛、落地治理凍結不變量；中斷復原診斷發現 B-102-F6 規則載入容量溢出，經 Scope Amendment #1 授權新增 .agents/rules/governance-gate-integrity.md 進行載入修復，全庫規則 <=12000，prompt-preflight <=9500，候選狀態 pending External Macro Pre-Merge Audit）。
-  - B-103：待辦（TODO / NOT AUTHORIZED，C-06 Exact-SHA 快速推進閘門遷移，待 B-102 通過後由宏觀審計官授權規劃，本批禁止實作）。
+  - TG-MVP-01B：進行中（IN PROGRESS / B-102 RESOLVED / B-103 TRANSPORT MIGRATION ACTIVE；不得標記 CLOSED）。
+  - B-102：已完成（CLOSED / INCIDENT-CI-05 CLOSED / R6 RESOLVED，accepted checkpoint = `78fbab3793b3d9a31e552f4939a7fcc27ae1a20d`）。
+  - B-103：進行中（IN PROGRESS / PHASE A — BATCH CHECK BOOTSTRAP，分支 `migration/b103a-batch-check-bootstrap`，設定 `.github/workflows/verify.yml` 支援 `batch/**` 分支 push 觸發 verify 與 gateway-windows 檢查，現行維持 protected PR 傳輸模式；候選狀態 pending External Macro Pre-Merge Audit）。
+  - B-104：待辦（TODO / NOT AUTHORIZED，Jules 歷史 PR #13–#24 與 12 條 exact head branches 清理路由，依 U-A 授權範圍未來執行，本輪不執行）。
+  - B-105：待辦（TODO / NOT AUTHORIZED，Jules Mode A 唯讀風險掃描與前置條件準備）。
+  - F-03：多代理自治閉環（LOOP-lite，POST-MVP，採 Jules proposes → Executor reauthors → Macro judges，禁止 auto-merge）。
   - TG-MVP-07 與後續切片：待辦（NOT AUTHORIZED until TG-MVP-01B External Macro closure）。
-  - E-03：進行中（IN PROGRESS，accepted checkpoint = fe9b507aaccd64222934b0ed1eebe0225fb707a2）。
+  - E-03：進行中（IN PROGRESS，accepted checkpoint = 78fbab3793b3d9a31e552f4939a7fcc27ae1a20d）。
   - B-28 / B-29 上游 trigger 重新評估完成，無 B-01 blocker，依 C-07 維持 TRIGGER_BASED_DEFERRED。
   - B-54 保持待辦（POST_B01 / NONBLOCKING，SOP_12 機器專屬路徑 concrete example 已登錄）。
   - B-75 保持待辦、零實作 (POST_B01 / NONBLOCKING / NOT IMPLEMENTED)。
@@ -4557,4 +4569,23 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - **E17 負向控制要求擴充**：於 `.agents/rules/governance-gate-integrity.md`、`.claude/rules/auditor-protocol.md` §6.1-15 與 `.claude/rules/auditor-selftest.md` E17 明確要求驗證器、工作流或閘門語意變更必須具備確定性反例控制。
   - **使用者決策留痕**：D-U9 裁決確立未來 C-06 傳輸模式為 batch branch → exact branch SHA verify → fast-forward same SHA to main，正式遷移排定於 B-103；D-U11 確立現行 CHECK 21 secret_scan 滿足需求（ALREADY SATISFIED）。
   - **狀態同步與留痕**：`docs/TASKBOARD.md` 登錄 B-102 blocking 與 B-103 todo，TG-MVP-01B 標記 MACRO HOLD；`docs/AUDIT-LOG.md` 登錄 INCIDENT-CI-05 OPEN / MACRO HOLD；`docs/EXEC-LOG.md` 補齊以 `13247f8` 為基準之 cadence anchor 與事實留痕。
-- **候選狀態**：本候選分支 `incident/ci-05-gate-integrity-repair` 提交後標記為 PENDING EXTERNAL MACRO PRE-MERGE AUDIT，執行者嚴禁自審宣稱結案、嚴禁修改 ruleset、嚴禁自行合併。
+- **結案狀態（Resolution Status）**：PR #26 候選（commit `8cd5eb5c59cb603019ebaf618b8f09beb73411ba`）經 External Macro Auditor 審查 PASS 後獲單次授權 squash-merge 進入 main，產生 commit `78fbab3793b3d9a31e552f4939a7fcc27ae1a20d`。遠端 GitHub Actions Run 35439883902（attempt 1）verify 與 gateway-windows 雙綠燈（ALL 5 GATES PASSED）。External Macro Auditor 判定 ACCEPT ALL。B-102 正式 CLOSED、INCIDENT-CI-05 正式 CLOSED、R6 正式 RESOLVED。accepted checkpoint 推進至 `78fbab3793b3d9a31e552f4939a7fcc27ae1a20d`。
+
+119. **B-103A 批次分支 Exact-SHA 驗證引導與 B-102 結案同步（B-103A Batch Exact-SHA Check Bootstrap & B-102 Closure Sync Candidate）**（2026-09-19）
+- **背景與目標**：B-103 階段式遷移第一階段（Phase A），在現行受保護 PR 生產傳輸模式完整保留的前提下，引導 GitHub Actions 支援 `batch/**` 分支推送觸發 required checks（`verify` 與 `gateway-windows`），為未來 exact-SHA 快速推進傳輸（Fast-Forward Transport）奠定工作流基底；同步已由外部宏觀審計官（External Macro Auditor）成立之 B-102 / INCIDENT-CI-05 結案裁決與各項已裁決使用者治理事項。
+- **變更與落地成果**：
+  - **工作流最小引導（Workflow Bootstrap）**：修改 `.github/workflows/verify.yml`，於 `push.branches` 新增 `"batch/**"` 分支樣式，保留 `main` 分支與 `pull_request` 觸發，所有工作名稱、permissions、Action SHA pins、依賴與閘門契約維持 100% 不變。
+  - **B-102 / INCIDENT-CI-05 結案同步**：`docs/AUDIT-LOG.md` 登錄 accepted checkpoint `78fbab3793b3d9a31e552f4939a7fcc27ae1a20d`（Actions Run 35439883902 attempt 1 completed / success / ALL 5 GATES PASSED）；事故歸檔專區將 INCIDENT-CI-05 標記為 CLOSED；`docs/TASKBOARD.md` 將 B-102 標記為已完成（CLOSED / RESOLVED）。
+  - **使用者裁決落地與路由登錄**：
+    - D-U9：未來 C-06 傳輸模式（batch branch → exact-SHA checks → fast-forward same SHA to main），由 B-103 階段式遷移落地。
+    - D-U10：管線守衛與 required gate 完整性由現行 CHECK 22 滿足，不重作。
+    - D-U11：機密掃描由現行 CHECK 21 滿足（ALREADY SATISFIED），不新增掃描器。
+    - D-U12：Jules 僅為 proposer，不得直接寫入倉庫；以 Mode A 風險掃描為 primary，Mode B 提案延後。
+    - D-U13：不安裝 Antigravity Jules Bridge 或 Send2Jules。
+    - D-U14：B-104 清理授權範圍嚴格限定於 open PR #13–#24 及其 12 條 exact head branches（U-A），本輪不執行 cleanup。
+    - D-U15：F-03 多代理自治閉環（LOOP-lite）確立為 POST-MVP，採 Jules proposes → Executor reauthors → Macro judges，禁止 auto-merge。
+    - D-U16：Jules 重啟前置條件登錄於 B-105。
+    - U-A / U-B：PR #13–#24 授權未來清理；2026-09-19 三筆 historical workflow re-run 由使用者本人在 GitHub UI 操作，非 Executor 違規。
+    - B-100 R-B：Actions 證據保存與假綠燈防護（非阻擋性追蹤事項）。
+  - **E24 依賴證據可重現性**：重用不可變原始 discovery 證據（SHA256 `b79ca96f41d5bb470ca6d37ad8704c2d72136b4ba99403b2ed21ad3f5acc8d7f`），依授權 Macro disposition 驗證依賴閉包 100% 一致。
+- **候選狀態**：分支 `migration/b103a-batch-check-bootstrap` 建立 PR 至 main，等待 exact candidate SHA required checks 通過後停止，標記為 PENDING EXTERNAL MACRO PRE-MERGE AUDIT。
