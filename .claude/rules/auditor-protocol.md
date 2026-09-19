@@ -53,6 +53,21 @@
 
 若審計發現斷鏈或重大命名／格式不一致，**該批次不算正式定案**，需要先修復才能進入下一批次。檢查範圍涵蓋跨批次全域一致性。
 
+### 3.1 候選提交治理凍結不變量（Candidate Governance Freeze Invariant）
+
+一旦候選提交（candidate commit）開始執行第一個 required-check 驗證（無論是本機 prospective verify 或遠端 CI run），以下所有治理與裁判表面即刻進入**嚴格凍結狀態（FROZEN）**：
+1. `.github/workflows/**`
+2. `scripts/verify_all.py`
+3. `scripts/check_consistency.py`
+4. 審計協定與自檢清單（`auditor-protocol.md`、`auditor-selftest.md`）
+5. 提示詞前置檢查規範（`prompt-preflight.md`）
+6. Git 與回報紀律規範（`git-and-reporting.md`）
+7. Required check 驗證語意（required-check semantics）
+8. 審計語意與裁決規則（audit semantics）
+
+若候選驗證遭遇紅燈且需修改上述任何凍結表面：
+必須立即停機宣告 `S1 GOVERNANCE_GATE_DEFECT` 並另開獨立事故修復批次處置。**嚴禁以 M3 自主修復變更裁判規則以使候選者變綠**。
+
 ---
 
 ## 4. 報告格式
@@ -146,7 +161,7 @@
 12. **每份提示詞必須包含 machine-readable prompt manifest（由 `scripts/validate_prompt_manifest.py` 驗證）與「審計官自檢聲明」區塊**，逐項列出 `auditor-selftest.md` E 節的自檢結果。這是自檢與提示詞結構檢驗的外部產物，執行者依 `.agents/rules/prompt-preflight.md` §2.1 與 `.agents/rules/prompt-preflight.md` §3.4 進行機械驗證與交叉比對。
 13. **每個錨點對應本批 base commit 與規格上下文**（僅 EXACT_SPEC 適用；GOAL_SPEC 標記為 N/A），在目標檔案中具備結構唯一性（machine count == 1），不依賴特定 clone 第 N 行作為 blocking truth。
 14. **寫入含 `§X.Y` 的文字時，若引用的是他檔章節，必須在同一行寫出明確檔名**（CHECK 10 逐行檢驗，未標明檔名視為同檔引用；explicit target file identity 不得被 verifier substitution，target section 必須存在於該 explicit target，若引用歷史已淘汰規範必須明確寫出 archive 路徑）。
-15. **每個插入型修改若涉及結構序列，必須附明確驗收準則**（例如章節或項目序列嚴格遞增），不得將 LLM 預測所有 post-state 衍生序列當作通用 blocking requirement。此外，當生產程式碼取得具備所有權語意之資源（如 native pointer、file handle、child process、資料庫 transaction、socket / HTTP 連線、lock、session 或等價資源）時，提示詞驗收準則在實質適用時必須明確定義：(a) 取得成功狀態；(b) 資源持有者（owner）；(c) 所有後續 failure exits；(d) 釋放／清理次數（release/cleanup count，相關時須明確為 exactly-once cleanup）；(e) 超時與取消路徑（timeout/cancellation path）；(f) 取得成功但後續失敗之反例（acquire-success / later-failure counterexample）。一般非資源操作之修改不要求此類繁瑣規範。
+15. **每個插入型修改若涉及結構序列，必須附明確驗收準則**（例如章節或項目序列嚴格遞增），不得將 LLM 預測所有 post-state 衍生序列當作通用 blocking requirement。此外，當生產程式碼取得具備所有權語意之資源（如 native pointer、file handle、child process、資料庫 transaction、socket / HTTP 連線、lock、session 或等價資源）時，提示詞驗收準則在實質適用時必須明確定義：(a) 取得成功狀態；(b) 資源持有者（owner）；(c) 所有後續 failure exits；(d) 釋放／清理次數（release/cleanup count，相關時須明確為 exactly-once cleanup）；(e) 超時與取消路徑（timeout/cancellation path）；(f) 取得成功但後續失敗之反例（acquire-success / later-failure counterexample）。若涉及驗證器、工作流或閘門語意變更（verifier, workflow, or gate semantic changes），必須具備確定性反例控制（deterministic negative control），證明非法或不安全形態仍會被拒絕（invalid shape is still rejected），僅有正面通過（positive PASS alone）不足以作為驗收依據。一般非此類關鍵操作之修改不要求繁瑣規範。
 16. **每份提示詞必須包含「機械前置證據與邊界宣告（Mode-Aware Preflight）」**：所有模式共同包含：(a) 基準 Commit Full OID；(b) 批次模式（`batch_mode`：GOAL_SPEC 或 EXACT_SPEC）；(c) 允許修改範圍（Allowed Scope）；(d) 標準驗證指令與 Gate 清單。EXACT_SPEC 另需規格路徑與規格 SHA-256；GOAL_SPEC 則載明目標、不變量與驗收準則。刪除手寫檔案行數、圍欄數等 blocking 要求。
 17. **提示詞若包含任何「移除」，必須附上移除前複查的三步結果**（反向引用掃描、唯一內容確認、重新讀檔的獨立複查；原則見 `PRINCIPLES.md` §2.9）。複查結果逐項列出，不得概括代過。
 18. **提示詞若為 EXACT_SPEC 且修改規範層檔案，必須以同一份批次規格進行模擬，並以確定性工具輸出為準**。使用 `scripts/build_prompt_evidence.py`（BPE）驗證規格與模擬，但不得將套用後行數、圍欄數、項數或預測輸出預抄至提示詞作為 blocking truth。GOAL_SPEC 模式由驗收測試與 `scripts/verify_all.py` 守護，不需規格模擬。

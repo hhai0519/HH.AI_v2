@@ -31,8 +31,7 @@ def test_verify_all_success(monkeypatch):
 
 
 def test_verify_all_failure(monkeypatch):
-    """B. 任一 child gate FAIL -> runner non-zero"""
-    # 模擬第三個 gate 失敗
+    """Control A. verify_all child gate failure -> runner non-zero"""
     def mock_run_gate(gate, env, cwd):
         if gate["name"] == "fingerprint":
             return 1
@@ -43,12 +42,15 @@ def test_verify_all_failure(monkeypatch):
 
 
 def test_ci_workflow_uses_canonical_entrypoint():
-    """D. CI workflow 不再維護另一份獨立 correctness-test list，而是直接呼叫 canonical entrypoint"""
+    """D. CI workflow 直接呼叫 canonical entrypoint，不得包含 fail-open tee pipeline"""
     workflow_path = os.path.join(REPO_ROOT, ".github", "workflows", "verify.yml")
     with open(workflow_path, "r", encoding="utf-8") as f:
         text = f.read()
 
     # CI 必須呼叫 verify_all.py
     assert "verify_all.py" in text
+    assert "run: python3 scripts/verify_all.py" in text
+    # 不得有 fail-open tee pipeline
+    assert "tee" not in text
     # 不得再有個別分散的測試指令列表
     assert "skills/execution/webapp-testing/tests/" not in text

@@ -26,6 +26,7 @@
   絕不繞過保護規則（Never bypass protection）。
   絕不因便利性新增 bypass actor。
   遠端健康權威始終為：exact origin/main SHA + GitHub Actions Verify 成功。
+- **候選提交治理凍結不變量**：候選提交開始執行 required check 後裁判表面嚴格凍結，詳見 [.agents/rules/governance-gate-integrity.md](./governance-gate-integrity.md)。
 
 ## 2. 回報紀律
 

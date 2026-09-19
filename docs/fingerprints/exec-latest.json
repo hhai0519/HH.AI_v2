@@ -1,5 +1,5 @@
 {
-  "base_head": "32b89b8",
+  "base_head": "13247f8",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -15,8 +15,20 @@
         "## 2.5 遠端健康查證與 GitHub Actions 閉環規範 (Remote Health Verification)",
         "## 3. 查證紀律"
       ],
-      "lines": 304,
-      "sha256": "e431d3f471f535021274bda95638ca750ecb6ac5b7ecf67d98a8729a0b2cc095"
+      "lines": 305,
+      "sha256": "8cf00939aa246292a6384e4d6a6baa1ee9755b80e7d23206d0caa32ded74017d"
+    },
+    ".agents/rules/governance-gate-integrity.md": {
+      "fences": 0,
+      "headings": [
+        "# 治理閘門完整性與候選提交凍結守衛 (Governance Gate Integrity & Candidate Freeze)",
+        "## 1. 候選提交治理凍結不變量 (Candidate Governance Freeze Invariant)",
+        "### 嚴禁紅燈修改裁判 (No Red-Driven Referee Mutation)",
+        "## 2. 必要閘門失敗與拒絕語意 (Required Gate Failure Semantics)",
+        "## 3. 閘門變更確定性負向控制 (Deterministic Negative Controls)"
+      ],
+      "lines": 52,
+      "sha256": "0d245e9ce4b350ef73c3f68d892772d06b255a2fde126aed75b62b58a4d06cdb"
     },
     ".agents/rules/powershell-encoding-protocol.md": {
       "fences": 6,
@@ -131,6 +143,7 @@
         "## 1. 職責範圍與查證模式",
         "## 2. 四個審計維度",
         "## 3. Gatekeeping 規則",
+        "### 3.1 候選提交治理凍結不變量（Candidate Governance Freeze Invariant）",
         "## 4. 報告格式",
         "## 5. 查證紀律",
         "### 5.1 不採用執行端的任何數字",
@@ -181,8 +194,8 @@
         "### 12.1 風險分級宏觀審計核心原則 (D-U6)",
         "### 12.2 Tier-M 微修復分類規範 (Tier-M Micro Repair)"
       ],
-      "lines": 508,
-      "sha256": "ec319ff98f762cb91d618099e94646e23161266c978dbd254a425b0197817604"
+      "lines": 523,
+      "sha256": "fbb84e7c7903e19b1f1854a1910b3dc0a7a7d535a0ddf5d89256aa41de68d113"
     },
     ".claude/rules/auditor-selftest.md": {
       "fences": 0,
@@ -196,14 +209,14 @@
         "## E. 交付（產出提示詞之前）",
         "## F. 額度（每一輪回覆的開頭與結尾）"
       ],
-      "lines": 133,
-      "sha256": "18be617e3558afa17e08684395e92b83c575830f7069065ed8080b1ebab5aa30"
+      "lines": 135,
+      "sha256": "21605b733c1e0d5907e76d1251882fa2be3bb5b9fbc20a16d236441334bf5997"
     },
     ".github/workflows/verify.yml": {
       "fences": 0,
       "headings": [],
-      "lines": 73,
-      "sha256": "84be5f9e99da4a0fa23a558be2803f34c41f779e72b82274e725978c2f7c0498"
+      "lines": 65,
+      "sha256": "57fd95c20ca77031868ec78ff96d07e5e9840f68de12acb3bb32146cc9ae156b"
     },
     "AGENTS.md": {
       "fences": 10,
@@ -537,16 +550,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 187,
-      "sha256": "5dc9147fb4cb3acb5dd88b4aecade6804d380219f19186372467806c58760f48"
+      "lines": 189,
+      "sha256": "43f93379a9068600988654b1e4c30cd07cca50c60e52d8553a903ed6c481dc85"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 151,
-      "sha256": "68233417e2a5c2557ee3b94c53983fd32fe8b0b0176bda484aa9b5efdb28f612"
+      "lines": 152,
+      "sha256": "e16bc78f00114e654fc89bcaa9be72d0b50aada526c67703cbfa439fd848afac"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -586,8 +599,8 @@
         "## G. 舊 repo 未盤點區塊（2026-09-02 新發現）",
         "## 封存區"
       ],
-      "lines": 318,
-      "sha256": "1bd254e45058baba9773d46a92c9eca8dfb6aa7156aafb10876e59d9a5c9c621"
+      "lines": 320,
+      "sha256": "b24be5570dbdcfa2704c187c12792667dbc182daff6461af855fa4fffd15f3fc"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1043,8 +1056,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 4535,
-      "sha256": "1cbd16e2eafb864e69ddb3d1473fb992927195ec27e7414d48685c4d8d2a36f9"
+      "lines": 4560,
+      "sha256": "af692bac016c0996652162bea918d1f0a38ddd8e0830820b632ed936db884b61"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1071,8 +1084,8 @@
         "# 已知指向錯誤的歷史 tag。本清單只能縮短、不得加長。",
         "# 修復批次完成後必須清空；清單中的 tag 若已修復卻未移除，CHECK 18 會 FAIL。"
       ],
-      "lines": 2353,
-      "sha256": "7970a521b19e0a82464248eab0cc155aef41c696dfef8fed292719bb98a6ee16"
+      "lines": 2635,
+      "sha256": "9a4834882c2cb821e7039cdee9d54f0416ae7621ea0a7185c24ef654d08920e3"
     },
     "scripts/fingerprint.py": {
       "fences": 0,
@@ -1195,10 +1208,13 @@
         "# ---------------------------------------------------------------------------",
         "# ---------------------------------------------------------------------------",
         "# CHECK 22 — CI 供應鏈可重現性守衛測試 (Canaries 1-9)",
+        "# ---------------------------------------------------------------------------",
+        "# ---------------------------------------------------------------------------",
+        "# CHECK 22 Fail-Closed Negative Controls & Pipeline Grammar (Controls B-L)",
         "# ---------------------------------------------------------------------------"
       ],
-      "lines": 1440,
-      "sha256": "366f24fbd14fcfd8fcf7ecfd350ee65332c631342f8eea73d5fa4f592f41ddce"
+      "lines": 1791,
+      "sha256": "0ccec89dce52c7554879020d068d6e40140f0686383c97a5316c212745710dc0"
     },
     "scripts/tests/test_fingerprint.py": {
       "fences": 0,
@@ -1345,8 +1361,8 @@
     "scripts/tests/test_verify_all.py": {
       "fences": 0,
       "headings": [],
-      "lines": 54,
-      "sha256": "406cb1ff55338c9f84e617acd2485cf502deea47d069572a631a0974f6bd803f"
+      "lines": 56,
+      "sha256": "5ac66ffefe5baaf117d95d00c370e5a0bb8f0554b76f59c99f63e8aa47f2efda"
     },
     "scripts/validate_prompt_manifest.py": {
       "fences": 0,
@@ -1372,7 +1388,7 @@
       "sha256": "35bf7dbfa3c7d291b550c3c97a6ae398a22b1dc3624c1d2fc1e4db6963d6e115"
     }
   },
-  "generated_at": "2026-09-18T17:34:39Z",
+  "generated_at": "2026-09-19T03:12:09Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

@@ -793,6 +793,28 @@ def test_check_16_exec_log_cadence_pass(tmp_path):
     assert len(fails) == 0
 
 
+def test_check_16_exec_log_cadence_ancestor_pass(tmp_path):
+    """ancestor + permitted lag -> PASS"""
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    el = docs / "EXEC-LOG.md"
+    el.write_text("| 13247f8cf2b01fa9bef0d15c67dde0d91211e752 | 2026-09-19 | §3 | 通過 | 無 |\n", encoding="utf-8")
+    fails, infos = check_16_exec_log_cadence(str(tmp_path), git_count=1, git_is_ancestor=True)
+    assert len(fails) == 0
+    assert any("lag=1" in i for i in infos)
+
+
+def test_check_16_exec_log_cadence_non_ancestor_fail(tmp_path):
+    """non-ancestor -> FAIL closed with merge-base failure"""
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    el = docs / "EXEC-LOG.md"
+    el.write_text("| 13247f8cf2b01fa9bef0d15c67dde0d91211e752 | 2026-09-19 | §3 | 通過 | 無 |\n", encoding="utf-8")
+    fails, infos = check_16_exec_log_cadence(str(tmp_path), git_count=1, git_is_ancestor=False)
+    assert len(fails) >= 1
+    assert "git merge-base --is-ancestor 失敗" in fails[0]
+
+
 def test_check_16_exec_log_cadence_fail(tmp_path):
     docs = tmp_path / "docs"
     docs.mkdir()
@@ -803,6 +825,24 @@ def test_check_16_exec_log_cadence_fail(tmp_path):
     assert "落後 HEAD 2 個 commit" in fails[0]
 
 
+def test_check_16_exec_log_cadence_malformed_hash_fail_closed(tmp_path):
+    """malformed/missing hash -> fail closed"""
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    el = docs / "EXEC-LOG.md"
+    # Malformed non-hex string
+    el.write_text("| NOT_A_VALID_HASH | 2026-09-19 | §3 | 通過 | 無 |\n", encoding="utf-8")
+    fails, infos = check_16_exec_log_cadence(str(tmp_path), git_count=1, git_is_ancestor=True)
+    assert len(fails) >= 1
+    assert "格式不合法或缺失" in fails[0]
+
+    # Too short hash
+    el.write_text("| 12345 | 2026-09-19 | §3 | 通過 | 無 |\n", encoding="utf-8")
+    fails, infos = check_16_exec_log_cadence(str(tmp_path), git_count=1, git_is_ancestor=True)
+    assert len(fails) >= 1
+    assert "格式不合法或缺失" in fails[0]
+
+
 def test_check_16_exec_log_cadence_bootstrap(tmp_path):
     docs = tmp_path / "docs"
     docs.mkdir()
@@ -811,6 +851,75 @@ def test_check_16_exec_log_cadence_bootstrap(tmp_path):
     fails, infos = check_16_exec_log_cadence(str(tmp_path), git_count=10)
     assert len(fails) == 0
     assert any("BOOTSTRAP" in i for i in infos)
+
+
+def test_check_16_exec_log_cadence_synthetic_base_plus_candidate_child(tmp_path):
+    """synthetic: 13247f8 base + one candidate child -> ancestor true / lag 1"""
+    import subprocess
+    repo_dir = tmp_path / "repo"
+    repo_dir.mkdir()
+    subprocess.run(["git", "init"], cwd=repo_dir, check=True, capture_output=True)
+    subprocess.run(["git", "config", "user.name", "Tester"], cwd=repo_dir, check=True, capture_output=True)
+    subprocess.run(["git", "config", "user.email", "tester@example.com"], cwd=repo_dir, check=True, capture_output=True)
+
+    f1 = repo_dir / "init.txt"
+    f1.write_text("v1\n", encoding="utf-8")
+    subprocess.run(["git", "add", "init.txt"], cwd=repo_dir, check=True, capture_output=True)
+    subprocess.run(["git", "commit", "-m", "base commit"], cwd=repo_dir, check=True, capture_output=True)
+    base_sha = subprocess.run(["git", "rev-parse", "HEAD"], cwd=repo_dir, capture_output=True, text=True, check=True).stdout.strip()
+
+    (repo_dir / "docs").mkdir(parents=True)
+    el = repo_dir / "docs" / "EXEC-LOG.md"
+    el.write_text(f"| {base_sha} | 2026-09-19 | §3 | 通過 | Candidate pending |\n", encoding="utf-8")
+    subprocess.run(["git", "add", "docs/EXEC-LOG.md"], cwd=repo_dir, check=True, capture_output=True)
+    subprocess.run(["git", "commit", "-m", "candidate child commit"], cwd=repo_dir, check=True, capture_output=True)
+
+    fails, infos = check_16_exec_log_cadence(str(repo_dir))
+    assert len(fails) == 0
+    assert any("lag=1" in i for i in infos)
+
+
+def test_check_16_exec_log_cadence_merge_commits_not_hidden(tmp_path):
+    """merge commits are not hidden in rev-list cadence check (no --no-merges)"""
+    import subprocess
+    repo_dir = tmp_path / "repo"
+    repo_dir.mkdir()
+    subprocess.run(["git", "init"], cwd=repo_dir, check=True, capture_output=True)
+    subprocess.run(["git", "config", "user.name", "Tester"], cwd=repo_dir, check=True, capture_output=True)
+    subprocess.run(["git", "config", "user.email", "tester@example.com"], cwd=repo_dir, check=True, capture_output=True)
+
+    f1 = repo_dir / "init.txt"
+    f1.write_text("v1\n", encoding="utf-8")
+    subprocess.run(["git", "add", "init.txt"], cwd=repo_dir, check=True, capture_output=True)
+    subprocess.run(["git", "commit", "-m", "base commit"], cwd=repo_dir, check=True, capture_output=True)
+    base_sha = subprocess.run(["git", "rev-parse", "HEAD"], cwd=repo_dir, capture_output=True, text=True, check=True).stdout.strip()
+
+    default_branch = subprocess.run(["git", "branch", "--show-current"], cwd=repo_dir, capture_output=True, text=True).stdout.strip()
+    subprocess.run(["git", "branch", "feat"], cwd=repo_dir, check=True, capture_output=True)
+
+    f2 = repo_dir / "f2.txt"
+    f2.write_text("f2\n", encoding="utf-8")
+    subprocess.run(["git", "add", "f2.txt"], cwd=repo_dir, check=True, capture_output=True)
+    subprocess.run(["git", "commit", "-m", "main step 2"], cwd=repo_dir, check=True, capture_output=True)
+
+    subprocess.run(["git", "switch", "feat"], cwd=repo_dir, check=True, capture_output=True)
+    f3 = repo_dir / "f3.txt"
+    f3.write_text("f3\n", encoding="utf-8")
+    subprocess.run(["git", "add", "f3.txt"], cwd=repo_dir, check=True, capture_output=True)
+    subprocess.run(["git", "commit", "-m", "feat step"], cwd=repo_dir, check=True, capture_output=True)
+
+    subprocess.run(["git", "switch", default_branch], cwd=repo_dir, check=True, capture_output=True)
+    subprocess.run(["git", "merge", "--no-ff", "feat", "-m", "merge commit"], cwd=repo_dir, check=True, capture_output=True)
+
+    # EXEC-LOG records base_sha
+    (repo_dir / "docs").mkdir(parents=True)
+    el = repo_dir / "docs" / "EXEC-LOG.md"
+    el.write_text(f"| {base_sha} | 2026-09-19 | §3 | 通過 | Old anchor |\n", encoding="utf-8")
+
+    # With merge commit counted, rev-list base_sha..HEAD has >= 3 commits, so lag > 1 -> fails
+    fails, infos = check_16_exec_log_cadence(str(repo_dir))
+    assert len(fails) >= 1
+    assert any("落後 HEAD" in f for f in fails)
 
 
 def test_preflight_authority_model_contract_validation():
@@ -1438,3 +1547,245 @@ def test_check_22_canary_9_windows_marker_pass(tmp_path):
     fails, infos = check_22_ci_supply_chain(str(tmp_path))
     assert len(fails) == 0
     assert any("共驗證 2 項精確鎖定" in i for i in infos)
+
+
+# ---------------------------------------------------------------------------
+# CHECK 22 Fail-Closed Negative Controls & Pipeline Grammar (Controls B-L)
+# ---------------------------------------------------------------------------
+
+def test_check_22_control_b_unsafe_tee_pipeline_fail(tmp_path):
+    """Control B: python3 scripts/verify_all.py | tee output.log without pipefail -> FAIL"""
+    wf = (
+        "name: Verify\n"
+        "permissions:\n"
+        "  contents: read\n"
+        "jobs:\n"
+        "  verify:\n"
+        "    runs-on: ubuntu-latest\n"
+        "    steps:\n"
+        "      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262\n"
+        "      - name: Run verification gates\n"
+        "        run: python3 scripts/verify_all.py 2>&1 | tee /tmp/verify.log\n"
+    )
+    _setup_check_22_env(tmp_path, workflow_content=wf)
+    fails, infos = check_22_ci_supply_chain(str(tmp_path))
+    assert len(fails) >= 1
+    assert any("pipeline" in f.lower() for f in fails)
+
+
+def test_check_22_control_c_direct_verify_all_pass(tmp_path):
+    """Control C: direct run: python3 scripts/verify_all.py -> PASS"""
+    wf = (
+        "name: Verify\n"
+        "permissions:\n"
+        "  contents: read\n"
+        "jobs:\n"
+        "  verify:\n"
+        "    runs-on: ubuntu-latest\n"
+        "    steps:\n"
+        "      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262\n"
+        "      - name: Run verification gates\n"
+        "        run: python3 scripts/verify_all.py\n"
+    )
+    _setup_check_22_env(tmp_path, workflow_content=wf)
+    fails, infos = check_22_ci_supply_chain(str(tmp_path))
+    assert len(fails) == 0
+
+
+def test_check_22_control_d_required_gate_continue_on_error_fail(tmp_path):
+    """Control D: required gate continue-on-error true -> FAIL"""
+    wf = (
+        "name: Verify\n"
+        "permissions:\n"
+        "  contents: read\n"
+        "jobs:\n"
+        "  verify:\n"
+        "    runs-on: ubuntu-latest\n"
+        "    steps:\n"
+        "      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262\n"
+        "      - name: Run verification gates\n"
+        "        continue-on-error: true\n"
+        "        run: python3 scripts/verify_all.py\n"
+    )
+    _setup_check_22_env(tmp_path, workflow_content=wf)
+    fails, infos = check_22_ci_supply_chain(str(tmp_path))
+    assert len(fails) >= 1
+    assert any("continue-on-error" in f for f in fails)
+
+
+def test_check_22_control_e_required_verify_conditional_skip_fail(tmp_path):
+    """Control E: required verify job/step conditional skip -> FAIL"""
+    wf = (
+        "name: Verify\n"
+        "permissions:\n"
+        "  contents: read\n"
+        "jobs:\n"
+        "  verify:\n"
+        "    runs-on: ubuntu-latest\n"
+        "    steps:\n"
+        "      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262\n"
+        "      - name: Run verification gates\n"
+        "        if: github.event_name == 'push'\n"
+        "        run: python3 scripts/verify_all.py\n"
+    )
+    _setup_check_22_env(tmp_path, workflow_content=wf)
+    fails, infos = check_22_ci_supply_chain(str(tmp_path))
+    assert len(fails) >= 1
+    assert any("條件式略過" in f or "if:" in f for f in fails)
+
+
+def test_check_22_control_f_diagnostic_if_failure_pass(tmp_path):
+    """Control F: separate diagnostic if: failure() -> PASS"""
+    wf = (
+        "name: Verify\n"
+        "permissions:\n"
+        "  contents: read\n"
+        "jobs:\n"
+        "  verify:\n"
+        "    runs-on: ubuntu-latest\n"
+        "    steps:\n"
+        "      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262\n"
+        "      - name: Run verification gates\n"
+        "        run: python3 scripts/verify_all.py\n"
+        "      - name: Diagnostic output\n"
+        "        if: failure()\n"
+        "        run: echo 'diagnostics'\n"
+    )
+    _setup_check_22_env(tmp_path, workflow_content=wf)
+    fails, infos = check_22_ci_supply_chain(str(tmp_path))
+    assert len(fails) == 0
+
+
+def test_check_22_control_g_run_pipe_block_marker_pass(tmp_path):
+    """Control G: run: | with no pipeline -> PASS"""
+    wf = (
+        "name: Verify\n"
+        "permissions:\n"
+        "  contents: read\n"
+        "jobs:\n"
+        "  verify:\n"
+        "    runs-on: ubuntu-latest\n"
+        "    steps:\n"
+        "      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262\n"
+        "      - name: Run verification gates\n"
+        "        run: |\n"
+        "          python3 scripts/verify_all.py\n"
+        "          echo 'done'\n"
+    )
+    _setup_check_22_env(tmp_path, workflow_content=wf)
+    fails, infos = check_22_ci_supply_chain(str(tmp_path))
+    assert len(fails) == 0
+
+
+def test_check_22_control_h_run_gt_block_marker_pass(tmp_path):
+    """Control H: run: > with no pipeline -> PASS"""
+    wf = (
+        "name: Verify\n"
+        "permissions:\n"
+        "  contents: read\n"
+        "jobs:\n"
+        "  verify:\n"
+        "    runs-on: ubuntu-latest\n"
+        "    steps:\n"
+        "      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262\n"
+        "      - name: Run verification gates\n"
+        "        run: >\n"
+        "          python3 scripts/verify_all.py\n"
+    )
+    _setup_check_22_env(tmp_path, workflow_content=wf)
+    fails, infos = check_22_ci_supply_chain(str(tmp_path))
+    assert len(fails) == 0
+
+
+def test_check_22_control_i_quoted_pipe_pass(tmp_path):
+    """Control I: quoted 'a|b' -> PASS"""
+    wf = (
+        "name: Verify\n"
+        "permissions:\n"
+        "  contents: read\n"
+        "jobs:\n"
+        "  verify:\n"
+        "    runs-on: ubuntu-latest\n"
+        "    steps:\n"
+        "      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262\n"
+        "      - name: Run verification gates\n"
+        "        run: python3 scripts/verify_all.py\n"
+        "      - name: Quoted pipe test\n"
+        "        run: echo \"option_a|option_b\"\n"
+    )
+    _setup_check_22_env(tmp_path, workflow_content=wf)
+    fails, infos = check_22_ci_supply_chain(str(tmp_path))
+    assert len(fails) == 0
+
+
+def test_check_22_control_j_expression_or_not_pipeline_pass(tmp_path):
+    """Control J: ${{ x || y }} -> not treated as shell pipeline"""
+    wf = (
+        "name: Verify\n"
+        "permissions:\n"
+        "  contents: read\n"
+        "jobs:\n"
+        "  verify:\n"
+        "    runs-on: ubuntu-latest\n"
+        "    steps:\n"
+        "      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262\n"
+        "      - name: Run verification gates\n"
+        "        run: python3 scripts/verify_all.py\n"
+        "      - name: Expression test\n"
+        "        run: echo \"${{ github.ref == 'refs/heads/main' || github.event_name == 'push' }}\"\n"
+    )
+    _setup_check_22_env(tmp_path, workflow_content=wf)
+    fails, infos = check_22_ci_supply_chain(str(tmp_path))
+    assert len(fails) == 0
+
+
+def test_check_22_control_k_pipeline_with_shell_bash_pass(tmp_path):
+    """Control K: actual pipeline with explicit shell: bash -> PASS"""
+    wf = (
+        "name: Verify\n"
+        "permissions:\n"
+        "  contents: read\n"
+        "jobs:\n"
+        "  verify:\n"
+        "    runs-on: ubuntu-latest\n"
+        "    steps:\n"
+        "      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262\n"
+        "      - name: Run verification gates\n"
+        "        run: python3 scripts/verify_all.py\n"
+        "      - name: Pipeline with bash\n"
+        "        shell: bash\n"
+        "        run: echo 'hello' | tr a-z A-Z\n"
+    )
+    _setup_check_22_env(tmp_path, workflow_content=wf)
+    fails, infos = check_22_ci_supply_chain(str(tmp_path))
+    assert len(fails) == 0
+
+
+def test_check_22_control_l_pipeline_with_set_pipefail_pass(tmp_path):
+    """Control L: actual pipeline with set -o pipefail first -> PASS"""
+    wf = (
+        "name: Verify\n"
+        "permissions:\n"
+        "  contents: read\n"
+        "jobs:\n"
+        "  verify:\n"
+        "    runs-on: ubuntu-latest\n"
+        "    steps:\n"
+        "      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262\n"
+        "      - name: Run verification gates\n"
+        "        run: python3 scripts/verify_all.py\n"
+        "      - name: Pipefail pipeline\n"
+        "        run: |\n"
+        "          set -o pipefail\n"
+        "          echo 'hello' | tr a-z A-Z\n"
+    )
+    _setup_check_22_env(tmp_path, workflow_content=wf)
+    fails, infos = check_22_ci_supply_chain(str(tmp_path))
+    assert len(fails) == 0
+
+
+def test_check_22_current_repo_workflow_pass():
+    """Prove current legal repository workflow shape is not falsely rejected"""
+    repo_root_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+    fails, infos = check_22_ci_supply_chain(repo_root_path)
+    assert len(fails) == 0

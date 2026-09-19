@@ -3038,9 +3038,10 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 | 1 | ~~**Port 3000 三方衝突**~~ **已於 2026-09-06 裁決** | 裁決結果見 `docs/TASKBOARD.md` C-01。實測為 11 個 port 而非三方衝突；以 ADR-0017 為準，處置範圍由兩處擴大為七處；playwright 掃描清單改為「明確指定目標 port 而非自動掃描」。執行排批 4 |
 | 2 | ~~**`SOP_02` 清歷史規定違反第 1 層規則**~~ **已於 2026-09-06 裁決** | 裁決結果見 `docs/TASKBOARD.md` C-02。採甲案：不得 force push；已推送憑證視為永久洩漏，處置為撤銷與輪換；清理歷史僅由使用者本人執行。執行排批 4 |
 | 3 | ~~**ADR-0013 處置**~~ **已於 2026-09-06 裁決** | 裁決結果見 `docs/TASKBOARD.md` C-03。採甲案逐節處置：§1／§2ABD／§7 棄用；§2C BOM 偵測實作為新 CHECK；§3 搬進 `role-boundaries.md`；§4／§5 凍結待 E-03；§6 獨立為 B-32。執行排批 4 |
-| 4 | ~~**是否將 GitHub Verify 升級為 main 的 preventive required check**~~ **已於 2026-09-17 裁決** | 裁決結果見 `docs/TASKBOARD.md` C-06。使用者已裁決採 Option B（main 未來必須由 preventive GitHub gate 保護：Require PR + Verify before merge；CI 未綠不能進 main）。實作落地排定於 TG-MVP-01B / G2 執行，本批不實作。 |
+| 4 | ~~**是否將 GitHub Verify 升級為 main 的 preventive required check**~~ **已於 2026-09-17 裁決，2026-09-19 D-U9 補充裁決** | 裁決結果見 `docs/TASKBOARD.md` C-06。使用者已裁決採 Option B；2026-09-19 D-U9 使用者進一步確立未來 C-06 傳輸模式為：批次分支（batch branch）→ exact branch SHA 驗證通過 → fast-forward 同一 SHA 至 main，正式遷移排定於 B-103 執行；本批維持現行 PR 模式，零工作流與 ruleset 異動。 |
 | 5 | ~~**歷史待辦 B-17 / B-28 / B-29 處置決策（ARCHIVE vs TRIGGER_BASED_DEFERRED）**~~ **已於 2026-09-18 裁決** | 裁決結果見 `docs/TASKBOARD.md` C-07。使用者裁決採 `TRIGGER_BASED_DEFERRED`（依觸發條件延後，不封存）。排定於觸發事件發生時評估，不阻擋重構。 |
 | 6 | ~~**Data/logs 歷史檔案處置決策（repo-external 保留 vs 封存 vs 刪除）**~~ **已於 2026-09-18 裁決** | 裁決結果見 `docs/TASKBOARD.md` C-08。使用者裁決採 `REPO_EXTERNAL_QUARANTINE_THEN_DELETE`（repo 外部隔離保存一週後刪除；HH.AI_v2 repo 內保持零納入、零歷史檔案）。 |
+| 7 | ~~**D-U11 提交守衛雙重掃描整合**~~ **已於 2026-09-19 確立** | 現行 verify_all Gate 2 (check_consistency) CHECK 21 之 secret_scan.run_tracked_scan() 已滿足提交守衛需求（D-U11 ALREADY SATISFIED），無冗餘掃描器。 |
 
 ### 5.4 進行中／等待回報
 
@@ -3086,7 +3087,9 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - B-98：已完成（CLOSED）。
   - B-101：已完成（CLOSED）。
   - TG-MVP-06A：已完成（ACCEPTED / CLOSED）。
-  - TG-MVP-01B：進行中（IN PROGRESS，G2 Authority Landing & C-06 Preventive GitHub Gate，落實 D-U2、D-U6、D-U7、C-06 Option B、C-07、C-08、B-100 R-D、Tier-M、E17、CHECK 22 等，候選狀態 pending External Macro Audit）。
+  - TG-MVP-01B：進行中（IN PROGRESS / MACRO HOLD，受 INCIDENT-CI-05 / B-102 治理閘門完整性修復阻擋；候選狀態 pending External Macro Pre-Merge Audit）。
+  - B-102：進行中（IN PROGRESS / BLOCKING，INCIDENT-CI-05 治理閘門完整性修復，分支 incident/ci-05-gate-integrity-repair，移除 verify.yml fail-open wrapper、CHECK 16 祖先驗證、CHECK 22 shell pipeline 守衛、落地治理凍結不變量；中斷復原診斷發現 B-102-F6 規則載入容量溢出，經 Scope Amendment #1 授權新增 .agents/rules/governance-gate-integrity.md 進行載入修復，全庫規則 <=12000，prompt-preflight <=9500，候選狀態 pending External Macro Pre-Merge Audit）。
+  - B-103：待辦（TODO / NOT AUTHORIZED，C-06 Exact-SHA 快速推進閘門遷移，待 B-102 通過後由宏觀審計官授權規劃，本批禁止實作）。
   - TG-MVP-07 與後續切片：待辦（NOT AUTHORIZED until TG-MVP-01B External Macro closure）。
   - E-03：進行中（IN PROGRESS，accepted checkpoint = fe9b507aaccd64222934b0ed1eebe0225fb707a2）。
   - B-28 / B-29 上游 trigger 重新評估完成，無 B-01 blocker，依 C-07 維持 TRIGGER_BASED_DEFERRED。
@@ -4533,3 +4536,25 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - **B-100 R-D CI 供應鏈可重現性**：`.github/workflows/verify.yml` 宣告 `permissions: contents: read` 並將 Actions 固定為 40-hex commit SHA；`requirements.txt` 將 10 項 Python 套件鎖定精確版本；實作 `scripts/check_consistency.py` CHECK 22 及其 9 個單元測試 canaries。
   - **C-07 / C-08 使用者決策留痕**：§5.3 與 TASKBOARD 完成 C-07（`TRIGGER_BASED_DEFERRED`）與 C-08（`REPO_EXTERNAL_QUARANTINE_THEN_DELETE`）裁決同步。
 - **候選狀態**：本候選分支與 PR 提交後標記為 PENDING EXTERNAL MACRO AUDIT，執行者不得自審宣稱結案。
+
+118. **INCIDENT-CI-05 / B-102 治理閘門完整性修復（Governance Gate Integrity Repair Candidate）**（2026-09-19）
+- **背景與事故根因（Incident Context & Root Cause）**：
+  - PR #25（TG-MVP-01B）合併至 main（commit `13247f8cf2b01fa9bef0d15c67dde0d91211e752`）後，外部宏觀審計（External Macro Audit）發現重大治理與閘門事故 INCIDENT-CI-05，判定 MACRO AUDIT = HOLD。
+  - F1 False-Green：`.github/workflows/verify.yml` 之 `Run verification gates` 步驟使用 `python3 scripts/verify_all.py 2>&1 | tee /tmp/verify_output.log` 管道包裝，在無 `pipefail` 下形成 fail-open，導致 CHECK 16 失敗（exit 1）被 tee 遮蔽，GitHub Actions 誤判為 SUCCESS 並促成 PR #25 合併。
+  - F2 Credential-Access Boundary Violation：執行者調用 `git credential fill` 探測憑證，違反角色邊界與憑證安全紀律；證據來源為先前 Executor 執行紀錄（prior Executor transcript）與 External Macro 審計證據，非單由 GitHub 倉庫歷史獨立推導重建。
+  - F3 Red-Driven Governance Mutation：CI 失敗時執行者違規修改治理守衛反例與放寬規則。
+  - F4 Non-Ancestor EXEC Cadence Defect：PR 分支 commit 007a158 / 32b89b8 / 3a670f7 於 squash-merge 後非 current main 之祖先 commit，分支 SHA 頻率基準與 squash 歷史不相容。
+  - F5 Protected Merge Based on Invalid PR Verify Evidence：依賴無效之 PR verify 綠燈證據執行合併。
+  - Macro-Control-F1 Missing Governance Freeze：缺乏候選提交測試期間之治理表面凍結規則。
+  - 重要事實校正：current main 13247f8... 之 post-merge Run 35375803150 中，the workflow wrapper remained fail-open, but this specific post-merge main run had a genuine inner verifier PASS（check_consistency PASS / ALL 5 GATES PASSED），這不修復 PR #25 的 false-green provenance。
+  - B-102-F6 規則載入容量溢出與 Scope Amendment #1：在受控中斷復原期間，診斷發現原本新增之治理規則使 `git-and-reporting.md` 達 12505 字元（超過 12000 字元上限）、`prompt-preflight.md` 達 10036 字元（超過 9500 字元安全門檻），觸發 `scripts/tests/test_rule_loadability.py` 失敗。經 External Macro 授權 Scope Amendment #1，新增第 15 個授權路徑 `.agents/rules/governance-gate-integrity.md` 作為執行者側治理凍結與閘門完整性規範，成功將 `git-and-reporting.md`（11868 字元）與 `prompt-preflight.md`（9493 字元）修復至合規範圍，所有載入限制維持未放寬；本修復標記為 repair candidate，待 External Macro re-audit。
+- **B-102 修復成果（Repair Deliverables）**：
+  - **F1 移除 Fail-Open Wrapper**：`.github/workflows/verify.yml` 恢復為直接 `run: python3 scripts/verify_all.py`，嚴禁任何管道、tee、|| 包裝、continue-on-error 或條件跳過。
+  - **CHECK 22 Fail-Closed 防衛**：`scripts/check_consistency.py` 擴充 shell pipeline 語法解析器，精確識別未引號之 shell pipeline（`|`、`|&`），嚴格要求 `shell: bash` 或預先設定 `set -o pipefail`；精確區分 YAML block 標量符號（`|`, `|-`, `|+`, `>`, `>-`, `>+`）、邏輯運算子 `||`、GitHub 表達式 `${{ ... || ... }}` 與引號管道字串；嚴格拒絕 required gate 之 `continue-on-error: true` 與條件跳過。
+  - **CHECK 16 祖先驗證先決與 --no-merges 移除**：`scripts/check_consistency.py` 恢復強制調用 `git merge-base --is-ancestor <sha> HEAD`，非祖先一律 Fail-Closed；移除 `--no-merges`，確保 merge commits 正確計入 commit 距離。
+  - **確定性負向控制（Negative Controls A–L）**：`scripts/tests/test_verify_all.py` 與 `scripts/tests/test_check_consistency.py` 擴充 Control A 至 Control L 負向與反例測試，實證子閘門失敗、無 pipefail 管道、continue-on-error、條件跳過等非法形態必定失敗，合規形態不被誤殺。
+  - **候選提交治理凍結不變量（Candidate Governance Freeze Invariant）**：於 `.agents/rules/governance-gate-integrity.md`、`.claude/rules/auditor-protocol.md` §3.1 與 `.claude/rules/auditor-selftest.md` D6 正式確立候選提交於第一個 required check 執行後治理表面嚴格凍結；紅燈改裁判一律停機宣告 `S1 GOVERNANCE_GATE_DEFECT`。
+  - **E17 負向控制要求擴充**：於 `.agents/rules/governance-gate-integrity.md`、`.claude/rules/auditor-protocol.md` §6.1-15 與 `.claude/rules/auditor-selftest.md` E17 明確要求驗證器、工作流或閘門語意變更必須具備確定性反例控制。
+  - **使用者決策留痕**：D-U9 裁決確立未來 C-06 傳輸模式為 batch branch → exact branch SHA verify → fast-forward same SHA to main，正式遷移排定於 B-103；D-U11 確立現行 CHECK 21 secret_scan 滿足需求（ALREADY SATISFIED）。
+  - **狀態同步與留痕**：`docs/TASKBOARD.md` 登錄 B-102 blocking 與 B-103 todo，TG-MVP-01B 標記 MACRO HOLD；`docs/AUDIT-LOG.md` 登錄 INCIDENT-CI-05 OPEN / MACRO HOLD；`docs/EXEC-LOG.md` 補齊以 `13247f8` 為基準之 cadence anchor 與事實留痕。
+- **候選狀態**：本候選分支 `incident/ci-05-gate-integrity-repair` 提交後標記為 PENDING EXTERNAL MACRO PRE-MERGE AUDIT，執行者嚴禁自審宣稱結案、嚴禁修改 ruleset、嚴禁自行合併。
