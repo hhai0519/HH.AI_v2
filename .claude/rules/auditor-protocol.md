@@ -152,7 +152,7 @@
    - `docs/refactor-backlog.md` §5：UPDATE 或 NO CHANGE（附理由）。
    - `docs/TASKBOARD.md`：UPDATE 或 NO CHANGE（附理由；更新時包含狀態流轉、缺口登錄或最後更新描述，不寫入 Git hash）。
    - `docs/AUDIT-LOG.md`：**僅在存在「已由宏觀審計官獨立成立之 verdict」需進行 repo-visible sync 時才 UPDATE**；若無新 Macro verdict，提示詞必須明確宣告 `AUDIT-LOG = NO CHANGE (no new Macro Auditor verdict)`。執行者不得為了通過 preflight 自行製造審計結論。
-9. **確認執行者本機與遠端同步**：提示詞必須要求執行者先 `git pull origin main` 並確認 HEAD 與提示詞假設一致。
+9. **確認執行者基準同步與 Main 晉級約束（Main Advancement & Base Synchronization）**：提示詞必須要求執行者先確認基準與 `origin/main` 一致；若提示詞涉及 main 晉級（main advancement），必須嚴格遵守 C-06 / D-U9 Checked Batch Exact-SHA 傳輸規範：(a) 候選提交必須於 `batch/**` 分支完成 exact candidate SHA 之 required checks（verify + gateway-windows）全數通過且 verify 輸出為 `ALL 5 GATES PASSED`；(b) 更新 main 前必須確認 `origin/main` 未 drift 且當前 base 為 candidate 之 ancestor；(c) main ref 更新只允許使用 GitHub approved connector `update_ref`（`branch_name = main`, `sha = exact checked candidate SHA`, `force = false`）；(d) 查驗 post-main push 之 head_sha 完全相同之 Actions Verify 成功；(e) 絕不新增 bypass actor，嚴禁 force push、`force=true`、rebase-after-check、squash-after-check 或 cherry-pick-after-check。
 10. **提示詞開頭要求執行者從檔案讀取規則，不依賴自動載入**：必須包含「動手前必讀」，要求執行者重新從檔案讀取 active rules，避免 session prefix truncation 導致規則遺失。讀取確認紀錄寫入 `docs/EXEC-LOG.md`，不把完整規則貼入對話。
 11. **配對與覆蓋（模式感知）**：
     - **審計狀態配對 (Audit-State Pairing)**：若提示詞將某 commit 正式提升為 Macro PASS checkpoint，則 `AUDIT-LOG` 與交接區 §5.1 checkpoint 必須指向同一個已由 Macro Auditor 明確裁決 PASS 的 commit（TASKBOARD 只維持工作狀態，不參與 commit-verdict authority）。
@@ -453,10 +453,17 @@ TASKBOARD 不擁有 Git HEAD / checkpoint / pending range 之事實（由 Git HE
 
 ### 11.2 執行 revert 的完整程序
 
-```bash
-git revert <commit-hash> --no-edit
-git push origin main
-```
+依 C-06 / D-U9 Checked Batch Exact-SHA 傳輸規範，revert 必須經由 batch 分支驗證後快速進位至 main，嚴禁直推 main：
+
+1. 以 exact origin/main 基準建立 `batch/**` repair branch。
+2. 執行 `git revert <commit-hash> --no-edit` 建立 revert commit。
+3. `git push origin <batch-branch>` 推送至批次分支。
+4. 等候 exact revert SHA 於 GitHub Actions 之 required checks（`verify` 與 `gateway-windows`）全數 completed / success，且 inner verifier 為 `ALL 5 GATES PASSED`。
+5. 確認 `origin/main` 未 drift 且當前 base 為 revert SHA 之 ancestor（可 fast-forward）。
+6. 使用 GitHub approved connector 執行 `update_ref`（`branch_name = main`, `sha = exact checked revert SHA`, `force = false`）。
+7. 查驗 same SHA 之 post-main push GitHub Actions Verify 成功。
+
+仍嚴格禁止 `git push origin main`、`git push --force`、`--amend` 或任何歷史改寫。
 
 revert 後必須同批完成三件事：
 1. 交接區 §5.1 更新為 revert 後的 commit

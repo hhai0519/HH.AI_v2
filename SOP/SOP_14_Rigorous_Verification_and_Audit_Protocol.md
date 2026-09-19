@@ -194,13 +194,19 @@ RED（遠端異常）
   ↓
 5. Prospective PASS（透過 disposable prospective commit 或 --as-if-committed 預演通過）
   ↓
-6. Normal Push（以 fast-forward 推送修復 commit 至 origin/main，嚴禁 force push）
+6. Push exact repair SHA to batch/**（推送修復 commit 至批次分支）
   ↓
-7. Exact origin/main Actions PASS（查證 GitHub Actions Verify 且 head_sha 完全相符、completed/success）
+7. Batch exact-SHA required checks PASS（確認 verify + gateway-windows 全數成功且 ALL 5 GATES PASSED）
   ↓
-8. Archive incident knowledge（將事故成因、修復 commit 與預防措施歸檔至 docs/AUDIT-LOG.md）
+8. Confirm origin/main unchanged + ancestry（確認 main 未 drift 且可 fast-forward）
   ↓
-9. Eligible for historical-run cleanup（標記為可清理候選，待使用者授權後執行）
+9. Approved force=false update_ref main to SAME SHA（經 approved connector 更新 main，嚴禁直推 main 或 force push）
+  ↓
+10. Exact same-SHA main push Actions PASS（查證 post-main GitHub Actions Verify 且 head_sha 完全相符、completed/success）
+  ↓
+11. Archive incident knowledge（將事故成因、修復 commit 與預防措施歸檔至 docs/AUDIT-LOG.md）
+  ↓
+12. Eligible for historical-run cleanup（標記為可清理候選，待使用者授權後執行）
 ```
 
 ### 8.2 歷史清理紅線 (Cleanup Invariants)

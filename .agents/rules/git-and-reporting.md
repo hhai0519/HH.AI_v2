@@ -19,13 +19,18 @@
 - **建立 prospective commit 前確認交接區 HEAD**：若該批次包含交接區元資料更新，確認 `docs/refactor-backlog.md` §5.1 的「上次核對通過的 HEAD」等於 `docs/AUDIT-LOG.md` 中最新且屬當前歷史之 Macro PASS checkpoint。它可以是 HEAD 的較早 ancestor；存在多個 pending repair commits 本身不構成錯誤，不得以 ancestry distance 判定 audit state 過期。候選 commit 自身若未經 Macro Auditor 裁決 PASS，絕對不得自稱為 checkpoint。可使用 `python scripts/check_consistency.py --as-if-committed` 於 commit 前預演驗證，消除本地與 CI 差 1 的可預測中間紅燈（B-51）。
 - **commit message 內若含 `$$` 字元，訊息要用單引號包住**，避免被 shell
   展開成進程 ID。
-- **C-06 啟用後常態生產禁止直推 main（Protected Main Contract）**：
-  在 C-06 預防性 GitHub Gate 啟用後，常態生產作業絕對禁止直接執行 `git push origin main`。
-  新常態生產流程為：
-  accepted/main 基準 → 開設 production branch → commit → push branch → 建立 PR 靶向 main → 等候 required checks（verify 與 gateway-windows）完成且成功 → 執行受保護合併（protected merge，優先 squash，次選 merge commit）→ 取得 exact merged main SHA → 查驗 main push GitHub Actions Verify 成功。
-  絕不繞過保護規則（Never bypass protection）。
-  絕不因便利性新增 bypass actor。
-  遠端健康權威始終為：exact origin/main SHA + GitHub Actions Verify 成功。
+- **C-06 Checked Batch Exact-SHA Transport（Protected Main Contract / D-U9）**：
+  在 C-06 / D-U9 預防性 GitHub Gate 啟用後，常態生產作業切換為 Checked Batch Exact-SHA 傳輸架構，絕對禁止直接執行 `git push origin main` 作為常態生產更新。
+  新常態流程與不變量如下：
+  1. 以 exact current accepted/main SHA 開設 `batch/**` 分支。
+  2. production change commit 必須存在於 `batch/**` 分支。
+  3. push batch branch 後取得 candidate exact SHA 之 push Actions runs，required contexts（`verify`、`gateway-windows`）兩者皆 completed/success，且 verify raw log 須為 `ALL 5 GATES PASSED`。
+  4. 更新 main 前重新確認 `origin/main` 等於建立時之 base SHA 且為 candidate 之 ancestor；若 main drift 立即 STOP，禁 rebase 沿用舊 checks 或轉移 checks 至新 SHA。
+  5. main ref 更新只允許 GitHub approved connector `update_ref`（`branch_name = main`, `sha = exact checked candidate SHA`, `force = false`）。禁 `git push origin main`，嚴禁 force push、`force=true`、rebase/cherry-pick/squash after check，確保 main 接收 SAME SHA。
+  6. main 更新後 `origin/main` 精確等於 candidate checked SHA。
+  7. 等候 post-main `event = push, head_branch = main, head_sha = same candidate SHA` 之 Actions runs，`verify` 與 `gateway-windows` 必須再次成功。
+  8. 絕不繞過保護規則（Never bypass protection），嚴禁新增 bypass actor。
+  9. 遠端健康權威始終為：exact origin/main SHA ＋ exact-SHA GitHub Actions Verify 成功。
 - **候選提交治理凍結不變量**：候選提交開始執行 required check 後裁判表面嚴格凍結，詳見 [.agents/rules/governance-gate-integrity.md](./governance-gate-integrity.md)。
 
 ## 2. 回報紀律
@@ -71,17 +76,7 @@
   (2) 該檔案的總行數。SHA-256 為選用，理由見下方「雜湊機制的實測結果」。
   **禁止憑記憶重打，禁止把指令中的原文複製過去當作回報內容。**
 
-  參考寫法：
-
-      import hashlib
-      p = "PRINCIPLES.md"
-      text = open(p, encoding="utf-8").read()
-      lines = text.splitlines()
-      # 正規化換行後再算雜湊，確保 Windows(CRLF) 與 Linux(LF) 得到相同結果
-      norm = "\n".join(lines).encode("utf-8")
-      print(p, hashlib.sha256(norm).hexdigest()[:12], len(lines))
-      for i, l in enumerate(lines[start:end], start + 1):
-          print(f"{i:4d} | {l}")
+  （早期曾以 Python `hashlib.sha256` 腳本讀檔示範輸出，現由 `docs/EXEC-LOG.md` 與自動化閘門取代）。
 
   **原因**：2026-08-29 回報 `PRINCIPLES.md` §4.2 時，第 1–5 項被寫成
   「工作範圍邊界／規則遵循／副作用評估／狀態同步／懸而未決」，
@@ -98,26 +93,8 @@
   再計算 SHA-256。**行號是主要的核對依據，雜湊是輔助**——
   行號能證明內容來自真實檔案的真實位置，雜湊只能證明整檔一致。
 
-  **雜湊機制的實測結果（2026-08-29，三批後降級為選用）**：
-  實際運作三批，執行端與審查端的檔案雜湊**沒有任何一批對得上**，
-  而行號與總行數**每一批都完全吻合**。已排除的可能原因：
-
-  - 雜湊函式錯誤 — 已排除。以固定字串 `"HH.AI_v2"` 作控制值，
-    雙方算出的 SHA-256 前 12 碼完全相同。
-  - 換行符差異 — 已排除。逐一比對過 LF 原始位元組、CRLF 原始位元組、
-    正規化 LF、正規化加尾換行、CRLF 正規化、CRLF 正規化加尾換行，
-    六種算法皆無法還原執行端回報的任何一個值。
-  - 內容不同 — 已排除到抽查範圍為止。五個檔案的總行數全數吻合，
-    抽查的行內容逐字相符。
-
-  **尚未定位的可能**：行尾空白等不影響行數、也不影響肉眼判讀的位元組差異。
-  此為推論，未取得證據，不得當作結論引用。
-
-  **處置**：雜湊改為選用。理由是一個持續失準的輔助指標價值為負——
-  它會消耗核對注意力，並可能讓人習慣「對不上也沒關係」。
-  行號機制已證實有效，作為主要核對依據即足夠。
-  日後若要重啟雜湊，起點是印出可疑行的 `repr()`，
-  行尾空白在 `repr()` 中可見，一行即可判定。
+  **雜湊機制的實測結果（2026-08-29 降級為選用）**：
+  實測發現跨平台換行符與行尾空白使檔案雜湊持續失準，故改為選用；行號與總行數機制已證實足夠作為主要核對依據。
 
 - **[已退役] 回報的檔案內容必須來自同一次執行的實際輸出；讀檔失敗時必須明說失敗**：
   貼出的內容只能是該次讀檔指令實際印出的結果，直接複製終端機輸出。
@@ -242,8 +219,8 @@
 
 ## 2.5 遠端健康查證與 GitHub Actions 閉環規範 (Remote Health Verification)
 
-所有 Agent 在推送到遠端或受保護 PR 合併後，必須落實遠端健康查證閉環：
-1. **取得 exact origin/main OID**：確認本地當前 commit 或 PR 合併已正確被 remote main 接收（受保護 PR 合併後確認 exact merged main SHA）。
+所有 Agent 在推送到遠端、main 快速進位或受保護 PR 合併後，必須落實遠端健康查證閉環：
+1. **取得 exact origin/main OID**：確認本地當前 commit、main 快速進位或 PR 合併已正確被 remote main 接收（Checked Batch 快速進位後確認 exact SAME SHA，受保護 PR 合併後確認 exact merged main SHA）。
 2. **查證 GitHub Actions Verify（Exact-SHA 閉環）**：
    - **必備五要素**：必須同時證明 (1) remote main 接收目標 commit；(2) workflow 名稱為 `Verify`；(3) `head_sha` 與目標 commit full SHA 完全一致；(4) `status == completed`；(5) `conclusion == success`。
    - **主要查證途徑 (Primary Channel)**：GitHub API / exact-SHA workflow run query（例如查詢 `/actions/runs?head_sha=<exact_sha>`）。
