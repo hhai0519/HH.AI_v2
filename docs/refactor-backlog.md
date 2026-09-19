@@ -2825,7 +2825,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 5.1 上一批狀態
 
-上次核對通過的 HEAD：0efd5e3cf0e3147b9546fa5f72f185cdff8d6973
+上次核對通過的 HEAD：cf2a2b970f9a0cd28c540e70e1afb67e182c8d6f
 
 - `23af193`（執行者前置檢查 ＋ 回滾程序 ＋ `AUDIT-LOG.md` ＋ 四缺口修正）
   已於 2026-09-02 由審計官核對通過：6 檔異動（含 2 個新檔）、零夾帶、
@@ -3025,6 +3025,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 - `78fbab3`（B-102 INCIDENT-CI-05 治理與管線修復）已於 2026-09-19 由外部審計官（使用者授權）全面審查獨立核對通過：涵蓋 13247f8..78fbab3 完整範圍（PR #26 候選 8cd5eb5，Actions Run 35418065529 pre-merge Macro PASS，經單次授權 squash-merge 進入 main）；A1 EQUIVALENT 查證通過；exact-SHA Actions Verify Run 35439883902 (attempt 1, status completed, conclusion success, verify: success, gateway-windows: success, inner verifier: ALL 5 GATES PASSED)；F1–F5 RESOLVED、Macro-Control-F1 RESOLVED、B-102-F6 RESOLVED，new material finding = NONE；B-102 正式 CLOSED、INCIDENT-CI-05 正式 CLOSED、R6 正式 RESOLVED；new accepted checkpoint = 78fbab3793b3d9a31e552f4939a7fcc27ae1a20d。
 - `eb21415`（B-103A Batch Check Bootstrap & B-102 Closure Sync）：PR #27 經 squash-merge 合併至 main（`eb21415c8e7e2f180696a0731d657b6ecc8e6312`，parent: `78fbab3793b3d9a31e552f4939a7fcc27ae1a20d`），但 post-merge exact-SHA GitHub Actions Run 35447317701（attempt 1）失敗（jobs: verify failure job 105908383868 CHECK 16 cadence collision, gateway-windows failure job 105908383963 Test J timeout recurrence；另留痕 prior Executor credential-access boundary violation）；B-103A 維持 MACRO HOLD / REPLACEMENT REPAIR ACTIVE，不得 ACCEPT/CLOSE，accepted checkpoint 保持 `78fbab3793b3d9a31e552f4939a7fcc27ae1a20d`；後由 PR #29 替代候選修復。
 - `0efd5e3`（B-103A Post-Merge Red Repair & B103A-F1..F5 Closure）已於 2026-09-19 由 External Macro Auditor 核對通過：PR #29 replacement repair candidate 經 squash-merge 合併至 main（`0efd5e3cf0e3147b9546fa5f72f185cdff8d6973`，parent: `eb21415c8e7e2f180696a0731d657b6ecc8e6312`），post-merge exact-SHA Actions Run 35451619061（attempt 1）驗證成功（verify = success, gateway-windows = success, ALL 5 GATES PASSED, CHECK 16 lag = 1, Windows Test J PASS）；External Macro Auditor 正式判定 B-103A ACCEPTED / CLOSED，new material finding = NONE，new accepted checkpoint = `0efd5e3cf0e3147b9546fa5f72f185cdff8d6973`。
+- `cf2a2b9`（B-103B Phase D1 Same-SHA Transport Contract Activation Landing）已於 2026-09-20 由 External Macro Auditor 核對通過：PR #30 candidate `bc255e67ad525ee687b865f9754157dd4395917a` 經授權 squash-merge 進入 main 產生 `cf2a2b970f9a0cd28c540e70e1afb67e182c8d6f`（parent: `0efd5e3cf0e3147b9546fa5f72f185cdff8d6973`，candidate tree 與 merged-main tree 皆為 `146158638639b9fe0eaa0e0a0eb2c8092b6c8520`，TREE IDENTITY = PASS）；post-merge exact-SHA Actions Run 35456270854（attempt 1, event=push, head_branch=main, head_sha=cf2a2b970f9a0cd28c540e70e1afb67e182c8d6f）驗證成功（jobs: verify = success, gateway-windows = success, inner verifier: ALL 5 GATES PASSED, CHECK 16 anchor=0efd5e3..., ancestor=true, lag=1）；new transport contract ACTIVE ON MAIN；External Macro Auditor 正式判定 B-103B Phase D1 ACCEPTED / CLOSED，new material finding = NONE，new accepted checkpoint = `cf2a2b970f9a0cd28c540e70e1afb67e182c8d6f`；正式登錄 B-106、B-107、B-108 待辦（BLOCKING BEFORE PHASE E）；當前 B-103B Phase D2 candidate 標記為 SAME-SHA PROOF CANDIDATE PENDING EXECUTION / MACRO AUDIT。
 
 ### 5.2 待辦
 
@@ -3100,12 +3101,15 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - TG-MVP-06A：已完成（ACCEPTED / CLOSED）。
   - TG-MVP-01B：進行中（IN PROGRESS / B-102 RESOLVED / B-103 TRANSPORT MIGRATION ACTIVE；不得標記 CLOSED）。
   - B-102：已完成（CLOSED / INCIDENT-CI-05 CLOSED / R6 RESOLVED，accepted checkpoint = `78fbab3793b3d9a31e552f4939a7fcc27ae1a20d`）。
-  - B-103：進行中（IN PROGRESS / B-103A = ACCEPTED / CLOSED，accepted checkpoint = `0efd5e3cf0e3147b9546fa5f72f185cdff8d6973`，Actions Run 35451619061 attempt 1 success；B-103B Phase B = PASS / ACCEPTED，canary `batch/b103b-canary-0efd5e3` Run 35452195334 same-SHA capability proof PASS；B-103B Phase C = PASS / ACCEPTED，ruleset 21301111 pull_request rule removed，deletion / non_fast_forward / strict required_status_checks preserved，bypass empty；B-103B Phase D1 = CONTRACT ACTIVATION CANDIDATE PENDING EXTERNAL MACRO PRE-MERGE AUDIT，依現行 PR contract 落地 same-SHA transport 規範，不得宣稱 Phase D same-SHA proof 完成，不得宣稱 B-103 closed；future target Phase D2 始執行 batch/** exact-SHA checks → force=false update_ref SAME SHA to main）。
+  - B-103：進行中（IN PROGRESS / B-103A = ACCEPTED / CLOSED，accepted checkpoint = `cf2a2b970f9a0cd28c540e70e1afb67e182c8d6f`；B-103B Phase B = PASS / ACCEPTED，canary `batch/b103b-canary-0efd5e3` Run 35452195334 same-SHA capability proof PASS；B-103B Phase C = PASS / ACCEPTED，ruleset 21301111 pull_request rule removed，deletion / non_fast_forward / strict required_status_checks preserved，bypass empty；B-103B Phase D1 = ACCEPTED / CLOSED，PR #30 squash-merged 產生 cf2a2b9，post-main Run 35456270854 attempt 1 verify / gateway-windows success，new transport contract ACTIVE ON MAIN；B-103B Phase D2 = SAME-SHA PROOF CANDIDATE PENDING EXECUTION / MACRO AUDIT；B-106/B-107/B-108 REGISTERED TODO BLOCKING BEFORE PHASE E；不得宣稱 Phase D2 completed，不得宣稱 B-103 closed，不得宣稱 Phase E authorized）。
   - B-104：待辦（TODO / NOT AUTHORIZED，Jules 歷史 PR #13–#24 與 12 條 exact head branches 清理路由，依 U-A 授權範圍未來執行，本輪不執行）。
   - B-105：待辦（TODO / NOT AUTHORIZED，Jules Mode A 唯讀風險掃描與前置條件準備）。
+  - B-106：待辦（TODO / BLOCKING BEFORE PHASE E，Always-On Rule Budget & Guarded Rule Mutation，零實作）。
+  - B-107：待辦（TODO / BLOCKING BEFORE PHASE E，Deterministic Consistency Diagnostics & Guarded State-Log Mutation，零實作）。
+  - B-108：待辦（TODO / BLOCKING BEFORE PHASE E，Unauthorized Destructive Local Git Reset Guard，零實作）。
   - F-03：多代理自治閉環（LOOP-lite，POST-MVP，採 Jules proposes → Executor reauthors → Macro judges，禁止 auto-merge）。
   - TG-MVP-07 與後續切片：待辦（NOT AUTHORIZED until TG-MVP-01B External Macro closure）。
-  - E-03：進行中（IN PROGRESS，accepted checkpoint = `0efd5e3cf0e3147b9546fa5f72f185cdff8d6973`）。
+  - E-03：進行中（IN PROGRESS，accepted checkpoint = `cf2a2b970f9a0cd28c540e70e1afb67e182c8d6f`）。
   - B-28 / B-29 上游 trigger 重新評估完成，無 B-01 blocker，依 C-07 維持 TRIGGER_BASED_DEFERRED。
   - B-54 保持待辦（POST_B01 / NONBLOCKING，SOP_12 機器專屬路徑 concrete example 已登錄）。
   - B-75 保持待辦、零實作 (POST_B01 / NONBLOCKING / NOT IMPLEMENTED)。
