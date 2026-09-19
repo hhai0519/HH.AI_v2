@@ -89,7 +89,7 @@ T6 階段正式採用 `busy_timeout = 5000`（5000ms），其基礎為 T1 Window
 - **消費者最佳努力歸零**：取用機密之 Consumer 在使用完畢後，應以最佳努力原則立即執行 `buf.fill(0)` 抹除，不宣稱完美記憶體抹除保證。
 - **SecretRef 封閉不可變領域模型**：`SecretRef` 為封閉領域模型，建構後即透過 `Object.freeze` 深層凍結不可變；嚴格拒絕子類別（subclass）與原型覆寫。
 - **提供者權威推導與目標語法斷言**：提供者嚴禁信任呼叫端傳入之 `getTargetName()`，必須自已驗證之語意欄位（channel, purpose, accountId）在內部重新推導規範 TargetName，並於啟動橋接前硬性斷言符合 `HH.AI_v2/channel-gateway/v1/...` 規範語法。
-- **同步橋接有限逾時與熱路徑禁止 (F2-A)**：PowerShell 同步橋接必須設定有界逾時（預設 30000ms，上限 60000ms，Windows live 整合測試必須使用生產預設），逾時失敗一律 Fail-Closed 映射為 `PROVIDER_UNAVAILABLE`；SecretProvider 解析僅允許於生命週期受控點（帳號啟用、帳號切換、消費者初始化、明確憑證重新整理）執行，**嚴禁於熱路徑（hot path）訊息處理中作為每訊息同步查詢**。
+- **同步橋接有限逾時與熱路徑禁止 (F2-A)**：PowerShell 同步橋接必須設定有界逾時（預設 60000ms，上限 60000ms，Windows live 整合測試必須使用生產預設），逾時失敗一律 Fail-Closed 映射為 `PROVIDER_UNAVAILABLE`；SecretProvider 解析僅允許於生命週期受控點（帳號啟用、帳號切換、消費者初始化、明確憑證重新整理）執行，**嚴禁於熱路徑（hot path）訊息處理中作為每訊息同步查詢**。
 - **原生指標單一擁有權與暫存位元組清理**：PowerShell 橋接腳本對 `CredRead` 取得之原生指標 `$pCred` 採 `finally` 單一擁有權釋放（`CredFree` 恰好一次）且立即歸零（`$pCred = [IntPtr]::Zero`）；其複製之受管機密位元組陣列 `$blob` 於輸出後在 `finally` 區塊以最佳努力原則立即執行 `[Array]::Clear` 歸零。
 - **帳號識別碼領域對齊、正規 Unicode 與安全百分比編碼 (F2-B / F3)**：`AccountRegistry` 與 `SecretRef` 共享一致之帳號識別碼領域；於 trim 之前嚴格拒絕 ASCII 控制字元（`U+0000..U+001F`）、`DEL`（`U+007F`）與不合法 UTF-16 孤立代理字元（lone surrogates，一律 Fail-Closed 拒絕，嚴禁使用 `toWellFormed()` 替換為 `U+FFFD` 造成身分別名）；合法領域支援一般空白、反斜線、問號、井字號、引號、合法 Unicode 及輔助平面合法代理對（如 Emoji）；TargetName 路徑元件採決定性百分比編碼（單引號一律編碼為 `%27`，字面 `%` 編碼為 `%25` 防別名，斜線編碼為 `%2F` 防路徑注入）；嚴禁呼叫端提供預先編碼之 TargetName 權威。
 - **測試純合成性**：自動化測試一律使用動態合成金鑰，測試完成立即清理刪除；嚴禁在 CI 或測試中使用真實生產機密。
