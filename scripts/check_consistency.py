@@ -1559,11 +1559,15 @@ def check_15_context_conflict(root_dir=None):
 
     return fails, infos
 
-def check_16_exec_log_cadence(root_dir=None, git_count=None):
+def check_16_exec_log_cadence(root_dir=None, git_count=None, git_is_ancestor=None):
     """CHECK 16 — 執行者檢查紀錄（EXEC-LOG）證據生命週期與落後偵測。
 
     規格：讀 docs/EXEC-LOG.md 最後一列的 commit 欄位。
-    若該值為 BOOTSTRAP 以外的 hash，且落後 HEAD 超過 1 個 commit，即為 FAIL。
+    若該值為 BOOTSTRAP 以外的 hash：
+    1. 驗證該 hash 是否為目前 HEAD 之祖先 commit (git merge-base --is-ancestor <sha> HEAD)。
+       若非祖先（exit code != 0），即為 FAIL。
+    2. 僅在確認為祖先後，計算落後量 (git rev-list --count <sha>..HEAD，不使用 --no-merges)。
+       若落後 HEAD 超過 1 個 commit，即為 FAIL。
     架構分工：
     - CHECK 16：由執行者持有之 EXEC-LOG 證據生命週期／頻率（Executor-owned EXEC-LOG evidence lifecycle / cadence）。
     - CHECK 12：由審計官持有之 AUDIT-LOG 歷史有效性／相容性（Auditor-owned AUDIT-LOG ancestry validity / pending-range compatibility）。
@@ -1583,25 +1587,60 @@ def check_16_exec_log_cadence(root_dir=None, git_count=None):
         fails.append(f"docs/EXEC-LOG.md:0  讀取失敗: {e}")
         return fails, infos
 
-    rows = re.findall(r"^\|\s*([0-9a-fA-F]+|BOOTSTRAP)\s*\|", content, re.M)
-    if not rows:
+    table_rows = []
+    for line in content.splitlines():
+        line_s = line.strip()
+        if line_s.startswith("|"):
+            cells = [p.strip() for p in line_s.split("|")[1:-1]]
+            if cells and not all(c.replace("-", "").replace(":", "") == "" for c in cells):
+                first_cell = cells[0].strip("`").strip()
+                if first_cell and first_cell not in ["批次 commit", "commit", "Commit", "批次", "SHA", "Hash"]:
+                    table_rows.append(first_cell)
+
+    if not table_rows:
         fails.append("docs/EXEC-LOG.md:0  未找到執行者檢查紀錄列")
         return fails, infos
-    if len(rows) == 1 and rows[0] == "BOOTSTRAP":
-        infos.append("docs/EXEC-LOG.md 僅有首列 BOOTSTRAP，跳過檢查")
-        return fails, infos
 
-    latest_hash = rows[-1]
+    latest_hash = table_rows[-1]
     if latest_hash == "BOOTSTRAP":
         infos.append("docs/EXEC-LOG.md 最新列為 BOOTSTRAP，跳過檢查")
         return fails, infos
 
+    if not re.match(r"^[0-9a-fA-F]{7,40}$", latest_hash):
+        fails.append(f"docs/EXEC-LOG.md: 最新紀錄之 commit hash 格式不合法或缺失: '{latest_hash}'")
+        return fails, infos
+
+    # 1. 祖先斷言先決 (git merge-base --is-ancestor <sha> HEAD)
+    if git_is_ancestor is False:
+        fails.append(f"docs/EXEC-LOG.md: 最新檢查紀錄 ({latest_hash}) 不是目前 HEAD 之祖先 commit（git merge-base --is-ancestor 失敗，可能是 squash-merge 歷史不相容或幽靈紀錄）")
+        return fails, infos
+    elif git_is_ancestor is True:
+        pass
+    elif git_count is not None:
+        pass
+    else:
+        try:
+            res_ancestor = subprocess.run(
+                ["git", "merge-base", "--is-ancestor", latest_hash, "HEAD"],
+                cwd=root_dir, capture_output=True, text=True
+            )
+            if res_ancestor.returncode == 1:
+                fails.append(f"docs/EXEC-LOG.md: 最新檢查紀錄 ({latest_hash}) 不是目前 HEAD 之祖先 commit（git merge-base --is-ancestor 失敗，可能是 squash-merge 歷史不相容或幽靈紀錄）")
+                return fails, infos
+            elif res_ancestor.returncode != 0:
+                fails.append(f"docs/EXEC-LOG.md: 無法取得 git rev-list，無法驗證檢查紀錄生命週期 (hash={latest_hash})")
+                return fails, infos
+        except Exception as e:
+            fails.append(f"docs/EXEC-LOG.md: 無法取得 git rev-list，無法驗證檢查紀錄生命週期 (hash={latest_hash}): {e}")
+            return fails, infos
+
+    # 2. 落後量計算 (git rev-list --count <sha>..HEAD，移除 --no-merges)
     lag = 0
     if git_count is not None:
         lag = git_count
     else:
         try:
-            res = subprocess.run(["git", "rev-list", "--no-merges", "--count", f"{latest_hash}..HEAD"], cwd=root_dir, capture_output=True, text=True)
+            res = subprocess.run(["git", "rev-list", "--count", f"{latest_hash}..HEAD"], cwd=root_dir, capture_output=True, text=True)
             if res.returncode == 0:
                 lag = int(res.stdout.strip())
             else:
@@ -1613,6 +1652,8 @@ def check_16_exec_log_cadence(root_dir=None, git_count=None):
 
     if lag > 1:
         fails.append(f"docs/EXEC-LOG.md: 最新檢查紀錄 ({latest_hash}) 落後 HEAD {lag} 個 commit（允許落後 1 批，因本批尚未核對）")
+    else:
+        infos.append(f"docs/EXEC-LOG.md: 最新檢查紀錄 ({latest_hash}) 通過祖先檢驗且落後量合規 (lag={lag})")
     return fails, infos
 
 
@@ -2256,8 +2297,208 @@ def check_21_secret_leak_guard(root_dir=None):
     return fails, infos
 
 
+def _has_unquoted_pipeline(cmd_text: str) -> bool:
+    """偵測 shell 指令字串中是否存在未加引號之 pipeline 運算子 (| 或 |&)。"""
+    if not cmd_text:
+        return False
+    cleaned = re.sub(r'\$\{\{.*?\}\}', ' ', cmd_text)
+    for line in cleaned.splitlines():
+        in_sq = False
+        in_dq = False
+        escaped = False
+        code_chars = []
+        for ch in line:
+            if escaped:
+                code_chars.append(ch)
+                escaped = False
+                continue
+            if ch == '\\':
+                escaped = True
+                code_chars.append(ch)
+                continue
+            if ch == "'" and not in_dq:
+                in_sq = not in_sq
+                code_chars.append(ch)
+                continue
+            if ch == '"' and not in_sq:
+                in_dq = not in_dq
+                code_chars.append(ch)
+                continue
+            if ch == '#' and not in_sq and not in_dq:
+                break
+            code_chars.append(ch)
+
+        line_code = ''.join(code_chars)
+
+        in_sq = False
+        in_dq = False
+        escaped = False
+        i = 0
+        n = len(line_code)
+        while i < n:
+            ch = line_code[i]
+            if escaped:
+                escaped = False
+                i += 1
+                continue
+            if ch == '\\':
+                escaped = True
+                i += 1
+                continue
+            if ch == "'" and not in_dq:
+                in_sq = not in_sq
+                i += 1
+                continue
+            if ch == '"' and not in_sq:
+                in_dq = not in_dq
+                i += 1
+                continue
+            if not in_sq and not in_dq:
+                if ch == '|':
+                    if i + 1 < n and line_code[i+1] == '|':
+                        i += 2
+                        continue
+                    return True
+            i += 1
+    return False
+
+
+def _establishes_pipefail(cmd_text: str) -> bool:
+    """檢查指令文字中是否於管線執行前宣告 set -o pipefail。"""
+    if not cmd_text:
+        return False
+    for line in cmd_text.splitlines():
+        stripped = line.strip()
+        if re.search(r'\bset\s+-[a-zA-Z0-9_-]*o\s+pipefail\b', stripped) or re.search(r'\bset\s+-o\s+pipefail\b', stripped):
+            return True
+    return False
+
+
+def _parse_workflow_jobs_and_steps(wf_content: str) -> dict:
+    """確定性解析 GitHub Actions 工作流程中的 jobs 與 steps。"""
+    lines = wf_content.splitlines()
+    in_jobs = False
+    current_job = None
+    current_step = None
+    jobs = {}
+
+    in_multiline_run = False
+    run_indent = 0
+    run_lines = []
+
+    for line_no, raw_line in enumerate(lines, 1):
+        stripped = raw_line.strip()
+        indent = len(raw_line) - len(raw_line.lstrip())
+
+        if in_multiline_run:
+            if not stripped:
+                run_lines.append("")
+                continue
+            if indent >= run_indent:
+                run_lines.append(raw_line.strip())
+                continue
+            else:
+                if current_step:
+                    current_step['run'] = "\n".join(run_lines)
+                in_multiline_run = False
+                run_lines = []
+
+        if not stripped or stripped.startswith("#"):
+            continue
+
+        if raw_line.startswith("jobs:"):
+            in_jobs = True
+            current_job = None
+            current_step = None
+            continue
+
+        if not in_jobs:
+            continue
+
+        if indent == 2 and stripped.endswith(":") and not stripped.startswith("-"):
+            job_name = stripped[:-1].strip()
+            current_job = {
+                'name': job_name,
+                'line_no': line_no,
+                'continue_on_error': False,
+                'if': None,
+                'steps': []
+            }
+            jobs[job_name] = current_job
+            current_step = None
+            continue
+
+        if current_job is None:
+            continue
+
+        if indent == 4 and not stripped.startswith("-"):
+            if stripped.startswith("continue-on-error:"):
+                val = stripped.split(":", 1)[1].strip().lower()
+                current_job['continue_on_error'] = (val == "true")
+            elif stripped.startswith("if:"):
+                current_job['if'] = stripped.split(":", 1)[1].strip()
+            continue
+
+        if stripped.startswith("- "):
+            if in_multiline_run and current_step:
+                current_step['run'] = "\n".join(run_lines)
+                in_multiline_run = False
+                run_lines = []
+
+            current_step = {
+                'line_no': line_no,
+                'name': None,
+                'uses': None,
+                'run': None,
+                'shell': None,
+                'continue_on_error': False,
+                'if': None
+            }
+            current_job['steps'].append(current_step)
+            step_part = stripped[2:].strip()
+            if step_part.startswith("name:"):
+                current_step['name'] = step_part.split(":", 1)[1].strip().strip('"').strip("'")
+            elif step_part.startswith("uses:"):
+                current_step['uses'] = step_part.split(":", 1)[1].strip()
+            elif step_part.startswith("run:"):
+                run_val = step_part.split(":", 1)[1].strip()
+                if run_val in ("|", "|-", "|+", ">", ">-", ">+"):
+                    in_multiline_run = True
+                    run_indent = indent + 2
+                    run_lines = []
+                else:
+                    current_step['run'] = run_val
+            continue
+
+        if current_step:
+            if stripped.startswith("name:"):
+                current_step['name'] = stripped.split(":", 1)[1].strip().strip('"').strip("'")
+            elif stripped.startswith("uses:"):
+                current_step['uses'] = stripped.split(":", 1)[1].strip()
+            elif stripped.startswith("shell:"):
+                current_step['shell'] = stripped.split(":", 1)[1].strip()
+            elif stripped.startswith("continue-on-error:"):
+                val = stripped.split(":", 1)[1].strip().lower()
+                current_step['continue_on_error'] = (val == "true")
+            elif stripped.startswith("if:"):
+                current_step['if'] = stripped.split(":", 1)[1].strip()
+            elif stripped.startswith("run:"):
+                run_val = stripped.split(":", 1)[1].strip()
+                if run_val in ("|", "|-", "|+", ">", ">-", ">+"):
+                    in_multiline_run = True
+                    run_indent = indent + 2
+                    run_lines = []
+                else:
+                    current_step['run'] = run_val
+
+    if in_multiline_run and current_step:
+        current_step['run'] = "\n".join(run_lines)
+
+    return jobs
+
+
 def check_22_ci_supply_chain(root_dir=None):
-    """CHECK 22 — CI 供應鏈可重現性守衛 (CI Supply-Chain Reproducibility Guard)。"""
+    """CHECK 22 — CI 供應鏈可重現性與管道安全守衛 (CI Supply-Chain Reproducibility & Pipeline Guard)。"""
     if root_dir is None:
         root_dir = repo_root
     fails = []
@@ -2317,10 +2558,51 @@ def check_22_ci_supply_chain(root_dir=None):
             else:
                 infos.append(".github/workflows/verify.yml 頂層權限驗證通過 (contents: read, zero write)")
 
+            # 2. 檢驗 CI 管道 Fail-Closed 與必要閘門不變量 (D-U10 Pipeline Guard & Required Gate Integrity)
+            wf_content = "".join(wf_lines)
+            jobs = _parse_workflow_jobs_and_steps(wf_content)
+            required_jobs = {"verify", "gateway-windows"}
+
+            for job_name, job in jobs.items():
+                is_req_job = job_name in required_jobs
+
+                # (a) 必要 job 不得設 continue-on-error: true 或條件跳過
+                if is_req_job:
+                    if job.get("continue_on_error"):
+                        fails.append(f".github/workflows/verify.yml:{job['line_no']}  必要驗證工作 '{job_name}' 包含禁止之 'continue-on-error: true'")
+                    if job.get("if"):
+                        fails.append(f".github/workflows/verify.yml:{job['line_no']}  必要驗證工作 '{job_name}' 包含禁止之條件式跳過 'if: {job['if']}'")
+
+                for step in job["steps"]:
+                    s_name = step.get("name") or f"Line {step['line_no']}"
+                    s_run = step.get("run")
+                    s_shell = step.get("shell")
+                    s_coe = step.get("continue_on_error")
+                    s_if = step.get("if")
+
+                    # (b) 必要 job 中的步驟 continue-on-error
+                    if is_req_job and s_coe:
+                        fails.append(f".github/workflows/verify.yml:{step['line_no']}  必要工作 '{job_name}' 步驟 '{s_name}' 包含禁止之 'continue-on-error: true'")
+
+                    # (c) 必要驗證步驟不得條件式跳過 (允許獨立診斷步驟使用 if: failure())
+                    if is_req_job and s_if:
+                        is_diagnostic = (s_if.strip() == "failure()")
+                        is_primary_gate = (s_name == "Run verification gates" or (s_run and "verify_all.py" in s_run))
+                        if is_primary_gate or not is_diagnostic:
+                            fails.append(f".github/workflows/verify.yml:{step['line_no']}  必要驗證步驟 '{s_name}' 包含禁止之條件式跳過 'if: {s_if}'")
+
+                    # (d) Shell pipeline 必須具備 fail-closed 語意 (shell: bash 或 set -o pipefail)
+                    if s_run and _has_unquoted_pipeline(s_run):
+                        has_pipefail = (s_shell == "bash" or _establishes_pipefail(s_run))
+                        if not has_pipefail:
+                            fails.append(f".github/workflows/verify.yml:{step['line_no']}  步驟 '{s_name}' 包含未保護之 shell pipeline（缺少 'shell: bash' 或 'set -o pipefail'）: '{s_run.strip()}'")
+
+            infos.append(".github/workflows/verify.yml 工作流程管道與必要閘門 fail-closed 驗證通過")
+
         except Exception as e:
             fails.append(f".github/workflows/verify.yml:0  檔案讀取失敗: {e}")
 
-    # 2. 檢驗 requirements.txt
+    # 3. 檢驗 requirements.txt
     req_path = os.path.join(root_dir, "requirements.txt")
     if not os.path.exists(req_path):
         fails.append("requirements.txt:0  requirements.txt 檔案不存在")
