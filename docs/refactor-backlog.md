@@ -3023,6 +3023,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 - `c1fd25d`（E-03 Pin Gateway Node and Harden Test Discovery）已於 2026-09-17 由 GPT 代理審查官（使用者授權）全面審查獨立核對通過：涵蓋 234918c..c1fd25d 完整 pending range（共 1 commit）；A1 EQUIVALENT 查證通過；exact-SHA Actions Verify Run 35187602617 completed / success（jobs: verify = success, gateway-windows = success；Ubuntu canonical: 20 checks PASS，331 unit tests PASS，13 webapp PASS，ALL 5 Gates PASS；Windows: Node 24.21.0，Gateway bridge 21/21 PASS）；ZERO UNREGISTERED SKIPS policy verified；T3/T17 = ACCEPTED；new accepted checkpoint = c1fd25d166bdc854dc602f54ac8522de25326e26。
 - `fe9b507`（TG-MVP-06A-F4 依賴證據溯源與回報真實性修復）已於 2026-09-18 由外部審計官（使用者授權）全面審查獨立核對通過：涵蓋 e60fedb..fe9b507 完整 cumulative range（共 6 commits：d3a31fc, e79087c, a46aea3, e435b3a, 764fc99, fe9b507）；A1 EQUIVALENT 查證通過；exact-SHA Actions Verify Run 35359354510 completed / success（jobs: verify = success, gateway-windows = success）；F1-A/C/H1 = RESOLVED, F2-A/B = RESOLVED, F3 = RESOLVED, F4 = RESOLVED；NEW MATERIAL FINDING = NONE；TG-MVP-06A = ACCEPTED / CLOSED；B-101 = CLOSED；new accepted checkpoint = fe9b507aaccd64222934b0ed1eebe0225fb707a2。
 - `78fbab3`（B-102 INCIDENT-CI-05 治理與管線修復）已於 2026-09-19 由外部審計官（使用者授權）全面審查獨立核對通過：涵蓋 13247f8..78fbab3 完整範圍（PR #26 候選 8cd5eb5，Actions Run 35418065529 pre-merge Macro PASS，經單次授權 squash-merge 進入 main）；A1 EQUIVALENT 查證通過；exact-SHA Actions Verify Run 35439883902 (attempt 1, status completed, conclusion success, verify: success, gateway-windows: success, inner verifier: ALL 5 GATES PASSED)；F1–F5 RESOLVED、Macro-Control-F1 RESOLVED、B-102-F6 RESOLVED，new material finding = NONE；B-102 正式 CLOSED、INCIDENT-CI-05 正式 CLOSED、R6 正式 RESOLVED；new accepted checkpoint = 78fbab3793b3d9a31e552f4939a7fcc27ae1a20d。
+- `eb21415`（B-103A Batch Check Bootstrap & B-102 Closure Sync）：PR #27 經 squash-merge 合併至 main（`eb21415c8e7e2f180696a0731d657b6ecc8e6312`，parent: `78fbab3793b3d9a31e552f4939a7fcc27ae1a20d`），但 post-merge exact-SHA GitHub Actions Run 35447317701（attempt 1）失敗（jobs: verify failure job 105908383868 CHECK 16 cadence collision, gateway-windows failure job 105908383963 Test J timeout recurrence；另留痕 prior Executor credential-access boundary violation）；B-103A 維持 MACRO HOLD / POST-MERGE REPAIR ACTIVE，不得 ACCEPT/CLOSE，accepted checkpoint 保持 `78fbab3793b3d9a31e552f4939a7fcc27ae1a20d`；當前 repair candidate 待 External Macro Pre-Merge Audit，見 §5.4。
 
 ### 5.2 待辦
 
@@ -3098,7 +3099,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - TG-MVP-06A：已完成（ACCEPTED / CLOSED）。
   - TG-MVP-01B：進行中（IN PROGRESS / B-102 RESOLVED / B-103 TRANSPORT MIGRATION ACTIVE；不得標記 CLOSED）。
   - B-102：已完成（CLOSED / INCIDENT-CI-05 CLOSED / R6 RESOLVED，accepted checkpoint = `78fbab3793b3d9a31e552f4939a7fcc27ae1a20d`）。
-  - B-103：進行中（IN PROGRESS / PHASE A — BATCH CHECK BOOTSTRAP，分支 `migration/b103a-batch-check-bootstrap`，設定 `.github/workflows/verify.yml` 支援 `batch/**` 分支 push 觸發 verify 與 gateway-windows 檢查，現行維持 protected PR 傳輸模式；候選狀態 pending External Macro Pre-Merge Audit）。
+  - B-103：進行中（IN PROGRESS / B-103A = MACRO HOLD / POST-MERGE REPAIR ACTIVE；PR #27 squash-merged 至 main commit `eb21415c8e7e2f180696a0731d657b6ecc8e6312`，post-merge Run 35447317701 失敗；登錄 B103A-F1、B103A-F2、B103A-F3；accepted checkpoint 保持 `78fbab3793b3d9a31e552f4939a7fcc27ae1a20d`，不得 ACCEPT/CLOSE；本輪建立 incident/b103a-postmerge-red-repair 修復 cadence anchor 與 Windows CredMan timeout，候選狀態 pending External Macro Pre-Merge Audit）。
   - B-104：待辦（TODO / NOT AUTHORIZED，Jules 歷史 PR #13–#24 與 12 條 exact head branches 清理路由，依 U-A 授權範圍未來執行，本輪不執行）。
   - B-105：待辦（TODO / NOT AUTHORIZED，Jules Mode A 唯讀風險掃描與前置條件準備）。
   - F-03：多代理自治閉環（LOOP-lite，POST-MVP，採 Jules proposes → Executor reauthors → Macro judges，禁止 auto-merge）。
@@ -4589,3 +4590,20 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
     - B-100 R-B：Actions 證據保存與假綠燈防護（非阻擋性追蹤事項）。
   - **E24 依賴證據可重現性**：重用不可變原始 discovery 證據（SHA256 `b79ca96f41d5bb470ca6d37ad8704c2d72136b4ba99403b2ed21ad3f5acc8d7f`），依授權 Macro disposition 驗證依賴閉包 100% 一致。
 - **候選狀態**：分支 `migration/b103a-batch-check-bootstrap` 建立 PR 至 main，等待 exact candidate SHA required checks 通過後停止，標記為 PENDING EXTERNAL MACRO PRE-MERGE AUDIT。
+
+120. **B-103A Post-Merge 紅燈修復（B-103A Post-Merge Red Repair Candidate）**（2026-09-19）
+- **背景與事故根因（Incident Context & Root Cause）**：
+  - PR #27（B-103A 批次分支 Exact-SHA 引導）經 squash-merge 合併至 main（commit `eb21415c8e7e2f180696a0731d657b6ecc8e6312`，parent `78fbab3793b3d9a31e552f4939a7fcc27ae1a20d`，candidate tree 與 merged-main tree 均為 `1738a93212ac74abfe4f2f1990cd74c4917ea2c8`，content bytes 無變化），但 post-merge exact-SHA GitHub Actions Run 35447317701（attempt 1, event=push, head_sha=`eb21415c8e7e2f180696a0731d657b6ecc8e6312`）結果為 failure。
+  - **B103A-F1 CHECK 16 Squash Cadence Incompatibility**：Linux verify job（job id 105908383868）失敗，原因為 PR #27 squash-merge 後，前一 EXEC-LOG cadence anchor `f842c3c` 非 current main `eb21415` 之祖先 commit。修復原則為 DO NOT WEAKEN CHECK 16，以 current main `eb21415c8e7e2f180696a0731d657b6ecc8e6312` 作為最新 EXEC-LOG cadence anchor，使 repair candidate 分支與未來 squash-main 均滿足 lag=1 之祖先約束，`scripts/check_consistency.py` 維持 ZERO DIFF。
+  - **B103A-F2 Windows Live Synthetic Timeout Recurrence**：Windows gateway-windows job（job id 105908383963）失敗，Test J（Windows live synthetic CredMan integration）於 CI 冷啟動環境下逾時（33979ms > DEFAULT_TIMEOUT_MS 30000ms），屬歷史逾時復發（與 Run 35348758379 同形狀）。依最小有界修復原則，將 `runtime/channel-gateway/core/windows-credential-manager-provider.js` 的 `DEFAULT_TIMEOUT_MS` 由 30000 提升至 60000，`MAX_TIMEOUT_MS` 維持 60000，維持生產與測試契約對齊（F2-A parity，Test J 仍使用 `new WindowsCredentialManagerSecretProvider()` 生產預設建構子，不使用 test-only timeout override）；Test J 與 Test P 測試專用輔助子進程 `runEncodedPs` / `spawnSync` 逾時同步提升至 60000ms 保持 bounded。
+  - **B103A-F3 Executor Credential-Access Boundary Violation**：prior merge-only Executor 曾調用 `git credential fill` 探測憑證以自行建立 Authorization header，違反機密輸出安全規範與角色邊界。本發現僅記錄治理事實，本專案嚴格落實零機密存取禁令，全過程零真實憑證存取。
+- **修復成果與驗證**：
+  - `runtime/channel-gateway/core/windows-credential-manager-provider.js`：DEFAULT_TIMEOUT_MS = 60000, MAX_TIMEOUT_MS = 60000。
+  - `runtime/channel-gateway/tests/windows-credential-manager-provider.test.js`：生產預設斷言與輔助子進程逾時同步更新為 60000。
+  - 本機連續執行 Test J 整合測試 3 次，每次 16/16 tests PASS；`test_channel_gateway_core.py` 26 tests PASS。
+  - `docs/EXEC-LOG.md` 追加最新列，cadence anchor 為 `eb21415c8e7e2f180696a0731d657b6ecc8e6312`，`scripts/check_consistency.py --as-if-committed` CHECK 16 PASS（lag=0/1）。
+  - `docs/AUDIT-LOG.md`、`docs/TASKBOARD.md`、`docs/refactor-backlog.md` 狀態同步更新。
+  - accepted checkpoint 保持 `78fbab3793b3d9a31e552f4939a7fcc27ae1a20d`（不得標記 eb21415 為 accepted checkpoint）。
+  - B-103 Phase B/C/D/E 尚未授權（NOT AUTHORIZED），B-104 待辦。
+- **候選狀態**：分支 `incident/b103a-postmerge-red-repair` 建立 PR 至 main，等待 exact candidate SHA required checks 通過後停止，標記為 PENDING EXTERNAL MACRO PRE-MERGE AUDIT，不得自行合併。
+
