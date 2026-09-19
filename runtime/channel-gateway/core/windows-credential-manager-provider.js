@@ -30,7 +30,7 @@ const {
   assertCanonicalTargetGrammar,
 } = require('./secret-provider');
 
-const DEFAULT_TIMEOUT_MS = 30000;
+const DEFAULT_TIMEOUT_MS = 60000;
 const MAX_TIMEOUT_MS = 60000;
 
 class WindowsCredentialManagerSecretProvider extends SecretProvider {
