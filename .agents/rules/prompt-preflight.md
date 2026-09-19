@@ -44,9 +44,8 @@
 6. 審計溯源依據之歷史證據檔案一律禁止覆寫。
 
 若提示詞宣告 E24 = PASS 且依賴模式為 `mode = REQUIRED`，執行者在任何 repo mutation 前必須執行獨立重放比對：
-1. 將提示詞內之 Dependency Impact Evidence 寫入 repo 外 scratch JSON。
-2. 將提示詞之 Final Allowed Scope 寫入 repo 外 scratch allowed-scope JSON。
-3. 執行 production canonical command：
+1. 將 Dependency Impact Evidence 與 Final Allowed Scope 寫入 scratch JSON。
+2. 執行 production canonical command：
    `python scripts/impact_scan.py check --evidence-file <evidence.json> --allowed-scope-file <allowed_scope.json>`
 4. 若 exit != 0：不得 mutation，依錯誤分類路由：
    - 缺證據／scope 或格式錯：判定為 `PROMPT STRUCTURE ERROR` 停機。
@@ -97,7 +96,7 @@ GOAL_SPEC 模式不得要求 E-1～E-4，其正確性由測試與 Gate 守護。
 | 動作 A | 必須配對的動作 B | 理由 |
 |---|---|---|
 | `git pull origin main` | `git status --porcelain=v1` 為空 | 確保基準乾淨，避免髒檔案混入 |
-| `git push`（直推或 feature branch） | 檢查 GitHub Actions 綠燈 | push 只是發送，Actions 綠燈才是證明。C-06 啟用後常態生產禁直推 main，改採 branch → PR → required checks 綠燈 → protected merge → exact main Actions 綠燈流程 |
+| `git push`（batch/**） | 需查驗 GitHub Actions 成功 | push 只是 transport，Actions 成功才是 proof。C-06/D-U9 常態生產禁直推 main，採 authorized batch/** push → candidate exact checks 成功 → main 無 drift 且為 ancestor → approved force=false update_ref(main, SAME SHA) → exact main push Actions 成功流程。普通 feature 分支禁升 main |
 | 新增或修改規則檔 | 更新自檢清單（`auditor-selftest.md`） | 規則與自檢必須同步 |
 | 聲明某 commit 通過核對 | 更新 `docs/AUDIT-LOG.md` 與交接區 §5.1 | 審計狀態必須雙向留痕 |
 
@@ -222,11 +221,7 @@ GOAL_SPEC 模式不得要求 E-1～E-4，其正確性由測試與 Gate 守護。
 
 ## 3.9 FINDING_DISPOSITION 機械檢查契約
 
-每份正式 production / state-sync prompt 必須包含 `FINDING_DISPOSITION` 宣告，合法格式：
-- `FINDING_DISPOSITION: NONE`
-- `FINDING_DISPOSITION: CURRENT <ID>`
-- `FINDING_DISPOSITION: EXISTING <ID>`
-- `FINDING_DISPOSITION: NEW <ID>`
+每份正式 production / state-sync prompt 必須宣告 `FINDING_DISPOSITION`（格式：NONE / CURRENT <ID> / EXISTING <ID> / NEW <ID>）。
 
 執行者僅執行機械交叉比對，不做語意重新審計：
 1. **宣告 `NEW <ID>`**：須同時滿足 TASKBOARD=UPDATE、Allowed Scope 含 `docs/TASKBOARD.md`、本文明確要求建立 `<ID>`。缺一即 `PROMPT STRUCTURE ERROR`。

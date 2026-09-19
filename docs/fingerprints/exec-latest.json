@@ -1,5 +1,5 @@
 {
-  "base_head": "eb21415",
+  "base_head": "0efd5e3",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -15,8 +15,8 @@
         "## 2.5 遠端健康查證與 GitHub Actions 閉環規範 (Remote Health Verification)",
         "## 3. 查證紀律"
       ],
-      "lines": 305,
-      "sha256": "8cf00939aa246292a6384e4d6a6baa1ee9755b80e7d23206d0caa32ded74017d"
+      "lines": 282,
+      "sha256": "060709182d4b262f8f0a1de766d8a2550d886cdfcf1f401ab81e0c54a894c34e"
     },
     ".agents/rules/governance-gate-integrity.md": {
       "fences": 0,
@@ -73,8 +73,8 @@
         "## 5. 例外",
         "## 6. 這條規則保護的是誰"
       ],
-      "lines": 267,
-      "sha256": "a8f1780ec43b7214dfdf4ae7fb136961eef11a6e6700808f16334fd2927eb1ca"
+      "lines": 262,
+      "sha256": "7e80d7d2344c1ed3bdc2c512026314efd664a10de5658093619a78a9690103a9"
     },
     ".agents/rules/role-boundaries.md": {
       "fences": 0,
@@ -137,7 +137,7 @@
       "sha256": "f69a76470ce2b40b02b5e697dd3323f47348658e3977228a6164b0505a26995c"
     },
     ".claude/rules/auditor-protocol.md": {
-      "fences": 6,
+      "fences": 4,
       "headings": [
         "# 宏觀審計官作業協定",
         "## 1. 職責範圍與查證模式",
@@ -194,8 +194,8 @@
         "### 12.1 風險分級宏觀審計核心原則 (D-U6)",
         "### 12.2 Tier-M 微修復分類規範 (Tier-M Micro Repair)"
       ],
-      "lines": 523,
-      "sha256": "fbb84e7c7903e19b1f1854a1910b3dc0a7a7d535a0ddf5d89256aa41de68d113"
+      "lines": 530,
+      "sha256": "2ae4a7f0ba14d9b84e1798136a565d4b24ed612b97ab40727a8f84e4bebabc42"
     },
     ".claude/rules/auditor-selftest.md": {
       "fences": 0,
@@ -210,7 +210,7 @@
         "## F. 額度（每一輪回覆的開頭與結尾）"
       ],
       "lines": 135,
-      "sha256": "21605b733c1e0d5907e76d1251882fa2be3bb5b9fbc20a16d236441334bf5997"
+      "sha256": "e1fb94ba6fe8fa2226e54f7782da43b78385aab4ed362fba07977af195cbcf91"
     },
     ".github/workflows/verify.yml": {
       "fences": 0,
@@ -528,8 +528,8 @@
         "### 8.1 標準生命週期流程 (Incident Lifecycle)",
         "### 8.2 歷史清理紅線 (Cleanup Invariants)"
       ],
-      "lines": 217,
-      "sha256": "73e6a7d17d768752bff1a1f000ace48f4259f1ed0fb9602c601ed3b79dee58ee"
+      "lines": 223,
+      "sha256": "e1a26b5be6935c656f6955f773850ac7f4094784a69e48be51cdf92e95fbe75c"
     },
     "docs/ARCHIVE-INDEX.md": {
       "fences": 0,
@@ -550,16 +550,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 191,
-      "sha256": "0090d63b8af9d8a9a49324da77cba7f9ecb11c9c5cba0328f4b90ba078f9c719"
+      "lines": 192,
+      "sha256": "74c042b219bbd7649b321459a4e33a7b03c01e76d77eb3a8a76024ce9fbfb8b0"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 157,
-      "sha256": "208df5ed60ce7dc15035c34f6acd1073b1ad9e6737dd90e3bfd478a7c46a9595"
+      "lines": 156,
+      "sha256": "f5521414985500b3ad941dd09a28c0374d7a7d2abcc8d22fab4bb6b3410cf743"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -600,7 +600,7 @@
         "## 封存區"
       ],
       "lines": 331,
-      "sha256": "f88d8d69fc57e33dd913630ad7d4686faa7f1c2741e65c8c6414cf7b64f53c00"
+      "sha256": "3fbfcbf4daf78744008b4ba7295165681f6c24981a15763373b935f522eeb2d8"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1056,8 +1056,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 4611,
-      "sha256": "fd2a934b2478b1557cba60a6bdd5b98cce51bcc2521ffd7517545d228755bceb"
+      "lines": 4612,
+      "sha256": "4df5445e2e4159c8489b9b06c9d626b423c37cca8adca779299c913d8b77f666"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1388,7 +1388,7 @@
       "sha256": "35bf7dbfa3c7d291b550c3c97a6ae398a22b1dc3624c1d2fc1e4db6963d6e115"
     }
   },
-  "generated_at": "2026-09-19T15:08:16Z",
+  "generated_at": "2026-09-19T16:18:08Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

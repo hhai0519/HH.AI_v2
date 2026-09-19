@@ -2825,7 +2825,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 5.1 上一批狀態
 
-上次核對通過的 HEAD：78fbab3793b3d9a31e552f4939a7fcc27ae1a20d
+上次核對通過的 HEAD：0efd5e3cf0e3147b9546fa5f72f185cdff8d6973
 
 - `23af193`（執行者前置檢查 ＋ 回滾程序 ＋ `AUDIT-LOG.md` ＋ 四缺口修正）
   已於 2026-09-02 由審計官核對通過：6 檔異動（含 2 個新檔）、零夾帶、
@@ -3023,7 +3023,8 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 - `c1fd25d`（E-03 Pin Gateway Node and Harden Test Discovery）已於 2026-09-17 由 GPT 代理審查官（使用者授權）全面審查獨立核對通過：涵蓋 234918c..c1fd25d 完整 pending range（共 1 commit）；A1 EQUIVALENT 查證通過；exact-SHA Actions Verify Run 35187602617 completed / success（jobs: verify = success, gateway-windows = success；Ubuntu canonical: 20 checks PASS，331 unit tests PASS，13 webapp PASS，ALL 5 Gates PASS；Windows: Node 24.21.0，Gateway bridge 21/21 PASS）；ZERO UNREGISTERED SKIPS policy verified；T3/T17 = ACCEPTED；new accepted checkpoint = c1fd25d166bdc854dc602f54ac8522de25326e26。
 - `fe9b507`（TG-MVP-06A-F4 依賴證據溯源與回報真實性修復）已於 2026-09-18 由外部審計官（使用者授權）全面審查獨立核對通過：涵蓋 e60fedb..fe9b507 完整 cumulative range（共 6 commits：d3a31fc, e79087c, a46aea3, e435b3a, 764fc99, fe9b507）；A1 EQUIVALENT 查證通過；exact-SHA Actions Verify Run 35359354510 completed / success（jobs: verify = success, gateway-windows = success）；F1-A/C/H1 = RESOLVED, F2-A/B = RESOLVED, F3 = RESOLVED, F4 = RESOLVED；NEW MATERIAL FINDING = NONE；TG-MVP-06A = ACCEPTED / CLOSED；B-101 = CLOSED；new accepted checkpoint = fe9b507aaccd64222934b0ed1eebe0225fb707a2。
 - `78fbab3`（B-102 INCIDENT-CI-05 治理與管線修復）已於 2026-09-19 由外部審計官（使用者授權）全面審查獨立核對通過：涵蓋 13247f8..78fbab3 完整範圍（PR #26 候選 8cd5eb5，Actions Run 35418065529 pre-merge Macro PASS，經單次授權 squash-merge 進入 main）；A1 EQUIVALENT 查證通過；exact-SHA Actions Verify Run 35439883902 (attempt 1, status completed, conclusion success, verify: success, gateway-windows: success, inner verifier: ALL 5 GATES PASSED)；F1–F5 RESOLVED、Macro-Control-F1 RESOLVED、B-102-F6 RESOLVED，new material finding = NONE；B-102 正式 CLOSED、INCIDENT-CI-05 正式 CLOSED、R6 正式 RESOLVED；new accepted checkpoint = 78fbab3793b3d9a31e552f4939a7fcc27ae1a20d。
-- `eb21415`（B-103A Batch Check Bootstrap & B-102 Closure Sync）：PR #27 經 squash-merge 合併至 main（`eb21415c8e7e2f180696a0731d657b6ecc8e6312`，parent: `78fbab3793b3d9a31e552f4939a7fcc27ae1a20d`），但 post-merge exact-SHA GitHub Actions Run 35447317701（attempt 1）失敗（jobs: verify failure job 105908383868 CHECK 16 cadence collision, gateway-windows failure job 105908383963 Test J timeout recurrence；另留痕 prior Executor credential-access boundary violation）；B-103A 維持 MACRO HOLD / REPLACEMENT REPAIR ACTIVE，不得 ACCEPT/CLOSE，accepted checkpoint 保持 `78fbab3793b3d9a31e552f4939a7fcc27ae1a20d`；當前 replacement repair candidate 待 External Macro Pre-Merge Audit，見 §5.4。
+- `eb21415`（B-103A Batch Check Bootstrap & B-102 Closure Sync）：PR #27 經 squash-merge 合併至 main（`eb21415c8e7e2f180696a0731d657b6ecc8e6312`，parent: `78fbab3793b3d9a31e552f4939a7fcc27ae1a20d`），但 post-merge exact-SHA GitHub Actions Run 35447317701（attempt 1）失敗（jobs: verify failure job 105908383868 CHECK 16 cadence collision, gateway-windows failure job 105908383963 Test J timeout recurrence；另留痕 prior Executor credential-access boundary violation）；B-103A 維持 MACRO HOLD / REPLACEMENT REPAIR ACTIVE，不得 ACCEPT/CLOSE，accepted checkpoint 保持 `78fbab3793b3d9a31e552f4939a7fcc27ae1a20d`；後由 PR #29 替代候選修復。
+- `0efd5e3`（B-103A Post-Merge Red Repair & B103A-F1..F5 Closure）已於 2026-09-19 由 External Macro Auditor 核對通過：PR #29 replacement repair candidate 經 squash-merge 合併至 main（`0efd5e3cf0e3147b9546fa5f72f185cdff8d6973`，parent: `eb21415c8e7e2f180696a0731d657b6ecc8e6312`），post-merge exact-SHA Actions Run 35451619061（attempt 1）驗證成功（verify = success, gateway-windows = success, ALL 5 GATES PASSED, CHECK 16 lag = 1, Windows Test J PASS）；External Macro Auditor 正式判定 B-103A ACCEPTED / CLOSED，new material finding = NONE，new accepted checkpoint = `0efd5e3cf0e3147b9546fa5f72f185cdff8d6973`。
 
 ### 5.2 待辦
 
@@ -3099,12 +3100,12 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - TG-MVP-06A：已完成（ACCEPTED / CLOSED）。
   - TG-MVP-01B：進行中（IN PROGRESS / B-102 RESOLVED / B-103 TRANSPORT MIGRATION ACTIVE；不得標記 CLOSED）。
   - B-102：已完成（CLOSED / INCIDENT-CI-05 CLOSED / R6 RESOLVED，accepted checkpoint = `78fbab3793b3d9a31e552f4939a7fcc27ae1a20d`）。
-  - B-103：進行中（IN PROGRESS / B-103A = MACRO HOLD / REPLACEMENT REPAIR ACTIVE；PR #27 squash-merged 至 main commit `eb21415c8e7e2f180696a0731d657b6ecc8e6312`，post-merge Run 35447317701 失敗；登錄 B103A-F1、B103A-F2、B103A-F3、B103A-F4、B103A-F5；前一 repair PR #28 candidate `a94fe3b` 因 Executor 自行判定 E24 disposition 違反 Macro disposition authority 獲 External Macro HOLD，現由 External Macro 權威 disposition 閉包所建立之單一 commit 候選分支 `incident/b103a-postmerge-red-repair-v2` 取代；accepted checkpoint 保持 `78fbab3793b3d9a31e552f4939a7fcc27ae1a20d`，不得 ACCEPT/CLOSE；候選狀態 pending External Macro Pre-Merge Audit）。
+  - B-103：進行中（IN PROGRESS / B-103A = ACCEPTED / CLOSED，accepted checkpoint = `0efd5e3cf0e3147b9546fa5f72f185cdff8d6973`，Actions Run 35451619061 attempt 1 success；B-103B Phase B = PASS / ACCEPTED，canary `batch/b103b-canary-0efd5e3` Run 35452195334 same-SHA capability proof PASS；B-103B Phase C = PASS / ACCEPTED，ruleset 21301111 pull_request rule removed，deletion / non_fast_forward / strict required_status_checks preserved，bypass empty；B-103B Phase D1 = CONTRACT ACTIVATION CANDIDATE PENDING EXTERNAL MACRO PRE-MERGE AUDIT，依現行 PR contract 落地 same-SHA transport 規範，不得宣稱 Phase D same-SHA proof 完成，不得宣稱 B-103 closed；future target Phase D2 始執行 batch/** exact-SHA checks → force=false update_ref SAME SHA to main）。
   - B-104：待辦（TODO / NOT AUTHORIZED，Jules 歷史 PR #13–#24 與 12 條 exact head branches 清理路由，依 U-A 授權範圍未來執行，本輪不執行）。
   - B-105：待辦（TODO / NOT AUTHORIZED，Jules Mode A 唯讀風險掃描與前置條件準備）。
   - F-03：多代理自治閉環（LOOP-lite，POST-MVP，採 Jules proposes → Executor reauthors → Macro judges，禁止 auto-merge）。
   - TG-MVP-07 與後續切片：待辦（NOT AUTHORIZED until TG-MVP-01B External Macro closure）。
-  - E-03：進行中（IN PROGRESS，accepted checkpoint = 78fbab3793b3d9a31e552f4939a7fcc27ae1a20d）。
+  - E-03：進行中（IN PROGRESS，accepted checkpoint = `0efd5e3cf0e3147b9546fa5f72f185cdff8d6973`）。
   - B-28 / B-29 上游 trigger 重新評估完成，無 B-01 blocker，依 C-07 維持 TRIGGER_BASED_DEFERRED。
   - B-54 保持待辦（POST_B01 / NONBLOCKING，SOP_12 機器專屬路徑 concrete example 已登錄）。
   - B-75 保持待辦、零實作 (POST_B01 / NONBLOCKING / NOT IMPLEMENTED)。
