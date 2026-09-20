@@ -96,7 +96,7 @@ GOAL_SPEC 模式不得要求 E-1～E-4，其正確性由測試與 Gate 守護。
 | 動作 A | 必須配對的動作 B | 理由 |
 |---|---|---|
 | `git pull origin main` | `git status --porcelain=v1` 為空 | 確保基準乾淨，避免髒檔案混入 |
-| `git push`（batch/**） | 需查驗 GitHub Actions 成功 | push 只是 transport，Actions 成功才是 proof。C-06/D-U9 常態生產禁直推 main，採 authorized batch/** push → candidate exact checks 成功 → main 無 drift 且為 ancestor → approved force=false update_ref(main, SAME SHA) → exact main push Actions 成功流程。普通 feature 分支禁升 main |
+| `git push`（batch/**） | 需查驗 GitHub Actions 成功 | push 只是 transport，Actions 成功才是 proof。依 K1-A 合約，採 authorized batch/** push → candidate exact checks 成功 → main 無 drift 且為 ancestor → 經選定可用 adapter（如 approved update_ref 或 native pinned-SHA）fast-forward main (SAME SHA) → exact main push Actions 成功流程。普通 feature 分支禁升 main |
 | 新增或修改規則檔 | 更新自檢清單（`auditor-selftest.md`） | 規則與自檢必須同步 |
 | 聲明某 commit 通過核對 | 更新 `docs/AUDIT-LOG.md` 與交接區 §5.1 | 審計狀態必須雙向留痕 |
 

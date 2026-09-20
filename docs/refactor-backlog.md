@@ -3099,18 +3099,19 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - B-98：已完成（CLOSED）。
   - B-101：已完成（CLOSED）。
   - TG-MVP-06A：已完成（ACCEPTED / CLOSED）。
-  - TG-MVP-01B：進行中（IN PROGRESS / B-102 RESOLVED / B-103 TRANSPORT MIGRATION ACTIVE；不得標記 CLOSED）。
+  - TG-MVP-01B：進行中（IN PROGRESS / B-102 RESOLVED / B-103 TRANSPORT MIGRATION ACTIVE；D1 transport contract 已 active on main，現正由 T1 bootstrap 轉為 transport-neutral K1 invariant，T1 native pinned-SHA adapter 尚未 production-proven；不得標記 CLOSED）。
   - B-102：已完成（CLOSED / INCIDENT-CI-05 CLOSED / R6 RESOLVED，accepted checkpoint = `78fbab3793b3d9a31e552f4939a7fcc27ae1a20d`）。
-  - B-103：進行中（IN PROGRESS / B-103A = ACCEPTED / CLOSED，accepted checkpoint = `cf2a2b970f9a0cd28c540e70e1afb67e182c8d6f`；B-103B Phase B = PASS / ACCEPTED，canary `batch/b103b-canary-0efd5e3` Run 35452195334 same-SHA capability proof PASS；B-103B Phase C = PASS / ACCEPTED，ruleset 21301111 pull_request rule removed，deletion / non_fast_forward / strict required_status_checks preserved，bypass empty；B-103B Phase D1 = ACCEPTED / CLOSED，PR #30 squash-merged 產生 cf2a2b9，post-main Run 35456270854 attempt 1 verify / gateway-windows success，new transport contract ACTIVE ON MAIN；B-103B Phase D2 = SAME-SHA PROOF CANDIDATE PENDING EXECUTION / MACRO AUDIT；B-106/B-107/B-108 REGISTERED TODO BLOCKING BEFORE PHASE E；不得宣稱 Phase D2 completed，不得宣稱 B-103 closed，不得宣稱 Phase E authorized）。
+  - B-103：進行中（IN PROGRESS / B-103A = ACCEPTED / CLOSED；B-103B Phase B = PASS / ACCEPTED；B-103B Phase C = PASS / ACCEPTED；B-103B Phase D1 = ACCEPTED / CLOSED，PR #30 squash-merged 產生 cf2a2b9，post-main Run 35456270854 verify / gateway-windows success，new transport contract ACTIVE ON MAIN；preserved D2 evidence commit 131a0b19cdd915d6172a750972c69fdb1afdadd9 機器證據保留；K1-A / K5-A 使用者正式授權，T1-bootstrap successor active，native pinned full-SHA adapter 尚未 production-proven；B-106/B-107/B-108 範圍校準，新增 B-109 待辦；不得宣稱 Phase D2 completed，不得宣稱 B-103 closed，不得宣稱 Phase E authorized）。
   - B-104：待辦（TODO / NOT AUTHORIZED，Jules 歷史 PR #13–#24 與 12 條 exact head branches 清理路由，依 U-A 授權範圍未來執行，本輪不執行）。
-  - B-105：待辦（TODO / NOT AUTHORIZED，Jules Mode A 唯讀風險掃描與前置條件準備）。
-  - B-106：待辦（TODO / BLOCKING BEFORE PHASE E，Always-On Rule Budget & Guarded Rule Mutation，零實作）。
-  - B-107：待辦（TODO / BLOCKING BEFORE PHASE E，Deterministic Consistency Diagnostics & Guarded State-Log Mutation，零實作）。
-  - B-108：待辦（TODO / BLOCKING BEFORE PHASE E，Unauthorized Destructive Local Git Reset Guard，零實作）。
+  - B-105：待辦（TODO / NOT AUTHORIZED，Jules Mode A 唯讀風險掃描與前置條件準備；Jules drift 記錄：authorized_mcp_tools 目前無已驗證 harness enforcement，jules-integration 仍指向 disabled Bridge，Jules capability semantics 留至 M4，本輪不得啟用 Jules）。
+  - B-106：待辦（TODO / BLOCKING BEFORE PHASE E，Actual Loaded-Surface Budget & Rule Compatibility Guard；由 Always-On Rule Budget 改名並校準範圍，核心為 actual loaded surface 而非 repo file count，涵蓋 token budget 與 truncation；IDE 2.5.5 版本綁定，.agents/rules/*.md 搭配 trigger: always_on 為已驗證載入面，無 frontmatter 不算已載入，model_decision 維持 UNKNOWN；IDE 更新後僅 UI-only revalidation，禁止 production batch 中途更新 IDE；零實作）。
+  - B-107：待辦（TODO / BLOCKING BEFORE PHASE E，Deterministic Consistency Diagnostics & Guarded State-Log Mutation；擴充為 evidence integrity owner，確立 EVIDENCE-ORIGIN 四類，PATH-EXISTENCE / GENERATOR-IN-BUNDLE / REPORT-TRACEABILITY / REG-11～13 routing；記錄 E24 v2 instance finding，raw dependency evidence 可用但 bundle traceability not clean；零實作）。
+  - B-108：待辦（TODO / BLOCKING BEFORE PHASE E，Unauthorized Destructive Local Git Reset Guard；擴充登錄 K6-A 權限態勢，destructive/main-push 入 Deny list，移除 GitHub MCP write permanent Allow，移除舊 repo .env.local write allow，移除不存在路徑 read allow，browser GitHub 禁 unconditional allow，cross-chat history 僅作 context，禁止 production batch 中途更新 IDE，Hooks 於 IDE 2.5.5 下為 DOCUMENTED_YES/RUNTIME_NO/CAUSE_UNKNOWN 不作 M1 enforcement layer；零實作）。
+  - B-109：待辦（NOT IMPLEMENTED，Mechanical Governance v1，承接使用者裁決 U1、U3、K2-A、K4-C；包含 M1–M4 phase roadmap、MAX_AUTO_PLAN_REVISIONS = 3、escalation A–F、DEGRADED、governance versioning 與 drift monitor；本輪僅實作兩個 minimal guards）。
   - F-03：多代理自治閉環（LOOP-lite，POST-MVP，採 Jules proposes → Executor reauthors → Macro judges，禁止 auto-merge）。
   - TG-MVP-07 與後續切片：待辦（NOT AUTHORIZED until TG-MVP-01B External Macro closure）。
   - E-03：進行中（IN PROGRESS，accepted checkpoint = `cf2a2b970f9a0cd28c540e70e1afb67e182c8d6f`）。
-  - B-28 / B-29 上游 trigger 重新評估完成，無 B-01 blocker，依 C-07 維持 TRIGGER_BASED_DEFERRED。
+  - B-28 / B-29：REOPENED BY USER U2 / PENDING / NOT IMPLEMENTED；使用者 U2 裁決：以 Matt Pocock 架構思維重新檢驗 HH.AI_v2，依本專案實況調整，不是逐檔照抄 upstream。
   - B-54 保持待辦（POST_B01 / NONBLOCKING，SOP_12 機器專屬路徑 concrete example 已登錄）。
   - B-75 保持待辦、零實作 (POST_B01 / NONBLOCKING / NOT IMPLEMENTED)。
   - B-69 保持待辦 (PENDING NON-BLOCKING)。
@@ -4614,3 +4615,16 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - accepted checkpoint 保持 `78fbab3793b3d9a31e552f4939a7fcc27ae1a20d`（不得標記 eb21415 或 replacement candidate 為 accepted checkpoint）。
   - B-103 Phase B/C/D/E 尚未授權（NOT AUTHORIZED），B-104 未執行。
 - **候選狀態**：分支 `incident/b103a-postmerge-red-repair-v2` 建立全新單一 commit 候選 PR 至 main，等待 exact candidate SHA required checks 通過後停止，標記為 PENDING EXTERNAL MACRO PRE-MERGE AUDIT，不得自行合併。
+
+121. **T1 Bootstrap 傳輸中立治理繼承候選（T1 Bootstrap Transport-Neutral Governance Successor Candidate）**（2026-09-20）
+- **背景與目標**：
+  - B-103B Phase D1 合約啟用後，main 推進至 `cf2a2b970f9a0cd28c540e70e1afb67e182c8d6f`，Phase D2 建立之候選 `131a0b19cdd915d6172a750972c69fdb1afdadd9` 取得 exact-SHA CI 通過證據（Run 35457976070），但因活動狀態投影殘留過期 protected PR 模式且 active contract 形成排他性 update_ref 鎖定，由使用者 K5-A 正式授權進行一次性引導繼承（One-Time Bootstrap），以 preserved D2 機器證據為唯一 parent 建立全新 successor 候選。
+  - 落實使用者正式裁決：U1（審計官/使用者/執行者角色循環）、U2（Matt Pocock 架構思維重新檢驗）、U3（機械化治理與最高 3 次計畫修訂）、K1-A（傳輸中立 Exact-SHA 不變量）、K2-A（分階段機械化治理 M1–M4）、K3-A（已驗證載入面核心）、K4-C（狀態權威延後切換至 M3）、K5-A（一次性引導權威）、K6-A（分級執行者權限態勢），以及 Antigravity 執行期結論綁定 IDE 2.5.5。
+- **變更與落地成果**：
+  - **傳輸中立 K1 合約**：移除 active contract 對 approved connector `update_ref` 的排他性綁定，重構為 K1-A Transport-Neutral Exact-SHA Invariant，規範候選 exact SHA 先行取得外部 CI 綠燈、main fast-forward 拓撲不變、單一明確 adapter 宣告與 post-main 同一 SHA CI 再驗證；T1 candidate adapter 登錄為 native pinned 40-char SHA refspec（`<FULL40_SHA>:refs/heads/main`），尚未 production-proven。
+  - **活動狀態投影更正**：全面清理 TASKBOARD 與 backlog 中過期之 protected PR 生產傳輸模式陳舊宣告，對齊 D1 active on main 與 T1 轉移態。
+  - **機械守衛擴充**：`scripts/check_consistency.py` 新增 CHECK 23 傳輸能力與合約一致性守衛（防範排他性 transport lock-in 再次形成）與 CHECK 24 活動狀態投影漂移守衛（防範互斥狀態同時宣告），總檢查項擴充為 24 項；單元測試於 `scripts/tests/test_verifier_fail_closed.py` 補齊正反例控制。
+  - **任務看板與治理架構**：新增 B-109 Mechanical Governance v1 待辦（承接 U1/U3/K2-A/K4-C 路線圖）；B-28 / B-29 依使用者 U2 裁決重啟（REOPENED BY USER U2 / PENDING）；B-106 改名為 Actual Loaded-Surface Budget & Rule Compatibility Guard 並校準範圍；B-107 擴充為 evidence integrity owner 並承接 E24 finding；B-108 擴充登錄 K6-A 權限態勢；B-10/B-105 記錄 Jules drift；B-100 R-B 補齊 retention 查證責任；E-01 標記 dynamic-tool-synthesizer 重新評估。
+  - **架構重新基準化研究紀錄**：逐字落地 `docs/research/R0-architecture-rebaseline-260920.md`。
+  - **E24 依賴閉包驗證**：Verified raw discovery（SHA-256 `edfe3a42d638056fa4a1639a67ef3f5bd23e56a5a9e51301773243b8d106aed4`），套用 External Macro 26 項 dispositions，12 UPDATE dependencies 100% 納入 Final Allowed Scope（13 files），`impact_scan.py check` replay PASS。
+- **候選狀態**：分支 `batch/t1-bootstrap-successor-260920` 僅推送到 batch 分支進行 exact-SHA CI 驗證，絕對不推 main，等待外部審計官 pre-promotion review。

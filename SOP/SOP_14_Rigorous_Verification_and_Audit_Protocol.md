@@ -200,7 +200,7 @@ RED（遠端異常）
   ↓
 8. Confirm origin/main unchanged + ancestry（確認 main 未 drift 且可 fast-forward）
   ↓
-9. Approved force=false update_ref main to SAME SHA（經 approved connector 更新 main，嚴禁直推 main 或 force push）
+9. K1 Transport-Neutral pure fast-forward main to SAME SHA（經由選定之可用 adapter 如 approved update_ref 或 native pinned-SHA 更新 main，嚴禁直推 main 或 force push）
   ↓
 10. Exact same-SHA main push Actions PASS（查證 post-main GitHub Actions Verify 且 head_sha 完全相符、completed/success）
   ↓

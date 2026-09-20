@@ -101,7 +101,7 @@
 - [ ] E6 結尾固定要求純文字回覆與署名行？（§6.1-6）
 - [ ] E7 Reporting Channel 契約——正常成功對話回覆僅需 COMMIT <sha> | CI PASS | S1 NONE 加上固定署名行，未預設要求 full diff / full file / terminal dump？（§6.1-7）
 - [ ] E8 **提示詞明確聲明交接區、`docs/TASKBOARD.md` 與 `docs/AUDIT-LOG.md` 三項狀態領域之處置（manifest 宣告須與 prose 一致；UPDATE 或明確標記 NO CHANGE 及原因；無新審計結論時 AUDIT-LOG 宣告 NO CHANGE，禁止逼迫執行者自造審計結論）？**（§6.1-8）
-- [ ] E9 **確認執行者基準同步與 Main 晉級約束**——有要求執行者先確認基準與 `origin/main` 一致？若涉及 main 晉級，是否完整規範 batch/** exact candidate SHA required checks 綠燈、origin/main 未 drift 且為 ancestor、使用 approved connector 以 force=false update_ref(main, exact SAME SHA)、查驗 post-main run head_sha 完全相同、無 bypass actor、且嚴禁 force push / rebase / squash / cherry-pick？（§6.1-9）
+- [ ] E9 **確認執行者基準同步與 Main 晉級約束**——有要求執行者先確認基準與 `origin/main` 一致？若涉及 main 晉級，是否完整規範 batch/** exact candidate SHA required checks 綠燈、origin/main 未 drift 且為 ancestor、遵循 K1-A transport-neutral exact-SHA 合約（可選 adapter 如 update_ref 或 native pinned-SHA，禁排他鎖定與 silent fallback）、查驗 post-main run head_sha 完全相同、無 bypass actor、且嚴禁 force push / rebase / squash / cherry-pick？（§6.1-9）
 - [ ] E10 零命中類的條件，我檢查過自己的指令會不會產生該字串？（§6.2）
 - [ ] E11 **每一個錨點都已透過確定性工具（BPE、count() 或 spec parser）驗證在目標檔案中 count == 1？**（僅 EXACT_SPEC 適用；GOAL_SPEC 標記為 N/A）（§6.1-11，見 §6.6）
 - [ ] E12 **提示詞開頭有「動手前必讀」，要求執行者從檔案讀取規則（manifest 之 rules_reread_required 必須為 true）？**（§6.1-10；不可依賴自動載入，session 前綴可能已被清掉）

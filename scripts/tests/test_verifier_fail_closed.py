@@ -23,6 +23,8 @@ from check_consistency import (
     format_check_13_summary,
     check_14_simplified_chinese,
     check_16_exec_log_cadence,
+    check_23_transport_exclusivity_guard,
+    check_24_active_state_projection_guard,
 )
 
 
@@ -510,3 +512,101 @@ def test_active_check_inventory_continuous_1_to_20():
     assert len(check_ids) == 20, f"Expected 20 checks, found {len(check_ids)}: {check_ids}"
     expected = list(range(1, 21))
     assert check_ids == expected, f"Check IDs drift: {check_ids} != {expected}"
+
+
+# ===========================================================================
+# Defect 7: CHECK 23 Transport Exclusivity Guard
+# ===========================================================================
+
+def test_check_23_positive_control_optional_adapter(tmp_path):
+    """CHECK 23 Positive Control: 包含 update_ref 作為 optional adapter 時 PASS"""
+    agents = tmp_path / ".agents" / "rules"
+    agents.mkdir(parents=True)
+    rule_file = agents / "git-and-reporting.md"
+    rule_file.write_text(
+        "# Transport Rules\nupdate_ref may be one optional adapter when available and explicitly selected; it is not the only transport.\n",
+        encoding="utf-8"
+    )
+    fails, infos = check_23_transport_exclusivity_guard(str(tmp_path))
+    assert len(fails) == 0
+    assert any("零排他性 transport lock-in" in i for i in infos)
+
+
+def test_check_23_negative_control_exclusive_binding_fail(tmp_path):
+    """CHECK 23 Negative Control: 排他性 update_ref 描述必須 fail-closed"""
+    agents = tmp_path / ".agents" / "rules"
+    agents.mkdir(parents=True)
+    rule_file = agents / "git-and-reporting.md"
+    rule_file.write_text(
+        "# Transport Rules\nmain ref update only allowed through update_ref\n",
+        encoding="utf-8"
+    )
+    fails, infos = check_23_transport_exclusivity_guard(str(tmp_path))
+    assert len(fails) >= 1
+    assert any("exclusive update_ref binding" in f for f in fails)
+
+
+def test_check_23_negative_control_sole_transport_fail(tmp_path):
+    """CHECK 23 Negative Control: 將 update_ref 描述為唯一傳輸機制時判定 FAIL"""
+    claude_rules = tmp_path / ".claude" / "rules"
+    claude_rules.mkdir(parents=True)
+    selftest_file = claude_rules / "auditor-selftest.md"
+    selftest_file.write_text(
+        "# Selftest\napproved force=false update_ref 是唯一 production transport\n",
+        encoding="utf-8"
+    )
+    fails, infos = check_23_transport_exclusivity_guard(str(tmp_path))
+    assert len(fails) >= 1
+    assert any("update_ref 被描述為唯一傳輸機制" in f for f in fails)
+
+
+# ===========================================================================
+# Defect 8: CHECK 24 Active State Projection Drift Guard
+# ===========================================================================
+
+def test_check_24_positive_control_current_projection(tmp_path):
+    """CHECK 24 Positive Control: 正確更正之活動狀態投影 PASS"""
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    tb_file = docs / "TASKBOARD.md"
+    tb_file.write_text(
+        "| TG-MVP-01B | 進行中 | G2 權威規則落地：D1 transport contract 已 active on main，現正由 T1 bootstrap 轉為 transport-neutral K1 invariant |\n",
+        encoding="utf-8"
+    )
+    rb_file = docs / "refactor-backlog.md"
+    rb_file.write_text(
+        "## 五、交接與當前狀態\n§5.4 當前狀態：new transport contract ACTIVE ON MAIN\n",
+        encoding="utf-8"
+    )
+    fails, infos = check_24_active_state_projection_guard(str(tmp_path))
+    assert len(fails) == 0
+    assert any("活動狀態投影一致" in i for i in infos)
+    assert any("可變狀態投影一致" in i for i in infos)
+
+
+def test_check_24_negative_control_stale_taskboard_projection_fail(tmp_path):
+    """CHECK 24 Negative Control: TASKBOARD 包含過期 protected PR 模式宣告時判定 FAIL"""
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    tb_file = docs / "TASKBOARD.md"
+    tb_file.write_text(
+        "| TG-MVP-01B | 進行中 | G2 權威規則落地；現行維持 protected PR 生產傳輸模式；待 B-103 完成 |\n",
+        encoding="utf-8"
+    )
+    fails, infos = check_24_active_state_projection_guard(str(tmp_path))
+    assert len(fails) >= 1
+    assert any("過期活動狀態投影 (現行維持 protected PR 生產傳輸模式)" in f for f in fails)
+
+
+def test_check_24_negative_control_stale_backlog_sec5_projection_fail(tmp_path):
+    """CHECK 24 Negative Control: refactor-backlog §5 包含過期維持 protected PR 宣告時判定 FAIL"""
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    rb_file = docs / "refactor-backlog.md"
+    rb_file.write_text(
+        "## 五、交接與當前狀態\n§5.4 當前狀態：維持 protected PR 生產傳輸\n",
+        encoding="utf-8"
+    )
+    fails, infos = check_24_active_state_projection_guard(str(tmp_path))
+    assert len(fails) >= 1
+    assert any("過期活動狀態投影 (維持 protected PR 生產傳輸)" in f for f in fails)

@@ -19,14 +19,14 @@
 - **建立 prospective commit 前確認交接區 HEAD**：若該批次包含交接區元資料更新，確認 `docs/refactor-backlog.md` §5.1 的「上次核對通過的 HEAD」等於 `docs/AUDIT-LOG.md` 中最新且屬當前歷史之 Macro PASS checkpoint。它可以是 HEAD 的較早 ancestor；存在多個 pending repair commits 本身不構成錯誤，不得以 ancestry distance 判定 audit state 過期。候選 commit 自身若未經 Macro Auditor 裁決 PASS，絕對不得自稱為 checkpoint。可使用 `python scripts/check_consistency.py --as-if-committed` 於 commit 前預演驗證，消除本地與 CI 差 1 的可預測中間紅燈（B-51）。
 - **commit message 內若含 `$$` 字元，訊息要用單引號包住**，避免被 shell
   展開成進程 ID。
-- **C-06 Checked Batch Exact-SHA Transport（Protected Main Contract / D-U9）**：
-  在 C-06 / D-U9 預防性 GitHub Gate 啟用後，常態生產作業切換為 Checked Batch Exact-SHA 傳輸架構，絕對禁止直接執行 `git push origin main` 作為常態生產更新。
-  新常態流程與不變量如下：
-  1. 以 exact current accepted/main SHA 開設 `batch/**` 分支。
-  2. production change commit 必須存在於 `batch/**` 分支。
-  3. push batch branch 後取得 candidate exact SHA 之 push Actions runs，required contexts（`verify`、`gateway-windows`）兩者皆 completed/success，且 verify raw log 須為 `ALL 5 GATES PASSED`。
-  4. 更新 main 前重新確認 `origin/main` 等於建立時之 base SHA 且為 candidate 之 ancestor；若 main drift 立即 STOP，禁 rebase 沿用舊 checks 或轉移 checks 至新 SHA。
-  5. main ref 更新只允許 GitHub approved connector `update_ref`（`branch_name = main`, `sha = exact checked candidate SHA`, `force = false`）。禁 `git push origin main`，嚴禁 force push、`force=true`、rebase/cherry-pick/squash after check，確保 main 接收 SAME SHA。
+- **K1-A / C-06 Transport-Neutral Exact-SHA Contract（Protected Main Invariant）**：
+  在 GitHub Gate 保護下，生產作業採行 Transport-Neutral Exact-SHA 傳輸架構，絕對禁止未經 exact-SHA 驗證之直推或 force push。
+  K1 main advancement 核心不變量如下：
+  1. candidate 為完整 exact 40-char commit SHA，以 exact base 開設 `batch/**` 分支，change commit 必須存在於 `batch/**` 分支。
+  2. push batch branch 後取得 candidate exact SHA 之 push Actions runs，required contexts（`verify`、`gateway-windows`）兩者皆 completed/success，且 verify raw log 須為 `ALL 5 GATES PASSED`。
+  3. 更新 main 前重新確認 `origin/main` 等於 base SHA 且為 candidate 之 ancestor；若 main drift 立即 STOP，進位必須為 pure fast-forward，禁 rebase 沿用舊 checks。
+  4. 每批必須明確宣告並選擇 exactly one 可用之 transport adapter（例如 approved connector `update_ref`，或經授權之 native pinned full-40-char SHA refspec `<FULL40_SHA>:refs/heads/main`）。adapter 僅為傳輸機制而非正確性權威；選定 adapter 不可用或被拒絕時一律 STOP / S1，禁止 silent fallback。
+  5. 嚴禁 force push、`--force-with-lease`、`force=true`、`+` refspec、rebase/cherry-pick/squash after check，確保 main 接收 SAME SHA。
   6. main 更新後 `origin/main` 精確等於 candidate checked SHA。
   7. 等候 post-main `event = push, head_branch = main, head_sha = same candidate SHA` 之 Actions runs，`verify` 與 `gateway-windows` 必須再次成功。
   8. 絕不繞過保護規則（Never bypass protection），嚴禁新增 bypass actor。

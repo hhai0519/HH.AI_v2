@@ -50,7 +50,7 @@ def run_checks(argv=None):
     as_if_committed = "--as-if-committed" in argv
     if as_if_committed:
         print("[MODE] 啟用 --as-if-committed 本地 commit 拓撲預演模式")
-    total_checks = 22
+    total_checks = 24  # backward compatibility: total_checks = 22
     passed = 0
     failed = 0
     
@@ -442,6 +442,38 @@ def run_checks(argv=None):
     else:
         print(f"  [FAIL] {len(c22_fails)} 命中")
         for fail in c22_fails:
+            print(f"    {fail}")
+        failed += 1
+
+    # ---------------------------------------------------------
+    # CHECK 23: 傳輸能力與合約一致性守衛
+    # ---------------------------------------------------------
+    print("\nCHECK 23: 傳輸能力與合約一致性守衛")
+    c23_fails, c23_infos = check_23_transport_exclusivity_guard(repo_root)
+    for info in c23_infos:
+        print(f"  [INFO] {info}")
+    if len(c23_fails) == 0:
+        print("  [PASS] 0 命中")
+        passed += 1
+    else:
+        print(f"  [FAIL] {len(c23_fails)} 命中")
+        for fail in c23_fails:
+            print(f"    {fail}")
+        failed += 1
+
+    # ---------------------------------------------------------
+    # CHECK 24: 活動狀態投影漂移守衛
+    # ---------------------------------------------------------
+    print("\nCHECK 24: 活動狀態投影漂移守衛")
+    c24_fails, c24_infos = check_24_active_state_projection_guard(repo_root)
+    for info in c24_infos:
+        print(f"  [INFO] {info}")
+    if len(c24_fails) == 0:
+        print("  [PASS] 0 命中")
+        passed += 1
+    else:
+        print(f"  [FAIL] {len(c24_fails)} 命中")
+        for fail in c24_fails:
             print(f"    {fail}")
         failed += 1
 
@@ -2627,6 +2659,111 @@ def check_22_ci_supply_chain(root_dir=None):
             infos.append(f"requirements.txt 共驗證 {active_deps} 項精確鎖定之相依套件")
         except Exception as e:
             fails.append(f"requirements.txt:0  檔案讀取失敗: {e}")
+
+    return fails, infos
+
+
+def check_23_transport_exclusivity_guard(repo_root=None):
+    """CHECK 23 — 傳輸能力與合約一致性守衛 (Transport Capability / Contract Exclusivity Guard)。
+    防止 active contract 重新形成排他性 transport lock-in（例如將某一 adapter 描述為唯一、只能、only 等），
+    確保以 K1 Transport-Neutral Exact-SHA Invariant 作為 correctness authority。
+    """
+    if repo_root is None:
+        repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+    active_files = [
+        ".agents/rules/git-and-reporting.md",
+        ".agents/rules/prompt-preflight.md",
+        ".claude/rules/auditor-protocol.md",
+        ".claude/rules/auditor-selftest.md",
+        "SOP/SOP_14_Rigorous_Verification_and_Audit_Protocol.md",
+        "docs/TASKBOARD.md",
+    ]
+
+    exclusive_patterns = [
+        (re.compile(r"(?:只能|僅能|只允許|僅允許|唯一允許)\s*(?:[^\n，。；;]{0,30})update_ref", re.IGNORECASE), "排他性 update_ref 指令/描述"),
+        (re.compile(r"update_ref\s*(?:[^\n，。；;]{0,30})(?:是唯一|為唯一|是目前唯一)", re.IGNORECASE), "update_ref 被描述為唯一傳輸機制"),
+        (re.compile(r"(?:only\s+allowed\s+through|only\s+through|solely\s+through|required\s+sole\s+path\s+is)\s*(?:[^\n,.;]{0,30})update_ref", re.IGNORECASE), "exclusive update_ref binding"),
+        (re.compile(r"\bupdate_ref\b\s+is\s+(?:the\s+)?(?:only|sole|exclusive)\b", re.IGNORECASE), "update_ref declared as only transport"),
+        (re.compile(r"\b(?:only|exclusive)\s+update_ref\b", re.IGNORECASE), "exclusive update_ref"),
+        (re.compile(r"main\s*(?:ref)?\s*(?:更新|推進)?\s*(?:只能|唯一|只允許)\s*(?:[^\n，。；;]{0,30})update_ref", re.IGNORECASE), "main ref 更新排他性綁定 update_ref"),
+        (re.compile(r"rollback\s*(?:只能|只允許)\s*(?:[^\n，。；;]{0,30})update_ref", re.IGNORECASE), "rollback 排他性綁定 update_ref"),
+        (re.compile(r"回滾\s*(?:只能|只允許)\s*(?:[^\n，。；;]{0,30})update_ref", re.IGNORECASE), "回滾排他性綁定 update_ref"),
+    ]
+
+    fails = []
+    infos = []
+    scanned_count = 0
+
+    for rel_path in active_files:
+        full_path = os.path.join(repo_root, rel_path)
+        if not os.path.exists(full_path):
+            continue
+        scanned_count += 1
+        try:
+            with open(full_path, "r", encoding="utf-8") as f:
+                for line_no, line in enumerate(f, 1):
+                    for pat, desc in exclusive_patterns:
+                        if pat.search(line):
+                            fails.append(f"{rel_path}:{line_no}  {desc}: '{line.strip()}'")
+        except Exception as e:
+            fails.append(f"{rel_path}:0  讀取失敗: {e}")
+
+    if not fails:
+        infos.append(f"掃描 {scanned_count} 個 active contract 檔案，零排他性 transport lock-in 命中")
+
+    return fails, infos
+
+
+def check_24_active_state_projection_guard(repo_root=None):
+    """CHECK 24 — 活動狀態投影漂移守衛 (Active State Projection Drift Guard)。
+    防止同一 active lifecycle 同時宣告互斥 current states（例如 new transport contract active 同時宣稱現行維持 protected PR 生產傳輸模式）。
+    """
+    if repo_root is None:
+        repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+    stale_patterns = [
+        (re.compile(r"現行維持\s*protected PR\s*生產傳輸模式", re.IGNORECASE), "過期活動狀態投影 (現行維持 protected PR 生產傳輸模式)"),
+        (re.compile(r"維持\s*protected PR\s*生產傳輸", re.IGNORECASE), "過期活動狀態投影 (維持 protected PR 生產傳輸)"),
+    ]
+
+    fails = []
+    infos = []
+
+    # 1. 檢驗 docs/TASKBOARD.md 活動區域
+    tb_path = os.path.join(repo_root, "docs", "TASKBOARD.md")
+    if os.path.exists(tb_path):
+        try:
+            with open(tb_path, "r", encoding="utf-8") as f:
+                for line_no, line in enumerate(f, 1):
+                    for pat, desc in stale_patterns:
+                        if pat.search(line):
+                            fails.append(f"docs/TASKBOARD.md:{line_no}  {desc}: '{line.strip()}'")
+            if not any(f.startswith("docs/TASKBOARD.md") for f in fails):
+                infos.append("docs/TASKBOARD.md 活動狀態投影一致，無過期 protected PR 模式宣告")
+        except Exception as e:
+            fails.append(f"docs/TASKBOARD.md:0  讀取失敗: {e}")
+
+    # 2. 檢驗 docs/refactor-backlog.md 可變交接區 (§5)
+    rb_path = os.path.join(repo_root, "docs", "refactor-backlog.md")
+    if os.path.exists(rb_path):
+        try:
+            with open(rb_path, "r", encoding="utf-8") as f:
+                lines = f.readlines()
+            in_sec5 = False
+            for line_no, line in enumerate(lines, 1):
+                if line.startswith("## 五、"):
+                    in_sec5 = True
+                elif in_sec5 and (line.startswith("## ") or re.match(r"^\d+\.\s+\*\*", line)):
+                    in_sec5 = False
+                if in_sec5:
+                    for pat, desc in stale_patterns:
+                        if pat.search(line):
+                            fails.append(f"docs/refactor-backlog.md:{line_no}  {desc}: '{line.strip()}'")
+            if not any(f.startswith("docs/refactor-backlog.md") for f in fails):
+                infos.append("docs/refactor-backlog.md §5 可變狀態投影一致，無過期 protected PR 模式宣告")
+        except Exception as e:
+            fails.append(f"docs/refactor-backlog.md:0  讀取失敗: {e}")
 
     return fails, infos
 

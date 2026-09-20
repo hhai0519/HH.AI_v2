@@ -33,7 +33,6 @@
 | .agents/rules/git-and-reporting.md | 19 | ## 1. Git 操作 | SECTION | §5.1 | docs/refactor-backlog.md#§5.1 | RESOLVED |
 | .agents/rules/git-and-reporting.md | 19 | ## 1. Git 操作 | TASK | B-51 | docs/TASKBOARD.md | RESOLVED |
 | .agents/rules/git-and-reporting.md | 22 | ## 1. Git 操作 | TASK | C-06 | docs/TASKBOARD.md | RESOLVED |
-| .agents/rules/git-and-reporting.md | 23 | ## 1. Git 操作 | TASK | C-06 | docs/TASKBOARD.md | RESOLVED |
 | .agents/rules/git-and-reporting.md | 34 | ## 1. Git 操作 | FILE | `[.agents/rules/governance-gate-integrity.md](./governance-gate-integrity.md)` | .agents/rules/governance-gate-integrity.md | RESOLVED |
 | .agents/rules/git-and-reporting.md | 38 | ## 2. 回報紀律 | TASK | B-36 | docs/TASKBOARD.md | RESOLVED |
 | .agents/rules/git-and-reporting.md | 39 | ## 2. 回報紀律 | FILE | `docs/EXEC-LOG.md` | docs/EXEC-LOG.md | RESOLVED |
@@ -77,7 +76,6 @@
 | .agents/rules/prompt-preflight.md | 23 | ## 2. 這是審查，不是建議 | SECTION | §7 | .agents/rules/role-boundaries.md#§7 | RESOLVED |
 | .agents/rules/prompt-preflight.md | 77 | ### 3.0A 所有模式共同必備要素（缺一即停） | SECTION | §3.9 | .agents/rules/prompt-preflight.md#§3.9 | RESOLVED |
 | .agents/rules/prompt-preflight.md | 86 | ### 3.0B EXACT_SPEC 專屬必備要素（僅在 EXACT_SPEC 模式下檢查） | CHECK | CHECK 17 | scripts/check_consistency.py | RESOLVED |
-| .agents/rules/prompt-preflight.md | 99 | ## 3.1 配對規則（缺一即停） | TASK | C-06 | docs/TASKBOARD.md | RESOLVED |
 | .agents/rules/prompt-preflight.md | 101 | ## 3.1 配對規則（缺一即停） | FILE | `docs/AUDIT-LOG.md` | docs/AUDIT-LOG.md | RESOLVED |
 | .agents/rules/prompt-preflight.md | 101 | ## 3.1 配對規則（缺一即停） | SECTION | §5.1 | docs/refactor-backlog.md#§5.1 | RESOLVED |
 | .agents/rules/prompt-preflight.md | 103 | ## 3.1 配對規則（缺一即停） | FILE | `docs/AUDIT-LOG.md` | docs/AUDIT-LOG.md | RESOLVED |
@@ -186,7 +184,6 @@
 | .claude/rules/auditor-protocol.md | 152 | ### 6.1 每份提示詞的必備要素 | SECTION | §5 | docs/refactor-backlog.md#§5 | RESOLVED |
 | .claude/rules/auditor-protocol.md | 153 | ### 6.1 每份提示詞的必備要素 | FILE | `docs/TASKBOARD.md` | docs/TASKBOARD.md | RESOLVED |
 | .claude/rules/auditor-protocol.md | 154 | ### 6.1 每份提示詞的必備要素 | FILE | `docs/AUDIT-LOG.md` | docs/AUDIT-LOG.md | RESOLVED |
-| .claude/rules/auditor-protocol.md | 155 | ### 6.1 每份提示詞的必備要素 | TASK | C-06 | docs/TASKBOARD.md | RESOLVED |
 | .claude/rules/auditor-protocol.md | 156 | ### 6.1 每份提示詞的必備要素 | FILE | `docs/EXEC-LOG.md` | docs/EXEC-LOG.md | RESOLVED |
 | .claude/rules/auditor-protocol.md | 158 | ### 6.1 每份提示詞的必備要素 | SECTION | §5.1 | docs/refactor-backlog.md#§5.1 | RESOLVED |
 | .claude/rules/auditor-protocol.md | 160 | ### 6.1 每份提示詞的必備要素 | FILE | `.agents/rules/prompt-preflight.md` | .agents/rules/prompt-preflight.md | RESOLVED |
@@ -269,7 +266,6 @@
 | .claude/rules/auditor-protocol.md | 425 | ### 10.6 「最後更新」是可驗證的攔截點 | SECTION | §5.1 | docs/refactor-backlog.md#§5.1 | RESOLVED |
 | .claude/rules/auditor-protocol.md | 430 | ### 10.7 NEXT_WORK 指標權威與生命週期 | FILE | `docs/TASKBOARD.md` | docs/TASKBOARD.md | RESOLVED |
 | .claude/rules/auditor-protocol.md | 444 | ## 11. 錯誤處置與回滾 | FILE | `.agents/rules/git-and-reporting.md` | .agents/rules/git-and-reporting.md | RESOLVED |
-| .claude/rules/auditor-protocol.md | 456 | ### 11.2 執行 revert 的完整程序 | TASK | C-06 | docs/TASKBOARD.md | RESOLVED |
 | .claude/rules/auditor-protocol.md | 469 | ### 11.2 執行 revert 的完整程序 | SECTION | §5.1 | docs/refactor-backlog.md#§5.1 | RESOLVED |
 | .claude/rules/auditor-protocol.md | 470 | ### 11.2 執行 revert 的完整程序 | FILE | `docs/TASKBOARD.md` | docs/TASKBOARD.md | RESOLVED |
 | .claude/rules/auditor-protocol.md | 471 | ### 11.2 執行 revert 的完整程序 | FILE | `docs/refactor-backlog.md` | docs/refactor-backlog.md | RESOLVED |

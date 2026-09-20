@@ -1,5 +1,5 @@
 {
-  "base_head": "cf2a2b9",
+  "base_head": "131a0b1",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -16,7 +16,7 @@
         "## 3. 查證紀律"
       ],
       "lines": 282,
-      "sha256": "060709182d4b262f8f0a1de766d8a2550d886cdfcf1f401ab81e0c54a894c34e"
+      "sha256": "009cb0815dcc9e552080b9f6fd91cc45f566faf68af25acbd77c0a113586879a"
     },
     ".agents/rules/governance-gate-integrity.md": {
       "fences": 0,
@@ -74,7 +74,7 @@
         "## 6. 這條規則保護的是誰"
       ],
       "lines": 262,
-      "sha256": "7e80d7d2344c1ed3bdc2c512026314efd664a10de5658093619a78a9690103a9"
+      "sha256": "6d500aea6eb24b7c68b8920f3b71c23b28b783a328f1417c8bdc94da72535586"
     },
     ".agents/rules/role-boundaries.md": {
       "fences": 0,
@@ -195,7 +195,7 @@
         "### 12.2 Tier-M 微修復分類規範 (Tier-M Micro Repair)"
       ],
       "lines": 530,
-      "sha256": "2ae4a7f0ba14d9b84e1798136a565d4b24ed612b97ab40727a8f84e4bebabc42"
+      "sha256": "59150f84a053823e82141e29632305162178e334c28c5d17f77bd0f42161b161"
     },
     ".claude/rules/auditor-selftest.md": {
       "fences": 0,
@@ -210,7 +210,7 @@
         "## F. 額度（每一輪回覆的開頭與結尾）"
       ],
       "lines": 135,
-      "sha256": "e1fb94ba6fe8fa2226e54f7782da43b78385aab4ed362fba07977af195cbcf91"
+      "sha256": "b40aa415e9a585b70aa70968b6361a29a1c3a0fe8ac62c3f34b25838baeb6b61"
     },
     ".github/workflows/verify.yml": {
       "fences": 0,
@@ -529,7 +529,7 @@
         "### 8.2 歷史清理紅線 (Cleanup Invariants)"
       ],
       "lines": 223,
-      "sha256": "e1a26b5be6935c656f6955f773850ac7f4094784a69e48be51cdf92e95fbe75c"
+      "sha256": "edb53ba321ebaacedd829f5d3a919ddfd59f05dacfa48568e5689a0d514ab5dd"
     },
     "docs/ARCHIVE-INDEX.md": {
       "fences": 0,
@@ -558,8 +558,8 @@
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 157,
-      "sha256": "9f49e1cb549fe4dae7582f6ea183749a678f9a99e85dea92593dc6a1a76c5de7"
+      "lines": 159,
+      "sha256": "0fbfdf0a3d2bb18c563fe2646eefc56a76e334d210bdb683c0a279d870949030"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -599,8 +599,8 @@
         "## G. 舊 repo 未盤點區塊（2026-09-02 新發現）",
         "## 封存區"
       ],
-      "lines": 334,
-      "sha256": "5e73f71e06941f98215836a2f380757375db16c82f61226c06a25aae2af6e10f"
+      "lines": 335,
+      "sha256": "4e5131af7d1c85f23555d7991a3c1a3db2379edbc582c20130ab7e7b7c713a3a"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1056,8 +1056,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 4616,
-      "sha256": "097a1e87db0638e868383f0a26ea10919d0feb6ea9dc12e794931efa57371629"
+      "lines": 4630,
+      "sha256": "1e6247db49aeeac0a8296c92b1993627c50e87352b509520ee40cb9126ddf333"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1084,8 +1084,8 @@
         "# 已知指向錯誤的歷史 tag。本清單只能縮短、不得加長。",
         "# 修復批次完成後必須清空；清單中的 tag 若已修復卻未移除，CHECK 18 會 FAIL。"
       ],
-      "lines": 2635,
-      "sha256": "9a4834882c2cb821e7039cdee9d54f0416ae7621ea0a7185c24ef654d08920e3"
+      "lines": 2772,
+      "sha256": "a49e21c53b553024c636b2b75efe7a96e9157bd213a76524ac50e8bcc318386e"
     },
     "scripts/fingerprint.py": {
       "fences": 0,
@@ -1353,10 +1353,16 @@
         "# ===========================================================================",
         "# ===========================================================================",
         "# Meta-test: Active CHECK Inventory Integrity (1..20)",
+        "# ===========================================================================",
+        "# ===========================================================================",
+        "# Defect 7: CHECK 23 Transport Exclusivity Guard",
+        "# ===========================================================================",
+        "# ===========================================================================",
+        "# Defect 8: CHECK 24 Active State Projection Drift Guard",
         "# ==========================================================================="
       ],
-      "lines": 512,
-      "sha256": "689a01d3b24cf6716d8dea41367c1664eac513ba91ba032f1bf699d698dbf38f"
+      "lines": 612,
+      "sha256": "7c74b72024d4ae0be1522fb69fc22c6821bd073a9869677e512636c8d3064863"
     },
     "scripts/tests/test_verify_all.py": {
       "fences": 0,
@@ -1388,7 +1394,7 @@
       "sha256": "35bf7dbfa3c7d291b550c3c97a6ae398a22b1dc3624c1d2fc1e4db6963d6e115"
     }
   },
-  "generated_at": "2026-09-19T17:22:01Z",
+  "generated_at": "2026-09-20T09:34:35Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {
