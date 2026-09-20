@@ -1,5 +1,5 @@
 {
-  "base_head": "131a0b1",
+  "base_head": "1ee1d41",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -195,7 +195,7 @@
         "### 12.2 Tier-M 微修復分類規範 (Tier-M Micro Repair)"
       ],
       "lines": 530,
-      "sha256": "59150f84a053823e82141e29632305162178e334c28c5d17f77bd0f42161b161"
+      "sha256": "59dc60f3889bc22c02abee9a654b876b2a342757c4e3f2fa6943185e2d5a1c5f"
     },
     ".claude/rules/auditor-selftest.md": {
       "fences": 0,
@@ -210,7 +210,7 @@
         "## F. 額度（每一輪回覆的開頭與結尾）"
       ],
       "lines": 135,
-      "sha256": "b40aa415e9a585b70aa70968b6361a29a1c3a0fe8ac62c3f34b25838baeb6b61"
+      "sha256": "9958a5a3d2cacf2fdc98fe8b1eb21e58bcb33ec3746d0d05a0c7a7c6e6d5d68e"
     },
     ".github/workflows/verify.yml": {
       "fences": 0,
@@ -550,16 +550,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 193,
-      "sha256": "bf06d4024be485a35a1b2ed5057bf0d6f4e5f73347f25eb46635fa8732f5a0f7"
+      "lines": 194,
+      "sha256": "64b617dcb58d94382eebc9eac30e88d90425dd068219127a700c3cf21c3131b0"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 159,
-      "sha256": "0fbfdf0a3d2bb18c563fe2646eefc56a76e334d210bdb683c0a279d870949030"
+      "lines": 161,
+      "sha256": "9d2a493c322c0c37b8314d99ba6af673f4f10b117cec61df3f8f237091b98dc2"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -600,7 +600,7 @@
         "## 封存區"
       ],
       "lines": 335,
-      "sha256": "4e5131af7d1c85f23555d7991a3c1a3db2379edbc582c20130ab7e7b7c713a3a"
+      "sha256": "b7e19bb97523f6c3201c3115bf5417f7e8def06dcbe8ed503061ce343cec28df"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1056,8 +1056,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 4630,
-      "sha256": "1e6247db49aeeac0a8296c92b1993627c50e87352b509520ee40cb9126ddf333"
+      "lines": 4650,
+      "sha256": "99d3d95b8050cd86b74e893b3d8b209cc8ceb12491296ffd89d3e9fec10f4b9d"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1084,8 +1084,8 @@
         "# 已知指向錯誤的歷史 tag。本清單只能縮短、不得加長。",
         "# 修復批次完成後必須清空；清單中的 tag 若已修復卻未移除，CHECK 18 會 FAIL。"
       ],
-      "lines": 2772,
-      "sha256": "a49e21c53b553024c636b2b75efe7a96e9157bd213a76524ac50e8bcc318386e"
+      "lines": 2787,
+      "sha256": "eb80a7ab040748f07763d0520af2e78b5a351949286b016df049ad04ab68b060"
     },
     "scripts/fingerprint.py": {
       "fences": 0,
@@ -1213,8 +1213,8 @@
         "# CHECK 22 Fail-Closed Negative Controls & Pipeline Grammar (Controls B-L)",
         "# ---------------------------------------------------------------------------"
       ],
-      "lines": 1791,
-      "sha256": "0ccec89dce52c7554879020d068d6e40140f0686383c97a5316c212745710dc0"
+      "lines": 1796,
+      "sha256": "07081972c836ed5496138703b4a5e2402748718b3083d1be91c6655f13366bc0"
     },
     "scripts/tests/test_fingerprint.py": {
       "fences": 0,
@@ -1352,7 +1352,7 @@
         "# Defect 6: CHECK 13 Advisory Output Behavior (Direct Production Rendering Path)",
         "# ===========================================================================",
         "# ===========================================================================",
-        "# Meta-test: Active CHECK Inventory Integrity (1..20)",
+        "# Meta-test: Active CHECK Inventory Integrity (1..24)",
         "# ===========================================================================",
         "# ===========================================================================",
         "# Defect 7: CHECK 23 Transport Exclusivity Guard",
@@ -1361,8 +1361,8 @@
         "# Defect 8: CHECK 24 Active State Projection Drift Guard",
         "# ==========================================================================="
       ],
-      "lines": 612,
-      "sha256": "7c74b72024d4ae0be1522fb69fc22c6821bd073a9869677e512636c8d3064863"
+      "lines": 685,
+      "sha256": "3cf80c45349e78435675c3a0d1ec5e0090621c2aab73491b60b01350044ba496"
     },
     "scripts/tests/test_verify_all.py": {
       "fences": 0,
@@ -1394,7 +1394,7 @@
       "sha256": "35bf7dbfa3c7d291b550c3c97a6ae398a22b1dc3624c1d2fc1e4db6963d6e115"
     }
   },
-  "generated_at": "2026-09-20T09:34:35Z",
+  "generated_at": "2026-09-20T14:06:45Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

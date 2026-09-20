@@ -498,20 +498,44 @@ def test_check_13_advisory_output_behavior(tmp_path):
 
 
 # ===========================================================================
-# Meta-test: Active CHECK Inventory Integrity (1..20)
+# Meta-test: Active CHECK Inventory Integrity (1..24)
 # ===========================================================================
 
-def test_active_check_inventory_continuous_1_to_20():
-    """現行 active CHECK IDs 必須為 1..20 連續、無重複、無缺號"""
-    script_path = os.path.join(REPO_ROOT, "scripts", "check_consistency.py")
-    with open(script_path, "r", encoding="utf-8") as f:
-        content = f.read()
+def extract_active_check_ids_from_source(source_text: str):
+    """Extract check IDs from run_checks source lines matching print(... CHECK <N> [-:] ...)."""
+    check_ids = []
+    for line in source_text.splitlines():
+        line_s = line.strip()
+        if "print(" in line_s and "CHECK" in line_s:
+            m = re.search(r'print\(.*?CHECK\s+(\d+)\s*[-:]', line_s)
+            if m:
+                check_ids.append(int(m.group(1)))
+    return check_ids
 
-    # Find all "CHECK <N> -" in execution run_checks
-    check_ids = [int(m) for m in re.findall(r"CHECK\s+(\d+)\s+-\s+", content)]
-    assert len(check_ids) == 20, f"Expected 20 checks, found {len(check_ids)}: {check_ids}"
-    expected = list(range(1, 21))
+
+def test_active_check_inventory_continuous_1_to_24():
+    """現行 active CHECK IDs 必須為 1..24 連續、無重複、無缺號"""
+    import check_consistency
+    import inspect
+    source = inspect.getsource(check_consistency.run_checks)
+    check_ids = extract_active_check_ids_from_source(source)
+    expected = list(range(1, 25))
+    assert len(check_ids) == 24, f"Expected 24 checks, found {len(check_ids)}: {check_ids}"
     assert check_ids == expected, f"Check IDs drift: {check_ids} != {expected}"
+
+
+def test_active_check_inventory_negative_controls():
+    """Negative controls for check inventory validation: missing or duplicate check IDs must fail."""
+    # Synthetic missing CHECK 23
+    synthetic_missing = "\n".join([f'print("CHECK {i} - ...")' for i in range(1, 25) if i != 23])
+    ids_missing = extract_active_check_ids_from_source(synthetic_missing)
+    assert ids_missing != list(range(1, 25))
+    assert 23 not in ids_missing
+
+    # Synthetic duplicate CHECK 23
+    synthetic_duplicate = "\n".join([f'print("CHECK {i} - ...")' for i in range(1, 25)] + ['print("CHECK 23: ...")'])
+    ids_dup = extract_active_check_ids_from_source(synthetic_duplicate)
+    assert len(ids_dup) != 24 or ids_dup != list(range(1, 25))
 
 
 # ===========================================================================
@@ -610,3 +634,52 @@ def test_check_24_negative_control_stale_backlog_sec5_projection_fail(tmp_path):
     fails, infos = check_24_active_state_projection_guard(str(tmp_path))
     assert len(fails) >= 1
     assert any("過期活動狀態投影 (維持 protected PR 生產傳輸)" in f for f in fails)
+
+
+def test_check_24_positive_control_historical_c06_with_k1_transport_neutral_pass(tmp_path):
+    """CHECK 24 Positive Control: C-06 說明歷史原 Option B 曾採 Require PR，但 current K1 transport-neutral 判定 PASS"""
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    tb_file = docs / "TASKBOARD.md"
+    tb_file.write_text(
+        "| C-06 | 已裁決 | 歷史裁決 Option B 建立 preventive GitHub gate 曾採 Require PR，後由 D-U9 / B-103 / K1-A 對 transport mechanism 進一步 refine/supersede：現行伺服端保護權威為 GitHub ruleset required checks，當前傳輸模式收斂為 batch candidate -> exact-SHA checks -> SAME SHA fast-forward；Require PR 不再是 current mandatory transport |\n",
+        encoding="utf-8"
+    )
+    rb_file = docs / "refactor-backlog.md"
+    rb_file.write_text(
+        "### 5.3 待使用者裁決\n| 4 | 事項 | 歷史原 Option B 曾採 Require PR，後由 D-U9 / K1-A 進一步 refine/supersede；現行 K1-A 傳輸真相為 batch branch -> exact SHA checks -> SAME SHA fast-forward |\n",
+        encoding="utf-8"
+    )
+    fails, infos = check_24_active_state_projection_guard(str(tmp_path))
+    assert len(fails) == 0
+    assert any("活動狀態投影一致" in i for i in infos)
+    assert any("可變狀態投影一致" in i for i in infos)
+
+
+def test_check_24_negative_control_c06_mandatory_pr_fail(tmp_path):
+    """CHECK 24 Negative Control: C-06 current row 重新宣告 main 未來必須 Require PR 時判定 FAIL"""
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    tb_file = docs / "TASKBOARD.md"
+    tb_file.write_text(
+        "| C-06 | 已裁決 | 是否將 GitHub Verify 升級為 main 的 preventive required check | 使用者已裁決採 Option B：main 未來必須由 preventive GitHub gate 保護（Require PR + Verify success before merge to main） |\n",
+        encoding="utf-8"
+    )
+    fails, infos = check_24_active_state_projection_guard(str(tmp_path))
+    assert len(fails) >= 1
+    assert any("過期活動狀態投影 (main 未來必須 Require PR)" in f for f in fails)
+
+
+def test_check_24_negative_control_backlog_sec53_du9_stale_pr_mode_fail(tmp_path):
+    """CHECK 24 Negative Control: refactor-backlog §5.3 D-U9 重新宣告本批維持現行 PR 模式時判定 FAIL"""
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    rb_file = docs / "refactor-backlog.md"
+    rb_file.write_text(
+        "### 5.3 待使用者裁決\n| 4 | 事項 | 裁決結果見 C-06；本批維持現行 PR 模式，零工作流與 ruleset 異動 |\n",
+        encoding="utf-8"
+    )
+    fails, infos = check_24_active_state_projection_guard(str(tmp_path))
+    assert len(fails) >= 1
+    assert any("過期活動狀態投影 (本批維持現行 PR 模式)" in f for f in fails)
+

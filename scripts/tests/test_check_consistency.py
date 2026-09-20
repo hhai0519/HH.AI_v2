@@ -1286,15 +1286,20 @@ def test_integration_run_checks_includes_19_and_20():
     assert "CHECK 20 - Markdown 表格連續性" in source
 
 
-def test_integration_run_checks_includes_22_and_total_checks_is_22():
+def test_integration_run_checks_includes_24_and_total_checks_is_24():
+    """Verify run_checks includes up to CHECK 24 and total_checks is 24."""
     import check_consistency
     import inspect
     source = inspect.getsource(check_consistency.run_checks)
-    assert "total_checks = 22" in source
+    assert "total_checks = 24" in source
     assert "check_21_secret_leak_guard" in source
     assert "CHECK 21: 機密防護與輸出安全守衛" in source
     assert "check_22_ci_supply_chain" in source
     assert "CHECK 22: CI 供應鏈可重現性守衛" in source
+    assert "check_23_transport_exclusivity_guard" in source
+    assert "CHECK 23: 傳輸能力與合約一致性守衛" in source
+    assert "check_24_active_state_projection_guard" in source
+    assert "CHECK 24: 活動狀態投影漂移守衛" in source
 
 
 def test_check_21_missing_rule_file_fail(tmp_path):

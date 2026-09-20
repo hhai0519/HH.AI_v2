@@ -50,7 +50,7 @@ def run_checks(argv=None):
     as_if_committed = "--as-if-committed" in argv
     if as_if_committed:
         print("[MODE] 啟用 --as-if-committed 本地 commit 拓撲預演模式")
-    total_checks = 24  # backward compatibility: total_checks = 22
+    total_checks = 24
     passed = 0
     failed = 0
     
@@ -2717,14 +2717,21 @@ def check_23_transport_exclusivity_guard(repo_root=None):
 
 def check_24_active_state_projection_guard(repo_root=None):
     """CHECK 24 — 活動狀態投影漂移守衛 (Active State Projection Drift Guard)。
-    防止同一 active lifecycle 同時宣告互斥 current states（例如 new transport contract active 同時宣稱現行維持 protected PR 生產傳輸模式）。
+
+    防止同一 active lifecycle 同時宣告互斥 current states（例如 new transport contract active 同時宣稱現行維持 protected PR 生產傳輸模式，或宣稱 main 未來必須 Require PR）。
+    結構化掃描作用面：
+    - docs/TASKBOARD.md 僅掃描：**最後更新**、| B-103 |、| C-06 |、| TG-MVP-01B |
+    - docs/refactor-backlog.md 僅掃描：§5.3 與 §5.4
+    不掃描歷史 append-only 紀錄。
     """
     if repo_root is None:
         repo_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
     stale_patterns = [
-        (re.compile(r"現行維持\s*protected PR\s*生產傳輸模式", re.IGNORECASE), "過期活動狀態投影 (現行維持 protected PR 生產傳輸模式)"),
+        (re.compile(r"現行維持\s*protected PR\s*生產傳輸(?:模式)?", re.IGNORECASE), "過期活動狀態投影 (現行維持 protected PR 生產傳輸模式)"),
         (re.compile(r"維持\s*protected PR\s*生產傳輸", re.IGNORECASE), "過期活動狀態投影 (維持 protected PR 生產傳輸)"),
+        (re.compile(r"本批維持現行\s*PR\s*模式", re.IGNORECASE), "過期活動狀態投影 (本批維持現行 PR 模式)"),
+        (re.compile(r"main\s*(?:未來)?必須.*?Require PR", re.IGNORECASE), "過期活動狀態投影 (main 未來必須 Require PR)"),
     ]
 
     fails = []
@@ -2736,27 +2743,35 @@ def check_24_active_state_projection_guard(repo_root=None):
         try:
             with open(tb_path, "r", encoding="utf-8") as f:
                 for line_no, line in enumerate(f, 1):
-                    for pat, desc in stale_patterns:
-                        if pat.search(line):
-                            fails.append(f"docs/TASKBOARD.md:{line_no}  {desc}: '{line.strip()}'")
+                    line_s = line.strip()
+                    is_blocking_surface = (
+                        line_s.startswith("**最後更新**") or
+                        line_s.startswith("| B-103 |") or
+                        line_s.startswith("| C-06 |") or
+                        line_s.startswith("| TG-MVP-01B |")
+                    )
+                    if is_blocking_surface:
+                        for pat, desc in stale_patterns:
+                            if pat.search(line):
+                                fails.append(f"docs/TASKBOARD.md:{line_no}  {desc}: '{line.strip()}'")
             if not any(f.startswith("docs/TASKBOARD.md") for f in fails):
                 infos.append("docs/TASKBOARD.md 活動狀態投影一致，無過期 protected PR 模式宣告")
         except Exception as e:
             fails.append(f"docs/TASKBOARD.md:0  讀取失敗: {e}")
 
-    # 2. 檢驗 docs/refactor-backlog.md 可變交接區 (§5)
+    # 2. 檢驗 docs/refactor-backlog.md 可變交接區 (§5.3 與 §5.4)
     rb_path = os.path.join(repo_root, "docs", "refactor-backlog.md")
     if os.path.exists(rb_path):
         try:
             with open(rb_path, "r", encoding="utf-8") as f:
                 lines = f.readlines()
-            in_sec5 = False
+            in_blocking_sec = False
             for line_no, line in enumerate(lines, 1):
-                if line.startswith("## 五、"):
-                    in_sec5 = True
-                elif in_sec5 and (line.startswith("## ") or re.match(r"^\d+\.\s+\*\*", line)):
-                    in_sec5 = False
-                if in_sec5:
+                if line.startswith("### 5.3") or line.startswith("### 5.4") or line.startswith("§5.3") or line.startswith("§5.4"):
+                    in_blocking_sec = True
+                elif in_blocking_sec and (line.startswith("## ") or (line.startswith("### ") and not (line.startswith("### 5.3") or line.startswith("### 5.4"))) or re.match(r"^\d+\.\s+\*\*", line)):
+                    in_blocking_sec = False
+                if in_blocking_sec:
                     for pat, desc in stale_patterns:
                         if pat.search(line):
                             fails.append(f"docs/refactor-backlog.md:{line_no}  {desc}: '{line.strip()}'")

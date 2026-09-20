@@ -3042,7 +3042,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 | 1 | ~~**Port 3000 三方衝突**~~ **已於 2026-09-06 裁決** | 裁決結果見 `docs/TASKBOARD.md` C-01。實測為 11 個 port 而非三方衝突；以 ADR-0017 為準，處置範圍由兩處擴大為七處；playwright 掃描清單改為「明確指定目標 port 而非自動掃描」。執行排批 4 |
 | 2 | ~~**`SOP_02` 清歷史規定違反第 1 層規則**~~ **已於 2026-09-06 裁決** | 裁決結果見 `docs/TASKBOARD.md` C-02。採甲案：不得 force push；已推送憑證視為永久洩漏，處置為撤銷與輪換；清理歷史僅由使用者本人執行。執行排批 4 |
 | 3 | ~~**ADR-0013 處置**~~ **已於 2026-09-06 裁決** | 裁決結果見 `docs/TASKBOARD.md` C-03。採甲案逐節處置：§1／§2ABD／§7 棄用；§2C BOM 偵測實作為新 CHECK；§3 搬進 `role-boundaries.md`；§4／§5 凍結待 E-03；§6 獨立為 B-32。執行排批 4 |
-| 4 | ~~**是否將 GitHub Verify 升級為 main 的 preventive required check**~~ **已於 2026-09-17 裁決，2026-09-19 D-U9 補充裁決** | 裁決結果見 `docs/TASKBOARD.md` C-06。使用者已裁決採 Option B；2026-09-19 D-U9 使用者進一步確立未來 C-06 傳輸模式為：批次分支（batch branch）→ exact branch SHA 驗證通過 → fast-forward 同一 SHA 至 main，正式遷移排定於 B-103 執行；本批維持現行 PR 模式，零工作流與 ruleset 異動。 |
+| 4 | ~~**是否將 GitHub Verify 升級為 main 的 preventive required check**~~ **已於 2026-09-17 裁決，2026-09-19 D-U9 / K1-A 補充裁決** | 裁決結果見 `docs/TASKBOARD.md` C-06。歷史原 Option B 曾採 Require PR，後由 D-U9 / K1-A 對 transport mechanism 進一步 refine/supersede；現行 K1-A 傳輸真相為：batch branch → exact SHA required checks → SAME SHA fast-forward via exactly one explicitly selected available adapter；server-side required checks 為現行防護權威，pull_request 規則已於 Phase C 移除。 |
 | 5 | ~~**歷史待辦 B-17 / B-28 / B-29 處置決策（ARCHIVE vs TRIGGER_BASED_DEFERRED）**~~ **已於 2026-09-18 裁決** | 裁決結果見 `docs/TASKBOARD.md` C-07。使用者裁決採 `TRIGGER_BASED_DEFERRED`（依觸發條件延後，不封存）。排定於觸發事件發生時評估，不阻擋重構。 |
 | 6 | ~~**Data/logs 歷史檔案處置決策（repo-external 保留 vs 封存 vs 刪除）**~~ **已於 2026-09-18 裁決** | 裁決結果見 `docs/TASKBOARD.md` C-08。使用者裁決採 `REPO_EXTERNAL_QUARANTINE_THEN_DELETE`（repo 外部隔離保存一週後刪除；HH.AI_v2 repo 內保持零納入、零歷史檔案）。 |
 | 7 | ~~**D-U11 提交守衛雙重掃描整合**~~ **已於 2026-09-19 確立** | 現行 verify_all Gate 2 (check_consistency) CHECK 21 之 secret_scan.run_tracked_scan() 已滿足提交守衛需求（D-U11 ALREADY SATISFIED），無冗餘掃描器。 |
@@ -3101,7 +3101,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - TG-MVP-06A：已完成（ACCEPTED / CLOSED）。
   - TG-MVP-01B：進行中（IN PROGRESS / B-102 RESOLVED / B-103 TRANSPORT MIGRATION ACTIVE；D1 transport contract 已 active on main，現正由 T1 bootstrap 轉為 transport-neutral K1 invariant，T1 native pinned-SHA adapter 尚未 production-proven；不得標記 CLOSED）。
   - B-102：已完成（CLOSED / INCIDENT-CI-05 CLOSED / R6 RESOLVED，accepted checkpoint = `78fbab3793b3d9a31e552f4939a7fcc27ae1a20d`）。
-  - B-103：進行中（IN PROGRESS / B-103A = ACCEPTED / CLOSED；B-103B Phase B = PASS / ACCEPTED；B-103B Phase C = PASS / ACCEPTED；B-103B Phase D1 = ACCEPTED / CLOSED，PR #30 squash-merged 產生 cf2a2b9，post-main Run 35456270854 verify / gateway-windows success，new transport contract ACTIVE ON MAIN；preserved D2 evidence commit 131a0b19cdd915d6172a750972c69fdb1afdadd9 機器證據保留；K1-A / K5-A 使用者正式授權，T1-bootstrap successor active，native pinned full-SHA adapter 尚未 production-proven；B-106/B-107/B-108 範圍校準，新增 B-109 待辦；不得宣稱 Phase D2 completed，不得宣稱 B-103 closed，不得宣稱 Phase E authorized）。
+  - B-103：進行中（IN PROGRESS / B-103A = ACCEPTED / CLOSED；B-103B Phase B = PASS / ACCEPTED；B-103B Phase C = PASS / ACCEPTED；B-103B Phase D1 = ACCEPTED / CLOSED，PR #30 squash-merged 產生 cf2a2b9，post-main Run 35456270854 verify / gateway-windows success，new transport contract ACTIVE ON MAIN；preserved D2 evidence commit 131a0b19cdd915d6172a750972c69fdb1afdadd9 機器證據保留；K1-A / K5-A 使用者正式授權；T1 bootstrap candidate 1ee1d41a4f4fc4c197103f1e0757b4d78c9ef716 經 External Macro 獨立審計判定 MACRO AUDIT = HOLD / BOUNDED REPAIR REQUIRED（T1-F1～T1-F4）；T1 當前狀態為 PRE-PROMOTION MACRO HOLD / BOUNDED REPAIR ACTIVE；native pinned full-SHA adapter 尚未 production-proven；B-106/B-107/B-108 範圍校準，新增 B-109 待辦；不得宣稱 T1 PASS、不得宣稱 Phase D2 completed、不得宣稱 B-103 closed、不得宣稱 Phase E authorized、不得宣稱 TG-MVP-01B closed）。
   - B-104：待辦（TODO / NOT AUTHORIZED，Jules 歷史 PR #13–#24 與 12 條 exact head branches 清理路由，依 U-A 授權範圍未來執行，本輪不執行）。
   - B-105：待辦（TODO / NOT AUTHORIZED，Jules Mode A 唯讀風險掃描與前置條件準備；Jules drift 記錄：authorized_mcp_tools 目前無已驗證 harness enforcement，jules-integration 仍指向 disabled Bridge，Jules capability semantics 留至 M4，本輪不得啟用 Jules）。
   - B-106：待辦（TODO / BLOCKING BEFORE PHASE E，Actual Loaded-Surface Budget & Rule Compatibility Guard；由 Always-On Rule Budget 改名並校準範圍，核心為 actual loaded surface 而非 repo file count，涵蓋 token budget 與 truncation；IDE 2.5.5 版本綁定，.agents/rules/*.md 搭配 trigger: always_on 為已驗證載入面，無 frontmatter 不算已載入，model_decision 維持 UNKNOWN；IDE 更新後僅 UI-only revalidation，禁止 production batch 中途更新 IDE；零實作）。
@@ -4628,3 +4628,23 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - **架構重新基準化研究紀錄**：逐字落地 `docs/research/R0-architecture-rebaseline-260920.md`。
   - **E24 依賴閉包驗證**：Verified raw discovery（SHA-256 `edfe3a42d638056fa4a1639a67ef3f5bd23e56a5a9e51301773243b8d106aed4`），套用 External Macro 26 項 dispositions，12 UPDATE dependencies 100% 納入 Final Allowed Scope（13 files），`impact_scan.py check` replay PASS。
 - **候選狀態**：分支 `batch/t1-bootstrap-successor-260920` 僅推送到 batch 分支進行 exact-SHA CI 驗證，絕對不推 main，等待外部審計官 pre-promotion review。
+
+122. **T1 Bootstrap Successor 外部宏觀審計 HOLD 與有界修復候選（T1 Bootstrap Successor External Macro HOLD & Bounded Repair Candidate）**（2026-09-20）
+- **外部宏觀審計結論（External Macro HOLD Verdict）**：
+  - 目標候選：`1ee1d41a4f4fc4c197103f1e0757b4d78c9ef716`。
+  - 父提交：`131a0b19cdd915d6172a750972c69fdb1afdadd9`（preserved D2 evidence commit）。
+  - GitHub Actions 遠端機器證據：Run 35502918384（event = push, head_branch = `batch/t1-bootstrap-successor-260920`, head_sha = `1ee1d41a4f4fc4c197103f1e0757b4d78c9ef716`, status = completed, conclusion = success, jobs: verify = success [CHECK 23/24 PASS, 24 checks PASS, 406 passed, 13 passed, ALL 5 GATES PASSED], gateway-windows = success [26 passed]）。
+  - 審查結論：MACHINE / CI = PASS；MACRO AUDIT = HOLD；PROMOTION ELIGIBILITY = HOLD — BOUNDED REPAIR REQUIRED；main advancement 與 K6 UI 均 NOT AUTHORIZED；accepted checkpoint 維持 `cf2a2b970f9a0cd28c540e70e1afb67e182c8d6f`，main 維持 `cf2a2b970f9a0cd28c540e70e1afb67e182c8d6f`。
+  - 重大審計發現：
+    - **T1-F1 DEPENDENCY_SCOPE_BYPASS_AND_FALSE_GREEN_COMPAT_SHIM**：`scripts/check_consistency.py` 曾使用 `# backward compatibility: total_checks = 22` 註解維持陳舊測試通過，此作法不被接受，相依測試必須正常擴充至授權範疇內修正。
+    - **T1-F2 CHECK_INVENTORY_META_TEST_FALSE_GREEN**：`scripts/tests/test_verifier_fail_closed.py` regex 僅匹配 `CHECK <N> -`，未覆蓋 CHECK 21–24 之 `CHECK <N>:`，形成假綠燈。
+    - **T1-F3 K5_BOOTSTRAP_BASE_SYNC_CONTRACT_CONTRADICTION**：`.claude/rules/auditor-protocol.md` 與 `auditor-selftest.md` E9 未編碼使用者裁決之 narrow K5-A bootstrap exception。
+    - **T1-F4 ACTIVE_C06_DU9_PROJECTION_DRIFT_AND_CHECK24_UNDERCOVERAGE**：TASKBOARD C-06 與 backlog §5.3 D-U9 殘留過期 mandatory PR 描述，CHECK 24 未針對結構化作用面進行嚴格防衛。
+- **有界修復實作成果（Bounded Repair Deliverables）**：
+  - 靶向依賴探索：執行 7-query discovery，嚴格確認 8 項匹配路徑全數落在已授權範疇，無未知作用面。
+  - F1 修復：移除 `check_consistency.py` 註解 shim，改為單義 `total_checks = 24`；同步更新 `test_check_consistency.py` 整合測試，驗證 CHECK 21～24 與 `total_checks = 24`。
+  - F2 修復：重構 `test_verifier_fail_closed.py` 之 active check inventory 測試為 1..24 連續性與確定性 AST/source 解析（支援 `-` 與 `:`），並新增 missing CHECK 23 與 duplicate CHECK 23 確定性負向控制。
+  - F3 修復：於 `.claude/rules/auditor-protocol.md` §6.1-9 與 `auditor-selftest.md` E9 正式編碼 narrow K5-A bootstrap base exception（七大嚴格前提條件）。
+  - F4 修復：更新 TASKBOARD C-06 row 與 backlog §5.3 D-U9 為 current K1-A 傳輸真相；強化 CHECK 24 為結構化作用面守衛（掃描 TASKBOARD 特定標記與 backlog §5.3/§5.4，防止 mandatory PR 模式復發，同時允許歷史說明）。
+  - 狀態與稽核同步：`docs/AUDIT-LOG.md` 登錄 candidate `1ee1d41` 之 HOLD 列；`docs/EXEC-LOG.md` 以 `1ee1d41` 為 cadence anchor 登錄 repair 紀錄。
+- **候選狀態**：修復 commit 建立於分支 `batch/t1-bootstrap-successor-repair-260920`（parent `1ee1d41a4f4fc4c197103f1e0757b4d78c9ef716`），僅推送至 batch 分支進行 exact-SHA CI 驗證，絕對不推 main，標記為 READY_FOR_EXTERNAL_MACRO_REAUDIT。
