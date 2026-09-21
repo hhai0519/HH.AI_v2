@@ -1,5 +1,7 @@
 import os
 import sys
+import json
+import shutil
 import pytest
 
 # Ensure scripts dir is on sys.path
@@ -21,6 +23,7 @@ from check_consistency import (
     check_20_markdown_table_continuity,
     check_21_secret_leak_guard,
     check_22_ci_supply_chain,
+    check_25_mechanical_governance_v1_guard,
 )
 
 
@@ -1286,12 +1289,12 @@ def test_integration_run_checks_includes_19_and_20():
     assert "CHECK 20 - Markdown 表格連續性" in source
 
 
-def test_integration_run_checks_includes_24_and_total_checks_is_24():
-    """Verify run_checks includes up to CHECK 24 and total_checks is 24."""
+def test_integration_run_checks_includes_25_and_total_checks_is_25():
+    """Verify run_checks includes up to CHECK 25 and total_checks is 25."""
     import check_consistency
     import inspect
     source = inspect.getsource(check_consistency.run_checks)
-    assert "total_checks = 24" in source
+    assert "total_checks = 25" in source
     assert "check_21_secret_leak_guard" in source
     assert "CHECK 21: 機密防護與輸出安全守衛" in source
     assert "check_22_ci_supply_chain" in source
@@ -1300,6 +1303,8 @@ def test_integration_run_checks_includes_24_and_total_checks_is_24():
     assert "CHECK 23: 傳輸能力與合約一致性守衛" in source
     assert "check_24_active_state_projection_guard" in source
     assert "CHECK 24: 活動狀態投影漂移守衛" in source
+    assert "check_25_mechanical_governance" in source
+    assert "CHECK 25: 機械治理 v1 完整性守衛" in source
 
 
 def test_check_21_missing_rule_file_fail(tmp_path):
@@ -1794,3 +1799,110 @@ def test_check_22_current_repo_workflow_pass():
     repo_root_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
     fails, infos = check_22_ci_supply_chain(repo_root_path)
     assert len(fails) == 0
+
+
+# ---------------------------------------------------------------------------
+# CHECK 25 Tests: Mechanical Governance v1 Integrity Guard
+# ---------------------------------------------------------------------------
+
+def test_check_25_current_repo_pass():
+    """Verify current repo passes CHECK 25 with 0 failures."""
+    repo_root_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+    fails, infos = check_25_mechanical_governance_v1_guard(repo_root_path)
+    assert fails == [], f"Current repo failed CHECK 25: {fails}"
+
+
+def _setup_check_25_env(tmp_path):
+    """Sets up a complete valid mock repo root for CHECK 25 negative testing."""
+    repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+    files_to_copy = [
+        ("docs/governance/rule-registry.json", "docs/governance/rule-registry.json"),
+        ("scripts/governance_preflight.py", "scripts/governance_preflight.py"),
+        (".githooks/pre-push", ".githooks/pre-push"),
+        ("scripts/install_git_hooks.py", "scripts/install_git_hooks.py"),
+        (".agents/rules/prompt-preflight.md", ".agents/rules/prompt-preflight.md"),
+        (".claude/rules/auditor-selftest.md", ".claude/rules/auditor-selftest.md"),
+        (".agents/rules/git-and-reporting.md", ".agents/rules/git-and-reporting.md"),
+        ("docs/ops/antigravity-environment-baseline.md", "docs/ops/antigravity-environment-baseline.md"),
+        ("docs/TASKBOARD.md", "docs/TASKBOARD.md"),
+    ]
+    for src_rel, dst_rel in files_to_copy:
+        src = os.path.join(repo_root, src_rel)
+        dst = tmp_path / dst_rel
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(src, str(dst))
+
+
+def test_check_25_missing_rule_registry_fail(tmp_path):
+    _setup_check_25_env(tmp_path)
+    (tmp_path / "docs" / "governance" / "rule-registry.json").unlink()
+    fails, infos = check_25_mechanical_governance_v1_guard(str(tmp_path))
+    assert any("rule-registry.json" in f and "不存在" in f for f in fails)
+
+
+def test_check_25_duplicate_rule_id_fail(tmp_path):
+    _setup_check_25_env(tmp_path)
+    reg_file = tmp_path / "docs" / "governance" / "rule-registry.json"
+    data = json.loads(reg_file.read_text(encoding="utf-8"))
+    data["rules"].append(data["rules"][0])
+    reg_file.write_text(json.dumps(data), encoding="utf-8")
+    fails, infos = check_25_mechanical_governance_v1_guard(str(tmp_path))
+    assert any("重複" in f or "duplicate" in f.lower() for f in fails)
+
+
+def test_check_25_missing_rule_id_fail(tmp_path):
+    _setup_check_25_env(tmp_path)
+    reg_file = tmp_path / "docs" / "governance" / "rule-registry.json"
+    data = json.loads(reg_file.read_text(encoding="utf-8"))
+    data["rules"] = [r for r in data["rules"] if r["id"] != "GOV-M1-004"]
+    reg_file.write_text(json.dumps(data), encoding="utf-8")
+    fails, infos = check_25_mechanical_governance_v1_guard(str(tmp_path))
+    assert any("GOV-M1-004" in f for f in fails)
+
+
+def test_check_25_missing_pre_push_hook_fail(tmp_path):
+    _setup_check_25_env(tmp_path)
+    (tmp_path / ".githooks" / "pre-push").unlink()
+    fails, infos = check_25_mechanical_governance_v1_guard(str(tmp_path))
+    assert any(".githooks/pre-push" in f and "不存在" in f for f in fails)
+
+
+def test_check_25_wrong_pre_push_shebang_fail(tmp_path):
+    _setup_check_25_env(tmp_path)
+    hook = tmp_path / ".githooks" / "pre-push"
+    content = hook.read_text(encoding="utf-8").replace("#!/bin/sh", "#!/bin/bash")
+    hook.write_text(content, encoding="utf-8")
+    fails, infos = check_25_mechanical_governance_v1_guard(str(tmp_path))
+    assert any("第一行必須為 '#!/bin/sh'" in f for f in fails)
+
+
+def test_check_25_pre_push_not_wired_fail(tmp_path):
+    _setup_check_25_env(tmp_path)
+    hook = tmp_path / ".githooks" / "pre-push"
+    hook.write_text("#!/bin/sh\necho no preflight\n", encoding="utf-8")
+    fails, infos = check_25_mechanical_governance_v1_guard(str(tmp_path))
+    assert any("governance_preflight" in f for f in fails)
+
+
+def test_check_25_missing_execution_contract_in_prompt_preflight_fail(tmp_path):
+    _setup_check_25_env(tmp_path)
+    f = tmp_path / ".agents" / "rules" / "prompt-preflight.md"
+    f.write_text(f.read_text(encoding="utf-8").replace("BEGIN_HHAI_EXECUTION_CONTRACT", "OLD_BLOCK"), encoding="utf-8")
+    fails, infos = check_25_mechanical_governance_v1_guard(str(tmp_path))
+    assert any("Execution Contract" in f_msg for f_msg in fails)
+
+
+def test_check_25_missing_e25_in_auditor_selftest_fail(tmp_path):
+    _setup_check_25_env(tmp_path)
+    f = tmp_path / ".claude" / "rules" / "auditor-selftest.md"
+    f.write_text(f.read_text(encoding="utf-8").replace("E25", "E99"), encoding="utf-8")
+    fails, infos = check_25_mechanical_governance_v1_guard(str(tmp_path))
+    assert any("E25" in f_msg for f_msg in fails)
+
+
+def test_check_25_taskboard_missing_recovery_trigger_fail(tmp_path):
+    _setup_check_25_env(tmp_path)
+    f = tmp_path / "docs" / "TASKBOARD.md"
+    f.write_text(f.read_text(encoding="utf-8").replace("antigravity-environment-baseline.md", "other-doc.md"), encoding="utf-8")
+    fails, infos = check_25_mechanical_governance_v1_guard(str(tmp_path))
+    assert any("recovery trigger" in f_msg or "antigravity-environment-baseline.md" in f_msg for f_msg in fails)

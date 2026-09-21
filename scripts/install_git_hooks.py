@@ -23,6 +23,7 @@ import subprocess
 import argparse
 
 CANONICAL_HOOKS_PATH = ".githooks"
+REQUIRED_HOOKS = ["pre-commit", "pre-push"]
 
 
 def get_repo_root():
@@ -38,30 +39,32 @@ def install_hooks():
     repo_root = get_repo_root()
     if not repo_root:
         return 1
-    hook_file = os.path.join(repo_root, CANONICAL_HOOKS_PATH, "pre-commit")
 
-    # 1 & 2: Check canonical hook file exists and is regular file
-    if not os.path.exists(hook_file):
-        sys.stderr.write(f"HOOK_INSTALL FAIL: Required hook file does not exist: '{hook_file}'\n")
-        return 1
+    for hook_name in REQUIRED_HOOKS:
+        hook_file = os.path.join(repo_root, CANONICAL_HOOKS_PATH, hook_name)
 
-    if not os.path.isfile(hook_file) or os.path.islink(hook_file):
-        sys.stderr.write(f"HOOK_INSTALL FAIL: Hook path is not a regular file: '{hook_file}'\n")
-        return 1
-
-    # 3 & 4: On POSIX, attempt chmod and verify execute permission (no swallowed chmod failure)
-    if os.name != 'nt':
-        try:
-            os.chmod(hook_file, 0o755)
-        except Exception as err:
-            sys.stderr.write(f"HOOK_INSTALL FAIL: Failed to set executable mode on hook: {err}\n")
+        # 1 & 2: Check canonical hook file exists and is regular file
+        if not os.path.exists(hook_file):
+            sys.stderr.write(f"HOOK_INSTALL FAIL: Required hook file does not exist: '{hook_file}'\n")
             return 1
 
-        if not os.access(hook_file, os.X_OK):
-            sys.stderr.write(f"HOOK_INSTALL FAIL: Hook file is not executable after chmod on POSIX: '{hook_file}'\n")
+        if not os.path.isfile(hook_file) or os.path.islink(hook_file):
+            sys.stderr.write(f"HOOK_INSTALL FAIL: Hook path is not a regular file: '{hook_file}'\n")
             return 1
 
-    # 5: Set local core.hooksPath only after hook usability is established
+        # 3 & 4: On POSIX, attempt chmod and verify execute permission (no swallowed chmod failure)
+        if os.name != 'nt':
+            try:
+                os.chmod(hook_file, 0o755)
+            except Exception as err:
+                sys.stderr.write(f"HOOK_INSTALL FAIL: Failed to set executable mode on hook: {err}\n")
+                return 1
+
+            if not os.access(hook_file, os.X_OK):
+                sys.stderr.write(f"HOOK_INSTALL FAIL: Hook file is not executable after chmod on POSIX: '{hook_file}'\n")
+                return 1
+
+    # 5: Set local core.hooksPath only after all hooks' usability is established
     try:
         subprocess.check_call(
             ['git', 'config', '--local', 'core.hooksPath', CANONICAL_HOOKS_PATH],
@@ -79,7 +82,6 @@ def check_hooks():
     repo_root = get_repo_root()
     if not repo_root:
         return 1
-    hook_file = os.path.join(repo_root, CANONICAL_HOOKS_PATH, "pre-commit")
 
     # A: Verify core.hooksPath
     try:
@@ -99,22 +101,24 @@ def check_hooks():
         )
         return 1
 
-    # B & C: Verify hook file exists and is regular file
-    if not os.path.exists(hook_file):
-        sys.stderr.write(f"HOOK_CHECK FAIL: Required hook file does not exist: '{hook_file}'\n")
-        return 1
-
-    if not os.path.isfile(hook_file) or os.path.islink(hook_file):
-        sys.stderr.write(f"HOOK_CHECK FAIL: Hook path is not a regular file: '{hook_file}'\n")
-        return 1
-
-    # D: On POSIX, verify executable permission
-    if os.name != 'nt':
-        if not os.access(hook_file, os.X_OK):
-            sys.stderr.write(f"HOOK_CHECK FAIL: Hook file is not executable (+x): '{hook_file}'\n")
+    # B & C: Verify hook files exist and are regular files
+    for hook_name in REQUIRED_HOOKS:
+        hook_file = os.path.join(repo_root, CANONICAL_HOOKS_PATH, hook_name)
+        if not os.path.exists(hook_file):
+            sys.stderr.write(f"HOOK_CHECK FAIL: Required hook file does not exist: '{hook_file}'\n")
             return 1
 
-    sys.stdout.write(f"HOOK_CHECK PASS: core.hooksPath is '{CANONICAL_HOOKS_PATH}'\n")
+        if not os.path.isfile(hook_file) or os.path.islink(hook_file):
+            sys.stderr.write(f"HOOK_CHECK FAIL: Hook path is not a regular file: '{hook_file}'\n")
+            return 1
+
+        # D: On POSIX, verify executable permission
+        if os.name != 'nt':
+            if not os.access(hook_file, os.X_OK):
+                sys.stderr.write(f"HOOK_CHECK FAIL: Hook file is not executable (+x): '{hook_file}'\n")
+                return 1
+
+    sys.stdout.write(f"HOOK_CHECK PASS: core.hooksPath is '{CANONICAL_HOOKS_PATH}' (all {len(REQUIRED_HOOKS)} hooks verified)\n")
     return 0
 
 

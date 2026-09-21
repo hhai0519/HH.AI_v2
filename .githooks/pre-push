@@ -1,0 +1,23 @@
+#!/bin/sh
+# .githooks/pre-push
+#
+# B-109 M1: Pre-push hook for Mechanical Governance & Sensitive Push Guard.
+# Purpose: Intercept git push, enforce exact-SHA main advancement and exact-set remote deletion.
+
+if command -v python3 >/dev/null 2>&1; then
+    PYTHON_BIN="python3"
+elif command -v python >/dev/null 2>&1; then
+    PYTHON_BIN="python"
+else
+    echo "PRE-PUSH BLOCK: Neither python3 nor python found in PATH." >&2
+    exit 1
+fi
+
+$PYTHON_BIN scripts/governance_preflight.py --verify-push "$1" "$2"
+RC=$?
+
+if [ $RC -ne 0 ]; then
+    exit $RC
+fi
+
+exit 0

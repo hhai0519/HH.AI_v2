@@ -32,6 +32,224 @@ REQUIRED_KEYS = [
 BEGIN_MARKER = "BEGIN_HHAI_PROMPT_MANIFEST"
 END_MARKER = "END_HHAI_PROMPT_MANIFEST"
 
+CONTRACT_BEGIN_MARKER = "BEGIN_HHAI_EXECUTION_CONTRACT"
+CONTRACT_END_MARKER = "END_HHAI_EXECUTION_CONTRACT"
+
+CONTRACT_REQUIRED_KEYS = [
+    "contract_version",
+    "task_id",
+    "base_oid",
+    "main_advancement",
+    "authorized_main_sha",
+    "remote_ref_deletion",
+    "authorized_delete_refs",
+    "local_destructive_git",
+    "credential_access",
+    "environment_enumeration",
+    "cross_session_access",
+    "browser_github_mutation",
+    "raw_actions_log_access",
+    "branch_creation",
+    "hook_bypass",
+    "goal_pressure_policy",
+    "ide_ephemeral_guards_required",
+]
+
+
+def parse_execution_contract_block(prompt_text: str) -> tuple[bool, str, dict]:
+    """
+    從 prompt_text 中抽取出唯一的 execution contract 區塊並解析為 key-value dict。
+    fail-closed：缺失、重複、順序錯誤、格式錯誤、未知欄位皆立即回傳失敗。
+    """
+    begin_count = prompt_text.count(CONTRACT_BEGIN_MARKER)
+    end_count = prompt_text.count(CONTRACT_END_MARKER)
+
+    if begin_count == 0 or end_count == 0:
+        return False, "Execution contract missing BEGIN or END marker", {}
+
+    if begin_count > 1 or end_count > 1:
+        return False, f"Duplicate contract markers found (BEGIN={begin_count}, END={end_count})", {}
+
+    begin_idx = prompt_text.find(CONTRACT_BEGIN_MARKER)
+    end_idx = prompt_text.find(CONTRACT_END_MARKER)
+
+    if begin_idx >= end_idx:
+        return False, "Contract marker ordering error: END appears before BEGIN", {}
+
+    block_text = prompt_text[begin_idx + len(CONTRACT_BEGIN_MARKER):end_idx]
+    lines = block_text.splitlines()
+
+    contract = {}
+    seen_keys = set()
+
+    for line_no, raw_line in enumerate(lines, 1):
+        line = raw_line.strip()
+        if not line:
+            continue
+        if ":" not in line:
+            return False, f"Contract line {line_no} malformed (missing colon): {raw_line!r}", {}
+        key, val = line.split(":", 1)
+        key = key.strip()
+        val = val.strip()
+
+        if key in seen_keys:
+            return False, f"Duplicate key in contract: {key!r}", {}
+        if key not in CONTRACT_REQUIRED_KEYS:
+            return False, f"Unexpected/unsupported key in contract: {key!r}", {}
+
+        seen_keys.add(key)
+        contract[key] = val
+
+    missing_keys = set(CONTRACT_REQUIRED_KEYS) - seen_keys
+    if missing_keys:
+        return False, f"Missing required contract keys: {sorted(list(missing_keys))}", {}
+
+    return True, "", contract
+
+
+def validate_execution_contract(
+    prompt_text_or_contract: str | dict,
+    manifest: dict | None = None,
+    manifest_base_oid: str | None = None,
+) -> tuple[bool, str, dict]:
+    """
+    驗證 Execution Contract：
+    1. 唯一合法 contract 區塊且無缺漏或多餘欄位
+    2. contract_version == '1'
+    3. task_id 非空
+    4. base_oid 為 40-char hex，且若傳入 manifest 則與 manifest['base_oid'] 完全一致
+    5. main_advancement: FORBIDDEN 或 EXACT_SHA
+       - FORBIDDEN -> authorized_main_sha == 'NONE'
+       - EXACT_SHA -> authorized_main_sha 為 40-char hex SHA
+    6. remote_ref_deletion: FORBIDDEN 或 EXACT_SET
+       - FORBIDDEN -> authorized_delete_refs == 'NONE'
+       - EXACT_SET -> refs/heads/<branch>@<FULL40_SHA> (semicolon-separated, unique, 禁 main)
+    7. 安全防護欄位固定約束：
+       - local_destructive_git == 'FORBIDDEN'
+       - credential_access == 'FORBIDDEN'
+       - environment_enumeration == 'FORBIDDEN'
+       - cross_session_access == 'FORBIDDEN'
+       - browser_github_mutation == 'FORBIDDEN'
+       - raw_actions_log_access == 'EXTERNAL_MACRO_ONLY'
+       - branch_creation == 'GIT_SWITCH_C'
+       - hook_bypass == 'FORBIDDEN'
+       - goal_pressure_policy == 'SAFETY_BOUNDARY_WINS'
+       - ide_ephemeral_guards_required == 'false'
+    """
+    if isinstance(prompt_text_or_contract, dict):
+        contract = dict(prompt_text_or_contract)
+    else:
+        ok, err, parsed = parse_execution_contract_block(prompt_text_or_contract)
+        if not ok:
+            return False, err, {}
+        contract = parsed
+
+    # 1. contract_version
+    if contract.get("contract_version") != "1":
+        return False, f"Unsupported contract_version: {contract.get('contract_version')!r} (expected '1')", {}
+
+    # 2. task_id
+    if not contract.get("task_id"):
+        return False, "Contract task_id cannot be empty", {}
+
+    # 3. base_oid
+    raw_base = contract.get("base_oid", "")
+    base_oid = raw_base.strip().lower()
+    if not re.match(r"^[0-9a-f]{40}$", base_oid):
+        return False, f"Invalid contract base_oid: {raw_base!r} (expected 40-char hex string)", {}
+
+    expected_base = None
+    if manifest_base_oid:
+        expected_base = manifest_base_oid.strip().lower()
+    elif manifest and "base_oid" in manifest:
+        expected_base = manifest["base_oid"].strip().lower()
+
+    if expected_base and base_oid != expected_base:
+        return False, f"Contract base_oid mismatch with manifest: contract={base_oid} vs manifest={expected_base}", {}
+
+    # 4. main_advancement
+    ma = contract["main_advancement"]
+    if ma not in ("FORBIDDEN", "EXACT_SHA"):
+        return False, f"Invalid main_advancement: {ma!r} (expected FORBIDDEN or EXACT_SHA)", {}
+
+    auth_main_sha = contract["authorized_main_sha"].strip()
+    if ma == "FORBIDDEN":
+        if auth_main_sha != "NONE":
+            return False, f"When main_advancement is FORBIDDEN, authorized_main_sha must be NONE (got {auth_main_sha!r})", {}
+    elif ma == "EXACT_SHA":
+        if not re.match(r"^[0-9a-f]{40}$", auth_main_sha.lower()):
+            return False, f"When main_advancement is EXACT_SHA, authorized_main_sha must be a 40-char hex SHA (got {auth_main_sha!r})", {}
+
+    # 5. remote_ref_deletion
+    rd = contract["remote_ref_deletion"]
+    if rd not in ("FORBIDDEN", "EXACT_SET"):
+        return False, f"Invalid remote_ref_deletion: {rd!r} (expected FORBIDDEN or EXACT_SET)", {}
+
+    auth_del_refs = contract["authorized_delete_refs"].strip()
+    if rd == "FORBIDDEN":
+        if auth_del_refs != "NONE":
+            return False, f"When remote_ref_deletion is FORBIDDEN, authorized_delete_refs must be NONE (got {auth_del_refs!r})", {}
+    elif rd == "EXACT_SET":
+        if not auth_del_refs or auth_del_refs == "NONE":
+            return False, "When remote_ref_deletion is EXACT_SET, authorized_delete_refs cannot be empty or NONE", {}
+        entries = auth_del_refs.split(";")
+        seen_refs = set()
+        normalized_entries = []
+        for raw_entry in entries:
+            entry = raw_entry.strip()
+            if not entry:
+                return False, f"Empty entry in authorized_delete_refs: {auth_del_refs!r}", {}
+            if "@" not in entry:
+                return False, f"Malformed delete ref entry (missing '@'): {entry!r}", {}
+            ref_name, expected_sha = entry.split("@", 1)
+            ref_name = ref_name.strip()
+            expected_sha = expected_sha.strip().lower()
+
+            if not ref_name.startswith("refs/heads/") or len(ref_name) <= len("refs/heads/"):
+                return False, f"Malformed delete ref name (must start with 'refs/heads/<branch>'): {ref_name!r}", {}
+            if ref_name == "refs/heads/main":
+                return False, "refs/heads/main is permanently forbidden from deletion authorization", {}
+            if not re.match(r"^[0-9a-f]{40}$", expected_sha):
+                return False, f"Malformed expected SHA for delete ref {ref_name!r}: {expected_sha!r}", {}
+            if ref_name in seen_refs:
+                return False, f"Duplicate delete ref in authorization: {ref_name!r}", {}
+            seen_refs.add(ref_name)
+            normalized_entries.append(f"{ref_name}@{expected_sha}")
+        contract["authorized_delete_refs"] = ";".join(sorted(normalized_entries))
+
+    # 6. Safety invariant fields
+    if contract["local_destructive_git"] != "FORBIDDEN":
+        return False, f"local_destructive_git must be 'FORBIDDEN' (got {contract['local_destructive_git']!r})", {}
+
+    if contract["credential_access"] != "FORBIDDEN":
+        return False, f"credential_access must be 'FORBIDDEN' (got {contract['credential_access']!r})", {}
+
+    if contract["environment_enumeration"] != "FORBIDDEN":
+        return False, f"environment_enumeration must be 'FORBIDDEN' (got {contract['environment_enumeration']!r})", {}
+
+    if contract["cross_session_access"] != "FORBIDDEN":
+        return False, f"cross_session_access must be 'FORBIDDEN' (got {contract['cross_session_access']!r})", {}
+
+    if contract["browser_github_mutation"] != "FORBIDDEN":
+        return False, f"browser_github_mutation must be 'FORBIDDEN' (got {contract['browser_github_mutation']!r})", {}
+
+    if contract["raw_actions_log_access"] != "EXTERNAL_MACRO_ONLY":
+        return False, f"raw_actions_log_access must be 'EXTERNAL_MACRO_ONLY' (got {contract['raw_actions_log_access']!r})", {}
+
+    if contract["branch_creation"] != "GIT_SWITCH_C":
+        return False, f"branch_creation must be 'GIT_SWITCH_C' (got {contract['branch_creation']!r})", {}
+
+    if contract["hook_bypass"] != "FORBIDDEN":
+        return False, f"hook_bypass must be 'FORBIDDEN' (got {contract['hook_bypass']!r})", {}
+
+    if contract["goal_pressure_policy"] != "SAFETY_BOUNDARY_WINS":
+        return False, f"goal_pressure_policy must be 'SAFETY_BOUNDARY_WINS' (got {contract['goal_pressure_policy']!r})", {}
+
+    if contract["ide_ephemeral_guards_required"] != "false":
+        return False, f"ide_ephemeral_guards_required must be 'false' (got {contract['ide_ephemeral_guards_required']!r})", {}
+
+    return True, "", contract
+
 
 def parse_manifest_block(prompt_text: str) -> tuple[bool, str, dict]:
     """
@@ -178,6 +396,7 @@ def validate_prompt_manifest(prompt_text: str) -> tuple[bool, str, dict]:
 def main():
     parser = argparse.ArgumentParser(description="Validate HH.AI prompt manifest.")
     parser.add_argument("--file", help="Path to prompt file (or '-' for stdin)")
+    parser.add_argument("--require-contract", action="store_true", help="Require valid execution contract block")
     args = parser.parse_args()
 
     if args.file and args.file != "-":
@@ -200,6 +419,14 @@ def main():
     if not valid:
         sys.stderr.write(f"[FAIL] {err_msg}\n")
         sys.exit(1)
+
+    if args.require_contract or CONTRACT_BEGIN_MARKER in prompt_text:
+        c_ok, c_err, contract = validate_execution_contract(prompt_text, manifest)
+        if not c_ok:
+            sys.stderr.write(f"[FAIL] Execution Contract invalid: {c_err}\n")
+            sys.exit(1)
+        print(f"[PASS] Prompt manifest valid (mode={manifest['batch_mode']}, base={manifest['base_oid'][:7]}), Execution contract valid (task={contract['task_id']}).")
+        sys.exit(0)
 
     print(f"[PASS] Prompt manifest valid (mode={manifest['batch_mode']}, base={manifest['base_oid'][:7]}).")
     sys.exit(0)

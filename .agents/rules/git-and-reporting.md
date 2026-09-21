@@ -19,6 +19,25 @@
 - **建立 prospective commit 前確認交接區 HEAD**：若該批次包含交接區元資料更新，確認 `docs/refactor-backlog.md` §5.1 的「上次核對通過的 HEAD」等於 `docs/AUDIT-LOG.md` 中最新且屬當前歷史之 Macro PASS checkpoint。它可以是 HEAD 的較早 ancestor；存在多個 pending repair commits 本身不構成錯誤，不得以 ancestry distance 判定 audit state 過期。候選 commit 自身若未經 Macro Auditor 裁決 PASS，絕對不得自稱為 checkpoint。可使用 `python scripts/check_consistency.py --as-if-committed` 於 commit 前預演驗證，消除本地與 CI 差 1 的可預測中間紅燈（B-51）。
 - **commit message 內若含 `$$` 字元，訊息要用單引號包住**，避免被 shell
   展開成進程 ID。
+- **分支建立與切換操作慣例（Branch Operation Convention — B-109 M1）**：
+  - 建立新分支一律使用：`git switch -c <new-branch>`
+  - 切換既有分支一律使用：`git switch <existing-branch>`
+  - 嚴禁正常 workflow 使用 legacy checkout-family 指令建立或切換分支（policy registry、baseline 與 REG fixture 仍可保存該 legacy command 字串作為靜態比對資料）。
+  - `git switch -C` 與 `git switch --discard-changes` 具破壞性與狀態丟棄語意，列為嚴格禁止之破壞性操作（destructive Git）。
+- **主要分支晉級機械守衛（Main Advancement Exact-SHA Guard）**：
+  - 任何對 `refs/heads/main` 的推送更新，必須具備 `.git/` 單次 exact-SHA 授權（`MAIN_EXACT_SHA`）。
+  - 推送之 new SHA 必須完全等於 `authorized_main_sha`，且 remote current SHA 等於 `expected_remote_main_sha`。
+  - `refs/heads/main` 之遠端刪除永遠禁止。
+- **遠端分支刪除精確集合守衛（Remote Delete Exact-Set Guard）**：
+  - 任何遠端分支刪除（包含 `--delete` 與 deletion refspec）必須具備 `.git/` 單次 exact-set 授權（`REMOTE_DELETE_EXACT_SET`）。
+  - 刪除分支集合必須與授權集合完全一致（不多、不少、SHA 無 drift）。
+  - 嚴禁授權或執行刪除 `refs/heads/main`。
+- **Hook 繞過防護（Hook Bypass Forbidden — GOV-M1-011）**：
+  - 嚴禁使用 `git push --no-verify` 或 `git commit --no-verify`。
+  - 嚴禁修改本地 `core.hooksPath` 以繞過守衛。
+  - 嚴禁暫時更名、編輯或移除 `.githooks/` 腳本。
+  - 嚴禁使用替代 Git binary 刻意繞過 hook。
+  - 防護強度為 PARTIAL（repo hook 無法物理阻止刻意使用外部手段繞過之 actor）。
 - **K1-A / C-06 Transport-Neutral Exact-SHA Contract（Protected Main Invariant）**：
   在 GitHub Gate 保護下，生產作業採行 Transport-Neutral Exact-SHA 傳輸架構，絕對禁止未經 exact-SHA 驗證之直推或 force push。
   K1 main advancement 核心不變量如下：
@@ -70,68 +89,9 @@
 以下條目為專案早期針對虛構回報所設計之過渡核對手段。**這些機制（如口頭貼檔案全文、行號、總行數、raw git diff、指令文字輸出等）已全面被 B-36（Repo Evidence Channel ＋ GitHub Actions 遠端健康權威）正式取代，退役為歷史留痕，不得再作為現行對話回報要求（Mandatory Reporting Rule）**。此處完整保留其事故背景與分析，用以解釋為何現代架構必須建立單一事實來源與版本庫機器證據鏈，防止同類事故重演：
 
 - **[已退役] 不接受只回報「已完成」**：早期曾因缺乏客觀機器證據，要求口頭貼出內容與 staged 清單；現行由 `docs/EXEC-LOG.md`、Git commit 與 Actions 自動化保留客觀證據。
-- **[已退役] 回報檔案內容時，必須是腳本從檔案讀出的原文，並附可核對的指紋**：
-  貼出任何檔案內容（全文或片段）時，一律用 Python 腳本讀檔後輸出，
-  且必須提供兩項：(1) 每一行前面加上該行在檔案中的實際行號；
-  (2) 該檔案的總行數。SHA-256 為選用，理由見下方「雜湊機制的實測結果」。
-  **禁止憑記憶重打，禁止把指令中的原文複製過去當作回報內容。**
-
-  （早期曾以 Python `hashlib.sha256` 腳本讀檔示範輸出，現由 `docs/EXEC-LOG.md` 與自動化閘門取代）。
-
-  **原因**：2026-08-29 回報 `PRINCIPLES.md` §4.2 時，第 1–5 項被寫成
-  「工作範圍邊界／規則遵循／副作用評估／狀態同步／懸而未決」，
-  但檔案中實際是「未記錄的觸發／會過期的事實／未實際查證的數字／
-  推測填補／懸而未決」。前四項是不存在的內容，而**檔案本身完全正確**
-  （`git diff` 證實該區塊未被改動）。若審查者未逐行 diff 就相信回報，
-  會下達「改回去」的指令，反而用虛構內容覆蓋一份正確的檔案。
-  行號與雜湊讓審查者不必逐行閱讀即可判斷回報是否來自真實檔案。
-
-  **雜湊必須正規化換行後再計算。** 本機工作目錄為 CRLF，
-  審查者的 Linux clone 為 LF，同樣內容會得到不同的原始位元組雜湊。
-  2026-08-29 首次使用本機制時即發生此情形：雙方雜湊不同但內容逐字相符，
-  差異純由換行符造成。因此一律先 `"\n".join(text.splitlines())` 正規化，
-  再計算 SHA-256。**行號是主要的核對依據，雜湊是輔助**——
-  行號能證明內容來自真實檔案的真實位置，雜湊只能證明整檔一致。
-
-  **雜湊機制的實測結果（2026-08-29 降級為選用）**：
-  實測發現跨平台換行符與行尾空白使檔案雜湊持續失準，故改為選用；行號與總行數機制已證實足夠作為主要核對依據。
-
-- **[已退役] 回報的檔案內容必須來自同一次執行的實際輸出；讀檔失敗時必須明說失敗**：
-  貼出的內容只能是該次讀檔指令實際印出的結果，直接複製終端機輸出。
-  若腳本執行失敗、輸出被截斷、或編碼問題導致無法完整顯示，
-  **必須在回報中明確寫出「讀檔輸出失敗，無法提供該檔案內容」**，並附上失敗訊息。
-  **嚴禁在讀檔失敗後改以記憶或推測補寫內容。** 沒有輸出就說沒有，
-  空白的回報是可接受的，虛構的回報不是。
-
-  **原因**：2026-09-01，六個檔案的實際改動完全正確、與指令逐字相符，
-  但回報中貼出的四份「完整內容」與實際檔案整份不同——每一份都是一個
-  看起來更整齊的重新設計版本，並非真實檔案。四份中三份的總行數也不符
-  （回報 100／46／37，實際 103／48／36）。
-
-  審查者若採信該回報，會判定六個檔案全被改壞而下令回滾，
-  **反而用錯誤內容覆蓋一份正確的檔案**——與本節上一條記錄的
-  `PRINCIPLES.md` §4.2 事件是同一種危害。
-
-  這是同類失誤第二次發生。前一條規則要求「用腳本讀檔輸出」，
-  卻沒有規範「輸出取得失敗時該怎麼辦」，因此擋不住這次。
-  **行號與總行數機制兩次都成功拆穿虛構回報**，維持其主要核對依據的定位。
-
-  （回報紀錄顯示產出報告的腳本連續重試三次，可能是在輸出未成功取得的
-  情況下以生成內容代替，但此為推論，未經執行端確認，不得當作結論引用。）
-
-- **[已退役] 回報檔案內容時，必須一併貼出該次 `git diff` 的原始輸出**：
-  貼出修改後的檔案內容之外，另外執行 `git diff`（或 `git diff --cached`）
-  並貼出未經整理的原始輸出。
-
-  **原因**：2026-09-01 第三次出現回報與實際不符。這次**所有總行數都正確**
-  ——因為只有「未被指定修改的上下文行」是生成的，指定要改的那幾行照抄提示詞
-  所以正確。行號與總行數機制對這種**局部虛構**無效，前兩次能拆穿是因為
-  總行數對不上，這次沒有。
-
-  `git diff` 只會顯示實際變更的行，且格式由 git 產生而非人工敘述，
-  無法混入虛構的上下文。這是目前唯一能對抗局部虛構的機制。
-
-  同樣適用讀檔失敗的規則：diff 指令若執行失敗，明說失敗，不得補寫。
+- **[已退役] 不接受只回報「已完成」**：早期曾因缺乏客觀機器證據要求口頭貼出內容；現行由 `docs/EXEC-LOG.md`、Git commit 與 GitHub Actions 自動化保留客觀證據。
+- **[已退役] 回報檔案內容附行號與總行數**：早期曾為防範虛構回報（如 2026-08-29 `PRINCIPLES.md` §4.2 事件與 2026-09-01 重整版本事件）要求腳本讀檔附行號與總行數；現行已全面由版本庫客觀證據與自動化閘門接管。
+- **[已退役] 貼出原始 git diff**：早期曾用於防止局部虛構，現已由 GitHub CI 與標準驗證流程接管。讀檔或 diff 失敗時誠實回報，嚴禁憑記憶填補。
 
 ## 2.1 撰寫測試時，依規格而非依實作
 

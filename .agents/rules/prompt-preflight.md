@@ -22,37 +22,27 @@
 
 遇到疑慮依 `.agents/rules/role-boundaries.md` §7 分流（M1/M2/M3 自主處理），僅未授權之 S1 決策才停機回報。
 
-### 2.1 最前置硬規則：Prompt Manifest 機械驗證（Hard Rule）
+### 2.1 最前置硬規則：Prompt Manifest 與 Execution Contract 機械驗證（Hard Rule）
 
-任何 repo mutation 前，必須執行：
+任何 repo mutation 前必須執行：
 1. 取得完整 incoming prompt 原文。
-2. 以 ephemeral / scratch 檔案或 stdin 餵給：`python scripts/validate_prompt_manifest.py`。
-3. 若 exit != 0：立即判定為 `PROMPT STRUCTURE ERROR`，停止執行並回報錯誤，**不得進行任何 repo mutation**。
-4. 若 exit == 0：才進入後續既有語意與機械前置檢查流程。
+2. 以 scratch 檔或 stdin 餵給 `python scripts/validate_prompt_manifest.py --require-contract`（或 `scripts/governance_preflight.py`）。
+3. Production prompt 必須同時具備 Prompt Manifest 與 `BEGIN_HHAI_EXECUTION_CONTRACT` ... `END_HHAI_EXECUTION_CONTRACT` 區塊；缺任一立即判定為 `PROMPT STRUCTURE ERROR` 停機，**不得進行任何 repo mutation**。
+4. Execution Contract 為確定性治理邊界，不得自行放寬。若 task goal、pressure 或 acceptance 與 FORBIDDEN 衝突：升級 `S1 GOVERNANCE_CONTRACT_CONFLICT`，原則為 `SAFETY_BOUNDARY_WINS`。
+5. IDE settings 屬 defense-in-depth 不能取代 Execution Contract。通過後才進入後續檢查。
 
-本驗證器不取代 M1/M2/M3/S1 錯誤路由，將提示詞第一層結構檢驗移至確定性程式碼。
+本驗證器不取代 M1/M2/M3/S1 錯誤路由，將第一層結構與契約檢驗移至確定性程式碼。
 
 
 ### 2.2 依賴閉包機械重放與證據溯源規範（Dependency Closure Replay & Evidence Provenance）
 
-依賴證據溯源規範（Evidence Provenance）：
-1. 原始 discovery artifact 為不可變溯源證據，嚴禁原地覆寫。
-2. 處置必須透過建立新衍生 dispositioned artifact 標註。
-3. `base_oid` 為 scanner 客觀產物，嚴禁手動改寫。
-4. 新 HEAD/base 必須產出具備 task-specific 新檔名之全新 discovery artifact。
-5. 重用查詢集合（QUERY SET）絕不得描述為重用證據結果（EVIDENCE RESULT）。
-6. 審計溯源依據之歷史證據檔案一律禁止覆寫。
+證據溯源：原始 discovery artifact 為不可變證據禁原地覆寫；處置以新衍生 artifact 標註；`base_oid` 禁手動改寫；新 base 產出 task-specific 新檔；QUERY SET 禁宣稱為 EVIDENCE RESULT；歷史證據檔禁覆寫。
 
-若提示詞宣告 E24 = PASS 且依賴模式為 `mode = REQUIRED`，執行者在任何 repo mutation 前必須執行獨立重放比對：
-1. 將 Dependency Impact Evidence 與 Final Allowed Scope 寫入 scratch JSON。
-2. 執行 production canonical command：
-   `python scripts/impact_scan.py check --evidence-file <evidence.json> --allowed-scope-file <allowed_scope.json>`
-4. 若 exit != 0：不得 mutation，依錯誤分類路由：
-   - 缺證據／scope 或格式錯：判定為 `PROMPT STRUCTURE ERROR` 停機。
-   - 依賴命中不符（漏掃／幽靈／缺漏）：停機判定為 `S1 DEPENDENCY_DRIFT`。
-   - 標註 `UPDATE` 之依賴未列入 Allowed Scope：停機判定為 `S1 DEPENDENCY_SCOPE_MISSING`。
-5. 實作後若 `VERIFY_ONLY` 依賴必須修改：禁擅改，停機判定為 `S1 DEPENDENCY_SCOPE_EXPANSION`。
-執行者僅驗證機器證據與 Allowed Scope 配對，絕不對審計官 disposition 重複語意審查。
+宣告 E24 = PASS 且依賴模式 `mode = REQUIRED` 時，mutation 前須重放比對：
+1. 依賴證據與 Allowed Scope 寫入 scratch JSON。
+2. 執行 `python scripts/impact_scan.py check --evidence-file <evidence.json> --allowed-scope-file <allowed_scope.json>`。
+3. 若 exit != 0 禁 mutation：缺證據/格式錯為 `PROMPT STRUCTURE ERROR`；依賴不符為 `S1 DEPENDENCY_DRIFT`；UPDATE 漏列為 `S1 DEPENDENCY_SCOPE_MISSING`。
+4. 實作後 `VERIFY_ONLY` 須改時禁擅改，升級 `S1 DEPENDENCY_SCOPE_EXPANSION`。僅驗證證據配對，不重複語意審查。
 
 ---
 
@@ -96,7 +86,7 @@ GOAL_SPEC 模式不得要求 E-1～E-4，其正確性由測試與 Gate 守護。
 | 動作 A | 必須配對的動作 B | 理由 |
 |---|---|---|
 | `git pull origin main` | `git status --porcelain=v1` 為空 | 確保基準乾淨，避免髒檔案混入 |
-| `git push`（batch/**） | 需查驗 GitHub Actions 成功 | push 只是 transport，Actions 成功才是 proof。依 K1-A 合約，採 authorized batch/** push → candidate exact checks 成功 → main 無 drift 且為 ancestor → 經選定可用 adapter（如 approved update_ref 或 native pinned-SHA）fast-forward main (SAME SHA) → exact main push Actions 成功流程。普通 feature 分支禁升 main |
+| `git push`（batch/**） | 需查驗 GitHub Actions 成功 | push 只是 transport，Actions 成功才是 proof。依 K1-A 合約，採 authorized batch/** push → candidate checks 成功 → main 無 drift 且為 ancestor → fast-forward main (SAME SHA) → exact main push Actions 成功流程。普通分支禁升 main |
 | 新增或修改規則檔 | 更新自檢清單（`auditor-selftest.md`） | 規則與自檢必須同步 |
 | 聲明某 commit 通過核對 | 更新 `docs/AUDIT-LOG.md` 與交接區 §5.1 | 審計狀態必須雙向留痕 |
 
@@ -173,6 +163,7 @@ GOAL_SPEC 模式不得要求 E-1～E-4，其正確性由測試與 Gate 守護。
 | E22 審計狀態權威檢查 | 未要求建立 audited tag；審計狀態以 AUDIT-LOG、refactor-backlog §5.1 與 GitHub Actions 為 SSOT |
 | E23 批次規格進 repo | EXACT_SPEC 附規格路徑與 sha256 且列入 git add；GOAL_SPEC 不要求規格進 repo |
 | E24 依賴閉包檢驗 | 若宣告 E24 = PASS 且 mode=REQUIRED，mutation 前重跑 impact_scan replay；缺證據或格式錯為 PROMPT STRUCTURE ERROR；replay 不符／缺處置／UPDATE 漏列為 S1 DEPENDENCY_* |
+| E25 Execution Contract 完整性 | 提示詞含唯一且合法之 Execution Contract 區塊，且 base_oid 與 Manifest 一致、安全邊界全數宣告 FORBIDDEN、main 與 delete 語意合法 |
 
 **自檢聲明不接受豁免。** 比對為「否」一律停機回報，標為 ⚠️ 或「刻意不做」不構成豁免。偏離規則唯一合法路徑為開批修改規則本身。
 
@@ -199,10 +190,10 @@ GOAL_SPEC 模式不得要求 E-1～E-4，其正確性由測試與 Gate 守護。
 行數、圍欄數、測試數、CHECK 數皆為衍生診斷值。**提示詞不得將衍生數值抄寫為 blocking truth，執行者不得因衍生數值不符停機。** 變更安全由 Batch Spec 與 machine tools 守護。
 
 **執行期規則新鮮度契約（Runtime Rule Freshness Contract）**：
-1. GitHub CI 驗證 committed repo rule artifact，非 IDE Rule UI cache。
-2. Executor 每批須從 local disk 重讀 active rules；UI 快取不得取代 explicit reread。
-3. 若 IDE Rule UI 與 local disk / HEAD 不一致：以 disk 為準，UI 視為 stale cache 禁存回 repo；進入下個 task 前 reload context。
-4. 此屬 runtime freshness，不能宣稱 CI 可驗證 IDE cache。
+1. CI 驗證 committed rule artifact，非 IDE UI cache。
+2. Executor 每批從 local disk 重讀 active rules，UI 快取不得取代 reread。
+3. 若 IDE UI 與 disk / HEAD 不一致：以 disk 為準，UI 視為 stale cache 禁存回 repo；下個 task 前 reload context。
+4. 屬 runtime freshness，不可宣稱 CI 可驗證 IDE cache。
 
 ---
 

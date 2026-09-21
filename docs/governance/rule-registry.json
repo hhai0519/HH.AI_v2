@@ -1,0 +1,187 @@
+{
+  "schema_version": 1,
+  "registry_version": "B109-M1",
+  "rules": [
+    {
+      "id": "GOV-M1-001",
+      "name": "EXECUTION_CONTRACT_REQUIRED",
+      "enforcement_layers": [
+        "EXECUTION_CONTRACT",
+        "PROMPT_PREFLIGHT",
+        "CI_GUARD",
+        "AUDIT"
+      ],
+      "enforcement_strength": "STRONG",
+      "failure_semantics": "FAIL_CLOSED_BLOCK",
+      "owner": "Executor / Macro Auditor",
+      "description": "Every production prompt must include exactly one valid BEGIN_HHAI_EXECUTION_CONTRACT block."
+    },
+    {
+      "id": "GOV-M1-002",
+      "name": "MAIN_ADVANCEMENT_EXACT_SHA",
+      "enforcement_layers": [
+        "EXECUTION_CONTRACT",
+        "PRE_PUSH_EXACTNESS",
+        "CI_GUARD",
+        "AUDIT"
+      ],
+      "enforcement_strength": "STRONG",
+      "failure_semantics": "FAIL_CLOSED_BLOCK",
+      "owner": "Executor / Macro Auditor",
+      "description": "Main advancement requires single-use exact-SHA authorization matching authorized_main_sha and expected remote SHA. Authorization provenance is external and audit-dependent; repository does not cryptographically prove Macro provenance."
+    },
+    {
+      "id": "GOV-M1-003",
+      "name": "REMOTE_REF_DELETE_EXACT_SET",
+      "enforcement_layers": [
+        "EXECUTION_CONTRACT",
+        "PRE_PUSH_EXACTNESS",
+        "CI_GUARD",
+        "AUDIT"
+      ],
+      "enforcement_strength": "STRONG",
+      "failure_semantics": "FAIL_CLOSED_BLOCK",
+      "owner": "Executor / Macro Auditor",
+      "description": "Remote ref deletion requires single-use exact-set authorization matching exact ref set and expected SHAs. Main branch deletion is permanently forbidden. Authorization provenance is external and audit-dependent; repository does not cryptographically prove Macro provenance."
+    },
+    {
+      "id": "GOV-M1-004",
+      "name": "LOCAL_DESTRUCTIVE_GIT_FORBIDDEN",
+      "enforcement_layers": [
+        "IDE_HARNESS_PERSISTENT",
+        "EXECUTION_CONTRACT",
+        "PROMPT_PREFLIGHT",
+        "REG",
+        "AUDIT"
+      ],
+      "enforcement_strength": "PARTIAL",
+      "failure_semantics": "FAIL_CLOSED_BLOCK",
+      "owner": "Executor / Macro Auditor",
+      "description": "Destructive Git operations are strictly forbidden. IDE harness persistent Deny provides defense-in-depth but unknown matcher semantics prevent claiming full runtime interposition."
+    },
+    {
+      "id": "GOV-M1-005",
+      "name": "CREDENTIAL_ACCESS_FORBIDDEN",
+      "enforcement_layers": [
+        "IDE_HARNESS_PERSISTENT",
+        "EXECUTION_CONTRACT",
+        "PROMPT_PREFLIGHT",
+        "REG",
+        "AUDIT"
+      ],
+      "enforcement_strength": "PARTIAL",
+      "failure_semantics": "FAIL_CLOSED_BLOCK",
+      "owner": "Executor / Macro Auditor",
+      "description": "Reading credentials, PAT, OAuth tokens, or credential helpers is strictly forbidden. IDE harness persistent Deny on git credential provides defense-in-depth."
+    },
+    {
+      "id": "GOV-M1-006",
+      "name": "ENVIRONMENT_ENUMERATION_FORBIDDEN",
+      "enforcement_layers": [
+        "EXECUTION_CONTRACT",
+        "PROMPT_PREFLIGHT",
+        "REG",
+        "AUDIT"
+      ],
+      "enforcement_strength": "PARTIAL",
+      "failure_semantics": "FAIL_CLOSED_BLOCK",
+      "owner": "Executor / Macro Auditor",
+      "description": "Batch enumeration of environment variables is strictly forbidden. Only single-key existence checks via approved helper are permitted."
+    },
+    {
+      "id": "GOV-M1-007",
+      "name": "CROSS_SESSION_ACCESS_FORBIDDEN",
+      "enforcement_layers": [
+        "EXECUTION_CONTRACT",
+        "PROMPT_PREFLIGHT",
+        "REG",
+        "AUDIT"
+      ],
+      "enforcement_strength": "PARTIAL",
+      "failure_semantics": "FAIL_CLOSED_BLOCK",
+      "owner": "Executor / Macro Auditor",
+      "description": "Reading other Antigravity session transcripts or logs for production evidence is strictly forbidden."
+    },
+    {
+      "id": "GOV-M1-008",
+      "name": "RAW_ACTIONS_LOG_EXTERNAL_MACRO_ONLY",
+      "enforcement_layers": [
+        "EXECUTION_CONTRACT",
+        "PROMPT_PREFLIGHT",
+        "AUDIT"
+      ],
+      "enforcement_strength": "PARTIAL",
+      "failure_semantics": "FAIL_CLOSED_BLOCK",
+      "owner": "Macro Auditor",
+      "description": "Inspection and verification of raw GitHub Actions job logs is the sole responsibility of the External Macro Auditor. Executor reports UNKNOWN / DEFER_TO_EXTERNAL_MACRO if safe evidence channel is unavailable."
+    },
+    {
+      "id": "GOV-M1-009",
+      "name": "BROWSER_GITHUB_MUTATION_FORBIDDEN",
+      "enforcement_layers": [
+        "IDE_HARNESS_PERSISTENT",
+        "EXECUTION_CONTRACT",
+        "PROMPT_PREFLIGHT",
+        "REG",
+        "AUDIT"
+      ],
+      "enforcement_strength": "PARTIAL",
+      "failure_semantics": "FAIL_CLOSED_BLOCK",
+      "owner": "Executor / Macro Auditor",
+      "description": "Mutating GitHub resources via browser or DevTools is strictly forbidden. IDE harness persistent Deny on Execute URL github.com provides defense-in-depth."
+    },
+    {
+      "id": "GOV-M1-010",
+      "name": "GOAL_PRESSURE_SAFETY_BOUNDARY_WINS",
+      "enforcement_layers": [
+        "EXECUTION_CONTRACT",
+        "PROMPT_PREFLIGHT",
+        "REG",
+        "AUDIT"
+      ],
+      "enforcement_strength": "PARTIAL",
+      "failure_semantics": "FAIL_CLOSED_BLOCK",
+      "owner": "Executor / Macro Auditor",
+      "description": "Safety boundaries always take precedence over task goals, completion pressure, or acceptance criteria."
+    },
+    {
+      "id": "GOV-M1-011",
+      "name": "PRE_PUSH_HOOK_BYPASS_FORBIDDEN",
+      "enforcement_layers": [
+        "ACTIVE_RULES",
+        "EXECUTION_CONTRACT",
+        "PROMPT_PREFLIGHT",
+        "AUDIT"
+      ],
+      "enforcement_strength": "PARTIAL",
+      "failure_semantics": "FAIL_CLOSED_BLOCK",
+      "owner": "Executor / Macro Auditor",
+      "description": "Bypassing Git hooks via --no-verify, modifying hooksPath, or altering hook files is strictly forbidden. Strength is PARTIAL as repo hooks cannot physically stop an intentional external actor."
+    },
+    {
+      "id": "GOV-M1-012",
+      "name": "BRANCH_CREATION_GIT_SWITCH_C",
+      "enforcement_layers": [
+        "ACTIVE_RULES",
+        "AUDIT"
+      ],
+      "enforcement_strength": "PARTIAL",
+      "failure_semantics": "FAIL_CLOSED_BLOCK",
+      "owner": "Executor / Macro Auditor",
+      "description": "New branches must be created using 'git switch -c <branch>' and existing branches switched using 'git switch <branch>'. Legacy checkout-family commands are retired."
+    },
+    {
+      "id": "GOV-M1-013",
+      "name": "K6_PERSISTENCE_TIER_TRUTH",
+      "enforcement_layers": [
+        "DOCUMENTATION",
+        "REG",
+        "AUDIT"
+      ],
+      "enforcement_strength": "PARTIAL",
+      "failure_semantics": "FAIL_CLOSED_BLOCK",
+      "owner": "Executor / Macro Auditor",
+      "description": "Documents must accurately distinguish directly restart-tested settings from same-mechanism inferences. Old Deny List is deprecated and non-persistent."
+    }
+  ]
+}

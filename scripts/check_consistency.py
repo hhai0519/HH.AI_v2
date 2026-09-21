@@ -23,6 +23,9 @@
   CHECK 19 — ADR-0013 §2C UTF-8 BOM 污染偵測
   CHECK 21 — 機密防護與輸出安全守衛 (Secret Leak Guard)
   CHECK 22 — CI 供應鏈可重現性守衛 (CI Supply-Chain Reproducibility Guard)
+  CHECK 23 — 傳輸能力與合約一致性守衛 (Transport Capability / Contract Exclusivity Guard)
+  CHECK 24 — 活動狀態投影漂移守衛 (Active State Projection Drift Guard)
+  CHECK 25 — 機械治理 v1 完整性守衛 (Mechanical Governance v1 Integrity Guard)
 
 本腳本的檢查項來自 2026-08-29 的一次全庫實測掃描，每一項都曾實際命中過真實缺陷，不是憑空設計。
 新增檢查項時，必須先確認該檢查在當前 repo 的誤報率，誤報多的檢查會讓人習慣忽略輸出。
@@ -50,7 +53,7 @@ def run_checks(argv=None):
     as_if_committed = "--as-if-committed" in argv
     if as_if_committed:
         print("[MODE] 啟用 --as-if-committed 本地 commit 拓撲預演模式")
-    total_checks = 24
+    total_checks = 25
     passed = 0
     failed = 0
     
@@ -474,6 +477,22 @@ def run_checks(argv=None):
     else:
         print(f"  [FAIL] {len(c24_fails)} 命中")
         for fail in c24_fails:
+            print(f"    {fail}")
+        failed += 1
+
+    # ---------------------------------------------------------
+    # CHECK 25: 機械治理 v1 完整性守衛
+    # ---------------------------------------------------------
+    print("\nCHECK 25: 機械治理 v1 完整性守衛")
+    c25_fails, c25_infos = check_25_mechanical_governance(repo_root)
+    for info in c25_infos:
+        print(f"  [INFO] {info}")
+    if len(c25_fails) == 0:
+        print("  [PASS] 0 命中")
+        passed += 1
+    else:
+        print(f"  [FAIL] {len(c25_fails)} 命中")
+        for fail in c25_fails:
             print(f"    {fail}")
         failed += 1
 
@@ -2781,6 +2800,215 @@ def check_24_active_state_projection_guard(repo_root=None):
             fails.append(f"docs/refactor-backlog.md:0  讀取失敗: {e}")
 
     return fails, infos
+
+
+def check_25_mechanical_governance(root_dir=None):
+    """CHECK 25 — Mechanical Governance v1 Integrity Guard。
+    驗證機器治理 v1 核心組件、規則註冊表、執行合約守衛、Git hooks 與環境基準完整性。
+    """
+    if root_dir is None:
+        root_dir = repo_root
+
+    fails = []
+    infos = []
+
+    # 1. docs/governance/rule-registry.json
+    reg_path = os.path.join(root_dir, "docs", "governance", "rule-registry.json")
+    if not os.path.exists(reg_path):
+        fails.append("docs/governance/rule-registry.json:0  規則註冊表檔案不存在")
+    else:
+        try:
+            with open(reg_path, "r", encoding="utf-8") as f:
+                reg = json.load(f)
+            if reg.get("schema_version") != 1:
+                fails.append(f"docs/governance/rule-registry.json: schema_version 必須為 1 (實際: {reg.get('schema_version')})")
+            if reg.get("registry_version") != "B109-M1":
+                fails.append(f"docs/governance/rule-registry.json: registry_version 必須為 'B109-M1' (實際: {reg.get('registry_version')})")
+            rules = reg.get("rules", [])
+            if not isinstance(rules, list):
+                fails.append("docs/governance/rule-registry.json: 'rules' 必須為陣列")
+            else:
+                rule_ids = [r.get("id") for r in rules if isinstance(r, dict) and "id" in r]
+                expected_ids = [f"GOV-M1-{i:03d}" for i in range(1, 14)]
+                if len(rule_ids) != len(set(rule_ids)):
+                    fails.append("docs/governance/rule-registry.json: 包含重複的 Rule ID")
+                missing_ids = set(expected_ids) - set(rule_ids)
+                if missing_ids:
+                    fails.append(f"docs/governance/rule-registry.json: 缺少預期 Rule IDs: {sorted(missing_ids)}")
+                extra_ids = set(rule_ids) - set(expected_ids)
+                if extra_ids:
+                    fails.append(f"docs/governance/rule-registry.json: 包含未授權額外 Rule IDs: {sorted(extra_ids)}")
+                if rule_ids == expected_ids:
+                    infos.append("rule-registry.json 存在且 GOV-M1-001..013 精確清單驗證通過")
+        except Exception as e:
+            fails.append(f"docs/governance/rule-registry.json:0  解析失敗: {e}")
+
+    # 2. scripts/governance_preflight.py exists
+    gov_preflight = os.path.join(root_dir, "scripts", "governance_preflight.py")
+    if not os.path.exists(gov_preflight):
+        fails.append("scripts/governance_preflight.py:0  檔案不存在")
+    else:
+        infos.append("scripts/governance_preflight.py 存在")
+
+    # 3. .githooks/pre-push exists, first line #!/bin/sh, references governance_preflight
+    pre_push = os.path.join(root_dir, ".githooks", "pre-push")
+    if not os.path.exists(pre_push):
+        fails.append(".githooks/pre-push:0  檔案不存在")
+    else:
+        try:
+            with open(pre_push, "r", encoding="utf-8") as f:
+                lines = f.readlines()
+            if not lines or not lines[0].startswith("#!/bin/sh"):
+                fails.append(".githooks/pre-push:1  第一行必須為 '#!/bin/sh'")
+            content = "".join(lines)
+            if "governance_preflight" not in content:
+                fails.append(".githooks/pre-push:0  未引用 governance_preflight")
+            else:
+                infos.append(".githooks/pre-push 存在且首行為 #!/bin/sh 並引用 governance_preflight")
+        except Exception as e:
+            fails.append(f".githooks/pre-push:0  讀取失敗: {e}")
+
+    # 4. install_git_hooks requires pre-commit and pre-push
+    install_hooks = os.path.join(root_dir, "scripts", "install_git_hooks.py")
+    if not os.path.exists(install_hooks):
+        fails.append("scripts/install_git_hooks.py:0  檔案不存在")
+    else:
+        try:
+            with open(install_hooks, "r", encoding="utf-8") as f:
+                ih_content = f.read()
+            if "pre-commit" not in ih_content or "pre-push" not in ih_content:
+                fails.append("scripts/install_git_hooks.py:0  未同時要求 pre-commit 與 pre-push")
+            else:
+                infos.append("scripts/install_git_hooks.py 同時要求 pre-commit 與 pre-push")
+        except Exception as e:
+            fails.append(f"scripts/install_git_hooks.py:0  讀取失敗: {e}")
+
+    # 5. prompt-preflight requires Execution Contract
+    pp_file = os.path.join(root_dir, ".agents", "rules", "prompt-preflight.md")
+    if not os.path.exists(pp_file):
+        fails.append(".agents/rules/prompt-preflight.md:0  檔案不存在")
+    else:
+        try:
+            with open(pp_file, "r", encoding="utf-8") as f:
+                pp_content = f.read()
+            if "BEGIN_HHAI_EXECUTION_CONTRACT" not in pp_content or "Execution Contract" not in pp_content:
+                fails.append(".agents/rules/prompt-preflight.md:0  未包含 Execution Contract 必要要求")
+            else:
+                infos.append(".agents/rules/prompt-preflight.md 要求 Execution Contract")
+        except Exception as e:
+            fails.append(f".agents/rules/prompt-preflight.md:0  讀取失敗: {e}")
+
+    # 6. auditor-selftest contains E25
+    ast_file = os.path.join(root_dir, ".claude", "rules", "auditor-selftest.md")
+    if not os.path.exists(ast_file):
+        fails.append(".claude/rules/auditor-selftest.md:0  檔案不存在")
+    else:
+        try:
+            with open(ast_file, "r", encoding="utf-8") as f:
+                ast_content = f.read()
+            if "E25" not in ast_content:
+                fails.append(".claude/rules/auditor-selftest.md:0  未包含 E25 檢核項目")
+            else:
+                infos.append(".claude/rules/auditor-selftest.md 包含 E25")
+        except Exception as e:
+            fails.append(f".claude/rules/auditor-selftest.md:0  讀取失敗: {e}")
+
+    # 7. git-and-reporting contains: git switch -c convention, main exact-SHA guard, remote delete exact-set guard
+    gar_file = os.path.join(root_dir, ".agents", "rules", "git-and-reporting.md")
+    if not os.path.exists(gar_file):
+        fails.append(".agents/rules/git-and-reporting.md:0  檔案不存在")
+    else:
+        try:
+            with open(gar_file, "r", encoding="utf-8") as f:
+                gar_content = f.read()
+            if "git switch -c" not in gar_content:
+                fails.append(".agents/rules/git-and-reporting.md:0  未包含 'git switch -c' 分支建立慣例")
+            if "main" not in gar_content.lower() or ("exact-sha" not in gar_content.lower() and "exact sha" not in gar_content.lower()):
+                fails.append(".agents/rules/git-and-reporting.md:0  未包含 main advancement exact-SHA guard")
+            if "exact-set" not in gar_content.lower() and "remote ref deletion" not in gar_content.lower():
+                fails.append(".agents/rules/git-and-reporting.md:0  未包含 remote delete exact-set guard")
+            infos.append(".agents/rules/git-and-reporting.md 包含 git switch -c、main exact-SHA 與 remote delete exact-set 規範")
+        except Exception as e:
+            fails.append(f".agents/rules/git-and-reporting.md:0  讀取失敗: {e}")
+
+    # 8. environment baseline checks
+    bl_file = os.path.join(root_dir, "docs", "ops", "antigravity-environment-baseline.md")
+    if not os.path.exists(bl_file):
+        fails.append("docs/ops/antigravity-environment-baseline.md:0  檔案不存在")
+    else:
+        try:
+            with open(bl_file, "r", encoding="utf-8") as f:
+                bl_content = f.read()
+            required_bl_markers = [
+                ("PERSISTENT LAYER", "PERSISTENT LAYER 分層宣告"),
+                ("NON-PERSISTENT / DEPRECATED LAYER", "NON-PERSISTENT / DEPRECATED LAYER 分層宣告"),
+                ("Advanced Command Access", "Advanced Command Access 區塊"),
+                ("Terminal Commands", "Terminal Commands 區塊"),
+                ("github.com", "github.com Execute URL 限制"),
+                ("Deny", "Deny 設定說明"),
+            ]
+            for marker, desc in required_bl_markers:
+                if marker not in bl_content:
+                    fails.append(f"docs/ops/antigravity-environment-baseline.md:0  缺少必要標記: {desc} ('{marker}')")
+
+            # Check 12 entries mentioned
+            twelve_entries = [
+                "--delete", "git branch -D", "git checkout", "git clean",
+                "git commit --amend", "git credential", "git rebase", "git reset",
+                "git restore", "git stash", "git switch --discard-changes", "git switch -C"
+            ]
+            missing_entries = [e for e in twelve_entries if e not in bl_content]
+            if missing_entries:
+                fails.append(f"docs/ops/antigravity-environment-baseline.md:0  12 項 Deny 清單缺少項目: {missing_entries}")
+
+            # Warning: do not delete github.com
+            if "不得" not in bl_content and "do not delete" not in bl_content.lower():
+                fails.append("docs/ops/antigravity-environment-baseline.md:0  缺少不得刪除 github.com entry 之明確警告")
+
+            # old Deny List deprecated
+            if "DEPRECATED" not in bl_content:
+                fails.append("docs/ops/antigravity-environment-baseline.md:0  缺少舊 Deny List 棄用宣告 (DEPRECATED)")
+
+            # Triggers: new computer, reinstall, IDE update
+            bl_lower = bl_content.lower()
+            if "新電腦" not in bl_content and "new computer" not in bl_lower:
+                fails.append("docs/ops/antigravity-environment-baseline.md:0  缺少新電腦觸發 (new computer trigger)")
+            if "重新安裝" not in bl_content and "reinstall" not in bl_lower:
+                fails.append("docs/ops/antigravity-environment-baseline.md:0  缺少重新安裝觸發 (reinstall trigger)")
+            if "更新" not in bl_content and "update" not in bl_lower:
+                fails.append("docs/ops/antigravity-environment-baseline.md:0  缺少 IDE 更新觸發 (IDE update trigger)")
+
+            # Restart verification
+            if "重啟" not in bl_content and "restart" not in bl_lower:
+                fails.append("docs/ops/antigravity-environment-baseline.md:0  缺少重啟核對程序 (restart verification)")
+
+            # Direct vs inferred persistence distinction
+            if "推論" not in bl_content and "inferred" not in bl_lower and "inference" not in bl_lower:
+                fails.append("docs/ops/antigravity-environment-baseline.md:0  缺少直接測試 vs 同機制推論之精確度區分")
+
+            infos.append("docs/ops/antigravity-environment-baseline.md 包含雙層架構、12 Deny 清單、觸發機制與重啟驗證")
+        except Exception as e:
+            fails.append(f"docs/ops/antigravity-environment-baseline.md:0  讀取失敗: {e}")
+
+    # 9. TASKBOARD contains environment recovery trigger
+    tb_file = os.path.join(root_dir, "docs", "TASKBOARD.md")
+    if not os.path.exists(tb_file):
+        fails.append("docs/TASKBOARD.md:0  檔案不存在")
+    else:
+        try:
+            with open(tb_file, "r", encoding="utf-8") as f:
+                tb_content = f.read()
+            if "antigravity-environment-baseline.md" not in tb_content:
+                fails.append("docs/TASKBOARD.md:0  缺少 environment recovery trigger (未參照 antigravity-environment-baseline.md)")
+            else:
+                infos.append("docs/TASKBOARD.md 包含 environment recovery trigger 參照")
+        except Exception as e:
+            fails.append(f"docs/TASKBOARD.md:0  讀取失敗: {e}")
+
+    return fails, infos
+
+
+check_25_mechanical_governance_v1_guard = check_25_mechanical_governance
 
 
 if __name__ == "__main__":

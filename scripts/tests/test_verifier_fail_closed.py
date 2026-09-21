@@ -513,29 +513,29 @@ def extract_active_check_ids_from_source(source_text: str):
     return check_ids
 
 
-def test_active_check_inventory_continuous_1_to_24():
-    """現行 active CHECK IDs 必須為 1..24 連續、無重複、無缺號"""
+def test_active_check_inventory_continuous_1_to_25():
+    """現行 active CHECK IDs 必須為 1..25 連續、無重複、無缺號"""
     import check_consistency
     import inspect
     source = inspect.getsource(check_consistency.run_checks)
     check_ids = extract_active_check_ids_from_source(source)
-    expected = list(range(1, 25))
-    assert len(check_ids) == 24, f"Expected 24 checks, found {len(check_ids)}: {check_ids}"
+    expected = list(range(1, 26))
+    assert len(check_ids) == 25, f"Expected 25 checks, found {len(check_ids)}: {check_ids}"
     assert check_ids == expected, f"Check IDs drift: {check_ids} != {expected}"
 
 
 def test_active_check_inventory_negative_controls():
     """Negative controls for check inventory validation: missing or duplicate check IDs must fail."""
-    # Synthetic missing CHECK 23
-    synthetic_missing = "\n".join([f'print("CHECK {i} - ...")' for i in range(1, 25) if i != 23])
+    # Synthetic missing CHECK 25
+    synthetic_missing = "\n".join([f'print("CHECK {i} - ...")' for i in range(1, 26) if i != 25])
     ids_missing = extract_active_check_ids_from_source(synthetic_missing)
-    assert ids_missing != list(range(1, 25))
-    assert 23 not in ids_missing
+    assert ids_missing != list(range(1, 26))
+    assert 25 not in ids_missing
 
-    # Synthetic duplicate CHECK 23
-    synthetic_duplicate = "\n".join([f'print("CHECK {i} - ...")' for i in range(1, 25)] + ['print("CHECK 23: ...")'])
+    # Synthetic duplicate CHECK 25
+    synthetic_duplicate = "\n".join([f'print("CHECK {i} - ...")' for i in range(1, 26)] + ['print("CHECK 25: ...")'])
     ids_dup = extract_active_check_ids_from_source(synthetic_duplicate)
-    assert len(ids_dup) != 24 or ids_dup != list(range(1, 25))
+    assert len(ids_dup) != 25 or ids_dup != list(range(1, 26))
 
 
 # ===========================================================================

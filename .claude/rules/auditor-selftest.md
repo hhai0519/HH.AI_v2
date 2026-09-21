@@ -87,7 +87,7 @@
 ---
 
 > **ID 語意消歧義（ID Disambiguation Note）**：
-> 本自檢清單 E 節之編號（E1–E24）為**提示詞必備要素之檢核項目代碼（checklist item IDs）**，
+> 本自檢清單 E 節之編號（E1–E25）為**提示詞必備要素之檢核項目代碼（checklist item IDs）**，
 > 絕非專案交接驗證階段代碼（如歷史之 E1 注入測試／E2 正式交接）。
 > 嚴禁依 E 節檢核項目編號推斷或關聯專案當前工作任務。
 
@@ -118,6 +118,7 @@
 - [ ] E22 **審計狀態單一權威檢查（AUDIT STATE SSOT CHECK）——確認 AUDIT-LOG 為每 commit 結論權威、refactor-backlog §5.1 為最新 checkpoint、Actions 為遠端健康權威，且提示詞不建立 audited tag 作為完成條件？**（§6.1-20；退役 mandatory audited tag 建立）
 - [ ] E23 **若為 EXACT_SPEC 批次，批次規格已寫成 `docs/batches/<base-hash>-<slug>.spec.txt` 並列入 `git add` 清單且經 BPE 驗證；若為 GOAL_SPEC 則不強制產出 Batch Spec？**（§6.1-21；重放與生命週期由 CI 守護）
 - [ ] E24 **Dependency Closure 依賴閉包驗證——若本批修改／移除／rename 既有識別字、文字、路徑、章節或契約，是否已於 Allowed Scope 形成前取得確定性反向依賴掃描（`scripts/impact_scan.py`）證據？所有依賴項是否皆有 disposition（UPDATE/VERIFY_ONLY/HISTORICAL_NO_CHANGE）且 UPDATE 項全數納入 Allowed Scope？production replay 是否能接收 Allowed Scope machine artifact 進行機械配對驗證？REQUIRED 批次是否未僅靠 prose 宣稱配對？若無本機執行權限是否先發 read-only discovery？若為 NONE 是否符合免除條件並附理由？**（§6.1-22；核心流程：Intent → Impact Scan → Disposition → Allowed Scope → Prompt → Replay）
+- [ ] E25 **Execution Contract Integrity 完整性——提示詞是否包含 exactly one 合法之 Execution Contract 區塊？contract base_oid 是否與 manifest base_oid 完全一致？main advancement（常態 FORBIDDEN / promotion EXACT_SHA）與 remote deletion（常態 FORBIDDEN / B-104 EXACT_SET）語意是否正確？安全邊界（local destructive Git、credential、env enumeration、cross session、browser mutation、hook bypass）是否全數為 FORBIDDEN？raw log 權威是否為 EXTERNAL_MACRO_ONLY？目標壓力是否 SAFETY_BOUNDARY_WINS？分支建立是否 GIT_SWITCH_C？IDE persistent harness 是否僅視為 defense-in-depth 且確認不以舊 non-persistent Deny List 為 safety authority？**（§6.1-23）
 
 ★ 2026-09-02 稽核發現本節原只有七項，`auditor-protocol.md` §6.1 有九項，
   缺了「行號錨點」「`git add` 明確路徑」「結尾格式」「回報負擔二擇一」四項。

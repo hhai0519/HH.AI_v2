@@ -448,18 +448,30 @@ def test_hook_installer_and_execution_lifecycle(tmp_path):
     githooks_dir.mkdir()
     hook_dest = githooks_dir / "pre-commit"
 
+    hook_dest = githooks_dir / "pre-commit"
+    hook_dest_push = githooks_dir / "pre-push"
+
     scripts_target = repo_dir / "scripts"
     scripts_target.mkdir()
 
     with open(os.path.join(SCRIPTS_DIR, "..", ".githooks", "pre-commit"), "rb") as f:
         hook_dest.write_bytes(f.read())
+    with open(os.path.join(SCRIPTS_DIR, "..", ".githooks", "pre-push"), "rb") as f:
+        hook_dest_push.write_bytes(f.read())
     try:
         os.chmod(hook_dest, 0o755)
+        os.chmod(hook_dest_push, 0o755)
     except Exception:
         pass
 
     with open(os.path.join(SCRIPTS_DIR, "secret_scan.py"), "rb") as f:
         (scripts_target / "secret_scan.py").write_bytes(f.read())
+
+    with open(os.path.join(SCRIPTS_DIR, "governance_preflight.py"), "rb") as f:
+        (scripts_target / "governance_preflight.py").write_bytes(f.read())
+
+    with open(os.path.join(SCRIPTS_DIR, "validate_prompt_manifest.py"), "rb") as f:
+        (scripts_target / "validate_prompt_manifest.py").write_bytes(f.read())
 
     with open(os.path.join(SCRIPTS_DIR, "install_git_hooks.py"), "rb") as f:
         (scripts_target / "install_git_hooks.py").write_bytes(f.read())
@@ -606,6 +618,8 @@ def test_hook_installer_posix_permission_branches(monkeypatch, tmp_path):
     githooks_dir.mkdir()
     hook_file = githooks_dir / "pre-commit"
     hook_file.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    hook_push = githooks_dir / "pre-push"
+    hook_push.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
 
     monkeypatch.setattr(install_git_hooks, "get_repo_root", lambda: str(repo_dir).replace('\\', '/'))
     monkeypatch.setattr(install_git_hooks.os, "name", "posix")
@@ -644,3 +658,198 @@ def test_hook_tracked_mode_in_git_tree():
         text=True
     )
     assert out.startswith("100755"), f"Expected 100755 mode, got: {out}"
+    out_push = subprocess.check_output(
+        ["git", "ls-files", "--stage", ".githooks/pre-push"],
+        text=True
+    )
+    if out_push.strip():
+        assert out_push.startswith("100755"), f"Expected 100755 mode, got: {out_push}"
+
+
+# ---------------------------------------------------------------------------
+# Section 24 & 33: Incident-Derived REG & K6 Persistence Truth Tests (B-109 M1)
+# ---------------------------------------------------------------------------
+
+from validate_prompt_manifest import validate_execution_contract
+
+VALID_REG_BASE_OID = "69b4b6c72e2bf2b91a46107afb2e7e9a2e538de1"
+
+BASE_VALID_CONTRACT = {
+    "contract_version": "1",
+    "task_id": "REG-TEST-01",
+    "base_oid": VALID_REG_BASE_OID,
+    "main_advancement": "FORBIDDEN",
+    "authorized_main_sha": "NONE",
+    "remote_ref_deletion": "FORBIDDEN",
+    "authorized_delete_refs": "NONE",
+    "local_destructive_git": "FORBIDDEN",
+    "credential_access": "FORBIDDEN",
+    "environment_enumeration": "FORBIDDEN",
+    "cross_session_access": "FORBIDDEN",
+    "browser_github_mutation": "FORBIDDEN",
+    "raw_actions_log_access": "EXTERNAL_MACRO_ONLY",
+    "branch_creation": "GIT_SWITCH_C",
+    "hook_bypass": "FORBIDDEN",
+    "goal_pressure_policy": "SAFETY_BOUNDARY_WINS",
+    "ide_ephemeral_guards_required": "false",
+}
+
+
+def test_reg_credential_01():
+    """REG-CREDENTIAL-01: credential_access = FORBIDDEN (positive + negative controls)."""
+    # Positive control
+    c_pos = dict(BASE_VALID_CONTRACT)
+    c_pos["credential_access"] = "FORBIDDEN"
+    ok, err, _ = validate_execution_contract(c_pos)
+    assert ok is True
+    assert err == ""
+
+    # Negative control
+    c_neg = dict(BASE_VALID_CONTRACT)
+    c_neg["credential_access"] = "ALLOWED"
+    ok, err, _ = validate_execution_contract(c_neg)
+    assert ok is False
+    assert "credential_access must be 'FORBIDDEN'" in err
+
+
+def test_reg_env_01():
+    """REG-ENV-01: environment_enumeration = FORBIDDEN (positive + negative controls)."""
+    # Positive control
+    c_pos = dict(BASE_VALID_CONTRACT)
+    c_pos["environment_enumeration"] = "FORBIDDEN"
+    ok, err, _ = validate_execution_contract(c_pos)
+    assert ok is True
+
+    # Negative control
+    c_neg = dict(BASE_VALID_CONTRACT)
+    c_neg["environment_enumeration"] = "ALLOWED"
+    ok, err, _ = validate_execution_contract(c_neg)
+    assert ok is False
+    assert "environment_enumeration must be 'FORBIDDEN'" in err
+
+
+def test_reg_session_01():
+    """REG-SESSION-01: cross_session_access = FORBIDDEN (positive + negative controls)."""
+    # Positive control
+    c_pos = dict(BASE_VALID_CONTRACT)
+    c_pos["cross_session_access"] = "FORBIDDEN"
+    ok, err, _ = validate_execution_contract(c_pos)
+    assert ok is True
+
+    # Negative control
+    c_neg = dict(BASE_VALID_CONTRACT)
+    c_neg["cross_session_access"] = "ALLOWED"
+    ok, err, _ = validate_execution_contract(c_neg)
+    assert ok is False
+    assert "cross_session_access must be 'FORBIDDEN'" in err
+
+
+def test_reg_evidence_01():
+    """REG-EVIDENCE-01: raw_actions_log_access = EXTERNAL_MACRO_ONLY (positive + negative controls)."""
+    # Positive control
+    c_pos = dict(BASE_VALID_CONTRACT)
+    c_pos["raw_actions_log_access"] = "EXTERNAL_MACRO_ONLY"
+    ok, err, _ = validate_execution_contract(c_pos)
+    assert ok is True
+
+    # Negative control
+    c_neg = dict(BASE_VALID_CONTRACT)
+    c_neg["raw_actions_log_access"] = "EXECUTOR_ALLOWED"
+    ok, err, _ = validate_execution_contract(c_neg)
+    assert ok is False
+    assert "raw_actions_log_access must be 'EXTERNAL_MACRO_ONLY'" in err
+
+
+def test_reg_browser_01():
+    """REG-BROWSER-01: browser_github_mutation = FORBIDDEN (positive + negative controls)."""
+    # Positive control
+    c_pos = dict(BASE_VALID_CONTRACT)
+    c_pos["browser_github_mutation"] = "FORBIDDEN"
+    ok, err, _ = validate_execution_contract(c_pos)
+    assert ok is True
+
+    # Negative control
+    c_neg = dict(BASE_VALID_CONTRACT)
+    c_neg["browser_github_mutation"] = "ALLOWED"
+    ok, err, _ = validate_execution_contract(c_neg)
+    assert ok is False
+    assert "browser_github_mutation must be 'FORBIDDEN'" in err
+
+
+def test_reg_goal_01():
+    """REG-GOAL-01: goal_pressure_policy = SAFETY_BOUNDARY_WINS (positive + negative controls)."""
+    # Positive control
+    c_pos = dict(BASE_VALID_CONTRACT)
+    c_pos["goal_pressure_policy"] = "SAFETY_BOUNDARY_WINS"
+    ok, err, _ = validate_execution_contract(c_pos)
+    assert ok is True
+
+    # Negative control
+    c_neg = dict(BASE_VALID_CONTRACT)
+    c_neg["goal_pressure_policy"] = "GOAL_WINS"
+    ok, err, _ = validate_execution_contract(c_neg)
+    assert ok is False
+    assert "goal_pressure_policy must be 'SAFETY_BOUNDARY_WINS'" in err
+
+
+def test_reg_hook_01():
+    """REG-HOOK-01: hook_bypass = FORBIDDEN (positive + negative controls)."""
+    # Positive control
+    c_pos = dict(BASE_VALID_CONTRACT)
+    c_pos["hook_bypass"] = "FORBIDDEN"
+    ok, err, _ = validate_execution_contract(c_pos)
+    assert ok is True
+
+    # Negative control
+    c_neg = dict(BASE_VALID_CONTRACT)
+    c_neg["hook_bypass"] = "ALLOWED"
+    ok, err, _ = validate_execution_contract(c_neg)
+    assert ok is False
+    assert "hook_bypass must be 'FORBIDDEN'" in err
+
+
+def test_reg_k6_persist_01():
+    """REG-K6-PERSIST-01: fact: old Deny List non-persistent."""
+    baseline_path = os.path.join(SCRIPTS_DIR, "..", "docs", "ops", "antigravity-environment-baseline.md")
+    with open(baseline_path, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    assert "DEPRECATED" in content
+    assert "NON-PERSISTENT" in content
+    assert "DO NOT USE" in content
+    assert "Deny List Terminal Commands" in content
+
+
+def test_reg_k6_persist_02():
+    """REG-K6-PERSIST-02: fact: Advanced Command Access explicit Deny restart-persistent observed."""
+    baseline_path = os.path.join(SCRIPTS_DIR, "..", "docs", "ops", "antigravity-environment-baseline.md")
+    with open(baseline_path, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    assert "Advanced Command Access" in content
+    assert "git credential" in content
+    assert "git reset" in content
+    assert "DIRECTLY RESTART-VERIFIED" in content or "direct restart-tested" in content.lower()
+
+
+def test_reg_k6_persist_03():
+    """REG-K6-PERSIST-03: fact: Execute URL github.com explicit Deny restart-persistent observed."""
+    baseline_path = os.path.join(SCRIPTS_DIR, "..", "docs", "ops", "antigravity-environment-baseline.md")
+    with open(baseline_path, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    assert "Execute URLs" in content
+    assert "github.com" in content
+    assert "Deny" in content
+    assert "不得 delete" in content or "do not delete" in content.lower() or "不得靠 delete" in content
+
+
+def test_reg_k6_truth_01():
+    """REG-K6-TRUTH-01: distinction between direct tested vs same-mechanism inference."""
+    baseline_path = os.path.join(SCRIPTS_DIR, "..", "docs", "ops", "antigravity-environment-baseline.md")
+    with open(baseline_path, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    assert "DIRECTLY RESTART-VERIFIED" in content or "DIRECT" in content
+    assert "SAME-MECHANISM" in content or "same-mechanism" in content.lower()
+    assert "非逐一重啟測試事實" in content or "not individually" in content.lower()
