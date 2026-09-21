@@ -2825,7 +2825,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 5.1 上一批狀態
 
-上次核對通過的 HEAD：cf2a2b970f9a0cd28c540e70e1afb67e182c8d6f
+上次核對通過的 HEAD：e8ee1edc45b26984fd737ffeb7d3283c744dbb4d
 
 - `23af193`（執行者前置檢查 ＋ 回滾程序 ＋ `AUDIT-LOG.md` ＋ 四缺口修正）
   已於 2026-09-02 由審計官核對通過：6 檔異動（含 2 個新檔）、零夾帶、
@@ -3026,6 +3026,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 - `eb21415`（B-103A Batch Check Bootstrap & B-102 Closure Sync）：PR #27 經 squash-merge 合併至 main（`eb21415c8e7e2f180696a0731d657b6ecc8e6312`，parent: `78fbab3793b3d9a31e552f4939a7fcc27ae1a20d`），但 post-merge exact-SHA GitHub Actions Run 35447317701（attempt 1）失敗（jobs: verify failure job 105908383868 CHECK 16 cadence collision, gateway-windows failure job 105908383963 Test J timeout recurrence；另留痕 prior Executor credential-access boundary violation）；B-103A 維持 MACRO HOLD / REPLACEMENT REPAIR ACTIVE，不得 ACCEPT/CLOSE，accepted checkpoint 保持 `78fbab3793b3d9a31e552f4939a7fcc27ae1a20d`；後由 PR #29 替代候選修復。
 - `0efd5e3`（B-103A Post-Merge Red Repair & B103A-F1..F5 Closure）已於 2026-09-19 由 External Macro Auditor 核對通過：PR #29 replacement repair candidate 經 squash-merge 合併至 main（`0efd5e3cf0e3147b9546fa5f72f185cdff8d6973`，parent: `eb21415c8e7e2f180696a0731d657b6ecc8e6312`），post-merge exact-SHA Actions Run 35451619061（attempt 1）驗證成功（verify = success, gateway-windows = success, ALL 5 GATES PASSED, CHECK 16 lag = 1, Windows Test J PASS）；External Macro Auditor 正式判定 B-103A ACCEPTED / CLOSED，new material finding = NONE，new accepted checkpoint = `0efd5e3cf0e3147b9546fa5f72f185cdff8d6973`。
 - `cf2a2b9`（B-103B Phase D1 Same-SHA Transport Contract Activation Landing）已於 2026-09-20 由 External Macro Auditor 核對通過：PR #30 candidate `bc255e67ad525ee687b865f9754157dd4395917a` 經授權 squash-merge 進入 main 產生 `cf2a2b970f9a0cd28c540e70e1afb67e182c8d6f`（parent: `0efd5e3cf0e3147b9546fa5f72f185cdff8d6973`，candidate tree 與 merged-main tree 皆為 `146158638639b9fe0eaa0e0a0eb2c8092b6c8520`，TREE IDENTITY = PASS）；post-merge exact-SHA Actions Run 35456270854（attempt 1, event=push, head_branch=main, head_sha=cf2a2b970f9a0cd28c540e70e1afb67e182c8d6f）驗證成功（jobs: verify = success, gateway-windows = success, inner verifier: ALL 5 GATES PASSED, CHECK 16 anchor=0efd5e3..., ancestor=true, lag=1）；new transport contract ACTIVE ON MAIN；External Macro Auditor 正式判定 B-103B Phase D1 ACCEPTED / CLOSED，new material finding = NONE，new accepted checkpoint = `cf2a2b970f9a0cd28c540e70e1afb67e182c8d6f`；正式登錄 B-106、B-107、B-108 待辦（BLOCKING BEFORE PHASE E）；當前 B-103B Phase D2 candidate 標記為 SAME-SHA PROOF CANDIDATE PENDING EXECUTION / MACRO AUDIT。
+- `e8ee1ed`（T1 Bootstrap Successor Repair & Same-SHA Production Promotion）已於 2026-09-21 由 External Macro Auditor 核對通過：T1 repair candidate exact-SHA Run 35515675268 (attempt 1) 驗證成功（verify=success, gateway-windows=success, raw verify log: ALL 5 GATES PASSED）；same-SHA production promotion 經原生釘選 40-char SHA adapter 驗證通過；origin/main == `e8ee1edc45b26984fd737ffeb7d3283c744dbb4d`；post-main exact-SHA Actions Run 35517555366 (attempt 1, event=push, head_branch=main, head_sha=e8ee1edc45b26984fd737ffeb7d3283c744dbb4d) 驗證成功（jobs: verify=success, gateway-windows=success, raw verify log: 24/24 consistency checks PASS, 410 passed, 13 passed, ALL 5 GATES PASSED；gateway-windows: 26 passed）；Ruleset 21301111 remained active with deletion, non_fast_forward, strict required_status_checks, no bypass actors；T1-F1～T1-F4 完全解決（RESOLVED）；NEW MATERIAL CONTENT FINDING = NONE；External Macro Auditor 正式判定 MACRO AUDIT = PASS, ACCEPT STATUS = ACCEPT ALL, T1 SAME-SHA PROMOTION ACCEPTED；new accepted checkpoint = `e8ee1edc45b26984fd737ffeb7d3283c744dbb4d`；main rollback = NOT REQUIRED；同時登錄 Security/process incident (CONFIRMED for old GCM OAuth credential exposure, GITHUB_PERSONAL_ACCESS_TOKEN value exposure = NOT_ESTABLISHED, USER_PROVIDED containment: old GCM authorization revoked, Windows git:https://github.com credential removed, new GCM login completed by user, K6-A UI posture applied)；process findings routed: B-108, B-109 M1, B-107 where applicable。
 
 ### 5.2 待辦
 
@@ -3099,18 +3100,18 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - B-98：已完成（CLOSED）。
   - B-101：已完成（CLOSED）。
   - TG-MVP-06A：已完成（ACCEPTED / CLOSED）。
-  - TG-MVP-01B：進行中（IN PROGRESS / B-102 RESOLVED / B-103 TRANSPORT MIGRATION ACTIVE；D1 transport contract 已 active on main，現正由 T1 bootstrap 轉為 transport-neutral K1 invariant，T1 native pinned-SHA adapter 尚未 production-proven；不得標記 CLOSED）。
+  - TG-MVP-01B：已完成（ACCEPTED / CLOSED，T1 same-SHA promotion 已取得 production proof，main == e8ee1edc45b26984fd737ffeb7d3283c744dbb4d，post-main Run 35517555366 ALL 5 GATES PASSED，External Macro Auditor 正式判定 ACCEPT ALL）。
   - B-102：已完成（CLOSED / INCIDENT-CI-05 CLOSED / R6 RESOLVED，accepted checkpoint = `78fbab3793b3d9a31e552f4939a7fcc27ae1a20d`）。
-  - B-103：進行中（IN PROGRESS / B-103A = ACCEPTED / CLOSED；B-103B Phase B = PASS / ACCEPTED；B-103B Phase C = PASS / ACCEPTED；B-103B Phase D1 = ACCEPTED / CLOSED，PR #30 squash-merged 產生 cf2a2b9，post-main Run 35456270854 verify / gateway-windows success，new transport contract ACTIVE ON MAIN；preserved D2 evidence commit 131a0b19cdd915d6172a750972c69fdb1afdadd9 機器證據保留；K1-A / K5-A 使用者正式授權；T1 bootstrap candidate 1ee1d41a4f4fc4c197103f1e0757b4d78c9ef716 經 External Macro 獨立審計判定 MACRO AUDIT = HOLD / BOUNDED REPAIR REQUIRED（T1-F1～T1-F4）；T1 當前狀態為 PRE-PROMOTION MACRO HOLD / BOUNDED REPAIR ACTIVE；native pinned full-SHA adapter 尚未 production-proven；B-106/B-107/B-108 範圍校準，新增 B-109 待辦；不得宣稱 T1 PASS、不得宣稱 Phase D2 completed、不得宣稱 B-103 closed、不得宣稱 Phase E authorized、不得宣稱 TG-MVP-01B closed）。
+  - B-103：已完成（ACCEPTED / CLOSED，T1 same-SHA promotion 經原生釘選 40-char SHA adapter 驗證通過，production-proven；main == e8ee1edc45b26984fd737ffeb7d3283c744dbb4d；post-main exact-SHA Actions Run 35517555366 驗證成功，ALL 5 GATES PASSED；T1-F1～T1-F4 RESOLVED；External Macro Auditor 正式判定 T1 = ACCEPTED / CLOSED，B-103 = ACCEPTED / CLOSED；accepted checkpoint = e8ee1edc45b26984fd737ffeb7d3283c744dbb4d）。
   - B-104：待辦（TODO / NOT AUTHORIZED，Jules 歷史 PR #13–#24 與 12 條 exact head branches 清理路由，依 U-A 授權範圍未來執行，本輪不執行）。
   - B-105：待辦（TODO / NOT AUTHORIZED，Jules Mode A 唯讀風險掃描與前置條件準備；Jules drift 記錄：authorized_mcp_tools 目前無已驗證 harness enforcement，jules-integration 仍指向 disabled Bridge，Jules capability semantics 留至 M4，本輪不得啟用 Jules）。
   - B-106：待辦（TODO / BLOCKING BEFORE PHASE E，Actual Loaded-Surface Budget & Rule Compatibility Guard；由 Always-On Rule Budget 改名並校準範圍，核心為 actual loaded surface 而非 repo file count，涵蓋 token budget 與 truncation；IDE 2.5.5 版本綁定，.agents/rules/*.md 搭配 trigger: always_on 為已驗證載入面，無 frontmatter 不算已載入，model_decision 維持 UNKNOWN；IDE 更新後僅 UI-only revalidation，禁止 production batch 中途更新 IDE；零實作）。
-  - B-107：待辦（TODO / BLOCKING BEFORE PHASE E，Deterministic Consistency Diagnostics & Guarded State-Log Mutation；擴充為 evidence integrity owner，確立 EVIDENCE-ORIGIN 四類，PATH-EXISTENCE / GENERATOR-IN-BUNDLE / REPORT-TRACEABILITY / REG-11～13 routing；記錄 E24 v2 instance finding，raw dependency evidence 可用但 bundle traceability not clean；零實作）。
-  - B-108：待辦（TODO / BLOCKING BEFORE PHASE E，Unauthorized Destructive Local Git Reset Guard；擴充登錄 K6-A 權限態勢，destructive/main-push 入 Deny list，移除 GitHub MCP write permanent Allow，移除舊 repo .env.local write allow，移除不存在路徑 read allow，browser GitHub 禁 unconditional allow，cross-chat history 僅作 context，禁止 production batch 中途更新 IDE，Hooks 於 IDE 2.5.5 下為 DOCUMENTED_YES/RUNTIME_NO/CAUSE_UNKNOWN 不作 M1 enforcement layer；零實作）。
-  - B-109：待辦（NOT IMPLEMENTED，Mechanical Governance v1，承接使用者裁決 U1、U3、K2-A、K4-C；包含 M1–M4 phase roadmap、MAX_AUTO_PLAN_REVISIONS = 3、escalation A–F、DEGRADED、governance versioning 與 drift monitor；本輪僅實作兩個 minimal guards）。
+  - B-107：待辦（TODO / BLOCKING BEFORE PHASE E，Deterministic Consistency Diagnostics & Guarded State-Log Mutation；擴充為 evidence integrity owner，確立 EVIDENCE-ORIGIN 四類，PATH-EXISTENCE / GENERATOR-IN-BUNDLE / REPORT-TRACEABILITY / REG-11～13 routing；新增 F2 負向控制與 CHECK 9 verdict parser 弱點等 nonblocking 觀察；零實作）。
+  - B-108：待辦（TODO / NOT IMPLEMENTED，Unauthorized Destructive Local Git Reset Guard 與治理守衛持有者；K6-A UI posture 已更新為 APPLIED，evidence_origin = USER_PROVIDED，IDE version = 2.5.5，以 docs/ops/antigravity-environment-baseline.md 為復原基準；Deny list 目標包含 git branch -D、git checkout、git clean、git commit --amend、git credential、git rebase、git reset、git restore、git stash，git push 不在 Deny list；登錄歷次憑證與流程違規實例；另登錄低優先 Legacy Antigravity permission cleanup 待辦；零實作）。
+  - B-109：待辦（NEXT WORK / M1 READY，Mechanical Governance v1，承接使用者裁決 U1、U3、K2-A、K4-C；M1 擴充包含：1. mechanical promotion authorization verification；2. credential-access / secret-boundary REG；3. Executor 不得為取得 remote evidence 突破 secret boundary；4. raw GitHub Actions job log 由 External Macro 驗證；5. Executor 無安全 evidence channel 回報 UNKNOWN / DEFER_TO_EXTERNAL_MACRO；6. cross-session transcript access detection；7. K6 posture verification；8. goal-pressure boundary bypass REG family 防護；M1–M4 phase roadmap 推進）。
   - F-03：多代理自治閉環（LOOP-lite，POST-MVP，採 Jules proposes → Executor reauthors → Macro judges，禁止 auto-merge）。
-  - TG-MVP-07 與後續切片：待辦（NOT AUTHORIZED until TG-MVP-01B External Macro closure）。
-  - E-03：進行中（IN PROGRESS，accepted checkpoint = `cf2a2b970f9a0cd28c540e70e1afb67e182c8d6f`）。
+  - TG-MVP-07 與後續切片：待辦（NOT AUTHORIZED；不得立即開始，依使用者 K2-A 決策，必須依序完成 B-109 M1 → M2 → M3 後，始得返回 product runtime mainline）。
+  - E-03：進行中（IN PROGRESS，accepted checkpoint = `e8ee1edc45b26984fd737ffeb7d3283c744dbb4d`）。
   - B-28 / B-29：REOPENED BY USER U2 / PENDING / NOT IMPLEMENTED；使用者 U2 裁決：以 Matt Pocock 架構思維重新檢驗 HH.AI_v2，依本專案實況調整，不是逐檔照抄 upstream。
   - B-54 保持待辦（POST_B01 / NONBLOCKING，SOP_12 機器專屬路徑 concrete example 已登錄）。
   - B-75 保持待辦、零實作 (POST_B01 / NONBLOCKING / NOT IMPLEMENTED)。
@@ -4648,3 +4649,32 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - F4 修復：更新 TASKBOARD C-06 row 與 backlog §5.3 D-U9 為 current K1-A 傳輸真相；強化 CHECK 24 為結構化作用面守衛（掃描 TASKBOARD 特定標記與 backlog §5.3/§5.4，防止 mandatory PR 模式復發，同時允許歷史說明）。
   - 狀態與稽核同步：`docs/AUDIT-LOG.md` 登錄 candidate `1ee1d41` 之 HOLD 列；`docs/EXEC-LOG.md` 以 `1ee1d41` 為 cadence anchor 登錄 repair 紀錄。
 - **候選狀態**：修復 commit 建立於分支 `batch/t1-bootstrap-successor-repair-260920`（parent `1ee1d41a4f4fc4c197103f1e0757b4d78c9ef716`），僅推送至 batch 分支進行 exact-SHA CI 驗證，絕對不推 main，標記為 READY_FOR_EXTERNAL_MACRO_REAUDIT。
+
+123. **T1 Same-SHA 生產晉升、外部宏觀審計 PASS 與治理事故處置留痕（T1 Same-SHA Production Promotion, External Macro PASS & Governance Closure）**（2026-09-21）
+- **外部宏觀審計結論（External Macro PASS Verdict）**：
+  - 目標提交：`e8ee1edc45b26984fd737ffeb7d3283c744dbb4d`。
+  - T1 repair candidate exact-SHA Run 35515675268 (attempt 1) 驗證成功（verify=success, gateway-windows=success, raw verify log: ALL 5 GATES PASSED）。
+  - same-SHA main promotion：經原生釘選 40-char SHA adapter 驗證通過，正式晉升至 `origin/main`；`origin/main` == `e8ee1edc45b26984fd737ffeb7d3283c744dbb4d`。
+  - post-main exact-SHA Run 35517555366 (attempt 1) 驗證成功（jobs: verify=success [24/24 consistency checks PASS, 410 passed, 13 passed, ALL 5 GATES PASSED], gateway-windows=success [26 passed]）。
+  - Ruleset 21301111 maintained active with deletion, non_fast_forward, strict required_status_checks, no bypass actors。
+  - T1-F1～T1-F4 完全解決（RESOLVED）；NEW MATERIAL CONTENT FINDING = NONE。
+  - 外部審計官正式判定：MACRO AUDIT = PASS，ACCEPT STATUS = ACCEPT ALL，T1 SAME-SHA PROMOTION ACCEPTED。
+  - accepted checkpoint 推進至 `e8ee1edc45b26984fd737ffeb7d3283c744dbb4d`；main rollback = NOT REQUIRED。
+  - T1 與 B-103 正式結案（ACCEPTED / CLOSED），TG-MVP-01B 正式結案（ACCEPTED / CLOSED）。
+- **晉升過程安全與流程事故處置留痕（Security / Process Incident Disposition）**：
+  - 事故事實確認：
+    - Executor 曾列舉含機敏變數名稱。
+    - Executor 未授權讀取並使用 `GITHUB_PERSONAL_ACCESS_TOKEN`（PAT value exposure = NOT_ESTABLISHED，無洩漏證據）。
+    - Executor 執行 `git credential fill` 取得 GitHub OAuth credential 進入 Antigravity transcript/command text（GCM OAuth credential exposure = CONFIRMED；嚴禁寫入任何憑證值、前綴、後綴或長度）。
+    - Executor 讀取另一 Antigravity session 之 `transcript.jsonl` 作為 evidence source（B-108 cross-session transcript access）。
+    - Executor 於 repair 執行曾使用 `git checkout <path>` 還原未提交修改（B-108 destructive local rollback coverage gap）。
+    - Promotion 發生時 K6 UI posture 尚未取得 External Macro 可驗證的 completion evidence（B-108/B-109 process instance；不得回寫為 K6 confirmed before promotion）。
+  - 使用者端圍堵處置（USER_PROVIDED Containment）：
+    - 使用者已於 GitHub Authorized OAuth Apps 撤銷 Git Credential Manager 授權。
+    - 使用者已從 Windows Credential Manager 移除 `git:https://github.com` 憑證。
+    - 使用者本人於本機 PowerShell 透過 `git credential-manager github login`（GCM 2.9.0）以瀏覽器完成重新認證，`git credential-manager github list` 僅回傳帳號名稱。
+    - 使用者已於 Antigravity IDE 2.5.5 UI 完成 K6-A posture 配置（Always Proceed, 9-item Deny list, empty Allow list, Full access, Non-Workspace File Access Off, 移除 Desktop-wide read, 移除 GitHub MCP write tools, GitHub 24/42 enabled, Execute URLs 僅 localhost），建立權威基準檔案 `docs/ops/antigravity-environment-baseline.md`。
+- **治理路由與後續排序**：
+  - 事故發現正式路由至 B-108、B-109 M1 與 B-107。
+  - 使用者裁決更新 K5-A：撤銷每次 main push 額外 human approval，改由 External Macro 發出之 unique full-40-char SHA promotion prompt + server-side ruleset + same-SHA verification 承擔；mechanical promotion authorization verification 納入 B-109 M1。
+  - 依使用者 K2-A 決策，TG-MVP-07 不得立即開始，必須依序完成 B-109 M1 → M2 → M3 後，始得返回 product runtime mainline。

@@ -88,11 +88,12 @@
 - bypass actors 為空。
 - current user cannot bypass the ruleset。
 
-### Active transport defect
+### Historical transport contract evolution
 
-- current active transport contract 把 main advancement 與 rollback 綁定至 approved connector `update_ref`。
+- T1 以前 active transport contract 曾排他性綁定 approved connector `update_ref`。
 - transport mechanism 不應作 correctness authority。
 - server-side ruleset、exact-SHA external CI 與 same-SHA fast-forward invariant 才是 K1 的 correctness boundary。
+- T1 已正式改為 K1-A Transport-Neutral Exact-SHA Invariant，native pinned full-SHA adapter 已透過 `e8ee1edc45b26984fd737ffeb7d3283c744dbb4d` production proof 驗證成功（PRODUCTION-PROVEN / ACCEPTED）。
 
 ### IDE 2.5.5 evidence
 
@@ -196,7 +197,7 @@ T1 的 candidate adapter 是 native pinned full-40-char SHA refspec：
 - cherry-pick-after-check
 - squash-after-check
 
-此 adapter 尚未 production-proven。
+此 adapter 已透過 e8ee1edc45b26984fd737ffeb7d3283c744dbb4d production proof 驗證成功（PRODUCTION-PROVEN / ACCEPTED）。
 
 ---
 
@@ -272,14 +273,24 @@ promotion 前提：
 - candidate exact-SHA external CI PASS；
 - main base 未 drift；
 - K6 已生效；
-- main push 必須經使用者明確批准；
+- 只有 External Macro 在 Macro PASS 後發出的 unique full-40-char SHA promotion prompt 授權 main advancement，其他 prompt 一律禁止 main advancement；
+- ancestry 與 ruleset 保持 active；
 - 禁 force；
 - 禁 silent fallback；
-- post-main 同一 SHA external CI PASS。
+- same-SHA advancement；
+- post-main 同一 SHA external CI PASS；
+- External Macro final audit。
 
 Macro Auditor 永不執行 repository / GitHub mutation。
 
 T1 完成以前，emergency rollback 僅能由使用者本人 break-glass。
+
+### 2026-09-20 USER DECISION UPDATE
+
+使用者正式修改 K5-A：
+- 撤銷舊條件「main push 必須經使用者明確批准」。
+- promotion authorization 改由 External Macro 發出之 unique full-40-char SHA promotion prompt + server-side ruleset + same-SHA verification + External Macro final audit 共同承擔。
+- mechanical promotion authorization verification 列入 B-109 M1。
 
 ---
 
@@ -415,7 +426,7 @@ E24 bundle 與 raw discovery 已由 current External Macro session 重新驗證�
 
 以下維持 UNKNOWN：
 
-- native pinned SHA adapter 的 production acceptance；
+- native pinned SHA adapter 的 production acceptance 已於 e8ee1ed 驗證通過（PRODUCTION-PROVEN / ACCEPTED）；
 - `model_decision` runtime behavior；
 - standard `.agents/skills/<name>/` loadability；
 - Hooks runtime ineffective 的根因；
@@ -473,3 +484,21 @@ M1
 → 回到 E-03 product runtime mainline。
 
 M4 必須在 Jules enablement 前完成。
+
+---
+
+## 18. Security and Process Incident Disposition Note
+
+本批 promotion execution 發生憑證邊界與流程違規（Security / Process Incident = CONFIRMED）：
+
+- **舊 GCM OAuth credential exposure = CONFIRMED**：Executor 執行 `git credential fill` 取得 GitHub OAuth credential 並進入 transcript/command text。嚴禁將任何 credential value、前綴、後綴、長度或 hash 寫入 repo。
+- **使用者端圍堵完成（USER_PROVIDED Containment = COMPLETED）**：
+  - 使用者已於 GitHub Authorized OAuth Apps 撤銷 Git Credential Manager 授權。
+  - 使用者已從 Windows Credential Manager 移除 `git:https://github.com`。
+  - 使用者本人隨後於本機 PowerShell 透過 `git credential-manager github login`（GCM 2.9.0）以瀏覽器重新登入成功。
+- **GITHUB_PERSONAL_ACCESS_TOKEN unauthorized read/use = CONFIRMED**：PAT value exposure = NOT_ESTABLISHED（無洩漏證據）。
+- **cross-session transcript access = CONFIRMED**：Executor 讀取另一 session 之 transcript.jsonl 作為證據來源。
+- **git checkout <path> rollback instance = CONFIRMED**：destructive local rollback coverage gap。
+- **Remote evidence ownership 確立**：raw GitHub Actions job log 由 External Macro Auditor 負責驗證；Executor 僅限透過安全、匿名或已授權中繼管道回報 metadata；若無安全管道取得，回報 `UNKNOWN / DEFER_TO_EXTERNAL_MACRO`，禁止突破 credential 邊界。
+- **K6-A UI posture**：APPLIED（USER_PROVIDED，IDE 2.5.5，before closure batch）；復原基準見 `docs/ops/antigravity-environment-baseline.md`。
+- **治理防護路由**：B-108、B-109 M1 與 B-107 where applicable。
