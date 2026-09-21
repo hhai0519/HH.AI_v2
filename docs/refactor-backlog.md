@@ -3109,7 +3109,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - B-106：待辦（TODO / BLOCKING BEFORE PHASE E，Actual Loaded-Surface Budget & Rule Compatibility Guard；由 Always-On Rule Budget 改名並校準範圍，核心為 actual loaded surface 而非 repo file count，涵蓋 token budget 與 truncation；IDE 2.5.5 版本綁定，.agents/rules/*.md 搭配 trigger: always_on 為已驗證載入面，無 frontmatter 不算已載入，model_decision 維持 UNKNOWN；IDE 更新後僅 UI-only revalidation，禁止 production batch 中途更新 IDE；零實作）。
   - B-107：待辦（TODO / BLOCKING BEFORE PHASE E，Deterministic Consistency Diagnostics & Guarded State-Log Mutation；擴充為 evidence integrity owner，確立 EVIDENCE-ORIGIN 四類，PATH-EXISTENCE / GENERATOR-IN-BUNDLE / REPORT-TRACEABILITY / REG-11～13 routing；新增 F2 負向控制與 CHECK 9 verdict parser 弱點等 nonblocking 觀察；零實作）。
   - B-108：待辦（TODO / NOT CLOSED，作為 mechanical guard / cleanup owner）。K6-A UI 態勢更正為 PERSISTENT LAYER = APPLIED（USER_PROVIDED，IDE 2.5.5，包含 File Access 減量、MCP permanent Allow 減量、GitHub MCP 18 disabled、Advanced Command Access 12 entries 設為 Deny（其中 git credential / git reset 為直接重啟驗證，其餘 10 為同機制推論）、Execute URLs github.com = Deny（保留 entry 設 Deny））；舊「Deny List Terminal Commands」正式標記為 DEPRECATED / NON-PERSISTENT / DO NOT USE；Execute URLs delete-to-restrict 標記為 NON-PERSISTENT / DO NOT USE；基準與手動恢復檢核清單見 docs/ops/antigravity-environment-baseline.md；保留歷史事故實例；登錄低優先 Legacy Antigravity permission cleanup 留待 future bounded cleanup）。
-  - B-109：進行中（M1 IN PROGRESS / CANDIDATE AWAITING EXTERNAL MACRO AUDIT，Mechanical Governance v1，承接使用者裁決 U1、U3、K2-A、K4-C；M1 擴充包含：1. minimal Rule Registry 與 task-specific Execution Contract；2. shared Execution Contract parser；3. PASS/FAIL + Rule ID Preflight；4. .githooks/pre-push exactness guard；5. actual synthetic Git hook invocation REG；6. credential-access / secret-boundary REG；7. Executor 不得為取得 remote evidence 突破 secret boundary；8. raw GitHub Actions job log 由 External Macro 驗證；9. Executor 無安全 evidence channel 回報 UNKNOWN / DEFER_TO_EXTERNAL_MACRO；10. cross-session transcript access detection；11. K6 persistent truth 更正；12. environment recovery checklist；13. TASKBOARD recovery trigger；14. git switch -c 分支慣例；15. CHECK 25；16. goal-pressure boundary bypass REG family 防護；17. B-104 路由延後；M1–M4 phase roadmap 推進）。
+  - B-109：進行中（M1 MACRO HOLD / BOUNDED EVIDENCE REPAIR ACTIVE，Mechanical Governance v1，承接使用者裁決 U1、U3、K2-A、K4-C；8776 candidate 技術實作與 exact-SHA CI 經 External Macro 驗證無新 material code finding，因 M1-F1 EXEC-LOG factual evidence drift 進行 bounded evidence repair；F1-A manifest finding_disposition = CURRENT B-109、F1-B original M1 E24 = REQUIRED / EXECUTED / REPLAYED、F1-C fingerprint path = docs/fingerprints/exec-latest.json；NEXT_WORK 仍為 B-109，NEXT_SLICE 仍為 Mechanical Governance v1 — M1，不得開始 B-104 或 M2；M1–M4 phase roadmap 推進）。
   - F-03：多代理自治閉環（LOOP-lite，POST-MVP，採 Jules proposes → Executor reauthors → Macro judges，禁止 auto-merge）。
   - TG-MVP-07 與後續切片：待辦（NOT AUTHORIZED；不得立即開始，依使用者 K2-A 決策，必須依序完成 B-109 M1 → M2 → M3 後，始得返回 product runtime mainline）。
   - E-03：進行中（IN PROGRESS，accepted checkpoint = `69b4b6c72e2bf2b91a46107afb2e7e9a2e538de1`）。
@@ -4679,3 +4679,22 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - 事故發現正式路由至 B-108、B-109 M1 與 B-107。
   - 使用者裁決更新 K5-A：撤銷每次 main push 額外 human approval，改由 External Macro 發出之 unique full-40-char SHA promotion prompt + server-side ruleset + same-SHA verification 承擔；mechanical promotion authorization verification 納入 B-109 M1。
   - 依使用者 K2-A 決策，TG-MVP-07 不得立即開始，必須依序完成 B-109 M1 → M2 → M3 後，始得返回 product runtime mainline。
+
+124. **B-109 M1 External Macro HOLD 與有界證據完整性修復（B-109 M1 External Macro HOLD & Bounded Evidence-Integrity Repair）**（2026-09-21）
+- **外部宏觀審計結論（External Macro Audit Verdict）**：
+  - 目標候選：`8776d533b8ad85bcbd69e3ca5b7a75aeebcf9f4c`（分支 `batch/b109-m1-mechanical-governance-260921`，基於 `69b4b6c72e2bf2b91a46107afb2e7e9a2e538de1`）。
+  - 技術實作驗證：candidate topology = PASS、candidate scope = PASS、M1 technical implementation = PASS、Rule Registry / Execution Contract / governance preflight / pre-push exactness guard / CHECK 25 = no new material technical finding、Ruleset 21301111 = unchanged / active / strict / no bypass。
+  - 候選 CI：Actions Run 35618216120 (attempt 1, push) 驗證成功（verify=success [25/25 consistency checks PASS, 458 passed, 13 passed, ALL 5 GATES PASSED], gateway-windows=success [26 passed]）。
+  - 新代碼 / 安全實質發現：NONE。
+  - 外部審計官裁決：OVERALL M1 MACRO AUDIT = HOLD，原因為 M1-F1 EXEC-LOG FACTUAL EVIDENCE DRIFT，要求進行有界證據修復（BOUNDED EVIDENCE REPAIR），禁止 amend、force push、歷史改寫或 push main。
+  - accepted checkpoint 保持：`69b4b6c72e2bf2b91a46107afb2e7e9a2e538de1`。
+- **M1-F1 事實更正（M1-F1 Exact Corrections）**：
+  - F1-A（Manifest disposition）：原紀錄 `finding_disposition=NONE`，權威值更正為 `finding_disposition=CURRENT B-109`。
+  - F1-B（E24）：原紀錄 `E24 mode=NONE`，實際原 M1 mutation 前執行 bounded deterministic dependency discovery / replay（`scripts/impact_scan.py discover` 產出 `.git/b109-m1-impact-raw.json`、`.git/b109-m1-impact-evidence.json`、`.git/b109-m1-allowed-scope.json` 並執行 `scripts/impact_scan.py check`），權威處置更正為 `REQUIRED / EXECUTED / REPLAYED`。
+  - F1-C（Allowed Scope 指紋路徑）：原紀錄 `fingerprint.sha256`，權威路徑更正為 `docs/fingerprints/exec-latest.json`。
+- **修復策略與候選狀態（Repair Strategy & Candidate State）**：
+  - EXEC-LOG 採 append-only correction row，明確記錄上述三項事實申明更正，不覆寫原歷史。
+  - 修復分支：`batch/b109-m1-mechanical-governance-repair-260921`（parent `8776d533b8ad85bcbd69e3ca5b7a75aeebcf9f4c`）。
+  - 修復範圍嚴格限制於 5 項文件與指紋路徑，零代碼異動，E24 mode = NONE（僅限本 evidence correction）。
+  - 修復 candidate 標記為 READY_FOR_EXTERNAL_MACRO_REAUDIT。
+
