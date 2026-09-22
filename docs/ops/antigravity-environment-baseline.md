@@ -30,6 +30,16 @@
 
 證據來源：`evidence_origin = USER_PROVIDED`，`verified IDE version = 2.5.5`。
 
+### 1.1 Runtime UI & Rules Surface Evidence (IDE 2.5.5)
+
+- **證據來源**：`USER_PROVIDED / DIRECT SCREENSHOT`，`verified IDE version = 2.5.5`。
+- **Rules UI 視圖**：`Project · AGENTS.md` 狀態為 **OBSERVED_VISIBLE**。
+- **`.agents/rules/*.md`**：未列於該 Rules UI 視圖中。
+- **執行期邊界不變量（Evidence Boundary Invariant）**：
+  - 未具備已驗證啟動中繼資料（frontmatter activation metadata）之 `.agents/rules/*.md`，其執行期自動載入狀態為 **NOT_ESTABLISHED**。
+  - **嚴禁反向推論**：不得宣稱其為 `VERIFIED_NOT_LOADED` 或 `runtime absolutely not loaded`。
+  - **操作紀律**：任務必要之規則依賴，一律由 Prompt Manifest / Execution Contract 明確要求，並由執行者自磁碟即時重讀（targeted fresh disk reread）。
+
 ---
 
 ## 2. Updated K6-A Architecture — Two Layers
@@ -179,6 +189,28 @@ git switch -C
 ### 4.7 舊版設定棄用聲明
 - 舊「Deny List Terminal Commands」：**DEPRECATED / NON-PERSISTENT / DO NOT USE**。
 
+### 4.8 Manage MCP Servers vs Customizations Breakdown
+
+- **Manage MCP Servers 完整清單（權威來源：USER_PROVIDED / DIRECT SCREENSHOT）**：
+  - 總可見工具數：**133 tools**
+  - **Chrome DevTools**：29 / 29 enabled
+  - **docker**：8 / 8 enabled
+  - **GitHub**：24 / 42 enabled（18 disabled write tools 依然保持，與基準完全一致；不得宣稱 GitHub MCP absent，不得因本輪重新修改 GitHub MCP posture）
+  - **google-jules**：**Disabled / 0 of 8**（符合 B-105 / M4 邊界，本輪與常態開發禁止啟用）
+  - **notebooklm**：48 / 48 enabled
+  - **Notion**：24 / 24 enabled
+- **Customizations UI 視圖（PARTIAL_UI_OBSERVATION）**：
+  - 顯示可用預算：`96.0% available`
+  - Skills：`289 / 1.4%`
+  - MCP Tools：`516 / 2.6%`
+  - **邊界區分**：Customizations UI 之 breakdown 僅為部分預算視圖（PARTIAL budget view），非完整 MCP 清單，亦非 actual runtime token proof。Manage MCP servers 才是 MCP inventory 的觀察來源。兩者 server 集合不一致本身為 evidence-boundary fact，不得因 Customizations 缺少某 server 即推論其未安裝或未啟用。
+
+### 4.9 docker MCP Capability Observation
+
+- **能力觀察**：依 `docs/mcp-environment-guide.md` 所載，docker MCP gateway 具備於執行期動態掛載或管理其他 MCP 工具容器之能力。
+- **治理分類**：`NONBLOCKING CAPABILITY OBSERVATION; NO INCIDENT EVIDENCE`。
+- **邊界鎖定**：本項觀察不得擴大為新任務，不得擴成 B-108 實作，亦不阻擋本 M3 核心批次。若 repo evidence 不足則為 `NOT_ESTABLISHED`。
+
 ---
 
 ## 5. Git Authentication & Credential Boundary
@@ -231,6 +263,19 @@ Executor 永遠嚴格遵守：
 3. **異常處置**：若上述任何一項重啟後遺失或漂移，**立即 STOP production**，交由 External Macro Auditor 重新評估。
 4. **日常免責**：普通 production batch **不需要每批重啟 IDE**，信任實測之持久性。
 
+### 7.1 Runtime Kernel Canary Validation Procedure
+
+本專案於根目錄 `AGENTS.md` 建立唯一金絲雀標記（Kernel Canary Primitive）：
+`HH_AI_V2_KERNEL_CANARY_V1_260922`
+
+- **儲存邊界**：本 repo 不在 tracked files 保存 `PENDING`、`PASS`、`FAIL` 等動態 canary 結果，避免形成第二寫入點。
+- **執行期驗證程序（Canary Revalidation Procedure）**：
+  1. 候選 commit 推送後，由使用者在候選工作區開啟全新的 Antigravity 工作階段（fresh session）。
+  2. 該 session **完全不使用任何工具（no tools）**。
+  3. 使用者直接向 Agent 提問 kernel canary 標記之值。
+  4. Agent 正確回覆該金絲雀標記即構成 `USER_PROVIDED` 執行期證據。
+  5. 驗證結論由 External Macro Auditor 查核並留痕；Executor 嚴禁自行宣告 runtime canary PASS。
+
 ---
 
 ## 8. IDE Version Update Protocol
@@ -240,6 +285,9 @@ Executor 永遠嚴格遵守：
 1. 除了完成上述完整 Checklist 外，必須重新驗證：
    - explicit Deny entry persistence（尤其是 Terminal Commands）；
    - Execute URL `github.com` Deny persistence；
+   - Rules UI 視圖狀態（確認 Project AGENTS.md 仍為 OBSERVED_VISIBLE）；
+   - Manage MCP servers 態勢（GitHub 24/42 保持，Jules 保持 Disabled）；
+   - Runtime Kernel Canary 驗證程序（以 fresh session + no tools 重新核驗）。
 2. **Matcher semantics 警告**：新版本的 matcher semantics（exact match、prefix、argument handling 等）在未重新實測前視為 **UNKNOWN**。
 3. **不得推論**：不得自動假設 2.5.5 的實測結論直接適用於新版。
 

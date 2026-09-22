@@ -1,5 +1,5 @@
 {
-  "base_head": "4b5d926",
+  "base_head": "1580b97",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -93,7 +93,7 @@
         "## 8. 個人工作資料與日誌邊界（Personal Work Data Boundary — D-U2）"
       ],
       "lines": 196,
-      "sha256": "a588a870860300f7c3711b43d029232064d7f45b64dd655140c01f8eace3395a"
+      "sha256": "5170eb0c420e9abbb767f520b2ebcc32c37b3e31d5695603e52cdc4aad594ca2"
     },
     ".agents/rules/secret-output-safety.md": {
       "fences": 6,
@@ -111,7 +111,7 @@
         "## SECRET-9 — 遠端中繼資料查詢安全紀律 (Remote Metadata Safety & No-Credential Fallback — B-109 M2)"
       ],
       "lines": 144,
-      "sha256": "5c56f7b618ef33461fb685bd45f61969075c8dc0e9999f7a71845f9325e48ed1"
+      "sha256": "11e949908ceec26644740a17dbd3354964d5178f534cf5ca7cdf00aafddacc40"
     },
     ".agents/rules/skill-engineering-guardrails.md": {
       "fences": 0,
@@ -136,7 +136,7 @@
         "## 3. 禁制清單"
       ],
       "lines": 58,
-      "sha256": "f69a76470ce2b40b02b5e697dd3323f47348658e3977228a6164b0505a26995c"
+      "sha256": "13def58fb60ea20f3b9ccc3e4accaf307fdfb28d228e52ad1194875425104e3b"
     },
     ".claude/rules/auditor-protocol.md": {
       "fences": 4,
@@ -197,7 +197,7 @@
         "### 12.2 Tier-M 微修復分類規範 (Tier-M Micro Repair)"
       ],
       "lines": 532,
-      "sha256": "71ac907d155c3946a0db827af32166ff2b2977bf559ef9934edcdbedb4c1645b"
+      "sha256": "2e954f4a3cbbf2b7eda609ce196b8b008fc97e6f35fbb5b030234269df45204d"
     },
     ".claude/rules/auditor-selftest.md": {
       "fences": 0,
@@ -211,8 +211,8 @@
         "## E. 交付（產出提示詞之前）",
         "## F. 額度（每一輪回覆的開頭與結尾）"
       ],
-      "lines": 138,
-      "sha256": "55894be7e6d5f98fad7472581c28a61496b4852f73b0037ec4e59429b6a70873"
+      "lines": 139,
+      "sha256": "5ebbf7f52c142470142b943a6de9a4ab76b9740ca6f44422f10d068cff8e2a2e"
     },
     ".github/workflows/verify.yml": {
       "fences": 0,
@@ -221,9 +221,9 @@
       "sha256": "f47d4b25dc0e304ee9f8b354ff1ba6ba58449cf95fd105bc43ec8a4e66ac02bc"
     },
     "AGENTS.md": {
-      "fences": 10,
+      "fences": 2,
       "headings": [
-        "# HH.AI 專案技能架構規範",
+        "# HH.AI 核心執行者架構規範 (Runtime Kernel & Global Router)",
         "## 0. 工程紀律規則（最高優先）",
         "## 1. 目錄結構",
         "## 2. SKILL.md 格式",
@@ -241,8 +241,8 @@
         "### 10.1 遠端健康查證與回報規範",
         "### 10.2 禁止文字摘要辯論 (Anti-Debate Policy)"
       ],
-      "lines": 271,
-      "sha256": "e1b9c5684b6f6e23831259473d787aba5985a201c932a8022b6c9c5c5b98eeca"
+      "lines": 114,
+      "sha256": "1348e73b351559382627bf289920a20431cb241e20774ca7bca241112c0a0801"
     },
     "MISSION.md": {
       "fences": 0,
@@ -290,8 +290,8 @@
         "### 4.4 責任歸屬",
         "## 5. 更新紀錄"
       ],
-      "lines": 381,
-      "sha256": "f592e510a17e56ae300bc9744d3b7f9f2e45b981ed5f89d0f9e49582ce9ff000"
+      "lines": 384,
+      "sha256": "0835bf575a0d6142a845850f2df7cf875e0bf350250d317b0ef81cd407fe39d7"
     },
     "SOP/README.md": {
       "fences": 0,
@@ -560,8 +560,8 @@
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 170,
-      "sha256": "44791f51ada7f92f1a73c2640967d6e06c8fd71a9a19932989151709c7233395"
+      "lines": 171,
+      "sha256": "9de045fa640221eb615ea82ed48e0e37ad014a9dca6f164febf16bc3383d7573"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -580,8 +580,8 @@
         "### 10. 歸檔與歷史資料 (Archive & Historical Material)",
         "### 11. 規範驗證入口 (Canonical Verification)"
       ],
-      "lines": 61,
-      "sha256": "9a9638670a1dd1f57bd827de8542db0206b8c4df8dd4bdb9c4da4f08ca794448"
+      "lines": 63,
+      "sha256": "a68d4f06725e2912033a8e75f04e394826585530c79d197834c7b2d366d44e96"
     },
     "docs/TASKBOARD.md": {
       "fences": 0,
@@ -602,7 +602,7 @@
         "## 封存區"
       ],
       "lines": 340,
-      "sha256": "1379118f954f47a9edb3692dfa0d53821b5d0d45052322b00f82f3f74d51d4ab"
+      "sha256": "f738c78317acbd6655581792800407a99bd88ff8a3dc3a595f8262ca98e963ed"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1058,8 +1058,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 4779,
-      "sha256": "863df61a8c8488df913e9632de69a19615b72b1edd585a0a8741bbf683dd95cb"
+      "lines": 4744,
+      "sha256": "f022872febe7fbb507599fdde34d8e5225793862f6f2de83a5518a794586953d"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1086,8 +1086,8 @@
         "# 已知指向錯誤的歷史 tag。本清單只能縮短、不得加長。",
         "# 修復批次完成後必須清空；清單中的 tag 若已修復卻未移除，CHECK 18 會 FAIL。"
       ],
-      "lines": 3185,
-      "sha256": "cebcc9a3d5dc4a7fee1b981c71a32427b5fdb53109ec20e5f525581358f391df"
+      "lines": 3313,
+      "sha256": "5a2feb0b318ca2fab286777bcb402f392e20b6df6b243f7fd44bc14b3bf4e488"
     },
     "scripts/execution_record.py": {
       "fences": 0,
@@ -1235,11 +1235,14 @@
         "# CHECK 25 Tests: Mechanical Governance v1 Integrity Guard",
         "# ---------------------------------------------------------------------------",
         "# ---------------------------------------------------------------------------",
+        "# Section 33 Negative Controls: State Convergence Guards (A - F)",
+        "# ---------------------------------------------------------------------------",
+        "# ---------------------------------------------------------------------------",
         "# CHECK 26 Tests: M2 Plan-vs-Actual / Evidence Integrity Replay Guard",
         "# ---------------------------------------------------------------------------"
       ],
-      "lines": 2144,
-      "sha256": "057e219355f8ef70b6b0d3089ffbaaba66dadf045bd447567e24dd736d39fd10"
+      "lines": 2273,
+      "sha256": "175507e35c01160ae1b1ab2fd269c0cc0aaac52d1f3eb222abaa94424609ebb3"
     },
     "scripts/tests/test_execution_record.py": {
       "fences": 0,
@@ -1310,9 +1313,16 @@
     },
     "scripts/tests/test_rule_loadability.py": {
       "fences": 0,
-      "headings": [],
-      "lines": 38,
-      "sha256": "122ce537959189b13cccf5ecbe94eee03312dbae258982a5c4c8801ee536ec25"
+      "headings": [
+        "# ----------------------------------------------------------------------",
+        "# Compliant Repo Invariant Tests",
+        "# ----------------------------------------------------------------------",
+        "# ----------------------------------------------------------------------",
+        "# Deterministic Negative Controls (Section 24 / F3)",
+        "# ----------------------------------------------------------------------"
+      ],
+      "lines": 246,
+      "sha256": "b8f1b2b3b9279341da49e9be0b79609bc820cd5a01240ee285ca3fc0ead0a4a4"
     },
     "scripts/tests/test_rule_traceability.py": {
       "fences": 0,
@@ -1466,7 +1476,7 @@
       "sha256": "35bf7dbfa3c7d291b550c3c97a6ae398a22b1dc3624c1d2fc1e4db6963d6e115"
     }
   },
-  "generated_at": "2026-09-22T02:42:44Z",
+  "generated_at": "2026-09-22T12:20:10Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

@@ -939,6 +939,38 @@ def check_8_taskboard_metadata_purity(root_dir=None, git_head=None, git_prev=Non
         if all_found_hashes:
             fails.append(f"docs/TASKBOARD.md:{line_no}  『最後更新』標記不得保存 Git commit hash: {', '.join(sorted(all_found_hashes))}")
 
+        # 5. K4-A: 新鮮度指標 (FRESHNESS_POINTER_ONLY) 形狀規範
+        if "NEXT_WORK" not in payload:
+            fails.append(f"docs/TASKBOARD.md:{line_no}  『最後更新』為純新鮮度指標 (FRESHNESS_POINTER_ONLY)，必須包含 NEXT_WORK 指標關鍵字")
+        if "NEXT_SLICE" not in payload:
+            fails.append(f"docs/TASKBOARD.md:{line_no}  『最後更新』為純新鮮度指標 (FRESHNESS_POINTER_ONLY)，必須包含 NEXT_SLICE 指標關鍵字")
+
+        # 不得包含 CI Run ID
+        if re.search(r"\bRun\s*#?\d+\b", payload, re.IGNORECASE):
+            fails.append(f"docs/TASKBOARD.md:{line_no}  『最後更新』為純新鮮度指標，不得包含 CI Run ID")
+
+        # 不得包含 B-\d+ current task ID
+        if re.search(r"\bB-\d+\b", payload):
+            fails.append(f"docs/TASKBOARD.md:{line_no}  『最後更新』為純新鮮度指標，不得保存當前任務 ID (B-\\d+，應由 NEXT_WORK 指標擁有)")
+
+        # 不得包含 TG-MVP current task ID
+        if re.search(r"\bTG-MVP(?:-\w+)?\b", payload):
+            fails.append(f"docs/TASKBOARD.md:{line_no}  『最後更新』為純新鮮度指標，不得保存 TG-MVP 任務 ID")
+
+        # 不得包含 M1 / M2 / M3 / M4 lifecycle summary
+        if re.search(r"\bM[1-4]\b", payload):
+            fails.append(f"docs/TASKBOARD.md:{line_no}  『最後更新』為純新鮮度指標，不得保存 M 階段生命週期副本 (M1..M4)")
+
+        # 不得包含 PASS / ACCEPT ALL / CLOSED / RESOLVED 審查結論
+        for pat, kw in [
+            (r"\bPASS\b", "PASS"),
+            (r"\bACCEPT\s*ALL\b", "ACCEPT ALL"),
+            (r"\bCLOSED\b", "CLOSED"),
+            (r"\bRESOLVED\b", "RESOLVED"),
+        ]:
+            if re.search(pat, payload, re.IGNORECASE):
+                fails.append(f"docs/TASKBOARD.md:{line_no}  『最後更新』為純新鮮度指標，不得保存審查或結案結論 ({kw})")
+
     # ---------------------------------------------------------
     # Part 2: NEXT_WORK 指標結構檢驗
     # ---------------------------------------------------------
@@ -2862,6 +2894,42 @@ def check_24_active_state_projection_guard(repo_root=None):
                             fails.append(f"docs/refactor-backlog.md:{line_no}  {desc}: '{line.strip()}'")
             if not any(f.startswith("docs/refactor-backlog.md") for f in fails):
                 infos.append("docs/refactor-backlog.md §5 可變狀態投影一致，無過期 protected PR 模式宣告")
+
+            # 3. K4-A: 檢驗 §5.4 為 POINTER_ONLY，且不得重新形成 active task queue
+            in_5_4 = False
+            sec_5_4_lines = []
+            for line_no, line in enumerate(lines, 1):
+                if line.startswith("### 5.4") or line.startswith("§5.4"):
+                    in_5_4 = True
+                    continue
+                elif in_5_4 and (line.startswith("## ") or line.startswith("### ") or re.match(r"^\d+\.\s+\*\*", line)):
+                    in_5_4 = False
+                if in_5_4:
+                    sec_5_4_lines.append((line_no, line))
+
+            if sec_5_4_lines:
+                sec_5_4_text = "".join(l for _, l in sec_5_4_lines)
+                if "TASKBOARD.md" not in sec_5_4_text:
+                    fails.append("docs/refactor-backlog.md: §5.4 缺少對 docs/TASKBOARD.md 之指標導向")
+                if "NEXT_WORK" not in sec_5_4_text:
+                    fails.append("docs/refactor-backlog.md: §5.4 缺少對 NEXT_WORK 之指標導向")
+                if "NEXT_SLICE" not in sec_5_4_text:
+                    fails.append("docs/refactor-backlog.md: §5.4 缺少對 NEXT_SLICE 之指標導向")
+
+                for lno, line in sec_5_4_lines:
+                    line_strip = line.strip()
+                    # 匹配條目清單如 - B-109, * B-109, | B-109 | 等 active task queue
+                    if re.search(r"^\s*[-*|]\s*(?:\|?\s*)?(?:B-\d+|TG-MVP)\b", line):
+                        fails.append(f"docs/refactor-backlog.md:{lno}  §5.4 為 POINTER_ONLY，不得重新形成 active task queue 條目: '{line_strip}'")
+                    # 不得保存 M 階段生命週期副本
+                    if re.search(r"\bM[1-4]\s*(?:ACCEPTED|CLOSED|READY|PENDING|LATER)\b", line, re.IGNORECASE):
+                        fails.append(f"docs/refactor-backlog.md:{lno}  §5.4 為 POINTER_ONLY，不得保存 M 階段生命週期副本: '{line_strip}'")
+                    # 不得保存 CI run ID
+                    if re.search(r"\bRun\s*#?\d+\b", line, re.IGNORECASE):
+                        fails.append(f"docs/refactor-backlog.md:{lno}  §5.4 為 POINTER_ONLY，不得保存 CI Run ID: '{line_strip}'")
+
+            if not any(f.startswith("docs/refactor-backlog.md") for f in fails):
+                infos.append("docs/refactor-backlog.md §5.4 維持 POINTER_ONLY，無 active task queue 殘留")
         except Exception as e:
             fails.append(f"docs/refactor-backlog.md:0  讀取失敗: {e}")
 
@@ -2910,6 +2978,66 @@ def check_25_mechanical_governance(root_dir=None):
                     fails.append(f"docs/governance/rule-registry.json: 包含未授權額外 Rule IDs: {sorted(extra_ids)}")
                 if rule_ids == expected_ids:
                     infos.append(f"rule-registry.json 存在且 {reg_ver} 規則清單驗證通過 (共 {len(rule_ids)} 條)")
+
+            # 1b. runtime_surface_policy 驗證
+            rsp = reg.get("runtime_surface_policy")
+            if not isinstance(rsp, dict):
+                fails.append("docs/governance/rule-registry.json: 缺少 'runtime_surface_policy' 物件")
+            else:
+                expected_rsp_fields = {
+                    "policy_version": "B109-M3",
+                    "kernel_path": "AGENTS.md",
+                    "kernel_canary": "HH_AI_V2_KERNEL_CANARY_V1_260922",
+                    "kernel_max_chars": 6000,
+                    "single_rule_max_chars": 12000,
+                    "prompt_preflight_safety_target_chars": 9500,
+                    "always_on_total_max_chars": 8000,
+                    "rules_without_verified_activation_metadata_must_not_be_treated_as_verified_loaded": True,
+                    "runtime_evidence_authority": "docs/ops/antigravity-environment-baseline.md",
+                }
+                for fld, exp_val in expected_rsp_fields.items():
+                    act_val = rsp.get(fld)
+                    if act_val != exp_val:
+                        fails.append(f"docs/governance/rule-registry.json: runtime_surface_policy.{fld} 預期為 {exp_val!r} (實際: {act_val!r})")
+
+                anchors = rsp.get("kernel_required_anchors")
+                expected_anchors = [
+                    "KERNEL-ROLE-BOUNDARY",
+                    "KERNEL-CREDENTIAL-BOUNDARY",
+                    "KERNEL-CROSS-SESSION-BOUNDARY",
+                    "KERNEL-DESTRUCTIVE-GIT",
+                    "KERNEL-EXACT-SHA-MAIN",
+                    "KERNEL-GOVERNANCE-FREEZE",
+                    "KERNEL-MUTATION-PREFLIGHT",
+                    "KERNEL-SAFETY-WINS",
+                ]
+                if anchors != expected_anchors:
+                    fails.append(f"docs/governance/rule-registry.json: runtime_surface_policy.kernel_required_anchors 不相符 (預期: {expected_anchors}, 實際: {anchors})")
+
+                if not isinstance(rsp.get("always_on_rule_allowlist"), list):
+                    fails.append("docs/governance/rule-registry.json: runtime_surface_policy.always_on_rule_allowlist 必須為陣列")
+
+            # 1c. state_authority_policy 驗證
+            sap = reg.get("state_authority_policy")
+            if not isinstance(sap, dict):
+                fails.append("docs/governance/rule-registry.json: 缺少 'state_authority_policy' 物件")
+            else:
+                expected_sap_fields = {
+                    "policy_version": "B109-M3",
+                    "remaining_work_authority": "docs/TASKBOARD.md",
+                    "next_work_field": "NEXT_WORK",
+                    "next_slice_field": "NEXT_SLICE",
+                    "audit_verdict_authority": "docs/AUDIT-LOG.md",
+                    "accepted_checkpoint_authority": "docs/refactor-backlog.md#5.1",
+                    "user_decision_projection": "docs/refactor-backlog.md#5.3",
+                    "executor_evidence_authority": "docs/EXEC-LOG.md",
+                    "backlog_5_4_role": "POINTER_ONLY",
+                    "taskboard_last_updated_role": "FRESHNESS_POINTER_ONLY",
+                }
+                for fld, exp_val in expected_sap_fields.items():
+                    act_val = sap.get(fld)
+                    if act_val != exp_val:
+                        fails.append(f"docs/governance/rule-registry.json: state_authority_policy.{fld} 預期為 {exp_val!r} (實際: {act_val!r})")
         except Exception as e:
             fails.append(f"docs/governance/rule-registry.json:0  解析失敗: {e}")
 

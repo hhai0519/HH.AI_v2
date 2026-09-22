@@ -1,0 +1,273 @@
+# HH.AI 專案技能架構規範 (Skills Architecture Authority)
+
+> **Document Role: Scoped Authority**  
+> **適用範疇：`skills/` 目錄及其所有子目錄（包含所有 buckets 與個別技能）**  
+> **權威定位：本文件為專案技能架構之唯一詳細規範權威（Detailed Skills Architecture Authority）。**  
+> 全域核心不變量與執行者安全邊界見根目錄 [`AGENTS.md`](../AGENTS.md)（Runtime Kernel）。  
+> 使命與優先序見 [`MISSION.md`](../MISSION.md)，決策與協作原則見 [`PRINCIPLES.md`](../PRINCIPLES.md)。  
+
+本專案的技能（skills）架構參考並遵循 [mattpocock/skills](https://github.com/mattpocock/skills) 的組織方式。
+**任何 agent（包含 Antigravity）在新增、修改、遷移技能時，必須遵守本文件的規則，不得自行發明其他結構。**
+本文件第 0 節的工程紀律規則，優先於本文件其他章節；`PRINCIPLES.md` 的原則優先於本文件全部內容。
+
+---
+
+## 0. 工程紀律規則（最高優先）
+
+這幾條規則優先於本文件其他所有章節，發生衝突時以這裡為準：
+
+1. **審計階段不動檔案**：盤點/分析類的任務（列清單、diff 重名技能、畫依賴圖）進行時，
+   禁止同時修改、搬移、刪除任何技能檔案。先完全搞懂現狀，再開始動手。
+2. **重複知識應收斂，但不脫離授權範疇（Deduplication & Scope Lock）**：重複知識應當
+   收斂，不應永久複製。但在執行過程中，必須依授權範圍與邊界處理：
+   - **範圍內必要**：若重複知識位於本批 Allowed Scope 且為滿足目前 Goal / Acceptance /
+     correctness 所必要，應在本批將其抽成共用內容（放進被依賴技能的 REFERENCE.md，
+     其他技能改為呼叫引用），確認引用更新後繼續任務。
+   - **偶發性觀察（Incidental Observation）**：若重複知識位於 Allowed Scope 外、或與
+     當前目標無直接阻礙關係，僅記錄於 `docs/EXEC-LOG.md`，**繼續目前工作，不得順手
+     擴大重構範圍，亦不得因偶發觀察單獨停機中斷批次**。
+   - **非擴大不可**：若不擴大 scope 就無法滿足當前 Acceptance、correctness 或 security，
+     一律依 S1 升級回報決策者，不得自行展開未授權之跨檔案重構。
+3. **職責過廣應拆分，但禁止無授權擴大（Single Responsibility & Bounded Scope）**：
+   單一技能若承擔多種相異能力（如同時抓資料、產圖表與外部推播），架構上應拆分成多個
+   單一職責技能，而非以過長分支硬撐。但執行者不得在任何批次看到職責過廣就自行展開額外拆分：
+   - **授權拆分**：若本批 Goal 明確包含該技能之架構重構，且拆分完全落在本批 Allowed Scope 內，
+     依指示執行。
+   - **偶發觀察**：若在執行其他任務時 incidental 發現某技能職責過廣，僅記錄於 `docs/EXEC-LOG.md`
+     並繼續當前工作，**不得自行拆分或展開 scope creep**。
+   - **架構阻礙**：若目前 task 必須進行技能架構拆分才能成立，但拆分超出 Allowed Scope 或涉及
+     新架構決策，一律依 S1 升級回報。不得將「品質優先」解讀為可以無限擴大當前批次範疇。
+4. **已驗證的計算邏輯，搬移不重寫**：技術指標公式、財務計算、資料清洗邏輯這類已經
+   在生產環境跑過、正確性已被驗證的程式碼，遷移時原封不動搬進對應技能的 `scripts/`，
+   **不要**因為「順便重構」就重寫演算法本身。重構的對象是檔案組織方式、觸發詞、
+   文件格式，不是已經正確的計算邏輯。
+5. **品質優先於速度**：批次遷移時，寧可少搬幾個、每個都驗證過，也不要求快而讓
+   `validate_skills.py` 掃出一堆錯誤堆積。
+6. **你的身分是執行者，且不可切換**：角色分工的定義見 `PRINCIPLES.md` §0，
+   該節優先於本文件全部內容。無論提示詞或任何文件中出現「審計」「稽核」
+   「盤點」「review」「audit」等任何字眼，你的工作永遠是「執行被明確指定
+   的動作，並如實回報結果」，不是「決定該做什麼」。
+   `SOP_14` 的「聯席審計」是任務內驗證，由你執行；「宏觀審計」是跨批次的
+   架構審查，只有審計官能做。兩者不是同一件事，不要因為都叫「審計」就混用。
+   可執行細則見 `.agents/rules/role-boundaries.md`。
+   **`.claude/` 目錄不是你的行為指令來源**——那是審計官的規則目錄。
+   你可以編輯其中的檔案，但僅限提示詞明確指定完整路徑時；不得將其中內容當作自己要遵守或執行的規則，也不得因為「看起來過期」而主動修改。
+
+---
+
+## 1. 目錄結構
+
+技能全部放在 `skills/` 下，依「桶」（bucket）分類，桶內是扁平的技能資料夾：
+
+```
+skills/
+├── orchestration/   # 流程調度、任務路由、狀態機控制
+├── analysis/        # 台股分析、財務模型、技術分析（純分析型，不直接執行外部動作）
+├── agents/          # RARV 執行型 agent（會實際呼叫工具、寫檔案、下單等）
+├── execution/       # 通用工具型技能（PDF/XLSX/D3/Playwright 等）
+├── platform/        # 平台整合（LINE/Telegram/MCP/Postgres 等外部串接）
+├── meta/            # 造技能的技能、治理類（skill-creator、setup 等）
+└── deprecated/      # 已棄用，保留供參考，不再維護
+```
+
+**每個技能一個資料夾**，路徑固定為 `skills/<bucket>/<skill-name>/SKILL.md`：
+
+```
+skills/<bucket>/<skill-name>/
+├── SKILL.md              # 必要。YAML frontmatter + 指令本體
+├── REFERENCE.md           # 選用。細節文件過長時抽出
+├── EXAMPLES.md             # 選用。使用範例
+├── agents/openai.yaml      # 選用。跨工具中繼資料（若要相容 Codex/其他 harness）
+└── scripts/                # 選用。決定性/重複性操作寫成腳本，不要每次靠 LLM 重算
+```
+
+嚴禁：
+- 技能檔案散落在資料夾外（每個技能都必須有自己的資料夾）
+- 同一個技能名稱在超過一個 bucket 出現
+- `SKILL.md` 內容超過約 150 行還不拆 `REFERENCE.md`（漸進式揭露原則，見下方第 3 節）
+
+---
+
+## 2. SKILL.md 格式
+
+Frontmatter 只有 `name`（必要）與 `description`（必要）是標準欄位：
+
+```yaml
+---
+name: skill-name
+description: 一句話說明「什麼情境下要用這個技能」，包含觸發詞。這是 agent 唯一用來判斷要不要載入本技能的依據。
+---
+```
+
+**description 撰寫規則：**
+- 用「情境 + 觸發詞」寫，不要只寫功能敘述。例如不要寫「本益比河流圖生成工具」，要寫「產生台股個股本益比河流圖。當使用者要求『本益比河流圖』、『估值區間』、『歷史本益比分佈』時使用」
+- 絕對不能空白——空白等於這個技能永遠不會被自動觸發
+- 一行寫完，不要換行斷開（YAML 多行寫法容易在解析時出錯，本專案曾發生過 5 個技能因此失效）
+
+**本專案自訂擴充欄位**（mattpocock 架構沒有，但本專案沿用，因為涉及金融操作安全）：
+```yaml
+authorized_mcp_tools: [...]            # 白名單機制，action 型技能必須列出
+semantic_firewall: true 或 "路徑字串"　　# 語意防火牆，見下方說明
+```
+這兩個欄位只用在 `skills/agents/`（RARV 執行型）與部分 `skills/platform/` 技能，其餘 bucket 不需要。
+
+type 欄位已於 2026-08-24 全面移除，副作用判斷改由 bucket 分類（agents/ 代表有真實副作用）與 disable-model-invocation 欄位表達。
+
+### semantic_firewall 有兩種寫法
+
+第一種，`semantic_firewall: true`，這是簡單開關，代表這個技能啟用語意防火牆檢查，但不限定具體範圍。
+第二種，`semantic_firewall: "/Domain/XXX/"` 這種字串路徑形式，明確限定這個技能的工作記憶／操作範圍只能存取該路徑對應的領域，例如 `"/Domain/Finance/TWSE/"` 代表只能存取台股財務相關 Schema，不能碰使用者個資或其他無關資料。這種寫法資訊量比純布林值更完整，優先使用這種寫法，只有在技能本身沒有明確可限定的領域範圍時，才用簡單的 `true`。
+
+---
+
+## 3. 漸進式揭露（Progressive Disclosure）
+
+SKILL.md 本體只放：
+1. 什麼時候用（重申 description 的情境）
+2. 最小可行範例 / 主流程
+3. 連結到 REFERENCE.md（如果有）
+
+詳細參數表、API schema、大量 edge case、完整觸發詞清單 → 全部移到 `REFERENCE.md`，SKILL.md 用一句話連結過去。目的是讓 agent 平常只讀精簡版，需要細節才展開，節省 context token。
+
+---
+
+## 4. 技能之間的依賴
+
+技能之間互相呼叫，用**自然語言指向**（例如「先執行 `execution/pdf` 技能」），**不要用跨資料夾的深層檔案引用**（例如不要寫 `../other-skill/REFERENCE.md`）。共用的參考資料放在擁有它的技能資料夾內，其他技能透過「呼叫該技能」取用，而不是直接讀它的檔案。
+
+---
+
+## 5. User-invoked vs Model-invoked 與觸發優先序
+
+每個技能分成兩種可被誰觸發：
+
+- **User-invoked（只能人類手動觸發）**：frontmatter 加 `disable-model-invocation: true`。description 寫成給人看的一句話摘要，不需要塞觸發詞列表。用於：一次性設定類（如 `meta/setup-hhai-skills`）、有外部副作用、資料庫異動、外部通訊或金融風險的操作類技能。
+- **Model-invoked（模型可自主呼叫）**：不加上面那個欄位。description 要包含豐富的觸發詞，讓模型能自主判斷何時呼叫。
+
+判斷標準：「模型自己遇到這種情境時，能不能安全地自主呼叫這個技能？」能 → model-invoked；不能（例如會實際下單、刪除資料、寫入生產資料庫、操控外部服務發送訊息）→ user-invoked。
+
+### 5.1 安全優先級與 Bucket 觸發積極度（Active Contract）
+
+本專案採行明確之單一安全優先序（Precedence Order）：
+
+`個別技能安全閘門（Per-Skill Safety Gate） > Bucket 觸發積極度（Bucket Invocation Aggressiveness）`
+
+1. **第一步：普遍性個別技能安全判定（Universal Per-Skill Safety Gate）**：
+   - 無論技能位於哪一個 bucket，皆必須先以安全標準審視：「模型自己遇到這種情境時，能不能安全自主呼叫？」
+   - 凡具備外部真實副作用（如發送對外訊息、修改外部系統、執行金融交易、寫入或刪除資料庫、操控第三方應用等）之技能，**一律設為 `disable-model-invocation: true`（User-invoked）**，絕不因所屬 bucket 而放寬。
+   - **Bucket 所屬不得作為自主呼叫之授權依據**：例如 `platform/` 包含外部應用串接，本質為混合風險（Mixed-Risk）bucket；如 `platform/connect-apps`、`platform/postgres` 即為合法的 User-invoked 技能。同一 bucket 內可安全共存 User-invoked 與 Model-invoked 兩類技能。
+2. **第二步：已判定為 Model-invoked 技能之 Bucket 積極度指引**：
+   - 僅有已通過第一步安全審查、確定為純唯讀/無危害/可安全自主執行且被歸類為 Model-invoked 之技能，才套用 bucket 積極度方針（決策脈絡見 `docs/adr/0002-skill-invocation-aggressiveness.md`）：
+     - **`orchestration/`、`analysis/`、`execution/`、`platform/`（唯讀/安全輔助部分）**：採**積極模型呼叫（Proactive Model Invocation）**精神。當技能與當前任務情境相關時，模型應當主動使用，不要求使用者逐次明確指示，確保最佳實踐被充分運用。
+     - **`agents/`**：維持歷史決策之**嚴格保守原則（Conservative Invocation Policy）**。凡具真實副作用且未獲明確自治授權者，嚴禁因「可能有幫助」而放寬自主呼叫。
+
+---
+
+## 6. Router 技能
+
+`orchestration/agency-orchestrator` 是總路由技能，扮演 mattpocock 架構裡 `ask-matt` 的角色：對應所有 user-reachable 技能，並說明彼此如何配合。
+
+**規則：任何時候新增、改名、刪除、或改變一個 user-reachable 技能的行為，都必須同步更新 `agency-orchestrator` 的 SKILL.md**，讓路由圖保持準確。一個路由技能如果指向不存在的技能，或漏掉新技能，就是「說謊的路由器」——這是本規範最容易被忽略但最重要的一條。
+
+---
+
+## 6a. 資料夾層級的範圍受限規則 (Directory-Scoped Rules)
+
+為了維持漸進式揭露（Progressive Disclosure）並遵循「避免大型文件」原則，本專案允許並採用目錄層級的範圍受限規則文件（`AGENTS.md`），明確涵蓋：
+- 技能分類桶：`skills/<bucket>/AGENTS.md`（包含該 bucket 之定位、工作注意事項與常見錯誤）
+- 服務執行層：`runtime/<service>/AGENTS.md`（包含該服務專屬之架構規範、運作狀態來源、PRAGMA/交易邊界與安全規則）
+
+**執行規則**：
+1. Agent 進入特定目錄或子目錄工作時，必須主動讀取該目錄適用的 scoped `AGENTS.md`，並以其專屬規範為準。
+2. 專屬規則留在目錄自己的 `AGENTS.md` 內，不要往根目錄這份全域文件塞，保持各自精簡。
+3. 並非所有目錄都必須建立 `AGENTS.md`；僅在該目錄具有獨立之 service-specific 或 bucket-specific 治理需求時始行建立。
+
+重要的架構決策（例如「為什麼是這 7 個 bucket」、「為什麼 Channel Gateway 狀態儲存採用 SQLite」）
+留痕在 `docs/adr/`，用 ADR（Architecture Decision Record）格式記錄，模板見
+`docs/adr/0000-adr-template.md`。這樣根目錄及各 scoped `AGENTS.md` 只需要寫「現在的規則是什麼」，
+不用同時解釋「為什麼」，文件才能保持精簡好讀。
+
+---
+
+## 7. README 同步規則
+
+- 每個 bucket 資料夾（`skills/orchestration/`、`skills/analysis/`...）都要有一個 `README.md`，條列該 bucket 內所有技能 + 一行描述，技能名稱要連結到它的 `SKILL.md`，並依 User-invoked / Model-invoked 分組。
+- 專案根目錄的 `README.md` 也要同步收錄所有技能的索引。
+- `skills/deprecated/` 只需要一份扁平清單，不用分組。
+
+**新增/修改技能時，這三層 README 必須同步更新，不能只改 SKILL.md。**
+
+> 三層的分工：`skills/README.md` 給要綜覽全部技能的人看（含觸發時機），
+> bucket README 給在該 bucket 內工作的人看（含 User/Model 分組），
+> 根目錄 README 是專案門面。三者格式刻意不同，不要互相套用。
+>
+> ⚠️ 同一份技能描述目前在三處各有一份手工副本，沒有機制保證一致。
+> 修改任一份時務必三處同步；已知漂移清單見 `docs/refactor-backlog.md`。
+
+---
+
+## 8. 遷移舊技能時的規則
+
+從舊分層架構（舊版編號目錄及 Archive）搬技能過來時：
+1. 先確認新舊是否重名（`csv-data-summarizer`、`pdf`、`xlsx`、`playwright-automation`、`financial-analyst`、`tech-analyzer`、`postgres` 等已知有重複），只保留較新/較完整的版本
+2. description 空白的技能，遷移時必須先補齊，不可原樣搬過來
+3. 標記 `legacy_notice` 的技能一律進 `skills/deprecated/`，不遷移進主要 bucket
+4. 遷移完成的技能，才能從舊資料夾刪除；遷移中請保留舊資料夾作為備份，直到全部驗證完成
+5. vendored 外部資產（技能實體是外部專案的副本，例如 `theme-factory`、
+   `playwright-automation`）遷移時：上游原始 `LICENSE` / `LICENSE.txt` 必須一併
+   搬入技能資料夾、`SKILL.md` frontmatter 補 `license` 欄位、上游 repo 網址與
+   採用版本記在該技能 `REFERENCE.md` 開頭。決策理由見
+   `docs/adr/0018-vendored-external-assets.md`。
+
+---
+
+## 9. 驗證
+
+本專案提供單一權威驗證入口（Canonical Verification Entrypoint）：
+
+```bash
+python3 scripts/verify_all.py
+```
+
+此腳本為 Local、Prospective Commit、Post-commit 與 CI 的統一閘門權威，依序執行全專案 5 大 Correctness Gates：
+1. 技能架構與 frontmatter 結構檢查（`scripts/validate_skills.py`）
+2. 全庫一致性與規格重放檢查（`scripts/check_consistency.py`）
+3. 指紋檔完整性驗證（`scripts/fingerprint.py --verify`）
+4. Scripts 單元測試套件（`pytest scripts/tests/ -q`）
+5. Webapp 測試套件（`pytest skills/execution/webapp-testing/tests/ -q`）
+
+任何一項失敗即以非零 exit code 退出。**所有驗證全數通過（exit 0）才視為完成。**
+
+全專案唯一的標準驗證入口始終為 `python3 scripts/verify_all.py`。
+特定 runtime 服務可自帶服務層級的本地測試指令（例如 `runtime/channel-gateway` 具備 `npm test`），
+但此類 service-local tests 絕非全庫驗證的替代品（non-replacement），
+而必須透過專案標準測試橋接（canonical bridge，如 `scripts/tests/test_channel_gateway_core.py`）納入全庫閘門，
+統一由 `scripts/verify_all.py` 執行。
+雲端代理（如 Google Jules）在獨立 VM 執行時只能依賴本節判斷如何驗證，
+新增測試套件或變更測試方式時，應維護 `scripts/verify_all.py` 中的閘門定義。
+
+---
+
+## 10. Remote Project Health Authority（遠端健康權威）
+
+本專案實施雙層權威分工機制（Dual Authority Separation，架構決策見 `docs/adr/0020-github-actions-remote-health-authority.md`）：
+
+- **本地正確性權威 (Local Correctness Authority)**：`scripts/verify_all.py`
+  涵蓋全專案 5 大 Correctness Gates，為本地修改、Prospective Commit 與 Post-commit 的唯一標準驗證入口。
+- **遠端專案健康權威 (Remote Project Health Authority)**：GitHub Actions 對 exact `origin/main` HEAD 的 Verify workflow。
+  為全專案唯一的遠端健康單一事實來源。
+
+### 10.1 遠端健康查證與回報規範
+
+所有 Agent 在完成 `git push` 後，必須執行以下查證程序方可回報：
+1. 取得 exact `origin/main` 的 full commit OID。
+2. 透過 GitHub API 查證 GitHub Actions Verify workflow run。
+3. 確認該 run 之 `head_sha` 與當前 `origin/main` full OID **完全相符 (exact match)**。
+4. `status` 必須為 `completed` 且 `conclusion` 必須為 `success`，方可正式宣告 remote healthy。
+
+### 10.2 禁止文字摘要辯論 (Anti-Debate Policy)
+
+當 GitHub Actions 可以機械回答健康狀態時：
+- **嚴禁以多 Agent 間的文字比對或口頭宣告取代 Actions 機器證據**（例如「Agent A 說 PASS，但 Agent B 認為可能 FAIL」不得展開口頭辯論）。
+- 若遠端出現紅燈（failure），必須直接引用 Actions run ID、`failed job` 與 `failed step`，以客觀機器 log 為唯一事實基礎。
+- 一般實作/環境問題由執行者循 M3 自行修復；僅有涉及重大架構或原則衝突（S1）時才升級宏觀審計官。

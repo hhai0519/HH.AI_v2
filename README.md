@@ -2,7 +2,7 @@
 
 [![Verify](https://github.com/hhai0519/HH.AI_v2/actions/workflows/verify.yml/badge.svg?branch=main)](https://github.com/hhai0519/HH.AI_v2/actions)
 
-台股分析 + LINE Bot 系統的 agent 技能集合。架構規範見 [AGENTS.md](./AGENTS.md)。
+台股分析 + LINE Bot 系統的 agent 技能集合。全域執行者安全核心與路由見 [AGENTS.md](./AGENTS.md)，詳細技能架構規範見 [skills/AGENTS.md](./skills/AGENTS.md)。
 
 技能分成以下幾個 bucket，每個 bucket 有自己的 README 列出完整清單：
 
@@ -16,7 +16,7 @@
 
 ## 開發規則
 
-新增或修改任何技能或程式碼前，先讀 [AGENTS.md](./AGENTS.md)。Antigravity 會在本專案內自動載入這份規則，
+新增或修改任何程式碼或技能前，先讀根目錄 [AGENTS.md](./AGENTS.md)（全域執行者安全核心與路由）以及 [skills/AGENTS.md](./skills/AGENTS.md)（詳細技能架構規範權威）。根目錄 `AGENTS.md` 於 IDE Project Rule 視圖常駐可見；未具備驗證啟用後設資料的 `.agents/rules/*.md` 為專案擁有之操作規則參考（自動載入狀態為 NOT_ESTABLISHED），每批任務依 Execution Contract 執行新鮮磁碟重讀。
 完成任何修改後，必須執行 Canonical 統一驗證入口確保全庫合規：
 
 ```bash

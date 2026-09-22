@@ -289,5 +289,39 @@
       "owner": "Executor / Macro Auditor",
       "description": "Macro audit verdicts in AUDIT-LOG.md are evaluated via an anchored structured verdict parser requiring leading canonical markers (**核對通過) and rejecting substrings or trailing PASS markers on non-pass rows."
     }
-  ]
+  ],
+  "runtime_surface_policy": {
+    "policy_version": "B109-M3",
+    "kernel_path": "AGENTS.md",
+    "kernel_canary": "HH_AI_V2_KERNEL_CANARY_V1_260922",
+    "kernel_max_chars": 6000,
+    "single_rule_max_chars": 12000,
+    "prompt_preflight_safety_target_chars": 9500,
+    "always_on_total_max_chars": 8000,
+    "always_on_rule_allowlist": [],
+    "kernel_required_anchors": [
+      "KERNEL-ROLE-BOUNDARY",
+      "KERNEL-CREDENTIAL-BOUNDARY",
+      "KERNEL-CROSS-SESSION-BOUNDARY",
+      "KERNEL-DESTRUCTIVE-GIT",
+      "KERNEL-EXACT-SHA-MAIN",
+      "KERNEL-GOVERNANCE-FREEZE",
+      "KERNEL-MUTATION-PREFLIGHT",
+      "KERNEL-SAFETY-WINS"
+    ],
+    "rules_without_verified_activation_metadata_must_not_be_treated_as_verified_loaded": true,
+    "runtime_evidence_authority": "docs/ops/antigravity-environment-baseline.md"
+  },
+  "state_authority_policy": {
+    "policy_version": "B109-M3",
+    "remaining_work_authority": "docs/TASKBOARD.md",
+    "next_work_field": "NEXT_WORK",
+    "next_slice_field": "NEXT_SLICE",
+    "audit_verdict_authority": "docs/AUDIT-LOG.md",
+    "accepted_checkpoint_authority": "docs/refactor-backlog.md#5.1",
+    "user_decision_projection": "docs/refactor-backlog.md#5.3",
+    "executor_evidence_authority": "docs/EXEC-LOG.md",
+    "backlog_5_4_role": "POINTER_ONLY",
+    "taskboard_last_updated_role": "FRESHNESS_POINTER_ONLY"
+  }
 }

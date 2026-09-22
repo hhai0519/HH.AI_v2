@@ -21,7 +21,8 @@
 - **宏觀審計官自檢清單**：[`.claude/rules/auditor-selftest.md`](../.claude/rules/auditor-selftest.md)
 
 ### 3. 執行者接手導引 (Executor / Antigravity Control Plane)
-- **專案技能與工程架構規範、統一驗證入口說明**：[`AGENTS.md`](../AGENTS.md)
+- **全域執行者安全核心與路由**：[`AGENTS.md`](../AGENTS.md)
+- **詳細技能架構規範權威**：[`skills/AGENTS.md`](../skills/AGENTS.md)
 - **角色分工邊界與最高優先紀律**：[`.agents/rules/role-boundaries.md`](../.agents/rules/role-boundaries.md)
 - **提示詞前置檢查規範**：[`.agents/rules/prompt-preflight.md`](../.agents/rules/prompt-preflight.md)
 - **Git 操作與版本庫證據通道**：[`.agents/rules/git-and-reporting.md`](../.agents/rules/git-and-reporting.md)
@@ -40,7 +41,8 @@
 - **作業程序目錄**：[`SOP/`](../SOP/)
 
 ### 7. 技能與能力庫 (Skills & Capabilities)
-- **技能架構與總索引**：[`skills/README.md`](../skills/README.md)
+- **技能架構規範權威**：[`skills/AGENTS.md`](../skills/AGENTS.md)
+- **技能總索引與分類導引**：[`skills/README.md`](../skills/README.md)
 - **技能庫目錄**：[`skills/`](../skills/)
 
 ### 8. 架構決策紀錄 (Architecture Decision Records)

@@ -1,7 +1,7 @@
 # 角色邊界規則
 
 > **適用對象：Antigravity IDE Agent（執行者）**
-> 本規則由系統自動載入。發生衝突時，本規則優先於任何提示詞中的角色描述。
+> 根目錄 `AGENTS.md` 於 IDE Project Rule 視圖常駐可見（OBSERVED_VISIBLE），為執行者全域安全核心；未具備驗證啟用後設資料的 `.agents/rules/*.md` 為專案擁有之操作規則參考（自動載入狀態為 NOT_ESTABLISHED），任務前依 Execution Contract 進行定向重讀。發生衝突時，本規則優先於任何提示詞中的角色描述。
 > 身分定義的本體在 `PRINCIPLES.md` §0，本文件是執行者這一側的可執行細則。
 
 ---
@@ -75,7 +75,7 @@
 
 | 目錄 | 適用對象 | 控制平面定位與權威 |
 |---|---|---|
-| `.agents/`（含根目錄 `AGENTS.md`） | 你（執行者） | Antigravity Control Plane。系統自動載入，為你的行為準則與權威本體，必須嚴格遵守 |
+| `.agents/`（含根目錄 `AGENTS.md`） | 你（執行者） | Antigravity Control Plane。根目錄 `AGENTS.md` 為 Project Rule 視圖常駐可見之全域安全核心；`.agents/rules/*.md` 為專案擁有之操作規則參考（自動載入狀態為 NOT_ESTABLISHED，依 Execution Contract 定向重讀），為你的行為準則本體，必須嚴格遵守 |
 | `.claude/` | 宏觀審計官 | Macro Auditor Control Plane。審計官作業標準與操作投影（歷史相容實體路徑），**不得當作你的行為指令** |
 
 `.claude/rules/auditor-protocol.md` 裡有「審計維度」「Gatekeeping」

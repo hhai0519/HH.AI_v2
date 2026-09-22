@@ -24,6 +24,7 @@ from check_consistency import (
     check_20_markdown_table_continuity,
     check_21_secret_leak_guard,
     check_22_ci_supply_chain,
+    check_24_active_state_projection_guard,
     check_25_mechanical_governance_v1_guard,
     check_26_plan_actual_evidence_integrity,
     parse_macro_audit_verdict,
@@ -57,7 +58,7 @@ def _setup_check_9_env(tmp_path, checkpoint_hash, audit_rows, bl_extra=""):
 # ---------------------------------------------------------------------------
 
 def _make_taskboard_content(
-    last_updated="**最後更新**：2026-09-13，Router / Anti-Loop / State Placement Hardening",
+    last_updated="**最後更新**：2026-09-22，活動看板狀態請參見 NEXT_WORK 與 NEXT_SLICE。",
     next_work="**NEXT_WORK**：G-90",
     active_macro_auditor="**ACTIVE_MACRO_AUDITOR**：GPT 代理審查官（使用者授權）",
     tasks=None,
@@ -186,8 +187,8 @@ def test_check_8_taskboard_metadata_purity_fail_missing_date(tmp_path):
         encoding="utf-8",
     )
     fails, infos = check_8_taskboard_head(str(tmp_path))
-    assert len(fails) == 1
-    assert "缺少有效日期" in fails[0]
+    assert len(fails) >= 1
+    assert any("缺少有效日期" in f for f in fails)
 
 
 def test_check_8_taskboard_metadata_purity_fail_missing_desc(tmp_path):
@@ -199,8 +200,8 @@ def test_check_8_taskboard_metadata_purity_fail_missing_desc(tmp_path):
         encoding="utf-8",
     )
     fails, infos = check_8_taskboard_head(str(tmp_path))
-    assert len(fails) == 1
-    assert "缺少工作階段或當前狀態描述" in fails[0]
+    assert len(fails) >= 1
+    assert any("缺少工作階段或當前狀態描述" in f for f in fails)
 
 
 def test_check_8_fail_missing_next_work_marker(tmp_path):
@@ -233,7 +234,7 @@ def test_check_8_pass_narrative_text_mentioning_next_work(tmp_path):
     tb = docs / "TASKBOARD.md"
     content = (
         "# 看板\n"
-        "**最後更新**：2026-09-13，Router / Anti-Loop / State Placement Hardening\n"
+        "**最後更新**：2026-09-22，活動看板狀態請參見 NEXT_WORK 與 NEXT_SLICE。\n"
         "**ACTIVE_MACRO_AUDITOR**：GPT 代理審查官（使用者授權）\n"
         "**NEXT_WORK**：G-90\n\n"
         "> 請讀 `**NEXT_WORK**` pointer\n"
@@ -2111,6 +2112,134 @@ def test_check_25_taskboard_missing_recovery_trigger_fail(tmp_path):
     f.write_text(f.read_text(encoding="utf-8").replace("antigravity-environment-baseline.md", "other-doc.md"), encoding="utf-8")
     fails, infos = check_25_mechanical_governance_v1_guard(str(tmp_path))
     assert any("recovery trigger" in f_msg or "antigravity-environment-baseline.md" in f_msg for f_msg in fails)
+
+
+# ---------------------------------------------------------------------------
+# Section 33 Negative Controls: State Convergence Guards (A - F)
+# ---------------------------------------------------------------------------
+
+def test_check_24_section_5_4_active_b_task_queue_fail(tmp_path):
+    """Negative control A: Section 5.4 containing active B-task queue must FAIL CHECK 24."""
+    docs = tmp_path / "docs"
+    docs.mkdir(parents=True, exist_ok=True)
+    tb = docs / "TASKBOARD.md"
+    tb.write_text("# 看板\n**最後更新**：2026-09-22，活動看板狀態請參見 NEXT_WORK 與 NEXT_SLICE。\n", encoding="utf-8")
+    rb = docs / "refactor-backlog.md"
+    rb.write_text(
+        "### 5.4 進行中／等待回報\n\n"
+        "參見 [docs/TASKBOARD.md](TASKBOARD.md) 之 **NEXT_WORK** 與 **NEXT_SLICE**。\n"
+        "- B-109：進行中（M3 READY）\n"
+        "56. **Some historical item**\n",
+        encoding="utf-8",
+    )
+    fails, infos = check_24_active_state_projection_guard(str(tmp_path))
+    assert any("§5.4 為 POINTER_ONLY，不得重新形成 active task queue 條目" in f for f in fails)
+
+
+def test_check_8_last_updated_b_task_or_m_stage_lifecycle_copy_fail(tmp_path):
+    """Negative control B: last-updated containing B-task or M-stage lifecycle copy must FAIL CHECK 8."""
+    docs = tmp_path / "docs"
+    docs.mkdir(parents=True, exist_ok=True)
+    tb = docs / "TASKBOARD.md"
+    # Case 1: B-task ID in last-updated
+    tb.write_text(
+        _make_taskboard_content(
+            last_updated="**最後更新**：2026-09-22，NEXT_WORK = B-109，NEXT_SLICE = M3 READY"
+        ),
+        encoding="utf-8",
+    )
+    fails, infos = check_8_taskboard_head(str(tmp_path))
+    assert any("不得保存當前任務 ID" in f or "不得保存 M 階段生命週期副本" in f for f in fails)
+
+    # Case 2: M-stage copy in last-updated
+    tb.write_text(
+        _make_taskboard_content(
+            last_updated="**最後更新**：2026-09-22，NEXT_WORK 與 NEXT_SLICE，M3 CLOSED"
+        ),
+        encoding="utf-8",
+    )
+    fails, infos = check_8_taskboard_head(str(tmp_path))
+    assert any("不得保存 M 階段生命週期副本" in f or "不得保存審查或結案結論" in f for f in fails)
+
+
+def test_check_8_last_updated_sha_checkpoint_fail(tmp_path):
+    """Negative control C: last-updated containing SHA or checkpoint still fails CHECK 8."""
+    docs = tmp_path / "docs"
+    docs.mkdir(parents=True, exist_ok=True)
+    tb = docs / "TASKBOARD.md"
+    tb.write_text(
+        _make_taskboard_content(
+            last_updated="**最後更新**：2026-09-22，NEXT_WORK 與 NEXT_SLICE，checkpoint 34babd5..HEAD"
+        ),
+        encoding="utf-8",
+    )
+    fails, infos = check_8_taskboard_head(str(tmp_path))
+    assert any("checkpoint" in f or "HEAD" in f or "commit range" in f for f in fails)
+
+
+def test_check_25_corrupt_state_authority_policy_remaining_work_fail(tmp_path):
+    """Negative control D: Corrupting state_authority_policy.remaining_work_authority must FAIL CHECK 25."""
+    _setup_check_25_env(tmp_path)
+    reg_path = tmp_path / "docs" / "governance" / "rule-registry.json"
+    with open(reg_path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    data["state_authority_policy"]["remaining_work_authority"] = "docs/WRONG.md"
+    with open(reg_path, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2)
+
+    fails, infos = check_25_mechanical_governance_v1_guard(str(tmp_path))
+    assert any("state_authority_policy.remaining_work_authority 預期為" in f for f in fails)
+
+
+def test_check_25_corrupt_runtime_surface_policy_kernel_path_fail(tmp_path):
+    """Negative control E: Corrupting runtime_surface_policy.kernel_path or required fields must FAIL CHECK 25."""
+    _setup_check_25_env(tmp_path)
+    reg_path = tmp_path / "docs" / "governance" / "rule-registry.json"
+    with open(reg_path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    # Corrupt kernel_path
+    data["runtime_surface_policy"]["kernel_path"] = "WRONG_AGENTS.md"
+    with open(reg_path, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2)
+
+    fails, infos = check_25_mechanical_governance_v1_guard(str(tmp_path))
+    assert any("runtime_surface_policy.kernel_path 預期為" in f for f in fails)
+
+    # Corrupt required fields (e.g. empty kernel_required_anchors)
+    data["runtime_surface_policy"]["kernel_path"] = "AGENTS.md"
+    data["runtime_surface_policy"]["kernel_required_anchors"] = []
+    with open(reg_path, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2)
+
+    fails, infos = check_25_mechanical_governance_v1_guard(str(tmp_path))
+    assert any("runtime_surface_policy.kernel_required_anchors 不相符" in f for f in fails)
+
+
+def test_check_consistency_k4a_state_compliant_pass(tmp_path):
+    """Negative control F: Current compliant fixture must PASS CHECK 8, 24, and 25."""
+    _setup_check_25_env(tmp_path)
+    # Also provide compliant refactor-backlog.md with section 5.4
+    rb = tmp_path / "docs" / "refactor-backlog.md"
+    rb.write_text(
+        "### 5.3 使用者裁決\n- 裁決記錄\n\n"
+        "### 5.4 進行中／等待回報\n\n"
+        "參見 [docs/TASKBOARD.md](TASKBOARD.md) 之 **NEXT_WORK** 與 **NEXT_SLICE**。\n"
+        "剩餘工作權威：docs/TASKBOARD.md。\n\n"
+        "56. **Some historical item**\n",
+        encoding="utf-8",
+    )
+    # Run CHECK 8
+    fails8, _ = check_8_taskboard_head(str(tmp_path))
+    assert fails8 == [], f"CHECK 8 failed on compliant fixture: {fails8}"
+
+    # Run CHECK 24
+    fails24, _ = check_24_active_state_projection_guard(str(tmp_path))
+    assert fails24 == [], f"CHECK 24 failed on compliant fixture: {fails24}"
+
+    # Run CHECK 25
+    fails25, _ = check_25_mechanical_governance_v1_guard(str(tmp_path))
+    assert fails25 == [], f"CHECK 25 failed on compliant fixture: {fails25}"
+
 
 
 # ---------------------------------------------------------------------------

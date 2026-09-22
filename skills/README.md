@@ -15,7 +15,7 @@
 - [**`skills/deprecated/`** (已棄用)](#skillsdeprecated-已棄用)：已棄用，保留供參考，不再維護，不會被自動觸發。
 
 > **關於「適用場景 / 觸發時機」欄位的 `-`**：表示該技能的 `description`
-> 尚未依 `AGENTS.md` §2 補上觸發詞。模型是靠 `description` 判斷要不要載入技能，
+> 尚未依 `skills/AGENTS.md` §2 補上觸發詞。模型是靠 `description` 判斷要不要載入技能，
 > 缺觸發詞的技能可能無法被自主觸發。已列入 `docs/refactor-backlog.md` 追蹤，
 > 待專批處理。**請勿在本檔案手動填寫這些格子**——正確的修法是補 `SKILL.md`
 > 的 `description`，在索引填空只會掩蓋問題。
@@ -121,8 +121,8 @@ _(尚無技能)_
 
 - 每個 Skill 的內容定義在其目錄下的 `SKILL.md`（frontmatter + 指令本體）。
   細節文件過長時會拆出 `REFERENCE.md`，使用範例放 `EXAMPLES.md`，
-  決定性操作放 `scripts/`。完整目錄結構規範見 `AGENTS.md` §1。
-- 若需新增或修改 Skill，請遵守 `AGENTS.md` 的規範，並執行
+  決定性操作放 `scripts/`。完整目錄結構規範見 `skills/AGENTS.md` §1。
+- 若需新增或修改 Skill，請遵守 `skills/AGENTS.md` 的規範，並執行
   `python3 scripts/validate_skills.py` 驗證（Windows 需先設定
   `$env:PYTHONIOENCODING = "utf-8"`）。
 - 技能若需要 MCP 工具或憑證，相關環境變數存放於 Windows User 層級環境變數，

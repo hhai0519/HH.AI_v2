@@ -3059,70 +3059,23 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 5.4 進行中／等待回報
 
-> **本節為反映當前事實之可變狀態投影（mutable interface），只保留現行狀態。**
-> 每次更新時，被取代的陳舊條目（stale state）一律替換或移除，不得把過期狀態堆在 §5 作為「歷史」。
-> 歷史理由與事實屬於留痕層（append-only），落點為正文編號項目，不是本節。
+> **本節依 K4-A 使用者正式裁決收斂為純指標導向（POINTER_ONLY），不保存動態工作佇列或生命週期副本。**
+> 剩餘工作唯一權威來源為 `docs/TASKBOARD.md`。
 
-- **尚待審計判準（Pending-Audit Contract）**：待審計範圍必須在讀取時以確定性指令即時導出（machine-derived），不在本檔持久化當前 HEAD、commit range、候選 hash 或 commit/push 等易失真狀態，且不設定固定 commit-count 數量上限。
-  - actual HEAD = `git rev-parse HEAD`
-  - checkpoint = §5.1 第一行記載之「上次核對通過的 HEAD（last audited checkpoint）」
-  - 若 `HEAD == checkpoint` → 無尚待宏觀審計之 commit（no pending macro-audit commit）
-  - 若 `HEAD != checkpoint` → `checkpoint..HEAD` 即為尚待宏觀審計之 commit range（包含 checkpoint 之後至當前 HEAD 間所有 pending / repair commits，不因 commit 數量直接判定 FAIL）
-- **交接與審計生命週期（Handoff & Audit Lifecycle）**：
-  - Formal Production Handoff 已完成（D-01 / D-02 PASS）。
-  - Pre-Handoff Router / Anti-Loop Hardening 已完成。
-  - Verification Integrity / False-Green Fail-Closed Hardening 已完成 External Macro Audit 並正式 CLOSED。
-  - Runtime Rule Freshness Reconciliation 已完成 External Macro Audit 並正式 CLOSED。
-  - Material Finding → TASKBOARD Promotion Contract 已完成 External Macro Audit 並正式 CLOSED。
-  - generated rule traceability External Macro PASS / CLOSED。
-  - Executor prompt-preflight machine enforcement External Macro PASS / CLOSED。
-  - Prompt Manifest runtime interception 已由兩種 malformed-prompt canary 實證。
-  - B-31 / B-88 / B-89 CLOSED。
-  - B-68 Dependency Closure External Macro PASS / CLOSED。
-  - malformed-scope Runtime Canary PASS。
-  - session-local User Prompt Compiler Mode specification 已登錄於 TASKBOARD，尚未實作。
-  - B-41 Slim Bootstrap / Runtime Reconciliation External Macro PASS / CLOSED。
-  - B-99 Qualification-Based Macro Auditor & Repo-Visible Handoff（CLOSED / MACRO PASS）。
-  - B-97 Pre-B01 Comprehensive Release Audit 已完成（CLOSED / PRE-B01 RELEASE PASS）。
-  - B-01 ADR-0002／0004／0010 分層搬移及 Active-Contract 語意修復已完成（CLOSED / MACRO PASS）。
-  - E-03 Runtime 執行層架構推進（IN PROGRESS）：現行詳細生命週期、架構決策與各切片進度之單一事實來源由 docs/TASKBOARD.md 之「E-03 ROADMAP」統一維護；交接區不保留第二份長狀態副本。各項相依前置邊界（B-98 / B-30 / B-33 / F-05 等）與交接不變量（handoff invariants）以 TASKBOARD 為準。
-  - C-06 使用者已裁決採 Option B（USER DECIDED OPTION B / G2 LANDING PENDING，排定於 TG-MVP-01B / G2 落地）。
-- RECON-01 / TG-MVP-01A 歷史待辦需求機械對帳：已完成（ACCEPTED / CLOSED）。
-- TG-MVP-02 入站事件身份識別與游標語意 ADR：已完成（ACCEPTED / CLOSED，產出 docs/adr/0024-inbound-identity-cursor-semantics.md，accepted checkpoint = 93a316f93dadf6e5a1199dc7da0542016742112c）。
-- TG-MVP-03 出站可靠度與本機 API 安全架構 ADR：已完成（ACCEPTED / CLOSED，產出 docs/adr/0025-outbound-reliability-loopback-api-security.md，accepted checkpoint = 4db5d498fa035e14c8628540ce269627aa038ea1）。
-  - 重大發現處置：TG-MVP-03-F1 已完全解決（RESOLVED，握手會話開機解耦，位元組層級 LF 正規封框與 raw body hash 完整定義，經 External Macro re-audit 通過）。
-  - R2 出站能力感知安全重試與持久化 SQLite Outbox 架構確立（USER DECIDED / ADR-0025 LANDED / NOT IMPLEMENTED）。
-  - R2-3 不確定狀態處理採選項 B（USER DECIDED OPTION B / ADR-0025 LANDED）。
-  - R3 僅綁定 127.0.0.1 之 Loopback HTTP v1 與 HMAC-SHA-256 雙向認證架構確立（USER DECIDED / ADR-0025 LANDED / NOT IMPLEMENTED；Windows 具名管道正式延後未獲選）。
-- TG-MVP-04 F1 回覆授權身份鍵修復：已完成（ACCEPTED / CLOSED，修正 validateReplyAuthorization SQL 複合鍵查詢與金絲雀測試，accepted checkpoint = 18867eb5af7c4b90df8946c22977350bf7ec5086）。
-- TG-MVP-05 游標推進防衛與事件身分分離修復：已完成（ACCEPTED / CLOSED，commit `cdd9d7c5eeca5185e47e7365d42a3a3dc0a61eb1`，Actions Run 35311601796 success，External Macro PASS / ACCEPT ALL；TG-MVP-05-F1 已徹底解決 RESOLVED；accepted checkpoint 推進至 `cdd9d7c5eeca5185e47e7365d42a3a3dc0a61eb1`）。
-- TG-MVP-06 B-98 機密輸出強化與提交守衛：已完成（ACCEPTED / CLOSED，commit `e60fedb6fbaade0ec725d28fc83f1e47cfb13943`，Actions Run 35331712071 success，External Macro PASS / ACCEPT ALL；TG-MVP-06-F1-A、TG-MVP-06-F1-B、TG-MVP-06-F2 全數徹底解決 RESOLVED；new material finding = NONE；accepted checkpoint 推進至 `e60fedb6fbaade0ec725d28fc83f1e47cfb13943`；B-98 正式關閉 CLOSED）。
-- TG-MVP-06A / B-101 Gateway 機密提供者與執行期機密取用邊界：已完成（ACCEPTED / CLOSED，commit `fe9b507aaccd64222934b0ed1eebe0225fb707a2`，Actions Run 35359354510 success，External Macro PASS / ACCEPT ALL，F1-F4 全數解決，accepted checkpoint 推進至 `fe9b507aaccd64222934b0ed1eebe0225fb707a2`；B-101 CLOSED）。
-  - B-98：已完成（CLOSED）。
-  - B-101：已完成（CLOSED）。
-  - TG-MVP-06A：已完成（ACCEPTED / CLOSED）。
-  - TG-MVP-01B：已完成（ACCEPTED / CLOSED，T1 same-SHA promotion 已取得 production proof，main == e8ee1edc45b26984fd737ffeb7d3283c744dbb4d，post-main Run 35517555366 ALL 5 GATES PASSED，External Macro Auditor 正式判定 ACCEPT ALL）。
-  - B-102：已完成（CLOSED / INCIDENT-CI-05 CLOSED / R6 RESOLVED，accepted checkpoint = `78fbab3793b3d9a31e552f4939a7fcc27ae1a20d`）。
-  - B-103：已完成（ACCEPTED / CLOSED，T1 same-SHA promotion 經原生釘選 40-char SHA adapter 驗證通過，production-proven；main == e8ee1edc45b26984fd737ffeb7d3283c744dbb4d；post-main exact-SHA Actions Run 35517555366 驗證成功，ALL 5 GATES PASSED；T1-F1～T1-F4 RESOLVED；External Macro Auditor 正式判定 T1 = ACCEPTED / CLOSED，B-103 = ACCEPTED / CLOSED；accepted checkpoint = e8ee1edc45b26984fd737ffeb7d3283c744dbb4d）。
-  - B-104：已完成（ACCEPTED / CLOSED，Jules 歷史 PR #13–#24 與 12 條 exact head branches 清理完成；經 External Macro 獨立查證 12/12 remote refs absent、12/12 PR closed、0 merged、main 未異動；REMOTE_DELETE_EXACT_SET 單次授權自毀消耗通過；使用者已將 --delete 恢復為 Deny；NEW MATERIAL FINDING = NONE；正式結案）。
-  - B-105：待辦（TODO / NOT AUTHORIZED，Jules Mode A 唯讀風險掃描與前置條件準備；Jules drift 記錄：authorized_mcp_tools 目前無已驗證 harness enforcement，jules-integration 仍指向 disabled Bridge，Jules capability semantics 留至 M4，本輪不得啟用 Jules）。
-  - B-106：待辦（TODO / BLOCKING BEFORE PHASE E，Actual Loaded-Surface Budget & Rule Compatibility Guard；由 Always-On Rule Budget 改名並校準範圍，核心為 actual loaded surface 而非 repo file count，涵蓋 token budget 與 truncation；IDE 2.5.5 版本綁定，.agents/rules/*.md 搭配 trigger: always_on 為已驗證載入面，無 frontmatter 不算已載入，model_decision 維持 UNKNOWN；IDE 更新後僅 UI-only revalidation，禁止 production batch 中途更新 IDE；零實作）。
-  - B-107：待辦（TODO / BLOCKING BEFORE PHASE E，保留 open，不得提前 CLOSED）。納入 M2-P1（status reporting inconsistency，Actions failure 仍回報 ready）與 M2-P2（unapproved transcript-file access confirmed，cross-session NOT_ESTABLISHED，secret exposure NOT_ESTABLISHED）處置留痕；保留未來未被 M2 明確完成之 B-107 residual；EVIDENCE-ORIGIN 確立 MACHINE_CAPTURED_RAW、MACHINE_DERIVED、AGENT_ASSERTED、USER_PROVIDED 四類；REG-11～13 證據完整性標準與 CHECK 26 重放已由 M2 實作；CHECK 9 parser 與 negative controls 等已由 M2 實作。
-  - B-108：待辦（TODO / NOT CLOSED，作為 mechanical guard / cleanup owner）。K6-A UI 態勢更正為 PERSISTENT LAYER = APPLIED（USER_PROVIDED，IDE 2.5.5，包含 File Access 減量、MCP permanent Allow 減量、GitHub MCP 18 disabled、Advanced Command Access 12 entries 設為 Deny（其中 git credential / git reset 為直接重啟驗證，其餘 10 為同機制推論）、Execute URLs github.com = Deny（保留 entry 設 Deny））；舊「Deny List Terminal Commands」正式標記為 DEPRECATED / NON-PERSISTENT / DO NOT USE；Execute URLs delete-to-restrict 標記為 NON-PERSISTENT / DO NOT USE；基準與手動恢復檢核清單見 docs/ops/antigravity-environment-baseline.md；保留歷史事故實例；登錄低優先 Legacy Antigravity permission cleanup 留待 future bounded cleanup）。
-  - B-109：進行中（M1 ACCEPTED / CLOSED；M2 ACCEPTED / CLOSED；M3 READY / PENDING START；M4 LATER；Mechanical Governance v1，承接使用者裁決 U1、U3、K2-A、K4-C；NEXT_WORK 為 B-109，NEXT_SLICE 為 Mechanical Governance v1 — M3；TG-MVP-07 NOT AUTHORIZED）。
-  - F-03：多代理自治閉環（LOOP-lite，POST-MVP，採 Jules proposes → Executor reauthors → Macro judges，禁止 auto-merge）。
-  - TG-MVP-07 與後續切片：待辦（NOT AUTHORIZED；不得立即開始，依使用者 K2-A 決策，必須依序完成 B-109 M1 → M2 → M3 後，始得返回 product runtime mainline）。
-  - E-03：進行中（IN PROGRESS，accepted checkpoint = `4b5d926de0132aed4844dfeeba33f1c93c7e083c`）。
-  - B-28 / B-29：REOPENED BY USER U2 / PENDING / NOT IMPLEMENTED；使用者 U2 裁決：以 Matt Pocock 架構思維重新檢驗 HH.AI_v2，依本專案實況調整，不是逐檔照抄 upstream。
-  - B-54 保持待辦（POST_B01 / NONBLOCKING，SOP_12 機器專屬路徑 concrete example 已登錄）。
-  - B-75 保持待辦、零實作 (POST_B01 / NONBLOCKING / NOT IMPLEMENTED)。
-  - B-69 保持待辦 (PENDING NON-BLOCKING)。
-  - Production routing ready。
-  - 當前與下一步工作任務權威（Current / next work authority）仍只由 `docs/TASKBOARD.md` 的 `**NEXT_WORK**` pointer 保存與導航，交接區不複製 task ID 或待辦佇列。
-  - 待使用者裁決事項依 §5.3。
-  - Antigravity IDE runtime rule UI freshness 仍需由 runtime reload / fresh session 保證，不能由 CI 直接證明。
-- **待使用者裁決事項**：無（依 §5.3，C-07 與 C-08 皆已於 2026-09-18 裁決）。
-- **剩餘工作權威**：以 `docs/TASKBOARD.md` 為唯一 remaining-work authority。
+- **工作導航指標（Work Routing Pointers）**：
+  - 當前工作指標：參見 [docs/TASKBOARD.md](TASKBOARD.md) 之 `**NEXT_WORK**`。
+  - 當前切片指標：參見 [docs/TASKBOARD.md](TASKBOARD.md) 之 `**NEXT_SLICE**`。
+  - 剩餘工作權威（Remaining-work Authority）：`docs/TASKBOARD.md`。
+- **尚待審計判準（Pending-Audit Contract）**：
+  - pending Macro Audit 不由 §5.4 保存或維護副本。
+  - 待審計範圍一律依 §5.1 accepted checkpoint vs actual HEAD 由確定性指令即時導出（machine-derived）：
+    - actual HEAD = `git rev-parse HEAD`
+    - checkpoint = §5.1 第一行記載之「上次核對通過的 HEAD（last audited checkpoint）」
+    - 若 `HEAD == checkpoint` → 無尚待宏觀審計之 commit（no pending macro-audit commit）
+    - 若 `HEAD != checkpoint` → `checkpoint..HEAD` 即為尚待宏觀審計之 commit range。
+- **使用者裁決依據**：
+  - 待使用者裁決事項依 §5.3（user-decision projection authority）。
+
 
 56. **Post-Governance Taskboard Reconciliation（治理收斂後看板全面對帳）**（2026-09-11）
     - **背景**：在 Governance Exit 7/7 完成、ADR-0020 確立 Remote Health Authority、歷史 Actions failure runs 全數清理後，為避免未來 Agent 執行已被取代或已完成的舊治理待辦，展開一次性 repo-to-taskboard 對帳。
@@ -4776,4 +4729,16 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - B-106 open、B-107 open、B-108 open、B-100 R-D pending 完整保留，不得誤關閉。
   - TG-MVP-07 仍為未授權（依使用者 K2-A 決策，必須依序完成 B-109 M1 → M2 → M3 後始得返回 product runtime mainline）。
   - 本結案批次（batch/b109-m2-final-closure-260922）為純治理狀態同步，零代碼異動，不開始 M3。結案 candidate 提交後標記為 READY_FOR_EXTERNAL_MACRO_AUDIT。
+
+129. **B-109 M3 核心實作候選（B-109 M3 Core Implementation Candidate）**（2026-09-22）
+- **實作範疇與架構收斂（Scope & Architecture Convergence）**：
+  - **B-106 Minimal Verified Runtime Kernel**：根目錄 `AGENTS.md` 收斂為極簡執行期安全核心與路由閘門（<= 6000 字元），保留全部既有編號章節作為相容錨點，建立 8 個 `KERNEL-*` 不變量錨點與 1 個金絲雀標記 `HH_AI_V2_KERNEL_CANARY_V1_260922`。
+  - **詳細技能架構下沉（Skills Architecture Offloading）**：詳細技能架構下沉至 `skills/AGENTS.md`，維持單一職責與漸進式揭露原則。
+  - **自動載入宣稱對齊（Auto-load Claim Correction）**：對齊 B-106 實證，將 `.agents/rules/*.md` 之未驗證自動載入宣稱更正為 `NOT_ESTABLISHED`，僅 root `AGENTS.md` 在 Project Rule UI 為 OBSERVED_VISIBLE。
+  - **K4-A 單一寫入點收斂（Single-Write-Point State Convergence）**：`docs/TASKBOARD.md` 維持唯一 remaining-work authority；`**最後更新**` 收斂為純新鮮度指標（FRESHNESS_POINTER_ONLY）；`docs/refactor-backlog.md` §5.4 收斂為純指標（POINTER_ONLY）；`docs/governance/rule-registry.json` 落地 `runtime_surface_policy` 與 `state_authority_policy`（維持 registry_version = B109-M2 且 Rule ID 完全不變）。
+  - **載入防護與負向控制（Loaded-Surface Guard & Negative Controls）**：擴充 `scripts/tests/test_rule_loadability.py`，由 rule-registry.json 讀取策略邊界，並建立 6 項確定性隔離負向控制測試；擴充 `scripts/check_consistency.py`（CHECK 8, CHECK 24, CHECK 25）並於 `scripts/tests/test_check_consistency.py` 建立負向控制。
+  - **環境基準對齊（Environment Baseline Alignment）**：`docs/ops/antigravity-environment-baseline.md` 對齊 IDE 2.5.5 UI 證據、Manage MCP servers 清單與金絲雀驗證程序。
+- **候選狀態與審計邊界（Candidate State & Audit Boundary）**：
+  - 候選提交依規定標記為候選（candidate），待 External Macro Auditor 進行全面審查與金絲雀執行期驗證。
+  - accepted checkpoint 維持 `4b5d926de0132aed4844dfeeba33f1c93c7e083c`（§5.1 未變動）；main advancement = FORBIDDEN。
 

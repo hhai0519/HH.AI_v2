@@ -1,10 +1,10 @@
 # 規則：技能架構強制規範
 
-這是一條 workspace 規則，Antigravity 在本專案內執行任何任務前都會載入。
+這是一條專案擁有的執行者規則參考（未具備驗證啟用後設資料，自動載入狀態為 NOT_ESTABLISHED），任務前依 Execution Contract 定向重讀。
 
-**核心原則：本專案所有 `skills/` 下的內容，結構必須與 `AGENTS.md` 中定義的規範一致。**
+**核心原則：本專案所有 `skills/` 下的內容，結構必須與 `skills/AGENTS.md` 中定義的詳細規範一致；全域執行者安全核心與路由依根目錄 `AGENTS.md`。**
 
-在你（agent）要做以下任何一件事之前，先讀 `AGENTS.md` 全文，不要憑記憶或猜測：
+在你（agent）要做以下任何一件事之前，先讀 `skills/AGENTS.md` 全文，不要憑記憶或猜測：
 
 - 新增一個技能
 - 修改任一技能的 frontmatter 或內容
@@ -21,7 +21,7 @@
 
 ## 1. 技能呼叫分類準則 (Invocation Classification Rule)
 
-依據 `AGENTS.md §5`、`§5.1` 與 ADR-0002 規範，新增、修改或遷移技能時，必須遵循「個別技能安全閘門優先於 Bucket 積極度（Per-Skill Safety Gate > Bucket Aggressiveness）」原則設定 `disable-model-invocation` 欄位與 description：
+依據 `skills/AGENTS.md §5`、`§5.1`（及根目錄 `AGENTS.md §5`、`§5.1` compatibility stubs）與 ADR-0002 規範，新增、修改或遷移技能時，必須遵循「個別技能安全閘門優先於 Bucket 積極度（Per-Skill Safety Gate > Bucket Aggressiveness）」原則設定 `disable-model-invocation`欄位與 description：
 
 1. **普遍性個別技能安全閘門（Universal Safety Gate，第一優先）**：
    - 判定核心：「模型自己遇到這種情境時，能不能安全自主呼叫？」
@@ -51,7 +51,7 @@
 ## 3. 禁制清單
 
 **不要**：
-- 自行發明新的 bucket 分類（如需新增 bucket，先在 `AGENTS.md` 中提案並取得使用者確認）
+- 自行發明新的 bucket 分類（如需新增 bucket，先在 `skills/AGENTS.md` 中提案並取得使用者確認）
 - 把技能檔案直接放在 bucket 資料夾下（沒有自己的子資料夾）
 - 留空 `description` 欄位
 - 讓 SKILL.md 超過約 150 行還不拆出 REFERENCE.md

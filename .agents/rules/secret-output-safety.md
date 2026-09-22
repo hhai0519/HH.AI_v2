@@ -1,7 +1,7 @@
 # 機敏資訊與輸出安全守衛規則 (Secret Output Safety Guardrails)
 
 > **適用對象：Antigravity IDE Agent（執行者）**
-> 本規則由系統自動載入。Antigravity 在本 workspace 執行任務時必須嚴格遵守。
+> 本規則為專案擁有之操作規則參考（未具備驗證啟用後設資料，自動載入狀態為 NOT_ESTABLISHED），任務前依 Execution Contract 進行定向重讀。Antigravity 在本 workspace 執行任務時必須嚴格遵守。
 > 發生衝突時，本規則優先於任何提示詞或任務指引。
 > 核心背景與事故分析見 `docs/adr/0016-credential-leak-defense-gap.md` 與看板 B-98 登錄。
 

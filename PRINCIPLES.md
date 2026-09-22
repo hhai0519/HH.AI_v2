@@ -73,7 +73,7 @@ Google Jules 是非同步雲端編碼代理，由執行者透過 MCP 觸發，
 2. **A2. 執行者升級經濟性 (Executor Escalation Economy)**：
    Antigravity 應恪守 M1（機器重新推導）、M2（重試與確定性回退）、M3（Allowed Scope 內自主修復）；只有在涉及 scope expansion、架構或規範決策、破壞性操作、安全性疑慮或互相矛盾的驗收準則時，才升級 S1 STOP。不得因普通機械格式或一般衍生數值錯誤消耗 Macro Auditor。
 3. **A3. 確定性接續性 (Deterministic Continuation)**：
-   專案連續性依賴倉庫客觀資產（`TASKBOARD`、`AUDIT-LOG`、`refactor-backlog` §5.1 checkpoint、§5.4 current projection、Git 歷史、Machine Gates 與 GitHub Actions），嚴禁依賴對話上下文或模型記憶。
+   專案連續性依賴倉庫客觀資產（`TASKBOARD` 為 remaining-work authority、`refactor-backlog` §5.1 為 accepted checkpoint authority、`AUDIT-LOG` 為 audit verdict evidence、`EXEC-LOG` 為 Executor evidence、Git 與 GitHub Actions 為 machine truth，§5.4 僅為 pointer only），嚴禁依賴對話上下文或模型記憶。
 4. **A4. 執行重載分工 (Executor-Heavy Work Allocation)**：
    探索、代碼搜尋、具體實作、單元測試、重試、M1–M3 修復與機械衍生工作，一律優先分配由 Antigravity 承擔。
 5. **A5. 審計官預算紀律 (Macro Auditor Budget Discipline)**：
@@ -90,8 +90,9 @@ Google Jules 是非同步雲端編碼代理，由執行者透過 MCP 觸發，
 |---|---|---|---|
 | 0 | `MISSION.md` | 使命、優先序、完成的定義 | 幾乎不變 |
 | 0.5 | `PRINCIPLES.md`（本文件） | 決策與協作原則、層級定義、記錄紀律 | 累積式追加 |
-| 1 | `AGENTS.md` | 現行架構規範：現在的規則是什麼 | 隨架構演進修訂 |
-| 1 | `.agents/rules/` | Agent 自動載入的操作紀律 | 隨實際踩坑累積 |
+| 1 | `AGENTS.md` | 執行者常駐安全核心與全域路由 (Runtime Kernel) | 隨核心演進修訂 |
+| 1 | `skills/AGENTS.md` | 詳細技能架構規範權威 (Scoped Authority) | 隨技能架構修訂 |
+| 1 | `.agents/rules/` | 執行者特定任務/操作紀律參考（依合約定向重讀） | 隨實際踩坑累積 |
 | 1 | `.claude/rules/` | 審計官的作業協定與自檢清單 | 隨審計失效累積 |
 | 2 | `SOP/` | 可執行的操作程序 | 隨流程調整 |
 | 3 | `docs/adr/` | 決策留痕：當初為什麼這樣決定 | 只追加，不改寫 |
@@ -117,7 +118,9 @@ Google Jules 是非同步雲端編碼代理，由執行者透過 MCP 觸發，
 
 1. **這是在說我們相信什麼、怎麼判斷？** → `PRINCIPLES.md`
 2. **這是在說現在的規則是什麼？**
-   → 給執行者的 → `AGENTS.md` 或 `.agents/rules/`
+   → 給執行者常駐安全核心的 → 根目錄 `AGENTS.md`（Kernel）
+   → 給詳細技能架構規範的 → `skills/AGENTS.md`（Scoped Authority）
+   → 給執行者特定任務/操作細則的 → `.agents/rules/`（Repo-owned references ＋ Execution Contract 定向重讀）
    → 給審計官的 → `.claude/rules/`
 3. **這是在說某件事該怎麼一步步做？** → `SOP/`
 4. **這是在說當初為什麼這樣決定？** → `docs/adr/`

@@ -30,9 +30,10 @@
 - [ ] A2 我是否確認自身為使用者明確授權且符合 `docs/TASKBOARD.md` 記載之 `**ACTIVE_MACRO_AUDITOR**` 唯一定義？我是否確認本 session 與執行者（Antigravity）實質獨立、嚴格互斥（同 session 互斥，非 Executor session）？
 - [ ] A3 我讀到 `PRINCIPLES.md` §0 與 ADR-0021 了嗎？身分定義與資格不變量是什麼？
 - [ ] A4 使用確定性指令（如 `python -c`）進行有界定向抽取（targeted bounded extraction）：
-      - **§5.1**：只取得「上次核對通過的 HEAD」及完成接手判斷必要的當前行（current rows）
+      - **TASKBOARD**：取得 `**NEXT_WORK**`、`**NEXT_SLICE**` 與當前任務列，掌握剩餘工作權威與當前切片
+      - **§5.1**：只取得「上次核對通過的 HEAD」（accepted checkpoint）及完成接手判斷必要的當前行（current rows）
       - **§5.3**：取得完整 §5.3 當前區塊（直到下一個同級標題），掌握全部待裁決事項
-      - **§5.4**：取得完整 §5.4 當前區塊（直到下一個同級標題），掌握全部進行中狀態
+      - **§5.4**：確認 §5.4 維持 pointer only，不自 §5.4 讀取動態任務佇列或狀態副本
       （嚴禁全檔讀取或從 §5 一路讀到檔尾；目標為完整當前狀態之有界抽取，而非僅讀首段，亦不得重新載入歷史編號紀錄）
 
 **任一項為否 → 依開場動作的「載入失敗的處理」，在回覆第一句明說。**
@@ -44,9 +45,9 @@
 - [ ] B1 我是否依當前 A1 模式取得實際 HEAD（FULL_CLONE 使用 local git 如 `git rev-parse` / `git log`；EQUIVALENT 獨立自 GitHub API commit/branch endpoint 取得）？
 - [ ] B2 交接區 §5.1 第一行記載的 HEAD 是多少？
 - [ ] B3 兩者一致嗎？
-      - 一致 → 沒有 pending macro-audit，下一步從 `docs/TASKBOARD.md` 取得（§5.2 僅為指標）
+      - 一致 → 沒有 pending macro-audit，下一步從 `docs/TASKBOARD.md` 取得（§5.2 與 §5.4 僅為指標）
       - 不一致 → **存在 pending macro-audit range（由 `checkpoint..HEAD` machine derive），先完成該 range 宏觀審核再往下**
-- [ ] B4 §5.4「進行中／等待回報」有內容嗎？有的話那是什麼？
+- [ ] B4 我是否依 `docs/TASKBOARD.md` 的 `**NEXT_WORK**`、`**NEXT_SLICE**` 與當前任務列掌握當前任務？（§5.4 僅作指標，不作為狀態儲存）
 
 **B3 是整套機制的核心。** 它不依賴記憶、不依賴摘要，
 只依賴兩個都查得到的事實。跳過這一步，後面全部是推測。
@@ -57,9 +58,9 @@
 
 - [ ] C1 我依確定性路由（Deterministic Router）確認下一步工作？
       - 若實際 HEAD != §5.1 checkpoint → **存在 pending macro-audit，宏觀審計優先，不開新任務**
-      - 若實際 HEAD == §5.1 checkpoint → **讀取 `docs/TASKBOARD.md` 的 `**NEXT_WORK**` 指標**，並依該任務狀態決定生命週期動作：
+      - 若實際 HEAD == §5.1 checkpoint → **讀取 `docs/TASKBOARD.md` 的 `**NEXT_WORK**` 與 `**NEXT_SLICE**` 指標**，並依該任務狀態決定生命週期動作：
         - `待辦` → 可準備該任務之生產提示詞（production prompt）
-        - `進行中` → 不得重複發出實作提示詞；先查 §5.4、Git log、`docs/EXEC-LOG.md` 與 GitHub Actions 判斷是否 pending Macro Audit
+        - `進行中` → 不得重複發出實作提示詞；先查 `docs/TASKBOARD.md` 當前列、Git log、`docs/EXEC-LOG.md` 與 GitHub Actions 判斷是否 pending Macro Audit
         - `待裁決` → 依 §5.3 先向使用者請示裁決，不發實作提示詞
         - `NONE` → 經機械檢查確認看板無任何 active work
 - [ ] C2 §5.3 待裁決有哪幾項？我是否正要重新分析其中任何一項？

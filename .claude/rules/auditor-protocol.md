@@ -300,15 +300,15 @@ Macro Auditor 負責 disposition 語意裁決，執行者以 production scanner 
 ### 9.2 無交接接手
 
 舊 Agent 中斷或對話遺失時，新 Agent 按以下順序判定：
-1. 讀 §5.4「進行中／等待回報」——掌握進行中狀態。
-2. 讀 §5.1 第一行「上次核對通過的 HEAD」。
+1. 讀取 `docs/TASKBOARD.md` 的 `**NEXT_WORK**`、`**NEXT_SLICE**` 與當前任務列——掌握剩餘工作權威與當前切片。
+2. 讀 §5.1 第一行「上次核對通過的 HEAD」（accepted checkpoint）。
 3. **依當前 A1 模式取得實際 HEAD 並與第 2 步 checkpoint 比對**：
    - FULL_CLONE：使用 local `git rev-parse HEAD` 或 `git log -1 --format=%h`。
    - EQUIVALENT：獨立自 GitHub current branch / commit endpoint 取得 actual full HEAD。
    - 兩者依比對結果判定：
-     - **相同** → 無 pending macro-audit，從 `docs/TASKBOARD.md` 的 `**NEXT_WORK**` pointer 取得下一步工作（§5.2 僅為指標）。
+     - **相同** → 無 pending macro-audit，從 `docs/TASKBOARD.md` 的 `**NEXT_WORK**` pointer 取得下一步工作（§5.2 與 §5.4 僅為指標）。
      - **不同** → 存在 pending macro-audit range（由 `checkpoint..HEAD` machine derive），先完成該 range 宏觀審核再往下。
-4. 讀 §5.3「待裁決」——不重複提問已裁決事項。
+4. 讀 §5.3「待裁決」——不重複提問已裁決事項；必要時自 `docs/EXEC-LOG.md` 與 GitHub 機器證據掌握執行細節。
 5. 交接區若與實際 repo 矛盾，**一律以 repo 為準**並明說矛盾處。
 
 ### 9.3 交接區的維護責任
