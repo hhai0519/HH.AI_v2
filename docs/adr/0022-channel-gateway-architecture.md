@@ -113,7 +113,7 @@
 3. **與 ADR-0015（LINE 穿透隧道鏈路失敗）之關係**：
    ADR-0015 詳盡分析了四環隧道依賴鏈之脆弱性與靜默失敗現象。本 ADR 之 D11 決策正是基於 ADR-0015 的歷史證據，徹底廢除本地隧道與動態 Webhook URL 同步，改採 Cloudflare Worker Mailbox + Pull 模式以根治該問題。
 4. **與 ADR-0017（Port 分配規範）之關係**：
-   ADR-0017 記錄了歷史上為了避免與網頁應用衝突而對 LINE (3000) 與 TG (3001) 進行之固定配置。在 D1 單一 Gateway 與 D11 LINE 郵箱拉取模型下，原本「3000 與 3001 永久不得變更」之技術前提已不存在。本批不擅自決定 Gateway 最終 Port，將具體配置交由 B-30、B-33 與實作階段確定。
+   ADR-0017 記錄了歷史上為了避免與網頁應用衝突而對 LINE (3000) 與 TG (3001) 進行之固定配置。在 D1 單一 Gateway 與 D11 LINE 郵箱拉取模型下，原本「3000 與 3001 永久不得變更」之技術前提已不存在。後續經 TG-MVP-07（B-30 + B-33 收斂）正式確立 Channel Gateway v1 canonical local port = 3003（不再處於未決狀態，且無自動回退）。但需明確說明：Gateway 本地 listener 實作與 D24 Local Config 載入尚未由 TG-MVP-07 實作，分別保留由後續 TG-MVP-11 與 TG-MVP-07A 負責。
 
 ---
 
@@ -121,7 +121,7 @@
 
 為避免建立重複任務（duplicate tasks），宏觀審計發現 M2 至 M8 之處置路由正式確立如下：
 - **M2（line-interaction-manager 繞過 Gateway 直接呼叫 LINE API）**：路由至 `CURRENT E-03` + `EXISTING E-04`。最終架構要求所有外發訊息必須統一經由 Gateway 發送並通過 DLP 與授權；本批不更動該 skill。
-- **M3（ADR-0017 固定 Port 前提過期）**：路由至 `EXISTING B-30` + `EXISTING B-33`。本 ADR 建立架構權威，B-30 與 B-33 保持開啟待後續處理。
+- **M3（ADR-0017 固定 Port 前提過期）**：路由至 `EXISTING B-30` + `EXISTING B-33`。後續經 TG-MVP-07 收斂確立 Gateway 規範通訊埠為 3003，並廢除 Playwright 常用通訊埠自動掃描；實作細節由 TG-MVP-07A / TG-MVP-11 接續。
 - **M4（SOP_02 記載舊版 Line對話紀錄 路徑）**：路由至 `CURRENT E-03` 文件收斂工作；本批不修改 SOP_02。
 - **M5（副本偵測索引無法覆蓋全機）**：路由至 `CURRENT E-03 SECURITY ACCEPTANCE`。D24 之受保護根目錄清單至少涵蓋 `HH.AI_v2`、`HH.AI_260806`、使用者設定與憑證路徑。
 - **M6（Agent 篡改對話歸檔風險）**：路由至 `CURRENT E-03`。由 Gateway 獨佔對話歸檔寫入權，Agent 生成之外發檔案存放於專屬待傳區。

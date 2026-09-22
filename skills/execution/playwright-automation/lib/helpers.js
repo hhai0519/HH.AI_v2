@@ -1,8 +1,6 @@
 // playwright-helpers.js
 // Reusable utility functions for Playwright automation
 
-const { chromium, firefox, webkit } = require('playwright');
-
 /**
  * Parse extra HTTP headers from environment variables.
  * Supports two formats:
@@ -41,6 +39,7 @@ function getExtraHeadersFromEnv() {
  * @param {Object} options - Additional launch options
  */
 async function launchBrowser(browserType = 'chromium', options = {}) {
+  const { chromium, firefox, webkit } = require('playwright');
   const defaultOptions = {
     headless: process.env.HEADLESS !== 'false',
     slowMo: process.env.SLOW_MO ? parseInt(process.env.SLOW_MO) : 0,
@@ -370,24 +369,38 @@ async function createContext(browser, options = {}) {
 }
 
 /**
- * Detect running dev servers on common ports
- * @param {Array<number>} customPorts - Additional ports to check
- * @returns {Promise<Array>} Array of detected server URLs
+ * Detect running dev servers on explicitly specified target ports.
+ * NOTE: As of TG-MVP-07 (B-30 convergence), implicit common-port auto-scan has been removed.
+ * Callers must provide an explicit non-empty array of valid port integers (1..65535).
+ * @param {Array<number>} targetPorts - Explicit ports to probe
+ * @returns {Promise<Array<string>>} Array of detected server URLs
  */
-async function detectDevServers(customPorts = []) {
+async function detectDevServers(targetPorts) {
+  if (!Array.isArray(targetPorts) || targetPorts.length === 0) {
+    throw new Error('detectDevServers requires a non-empty array of target ports');
+  }
+
+  const validPorts = [];
+  const seen = new Set();
+
+  for (const port of targetPorts) {
+    if (typeof port !== 'number' || !Number.isInteger(port) || port < 1 || port > 65535) {
+      throw new Error(`Invalid target port: ${port}. Port must be an integer between 1 and 65535.`);
+    }
+    if (!seen.has(port)) {
+      seen.add(port);
+      validPorts.push(port);
+    }
+  }
+
   const http = require('http');
-
-  // Common dev server ports
-  const commonPorts = [3000, 3001, 3002, 5173, 8080, 8000, 4200, 5000, 9000, 1234];
-  const allPorts = [...new Set([...commonPorts, ...customPorts])];
-
   const detectedServers = [];
 
-  console.log('🔍 Checking for running dev servers...');
+  console.log('🔍 Checking for running dev servers on explicit ports...');
 
-  for (const port of allPorts) {
+  for (const port of validPorts) {
     try {
-      await new Promise((resolve, reject) => {
+      await new Promise((resolve) => {
         const req = http.request({
           hostname: 'localhost',
           port: port,
@@ -416,7 +429,7 @@ async function detectDevServers(customPorts = []) {
   }
 
   if (detectedServers.length === 0) {
-    console.log('  ❌ No dev servers detected');
+    console.log('  ❌ No dev servers detected on explicit target ports');
   }
 
   return detectedServers;

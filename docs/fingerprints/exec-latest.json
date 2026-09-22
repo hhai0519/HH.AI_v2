@@ -1,5 +1,5 @@
 {
-  "base_head": "cd89219",
+  "base_head": "232fbaf",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -376,8 +376,8 @@
         "### Step 5：驗證服務健康狀態",
         "# @EXECUTE",
         "# 只有對應服務實體存在且已啟動時，方可進行健康探測（符合 Runtime Availability Boundary）：",
-        "# LINE bridge (3000) / TG bridge (3001) / 未來 Next.js (3002) / 靜態伺服器 (8888)",
-        "# 若服務尚未部署或啟動，跳過該探測，不得判為異常。",
+        "# 歷史雙生橋接留痕：LINE bridge (3000) / TG bridge (3001)（歷史留痕，已由 ADR-0022 單一 Gateway 替代；現行單一 Gateway v1 規範通訊埠定為 3003，但 listener 尚未由 TG-MVP-07 部署，禁止探測未部署之 listener）；未來 Next.js (3002) / 靜態伺服器 (8888)（預留）。",
+        "# 若服務尚未部署或啟動，跳過該探測，不得判為異常。嚴禁探測 repo-external 服務（如 Port 5000 儀表板）。",
         "## 三、可安全清理的暫存項目",
         "## 四、工作站目錄結構（標準化範本）",
         "## 五、清理後復原備忘",
@@ -385,8 +385,8 @@
         "## 七、本地服務埠號規範",
         "### 服務啟動確認步驟"
       ],
-      "lines": 181,
-      "sha256": "9f1044b5ad1d95dee84e7def4fbaec3e74819c19c7424829578c52e16e378ec3"
+      "lines": 182,
+      "sha256": "cfc69a1e41f6e6c77940030f36596d6d47db1389b5f47d9c354aa4d3869ae000"
     },
     "SOP/SOP_05_System_Policies.md": {
       "fences": 0,
@@ -424,13 +424,13 @@
         "# 1. 指定 PM2 家目錄",
         "# 2. 查驗當前受管程序清單與運行狀態",
         "# 3. 若特定服務（如 line-bridge）異常，執行重啟",
-        "### 4.2 訊息橋接服務狀態 (Bridge Services State)",
+        "### 4.2 訊息橋接服務狀態與通訊埠收斂 (Bridge Services State & Port Convergence)",
         "### 4.3 每日交接檢查清單 (Daily Handover Checklist)",
         "## 5. 基於客觀現象之故障排除 (Evidence-Based Troubleshooting)",
         "## 6. 維運紀錄與證據 (Operations Evidence)"
       ],
-      "lines": 118,
-      "sha256": "29b3c9e66d00f6780743b2aa415a8d3431817b828fe5cee84e2a2ed1080806aa"
+      "lines": 119,
+      "sha256": "232179817176919823704e8f50a6a0e275ca4fd4175ddd0c2b13a1a43b59a46a"
     },
     "SOP/SOP_09_AutoResearch_CPU.md": {
       "fences": 16,
@@ -560,8 +560,8 @@
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 173,
-      "sha256": "81f63101098b759a21a1942b3396f24b667c6c7322dfb4076f739c8d71165578"
+      "lines": 174,
+      "sha256": "9f2d366d3b5d5b7614d74db5222bbd34505ccf168b8203f5befedf235120615b"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -602,7 +602,7 @@
         "## 封存區"
       ],
       "lines": 340,
-      "sha256": "f7461d44fbbd4948a78d733337ed9be86f6614b1e7ff2089eef501edabb8a135"
+      "sha256": "2847712f3c749dfbdc11c1834b193adcb18f09b0399f40846c163b53f220b475"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -824,13 +824,18 @@
     "docs/adr/0017-port-allocation.md": {
       "fences": 0,
       "headings": [
-        "# ADR-0017: Port 分配規範，為未來重建的網頁應用預留",
+        "# ADR-0017: Port 分配規範與通訊通訊埠收斂 (Port Allocation & Convergence)",
         "## Context",
+        "### 歷史背景與雙生橋接配置 (Historical Legacy Context)",
+        "### 現行架構與通訊通訊埠衝突收斂需求 (Current v2 Convergence Need)",
         "## Decision",
+        "### A. 歷史保留留痕 (Historical Legacy Allocations — Superseded)",
+        "### B. 現行 v2 通訊埠分配與預留 (Current v2 Convergence)",
+        "### C. Playwright 自動掃描安全收斂 (B-30 Explicit Target Contract)",
         "## Consequences"
       ],
-      "lines": 81,
-      "sha256": "dfaf59fdfbbc6c611986e102cbc21257453712c18e0a64ae0482872171689fc8"
+      "lines": 63,
+      "sha256": "68b8886a3e01e9c1d2710d68e4321295b926e910249e9ee7ebd45bcea436eea2"
     },
     "docs/adr/0018-vendored-external-assets.md": {
       "fences": 0,
@@ -897,7 +902,7 @@
         "## Consequences"
       ],
       "lines": 154,
-      "sha256": "b1fbb71a42d3b30864432b7370e64e450ce790e7928e6a513a69680bc3445ddf"
+      "sha256": "e9980c1591584c375b44b9460add6fc5f74bd11344d2d754e3a7fe4684002bd7"
     },
     "docs/adr/0023-channel-gateway-state-store-sqlite.md": {
       "fences": 0,
@@ -1301,6 +1306,14 @@
       "lines": 800,
       "sha256": "06ac6718617d0ff74603edf9fcb930d9505ba6a3e30fefbf8ea0f4203fa516db"
     },
+    "scripts/tests/test_playwright_automation.py": {
+      "fences": 0,
+      "headings": [
+        "# -*- coding: utf-8 -*-"
+      ],
+      "lines": 88,
+      "sha256": "249f0fb19ce70855ae87ef31c51c88d8673be77b5269924f93081ffaafb9c62e"
+    },
     "scripts/tests/test_prompt_manifest.py": {
       "fences": 0,
       "headings": [
@@ -1476,7 +1489,7 @@
       "sha256": "35bf7dbfa3c7d291b550c3c97a6ae398a22b1dc3624c1d2fc1e4db6963d6e115"
     }
   },
-  "generated_at": "2026-09-22T14:19:22Z",
+  "generated_at": "2026-09-22T16:31:02Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

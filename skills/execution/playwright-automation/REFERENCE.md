@@ -43,7 +43,8 @@ test.describe('Skills Dashboard', () => {
   });
   
   test('首頁正常載入', async () => {
-    await page.goto('http://localhost:3000');
+    // 顯式指定目標 URL（此處以 Next.js 預留通訊埠 3002 為範例，禁依賴隱式預設值）
+    await page.goto('http://localhost:3002');
     await expect(page).toHaveTitle(/Skills Dashboard/);
     
     // 確認關鍵元素存在
@@ -52,7 +53,7 @@ test.describe('Skills Dashboard', () => {
   });
   
   test('技能卡片可以點擊開啟 Modal', async () => {
-    await page.goto('http://localhost:3000');
+    await page.goto('http://localhost:3002');
     
     // 等待卡片載入
     await page.waitForSelector('.skill-card', { timeout: 5000 });
@@ -69,7 +70,7 @@ test.describe('Skills Dashboard', () => {
   });
   
   test('搜尋功能正常', async () => {
-    await page.goto('http://localhost:3000');
+    await page.goto('http://localhost:3002');
     
     const searchInput = page.locator('#search-input');
     await searchInput.fill('技術分析');
@@ -98,7 +99,8 @@ test('響應式佈局驗證', async ({ browser }) => {
     const context = await browser.newContext({ viewport });
     const page = await context.newPage();
     
-    await page.goto('http://localhost:3000');
+    // 顯式指定目標 URL（此處以 3002 為範例）
+    await page.goto('http://localhost:3002');
     
     // 截圖
     await page.screenshot({ 

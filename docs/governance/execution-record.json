@@ -1,37 +1,64 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "B-109-M3-FINAL-ACCEPTANCE",
-  "base_oid": "90b2b638fc4abf738568d8e1153f9834568e21ad",
+  "task_id": "TG-MVP-07",
+  "base_oid": "232fbaf1a03e6f166546b07fea70d39f675d8304",
   "plan": {
     "allowed_paths": [
-      "docs/AUDIT-LOG.md",
+      "SOP/SOP_04_Data_Cleanup.md",
+      "SOP/SOP_06_Handover_Manual.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
+      "docs/adr/0017-port-allocation.md",
+      "docs/adr/0022-channel-gateway-architecture.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md"
+      "scripts/tests/test_playwright_automation.py",
+      "skills/execution/playwright-automation/.claude-plugin/plugin.json",
+      "skills/execution/playwright-automation/API_REFERENCE.md",
+      "skills/execution/playwright-automation/REFERENCE.md",
+      "skills/execution/playwright-automation/lib/helpers.js",
+      "skills/execution/playwright-automation/package.json",
+      "skills/execution/playwright-automation/tests/helpers.test.js"
     ],
     "required_paths": [
-      "docs/AUDIT-LOG.md",
+      "SOP/SOP_04_Data_Cleanup.md",
+      "SOP/SOP_06_Handover_Manual.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
+      "docs/adr/0017-port-allocation.md",
+      "docs/adr/0022-channel-gateway-architecture.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md"
+      "scripts/tests/test_playwright_automation.py",
+      "skills/execution/playwright-automation/.claude-plugin/plugin.json",
+      "skills/execution/playwright-automation/API_REFERENCE.md",
+      "skills/execution/playwright-automation/REFERENCE.md",
+      "skills/execution/playwright-automation/lib/helpers.js",
+      "skills/execution/playwright-automation/package.json",
+      "skills/execution/playwright-automation/tests/helpers.test.js"
     ],
     "max_plan_revisions": 3,
-    "revision_count": 1,
+    "revision_count": 0,
     "plan_origin": "EXTERNAL_MACRO_PROMPT"
   },
   "actual": {
     "changed_paths": [
-      "docs/AUDIT-LOG.md",
+      "SOP/SOP_04_Data_Cleanup.md",
+      "SOP/SOP_06_Handover_Manual.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
+      "docs/adr/0017-port-allocation.md",
+      "docs/adr/0022-channel-gateway-architecture.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md"
+      "scripts/tests/test_playwright_automation.py",
+      "skills/execution/playwright-automation/.claude-plugin/plugin.json",
+      "skills/execution/playwright-automation/API_REFERENCE.md",
+      "skills/execution/playwright-automation/REFERENCE.md",
+      "skills/execution/playwright-automation/lib/helpers.js",
+      "skills/execution/playwright-automation/package.json",
+      "skills/execution/playwright-automation/tests/helpers.test.js"
     ]
   },
   "evidence": [

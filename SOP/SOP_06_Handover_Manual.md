@@ -74,11 +74,11 @@ npx pm2 restart line-bridge
 - 程序之 `status` 欄位必須為 `online`。
 - `restart` 次數未呈現異常高頻遞增（避免 crash-loop）。
 
-### 4.2 訊息橋接服務狀態 (Bridge Services State)
-依據 [`docs/adr/0017-port-allocation.md`](../docs/adr/0017-port-allocation.md) 之 Port 配置規範：
-- **LINE Bridge**：常駐運行於 Port `3000`。
-- **Telegram Bridge**：常駐運行於 Port `3001`。
-- **本地 Web 開發伺服器（若需啟動）**：必須綁定於 Port `3002`（指令：`npm run dev -- -p 3002`），嚴禁佔用 3000/3001 導致通訊橋接中斷。
+### 4.2 訊息橋接服務狀態與通訊埠收斂 (Bridge Services State & Port Convergence)
+依據 [`docs/adr/0017-port-allocation.md`](../docs/adr/0017-port-allocation.md) 及 [`docs/adr/0022-channel-gateway-architecture.md`](../docs/adr/0022-channel-gateway-architecture.md) 之收斂規範：
+- **歷史雙生橋接留痕（Historical / Superseded Context）**：舊架構之 LINE Bridge 歷史使用 Port `3000`、Telegram Bridge 歷史使用 Port `3001`。雙生架構已被 ADR-0022 單一 Channel Gateway 全面取代，3000/3001 不再作為現行單一 Gateway runtime 之固定常駐通訊埠。
+- **現行 Channel Gateway v1 規範通訊埠（Canonical Target）**：依 TG-MVP-07 收斂定為 Port `3003`（但本機 listener 尚未由 TG-MVP-07 實作，保留由後續 TG-MVP-11 部署上線；未部署前不得描述為已監聽上線或進行主動探測）。
+- **本地 Web 開發伺服器預留（Reserved）**：未來 Next.js 應用程式預留於 Port `3002`（啟動範例：`npm run dev -- -p 3002`），不得依賴 3000 預設值。
 
 > [!IMPORTANT]
 > **目標態標記（TARGET_STATE / 尚未遷移）**：
@@ -88,9 +88,10 @@ npx pm2 restart line-bridge
 ### 4.3 每日交接檢查清單 (Daily Handover Checklist)
 操作員或代理人於交接班次時，依序確認以下項目：
 - [ ] 執行 `npx pm2 list`，確認所有常駐服務皆為 `online`。
-- [ ] 執行 TCP 連線探測，確認通訊連接埠未發生衝突：
+- [ ] 執行 TCP 連線探測（僅限當前實際已部署之活躍服務，不得探測未部署之 Gateway 3003 或外部 Port 5000 儀表板）：
   ```powershell
-  Get-NetTCPConnection -LocalPort 3000, 3001 -ErrorAction SilentlyContinue
+  # 僅在對應服務實體已部署啟動時查驗
+  Get-NetTCPConnection -State Listen -ErrorAction SilentlyContinue
   ```
 - [ ] 確認後端服務所需之環境變數（如 API Key）已於執行環境就緒。
 - [ ] 確認無未受管之孤兒程序佔用系統資源（參照 [`SOP/SOP_04_Data_Cleanup.md`](./SOP_04_Data_Cleanup.md)）。

@@ -91,8 +91,8 @@ Get-Process | Where-Object { $_.Path -like "*<WORKSPACE_ROOT>*" }
 ```powershell
 # @EXECUTE
 # 只有對應服務實體存在且已啟動時，方可進行健康探測（符合 Runtime Availability Boundary）：
-# LINE bridge (3000) / TG bridge (3001) / 未來 Next.js (3002) / 靜態伺服器 (8888)
-# 若服務尚未部署或啟動，跳過該探測，不得判為異常。
+# 歷史雙生橋接留痕：LINE bridge (3000) / TG bridge (3001)（歷史留痕，已由 ADR-0022 單一 Gateway 替代；現行單一 Gateway v1 規範通訊埠定為 3003，但 listener 尚未由 TG-MVP-07 部署，禁止探測未部署之 listener）；未來 Next.js (3002) / 靜態伺服器 (8888)（預留）。
+# 若服務尚未部署或啟動，跳過該探測，不得判為異常。嚴禁探測 repo-external 服務（如 Port 5000 儀表板）。
 ```
 確認 Dashboard、腳本、Watchdog Hook 與 Next.js 應用程式均正常運作。
 
@@ -160,20 +160,21 @@ Get-Process | Where-Object { $_.Path -like "*<WORKSPACE_ROOT>*" }
 
 ## 七、本地服務埠號規範
 
-> **重要提醒：以下服務埠號為固定規範，切勿隨意更改以免衝突**
+> **重要提醒：通訊埠分配遵循 ADR-0017 / ADR-0022，區分歷史留痕與現行配置，切勿隨意更改以免衝突**
 
 | 服務 | 埠號 | URL | 說明 |
 |------|------|-----|------|
-| **LINE bridge** | **3000** | http://localhost:3000 | LINE Bot 通訊橋接（依 ADR-0017 固定） |
-| **TG bridge** | **3001** | http://localhost:3001 | Telegram Bot 通訊橋接（依 ADR-0017 固定） |
-| **Next.js 應用程式（預留）** | **3002** | http://localhost:3002 | 未來 tw-stock-web Web 應用（依 ADR-0017 規劃） |
-| **靜態 HTTP 伺服器（預留）** | **8888** | http://localhost:8888 | 未來靜態分析頁面與 Dashboard |
+| **LINE bridge（歷史留痕）** | **3000** | http://localhost:3000 | 舊版 LINE Bot 通訊橋接（歷史留痕，已由 ADR-0022 單一 Gateway 替代，非現行常駐服務） |
+| **TG bridge（歷史留痕）** | **3001** | http://localhost:3001 | 舊版 Telegram Bot 通訊橋接（歷史留痕，已由 ADR-0022 單一 Gateway 替代，非現行常駐服務） |
+| **Next.js 應用程式（預留）** | **3002** | http://localhost:3002 | 未來 tw-stock-web Web 應用（依 ADR-0017 預留） |
+| **Channel Gateway v1（規範預留）** | **3003** | http://localhost:3003 | Channel Gateway v1 規範通訊埠（依 ADR-0017 / TG-MVP-07 確立；listener 待 TG-MVP-11 實作，尚未監聽上線） |
+| **靜態 HTTP 伺服器（預留）** | **8888** | http://localhost:8888 | 未來靜態分析頁面與 Dashboard（依 ADR-0017 預留） |
 
 ### 服務啟動確認步驟
 1. 確認工作目錄與服務類型正確（html / js / bat / py）
 2. 以系統管理員身分執行對應腳本
 3. 啟動伺服器，確認無埠號衝突
-4. 等待約 12 秒後進行健康狀態確認
+4. 等待約 12 秒後進行健康狀態確認（僅限已部署之活躍服務，不得探測未部署之通訊埠）
 5. 更新 SOP 中的最新服務狀態
 
 ---
