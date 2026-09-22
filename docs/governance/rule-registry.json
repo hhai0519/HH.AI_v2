@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "registry_version": "B109-M1",
+  "registry_version": "B109-M2",
   "rules": [
     {
       "id": "GOV-M1-001",
@@ -182,6 +182,112 @@
       "failure_semantics": "FAIL_CLOSED_BLOCK",
       "owner": "Executor / Macro Auditor",
       "description": "Documents must accurately distinguish directly restart-tested settings from same-mechanism inferences. Old Deny List is deprecated and non-persistent."
+    },
+    {
+      "id": "GOV-M2-001",
+      "name": "MACHINE_READABLE_MUTATION_PLAN",
+      "enforcement_layers": [
+        "EXECUTION_CONTRACT",
+        "PROMPT_PREFLIGHT",
+        "CI_GUARD",
+        "AUDIT"
+      ],
+      "enforcement_strength": "STRONG",
+      "failure_semantics": "FAIL_CLOSED_BLOCK",
+      "owner": "Executor / Macro Auditor",
+      "description": "Every tracked-mutation production prompt must declare an explicit machine-readable plan in Execution Contract v2 (allowed_mutation_paths, required_mutation_paths, max_plan_revisions=3, execution_record_required=true). Authorization provenance is external and audit-dependent; repository does not cryptographically prove Macro provenance."
+    },
+    {
+      "id": "GOV-M2-002",
+      "name": "PLAN_VS_ACTUAL_SCOPE",
+      "enforcement_layers": [
+        "EXECUTION_RECORD",
+        "CHECK_26",
+        "CI_GUARD",
+        "AUDIT"
+      ],
+      "enforcement_strength": "STRONG",
+      "failure_semantics": "FAIL_CLOSED_BLOCK",
+      "owner": "Executor / Macro Auditor",
+      "description": "Actual modified repo paths must be a subset of allowed plan paths (actual <= allowed) and must cover all required paths (required <= actual). Fresh Git status must match execution record."
+    },
+    {
+      "id": "GOV-M2-003",
+      "name": "CI_DIFF_REPLAY",
+      "enforcement_layers": [
+        "CHECK_26",
+        "CI_GUARD",
+        "AUDIT"
+      ],
+      "enforcement_strength": "STRONG",
+      "failure_semantics": "FAIL_CLOSED_BLOCK",
+      "owner": "Executor / Macro Auditor",
+      "description": "CI execution verifies exact diff replay from base_oid..HEAD against execution-record without trusting agent claims."
+    },
+    {
+      "id": "GOV-M2-004",
+      "name": "EVIDENCE_ORIGIN_STATUS_SEPARATION",
+      "enforcement_layers": [
+        "EXECUTION_RECORD",
+        "CHECK_26",
+        "AUDIT"
+      ],
+      "enforcement_strength": "STRONG",
+      "failure_semantics": "FAIL_CLOSED_BLOCK",
+      "owner": "Executor / Macro Auditor",
+      "description": "Evidence origin (MACHINE_CAPTURED_RAW, MACHINE_DERIVED, AGENT_ASSERTED, USER_PROVIDED) and verification_status (VERIFIED, UNVERIFIED, NOT_ESTABLISHED, PENDING_EXTERNAL) are strictly decoupled and independent axes."
+    },
+    {
+      "id": "GOV-M2-005",
+      "name": "PATH_EXISTENCE",
+      "enforcement_layers": [
+        "EXECUTION_RECORD",
+        "CHECK_26",
+        "AUDIT"
+      ],
+      "enforcement_strength": "STRONG",
+      "failure_semantics": "FAIL_CLOSED_BLOCK",
+      "owner": "Executor / Macro Auditor",
+      "description": "REG-11: Evidence items declaring source_kind=REPO_PATH must have an existing path in the current repository worktree."
+    },
+    {
+      "id": "GOV-M2-006",
+      "name": "GENERATOR_IN_BUNDLE",
+      "enforcement_layers": [
+        "EXECUTION_RECORD",
+        "CHECK_26",
+        "AUDIT"
+      ],
+      "enforcement_strength": "STRONG",
+      "failure_semantics": "FAIL_CLOSED_BLOCK",
+      "owner": "Executor / Macro Auditor",
+      "description": "REG-12: MACHINE_DERIVED evidence must declare generator.path and generator.sha256; generator path must exist and fresh SHA-256 must match exactly."
+    },
+    {
+      "id": "GOV-M2-007",
+      "name": "REPORT_TRACEABILITY",
+      "enforcement_layers": [
+        "EXECUTION_RECORD",
+        "CHECK_26",
+        "AUDIT"
+      ],
+      "enforcement_strength": "STRONG",
+      "failure_semantics": "FAIL_CLOSED_BLOCK",
+      "owner": "Executor / Macro Auditor",
+      "description": "REG-13: Every report claim in execution-record must have a unique claim id, non-empty claim text, and valid non-empty evidence_ids referencing existing evidence items."
+    },
+    {
+      "id": "GOV-M2-008",
+      "name": "STRUCTURED_AUDIT_VERDICT",
+      "enforcement_layers": [
+        "CHECK_9",
+        "CI_GUARD",
+        "AUDIT"
+      ],
+      "enforcement_strength": "STRONG",
+      "failure_semantics": "FAIL_CLOSED_BLOCK",
+      "owner": "Executor / Macro Auditor",
+      "description": "Macro audit verdicts in AUDIT-LOG.md are evaluated via an anchored structured verdict parser requiring leading canonical markers (**核對通過) and rejecting substrings or trailing PASS markers on non-pass rows."
     }
   ]
 }

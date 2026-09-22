@@ -50,3 +50,23 @@
 1. 單純的正面通過測試（positive PASS alone）不足以作為驗收依據。
 2. 必須撰寫自動化負向測試或反例金絲雀（counterexample canary），實證該閘門遇到非法、畸形、fail-open 或不合規形態時，必定確定性攔截並回傳失敗（invalid shape is still rejected）。
 3. 負向測試必須納入標準驗證套件（如 `scripts/tests/test_check_consistency.py`），防止未來發生假綠燈（false green）退化。
+
+---
+
+## 4. 變更重放與證據完整性守衛 (Diff Replay & Evidence Integrity Guard — B-109 M2 / CHECK 26)
+
+為確保執行期所有變更真實落於授權範圍，且證據具備可驗證之單一事實來源，本專案建立 CHECK 26 作為第三方 CI 與本地一致性檢查之最高重放權威：
+
+1. **CHECK 26 變更重放不變量（Diff Replay Invariant）**：
+   - 於 CI 與本地環境中，CHECK 26 透過 `git diff --name-only <base_oid>..<candidate_sha>` 獨立提取候選提交的真實變更集合。
+   - 讀取 `docs/governance/execution-record.json`，比對以下三項一致性：
+     - `base_oid` 與 `candidate_sha`（或 HEAD）精確相符。
+     - 實際異動檔案清單完全等於 `execution-record.json` 中的 `actual_changed_paths`。
+     - 實際異動檔案清單嚴格落於 `allowed_mutation_paths` 白名單，且包含全部 `required_mutation_paths`。
+   - 任何路徑漂移、未宣告異動、多改或漏改，CHECK 26 立即 Fail-Closed 判定失敗。
+
+2. **證據完整性三項標準（REG-11～13 Integrity Standards）**：
+   - **REG-11（PATH-EXISTENCE）**：所有宣告為 `REPO_PATH` 類型之證據來源，其路徑必須於版本庫中實際存在且有效。
+   - **REG-12（GENERATOR-IN-BUNDLE）**：所有宣告為 `MACHINE_DERIVED` 之衍生證據，其生成器路徑必須存在於版本庫中，且即時計算之 SHA-256 必須與宣告雜湊值完全一致。
+   - **REG-13（REPORT-TRACEABILITY）**：所有報告宣稱（report claims）必須附帶非空之 `evidence_ids`，且引用的證據 ID 必須存在於證據集合中，嚴禁無溯源證據之口頭宣稱。
+

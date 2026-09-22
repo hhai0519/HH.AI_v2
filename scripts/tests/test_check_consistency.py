@@ -3,6 +3,7 @@ import sys
 import json
 import shutil
 import pytest
+import re
 
 # Ensure scripts dir is on sys.path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -24,6 +25,8 @@ from check_consistency import (
     check_21_secret_leak_guard,
     check_22_ci_supply_chain,
     check_25_mechanical_governance_v1_guard,
+    check_26_plan_actual_evidence_integrity,
+    parse_macro_audit_verdict,
 )
 
 
@@ -528,6 +531,79 @@ def test_check_9_as_if_committed_candidate_self_fail(tmp_path):
     )
     assert len(fails) >= 1
     assert any("不得為 candidate 自己" in f for f in fails)
+
+
+def test_check_9_structured_verdict_parser_positive_and_negative_controls():
+    """
+    CHECK 9 Anchored Structured Verdict Parser controls (B-109 M2 §28 & §29):
+    A. summary begins with 核對不通過 but contains candidate PASS -> rejects (is_pass False)
+    B. summary begins with 核對不通過 but contains ALL 5 GATES PASSED -> rejects (is_pass False)
+    C. canonical **核對通過... -> accepts (is_pass True)
+    D. historical **核對通過** -> accepts (is_pass True)
+    E. plain text with 'pass' without canonical prefix -> rejects (is_pass False)
+    F. **Machine PASS / Macro HOLD -> rejects (is_pass False)
+    """
+    # Positive controls
+    ok, v = parse_macro_audit_verdict("**核對通過。All gates passed")
+    assert ok is True
+    assert v == "PASS"
+
+    ok, v = parse_macro_audit_verdict("**核對通過**")
+    assert ok is True
+    assert v == "PASS"
+
+    ok, v = parse_macro_audit_verdict("**核對通過（MACRO AUDIT = PASS / B-104 FINAL CLOSURE ACCEPTED）**")
+    assert ok is True
+    assert v == "PASS"
+
+    ok, v = parse_macro_audit_verdict("核對通過：selftest E15-E17")
+    assert ok is True
+    assert v == "PASS"
+
+    ok, v = parse_macro_audit_verdict("核對批 F 通過")
+    assert ok is True
+    assert v == "PASS"
+
+    # Negative controls
+    # A: starts with 核對不通過 but contains candidate PASS
+    ok, v = parse_macro_audit_verdict("**核對不通過**：candidate PASS verified locally")
+    assert ok is False
+
+    # B: starts with 核對不通過 but contains ALL 5 GATES PASSED
+    ok, v = parse_macro_audit_verdict("**核對不通過**。ALL 5 GATES PASSED but material finding found")
+    assert ok is False
+
+    # E: plain text with 'pass' without canonical prefix
+    ok, v = parse_macro_audit_verdict("This commit had technical pass on unit tests")
+    assert ok is False
+
+    # F: Machine PASS / Macro HOLD
+    ok, v = parse_macro_audit_verdict("**Machine PASS / Macro HOLD（待微修 / HOLD — B-99 A1 repair）**")
+    assert ok is False
+
+    # Additional negative
+    ok, v = parse_macro_audit_verdict("**HOLD: Needs review**")
+    assert ok is False
+
+    ok, v = parse_macro_audit_verdict("**NEEDS MICRO-FIX**")
+    assert ok is False
+
+
+def test_check_9_hold_row_with_trailing_pass_fails(tmp_path):
+    """Integration: CHECK 9 rejects checkpoint row that has HOLD prefix with trailing PASS."""
+    _setup_check_9_env(
+        tmp_path,
+        checkpoint_hash="d111111",
+        audit_rows=[
+            ("a111111", "**核對通過**。Macro PASS"),
+            ("d111111", "**核對不通過**：candidate PASS on machine tests / ALL 5 GATES PASSED"),
+        ],
+    )
+    ancestry = ["d111111", "a111111", "a000000"]
+    fails, infos = check_9_handover_head(str(tmp_path), git_ancestry=ancestry)
+    assert len(fails) >= 1
+    assert any("結論非 Macro PASS" in f for f in fails)
+
 
 
 def test_check_10_section_refs_pass(tmp_path):
@@ -1289,12 +1365,74 @@ def test_integration_run_checks_includes_19_and_20():
     assert "CHECK 20 - Markdown 表格連續性" in source
 
 
-def test_integration_run_checks_includes_25_and_total_checks_is_25():
-    """Verify run_checks includes up to CHECK 25 and total_checks is 25."""
+def verify_check_consistency_inventory(file_content: str) -> tuple[bool, str, dict]:
+    """
+    Validates complete, consistent, and duplicate-free inventory (1..26)
+    across docstring and run_checks(). Supports both 'CHECK N -' and 'CHECK N:' punctuations.
+    """
+    # 1. Parse docstring inventory
+    docstring_match = re.search(r'"""(.*?)"""', file_content, re.DOTALL)
+    if not docstring_match:
+        return False, "Could not find module docstring", {}
+    docstring_text = docstring_match.group(1)
+
+    docstring_ids = []
+    seen_doc_ids = set()
+    for m in re.finditer(r'CHECK\s+(\d+)\s*[-—:]', docstring_text):
+        cid = int(m.group(1))
+        if cid in seen_doc_ids:
+            return False, f"Duplicate CHECK {cid} in docstring inventory", {}
+        seen_doc_ids.add(cid)
+        docstring_ids.append(cid)
+
+    # 2. Parse run_checks() body
+    run_checks_match = re.search(r'def run_checks\([^)]*\):(.*?)(?=\ndef [a-zA-Z0-9_]+|\Z)', file_content, re.DOTALL)
+    if not run_checks_match:
+        return False, "Could not find run_checks() function", {}
+    run_checks_text = run_checks_match.group(1)
+
+    # total_checks
+    tc_match = re.search(r'total_checks\s*=\s*(\d+)', run_checks_text)
+    if not tc_match:
+        return False, "total_checks assignment not found in run_checks()", {}
+    total_checks = int(tc_match.group(1))
+
+    run_checks_ids = []
+    seen_rc_ids = set()
+    for m in re.finditer(r'print\(["\'](?:\\n)?CHECK\s+(\d+)\s*[-—:]', run_checks_text):
+        cid = int(m.group(1))
+        if cid in seen_rc_ids:
+            return False, f"Duplicate CHECK {cid} in run_checks()", {}
+        seen_rc_ids.add(cid)
+        run_checks_ids.append(cid)
+
+    expected_ids = list(range(1, 27))
+    if total_checks != 26:
+        return False, f"total_checks must be 26 (got {total_checks})", {}
+
+    if docstring_ids != expected_ids:
+        missing = set(expected_ids) - set(docstring_ids)
+        extra = set(docstring_ids) - set(expected_ids)
+        return False, f"Docstring inventory mismatch (missing={sorted(list(missing))}, extra={sorted(list(extra))})", {}
+
+    if run_checks_ids != expected_ids:
+        missing = set(expected_ids) - set(run_checks_ids)
+        extra = set(run_checks_ids) - set(expected_ids)
+        return False, f"run_checks() inventory mismatch (missing={sorted(list(missing))}, extra={sorted(list(extra))})", {}
+
+    return True, "", {
+        "total_checks": total_checks,
+        "docstring_ids": docstring_ids,
+        "run_checks_ids": run_checks_ids,
+    }
+
+
+def test_integration_run_checks_includes_26_and_total_checks_is_26():
+    """Verify run_checks includes up to CHECK 26 and total_checks is 26."""
     import check_consistency
     import inspect
     source = inspect.getsource(check_consistency.run_checks)
-    assert "total_checks = 25" in source
+    assert "total_checks = 26" in source
     assert "check_21_secret_leak_guard" in source
     assert "CHECK 21: 機密防護與輸出安全守衛" in source
     assert "check_22_ci_supply_chain" in source
@@ -1305,6 +1443,73 @@ def test_integration_run_checks_includes_25_and_total_checks_is_25():
     assert "CHECK 24: 活動狀態投影漂移守衛" in source
     assert "check_25_mechanical_governance" in source
     assert "CHECK 25: 機械治理 v1 完整性守衛" in source
+    assert "check_26_plan_actual_evidence_integrity" in source
+    assert "CHECK 26: M2 計畫與執行重放暨證據完整性守衛" in source
+
+
+def test_full_checker_inventory_consistency_1_to_26():
+    """Full checker inventory consistency: docstring, run_checks, and active representation match 1..26."""
+    cc_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "check_consistency.py"))
+    with open(cc_path, "r", encoding="utf-8") as f:
+        content = f.read()
+
+    ok, err, metadata = verify_check_consistency_inventory(content)
+    assert ok is True, f"Full checker inventory verification failed: {err}"
+    assert metadata["total_checks"] == 26
+    assert metadata["docstring_ids"] == list(range(1, 27))
+    assert metadata["run_checks_ids"] == list(range(1, 27))
+
+
+def test_full_checker_inventory_negative_controls():
+    """
+    B-107 / B-109 M2 §23 negative controls:
+    A. Remove one active CHECK ID -> fails
+    B. Duplicate an active CHECK ID -> fails
+    C. Docstring inventory omits active ID -> fails
+    D. run_checks omits ID -> fails
+    E. Inventory supports current real 'CHECK N -' and 'CHECK N:' punctuations
+    """
+    cc_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "check_consistency.py"))
+    with open(cc_path, "r", encoding="utf-8") as f:
+        valid_content = f.read()
+
+    # Base verification passes
+    ok, err, _ = verify_check_consistency_inventory(valid_content)
+    assert ok is True
+
+    # A: Remove an active CHECK ID from run_checks
+    tampered_a = valid_content.replace('print("\\nCHECK 20 - Markdown 表格連續性")', '# removed check 20')
+    ok_a, err_a, _ = verify_check_consistency_inventory(tampered_a)
+    assert ok_a is False
+    assert "run_checks() inventory mismatch" in err_a
+
+    # B: Duplicate an active CHECK ID in run_checks
+    tampered_b = valid_content.replace(
+        'print("\\nCHECK 20 - Markdown 表格連續性")',
+        'print("\\nCHECK 20 - Markdown 表格連續性")\n    print("\\nCHECK 20 - Markdown 表格連續性")'
+    )
+    ok_b, err_b, _ = verify_check_consistency_inventory(tampered_b)
+    assert ok_b is False
+    assert "Duplicate CHECK 20" in err_b
+
+    # C: Docstring inventory omits active ID (e.g. remove CHECK 20)
+    tampered_c = valid_content.replace('CHECK 20 — 跨檔案規則追溯矩陣守衛 (Rule Traceability Matrix Guard)', '')
+    ok_c, err_c, _ = verify_check_consistency_inventory(tampered_c)
+    assert ok_c is False
+    assert "Docstring inventory mismatch" in err_c
+
+    # D: run_checks omits ID (e.g. remove CHECK 26)
+    tampered_d = valid_content.replace('print("\\nCHECK 26: M2 計畫與執行重放暨證據完整性守衛")', '')
+    ok_d, err_d, _ = verify_check_consistency_inventory(tampered_d)
+    assert ok_d is False
+    assert "run_checks() inventory mismatch" in err_d
+
+    # E: Supports both 'CHECK N -' and 'CHECK N:' punctuations
+    tampered_e = valid_content.replace('print("\\nCHECK 4 - 三層 README 完整性")', 'print("\\nCHECK 4: 三層 README 完整性")')
+    tampered_e = tampered_e.replace('print("\\nCHECK 26: M2 計畫與執行重放暨證據完整性守衛")', 'print("\\nCHECK 26 - M2 計畫與執行重放暨證據完整性守衛")')
+    ok_e, err_e, _ = verify_check_consistency_inventory(tampered_e)
+    assert ok_e is True, f"Expected punctuation tolerance but got: {err_e}"
+
 
 
 def test_check_21_missing_rule_file_fail(tmp_path):
@@ -1906,3 +2111,34 @@ def test_check_25_taskboard_missing_recovery_trigger_fail(tmp_path):
     f.write_text(f.read_text(encoding="utf-8").replace("antigravity-environment-baseline.md", "other-doc.md"), encoding="utf-8")
     fails, infos = check_25_mechanical_governance_v1_guard(str(tmp_path))
     assert any("recovery trigger" in f_msg or "antigravity-environment-baseline.md" in f_msg for f_msg in fails)
+
+
+# ---------------------------------------------------------------------------
+# CHECK 26 Tests: M2 Plan-vs-Actual / Evidence Integrity Replay Guard
+# ---------------------------------------------------------------------------
+
+def test_check_26_missing_execution_record_fail(tmp_path):
+    fails, infos = check_26_plan_actual_evidence_integrity(str(tmp_path))
+    assert len(fails) >= 1
+    assert any("execution-record.json" in f and "不存在" in f for f in fails)
+
+
+def test_check_26_valid_execution_record_pass(tmp_path):
+    import execution_record
+    gov_dir = tmp_path / "docs" / "governance"
+    gov_dir.mkdir(parents=True)
+    scripts_dir = tmp_path / "scripts"
+    scripts_dir.mkdir(parents=True)
+    script_file = scripts_dir / "execution_record.py"
+    script_file.write_text("# dummy script", encoding="utf-8")
+
+    from test_execution_record import make_valid_record
+    rec = make_valid_record(str(tmp_path))
+
+    rec_file = gov_dir / "execution-record.json"
+    rec_file.write_text(json.dumps(rec, indent=2), encoding="utf-8")
+
+    # In tmp_path, we test without git checking
+    ok, msg = execution_record.validate_execution_record(rec, repo_root=str(tmp_path), check_git=False)
+    assert ok is True
+

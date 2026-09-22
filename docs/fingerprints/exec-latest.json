@@ -1,5 +1,5 @@
 {
-  "base_head": "a5008c8",
+  "base_head": "d7a091d",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -15,8 +15,8 @@
         "## 2.5 遠端健康查證與 GitHub Actions 閉環規範 (Remote Health Verification)",
         "## 3. 查證紀律"
       ],
-      "lines": 242,
-      "sha256": "9ad5a9ce73005a4eb08ed63399cc65237d58305ce4c5bd16fe6f009c81c968df"
+      "lines": 248,
+      "sha256": "ec54fc1f4eef79bd169f818c5395c8bde0e355b97d87361cf8bde074f3837a56"
     },
     ".agents/rules/governance-gate-integrity.md": {
       "fences": 0,
@@ -25,10 +25,11 @@
         "## 1. 候選提交治理凍結不變量 (Candidate Governance Freeze Invariant)",
         "### 嚴禁紅燈修改裁判 (No Red-Driven Referee Mutation)",
         "## 2. 必要閘門失敗與拒絕語意 (Required Gate Failure Semantics)",
-        "## 3. 閘門變更確定性負向控制 (Deterministic Negative Controls)"
+        "## 3. 閘門變更確定性負向控制 (Deterministic Negative Controls)",
+        "## 4. 變更重放與證據完整性守衛 (Diff Replay & Evidence Integrity Guard — B-109 M2 / CHECK 26)"
       ],
-      "lines": 52,
-      "sha256": "0d245e9ce4b350ef73c3f68d892772d06b255a2fde126aed75b62b58a4d06cdb"
+      "lines": 72,
+      "sha256": "72e2642b1bc4809a5d4a7a4022668655b18e12c3f5257efd5755847c550a025a"
     },
     ".agents/rules/powershell-encoding-protocol.md": {
       "fences": 6,
@@ -73,8 +74,8 @@
         "## 5. 例外",
         "## 6. 這條規則保護的是誰"
       ],
-      "lines": 253,
-      "sha256": "d28f15343a51cedd6cd9f85c013e3e791760c2188276fc074a50da6119ea4b34"
+      "lines": 240,
+      "sha256": "68ed887713d7f3ca7f5c4546c318bad519d7cea208bdd99ae9e9fe4e870ebe8f"
     },
     ".agents/rules/role-boundaries.md": {
       "fences": 0,
@@ -91,8 +92,8 @@
         "## 7. 什麼時候該停下來回報，什麼時候該自己處理",
         "## 8. 個人工作資料與日誌邊界（Personal Work Data Boundary — D-U2）"
       ],
-      "lines": 194,
-      "sha256": "6d900cc5b46ca0b033af3a4cc7f0198521dcf201371260eec2d6069300f5321d"
+      "lines": 196,
+      "sha256": "a588a870860300f7c3711b43d029232064d7f45b64dd655140c01f8eace3395a"
     },
     ".agents/rules/secret-output-safety.md": {
       "fences": 6,
@@ -106,10 +107,11 @@
         "## SECRET-5 — 排錯與除錯路徑 (Troubleshooting Path)",
         "## SECRET-6 — 儲存隔離邊界 (Storage Separation)",
         "## SECRET-7 — 測試與持續整合規範 (Tests & CI Safety)",
-        "## SECRET-8 — 提交前強制守衛 (Commit Guard & Hook Verification)"
+        "## SECRET-8 — 提交前強制守衛 (Commit Guard & Hook Verification)",
+        "## SECRET-9 — 遠端中繼資料查詢安全紀律 (Remote Metadata Safety & No-Credential Fallback — B-109 M2)"
       ],
-      "lines": 125,
-      "sha256": "1b65e9d1fb58b2051e773ddf855a3ef38861293727ba8acef0e07fd47064e953"
+      "lines": 144,
+      "sha256": "5c56f7b618ef33461fb685bd45f61969075c8dc0e9999f7a71845f9325e48ed1"
     },
     ".agents/rules/skill-engineering-guardrails.md": {
       "fences": 0,
@@ -194,8 +196,8 @@
         "### 12.1 風險分級宏觀審計核心原則 (D-U6)",
         "### 12.2 Tier-M 微修復分類規範 (Tier-M Micro Repair)"
       ],
-      "lines": 531,
-      "sha256": "482e6dad1bdf9f59a0ad39f09417ba7a6a4cb3e9423e077c6ed493a42014bbe7"
+      "lines": 532,
+      "sha256": "71ac907d155c3946a0db827af32166ff2b2977bf559ef9934edcdbedb4c1645b"
     },
     ".claude/rules/auditor-selftest.md": {
       "fences": 0,
@@ -209,8 +211,8 @@
         "## E. 交付（產出提示詞之前）",
         "## F. 額度（每一輪回覆的開頭與結尾）"
       ],
-      "lines": 136,
-      "sha256": "f17de8ab1dc0127d1fd9e6c43f357344356467d3e86ae1a12f6d73be4008de7a"
+      "lines": 138,
+      "sha256": "55894be7e6d5f98fad7472581c28a61496b4852f73b0037ec4e59429b6a70873"
     },
     ".github/workflows/verify.yml": {
       "fences": 0,
@@ -550,16 +552,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 199,
-      "sha256": "e1e10873c6c577799aaed7535c90e91281d5e697418479700f34edd13ffd0350"
+      "lines": 200,
+      "sha256": "4fd00dad020d4f137bda8340c1f0bdf25f9f5c828167f141e647f6f6edfc3c13"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 165,
-      "sha256": "42f9908d0cbb2df2c4a9795bc41c695ccc18f0f6ed978e65da16d309262ec427"
+      "lines": 167,
+      "sha256": "b1bcdc9e47030c33a2f63f657210852b42005eddafa21a4ec2c0f0265f594fb8"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -600,7 +602,7 @@
         "## 封存區"
       ],
       "lines": 340,
-      "sha256": "7cc8cdb9ba8c794f3199de97603b08dd1ff2143ee2f33acbbefbefe4c3742898"
+      "sha256": "5b260a1b8a6222606683f3a663dcdb6a87a0c164195edbbfcb1f83781ea5d3d0"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1057,7 +1059,7 @@
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
       "lines": 4738,
-      "sha256": "f3264ab70aed31543ae63cd1376c04219620ad2e6c11a796ea7b616758e4501f"
+      "sha256": "72d4842c5085ca363da5adf622c49b13c4c14b39f628afdf4b7cba61e4c13c8d"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1084,8 +1086,16 @@
         "# 已知指向錯誤的歷史 tag。本清單只能縮短、不得加長。",
         "# 修復批次完成後必須清空；清單中的 tag 若已修復卻未移除，CHECK 18 會 FAIL。"
       ],
-      "lines": 3015,
-      "sha256": "b74cd798f6fffdb62764ae9bc2c628ceaaf4e221fae981d61d2303208e368064"
+      "lines": 3122,
+      "sha256": "1c1dbd653e3630c5f5854de168d24bcdc6034eac47fe4fd9880a8e325b5a5331"
+    },
+    "scripts/execution_record.py": {
+      "fences": 0,
+      "headings": [
+        "# -*- coding: utf-8 -*-"
+      ],
+      "lines": 545,
+      "sha256": "9a2a7fd3e8dcdcaa742807c62f800a0e178f391f12c202a6b761b8e5b4c9eea2"
     },
     "scripts/fingerprint.py": {
       "fences": 0,
@@ -1111,8 +1121,8 @@
         "# -*- coding: utf-8 -*-",
         "# Import shared execution contract parser"
       ],
-      "lines": 606,
-      "sha256": "7ea9b73de42fe93e3ac71c55cb0c100c97288a25955603f19d3302623b426544"
+      "lines": 670,
+      "sha256": "f5477dc16fdf943fb7fc405078324079554d648eb55884cf9181edd0d9739535"
     },
     "scripts/impact_scan.py": {
       "fences": 0,
@@ -1223,10 +1233,30 @@
         "# ---------------------------------------------------------------------------",
         "# ---------------------------------------------------------------------------",
         "# CHECK 25 Tests: Mechanical Governance v1 Integrity Guard",
+        "# ---------------------------------------------------------------------------",
+        "# ---------------------------------------------------------------------------",
+        "# CHECK 26 Tests: M2 Plan-vs-Actual / Evidence Integrity Replay Guard",
         "# ---------------------------------------------------------------------------"
       ],
-      "lines": 1908,
-      "sha256": "8a24d560c5d6a40a3ea0ec1798feb93ee09416fbd79e797869c7db1ce1a9d101"
+      "lines": 2144,
+      "sha256": "057e219355f8ef70b6b0d3089ffbaaba66dadf045bd447567e24dd736d39fd10"
+    },
+    "scripts/tests/test_execution_record.py": {
+      "fences": 0,
+      "headings": [
+        "# -*- coding: utf-8 -*-",
+        "# ---------------------------------------------------------------------------",
+        "# Positive Tests",
+        "# ---------------------------------------------------------------------------",
+        "# ---------------------------------------------------------------------------",
+        "# Negative Tests: Plan & Actual Invariants",
+        "# ---------------------------------------------------------------------------",
+        "# ---------------------------------------------------------------------------",
+        "# Negative Tests: REG-11, REG-12, REG-13",
+        "# ---------------------------------------------------------------------------"
+      ],
+      "lines": 364,
+      "sha256": "3c90c68727555f454ec7df1e0c3f587380476099c6c51ce22deccbbc85c81558"
     },
     "scripts/tests/test_fingerprint.py": {
       "fences": 0,
@@ -1251,8 +1281,8 @@
         "# Section 20: Real Synthetic Local Git Push Hook Invocation Tests",
         "# ---------------------------------------------------------------------------"
       ],
-      "lines": 575,
-      "sha256": "2052861514f1dc50aa1f74a0ce3c252717949718a077ed5a812d90906fc779f2"
+      "lines": 628,
+      "sha256": "b438618f4517578a063f3cb2b91705c52a78d8744d24d222c7830bcec8297349"
     },
     "scripts/tests/test_impact_scan.py": {
       "fences": 0,
@@ -1270,9 +1300,13 @@
     },
     "scripts/tests/test_prompt_manifest.py": {
       "fences": 0,
-      "headings": [],
-      "lines": 323,
-      "sha256": "05f75edd939e096302a2e91637292c91e15637c8d723303febb949f4af3cb489"
+      "headings": [
+        "# ---------------------------------------------------------------------------",
+        "# Contract v2 Future Specification Tests",
+        "# ---------------------------------------------------------------------------"
+      ],
+      "lines": 431,
+      "sha256": "c3c7e253892309468cbe4ac9daa3303c80a84c248b36027f7e7ddb3d959280e0"
     },
     "scripts/tests/test_rule_loadability.py": {
       "fences": 0,
@@ -1304,10 +1338,13 @@
         "# ---------------------------------------------------------------------------",
         "# ---------------------------------------------------------------------------",
         "# Section 24 & 33: Incident-Derived REG & K6 Persistence Truth Tests (B-109 M1)",
+        "# ---------------------------------------------------------------------------",
+        "# ---------------------------------------------------------------------------",
+        "# Section 44: B-109 M2 Remote Evidence Safety Hardening Tests (§33)",
         "# ---------------------------------------------------------------------------"
       ],
-      "lines": 855,
-      "sha256": "8c797ec3656665fe84cf6317f4ca5291dd5093bd0a7bcf86d2d4b4dd2c02185c"
+      "lines": 892,
+      "sha256": "cbd75836f71340919793044ab846fa502a6149b547bf72c129cd973deb21879c"
     },
     "scripts/tests/test_shared_primitives.py": {
       "fences": 0,
@@ -1397,7 +1434,7 @@
         "# ==========================================================================="
       ],
       "lines": 685,
-      "sha256": "40c4edfb53e2d451e616877afcb79db57a45fbbd5a75c1e2ccdd5b3fcdda2364"
+      "sha256": "635c1e36f3d0d6c71a3280304205d0520d4a6c7a40202c1fa7d5e9a4a8a9aae1"
     },
     "scripts/tests/test_verify_all.py": {
       "fences": 0,
@@ -1408,8 +1445,8 @@
     "scripts/validate_prompt_manifest.py": {
       "fences": 0,
       "headings": [],
-      "lines": 436,
-      "sha256": "2e7d8c393541509db10cb54686980e1bb3a5ed0c611b4480f1a92df92ce7b5d3"
+      "lines": 538,
+      "sha256": "ee31296806ec00e99f312a700dc1c4cb655c3bb0c224ad078a914acaad8e8fe5"
     },
     "scripts/validate_skills.py": {
       "fences": 0,
@@ -1429,7 +1466,7 @@
       "sha256": "35bf7dbfa3c7d291b550c3c97a6ae398a22b1dc3624c1d2fc1e4db6963d6e115"
     }
   },
-  "generated_at": "2026-09-21T16:49:30Z",
+  "generated_at": "2026-09-22T00:34:42Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

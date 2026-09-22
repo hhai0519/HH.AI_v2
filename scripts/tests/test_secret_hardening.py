@@ -853,3 +853,40 @@ def test_reg_k6_truth_01():
     assert "DIRECTLY RESTART-VERIFIED" in content or "DIRECT" in content
     assert "SAME-MECHANISM" in content or "same-mechanism" in content.lower()
     assert "非逐一重啟測試事實" in content or "not individually" in content.lower()
+
+
+# ---------------------------------------------------------------------------
+# Section 44: B-109 M2 Remote Evidence Safety Hardening Tests (§33)
+# ---------------------------------------------------------------------------
+
+def test_remote_metadata_safety_no_credential_fallback():
+    """
+    B-109 M2 §33: Public metadata must not fall back to secret/token extraction.
+    If public safe metadata is unavailable, return UNKNOWN / DEFER_TO_EXTERNAL_MACRO.
+    """
+    def resolve_ci_metadata(public_response: dict | None, allow_credential_read: bool = False):
+        if allow_credential_read:
+            raise PermissionError("Credential read strictly forbidden for public metadata query")
+        if public_response and public_response.get("id"):
+            return {
+                "run_id": str(public_response["id"]),
+                "status": public_response.get("status", "unknown"),
+                "conclusion": public_response.get("conclusion", "unknown"),
+            }
+        return "UNKNOWN / DEFER_TO_EXTERNAL_MACRO"
+
+    # Positive: public safe metadata available without auth
+    safe_data = {"id": 12345678, "status": "completed", "conclusion": "success"}
+    res = resolve_ci_metadata(safe_data, allow_credential_read=False)
+    assert isinstance(res, dict)
+    assert res["run_id"] == "12345678"
+    assert res["status"] == "completed"
+
+    # Safe deferral when public safe metadata is unavailable
+    res_absent = resolve_ci_metadata(None, allow_credential_read=False)
+    assert res_absent == "UNKNOWN / DEFER_TO_EXTERNAL_MACRO"
+
+    # Negative: attempting credential read / token fallback fails closed
+    with pytest.raises(PermissionError, match="strictly forbidden"):
+        resolve_ci_metadata(None, allow_credential_read=True)
+

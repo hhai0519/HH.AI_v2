@@ -12,15 +12,7 @@
 
 ## 2. 這是審查，不是建議
 
-收到提示詞後，**在執行任何修改前**，先對提示詞做結構檢查。未通過即停機回報，不猜測、不補齊。
-
-| 本規則機械檢查 | 非本規則語意判斷 |
-|---|---|
-| 提示詞是否有 `git pull origin main` | 這批該不該做 |
-| 錨點字串在目標檔案出現次數 | 錨點選得好不好 |
-| 是否要求更新交接區與狀態領域 | 交接區該寫什麼 |
-
-遇到疑慮依 `.agents/rules/role-boundaries.md` §7 分流（M1/M2/M3 自主處理），僅未授權之 S1 決策才停機回報。
+收到提示詞後，**在執行任何修改前**先對提示詞做結構檢查（如 `git pull`、錨點出現次數、交接區與狀態處置）。未通過即停機回報，不猜測、不補齊。遇到疑慮依 `.agents/rules/role-boundaries.md` §7 分流（M1/M2/M3 自主處理），僅未授權之 S1 決策才停機回報。
 
 ### 2.1 最前置硬規則：Prompt Manifest 與 Execution Contract 機械驗證（Hard Rule）
 
@@ -30,6 +22,12 @@
 3. Production prompt 必須同時具備 Prompt Manifest 與 `BEGIN_HHAI_EXECUTION_CONTRACT` ... `END_HHAI_EXECUTION_CONTRACT` 區塊；缺任一立即判定為 `PROMPT STRUCTURE ERROR` 停機，**不得進行任何 repo mutation**。
 4. Execution Contract 為確定性治理邊界，不得自行放寬。若 task goal、pressure 或 acceptance 與 FORBIDDEN 衝突：升級 `S1 GOVERNANCE_CONTRACT_CONFLICT`，原則為 `SAFETY_BOUNDARY_WINS`。
 5. IDE settings 屬 defense-in-depth 不能取代 Execution Contract。通過後才進入後續檢查。
+6. **Execution Contract v2 規範（B-109 M2）**：
+   - 欄位包含：`contract_version: 2`、`allowed_mutation_paths`、`required_mutation_paths`、`max_plan_revisions`（<= 3）、`execution_record_required`。
+   - 約束：若 `allowed_mutation_paths == NONE`，則 required 為 `NONE` 且 record 為 `false`；非 NONE 則 `required_mutation_paths ⊆ allowed_mutation_paths` 且 record 為 `true`。超出 scope 或 revision > 3 即刻停機升級 S1。
+   - 計畫與紀錄：變更批次維護 `.git/<task-id>-plan.json`；commit 前由 `scripts/execution_record.py` 輸出並驗證 `docs/governance/execution-record.json`；CI CHECK 26 依 `base_oid..HEAD` 重放 git diff 查驗。
+   - 證據來源與狀態分離：Origin 包含 `MACHINE_CAPTURED_RAW`、`MACHINE_DERIVED`、`AGENT_ASSERTED`、`USER_PROVIDED`；Verification Status 包含 `VERIFIED`、`UNVERIFIED`、`NOT_ESTABLISHED`、`PENDING_EXTERNAL` 且獨立於 origin。
+   - 完整性標準：REG-11（PATH-EXISTENCE，REPO_PATH 必存在）、REG-12（GENERATOR-IN-BUNDLE，MACHINE_DERIVED 生成器存在且 fresh SHA-256 一致）、REG-13（REPORT-TRACEABILITY，報告宣稱必關聯非空合法證據 ID）。
 
 本驗證器不取代 M1/M2/M3/S1 錯誤路由，將第一層結構與契約檢驗移至確定性程式碼。
 
@@ -56,15 +54,15 @@
 
 | # | 元素 | 判準 |
 |---|---|---|
-| 1 | 執行者身分宣告 | 開頭有「你是本專案的執行者」或等義身分界定 |
-| 2 | 基準與工作區確認 | 載明基準 commit full OID，並要求確認工作區乾淨（working tree clean） |
-| 3 | 批次模式宣告 | 明確宣告 `batch_mode: GOAL_SPEC` 或 `batch_mode: EXACT_SPEC` |
-| 4 | 目標與邊界 | 載明 Goal、Allowed Scope、Forbidden Scope 與 Acceptance Criteria |
-| 5 | 確定性驗證閘門 | 載明標準驗證指令與 Gate 清單（如 `verify_all.py`）；不以衍生值作 blocking truth |
-| 6 | `git add` 明確路徑 | 禁止 `git add -A` 或 `.`，採明確路徑。GOAL_SPEC 自 diff 產生；EXACT_SPEC 依規格 |
-| 7 | 破壞性操作防護 | 禁止未授權之 force push、reset --hard 或歷史重寫 |
-| 8 | 遠端健康查驗 | 包含執行後查驗 GitHub Actions exact SHA 綠燈之要求 |
-| 9 | Material Finding 處置 | 必須宣告 `FINDING_DISPOSITION`（NONE / CURRENT / EXISTING / NEW，見 §3.9） |
+| 1 | 執行者身分宣告 | 含執行者身分界定 |
+| 2 | 基準與工作區確認 | 載明基準 commit full OID 且要求 working tree clean |
+| 3 | 批次模式宣告 | 宣告 batch_mode 為 GOAL_SPEC 或 EXACT_SPEC |
+| 4 | 目標與邊界 | 載明 Goal、Allowed Scope、Forbidden Scope 與 Acceptance |
+| 5 | 確定性驗證閘門 | 載明標準驗證指令（如 `verify_all.py`）；不以衍生值作 blocking truth |
+| 6 | `git add` 明確路徑 | 禁 `git add -A` 或 `.`；GOAL_SPEC 逐檔加入，EXACT_SPEC 依規格 |
+| 7 | 破壞性操作防護 | 禁未授權 force push、reset --hard 或歷史重寫 |
+| 8 | 遠端健康查驗 | 含執行後查驗 Actions exact SHA 綠燈之要求 |
+| 9 | Material Finding 處置 | 宣告 `FINDING_DISPOSITION`（見 §3.9） |
 
 ### 3.0B EXACT_SPEC 專屬必備要素（僅在 EXACT_SPEC 模式下檢查）
 
@@ -86,7 +84,7 @@ GOAL_SPEC 模式不得要求 E-1～E-4，其正確性由測試與 Gate 守護。
 | 動作 A | 必須配對的動作 B | 理由 |
 |---|---|---|
 | `git pull origin main` | `git status --porcelain=v1` 為空 | 確保基準乾淨，避免髒檔案混入 |
-| `git push`（batch/**） | 需查驗 GitHub Actions 成功 | push 只是 transport，Actions 成功才是 proof。依 K1-A 合約，採 authorized batch/** push → candidate checks 成功 → main 無 drift 且為 ancestor → fast-forward main (SAME SHA) → exact main push Actions 成功流程。普通分支禁升 main |
+| `git push`（batch/**） | 需查驗 Actions 成功 | Actions 成功才是 proof；authorized batch/** push → checks 成功 → fast-forward main (SAME SHA) → main push 成功。普通分支禁升 main |
 | 新增或修改規則檔 | 更新自檢清單（`auditor-selftest.md`） | 規則與自檢必須同步 |
 | 聲明某 commit 通過核對 | 更新 `docs/AUDIT-LOG.md` 與交接區 §5.1 | 審計狀態必須雙向留痕 |
 
@@ -100,19 +98,19 @@ GOAL_SPEC 模式不得要求 E-1～E-4，其正確性由測試與 Gate 守護。
 
 | 項目 | 覆蓋對象 | 判準 |
 |---|---|---|
-| Allowed Scope | 提示詞目標涉及的所有檔案 | 擬修改檔案必須全數列入 Allowed Scope 白名單 |
-| git diff --name-only | Allowed Scope | 實際變更清單必須完全落在 Allowed Scope 內 |
-| git add <path> | 實際變更清單 | 提交時必須逐檔明確加入，禁止 `git add -A` 或 `git add .` |
-| Required Machine Gates | 本專案 Canonical 驗證標準 | 必須包含 `python scripts/verify_all.py` |
+| Allowed Scope | 涉及檔案 | 目標檔案全數列入 Allowed Scope 白名單 |
+| git diff --name-only | Allowed Scope | 實際變更清單完全落在 Allowed Scope 內 |
+| git add <path> | 實際變更 | 逐檔明確加入，禁 `git add -A` 或 `.` |
+| Required Machine Gates | Canonical 標準 | 必須包含 `python scripts/verify_all.py` |
 
 ### B. EXACT_SPEC 覆蓋鏈
 
 | 項目 | 覆蓋對象 | 判準 |
 |---|---|---|
-| 批次規格（Batch Spec） | 提示詞要求的所有修改目標 | 規格檔案必須包含聲明的全部目標檔案 |
-| Allowed Scope | 批次規格中的所有檔案 | 規格涉及檔案全數列入 Allowed Scope 白名單 |
-| git add 清單 | 規格中 target_file + spec 本身 | git add 必須包含規格中所有目標與規格檔本身 |
-| Required Machine Gates | 規格驗證工具 | 包含 BPE、`scripts/verify_all.py` 與 `check_consistency.py` CHECK 17 |
+| 批次規格（Batch Spec） | 修改目標 | 規格檔案包含聲明的全部目標檔案 |
+| Allowed Scope | 規格檔案 | 規格涉及檔案全數列入 Allowed Scope 白名單 |
+| git add 清單 | targets + spec | git add 包含規格中所有目標與規格檔本身 |
+| Required Machine Gates | 規格驗證工具 | 包含 BPE、`verify_all.py` 與 `check_consistency.py` CHECK 17 |
 
 ---
 
@@ -139,31 +137,32 @@ GOAL_SPEC 模式不得要求 E-1～E-4，其正確性由測試與 Gate 守護。
 
 | 聲明項 | 機械比對方法 |
 |---|---|
-| E1 身分宣告 | 提示詞開頭有「你是本專案的執行者」或等義敘述 |
-| E2 基準與規格識別 | 載明基準 commit full OID；GOAL_SPEC 需 base OID 與 Allowed Scope，不要求規格與行數；EXACT_SPEC 另需規格與 SHA |
-| E3 錨點原文定位 | EXACT_SPEC 附 structural anchor 原文；GOAL_SPEC 僅定義目標、邊界與驗收準則，不要求錨點 |
-| E4 機器驗證證據落地 | 要求執行 Required Machine Gates 且證據記於 docs/EXEC-LOG.md / GitHub，未要求對話貼完整輸出 |
-| E5 `git add` 明確路徑 | 有禁止 `git add -A` / `.` 禁令。GOAL_SPEC 依 diff 逐檔 add；EXACT_SPEC 依規格 targets |
+| E1 身分宣告 | 提示詞含執行者身分界定 |
+| E2 基準與規格識別 | 載明基準 commit full OID；GOAL_SPEC 需 base OID 與 Allowed Scope；EXACT_SPEC 另需規格與 SHA |
+| E3 錨點原文定位 | EXACT_SPEC 附 structural anchor；GOAL_SPEC 僅需目標與邊界，不需錨點 |
+| E4 機器驗證證據落地 | 要求執行 Required Machine Gates 且證據記於 docs/EXEC-LOG.md / Actions |
+| E5 `git add` 明確路徑 | 禁 `git add -A` / `.`。GOAL_SPEC 逐檔加入；EXACT_SPEC 依規格 |
 | E6 結尾格式 | 要求純文字回覆與固定署名行 |
-| E7 回報通道約束 | 未要求正常成功批次貼出 full diff / full file / terminal dump，遵守 Repo Evidence Channel |
-| E8 三項狀態領域處置 | 聲明交接區、TASKBOARD 與 AUDIT-LOG 處置（UPDATE 或 NO CHANGE 附理由；無新結論時 AUDIT-LOG 宣告 NO CHANGE） |
-| E9 `git pull` | 有 `git pull origin main` 且指明預期 HEAD |
-| E10 零命中自身檢查 | 若有「字串 X 應為零命中」，檢查 X 是否出現在提示詞自身其他位置——純字串比對 |
-| E11 錨點唯一性驗證 | EXACT_SPEC 檢查：套用前驗證錨點 count == 1；GOAL_SPEC 為 N/A |
+| E7 回報通道約束 | 正常成功批次未要求貼 full diff/file/terminal dump，遵守 Repo Evidence Channel |
+| E8 三項狀態領域處置 | 聲明交接區、TASKBOARD 與 AUDIT-LOG 處置（UPDATE / NO CHANGE 附理由） |
+| E9 `git pull` | 含 `git pull origin main` 且指明預期 HEAD |
+| E10 零命中自身檢查 | 若有「字串 X 應為零命中」，檢查 X 是否出現於提示詞自身其他處 |
+| E11 錨點唯一性驗證 | EXACT_SPEC 套用前驗證錨點 count == 1；GOAL_SPEC 為 N/A |
 | E12 動手前必讀 | 要求讀取規則檔或執行基準前置檢查 |
-| E13 配對與覆蓋 | 依 §3.1、§3.2 比對。GOAL_SPEC 比對 Allowed Scope ↔ diff ↔ explicit git add ↔ gates；EXACT_SPEC 比對 spec ↔ git add |
+| E13 配對與覆蓋 | 依 §3.1 與 §3.2 比對範圍、diff、git add 與 gates |
 | E14 自檢聲明區塊 | 區塊存在且項目連號無缺 |
-| E15 錨點基準來源 | EXACT_SPEC 檢查錨點對應 base commit 與規格上下文；GOAL_SPEC 為 N/A |
-| E16 跨檔引用同行 | 寫入文字中跨檔 `§X.Y` 檔名與章節號在同一行；target 存在且未被 substitution，歷史引用寫 archive 路徑 |
-| E17 結構序列與失敗路徑驗收 | 涉及結構變更附明確驗收準則；若取得資源，依 E17 failure-path 標準定義狀態、owner、failure exits、清理次數（exactly-once）與反例；不將衍生序列當通用 blocking 條件 |
-| E18 機械前置證據 | 包含 base full OID、batch mode、Allowed Scope 與標準驗證指令；EXACT_SPEC 額外要求 spec path 與 SHA |
-| E19 移除前複查 | 若含刪除檔案／章節／規則／看板項目，檢查是否附三步複查結果（純存在性比對） |
-| E20 規則層模擬授權 | EXACT_SPEC 規則層變更經 BPE 與 check_consistency 模擬；GOAL_SPEC 由測試與 Gate 守護 |
-| E21 衍生數值不作 blocking truth | 基準 commit 與實測一致；machine-derived values 由工具產出，不得抄為 blocking truth |
-| E22 審計狀態權威檢查 | 未要求建立 audited tag；審計狀態以 AUDIT-LOG、refactor-backlog §5.1 與 GitHub Actions 為 SSOT |
-| E23 批次規格進 repo | EXACT_SPEC 附規格路徑與 sha256 且列入 git add；GOAL_SPEC 不要求規格進 repo |
-| E24 依賴閉包檢驗 | 若宣告 E24 = PASS 且 mode=REQUIRED，mutation 前重跑 impact_scan replay；缺證據或格式錯為 PROMPT STRUCTURE ERROR；replay 不符／缺處置／UPDATE 漏列為 S1 DEPENDENCY_* |
-| E25 Execution Contract 完整性 | 提示詞含唯一且合法之 Execution Contract 區塊，且 base_oid 與 Manifest 一致、安全邊界全數宣告 FORBIDDEN、main 與 delete 語意合法 |
+| E15 錨點基準來源 | EXACT_SPEC 錨點對應 base commit；GOAL_SPEC 為 N/A |
+| E16 跨檔引用同行 | 跨檔 `§X.Y` 檔名與章節號同行且 target 存在 |
+| E17 結構序列與失敗路徑驗收 | 結構變更附驗收準則；資源取得依 failure-path 定義狀態、owner、exits、exactly-once 清理與反例 |
+| E18 機械前置證據 | 含 base full OID、batch mode、Allowed Scope 與標準驗證指令 |
+| E19 移除前複查 | 刪除檔案/章節/規則/看板附三步複查結果 |
+| E20 規則層模擬授權 | EXACT_SPEC 規則變更經 BPE 與 check 模擬；GOAL_SPEC 由測試與 Gate 守護 |
+| E21 衍生數值不作 blocking truth | 基準 commit 與實測一致；衍生值不得抄為 blocking truth |
+| E22 審計狀態權威檢查 | 未要求 audited tag；審計狀態以 AUDIT-LOG、refactor-backlog §5.1 與 Actions 為 SSOT |
+| E23 批次規格進 repo | EXACT_SPEC 附規格路徑與 sha256 且 add；GOAL_SPEC 不要求規格進 repo |
+| E24 依賴閉包檢驗 | 宣告 E24 且 mode=REQUIRED 時重放 impact_scan replay 比對 |
+| E25 Execution Contract 完整性 | 含唯一合法 Execution Contract 區塊，base_oid 一致，安全邊界全 FORBIDDEN |
+| E26 Plan-vs-Actual / 證據完整性重放 | 契約 v2（allowed/required paths, revisions <= 3, record required），計畫/紀錄與 origin 及 CI diff 重放標準 |
 
 **自檢聲明不接受豁免。** 比對為「否」一律停機回報，標為 ⚠️ 或「刻意不做」不構成豁免。偏離規則唯一合法路徑為開批修改規則本身。
 
@@ -177,23 +176,11 @@ GOAL_SPEC 模式不得要求 E-1～E-4，其正確性由測試與 Gate 守護。
 
 ## 3.6 機械前置證據（Machine Evidence / Execution Preflight）的交叉驗證
 
-每份提示詞必須包含【機械前置證據】（Preflight Evidence）區塊，內容包含：
-1. (a) 基準 Commit Full OID
-2. (b) 批次模式（`batch_mode`：`EXACT_SPEC` 或 `GOAL_SPEC`）
-3. (c) 批次規格路徑與 SHA-256（僅 EXACT_SPEC 必備；GOAL_SPEC 不要求）
-4. (d) 允許修改範圍（Allowed Scope 白名單）
-5. (e) 標準驗證指令與 Gate 清單（canonical validation commands）
+每份提示詞必須包含【機械前置證據】（Preflight Evidence）區塊：(a) 基準 Commit Full OID；(b) 批次模式；(c) 批次規格路徑與 SHA-256（僅 EXACT_SPEC）；(d) Allowed Scope；(e) 標準驗證指令。比對存在、HEAD == base、模式合法、SHA 一致與範圍齊備，缺一即停。
 
-五項機械比對：證據區塊存在、基準 OID 一致（HEAD == base）、模式合法、規格 SHA 一致（EXACT_SPEC）、範圍與驗證指令齊備。缺一即停。
+**核心原則（Machine Truth）**：行數、測試數等為衍生診斷值，**不得抄為 blocking truth，不得因衍生值不符停機**。
 
-**核心原則（Machine Truth）**：
-行數、圍欄數、測試數、CHECK 數皆為衍生診斷值。**提示詞不得將衍生數值抄寫為 blocking truth，執行者不得因衍生數值不符停機。** 變更安全由 Batch Spec 與 machine tools 守護。
-
-**執行期規則新鮮度契約（Runtime Rule Freshness Contract）**：
-1. CI 驗證 committed rule artifact，非 IDE UI cache。
-2. Executor 每批從 local disk 重讀 active rules，UI 快取不得取代 reread。
-3. 若 IDE UI 與 disk / HEAD 不一致：以 disk 為準，UI 視為 stale cache 禁存回 repo；下個 task 前 reload context。
-4. 屬 runtime freshness，不可宣稱 CI 可驗證 IDE cache。
+**執行期規則新鮮度契約（Runtime Rule Freshness Contract）**：CI 驗證 committed rule artifact。Executor 每批從 local disk 重讀 active rules，UI 快取不得取代 reread；若與 disk 不一致以 disk 為準。
 
 ---
 

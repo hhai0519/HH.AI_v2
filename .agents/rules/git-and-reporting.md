@@ -50,6 +50,9 @@
   7. 等候 post-main `event = push, head_branch = main, head_sha = same candidate SHA` 之 Actions runs，`verify` 與 `gateway-windows` 必須再次成功。
   8. 絕不繞過保護規則（Never bypass protection），嚴禁新增 bypass actor。
   9. 遠端健康權威始終為：exact origin/main SHA ＋ exact-SHA GitHub Actions Verify 成功。
+- **實際變更機械重放與執行紀錄（Plan-vs-Actual & Exact Diff Replay — B-109 M2）**：
+  - commit 前由 `scripts/execution_record.py verify` 機械驗證 fresh git diff 嚴格落入 allowed scope 且必改路徑無缺漏。
+  - 完成前將執行紀錄落地至 `docs/governance/execution-record.json`；CI CHECK 26 依 `base_oid..HEAD` 機械重放 diff 查驗一致性。
 - **候選提交治理凍結不變量**：候選提交開始執行 required check 後裁判表面嚴格凍結，詳見 [.agents/rules/governance-gate-integrity.md](./governance-gate-integrity.md)。
 
 ## 2. 回報紀律
@@ -86,10 +89,9 @@
 
 ### 2.0 歷史教訓與已退役之舊回報機制（Historical Rationale / Retired Reporting Mechanism）
 
-以下條目為專案早期針對虛構回報所設計之過渡核對手段。**這些機制（如口頭貼檔案全文、行號、總行數、raw git diff、指令文字輸出等）已全面被 B-36（Repo Evidence Channel ＋ GitHub Actions 遠端健康權威）正式取代，退役為歷史留痕，不得再作為現行對話回報要求（Mandatory Reporting Rule）**。此處完整保留其事故背景與分析，用以解釋為何現代架構必須建立單一事實來源與版本庫機器證據鏈，防止同類事故重演：
+以下條目為早期針對虛構回報設計之過渡手段。**這些機制（口頭貼全文、行號、總行數、raw diff、指令輸出等）已全面由 B-36（Repo Evidence Channel ＋ Actions 遠端健康權威）正式取代，退役為歷史留痕，不得作現行對話回報要求**。保留其背景用以說明現代架構建立版本庫機器證據鏈之必要：
 
-- **[已退役] 不接受只回報「已完成」**：早期曾因缺乏客觀機器證據，要求口頭貼出內容與 staged 清單；現行由 `docs/EXEC-LOG.md`、Git commit 與 Actions 自動化保留客觀證據。
-- **[已退役] 不接受只回報「已完成」**：早期曾因缺乏客觀機器證據要求口頭貼出內容；現行由 `docs/EXEC-LOG.md`、Git commit 與 GitHub Actions 自動化保留客觀證據。
+- **[已退役] 不接受只回報「已完成」**：早期曾因缺乏客觀機器證據要求口頭貼出內容與 staged 清單；現行由 `docs/EXEC-LOG.md`、Git commit 與 GitHub Actions 自動化保留客觀證據。
 - **[已退役] 回報檔案內容附行號與總行數**：早期曾為防範虛構回報（如 2026-08-29 `PRINCIPLES.md` §4.2 事件與 2026-09-01 重整版本事件）要求腳本讀檔附行號與總行數；現行已全面由版本庫客觀證據與自動化閘門接管。
 - **[已退役] 貼出原始 git diff**：早期曾用於防止局部虛構，現已由 GitHub CI 與標準驗證流程接管。讀檔或 diff 失敗時誠實回報，嚴禁憑記憶填補。
 
@@ -130,7 +132,7 @@
 
 ## 2.3 [已退役] commit 與 push 的狀態，早期以指令輸出為準
 
-> **現行規範**：本機制已被 B-36（Repo Evidence Channel）與 §2.5（Remote Health Verification）正式取代。推送到遠端後，一律由 GitHub API 查證 exact origin/main OID 與 Actions 狀態為客觀憑證，並記錄於 `docs/EXEC-LOG.md`，禁止在對話視窗貼出終端機指令文字輸出，禁止文字摘要辯論。
+> **現行規範**：本機制已由 B-36 與 §2.5 正式取代。遠端狀態一律由 exact origin/main OID 與 Actions 狀態為客觀憑證並記錄於 `docs/EXEC-LOG.md`，禁止對話貼指令輸出或文字摘要辯論。
 
 以下保留 2026-09-05 歷史事故記錄：
 
@@ -188,6 +190,10 @@
    - **嚴禁使用非 exact-SHA 替代品 (Strictly Forbidden)**：嚴禁使用 branch badge、README badge、branch general green state、僅本地 PASS 或 Executor 口頭聲稱代替 exact-SHA 遠端證據。Branch badge 僅能反映分支一般狀態，無法證明特定 commit 已通過驗證。
    - **不可取得之升級 (S1 Escalation)**：經合理 M2 重試後，若所有 exact-SHA-capable 遠端管道均無法取得必要遠端健康證據，此時已非一般暫態，必須升級 S1 停止（`required remote evidence unavailable`），交由審計官或使用者仲裁。
 3. **禁止文字摘要辯論 (Anti-Debate Policy)**：不得僅以本地 PASS 或 Agent 間文字對談斷定遠端健康。若 Actions 出現 failure，直接引用 run ID、failed job 與 failed step 客觀 log，禁止憑空猜測或口頭辯論。
+4. **遠端中繼資料查詢安全收斂（Remote Metadata Safety & Secret Boundary — B-109 M2）**：
+   - 查詢 candidate CI 狀態以匿名／公開 exact-SHA 中繼資料（public metadata）為主要途徑。
+   - 嚴禁觸發 credential extraction、讀取 PAT/金鑰、組裝 Authorization header、列舉環境變數或跨 session 搜索；authenticated CLI 不得作為 public metadata 的必要 fallback。
+   - 若 safe metadata 不可取得，一律回報 `UNKNOWN / DEFER_TO_EXTERNAL_MACRO`，嚴禁憑證繞道。raw Actions logs 存取嚴格維持 `EXTERNAL_MACRO_ONLY`。
 
 ## 3. 查證紀律
 

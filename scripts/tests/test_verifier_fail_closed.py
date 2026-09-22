@@ -303,7 +303,7 @@ def test_check_9_git_ancestry_unavailable_fail(tmp_path):
     bl = docs / "refactor-backlog.md"
     bl.write_text("上次核對通過的 HEAD：`369c61a`\n", encoding="utf-8")
     al = docs / "AUDIT-LOG.md"
-    al.write_text("| 369c61ad6dea6e289d113b1a4119ae25911e93d2 | 2026-09-13 | §5.1 | 通過 | PASS |\n", encoding="utf-8")
+    al.write_text("| 369c61ad6dea6e289d113b1a4119ae25911e93d2 | 2026-09-13 | §5.1 | **核對通過** | PASS |\n", encoding="utf-8")
 
     # git_ancestry is empty list
     fails, infos = check_9_handover_head(str(tmp_path), git_ancestry=[])
@@ -513,29 +513,29 @@ def extract_active_check_ids_from_source(source_text: str):
     return check_ids
 
 
-def test_active_check_inventory_continuous_1_to_25():
-    """現行 active CHECK IDs 必須為 1..25 連續、無重複、無缺號"""
+def test_active_check_inventory_continuous_1_to_26():
+    """現行 active CHECK IDs 必須為 1..26 連續、無重複、無缺號"""
     import check_consistency
     import inspect
     source = inspect.getsource(check_consistency.run_checks)
     check_ids = extract_active_check_ids_from_source(source)
-    expected = list(range(1, 26))
-    assert len(check_ids) == 25, f"Expected 25 checks, found {len(check_ids)}: {check_ids}"
+    expected = list(range(1, 27))
+    assert len(check_ids) == 26, f"Expected 26 checks, found {len(check_ids)}: {check_ids}"
     assert check_ids == expected, f"Check IDs drift: {check_ids} != {expected}"
 
 
 def test_active_check_inventory_negative_controls():
     """Negative controls for check inventory validation: missing or duplicate check IDs must fail."""
-    # Synthetic missing CHECK 25
-    synthetic_missing = "\n".join([f'print("CHECK {i} - ...")' for i in range(1, 26) if i != 25])
+    # Synthetic missing CHECK 26
+    synthetic_missing = "\n".join([f'print("CHECK {i} - ...")' for i in range(1, 27) if i != 26])
     ids_missing = extract_active_check_ids_from_source(synthetic_missing)
-    assert ids_missing != list(range(1, 26))
-    assert 25 not in ids_missing
+    assert ids_missing != list(range(1, 27))
+    assert 26 not in ids_missing
 
-    # Synthetic duplicate CHECK 25
-    synthetic_duplicate = "\n".join([f'print("CHECK {i} - ...")' for i in range(1, 26)] + ['print("CHECK 25: ...")'])
+    # Synthetic duplicate CHECK 26
+    synthetic_duplicate = "\n".join([f'print("CHECK {i} - ...")' for i in range(1, 27)] + ['print("CHECK 26: ...")'])
     ids_dup = extract_active_check_ids_from_source(synthetic_duplicate)
-    assert len(ids_dup) != 25 or ids_dup != list(range(1, 26))
+    assert len(ids_dup) != 26 or ids_dup != list(range(1, 27))
 
 
 # ===========================================================================

@@ -48,12 +48,12 @@ def test_rule_registry_structure_and_inventory():
         data = json.load(f)
 
     assert data.get("schema_version") == 1
-    assert data.get("registry_version") == "B109-M1"
+    assert data.get("registry_version") == "B109-M2"
 
     rules = data.get("rules", [])
-    assert len(rules) == 13
+    assert len(rules) == 21
 
-    expected_ids = [f"GOV-M1-{i:03d}" for i in range(1, 14)]
+    expected_ids = [f"GOV-M1-{i:03d}" for i in range(1, 14)] + [f"GOV-M2-{i:03d}" for i in range(1, 9)]
     actual_ids = [r["id"] for r in rules]
     assert actual_ids == expected_ids, "Rule IDs must be exact and deterministically sorted"
 
@@ -284,6 +284,59 @@ def test_governance_preflight_rule_eval_output(capsys):
     for i in range(1, 14):
         rule_id = f"GOV-M1-{i:03d}"
         assert f"{rule_id} PASS" in captured.out
+    # Every rule from GOV-M2-001 to GOV-M2-008 must be present and PASS
+    for i in range(1, 9):
+        rule_id = f"GOV-M2-{i:03d}"
+        assert f"{rule_id} PASS" in captured.out
+
+
+VALID_CONTRACT_V2_TEXT = f"""BEGIN_HHAI_EXECUTION_CONTRACT
+contract_version: 2
+task_id: B-109-M2-TEST
+base_oid: {VALID_BASE_OID}
+main_advancement: FORBIDDEN
+authorized_main_sha: NONE
+remote_ref_deletion: FORBIDDEN
+authorized_delete_refs: NONE
+local_destructive_git: FORBIDDEN
+credential_access: FORBIDDEN
+environment_enumeration: FORBIDDEN
+cross_session_access: FORBIDDEN
+browser_github_mutation: FORBIDDEN
+raw_actions_log_access: EXTERNAL_MACRO_ONLY
+branch_creation: GIT_SWITCH_C
+hook_bypass: FORBIDDEN
+goal_pressure_policy: SAFETY_BOUNDARY_WINS
+ide_ephemeral_guards_required: false
+allowed_mutation_paths: scripts/foo.py;scripts/bar.py
+required_mutation_paths: scripts/foo.py
+max_plan_revisions: 3
+execution_record_required: true
+END_HHAI_EXECUTION_CONTRACT"""
+
+
+def test_governance_preflight_v2_contract_success(capsys):
+    ok, err, contract = validate_prompt_manifest.parse_execution_contract_block(VALID_CONTRACT_V2_TEXT)
+    assert ok is True
+    rc = governance_preflight.evaluate_contract_rules(contract, VALID_BASE_OID, repo_root=REPO_ROOT)
+    captured = capsys.readouterr()
+
+    assert rc == 0
+    for i in range(1, 14):
+        assert f"GOV-M1-{i:03d} PASS" in captured.out
+    for i in range(1, 9):
+        assert f"GOV-M2-{i:03d} PASS" in captured.out
+
+
+def test_governance_preflight_v1_non_b109_fails_gov_m2_001(capsys):
+    v1_post_m2 = VALID_CONTRACT_TEXT.replace("task_id: B-109-M1", "task_id: B-110")
+    ok, err, contract = validate_prompt_manifest.parse_execution_contract_block(v1_post_m2)
+    assert ok is True
+    rc = governance_preflight.evaluate_contract_rules(contract, VALID_BASE_OID, repo_root=REPO_ROOT)
+    captured = capsys.readouterr()
+
+    assert rc != 0
+    assert "GOV-M2-001 FAIL" in captured.out
 
 
 def test_governance_preflight_rule_eval_fails_closed(capsys):

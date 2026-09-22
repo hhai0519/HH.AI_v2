@@ -35,7 +35,7 @@ END_MARKER = "END_HHAI_PROMPT_MANIFEST"
 CONTRACT_BEGIN_MARKER = "BEGIN_HHAI_EXECUTION_CONTRACT"
 CONTRACT_END_MARKER = "END_HHAI_EXECUTION_CONTRACT"
 
-CONTRACT_REQUIRED_KEYS = [
+CONTRACT_REQUIRED_KEYS_V1 = [
     "contract_version",
     "task_id",
     "base_oid",
@@ -55,11 +55,22 @@ CONTRACT_REQUIRED_KEYS = [
     "ide_ephemeral_guards_required",
 ]
 
+CONTRACT_V2_EXTRA_KEYS = [
+    "allowed_mutation_paths",
+    "required_mutation_paths",
+    "max_plan_revisions",
+    "execution_record_required",
+]
+
+CONTRACT_REQUIRED_KEYS_V2 = CONTRACT_REQUIRED_KEYS_V1 + CONTRACT_V2_EXTRA_KEYS
+CONTRACT_REQUIRED_KEYS = CONTRACT_REQUIRED_KEYS_V1
+
 
 def parse_execution_contract_block(prompt_text: str) -> tuple[bool, str, dict]:
     """
     從 prompt_text 中抽取出唯一的 execution contract 區塊並解析為 key-value dict。
     fail-closed：缺失、重複、順序錯誤、格式錯誤、未知欄位皆立即回傳失敗。
+    支援 contract_version = 1 與 contract_version = 2。
     """
     begin_count = prompt_text.count(CONTRACT_BEGIN_MARKER)
     end_count = prompt_text.count(CONTRACT_END_MARKER)
@@ -79,8 +90,9 @@ def parse_execution_contract_block(prompt_text: str) -> tuple[bool, str, dict]:
     block_text = prompt_text[begin_idx + len(CONTRACT_BEGIN_MARKER):end_idx]
     lines = block_text.splitlines()
 
-    contract = {}
+    raw_pairs = []
     seen_keys = set()
+    contract_version = "1"
 
     for line_no, raw_line in enumerate(lines, 1):
         line = raw_line.strip()
@@ -94,15 +106,25 @@ def parse_execution_contract_block(prompt_text: str) -> tuple[bool, str, dict]:
 
         if key in seen_keys:
             return False, f"Duplicate key in contract: {key!r}", {}
-        if key not in CONTRACT_REQUIRED_KEYS:
-            return False, f"Unexpected/unsupported key in contract: {key!r}", {}
-
         seen_keys.add(key)
+        raw_pairs.append((key, val))
+        if key == "contract_version":
+            contract_version = val
+
+    if contract_version == "2":
+        expected_keys = CONTRACT_REQUIRED_KEYS_V2
+    else:
+        expected_keys = CONTRACT_REQUIRED_KEYS_V1
+
+    contract = {}
+    for key, val in raw_pairs:
+        if key not in expected_keys:
+            return False, f"Unexpected/unsupported key in contract (version {contract_version}): {key!r}", {}
         contract[key] = val
 
-    missing_keys = set(CONTRACT_REQUIRED_KEYS) - seen_keys
+    missing_keys = set(expected_keys) - seen_keys
     if missing_keys:
-        return False, f"Missing required contract keys: {sorted(list(missing_keys))}", {}
+        return False, f"Missing required contract keys (version {contract_version}): {sorted(list(missing_keys))}", {}
 
     return True, "", contract
 
@@ -115,7 +137,7 @@ def validate_execution_contract(
     """
     驗證 Execution Contract：
     1. 唯一合法 contract 區塊且無缺漏或多餘欄位
-    2. contract_version == '1'
+    2. contract_version in ('1', '2')
     3. task_id 非空
     4. base_oid 為 40-char hex，且若傳入 manifest 則與 manifest['base_oid'] 完全一致
     5. main_advancement: FORBIDDEN 或 EXACT_SHA
@@ -135,6 +157,11 @@ def validate_execution_contract(
        - hook_bypass == 'FORBIDDEN'
        - goal_pressure_policy == 'SAFETY_BOUNDARY_WINS'
        - ide_ephemeral_guards_required == 'false'
+    8. 若 contract_version == '2'：
+       - allowed_mutation_paths (NONE 或分號分隔之 exact paths，禁 wildcard/glob/絕對路徑/..)
+       - required_mutation_paths (NONE 或分號分隔之 exact paths，必須 required ⊆ allowed)
+       - max_plan_revisions == '3'
+       - execution_record_required ('true' 若 allowed!=NONE，否則 'false')
     """
     if isinstance(prompt_text_or_contract, dict):
         contract = dict(prompt_text_or_contract)
@@ -145,8 +172,9 @@ def validate_execution_contract(
         contract = parsed
 
     # 1. contract_version
-    if contract.get("contract_version") != "1":
-        return False, f"Unsupported contract_version: {contract.get('contract_version')!r} (expected '1')", {}
+    c_ver = contract.get("contract_version")
+    if c_ver not in ("1", "2"):
+        return False, f"Unsupported contract_version: {c_ver!r} (expected '1' or '2')", {}
 
     # 2. task_id
     if not contract.get("task_id"):
@@ -247,6 +275,80 @@ def validate_execution_contract(
 
     if contract["ide_ephemeral_guards_required"] != "false":
         return False, f"ide_ephemeral_guards_required must be 'false' (got {contract['ide_ephemeral_guards_required']!r})", {}
+
+    # 8. Contract v2 specific fields validation
+    if c_ver == "2":
+        # max_plan_revisions
+        max_rev = contract.get("max_plan_revisions", "").strip()
+        if max_rev != "3":
+            return False, f"Contract v2 max_plan_revisions must be '3' (got {max_rev!r})", {}
+
+        # execution_record_required
+        rec_req = contract.get("execution_record_required", "").strip()
+        if rec_req not in ("true", "false"):
+            return False, f"Contract v2 execution_record_required must be 'true' or 'false' (got {rec_req!r})", {}
+
+        # allowed_mutation_paths & required_mutation_paths
+        raw_allowed = contract.get("allowed_mutation_paths", "").strip()
+        raw_required = contract.get("required_mutation_paths", "").strip()
+
+        if raw_allowed == "NONE":
+            if raw_required != "NONE":
+                return False, f"When allowed_mutation_paths is NONE, required_mutation_paths must be NONE (got {raw_required!r})", {}
+            if rec_req != "false":
+                return False, f"When allowed_mutation_paths is NONE, execution_record_required must be 'false' (got {rec_req!r})", {}
+            contract["allowed_mutation_paths"] = "NONE"
+            contract["required_mutation_paths"] = "NONE"
+        else:
+            if rec_req != "true":
+                return False, f"When allowed_mutation_paths is not NONE, execution_record_required must be 'true' (got {rec_req!r})", {}
+
+            allowed_entries = raw_allowed.split(";")
+            seen_allowed = set()
+            normalized_allowed = []
+            for raw_p in allowed_entries:
+                p = raw_p.strip()
+                if not p:
+                    return False, f"Empty entry in allowed_mutation_paths: {raw_allowed!r}", {}
+                p_norm = p.replace("\\", "/")
+                if p_norm.startswith("/") or re.match(r"^[a-zA-Z]:", p_norm):
+                    return False, f"Absolute path forbidden in allowed_mutation_paths: {p!r}", {}
+                if ".." in p_norm.split("/"):
+                    return False, f"Path traversal '..' forbidden in allowed_mutation_paths: {p!r}", {}
+                if any(c in p_norm for c in ("*", "?", "[", "]")):
+                    return False, f"Wildcard forbidden in allowed_mutation_paths: {p!r}", {}
+                if p_norm in seen_allowed:
+                    return False, f"Duplicate path in allowed_mutation_paths: {p!r}", {}
+                seen_allowed.add(p_norm)
+                normalized_allowed.append(p_norm)
+
+            contract["allowed_mutation_paths"] = ";".join(sorted(normalized_allowed))
+
+            if raw_required == "NONE":
+                contract["required_mutation_paths"] = "NONE"
+            else:
+                req_entries = raw_required.split(";")
+                seen_req = set()
+                normalized_req = []
+                for raw_p in req_entries:
+                    p = raw_p.strip()
+                    if not p:
+                        return False, f"Empty entry in required_mutation_paths: {raw_required!r}", {}
+                    p_norm = p.replace("\\", "/")
+                    if p_norm.startswith("/") or re.match(r"^[a-zA-Z]:", p_norm):
+                        return False, f"Absolute path forbidden in required_mutation_paths: {p!r}", {}
+                    if ".." in p_norm.split("/"):
+                        return False, f"Path traversal '..' forbidden in required_mutation_paths: {p!r}", {}
+                    if any(c in p_norm for c in ("*", "?", "[", "]")):
+                        return False, f"Wildcard forbidden in required_mutation_paths: {p!r}", {}
+                    if p_norm in seen_req:
+                        return False, f"Duplicate path in required_mutation_paths: {p!r}", {}
+                    if p_norm not in seen_allowed:
+                        return False, f"required_mutation_paths must be a subset of allowed_mutation_paths (not in allowed: {p!r})", {}
+                    seen_req.add(p_norm)
+                    normalized_req.append(p_norm)
+
+                contract["required_mutation_paths"] = ";".join(sorted(normalized_req))
 
     return True, "", contract
 

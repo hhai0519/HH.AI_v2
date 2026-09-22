@@ -1,0 +1,131 @@
+{
+  "schema_version": 1,
+  "governance_version": "B109-M2",
+  "task_id": "B-109-M2",
+  "base_oid": "d7a091de9111178ff1017d64f4608cc446b5bd1a",
+  "plan": {
+    "allowed_paths": [
+      ".agents/rules/git-and-reporting.md",
+      ".agents/rules/governance-gate-integrity.md",
+      ".agents/rules/prompt-preflight.md",
+      ".agents/rules/role-boundaries.md",
+      ".agents/rules/secret-output-safety.md",
+      ".claude/rules/auditor-protocol.md",
+      ".claude/rules/auditor-selftest.md",
+      "docs/AUDIT-LOG.md",
+      "docs/EXEC-LOG.md",
+      "docs/TASKBOARD.md",
+      "docs/fingerprints/exec-latest.json",
+      "docs/generated/rule-traceability.md",
+      "docs/governance/execution-record.json",
+      "docs/governance/rule-registry.json",
+      "docs/refactor-backlog.md",
+      "scripts/check_consistency.py",
+      "scripts/execution_record.py",
+      "scripts/governance_preflight.py",
+      "scripts/tests/test_check_consistency.py",
+      "scripts/tests/test_execution_record.py",
+      "scripts/tests/test_governance_preflight.py",
+      "scripts/tests/test_prompt_manifest.py",
+      "scripts/tests/test_secret_hardening.py",
+      "scripts/tests/test_verifier_fail_closed.py",
+      "scripts/validate_prompt_manifest.py"
+    ],
+    "required_paths": [
+      ".agents/rules/git-and-reporting.md",
+      ".agents/rules/governance-gate-integrity.md",
+      ".agents/rules/prompt-preflight.md",
+      ".agents/rules/role-boundaries.md",
+      ".agents/rules/secret-output-safety.md",
+      ".claude/rules/auditor-protocol.md",
+      ".claude/rules/auditor-selftest.md",
+      "docs/AUDIT-LOG.md",
+      "docs/EXEC-LOG.md",
+      "docs/TASKBOARD.md",
+      "docs/fingerprints/exec-latest.json",
+      "docs/generated/rule-traceability.md",
+      "docs/governance/execution-record.json",
+      "docs/governance/rule-registry.json",
+      "docs/refactor-backlog.md",
+      "scripts/check_consistency.py",
+      "scripts/execution_record.py",
+      "scripts/governance_preflight.py",
+      "scripts/tests/test_check_consistency.py",
+      "scripts/tests/test_execution_record.py",
+      "scripts/tests/test_governance_preflight.py",
+      "scripts/tests/test_prompt_manifest.py",
+      "scripts/tests/test_secret_hardening.py",
+      "scripts/tests/test_verifier_fail_closed.py",
+      "scripts/validate_prompt_manifest.py"
+    ],
+    "max_plan_revisions": 3,
+    "revision_count": 0,
+    "plan_origin": "EXTERNAL_MACRO_PROMPT"
+  },
+  "actual": {
+    "changed_paths": [
+      ".agents/rules/git-and-reporting.md",
+      ".agents/rules/governance-gate-integrity.md",
+      ".agents/rules/prompt-preflight.md",
+      ".agents/rules/role-boundaries.md",
+      ".agents/rules/secret-output-safety.md",
+      ".claude/rules/auditor-protocol.md",
+      ".claude/rules/auditor-selftest.md",
+      "docs/AUDIT-LOG.md",
+      "docs/EXEC-LOG.md",
+      "docs/TASKBOARD.md",
+      "docs/fingerprints/exec-latest.json",
+      "docs/generated/rule-traceability.md",
+      "docs/governance/execution-record.json",
+      "docs/governance/rule-registry.json",
+      "docs/refactor-backlog.md",
+      "scripts/check_consistency.py",
+      "scripts/execution_record.py",
+      "scripts/governance_preflight.py",
+      "scripts/tests/test_check_consistency.py",
+      "scripts/tests/test_execution_record.py",
+      "scripts/tests/test_governance_preflight.py",
+      "scripts/tests/test_prompt_manifest.py",
+      "scripts/tests/test_secret_hardening.py",
+      "scripts/tests/test_verifier_fail_closed.py",
+      "scripts/validate_prompt_manifest.py"
+    ]
+  },
+  "evidence": [
+    {
+      "id": "PLAN_ACTUAL_DIFF",
+      "origin": "MACHINE_DERIVED",
+      "verification_status": "VERIFIED",
+      "source_kind": "GIT_DIFF",
+      "generator": {
+        "path": "scripts/execution_record.py",
+        "sha256": "9a2a7fd3e8dcdcaa742807c62f800a0e178f391f12c202a6b761b8e5b4c9eea2"
+      },
+      "description": "Deterministic Git diff replay against declared plan allowed/required scope"
+    },
+    {
+      "id": "M2_DISCOVERY_RAW",
+      "origin": "MACHINE_CAPTURED_RAW",
+      "verification_status": "VERIFIED",
+      "source_kind": "EXTERNAL_ARTIFACT",
+      "sha256": "4cd2851da921aab9d371b281f51947e2645b069d38ee56655e37a79c2ded3b4b",
+      "description": "External Macro verified M2 immutable raw discovery artifact identity"
+    }
+  ],
+  "report_claims": [
+    {
+      "claim_id": "CLAIM_PLAN_VS_ACTUAL_MATCHED",
+      "claim_text": "All actual changed repository paths strictly match allowed scope and cover all required paths without expansion.",
+      "evidence_ids": [
+        "PLAN_ACTUAL_DIFF"
+      ]
+    },
+    {
+      "claim_id": "CLAIM_DISCOVERY_PROVENANCE_VERIFIED",
+      "claim_text": "Immutable raw discovery artifact verified against expected SHA256 closure.",
+      "evidence_ids": [
+        "M2_DISCOVERY_RAW"
+      ]
+    }
+  ]
+}

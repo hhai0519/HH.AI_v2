@@ -21,11 +21,13 @@
   CHECK 17 — Batch Spec 重放一致性
   CHECK 18 — audited-* tag 名實一致
   CHECK 19 — ADR-0013 §2C UTF-8 BOM 污染偵測
+  CHECK 20 — 跨檔案規則追溯矩陣守衛 (Rule Traceability Matrix Guard)
   CHECK 21 — 機密防護與輸出安全守衛 (Secret Leak Guard)
   CHECK 22 — CI 供應鏈可重現性守衛 (CI Supply-Chain Reproducibility Guard)
   CHECK 23 — 傳輸能力與合約一致性守衛 (Transport Capability / Contract Exclusivity Guard)
   CHECK 24 — 活動狀態投影漂移守衛 (Active State Projection Drift Guard)
   CHECK 25 — 機械治理 v1 完整性守衛 (Mechanical Governance v1 Integrity Guard)
+  CHECK 26 — M2 計畫與執行重放暨證據完整性守衛 (M2 Plan-vs-Actual / Evidence Integrity Replay Guard)
 
 本腳本的檢查項來自 2026-08-29 的一次全庫實測掃描，每一項都曾實際命中過真實缺陷，不是憑空設計。
 新增檢查項時，必須先確認該檢查在當前 repo 的誤報率，誤報多的檢查會讓人習慣忽略輸出。
@@ -53,7 +55,7 @@ def run_checks(argv=None):
     as_if_committed = "--as-if-committed" in argv
     if as_if_committed:
         print("[MODE] 啟用 --as-if-committed 本地 commit 拓撲預演模式")
-    total_checks = 25
+    total_checks = 26
     passed = 0
     failed = 0
     
@@ -496,6 +498,22 @@ def run_checks(argv=None):
             print(f"    {fail}")
         failed += 1
 
+    # ---------------------------------------------------------
+    # CHECK 26: M2 計畫與執行重放暨證據完整性守衛
+    # ---------------------------------------------------------
+    print("\nCHECK 26: M2 計畫與執行重放暨證據完整性守衛")
+    c26_fails, c26_infos = check_26_plan_actual_evidence_integrity(repo_root, as_if_committed=as_if_committed)
+    for info in c26_infos:
+        print(f"  [INFO] {info}")
+    if len(c26_fails) == 0:
+        print("  [PASS] 0 命中")
+        passed += 1
+    else:
+        print(f"  [FAIL] {len(c26_fails)} 命中")
+        for fail in c26_fails:
+            print(f"    {fail}")
+        failed += 1
+
     # 總結
     # ---------------------------------------------------------
     print(f"\n========================================")
@@ -552,6 +570,56 @@ def hashes_match(h1, h2):
         return False
     h1, h2 = h1.lower(), h2.lower()
     return h1 == h2 or h1.startswith(h2) or h2.startswith(h1)
+
+
+def parse_macro_audit_verdict(summary: str) -> tuple[bool, str]:
+    """
+    Anchored structured verdict parser for Macro audit summary in AUDIT-LOG.md (B-109 M2 / CHECK 9).
+    Returns (is_pass, canonical_verdict_str).
+
+    Accepts:
+    - Anchored canonical prefix '**核對通過' (e.g. '**核對通過**', '**核對通過（MACRO AUDIT = PASS...', '**核對通過。...')
+    - Historical valid prefixes without markdown bold: '核對通過', '核對批' (for early historical rows)
+
+    Explicitly rejects:
+    - Any summary starting with '**核對不通過' or '核對不通過'
+    - Any summary starting with '**Machine PASS' or 'Machine PASS'
+    - Any summary starting with '**HOLD' or 'HOLD'
+    - Any summary starting with '**NEEDS' or 'NEEDS'
+    - Any arbitrary text containing 'PASS' or '通過' without anchored canonical prefix
+    """
+    if not isinstance(summary, str):
+        return False, "INVALID_TYPE"
+    s = summary.strip()
+
+    # Explicitly reject non-pass indicators at start
+    non_pass_prefixes = [
+        "**核對不通過",
+        "核對不通過",
+        "**Machine PASS",
+        "Machine PASS",
+        "**HOLD",
+        "HOLD",
+        "**NEEDS",
+        "NEEDS",
+        "**內容核對通過，但 CI failure",
+    ]
+    for p in non_pass_prefixes:
+        if s.startswith(p):
+            return False, "HOLD_OR_REJECT"
+
+    # Match canonical PASS prefixes
+    if s.startswith("**核對通過"):
+        if not s.startswith("**核對通過不通過"):
+            return True, "PASS"
+
+    # Historical entries in early AUDIT-LOG (before markdown bold was standardized)
+    if s.startswith("核對通過") or s.startswith("核對批"):
+        if not s.startswith("核對通過不通過"):
+            return True, "PASS"
+
+    return False, "NON_PASS"
+
 
 
 # Known pending migration routes registry (exact key + exact target + rationale)
@@ -1063,9 +1131,7 @@ def check_9_handover_head(root_dir=None, git_head=None, git_prev=None, git_prev2
                 if c_hash == "bootstrap":
                     continue
                 summary = parts[3]
-                is_pass = ("通過" in summary or "pass" in summary.lower()) and not any(
-                    neg in summary for neg in ["不通過", "NEEDS MICRO-FIX", "待微修", "CI failure", "failure"]
-                )
+                is_pass, _ = parse_macro_audit_verdict(summary)
                 audit_rows.append((c_hash, is_pass, summary))
 
     checkpoint_row = None
@@ -2822,14 +2888,18 @@ def check_25_mechanical_governance(root_dir=None):
                 reg = json.load(f)
             if reg.get("schema_version") != 1:
                 fails.append(f"docs/governance/rule-registry.json: schema_version 必須為 1 (實際: {reg.get('schema_version')})")
-            if reg.get("registry_version") != "B109-M1":
-                fails.append(f"docs/governance/rule-registry.json: registry_version 必須為 'B109-M1' (實際: {reg.get('registry_version')})")
+            reg_ver = reg.get("registry_version")
+            if reg_ver not in ("B109-M1", "B109-M2"):
+                fails.append(f"docs/governance/rule-registry.json: registry_version 必須為 'B109-M1' 或 'B109-M2' (實際: {reg_ver})")
             rules = reg.get("rules", [])
             if not isinstance(rules, list):
                 fails.append("docs/governance/rule-registry.json: 'rules' 必須為陣列")
             else:
                 rule_ids = [r.get("id") for r in rules if isinstance(r, dict) and "id" in r]
-                expected_ids = [f"GOV-M1-{i:03d}" for i in range(1, 14)]
+                if reg_ver == "B109-M2":
+                    expected_ids = [f"GOV-M1-{i:03d}" for i in range(1, 14)] + [f"GOV-M2-{i:03d}" for i in range(1, 9)]
+                else:
+                    expected_ids = [f"GOV-M1-{i:03d}" for i in range(1, 14)]
                 if len(rule_ids) != len(set(rule_ids)):
                     fails.append("docs/governance/rule-registry.json: 包含重複的 Rule ID")
                 missing_ids = set(expected_ids) - set(rule_ids)
@@ -2839,7 +2909,7 @@ def check_25_mechanical_governance(root_dir=None):
                 if extra_ids:
                     fails.append(f"docs/governance/rule-registry.json: 包含未授權額外 Rule IDs: {sorted(extra_ids)}")
                 if rule_ids == expected_ids:
-                    infos.append("rule-registry.json 存在且 GOV-M1-001..013 精確清單驗證通過")
+                    infos.append(f"rule-registry.json 存在且 {reg_ver} 規則清單驗證通過 (共 {len(rule_ids)} 條)")
         except Exception as e:
             fails.append(f"docs/governance/rule-registry.json:0  解析失敗: {e}")
 
@@ -3009,6 +3079,43 @@ def check_25_mechanical_governance(root_dir=None):
 
 
 check_25_mechanical_governance_v1_guard = check_25_mechanical_governance
+
+
+def check_26_plan_actual_evidence_integrity(root_dir=None, as_if_committed=False):
+    """
+    CHECK 26 — M2 計畫與執行重放暨證據完整性守衛 (M2 Plan-vs-Actual / Evidence Integrity Replay Guard).
+
+    A. docs/governance/execution-record.json exists
+    B. Calls execution_record.verify_execution_record_file(as_if_committed=as_if_committed)
+    C. Validates all plan-vs-actual invariants, fresh Git diff replay, REG-11/12/13
+    """
+    if root_dir is None:
+        root_dir = repo_root
+    fails = []
+    infos = []
+
+    rec_rel = os.path.join("docs", "governance", "execution-record.json")
+    rec_abs = os.path.join(root_dir, rec_rel)
+    if not os.path.exists(rec_abs):
+        fails.append(f"{rec_rel}:0  執行紀錄檔案不存在")
+        return fails, infos
+
+    try:
+        from scripts.execution_record import verify_execution_record_file
+    except ImportError:
+        import execution_record
+        verify_execution_record_file = execution_record.verify_execution_record_file
+
+    ok, msg = verify_execution_record_file(rec_rel, repo_root=root_dir, as_if_committed=as_if_committed)
+    if not ok:
+        fails.append(f"{rec_rel}: {msg}")
+    else:
+        infos.append("execution-record.json: Plan-vs-Actual exact replay, REG-11/12/13 integrity verified")
+
+    return fails, infos
+
+
+check_26_plan_actual_evidence_integrity_guard = check_26_plan_actual_evidence_integrity
 
 
 if __name__ == "__main__":

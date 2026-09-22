@@ -2825,7 +2825,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 5.1 上一批狀態
 
-上次核對通過的 HEAD：a5008c86e028c901f3b91a9680fc98656a8c74bc
+上次核對通過的 HEAD：d7a091de9111178ff1017d64f4608cc446b5bd1a
 
 - `23af193`（執行者前置檢查 ＋ 回滾程序 ＋ `AUDIT-LOG.md` ＋ 四缺口修正）
   已於 2026-09-02 由審計官核對通過：6 檔異動（含 2 個新檔）、零夾帶、
@@ -3107,12 +3107,12 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - B-104：已完成（ACCEPTED / CLOSED，Jules 歷史 PR #13–#24 與 12 條 exact head branches 清理完成；經 External Macro 獨立查證 12/12 remote refs absent、12/12 PR closed、0 merged、main 未異動；REMOTE_DELETE_EXACT_SET 單次授權自毀消耗通過；使用者已將 --delete 恢復為 Deny；NEW MATERIAL FINDING = NONE；正式結案）。
   - B-105：待辦（TODO / NOT AUTHORIZED，Jules Mode A 唯讀風險掃描與前置條件準備；Jules drift 記錄：authorized_mcp_tools 目前無已驗證 harness enforcement，jules-integration 仍指向 disabled Bridge，Jules capability semantics 留至 M4，本輪不得啟用 Jules）。
   - B-106：待辦（TODO / BLOCKING BEFORE PHASE E，Actual Loaded-Surface Budget & Rule Compatibility Guard；由 Always-On Rule Budget 改名並校準範圍，核心為 actual loaded surface 而非 repo file count，涵蓋 token budget 與 truncation；IDE 2.5.5 版本綁定，.agents/rules/*.md 搭配 trigger: always_on 為已驗證載入面，無 frontmatter 不算已載入，model_decision 維持 UNKNOWN；IDE 更新後僅 UI-only revalidation，禁止 production batch 中途更新 IDE；零實作）。
-  - B-107：待辦（TODO / BLOCKING BEFORE PHASE E，Deterministic Consistency Diagnostics & Guarded State-Log Mutation；擴充為 evidence integrity owner，確立 EVIDENCE-ORIGIN 四類，PATH-EXISTENCE / GENERATOR-IN-BUNDLE / REPORT-TRACEABILITY / REG-11～13 routing；新增 F2 負向控制與 CHECK 9 verdict parser 弱點等 nonblocking 觀察；零實作）。
+  - B-107：待辦（TODO / BLOCKING BEFORE PHASE E，Deterministic Consistency Diagnostics & Guarded State-Log Mutation；擴充為 evidence integrity owner，M2 evidence-integrity subset IMPLEMENTED CANDIDATE / PENDING EXTERNAL MACRO AUDIT，保留未來未被 M2 明確完成之殘留；確立 EVIDENCE-ORIGIN 四類，PATH-EXISTENCE / GENERATOR-IN-BUNDLE / REPORT-TRACEABILITY / REG-11～13 routing；CHECK 9 parser 與 negative controls 等已由 M2 實作）。
   - B-108：待辦（TODO / NOT CLOSED，作為 mechanical guard / cleanup owner）。K6-A UI 態勢更正為 PERSISTENT LAYER = APPLIED（USER_PROVIDED，IDE 2.5.5，包含 File Access 減量、MCP permanent Allow 減量、GitHub MCP 18 disabled、Advanced Command Access 12 entries 設為 Deny（其中 git credential / git reset 為直接重啟驗證，其餘 10 為同機制推論）、Execute URLs github.com = Deny（保留 entry 設 Deny））；舊「Deny List Terminal Commands」正式標記為 DEPRECATED / NON-PERSISTENT / DO NOT USE；Execute URLs delete-to-restrict 標記為 NON-PERSISTENT / DO NOT USE；基準與手動恢復檢核清單見 docs/ops/antigravity-environment-baseline.md；保留歷史事故實例；登錄低優先 Legacy Antigravity permission cleanup 留待 future bounded cleanup）。
-  - B-109：進行中（M1 ACCEPTED / CLOSED，M2 NEXT / READY，M3 PENDING，M4 LATER；Mechanical Governance v1，承接使用者裁決 U1、U3、K2-A、K4-C；B-104 結案後 NEXT_WORK 為 B-109，NEXT_SLICE 為 Mechanical Governance v1 — M2；M1–M4 phase roadmap 推進）。
+  - B-109：進行中（M1 ACCEPTED / CLOSED，M2 IMPLEMENTED CANDIDATE / PENDING EXTERNAL MACRO AUDIT，M3 PENDING，M4 LATER；Mechanical Governance v1，承接使用者裁決 U1、U3、K2-A、K4-C；NEXT_WORK 為 B-109，NEXT_SLICE 為 Mechanical Governance v1 — M2；M1–M4 phase roadmap 推進）。
   - F-03：多代理自治閉環（LOOP-lite，POST-MVP，採 Jules proposes → Executor reauthors → Macro judges，禁止 auto-merge）。
   - TG-MVP-07 與後續切片：待辦（NOT AUTHORIZED；不得立即開始，依使用者 K2-A 決策，必須依序完成 B-109 M1 → M2 → M3 後，始得返回 product runtime mainline）。
-  - E-03：進行中（IN PROGRESS，accepted checkpoint = `a5008c86e028c901f3b91a9680fc98656a8c74bc`）。
+  - E-03：進行中（IN PROGRESS，accepted checkpoint = `d7a091de9111178ff1017d64f4608cc446b5bd1a`）。
   - B-28 / B-29：REOPENED BY USER U2 / PENDING / NOT IMPLEMENTED；使用者 U2 裁決：以 Matt Pocock 架構思維重新檢驗 HH.AI_v2，依本專案實況調整，不是逐檔照抄 upstream。
   - B-54 保持待辦（POST_B01 / NONBLOCKING，SOP_12 機器專屬路徑 concrete example 已登錄）。
   - B-75 保持待辦、零實作 (POST_B01 / NONBLOCKING / NOT IMPLEMENTED)。

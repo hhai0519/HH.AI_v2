@@ -12,6 +12,7 @@ import subprocess
 import pytest
 from scripts.validate_prompt_manifest import (
     validate_prompt_manifest,
+    validate_execution_contract,
     parse_manifest_block,
     REQUIRED_KEYS,
 )
@@ -321,3 +322,110 @@ def test_cli_fail_closed_mode(tmp_path):
     )
     assert res.returncode != 0
     assert "[FAIL]" in res.stderr
+
+
+# ---------------------------------------------------------------------------
+# Contract v2 Future Specification Tests
+# ---------------------------------------------------------------------------
+
+BASE_V2_CONTRACT = """BEGIN_HHAI_EXECUTION_CONTRACT
+contract_version: 2
+task_id: B-109-M2-V2-TEST
+base_oid: 69b4b6c72e2bf2b91a46107afb2e7e9a2e538de1
+main_advancement: FORBIDDEN
+authorized_main_sha: NONE
+remote_ref_deletion: FORBIDDEN
+authorized_delete_refs: NONE
+local_destructive_git: FORBIDDEN
+credential_access: FORBIDDEN
+environment_enumeration: FORBIDDEN
+cross_session_access: FORBIDDEN
+browser_github_mutation: FORBIDDEN
+raw_actions_log_access: EXTERNAL_MACRO_ONLY
+branch_creation: GIT_SWITCH_C
+hook_bypass: FORBIDDEN
+goal_pressure_policy: SAFETY_BOUNDARY_WINS
+ide_ephemeral_guards_required: false
+allowed_mutation_paths: scripts/foo.py;scripts/bar.py
+required_mutation_paths: scripts/foo.py
+max_plan_revisions: 3
+execution_record_required: true
+END_HHAI_EXECUTION_CONTRACT"""
+
+
+def test_contract_v2_valid_tracked_mutation():
+    ok, err, contract = validate_execution_contract(BASE_V2_CONTRACT)
+    assert ok is True, f"Expected valid v2 contract: {err}"
+    assert contract["contract_version"] == "2"
+    assert contract["execution_record_required"] == "true"
+    assert "scripts/foo.py" in contract["required_mutation_paths"]
+
+
+def test_contract_v2_valid_none_paths():
+    v2_none = BASE_V2_CONTRACT.replace(
+        "allowed_mutation_paths: scripts/foo.py;scripts/bar.py",
+        "allowed_mutation_paths: NONE"
+    ).replace(
+        "required_mutation_paths: scripts/foo.py",
+        "required_mutation_paths: NONE"
+    ).replace(
+        "execution_record_required: true",
+        "execution_record_required: false"
+    )
+    ok, err, contract = validate_execution_contract(v2_none)
+    assert ok is True
+    assert contract["allowed_mutation_paths"] == "NONE"
+    assert contract["required_mutation_paths"] == "NONE"
+    assert contract["execution_record_required"] == "false"
+
+
+def test_contract_v2_negative_max_revisions_not_3():
+    v2_bad = BASE_V2_CONTRACT.replace("max_plan_revisions: 3", "max_plan_revisions: 4")
+    ok, err, _ = validate_execution_contract(v2_bad)
+    assert ok is False
+    assert "max_plan_revisions must be '3'" in err
+
+
+def test_contract_v2_negative_required_not_subset():
+    v2_bad = BASE_V2_CONTRACT.replace(
+        "required_mutation_paths: scripts/foo.py",
+        "required_mutation_paths: scripts/not_in_allowed.py"
+    )
+    ok, err, _ = validate_execution_contract(v2_bad)
+    assert ok is False
+    assert "required_mutation_paths must be a subset of allowed_mutation_paths" in err
+
+
+def test_contract_v2_negative_allowed_none_with_required():
+    v2_bad = BASE_V2_CONTRACT.replace(
+        "allowed_mutation_paths: scripts/foo.py;scripts/bar.py",
+        "allowed_mutation_paths: NONE"
+    )
+    ok, err, _ = validate_execution_contract(v2_bad)
+    assert ok is False
+    assert "When allowed_mutation_paths is NONE, required_mutation_paths must be NONE" in err
+
+
+def test_contract_v2_negative_path_traversal():
+    v2_bad = BASE_V2_CONTRACT.replace("scripts/bar.py", "../secret.txt")
+    ok, err, _ = validate_execution_contract(v2_bad)
+    assert ok is False
+    assert "Path traversal '..' forbidden" in err
+
+
+def test_contract_v2_negative_wildcard():
+    v2_bad = BASE_V2_CONTRACT.replace("scripts/bar.py", "scripts/*.py")
+    ok, err, _ = validate_execution_contract(v2_bad)
+    assert ok is False
+    assert "Wildcard forbidden" in err
+
+
+def test_contract_v2_negative_duplicate():
+    v2_bad = BASE_V2_CONTRACT.replace(
+        "allowed_mutation_paths: scripts/foo.py;scripts/bar.py",
+        "allowed_mutation_paths: scripts/foo.py;scripts/foo.py"
+    )
+    ok, err, _ = validate_execution_contract(v2_bad)
+    assert ok is False
+    assert "Duplicate path in allowed_mutation_paths" in err
+

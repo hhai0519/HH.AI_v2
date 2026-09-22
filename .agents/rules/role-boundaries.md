@@ -64,6 +64,8 @@
 - **M1 / M2 / M3**：屬於授權範圍內的機械重算、暫態重試或實作修復，依 §7 自主閉環並留下 machine / EXEC-LOG 證據，不應中斷目前工作。
 - **S1**：涉及未授權範圍、架構／安全／規範決策或無法在 Allowed Scope 內滿足驗收時，才停止並忠實回報決策者。
 - **邊界不變**：執行者永遠不做 Macro Audit、不做架構／安全／規範決策，亦不得擅自 scope expansion。
+- **Plan-vs-Actual 分工（B-109 M2）**：Auditor 負責定義目標、授權範圍（Allowed Scope）與驗收準則，並保留 semantic disposition 唯一權威；Executor 負責於授權範圍內建立機器可讀計畫（`.git/<task-id>-plan.json`）並輸出執行紀錄（`docs/governance/execution-record.json`）。CI CHECK 26 於第三方環境依 `base_oid..HEAD` 執行 exact diff replay，為變更一致性單一事實來源。
+- **遠端證據安全邊界（B-109 M2）**：Executor 僅能讀取公開/匿名 exact-SHA metadata；嚴禁為了查詢公開資料而觸發憑證讀取、PAT 存取、Authorization header 組裝、環境列舉或跨 session 搜索。raw Actions logs 存取嚴格維持 `EXTERNAL_MACRO_ONLY`。
 
 ---
 

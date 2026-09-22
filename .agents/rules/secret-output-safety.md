@@ -123,3 +123,22 @@
 3. 嚴禁使用 `git commit --no-verify`。
 4. 嚴禁透過環境變數或暫時修改 hook 腳本繞過檢查。
 5. 嚴禁為了規避掃描器報錯而擅自放寬特徵偵測規則。
+
+---
+
+## SECRET-9 — 遠端中繼資料查詢安全紀律 (Remote Metadata Safety & No-Credential Fallback — B-109 M2)
+
+執行者在推送到遠端後，若需查證遠端 CI 狀態或中繼資料（Remote Candidate CI Metadata）：
+1. **主要途徑（Primary Channel）**：一律以匿名／公開的 exact-SHA API 查詢為準（anonymous / public exact-SHA metadata query）。
+2. **禁止行為（Forbidden Actions for Public Metadata）**：
+   - 嚴禁觸發 credential extraction 或 helper 探詢。
+   - 嚴禁讀取 PAT（Personal Access Token）或任何機敏金鑰檔案。
+   - 嚴禁自行構造或拼接 Authorization header。
+   - 嚴禁執行環境變數列舉（違反 SECRET-1）。
+   - 嚴禁跨 session 搜索認證資訊。
+3. **無必要回退（No Mandatory Authenticated Fallback）**：authenticated CLI（如 `gh auth` 或需要登入之 CLI 工具）**不得**作為取得公開中繼資料的必要 fallback。
+4. **安全未知降級（Safe Unknown Degradation）**：若 anonymous/public safe metadata 不可取得或遭遇網路異常，一律回報：
+   `UNKNOWN / DEFER_TO_EXTERNAL_MACRO`
+   嚴禁嘗試任何憑證繞道或私自解密金鑰。
+5. **Raw Actions 日誌權威**：Raw Actions 完整日誌存取權限嚴格維持 `EXTERNAL_MACRO_ONLY`，執行者不得試圖讀取。
+
