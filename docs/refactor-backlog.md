@@ -2825,7 +2825,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 5.1 上一批狀態
 
-上次核對通過的 HEAD：d7a091de9111178ff1017d64f4608cc446b5bd1a
+上次核對通過的 HEAD：4b5d926de0132aed4844dfeeba33f1c93c7e083c
 
 - `23af193`（執行者前置檢查 ＋ 回滾程序 ＋ `AUDIT-LOG.md` ＋ 四缺口修正）
   已於 2026-09-02 由審計官核對通過：6 檔異動（含 2 個新檔）、零夾帶、
@@ -3109,10 +3109,10 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - B-106：待辦（TODO / BLOCKING BEFORE PHASE E，Actual Loaded-Surface Budget & Rule Compatibility Guard；由 Always-On Rule Budget 改名並校準範圍，核心為 actual loaded surface 而非 repo file count，涵蓋 token budget 與 truncation；IDE 2.5.5 版本綁定，.agents/rules/*.md 搭配 trigger: always_on 為已驗證載入面，無 frontmatter 不算已載入，model_decision 維持 UNKNOWN；IDE 更新後僅 UI-only revalidation，禁止 production batch 中途更新 IDE；零實作）。
   - B-107：待辦（TODO / BLOCKING BEFORE PHASE E，保留 open，不得提前 CLOSED）。納入 M2-P1（status reporting inconsistency，Actions failure 仍回報 ready）與 M2-P2（unapproved transcript-file access confirmed，cross-session NOT_ESTABLISHED，secret exposure NOT_ESTABLISHED）處置留痕；保留未來未被 M2 明確完成之 B-107 residual；EVIDENCE-ORIGIN 確立 MACHINE_CAPTURED_RAW、MACHINE_DERIVED、AGENT_ASSERTED、USER_PROVIDED 四類；REG-11～13 證據完整性標準與 CHECK 26 重放已由 M2 實作；CHECK 9 parser 與 negative controls 等已由 M2 實作。
   - B-108：待辦（TODO / NOT CLOSED，作為 mechanical guard / cleanup owner）。K6-A UI 態勢更正為 PERSISTENT LAYER = APPLIED（USER_PROVIDED，IDE 2.5.5，包含 File Access 減量、MCP permanent Allow 減量、GitHub MCP 18 disabled、Advanced Command Access 12 entries 設為 Deny（其中 git credential / git reset 為直接重啟驗證，其餘 10 為同機制推論）、Execute URLs github.com = Deny（保留 entry 設 Deny））；舊「Deny List Terminal Commands」正式標記為 DEPRECATED / NON-PERSISTENT / DO NOT USE；Execute URLs delete-to-restrict 標記為 NON-PERSISTENT / DO NOT USE；基準與手動恢復檢核清單見 docs/ops/antigravity-environment-baseline.md；保留歷史事故實例；登錄低優先 Legacy Antigravity permission cleanup 留待 future bounded cleanup）。
-  - B-109：進行中（M1 ACCEPTED / CLOSED；M2 MACRO HOLD / BOUNDED REPAIR ACTIVE；M3 PENDING；M4 LATER；Mechanical Governance v1，承接使用者裁決 U1、U3、K2-A、K4-C；NEXT_WORK 為 B-109，NEXT_SLICE 為 Mechanical Governance v1 — M2（BOUNDED REPAIR ACTIVE）；TG-MVP-07 NOT AUTHORIZED）。
+  - B-109：進行中（M1 ACCEPTED / CLOSED；M2 ACCEPTED / CLOSED；M3 READY / PENDING START；M4 LATER；Mechanical Governance v1，承接使用者裁決 U1、U3、K2-A、K4-C；NEXT_WORK 為 B-109，NEXT_SLICE 為 Mechanical Governance v1 — M3；TG-MVP-07 NOT AUTHORIZED）。
   - F-03：多代理自治閉環（LOOP-lite，POST-MVP，採 Jules proposes → Executor reauthors → Macro judges，禁止 auto-merge）。
   - TG-MVP-07 與後續切片：待辦（NOT AUTHORIZED；不得立即開始，依使用者 K2-A 決策，必須依序完成 B-109 M1 → M2 → M3 後，始得返回 product runtime mainline）。
-  - E-03：進行中（IN PROGRESS，accepted checkpoint = `d7a091de9111178ff1017d64f4608cc446b5bd1a`）。
+  - E-03：進行中（IN PROGRESS，accepted checkpoint = `4b5d926de0132aed4844dfeeba33f1c93c7e083c`）。
   - B-28 / B-29：REOPENED BY USER U2 / PENDING / NOT IMPLEMENTED；使用者 U2 裁決：以 Matt Pocock 架構思維重新檢驗 HH.AI_v2，依本專案實況調整，不是逐檔照抄 upstream。
   - B-54 保持待辦（POST_B01 / NONBLOCKING，SOP_12 機器專屬路徑 concrete example 已登錄）。
   - B-75 保持待辦、零實作 (POST_B01 / NONBLOCKING / NOT IMPLEMENTED)。
@@ -4755,4 +4755,25 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - 於 `scripts/tests/test_verifier_fail_closed.py` 實作確定性正例與負例 A、B、C、D、E 斷言。
   - 更新 `docs/governance/execution-record.json`，plan.revision_count 由 0 遞增至 1，max_plan_revisions 保持 3，base_oid 保持 d7a091de9111178ff1017d64f4608cc446b5bd1a，actual.changed_paths 由 fresh d7a091de..HEAD 機械重算。
   - 修復分支維持 `batch/b109-m2-mechanical-governance-260922`，修復 candidate 提交後標記為 READY_FOR_EXTERNAL_MACRO_REAUDIT。
+
+128. **B-109 M2 External Macro Final PASS 與結案狀態同步（B-109 M2 External Macro Final PASS & Final Acceptance State Sync）**（2026-09-22）
+- **外部宏觀審計結論（External Macro Final Verdict）**：
+  - 原 M2 候選：`d2d8a982d417f03ca610d475693ba40f060536c9`（Actions Run 35672894509 attempt 1 verify=success, gateway-windows failure 由 Windows Credential Manager bridge timeout PROVIDER_UNAVAILABLE 造成；attempt 2 same exact SHA verify=success, gateway-windows=success 26 passed，M2-F1 transient resolved）。
+  - 有界庫存負向控制修復候選：`4b5d926de0132aed4844dfeeba33f1c93c7e083c`（parent `d2d8a982d417f03ca610d475693ba40f060536c9`；Actions Run 35675932828 attempt 1, completed success，verify=success, gateway-windows=success）。
+  - External Macro 原始技術驗證：CHECK 26 PASS，26/26 checks PASS，491 passed，13 passed，ALL 5 GATES PASSED，Windows 26 passed；M2-F2 inventory-guard 負向控制完整驗證解決（RESOLVED）。
+  - External Macro 獨立複審結果：M2-F1 RESOLVED，M2-F2 RESOLVED，NEW MATERIAL FINDING = NONE，PROMOTION ELIGIBILITY = PASS。
+  - Same-SHA main promotion：main 推進至 `4b5d926de0132aed4844dfeeba33f1c93c7e083c`；post-main Actions Run 35679497654 (attempt 1, event push, head_branch main, head_sha 4b5d926de0132aed4844dfeeba33f1c93c7e083c) 驗證成功（verify=success, gateway-windows=success；External Macro raw: CHECK 26 PASS, 26/26 checks PASS, 491 passed, 13 passed, ALL 5 GATES PASSED, Windows 26 passed）。
+  - Ruleset 21301111 保持 active、deletion、non_fast_forward、strict required_status_checks（verify, gateway-windows）、bypass_actors = []、current_user_can_bypass = never。
+  - 單次授權消耗證明（Single-Use Authorization Consumption）：使用者本人於 promotion 完成後直接執行 `Test-Path .git\hhai-sensitive-push-auth.json`，結果為 `False`，證明單次授權在 push 完成後立即由 pre-push hook 自毀消耗（consumption = PASS；evidence_origin: USER_PROVIDED / DIRECT SCREENSHOT）。
+  - 正式判定：B-109 M2 FINAL MACRO AUDIT = PASS，ACCEPT STATUS = ACCEPT ALL，M2-F1 = RESOLVED，M2-F2 = RESOLVED，NEW MATERIAL FINDING = NONE，B-109 M2 = ACCEPTED / CLOSED。
+  - new accepted checkpoint 推進至 `4b5d926de0132aed4844dfeeba33f1c93c7e083c`。
+- **殘留發現與工作路由（Residual Findings & Next Work Routing）**：
+  - M2-P1（status reporting inconsistency）：路由至 B-107，不得提前關閉 B-107。
+  - M2-P2（unapproved transcript-file access confirmed，cross-session NOT_ESTABLISHED，secret exposure NOT_ESTABLISHED）：路由至 B-107，不得要求憑證輪換。
+  - Node.js 20 deprecation warning：NONBLOCKING，路由至 B-100 R-D。
+  - 後續工作路由：NEXT_WORK 推進至 B-109，NEXT_SLICE 為 Mechanical Governance v1 — M3。
+  - B-109 保持進行中（M1 ACCEPTED / CLOSED；M2 ACCEPTED / CLOSED；M3 READY / PENDING START；M4 LATER）。
+  - B-106 open、B-107 open、B-108 open、B-100 R-D pending 完整保留，不得誤關閉。
+  - TG-MVP-07 仍為未授權（依使用者 K2-A 決策，必須依序完成 B-109 M1 → M2 → M3 後始得返回 product runtime mainline）。
+  - 本結案批次（batch/b109-m2-final-closure-260922）為純治理狀態同步，零代碼異動，不開始 M3。結案 candidate 提交後標記為 READY_FOR_EXTERNAL_MACRO_AUDIT。
 

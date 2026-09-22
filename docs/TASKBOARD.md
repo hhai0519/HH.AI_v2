@@ -14,14 +14,14 @@
 
 **NEXT_WORK**：B-109
 
-**NEXT_SLICE**：Mechanical Governance v1 — M2
+**NEXT_SLICE**：Mechanical Governance v1 — M3
 
 > [!IMPORTANT]
 > **環境恢復觸發（Environment Recovery Trigger）**：
 > 若發生以下任一事件：**換電腦**、**重新安裝 Antigravity**、**IDE 版本更新**，
 > 在開始任何 production work 之前，必須先閱讀 [docs/ops/antigravity-environment-baseline.md](ops/antigravity-environment-baseline.md) 並完整完成 Environment Baseline Checklist 與重啟核對。
 
-**最後更新**：2026-09-22，ACTIVE_MACRO_AUDITOR = GPT 代理審查官（使用者授權）；B-109 M2 首投候選因 M2-F2 負例測試未完成遭 External Macro HOLD（MACRO HOLD / BOUNDED REPAIR ACTIVE）；M2-F1 Windows Credential timeout 於 attempt 2 same-SHA 成功重跑，transient resolved；M2-F2 啟動 bounded inventory-guard repair；M2-P1 回報狀態不一致與 M2-P2 transcript 存取登錄 B-107 處置留痕（cross-session NOT_ESTABLISHED，secret exposure NOT_ESTABLISHED）；B-107 保持 open；M3 PENDING；M4 LATER；TG-MVP-07 仍不得開始（NOT AUTHORIZED）。
+**最後更新**：2026-09-22，ACTIVE_MACRO_AUDITOR = GPT 代理審查官（使用者授權）；B-109 M2 經 External Macro 最終審查判定 PASS / ACCEPT ALL，M2-F1 與 M2-F2 全數 RESOLVED，B-109 M2 正式 ACCEPTED / CLOSED；same-SHA main 晉升完成且 post-main CI 驗證通過；M2-P1 與 M2-P2 登錄 B-107 處置留痕；B-107 保持 open；NEXT_WORK 推進至 B-109，NEXT_SLICE 為 Mechanical Governance v1 — M3（READY / PENDING START）；M4 LATER；TG-MVP-07 仍不得開始（NOT AUTHORIZED）。
 
 ---
 
@@ -189,7 +189,7 @@ A 節目前狀態以本表各列與 `NEXT_WORK` 之 current repo truth 為準；
 | B-106 | 待辦 | **Actual Loaded-Surface Budget & Rule Compatibility Guard** | 待辦（TODO / BLOCKING BEFORE PHASE E）。由 Always-On Rule Budget 改名並校準範圍：核心為 actual loaded surface 而非單純 repo file count，涵蓋 token budget 與 truncation；Antigravity runtime 結論版號綁定 verified version = IDE 2.5.5；`.agents/rules/*.md` 搭配 `trigger: always_on` 為已驗證載入面，無 frontmatter 之 rule 不得視為已載入，model_decision runtime 行為維持 UNKNOWN；IDE 更新後僅允許 UI-only revalidation（About version、Rules list / token usage、permission / Deny retention），若有 anomaly 則 STOP production，production batch 中途禁止更新 IDE；本輪不實作完整 B-106 guard。NOT IMPLEMENTED。 |
 | B-107 | 待辦 | **Deterministic Consistency Diagnostics & Guarded State-Log Mutation** | 待辦（TODO / BLOCKING BEFORE PHASE E，保留 open，不得提前 CLOSED）。納入 M2-P1（status reporting inconsistency，Actions failure 仍回報 ready）與 M2-P2（unapproved transcript-file access confirmed，cross-session NOT_ESTABLISHED，secret exposure NOT_ESTABLISHED）處置留痕；保留未來未被 M2 明確完成之 B-107 residual；EVIDENCE-ORIGIN 確立 MACHINE_CAPTURED_RAW、MACHINE_DERIVED、AGENT_ASSERTED、USER_PROVIDED 四類；REG-11～13 證據完整性標準與 CHECK 26 重放已由 M2 實作；CHECK 9 parser 與 negative controls 等已由 M2 實作。 |
 | B-108 | 待辦 | **Unauthorized Destructive Local Git Reset Guard** | 待辦（TODO / NOT CLOSED，作為 mechanical guard / cleanup owner）。K6-A UI 態勢更新為 PERSISTENT LAYER = APPLIED（USER_PROVIDED，IDE 2.5.5，包含 File Access 減量、MCP permanent Allow 減量、GitHub MCP 18 disabled、Advanced Command Access 12 entries 設為 Deny（其中 git credential / git reset 為直接重啟驗證，其餘 10 為同機制推論）、Execute URLs github.com = Deny（保留 entry 設 Deny））；舊「Deny List Terminal Commands」正式標記為 DEPRECATED / NON-PERSISTENT / DO NOT USE；Execute URLs delete-to-restrict 標記為 NON-PERSISTENT / DO NOT USE；基準與手動恢復檢核清單見 docs/ops/antigravity-environment-baseline.md；保留歷史事故實例；登錄低優先 Legacy Antigravity permission cleanup 留待 future bounded cleanup。 |
-| B-109 | 進行中 | **Mechanical Governance v1** | 進行中（M1 ACCEPTED / CLOSED；M2 MACRO HOLD / BOUNDED REPAIR ACTIVE；M3 PENDING；M4 LATER）。承接使用者正式裁決 U1、U3、K2-A、K4-C。M1 已由 External Macro Auditor 判定 ACCEPT ALL，accepted checkpoint 推進至 d7a091de9111178ff1017d64f4608cc446b5bd1a；M2 首投因 M2-F2 負例測試未完成遭 External Macro HOLD，啟動 bounded inventory-guard repair；NEXT_WORK 為 B-109，NEXT_SLICE 為 Mechanical Governance v1 — M2（BOUNDED REPAIR ACTIVE）。Phase roadmap：M1（CLOSED）、M2（MACRO HOLD / BOUNDED REPAIR ACTIVE）、M3（PENDING）、M4（LATER）。包含 MAX_AUTO_PLAN_REVISIONS = 3、escalation A–F、DEGRADED state、governance versioning 與 drift monitor；TG-MVP-07 NOT AUTHORIZED。 |
+| B-109 | 進行中 | **Mechanical Governance v1** | 進行中（M1 ACCEPTED / CLOSED；M2 ACCEPTED / CLOSED；M3 READY / PENDING START；M4 LATER）。承接使用者正式裁決 U1、U3、K2-A、K4-C。M1 與 M2 已由 External Macro Auditor 判定 ACCEPT ALL，accepted checkpoint 推進至 4b5d926de0132aed4844dfeeba33f1c93c7e083c；歷史首投因 M2-F2 負例測試未完成曾遭 External Macro HOLD，經 bounded inventory-guard repair 與 same-SHA main landing 結案；NEXT_WORK 為 B-109，NEXT_SLICE 為 Mechanical Governance v1 — M3（READY / PENDING START）。Phase roadmap：M1（CLOSED）、M2（CLOSED）、M3（READY / PENDING START）、M4（LATER）。包含 MAX_AUTO_PLAN_REVISIONS = 3、escalation A–F、DEGRADED state、governance versioning 與 drift monitor；TG-MVP-07 NOT AUTHORIZED。 |
 
 ---
 
