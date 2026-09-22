@@ -103,12 +103,12 @@ python scripts/verify_all.py
 
 ## 10. Remote Project Health Authority（遠端健康權威）
 
-專案採雙層權威分工機制：本地正確性以 `scripts/verify_all.py` 為準，遠端健康以 GitHub Actions 對 exact `origin/main` HEAD 之 Verify workflow 成功為單一事實來源。本 AGENTS.md 路由之詳細規範見 [`.agents/rules/git-and-reporting.md §2.5`](./.agents/rules/git-and-reporting.md#25-遠端健康查證與-github-actions-閉環規範-remote-health-verification)。
+專案採雙層權威分工機制：本地正確性以 `scripts/verify_all.py` 為準，遠端健康以 GitHub Actions 對 exact `origin/main` HEAD 之 Verify workflow 成功為單一事實來源。詳細規範見 [`.agents/rules/git-and-reporting.md`「遠端健康查證與 GitHub Actions 閉環規範」](./.agents/rules/git-and-reporting.md#25-遠端健康查證與-github-actions-閉環規範-remote-health-verification)。
 
 ### 10.1 遠端健康查證與回報規範
 
-完成 push 後必須查證 exact full commit OID、GitHub Actions Verify completed 且 success。本 AGENTS.md 路由之詳細操作步驟見 [`.agents/rules/git-and-reporting.md §2.5`](./.agents/rules/git-and-reporting.md#25-遠端健康查證與-github-actions-閉環規範-remote-health-verification)。
+完成 push 後必須查證 exact full commit OID、GitHub Actions Verify completed 且 success。詳細操作步驟見 [`.agents/rules/git-and-reporting.md`「遠端健康查證與 GitHub Actions 閉環規範」](./.agents/rules/git-and-reporting.md#25-遠端健康查證與-github-actions-閉環規範-remote-health-verification)。
 
 ### 10.2 禁止文字摘要辯論 (Anti-Debate Policy)
 
-嚴禁以文字比對或口頭宣告取代 Actions 機器證據；失敗時直接引用 run ID、failed job 與 failed step。本 AGENTS.md 路由之詳細規範見 [`.agents/rules/git-and-reporting.md §2.5`](./.agents/rules/git-and-reporting.md#25-遠端健康查證與-github-actions-閉環規範-remote-health-verification)。
+嚴禁以文字比對或口頭宣告取代 Actions 機器證據；失敗時直接引用 run ID、failed job 與 failed step。詳細規範見 [`.agents/rules/git-and-reporting.md`「遠端健康查證與 GitHub Actions 閉環規範」](./.agents/rules/git-and-reporting.md#25-遠端健康查證與-github-actions-閉環規範-remote-health-verification)。

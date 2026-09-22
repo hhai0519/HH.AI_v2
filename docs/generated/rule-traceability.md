@@ -23,6 +23,7 @@
 - `AGENTS.md`
 - `MISSION.md`
 - `PRINCIPLES.md`
+- `skills/AGENTS.md`
 
 ## 規則追溯清單 (Traceability Inventory)
 
@@ -432,13 +433,13 @@
 | AGENTS.md | 90 | ## 8. 遷移舊技能時的規則 | SECTION | §8 | skills/AGENTS.md#§8 | RESOLVED |
 | AGENTS.md | 100 | ## 9. 驗證 | FILE | `[`skills/AGENTS.md §9`](./skills/AGENTS.md#9-驗證)` | skills/AGENTS.md#9-驗證 | RESOLVED |
 | AGENTS.md | 100 | ## 9. 驗證 | SECTION | §9 | skills/AGENTS.md#§9 | RESOLVED |
-| AGENTS.md | 106 | ## 10. Remote Project Health Authority（遠端健康權威） | FILE | `[`.agents/rules/git-and-reporting.md §2.5`](./.agents/rules/git-and-reporting.md#25-遠端健康查證與-github-actions-閉環規範-remote-health-verification)` | .agents/rules/git-and-reporting.md#25-遠端健康查證與-github-actions-閉環規範-remote-health-verification | RESOLVED |
+| AGENTS.md | 106 | ## 10. Remote Project Health Authority（遠端健康權威） | FILE | `.agents/rules/git-and-reporting.md` | .agents/rules/git-and-reporting.md | RESOLVED |
+| AGENTS.md | 106 | ## 10. Remote Project Health Authority（遠端健康權威） | FILE | `[`.agents/rules/git-and-reporting.md`「遠端健康查證與 GitHub Actions 閉環規範」](./.agents/rules/git-and-reporting.md#25-遠端健康查證與-github-actions-閉環規範-remote-health-verification)` | .agents/rules/git-and-reporting.md#25-遠端健康查證與-github-actions-閉環規範-remote-health-verification | RESOLVED |
 | AGENTS.md | 106 | ## 10. Remote Project Health Authority（遠端健康權威） | FILE | `scripts/verify_all.py` | scripts/verify_all.py | RESOLVED |
-| AGENTS.md | 106 | ## 10. Remote Project Health Authority（遠端健康權威） | SECTION | §2.5 | .agents/rules/git-and-reporting.md#§2.5 | RESOLVED |
-| AGENTS.md | 110 | ### 10.1 遠端健康查證與回報規範 | FILE | `[`.agents/rules/git-and-reporting.md §2.5`](./.agents/rules/git-and-reporting.md#25-遠端健康查證與-github-actions-閉環規範-remote-health-verification)` | .agents/rules/git-and-reporting.md#25-遠端健康查證與-github-actions-閉環規範-remote-health-verification | RESOLVED |
-| AGENTS.md | 110 | ### 10.1 遠端健康查證與回報規範 | SECTION | §2.5 | .agents/rules/git-and-reporting.md#§2.5 | RESOLVED |
-| AGENTS.md | 114 | ### 10.2 禁止文字摘要辯論 (Anti-Debate Policy) | FILE | `[`.agents/rules/git-and-reporting.md §2.5`](./.agents/rules/git-and-reporting.md#25-遠端健康查證與-github-actions-閉環規範-remote-health-verification)` | .agents/rules/git-and-reporting.md#25-遠端健康查證與-github-actions-閉環規範-remote-health-verification | RESOLVED |
-| AGENTS.md | 114 | ### 10.2 禁止文字摘要辯論 (Anti-Debate Policy) | SECTION | §2.5 | .agents/rules/git-and-reporting.md#§2.5 | RESOLVED |
+| AGENTS.md | 110 | ### 10.1 遠端健康查證與回報規範 | FILE | `.agents/rules/git-and-reporting.md` | .agents/rules/git-and-reporting.md | RESOLVED |
+| AGENTS.md | 110 | ### 10.1 遠端健康查證與回報規範 | FILE | `[`.agents/rules/git-and-reporting.md`「遠端健康查證與 GitHub Actions 閉環規範」](./.agents/rules/git-and-reporting.md#25-遠端健康查證與-github-actions-閉環規範-remote-health-verification)` | .agents/rules/git-and-reporting.md#25-遠端健康查證與-github-actions-閉環規範-remote-health-verification | RESOLVED |
+| AGENTS.md | 114 | ### 10.2 禁止文字摘要辯論 (Anti-Debate Policy) | FILE | `.agents/rules/git-and-reporting.md` | .agents/rules/git-and-reporting.md | RESOLVED |
+| AGENTS.md | 114 | ### 10.2 禁止文字摘要辯論 (Anti-Debate Policy) | FILE | `[`.agents/rules/git-and-reporting.md`「遠端健康查證與 GitHub Actions 閉環規範」](./.agents/rules/git-and-reporting.md#25-遠端健康查證與-github-actions-閉環規範-remote-health-verification)` | .agents/rules/git-and-reporting.md#25-遠端健康查證與-github-actions-閉環規範-remote-health-verification | RESOLVED |
 | MISSION.md | 27 | ## 完成的定義 | FILE | `AGENTS.md` | AGENTS.md | RESOLVED |
 | MISSION.md | 28 | ## 完成的定義 | FILE | `scripts/validate_skills.py` | scripts/validate_skills.py | RESOLVED |
 | MISSION.md | 28 | ## 完成的定義 | FILE | `scripts/verify_all.py` | scripts/verify_all.py | RESOLVED |
@@ -520,3 +521,35 @@
 | PRINCIPLES.md | 381 | ## 5. 更新紀錄 | SECTION | §4 | PRINCIPLES.md#§4 | RESOLVED |
 | PRINCIPLES.md | 382 | ## 5. 更新紀錄 | SECTION | §2.5 | PRINCIPLES.md#§2.5 | RESOLVED |
 | PRINCIPLES.md | 384 | ## 5. 更新紀錄 | FILE | `.agents/rules/role-boundaries.md` | .agents/rules/role-boundaries.md | RESOLVED |
+| skills/AGENTS.md | 6 | # HH.AI 專案技能架構規範 (Skills Architecture Authority) | FILE | `AGENTS.md` | AGENTS.md | RESOLVED |
+| skills/AGENTS.md | 6 | # HH.AI 專案技能架構規範 (Skills Architecture Authority) | FILE | `[`AGENTS.md`](../AGENTS.md)` | AGENTS.md | RESOLVED |
+| skills/AGENTS.md | 7 | # HH.AI 專案技能架構規範 (Skills Architecture Authority) | FILE | `MISSION.md` | MISSION.md | RESOLVED |
+| skills/AGENTS.md | 7 | # HH.AI 專案技能架構規範 (Skills Architecture Authority) | FILE | `PRINCIPLES.md` | PRINCIPLES.md | RESOLVED |
+| skills/AGENTS.md | 7 | # HH.AI 專案技能架構規範 (Skills Architecture Authority) | FILE | `[`MISSION.md`](../MISSION.md)` | MISSION.md | RESOLVED |
+| skills/AGENTS.md | 7 | # HH.AI 專案技能架構規範 (Skills Architecture Authority) | FILE | `[`PRINCIPLES.md`](../PRINCIPLES.md)` | PRINCIPLES.md | RESOLVED |
+| skills/AGENTS.md | 9 | # HH.AI 專案技能架構規範 (Skills Architecture Authority) | FILE | `[mattpocock/skills](https://github.com/mattpocock/skills)` | https://github.com/mattpocock/skills | EXTERNAL_URL |
+| skills/AGENTS.md | 11 | # HH.AI 專案技能架構規範 (Skills Architecture Authority) | FILE | `PRINCIPLES.md` | PRINCIPLES.md | RESOLVED |
+| skills/AGENTS.md | 27 | ## 0. 工程紀律規則（最高優先） | FILE | `docs/EXEC-LOG.md` | docs/EXEC-LOG.md | RESOLVED |
+| skills/AGENTS.md | 36 | ## 0. 工程紀律規則（最高優先） | FILE | `docs/EXEC-LOG.md` | docs/EXEC-LOG.md | RESOLVED |
+| skills/AGENTS.md | 46 | ## 0. 工程紀律規則（最高優先） | FILE | `PRINCIPLES.md` | PRINCIPLES.md | RESOLVED |
+| skills/AGENTS.md | 46 | ## 0. 工程紀律規則（最高優先） | SECTION | §0 | PRINCIPLES.md#§0 | RESOLVED |
+| skills/AGENTS.md | 52 | ## 0. 工程紀律規則（最高優先） | FILE | `.agents/rules/role-boundaries.md` | .agents/rules/role-boundaries.md | RESOLVED |
+| skills/AGENTS.md | 160 | ### 5.1 安全優先級與 Bucket 觸發積極度（Active Contract） | ADR | docs/adr/0002-skill-invocation-aggressiveness.md | docs/adr/0002-skill-invocation-aggressiveness.md | RESOLVED |
+| skills/AGENTS.md | 176 | ## 6a. 資料夾層級的範圍受限規則 (Directory-Scoped Rules) | FILE | `AGENTS.md` | AGENTS.md | RESOLVED |
+| skills/AGENTS.md | 181 | ## 6a. 資料夾層級的範圍受限規則 (Directory-Scoped Rules) | FILE | `AGENTS.md` | AGENTS.md | RESOLVED |
+| skills/AGENTS.md | 182 | ## 6a. 資料夾層級的範圍受限規則 (Directory-Scoped Rules) | FILE | `AGENTS.md` | AGENTS.md | RESOLVED |
+| skills/AGENTS.md | 183 | ## 6a. 資料夾層級的範圍受限規則 (Directory-Scoped Rules) | FILE | `AGENTS.md` | AGENTS.md | RESOLVED |
+| skills/AGENTS.md | 187 | ## 6a. 資料夾層級的範圍受限規則 (Directory-Scoped Rules) | ADR | docs/adr/0000-adr-template.md | docs/adr/0000-adr-template.md | RESOLVED |
+| skills/AGENTS.md | 187 | ## 6a. 資料夾層級的範圍受限規則 (Directory-Scoped Rules) | FILE | `AGENTS.md` | AGENTS.md | RESOLVED |
+| skills/AGENTS.md | 194 | ## 7. README 同步規則 | FILE | `README.md` | README.md | RESOLVED |
+| skills/AGENTS.md | 195 | ## 7. README 同步規則 | FILE | `README.md` | README.md | RESOLVED |
+| skills/AGENTS.md | 200 | ## 7. README 同步規則 | FILE | `skills/README.md` | skills/README.md | RESOLVED |
+| skills/AGENTS.md | 205 | ## 7. README 同步規則 | FILE | `docs/refactor-backlog.md` | docs/refactor-backlog.md | RESOLVED |
+| skills/AGENTS.md | 220 | ## 8. 遷移舊技能時的規則 | ADR | docs/adr/0018-vendored-external-assets.md | docs/adr/0018-vendored-external-assets.md | RESOLVED |
+| skills/AGENTS.md | 233 | ## 9. 驗證 | FILE | `scripts/validate_skills.py` | scripts/validate_skills.py | RESOLVED |
+| skills/AGENTS.md | 234 | ## 9. 驗證 | FILE | `scripts/check_consistency.py` | scripts/check_consistency.py | RESOLVED |
+| skills/AGENTS.md | 244 | ## 9. 驗證 | FILE | `scripts/tests/test_channel_gateway_core.py` | scripts/tests/test_channel_gateway_core.py | RESOLVED |
+| skills/AGENTS.md | 245 | ## 9. 驗證 | FILE | `scripts/verify_all.py` | scripts/verify_all.py | RESOLVED |
+| skills/AGENTS.md | 247 | ## 9. 驗證 | FILE | `scripts/verify_all.py` | scripts/verify_all.py | RESOLVED |
+| skills/AGENTS.md | 253 | ## 10. Remote Project Health Authority（遠端健康權威） | ADR | docs/adr/0020-github-actions-remote-health-authority.md | docs/adr/0020-github-actions-remote-health-authority.md | RESOLVED |
+| skills/AGENTS.md | 255 | ## 10. Remote Project Health Authority（遠端健康權威） | FILE | `scripts/verify_all.py` | scripts/verify_all.py | RESOLVED |

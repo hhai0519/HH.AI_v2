@@ -4742,3 +4742,17 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - 候選提交依規定標記為候選（candidate），待 External Macro Auditor 進行全面審查與金絲雀執行期驗證。
   - accepted checkpoint 維持 `4b5d926de0132aed4844dfeeba33f1c93c7e083c`（§5.1 未變動）；main advancement = FORBIDDEN。
 
+130. **B-109 M3 有界修復 #2：作用域權威追溯覆蓋與路由語意收斂（B-109 M3 Bounded Repair #2: Scoped Authority Traceability Coverage & Semantic Routing Convergence）**（2026-09-22）
+- **外部宏觀審計結論（External Macro Audit Verdict on Candidate 05e8c0492cfa782c6bedaa54c0948eebf3e2f4ff）**：
+  - 首投候選 Actions Run 35726620010 驗證成功（verify=success, gateway-windows=success, ALL 5 GATES PASSED, Windows 26 passed，Machine CI = PASS）。
+  - Macro Audit 判定 HOLD，成立三項 blocking 修復要求：
+    - **M3-F1**：`skills/AGENTS.md` 已正式宣告為 Detailed Skills Architecture Authority，但 `scripts/generate_rule_traceability.py` 之 `SCAN_SCOPE_PATTERNS` 遺漏，造成 source coverage gap。修復：納入 `skills/AGENTS.md` 至掃描範疇，並於 `scripts/tests/test_rule_traceability.py` 建立來源覆蓋與負向控制測試。
+    - **M3-F2**：根目錄 `AGENTS.md` §10、§10.1、§10.2 之 `git-and-reporting.md` 引用殘留文字 `§2.5`，修復：改為語意性檔案指針搭配章節標題「遠端健康查證與 GitHub Actions 閉環規範」，顯示文字中移除字面 `§2.5`，徹底解除對 CHECK 10 偵測器關鍵字之依賴。
+    - **M3-F3**：`docs/HANDOVER.md` §5 仍導向 refactor-backlog 造成 K4-A 權威混淆，修復：明確分工 current/remaining work 至 `docs/TASKBOARD.md`、accepted checkpoint 至 `docs/refactor-backlog.md` §5.1、pending range 機械衍生、§5.4 為 POINTER_ONLY。
+  - 同時記錄兩項 non-blocking process findings 登錄 B-107：
+    - **M3-P1**：pre-mutation preflight reporting/evidence gap（登錄 B-107，不阻擋 M3）。
+    - **M3-P2**：task-specific execution evidence generalization gap（登錄 B-107，不阻擋 M3）。
+  - `docs/AUDIT-LOG.md` 同步記錄候選 `05e8c0492cfa782c6bedaa54c0948eebf3e2f4ff` 之 Macro HOLD 結論。
+  - accepted checkpoint 維持 `4b5d926de0132aed4844dfeeba33f1c93c7e083c`（§5.1 未變動）；main advancement = FORBIDDEN。
+
+

@@ -33,8 +33,11 @@
   > 說明：本 Router 不保存待辦清單副本與動態任務值。Fresh Macro Auditor 接手尋找下一步工作，一律導航至 `docs/TASKBOARD.md` 讀取 `**NEXT_WORK**` 指標。
 
 ### 5. 目前進度與審計狀態 (Current Progress & Audited Checkpoint)
-- **交接區與重構紀錄（上次核對通過 checkpoint、Pending-Audit 機械導出方式）**：[`docs/refactor-backlog.md` §5](./refactor-backlog.md)
-  > 說明：本 Router 不保存動態 commit hash、pending 範圍或暫態狀態。現行進度與審計檢查點一律即時由 `docs/refactor-backlog.md` §5 導出。
+- **當前與剩餘工作權威（Current / Remaining Work）**：導航至 [`docs/TASKBOARD.md`](./TASKBOARD.md) 讀取 `NEXT_WORK`、`NEXT_SLICE` 與目前任務列。
+- **已核對審計檢查點權威（Accepted Checkpoint Authority）**：[`docs/refactor-backlog.md` §5.1](./refactor-backlog.md#51-已核對通過之歷史檢查點)。
+- **待審計範圍判定（Pending Macro Audit）**：由 `docs/refactor-backlog.md` §5.1 accepted checkpoint 與實際 Git HEAD 機械衍生比較。
+- **待辦隊列指向（Pointer Only）**：`docs/refactor-backlog.md` §5.4 僅作 bounded pointer，不保存 active task queue。
+  > 說明：本 Router 不保存動態 commit hash、pending 範圍或暫態狀態。各動態領域依 K4-A 單一寫入點原則由專屬權威維護。
 
 ### 6. 作業程序 (Operational SOP)
 - **作業程序總索引與執行期邊界**：[`SOP/README.md`](../SOP/README.md)

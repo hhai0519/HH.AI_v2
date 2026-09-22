@@ -269,3 +269,41 @@ def test_repo_state_traceability_freshness():
     with open(out_path, "r", encoding="utf-8") as fh:
         content = fh.read()
     assert "FAIL_CLOSED" not in content, "docs/generated/rule-traceability.md 不得存在 blocking FAIL_CLOSED 列"
+
+
+def test_skills_agents_source_coverage_and_negative_guard(tmp_path, monkeypatch):
+    """M3-F1: 驗證 skills/AGENTS.md 納入 active control-plane source coverage，並具備負向控制。"""
+    # A. get_scan_files(...) 包含 skills/AGENTS.md
+    scan_files_repo = grt.get_scan_files(REPO_ROOT)
+    assert "skills/AGENTS.md" in scan_files_repo, "REPO_ROOT 掃描清單必須包含 skills/AGENTS.md"
+
+    # B. 當 fixture skills/AGENTS.md 包含 explicit reference 時，generated traceability 必須存在 source_file = skills/AGENTS.md
+    skills_dir = tmp_path / "skills"
+    skills_dir.mkdir(parents=True)
+    (tmp_path / "PRINCIPLES.md").write_text("# Principles\n", encoding="utf-8")
+    (tmp_path / "AGENTS.md").write_text("# Agents\n", encoding="utf-8")
+    (tmp_path / "MISSION.md").write_text("# Mission\n", encoding="utf-8")
+    (skills_dir / "AGENTS.md").write_text(
+        "# Skills Agents Authority\n\n"
+        "顯式參照：[Principles](PRINCIPLES.md)\n",
+        encoding="utf-8",
+    )
+
+    scan_files_tmp = grt.get_scan_files(root_dir=str(tmp_path))
+    assert "skills/AGENTS.md" in scan_files_tmp
+
+    entries = grt.extract_references_from_file("skills/AGENTS.md", root_dir=str(tmp_path))
+    assert len(entries) > 0
+    assert any(e["source_file"] == "skills/AGENTS.md" for e in entries)
+
+    content = grt.generate_traceability_content(root_dir=str(tmp_path))
+    assert "`skills/AGENTS.md`" in content
+
+    # C. 負向守衛：若 skills/AGENTS.md 存在但 generator 不掃描它（例如 SCAN_SCOPE_PATTERNS 缺漏），測試必須 FAIL
+    stale_patterns = [p for p in grt.SCAN_SCOPE_PATTERNS if p != "skills/AGENTS.md"]
+    monkeypatch.setattr(grt, "SCAN_SCOPE_PATTERNS", stale_patterns)
+    scan_files_omitted = grt.get_scan_files(root_dir=str(tmp_path))
+    assert "skills/AGENTS.md" not in scan_files_omitted
+    omitted_content = grt.generate_traceability_content(root_dir=str(tmp_path))
+    assert "`skills/AGENTS.md` |" not in omitted_content
+

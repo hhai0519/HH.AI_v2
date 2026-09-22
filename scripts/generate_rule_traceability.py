@@ -6,6 +6,7 @@
 - MISSION.md
 - PRINCIPLES.md
 - AGENTS.md
+- skills/AGENTS.md
 - .agents/rules/*.md
 - .claude/rules/*.md
 
@@ -37,6 +38,7 @@ SCAN_SCOPE_PATTERNS = [
     "MISSION.md",
     "PRINCIPLES.md",
     "AGENTS.md",
+    "skills/AGENTS.md",
     ".agents/rules/*.md",
     ".claude/rules/*.md",
 ]

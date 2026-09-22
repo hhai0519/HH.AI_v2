@@ -1,5 +1,5 @@
 {
-  "base_head": "1580b97",
+  "base_head": "05e8c04",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -242,7 +242,7 @@
         "### 10.2 禁止文字摘要辯論 (Anti-Debate Policy)"
       ],
       "lines": 114,
-      "sha256": "1348e73b351559382627bf289920a20431cb241e20774ca7bca241112c0a0801"
+      "sha256": "df33e1b4e08218035dd68f8850b4f685735af09a2cf60d6b91d087d9d2eaef51"
     },
     "MISSION.md": {
       "fences": 0,
@@ -552,16 +552,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 202,
-      "sha256": "8253fb8e09fc19722ebf2ef861bb866efbcc95d252dabe7f5246a1b82b0940dc"
+      "lines": 203,
+      "sha256": "d9d6266aab987251305a3a73c69c92f3bb1f691497dc95603266a7250a917198"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 171,
-      "sha256": "9de045fa640221eb615ea82ed48e0e37ad014a9dca6f164febf16bc3383d7573"
+      "lines": 168,
+      "sha256": "294364aabee6110b82b46d2903070e3b48fcabee3021fed5c4a864a1320cc884"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -580,8 +580,8 @@
         "### 10. 歸檔與歷史資料 (Archive & Historical Material)",
         "### 11. 規範驗證入口 (Canonical Verification)"
       ],
-      "lines": 63,
-      "sha256": "a68d4f06725e2912033a8e75f04e394826585530c79d197834c7b2d366d44e96"
+      "lines": 66,
+      "sha256": "0e3e8eed4119655ac80b6a150ba5ccbaf477dcd7eaf83a3870939e2c87dbec26"
     },
     "docs/TASKBOARD.md": {
       "fences": 0,
@@ -602,7 +602,7 @@
         "## 封存區"
       ],
       "lines": 340,
-      "sha256": "f738c78317acbd6655581792800407a99bd88ff8a3dc3a595f8262ca98e963ed"
+      "sha256": "19431c5b98f88bd1948d9ccf9fedeb89552f4a0e6bd7f69a62f438cba121974b"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1058,8 +1058,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 4744,
-      "sha256": "f022872febe7fbb507599fdde34d8e5225793862f6f2de83a5518a794586953d"
+      "lines": 4758,
+      "sha256": "64493133537eca7d68640e0f43418fcc3cf5dbda08677cd53b6b576cc2beaa7e"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1112,8 +1112,8 @@
         "# -*- coding: utf-8 -*-",
         "# 確保在 Windows 下標準輸出編碼為 utf-8"
       ],
-      "lines": 516,
-      "sha256": "c7316579689d2b9f68669ace3edc9900d0916b9069343a1954f5b4460e5f70ba"
+      "lines": 518,
+      "sha256": "e03dc9747133fefce3a488da540e840793867cc3aed26c134899953a5cfa4b9a"
     },
     "scripts/governance_preflight.py": {
       "fences": 0,
@@ -1329,8 +1329,8 @@
       "headings": [
         "# -*- coding: utf-8 -*-"
       ],
-      "lines": 271,
-      "sha256": "ed8b641d9a3741ef2ff1cf97cf7af32029fa04dcebd22500c2b6adf370d797c5"
+      "lines": 309,
+      "sha256": "6bd14ebf5d71fb20ca470a656045792dd4e8f852371146cf71a08c2f8c9d946c"
     },
     "scripts/tests/test_secret_hardening.py": {
       "fences": 0,
@@ -1476,7 +1476,7 @@
       "sha256": "35bf7dbfa3c7d291b550c3c97a6ae398a22b1dc3624c1d2fc1e4db6963d6e115"
     }
   },
-  "generated_at": "2026-09-22T12:20:10Z",
+  "generated_at": "2026-09-22T12:41:48Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {
