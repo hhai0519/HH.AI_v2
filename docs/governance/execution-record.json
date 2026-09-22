@@ -59,7 +59,7 @@
       "scripts/validate_prompt_manifest.py"
     ],
     "max_plan_revisions": 3,
-    "revision_count": 0,
+    "revision_count": 1,
     "plan_origin": "EXTERNAL_MACRO_PROMPT"
   },
   "actual": {

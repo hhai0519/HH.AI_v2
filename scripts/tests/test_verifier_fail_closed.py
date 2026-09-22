@@ -25,6 +25,7 @@ from check_consistency import (
     check_16_exec_log_cadence,
     check_23_transport_exclusivity_guard,
     check_24_active_state_projection_guard,
+    verify_check_consistency_inventory,
 )
 
 
@@ -525,17 +526,78 @@ def test_active_check_inventory_continuous_1_to_26():
 
 
 def test_active_check_inventory_negative_controls():
-    """Negative controls for check inventory validation: missing or duplicate check IDs must fail."""
-    # Synthetic missing CHECK 26
-    synthetic_missing = "\n".join([f'print("CHECK {i} - ...")' for i in range(1, 27) if i != 26])
-    ids_missing = extract_active_check_ids_from_source(synthetic_missing)
-    assert ids_missing != list(range(1, 27))
-    assert 26 not in ids_missing
+    """
+    Negative controls for check inventory validation (B-109 M2 repair):
+    Must deterministically prove that missing or duplicate check IDs fail,
+    docstring or run_checks inventory omissions fail, and both punctuation styles
+    ('CHECK N -' and 'CHECK N:') are supported, while current real source passes.
+    """
+    cc_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "check_consistency.py"))
+    with open(cc_path, "r", encoding="utf-8") as f:
+        real_content = f.read()
 
-    # Synthetic duplicate CHECK 26
-    synthetic_duplicate = "\n".join([f'print("CHECK {i} - ...")' for i in range(1, 27)] + ['print("CHECK 26: ...")'])
-    ids_dup = extract_active_check_ids_from_source(synthetic_duplicate)
-    assert len(ids_dup) != 26 or ids_dup != list(range(1, 27))
+    # Positive control: current real source 1..26 exactly once -> PASS
+    ok, err, metadata = verify_check_consistency_inventory(real_content)
+    assert ok is True, f"Positive control failed: {err}"
+    assert metadata["total_checks"] == 26
+    assert metadata["docstring_ids"] == list(range(1, 27))
+    assert metadata["run_checks_ids"] == list(range(1, 27))
+
+    # A. Active CHECK 26 removed -> full inventory validation FAIL
+    tampered_a = real_content.replace('print("\\nCHECK 26: M2 計畫與執行重放暨證據完整性守衛")', '# removed check 26')
+    ok_a, err_a, _ = verify_check_consistency_inventory(tampered_a)
+    assert ok_a is False
+    assert "run_checks() inventory mismatch" in err_a
+    assert "26" in err_a
+
+    # B. Active CHECK 26 duplicate -> FAIL
+    # B1. Duplicate in run_checks
+    tampered_b1 = real_content.replace(
+        'print("\\nCHECK 26: M2 計畫與執行重放暨證據完整性守衛")',
+        'print("\\nCHECK 26: M2 計畫與執行重放暨證據完整性守衛")\n    print("\\nCHECK 26 - M2 計畫與執行重放暨證據完整性守衛")'
+    )
+    ok_b1, err_b1, _ = verify_check_consistency_inventory(tampered_b1)
+    assert ok_b1 is False
+    assert "Duplicate CHECK 26 in run_checks()" in err_b1
+
+    # B2. Duplicate in docstring
+    tampered_b2 = real_content.replace(
+        'CHECK 26 — M2 計畫與執行重放暨證據完整性守衛',
+        'CHECK 26 — M2 計畫與執行重放暨證據完整性守衛\n  CHECK 26 — M2 計畫與執行重放暨證據完整性守衛'
+    )
+    ok_b2, err_b2, _ = verify_check_consistency_inventory(tampered_b2)
+    assert ok_b2 is False
+    assert "Duplicate CHECK 26 in docstring inventory" in err_b2
+
+    # C. Docstring inventory omits CHECK 20 or CHECK 26 -> FAIL
+    # C1. Docstring omits CHECK 20
+    tampered_c1 = re.sub(r'CHECK 20\s*—.*?\n', '', real_content)
+    ok_c1, err_c1, _ = verify_check_consistency_inventory(tampered_c1)
+    assert ok_c1 is False
+    assert "Docstring inventory mismatch" in err_c1
+    assert "20" in err_c1
+
+    # C2. Docstring omits CHECK 26
+    tampered_c2 = re.sub(r'CHECK 26\s*—.*?\n', '', real_content)
+    ok_c2, err_c2, _ = verify_check_consistency_inventory(tampered_c2)
+    assert ok_c2 is False
+    assert "Docstring inventory mismatch" in err_c2
+    assert "26" in err_c2
+
+    # D. run_checks inventory omits an active ID -> FAIL
+    tampered_d = real_content.replace('print("CHECK 1 - 控制字元")', '# removed check 1')
+    ok_d, err_d, _ = verify_check_consistency_inventory(tampered_d)
+    assert ok_d is False
+    assert "run_checks() inventory mismatch" in err_d
+    assert "1" in err_d
+
+    # E. Supports both 'CHECK N -' and 'CHECK N:' punctuations
+    tampered_e = real_content.replace('print("\\nCHECK 4 - 三層 README 完整性")', 'print("\\nCHECK 4: 三層 README 完整性")')
+    tampered_e = tampered_e.replace('print("\\nCHECK 26: M2 計畫與執行重放暨證據完整性守衛")', 'print("\\nCHECK 26 - M2 計畫與執行重放暨證據完整性守衛")')
+    ok_e, err_e, meta_e = verify_check_consistency_inventory(tampered_e)
+    assert ok_e is True, f"Expected punctuation tolerance but got: {err_e}"
+    assert meta_e["run_checks_ids"] == list(range(1, 27))
+
 
 
 # ===========================================================================

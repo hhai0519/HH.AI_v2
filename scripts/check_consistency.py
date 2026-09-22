@@ -3118,5 +3118,68 @@ def check_26_plan_actual_evidence_integrity(root_dir=None, as_if_committed=False
 check_26_plan_actual_evidence_integrity_guard = check_26_plan_actual_evidence_integrity
 
 
+def verify_check_consistency_inventory(file_content: str) -> tuple[bool, str, dict]:
+    """
+    Validates complete, consistent, and duplicate-free inventory (1..26)
+    across docstring and run_checks(). Supports both 'CHECK N -' and 'CHECK N:' punctuations.
+    """
+    # 1. Parse docstring inventory
+    docstring_match = re.search(r'"""(.*?)"""', file_content, re.DOTALL)
+    if not docstring_match:
+        return False, "Could not find module docstring", {}
+    docstring_text = docstring_match.group(1)
+
+    docstring_ids = []
+    seen_doc_ids = set()
+    for m in re.finditer(r'CHECK\s+(\d+)\s*[-—:]', docstring_text):
+        cid = int(m.group(1))
+        if cid in seen_doc_ids:
+            return False, f"Duplicate CHECK {cid} in docstring inventory", {}
+        seen_doc_ids.add(cid)
+        docstring_ids.append(cid)
+
+    # 2. Parse run_checks() body
+    run_checks_match = re.search(r'def run_checks\([^)]*\):(.*?)(?=\ndef [a-zA-Z0-9_]+|\Z)', file_content, re.DOTALL)
+    if not run_checks_match:
+        return False, "Could not find run_checks() function", {}
+    run_checks_text = run_checks_match.group(1)
+
+    # total_checks
+    tc_match = re.search(r'total_checks\s*=\s*(\d+)', run_checks_text)
+    if not tc_match:
+        return False, "total_checks assignment not found in run_checks()", {}
+    total_checks = int(tc_match.group(1))
+
+    run_checks_ids = []
+    seen_rc_ids = set()
+    for m in re.finditer(r'print\(["\'](?:\\n)?CHECK\s+(\d+)\s*[-—:]', run_checks_text):
+        cid = int(m.group(1))
+        if cid in seen_rc_ids:
+            return False, f"Duplicate CHECK {cid} in run_checks()", {}
+        seen_rc_ids.add(cid)
+        run_checks_ids.append(cid)
+
+    expected_ids = list(range(1, 27))
+    if total_checks != 26:
+        return False, f"total_checks must be 26 (got {total_checks})", {}
+
+    if docstring_ids != expected_ids:
+        missing = set(expected_ids) - set(docstring_ids)
+        extra = set(docstring_ids) - set(expected_ids)
+        return False, f"Docstring inventory mismatch (missing={sorted(list(missing))}, extra={sorted(list(extra))})", {}
+
+    if run_checks_ids != expected_ids:
+        missing = set(expected_ids) - set(run_checks_ids)
+        extra = set(run_checks_ids) - set(expected_ids)
+        return False, f"run_checks() inventory mismatch (missing={sorted(list(missing))}, extra={sorted(list(extra))})", {}
+
+    return True, "", {
+        "total_checks": total_checks,
+        "docstring_ids": docstring_ids,
+        "run_checks_ids": run_checks_ids,
+    }
+
+
 if __name__ == "__main__":
     run_checks()
+

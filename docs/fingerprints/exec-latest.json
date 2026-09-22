@@ -1,5 +1,5 @@
 {
-  "base_head": "d7a091d",
+  "base_head": "d2d8a98",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -552,16 +552,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 200,
-      "sha256": "4fd00dad020d4f137bda8340c1f0bdf25f9f5c828167f141e647f6f6edfc3c13"
+      "lines": 201,
+      "sha256": "32bb72ecf246241125f746cba0571bb172b4fd0c333f5ef8c2984fa930430615"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 167,
-      "sha256": "b1bcdc9e47030c33a2f63f657210852b42005eddafa21a4ec2c0f0265f594fb8"
+      "lines": 169,
+      "sha256": "2a990ff6a7d19ae896c00b7d9389e96b308afccd5147de56768edeac61b633d9"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -602,7 +602,7 @@
         "## 封存區"
       ],
       "lines": 340,
-      "sha256": "5b260a1b8a6222606683f3a663dcdb6a87a0c164195edbbfcb1f83781ea5d3d0"
+      "sha256": "bad46c00d99bcd86f62465925ea09b2066af7c01f79c0c1aab09fa66ab28f679"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1058,8 +1058,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 4738,
-      "sha256": "72d4842c5085ca363da5adf622c49b13c4c14b39f628afdf4b7cba61e4c13c8d"
+      "lines": 4758,
+      "sha256": "fc30d1b10176c5f471faeeacc1b8aa67ff39b003d1003fcc9a5aab171dbd71ad"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1086,8 +1086,8 @@
         "# 已知指向錯誤的歷史 tag。本清單只能縮短、不得加長。",
         "# 修復批次完成後必須清空；清單中的 tag 若已修復卻未移除，CHECK 18 會 FAIL。"
       ],
-      "lines": 3122,
-      "sha256": "1c1dbd653e3630c5f5854de168d24bcdc6034eac47fe4fd9880a8e325b5a5331"
+      "lines": 3185,
+      "sha256": "cebcc9a3d5dc4a7fee1b981c71a32427b5fdb53109ec20e5f525581358f391df"
     },
     "scripts/execution_record.py": {
       "fences": 0,
@@ -1433,8 +1433,8 @@
         "# Defect 8: CHECK 24 Active State Projection Drift Guard",
         "# ==========================================================================="
       ],
-      "lines": 685,
-      "sha256": "635c1e36f3d0d6c71a3280304205d0520d4a6c7a40202c1fa7d5e9a4a8a9aae1"
+      "lines": 747,
+      "sha256": "890e6d95658b3db479339d39e9a6e20dce724796f246cf030c284f2de7753229"
     },
     "scripts/tests/test_verify_all.py": {
       "fences": 0,
@@ -1466,7 +1466,7 @@
       "sha256": "35bf7dbfa3c7d291b550c3c97a6ae398a22b1dc3624c1d2fc1e4db6963d6e115"
     }
   },
-  "generated_at": "2026-09-22T00:34:42Z",
+  "generated_at": "2026-09-22T01:24:09Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

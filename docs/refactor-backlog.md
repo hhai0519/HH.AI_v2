@@ -3107,9 +3107,9 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - B-104：已完成（ACCEPTED / CLOSED，Jules 歷史 PR #13–#24 與 12 條 exact head branches 清理完成；經 External Macro 獨立查證 12/12 remote refs absent、12/12 PR closed、0 merged、main 未異動；REMOTE_DELETE_EXACT_SET 單次授權自毀消耗通過；使用者已將 --delete 恢復為 Deny；NEW MATERIAL FINDING = NONE；正式結案）。
   - B-105：待辦（TODO / NOT AUTHORIZED，Jules Mode A 唯讀風險掃描與前置條件準備；Jules drift 記錄：authorized_mcp_tools 目前無已驗證 harness enforcement，jules-integration 仍指向 disabled Bridge，Jules capability semantics 留至 M4，本輪不得啟用 Jules）。
   - B-106：待辦（TODO / BLOCKING BEFORE PHASE E，Actual Loaded-Surface Budget & Rule Compatibility Guard；由 Always-On Rule Budget 改名並校準範圍，核心為 actual loaded surface 而非 repo file count，涵蓋 token budget 與 truncation；IDE 2.5.5 版本綁定，.agents/rules/*.md 搭配 trigger: always_on 為已驗證載入面，無 frontmatter 不算已載入，model_decision 維持 UNKNOWN；IDE 更新後僅 UI-only revalidation，禁止 production batch 中途更新 IDE；零實作）。
-  - B-107：待辦（TODO / BLOCKING BEFORE PHASE E，Deterministic Consistency Diagnostics & Guarded State-Log Mutation；擴充為 evidence integrity owner，M2 evidence-integrity subset IMPLEMENTED CANDIDATE / PENDING EXTERNAL MACRO AUDIT，保留未來未被 M2 明確完成之殘留；確立 EVIDENCE-ORIGIN 四類，PATH-EXISTENCE / GENERATOR-IN-BUNDLE / REPORT-TRACEABILITY / REG-11～13 routing；CHECK 9 parser 與 negative controls 等已由 M2 實作）。
+  - B-107：待辦（TODO / BLOCKING BEFORE PHASE E，保留 open，不得提前 CLOSED）。納入 M2-P1（status reporting inconsistency，Actions failure 仍回報 ready）與 M2-P2（unapproved transcript-file access confirmed，cross-session NOT_ESTABLISHED，secret exposure NOT_ESTABLISHED）處置留痕；保留未來未被 M2 明確完成之 B-107 residual；EVIDENCE-ORIGIN 確立 MACHINE_CAPTURED_RAW、MACHINE_DERIVED、AGENT_ASSERTED、USER_PROVIDED 四類；REG-11～13 證據完整性標準與 CHECK 26 重放已由 M2 實作；CHECK 9 parser 與 negative controls 等已由 M2 實作。
   - B-108：待辦（TODO / NOT CLOSED，作為 mechanical guard / cleanup owner）。K6-A UI 態勢更正為 PERSISTENT LAYER = APPLIED（USER_PROVIDED，IDE 2.5.5，包含 File Access 減量、MCP permanent Allow 減量、GitHub MCP 18 disabled、Advanced Command Access 12 entries 設為 Deny（其中 git credential / git reset 為直接重啟驗證，其餘 10 為同機制推論）、Execute URLs github.com = Deny（保留 entry 設 Deny））；舊「Deny List Terminal Commands」正式標記為 DEPRECATED / NON-PERSISTENT / DO NOT USE；Execute URLs delete-to-restrict 標記為 NON-PERSISTENT / DO NOT USE；基準與手動恢復檢核清單見 docs/ops/antigravity-environment-baseline.md；保留歷史事故實例；登錄低優先 Legacy Antigravity permission cleanup 留待 future bounded cleanup）。
-  - B-109：進行中（M1 ACCEPTED / CLOSED，M2 IMPLEMENTED CANDIDATE / PENDING EXTERNAL MACRO AUDIT，M3 PENDING，M4 LATER；Mechanical Governance v1，承接使用者裁決 U1、U3、K2-A、K4-C；NEXT_WORK 為 B-109，NEXT_SLICE 為 Mechanical Governance v1 — M2；M1–M4 phase roadmap 推進）。
+  - B-109：進行中（M1 ACCEPTED / CLOSED；M2 MACRO HOLD / BOUNDED REPAIR ACTIVE；M3 PENDING；M4 LATER；Mechanical Governance v1，承接使用者裁決 U1、U3、K2-A、K4-C；NEXT_WORK 為 B-109，NEXT_SLICE 為 Mechanical Governance v1 — M2（BOUNDED REPAIR ACTIVE）；TG-MVP-07 NOT AUTHORIZED）。
   - F-03：多代理自治閉環（LOOP-lite，POST-MVP，採 Jules proposes → Executor reauthors → Macro judges，禁止 auto-merge）。
   - TG-MVP-07 與後續切片：待辦（NOT AUTHORIZED；不得立即開始，依使用者 K2-A 決策，必須依序完成 B-109 M1 → M2 → M3 後，始得返回 product runtime mainline）。
   - E-03：進行中（IN PROGRESS，accepted checkpoint = `d7a091de9111178ff1017d64f4608cc446b5bd1a`）。
@@ -4736,3 +4736,23 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - B-109 維持「進行中」（M1 ACCEPTED / CLOSED；M2 NEXT / READY / PENDING START；M3 PENDING；M4 LATER）。
   - TG-MVP-07 仍為未授權（依使用者 K2-A 決策，必須依序完成 B-109 M1 → M2 → M3 後始得返回 product runtime mainline）。
   - 本結案批次（batch/b104-final-closure-260922）為純狀態同步，零代碼異動，不開始 B-109 M2。結案 candidate 提交後標記為 READY_FOR_EXTERNAL_MACRO_AUDIT。
+
+127. **B-109 M2 External Macro HOLD 與有界檢查清單負向控制修復（B-109 M2 External Macro HOLD & Bounded Inventory-Guard Repair）**（2026-09-22）
+- **外部宏觀審計結論（External Macro Audit Verdict）**：
+  - 目標候選：`d2d8a982d417f03ca610d475693ba40f060536c9`（分支 `batch/b109-m2-mechanical-governance-260922`，parent `d7a091de9111178ff1017d64f4608cc446b5bd1a`）。
+  - CI 查證：Actions Run 35672894509（attempt 1 verify success, gateway-windows failure 由 Windows Credential Manager bridge timeout PROVIDER_UNAVAILABLE 造成；attempt 2 same exact SHA verify success, gateway-windows success 26 passed，M2-F1 transient resolved）。
+  - External Macro 原始技術驗證：CHECK 26 PASS，26/26 checks PASS，491 passed，13 passed，ALL 5 GATES PASSED。
+  - 外部審計官裁決：OVERALL M2 MACRO AUDIT = HOLD，原因為 M2-F2 FULL INVENTORY NEGATIVE CONTROL INCOMPLETE，要求進行有界負向控制修復（BOUNDED INVENTORY-GUARD REPAIR）。
+  - accepted checkpoint 保持：`d7a091de9111178ff1017d64f4608cc446b5bd1a`；main advancement = NOT AUTHORIZED。
+- **實質與流程發現處置（Findings Disposition）**：
+  - M2-F1（Windows Credential Manager bridge timeout）：attempt 2 same-SHA 成功重跑，26 passed，transient resolved。不得修改 runtime/channel-gateway/**、.github/workflows/verify.yml 或 Windows Credential tests。
+  - M2-F2（Full inventory negative control incomplete）：`test_active_check_inventory_negative_controls` 僅驗證 extracted list != expected，不符合原 acceptance。必須以 production checker 確定性證明 missing active CHECK ID -> FAIL、duplicate active CHECK ID -> FAIL、docstring inventory 漏 ID -> FAIL、run_checks inventory 漏 ID -> FAIL，並支援 `CHECK N -` 與 `CHECK N:` 兩種標點樣式；當前真實原始碼 1..26 正例 PASS。Blocking repair required。
+  - M2-P1（Status reporting inconsistency）：Executor 在 attempt 1 required check failure 時仍回報 candidate ready。分類為 EVIDENCE / STATUS REPORTING INCONSISTENCY，路由至 B-107，不得將 failed required check 描述為 candidate ready。
+  - M2-P2（Unapproved transcript-file access）：Account-switch recovery 曾讀取 transcript.jsonl / transcript_full.jsonl。分類為 UNAPPROVED TRANSCRIPT-FILE ACCESS = CONFIRMED，CROSS-SESSION ACCESS = NOT_ESTABLISHED，SECRET / CREDENTIAL EXPOSURE = NOT_ESTABLISHED，路由至 B-107 evidence / recovery boundary，不得宣稱 credential incident，不得要求 credential rotation。
+  - Node 20 deprecation warning：GitHub rerun 出現 Node.js 20 deprecated warning，此 finding 為 NONBLOCKING，路由至 B-100 R-D，本輪不得修改 workflow。
+- **修復策略與候選狀態（Repair Strategy & Candidate State）**：
+  - 於 `scripts/check_consistency.py` 實作 `verify_check_consistency_inventory(file_content: str) -> tuple[bool, str, dict]`。
+  - 於 `scripts/tests/test_verifier_fail_closed.py` 實作確定性正例與負例 A、B、C、D、E 斷言。
+  - 更新 `docs/governance/execution-record.json`，plan.revision_count 由 0 遞增至 1，max_plan_revisions 保持 3，base_oid 保持 d7a091de9111178ff1017d64f4608cc446b5bd1a，actual.changed_paths 由 fresh d7a091de..HEAD 機械重算。
+  - 修復分支維持 `batch/b109-m2-mechanical-governance-260922`，修復 candidate 提交後標記為 READY_FOR_EXTERNAL_MACRO_REAUDIT。
+
