@@ -4778,5 +4778,13 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - §5.4 保持純指標導向（POINTER_ONLY），不保存 active task queue。
   - 本 state-sync candidate 分支為 `batch/b109-m3-final-closure-260922`，為純治理狀態同步，零代碼異動，提交後標記為 AWAITING EXTERNAL MACRO AUDIT。
 
-
-
+132. **M3-S1 B-107 路由語意衝突與有界狀態修復（M3-S1 B-107 Routing Conflict & Bounded State Repair）**（2026-09-22）
+- **衝突與覆核背景（Conflict & Second Opinion Context）**：
+  - B-109 M3 結案狀態同步候選 `cd8921993495eab0dec41a6090b4d346a819b194` 經 External Macro 審查判定 HOLD，成立 M3-S1（B-107 PHASE-E ROUTING CONFLICT）。
+  - 衝突點：`docs/TASKBOARD.md` 中 B-107 既有標註之「TODO / BLOCKING BEFORE PHASE E」歷史分類源自 B-103 傳輸遷移 Phase D/E 語境，與 K2-A 核心授權（M1 → M2 → M3 → return to E-03 product runtime mainline）產生語意衝突。
+  - 經 External Macro 與獨立第二意見（Second Opinion）審查分析，結論一致建議 Option B。
+- **使用者正式裁決與授權邊界（User Final Decision & Authorized Boundary）**：
+  - 使用者正式裁決採 Option B：B-107 保持 OPEN / RESIDUAL，但不再阻擋當前返回 E-03 產品主線（NON-BLOCKING FOR CURRENT E-03 RETURN）。
+  - current routing 維持：NEXT_WORK = E-03，NEXT_SLICE = TG-MVP-07（READY / AUTHORIZED TO START；本輪不實作 TG-MVP-07）。
+  - B-107 OPEN ≠ B-107 blocks E-03。保留 M2-P1、M2-P2、M3-P1、M3-P2 與現行已登錄之未完成 residual，保留已實作之證據完整性機制描述；不得提前 CLOSED 或 RESOLVED。
+  - 授權執行有界現況語意修復（Bounded Current-State Semantic Repair），不建立新 state-sync task，沿用 B-109-M3-FINAL-ACCEPTANCE 契約；cumulative diff 維持 exact 6 檔。
