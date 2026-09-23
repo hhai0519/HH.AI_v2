@@ -2825,7 +2825,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 5.1 上一批狀態
 
-上次核對通過的 HEAD：56e4e304ac37cff59152694df893e429587756ff
+上次核對通過的 HEAD：bcc59d976dd5510108bcd15917a91249fdf35411
 
 - `23af193`（執行者前置檢查 ＋ 回滾程序 ＋ `AUDIT-LOG.md` ＋ 四缺口修正）
   已於 2026-09-02 由審計官核對通過：6 檔異動（含 2 個新檔）、零夾帶、
@@ -4889,4 +4889,33 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - NEXT_WORK 保持 E-03，NEXT_SLICE 保持 TG-MVP-08（READY / NEXT AUTHORIZED SLICE）。
   - TG-MVP-08（T9 封存並退役舊版凍結 JSON 運作模組）為當前授權切片。
   - §5.4 維持純指標導向（POINTER_ONLY），不保存動態任務佇列或狀態副本。
+
+136. **TG-MVP-08 外部宏觀審計通過、Same-SHA Main 晉升與最終驗收（TG-MVP-08 External Macro Final PASS, Same-SHA Main Promotion & Final Acceptance）**（2026-09-23）
+- **外部宏觀審計結論（External Macro Final Verdict on Target bcc59d976dd5510108bcd15917a91249fdf35411）**：
+  - Target：`bcc59d976dd5510108bcd15917a91249fdf35411`（Base: `56e4e304ac37cff59152694df893e429587756ff`）。
+  - 候選異動與語意（Candidate Diff & Semantics）：
+    - 異動檔案精確 16 檔；精確刪除 6 檔（`durable-state-store.js`、`channel-state-recovery.js`、`channel-state-persistence.js` 及 3 個專屬測試套件）。
+    - ADR-0023 §5 三個 frozen JSON operational modules 正式退役；3 個專屬 legacy JSON 測試套件正式退役。
+    - 零 replacement module、零 compatibility shim、零 legacy JSON fallback、零 real user data migration。
+    - SQLite / node:sqlite 保持為唯一 authoritative operational state source（`sqlite-state-repository.js` 與 3 個 SQLite 測試套件 VERIFY_ONLY 未修改）。
+    - 共用原子操作原語 `shared/atomicFs.js` 與 `scripts/tests/test_shared_primitives.py` VERIFY_ONLY 未修改。
+    - `test-policy.json` 移除過期 DurableStateStore skip 權限；保留現行 LocalConfigLoader approved skips。
+    - 新增 Python T9 structural anti-resurrection guard。
+    - active Gateway core 與測試不再引用或匯入已退役模組，active Gateway core 對 `channel-gateway-state.json` 零運作引用。
+    - ADR-0023 §5 與 `runtime/channel-gateway/AGENTS.md` 更新為 T9 完成退役之真實狀態並禁止重建已退役 JSON 運作路徑。
+  - 候選 exact-SHA Actions 驗證：Run 35823024382（event=push, head_branch=batch/tg-mvp-08-retire-frozen-json-260923, head_sha=bcc59d976dd5510108bcd15917a91249fdf35411, attempt=1, status=completed, conclusion=success, verify=completed/success, gateway-windows=completed/success，candidate raw verify: 510 passed + 13 passed + ALL 5 GATES PASSED, candidate Windows: 24 passed）。
+  - Macro Audit 裁決：TG-MVP-08 FINAL MACRO AUDIT = PASS, ACCEPT STATUS = ACCEPT ALL, TG-MVP-08 = ACCEPTED / CLOSED, PROMOTION = ACCEPTED, NEW MATERIAL FINDING = NONE。
+  - Same-SHA main promotion：origin/main 已推進至 `bcc59d976dd5510108bcd15917a91249fdf35411`。
+  - Post-main exact-SHA Actions 驗證：Run 35823862270（event=push, head_branch=main, head_sha=bcc59d976dd5510108bcd15917a91249fdf35411, attempt=1, status=completed, conclusion=success, verify=completed/success, gateway-windows=completed/success, post-main raw verify: 510 passed + 13 passed + ALL 5 GATES PASSED, post-main Windows: 24 passed）。
+  - Ruleset 21301111 保持 active、deletion protection=present、non_fast_forward=present、strict required status checks (verify, gateway-windows)=true、bypass_actors=[]、current_user_can_bypass=never。
+  - 單次 main push 授權消耗證明（Single-use main auth）：AUTH CONSUMED（provenance: USER_PROVIDED / EXECUTOR_TRANSCRIPT）。
+  - accepted checkpoint 推進至 `bcc59d976dd5510108bcd15917a91249fdf35411`。
+- **後續工作路由與邊界保留（Next Work Routing & Boundary Preservation）**：
+  - NEXT_WORK 保持 E-03，NEXT_SLICE 推進至 TG-MVP-09（READY / NEXT AUTHORIZED SLICE AFTER TG-MVP-08 FINAL ACCEPTANCE STATE SYNC）。
+  - TG-MVP-09（T11-main 正式線上備份整合）維持待辦，本輪不實作。
+  - TG-MVP-09A / 10 / 11 維持待辦，本輪不實作。
+  - B-107 保持 OPEN / RESIDUAL / NON-BLOCKING。
+  - Node `punycode` deprecation warning 維持 B-100 R-D NONBLOCKING。
+  - §5.4 維持純指標導向（POINTER_ONLY），不保存動態任務佇列或狀態副本。
+
 
