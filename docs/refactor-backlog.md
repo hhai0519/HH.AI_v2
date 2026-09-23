@@ -2825,7 +2825,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 5.1 上一批狀態
 
-上次核對通過的 HEAD：f73a076d5ef4184735a6586a7069c66a6ba54bcc
+上次核對通過的 HEAD：6fc880947af0a65f356857f92aed606da5404505
 
 - `23af193`（執行者前置檢查 ＋ 回滾程序 ＋ `AUDIT-LOG.md` ＋ 四缺口修正）
   已於 2026-09-02 由審計官核對通過：6 檔異動（含 2 個新檔）、零夾帶、
@@ -4819,4 +4819,56 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - Node `punycode` deprecation warning 維持 B-100 R-D NONBLOCKING。
   - §5.4 維持純指標導向（POINTER_ONLY），不保存動態任務佇列或狀態副本。
   - 本 state-sync candidate 分支為 `batch/tg-mvp-07-final-acceptance-260923`，Allowed Scope 嚴格限定 6 檔，main_advancement = FORBIDDEN，提交後標記為 AWAITING EXTERNAL MACRO AUDIT。
+
+134. **TG-MVP-07A 外部宏觀審計通過、Same-SHA Main 晉升與最終驗收狀態同步（TG-MVP-07A External Macro Final PASS, Same-SHA Main Promotion & Final Acceptance State Sync）**（2026-09-23）
+- **外部宏觀審計結論（External Macro Final Verdict on Target 6fc880947af0a65f356857f92aed606da5404505）**：
+  - Implementation SHA：`6fc880947af0a65f356857f92aed606da5404505`（Base: `c2912957f7f1c34fb99cb88dc2c313447fde1eb5`）。
+  - 修復閉環與候選演進（Cumulative Repair Chain）：
+    - 初始候選 `40bb0ab0561324e0671ab6d581d925b9de1e2672`：Actions Run 35812232038（verify=failure, gateway-windows=success，Ubuntu synthetic Known-Folder tests failure）。
+    - M3 Repair R1 `413c11d0c8e5562389297c51bc2094dcfa210cef`：Actions Run 35813606731（verify=success, gateway-windows=failure，Windows live Known-Folder bridge 達到 30000ms 逾時邊界）。
+    - M3 Repair R2 `6fc880947af0a65f356857f92aed606da5404505`：提升生產 hard upper bound 逾時至 60000ms，candidate Actions Run 35815942965 completed / success（verify=success, gateway-windows=success, raw candidate verify: 512 passed + 13 passed + ALL 5 GATES PASSED, candidate Windows: 26 passed）。
+  - Macro Audit 裁決：TG-MVP-07A FINAL MACRO AUDIT = PASS, ACCEPT STATUS = ACCEPT ALL, TG-MVP-07A = ACCEPTED / CLOSED, PROMOTION = ACCEPTED, NEW MATERIAL FINDING = NONE。
+  - 已驗收之語意（Accepted Semantics）：
+    1. Local Config schemaVersion = 2。
+    2. exact top-level allowlist = schemaVersion / dataLocations / gateway。
+    3. gateway.localPort 必須明確存在且精確為 integer 3003。
+    4. schemaVersion 1 fail closed；無 silent migration。
+    5. repo-external nominal / canonical realpath containment guard 保留。
+    6. symlink resolving into repo guard 保留。
+    7. Windows defaults 使用 DesktopDirectory / LocalApplicationData Known-Folder 語意。
+    8. 不使用 USERPROFILE / LOCALAPPDATA 作 data-path authority。
+    9. explicit configured path 優先。
+    10. protectedRoots 無 default，必須 explicit。
+    11. gateway.localPort 無 missing default。
+    12. non-win32 缺 singleton path fail closed。
+    13. zero directory auto-create。
+    14. startup path validation fail closed。
+    15. PowerShell executable 存在性 guard 保留。
+    16. bridge script 存在性 guard 保留。
+    17. shell:false。
+    18. production Known-Folder timeout = 60000ms hard upper bound。
+    19. timeout 仍 fail closed。
+    20. no retry / no fallback。
+    21. raw stdout/stderr 不反射至 exception。
+    22. Local Config 不存 secret / token / credential。
+    23. TG-MVP-11 listener 未提前實作。
+    24. 無 socket bind / port probe / localhost probe。
+    25. R1 cross-platform synthetic injection 已接受。
+    26. R1 nonexistent executable negative control 已接受。
+    27. R2 timeout margin correction 已接受。
+    28. Execution Record revision_count = 2，allowed / required / actual paths = exact 12。
+  - Same-SHA main promotion：origin/main 已推進至 `6fc880947af0a65f356857f92aed606da5404505`。
+  - Post-main exact-SHA Actions 驗證：Run 35816688934（event=push, head_branch=main, head_sha=6fc880947af0a65f356857f92aed606da5404505, attempt=1, status=completed, conclusion=success, verify=completed/success, gateway-windows=completed/success, post-main raw verify: 512 passed + 13 passed + ALL 5 GATES PASSED, post-main Windows: 26 passed）。
+  - Ruleset 21301111 保持 active、deletion protection=present、non_fast_forward=present、strict required status checks (verify, gateway-windows)=true、bypass_actors=[]、current_user_can_bypass=never。
+  - 單次 main push 授權消耗證明（Single-use main auth）：AUTH CONSUMED（provenance: USER_PROVIDED / EXECUTOR_TRANSCRIPT）。
+  - 任務結案裁決：TG-MVP-07A = ACCEPTED / CLOSED。
+  - accepted checkpoint 推進至 `6fc880947af0a65f356857f92aed606da5404505`。
+- **後續工作路由與邊界保留（Next Work Routing & Boundary Preservation）**：
+  - NEXT_WORK 保持 E-03，NEXT_SLICE 推進至 TG-MVP-08（READY / NEXT AUTHORIZED SLICE AFTER TG-MVP-07A FINAL ACCEPTANCE STATE SYNC）。
+  - TG-MVP-08（T9 封存並退役舊版凍結 JSON 運作模組）維持待辦，本輪不實作。
+  - TG-MVP-11（Loopback Local API v1 監聽器）維持待辦，本輪不實作。
+  - B-107 保持 OPEN / RESIDUAL，NON-BLOCKING FOR CURRENT E-03 RETURN（包含 M2_DISCOVERY_RAW 生成殘留與既有 process findings，不建立重複任務，不阻擋 TG-MVP-07A 結案）。
+  - Node `punycode` deprecation warning 維持 B-100 R-D NONBLOCKING。
+  - §5.4 維持純指標導向（POINTER_ONLY），不保存動態任務佇列或狀態副本。
+  - 本 state-sync candidate 分支為 `batch/tg-mvp-07a-final-acceptance-260923`，Allowed Scope 嚴格限定 6 檔，main_advancement = FORBIDDEN，提交後標記為 AWAITING EXTERNAL MACRO AUDIT。
 
