@@ -24,33 +24,94 @@ const BACKUP_CHECK_INTERVAL_MS = 3_600_000;
 
 /**
  * Canonical backup filename pattern:
- * channel-gateway-state.backup-v{positive integer}-{uuid}.sqlite3
- * Matches T11A crypto.randomUUID() naming contract.
+ * channel-gateway-state.backup-v{positive integer}-{uuid-v4}.sqlite3
+ * Strictly aligned with T11A crypto.randomUUID() RFC 4122 v4 contract:
+ * xxxxxxxx-xxxx-4xxx-[89ab]xxx-xxxxxxxxxxxx (case-insensitive hex).
  */
 const CANONICAL_BACKUP_NAME_REGEX =
-  /^channel-gateway-state\.backup-v([1-9]\d*)-([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})\.sqlite3$/;
+  /^channel-gateway-state\.backup-v([1-9]\d*)-([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-4[0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})\.sqlite3$/;
 
 /**
- * Redact sensitive info (such as absolute system/user paths or credentials)
- * from bounded log messages to comply with kernel and repository safety contracts.
+ * Whitelist pattern for safe error codes/tokens (letters, digits, underscore, dot, hyphen up to 64 chars).
+ */
+const SAFE_TOKEN_REGEX = /^[A-Za-z0-9_.-]{1,64}$/;
+
+/**
+ * Formats a bounded diagnostic string containing ONLY:
+ * - fixed category
+ * - bounded error name
+ * - bounded safe error code (if matching SAFE_TOKEN_REGEX)
  *
- * @param {string} msg
+ * Strictly NEVER reflects raw err.message, err.stack, raw Error objects,
+ * absolute paths, tokens, credentials, or DB contents.
+ *
+ * @param {string} category
+ * @param {any} err
  * @returns {string}
  */
-function sanitizeLogMessage(msg) {
-  if (typeof msg !== 'string') {
-    return 'Unknown diagnostic message';
+function formatBoundedDiagnostic(category, err) {
+  let name = 'Error';
+  let code = null;
+
+  if (err && typeof err === 'object') {
+    if (typeof err.name === 'string' && SAFE_TOKEN_REGEX.test(err.name)) {
+      name = err.name;
+    }
+    if (typeof err.code === 'string' && SAFE_TOKEN_REGEX.test(err.code)) {
+      code = err.code;
+    }
+  } else if (typeof err === 'string' && SAFE_TOKEN_REGEX.test(err)) {
+    code = err;
   }
-  let cleaned = msg;
-  // Redact Windows absolute drive paths (e.g. C:\Users\...)
-  cleaned = cleaned.replace(/[a-zA-Z]:\\[^\s:;,)'"]+/g, '[REDACTED_PATH]');
-  // Redact UNC paths (e.g. \\server\share\...)
-  cleaned = cleaned.replace(/\\\\[^\s:;,)'"]+/g, '[REDACTED_PATH]');
-  // Redact POSIX absolute paths (e.g. /home/user/...)
-  cleaned = cleaned.replace(/(^|\s)\/[^\s:;,)'"]+/g, '$1[REDACTED_PATH]');
-  // Redact potential secret/token assignments
-  cleaned = cleaned.replace(/(token|secret|password|key|bearer)\s*[:=]\s*\S+/gi, '$1=[REDACTED]');
-  return cleaned;
+
+  return code
+    ? `[BackupScheduler] ${category}: name=${name}, code=${code}`
+    : `[BackupScheduler] ${category}: name=${name}`;
+}
+
+/**
+ * Validates the return contract of createVerifiedBackup().
+ * F1 Contract requirements:
+ * - non-null object
+ * - result.success === true
+ * - result.backupPath is a non-empty string
+ * - result.sourceSchemaVersion is a positive integer
+ * - result.integrity === 'ok'
+ *
+ * @param {any} result
+ */
+function validateBackupResult(result) {
+  if (!result || typeof result !== 'object') {
+    const err = new Error('Invalid verified backup result: must be a non-null object');
+    err.code = 'INVALID_BACKUP_RESULT';
+    throw err;
+  }
+  if (result.success !== true) {
+    const err = new Error('Invalid verified backup result: success must be true');
+    err.code = 'BACKUP_UNSUCCESSFUL';
+    throw err;
+  }
+  if (typeof result.backupPath !== 'string' || result.backupPath.trim().length === 0) {
+    const err = new Error('Invalid verified backup result: backupPath must be a non-empty string');
+    err.code = 'INVALID_BACKUP_PATH';
+    throw err;
+  }
+  if (
+    typeof result.sourceSchemaVersion !== 'number' ||
+    !Number.isSafeInteger(result.sourceSchemaVersion) ||
+    result.sourceSchemaVersion <= 0
+  ) {
+    const err = new Error(
+      'Invalid verified backup result: sourceSchemaVersion must be a positive integer'
+    );
+    err.code = 'INVALID_SOURCE_SCHEMA_VERSION';
+    throw err;
+  }
+  if (result.integrity !== 'ok') {
+    const err = new Error('Invalid verified backup result: integrity must be "ok"');
+    err.code = 'INVALID_BACKUP_INTEGRITY';
+    throw err;
+  }
 }
 
 class BackupScheduler {
@@ -203,7 +264,7 @@ class BackupScheduler {
     try {
       this.#performFreshnessCheckAndBackup();
     } catch (err) {
-      this.#logError('Unexpected error during backup check cycle', err);
+      this.#logError('UnexpectedCycleError', err);
     } finally {
       this.#inFlight = false;
     }
@@ -220,7 +281,7 @@ class BackupScheduler {
     try {
       entries = this.#fs.readdirSync(this.#stateRoot);
     } catch (err) {
-      this.#logError('Failed to read stateRoot directory', err);
+      this.#logError('ScanFreshness', err);
       return;
     }
 
@@ -237,7 +298,7 @@ class BackupScheduler {
       try {
         stat = this.#fs.lstatSync(fullPath);
       } catch (err) {
-        this.#logWarn('Candidate entry inspection failure; ignoring entry for freshness', err);
+        this.#logWarn('StatCandidate', err);
         continue;
       }
 
@@ -282,27 +343,23 @@ class BackupScheduler {
     }
 
     try {
-      this.#repository.createVerifiedBackup();
+      const result = this.#repository.createVerifiedBackup();
+      validateBackupResult(result);
     } catch (err) {
-      this.#logError('Failed to create verified backup', err);
+      this.#logError('PerformBackup', err);
     }
   }
 
   #logError(category, err) {
-    const errorName = err && typeof err.name === 'string' ? err.name : 'Error';
-    const rawMessage = err && typeof err.message === 'string' ? err.message : String(err);
-    const safeMessage = sanitizeLogMessage(rawMessage);
-    this.#logger.error(`[BackupScheduler] ${category}: ${errorName} - ${safeMessage}`);
+    this.#logger.error(formatBoundedDiagnostic(category, err));
   }
 
   #logWarn(category, err) {
-    const errorName = err && typeof err.name === 'string' ? err.name : 'Warning';
-    const rawMessage = err && typeof err.message === 'string' ? err.message : String(err);
-    const safeMessage = sanitizeLogMessage(rawMessage);
+    const diagnostic = formatBoundedDiagnostic(category, err);
     if (typeof this.#logger.warn === 'function') {
-      this.#logger.warn(`[BackupScheduler] ${category}: ${errorName} - ${safeMessage}`);
+      this.#logger.warn(diagnostic);
     } else {
-      this.#logger.error(`[BackupScheduler] ${category}: ${errorName} - ${safeMessage}`);
+      this.#logger.error(diagnostic);
     }
   }
 }
@@ -311,4 +368,7 @@ module.exports = {
   BackupScheduler,
   BACKUP_FRESHNESS_THRESHOLD_MS,
   BACKUP_CHECK_INTERVAL_MS,
+  CANONICAL_BACKUP_NAME_REGEX,
+  validateBackupResult,
+  formatBoundedDiagnostic,
 };

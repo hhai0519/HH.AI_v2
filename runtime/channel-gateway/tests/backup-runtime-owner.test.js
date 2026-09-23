@@ -17,6 +17,8 @@
  * 9. Structural source assertions: zero signal handlers, zero env/argv/config, zero child processes.
  * 10. Real integration with real SqliteStateRepository and temp directory.
  * 11. Real integration avoids duplicate backup when fresh canonical backup exists.
+ * 12. F4: schedulerOptions allowlist enforcement (repository, stateRoot, logger, unknown keys fail closed).
+ * 13. F2: bounded non-secret diagnostic logging on stop failure (no raw Error, no path, no secret).
  */
 
 const test = require('node:test');
@@ -370,4 +372,173 @@ test('15. real integration test: with existing fresh backup (<24h), owner startu
   } finally {
     fs.rmSync(tempDir, { recursive: true, force: true });
   }
+});
+
+// ---------------------------------------------------------------------------
+// F4 & F2 Tests
+// ---------------------------------------------------------------------------
+
+test('16. F4: schedulerOptions.repository in constructor throws TypeError', () => {
+  assert.throws(
+    () =>
+      new BackupRuntimeOwner({
+        stateRoot: SYNTHETIC_STATE_ROOT,
+        schedulerOptions: { repository: {} },
+      }),
+    /contains forbidden or unknown key: 'repository'/
+  );
+});
+
+test('17. F4: schedulerOptions.stateRoot in constructor throws TypeError', () => {
+  assert.throws(
+    () =>
+      new BackupRuntimeOwner({
+        stateRoot: SYNTHETIC_STATE_ROOT,
+        schedulerOptions: { stateRoot: '/other/path' },
+      }),
+    /contains forbidden or unknown key: 'stateRoot'/
+  );
+});
+
+test('18. F4: schedulerOptions.logger in constructor throws TypeError', () => {
+  assert.throws(
+    () =>
+      new BackupRuntimeOwner({
+        stateRoot: SYNTHETIC_STATE_ROOT,
+        schedulerOptions: { logger: {} },
+      }),
+    /contains forbidden or unknown key: 'logger'/
+  );
+});
+
+test('19. F4: unknown key in schedulerOptions throws TypeError', () => {
+  assert.throws(
+    () =>
+      new BackupRuntimeOwner({
+        stateRoot: SYNTHETIC_STATE_ROOT,
+        schedulerOptions: { arbitraryKey: true },
+      }),
+    /contains forbidden or unknown key: 'arbitraryKey'/
+  );
+  assert.throws(
+    () =>
+      new BackupRuntimeOwner({
+        stateRoot: SYNTHETIC_STATE_ROOT,
+        schedulerOptions: { backupIntervalMs: 1000 },
+      }),
+    /contains forbidden or unknown key: 'backupIntervalMs'/
+  );
+});
+
+test('20. F4: allowed schedulerOptions (now, setIntervalFn, clearIntervalFn, fs) forwarded; canonical identity preserved', () => {
+  const customNow = () => 12345;
+  const customSetInterval = () => 1;
+  const customClearInterval = () => {};
+  const customFs = {};
+  let receivedOpts = null;
+
+  const tracker = createMockLifecycleTracker();
+  const customLogger = { error: () => {}, warn: () => {} };
+
+  const owner = new BackupRuntimeOwner({
+    stateRoot: SYNTHETIC_STATE_ROOT,
+    repositoryFactory: () => tracker.mockRepo,
+    logger: customLogger,
+    schedulerOptions: {
+      now: customNow,
+      setIntervalFn: customSetInterval,
+      clearIntervalFn: customClearInterval,
+      fs: customFs,
+    },
+    schedulerFactory: (repo, root, opts) => {
+      receivedOpts = opts;
+      return tracker.mockScheduler;
+    },
+  });
+
+  owner.start();
+  assert.equal(receivedOpts.now, customNow);
+  assert.equal(receivedOpts.setIntervalFn, customSetInterval);
+  assert.equal(receivedOpts.clearIntervalFn, customClearInterval);
+  assert.equal(receivedOpts.fs, customFs);
+  assert.equal(receivedOpts.repository, tracker.mockRepo);
+  assert.equal(receivedOpts.stateRoot, SYNTHETIC_STATE_ROOT);
+  assert.equal(receivedOpts.logger, customLogger);
+  owner.stop();
+});
+
+test('21. F2: scheduler.stop failure logs bounded non-secret diagnostic without raw Error/path/secret', () => {
+  const tracker = createMockLifecycleTracker();
+  const loggedErrors = [];
+  const customLogger = {
+    error: (msg, ...args) => {
+      loggedErrors.push({ msg, args });
+    },
+  };
+
+  const sensitiveErr = new Error(
+    'Failed to stop scheduler at /var/run/secret/path?token=ghp_secretTokenValue123'
+  );
+  sensitiveErr.code = 'STOP_SCHED_ERR';
+
+  tracker.mockScheduler.stop = () => {
+    throw sensitiveErr;
+  };
+
+  const owner = new BackupRuntimeOwner({
+    stateRoot: SYNTHETIC_STATE_ROOT,
+    repositoryFactory: () => tracker.mockRepo,
+    schedulerFactory: () => tracker.mockScheduler,
+    logger: customLogger,
+  });
+
+  owner.start();
+  owner.stop();
+
+  assert.equal(loggedErrors.length, 1);
+  const { msg, args } = loggedErrors[0];
+  assert.equal(args.length, 0, 'Must NOT pass raw Error object as second argument');
+  assert.equal(typeof msg, 'string');
+  assert.match(msg, /\[BackupRuntimeOwner\] StopScheduler: name=Error, code=STOP_SCHED_ERR/);
+  assert.equal(msg.includes('/var/run/secret/path'), false, 'Path must not be logged');
+  assert.equal(msg.includes('ghp_secretTokenValue123'), false, 'Secret must not be logged');
+  assert.equal(msg.includes('Failed to stop scheduler'), false, 'Raw message must not be logged');
+});
+
+test('22. F2: repository.close failure logs bounded non-secret diagnostic without raw Error/path/secret', () => {
+  const tracker = createMockLifecycleTracker();
+  const loggedErrors = [];
+  const customLogger = {
+    error: (msg, ...args) => {
+      loggedErrors.push({ msg, args });
+    },
+  };
+
+  const sensitiveErr = new Error(
+    'Failed to close repo at C:\\Sensitive\\StateRoot\\db.sqlite3 with password=MySecret123'
+  );
+  sensitiveErr.code = 'CLOSE_REPO_FAIL';
+
+  tracker.mockRepo.close = () => {
+    throw sensitiveErr;
+  };
+
+  const owner = new BackupRuntimeOwner({
+    stateRoot: SYNTHETIC_STATE_ROOT,
+    repositoryFactory: () => tracker.mockRepo,
+    schedulerFactory: () => tracker.mockScheduler,
+    logger: customLogger,
+  });
+
+  owner.start();
+  owner.stop();
+
+  assert.equal(loggedErrors.length, 1);
+  const { msg, args } = loggedErrors[0];
+  assert.equal(args.length, 0, 'Must NOT pass raw Error object as second argument');
+  assert.equal(typeof msg, 'string');
+  assert.match(msg, /\[BackupRuntimeOwner\] CloseRepository: name=Error, code=CLOSE_REPO_FAIL/);
+  assert.equal(msg.includes('C:\\Sensitive\\StateRoot'), false, 'Path must not be logged');
+  assert.equal(msg.includes('MySecret123'), false, 'Secret must not be logged');
+  assert.equal(msg.includes('Failed to close repo'), false, 'Raw message must not be logged');
 });

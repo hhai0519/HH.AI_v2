@@ -15,11 +15,57 @@
  * 5. NO CONFIG / ENV READING: Does NOT read `process.env`, `process.argv`, or load Local Config.
  * 6. SINGLE IN-PROCESS CAPABILITY: Ensures backup scheduling runs strictly inside the single
  *    Channel Gateway process boundary; never creates a second background daemon.
+ * 7. IDENTITY OVERRIDE GUARD (F4): Strict allowlist for schedulerOptions; strictly forbids
+ *    overriding repository, stateRoot, logger, or arbitrary unknown keys.
+ * 8. BOUNDED NON-SECRET LOGGING (F2): Never logs raw Error objects, stacks, or paths on stop.
  */
 
 const path = require('node:path');
 const { SqliteStateRepository } = require('./sqlite-state-repository');
 const { BackupScheduler } = require('./backup-scheduler');
+
+/**
+ * Strict allowlist of permitted dependency injection keys in schedulerOptions.
+ * Overriding core identity (repository, stateRoot, logger) or timing constants is strictly forbidden.
+ */
+const ALLOWED_SCHEDULER_OPTION_KEYS = new Set([
+  'now',
+  'setIntervalFn',
+  'clearIntervalFn',
+  'fs',
+]);
+
+/**
+ * Whitelist pattern for safe error codes/tokens (letters, digits, underscore, dot, hyphen up to 64 chars).
+ */
+const SAFE_TOKEN_REGEX = /^[A-Za-z0-9_.-]{1,64}$/;
+
+/**
+ * Formats a bounded diagnostic string for owner operations without raw messages or stacks.
+ *
+ * @param {string} category
+ * @param {any} err
+ * @returns {string}
+ */
+function formatOwnerDiagnostic(category, err) {
+  let name = 'Error';
+  let code = null;
+
+  if (err && typeof err === 'object') {
+    if (typeof err.name === 'string' && SAFE_TOKEN_REGEX.test(err.name)) {
+      name = err.name;
+    }
+    if (typeof err.code === 'string' && SAFE_TOKEN_REGEX.test(err.code)) {
+      code = err.code;
+    }
+  } else if (typeof err === 'string' && SAFE_TOKEN_REGEX.test(err)) {
+    code = err;
+  }
+
+  return code
+    ? `[BackupRuntimeOwner] ${category}: name=${name}, code=${code}`
+    : `[BackupRuntimeOwner] ${category}: name=${name}`;
+}
 
 class BackupRuntimeOwner {
   #stateRoot;
@@ -37,7 +83,7 @@ class BackupRuntimeOwner {
    * @param {function(string): object} [options.repositoryFactory] Repository opener
    * @param {function(object, string, object): object} [options.schedulerFactory] Scheduler constructor
    * @param {object} [options.logger=console] Logger instance
-   * @param {object} [options.schedulerOptions={}] Options forwarded to BackupScheduler
+   * @param {object} [options.schedulerOptions={}] Options forwarded to BackupScheduler (strictly restricted to allowed keys)
    */
   constructor(options = {}) {
     if (!options || typeof options !== 'object') {
@@ -48,7 +94,7 @@ class BackupRuntimeOwner {
       stateRoot,
       repositoryFactory = (root) => SqliteStateRepository.open(root),
       schedulerFactory = (repo, root, opts) =>
-        new BackupScheduler({ repository: repo, stateRoot: root, ...opts }),
+        new BackupScheduler({ ...opts, repository: repo, stateRoot: root }),
       logger = console,
       schedulerOptions = {},
     } = options;
@@ -74,6 +120,25 @@ class BackupRuntimeOwner {
       throw new TypeError('BackupRuntimeOwner logger must be an object (fail-closed)');
     }
 
+    if (
+      !schedulerOptions ||
+      typeof schedulerOptions !== 'object' ||
+      Array.isArray(schedulerOptions)
+    ) {
+      throw new TypeError(
+        'BackupRuntimeOwner schedulerOptions must be a plain object (fail-closed)'
+      );
+    }
+
+    // F4 Identity override guard: strictly validate schedulerOptions keys against allowlist
+    for (const key of Object.keys(schedulerOptions)) {
+      if (!ALLOWED_SCHEDULER_OPTION_KEYS.has(key)) {
+        throw new TypeError(
+          `BackupRuntimeOwner schedulerOptions contains forbidden or unknown key: '${key}' (fail-closed)`
+        );
+      }
+    }
+
     this.#stateRoot = stateRoot;
     this.#repositoryFactory = repositoryFactory;
     this.#schedulerFactory = schedulerFactory;
@@ -96,7 +161,7 @@ class BackupRuntimeOwner {
   /**
    * Starts the provisional backup runtime owner:
    * 1. Opens the repository using stateRoot.
-   * 2. Instantiates and starts the BackupScheduler.
+   * 2. Instantiates and starts the BackupScheduler (ensuring canonical repo/stateRoot/logger identity).
    * 3. If scheduler initialization or startup fails, closes the repository before re-throwing.
    */
   start() {
@@ -116,9 +181,12 @@ class BackupRuntimeOwner {
 
     let sched = null;
     try {
+      // Strict precedence: canonical repository, stateRoot, and logger cannot be overridden
       sched = this.#schedulerFactory(repo, this.#stateRoot, {
-        logger: this.#logger,
         ...this.#schedulerOptions,
+        repository: repo,
+        stateRoot: this.#stateRoot,
+        logger: this.#logger,
       });
       sched.start();
     } catch (err) {
@@ -141,6 +209,7 @@ class BackupRuntimeOwner {
    * 1. Stops the BackupScheduler.
    * 2. Closes the repository.
    * Safe and idempotent on multiple or pre-start invocations.
+   * F2: Error logging uses bounded non-secret diagnostic strings and never reflects raw Error objects.
    */
   stop() {
     if (!this.#isStarted) {
@@ -155,7 +224,7 @@ class BackupRuntimeOwner {
         this.#scheduler.stop();
       } catch (err) {
         if (this.#logger && typeof this.#logger.error === 'function') {
-          this.#logger.error('[BackupRuntimeOwner] Error stopping scheduler:', err);
+          this.#logger.error(formatOwnerDiagnostic('StopScheduler', err));
         }
       }
       this.#scheduler = null;
@@ -166,7 +235,7 @@ class BackupRuntimeOwner {
         this.#repository.close();
       } catch (err) {
         if (this.#logger && typeof this.#logger.error === 'function') {
-          this.#logger.error('[BackupRuntimeOwner] Error closing repository:', err);
+          this.#logger.error(formatOwnerDiagnostic('CloseRepository', err));
         }
       }
       this.#repository = null;
@@ -176,4 +245,6 @@ class BackupRuntimeOwner {
 
 module.exports = {
   BackupRuntimeOwner,
+  ALLOWED_SCHEDULER_OPTION_KEYS,
+  formatOwnerDiagnostic,
 };
