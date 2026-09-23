@@ -4938,7 +4938,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 138. **TG-MVP-09 實作核對通過、Same-SHA Main 晉升與最終驗收就緒（TG-MVP-09 Implementation Accepted, Same-SHA Main Promotion & Final Acceptance Ready）**（2026-09-23）
 - **外部宏觀審計結論（External Macro Final Verdict on Target 2e34380663fade80f3a39d4fdb6dacde8a26d9a1）**：
-  - Target：2e34380663fade80f3a39d4fdb6dacde8a26d9a1（Base: 9fb67f768ed533c8ae41a6a5811a4e034b14aa8，Initial candidate: 6f2b6e8bd736399876a7ffe48cd703668f3937d8）。
+  - Target：2e34380663fade80f3a39d4fdb6dacde8a26d9a1（Base: b9fb67f768ed533c8ae41a6a5811a4e034b14aa8，Initial candidate: 6f2b6e8bd736399876a7ffe48cd703668f3937d8）。
   - Initial candidate Run 35842563580（verify success, gateway-windows success, raw Ubuntu 512 passed + 13 passed + ALL 5 GATES PASSED, raw Windows 26 passed），Initial Macro verdict = HOLD，findings F1–F5。
   - R1 bounded repair candidate 2e34380663fade80f3a39d4fdb6dacde8a26d9a1 exact-SHA Actions Run 35848844279（attempt 1, verify success, gateway-windows success, raw Ubuntu 512 passed + 13 passed + ALL 5 GATES PASSED, raw Windows 26 passed），R1 Macro verdict = PASS / ACCEPT ALL，F1–F5 RESOLVED，NEW MATERIAL FINDING = NONE，promotion eligible = PASS。
   - Same-SHA main promotion：origin/main 已成功推進至 2e34380663fade80f3a39d4fdb6dacde8a26d9a1。
