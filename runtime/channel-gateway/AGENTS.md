@@ -8,8 +8,10 @@
 ## 1. 唯一權威運作狀態來源 (Operational State Source)
 
 - 所有 Channel Gateway 之通道控制狀態（ChannelControl）、入站收件箱（Inbox）、接收游標（Ingest Cursor）與未來出站狀態（Outbox），唯一權威持久化路線為 **SQLite / `node:sqlite`**（ADR-0023 D27）。
-- 嚴禁新增任何新的 JSON 運作狀態寫入器或快照儲存邏輯。
-- 現存之 JSON 持久化模組（`durable-state-store.js`、`channel-state-recovery.js`、`channel-state-persistence.js`）為過渡中／凍結資產（Transitional / Frozen），除相容性驗證或退役清理外，不得擴充功能。
+- 依 TG-MVP-08 / T9 架構裁決，舊版過渡性 JSON 運作模組（`durable-state-store.js`、`channel-state-recovery.js`、`channel-state-persistence.js`）已正式自版本庫退役並移除，專屬測試亦一併除役；SQLite / `node:sqlite` 仍為唯一權威運作狀態來源。
+- 嚴禁重新建立 `durable-state-store.js`、`channel-state-recovery.js`、`channel-state-persistence.js` 作為運作狀態路徑，亦嚴禁新增任何新的 JSON 運作狀態寫入器、相容性 shim 或快照儲存邏輯。
+- 嚴禁恢復 `channel-gateway-state.json` 之運作持久化路徑；歷史設計對照與溯源僅保留於 Git 歷史紀錄與 ADR-0023，不屬於 active runtime 表面。
+- 檔案系統歸檔與附件例外（ADR-0022 D22 / D17，見 §12）維持不變。
 
 ## 2. SQLite PRAGMA 契約 (PRAGMA Contract)
 

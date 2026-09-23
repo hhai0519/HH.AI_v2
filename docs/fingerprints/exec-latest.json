@@ -1,5 +1,5 @@
 {
-  "base_head": "f27c60b",
+  "base_head": "56e4e30",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -552,16 +552,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 207,
-      "sha256": "996edda5938a2eb9e026d6af872decb04507e07b566fef2f89fb253edaf3ff24"
+      "lines": 208,
+      "sha256": "49369fc8384dd535071afdd15887320e2b03c6f2b0938f731fca0f8574dac59f"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 179,
-      "sha256": "7b94367015c3f2d5a036196517e6504d00cf39444b52bacbf20dba15091c6316"
+      "lines": 180,
+      "sha256": "f3b4e2a337b91f12fcf42049c81529eccd3626ba48441d50efdfa5b7cc793483"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -602,7 +602,7 @@
         "## 封存區"
       ],
       "lines": 340,
-      "sha256": "a95a5c07ffb1ec9ca2efa28362902593329eac464ae18340ff02d6c7897a17e0"
+      "sha256": "5b10b3e84480bcca3690467369c0cffad5af1d0eaad50e6899cf730420f28fcd"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -914,13 +914,13 @@
         "### 2. 檔案系統歸檔邊界排除 (D22 Exclusion)",
         "### 3. Windows 實機驗證滿足 (D28 & T1 Spike Results)",
         "### 4. 與 ADR-0022 之關係 (Relationship with ADR-0022)",
-        "### 5. 既有 JSON 持久化模組之地位 (Legacy JSON Modules Status)",
+        "### 5. 既有 JSON 持久化模組之退役 (Legacy JSON Modules Retirement — TG-MVP-08 / T9)",
         "### 6. Wave 2H 之處置 (D29 Cancellation)",
         "### 7. 待決議事項現況 (Pending Decisions: R2 & R3)",
         "## Consequences"
       ],
-      "lines": 81,
-      "sha256": "89a6e10317327f3e6901888b3faeb1248231447441b189e90e83250078ddc9ec"
+      "lines": 85,
+      "sha256": "7347843b39ec634cb4cb3f1c3386b1d461edbefd0bfa9e3b814920626ae3c12d"
     },
     "docs/adr/0024-inbound-identity-cursor-semantics.md": {
       "fences": 2,
@@ -1063,8 +1063,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 4874,
-      "sha256": "c941e9e934aa16be5ab3a07306a979ec0ffe2401e7b6e934b181ca881c901c52"
+      "lines": 4892,
+      "sha256": "e4fea221376e63a1462ed5773d0b18e9080525a3bcf0c9e92dd5502cfa62e1cd"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1196,8 +1196,8 @@
       "headings": [
         "# -*- coding: utf-8 -*-"
       ],
-      "lines": 435,
-      "sha256": "50e730c7eb3346e53c22f2fe1a07eff7fd0e2921faf60b308be0447a11ddcc29"
+      "lines": 488,
+      "sha256": "408e554c2fee1835566486a0fb721df2997b2cdaa3c150891a7a461e69bc9858"
     },
     "scripts/tests/test_check_17_18.py": {
       "fences": 0,
@@ -1489,7 +1489,7 @@
       "sha256": "35bf7dbfa3c7d291b550c3c97a6ae398a22b1dc3624c1d2fc1e4db6963d6e115"
     }
   },
-  "generated_at": "2026-09-23T04:34:11Z",
+  "generated_at": "2026-09-23T05:29:10Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

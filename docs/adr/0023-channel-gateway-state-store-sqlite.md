@@ -46,16 +46,20 @@
 ADR-0022 仍保留為 Channel Gateway 之歷史與總體架構權威（Historical Architecture Authority）。
 本 ADR 僅取代（supersedes）ADR-0022 關於 Gateway 運作狀態持久化採用「JSON 快照（JSON snapshot persistence layer）」之實作選型，不修改 ADR-0022 歷史本文。
 
-### 5. 既有 JSON 持久化模組之地位 (Legacy JSON Modules Status)
+### 5. 既有 JSON 持久化模組之退役 (Legacy JSON Modules Retirement — TG-MVP-08 / T9)
 
-現存於版本庫之 JSON 持久化模組：
+歷史上三個過渡性 JSON 持久化模組：
 - `runtime/channel-gateway/core/durable-state-store.js`
 - `runtime/channel-gateway/core/channel-state-recovery.js`
 - `runtime/channel-gateway/core/channel-state-persistence.js`
 
-目前仍保留於版本庫，但地位正式轉為 **過渡中／凍結資產（TRANSITIONAL / FROZEN）**。
-禁止對上述模組新增任何功能。僅允許進行遷移對照、相容性驗證或退役清理。
-上述模組將於未來 SQLite repository 與交易去重模組完成驗證後（T9 階段），始正式自版本庫移除。
+在 T9 執行前曾作為過渡中／凍結資產（TRANSITIONAL / FROZEN）暫留版本庫以供對照。後續經 TG-MVP-08（T9 階段）正式驗證後，上述三個模組與其專屬測試（`durable-state-store.test.js`、`channel-state-recovery.test.js`、`channel-state-persistence.test.js`）已全數自 active 版本庫中正式退役並移除。
+
+- **唯一權威來源**：SQLite / `node:sqlite` 儲存庫（`sqlite-state-repository.js`）為 Channel Gateway 唯一權威運作狀態來源。
+- **零相容性表面**：不保留相容性 shim、不建立 deprecated wrapper、不提供 JSON fallback、不抽取或建立新的替代快照模組。
+- **歷史脈絡留痕**：歷史架構設計、演進背景與程式碼留痕完整保留於 Git 歷史紀錄與本 ADR 中，不影響 active runtime 潔淨度。
+- **共享原語保留**：`shared/atomicFs.js` 屬跨專案共享檔案原子寫入原語，不屬本三個已退役之 Gateway 專屬 JSON 運作模組，本 T9 階段予以保留不予刪除。
+- **檔案系統例外維持**：ADR-0022 D22 對話歸檔與 D17 附件之檔案系統儲存邊界維持不變。
 
 ### 6. Wave 2H 之處置 (D29 Cancellation)
 

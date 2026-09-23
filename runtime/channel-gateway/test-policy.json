@@ -3,11 +3,6 @@
   "approvedSkips": [
     {
       "platform": "win32",
-      "testName": "DurableStateStore - 25. existing state-file symlink rejected 或 capability-aware skip",
-      "reasonPrefix": "Symlink creation not permitted in this environment"
-    },
-    {
-      "platform": "win32",
       "testName": "LocalConfigLoader - 9. repo-external symlink resolving into repo rejected 或 capability-aware skip",
       "reasonPrefix": "Symlink creation not permitted in this environment"
     },

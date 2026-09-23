@@ -1,27 +1,47 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "TG-MVP-07A-FINAL-ACCEPTANCE",
-  "base_oid": "6fc880947af0a65f356857f92aed606da5404505",
+  "task_id": "TG-MVP-08",
+  "base_oid": "56e4e304ac37cff59152694df893e429587756ff",
   "plan": {
     "allowed_paths": [
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
+      "docs/adr/0023-channel-gateway-state-store-sqlite.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md"
+      "docs/refactor-backlog.md",
+      "runtime/channel-gateway/AGENTS.md",
+      "runtime/channel-gateway/core/channel-state-persistence.js",
+      "runtime/channel-gateway/core/channel-state-recovery.js",
+      "runtime/channel-gateway/core/durable-state-store.js",
+      "runtime/channel-gateway/test-policy.json",
+      "runtime/channel-gateway/tests/channel-state-persistence.test.js",
+      "runtime/channel-gateway/tests/channel-state-recovery.test.js",
+      "runtime/channel-gateway/tests/durable-state-store.test.js",
+      "scripts/tests/test_channel_gateway_core.py"
     ],
     "required_paths": [
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
+      "docs/adr/0023-channel-gateway-state-store-sqlite.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md"
+      "docs/refactor-backlog.md",
+      "runtime/channel-gateway/AGENTS.md",
+      "runtime/channel-gateway/core/channel-state-persistence.js",
+      "runtime/channel-gateway/core/channel-state-recovery.js",
+      "runtime/channel-gateway/core/durable-state-store.js",
+      "runtime/channel-gateway/test-policy.json",
+      "runtime/channel-gateway/tests/channel-state-persistence.test.js",
+      "runtime/channel-gateway/tests/channel-state-recovery.test.js",
+      "runtime/channel-gateway/tests/durable-state-store.test.js",
+      "scripts/tests/test_channel_gateway_core.py"
     ],
     "max_plan_revisions": 3,
-    "revision_count": 1,
+    "revision_count": 0,
     "plan_origin": "EXTERNAL_MACRO_PROMPT"
   },
   "actual": {
@@ -29,9 +49,19 @@
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
+      "docs/adr/0023-channel-gateway-state-store-sqlite.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md"
+      "docs/refactor-backlog.md",
+      "runtime/channel-gateway/AGENTS.md",
+      "runtime/channel-gateway/core/channel-state-persistence.js",
+      "runtime/channel-gateway/core/channel-state-recovery.js",
+      "runtime/channel-gateway/core/durable-state-store.js",
+      "runtime/channel-gateway/test-policy.json",
+      "runtime/channel-gateway/tests/channel-state-persistence.test.js",
+      "runtime/channel-gateway/tests/channel-state-recovery.test.js",
+      "runtime/channel-gateway/tests/durable-state-store.test.js",
+      "scripts/tests/test_channel_gateway_core.py"
     ]
   },
   "evidence": [

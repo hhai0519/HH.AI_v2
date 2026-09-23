@@ -323,7 +323,7 @@ def test_canary_a_registered_windows_skip_passes():
     tap = (
         "TAP version 13\n"
         "ok 1 - normal test\n"
-        "ok 2 - DurableStateStore - 25. existing state-file symlink rejected 或 capability-aware skip # SKIP Symlink creation not permitted in this environment (EPERM)\n"
+        "ok 2 - LocalConfigLoader - 9. repo-external symlink resolving into repo rejected 或 capability-aware skip # SKIP Symlink creation not permitted in this environment (EPERM)\n"
         "1..2\n"
         "# tests 2\n"
         "# suites 0\n"
@@ -362,7 +362,7 @@ def test_canary_c_known_test_unknown_reason_fails():
     tap = (
         "TAP version 13\n"
         "ok 1 - normal test\n"
-        "ok 2 - DurableStateStore - 25. existing state-file symlink rejected 或 capability-aware skip # SKIP Unapproved random reason\n"
+        "ok 2 - LocalConfigLoader - 9. repo-external symlink resolving into repo rejected 或 capability-aware skip # SKIP Unapproved random reason\n"
         "1..2\n"
         "# tests 2\n"
         "# suites 0\n"
@@ -382,7 +382,7 @@ def test_canary_d_known_windows_skip_on_linux_fails():
     tap = (
         "TAP version 13\n"
         "ok 1 - normal test\n"
-        "ok 2 - DurableStateStore - 25. existing state-file symlink rejected 或 capability-aware skip # SKIP Symlink creation not permitted in this environment (EPERM)\n"
+        "ok 2 - LocalConfigLoader - 9. repo-external symlink resolving into repo rejected 或 capability-aware skip # SKIP Symlink creation not permitted in this environment (EPERM)\n"
         "1..2\n"
         "# tests 2\n"
         "# suites 0\n"
@@ -402,7 +402,7 @@ def test_canary_e_summary_skip_count_mismatch_fails():
     tap = (
         "TAP version 13\n"
         "ok 1 - normal test\n"
-        "ok 2 - DurableStateStore - 25. existing state-file symlink rejected 或 capability-aware skip # SKIP Symlink creation not permitted in this environment (EPERM)\n"
+        "ok 2 - LocalConfigLoader - 9. repo-external symlink resolving into repo rejected 或 capability-aware skip # SKIP Symlink creation not permitted in this environment (EPERM)\n"
         "1..2\n"
         "# tests 2\n"
         "# suites 0\n"
@@ -433,3 +433,56 @@ def test_canary_f_todo_greater_than_zero_fails():
     )
     with pytest.raises(AssertionError, match="todo > 0"):
         assert_registered_skips(tap, policy, current_platform="win32")
+
+
+def test_t9_retirement_structural_guard():
+    """Requirement I: Deterministic T9 retirement structural anti-resurrection guard."""
+    core_dir = os.path.join(GATEWAY_DIR, "core")
+    tests_dir = os.path.join(GATEWAY_DIR, "tests")
+
+    retired_core_modules = [
+        "durable-state-store.js",
+        "channel-state-recovery.js",
+        "channel-state-persistence.js",
+    ]
+    for mod in retired_core_modules:
+        path = os.path.join(core_dir, mod)
+        assert not os.path.exists(path), f"Retired core module must not exist: {path}"
+
+    retired_test_files = [
+        "durable-state-store.test.js",
+        "channel-state-recovery.test.js",
+        "channel-state-persistence.test.js",
+    ]
+    for t_file in retired_test_files:
+        path = os.path.join(tests_dir, t_file)
+        assert not os.path.exists(path), f"Retired test file must not exist: {path}"
+
+    with open(TEST_POLICY_PATH, "r", encoding="utf-8") as f:
+        policy_content = f.read()
+    assert "DurableStateStore" not in policy_content, "test-policy.json must not contain 'DurableStateStore'"
+
+    retired_import_targets = [
+        "./durable-state-store",
+        "./channel-state-recovery",
+        "./channel-state-persistence",
+    ]
+
+    for fname in os.listdir(core_dir):
+        if fname.endswith(".js"):
+            fpath = os.path.join(core_dir, fname)
+            with open(fpath, "r", encoding="utf-8") as f:
+                content = f.read()
+            for target in retired_import_targets:
+                assert target not in content, f"Active core module {fname} must not reference {target}"
+            assert "channel-gateway-state.json" not in content, (
+                f"Active core module {fname} must not reference 'channel-gateway-state.json'"
+            )
+
+    for fname in os.listdir(tests_dir):
+        if fname.endswith(".js"):
+            fpath = os.path.join(tests_dir, fname)
+            with open(fpath, "r", encoding="utf-8") as f:
+                content = f.read()
+            for target in retired_import_targets:
+                assert target not in content, f"Gateway test {fname} must not import {target}"
