@@ -521,6 +521,7 @@ test('LocalConfigLoader - 22. Known-Folder resolver: valid payload accepted', ()
 
   const result = resolveWindowsKnownFolders({
     platform: 'win32',
+    powershellPath: process.execPath,
     spawnSync: mockSpawnSync,
   });
 
@@ -554,7 +555,12 @@ test('LocalConfigLoader - 23. Known-Folder resolver: empty DesktopDirectory fail
   });
 
   assert.throws(
-    () => resolveWindowsKnownFolders({ platform: 'win32', spawnSync: mockSpawnSync }),
+    () =>
+      resolveWindowsKnownFolders({
+        platform: 'win32',
+        powershellPath: process.execPath,
+        spawnSync: mockSpawnSync,
+      }),
     /Windows Known-Folder bridge returned empty or invalid DesktopDirectory/
   );
 });
@@ -571,7 +577,12 @@ test('LocalConfigLoader - 24. Known-Folder resolver: empty LocalApplicationData 
   });
 
   assert.throws(
-    () => resolveWindowsKnownFolders({ platform: 'win32', spawnSync: mockSpawnSync }),
+    () =>
+      resolveWindowsKnownFolders({
+        platform: 'win32',
+        powershellPath: process.execPath,
+        spawnSync: mockSpawnSync,
+      }),
     /Windows Known-Folder bridge returned empty or invalid LocalApplicationData/
   );
 });
@@ -583,7 +594,12 @@ test('LocalConfigLoader - 25. Known-Folder resolver: malformed JSON fails closed
   });
 
   assert.throws(
-    () => resolveWindowsKnownFolders({ platform: 'win32', spawnSync: mockSpawnSync }),
+    () =>
+      resolveWindowsKnownFolders({
+        platform: 'win32',
+        powershellPath: process.execPath,
+        spawnSync: mockSpawnSync,
+      }),
     /Failed to parse Windows Known-Folder bridge output as JSON/
   );
 });
@@ -595,7 +611,12 @@ test('LocalConfigLoader - 26. Known-Folder resolver: non-zero exit status fails 
   });
 
   assert.throws(
-    () => resolveWindowsKnownFolders({ platform: 'win32', spawnSync: mockSpawnSync }),
+    () =>
+      resolveWindowsKnownFolders({
+        platform: 'win32',
+        powershellPath: process.execPath,
+        spawnSync: mockSpawnSync,
+      }),
     /Windows Known-Folder resolution bridge exited with non-zero status \(1\)/
   );
 });
@@ -606,7 +627,12 @@ test('LocalConfigLoader - 27. Known-Folder resolver: spawn error fails closed', 
   });
 
   assert.throws(
-    () => resolveWindowsKnownFolders({ platform: 'win32', spawnSync: mockSpawnSync }),
+    () =>
+      resolveWindowsKnownFolders({
+        platform: 'win32',
+        powershellPath: process.execPath,
+        spawnSync: mockSpawnSync,
+      }),
     /Error executing Windows Known-Folder resolution bridge/
   );
 });
@@ -617,7 +643,12 @@ test('LocalConfigLoader - 28. Known-Folder resolver: timeout / ETIMEDOUT fails c
   });
 
   assert.throws(
-    () => resolveWindowsKnownFolders({ platform: 'win32', spawnSync: mockSpawnSync }),
+    () =>
+      resolveWindowsKnownFolders({
+        platform: 'win32',
+        powershellPath: process.execPath,
+        spawnSync: mockSpawnSync,
+      }),
     /Windows Known-Folder resolution bridge timed out/
   );
 });
@@ -633,7 +664,12 @@ test('LocalConfigLoader - 29. Known-Folder resolver: non-absolute returned path 
     ),
   });
   assert.throws(
-    () => resolveWindowsKnownFolders({ platform: 'win32', spawnSync: mockSpawn1 }),
+    () =>
+      resolveWindowsKnownFolders({
+        platform: 'win32',
+        powershellPath: process.execPath,
+        spawnSync: mockSpawn1,
+      }),
     /Windows Known-Folder bridge returned non-absolute DesktopDirectory/
   );
 
@@ -647,7 +683,12 @@ test('LocalConfigLoader - 29. Known-Folder resolver: non-absolute returned path 
     ),
   });
   assert.throws(
-    () => resolveWindowsKnownFolders({ platform: 'win32', spawnSync: mockSpawn2 }),
+    () =>
+      resolveWindowsKnownFolders({
+        platform: 'win32',
+        powershellPath: process.execPath,
+        spawnSync: mockSpawn2,
+      }),
     /Windows Known-Folder bridge returned non-absolute LocalApplicationData/
   );
 });
@@ -661,11 +702,50 @@ test('LocalConfigLoader - 30. Known-Folder resolver: raw stdout/stderr not refle
   });
 
   try {
-    resolveWindowsKnownFolders({ platform: 'win32', spawnSync: mockSpawnSync });
+    resolveWindowsKnownFolders({
+      platform: 'win32',
+      powershellPath: process.execPath,
+      spawnSync: mockSpawnSync,
+    });
     assert.fail('Should have thrown an error');
   } catch (err) {
     assert.ok(!err.message.includes(SENSITIVE_TOKEN), 'Exception message must not reflect raw stdout/stderr');
   }
+});
+
+test('LocalConfigLoader - Known-Folder resolver: nonexistent powershellPath fails closed before spawn', () => {
+  let spawnInvoked = false;
+  const mockSpawnSync = () => {
+    spawnInvoked = true;
+    return {
+      status: 0,
+      stdout: Buffer.from(
+        JSON.stringify({
+          DesktopDirectory: 'C:\\Synthetic\\Desktop',
+          LocalApplicationData: 'C:\\Synthetic\\AppData\\Local',
+        })
+      ),
+    };
+  };
+
+  const deterministicNonexistentPath = path.join(
+    os.tmpdir(),
+    'hhai-synthetic-nonexistent-powershell',
+    'powershell.exe'
+  );
+  assert.strictEqual(fs.existsSync(deterministicNonexistentPath), false);
+
+  assert.throws(
+    () =>
+      resolveWindowsKnownFolders({
+        platform: 'win32',
+        powershellPath: deterministicNonexistentPath,
+        spawnSync: mockSpawnSync,
+      }),
+    /PowerShell executable does not exist/
+  );
+
+  assert.strictEqual(spawnInvoked, false, 'spawnSync must not be called when executable does not exist');
 });
 
 // ==========================================
@@ -700,6 +780,7 @@ test('LocalConfigLoader - 31. Windows missing singletons defaulted from Known Fo
     const loaded = loadDataLocationConfigFromFile(configFile, {
       repoRoot: harness.repoRoot,
       platform: 'win32',
+      powershellPath: process.execPath,
       spawnSync: mockSpawnSync,
     });
 
@@ -752,6 +833,7 @@ test('LocalConfigLoader - 32. explicit configured path takes precedence over def
     const loaded = loadDataLocationConfigFromFile(configFile, {
       repoRoot: harness.repoRoot,
       platform: 'win32',
+      powershellPath: process.execPath,
       spawnSync: mockSpawnSync,
     });
 
@@ -817,6 +899,7 @@ test('LocalConfigLoader - 34. protectedRoots has no default (fails closed if mis
         loadDataLocationConfigFromFile(configFile, {
           repoRoot: harness.repoRoot,
           platform: 'win32',
+          powershellPath: process.execPath,
           spawnSync: mockSpawnSync,
         }),
       /Missing required dataLocations field: 'protectedRoots'/
@@ -853,6 +936,7 @@ test('LocalConfigLoader - 35. gateway.localPort has no default (fails closed if 
         loadDataLocationConfigFromFile(configFile, {
           repoRoot: harness.repoRoot,
           platform: 'win32',
+          powershellPath: process.execPath,
           spawnSync: mockSpawnSync,
         }),
       /Missing required field: gateway/
@@ -922,6 +1006,7 @@ test('LocalConfigLoader - 37. default resolution does not auto-create directory 
     const resolved = loadDataLocationConfigFromFile(configFile, {
       repoRoot: harness.repoRoot,
       platform: 'win32',
+      powershellPath: process.execPath,
       spawnSync: mockSpawnSync,
       validateStartupLocations: false,
     });
@@ -935,6 +1020,7 @@ test('LocalConfigLoader - 37. default resolution does not auto-create directory 
         loadDataLocationConfigFromFile(configFile, {
           repoRoot: harness.repoRoot,
           platform: 'win32',
+          powershellPath: process.execPath,
           spawnSync: mockSpawnSync,
           validateStartupLocations: true,
         }),
