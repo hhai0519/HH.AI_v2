@@ -32,7 +32,7 @@ const {
   isAbsolutePath,
 } = require('./data-location-config');
 
-const KNOWN_FOLDER_RESOLVE_TIMEOUT_MS = 30000;
+const KNOWN_FOLDER_RESOLVE_TIMEOUT_MS = 60000;
 
 const REQUIRED_WRITABLE_ROOTS = [
   'archiveRoot',

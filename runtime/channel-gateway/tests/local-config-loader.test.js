@@ -529,10 +529,10 @@ test('LocalConfigLoader - 22. Known-Folder resolver: valid payload accepted', ()
   assert.equal(result.localApplicationData, 'C:\\Synthetic\\AppData\\Local');
 
   // Verify invariants on execution parameters
-  assert.equal(KNOWN_FOLDER_RESOLVE_TIMEOUT_MS, 30000);
+  assert.equal(KNOWN_FOLDER_RESOLVE_TIMEOUT_MS, 60000);
   assert.equal(capturedOptions.shell, false);
   assert.equal(capturedOptions.windowsHide, true);
-  assert.equal(capturedOptions.timeout, 30000);
+  assert.equal(capturedOptions.timeout, 60000);
   assert.ok(Array.isArray(capturedArgs));
   assert.ok(capturedArgs.includes('-NoProfile'));
   assert.ok(capturedArgs.includes('-File'));
