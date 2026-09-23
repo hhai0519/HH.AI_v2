@@ -1,42 +1,24 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "TG-MVP-07",
-  "base_oid": "232fbaf1a03e6f166546b07fea70d39f675d8304",
+  "task_id": "TG-MVP-07-FINAL-ACCEPTANCE",
+  "base_oid": "f73a076d5ef4184735a6586a7069c66a6ba54bcc",
   "plan": {
     "allowed_paths": [
-      "SOP/SOP_04_Data_Cleanup.md",
-      "SOP/SOP_06_Handover_Manual.md",
+      "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
-      "docs/adr/0017-port-allocation.md",
-      "docs/adr/0022-channel-gateway-architecture.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "scripts/tests/test_playwright_automation.py",
-      "skills/execution/playwright-automation/.claude-plugin/plugin.json",
-      "skills/execution/playwright-automation/API_REFERENCE.md",
-      "skills/execution/playwright-automation/REFERENCE.md",
-      "skills/execution/playwright-automation/lib/helpers.js",
-      "skills/execution/playwright-automation/package.json",
-      "skills/execution/playwright-automation/tests/helpers.test.js"
+      "docs/refactor-backlog.md"
     ],
     "required_paths": [
-      "SOP/SOP_04_Data_Cleanup.md",
-      "SOP/SOP_06_Handover_Manual.md",
+      "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
-      "docs/adr/0017-port-allocation.md",
-      "docs/adr/0022-channel-gateway-architecture.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "scripts/tests/test_playwright_automation.py",
-      "skills/execution/playwright-automation/.claude-plugin/plugin.json",
-      "skills/execution/playwright-automation/API_REFERENCE.md",
-      "skills/execution/playwright-automation/REFERENCE.md",
-      "skills/execution/playwright-automation/lib/helpers.js",
-      "skills/execution/playwright-automation/package.json",
-      "skills/execution/playwright-automation/tests/helpers.test.js"
+      "docs/refactor-backlog.md"
     ],
     "max_plan_revisions": 3,
     "revision_count": 0,
@@ -44,21 +26,12 @@
   },
   "actual": {
     "changed_paths": [
-      "SOP/SOP_04_Data_Cleanup.md",
-      "SOP/SOP_06_Handover_Manual.md",
+      "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
-      "docs/adr/0017-port-allocation.md",
-      "docs/adr/0022-channel-gateway-architecture.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "scripts/tests/test_playwright_automation.py",
-      "skills/execution/playwright-automation/.claude-plugin/plugin.json",
-      "skills/execution/playwright-automation/API_REFERENCE.md",
-      "skills/execution/playwright-automation/REFERENCE.md",
-      "skills/execution/playwright-automation/lib/helpers.js",
-      "skills/execution/playwright-automation/package.json",
-      "skills/execution/playwright-automation/tests/helpers.test.js"
+      "docs/refactor-backlog.md"
     ]
   },
   "evidence": [

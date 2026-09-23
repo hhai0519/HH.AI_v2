@@ -2825,7 +2825,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 5.1 上一批狀態
 
-上次核對通過的 HEAD：90b2b638fc4abf738568d8e1153f9834568e21ad
+上次核對通過的 HEAD：f73a076d5ef4184735a6586a7069c66a6ba54bcc
 
 - `23af193`（執行者前置檢查 ＋ 回滾程序 ＋ `AUDIT-LOG.md` ＋ 四缺口修正）
   已於 2026-09-02 由審計官核對通過：6 檔異動（含 2 個新檔）、零夾帶、
@@ -4788,3 +4788,35 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - current routing 維持：NEXT_WORK = E-03，NEXT_SLICE = TG-MVP-07（READY / AUTHORIZED TO START；本輪不實作 TG-MVP-07）。
   - B-107 OPEN ≠ B-107 blocks E-03。保留 M2-P1、M2-P2、M3-P1、M3-P2 與現行已登錄之未完成 residual，保留已實作之證據完整性機制描述；不得提前 CLOSED 或 RESOLVED。
   - 授權執行有界現況語意修復（Bounded Current-State Semantic Repair），不建立新 state-sync task，沿用 B-109-M3-FINAL-ACCEPTANCE 契約；cumulative diff 維持 exact 6 檔。
+
+133. **TG-MVP-07 外部宏觀審計通過、Same-SHA Main 晉升與最終驗收狀態同步（TG-MVP-07 External Macro Final PASS, Same-SHA Main Promotion & Final Acceptance State Sync）**（2026-09-23）
+- **外部宏觀審計結論（External Macro Final Verdict on Target f73a076d5ef4184735a6586a7069c66a6ba54bcc）**：
+  - Implementation SHA：`f73a076d5ef4184735a6586a7069c66a6ba54bcc`（Parent: `232fbaf1a03e6f166546b07fea70d39f675d8304`）。
+  - 候選 candidate exact-SHA Actions 驗證：Run 35754936655（event=push, head_branch=batch/tg-mvp-07-port-convergence-260922, head_sha=f73a076d5ef4184735a6586a7069c66a6ba54bcc, attempt=1, completed/success, verify=success, gateway-windows=success, raw candidate verify: 512 passed + 13 passed + ALL 5 GATES PASSED, candidate Windows: 26 passed）。
+  - Macro Audit 裁決：MACRO AUDIT = PASS, ACCEPT STATUS = ACCEPT ALL, PROMOTION ELIGIBILITY = PASS, NEW MATERIAL FINDING = NONE。
+  - 已驗收之語意（Accepted Semantics）：
+    1. Playwright implicit common-port sweep 已移除。
+    2. `detectDevServers()` 改為 caller explicit target only。
+    3. omitted / empty / invalid targets fail closed。
+    4. 非 target 3000 / 3001 / 5000 不會被隱式 probe。
+    5. Gateway v1 canonical local port = 3003（no automatic port fallback）。
+    6. Gateway listener 尚未於 TG-MVP-07 實作（邊界保留：屬 TG-MVP-11）。
+    7. D24 Local Config loader 尚未於 TG-MVP-07 實作（邊界保留：屬 TG-MVP-07A）。
+    8. root `.env.example` current tracked tree = ABSENT；不得重建。
+    9. 6379 / 9222 / 9223 為 known tooling ports。
+    10. 本機 port 5000 僅為 USER_PROVIDED / REPO_EXTERNAL local occupant，不得描述為 portable universal reservation。
+  - Same-SHA main promotion：origin/main 已推進至 `f73a076d5ef4184735a6586a7069c66a6ba54bcc`。
+  - Post-main exact-SHA Actions 驗證：Run 35802245822（event=push, head_branch=main, head_sha=f73a076d5ef4184735a6586a7069c66a6ba54bcc, attempt=1, status=completed, conclusion=success, verify=completed/success, gateway-windows=completed/success, post-main raw verify: 512 passed + 13 passed + ALL 5 GATES PASSED, post-main Windows: 26 passed）。
+  - Ruleset 21301111 保持 active、deletion protection=present、non_fast_forward=present、strict required status checks (verify, gateway-windows)=true、bypass_actors=[]、current_user_can_bypass=never。
+  - 單次 main push 授權消耗證明（Single-use main auth）：AUTH CONSUMED（provenance: USER_PROVIDED / EXECUTOR_TRANSCRIPT）。
+  - 任務結案裁決：TG-MVP-07 = ACCEPTED / CLOSED，B-30 = ACCEPTED / CLOSED，B-33 = ACCEPTED / CLOSED。
+  - accepted checkpoint 推進至 `f73a076d5ef4184735a6586a7069c66a6ba54bcc`。
+- **後續工作路由與邊界保留（Next Work Routing & Boundary Preservation）**：
+  - NEXT_WORK 保持 E-03，NEXT_SLICE 推進至 TG-MVP-07A（READY / NEXT AUTHORIZED SLICE AFTER TG-MVP-07 FINAL ACCEPTANCE STATE SYNC）。
+  - TG-MVP-07A（D24 本機外部配置基礎建設）維持待辦，本輪不實作。
+  - TG-MVP-11（Loopback Local API v1 監聽器）維持待辦，本輪不實作。
+  - B-107 保持 OPEN / RESIDUAL，NON-BLOCKING FOR CURRENT E-03 RETURN（包含 M2_DISCOVERY_RAW 生成殘留與既有 process findings，不建立重複任務，不阻擋 TG-MVP-07 結案）。
+  - Node `punycode` deprecation warning 維持 B-100 R-D NONBLOCKING。
+  - §5.4 維持純指標導向（POINTER_ONLY），不保存動態任務佇列或狀態副本。
+  - 本 state-sync candidate 分支為 `batch/tg-mvp-07-final-acceptance-260923`，Allowed Scope 嚴格限定 6 檔，main_advancement = FORBIDDEN，提交後標記為 AWAITING EXTERNAL MACRO AUDIT。
+
