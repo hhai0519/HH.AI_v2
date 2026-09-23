@@ -74,12 +74,49 @@ ADR-0022 仍保留為 Channel Gateway 之歷史與總體架構權威（Historica
 - **R2-3（配送不確定性之維運體驗 / Delivery Uncertainty Notification）**：使用者已正式裁決採 **Option B**，規範已於 **ADR-0025** 正式落地（`USER DECIDED OPTION B / CANONICAL DETAILS IN ADR-0025`）。由 Gateway 持久化 UNCERTAIN 狀態供 Agent 於 IDE 檢視，嚴禁向使用者手機發送干擾推播。
 - **R3（本機 API 形式 / Local API Form）**：使用者已正式裁決，規範已於 **ADR-0025** 正式落地（`USER DECIDED / CANONICAL ARCHITECTURE LANDED IN ADR-0025 / NOT IMPLEMENTED`）。採本機迴路 API（Loopback HTTP v1，僅監聽字面值 `127.0.0.1`，具備 HMAC 雙向認證、authenticated hello 握手與同連線會話綁定）；Windows 具名管道（Named Pipe）方案正式延後／未獲選（DEFERRED / NOT SELECTED）。
 
+### 8. 線上驗證備份排程整合與維運策略 (Periodic Verified Backup Integration — TG-MVP-09 / T11-main)
+
+2026-09-23，專案擁有者（使用者 HH）明確核准「同意 TG-MVP-09 修正版裁決」，確立 T11-main 正式線上備份整合規範：
+
+1. **T11A 備份原語不變量 (T11A Primitive Unchanged)**：
+   - 既有 `SqliteStateRepository.createVerifiedBackup()` 為全系統唯一備份操作原語。
+   - 不改寫 T11A `executeVerifiedBackup(...)` 與驗證核心（包含路徑約束、零覆蓋、`VACUUM INTO` 參數綁定、`integrity_check`、資料表/綱要/版本基準比對、`data_version` 漂移偵測與安全清理）。
+   - 不另行建立第二套 SQLite 備份實作。
+2. **排程週期與保鮮度判準 (Freshness Threshold & Check Tick)**：
+   - **保鮮度門檻（Freshness Threshold）**：固定 24 小時（`86_400_000 ms`），語義為「最近一份合規驗證備份檔案距今是否已逾期」，非進程運行時長。
+   - **檢查頻率（Check Tick）**：固定 1 小時（`3_600_000 ms`）。進程啟動時立即執行一次過期檢查，其後每 1 小時 tick 重新評估。禁止使用單一 24h setInterval 取代保鮮度排程語義。
+3. **啟動與關閉語義 (Startup & Shutdown Semantics)**：
+   - **啟動檢查**：啟動時僅執行保鮮度檢查，不做無條件啟動備份。無合規備份或最新備份年齡 >= 24h 時補做備份；若最新備份年齡 < 24h 則不觸發備份。
+   - **關閉語義**：進程關閉（Shutdown）時不執行關閉備份。
+4. **耐久保鮮度來源與零綱要擴充 (Durable Freshness Source & Zero Schema Expansion)**：
+   - 以 canonical `stateRoot` 目錄下直接子檔案之檔案系統 `mtime` 作為保鮮度判定依據。
+   - 僅採納符合 T11A 命名約定之正規非符號連結檔案：`channel-gateway-state.backup-v{N}-{uuid}.sqlite3`。
+   - 取所有有效備份檔案中之最大 `mtimeMs`。未來時間戳記（future-dated）或無效 mtime 不得抑制備份，一律忽略。
+   - 不新增 `last_backup_at` 資料庫欄位、不升級 Local Config schema（維持 schemaVersion 2）、不建立備份中繼資料表。
+5. **並行與重入防護 (Overlap / In-Flight Guard)**：
+   - 單一排程器實例最多僅允許一個備份檢查或備份操作執行中（in-flight）。
+   - 若發生重入或重疊觸發，直接跳過（skip），不佇列排隊、不並行建立多份備份。
+6. **非致命失敗處理 (Non-Fatal Failure Policy)**：
+   - 定期檢查或備份失敗時，記錄邊界明確、不含機密之分類診斷日誌，保持 Gateway 運行，不終止進程（no process.exit）、不立即重試、不指數退避。留待下一個正常 1 小時 tick 重新評估嘗試。
+7. **過渡期已知風險視窗與硬性守門 (F2 USER-Accepted Temporary Window & Hard Gate)**：
+   - 使用者正式採納選項 (b)：TG-MVP-09 備份排程器預設啟用。
+   - 在 TG-MVP-09 完成、TG-MVP-09A 尚未完成前，備份檔案會持續產生完整 SQLite 副本，尚無 retention（保留期清理）與 09A 隱私衛生防護。此為正式上線前（pre-go-live）之已知暫時性風險。
+   - **硬性守門要求**：`TG-MVP-09A MUST COMPLETE BEFORE ANY REAL TELEGRAM GO-LIVE`。在任何真實 Telegram 上線前，TG-MVP-09A 必須全數完工驗收。
+8. **進程與生命週期範圍定性 (Provisional In-Process Runtime Ownership)**：
+   - 建立 `BackupScheduler` 與最小過渡期進程內執行擁有者 `BackupRuntimeOwner`（負責 repository open -> scheduler start -> scheduler stop -> repository close 之生命週期配對）。
+   - 擁有者純屬進程內整合元件，**不是 daemon、不是作業系統服務定義、不註冊訊號處理器（process.on / SIGINT / SIGTERM）、不決定最終 Gateway 程序生命週期順序、不提供 CLI / PM2 配置**。
+   - 嚴格禁止建立第二個背景守護行程（no second daemon）。最終 Gateway 程序生命週期整合權限保留予 TG-MVP-10 / TG-MVP-11。
+9. **同步操作特性紀錄 (Synchronous Event-Loop Characteristic)**：
+   - `node:sqlite DatabaseSync` 與 `VACUUM INTO` 為同步操作，執行期間可能短暫阻塞 Node 單一事件迴圈（Event Loop）。
+   - TG-MVP-09 接受此已知特性（前題為 pre-go-live、資料庫規模小、每日最多一份成功備份）。若未來資料庫規模擴大導致阻塞不可接受，演進方向為 Worker Thread 或等效隔離機制，不在本輪實作。
+
 ## Consequences
 
 1. **治理分層明確化**：本決策確立了持久化技術路線的重大轉變。相關規則同步落地於 `runtime/channel-gateway/AGENTS.md`，根目錄 `AGENTS.md` 僅保留通用的目錄範圍規則擴充，維持漸進式揭露。
 2. **Node.js 版本依賴升級**：`node:sqlite` 要求 Node.js v22.5.0+（正式免 flag 需 v22.x 晚期或 v24.x）。後續必須透過 T3 階段落實版本釘選（`.nvmrc`、`package.json` engines、CI 環境配置與 Windows CI 驗證），方可開展正式程式碼實作。
 3. **已知風險與緩解**：
    - **node:sqlite 成熟度**：`node:sqlite` 雖已進入 Node.js 核心且無 experimental warning，仍需透過端到端測試持續觀察。
-   - **同步 API 對 Event Loop 之影響**：目前 `DatabaseSync` 為同步呼叫，在 SQLite WAL 模式下單次寫入約 1～3 ms，對 Gateway 預期負載（數筆/秒）影響極低，但實作時需注意避免在單一交易中執行耗時之外部操作。
+   - **同步 API 對 Event Loop 之影響**：目前 `DatabaseSync` 為同步呼叫，在 SQLite WAL 模式下單次寫入約 1～3 ms，對 Gateway 預期負載（數筆/秒）影響極低，但實作時需注意避免在單一交易中執行耗時之外部操作。線上備份期間 VACUUM INTO 亦為同步操作，在小資料庫下為數十毫秒級，TG-MVP-09 接受該已知特性，若未來擴展則評估 Worker Thread 隔離。
    - **防毒軟體與檔案鎖定**：已由 V5（10 分鐘測試）證實 Defender 即時防護下無鎖定異常，未來上線需保持此項健全性監控。
    - **路徑防護**：強制在資料庫連線前執行路徑守衛，杜絕在同步目錄或網路掛載點建立 SQLite 資料庫。
+

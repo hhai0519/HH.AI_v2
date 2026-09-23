@@ -1,5 +1,5 @@
 {
-  "base_head": "bcc59d9",
+  "base_head": "b9fb67f",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -552,16 +552,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 209,
-      "sha256": "ec844137971c34d694242c417759332bd4de6fcefd3d732c29fb65066e4bf45d"
+      "lines": 210,
+      "sha256": "f10973037275558d92da45f24000fcaf1a81e2c7d815da6c2c28ad5e6eeff01d"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 181,
-      "sha256": "72d34dd62b6eecd77cdcce6d2f0dc3f623c4e3705e8d21007ad2bbe42c15c685"
+      "lines": 183,
+      "sha256": "f10d26707403208bdd65549826c38812be1d48dd03409b75fd82441ebd4babae"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -602,7 +602,7 @@
         "## 封存區"
       ],
       "lines": 340,
-      "sha256": "2e9f3ee801375c91a67b7c6b8bad250c4a698ff1973880e32e94023f0f1a93ed"
+      "sha256": "70d662b7d30dca845132a191a33856dbc2b434dc3db9a97c08910fd9f34a69ea"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -917,10 +917,11 @@
         "### 5. 既有 JSON 持久化模組之退役 (Legacy JSON Modules Retirement — TG-MVP-08 / T9)",
         "### 6. Wave 2H 之處置 (D29 Cancellation)",
         "### 7. 待決議事項現況 (Pending Decisions: R2 & R3)",
+        "### 8. 線上驗證備份排程整合與維運策略 (Periodic Verified Backup Integration — TG-MVP-09 / T11-main)",
         "## Consequences"
       ],
-      "lines": 85,
-      "sha256": "7347843b39ec634cb4cb3f1c3386b1d461edbefd0bfa9e3b814920626ae3c12d"
+      "lines": 122,
+      "sha256": "e50652403081006372cc2c8e67981537b657ce21361db814b30cc4f518c9f720"
     },
     "docs/adr/0024-inbound-identity-cursor-semantics.md": {
       "fences": 2,
@@ -1063,8 +1064,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 4921,
-      "sha256": "8972c5a8a559eac58d797207ccd66936fdeb645cfe2ac5eb92097c602fb50be8"
+      "lines": 4940,
+      "sha256": "1c500ab9d290a82cf38f92bc17986212638157ff2bdc85bc7ca952bb8d0d6ce6"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1489,7 +1490,7 @@
       "sha256": "35bf7dbfa3c7d291b550c3c97a6ae398a22b1dc3624c1d2fc1e4db6963d6e115"
     }
   },
-  "generated_at": "2026-09-23T06:01:01Z",
+  "generated_at": "2026-09-23T09:18:18Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

@@ -1,24 +1,36 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "TG-MVP-08-FINAL-ACCEPTANCE",
-  "base_oid": "bcc59d976dd5510108bcd15917a91249fdf35411",
+  "task_id": "TG-MVP-09",
+  "base_oid": "b9fb67f768ed533c8ae41a6a5811a4e034b14aa8",
   "plan": {
     "allowed_paths": [
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
+      "docs/adr/0023-channel-gateway-state-store-sqlite.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md"
+      "docs/refactor-backlog.md",
+      "runtime/channel-gateway/AGENTS.md",
+      "runtime/channel-gateway/core/backup-runtime-owner.js",
+      "runtime/channel-gateway/core/backup-scheduler.js",
+      "runtime/channel-gateway/tests/backup-runtime-owner.test.js",
+      "runtime/channel-gateway/tests/backup-scheduler.test.js"
     ],
     "required_paths": [
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
+      "docs/adr/0023-channel-gateway-state-store-sqlite.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md"
+      "docs/refactor-backlog.md",
+      "runtime/channel-gateway/AGENTS.md",
+      "runtime/channel-gateway/core/backup-runtime-owner.js",
+      "runtime/channel-gateway/core/backup-scheduler.js",
+      "runtime/channel-gateway/tests/backup-runtime-owner.test.js",
+      "runtime/channel-gateway/tests/backup-scheduler.test.js"
     ],
     "max_plan_revisions": 3,
     "revision_count": 0,
@@ -29,9 +41,15 @@
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
+      "docs/adr/0023-channel-gateway-state-store-sqlite.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md"
+      "docs/refactor-backlog.md",
+      "runtime/channel-gateway/AGENTS.md",
+      "runtime/channel-gateway/core/backup-runtime-owner.js",
+      "runtime/channel-gateway/core/backup-scheduler.js",
+      "runtime/channel-gateway/tests/backup-runtime-owner.test.js",
+      "runtime/channel-gateway/tests/backup-scheduler.test.js"
     ]
   },
   "evidence": [

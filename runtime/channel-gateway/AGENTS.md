@@ -55,6 +55,16 @@ T6 階段正式採用 `busy_timeout = 5000`（5000ms），其基礎為 T1 Window
 
 - 運行中的 SQLite 資料庫嚴禁使用作業系統檔案複製（`fs.copyFile` / `Copy-Item`）作為標準備份手段。
 - 備份必須使用 SQLite 原生支援之 **`VACUUM INTO`** 或經嚴格驗證之線上備份 API。
+- **唯一備份原語不變量**：T11A `SqliteStateRepository.createVerifiedBackup()` 為唯一生產備份操作原語，嚴禁改寫內部驗證核心或建立第二套備份實作。
+- **固定常數與排程週期**：保鮮度門檻固定為 24 小時（`BACKUP_FRESHNESS_THRESHOLD_MS = 86_400_000`），檢查間隔固定為 1 小時（`BACKUP_CHECK_INTERVAL_MS = 3_600_000`），嚴禁由環境變數、Local Config 或 CLI 覆寫。
+- **啟動與關閉語義**：啟動時僅執行保鮮度檢查，無合規備份或最新備份已逾期（age >= 24h）時方建立一份備份，嚴禁無條件啟動備份；進程關閉時不觸發關閉備份。
+- **耐久保鮮度證據**：僅以 `stateRoot` 下直接合規命名之備份檔案（`channel-gateway-state.backup-v{N}-{uuid}.sqlite3`）的正規非符號連結最大有效 `mtimeMs`（<= nowMs）作為保鮮度判準，不擴充 DB 綱要或 Local Config。
+- **重入與重疊防護**：單一實例保持 in-flight 旗標，重入或重疊 tick 一律略過（skip），不佇列排隊、不並行備份。
+- **非致命失敗處理**：定期掃描或備份失敗時僅記錄邊界明確且不含機密之診斷，服務保持運作（不 process.exit、不立即重試、不指數退避），留待下一個正常 1 小時 tick 重新評估。
+- **TG-MVP-09 零保留清理與 09A 硬性上線守門**：TG-MVP-09 嚴禁實作任何 retention、cleanup、路徑隔離或檔案刪除；已知在 09A 完成前備份副本會持續累積；硬性守門宣告：`TG-MVP-09A MUST COMPLETE BEFORE ANY REAL TELEGRAM GO-LIVE`。
+- **過渡期進程內執行擁有者**：`BackupRuntimeOwner` 僅負責最小進程內生命週期配對（open repo -> start scheduler; stop scheduler -> close repo），不是 daemon、不是 OS 服務、不安裝訊號處理器、不決定最終 Gateway 生命週期排序（留待 TG-MVP-10/11 組合），嚴格禁止建立第二個背景守護行程。
+- **同步事件迴圈特性**：`node:sqlite DatabaseSync` 與 `VACUUM INTO` 為同步操作，執行期間可能短暫阻塞 Event Loop；本階段接受 pre-go-live 小規模資料庫之每日單次備份前提。
+
 
 ## 8. 資料庫存放位置防護 (Database Location Guard)
 
