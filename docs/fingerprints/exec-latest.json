@@ -1,5 +1,5 @@
 {
-  "base_head": "f73a076",
+  "base_head": "c291295",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -560,8 +560,8 @@
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 176,
-      "sha256": "35ec5c8bd4012ba25d763c6f305cacdc53eaf5dc6f6f1c8dbf710a1f1da275e5"
+      "lines": 178,
+      "sha256": "cbc93c55ac7c973f7ff635855d9337ab80d43c476c7e488ab778a98a9c8ad391"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -602,7 +602,7 @@
         "## 封存區"
       ],
       "lines": 340,
-      "sha256": "4a786abc3ccd704d6f68b05e8d86e947d8d705e3af957b679cc39ae9038ef4f2"
+      "sha256": "cb3707d2f2e7b29d209d3389d45ab6af677356d3e6b0884fec4111ed1e51b97a"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -902,7 +902,7 @@
         "## Consequences"
       ],
       "lines": 154,
-      "sha256": "e9980c1591584c375b44b9460add6fc5f74bd11344d2d754e3a7fe4684002bd7"
+      "sha256": "f52b50d1029366fc6f74c49866fa09339af3a02f18f58cd40694ebf5f6395ac8"
     },
     "docs/adr/0023-channel-gateway-state-store-sqlite.md": {
       "fences": 0,
@@ -975,8 +975,8 @@
         "### R3 Loopback Local API Canaries",
         "## External Platform & Runtime Facts"
       ],
-      "lines": 496,
-      "sha256": "732fc7274ce4d06658aabf1c4b5e1cd97b517f44bf007a85326c240a40a3f173"
+      "lines": 497,
+      "sha256": "5fc2989773bd8c3e238fa6ce4ffedf0586b4bd6fb68407927f4e1efcdac1cd94"
     },
     "docs/adr/0026-gateway-secret-provider-windows-credential-manager.md": {
       "fences": 0,
@@ -1489,7 +1489,7 @@
       "sha256": "35bf7dbfa3c7d291b550c3c97a6ae398a22b1dc3624c1d2fc1e4db6963d6e115"
     }
   },
-  "generated_at": "2026-09-23T00:51:06Z",
+  "generated_at": "2026-09-23T02:50:35Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

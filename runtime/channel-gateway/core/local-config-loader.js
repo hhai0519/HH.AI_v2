@@ -1,33 +1,38 @@
 /**
  * runtime/channel-gateway/core/local-config-loader.js
  *
- * ADR-0022 D24: Repo-External Config Loader + Startup Path Validation.
+ * ADR-0022 D24 / ADR-0025: Repo-External Config Loader + Startup Path Validation.
  *
  * Invariants:
- * - Reads Wave 2C data-location config from an explicitly provided repo-external JSON path.
+ * - Reads Wave 2C/D24 data-location and gateway config from an explicitly provided repo-external JSON path.
  * - Strict repoRoot containment enforcement: config file must NOT reside within repoRoot (both nominal and canonical realpath checked).
  * - Symlinks outside repo resolving into repo are strictly rejected.
  * - Fail-closed error handling on any missing file, directory, or invalid schema/JSON.
+ * - Windows Known-Folder defaults: On win32, missing singleton data locations are defaulted using .NET Known-Folder APIs.
+ * - Default resolution only derives path strings; NEVER auto-creates directories (zero fs.mkdirSync).
  * - Startup data path validation:
  *   - Four singleton data roots (archiveRoot, attachmentTempRoot, stateRoot, logsRoot):
  *     must exist, be directories, and be readable and writable.
  *   - Protected roots (protectedRoots):
  *     must contain at least 1 entry; each must exist, be a directory, and be readable.
  * - Returns a new canonical config object with all data paths resolved via fs.realpathSync.
- * - Zero auto-creation: NEVER calls fs.mkdirSync or creates missing directories.
- * - Zero process.env or OS desktop/known-folder approximation.
- * - Zero credentials, bot tokens, secrets, network ports, or listeners.
- * - Zero third-party dependencies (Node.js built-ins node:fs and node:path only).
+ * - Zero directory auto-creation: NEVER calls fs.mkdirSync or creates missing directories.
+ * - Zero environment enumeration (process.env enumeration or dump forbidden).
+ * - Zero credentials, bot tokens, secrets, network ports binding, or listeners.
+ * - Zero third-party dependencies (Node.js built-ins node:fs, node:path, node:child_process only).
  */
 
 'use strict';
 
 const fs = require('node:fs');
 const path = require('node:path');
+const child_process = require('node:child_process');
 const {
   validateResolvedDataLocationConfig,
   isAbsolutePath,
 } = require('./data-location-config');
+
+const KNOWN_FOLDER_RESOLVE_TIMEOUT_MS = 30000;
 
 const REQUIRED_WRITABLE_ROOTS = [
   'archiveRoot',
@@ -62,12 +67,137 @@ function isPathInside(childPath, parentPath) {
 }
 
 /**
+ * Invokes the Windows Known-Folder resolution bridge to resolve DesktopDirectory
+ * and LocalApplicationData without reading secrets or enumerating environment.
+ *
+ * @param {object} [options={}] - Options / test injection overrides
+ * @param {string} [options.platform] - Platform override for testing
+ * @param {function} [options.spawnSync] - Custom spawnSync implementation for testing
+ * @param {string} [options.powershellPath] - Custom powershell.exe path for testing
+ * @param {string} [options.scriptPath] - Custom script path for testing
+ * @returns {{ desktopDirectory: string, localApplicationData: string }}
+ * @throws {Error} If execution, timeout, parse, or path validation fails
+ */
+function resolveWindowsKnownFolders(options = {}) {
+  const platform = options.platform || process.platform;
+  if (platform !== 'win32') {
+    throw new Error(`Known-Folder resolution is only supported on win32 (current: '${platform}')`);
+  }
+
+  const spawnSyncFn = options.spawnSync || child_process.spawnSync;
+  const scriptPath =
+    options.scriptPath || path.resolve(__dirname, '..', 'bin', 'windows-known-folder-resolve.ps1');
+
+  if (!fs.existsSync(scriptPath)) {
+    throw new Error(`Windows Known-Folder resolution script does not exist: '${scriptPath}'`);
+  }
+
+  const systemRoot = process.env.SystemRoot || 'C:\\Windows';
+  const powershellPath =
+    options.powershellPath ||
+    path.join(systemRoot, 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe');
+
+  if (!fs.existsSync(powershellPath)) {
+    throw new Error(`PowerShell executable does not exist: '${powershellPath}'`);
+  }
+
+  const childEnv = {
+    SystemRoot: systemRoot,
+    SystemDrive: process.env.SystemDrive || 'C:',
+    PATH: process.env.PATH || `${systemRoot}\\System32;${systemRoot}`,
+    PATHEXT: process.env.PATHEXT || '.COM;.EXE;.BAT;.CMD;.VBS;.VBE;.JS;.JSE;.WSF;.WSH;.MSC',
+    TEMP: process.env.TEMP || `${systemRoot}\\Temp`,
+    TMP: process.env.TMP || `${systemRoot}\\Temp`,
+  };
+
+  const args = [
+    '-NoLogo',
+    '-NoProfile',
+    '-NonInteractive',
+    '-ExecutionPolicy',
+    'Bypass',
+    '-File',
+    scriptPath,
+  ];
+
+  let result;
+  try {
+    result = spawnSyncFn(powershellPath, args, {
+      shell: false,
+      stdio: ['ignore', 'pipe', 'pipe'],
+      env: childEnv,
+      windowsHide: true,
+      timeout: KNOWN_FOLDER_RESOLVE_TIMEOUT_MS,
+    });
+  } catch (err) {
+    throw new Error('Failed to launch Windows Known-Folder resolution bridge');
+  }
+
+  if (result.error) {
+    if (result.error.code === 'ETIMEDOUT') {
+      throw new Error('Windows Known-Folder resolution bridge timed out');
+    }
+    throw new Error('Error executing Windows Known-Folder resolution bridge');
+  }
+
+  if (result.status !== 0) {
+    throw new Error(`Windows Known-Folder resolution bridge exited with non-zero status (${result.status})`);
+  }
+
+  const rawStdout = result.stdout ? result.stdout.toString('utf8').trim() : '';
+  if (!rawStdout) {
+    throw new Error('Windows Known-Folder resolution bridge returned empty output');
+  }
+
+  let parsed;
+  try {
+    parsed = JSON.parse(rawStdout);
+  } catch (err) {
+    throw new Error('Failed to parse Windows Known-Folder bridge output as JSON');
+  }
+
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    throw new Error('Windows Known-Folder bridge returned invalid payload');
+  }
+
+  const { DesktopDirectory, LocalApplicationData } = parsed;
+
+  if (typeof DesktopDirectory !== 'string' || !DesktopDirectory.trim()) {
+    throw new Error('Windows Known-Folder bridge returned empty or invalid DesktopDirectory');
+  }
+
+  if (typeof LocalApplicationData !== 'string' || !LocalApplicationData.trim()) {
+    throw new Error('Windows Known-Folder bridge returned empty or invalid LocalApplicationData');
+  }
+
+  const trimmedDesktop = DesktopDirectory.trim();
+  const trimmedLocalAppData = LocalApplicationData.trim();
+
+  if (!isAbsolutePath(trimmedDesktop)) {
+    throw new Error('Windows Known-Folder bridge returned non-absolute DesktopDirectory');
+  }
+
+  if (!isAbsolutePath(trimmedLocalAppData)) {
+    throw new Error('Windows Known-Folder bridge returned non-absolute LocalApplicationData');
+  }
+
+  return {
+    desktopDirectory: trimmedDesktop,
+    localApplicationData: trimmedLocalAppData,
+  };
+}
+
+/**
  * Loads and validates a repo-external data location configuration file.
  *
  * @param {string} configPath - Absolute path to repo-external JSON config file.
  * @param {object} options - Options object containing at least repoRoot.
  * @param {string} options.repoRoot - Absolute path to repository root.
  * @param {boolean} [options.validateStartupLocations=false] - If true, also validate startup data paths.
+ * @param {string} [options.platform] - Platform override for testing
+ * @param {function} [options.spawnSync] - Custom spawnSync implementation for testing
+ * @param {string} [options.powershellPath] - Custom powershell.exe path for testing
+ * @param {string} [options.scriptPath] - Custom script path for testing
  * @returns {object} Validated (and optionally canonicalized) configuration object.
  * @throws {TypeError|Error} If arguments, containment, file status, JSON, or schema fail.
  */
@@ -168,10 +298,71 @@ function loadDataLocationConfigFromFile(configPath, options) {
     throw new Error(`Failed to parse configuration file as JSON: '${nominalConfigPath}' (${err.message})`);
   }
 
-  // 8. Wave 2C schema validation
-  const validatedConfig = validateResolvedDataLocationConfig(parsed);
+  // 8. Apply Windows Known-Folder defaults for missing singleton paths if applicable
+  const platform = options.platform || process.platform;
+  let configToValidate = parsed;
 
-  // 9. Optional startup data location validation if requested
+  if (
+    parsed &&
+    typeof parsed === 'object' &&
+    !Array.isArray(parsed) &&
+    parsed.dataLocations &&
+    typeof parsed.dataLocations === 'object' &&
+    !Array.isArray(parsed.dataLocations)
+  ) {
+    const missingSingletons = REQUIRED_WRITABLE_ROOTS.filter(
+      (field) => parsed.dataLocations[field] === undefined || parsed.dataLocations[field] === null
+    );
+
+    if (missingSingletons.length > 0) {
+      if (platform === 'win32') {
+        const knownFolders = resolveWindowsKnownFolders(options);
+        const filledLocations = { ...parsed.dataLocations };
+
+        if (filledLocations.archiveRoot === undefined || filledLocations.archiveRoot === null) {
+          filledLocations.archiveRoot = path.win32.join(
+            knownFolders.desktopDirectory,
+            'HH.AI_v2_對話紀錄'
+          );
+        }
+        if (filledLocations.attachmentTempRoot === undefined || filledLocations.attachmentTempRoot === null) {
+          filledLocations.attachmentTempRoot = path.win32.join(
+            knownFolders.localApplicationData,
+            'HH.AI_v2',
+            'channel-gateway',
+            'attachments'
+          );
+        }
+        if (filledLocations.stateRoot === undefined || filledLocations.stateRoot === null) {
+          filledLocations.stateRoot = path.win32.join(
+            knownFolders.localApplicationData,
+            'HH.AI_v2',
+            'channel-gateway',
+            'state'
+          );
+        }
+        if (filledLocations.logsRoot === undefined || filledLocations.logsRoot === null) {
+          filledLocations.logsRoot = path.win32.join(
+            knownFolders.localApplicationData,
+            'HH.AI_v2',
+            'channel-gateway',
+            'logs'
+          );
+        }
+
+        configToValidate = {
+          ...parsed,
+          dataLocations: filledLocations,
+        };
+      }
+      // On non-win32, missing singletons are not defaulted and fail closed during validation
+    }
+  }
+
+  // 9. Schema v2 validation
+  const validatedConfig = validateResolvedDataLocationConfig(configToValidate);
+
+  // 10. Optional startup data location validation if requested
   if (options.validateStartupLocations === true) {
     return validateStartupDataLocations(validatedConfig);
   }
@@ -195,13 +386,13 @@ function loadDataLocationConfigFromFile(configPath, options) {
  * @throws {TypeError|Error} If any path does not exist, is not a directory, or lacks required permissions
  */
 function validateStartupDataLocations(resolvedConfig) {
-  // 1. Ensure Wave 2C schema compliance
+  // 1. Ensure schema v2 compliance
   const validated = validateResolvedDataLocationConfig(resolvedConfig);
   const { dataLocations } = validated;
 
   // 2. Validate protectedRoots requirement: at least 1 entry
   if (!Array.isArray(dataLocations.protectedRoots) || dataLocations.protectedRoots.length === 0) {
-    throw new Error("protectedRoots must contain at least one directory path");
+    throw new Error('protectedRoots must contain at least one directory path');
   }
 
   // 3. Validate the four writable roots
@@ -266,12 +457,17 @@ function validateStartupDataLocations(resolvedConfig) {
   return {
     schemaVersion: validated.schemaVersion,
     dataLocations: canonicalLocations,
+    gateway: {
+      localPort: validated.gateway.localPort,
+    },
   };
 }
 
 module.exports = {
+  KNOWN_FOLDER_RESOLVE_TIMEOUT_MS,
   REQUIRED_WRITABLE_ROOTS,
   isPathInside,
+  resolveWindowsKnownFolders,
   loadDataLocationConfigFromFile,
   validateStartupDataLocations,
 };

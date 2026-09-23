@@ -1,7 +1,7 @@
 /**
  * runtime/channel-gateway/tests/local-config-loader.test.js
  *
- * Unit tests for Repo-External Config Loader + Startup Path Validation (ADR-0022 D24).
+ * Unit tests for Repo-External Config Loader + Startup Path Validation (ADR-0022 D24 / ADR-0025).
  * Uses synthetic temp fixtures only; cleanups in try/finally blocks.
  */
 
@@ -14,6 +14,8 @@ const path = require('node:path');
 const os = require('node:os');
 
 const {
+  KNOWN_FOLDER_RESOLVE_TIMEOUT_MS,
+  resolveWindowsKnownFolders,
   loadDataLocationConfigFromFile,
   validateStartupDataLocations,
 } = require('../core/local-config-loader');
@@ -55,8 +57,11 @@ function createTempHarness() {
   }
 
   const validConfig = {
-    schemaVersion: 1,
+    schemaVersion: 2,
     dataLocations: dataDirs,
+    gateway: {
+      localPort: 3003,
+    },
   };
 
   const validConfigFile = path.join(externalDir, 'config.json');
@@ -81,6 +86,10 @@ function createTempHarness() {
   };
 }
 
+// ==========================================
+// Existing Wave 2C / 2D Regression Invariants
+// ==========================================
+
 test('LocalConfigLoader - 1. valid repo-external config loads', () => {
   const harness = createTempHarness();
   try {
@@ -88,18 +97,19 @@ test('LocalConfigLoader - 1. valid repo-external config loads', () => {
       repoRoot: harness.repoRoot,
     });
     assert.ok(config);
-    assert.equal(config.schemaVersion, 1);
+    assert.equal(config.schemaVersion, 2);
     assert.equal(config.dataLocations.archiveRoot, harness.dataDirs.archiveRoot);
     assert.equal(config.dataLocations.attachmentTempRoot, harness.dataDirs.attachmentTempRoot);
     assert.equal(config.dataLocations.stateRoot, harness.dataDirs.stateRoot);
     assert.equal(config.dataLocations.logsRoot, harness.dataDirs.logsRoot);
     assert.equal(config.dataLocations.protectedRoots.length, 2);
+    assert.equal(config.gateway.localPort, 3003);
   } finally {
     harness.cleanup();
   }
 });
 
-test('LocalConfigLoader - 2. valid loaded config passes Wave 2C schema', () => {
+test('LocalConfigLoader - 2. valid loaded config passes schema v2', () => {
   const harness = createTempHarness();
   try {
     const config = loadDataLocationConfigFromFile(harness.validConfigFile, {
@@ -153,7 +163,7 @@ test('LocalConfigLoader - 4. missing config file rejected', () => {
   }
 });
 
-test('LocalConfigLoader - 5. configPath directory而非 file rejected', () => {
+test('LocalConfigLoader - 5. configPath directory rejected', () => {
   const harness = createTempHarness();
   try {
     assert.throws(
@@ -169,7 +179,7 @@ test('LocalConfigLoader - 6. malformed JSON rejected', () => {
   const harness = createTempHarness();
   try {
     const malformedFile = path.join(harness.externalDir, 'malformed.json');
-    fs.writeFileSync(malformedFile, '{ schemaVersion: 1, unquotedKey: true, }', 'utf8');
+    fs.writeFileSync(malformedFile, '{ schemaVersion: 2, unquotedKey: true, }', 'utf8');
     assert.throws(
       () => loadDataLocationConfigFromFile(malformedFile, { repoRoot: harness.repoRoot }),
       /Failed to parse configuration file as JSON/
@@ -265,7 +275,7 @@ test('LocalConfigLoader - 10. missing archiveRoot directory fails startup valida
   }
 });
 
-test('LocalConfigLoader - 11. file used where directory expected fails', () => {
+test('LocalConfigLoader - 11. file used where directory expected fails startup validation', () => {
   const harness = createTempHarness();
   try {
     const regularFile = path.join(harness.externalDir, 'dummy-file.txt');
@@ -329,12 +339,13 @@ test('LocalConfigLoader - 13. valid four writable roots accepted', () => {
   try {
     const canonical = validateStartupDataLocations(harness.validConfig);
     assert.ok(canonical);
-    assert.equal(canonical.schemaVersion, 1);
+    assert.equal(canonical.schemaVersion, 2);
     assert.equal(canonical.dataLocations.archiveRoot, fs.realpathSync(harness.dataDirs.archiveRoot));
     assert.equal(canonical.dataLocations.attachmentTempRoot, fs.realpathSync(harness.dataDirs.attachmentTempRoot));
     assert.equal(canonical.dataLocations.stateRoot, fs.realpathSync(harness.dataDirs.stateRoot));
     assert.equal(canonical.dataLocations.logsRoot, fs.realpathSync(harness.dataDirs.logsRoot));
     assert.equal(canonical.dataLocations.protectedRoots.length, 2);
+    assert.equal(canonical.gateway.localPort, 3003);
   } finally {
     harness.cleanup();
   }
@@ -401,6 +412,7 @@ test('LocalConfigLoader - 17. returned canonical paths use realpath', () => {
         fs.realpathSync(harness.dataDirs.protectedRoots[i])
       );
     }
+    assert.equal(canonical.gateway.localPort, 3003);
   } finally {
     harness.cleanup();
   }
@@ -413,6 +425,7 @@ test('LocalConfigLoader - 18. input config object not mutated', () => {
     Object.freeze(input);
     Object.freeze(input.dataLocations);
     Object.freeze(input.dataLocations.protectedRoots);
+    Object.freeze(input.gateway);
 
     const canonical = validateStartupDataLocations(input);
     assert.notStrictEqual(canonical, input);
@@ -457,7 +470,7 @@ test('LocalConfigLoader - 20. template config.example.json cannot be used as pro
       /Configuration file must be repo-external/
     );
 
-    // 2. Even if copied outside repo, placeholder paths are not absolute and fail Wave 2C schema
+    // 2. Even if copied outside repo, placeholder paths are not absolute and fail schema
     const externalCopy = path.join(harness.externalDir, 'config.example.copy.json');
     fs.copyFileSync(templateInRepo, externalCopy);
 
@@ -479,7 +492,481 @@ test('LocalConfigLoader - 21. loadDataLocationConfigFromFile with validateStartu
     });
     assert.ok(canonical);
     assert.equal(canonical.dataLocations.archiveRoot, fs.realpathSync(harness.dataDirs.archiveRoot));
+    assert.equal(canonical.gateway.localPort, 3003);
   } finally {
     harness.cleanup();
+  }
+});
+
+// ==========================================
+// C. Known-Folder Resolver (Synthetic / Injected)
+// ==========================================
+
+test('LocalConfigLoader - 22. Known-Folder resolver: valid payload accepted', () => {
+  let capturedOptions = null;
+  let capturedArgs = null;
+  const mockSpawnSync = (cmd, args, opts) => {
+    capturedArgs = args;
+    capturedOptions = opts;
+    return {
+      status: 0,
+      stdout: Buffer.from(
+        JSON.stringify({
+          DesktopDirectory: 'C:\\Synthetic\\Desktop',
+          LocalApplicationData: 'C:\\Synthetic\\AppData\\Local',
+        })
+      ),
+    };
+  };
+
+  const result = resolveWindowsKnownFolders({
+    platform: 'win32',
+    spawnSync: mockSpawnSync,
+  });
+
+  assert.equal(result.desktopDirectory, 'C:\\Synthetic\\Desktop');
+  assert.equal(result.localApplicationData, 'C:\\Synthetic\\AppData\\Local');
+
+  // Verify invariants on execution parameters
+  assert.equal(KNOWN_FOLDER_RESOLVE_TIMEOUT_MS, 30000);
+  assert.equal(capturedOptions.shell, false);
+  assert.equal(capturedOptions.windowsHide, true);
+  assert.equal(capturedOptions.timeout, 30000);
+  assert.ok(Array.isArray(capturedArgs));
+  assert.ok(capturedArgs.includes('-NoProfile'));
+  assert.ok(capturedArgs.includes('-File'));
+
+  // Verify minimal non-secret child environment (no USERPROFILE or LOCALAPPDATA as authority)
+  assert.strictEqual(capturedOptions.env.USERPROFILE, undefined);
+  assert.strictEqual(capturedOptions.env.LOCALAPPDATA, undefined);
+  assert.ok(capturedOptions.env.SystemRoot);
+});
+
+test('LocalConfigLoader - 23. Known-Folder resolver: empty DesktopDirectory fails closed', () => {
+  const mockSpawnSync = () => ({
+    status: 0,
+    stdout: Buffer.from(
+      JSON.stringify({
+        DesktopDirectory: '   ',
+        LocalApplicationData: 'C:\\Synthetic\\AppData\\Local',
+      })
+    ),
+  });
+
+  assert.throws(
+    () => resolveWindowsKnownFolders({ platform: 'win32', spawnSync: mockSpawnSync }),
+    /Windows Known-Folder bridge returned empty or invalid DesktopDirectory/
+  );
+});
+
+test('LocalConfigLoader - 24. Known-Folder resolver: empty LocalApplicationData fails closed', () => {
+  const mockSpawnSync = () => ({
+    status: 0,
+    stdout: Buffer.from(
+      JSON.stringify({
+        DesktopDirectory: 'C:\\Synthetic\\Desktop',
+        LocalApplicationData: '',
+      })
+    ),
+  });
+
+  assert.throws(
+    () => resolveWindowsKnownFolders({ platform: 'win32', spawnSync: mockSpawnSync }),
+    /Windows Known-Folder bridge returned empty or invalid LocalApplicationData/
+  );
+});
+
+test('LocalConfigLoader - 25. Known-Folder resolver: malformed JSON fails closed', () => {
+  const mockSpawnSync = () => ({
+    status: 0,
+    stdout: Buffer.from('{ not-valid-json }'),
+  });
+
+  assert.throws(
+    () => resolveWindowsKnownFolders({ platform: 'win32', spawnSync: mockSpawnSync }),
+    /Failed to parse Windows Known-Folder bridge output as JSON/
+  );
+});
+
+test('LocalConfigLoader - 26. Known-Folder resolver: non-zero exit status fails closed', () => {
+  const mockSpawnSync = () => ({
+    status: 1,
+    stdout: Buffer.from(''),
+  });
+
+  assert.throws(
+    () => resolveWindowsKnownFolders({ platform: 'win32', spawnSync: mockSpawnSync }),
+    /Windows Known-Folder resolution bridge exited with non-zero status \(1\)/
+  );
+});
+
+test('LocalConfigLoader - 27. Known-Folder resolver: spawn error fails closed', () => {
+  const mockSpawnSync = () => ({
+    error: new Error('Command failed'),
+  });
+
+  assert.throws(
+    () => resolveWindowsKnownFolders({ platform: 'win32', spawnSync: mockSpawnSync }),
+    /Error executing Windows Known-Folder resolution bridge/
+  );
+});
+
+test('LocalConfigLoader - 28. Known-Folder resolver: timeout / ETIMEDOUT fails closed', () => {
+  const mockSpawnSync = () => ({
+    error: Object.assign(new Error('Timed out'), { code: 'ETIMEDOUT' }),
+  });
+
+  assert.throws(
+    () => resolveWindowsKnownFolders({ platform: 'win32', spawnSync: mockSpawnSync }),
+    /Windows Known-Folder resolution bridge timed out/
+  );
+});
+
+test('LocalConfigLoader - 29. Known-Folder resolver: non-absolute returned path fails closed', () => {
+  const mockSpawn1 = () => ({
+    status: 0,
+    stdout: Buffer.from(
+      JSON.stringify({
+        DesktopDirectory: 'relative\\desktop',
+        LocalApplicationData: 'C:\\Synthetic\\AppData\\Local',
+      })
+    ),
+  });
+  assert.throws(
+    () => resolveWindowsKnownFolders({ platform: 'win32', spawnSync: mockSpawn1 }),
+    /Windows Known-Folder bridge returned non-absolute DesktopDirectory/
+  );
+
+  const mockSpawn2 = () => ({
+    status: 0,
+    stdout: Buffer.from(
+      JSON.stringify({
+        DesktopDirectory: 'C:\\Synthetic\\Desktop',
+        LocalApplicationData: 'relative\\appdata',
+      })
+    ),
+  });
+  assert.throws(
+    () => resolveWindowsKnownFolders({ platform: 'win32', spawnSync: mockSpawn2 }),
+    /Windows Known-Folder bridge returned non-absolute LocalApplicationData/
+  );
+});
+
+test('LocalConfigLoader - 30. Known-Folder resolver: raw stdout/stderr not reflected in thrown error', () => {
+  const SENSITIVE_TOKEN = 'DO_NOT_LEAK_IN_EXCEPTION_MESSAGE';
+  const mockSpawnSync = () => ({
+    status: 1,
+    stdout: Buffer.from(SENSITIVE_TOKEN),
+    stderr: Buffer.from(SENSITIVE_TOKEN),
+  });
+
+  try {
+    resolveWindowsKnownFolders({ platform: 'win32', spawnSync: mockSpawnSync });
+    assert.fail('Should have thrown an error');
+  } catch (err) {
+    assert.ok(!err.message.includes(SENSITIVE_TOKEN), 'Exception message must not reflect raw stdout/stderr');
+  }
+});
+
+// ==========================================
+// D. Default Fill Behavior
+// ==========================================
+
+test('LocalConfigLoader - 31. Windows missing singletons defaulted from Known Folders', () => {
+  const harness = createTempHarness();
+  try {
+    const partialConfig = {
+      schemaVersion: 2,
+      dataLocations: {
+        protectedRoots: ['C:\\Synthetic\\Protected'],
+      },
+      gateway: {
+        localPort: 3003,
+      },
+    };
+    const configFile = path.join(harness.externalDir, 'partial-config.json');
+    fs.writeFileSync(configFile, JSON.stringify(partialConfig, null, 2), 'utf8');
+
+    const mockSpawnSync = () => ({
+      status: 0,
+      stdout: Buffer.from(
+        JSON.stringify({
+          DesktopDirectory: 'C:\\Synthetic\\Desktop',
+          LocalApplicationData: 'C:\\Synthetic\\AppData\\Local',
+        })
+      ),
+    });
+
+    const loaded = loadDataLocationConfigFromFile(configFile, {
+      repoRoot: harness.repoRoot,
+      platform: 'win32',
+      spawnSync: mockSpawnSync,
+    });
+
+    assert.equal(loaded.dataLocations.archiveRoot, 'C:\\Synthetic\\Desktop\\HH.AI_v2_對話紀錄');
+    assert.equal(
+      loaded.dataLocations.attachmentTempRoot,
+      'C:\\Synthetic\\AppData\\Local\\HH.AI_v2\\channel-gateway\\attachments'
+    );
+    assert.equal(
+      loaded.dataLocations.stateRoot,
+      'C:\\Synthetic\\AppData\\Local\\HH.AI_v2\\channel-gateway\\state'
+    );
+    assert.equal(
+      loaded.dataLocations.logsRoot,
+      'C:\\Synthetic\\AppData\\Local\\HH.AI_v2\\channel-gateway\\logs'
+    );
+    assert.equal(loaded.dataLocations.protectedRoots[0], 'C:\\Synthetic\\Protected');
+    assert.equal(loaded.gateway.localPort, 3003);
+  } finally {
+    harness.cleanup();
+  }
+});
+
+test('LocalConfigLoader - 32. explicit configured path takes precedence over default', () => {
+  const harness = createTempHarness();
+  try {
+    const partialConfig = {
+      schemaVersion: 2,
+      dataLocations: {
+        archiveRoot: 'C:\\Custom\\Archive',
+        protectedRoots: ['C:\\Synthetic\\Protected'],
+      },
+      gateway: {
+        localPort: 3003,
+      },
+    };
+    const configFile = path.join(harness.externalDir, 'precedence-config.json');
+    fs.writeFileSync(configFile, JSON.stringify(partialConfig, null, 2), 'utf8');
+
+    const mockSpawnSync = () => ({
+      status: 0,
+      stdout: Buffer.from(
+        JSON.stringify({
+          DesktopDirectory: 'C:\\Synthetic\\Desktop',
+          LocalApplicationData: 'C:\\Synthetic\\AppData\\Local',
+        })
+      ),
+    });
+
+    const loaded = loadDataLocationConfigFromFile(configFile, {
+      repoRoot: harness.repoRoot,
+      platform: 'win32',
+      spawnSync: mockSpawnSync,
+    });
+
+    // Explicit path must NOT be overwritten
+    assert.equal(loaded.dataLocations.archiveRoot, 'C:\\Custom\\Archive');
+    // Missing singletons are filled
+    assert.equal(
+      loaded.dataLocations.stateRoot,
+      'C:\\Synthetic\\AppData\\Local\\HH.AI_v2\\channel-gateway\\state'
+    );
+  } finally {
+    harness.cleanup();
+  }
+});
+
+test('LocalConfigLoader - 33. all explicit fields present -> resolver not invoked', () => {
+  const harness = createTempHarness();
+  try {
+    let resolverInvoked = false;
+    const mockSpawnSync = () => {
+      resolverInvoked = true;
+      throw new Error('Resolver should not be invoked when all fields are present');
+    };
+
+    const loaded = loadDataLocationConfigFromFile(harness.validConfigFile, {
+      repoRoot: harness.repoRoot,
+      platform: 'win32',
+      spawnSync: mockSpawnSync,
+    });
+
+    assert.equal(resolverInvoked, false);
+    assert.equal(loaded.dataLocations.archiveRoot, harness.dataDirs.archiveRoot);
+  } finally {
+    harness.cleanup();
+  }
+});
+
+test('LocalConfigLoader - 34. protectedRoots has no default (fails closed if missing)', () => {
+  const harness = createTempHarness();
+  try {
+    const configWithoutProtected = {
+      schemaVersion: 2,
+      dataLocations: {},
+      gateway: {
+        localPort: 3003,
+      },
+    };
+    const configFile = path.join(harness.externalDir, 'missing-protected.json');
+    fs.writeFileSync(configFile, JSON.stringify(configWithoutProtected, null, 2), 'utf8');
+
+    const mockSpawnSync = () => ({
+      status: 0,
+      stdout: Buffer.from(
+        JSON.stringify({
+          DesktopDirectory: 'C:\\Synthetic\\Desktop',
+          LocalApplicationData: 'C:\\Synthetic\\AppData\\Local',
+        })
+      ),
+    });
+
+    assert.throws(
+      () =>
+        loadDataLocationConfigFromFile(configFile, {
+          repoRoot: harness.repoRoot,
+          platform: 'win32',
+          spawnSync: mockSpawnSync,
+        }),
+      /Missing required dataLocations field: 'protectedRoots'/
+    );
+  } finally {
+    harness.cleanup();
+  }
+});
+
+test('LocalConfigLoader - 35. gateway.localPort has no default (fails closed if missing)', () => {
+  const harness = createTempHarness();
+  try {
+    const configWithoutGateway = {
+      schemaVersion: 2,
+      dataLocations: {
+        protectedRoots: ['C:\\Synthetic\\Protected'],
+      },
+    };
+    const configFile = path.join(harness.externalDir, 'missing-gateway.json');
+    fs.writeFileSync(configFile, JSON.stringify(configWithoutGateway, null, 2), 'utf8');
+
+    const mockSpawnSync = () => ({
+      status: 0,
+      stdout: Buffer.from(
+        JSON.stringify({
+          DesktopDirectory: 'C:\\Synthetic\\Desktop',
+          LocalApplicationData: 'C:\\Synthetic\\AppData\\Local',
+        })
+      ),
+    });
+
+    assert.throws(
+      () =>
+        loadDataLocationConfigFromFile(configFile, {
+          repoRoot: harness.repoRoot,
+          platform: 'win32',
+          spawnSync: mockSpawnSync,
+        }),
+      /Missing required field: gateway/
+    );
+  } finally {
+    harness.cleanup();
+  }
+});
+
+test('LocalConfigLoader - 36. non-win32 platform: missing singleton fails closed without default', () => {
+  const harness = createTempHarness();
+  try {
+    const partialConfig = {
+      schemaVersion: 2,
+      dataLocations: {
+        protectedRoots: ['/opt/protected'],
+      },
+      gateway: {
+        localPort: 3003,
+      },
+    };
+    const configFile = path.join(harness.externalDir, 'posix-partial.json');
+    fs.writeFileSync(configFile, JSON.stringify(partialConfig, null, 2), 'utf8');
+
+    assert.throws(
+      () =>
+        loadDataLocationConfigFromFile(configFile, {
+          repoRoot: harness.repoRoot,
+          platform: 'linux',
+        }),
+      /Missing required dataLocations field: 'archiveRoot'/
+    );
+  } finally {
+    harness.cleanup();
+  }
+});
+
+test('LocalConfigLoader - 37. default resolution does not auto-create directory and fails startup validation if missing', () => {
+  const harness = createTempHarness();
+  try {
+    const nonExistentDesktop = path.join(harness.externalDir, 'synthetic-desktop-uncreated');
+    assert.strictEqual(fs.existsSync(nonExistentDesktop), false);
+
+    const partialConfig = {
+      schemaVersion: 2,
+      dataLocations: {
+        protectedRoots: [harness.dataDirs.protectedRoots[0]],
+      },
+      gateway: {
+        localPort: 3003,
+      },
+    };
+    const configFile = path.join(harness.externalDir, 'uncreated-default.json');
+    fs.writeFileSync(configFile, JSON.stringify(partialConfig, null, 2), 'utf8');
+
+    const mockSpawnSync = () => ({
+      status: 0,
+      stdout: Buffer.from(
+        JSON.stringify({
+          DesktopDirectory: nonExistentDesktop,
+          LocalApplicationData: harness.dataDirs.attachmentTempRoot,
+        })
+      ),
+    });
+
+    // Default resolution alone produces the path without creating directory
+    const resolved = loadDataLocationConfigFromFile(configFile, {
+      repoRoot: harness.repoRoot,
+      platform: 'win32',
+      spawnSync: mockSpawnSync,
+      validateStartupLocations: false,
+    });
+    assert.ok(resolved.dataLocations.archiveRoot.includes('synthetic-desktop-uncreated'));
+    // Directory was NOT auto-created
+    assert.strictEqual(fs.existsSync(nonExistentDesktop), false);
+
+    // Startup validation fails closed because directory does not exist
+    assert.throws(
+      () =>
+        loadDataLocationConfigFromFile(configFile, {
+          repoRoot: harness.repoRoot,
+          platform: 'win32',
+          spawnSync: mockSpawnSync,
+          validateStartupLocations: true,
+        }),
+      /Configured data location 'archiveRoot' does not exist or cannot be accessed/
+    );
+
+    // Still NOT created
+    assert.strictEqual(fs.existsSync(nonExistentDesktop), false);
+  } finally {
+    harness.cleanup();
+  }
+});
+
+// ==========================================
+// E. Live Bridge Integration
+// ==========================================
+
+test('LocalConfigLoader - 38. Live Windows bridge integration', () => {
+  if (process.platform === 'win32') {
+    const result = resolveWindowsKnownFolders();
+    assert.ok(result, 'Result should be returned');
+    assert.ok(typeof result.desktopDirectory === 'string', 'DesktopDirectory should be string');
+    assert.ok(result.desktopDirectory.length > 0, 'DesktopDirectory should not be empty');
+    assert.ok(path.win32.isAbsolute(result.desktopDirectory), 'DesktopDirectory should be absolute');
+    assert.ok(typeof result.localApplicationData === 'string', 'LocalApplicationData should be string');
+    assert.ok(result.localApplicationData.length > 0, 'LocalApplicationData should not be empty');
+    assert.ok(path.win32.isAbsolute(result.localApplicationData), 'LocalApplicationData should be absolute');
+  } else {
+    // On non-win32 platforms, verify platform guard without calling PowerShell and without test skip
+    assert.throws(
+      () => resolveWindowsKnownFolders({ platform: 'linux' }),
+      /Known-Folder resolution is only supported on win32/
+    );
   }
 });

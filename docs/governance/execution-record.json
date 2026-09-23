@@ -1,24 +1,36 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "TG-MVP-07-FINAL-ACCEPTANCE",
-  "base_oid": "f73a076d5ef4184735a6586a7069c66a6ba54bcc",
+  "task_id": "TG-MVP-07A",
+  "base_oid": "c2912957f7f1c34fb99cb88dc2c313447fde1eb5",
   "plan": {
     "allowed_paths": [
-      "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
+      "docs/adr/0022-channel-gateway-architecture.md",
+      "docs/adr/0025-outbound-reliability-loopback-api-security.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md"
+      "runtime/channel-gateway/bin/windows-known-folder-resolve.ps1",
+      "runtime/channel-gateway/config.example.json",
+      "runtime/channel-gateway/core/data-location-config.js",
+      "runtime/channel-gateway/core/local-config-loader.js",
+      "runtime/channel-gateway/tests/data-location-config.test.js",
+      "runtime/channel-gateway/tests/local-config-loader.test.js"
     ],
     "required_paths": [
-      "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
+      "docs/adr/0022-channel-gateway-architecture.md",
+      "docs/adr/0025-outbound-reliability-loopback-api-security.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md"
+      "runtime/channel-gateway/bin/windows-known-folder-resolve.ps1",
+      "runtime/channel-gateway/config.example.json",
+      "runtime/channel-gateway/core/data-location-config.js",
+      "runtime/channel-gateway/core/local-config-loader.js",
+      "runtime/channel-gateway/tests/data-location-config.test.js",
+      "runtime/channel-gateway/tests/local-config-loader.test.js"
     ],
     "max_plan_revisions": 3,
     "revision_count": 0,
@@ -26,12 +38,18 @@
   },
   "actual": {
     "changed_paths": [
-      "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
+      "docs/adr/0022-channel-gateway-architecture.md",
+      "docs/adr/0025-outbound-reliability-loopback-api-security.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md"
+      "runtime/channel-gateway/bin/windows-known-folder-resolve.ps1",
+      "runtime/channel-gateway/config.example.json",
+      "runtime/channel-gateway/core/data-location-config.js",
+      "runtime/channel-gateway/core/local-config-loader.js",
+      "runtime/channel-gateway/tests/data-location-config.test.js",
+      "runtime/channel-gateway/tests/local-config-loader.test.js"
     ]
   },
   "evidence": [

@@ -184,9 +184,10 @@ Local API v1 必須機械防護以下威脅：
 
 ### 14. 通訊埠配置來源與相依性邊界
 
-- 目前 `data-location-config.js` 與 `local-config-loader.js` 僅負責資料目錄路徑，未包含網路通訊埠。
-- 通訊埠配置屬 ADR-0022 D24 之本機外部設定檔範疇，其正式實作排定於 `TG-MVP-07A`（D24 本機外部配置基礎建設）。
-- 因此，`TG-MVP-11`（Loopback Local API v1 實作）的前置相依鏈正式擴充為包含 `TG-MVP-07A`。
+- 經 `TG-MVP-07A`（D24 本機外部配置基礎建設）擴充後，`data-location-config.js` 與 `local-config-loader.js` 之 Local Config v2 契約已正式納入 `gateway.localPort`，其 v1 規範值嚴格為整數 `3003`。
+- `TG-MVP-07A` 僅建立 declarative schema 與 loader 驗證契約，不建立 socket 亦不建立 HTTP listener。
+- 實際 Loopback HTTP listener 建立、通訊埠綁定、`127.0.0.1` 監聽介面限制與通訊埠佔用之 Fail-Closed 網路行為，仍由後續 `TG-MVP-11`（Loopback Local API v1 實作）專責執行。
+- `TG-MVP-11` 的前置相依鏈包含已就緒之 `TG-MVP-07A`。
 
 ---
 

@@ -75,7 +75,7 @@
 
 ### 7. 本機配置、代碼分層與熱切換 (Local Config, Layout & Account Switch, D24–D26)
 
-- **D24（本機配置中心化與啟動路徑檢查）**：所有資料與執行期路徑（歸檔目錄、暫存目錄、狀態資料預設 `%LOCALAPPDATA%`、日誌目錄、受保護根目錄清單）集中於版本庫外之本機設定檔（Local Config），版本庫僅收錄設定範本。啟動時執行路徑有效性驗證，若異常則 Fail-Closed。路徑遷移需變更設定並重啟，舊資料搬移必須經使用者手動確認。
+- **D24（本機配置中心化與啟動路徑檢查）**：所有資料與執行期路徑（歸檔目錄、暫存目錄、狀態資料預設 `%LOCALAPPDATA%`、日誌目錄、受保護根目錄清單）及 Gateway 通訊埠集中於版本庫外之本機設定檔（Local Config，schemaVersion 2），版本庫僅收錄設定範本。Local Config schemaVersion 2 包含 `dataLocations` 與 `gateway.localPort`（Gateway v1 localPort 嚴格為 `3003`）。Windows defaults 使用 `DesktopDirectory` 與 `LocalApplicationData` 之 Known-Folder 語意 API（禁止以 `USERPROFILE` 或 `LOCALAPPDATA` 環境變數近似路徑）。若 Desktop Known Folder 被 Windows 重導至 OneDrive 或其他 redirected Desktop，該 Known-Folder 結果屬預期權威 Desktop 語意，不得再以 `USERPROFILE\Desktop` 覆蓋；且 `runtime/channel-gateway/AGENTS.md` §8 的 OneDrive / 同步資料夾 / UNC 禁令是 **SQLite database location guard**，不得機械套用到 D22 `archiveRoot`；未來實作 database sync/UNC path guard 時，不得因 archiveRoot 位於 redirected Desktop 就把 archive 路徑誤判為 database-location violation。`protectedRoots` 仍須顯式指定，無自動預設值。啟動時執行路徑有效性驗證，若異常則 Fail-Closed；預設值解析僅推導路徑字串，絕對不自動建立目錄（Zero Directory Auto-Create）；路徑遷移不自動執行，舊資料搬移必須經使用者手動確認。Local Config 嚴禁存放任何 Token、金鑰或密碼等憑證資訊。實際 socket listener 與通訊埠綁定仍屬後續 TG-MVP-11。
 - **D25（清晰三層架構邊界）**：版本庫通訊與執行層劃分為三層：
   1. `runtime/channel-gateway/`：具備獨立 `package.json`，內含 `core/`、`adapters/`、`bin/`、`tests/`；不得在 `runtime/` 下建立 `telegram-bot/` 或 `line-bot/` 作為頂層架構；未來 LINE Worker 程式碼亦不設於 repo 根目錄；
   2. `shared/`：保留 Wave 1A 已驗證之純共享原語資產（`shared/dlpSanitizer.js`、`shared/dlpSanitizer.d.ts`、`shared/atomicFs.js`）；
@@ -113,7 +113,7 @@
 3. **與 ADR-0015（LINE 穿透隧道鏈路失敗）之關係**：
    ADR-0015 詳盡分析了四環隧道依賴鏈之脆弱性與靜默失敗現象。本 ADR 之 D11 決策正是基於 ADR-0015 的歷史證據，徹底廢除本地隧道與動態 Webhook URL 同步，改採 Cloudflare Worker Mailbox + Pull 模式以根治該問題。
 4. **與 ADR-0017（Port 分配規範）之關係**：
-   ADR-0017 記錄了歷史上為了避免與網頁應用衝突而對 LINE (3000) 與 TG (3001) 進行之固定配置。在 D1 單一 Gateway 與 D11 LINE 郵箱拉取模型下，原本「3000 與 3001 永久不得變更」之技術前提已不存在。後續經 TG-MVP-07（B-30 + B-33 收斂）正式確立 Channel Gateway v1 canonical local port = 3003（不再處於未決狀態，且無自動回退）。但需明確說明：Gateway 本地 listener 實作與 D24 Local Config 載入尚未由 TG-MVP-07 實作，分別保留由後續 TG-MVP-11 與 TG-MVP-07A 負責。
+   ADR-0017 記錄了歷史上為了避免與網頁應用衝突而對 LINE (3000) 與 TG (3001) 進行之固定配置。在 D1 單一 Gateway 與 D11 LINE 郵箱拉取模型下，原本「3000 與 3001 永久不得變更」之技術前提已不存在。後續經 TG-MVP-07（B-30 + B-33 收斂）正式確立 Channel Gateway v1 canonical local port = 3003（不再處於未決狀態，且無自動回退）。`TG-MVP-07A` 已正式將 `gateway.localPort: 3003` 納入 D24 Local Config schemaVersion 2 契約；而實際 Gateway 本地 socket listener 與埠占用防護則保留由後續 `TG-MVP-11` 負責。
 
 ---
 
