@@ -360,6 +360,7 @@ class BackupScheduler {
     try {
       backupRoot = ensureBackupsDirectory(this.#stateRoot, { fs: this.#fs });
     } catch (err) {
+      this.#consecutiveFailures++;
       this.#logError('EnsureBackupsDir', err);
       const healthData = evaluateHealthState({
         nowMs,
@@ -369,7 +370,7 @@ class BackupScheduler {
         totalBytes: 0,
         maxTotalBytes: this.#backupPolicy.maxTotalBytes,
         minKeepCount: this.#backupPolicy.minKeepCount,
-        extraReasonCodes: ['UNKNOWN_BACKUP_DIRECTORY_ENTRY'],
+        extraReasonCodes: ['BACKUP_DIRECTORY_UNAVAILABLE'],
       });
       writeBackupHealthAtomic(this.#stateRoot, healthData, {
         fs: this.#fs,
@@ -383,6 +384,7 @@ class BackupScheduler {
     try {
       entries = this.#fs.readdirSync(backupRoot);
     } catch (err) {
+      this.#consecutiveFailures++;
       this.#logError('ScanFreshness', err);
       const healthData = evaluateHealthState({
         nowMs,
@@ -392,7 +394,7 @@ class BackupScheduler {
         totalBytes: 0,
         maxTotalBytes: this.#backupPolicy.maxTotalBytes,
         minKeepCount: this.#backupPolicy.minKeepCount,
-        extraReasonCodes: ['UNKNOWN_BACKUP_DIRECTORY_ENTRY'],
+        extraReasonCodes: ['BACKUP_DIRECTORY_UNAVAILABLE'],
       });
       writeBackupHealthAtomic(this.#stateRoot, healthData, {
         fs: this.#fs,

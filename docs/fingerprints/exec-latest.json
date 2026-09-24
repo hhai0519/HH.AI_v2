@@ -1,5 +1,5 @@
 {
-  "base_head": "50503a5",
+  "base_head": "c176387",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -552,16 +552,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 213,
-      "sha256": "d7ab07bc2c61891207d2740c901b49f302aeec98e500056387743f82fbfe2b27"
+      "lines": 215,
+      "sha256": "061852ecb5445ba5644c593ef4cb8aa67f8bea1dd9084524c1d88b35e325446e"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 188,
-      "sha256": "62d7007484bb628471e745cfccaa4b2cfb6e03eac947447e94bc09d0c0d02934"
+      "lines": 190,
+      "sha256": "ef3075a0896cf8c7cd74e0661e9273e2c582e2bc84eda38f78ee6738826cf7bf"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -921,8 +921,8 @@
         "### 9. 狀態資料庫與備份衛生治理 (State Database & Backup Hygiene — TG-MVP-09A)",
         "## Consequences"
       ],
-      "lines": 165,
-      "sha256": "eb3b39924405d339aeb04c612a3caf5605c4e95b8f56d0027c352c0ad579f4fd"
+      "lines": 166,
+      "sha256": "1c8c149fe39a847602bbd25f94d08744d4990115b46f386eb32a7b26c1a60220"
     },
     "docs/adr/0024-inbound-identity-cursor-semantics.md": {
       "fences": 2,
@@ -1065,8 +1065,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 4982,
-      "sha256": "aff8cb3b3d7fae0337efdfa72c128900d3d68b98983459c325a7630132f891d2"
+      "lines": 4991,
+      "sha256": "141cdc16c228b1c52d1bca7975f01399eab918cf617a4ba1ac9a221146f61a40"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1491,7 +1491,7 @@
       "sha256": "35bf7dbfa3c7d291b550c3c97a6ae398a22b1dc3624c1d2fc1e4db6963d6e115"
     }
   },
-  "generated_at": "2026-09-24T07:19:07Z",
+  "generated_at": "2026-09-24T08:15:13Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

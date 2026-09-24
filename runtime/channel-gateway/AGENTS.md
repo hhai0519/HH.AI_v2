@@ -61,15 +61,15 @@ T6 階段正式採用 `busy_timeout = 5000`（5000ms），其基礎為 T1 Window
 - **舊版備份平滑過渡**：啟動與排程時自動偵測 `stateRoot` 根目錄殘留之歷史正規備份檔案（`channel-gateway-state.backup-*.sqlite3`），透過 `fs.renameSync` 平滑遷移至 `stateRoot/backups/` 並納入統一保留管理。
 - **啟動與關閉語義**：啟動時僅執行保鮮度檢查，無合規備份或最新備份已逾期（age >= 24h）時方建立一份備份，嚴禁無條件啟動備份；進程關閉時不觸發關閉備份。
 - **耐久保鮮度證據**：僅以 `stateRoot/backups/` 下合規命名之備份檔案（`channel-gateway-state.backup-v{N}-{uuid}.sqlite3`）的正規非符號連結最大有效 `mtimeMs`（<= nowMs）作為保鮮度判準。
-- **容量保留與最少數量下限**：Local Config schemaVersion 3 新增 `backup` 區塊（預設 `maxTotalBytes: 1_000_000_000` 即 1GB，`minKeepCount: 3`），維持 v2 雙向相容。實施容量驅動保留（無天數年齡限制），嚴格保障最少保留最新 3 份合規備份（Floor of 3）。
+- **容量保留與最少數量下限**：Local Config schemaVersion 3 新增 `backup` 區塊（單位為十進位精確位元組 exact decimal bytes，預設 `maxTotalBytes: 1_000_000_000` 即 1,000,000,000 位元組，嚴禁宣告為 1 GiB，`minKeepCount: 3`），維持 v2 雙向相容。`totalBytes` 嚴格定義為受管正規備份之總位元組數（managed canonical backup bytes），不計入 `backups/` 內未受管之非正規檔案。實施容量驅動保留（無天數年齡限制），嚴格保障最少保留最新 3 份合規備份（Floor of 3）。
 - **決定性清理**：清理時機嚴格限制於「新備份成功驗證寫入後」，備份失敗時嚴禁刪除任何既有備份。超額清理依 `mtimeMs` 由舊至新排序，平局時以檔名字典順序打破。
-- **剩餘空間雙倍安全檢查**：執行備份前必須檢查磁碟剩餘空間（`bavail * bsize` >= `2 * dbSize`）；空間不足時安全跳過備份，不呼叫 `VACUUM INTO`，記錄 `FREE_SPACE_INSUFFICIENT` 診斷，進程維持正常服務。
-- **備份健康狀態原子寫入**：備份健康狀態動態評估（`HEALTHY`、`DEGRADED`、`UNHEALTHY`）並以非敏感格式寫入 `stateRoot/backups/backup-health.json`，嚴格透過 `shared/atomicFs.js` 確保原子性。
+- **剩餘空間雙倍安全檢查**：執行備份前必須檢查磁碟剩餘空間（`bavail * bsize` >= `2 * dbSize`）；空間不足時安全跳過備份，不呼叫 `VACUUM INTO`，記錄 `INSUFFICIENT_FREE_SPACE` 診斷，進程維持正常服務。
+- **備份健康狀態原子寫入**：備份健康狀態動態評估（`OK`、`WARN`、`ALERT`）並以非敏感格式寫入 `stateRoot/backup-health.json`（非 `backups/` 子目錄內），嚴格透過 Channel Gateway 專屬 task-local bounded atomic JSON writer 確保原子性（不採用 `shared/atomicFs.js`，保持 09A 零修改）。ALERT 包含 `NO_SUCCESSFUL_BACKUP_48H`、`CONSECUTIVE_BACKUP_FAILURES`、`SINGLE_BACKUP_EXCEEDS_CAPACITY`、`INSUFFICIENT_FREE_SPACE`、`FREE_SPACE_CHECK_FAILED`、`BACKUP_DIRECTORY_UNAVAILABLE`、`BACKUP_INVENTORY_UNAVAILABLE`。
 - **隱私與機敏資訊安全防護**：備份健康狀態與所有排程日誌絕對不得包含任何本機路徑、資料庫完整路徑、原始例外訊息、Token 或訊息內容；診斷日誌僅輸出受控枚舉名稱。
 - **重入與重疊防護**：單一實例保持 in-flight 旗標，重入或重疊 tick 一律略過（skip），不佇列排隊、不並行備份。
 - **非致命失敗處理**：定期掃描或備份失敗時僅記錄邊界明確且不含機密之診斷，服務保持運作（不 process.exit、不立即重試、不指數退避），留待下一個正常 1 小時 tick 重新評估。
 - **過渡期進程內執行擁有者**：`BackupRuntimeOwner` 僅負責最小進程內生命週期配對（open repo -> start scheduler; stop scheduler -> close repo），不是 daemon、不是 OS 服務、不安裝訊號處理器、不決定最終 Gateway 生命週期排序（留待 TG-MVP-10/11 組合），嚴格禁止建立第二個背景守護行程。
-- **靜態加密與 Node 監控點**：TG-MVP-09A 備份維持 SQLite 原生格式，不引入應用層加密；磁碟靜態資料加密為使用者作業系統層級責任（USER_RESPONSIBILITY BitLocker on Windows）。持續監控 Node 內建 `node:sqlite` 版本穩定性。
+- **靜態加密與 Node 監控點**：TG-MVP-09A 狀態資料庫與備份清理衛生規範（實作候選中，等待外部審查 / implementation candidate / awaiting External Macro audit）。備份維持 SQLite 原生格式，不引入應用層加密；磁碟靜態資料加密為使用者作業系統層級責任（USER_RESPONSIBILITY BitLocker on Windows）。持續監控 Node 內建 `node:sqlite` 版本穩定性。
 - **同步事件迴圈特性**：`node:sqlite DatabaseSync` 與 `VACUUM INTO` 為同步操作，執行期間可能短暫阻塞 Event Loop；本階段接受 pre-go-live 小規模資料庫之每日單次備份前提。
 
 ## 8. 資料庫存放位置防護 (Database Location Guard)

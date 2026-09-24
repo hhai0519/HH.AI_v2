@@ -297,10 +297,13 @@ test('7. migrateLegacyBackups moves canonical backups and preserves non-canonica
   assert.ok(mockFs.files.has(path.join(stateRoot, symlinkFile)));
 });
 
-test('8. migrateLegacyBackups collision refuses overwrite, preserves source, logs warning', () => {
+test('8. migrateLegacyBackups collision refuses overwrite, preserves source, logs warning (M4 canary)', () => {
   const stateRoot = path.resolve('/test/state');
   const backupRoot = path.join(stateRoot, 'backups');
   const filename = 'channel-gateway-state.backup-v3-e0186178-5e76-47b2-bdcf-884814e5bb0c.sqlite3';
+
+  let renameCallCount = 0;
+  let copyAttempted = false;
 
   const mockFs = createMockFs({
     [stateRoot]: { isDir: true },
@@ -309,12 +312,30 @@ test('8. migrateLegacyBackups collision refuses overwrite, preserves source, log
     [path.join(backupRoot, filename)]: { isFile: true, size: 200 }, // collision!
   });
 
+  // Model real overwrite semantics if renameSync is called, and count calls
+  mockFs.renameSync = (fromPath, toPath) => {
+    renameCallCount++;
+    const fromMeta = mockFs.files.get(path.resolve(fromPath));
+    mockFs.files.set(path.resolve(toPath), fromMeta); // overwrite!
+    mockFs.files.delete(path.resolve(fromPath));
+  };
+
+  mockFs.copyFileSync = () => {
+    copyAttempted = true;
+    throw new Error('Copy fallback forbidden');
+  };
+
   const logger = createMockLogger();
   const { migratedCount, warnings } = migrateLegacyBackups(stateRoot, backupRoot, { fs: mockFs, logger });
+
   assert.equal(migratedCount, 0);
+  assert.equal(renameCallCount, 0, 'renameSync must not be called when destination collision is detected');
+  assert.equal(copyAttempted, false, 'no copy fallback must be attempted');
   assert.ok(warnings.includes('LEGACY_BACKUP_COLLISION'));
   // Source preserved
   assert.ok(mockFs.files.has(path.join(stateRoot, filename)));
+  assert.equal(mockFs.files.get(path.join(stateRoot, filename)).size, 100);
+  // Destination preserved with original size
   assert.ok(mockFs.files.has(path.join(backupRoot, filename)));
   assert.equal(mockFs.files.get(path.join(backupRoot, filename)).size, 200);
 });
@@ -562,4 +583,152 @@ test('15. writeBackupHealthAtomic and privacy: zero path or message leak', () =>
   } finally {
     fs.rmSync(tempDir, { recursive: true, force: true });
   }
+});
+
+test('16. inventoryAndCleanupBackups retention pressure deletes eligible old canonical backup while preserving all non-canonical entries (M3 canary)', () => {
+  const backupRoot = path.resolve('/test/state/backups');
+  const f1 = 'channel-gateway-state.backup-v3-11111111-1111-4111-8111-111111111111.sqlite3';
+  const f2 = 'channel-gateway-state.backup-v3-22222222-2222-4222-8222-222222222222.sqlite3';
+  const f3 = 'channel-gateway-state.backup-v3-33333333-3333-4333-8333-333333333333.sqlite3';
+  const f4 = 'channel-gateway-state.backup-v3-44444444-4444-4444-8444-444444444444.sqlite3';
+
+  const unknownFile = 'unknown-file.txt';
+  const malformedBackup = 'channel-gateway-state.backup-malformed.sqlite3';
+  const liveDbLike = 'channel-gateway-state.sqlite3';
+  const walLike = 'channel-gateway-state.sqlite3-wal';
+  const shmLike = 'channel-gateway-state.sqlite3-shm';
+
+  const mockFs = createMockFs({
+    [backupRoot]: { isDir: true },
+    // 4 canonical regular backups: 4 * 500 = 2000 bytes
+    [path.join(backupRoot, f1)]: { isFile: true, mtimeMs: 1000, size: 500 },
+    [path.join(backupRoot, f2)]: { isFile: true, mtimeMs: 2000, size: 500 },
+    [path.join(backupRoot, f3)]: { isFile: true, mtimeMs: 3000, size: 500 },
+    [path.join(backupRoot, f4)]: { isFile: true, mtimeMs: 4000, size: 500 },
+    // Protected non-canonical / unmanaged entries
+    [path.join(backupRoot, unknownFile)]: { isFile: true, mtimeMs: 500, size: 100 },
+    [path.join(backupRoot, malformedBackup)]: { isFile: true, mtimeMs: 600, size: 100 },
+    [path.join(backupRoot, liveDbLike)]: { isFile: true, mtimeMs: 700, size: 100 },
+    [path.join(backupRoot, walLike)]: { isFile: true, mtimeMs: 800, size: 100 },
+    [path.join(backupRoot, shmLike)]: { isFile: true, mtimeMs: 900, size: 100 },
+  });
+
+  // maxTotalBytes = 1200, minKeepCount = 2 (f3, f4 protected = 1000 bytes <= 1200)
+  // Total canonical bytes = 2000 > 1200.
+  // verifiedBackupSucceededThisCycle = true.
+  // Clean up must delete f1 (2000 - 500 = 1500 > 1200) and f2 (1500 - 500 = 1000 <= 1200).
+  const result = inventoryAndCleanupBackups(backupRoot, {
+    fs: mockFs,
+    maxTotalBytes: 1200,
+    minKeepCount: 2,
+    verifiedBackupSucceededThisCycle: true,
+  });
+
+  // A. At least one eligible canonical old backup was actually deleted (f1 and f2)
+  assert.equal(result.deletedBackups.length, 2);
+  assert.ok(!mockFs.files.has(path.join(backupRoot, f1)));
+  assert.ok(!mockFs.files.has(path.join(backupRoot, f2)));
+  assert.ok(mockFs.files.has(path.join(backupRoot, f3)));
+  assert.ok(mockFs.files.has(path.join(backupRoot, f4)));
+
+  // B. Every non-canonical / unmanaged entry remains completely intact
+  assert.ok(mockFs.files.has(path.join(backupRoot, unknownFile)));
+  assert.ok(mockFs.files.has(path.join(backupRoot, malformedBackup)));
+  assert.ok(mockFs.files.has(path.join(backupRoot, liveDbLike)));
+  assert.ok(mockFs.files.has(path.join(backupRoot, walLike)));
+  assert.ok(mockFs.files.has(path.join(backupRoot, shmLike)));
+
+  // Warning emitted for unknown/non-canonical entries
+  assert.ok(result.warnings.includes('UNKNOWN_BACKUP_DIRECTORY_ENTRY'));
+});
+
+test('17. inventoryAndCleanupBackups retention pressure preserves canonical-named symlink while deleting oldest canonical backup (M5 canary)', () => {
+  const backupRoot = path.resolve('/test/state/backups');
+  // Passes CANONICAL_BACKUP_NAME_REGEX but is a symlink
+  const canonicalSymlink = 'channel-gateway-state.backup-v3-00000000-0000-4000-8000-000000000000.sqlite3';
+  assert.ok(CANONICAL_BACKUP_NAME_REGEX.test(canonicalSymlink), 'Canary symlink filename must pass canonical regex');
+
+  const f1 = 'channel-gateway-state.backup-v3-11111111-1111-4111-8111-111111111111.sqlite3';
+  const f2 = 'channel-gateway-state.backup-v3-22222222-2222-4222-8222-222222222222.sqlite3';
+  const f3 = 'channel-gateway-state.backup-v3-33333333-3333-4333-8333-333333333333.sqlite3';
+
+  const mockFs = createMockFs({
+    [backupRoot]: { isDir: true },
+    // Canonical-named symlink has oldest mtimeMs (500), would be deleted first if symlink check were bypassed
+    [path.join(backupRoot, canonicalSymlink)]: { isFile: false, isSymlink: true, mtimeMs: 500, size: 500 },
+    // Regular canonical backups: 3 * 500 = 1500 bytes
+    [path.join(backupRoot, f1)]: { isFile: true, mtimeMs: 1000, size: 500 },
+    [path.join(backupRoot, f2)]: { isFile: true, mtimeMs: 2000, size: 500 },
+    [path.join(backupRoot, f3)]: { isFile: true, mtimeMs: 3000, size: 500 },
+  });
+
+  // maxTotalBytes = 1200, minKeepCount = 2 (f2, f3 protected = 1000 bytes)
+  // Total regular canonical bytes = 1500 > 1200.
+  // Cleanup must run and delete oldest regular canonical backup f1.
+  const result = inventoryAndCleanupBackups(backupRoot, {
+    fs: mockFs,
+    maxTotalBytes: 1200,
+    minKeepCount: 2,
+    verifiedBackupSucceededThisCycle: true,
+  });
+
+  // Oldest regular canonical backup f1 was deleted
+  assert.equal(result.deletedBackups.length, 1);
+  assert.equal(result.deletedBackups[0].filename, f1);
+  assert.ok(!mockFs.files.has(path.join(backupRoot, f1)));
+
+  // Canonical-named symlink MUST NOT be deleted (survives retention pressure)
+  assert.ok(mockFs.files.has(path.join(backupRoot, canonicalSymlink)));
+  assert.ok(!result.deletedBackups.some((d) => d.filename === canonicalSymlink));
+  assert.ok(result.warnings.includes('UNKNOWN_BACKUP_DIRECTORY_ENTRY'));
+});
+
+test('18. inventoryAndCleanupBackups readdir failure returns BACKUP_INVENTORY_UNAVAILABLE alert', () => {
+  const backupRoot = path.resolve('/test/state/backups');
+  const failingFs = {
+    readdirSync() {
+      const err = new Error('EACCES: permission denied, scandir');
+      err.name = 'PermissionError';
+      err.code = 'EACCES';
+      throw err;
+    },
+  };
+
+  const logger = createMockLogger();
+  const result = inventoryAndCleanupBackups(backupRoot, { fs: failingFs, logger });
+
+  assert.equal(result.backupCount, 0);
+  assert.equal(result.totalBytes, 0);
+  assert.deepEqual(result.eligibleBackups, []);
+  assert.deepEqual(result.deletedBackups, []);
+  assert.deepEqual(result.warnings, []);
+  assert.deepEqual(result.alerts, ['BACKUP_INVENTORY_UNAVAILABLE']);
+  assert.equal(logger.warns.length, 1);
+  assert.ok(logger.warns[0].includes('name=PermissionError, code=EACCES'));
+});
+
+test('19. evaluateHealthState treats BACKUP_DIRECTORY_UNAVAILABLE and BACKUP_INVENTORY_UNAVAILABLE as ALERT', () => {
+  const now = 1_700_000_000_000;
+
+  const dirHealth = evaluateHealthState({
+    nowMs: now,
+    lastSuccessAt: now - 3600_000,
+    consecutiveFailures: 1,
+    backupCount: 0,
+    totalBytes: 0,
+    extraReasonCodes: ['BACKUP_DIRECTORY_UNAVAILABLE'],
+  });
+  assert.equal(dirHealth.state, 'ALERT');
+  assert.ok(dirHealth.reasonCodes.includes('BACKUP_DIRECTORY_UNAVAILABLE'));
+
+  const invHealth = evaluateHealthState({
+    nowMs: now,
+    lastSuccessAt: now - 3600_000,
+    consecutiveFailures: 0,
+    backupCount: 0,
+    totalBytes: 0,
+    extraReasonCodes: ['BACKUP_INVENTORY_UNAVAILABLE'],
+  });
+  assert.equal(invHealth.state, 'ALERT');
+  assert.ok(invHealth.reasonCodes.includes('BACKUP_INVENTORY_UNAVAILABLE'));
 });

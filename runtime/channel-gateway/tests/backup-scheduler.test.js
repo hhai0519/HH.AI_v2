@@ -2128,3 +2128,249 @@ test('59. Legacy migration: non-canonical files in root are untouched', () => {
   const backupRenames = renames.filter((r) => r.from.includes('channel-gateway-state.backup-'));
   assert.equal(backupRenames.length, 0); // No non-canonical files renamed
 });
+
+test('60. F2 Canary 1: backups child is symlink triggers immediate ALERT BACKUP_DIRECTORY_UNAVAILABLE and increments consecutiveFailures', () => {
+  const env = createFakeEnv();
+  const repo = createMockRepository();
+  const mockFs = createMockFs({
+    backups: { isFile: false, isDirectory: false, isSymlink: true },
+  });
+
+  const scheduler = new BackupScheduler({
+    repository: repo,
+    stateRoot: SYNTHETIC_STATE_ROOT,
+    now: env.now,
+    setIntervalFn: env.setIntervalFn,
+    clearIntervalFn: env.clearIntervalFn,
+    fs: mockFs,
+  });
+
+  assert.equal(scheduler.consecutiveFailures, 0);
+  scheduler.start();
+  scheduler.stop();
+
+  assert.equal(scheduler.consecutiveFailures, 1);
+  const healthFile = mockFs.files.get('backup-health.json');
+  assert.ok(healthFile, 'backup-health.json must be written');
+  const healthData = JSON.parse(healthFile._rawContent || '{}');
+  assert.equal(healthData.state, 'ALERT');
+  assert.ok(healthData.reasonCodes.includes('BACKUP_DIRECTORY_UNAVAILABLE'));
+  assert.ok(!healthData.reasonCodes.includes('UNKNOWN_BACKUP_DIRECTORY_ENTRY'));
+});
+
+test('61. F2 Canary 2: backups child is regular file triggers immediate ALERT BACKUP_DIRECTORY_UNAVAILABLE and increments consecutiveFailures', () => {
+  const env = createFakeEnv();
+  const repo = createMockRepository();
+  const mockFs = createMockFs({
+    backups: { isFile: true, isDirectory: false, isSymlink: false, size: 100 },
+  });
+
+  const scheduler = new BackupScheduler({
+    repository: repo,
+    stateRoot: SYNTHETIC_STATE_ROOT,
+    now: env.now,
+    setIntervalFn: env.setIntervalFn,
+    clearIntervalFn: env.clearIntervalFn,
+    fs: mockFs,
+  });
+
+  assert.equal(scheduler.consecutiveFailures, 0);
+  scheduler.start();
+  scheduler.stop();
+
+  assert.equal(scheduler.consecutiveFailures, 1);
+  const healthFile = mockFs.files.get('backup-health.json');
+  assert.ok(healthFile, 'backup-health.json must be written');
+  const healthData = JSON.parse(healthFile._rawContent || '{}');
+  assert.equal(healthData.state, 'ALERT');
+  assert.ok(healthData.reasonCodes.includes('BACKUP_DIRECTORY_UNAVAILABLE'));
+  assert.ok(!healthData.reasonCodes.includes('UNKNOWN_BACKUP_DIRECTORY_ENTRY'));
+});
+
+test('62. F2 Canary 3: freshness readdir throws EACCES triggers immediate ALERT BACKUP_DIRECTORY_UNAVAILABLE and increments consecutiveFailures', () => {
+  const env = createFakeEnv();
+  const repo = createMockRepository();
+  const mockFs = createMockFs({});
+  // Override readdirSync to fail when reading backups directory
+  const originalReaddir = mockFs.readdirSync.bind(mockFs);
+  mockFs.readdirSync = (dirPath) => {
+    const isBackups =
+      dirPath.endsWith('backups') || dirPath.endsWith('backups/') || dirPath.endsWith('backups\\');
+    if (isBackups) {
+      const err = new Error('EACCES: permission denied, scandir');
+      err.name = 'PermissionError';
+      err.code = 'EACCES';
+      throw err;
+    }
+    return originalReaddir(dirPath);
+  };
+
+  const scheduler = new BackupScheduler({
+    repository: repo,
+    stateRoot: SYNTHETIC_STATE_ROOT,
+    now: env.now,
+    setIntervalFn: env.setIntervalFn,
+    clearIntervalFn: env.clearIntervalFn,
+    fs: mockFs,
+  });
+
+  assert.equal(scheduler.consecutiveFailures, 0);
+  scheduler.start();
+  scheduler.stop();
+
+  assert.equal(scheduler.consecutiveFailures, 1);
+  const healthFile = mockFs.files.get('backup-health.json');
+  assert.ok(healthFile, 'backup-health.json must be written');
+  const healthData = JSON.parse(healthFile._rawContent || '{}');
+  assert.equal(healthData.state, 'ALERT');
+  assert.ok(healthData.reasonCodes.includes('BACKUP_DIRECTORY_UNAVAILABLE'));
+  assert.ok(!healthData.reasonCodes.includes('UNKNOWN_BACKUP_DIRECTORY_ENTRY'));
+});
+
+test('63. F2 Canary 4 & 5: directory unavailable for 1, 2, and 3 consecutive cycles verifies threshold progression', () => {
+  const env = createFakeEnv();
+  const repo = createMockRepository();
+  const mockFs = createMockFs({
+    backups: { isFile: false, isDirectory: false, isSymlink: true },
+  });
+
+  const scheduler = new BackupScheduler({
+    repository: repo,
+    stateRoot: SYNTHETIC_STATE_ROOT,
+    now: env.now,
+    setIntervalFn: env.setIntervalFn,
+    clearIntervalFn: env.clearIntervalFn,
+    fs: mockFs,
+  });
+
+  // Cycle 1: start()
+  scheduler.start();
+  assert.equal(scheduler.consecutiveFailures, 1);
+  let health = JSON.parse(mockFs.files.get('backup-health.json')._rawContent);
+  assert.equal(health.state, 'ALERT');
+  assert.ok(health.reasonCodes.includes('BACKUP_DIRECTORY_UNAVAILABLE'));
+  assert.ok(!health.reasonCodes.includes('CONSECUTIVE_BACKUP_FAILURES'), 'cycle 1 must not include CONSECUTIVE_BACKUP_FAILURES');
+
+  // Cycle 2: advance clock 1h and tick
+  env.advanceTime(BACKUP_CHECK_INTERVAL_MS);
+  env.tickIntervals();
+  assert.equal(scheduler.consecutiveFailures, 2);
+  health = JSON.parse(mockFs.files.get('backup-health.json')._rawContent);
+  assert.equal(health.state, 'ALERT');
+  assert.ok(health.reasonCodes.includes('BACKUP_DIRECTORY_UNAVAILABLE'));
+  assert.ok(!health.reasonCodes.includes('CONSECUTIVE_BACKUP_FAILURES'), 'cycle 2 must not include CONSECUTIVE_BACKUP_FAILURES');
+
+  // Cycle 3: advance clock 1h and tick
+  env.advanceTime(BACKUP_CHECK_INTERVAL_MS);
+  env.tickIntervals();
+  assert.equal(scheduler.consecutiveFailures, 3);
+  health = JSON.parse(mockFs.files.get('backup-health.json')._rawContent);
+  assert.equal(health.state, 'ALERT');
+  assert.ok(health.reasonCodes.includes('BACKUP_DIRECTORY_UNAVAILABLE'));
+  assert.ok(health.reasonCodes.includes('CONSECUTIVE_BACKUP_FAILURES'), 'cycle 3 must include CONSECUTIVE_BACKUP_FAILURES');
+
+  scheduler.stop();
+});
+
+test('64. F2 Canary 6: post-success inventory readdir failure keeps verified backup success, consecutiveFailures = 0, and writes BACKUP_INVENTORY_UNAVAILABLE ALERT', () => {
+  const env = createFakeEnv(1_700_000_000_000);
+  const repo = createMockRepository();
+  const mockFs = createMockFs({});
+
+  // Allow ensureBackupsDirectory and initial freshness check to pass,
+  // but fail during post-backup inventory readdir
+  let readdirCallCount = 0;
+  const originalReaddir = mockFs.readdirSync.bind(mockFs);
+  mockFs.readdirSync = (dirPath) => {
+    const isBackups =
+      dirPath.endsWith('backups') || dirPath.endsWith('backups/') || dirPath.endsWith('backups\\');
+    if (isBackups) {
+      readdirCallCount++;
+      // Call 1 is freshness check in Step 2 -> return empty so backup is due
+      if (readdirCallCount === 1) {
+        return [];
+      }
+      // Call 2 is post-backup inventory in Step 6 -> simulate readdir error
+      if (readdirCallCount >= 2) {
+        const err = new Error('EACCES: permission denied, scandir');
+        err.name = 'PermissionError';
+        err.code = 'EACCES';
+        throw err;
+      }
+    }
+    return originalReaddir(dirPath);
+  };
+
+  const scheduler = new BackupScheduler({
+    repository: repo,
+    stateRoot: SYNTHETIC_STATE_ROOT,
+    now: env.now,
+    setIntervalFn: env.setIntervalFn,
+    clearIntervalFn: env.clearIntervalFn,
+    fs: mockFs,
+  });
+
+  scheduler.start();
+  scheduler.stop();
+
+  // 1. Repository createVerifiedBackup was called and succeeded
+  assert.equal(repo.calls.length, 1, 'Backup must have been created');
+  // 2. consecutiveFailures remains 0 (not incremented because backup succeeded)
+  assert.equal(scheduler.consecutiveFailures, 0, 'consecutiveFailures must remain 0 on post-backup inventory error');
+  assert.equal(scheduler.lastSuccessAt, 1_700_000_000_000);
+
+  // 3. Health is written with ALERT and BACKUP_INVENTORY_UNAVAILABLE
+  const healthFile = mockFs.files.get('backup-health.json');
+  assert.ok(healthFile, 'backup-health.json must be written');
+  const healthData = JSON.parse(healthFile._rawContent || '{}');
+  assert.equal(healthData.state, 'ALERT');
+  assert.ok(healthData.reasonCodes.includes('BACKUP_INVENTORY_UNAVAILABLE'));
+  assert.ok(!healthData.reasonCodes.includes('CONSECUTIVE_BACKUP_FAILURES'));
+});
+
+test('65. F2 Privacy: directory and inventory failure diagnostics do not leak sensitive paths or secret tokens', () => {
+  const env = createFakeEnv();
+  const repo = createMockRepository();
+  const mockFs = createMockFs({});
+
+  const sensitiveWindowsPath = 'C:\\SecretUser\\Token_ABC123\\PrivateBackups';
+  const sensitiveSecret = 'SECRET_TOKEN_XYZ_789';
+
+  mockFs.readdirSync = (dirPath) => {
+    const isBackups =
+      dirPath.endsWith('backups') || dirPath.endsWith('backups/') || dirPath.endsWith('backups\\');
+    if (isBackups) {
+      const err = new Error(`Scandir failure at ${sensitiveWindowsPath} with token ${sensitiveSecret}`);
+      err.name = 'AccessDeniedError';
+      err.code = 'EACCES';
+      throw err;
+    }
+    return [];
+  };
+
+  const loggedErrors = [];
+  const mockLogger = {
+    error: (msg) => loggedErrors.push(msg),
+    warn: (msg) => loggedErrors.push(msg),
+  };
+
+  const scheduler = new BackupScheduler({
+    repository: repo,
+    stateRoot: SYNTHETIC_STATE_ROOT,
+    now: env.now,
+    setIntervalFn: env.setIntervalFn,
+    clearIntervalFn: env.clearIntervalFn,
+    fs: mockFs,
+    logger: mockLogger,
+  });
+
+  scheduler.start();
+  scheduler.stop();
+
+  assert.ok(loggedErrors.length >= 1, 'Logger must record bounded diagnostic');
+  for (const msg of loggedErrors) {
+    assert.ok(!msg.includes(sensitiveWindowsPath), 'Diagnostic must not leak sensitive path');
+    assert.ok(!msg.includes(sensitiveSecret), 'Diagnostic must not leak sensitive secret');
+    assert.ok(!msg.includes('Scandir failure'), 'Diagnostic must not leak raw err.message');
+  }
+});

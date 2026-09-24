@@ -4963,20 +4963,29 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - 歷史備份平滑過渡：自動偵測並以 `renameSync` 將 `stateRoot` 根目錄舊正規備份遷移至 `backups/`。
   - 容量保留與最少數量下限：Local Config schemaVersion 3 新增 `backup` 區塊（預設 1GB / 3 份），維持 v2 雙向相容；超額清理按 `mtimeMs` 決定性排序，保留最新 3 份下限（Floor of 3）。
   - 雙倍剩餘空間安全檢查：備份前檢查磁碟剩餘空間 >= `2 * dbSize`，不足時安全跳過不呼叫 `VACUUM INTO`。
-  - 備份健康狀態原子寫入：動態評估（HEALTHY, DEGRADED, UNHEALTHY）並透過 `atomicFs.js` 原子寫入 `backup-health.json`。
+  - 備份健康狀態原子寫入：動態評估（OK, WARN, ALERT）並透過模組內任務區域原子寫入器（task-local atomic JSON writer）安全寫入 `stateRoot/backup-health.json`。
   - 隱私防護：健康狀態與日誌零路徑、零 Token、零 raw error 洩漏。
   - SQLite .gitignore 防護：忽略 `*.sqlite3`、`*.sqlite3-wal`、`*.sqlite3-shm`，並具備 negative canary 測試。
   - 零應用層加密（BitLocker 使用者責任）；Node.js 內建 `node:sqlite` 升級監控點。
-- **候選審查與有界自我修復（Candidate Review & Bounded Self-Repair R1）**：
-  - R0 候選提交 `50503a5dd33e8092e153c6f8f3255594449b9cfb` 觸發 GitHub Actions Run `35965479245`。
-  - 公有中繼資料結果：`gateway-windows` = completed / success；`verify` = completed / failure。
-  - External Macro 獨立診斷根因：跨平台隱私測試 harness 缺陷（cross-platform privacy test harness defect in `backup-scheduler.test.js` Test 50），非生產 runtime 實作缺陷（not runtime defect）。
-  - 修復方案（Revision 1）：Test 50 分離 platform-valid scheduler `stateRoot`（採用 `SYNTHETIC_STATE_ROOT`）與注入之合成錯誤訊息中的 sensitive Windows path。
-  - 狀態：R1 awaiting candidate verification。
+- **候選審查與有界自我修復（Candidate Review & Bounded Repair R1 / R2）**：
+  - R0 候選提交 `50503a5dd33e8092e153c6f8f3255594449b9cfb` 觸發 GitHub Actions Run `35965479245`（gateway-windows: success, verify: failure；跨平台隱私測試 harness 缺陷）。
+  - R1 候選提交 `c1763878aef3c0d87a0a3eddbcf3c3956f55eb19` 觸發 GitHub Actions Run `35969326893`（verify: success, gateway-windows: success）。
+  - External Macro 獨立審查判定：`MACRO AUDIT = HOLD`，`ACCEPT STATUS = BOUNDED REPAIR REQUIRED`。
+  - Findings：
+    - F1（mutation-insensitive safety negative controls）：M3 retention pressure canary 需保證刪除迴圈確實觸發且非正規檔案不被刪除；M4 legacy backup collision canary 需驗證 renameSync 未被調用、無 copy fallback、兩檔案未被替換；M5 canonical-named symlink canary 需驗證符號連結在容量超額時不被刪除；M10 canonical-realpath canary 需驗證 nominal safe 路徑在 realpath 解析為 OneDrive 時拋出例外。
+    - F2（backup-directory-unavailable health semantics）：備份目錄或庫存不可用時寫入 `BACKUP_DIRECTORY_UNAVAILABLE` 或 `BACKUP_INVENTORY_UNAVAILABLE`，評估為 `ALERT`；失敗計數器累加（3 cycle consecutive alert）；成功備份後若庫存失敗，備份仍視為成功（`consecutiveFailures` 為 0）但健康狀態標記 `ALERT`。
+    - F3（治理文件漂移）：校正 ADR-0023 與 runtime `AGENTS.md` 之健康狀態檔路徑（`stateRoot/backup-health.json`）、狀態枚舉（`OK`/`WARN`/`ALERT`）、任務區域原子寫入器（task-local writer，非 `shared/atomicFs.js`）、原因碼定義、`totalBytes` 語意（受管正規備份檔案累計位元組）與十進位 1GB = 1,000,000,000 bytes 定義。
+  - Claude v2 審查記錄為 non-authoritative advisory；External Macro 獨立復現並成立上述 findings。
+  - R2 有界修復（Revision 2 Bounded Repair）：
+    - F1 負向控制強化：於 `backup-hygiene.test.js` 補強 Test 8（M4 canary）、新增 Test 16（M3 canary）、Test 17（M5 canary）；於 `local-config-loader.test.js` 新增 Test 45（M10 canary）；4 項反事實突變（M3, M4, M5, M10）經獨立沙盒實測證明全部呈現確定性 RED 失敗。
+    - F2 健康語意修復：`backup-hygiene.js` 與 `backup-scheduler.js` 實作立即 `ALERT`、失敗計數累加、3-cycle alert、後續庫存失敗獨立語意；新增 Tests 18, 19, 60–65。
+    - F3 治理文件對齊：更新 `docs/adr/0023-channel-gateway-state-store-sqlite.md` §9 與 `runtime/channel-gateway/AGENTS.md` §7。
+  - 狀態：R2 authorized bounded repair in progress；awaiting External Macro audit（嚴禁宣稱 R2 PASS / ACCEPTED / CLOSED）。
 - **後續工作路由與邊界保留（Next Work Routing & Boundary Preservation）**：
   - NEXT_WORK 保持 E-03，NEXT_SLICE 保持 TG-MVP-09A（進行中，AWAITING EXTERNAL MACRO AUDIT）。
   - TG-MVP-10 / 11 / 12 / 13 / 14 / 15 維持待辦零實作。
   - B-107 保持 OPEN / RESIDUAL / NON-BLOCKING。
   - Node punycode deprecation warning 維持 B-100 R-D NONBLOCKING。
   - §5.4 維持純指標導向（POINTER_ONLY），不保存動態任務佇列或狀態副本。
+
 

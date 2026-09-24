@@ -112,7 +112,7 @@ ADR-0022 仍保留為 Channel Gateway 之歷史與總體架構權威（Historica
 
 ### 9. 狀態資料庫與備份衛生治理 (State Database & Backup Hygiene — TG-MVP-09A)
 
-2026-09-24，TG-MVP-09A 正式完工落地，徹底解決 TG-MVP-09 暫留之過渡期無清理與衛生缺口，達成 real Telegram go-live 前之 hard gate：
+2026-09-24，TG-MVP-09A 狀態資料庫與備份清理衛生規範（實作候選中，等待外部審查 / implementation candidate / awaiting External Macro audit），解決 TG-MVP-09 暫留之過渡期無清理與衛生缺口，達成 real Telegram go-live 前之 hard gate：
 
 1. **SQLite stateRoot 位置守衛 (stateRoot Location Guard)**：
    - 延續 ADR-0022 D24 與 ADR-0023 §8，`assertSafeStateRootLocation` 嚴格限制 `stateRoot` 必須為本機目錄。
@@ -125,8 +125,9 @@ ADR-0022 仍保留為 Channel Gateway 之歷史與總體架構權威（Historica
 3. **舊版根目錄備份平滑過渡 (Legacy Backup Transition & Migration)**：
    - 啟動與掃描時，自動偵測殘留於 `stateRoot` 根目錄之歷史正規備份檔案（`channel-gateway-state.backup-*.sqlite3`）。
    - 採用原子重新命名（`fs.renameSync`）平滑搬移至 `stateRoot/backups/`，搬移後納入同一衛生保留管理，確保向後相容。
-4. **容量保留與最少數量下限 (1GB / Latest-3 Capacity Retention)**：
-   - 本機設定檔 Local Config schemaVersion 3 新增 `backup` 區塊（預設 `maxTotalBytes: 1_000_000_000` 即 1GB，`minKeepCount: 3`），維持與 schemaVersion 2 雙向相容。
+4. **容量保留與最少數量下限 (1,000,000,000 Bytes / Latest-3 Capacity Retention)**：
+   - 本機設定檔 Local Config schemaVersion 3 新增 `backup` 區塊（單位為精確十進位位元組 exact decimal bytes，預設 `maxTotalBytes: 1_000_000_000` 即 1,000,000,000 位元組，嚴禁宣告為 1 GiB，`minKeepCount: 3`），維持與 schemaVersion 2 雙向相容。
+   - `totalBytes` 嚴格定義為受管正規備份之總位元組數（managed canonical backup bytes），不計入 `backups/` 目錄內之非正規未受管檔案。
    - 實施容量驅動保留（Capacity-Based Retention），不設無條件天數刪除限制（no age limit）。
    - 嚴格保障最少保留最新 3 份合規備份（Floor of 3），即使總容量超出 `maxTotalBytes`，只要備份數 <= `minKeepCount` 絕對不刪除最新 3 份。
 5. **決定性清理順序 (Deterministic Cleanup Order)**：
@@ -134,16 +135,16 @@ ADR-0022 仍保留為 Channel Gateway 之歷史與總體架構權威（Historica
    - 超額清理依 `mtimeMs` 由舊至新排序；若時間戳相同則以檔名字典順序打破平局（tie-breaker），杜絕非決定性刪除。
 6. **剩餘磁碟空間雙倍安全檢查 (Free-Space Safety Check)**：
    - 執行 `createVerifiedBackup` 前，必須檢查備份目標磁碟之剩餘空間（`bavail * bsize`）。
-   - 剩餘空間必須至少大於當前資料庫大小之 2 倍（`2 * dbSize`）；若空間不足則安全略過備份，不觸發 SQLite `VACUUM INTO`，記錄 `FREE_SPACE_INSUFFICIENT` 診斷，進程維持正常服務。
+   - 剩餘空間必須至少大於當前資料庫大小之 2 倍（`2 * dbSize`）；若空間不足則安全略過備份，不觸發 SQLite `VACUUM INTO`，記錄 `INSUFFICIENT_FREE_SPACE` 診斷，進程維持正常服務。
 7. **備份健康狀態追蹤與原子寫入 (Backup Health State Tracking)**：
-   - 備份排程器動態評估備份健康狀態：
-     - `HEALTHY`：最新成功備份在 48 小時內且連續失敗次數 < 3。
-     - `DEGRADED`：連續失敗次數 >= 3，或最新成功備份距今已超過 48 小時。
-     - `UNHEALTHY`：磁碟空間不足（disk full）、關鍵路徑無法存取或連續嚴重失敗。
-   - 健康狀態快照以非敏感格式寫入 `stateRoot/backups/backup-health.json`，寫入嚴格透過 `shared/atomicFs.js` 確保原子性與抗當機損毀。
+   - 備份排程器動態評估備份健康狀態（Health States: `OK` / `WARN` / `ALERT`）：
+     - `ALERT`：嚴重狀況，包含最新成功備份超過 48 小時未產生（`NO_SUCCESSFUL_BACKUP_48H`）、連續失敗次數 >= 3（`CONSECUTIVE_BACKUP_FAILURES`）、單一備份超出容量上限（`SINGLE_BACKUP_EXCEEDS_CAPACITY`）、磁碟剩餘空間不足（`INSUFFICIENT_FREE_SPACE`）、空間檢查失敗（`FREE_SPACE_CHECK_FAILED`）、備份目錄無法存取（`BACKUP_DIRECTORY_UNAVAILABLE`）、或備份目錄清點存取失敗（`BACKUP_INVENTORY_UNAVAILABLE`）。
+     - `WARN`：非致命警告，包含保留下限容量衝突（`MIN_KEEP_CAPACITY_CONFLICT`）、備份刪除失敗（`BACKUP_DELETE_FAILED`）、非正規檔案存在（`UNKNOWN_BACKUP_DIRECTORY_ENTRY`）、歷史備份衝突（`LEGACY_BACKUP_COLLISION`）、歷史備份遷移失敗（`LEGACY_BACKUP_MIGRATION_FAILED`）。
+     - `OK`：所有檢查正常且無任何警報。
+   - 健康狀態快照以非敏感格式寫入 `stateRoot/backup-health.json`（非 `stateRoot/backups/` 子目錄內），寫入嚴格透過 Channel Gateway 專屬 task-local bounded atomic JSON writer 確保原子性與抗當機損毀；不採用 `shared/atomicFs.js`（因 `shared/atomicFs.js` 現有診斷可能反射目標路徑或原始錯誤，TG-MVP-09A 維持 `shared/atomicFs.js` 零修改）。
 8. **隱私與機敏資訊安全防護 (Minimal Privacy Protection)**：
    - 備份健康狀態檔案（`backup-health.json`）與所有排程日誌嚴格遵循隱私防護邊界：絕對不包含任何本機絕對路徑、資料庫完整路徑、原始例外訊息（Raw Error Message）、Token、金鑰或訊息內容。
-   - 診斷日誌僅輸出受控枚舉名稱（如 `FREE_SPACE_INSUFFICIENT`、`DIR_CREATE_FAILED`、`ERROR_CODE`）。
+   - 診斷日誌僅輸出受控枚舉名稱（如 `INSUFFICIENT_FREE_SPACE`、`BACKUP_DIRECTORY_UNAVAILABLE`、`BACKUP_INVENTORY_UNAVAILABLE`、`DIR_CREATE_FAILED`、`ERROR_CODE`）。
 9. **SQLite 檔案 Git 忽略防護 (SQLite Gitignore Protection)**：
    - `.gitignore` 正式收錄 `*.sqlite3`、`*.sqlite3-wal`、`*.sqlite3-shm`，杜絕執行期資料庫或備份檔案意外進入版本庫。
    - CI 設有 negative canary 確保追蹤原始碼與測試不被誤擋。

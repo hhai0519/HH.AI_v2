@@ -1212,3 +1212,47 @@ test('LocalConfigLoader - 44. stateRoot location guard: archiveRoot inside OneDr
     harness.cleanup();
   }
 });
+
+test('LocalConfigLoader - 45. stateRoot canonical realpath sync-root canary (M10): nominal safe link resolving to OneDrive target is rejected', () => {
+  const harness = createTempHarness();
+  try {
+    const oneDriveStateTarget = path.join(harness.externalDir, 'OneDrive', 'StateTarget');
+    fs.mkdirSync(oneDriveStateTarget, { recursive: true });
+
+    const safeStateLink = path.join(harness.externalDir, 'safe-state-link');
+    fs.symlinkSync(
+      oneDriveStateTarget,
+      safeStateLink,
+      process.platform === 'win32' ? 'junction' : 'dir'
+    );
+
+    // 1. Nominal check passes: path string itself contains no OneDrive or sync segment
+    const { assertSafeStateRootLocation } = require('../core/data-location-config');
+    assert.doesNotThrow(() => {
+      assertSafeStateRootLocation(safeStateLink);
+    });
+
+    // 2. Realpath resolves into OneDrive
+    const canonicalTarget = fs.realpathSync(safeStateLink);
+    assert.ok(
+      canonicalTarget.includes('OneDrive'),
+      `Canonical target must resolve to OneDrive, got: ${canonicalTarget}`
+    );
+
+    const badConfig = {
+      ...harness.validConfig,
+      dataLocations: {
+        ...harness.validConfig.dataLocations,
+        stateRoot: safeStateLink,
+      },
+    };
+
+    // 3. Startup validation fails after realpathSync
+    assert.throws(
+      () => validateStartupDataLocations(badConfig),
+      /stateRoot must not reside within a synchronized folder \('OneDrive'\)/
+    );
+  } finally {
+    harness.cleanup();
+  }
+});

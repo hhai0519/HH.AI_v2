@@ -346,8 +346,8 @@ function inventoryAndCleanupBackups(canonicalBackupRoot, options = {}) {
       totalBytes: 0,
       eligibleBackups: [],
       deletedBackups: [],
-      warnings: ['UNKNOWN_BACKUP_DIRECTORY_ENTRY'],
-      alerts: [],
+      warnings: [],
+      alerts: ['BACKUP_INVENTORY_UNAVAILABLE'],
     };
   }
 
@@ -642,6 +642,8 @@ function evaluateHealthState(params) {
     'SINGLE_BACKUP_EXCEEDS_CAPACITY',
     'INSUFFICIENT_FREE_SPACE',
     'FREE_SPACE_CHECK_FAILED',
+    'BACKUP_DIRECTORY_UNAVAILABLE',
+    'BACKUP_INVENTORY_UNAVAILABLE',
   ]);
 
   let state = 'OK';
