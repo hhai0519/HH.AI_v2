@@ -1740,7 +1740,7 @@ test('50. Privacy: atomic health write bounded diagnostics do not leak sensitive
 
   const scheduler = new BackupScheduler({
     repository: repo,
-    stateRoot: sensitivePath,
+    stateRoot: SYNTHETIC_STATE_ROOT,
     now: env.now,
     setIntervalFn: env.setIntervalFn,
     clearIntervalFn: env.clearIntervalFn,

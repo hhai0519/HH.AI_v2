@@ -4967,6 +4967,12 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - 隱私防護：健康狀態與日誌零路徑、零 Token、零 raw error 洩漏。
   - SQLite .gitignore 防護：忽略 `*.sqlite3`、`*.sqlite3-wal`、`*.sqlite3-shm`，並具備 negative canary 測試。
   - 零應用層加密（BitLocker 使用者責任）；Node.js 內建 `node:sqlite` 升級監控點。
+- **候選審查與有界自我修復（Candidate Review & Bounded Self-Repair R1）**：
+  - R0 候選提交 `50503a5dd33e8092e153c6f8f3255594449b9cfb` 觸發 GitHub Actions Run `35965479245`。
+  - 公有中繼資料結果：`gateway-windows` = completed / success；`verify` = completed / failure。
+  - External Macro 獨立診斷根因：跨平台隱私測試 harness 缺陷（cross-platform privacy test harness defect in `backup-scheduler.test.js` Test 50），非生產 runtime 實作缺陷（not runtime defect）。
+  - 修復方案（Revision 1）：Test 50 分離 platform-valid scheduler `stateRoot`（採用 `SYNTHETIC_STATE_ROOT`）與注入之合成錯誤訊息中的 sensitive Windows path。
+  - 狀態：R1 awaiting candidate verification。
 - **後續工作路由與邊界保留（Next Work Routing & Boundary Preservation）**：
   - NEXT_WORK 保持 E-03，NEXT_SLICE 保持 TG-MVP-09A（進行中，AWAITING EXTERNAL MACRO AUDIT）。
   - TG-MVP-10 / 11 / 12 / 13 / 14 / 15 維持待辦零實作。
