@@ -48,3 +48,8 @@ id_ed25519
 /gather*.py
 *.tmp
 /diff*.txt
+
+# SQLite runtime artifacts (TG-MVP-09A)
+*.sqlite3
+*.sqlite3-wal
+*.sqlite3-shm

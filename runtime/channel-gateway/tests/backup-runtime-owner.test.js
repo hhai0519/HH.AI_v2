@@ -300,17 +300,19 @@ test('14. real integration test: no prior backup -> exactly one verified backup 
   );
   fs.mkdirSync(tempDir, { recursive: true });
 
-  try {
-    const owner = new BackupRuntimeOwner({
-      stateRoot: tempDir,
-    });
+  const owner = new BackupRuntimeOwner({
+    stateRoot: tempDir,
+  });
 
+  try {
     owner.start();
     assert.equal(owner.isStarted, true);
     assert.ok(owner.repository instanceof SqliteStateRepository);
 
-    // Check directory contents
-    const files = fs.readdirSync(tempDir);
+    // Check directory contents: backups must be in stateRoot/backups/
+    const backupDir = path.join(tempDir, 'backups');
+    assert.equal(fs.existsSync(backupDir), true);
+    const files = fs.readdirSync(backupDir);
     const backupFiles = files.filter(
       (f) => f.startsWith('channel-gateway-state.backup-') && f.endsWith('.sqlite3')
     );
@@ -318,10 +320,16 @@ test('14. real integration test: no prior backup -> exactly one verified backup 
     // Exactly one verified backup artifact created
     assert.equal(backupFiles.length, 1);
 
-    const backupPath = path.join(tempDir, backupFiles[0]);
+    const backupPath = path.join(backupDir, backupFiles[0]);
     const stat = fs.lstatSync(backupPath);
     assert.equal(stat.isFile(), true);
     assert.equal(stat.isSymbolicLink(), false);
+
+    // Root-level of stateRoot must have 0 backups
+    const rootFiles = fs.readdirSync(tempDir).filter(
+      (f) => f.startsWith('channel-gateway-state.backup-') && f.endsWith('.sqlite3')
+    );
+    assert.equal(rootFiles.length, 0);
 
     const repoRef = owner.repository;
     owner.stop();
@@ -334,6 +342,9 @@ test('14. real integration test: no prior backup -> exactly one verified backup 
       /Repository is closed/
     );
   } finally {
+    try {
+      owner.stop();
+    } catch (_) {}
     fs.rmSync(tempDir, { recursive: true, force: true });
   }
 });
@@ -345,24 +356,26 @@ test('15. real integration test: with existing fresh backup (<24h), owner startu
   );
   fs.mkdirSync(tempDir, { recursive: true });
 
+  const owner1 = new BackupRuntimeOwner({ stateRoot: tempDir });
+  const owner2 = new BackupRuntimeOwner({ stateRoot: tempDir });
+
   try {
     // 1. First owner run creates the initial backup
-    const owner1 = new BackupRuntimeOwner({ stateRoot: tempDir });
     owner1.start();
     owner1.stop();
 
-    const filesAfterFirst = fs.readdirSync(tempDir);
+    const backupDir = path.join(tempDir, 'backups');
+    const filesAfterFirst = fs.readdirSync(backupDir);
     const backupFilesFirst = filesAfterFirst.filter(
       (f) => f.startsWith('channel-gateway-state.backup-') && f.endsWith('.sqlite3')
     );
     assert.equal(backupFilesFirst.length, 1);
 
     // 2. Second owner run on the same stateRoot immediately after (< 24h)
-    const owner2 = new BackupRuntimeOwner({ stateRoot: tempDir });
     owner2.start();
     owner2.stop();
 
-    const filesAfterSecond = fs.readdirSync(tempDir);
+    const filesAfterSecond = fs.readdirSync(backupDir);
     const backupFilesSecond = filesAfterSecond.filter(
       (f) => f.startsWith('channel-gateway-state.backup-') && f.endsWith('.sqlite3')
     );
@@ -370,6 +383,12 @@ test('15. real integration test: with existing fresh backup (<24h), owner startu
     // Still exactly one backup artifact! No second backup created.
     assert.equal(backupFilesSecond.length, 1);
   } finally {
+    try {
+      owner1.stop();
+    } catch (_) {}
+    try {
+      owner2.stop();
+    } catch (_) {}
     fs.rmSync(tempDir, { recursive: true, force: true });
   }
 });
@@ -542,3 +561,60 @@ test('22. F2: repository.close failure logs bounded non-secret diagnostic withou
   assert.equal(msg.includes('MySecret123'), false, 'Secret must not be logged');
   assert.equal(msg.includes('Failed to close repo'), false, 'Raw message must not be logged');
 });
+
+test('23. TG-MVP-09A: top-level backupPolicy forwarded to scheduler factory, immutable override guarded', () => {
+  const tracker = createMockLifecycleTracker();
+  let passedOpts = null;
+  const policy = { maxTotalBytes: 500_000_000, minKeepCount: 5 };
+
+  const owner = new BackupRuntimeOwner({
+    stateRoot: SYNTHETIC_STATE_ROOT,
+    repositoryFactory: () => tracker.mockRepo,
+    schedulerFactory: (repo, root, opts) => {
+      passedOpts = opts;
+      return tracker.mockScheduler;
+    },
+    backupPolicy: policy,
+  });
+
+  assert.deepEqual(owner.backupPolicy, policy);
+  owner.start();
+  owner.stop();
+
+  assert.ok(passedOpts);
+  assert.deepEqual(passedOpts.backupPolicy, policy);
+});
+
+test('24. TG-MVP-09A: schedulerOptions.backupPolicy forbidden fail-closed', () => {
+  assert.throws(
+    () =>
+      new BackupRuntimeOwner({
+        stateRoot: SYNTHETIC_STATE_ROOT,
+        schedulerOptions: { backupPolicy: { maxTotalBytes: 100 } },
+      }),
+    /schedulerOptions contains forbidden or unknown key: 'backupPolicy'/
+  );
+});
+
+test('25. TG-MVP-09A: statfsSync permitted in schedulerOptions and forwarded to scheduler', () => {
+  const tracker = createMockLifecycleTracker();
+  let passedOpts = null;
+  const fakeStatfs = () => ({ bavail: 1000, bsize: 4096 });
+
+  const owner = new BackupRuntimeOwner({
+    stateRoot: SYNTHETIC_STATE_ROOT,
+    repositoryFactory: () => tracker.mockRepo,
+    schedulerFactory: (repo, root, opts) => {
+      passedOpts = opts;
+      return tracker.mockScheduler;
+    },
+    schedulerOptions: { statfsSync: fakeStatfs },
+  });
+
+  owner.start();
+  owner.stop();
+
+  assert.ok(passedOpts);
+  assert.equal(passedOpts.statfsSync, fakeStatfs);
+});
+

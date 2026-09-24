@@ -110,6 +110,49 @@ ADR-0022 仍保留為 Channel Gateway 之歷史與總體架構權威（Historica
    - `node:sqlite DatabaseSync` 與 `VACUUM INTO` 為同步操作，執行期間可能短暫阻塞 Node 單一事件迴圈（Event Loop）。
    - TG-MVP-09 接受此已知特性（前題為 pre-go-live、資料庫規模小、每日最多一份成功備份）。若未來資料庫規模擴大導致阻塞不可接受，演進方向為 Worker Thread 或等效隔離機制，不在本輪實作。
 
+### 9. 狀態資料庫與備份衛生治理 (State Database & Backup Hygiene — TG-MVP-09A)
+
+2026-09-24，TG-MVP-09A 正式完工落地，徹底解決 TG-MVP-09 暫留之過渡期無清理與衛生缺口，達成 real Telegram go-live 前之 hard gate：
+
+1. **SQLite stateRoot 位置守衛 (stateRoot Location Guard)**：
+   - 延續 ADR-0022 D24 與 ADR-0023 §8，`assertSafeStateRootLocation` 嚴格限制 `stateRoot` 必須為本機目錄。
+   - 嚴格禁止系統關鍵路徑（如 Windows、Program Files、System32 等）、Git 版本庫根目錄、網路 UNC 掛載點（包含標準 UNC `\\server\share` 與擴充 UNC `\\?\UNC\...`）、以及 OneDrive / 同步軟體受管目錄。
+   - 守衛僅限於 `stateRoot`，不誤判位於 redirected Desktop 之 `archiveRoot`。
+2. **單一備份目錄收斂 (Single Verified-Backup Location)**：
+   - 備份檔案唯一合法存放路徑為 `stateRoot/backups/` 子目錄。
+   - 建立唯一的目錄自動建立例外：僅允許在已通過安全驗證之 canonical `stateRoot` 底下，由 Gateway 自行建立並維護 `backups/` 子目錄（`ensureBackupsDirectory`）；除此以外維持 Zero Directory Auto-Create 原則。
+   - 嚴禁於 `stateRoot` 根目錄直接產出備份。
+3. **舊版根目錄備份平滑過渡 (Legacy Backup Transition & Migration)**：
+   - 啟動與掃描時，自動偵測殘留於 `stateRoot` 根目錄之歷史正規備份檔案（`channel-gateway-state.backup-*.sqlite3`）。
+   - 採用原子重新命名（`fs.renameSync`）平滑搬移至 `stateRoot/backups/`，搬移後納入同一衛生保留管理，確保向後相容。
+4. **容量保留與最少數量下限 (1GB / Latest-3 Capacity Retention)**：
+   - 本機設定檔 Local Config schemaVersion 3 新增 `backup` 區塊（預設 `maxTotalBytes: 1_000_000_000` 即 1GB，`minKeepCount: 3`），維持與 schemaVersion 2 雙向相容。
+   - 實施容量驅動保留（Capacity-Based Retention），不設無條件天數刪除限制（no age limit）。
+   - 嚴格保障最少保留最新 3 份合規備份（Floor of 3），即使總容量超出 `maxTotalBytes`，只要備份數 <= `minKeepCount` 絕對不刪除最新 3 份。
+5. **決定性清理順序 (Deterministic Cleanup Order)**：
+   - 清理時機嚴格限制於「新備份成功驗證寫入後」（cleanup after successful backup），備份失敗時嚴禁刪除任何既有備份。
+   - 超額清理依 `mtimeMs` 由舊至新排序；若時間戳相同則以檔名字典順序打破平局（tie-breaker），杜絕非決定性刪除。
+6. **剩餘磁碟空間雙倍安全檢查 (Free-Space Safety Check)**：
+   - 執行 `createVerifiedBackup` 前，必須檢查備份目標磁碟之剩餘空間（`bavail * bsize`）。
+   - 剩餘空間必須至少大於當前資料庫大小之 2 倍（`2 * dbSize`）；若空間不足則安全略過備份，不觸發 SQLite `VACUUM INTO`，記錄 `FREE_SPACE_INSUFFICIENT` 診斷，進程維持正常服務。
+7. **備份健康狀態追蹤與原子寫入 (Backup Health State Tracking)**：
+   - 備份排程器動態評估備份健康狀態：
+     - `HEALTHY`：最新成功備份在 48 小時內且連續失敗次數 < 3。
+     - `DEGRADED`：連續失敗次數 >= 3，或最新成功備份距今已超過 48 小時。
+     - `UNHEALTHY`：磁碟空間不足（disk full）、關鍵路徑無法存取或連續嚴重失敗。
+   - 健康狀態快照以非敏感格式寫入 `stateRoot/backups/backup-health.json`，寫入嚴格透過 `shared/atomicFs.js` 確保原子性與抗當機損毀。
+8. **隱私與機敏資訊安全防護 (Minimal Privacy Protection)**：
+   - 備份健康狀態檔案（`backup-health.json`）與所有排程日誌嚴格遵循隱私防護邊界：絕對不包含任何本機絕對路徑、資料庫完整路徑、原始例外訊息（Raw Error Message）、Token、金鑰或訊息內容。
+   - 診斷日誌僅輸出受控枚舉名稱（如 `FREE_SPACE_INSUFFICIENT`、`DIR_CREATE_FAILED`、`ERROR_CODE`）。
+9. **SQLite 檔案 Git 忽略防護 (SQLite Gitignore Protection)**：
+   - `.gitignore` 正式收錄 `*.sqlite3`、`*.sqlite3-wal`、`*.sqlite3-shm`，杜絕執行期資料庫或備份檔案意外進入版本庫。
+   - CI 設有 negative canary 確保追蹤原始碼與測試不被誤擋。
+10. **無應用層備份加密（BitLocker 使用者責任）**：
+    - TG-MVP-09A 備份維持 SQLite 原生資料格式，不引入自製應用層加密（no application-level encryption in 09A）。
+    - 磁碟靜態資料加密（Encryption at Rest）明確定義為使用者作業系統層級責任（USER_RESPONSIBILITY BitLocker on Windows）。
+11. **Node.js 內建 node:sqlite 未來升級監控點 (node:sqlite Future-Upgrade Watchpoint)**：
+    - 持續監控 Node.js 原生 `node:sqlite` 之 API 演進（Node 24.x 穩定性與後續 LTS 升級），保留同步與未來非同步執行之適配彈性。
+
 ## Consequences
 
 1. **治理分層明確化**：本決策確立了持久化技術路線的重大轉變。相關規則同步落地於 `runtime/channel-gateway/AGENTS.md`，根目錄 `AGENTS.md` 僅保留通用的目錄範圍規則擴充，維持漸進式揭露。

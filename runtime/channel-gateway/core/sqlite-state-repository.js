@@ -41,6 +41,7 @@ const path = require('node:path');
 const crypto = require('node:crypto');
 const { DatabaseSync } = require('node:sqlite');
 const { isAbsolutePath } = require('./data-location-config');
+const { ensureBackupsDirectory } = require('./backup-hygiene');
 
 const SQLITE_STATE_SCHEMA_VERSION = 4;
 const SQLITE_BUSY_TIMEOUT_MS = 5000;
@@ -913,16 +914,17 @@ function executeVerifiedBackup(db, canonicalStateRoot, expectedSourceSchemaVersi
   const sourceTablesBefore = Array.from(getCanonicalUserTableNames(db));
   const sourceDataVersionBefore = getDataVersion(db);
 
-  // 2. Generate safe internal backup filename
+  // 2. Generate safe internal backup filename inside stateRoot/backups/
+  const backupRoot = ensureBackupsDirectory(canonicalStateRoot);
   const uniqueId = crypto.randomUUID();
   const backupFilename = `channel-gateway-state.backup-v${expectedSourceSchemaVersion}-${uniqueId}.sqlite3`;
-  const backupDestination = path.join(canonicalStateRoot, backupFilename);
+  const backupDestination = path.join(backupRoot, backupFilename);
 
   // 3. Pre-execution path confinement check
-  const nominalRel = path.relative(canonicalStateRoot, backupDestination);
+  const nominalRel = path.relative(backupRoot, backupDestination);
   if (nominalRel === '..' || nominalRel.startsWith('..' + path.sep) || path.isAbsolute(nominalRel)) {
     throw new Error(
-      `Backup destination path escapes canonical state root: '${backupDestination}' is outside '${canonicalStateRoot}'`
+      `Backup destination path escapes backup root: '${backupDestination}' is outside '${backupRoot}'`
     );
   }
 
@@ -977,10 +979,10 @@ function executeVerifiedBackup(db, canonicalStateRoot, expectedSourceSchemaVersi
     );
   }
 
-  const realRel = path.relative(canonicalStateRoot, canonicalBackup);
+  const realRel = path.relative(backupRoot, canonicalBackup);
   if (realRel === '..' || realRel.startsWith('..' + path.sep) || path.isAbsolute(realRel)) {
     throw new Error(
-      `Backup file resolves outside canonical state root: '${canonicalBackup}' is not within '${canonicalStateRoot}'`
+      `Backup file resolves outside backup root: '${canonicalBackup}' is not within '${backupRoot}'`
     );
   }
 
@@ -1078,12 +1080,12 @@ function executeVerifiedBackup(db, canonicalStateRoot, expectedSourceSchemaVersi
       }
     }
   } catch (verifErr) {
-    // Best-effort cleanup of destination ONLY IF confirmed regular file inside stateRoot
+    // Best-effort cleanup of destination ONLY IF confirmed regular file inside backupRoot
     try {
       const stat = fs.lstatSync(backupDestination);
       if (stat.isFile() && !stat.isSymbolicLink()) {
         const real = fs.realpathSync(backupDestination);
-        const rel = path.relative(canonicalStateRoot, real);
+        const rel = path.relative(backupRoot, real);
         if (rel !== '..' && !rel.startsWith('..' + path.sep) && !path.isAbsolute(rel)) {
           fs.unlinkSync(backupDestination);
         }
@@ -1520,6 +1522,15 @@ class SqliteStateRepository {
    */
   get isOpen() {
     return Boolean(this.#isOpen);
+  }
+
+  /**
+   * Authoritative canonical path to the primary SQLite database file.
+   *
+   * @returns {string} Absolute canonical file path to channel-gateway-state.sqlite3
+   */
+  get databasePath() {
+    return this.#databasePath;
   }
 
   /**

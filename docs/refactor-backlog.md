@@ -2825,7 +2825,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 5.1 上一批狀態
 
-上次核對通過的 HEAD：2e34380663fade80f3a39d4fdb6dacde8a26d9a1
+上次核對通過的 HEAD：291869cc23319d5f5d5ce058388e44e2e684a0fb
 
 - `23af193`（執行者前置檢查 ＋ 回滾程序 ＋ `AUDIT-LOG.md` ＋ 四缺口修正）
   已於 2026-09-02 由審計官核對通過：6 檔異動（含 2 個新檔）、零夾帶、
@@ -4951,6 +4951,25 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - TG-MVP-09（T11-main 正式線上定期備份整合實作）正式完成（ACCEPTED / CLOSED）。
   - TG-MVP-09A 維持待辦（HARD GO-LIVE GATE AFTER TG-MVP-09，在 real Telegram go-live 前必須完成），本輪不實作。
   - TG-MVP-10 / 11 維持待辦，本輪不實作。
+  - B-107 保持 OPEN / RESIDUAL / NON-BLOCKING。
+  - Node punycode deprecation warning 維持 B-100 R-D NONBLOCKING。
+  - §5.4 維持純指標導向（POINTER_ONLY），不保存動態任務佇列或狀態副本。
+
+139. **TG-MVP-09A 狀態資料庫與備份清理衛生規範實作（TG-MVP-09A State Database & Backup Hygiene Implementation）**（2026-09-24）
+- **實作摘要（Implementation Summary）**：
+  - 依 TG-MVP-09 裁決與 pre-go-live hard gate 要求，完成狀態資料庫與備份清理衛生機制。
+  - SQLite stateRoot 嚴格本機位置守衛：`assertSafeStateRootLocation` 阻擋 Windows/系統目錄、Git repo 根目錄、UNC 網路路徑（含擴充 UNC）與 OneDrive/同步資料夾；不誤判 redirected Desktop 之 `archiveRoot`。
+  - 單一備份目錄收斂：備份統一存放於 `stateRoot/backups/`，建立唯一 Gateway-owned `backups/` 自動建目錄例外。
+  - 歷史備份平滑過渡：自動偵測並以 `renameSync` 將 `stateRoot` 根目錄舊正規備份遷移至 `backups/`。
+  - 容量保留與最少數量下限：Local Config schemaVersion 3 新增 `backup` 區塊（預設 1GB / 3 份），維持 v2 雙向相容；超額清理按 `mtimeMs` 決定性排序，保留最新 3 份下限（Floor of 3）。
+  - 雙倍剩餘空間安全檢查：備份前檢查磁碟剩餘空間 >= `2 * dbSize`，不足時安全跳過不呼叫 `VACUUM INTO`。
+  - 備份健康狀態原子寫入：動態評估（HEALTHY, DEGRADED, UNHEALTHY）並透過 `atomicFs.js` 原子寫入 `backup-health.json`。
+  - 隱私防護：健康狀態與日誌零路徑、零 Token、零 raw error 洩漏。
+  - SQLite .gitignore 防護：忽略 `*.sqlite3`、`*.sqlite3-wal`、`*.sqlite3-shm`，並具備 negative canary 測試。
+  - 零應用層加密（BitLocker 使用者責任）；Node.js 內建 `node:sqlite` 升級監控點。
+- **後續工作路由與邊界保留（Next Work Routing & Boundary Preservation）**：
+  - NEXT_WORK 保持 E-03，NEXT_SLICE 保持 TG-MVP-09A（進行中，AWAITING EXTERNAL MACRO AUDIT）。
+  - TG-MVP-10 / 11 / 12 / 13 / 14 / 15 維持待辦零實作。
   - B-107 保持 OPEN / RESIDUAL / NON-BLOCKING。
   - Node punycode deprecation warning 維持 B-100 R-D NONBLOCKING。
   - §5.4 維持純指標導向（POINTER_ONLY），不保存動態任務佇列或狀態副本。

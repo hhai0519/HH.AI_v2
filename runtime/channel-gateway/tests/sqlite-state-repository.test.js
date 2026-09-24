@@ -648,7 +648,8 @@ test('SqliteStateRepository - 28. F2: canonical STRICT schema_migrations with PK
     repo.close();
 
     // Verify pre-migration backup for v1 was created
-    const files = fs.readdirSync(harness.stateRoot);
+    const backupDir = path.join(harness.stateRoot, 'backups');
+    const files = fs.readdirSync(backupDir);
     const v1Backups = files.filter(
       (f) => f.startsWith('channel-gateway-state.backup-v1-') && f.endsWith('.sqlite3')
     );
@@ -1023,8 +1024,10 @@ test('SqliteStateRepository - 41. T11A: pre-existing destination entry fails clo
   try {
     const repo = new SqliteStateRepository(harness.stateRoot);
     const canonicalRoot = fs.realpathSync(harness.stateRoot);
+    const backupDir = path.join(canonicalRoot, 'backups');
+    fs.mkdirSync(backupDir, { recursive: true });
     const existingBackupPath = path.join(
-      canonicalRoot,
+      backupDir,
       `channel-gateway-state.backup-v4-${fixedUuid}.sqlite3`
     );
 
@@ -1250,14 +1253,15 @@ test('SqliteStateRepository - 47. T7A: canonical v1 fixture automatically migrat
     assert.strictEqual(repo.schemaVersion, 4);
     repo.close();
 
-    // Inspect files in stateRoot: exactly one backup-v1-* file
-    const files = fs.readdirSync(harness.stateRoot);
+    // Inspect files in stateRoot/backups: exactly one backup-v1-* file
+    const backupDir = path.join(harness.stateRoot, 'backups');
+    const files = fs.readdirSync(backupDir);
     const v1Backups = files.filter(
       (f) => f.startsWith('channel-gateway-state.backup-v1-') && f.endsWith('.sqlite3')
     );
     assert.strictEqual(v1Backups.length, 1, 'Exactly one pre-migration v1 backup must exist');
 
-    const backupPath = path.join(harness.stateRoot, v1Backups[0]);
+    const backupPath = path.join(backupDir, v1Backups[0]);
 
     // Inspect pre-migration backup independently:
     const backupDb = new DatabaseSync(backupPath, { readOnly: true });
@@ -1299,7 +1303,7 @@ test('SqliteStateRepository - 47. T7A: canonical v1 fixture automatically migrat
     assert.strictEqual(repo2.schemaVersion, 4);
     repo2.close();
 
-    const filesAfterReopen = fs.readdirSync(harness.stateRoot);
+    const filesAfterReopen = fs.readdirSync(backupDir);
     const v1BackupsAfter = filesAfterReopen.filter(
       (f) => f.startsWith('channel-gateway-state.backup-v1-') && f.endsWith('.sqlite3')
     );
@@ -1344,13 +1348,14 @@ test('SqliteStateRepository - 48. T7A: migration 2 deterministic failure rolls b
     }
 
     // 2. Pre-migration backup exists and is valid snapshot before migration attempt
-    const files = fs.readdirSync(harness.stateRoot);
+    const backupDir = path.join(harness.stateRoot, 'backups');
+    const files = fs.readdirSync(backupDir);
     const v1Backups = files.filter(
       (f) => f.startsWith('channel-gateway-state.backup-v1-') && f.endsWith('.sqlite3')
     );
     assert.strictEqual(v1Backups.length, 1, 'Pre-migration v1 backup must be preserved');
 
-    const backupDb = new DatabaseSync(path.join(harness.stateRoot, v1Backups[0]), { readOnly: true });
+    const backupDb = new DatabaseSync(path.join(backupDir, v1Backups[0]), { readOnly: true });
     try {
       const integrity = backupDb.prepare('PRAGMA integrity_check;').get();
       assert.strictEqual(integrity.integrity_check ?? Object.values(integrity)[0], 'ok');
@@ -1895,14 +1900,15 @@ test('SqliteStateRepository - 60. T8A: canonical v2 fixture automatically migrat
       assert.strictEqual(repo.schemaVersion, 4);
       assert.strictEqual(repo.isOpen, true);
 
-      // Verify backup was automatically created in stateRoot
-      const backupEntries = fs.readdirSync(harness.stateRoot).filter(
+      // Verify backup was automatically created in stateRoot/backups
+      const backupDir = path.join(harness.stateRoot, 'backups');
+      const backupEntries = fs.readdirSync(backupDir).filter(
         (f) => f.startsWith('channel-gateway-state.backup-v2-') && f.endsWith('.sqlite3')
       );
       assert.strictEqual(backupEntries.length, 1);
 
       // Verify backup db is valid v2
-      const backupPath = path.join(harness.stateRoot, backupEntries[0]);
+      const backupPath = path.join(backupDir, backupEntries[0]);
       const backupDb = new DatabaseSync(backupPath, { readOnly: true });
       try {
         const integrity = backupDb.prepare('PRAGMA integrity_check;').get();
@@ -2209,8 +2215,9 @@ test('SqliteStateRepository - 64. T8A: migration 3 deterministic failure rolls b
       verifyDb.close();
     }
 
-    // Verified v2 backup must exist in stateRoot
-    const backupEntries = fs.readdirSync(harness.stateRoot).filter(
+    // Verified v2 backup must exist in stateRoot/backups
+    const backupDir = path.join(harness.stateRoot, 'backups');
+    const backupEntries = fs.readdirSync(backupDir).filter(
       (f) => f.startsWith('channel-gateway-state.backup-v2-') && f.endsWith('.sqlite3')
     );
     assert.strictEqual(backupEntries.length, 1);
@@ -2506,14 +2513,16 @@ test('SqliteStateRepository - 70. v4-schema: canonical v3 fixture auto-migrates 
       assert.strictEqual(repo.schemaVersion, 4);
       assert.strictEqual(repo.isOpen, true);
 
-      // Verify backup-v3 created
-      const backupEntries = fs.readdirSync(harness.stateRoot).filter(
+      // Verify backup-v3 created in backups/
+      const backupDir = path.join(harness.stateRoot, 'backups');
+      const backupEntries = fs.readdirSync(backupDir).filter(
         (f) => f.startsWith('channel-gateway-state.backup-v3-') && f.endsWith('.sqlite3')
       );
       assert.strictEqual(backupEntries.length, 1, 'Exactly one v3 pre-migration backup must exist');
 
       // Verify backup db is valid v3
-      const backupDb = new DatabaseSync(path.join(harness.stateRoot, backupEntries[0]), { readOnly: true });
+      const backupPath = path.join(backupDir, backupEntries[0]);
+      const backupDb = new DatabaseSync(backupPath, { readOnly: true });
       try {
         const integrity = backupDb.prepare('PRAGMA integrity_check;').get();
         assert.strictEqual(integrity.integrity_check ?? Object.values(integrity)[0], 'ok');
@@ -2591,8 +2600,9 @@ test('SqliteStateRepository - 71. v4-schema: migration 4 deterministic failure r
       verifyDb.close();
     }
 
-    // Verified v3 backup must exist
-    const backupEntries = fs.readdirSync(harness.stateRoot).filter(
+    // Verified v3 backup must exist in backups/
+    const backupDir = path.join(harness.stateRoot, 'backups');
+    const backupEntries = fs.readdirSync(backupDir).filter(
       (f) => f.startsWith('channel-gateway-state.backup-v3-') && f.endsWith('.sqlite3')
     );
     assert.strictEqual(backupEntries.length, 1);
@@ -2664,6 +2674,37 @@ test('SqliteStateRepository - 73. v4-schema: createVerifiedBackup on v4 DB verif
       backupDb.close();
       repo.close();
     }
+  } finally {
+    harness.cleanup();
+  }
+});
+
+// 74. TG-MVP-09A: createVerifiedBackup strictly places backups in stateRoot/backups/ and zero in stateRoot root
+test('SqliteStateRepository - 74. TG-MVP-09A: zero root-level new backup, databasePath exposure, and backups child containment', () => {
+  const harness = createTempHarness();
+  try {
+    const repo = new SqliteStateRepository(harness.stateRoot);
+    assert.strictEqual(typeof repo.databasePath, 'string');
+    assert.strictEqual(repo.databasePath, path.join(fs.realpathSync(harness.stateRoot), SQLITE_DATABASE_FILENAME));
+
+    const result = repo.createVerifiedBackup();
+    assert.strictEqual(result.success, true);
+
+    const canonicalRoot = fs.realpathSync(harness.stateRoot);
+    const expectedBackupDir = path.join(canonicalRoot, 'backups');
+    assert.strictEqual(path.dirname(result.backupPath), expectedBackupDir);
+
+    // Root-level of stateRoot must have 0 backup files
+    const rootFiles = fs.readdirSync(harness.stateRoot);
+    const rootBackups = rootFiles.filter((f) => f.includes('.backup-'));
+    assert.strictEqual(rootBackups.length, 0, 'Zero backup files must be in stateRoot root');
+
+    // Exactly 1 in backups/
+    const childFiles = fs.readdirSync(expectedBackupDir);
+    const childBackups = childFiles.filter((f) => f.includes('.backup-'));
+    assert.strictEqual(childBackups.length, 1, 'Exactly one backup file in stateRoot/backups');
+
+    repo.close();
   } finally {
     harness.cleanup();
   }

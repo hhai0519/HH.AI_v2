@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "dataLocations": {
     "archiveRoot": "__ARCHIVE_ROOT__",
     "attachmentTempRoot": "__ATTACHMENT_TEMP_ROOT__",
@@ -14,5 +14,9 @@
   },
   "gateway": {
     "localPort": 3003
+  },
+  "backup": {
+    "maxTotalBytes": 1000000000,
+    "minKeepCount": 3
   }
 }

@@ -1,5 +1,5 @@
 {
-  "base_head": "4e7552c",
+  "base_head": "291869c",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -552,16 +552,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 211,
-      "sha256": "e884eb31f786de7990880d5f46a6ab892dc87cc7fe3ba5a316ce56513d6a5dbe"
+      "lines": 212,
+      "sha256": "32b4680a5dc2b6fa1317f40386e06481f307d1d571bda803c84b835e6c8ce9fc"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 185,
-      "sha256": "393003e74679bf30067f87eab01d13f71fe8317fd0f7f216a10152465b49b868"
+      "lines": 186,
+      "sha256": "066eb3b705dcb15bf4e44a469fce21e818f0811d14814e5cff15a491f5dea59d"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -602,7 +602,7 @@
         "## 封存區"
       ],
       "lines": 340,
-      "sha256": "3906d532503abc610c4b223eab24ae368bc60e15ad0f179f123256569021915e"
+      "sha256": "5c223f3693f772bd0f9aa87cf7256ac3beccfe6c9a570f2d5e7bfd85773b681c"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -902,7 +902,7 @@
         "## Consequences"
       ],
       "lines": 154,
-      "sha256": "f52b50d1029366fc6f74c49866fa09339af3a02f18f58cd40694ebf5f6395ac8"
+      "sha256": "4526c6cb977613a7d7e700c318c8fbf544d19a36cc7629624057ee025ee2054e"
     },
     "docs/adr/0023-channel-gateway-state-store-sqlite.md": {
       "fences": 0,
@@ -918,10 +918,11 @@
         "### 6. Wave 2H 之處置 (D29 Cancellation)",
         "### 7. 待決議事項現況 (Pending Decisions: R2 & R3)",
         "### 8. 線上驗證備份排程整合與維運策略 (Periodic Verified Backup Integration — TG-MVP-09 / T11-main)",
+        "### 9. 狀態資料庫與備份衛生治理 (State Database & Backup Hygiene — TG-MVP-09A)",
         "## Consequences"
       ],
-      "lines": 122,
-      "sha256": "e50652403081006372cc2c8e67981537b657ce21361db814b30cc4f518c9f720"
+      "lines": 165,
+      "sha256": "eb3b39924405d339aeb04c612a3caf5605c4e95b8f56d0027c352c0ad579f4fd"
     },
     "docs/adr/0024-inbound-identity-cursor-semantics.md": {
       "fences": 2,
@@ -1064,8 +1065,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 4957,
-      "sha256": "6dbf3b2995d43063176f08812241c4f8774d70e40f86678cbb9f6955e773d2ae"
+      "lines": 4976,
+      "sha256": "9b05e425a74bc0ff00ad46cd310fcef66c1dfe5851b87361f739d462f89fa6f5"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1197,8 +1198,8 @@
       "headings": [
         "# -*- coding: utf-8 -*-"
       ],
-      "lines": 488,
-      "sha256": "408e554c2fee1835566486a0fb721df2997b2cdaa3c150891a7a461e69bc9858"
+      "lines": 521,
+      "sha256": "27643357b3cd2e24dcc01ad99c9445fc561a856112c9ebb26d04f0485ad02481"
     },
     "scripts/tests/test_check_17_18.py": {
       "fences": 0,
@@ -1490,7 +1491,7 @@
       "sha256": "35bf7dbfa3c7d291b550c3c97a6ae398a22b1dc3624c1d2fc1e4db6963d6e115"
     }
   },
-  "generated_at": "2026-09-23T12:48:20Z",
+  "generated_at": "2026-09-24T06:33:33Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

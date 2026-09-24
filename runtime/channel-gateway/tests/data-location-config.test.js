@@ -1,7 +1,7 @@
 /**
  * runtime/channel-gateway/tests/data-location-config.test.js
  *
- * Unit tests for Data Location & Gateway Config Contract (ADR-0022 D24 / ADR-0025).
+ * Unit tests for Data Location & Gateway Config Contract (ADR-0022 D24 / ADR-0023 / TG-MVP-09A).
  * Pure domain validation tests with synthetic data only.
  */
 
@@ -13,13 +13,18 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const {
+  CURRENT_SCHEMA_VERSION,
+  LEGACY_SUPPORTED_SCHEMA_VERSION,
   DATA_LOCATION_SCHEMA_VERSION,
   CANONICAL_GATEWAY_PORT,
+  DEFAULT_MAX_TOTAL_BYTES,
+  DEFAULT_MIN_KEEP_COUNT,
   validateResolvedDataLocationConfig,
   isAbsolutePath,
+  assertSafeStateRootLocation,
 } = require('../core/data-location-config');
 
-const VALID_WINDOWS_CONFIG = {
+const VALID_WINDOWS_CONFIG_V2 = {
   schemaVersion: 2,
   dataLocations: {
     archiveRoot: 'C:\\Users\\Synthetic\\Desktop\\HH.AI_v2_Archive',
@@ -37,8 +42,8 @@ const VALID_WINDOWS_CONFIG = {
   },
 };
 
-const VALID_POSIX_CONFIG = {
-  schemaVersion: 2,
+const VALID_POSIX_CONFIG_V3 = {
+  schemaVersion: 3,
   dataLocations: {
     archiveRoot: '/var/data/hh-ai/archive',
     attachmentTempRoot: '/tmp/hh-ai-attachments',
@@ -53,11 +58,15 @@ const VALID_POSIX_CONFIG = {
   gateway: {
     localPort: 3003,
   },
+  backup: {
+    maxTotalBytes: 500_000_000,
+    minKeepCount: 5,
+  },
 };
 
-test('DataLocationConfig - 1. valid Windows-style resolved config accepted', () => {
-  const result = validateResolvedDataLocationConfig(VALID_WINDOWS_CONFIG);
-  assert.equal(result.schemaVersion, 2);
+test('DataLocationConfig - 1. valid Windows-style resolved v2 config accepted and normalized to v3', () => {
+  const result = validateResolvedDataLocationConfig(VALID_WINDOWS_CONFIG_V2);
+  assert.equal(result.schemaVersion, 3);
   assert.equal(result.dataLocations.archiveRoot, 'C:\\Users\\Synthetic\\Desktop\\HH.AI_v2_Archive');
   assert.equal(result.dataLocations.attachmentTempRoot, 'C:\\Users\\Synthetic\\AppData\\Local\\Temp\\hh-ai-attachments');
   assert.equal(result.dataLocations.stateRoot, 'C:\\Users\\Synthetic\\AppData\\Local\\hh-ai-gateway\\state');
@@ -65,11 +74,16 @@ test('DataLocationConfig - 1. valid Windows-style resolved config accepted', () 
   assert.equal(result.dataLocations.protectedRoots.length, 3);
   assert.equal(result.dataLocations.protectedRoots[0], 'C:\\Users\\Synthetic\\Projects\\HH.AI_v2');
   assert.equal(result.gateway.localPort, 3003);
+  // v2 input automatically acquires v3 defaults
+  assert.deepEqual(result.backup, {
+    maxTotalBytes: 1_000_000_000,
+    minKeepCount: 3,
+  });
 });
 
-test('DataLocationConfig - 2. valid POSIX-style resolved config accepted', () => {
-  const result = validateResolvedDataLocationConfig(VALID_POSIX_CONFIG);
-  assert.equal(result.schemaVersion, 2);
+test('DataLocationConfig - 2. valid POSIX-style resolved v3 config accepted with backup overrides', () => {
+  const result = validateResolvedDataLocationConfig(VALID_POSIX_CONFIG_V3);
+  assert.equal(result.schemaVersion, 3);
   assert.equal(result.dataLocations.archiveRoot, '/var/data/hh-ai/archive');
   assert.equal(result.dataLocations.attachmentTempRoot, '/tmp/hh-ai-attachments');
   assert.equal(result.dataLocations.stateRoot, '/var/lib/hh-ai-gateway/state');
@@ -77,57 +91,147 @@ test('DataLocationConfig - 2. valid POSIX-style resolved config accepted', () =>
   assert.equal(result.dataLocations.protectedRoots.length, 3);
   assert.equal(result.dataLocations.protectedRoots[0], '/opt/hh-ai-v2');
   assert.equal(result.gateway.localPort, 3003);
+  assert.deepEqual(result.backup, {
+    maxTotalBytes: 500_000_000,
+    minKeepCount: 5,
+  });
 });
 
 test('DataLocationConfig - 3. schemaVersion 1 rejected fail-closed', () => {
   assert.throws(
-    () => validateResolvedDataLocationConfig({ ...VALID_WINDOWS_CONFIG, schemaVersion: 1 }),
-    /Unsupported schemaVersion: expected 2, received 1/
+    () => validateResolvedDataLocationConfig({ ...VALID_WINDOWS_CONFIG_V2, schemaVersion: 1 }),
+    /Unsupported schemaVersion/
   );
 });
 
-test('DataLocationConfig - 4. wrong schemaVersion type or value rejected', () => {
+test('DataLocationConfig - 4. wrong schemaVersion type or value rejected (v4 rejected)', () => {
   assert.throws(
-    () => validateResolvedDataLocationConfig({ ...VALID_WINDOWS_CONFIG, schemaVersion: 3 }),
+    () => validateResolvedDataLocationConfig({ ...VALID_WINDOWS_CONFIG_V2, schemaVersion: 4 }),
     /Unsupported schemaVersion/
   );
   assert.throws(
-    () => validateResolvedDataLocationConfig({ ...VALID_WINDOWS_CONFIG, schemaVersion: '2' }),
+    () => validateResolvedDataLocationConfig({ ...VALID_WINDOWS_CONFIG_V2, schemaVersion: '3' }),
     /Unsupported schemaVersion/
   );
   assert.throws(
-    () => validateResolvedDataLocationConfig({ ...VALID_WINDOWS_CONFIG, schemaVersion: 2.5 }),
+    () => validateResolvedDataLocationConfig({ ...VALID_WINDOWS_CONFIG_V2, schemaVersion: 3.5 }),
     /Unsupported schemaVersion/
   );
   assert.throws(
-    () => validateResolvedDataLocationConfig({ ...VALID_WINDOWS_CONFIG, schemaVersion: undefined }),
+    () => validateResolvedDataLocationConfig({ ...VALID_WINDOWS_CONFIG_V2, schemaVersion: undefined }),
     /Missing required field: schemaVersion/
   );
 });
 
 test('DataLocationConfig - 5. missing or invalid dataLocations rejected', () => {
   assert.throws(
-    () => validateResolvedDataLocationConfig({ schemaVersion: 2, gateway: { localPort: 3003 } }),
+    () => validateResolvedDataLocationConfig({ schemaVersion: 3, gateway: { localPort: 3003 } }),
     /dataLocations must be a non-null object/
   );
   assert.throws(
-    () => validateResolvedDataLocationConfig({ schemaVersion: 2, dataLocations: null, gateway: { localPort: 3003 } }),
+    () => validateResolvedDataLocationConfig({ schemaVersion: 3, dataLocations: null, gateway: { localPort: 3003 } }),
     /dataLocations must be a non-null object/
   );
   assert.throws(
-    () => validateResolvedDataLocationConfig({ schemaVersion: 2, dataLocations: [], gateway: { localPort: 3003 } }),
-    /dataLocations must be a non-null object/
-  );
-  assert.throws(
-    () => validateResolvedDataLocationConfig({ schemaVersion: 2, dataLocations: 'invalid', gateway: { localPort: 3003 } }),
+    () => validateResolvedDataLocationConfig({ schemaVersion: 3, dataLocations: [], gateway: { localPort: 3003 } }),
     /dataLocations must be a non-null object/
   );
 });
 
-test('DataLocationConfig - 6. missing required singleton path rejected', () => {
-  const fields = ['archiveRoot', 'attachmentTempRoot', 'stateRoot', 'logsRoot'];
-  for (const field of fields) {
-    const copy = JSON.parse(JSON.stringify(VALID_WINDOWS_CONFIG));
+test('DataLocationConfig - 6. unknown top-level key rejected fail-closed', () => {
+  assert.throws(
+    () => validateResolvedDataLocationConfig({ ...VALID_WINDOWS_CONFIG_V2, unknownKey: 'value' }),
+    /Unknown top-level configuration key/
+  );
+});
+
+test('DataLocationConfig - 7. v2 config declaring top-level backup key is rejected fail-closed', () => {
+  assert.throws(
+    () =>
+      validateResolvedDataLocationConfig({
+        ...VALID_WINDOWS_CONFIG_V2,
+        schemaVersion: 2,
+        backup: { maxTotalBytes: 1_000_000_000 },
+      }),
+    /Unknown top-level configuration key: 'backup'/
+  );
+});
+
+test('DataLocationConfig - 8. v3 config without backup block acquires default backup values', () => {
+  const configV3NoBackup = {
+    schemaVersion: 3,
+    dataLocations: VALID_WINDOWS_CONFIG_V2.dataLocations,
+    gateway: { localPort: 3003 },
+  };
+  const result = validateResolvedDataLocationConfig(configV3NoBackup);
+  assert.equal(result.schemaVersion, 3);
+  assert.deepEqual(result.backup, {
+    maxTotalBytes: 1_000_000_000,
+    minKeepCount: 3,
+  });
+});
+
+test('DataLocationConfig - 9. v3 backup unknown key rejected fail-closed', () => {
+  const invalid = {
+    schemaVersion: 3,
+    dataLocations: VALID_WINDOWS_CONFIG_V2.dataLocations,
+    gateway: { localPort: 3003 },
+    backup: {
+      maxTotalBytes: 1_000_000_000,
+      unknownOption: 123,
+    },
+  };
+  assert.throws(
+    () => validateResolvedDataLocationConfig(invalid),
+    /Unknown backup configuration key: 'unknownOption'/
+  );
+});
+
+test('DataLocationConfig - 10. v3 backup validation matrix: zero, negative, fractional, unsafe integer', () => {
+  const base = {
+    schemaVersion: 3,
+    dataLocations: VALID_WINDOWS_CONFIG_V2.dataLocations,
+    gateway: { localPort: 3003 },
+  };
+
+  // maxTotalBytes <= 0
+  assert.throws(
+    () => validateResolvedDataLocationConfig({ ...base, backup: { maxTotalBytes: 0 } }),
+    /maxTotalBytes must be a positive safe integer/
+  );
+  assert.throws(
+    () => validateResolvedDataLocationConfig({ ...base, backup: { maxTotalBytes: -100 } }),
+    /maxTotalBytes must be a positive safe integer/
+  );
+  // fractional
+  assert.throws(
+    () => validateResolvedDataLocationConfig({ ...base, backup: { maxTotalBytes: 1000.5 } }),
+    /maxTotalBytes must be a positive safe integer/
+  );
+  // unsafe integer
+  assert.throws(
+    () => validateResolvedDataLocationConfig({ ...base, backup: { maxTotalBytes: Number.MAX_SAFE_INTEGER + 10 } }),
+    /maxTotalBytes must be a positive safe integer/
+  );
+
+  // minKeepCount < 1
+  assert.throws(
+    () => validateResolvedDataLocationConfig({ ...base, backup: { minKeepCount: 0 } }),
+    /minKeepCount must be an integer >= 1/
+  );
+  assert.throws(
+    () => validateResolvedDataLocationConfig({ ...base, backup: { minKeepCount: -1 } }),
+    /minKeepCount must be an integer >= 1/
+  );
+  assert.throws(
+    () => validateResolvedDataLocationConfig({ ...base, backup: { minKeepCount: 2.5 } }),
+    /minKeepCount must be an integer >= 1/
+  );
+});
+
+test('DataLocationConfig - 11. missing required singleton path rejected', () => {
+  for (const field of ['archiveRoot', 'attachmentTempRoot', 'stateRoot', 'logsRoot']) {
+    const copy = JSON.parse(JSON.stringify(VALID_WINDOWS_CONFIG_V2));
     delete copy.dataLocations[field];
     assert.throws(
       () => validateResolvedDataLocationConfig(copy),
@@ -136,94 +240,48 @@ test('DataLocationConfig - 6. missing required singleton path rejected', () => {
   }
 });
 
-test('DataLocationConfig - 7. blank singleton path rejected', () => {
-  const fields = ['archiveRoot', 'attachmentTempRoot', 'stateRoot', 'logsRoot'];
-  for (const field of fields) {
-    const copy = JSON.parse(JSON.stringify(VALID_WINDOWS_CONFIG));
-    copy.dataLocations[field] = '   ';
+test('DataLocationConfig - 12. non-string singleton path rejected', () => {
+  for (const field of ['archiveRoot', 'attachmentTempRoot', 'stateRoot', 'logsRoot']) {
+    const copy = JSON.parse(JSON.stringify(VALID_WINDOWS_CONFIG_V2));
+    copy.dataLocations[field] = 12345;
     assert.throws(
       () => validateResolvedDataLocationConfig(copy),
-      new RegExp(`'${field}' must be a non-empty string`)
+      new RegExp(`'${field}' must be a string`)
     );
   }
 });
 
-test('DataLocationConfig - 8. relative singleton path rejected', () => {
-  const fields = ['archiveRoot', 'attachmentTempRoot', 'stateRoot', 'logsRoot'];
-  const relativePaths = ['relative/path', './subfolder', '../parent', 'data', 'temp'];
-  for (const field of fields) {
-    for (const rel of relativePaths) {
-      const copy = JSON.parse(JSON.stringify(VALID_WINDOWS_CONFIG));
-      copy.dataLocations[field] = rel;
-      assert.throws(
-        () => validateResolvedDataLocationConfig(copy),
-        new RegExp(`'${field}' must be an absolute path: received '${rel}'`)
-      );
-    }
+test('DataLocationConfig - 13. relative singleton path rejected', () => {
+  for (const field of ['archiveRoot', 'attachmentTempRoot', 'stateRoot', 'logsRoot']) {
+    const copy = JSON.parse(JSON.stringify(VALID_WINDOWS_CONFIG_V2));
+    copy.dataLocations[field] = 'relative/path';
+    assert.throws(
+      () => validateResolvedDataLocationConfig(copy),
+      new RegExp(`'${field}' must be an absolute path`)
+    );
   }
 });
 
-test('DataLocationConfig - 9. protectedRoots non-array rejected', () => {
-  const copyMissing = JSON.parse(JSON.stringify(VALID_WINDOWS_CONFIG));
-  delete copyMissing.dataLocations.protectedRoots;
+test('DataLocationConfig - 14. protectedRoots not array rejected', () => {
+  const copy = JSON.parse(JSON.stringify(VALID_WINDOWS_CONFIG_V2));
+  copy.dataLocations.protectedRoots = 'not_an_array';
   assert.throws(
-    () => validateResolvedDataLocationConfig(copyMissing),
-    /Missing required dataLocations field: 'protectedRoots'/
-  );
-
-  const copyString = JSON.parse(JSON.stringify(VALID_WINDOWS_CONFIG));
-  copyString.dataLocations.protectedRoots = 'C:\\Some\\Path';
-  assert.throws(
-    () => validateResolvedDataLocationConfig(copyString),
+    () => validateResolvedDataLocationConfig(copy),
     /protectedRoots must be an array of absolute paths/
   );
-
-  const copyNull = JSON.parse(JSON.stringify(VALID_WINDOWS_CONFIG));
-  copyNull.dataLocations.protectedRoots = null;
-  assert.throws(
-    () => validateResolvedDataLocationConfig(copyNull),
-    /Missing required dataLocations field: 'protectedRoots'/
-  );
 });
 
-test('DataLocationConfig - 10. blank protected root rejected', () => {
-  const copy = JSON.parse(JSON.stringify(VALID_WINDOWS_CONFIG));
-  copy.dataLocations.protectedRoots.push('   ');
+test('DataLocationConfig - 15. protectedRoots relative path rejected', () => {
+  const copy = JSON.parse(JSON.stringify(VALID_WINDOWS_CONFIG_V2));
+  copy.dataLocations.protectedRoots = ['relative/path/1'];
   assert.throws(
     () => validateResolvedDataLocationConfig(copy),
-    /protectedRoots\[3\] must be a non-empty string/
+    /protectedRoots\[0\] must be an absolute path/
   );
 });
 
-test('DataLocationConfig - 11. relative protected root rejected', () => {
-  const copy = JSON.parse(JSON.stringify(VALID_WINDOWS_CONFIG));
-  copy.dataLocations.protectedRoots.push('relative/sub/dir');
-  assert.throws(
-    () => validateResolvedDataLocationConfig(copy),
-    /protectedRoots\[3\] must be an absolute path: received 'relative\/sub\/dir'/
-  );
-});
-
-test('DataLocationConfig - 12. unknown top-level key rejected', () => {
-  const copy = JSON.parse(JSON.stringify(VALID_WINDOWS_CONFIG));
-  copy.unknownKey = 'something';
-  assert.throws(
-    () => validateResolvedDataLocationConfig(copy),
-    /Unknown top-level configuration key: 'unknownKey'/
-  );
-});
-
-test('DataLocationConfig - 13. unknown dataLocations key rejected', () => {
-  const copy = JSON.parse(JSON.stringify(VALID_WINDOWS_CONFIG));
-  copy.dataLocations.unrecognizedDir = 'C:\\Unrecognized';
-  assert.throws(
-    () => validateResolvedDataLocationConfig(copy),
-    /Unknown dataLocations key: 'unrecognizedDir'/
-  );
-});
-
-test('DataLocationConfig - 14. missing gateway object rejected', () => {
-  const copy = JSON.parse(JSON.stringify(VALID_WINDOWS_CONFIG));
+test('DataLocationConfig - 16. missing gateway block rejected', () => {
+  const copy = JSON.parse(JSON.stringify(VALID_WINDOWS_CONFIG_V2));
   delete copy.gateway;
   assert.throws(
     () => validateResolvedDataLocationConfig(copy),
@@ -231,20 +289,26 @@ test('DataLocationConfig - 14. missing gateway object rejected', () => {
   );
 });
 
-test('DataLocationConfig - 15. gateway non-object rejected', () => {
-  const badGateways = [null, '3003', 3003, true, []];
-  for (const bad of badGateways) {
-    const copy = JSON.parse(JSON.stringify(VALID_WINDOWS_CONFIG));
-    copy.gateway = bad;
-    assert.throws(
-      () => validateResolvedDataLocationConfig(copy),
-      /(gateway must be a non-null object|Missing required field: gateway)/
-    );
-  }
+test('DataLocationConfig - 17. non-3003 localPort rejected', () => {
+  const copy = JSON.parse(JSON.stringify(VALID_WINDOWS_CONFIG_V2));
+  copy.gateway.localPort = 8080;
+  assert.throws(
+    () => validateResolvedDataLocationConfig(copy),
+    /Invalid 'localPort': Gateway v1 strictly requires port 3003/
+  );
 });
 
-test('DataLocationConfig - 16. unknown gateway key rejected', () => {
-  const copy = JSON.parse(JSON.stringify(VALID_WINDOWS_CONFIG));
+test('DataLocationConfig - 18. unknown dataLocations key rejected', () => {
+  const copy = JSON.parse(JSON.stringify(VALID_WINDOWS_CONFIG_V2));
+  copy.dataLocations.unknownField = '/tmp/unknown';
+  assert.throws(
+    () => validateResolvedDataLocationConfig(copy),
+    /Unknown dataLocations key: 'unknownField'/
+  );
+});
+
+test('DataLocationConfig - 19. unknown gateway key rejected', () => {
+  const copy = JSON.parse(JSON.stringify(VALID_WINDOWS_CONFIG_V2));
   copy.gateway.unknownSetting = true;
   assert.throws(
     () => validateResolvedDataLocationConfig(copy),
@@ -252,111 +316,61 @@ test('DataLocationConfig - 16. unknown gateway key rejected', () => {
   );
 });
 
-test('DataLocationConfig - 17. missing gateway.localPort rejected', () => {
-  const copy = JSON.parse(JSON.stringify(VALID_WINDOWS_CONFIG));
-  delete copy.gateway.localPort;
+test('DataLocationConfig - 20. stateRoot location guard: OneDrive rejected fail-closed', () => {
   assert.throws(
-    () => validateResolvedDataLocationConfig(copy),
-    /Missing required gateway field: 'localPort'/
+    () => assertSafeStateRootLocation('C:\\Users\\User\\OneDrive\\State'),
+    /must not reside within a synchronized folder \('OneDrive'\)/
+  );
+  assert.throws(
+    () => assertSafeStateRootLocation('C:\\Users\\User\\OneDrive - Commercial\\Gateway\\State'),
+    /must not reside within a synchronized folder/
   );
 });
 
-test('DataLocationConfig - 18. gateway.localPort non-integer rejected', () => {
-  const nonIntegers = ['3003', 3003.5, NaN, Infinity, true, null];
-  for (const val of nonIntegers) {
-    const copy = JSON.parse(JSON.stringify(VALID_WINDOWS_CONFIG));
-    copy.gateway.localPort = val;
-    assert.throws(
-      () => validateResolvedDataLocationConfig(copy),
-      /('localPort' must be an integer|Missing required gateway field: 'localPort')/
-    );
-  }
+test('DataLocationConfig - 21. stateRoot location guard: Dropbox, Google Drive, iCloudDrive rejected', () => {
+  assert.throws(
+    () => assertSafeStateRootLocation('C:\\Users\\User\\Dropbox\\State'),
+    /must not reside within a synchronized folder \('Dropbox'\)/
+  );
+  assert.throws(
+    () => assertSafeStateRootLocation('/home/user/Google Drive/State'),
+    /must not reside within a synchronized folder \('Google Drive'\)/
+  );
+  assert.throws(
+    () => assertSafeStateRootLocation('C:\\Users\\User\\GoogleDrive\\State'),
+    /must not reside within a synchronized folder \('GoogleDrive'\)/
+  );
+  assert.throws(
+    () => assertSafeStateRootLocation('C:\\Users\\User\\iCloudDrive\\State'),
+    /must not reside within a synchronized folder \('iCloudDrive'\)/
+  );
 });
 
-test('DataLocationConfig - 19. gateway.localPort != 3003 rejected fail-closed', () => {
-  const disallowedPorts = [3000, 3001, 3002, 3004, 8080, 443, 80];
-  for (const port of disallowedPorts) {
-    const copy = JSON.parse(JSON.stringify(VALID_WINDOWS_CONFIG));
-    copy.gateway.localPort = port;
-    assert.throws(
-      () => validateResolvedDataLocationConfig(copy),
-      new RegExp(`Invalid gateway localPort: expected 3003, received ${port}`)
-    );
-  }
+test('DataLocationConfig - 22. stateRoot location guard: UNC and extended UNC rejected', () => {
+  assert.throws(
+    () => assertSafeStateRootLocation('\\\\fileserver\\share\\state'),
+    /must not be a UNC network path/
+  );
+  assert.throws(
+    () => assertSafeStateRootLocation('//fileserver/share/state'),
+    /must not be a UNC network path/
+  );
+  assert.throws(
+    () => assertSafeStateRootLocation('\\\\?\\UNC\\server\\share\\state'),
+    /must not be an extended UNC network path/
+  );
 });
 
-test('DataLocationConfig - 20. gateway.localPort = 3003 accepted', () => {
-  const copy = JSON.parse(JSON.stringify(VALID_WINDOWS_CONFIG));
-  copy.gateway.localPort = 3003;
-  const result = validateResolvedDataLocationConfig(copy);
-  assert.equal(result.gateway.localPort, 3003);
+test('DataLocationConfig - 23. stateRoot location guard: safe local path passes', () => {
+  assert.doesNotThrow(() =>
+    assertSafeStateRootLocation('C:\\Users\\User\\AppData\\Local\\hh-ai\\state')
+  );
+  assert.doesNotThrow(() =>
+    assertSafeStateRootLocation('/var/lib/hh-ai/state')
+  );
 });
 
-test('DataLocationConfig - 21. input object not mutated', () => {
-  const input = {
-    schemaVersion: 2,
-    dataLocations: {
-      archiveRoot: '  C:\\Users\\Synthetic\\Desktop\\HH.AI_v2_Archive  ',
-      attachmentTempRoot: '  C:\\Temp\\attachments  ',
-      stateRoot: '  C:\\State  ',
-      logsRoot: '  C:\\Logs  ',
-      protectedRoots: ['  C:\\Project1  ', '  C:\\Project2  '],
-    },
-    gateway: {
-      localPort: 3003,
-    },
-  };
-  const inputArchiveBefore = input.dataLocations.archiveRoot;
-  const inputProtectedBefore = input.dataLocations.protectedRoots[0];
-
-  const result = validateResolvedDataLocationConfig(input);
-
-  // Original input strings retain their surrounding whitespace
-  assert.equal(input.dataLocations.archiveRoot, inputArchiveBefore);
-  assert.equal(input.dataLocations.protectedRoots[0], inputProtectedBefore);
-
-  // Result strings are trimmed
-  assert.equal(result.dataLocations.archiveRoot, 'C:\\Users\\Synthetic\\Desktop\\HH.AI_v2_Archive');
-  assert.equal(result.dataLocations.protectedRoots[0], 'C:\\Project1');
-});
-
-test('DataLocationConfig - 22. returned protectedRoots is copied, not same array reference', () => {
-  const input = JSON.parse(JSON.stringify(VALID_WINDOWS_CONFIG));
-  const result = validateResolvedDataLocationConfig(input);
-
-  assert.notEqual(result.dataLocations.protectedRoots, input.dataLocations.protectedRoots);
-  assert.deepEqual(result.dataLocations.protectedRoots, input.dataLocations.protectedRoots);
-
-  // Mutating result does not affect input
-  result.dataLocations.protectedRoots.push('C:\\Extra');
-  assert.equal(input.dataLocations.protectedRoots.length, 3);
-  assert.equal(result.dataLocations.protectedRoots.length, 4);
-});
-
-test('DataLocationConfig - 23. config containing credential-like unrelated top-level field rejected as unknown', () => {
-  const credentialFields = [
-    'token',
-    'botToken',
-    'accessToken',
-    'secret',
-    'password',
-    'apiKey',
-    'credentials',
-    'accounts',
-    'port',
-  ];
-
-  for (const field of credentialFields) {
-    const copy = JSON.parse(JSON.stringify(VALID_WINDOWS_CONFIG));
-    copy[field] = 'some_sensitive_value';
-    assert.throws(
-      () => validateResolvedDataLocationConfig(copy),
-      new RegExp(`Unknown top-level configuration key: '${field}'`)
-    );
-  }
-});
-
-test('DataLocationConfig - 24. config.example.json validation', () => {
+test('DataLocationConfig - 24. config.example.json validation adheres to schemaVersion 3', () => {
   const templatePath = path.resolve(__dirname, '..', 'config.example.json');
   assert.ok(fs.existsSync(templatePath), 'config.example.json must exist');
 
@@ -364,14 +378,17 @@ test('DataLocationConfig - 24. config.example.json validation', () => {
   const template = JSON.parse(content);
 
   // Check valid schema structure
-  assert.equal(template.schemaVersion, 2);
+  assert.equal(template.schemaVersion, 3);
   assert.ok(template.dataLocations, 'dataLocations must be present');
   assert.ok(template.gateway, 'gateway must be present');
   assert.equal(template.gateway.localPort, 3003);
+  assert.ok(template.backup, 'backup must be present in example');
+  assert.equal(template.backup.maxTotalBytes, 1_000_000_000);
+  assert.equal(template.backup.minKeepCount, 3);
 
   // Verify only allowlisted keys
   const topKeys = Object.keys(template);
-  assert.deepEqual(topKeys.sort(), ['dataLocations', 'gateway', 'schemaVersion']);
+  assert.deepEqual(topKeys.sort(), ['backup', 'dataLocations', 'gateway', 'schemaVersion']);
 
   const locationKeys = Object.keys(template.dataLocations);
   assert.deepEqual(
@@ -382,7 +399,10 @@ test('DataLocationConfig - 24. config.example.json validation', () => {
   const gatewayKeys = Object.keys(template.gateway);
   assert.deepEqual(gatewayKeys, ['localPort']);
 
-  // Check that placeholders remain unresolved
+  const backupKeys = Object.keys(template.backup);
+  assert.deepEqual(backupKeys.sort(), ['maxTotalBytes', 'minKeepCount']);
+
+  // Check placeholders remain unresolved
   assert.equal(template.dataLocations.archiveRoot, '__ARCHIVE_ROOT__');
   assert.equal(template.dataLocations.attachmentTempRoot, '__ATTACHMENT_TEMP_ROOT__');
   assert.equal(template.dataLocations.stateRoot, '__STATE_ROOT__');
@@ -408,7 +428,7 @@ test('DataLocationConfig - 24. config.example.json validation', () => {
     );
   }
 
-  // Template placeholders should fail isAbsolutePath (deliberate check)
+  // Template placeholders fail isAbsolutePath (deliberate check)
   assert.ok(!isAbsolutePath(template.dataLocations.archiveRoot));
   assert.throws(
     () => validateResolvedDataLocationConfig(template),

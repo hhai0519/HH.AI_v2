@@ -33,6 +33,7 @@ const ALLOWED_SCHEDULER_OPTION_KEYS = new Set([
   'setIntervalFn',
   'clearIntervalFn',
   'fs',
+  'statfsSync',
 ]);
 
 /**
@@ -97,6 +98,7 @@ class BackupRuntimeOwner {
         new BackupScheduler({ ...opts, repository: repo, stateRoot: root }),
       logger = console,
       schedulerOptions = {},
+      backupPolicy,
     } = options;
 
     if (typeof stateRoot !== 'string' || stateRoot.trim().length === 0) {
@@ -139,15 +141,30 @@ class BackupRuntimeOwner {
       }
     }
 
+    if (backupPolicy !== undefined) {
+      if (!backupPolicy || typeof backupPolicy !== 'object' || Array.isArray(backupPolicy)) {
+        throw new TypeError(
+          'BackupRuntimeOwner backupPolicy must be a plain object (fail-closed)'
+        );
+      }
+    }
+
     this.#stateRoot = stateRoot;
     this.#repositoryFactory = repositoryFactory;
     this.#schedulerFactory = schedulerFactory;
     this.#logger = logger;
     this.#schedulerOptions = schedulerOptions;
+    this.#backupPolicy = backupPolicy;
   }
+
+  #backupPolicy;
 
   get isStarted() {
     return this.#isStarted;
+  }
+
+  get backupPolicy() {
+    return this.#backupPolicy ? { ...this.#backupPolicy } : undefined;
   }
 
   get repository() {
@@ -181,9 +198,10 @@ class BackupRuntimeOwner {
 
     let sched = null;
     try {
-      // Strict precedence: canonical repository, stateRoot, and logger cannot be overridden
+      // Strict precedence: canonical repository, stateRoot, logger, and backupPolicy cannot be overridden
       sched = this.#schedulerFactory(repo, this.#stateRoot, {
         ...this.#schedulerOptions,
+        backupPolicy: this.#backupPolicy,
         repository: repo,
         stateRoot: this.#stateRoot,
         logger: this.#logger,

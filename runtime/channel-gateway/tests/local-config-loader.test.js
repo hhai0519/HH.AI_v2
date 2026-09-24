@@ -97,13 +97,17 @@ test('LocalConfigLoader - 1. valid repo-external config loads', () => {
       repoRoot: harness.repoRoot,
     });
     assert.ok(config);
-    assert.equal(config.schemaVersion, 2);
+    assert.equal(config.schemaVersion, 3);
     assert.equal(config.dataLocations.archiveRoot, harness.dataDirs.archiveRoot);
     assert.equal(config.dataLocations.attachmentTempRoot, harness.dataDirs.attachmentTempRoot);
     assert.equal(config.dataLocations.stateRoot, harness.dataDirs.stateRoot);
     assert.equal(config.dataLocations.logsRoot, harness.dataDirs.logsRoot);
     assert.equal(config.dataLocations.protectedRoots.length, 2);
     assert.equal(config.gateway.localPort, 3003);
+    assert.deepEqual(config.backup, {
+      maxTotalBytes: 1_000_000_000,
+      minKeepCount: 3,
+    });
   } finally {
     harness.cleanup();
   }
@@ -339,13 +343,17 @@ test('LocalConfigLoader - 13. valid four writable roots accepted', () => {
   try {
     const canonical = validateStartupDataLocations(harness.validConfig);
     assert.ok(canonical);
-    assert.equal(canonical.schemaVersion, 2);
+    assert.equal(canonical.schemaVersion, 3);
     assert.equal(canonical.dataLocations.archiveRoot, fs.realpathSync(harness.dataDirs.archiveRoot));
     assert.equal(canonical.dataLocations.attachmentTempRoot, fs.realpathSync(harness.dataDirs.attachmentTempRoot));
     assert.equal(canonical.dataLocations.stateRoot, fs.realpathSync(harness.dataDirs.stateRoot));
     assert.equal(canonical.dataLocations.logsRoot, fs.realpathSync(harness.dataDirs.logsRoot));
     assert.equal(canonical.dataLocations.protectedRoots.length, 2);
     assert.equal(canonical.gateway.localPort, 3003);
+    assert.deepEqual(canonical.backup, {
+      maxTotalBytes: 1_000_000_000,
+      minKeepCount: 3,
+    });
   } finally {
     harness.cleanup();
   }
@@ -1054,5 +1062,153 @@ test('LocalConfigLoader - 38. Live Windows bridge integration', () => {
       () => resolveWindowsKnownFolders({ platform: 'linux' }),
       /Known-Folder resolution is only supported on win32/
     );
+  }
+});
+
+// ==========================================
+// F. TG-MVP-09A: Schema v3 & Location Guard Invariants
+// ==========================================
+
+test('LocalConfigLoader - 39. v3 config with explicit backup loads and preserves overrides', () => {
+  const harness = createTempHarness();
+  try {
+    const configV3 = {
+      schemaVersion: 3,
+      dataLocations: harness.validConfig.dataLocations,
+      gateway: harness.validConfig.gateway,
+      backup: {
+        maxTotalBytes: 500_000_000,
+        minKeepCount: 5,
+      },
+    };
+    const configFile = path.join(harness.externalDir, 'config-v3.json');
+    fs.writeFileSync(configFile, JSON.stringify(configV3, null, 2), 'utf8');
+
+    const loaded = loadDataLocationConfigFromFile(configFile, {
+      repoRoot: harness.repoRoot,
+    });
+    assert.equal(loaded.schemaVersion, 3);
+    assert.deepEqual(loaded.backup, {
+      maxTotalBytes: 500_000_000,
+      minKeepCount: 5,
+    });
+  } finally {
+    harness.cleanup();
+  }
+});
+
+test('LocalConfigLoader - 40. v2 config declaring top-level backup is rejected fail-closed', () => {
+  const harness = createTempHarness();
+  try {
+    const badV2 = {
+      schemaVersion: 2,
+      dataLocations: harness.validConfig.dataLocations,
+      gateway: harness.validConfig.gateway,
+      backup: {
+        maxTotalBytes: 1_000_000_000,
+      },
+    };
+    const configFile = path.join(harness.externalDir, 'bad-v2.json');
+    fs.writeFileSync(configFile, JSON.stringify(badV2, null, 2), 'utf8');
+
+    assert.throws(
+      () =>
+        loadDataLocationConfigFromFile(configFile, {
+          repoRoot: harness.repoRoot,
+        }),
+      /Unknown top-level configuration key: 'backup'/
+    );
+  } finally {
+    harness.cleanup();
+  }
+});
+
+test('LocalConfigLoader - 41. stateRoot location guard: stateRoot inside OneDrive rejected during startup validation', () => {
+  const harness = createTempHarness();
+  try {
+    const oneDriveStateDir = path.join(harness.externalDir, 'OneDrive', 'GatewayState');
+    fs.mkdirSync(oneDriveStateDir, { recursive: true });
+
+    const badConfig = {
+      ...harness.validConfig,
+      dataLocations: {
+        ...harness.validConfig.dataLocations,
+        stateRoot: oneDriveStateDir,
+      },
+    };
+
+    assert.throws(
+      () => validateStartupDataLocations(badConfig),
+      /stateRoot must not reside within a synchronized folder \('OneDrive'\)/
+    );
+  } finally {
+    harness.cleanup();
+  }
+});
+
+test('LocalConfigLoader - 42. stateRoot location guard: stateRoot inside Dropbox / GoogleDrive rejected', () => {
+  const harness = createTempHarness();
+  try {
+    const dropboxStateDir = path.join(harness.externalDir, 'Dropbox', 'GatewayState');
+    fs.mkdirSync(dropboxStateDir, { recursive: true });
+
+    const badConfig = {
+      ...harness.validConfig,
+      dataLocations: {
+        ...harness.validConfig.dataLocations,
+        stateRoot: dropboxStateDir,
+      },
+    };
+
+    assert.throws(
+      () => validateStartupDataLocations(badConfig),
+      /stateRoot must not reside within a synchronized folder \('Dropbox'\)/
+    );
+  } finally {
+    harness.cleanup();
+  }
+});
+
+test('LocalConfigLoader - 43. stateRoot location guard: stateRoot UNC path rejected during startup validation', () => {
+  const harness = createTempHarness();
+  try {
+    const badConfig = {
+      ...harness.validConfig,
+      dataLocations: {
+        ...harness.validConfig.dataLocations,
+        stateRoot: '\\\\fileserver\\share\\gateway\\state',
+      },
+    };
+
+    assert.throws(
+      () => validateStartupDataLocations(badConfig),
+      /stateRoot must not be a UNC network path/
+    );
+  } finally {
+    harness.cleanup();
+  }
+});
+
+test('LocalConfigLoader - 44. stateRoot location guard: archiveRoot inside OneDrive redirected Desktop is ACCEPTED', () => {
+  const harness = createTempHarness();
+  try {
+    // archiveRoot in OneDrive/Desktop is allowed; stateRoot is in safe local directory
+    const oneDriveDesktopArchiveDir = path.join(harness.externalDir, 'OneDrive', 'Desktop', 'HH.AI_v2_Archive');
+    fs.mkdirSync(oneDriveDesktopArchiveDir, { recursive: true });
+
+    const validArchiveOneDriveConfig = {
+      ...harness.validConfig,
+      dataLocations: {
+        ...harness.validConfig.dataLocations,
+        archiveRoot: oneDriveDesktopArchiveDir,
+      },
+    };
+
+    const canonical = validateStartupDataLocations(validArchiveOneDriveConfig);
+    assert.ok(canonical);
+    assert.equal(canonical.dataLocations.archiveRoot, fs.realpathSync(oneDriveDesktopArchiveDir));
+    assert.equal(canonical.dataLocations.stateRoot, fs.realpathSync(harness.dataDirs.stateRoot));
+  } finally {
+    harness.cleanup();
   }
 });

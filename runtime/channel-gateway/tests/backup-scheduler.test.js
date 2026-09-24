@@ -85,9 +85,15 @@ function createFakeEnv(initialTime = 1_700_000_000_000) {
  */
 function createMockRepository(options = {}) {
   const calls = [];
-  const { onBackup = null, throwError = null, returnValue = undefined } = options;
+  const {
+    onBackup = null,
+    throwError = null,
+    returnValue = undefined,
+    databasePath = path.join(SYNTHETIC_STATE_ROOT, 'channel-gateway-state.sqlite3'),
+  } = options;
 
   return {
+    databasePath,
     createVerifiedBackup(...args) {
       calls.push(args);
       if (typeof onBackup === 'function') {
@@ -103,6 +109,7 @@ function createMockRepository(options = {}) {
         success: true,
         backupPath: path.join(
           SYNTHETIC_STATE_ROOT,
+          'backups',
           'channel-gateway-state.backup-v3-e0186178-5e76-47b2-bdcf-884814e5bb0c.sqlite3'
         ),
         sourceSchemaVersion: 3,
@@ -121,32 +128,98 @@ function createMockRepository(options = {}) {
 function createMockFs(initialFiles = {}) {
   // initialFiles: map of filename -> { mtimeMs, isFile: true, isSymlink: false, throwStat: null }
   const files = new Map(Object.entries(initialFiles));
+  if (!files.has('backups')) {
+    files.set('backups', { isFile: false, isDirectory: true, isSymlink: false });
+  }
+  if (!files.has('channel-gateway-state.sqlite3')) {
+    files.set('channel-gateway-state.sqlite3', {
+      isFile: true,
+      isDirectory: false,
+      isSymlink: false,
+      size: 1000,
+      mtimeMs: 1_700_000_000_000,
+    });
+  }
   const operations = [];
 
   return {
     readdirSync(dirPath) {
       operations.push({ op: 'readdirSync', path: dirPath });
-      return Array.from(files.keys());
+      const isBackups =
+        dirPath.endsWith('backups') || dirPath.endsWith('backups/') || dirPath.endsWith('backups\\');
+      if (isBackups) {
+        return Array.from(files.keys()).filter(
+          (k) =>
+            k !== 'backups' &&
+            k !== 'channel-gateway-state.sqlite3' &&
+            !k.endsWith('.tmp') &&
+            k !== 'backup-health.json'
+        );
+      }
+      return Array.from(files.keys()).filter((k) => !k.startsWith('channel-gateway-state.backup-'));
     },
     lstatSync(filePath) {
       operations.push({ op: 'lstatSync', path: filePath });
       const filename = path.basename(filePath);
-      const fileData = files.get(filename);
+      let fileData = files.get(filename);
       if (!fileData) {
-        const err = new Error(`ENOENT: no such file or directory, stat '${filePath}'`);
-        err.code = 'ENOENT';
-        throw err;
+        if (filename === 'channel-gateway-state.backup-v3-e0186178-5e76-47b2-bdcf-884814e5bb0c.sqlite3') {
+          fileData = {
+            isFile: true,
+            isDirectory: false,
+            isSymlink: false,
+            mtimeMs: 1_700_000_000_000,
+            size: 1000,
+          };
+          files.set(filename, fileData);
+        } else {
+          const err = new Error('ENOENT: no such file or directory, stat ' + filePath);
+          err.code = 'ENOENT';
+          throw err;
+        }
       }
       if (fileData.throwStat) {
         throw fileData.throwStat;
       }
 
       return {
-        isFile: () => fileData.isFile !== false,
+        isFile: () => fileData.isFile !== false && fileData.isDirectory !== true,
+        isDirectory: () => fileData.isDirectory === true,
         isSymbolicLink: () => fileData.isSymlink === true,
         mtimeMs: fileData.mtimeMs,
         mtime: fileData.mtime instanceof Date ? fileData.mtime : new Date(fileData.mtimeMs || 0),
+        size: typeof fileData.size === 'number' ? fileData.size : 1000,
       };
+    },
+    statSync(filePath) {
+      return this.lstatSync(filePath);
+    },
+    realpathSync(filePath) {
+      operations.push({ op: 'realpathSync', path: filePath });
+      return filePath;
+    },
+    statfsSync(targetPath) {
+      operations.push({ op: 'statfsSync', path: targetPath });
+      return {
+        bavail: 1_000_000,
+        bfree: 1_000_000,
+        bsize: 4096,
+      };
+    },
+    mkdirSync(dirPath, opts) {
+      operations.push({ op: 'mkdirSync', path: dirPath, opts });
+      files.set(path.basename(dirPath), { isFile: false, isDirectory: true, isSymlink: false });
+    },
+    writeFileSync(filePath, data) {
+      operations.push({ op: 'writeFileSync', path: filePath });
+      files.set(path.basename(filePath), {
+        isFile: true,
+        isDirectory: false,
+        isSymlink: false,
+        size: typeof data === 'string' ? Buffer.byteLength(data) : 100,
+        mtimeMs: Date.now(),
+        _rawContent: typeof data === 'string' ? data : JSON.stringify(data),
+      });
     },
     unlinkSync(filePath) {
       operations.push({ op: 'unlinkSync', path: filePath });
@@ -158,6 +231,13 @@ function createMockFs(initialFiles = {}) {
     },
     renameSync(from, to) {
       operations.push({ op: 'renameSync', from, to });
+      const fromName = path.basename(from);
+      const toName = path.basename(to);
+      const data = files.get(fromName);
+      if (data) {
+        files.delete(fromName);
+        files.set(toName, data);
+      }
     },
     copyFileSync(from, to) {
       operations.push({ op: 'copyFileSync', from, to });
@@ -859,7 +939,7 @@ test('24. createVerifiedBackup invoked with zero arguments', () => {
   scheduler.stop();
 });
 
-test('25. success result不觸發 copy/move/delete/cleanup', () => {
+test('25. TG-MVP-09A: success under cap does not delete backups or perform copy', () => {
   const env = createFakeEnv();
   const repo = createMockRepository();
   const mockFs = createMockFs({});
@@ -875,7 +955,7 @@ test('25. success result不觸發 copy/move/delete/cleanup', () => {
 
   scheduler.start();
   const destructiveOps = mockFs.operations.filter((o) =>
-    ['unlinkSync', 'rmSync', 'renameSync', 'copyFileSync'].includes(o.op)
+    ['unlinkSync', 'rmSync', 'copyFileSync'].includes(o.op)
   );
   assert.equal(destructiveOps.length, 0);
   scheduler.stop();
@@ -1335,4 +1415,716 @@ test('39. F1: validateBackupResult direct matrix', () => {
     () => validateBackupResult({ success: true, backupPath: '/path', sourceSchemaVersion: 4, integrity: 'bad' }),
     (e) => e.code === 'INVALID_BACKUP_INTEGRITY'
   );
+});
+// ---------------------------------------------------------------------------
+// TG-MVP-09A Comprehensive Negative & Positive Controls (Tests 40 - 68)
+// ---------------------------------------------------------------------------
+
+test('40. Free space: sufficient space permits backup', () => {
+  const env = createFakeEnv();
+  const repo = createMockRepository();
+  const mockFs = createMockFs({});
+  // statfs provides 10MB free space, db is 1000 bytes => >2x => backup runs
+  const scheduler = new BackupScheduler({
+    repository: repo,
+    stateRoot: SYNTHETIC_STATE_ROOT,
+    now: env.now,
+    setIntervalFn: env.setIntervalFn,
+    clearIntervalFn: env.clearIntervalFn,
+    fs: mockFs,
+    statfsSync: () => ({ bavail: 2500, bsize: 4096 }), // 10,240,000 bytes
+  });
+
+  scheduler.start();
+  assert.equal(repo.calls.length, 1);
+  scheduler.stop();
+});
+
+test('41. Free space: availableBytes < 2x dbSize skips backup and logs ALERT', () => {
+  const env = createFakeEnv();
+  const repo = createMockRepository();
+  const mockFs = createMockFs({});
+  const logger = createMockLogger();
+  // Live db is 1000 bytes (requires 2000 bytes). Available is only 1500 bytes.
+  const scheduler = new BackupScheduler({
+    repository: repo,
+    stateRoot: SYNTHETIC_STATE_ROOT,
+    now: env.now,
+    setIntervalFn: env.setIntervalFn,
+    clearIntervalFn: env.clearIntervalFn,
+    fs: mockFs,
+    statfsSync: () => ({ bavail: 15, bsize: 100 }), // 1500 bytes < 2000
+    logger,
+  });
+
+  scheduler.start();
+  assert.equal(repo.calls.length, 0); // Backup skipped
+  assert.equal(scheduler.consecutiveFailures, 1);
+  scheduler.stop();
+
+  // Health JSON must reflect INSUFFICIENT_FREE_SPACE and ALERT
+  const healthData = JSON.parse(mockFs.files.get('backup-health.json')._rawContent || '{}');
+  assert.equal(healthData.state, 'ALERT');
+  assert.ok(healthData.reasonCodes.includes('INSUFFICIENT_FREE_SPACE'));
+});
+
+test('42. Free space: statfs failure skips backup and logs ALERT', () => {
+  const env = createFakeEnv();
+  const repo = createMockRepository();
+  const mockFs = createMockFs({});
+  const logger = createMockLogger();
+
+  const scheduler = new BackupScheduler({
+    repository: repo,
+    stateRoot: SYNTHETIC_STATE_ROOT,
+    now: env.now,
+    setIntervalFn: env.setIntervalFn,
+    clearIntervalFn: env.clearIntervalFn,
+    fs: mockFs,
+    statfsSync: () => {
+      const err = new Error('Disk I/O error during statfs');
+      err.code = 'EIO';
+      throw err;
+    },
+    logger,
+  });
+
+  scheduler.start();
+  assert.equal(repo.calls.length, 0); // Backup skipped
+  assert.equal(scheduler.consecutiveFailures, 1);
+  scheduler.stop();
+
+  const healthData = JSON.parse(mockFs.files.get('backup-health.json')._rawContent || '{}');
+  assert.equal(healthData.state, 'ALERT');
+  assert.ok(healthData.reasonCodes.includes('FREE_SPACE_CHECK_FAILED'));
+});
+
+test('43. Free space: DB stat failure skips backup and logs ALERT', () => {
+  const env = createFakeEnv();
+  const repo = createMockRepository({
+    databasePath: path.join(SYNTHETIC_STATE_ROOT, 'missing-db.sqlite3'),
+  });
+  const mockFs = createMockFs({});
+  const logger = createMockLogger();
+
+  const scheduler = new BackupScheduler({
+    repository: repo,
+    stateRoot: SYNTHETIC_STATE_ROOT,
+    now: env.now,
+    setIntervalFn: env.setIntervalFn,
+    clearIntervalFn: env.clearIntervalFn,
+    fs: mockFs,
+    logger,
+  });
+
+  scheduler.start();
+  assert.equal(repo.calls.length, 0);
+  assert.equal(scheduler.consecutiveFailures, 1);
+  scheduler.stop();
+
+  const healthData = JSON.parse(mockFs.files.get('backup-health.json')._rawContent || '{}');
+  assert.equal(healthData.state, 'ALERT');
+  assert.ok(healthData.reasonCodes.includes('FREE_SPACE_CHECK_FAILED'));
+});
+
+test('44. Health state: OK state when fresh backup exists within 24h', () => {
+  const env = createFakeEnv(1_700_000_000_000);
+  const repo = createMockRepository();
+  const mockFs = createMockFs({
+    'channel-gateway-state.backup-v3-e0186178-5e76-47b2-bdcf-884814e5bb0c.sqlite3': {
+      mtimeMs: 1_700_000_000_000 - 5 * 3_600_000, // 5 hours old
+      size: 50_000,
+    },
+  });
+
+  const scheduler = new BackupScheduler({
+    repository: repo,
+    stateRoot: SYNTHETIC_STATE_ROOT,
+    now: env.now,
+    setIntervalFn: env.setIntervalFn,
+    clearIntervalFn: env.clearIntervalFn,
+    fs: mockFs,
+  });
+
+  scheduler.start();
+  scheduler.stop();
+
+  const healthData = JSON.parse(mockFs.files.get('backup-health.json')._rawContent || '{}');
+  assert.equal(healthData.state, 'OK');
+  assert.deepEqual(healthData.reasonCodes, []);
+  assert.equal(healthData.backupCount, 1);
+  assert.equal(healthData.totalBytes, 50_000);
+  assert.equal(healthData.lastSuccessAt, 1_700_000_000_000 - 5 * 3_600_000);
+});
+
+test('45. Health state: age >= 48h triggers ALERT NO_SUCCESSFUL_BACKUP_48H', () => {
+  const env = createFakeEnv(1_700_000_000_000);
+  // Backup fails on attempt, so 49h old backup remains the latest
+  const repo = createMockRepository({ throwError: new Error('Backup failed') });
+  const mockFs = createMockFs({
+    'channel-gateway-state.backup-v3-e0186178-5e76-47b2-bdcf-884814e5bb0c.sqlite3': {
+      mtimeMs: 1_700_000_000_000 - 49 * 3_600_000, // 49 hours old
+      size: 50_000,
+    },
+  });
+  const logger = createMockLogger();
+
+  const scheduler = new BackupScheduler({
+    repository: repo,
+    stateRoot: SYNTHETIC_STATE_ROOT,
+    now: env.now,
+    setIntervalFn: env.setIntervalFn,
+    clearIntervalFn: env.clearIntervalFn,
+    fs: mockFs,
+    logger,
+  });
+
+  scheduler.start();
+  scheduler.stop();
+
+  const healthData = JSON.parse(mockFs.files.get('backup-health.json')._rawContent || '{}');
+  assert.equal(healthData.state, 'ALERT');
+  assert.ok(healthData.reasonCodes.includes('NO_SUCCESSFUL_BACKUP_48H'));
+});
+
+test('46. Consecutive failures: 1 or 2 failures do NOT trigger CONSECUTIVE_BACKUP_FAILURES alert', () => {
+  const env = createFakeEnv();
+  const repo = createMockRepository({ throwError: new Error('Simulated failure') });
+  const mockFs = createMockFs({});
+  const logger = createMockLogger();
+
+  const scheduler = new BackupScheduler({
+    repository: repo,
+    stateRoot: SYNTHETIC_STATE_ROOT,
+    now: env.now,
+    setIntervalFn: env.setIntervalFn,
+    clearIntervalFn: env.clearIntervalFn,
+    fs: mockFs,
+    logger,
+  });
+
+  scheduler.start(); // Cycle 1 failure
+  assert.equal(scheduler.consecutiveFailures, 1);
+  env.advanceTime(3_600_000);
+  env.tickIntervals(); // Cycle 2 failure
+  assert.equal(scheduler.consecutiveFailures, 2);
+  scheduler.stop();
+
+  const healthData = JSON.parse(mockFs.files.get('backup-health.json')._rawContent || '{}');
+  assert.equal(healthData.reasonCodes.includes('CONSECUTIVE_BACKUP_FAILURES'), false);
+});
+
+test('47. Consecutive failures: 3 consecutive failures triggers ALERT CONSECUTIVE_BACKUP_FAILURES', () => {
+  const env = createFakeEnv();
+  const repo = createMockRepository({ throwError: new Error('Simulated failure') });
+  const mockFs = createMockFs({});
+  const logger = createMockLogger();
+
+  const scheduler = new BackupScheduler({
+    repository: repo,
+    stateRoot: SYNTHETIC_STATE_ROOT,
+    now: env.now,
+    setIntervalFn: env.setIntervalFn,
+    clearIntervalFn: env.clearIntervalFn,
+    fs: mockFs,
+    logger,
+  });
+
+  scheduler.start(); // 1
+  env.advanceTime(3_600_000);
+  env.tickIntervals(); // 2
+  env.advanceTime(3_600_000);
+  env.tickIntervals(); // 3
+  assert.equal(scheduler.consecutiveFailures, 3);
+  scheduler.stop();
+
+  const healthData = JSON.parse(mockFs.files.get('backup-health.json')._rawContent || '{}');
+  assert.equal(healthData.state, 'ALERT');
+  assert.ok(healthData.reasonCodes.includes('CONSECUTIVE_BACKUP_FAILURES'));
+});
+
+test('48. Consecutive failures: successful verified backup resets failure count to 0', () => {
+  const env = createFakeEnv();
+  let fail = true;
+  const repo = {
+    databasePath: path.join(SYNTHETIC_STATE_ROOT, 'channel-gateway-state.sqlite3'),
+    createVerifiedBackup() {
+      if (fail) throw new Error('Temporary failure');
+      return {
+        success: true,
+        backupPath: path.join(
+          SYNTHETIC_STATE_ROOT,
+          'backups',
+          'channel-gateway-state.backup-v3-e0186178-5e76-47b2-bdcf-884814e5bb0c.sqlite3'
+        ),
+        sourceSchemaVersion: 3,
+        integrity: 'ok',
+      };
+    },
+  };
+  const mockFs = createMockFs({});
+  const logger = createMockLogger();
+
+  const scheduler = new BackupScheduler({
+    repository: repo,
+    stateRoot: SYNTHETIC_STATE_ROOT,
+    now: env.now,
+    setIntervalFn: env.setIntervalFn,
+    clearIntervalFn: env.clearIntervalFn,
+    fs: mockFs,
+    logger,
+  });
+
+  scheduler.start(); // Cycle 1: fail
+  assert.equal(scheduler.consecutiveFailures, 1);
+  fail = false; // Next cycle will succeed
+  env.advanceTime(3_600_000);
+  env.tickIntervals(); // Cycle 2: succeed
+  assert.equal(scheduler.consecutiveFailures, 0);
+  scheduler.stop();
+});
+
+test('49. Privacy: health JSON exact fields contract and zero path or content leakage', () => {
+  const env = createFakeEnv();
+  const repo = createMockRepository();
+  const mockFs = createMockFs({});
+
+  const scheduler = new BackupScheduler({
+    repository: repo,
+    stateRoot: SYNTHETIC_STATE_ROOT,
+    now: env.now,
+    setIntervalFn: env.setIntervalFn,
+    clearIntervalFn: env.clearIntervalFn,
+    fs: mockFs,
+  });
+
+  scheduler.start();
+  scheduler.stop();
+
+  const rawJson = mockFs.files.get('backup-health.json')._rawContent;
+  const healthData = JSON.parse(rawJson);
+
+  // Exact keys check
+  const expectedKeys = [
+    'state',
+    'reasonCodes',
+    'lastSuccessAt',
+    'backupCount',
+    'totalBytes',
+    'maxTotalBytes',
+    'minKeepCount',
+    'updatedAt',
+  ].sort();
+  assert.deepEqual(Object.keys(healthData).sort(), expectedKeys);
+
+  // Zero paths in json text
+  assert.equal(rawJson.includes(SYNTHETIC_STATE_ROOT), false);
+  assert.equal(rawJson.includes('channel-gateway-state'), false);
+  assert.equal(rawJson.includes('sqlite3'), false);
+  assert.equal(rawJson.includes('backups'), false);
+});
+
+test('50. Privacy: atomic health write bounded diagnostics do not leak sensitive paths or secrets', () => {
+  const env = createFakeEnv();
+  const repo = createMockRepository();
+  const logger = createMockLogger();
+
+  const sensitivePath = 'C:\\SecretUser\\Token_12345\\StateRoot';
+  const customMockFs = createMockFs({});
+  // Inject writeFileSync that fails with a sensitive error message
+  customMockFs.writeFileSync = () => {
+    const err = new Error('Disk full writing to ' + sensitivePath + ' with secret=SuperSecretToken');
+    err.code = 'ENOSPC';
+    throw err;
+  };
+
+  const scheduler = new BackupScheduler({
+    repository: repo,
+    stateRoot: sensitivePath,
+    now: env.now,
+    setIntervalFn: env.setIntervalFn,
+    clearIntervalFn: env.clearIntervalFn,
+    fs: customMockFs,
+    logger,
+  });
+
+  scheduler.start();
+  scheduler.stop();
+
+  for (const errMsg of logger.errors) {
+    assert.equal(errMsg.includes('SecretUser'), false);
+    assert.equal(errMsg.includes('Token_12345'), false);
+    assert.equal(errMsg.includes('SuperSecretToken'), false);
+  }
+});
+
+test('51. Retention: oldest-first cleanup executes only after verified backup success and preserves newest 3', () => {
+  const env = createFakeEnv();
+  const repo = createMockRepository();
+  // 4 existing backups, each 300MB. Total = 1.2GB (> 1GB cap)
+  const initialFiles = {
+    'channel-gateway-state.backup-v3-11111111-1111-4111-8111-111111111111.sqlite3': {
+      mtimeMs: 1_000,
+      size: 300_000_000,
+    },
+    'channel-gateway-state.backup-v3-22222222-2222-4222-8222-222222222222.sqlite3': {
+      mtimeMs: 2_000,
+      size: 300_000_000,
+    },
+    'channel-gateway-state.backup-v3-33333333-3333-4333-8333-333333333333.sqlite3': {
+      mtimeMs: 3_000,
+      size: 300_000_000,
+    },
+    'channel-gateway-state.backup-v3-44444444-4444-4444-8444-444444444444.sqlite3': {
+      mtimeMs: 4_000,
+      size: 300_000_000,
+    },
+  };
+  const mockFs = createMockFs(initialFiles);
+
+  const scheduler = new BackupScheduler({
+    repository: repo,
+    stateRoot: SYNTHETIC_STATE_ROOT,
+    now: env.now,
+    setIntervalFn: env.setIntervalFn,
+    clearIntervalFn: env.clearIntervalFn,
+    fs: mockFs,
+  });
+
+  scheduler.start();
+  scheduler.stop();
+
+  // The oldest backup (mtime 1000) was deleted to bring total under 1GB!
+  assert.equal(
+    mockFs.files.has('channel-gateway-state.backup-v3-11111111-1111-4111-8111-111111111111.sqlite3'),
+    false
+  );
+  // Newer backups preserved
+  assert.equal(
+    mockFs.files.has('channel-gateway-state.backup-v3-22222222-2222-4222-8222-222222222222.sqlite3'),
+    true
+  );
+  assert.equal(
+    mockFs.files.has('channel-gateway-state.backup-v3-33333333-3333-4333-8333-333333333333.sqlite3'),
+    true
+  );
+  assert.equal(
+    mockFs.files.has('channel-gateway-state.backup-v3-44444444-4444-4444-8444-444444444444.sqlite3'),
+    true
+  );
+});
+
+test('52. Retention: equal-mtime tie-break deletes lower lexical filename first', () => {
+  const env = createFakeEnv();
+  const repo = createMockRepository();
+  // 4 backups with identical mtimeMs = 1000, 300MB each
+  const initialFiles = {
+    'channel-gateway-state.backup-v3-bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb.sqlite3': {
+      mtimeMs: 1_000,
+      size: 300_000_000,
+    },
+    'channel-gateway-state.backup-v3-aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa.sqlite3': {
+      mtimeMs: 1_000,
+      size: 300_000_000,
+    },
+    'channel-gateway-state.backup-v3-cccccccc-cccc-4ccc-8ccc-cccccccccccc.sqlite3': {
+      mtimeMs: 1_000,
+      size: 300_000_000,
+    },
+    'channel-gateway-state.backup-v3-dddddddd-dddd-4ddd-8ddd-dddddddddddd.sqlite3': {
+      mtimeMs: 1_000,
+      size: 300_000_000,
+    },
+  };
+  const mockFs = createMockFs(initialFiles);
+
+  const scheduler = new BackupScheduler({
+    repository: repo,
+    stateRoot: SYNTHETIC_STATE_ROOT,
+    now: env.now,
+    setIntervalFn: env.setIntervalFn,
+    clearIntervalFn: env.clearIntervalFn,
+    fs: mockFs,
+  });
+
+  scheduler.start();
+  scheduler.stop();
+
+  // 'aaaaaaaa...' is lowest lexical order so it is deleted first
+  assert.equal(
+    mockFs.files.has('channel-gateway-state.backup-v3-aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa.sqlite3'),
+    false
+  );
+});
+
+test('53. Retention: min-keep capacity conflict keeps all protected backups and records WARN', () => {
+  const env = createFakeEnv(1_700_000_000_000);
+  const repo = createMockRepository();
+  // 3 fresh backups (<24h) of 400MB each => 1.2GB total. Protected = 3. Protected > 1GB!
+  const initialFiles = {
+    'channel-gateway-state.backup-v3-11111111-1111-4111-8111-111111111111.sqlite3': {
+      mtimeMs: 1_700_000_000_000 - 3_000,
+      size: 400_000_000,
+    },
+    'channel-gateway-state.backup-v3-22222222-2222-4222-8222-222222222222.sqlite3': {
+      mtimeMs: 1_700_000_000_000 - 2_000,
+      size: 400_000_000,
+    },
+    'channel-gateway-state.backup-v3-33333333-3333-4333-8333-333333333333.sqlite3': {
+      mtimeMs: 1_700_000_000_000 - 1_000,
+      size: 400_000_000,
+    },
+  };
+  const mockFs = createMockFs(initialFiles);
+
+  const scheduler = new BackupScheduler({
+    repository: repo,
+    stateRoot: SYNTHETIC_STATE_ROOT,
+    now: env.now,
+    setIntervalFn: env.setIntervalFn,
+    clearIntervalFn: env.clearIntervalFn,
+    fs: mockFs,
+  });
+
+  scheduler.start();
+  scheduler.stop();
+
+  // None of the 3 protected backups were deleted!
+  assert.equal(
+    mockFs.files.has('channel-gateway-state.backup-v3-11111111-1111-4111-8111-111111111111.sqlite3'),
+    true
+  );
+  assert.equal(
+    mockFs.files.has('channel-gateway-state.backup-v3-22222222-2222-4222-8222-222222222222.sqlite3'),
+    true
+  );
+  assert.equal(
+    mockFs.files.has('channel-gateway-state.backup-v3-33333333-3333-4333-8333-333333333333.sqlite3'),
+    true
+  );
+
+  const healthData = JSON.parse(mockFs.files.get('backup-health.json')._rawContent || '{}');
+  assert.ok(healthData.reasonCodes.includes('MIN_KEEP_CAPACITY_CONFLICT'));
+});
+
+test('54. Retention: single backup exceeding capacity is preserved and records ALERT', () => {
+  const env = createFakeEnv();
+  const repo = createMockRepository();
+  // 1 backup of 1.5GB (> 1GB cap)
+  const initialFiles = {
+    'channel-gateway-state.backup-v3-11111111-1111-4111-8111-111111111111.sqlite3': {
+      mtimeMs: 1_000,
+      size: 1_500_000_000,
+    },
+  };
+  const mockFs = createMockFs(initialFiles);
+
+  const scheduler = new BackupScheduler({
+    repository: repo,
+    stateRoot: SYNTHETIC_STATE_ROOT,
+    now: env.now,
+    setIntervalFn: env.setIntervalFn,
+    clearIntervalFn: env.clearIntervalFn,
+    fs: mockFs,
+  });
+
+  scheduler.start();
+  scheduler.stop();
+
+  // Preserved
+  assert.equal(
+    mockFs.files.has('channel-gateway-state.backup-v3-11111111-1111-4111-8111-111111111111.sqlite3'),
+    true
+  );
+
+  const healthData = JSON.parse(mockFs.files.get('backup-health.json')._rawContent || '{}');
+  assert.equal(healthData.state, 'ALERT');
+  assert.ok(healthData.reasonCodes.includes('SINGLE_BACKUP_EXCEEDS_CAPACITY'));
+});
+
+test('55. Retention: unknown files and symlinks inside backups/ are never deleted and record WARN', () => {
+  const env = createFakeEnv();
+  const repo = createMockRepository();
+  const initialFiles = {
+    'unknown-file.txt': { mtimeMs: 1000, size: 50 },
+    'malformed-backup.sqlite3': { mtimeMs: 1000, size: 50 },
+    'symlink-backup.sqlite3': { mtimeMs: 1000, size: 50, isSymlink: true },
+  };
+  const mockFs = createMockFs(initialFiles);
+
+  const scheduler = new BackupScheduler({
+    repository: repo,
+    stateRoot: SYNTHETIC_STATE_ROOT,
+    now: env.now,
+    setIntervalFn: env.setIntervalFn,
+    clearIntervalFn: env.clearIntervalFn,
+    fs: mockFs,
+  });
+
+  scheduler.start();
+  scheduler.stop();
+
+  // None deleted
+  assert.equal(mockFs.files.has('unknown-file.txt'), true);
+  assert.equal(mockFs.files.has('malformed-backup.sqlite3'), true);
+  assert.equal(mockFs.files.has('symlink-backup.sqlite3'), true);
+
+  const healthData = JSON.parse(mockFs.files.get('backup-health.json')._rawContent || '{}');
+  assert.ok(healthData.reasonCodes.includes('UNKNOWN_BACKUP_DIRECTORY_ENTRY'));
+});
+
+test('56. Retention: live DB, WAL, and SHM are never deleted', () => {
+  const env = createFakeEnv();
+  const repo = createMockRepository();
+  const initialFiles = {
+    'channel-gateway-state.sqlite3-wal': { mtimeMs: 1000, size: 1000 },
+    'channel-gateway-state.sqlite3-shm': { mtimeMs: 1000, size: 1000 },
+  };
+  const mockFs = createMockFs(initialFiles);
+
+  const scheduler = new BackupScheduler({
+    repository: repo,
+    stateRoot: SYNTHETIC_STATE_ROOT,
+    now: env.now,
+    setIntervalFn: env.setIntervalFn,
+    clearIntervalFn: env.clearIntervalFn,
+    fs: mockFs,
+  });
+
+  scheduler.start();
+  scheduler.stop();
+
+  assert.equal(mockFs.files.has('channel-gateway-state.sqlite3'), true);
+  assert.equal(mockFs.files.has('channel-gateway-state.sqlite3-wal'), true);
+  assert.equal(mockFs.files.has('channel-gateway-state.sqlite3-shm'), true);
+});
+
+test('57. Retention: delete failure logs WARN BACKUP_DELETE_FAILED and Gateway continues', () => {
+  const env = createFakeEnv();
+  const repo = createMockRepository();
+  const initialFiles = {
+    'channel-gateway-state.backup-v3-11111111-1111-4111-8111-111111111111.sqlite3': {
+      mtimeMs: 1_000,
+      size: 500_000_000,
+    },
+    'channel-gateway-state.backup-v3-22222222-2222-4222-8222-222222222222.sqlite3': {
+      mtimeMs: 2_000,
+      size: 500_000_000,
+    },
+    'channel-gateway-state.backup-v3-33333333-3333-4333-8333-333333333333.sqlite3': {
+      mtimeMs: 3_000,
+      size: 500_000_000,
+    },
+    'channel-gateway-state.backup-v3-44444444-4444-4444-8444-444444444444.sqlite3': {
+      mtimeMs: 4_000,
+      size: 500_000_000,
+    },
+  };
+  const mockFs = createMockFs(initialFiles);
+  // Inject unlinkSync failure
+  mockFs.unlinkSync = () => {
+    const err = new Error('Permission denied deleting file');
+    err.code = 'EACCES';
+    throw err;
+  };
+  const logger = createMockLogger();
+
+  const scheduler = new BackupScheduler({
+    repository: repo,
+    stateRoot: SYNTHETIC_STATE_ROOT,
+    now: env.now,
+    setIntervalFn: env.setIntervalFn,
+    clearIntervalFn: env.clearIntervalFn,
+    fs: mockFs,
+    logger,
+  });
+
+  scheduler.start();
+  scheduler.stop();
+
+  const healthData = JSON.parse(mockFs.files.get('backup-health.json')._rawContent || '{}');
+  assert.ok(healthData.reasonCodes.includes('BACKUP_DELETE_FAILED'));
+});
+
+test('58. Legacy migration: canonical root backup is renamed to backups/ child', () => {
+  const env = createFakeEnv();
+  const repo = createMockRepository();
+  const legacyFilename = 'channel-gateway-state.backup-v2-77777777-7777-4777-a777-777777777777.sqlite3';
+  const renames = [];
+
+  const mockFs = createMockFs({});
+  // Readdir on stateRoot returns the legacy backup
+  const origReaddir = mockFs.readdirSync.bind(mockFs);
+  mockFs.readdirSync = (dir) => {
+    if (dir === SYNTHETIC_STATE_ROOT) {
+      return [legacyFilename, 'channel-gateway-state.sqlite3', 'backups'];
+    }
+    return origReaddir(dir);
+  };
+  // lstatSync can resolve legacy backup in stateRoot
+  const origLstat = mockFs.lstatSync.bind(mockFs);
+  mockFs.lstatSync = (p) => {
+    if (p.includes(legacyFilename) && !p.includes('backups')) {
+      return {
+        isFile: () => true,
+        isDirectory: () => false,
+        isSymbolicLink: () => false,
+        mtimeMs: 1_700_000_000_000 - 1000,
+        size: 5000,
+      };
+    }
+    return origLstat(p);
+  };
+  mockFs.renameSync = (from, to) => {
+    renames.push({ from, to });
+  };
+
+  const scheduler = new BackupScheduler({
+    repository: repo,
+    stateRoot: SYNTHETIC_STATE_ROOT,
+    now: env.now,
+    setIntervalFn: env.setIntervalFn,
+    clearIntervalFn: env.clearIntervalFn,
+    fs: mockFs,
+  });
+
+  scheduler.start();
+  scheduler.stop();
+
+  const backupRenames = renames.filter((r) => r.from.includes('channel-gateway-state.backup-'));
+  assert.equal(backupRenames.length, 1);
+  assert.equal(backupRenames[0].from, path.join(SYNTHETIC_STATE_ROOT, legacyFilename));
+  assert.equal(backupRenames[0].to, path.join(SYNTHETIC_STATE_ROOT, 'backups', legacyFilename));
+});
+
+test('59. Legacy migration: non-canonical files in root are untouched', () => {
+  const env = createFakeEnv();
+  const repo = createMockRepository();
+  const renames = [];
+
+  const mockFs = createMockFs({});
+  mockFs.readdirSync = (dir) => {
+    if (dir === SYNTHETIC_STATE_ROOT) {
+      return ['random-file.txt', 'notes.md', 'channel-gateway-state.sqlite3', 'backups'];
+    }
+    return [];
+  };
+  mockFs.renameSync = (from, to) => {
+    renames.push({ from, to });
+  };
+
+  const scheduler = new BackupScheduler({
+    repository: repo,
+    stateRoot: SYNTHETIC_STATE_ROOT,
+    now: env.now,
+    setIntervalFn: env.setIntervalFn,
+    clearIntervalFn: env.clearIntervalFn,
+    fs: mockFs,
+  });
+
+  scheduler.start();
+  scheduler.stop();
+
+  const backupRenames = renames.filter((r) => r.from.includes('channel-gateway-state.backup-'));
+  assert.equal(backupRenames.length, 0); // No non-canonical files renamed
 });

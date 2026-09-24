@@ -486,3 +486,36 @@ def test_t9_retirement_structural_guard():
                 content = f.read()
             for target in retired_import_targets:
                 assert target not in content, f"Gateway test {fname} must not import {target}"
+
+
+def test_channel_gateway_sqlite_gitignore_protection():
+    """Requirement J: Verify .gitignore contains SQLite patterns and does not ignore tracked source files."""
+    gitignore_path = os.path.join(REPO_ROOT, ".gitignore")
+    assert os.path.isfile(gitignore_path), f".gitignore missing at {gitignore_path}"
+    with open(gitignore_path, "r", encoding="utf-8") as f:
+        gitignore_content = f.read()
+
+    required_patterns = ["*.sqlite3", "*.sqlite3-wal", "*.sqlite3-shm"]
+    for pat in required_patterns:
+        assert pat in gitignore_content, f".gitignore missing pattern {pat}"
+
+    # Negative canary: verify tracked source and test files are not ignored by git
+    tracked_sample_files = [
+        "runtime/channel-gateway/core/sqlite-state-repository.js",
+        "runtime/channel-gateway/tests/sqlite-state-repository.test.js",
+    ]
+    for rel_f in tracked_sample_files:
+        res = subprocess.run(
+            ["git", "check-ignore", "-q", rel_f],
+            cwd=REPO_ROOT,
+            check=False
+        )
+        assert res.returncode == 1, f"Tracked file {rel_f} must NOT be ignored by .gitignore (check-ignore exit 1 expected)"
+
+    # Positive check: verify a runtime sqlite3 file is ignored
+    res_pos = subprocess.run(
+        ["git", "check-ignore", "-q", "runtime/channel-gateway/state/channel-gateway-state.sqlite3"],
+        cwd=REPO_ROOT,
+        check=False
+    )
+    assert res_pos.returncode == 0, "Runtime sqlite3 file must be ignored by .gitignore (check-ignore exit 0 expected)"

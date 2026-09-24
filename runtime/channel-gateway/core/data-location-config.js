@@ -1,31 +1,45 @@
 /**
  * runtime/channel-gateway/core/data-location-config.js
  *
- * ADR-0022 D24 / ADR-0025: Repo-External Data Location & Gateway Config Contract.
+ * ADR-0022 D24 / ADR-0023 / TG-MVP-09A: Repo-External Data Location & Gateway Config Contract.
  *
  * Invariants:
  * - Pure validation contract for resolved repo-external data location and gateway configuration.
  * - NO filesystem operations (no fs.stat, no fs.mkdir, no fs.access).
  * - NO process.env access or OS known-folder resolution (handled by runtime loader).
  * - NO credentials, tokens, secrets, bot accounts, or listener sockets.
- * - Strict schema validation: rejects unknown top-level, dataLocations, and gateway keys.
+ * - Strict schema validation: supports schemaVersion 3 with backward compatibility for v2.
+ * - v2: exact v2 keys only; rejects top-level backup key; normalizes in-memory to v3 with default backup policy.
+ * - v3: allows optional top-level backup block with maxTotalBytes (>0 safe integer) and minKeepCount (>=1 safe integer).
+ * - Rejects unknown top-level, dataLocations, gateway, and backup keys.
  * - Path validation: all data paths must be non-empty trimmed strings and absolute.
- * - Cross-platform absolute path checking: compatible with Windows and POSIX absolute paths.
- * - Gateway configuration: gateway.localPort must be present, integer, and strictly 3003.
- * - Immutability: input object is never mutated; returns a clean normalized object.
+ * - Location guard helper: rejects UNC network paths and synchronized directory segments for stateRoot ONLY.
+ * - Immutability: input object is never mutated; returns a clean normalized schemaVersion 3 object.
  */
 
 'use strict';
 
 const path = require('node:path');
 
-const DATA_LOCATION_SCHEMA_VERSION = 2;
+const CURRENT_SCHEMA_VERSION = 3;
+const LEGACY_SUPPORTED_SCHEMA_VERSION = 2;
+const DATA_LOCATION_SCHEMA_VERSION = CURRENT_SCHEMA_VERSION;
 const CANONICAL_GATEWAY_PORT = 3003;
 
-const ALLOWED_TOP_LEVEL_KEYS = new Set([
+const DEFAULT_MAX_TOTAL_BYTES = 1_000_000_000;
+const DEFAULT_MIN_KEEP_COUNT = 3;
+
+const ALLOWED_TOP_LEVEL_KEYS_V2 = new Set([
   'schemaVersion',
   'dataLocations',
   'gateway',
+]);
+
+const ALLOWED_TOP_LEVEL_KEYS_V3 = new Set([
+  'schemaVersion',
+  'dataLocations',
+  'gateway',
+  'backup',
 ]);
 
 const ALLOWED_DATA_LOCATIONS_KEYS = new Set([
@@ -38,6 +52,11 @@ const ALLOWED_DATA_LOCATIONS_KEYS = new Set([
 
 const ALLOWED_GATEWAY_KEYS = new Set([
   'localPort',
+]);
+
+const ALLOWED_BACKUP_KEYS = new Set([
+  'maxTotalBytes',
+  'minKeepCount',
 ]);
 
 const REQUIRED_SINGLETON_PATHS = [
@@ -61,22 +80,59 @@ function isAbsolutePath(val) {
 }
 
 /**
+ * Validates that stateRoot is not located on a UNC network share or synchronized directory.
+ * Rules (M16 / Section 10):
+ * - Rejects UNC paths: \\server\share, //server/share, \\?\UNC\server\share, //?/UNC/server/share.
+ * - Rejects known sync root directory segments (case-insensitive):
+ *   OneDrive, Dropbox, Google Drive, GoogleDrive, iCloudDrive.
+ * - Applies strictly to stateRoot (archiveRoot and other roots are never tested here).
+ *
+ * @param {string} stateRootPath - Path string to validate.
+ * @throws {Error} If path is UNC or inside a synchronized folder.
+ */
+function assertSafeStateRootLocation(stateRootPath) {
+  if (typeof stateRootPath !== 'string' || !stateRootPath.trim()) {
+    throw new Error('stateRoot path must be a non-empty string');
+  }
+
+  const trimmed = stateRootPath.trim();
+
+  // 1. UNC checks (extended UNC checked first)
+  if (/^[\\/]{2,}\?[\\/]+UNC[\\/]+/i.test(trimmed)) {
+    throw new Error(`stateRoot must not be an extended UNC network path (fail-closed): '${stateRootPath}'`);
+  }
+  if (trimmed.startsWith('\\\\') || trimmed.startsWith('//')) {
+    throw new Error(`stateRoot must not be a UNC network path (fail-closed): '${stateRootPath}'`);
+  }
+
+  // 2. Synchronized directory segment checks
+  const segments = trimmed.split(/[\\/]+/);
+  for (const seg of segments) {
+    const lower = seg.toLowerCase().trim();
+    if (
+      lower.startsWith('onedrive') ||
+      lower === 'dropbox' ||
+      lower === 'google drive' ||
+      lower === 'googledrive' ||
+      lower === 'iclouddrive'
+    ) {
+      throw new Error(
+        `stateRoot must not reside within a synchronized folder ('${seg}') (fail-closed): '${stateRootPath}'`
+      );
+    }
+  }
+}
+
+/**
  * Validates and normalizes a resolved data location and gateway configuration object.
  *
  * @param {object} config - Resolved configuration object
- * @returns {object} Normalized copy of the configuration
+ * @returns {object} Normalized copy of the configuration (schemaVersion 3)
  * @throws {TypeError|Error} If schema, types, or paths are invalid
  */
 function validateResolvedDataLocationConfig(config) {
   if (!config || typeof config !== 'object' || Array.isArray(config)) {
     throw new TypeError('Configuration must be a non-null object');
-  }
-
-  // 1. Strict top-level schema validation
-  for (const key of Object.keys(config)) {
-    if (!ALLOWED_TOP_LEVEL_KEYS.has(key)) {
-      throw new Error(`Unknown top-level configuration key: '${key}'`);
-    }
   }
 
   if (config.schemaVersion === undefined) {
@@ -86,11 +142,29 @@ function validateResolvedDataLocationConfig(config) {
   if (
     typeof config.schemaVersion !== 'number' ||
     !Number.isInteger(config.schemaVersion) ||
-    config.schemaVersion !== DATA_LOCATION_SCHEMA_VERSION
+    (config.schemaVersion !== LEGACY_SUPPORTED_SCHEMA_VERSION &&
+      config.schemaVersion !== CURRENT_SCHEMA_VERSION)
   ) {
     throw new Error(
-      `Unsupported schemaVersion: expected ${DATA_LOCATION_SCHEMA_VERSION}, received ${config.schemaVersion}`
+      `Unsupported schemaVersion: expected ${CURRENT_SCHEMA_VERSION} or ${LEGACY_SUPPORTED_SCHEMA_VERSION}, received ${config.schemaVersion}`
     );
+  }
+
+  const inputVersion = config.schemaVersion;
+
+  // 1. Top-level key validation based on declared version
+  if (inputVersion === LEGACY_SUPPORTED_SCHEMA_VERSION) {
+    for (const key of Object.keys(config)) {
+      if (!ALLOWED_TOP_LEVEL_KEYS_V2.has(key)) {
+        throw new Error(`Unknown top-level configuration key: '${key}'`);
+      }
+    }
+  } else {
+    for (const key of Object.keys(config)) {
+      if (!ALLOWED_TOP_LEVEL_KEYS_V3.has(key)) {
+        throw new Error(`Unknown top-level configuration key: '${key}'`);
+      }
+    }
   }
 
   // 2. Strict dataLocations schema validation
@@ -178,22 +252,67 @@ function validateResolvedDataLocationConfig(config) {
 
   if (portVal !== CANONICAL_GATEWAY_PORT) {
     throw new Error(
-      `Invalid gateway localPort: expected ${CANONICAL_GATEWAY_PORT}, received ${portVal}`
+      `Invalid 'localPort': Gateway v1 strictly requires port ${CANONICAL_GATEWAY_PORT}, received ${portVal}`
     );
   }
 
+  // 6. Backup configuration validation and normalization (v3 or v2 defaults)
+  let normalizedBackup = {
+    maxTotalBytes: DEFAULT_MAX_TOTAL_BYTES,
+    minKeepCount: DEFAULT_MIN_KEEP_COUNT,
+  };
+
+  if (inputVersion === CURRENT_SCHEMA_VERSION && config.backup !== undefined && config.backup !== null) {
+    if (typeof config.backup !== 'object' || Array.isArray(config.backup)) {
+      throw new TypeError('backup must be a non-null object');
+    }
+
+    for (const key of Object.keys(config.backup)) {
+      if (!ALLOWED_BACKUP_KEYS.has(key)) {
+        throw new Error(`Unknown backup configuration key: '${key}'`);
+      }
+    }
+
+    if (config.backup.maxTotalBytes !== undefined) {
+      const val = config.backup.maxTotalBytes;
+      if (typeof val !== 'number' || !Number.isInteger(val) || !Number.isSafeInteger(val) || val <= 0) {
+        throw new Error(`maxTotalBytes must be a positive safe integer, received ${val}`);
+      }
+      normalizedBackup.maxTotalBytes = val;
+    }
+
+    if (config.backup.minKeepCount !== undefined) {
+      const val = config.backup.minKeepCount;
+      if (typeof val !== 'number' || !Number.isInteger(val) || !Number.isSafeInteger(val) || val < 1) {
+        throw new Error(`minKeepCount must be an integer >= 1, received ${val}`);
+      }
+      normalizedBackup.minKeepCount = val;
+    }
+  }
+
   return {
-    schemaVersion: DATA_LOCATION_SCHEMA_VERSION,
+    schemaVersion: CURRENT_SCHEMA_VERSION,
     dataLocations: normalizedLocations,
     gateway: {
       localPort: CANONICAL_GATEWAY_PORT,
     },
+    backup: normalizedBackup,
   };
 }
 
 module.exports = {
+  CURRENT_SCHEMA_VERSION,
+  LEGACY_SUPPORTED_SCHEMA_VERSION,
   DATA_LOCATION_SCHEMA_VERSION,
   CANONICAL_GATEWAY_PORT,
-  validateResolvedDataLocationConfig,
+  DEFAULT_MAX_TOTAL_BYTES,
+  DEFAULT_MIN_KEEP_COUNT,
+  ALLOWED_TOP_LEVEL_KEYS: ALLOWED_TOP_LEVEL_KEYS_V3,
+  ALLOWED_DATA_LOCATIONS_KEYS,
+  ALLOWED_GATEWAY_KEYS,
+  ALLOWED_BACKUP_KEYS,
+  REQUIRED_SINGLETON_PATHS,
   isAbsolutePath,
+  assertSafeStateRootLocation,
+  validateResolvedDataLocationConfig,
 };

@@ -51,26 +51,33 @@ T6 階段正式採用 `busy_timeout = 5000`（5000ms），其基礎為 T1 Window
 - 綱要變更僅允許向前遷移（Forward-only migrations）。
 - 執行任何綱要遷移前，必須具備經驗證之備份。
 
-## 7. 備份機制 (Backup)
+## 7. 備份機制與衛生治理 (Backup & Hygiene — TG-MVP-09 / TG-MVP-09A)
 
 - 運行中的 SQLite 資料庫嚴禁使用作業系統檔案複製（`fs.copyFile` / `Copy-Item`）作為標準備份手段。
 - 備份必須使用 SQLite 原生支援之 **`VACUUM INTO`** 或經嚴格驗證之線上備份 API。
 - **唯一備份原語不變量**：T11A `SqliteStateRepository.createVerifiedBackup()` 為唯一生產備份操作原語，嚴禁改寫內部驗證核心或建立第二套備份實作。
 - **固定常數與排程週期**：保鮮度門檻固定為 24 小時（`BACKUP_FRESHNESS_THRESHOLD_MS = 86_400_000`），檢查間隔固定為 1 小時（`BACKUP_CHECK_INTERVAL_MS = 3_600_000`），嚴禁由環境變數、Local Config 或 CLI 覆寫。
+- **單一驗證備份目錄**：備份檔案唯一合法存放路徑為 `stateRoot/backups/` 子目錄。僅允許在已通過安全驗證之 canonical `stateRoot` 底下，由 Gateway 自行建立並維護 `backups/` 子目錄（`ensureBackupsDirectory`）；除此以外維持 Zero Directory Auto-Create 原則。
+- **舊版備份平滑過渡**：啟動與排程時自動偵測 `stateRoot` 根目錄殘留之歷史正規備份檔案（`channel-gateway-state.backup-*.sqlite3`），透過 `fs.renameSync` 平滑遷移至 `stateRoot/backups/` 並納入統一保留管理。
 - **啟動與關閉語義**：啟動時僅執行保鮮度檢查，無合規備份或最新備份已逾期（age >= 24h）時方建立一份備份，嚴禁無條件啟動備份；進程關閉時不觸發關閉備份。
-- **耐久保鮮度證據**：僅以 `stateRoot` 下直接合規命名之備份檔案（`channel-gateway-state.backup-v{N}-{uuid}.sqlite3`）的正規非符號連結最大有效 `mtimeMs`（<= nowMs）作為保鮮度判準，不擴充 DB 綱要或 Local Config。
+- **耐久保鮮度證據**：僅以 `stateRoot/backups/` 下合規命名之備份檔案（`channel-gateway-state.backup-v{N}-{uuid}.sqlite3`）的正規非符號連結最大有效 `mtimeMs`（<= nowMs）作為保鮮度判準。
+- **容量保留與最少數量下限**：Local Config schemaVersion 3 新增 `backup` 區塊（預設 `maxTotalBytes: 1_000_000_000` 即 1GB，`minKeepCount: 3`），維持 v2 雙向相容。實施容量驅動保留（無天數年齡限制），嚴格保障最少保留最新 3 份合規備份（Floor of 3）。
+- **決定性清理**：清理時機嚴格限制於「新備份成功驗證寫入後」，備份失敗時嚴禁刪除任何既有備份。超額清理依 `mtimeMs` 由舊至新排序，平局時以檔名字典順序打破。
+- **剩餘空間雙倍安全檢查**：執行備份前必須檢查磁碟剩餘空間（`bavail * bsize` >= `2 * dbSize`）；空間不足時安全跳過備份，不呼叫 `VACUUM INTO`，記錄 `FREE_SPACE_INSUFFICIENT` 診斷，進程維持正常服務。
+- **備份健康狀態原子寫入**：備份健康狀態動態評估（`HEALTHY`、`DEGRADED`、`UNHEALTHY`）並以非敏感格式寫入 `stateRoot/backups/backup-health.json`，嚴格透過 `shared/atomicFs.js` 確保原子性。
+- **隱私與機敏資訊安全防護**：備份健康狀態與所有排程日誌絕對不得包含任何本機路徑、資料庫完整路徑、原始例外訊息、Token 或訊息內容；診斷日誌僅輸出受控枚舉名稱。
 - **重入與重疊防護**：單一實例保持 in-flight 旗標，重入或重疊 tick 一律略過（skip），不佇列排隊、不並行備份。
 - **非致命失敗處理**：定期掃描或備份失敗時僅記錄邊界明確且不含機密之診斷，服務保持運作（不 process.exit、不立即重試、不指數退避），留待下一個正常 1 小時 tick 重新評估。
-- **TG-MVP-09 零保留清理與 09A 硬性上線守門**：TG-MVP-09 嚴禁實作任何 retention、cleanup、路徑隔離或檔案刪除；已知在 09A 完成前備份副本會持續累積；硬性守門宣告：`TG-MVP-09A MUST COMPLETE BEFORE ANY REAL TELEGRAM GO-LIVE`。
 - **過渡期進程內執行擁有者**：`BackupRuntimeOwner` 僅負責最小進程內生命週期配對（open repo -> start scheduler; stop scheduler -> close repo），不是 daemon、不是 OS 服務、不安裝訊號處理器、不決定最終 Gateway 生命週期排序（留待 TG-MVP-10/11 組合），嚴格禁止建立第二個背景守護行程。
+- **靜態加密與 Node 監控點**：TG-MVP-09A 備份維持 SQLite 原生格式，不引入應用層加密；磁碟靜態資料加密為使用者作業系統層級責任（USER_RESPONSIBILITY BitLocker on Windows）。持續監控 Node 內建 `node:sqlite` 版本穩定性。
 - **同步事件迴圈特性**：`node:sqlite DatabaseSync` 與 `VACUUM INTO` 為同步操作，執行期間可能短暫阻塞 Event Loop；本階段接受 pre-go-live 小規模資料庫之每日單次備份前提。
-
 
 ## 8. 資料庫存放位置防護 (Database Location Guard)
 
 - 資料庫存放路徑僅能來自 ADR-0022 D24 所定之外部本機設定（Repo-External Local Config）。
-- 嚴禁將資料庫建立於 OneDrive、同步資料夾、或 UNC 網路掛載路徑上。
-- 路徑保護守衛（Path Guard）必須由程式機械式強制檢驗（如偵測 UNC 路徑與已知同步根目錄）。
+- 嚴禁將資料庫建立於 OneDrive、同步資料夾、UNC 網路掛載路徑（包含標準 UNC 與擴充 UNC `\\?\UNC\`）、系統關鍵目錄或 Git 版本庫根目錄。
+- 路徑保護守衛（`assertSafeStateRootLocation`）必須由程式機械式強制檢驗；守衛僅限於 `stateRoot`，不誤判位於 redirected Desktop 之 `archiveRoot`。
+
 
 ## 9. Node.js 版本與測試治理契約 (Node Prerequisite & Test Governance)
 

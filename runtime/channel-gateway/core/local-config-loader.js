@@ -30,6 +30,7 @@ const child_process = require('node:child_process');
 const {
   validateResolvedDataLocationConfig,
   isAbsolutePath,
+  assertSafeStateRootLocation,
 } = require('./data-location-config');
 
 const KNOWN_FOLDER_RESOLVE_TIMEOUT_MS = 60000;
@@ -386,16 +387,19 @@ function loadDataLocationConfigFromFile(configPath, options) {
  * @throws {TypeError|Error} If any path does not exist, is not a directory, or lacks required permissions
  */
 function validateStartupDataLocations(resolvedConfig) {
-  // 1. Ensure schema v2 compliance
+  // 1. Ensure schema compliance
   const validated = validateResolvedDataLocationConfig(resolvedConfig);
   const { dataLocations } = validated;
 
-  // 2. Validate protectedRoots requirement: at least 1 entry
+  // 2. Validate nominal stateRoot location guard (M16 / Section 10: stateRoot only, checked before I/O)
+  assertSafeStateRootLocation(dataLocations.stateRoot);
+
+  // 3. Validate protectedRoots requirement: at least 1 entry
   if (!Array.isArray(dataLocations.protectedRoots) || dataLocations.protectedRoots.length === 0) {
     throw new Error('protectedRoots must contain at least one directory path');
   }
 
-  // 3. Validate the four writable roots
+  // 4. Validate the four writable roots
   for (const field of REQUIRED_WRITABLE_ROOTS) {
     const rootPath = dataLocations[field];
     let stat;
@@ -420,7 +424,7 @@ function validateStartupDataLocations(resolvedConfig) {
     }
   }
 
-  // 4. Validate protectedRoots
+  // 5. Validate protectedRoots
   for (let i = 0; i < dataLocations.protectedRoots.length; i++) {
     const protectedPath = dataLocations.protectedRoots[i];
     let stat;
@@ -445,11 +449,15 @@ function validateStartupDataLocations(resolvedConfig) {
     }
   }
 
-  // 5. Build and return canonical configuration with realpathSync (without mutating input)
+  // 6. Build and return canonical configuration with realpathSync (without mutating input)
+  const canonicalStateRoot = fs.realpathSync(dataLocations.stateRoot);
+  // Validate canonical stateRoot location guard (catches symlinks/junctions resolving into sync roots)
+  assertSafeStateRootLocation(canonicalStateRoot);
+
   const canonicalLocations = {
     archiveRoot: fs.realpathSync(dataLocations.archiveRoot),
     attachmentTempRoot: fs.realpathSync(dataLocations.attachmentTempRoot),
-    stateRoot: fs.realpathSync(dataLocations.stateRoot),
+    stateRoot: canonicalStateRoot,
     logsRoot: fs.realpathSync(dataLocations.logsRoot),
     protectedRoots: dataLocations.protectedRoots.map((p) => fs.realpathSync(p)),
   };
@@ -460,6 +468,7 @@ function validateStartupDataLocations(resolvedConfig) {
     gateway: {
       localPort: validated.gateway.localPort,
     },
+    backup: validated.backup,
   };
 }
 
