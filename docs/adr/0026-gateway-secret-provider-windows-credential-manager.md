@@ -108,22 +108,25 @@
 
 ---
 
-## TG-MVP-10 Telegram Bot API 協議邊界例外 (Telegram Protocol-Boundary Exception — M14)
+## TG-MVP-10 Telegram Bot API 協議邊界例外 (Telegram Protocol-Boundary Exception — M14 / R2 Alignment)
 
-1. **二進位 Buffer 契約不變**：
-   - `SecretProvider` 介面嚴格維持回傳二進位 `Buffer`，提供者層級絕對不產生或回傳明文字串。
-   - 配接器（Adapter）獨佔擁有金鑰 Buffer 之生命週期；適配器停止或終止時執行最佳努力歸零（`buf.fill(0)`）。
-2. **通訊協定狹隘例外（Protocol Necessity）**：
-   - 經外部宏觀審計查證，Telegram Bot API HTTP 請求路徑強制要求格式為 `https://api.telegram.org/bot<token>/METHOD`。
-   - 因此，Telegram 適配器獲准僅在 HTTP 請求建構之狹隘邊界內，將金鑰 Buffer 暫時解碼為短暫存在之 UTF-8 字串。
-3. **記憶體與日誌嚴格紀律**：
+1. **二進位 Buffer 獨佔擁有權契約 (Caller-Exclusive Fresh Buffer)**：
+   - `SecretProvider.getSecret()` 在每次成功呼叫時，必須回傳新配置之**呼叫端專用（caller-exclusive）**二進位 `Buffer`；提供者層級絕不快取、共享或重用回傳之 Buffer。
+   - 配接器（Consumer / Adapter）直接採納提供者回傳之 Buffer，獨佔擁有金鑰 Buffer 之生命週期；適配器於正常停止（`stop()`）、啟動語法驗證失敗、或任何終態失敗（HTTP 4xx/5xx、Telegram API 409/401/403、存儲庫完整性錯誤等終態路徑）時，必須立即執行確定性最佳努力歸零（`buf.fill(0)`）。
+2. **通訊協定狹隘例外與固定端點 (Protocol Necessity & Fixed Origin)**：
+   - Telegram API origin 固化為 `https://api.telegram.org`，禁止外部覆寫或動態切換 origin。
+   - Telegram 適配器獲准僅在 HTTP 請求建構之狹隘邊界內，將金鑰 Buffer 暫時解碼為短暫存在之 UTF-8 字串。
+3. **嚴格 Token 結構語法檢驗 (Strict Token Grammar)**：
+   - 在任何解碼與發送請求前，適配器必須於位元組層級對 Buffer 進行嚴格結構語法驗證：`^[0-9]+:[A-Za-z0-9_-]+$`。
+   - Bot ID 必須為一個以上 ASCII 十進位數字；必須恰好包含一個結構冒號；Secret 必須為一個以上之 ASCII 字符（`A-Za-z0-9_-`）。
+   - 強制拒絕斜線 `/`、問號 `?`、井字號 `#`、反斜線 `\`、百分比 `%`、空白、C0 控制字元、DEL 及所有非 ASCII 字元。
+   - 語法錯誤時僅拋出穩定錯誤代碼 `INVALID_TELEGRAM_TOKEN_SYNTAX`，絕不洩漏壞位元組數值、位移索引或部分 Token 片段。
+4. **記憶體與日誌邊界與有界診斷 (Bounded Diagnostics & Memory Safety)**：
    - 嚴禁將 Token 字串存入物件實例欄位（No instance field caching）。
    - 嚴禁回傳、嚴禁序列化為 JSON、嚴禁寫入日誌。
-   - 嚴禁在診斷訊息或例外堆疊中包含完整請求 URL 或原始錯誤。
-   - 使用完畢後立即解除字串參照；適配器權威持有的二進位 Buffer 在生命週期結束時執行 `fill(0)`。
-   - 明確記錄 V8 引擎不可變字串無法保證由應用層精確抹除記憶體之客觀事實，不宣稱完美記憶體抹除。
-4. **Token 字元語法防禦檢驗**：
-   - 在解碼與發送請求前，必須以位元組層級驗證合規之 ASCII Token 語法（`<bot_id>:<secret_token>`），強制拒絕斜線 `/`、問號 `?`、空白、C0 控制字元與 DEL，杜絕路徑或查詢參數注入。
+   - 嚴禁在診斷訊息或例外堆疊中包含完整請求 URL、Token 內容或原始 Telegram API 描述（description）。
+   - 外部可見診斷僅限穩定之有界狀態代碼（如 `TELEGRAM_RECEIVER_CONFLICT`、`HTTP_CLIENT_ERROR`、`INVALID_TELEGRAM_TOKEN_SYNTAX` 等）。
+   - 使用完畢後立即解除字串參照；適配器權威持有的二進位 Buffer 在生命週期結束與終態處置時執行 `fill(0)`。
 
 ---
 

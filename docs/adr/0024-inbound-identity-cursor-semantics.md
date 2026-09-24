@@ -182,6 +182,9 @@ LINE 通道採用 Webhook 模型：
    - 固化常數 `TELEGRAM_WEEK_REBASE_MS = 604_800_000`（7 天）。
    - 每次 `getUpdates` 請求前檢驗游標存儲時間戳：若 `nowMs - updatedAtMs >= 604_800_000`，透過 `resetIngestCursorForTransportRebase` 執行**精確條件刪除**（存儲值與時間戳必須完全相符，不接受萬用字元），隨後省略 `offset` 參數重新拉取。
    - 嚴禁負數 offset、嚴禁任意倒退游標、嚴禁 `drop_pending_updates`。
+4. **有效 Update ID 畸形負載與無效 Update ID 處置 (R2 Alignment)**：
+   - 有效 `update_id`（安全非負整數）但 payload / identity 畸形或不支援（例如缺少必要文字或屬性）：持久化寫入耐久 `inbound_event`（`event_type = 'IGNORED'`），完成後推進游標，防止輪詢毒藥迴圈。
+   - 無效 / 缺失 / 非安全整數之 `update_id`：嚴格保持零突變（Zero Mutation），不寫入任何事件亦不推進游標。
 
 ## Consequences
 

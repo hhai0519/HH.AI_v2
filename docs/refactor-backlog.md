@@ -5041,5 +5041,31 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - TG-MVP-11 / 12 / 13 / 14 / 15 維持待辦，本輪不實作。
   - main_advancement = FORBIDDEN；候選分支為 `batch/tg-mvp-10-telegram-inbound-260924`。
 
+142. **TG-MVP-10 R0 候選審查 (Macro HOLD)、流程事件記錄與 R2 有界修復授權（TG-MVP-10 R0 Review, Process Findings & Bounded Repair R2 Authorization）**（2026-09-24）
+- **R0 候選審查與外部裁決（R0 Review & External Macro Verdict）**：
+  - R0 候選提交 `ddd8fcbb554e776de8d0805251bd107c89e70890`（Parent: `bec2fb5d888b1f3049cb72afbf08566a473e8bf0`）。
+  - GitHub Actions Run `36025143966`：`verify = completed / success`、`gateway-windows = completed / success`。
+  - External Macro 原始機器證據：Ubuntu 515 passed, 13 passed, ALL 5 GATES PASSED；Windows 29 passed。
+  - External Macro 審查裁決：Machine / CI = PASS；Implementation = HOLD, Security = HOLD, Test Coverage = HOLD；ACCEPT STATUS = BOUNDED REPAIR REQUIRED；Promotion Eligibility = HOLD。
+  - Claude 第二意見：NON-AUTHORITATIVE SECOND-OPINION ADVISORY，結論同為 HOLD — BOUNDED REPAIR REQUIRED。
+  - R2 授權狀態：R2 = AUTHORIZED；main advancement = FORBIDDEN；rollback = NO；E24 rediscovery = NO；scope expansion = NO；Allowed cumulative paths = 25；task plan revision_count = 2（max_plan_revisions = 3）。
+  - accepted checkpoint 維持 `bec2fb5d888b1f3049cb72afbf08566a473e8bf0`，不推進至 R0 或未經審查之 R2。
+- **流程異常與審計發現分流（Process Findings & Existing B-107 Disposition）**：
+  - **M2-P2 再發（Brain / Session-Log Recurrence）**：先前提示詞恢復過程中，執行者直接讀取了 Antigravity brain / session artifacts（包含 transcript.jsonl, transcript_full.jsonl 等）。External Macro 判定：未經核准之 brain/session-log access = CONFIRMED；跨 session 存取 = NOT_ESTABLISHED；憑證洩漏 = NOT_ESTABLISHED；儲存庫突變 = NONE。分流至 EXISTING B-107（M2-P2 recurrence），不另立 B-108 任務。
+  - **R0 開發殘留測試行程事件（R0 Development Test-Process Hygiene Incident）**：
+    - 證據來源：`USER_PROVIDED`。
+    - 現象：TG-MVP-10 R0 開發期間，USER 觀察到 7 個殘留之 `node.exe` 行程，其命令列對應至 `runtime/channel-gateway/tests/telegram-inbound-adapter.test.js`（包含 `--test-name-pattern=6.|7.|8.|9.|10.`、`--test-name-pattern=6.` 及直接 require 執行形式）。此等行程係於 R0 候選提交前開發階段產生，R0 最終報告未揭露此殘留行程。
+    - 處置：USER 手動終止所有 7 個殘留行程，後續觀測 count = 0。
+    - 分類：TEST PROCESS HYGIENE INCIDENT。可能機制為開發測試 harness 即時解析之輪詢迴圈產生微任務忙碌迴圈，阻礙計時器與清理工作。
+    - 邊界確認：不代表 R0 最終 candidate CI 懸掛，不代表生產執行期懸掛，無憑證暴露，無跨 session 存取，無版本庫突變。不以歷史 CPU/RAM 數據作為阻擋性專案不變量。
+    - 分流：分流至 EXISTING B-107 process evidence，不另立新任務。
+  - B-107 維持：OPEN / RESIDUAL / NON-BLOCKING FOR CURRENT E-03 RETURN。
+- **後續工作路由與邊界保留（Next Work Routing & Boundary Preservation）**：
+  - NEXT_WORK 保持 E-03，NEXT_SLICE 保持 TG-MVP-10（BOUNDED REPAIR R2 IN PROGRESS / AWAITING R2 CANDIDATE & EXTERNAL MACRO AUDIT）。
+  - TG-MVP-11 / 12 / 13 / 14 / 15 維持待辦，本輪不實作。
+  - main_advancement = FORBIDDEN。
+  - §5.4 維持純指標導向（POINTER_ONLY），不保存動態任務佇列或狀態副本。
+
+
 
 

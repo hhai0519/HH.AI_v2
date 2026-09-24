@@ -1,36 +1,45 @@
 /**
  * runtime/channel-gateway/adapters/telegram-inbound-adapter.js
  *
- * ADR-0022 / ADR-0024 / ADR-0026 / TG-MVP-10: Telegram Test-Bot Inbound Adapter.
+ * ADR-0022 / ADR-0024 / ADR-0026 / TG-MVP-10 R2: Telegram Test-Bot Inbound Adapter.
  *
- * Invariants (M1–M15):
+ * Invariants (M1–M15 & R2 Hardening):
  * - Composable inbound long-poll adapter component (NOT an OS process root).
  * - start() and async stop() lifecycle management.
  * - Does NOT close the state repository on stop (repository lifecycle owned externally).
  * - Depends on AccountRegistry for non-secret metadata; start() requires active, enabled account for channel 'telegram'.
  * - Looks up bot token secret via SecretProvider strictly ONCE on start().
- * - Authoritative token retained in Buffer; validated against bounded ASCII grammar (no /, ?, whitespace, control chars).
+ * - Adopts exact provider-returned Buffer directly (caller-exclusive contract); no authoritative Buffer.from() copy.
+ * - Authoritative token Buffer zeroized via buf.fill(0) on stop or any terminal failure.
+ * - Strict structural token grammar: ^[0-9]+:[A-Za-z0-9_-]+$ (digits:secret).
+ *     Rejects: /, ?, #, \, %, whitespace, C0, DEL, non-ASCII, extra colon, missing colon, empty bot id, empty secret.
+ *     Failure diagnostic is bounded stable code only (INVALID_TELEGRAM_TOKEN_SYNTAX) without token material, byte, or index.
  * - Protocol-boundary exception: creates unavoidable ephemeral UTF-8 URL strictly inside request-construction boundary.
- * - Ephemeral URL is never stored, cached, returned, logged, or reflected in diagnostics.
- * - Authoritative Buffer zeroized via buf.fill(0) on stop or termination.
+ *     Ephemeral URL is never stored, cached, returned, logged, or reflected in diagnostics.
  * - Node built-ins only (fetch, AbortController, URL, timers); zero new npm dependencies.
+ * - Fixed production constants:
+ *     TELEGRAM_API_ORIGIN = 'https://api.telegram.org'
+ *     TELEGRAM_POLL_TIMEOUT_SECONDS = 30
+ *     TELEGRAM_CLIENT_TIMEOUT_MS = 40_000
+ *     TELEGRAM_WEEK_REBASE_MS = 604_800_000
+ * - Strict constructor options allowlist: unknown options rejected with TypeError.
+ * - Active-account hot-switch guards before request and after response before update processing.
  * - Inbound update classification:
- *     message.text -> MESSAGE (ingestMessage)
- *     edited_message.text -> EDIT (ingestEdit)
- *     other valid update_id updates -> IGNORED (recordIgnoredEvent)
- *     protocol-invalid update_id -> no cursor mutation, no fabricated event
+ *     valid update_id + valid message.text -> MESSAGE (ingestMessage)
+ *     valid update_id + valid edited_message.text -> EDIT (ingestEdit)
+ *     valid update_id + unsupported/malformed payload -> IGNORED (recordIgnoredEvent + cursor advance, prevents poison loop)
+ *     invalid update_id -> zero mutation, no cursor advance, no event
  * - Identity:
  *     platform_event_id: String(update.update_id)
  *     cursor_value: String(update.update_id + 1)
  *     platform_msg_id: tg:<chat_id>:<message_id>
  * - Week-rebase (M8):
- *     TELEGRAM_WEEK_REBASE_MS = 604800000 (7 days).
  *     If nowMs - updatedAtMs >= 604800000, calls resetIngestCursorForTransportRebase and omits offset.
  * - Error & retry contract:
- *     HTTP 409 -> TELEGRAM_RECEIVER_CONFLICT terminal (no retry)
- *     HTTP 429 -> waits retry_after seconds
- *     5xx / network / client-timeout / malformed JSON -> generic backoff (1s, 2s, 4s, 8s, 16s, 30s cap)
- *     Valid successful response resets backoff.
+ *     Strict retry allowlist: network transport rejection, client timeout, HTTP 5xx, malformed JSON,
+ *     ok=true missing/non-array result, Telegram ok=false error_code >= 500, 429 with valid retry_after.
+ *     Repository errors, HTTP 409, 401, 403, other 4xx, invalid 429, active account change are TERMINAL fail-closed.
+ *     Terminal paths stop loop, set bounded status, and zeroize token Buffer.
  */
 
 'use strict';
@@ -38,32 +47,75 @@
 const { SecretRef } = require('../core/secret-provider');
 
 const TELEGRAM_CHANNEL_ID = 'telegram';
+const TELEGRAM_API_ORIGIN = 'https://api.telegram.org';
 const TELEGRAM_WEEK_REBASE_MS = 604_800_000; // 7 days in milliseconds
 const TELEGRAM_CLIENT_TIMEOUT_MS = 40_000;
 const TELEGRAM_POLL_TIMEOUT_SECONDS = 30;
 const GENERIC_BACKOFF_MS = Object.freeze([1000, 2000, 4000, 8000, 16000, 30000]);
 
+const ALLOWED_CONSTRUCTOR_KEYS = new Set([
+  'accountRegistry',
+  'secretProvider',
+  'stateRepository',
+  'fetchFn',
+  'now',
+  'setTimeoutFn',
+  'clearTimeoutFn',
+  'abortControllerFactory',
+  'logger',
+]);
+
 /**
- * Validates bounded ASCII token grammar to reject path/query/control injection.
- * Rejects: /, ?, whitespace, C0 controls (< 0x21), DEL (0x7F), and non-ASCII (> 0x7E).
+ * Validates raw Buffer bytes against strict structural grammar:
+ * ^[0-9]+:[A-Za-z0-9_-]+$
+ *
+ * Requirements:
+ * - One or more ASCII decimal digits before structural colon.
+ * - Exactly one structural colon.
+ * - One or more characters after colon from: A-Z, a-z, 0-9, _, -
+ * - Diagnostic: INVALID_TELEGRAM_TOKEN_SYNTAX only (no token material, bad byte, or byte index).
  *
  * @param {Buffer} tokenBuf
- * @throws {Error} If token is invalid or empty
+ * @throws {TypeError|Error}
  */
 function validateTelegramTokenBuffer(tokenBuf) {
   if (!Buffer.isBuffer(tokenBuf)) {
     throw new TypeError('token must be a Buffer (fail-closed)');
   }
-  if (tokenBuf.length === 0) {
-    throw new Error('INVALID_TELEGRAM_TOKEN_SYNTAX: Token Buffer is empty (fail-closed)');
+  if (tokenBuf.length < 3) {
+    throw new Error('INVALID_TELEGRAM_TOKEN_SYNTAX');
   }
+
+  let colonIndex = -1;
   for (let i = 0; i < tokenBuf.length; i++) {
-    const byte = tokenBuf[i];
-    if (byte < 0x21 || byte > 0x7E || byte === 0x2F || byte === 0x3F) {
-      throw new Error(
-        `INVALID_TELEGRAM_TOKEN_SYNTAX: Token contains forbidden byte 0x${byte.toString(16)} at index ${i} (fail-closed)`
-      );
+    const b = tokenBuf[i];
+    if (b === 0x3a) { // ':'
+      if (colonIndex !== -1) {
+        // multiple colons rejected
+        throw new Error('INVALID_TELEGRAM_TOKEN_SYNTAX');
+      }
+      colonIndex = i;
+    } else if (colonIndex === -1) {
+      // Before colon: digits 0-9 only (0x30 - 0x39)
+      if (b < 0x30 || b > 0x39) {
+        throw new Error('INVALID_TELEGRAM_TOKEN_SYNTAX');
+      }
+    } else {
+      // After colon: A-Z, a-z, 0-9, _, -
+      const isUpper = b >= 0x41 && b <= 0x5a;
+      const isLower = b >= 0x61 && b <= 0x7a;
+      const isDigit = b >= 0x30 && b <= 0x39;
+      const isUnderscore = b === 0x5f;
+      const isDash = b === 0x2d;
+      if (!isUpper && !isLower && !isDigit && !isUnderscore && !isDash) {
+        throw new Error('INVALID_TELEGRAM_TOKEN_SYNTAX');
+      }
     }
+  }
+
+  // Must have at least 1 digit before colon and at least 1 char after colon
+  if (colonIndex <= 0 || colonIndex === tokenBuf.length - 1) {
+    throw new Error('INVALID_TELEGRAM_TOKEN_SYNTAX');
   }
 }
 
@@ -72,11 +124,11 @@ class TelegramInboundAdapter {
   #secretProvider;
   #stateRepository;
   #fetchFn;
-  #apiBaseUrl;
-  #pollTimeoutSeconds;
-  #clientTimeoutMs;
-  #weekRebaseMs;
-  #clock;
+  #now;
+  #setTimeoutFn;
+  #clearTimeoutFn;
+  #abortControllerFactory;
+  #logger;
 
   #running = false;
   #activeAccountId = null;
@@ -86,23 +138,30 @@ class TelegramInboundAdapter {
   #activeTimer = null;
   #timerResolve = null;
   #backoffIndex = 0;
-  #lastError = null;
+  #terminalReason = null;
 
   /**
    * @param {object} options
    * @param {object} options.accountRegistry - AccountRegistry instance
    * @param {object} options.secretProvider - SecretProvider instance
    * @param {object} options.stateRepository - SqliteStateRepository instance
-   * @param {function} [options.fetchFn] - Custom fetch implementation (defaults to globalThis.fetch)
-   * @param {string} [options.apiBaseUrl] - Telegram API base URL (defaults to 'https://api.telegram.org')
-   * @param {number} [options.pollTimeoutSeconds] - Long poll timeout in seconds (defaults to 30)
-   * @param {number} [options.clientTimeoutMs] - Client-side request timeout in ms (defaults to 40_000)
-   * @param {number} [options.weekRebaseMs] - Stale cursor rebase threshold (defaults to 604_800_000)
-   * @param {function} [options.clock] - Timestamp generator (defaults to Date.now)
+   * @param {function} [options.fetchFn] - Custom fetch implementation
+   * @param {function} [options.now] - Timestamp generator (defaults to Date.now)
+   * @param {function} [options.setTimeoutFn] - Custom setTimeout implementation
+   * @param {function} [options.clearTimeoutFn] - Custom clearTimeout implementation
+   * @param {function} [options.abortControllerFactory] - Custom AbortController factory
+   * @param {object} [options.logger] - Optional logger
    */
   constructor(options = {}) {
     if (!options || typeof options !== 'object' || Array.isArray(options)) {
       throw new TypeError('TelegramInboundAdapter options must be a non-null object');
+    }
+
+    // Strict constructor options allowlist
+    for (const key of Object.keys(options)) {
+      if (!ALLOWED_CONSTRUCTOR_KEYS.has(key)) {
+        throw new TypeError(`Unknown constructor option: '${key}' (fail-closed)`);
+      }
     }
 
     if (!options.accountRegistry || typeof options.accountRegistry.getActive !== 'function') {
@@ -123,22 +182,14 @@ class TelegramInboundAdapter {
       throw new TypeError('fetchFn must be a function');
     }
 
-    this.#apiBaseUrl = (options.apiBaseUrl || 'https://api.telegram.org').replace(/\/+$/, '');
-    this.#pollTimeoutSeconds =
-      typeof options.pollTimeoutSeconds === 'number' && options.pollTimeoutSeconds >= 0
-        ? options.pollTimeoutSeconds
-        : typeof options.pollTimeoutSec === 'number' && options.pollTimeoutSec >= 0
-          ? options.pollTimeoutSec
-          : TELEGRAM_POLL_TIMEOUT_SECONDS;
-    this.#clientTimeoutMs =
-      typeof options.clientTimeoutMs === 'number' && options.clientTimeoutMs > 0
-        ? options.clientTimeoutMs
-        : TELEGRAM_CLIENT_TIMEOUT_MS;
-    this.#weekRebaseMs =
-      typeof options.weekRebaseMs === 'number' && options.weekRebaseMs > 0
-        ? options.weekRebaseMs
-        : TELEGRAM_WEEK_REBASE_MS;
-    this.#clock = typeof options.clock === 'function' ? options.clock : () => Date.now();
+    this.#now = typeof options.now === 'function' ? options.now : () => Date.now();
+    this.#setTimeoutFn = typeof options.setTimeoutFn === 'function' ? options.setTimeoutFn : setTimeout;
+    this.#clearTimeoutFn = typeof options.clearTimeoutFn === 'function' ? options.clearTimeoutFn : clearTimeout;
+    this.#abortControllerFactory =
+      typeof options.abortControllerFactory === 'function'
+        ? options.abortControllerFactory
+        : () => new AbortController();
+    this.#logger = options.logger || null;
   }
 
   /**
@@ -163,12 +214,55 @@ class TelegramInboundAdapter {
   }
 
   /**
+   * @returns {string|null} Bounded stable diagnostic status/reason if stopped/terminated
+   */
+  get terminalReason() {
+    return this.#terminalReason;
+  }
+
+  /**
+   * Zeroizes authoritative token Buffer.
+   * Single idempotent cleanup primitive.
+   */
+  #zeroizeToken() {
+    if (this.#botTokenBuffer) {
+      try {
+        this.#botTokenBuffer.fill(0);
+      } catch (_) {}
+      this.#botTokenBuffer = null;
+    }
+  }
+
+  /**
+   * Validates active account status against captured account ID.
+   *
+   * @returns {boolean}
+   */
+  #verifyActiveAccount() {
+    try {
+      const active = this.#accountRegistry.getActive();
+      if (
+        !active ||
+        active.channel !== TELEGRAM_CHANNEL_ID ||
+        active.enabled !== true ||
+        active.id !== this.#activeAccountId
+      ) {
+        return false;
+      }
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /**
    * Starts the inbound adapter lifecycle.
    *
-   * Invariants (M4, M13, M14):
+   * Invariants (M4, M13, M14, R2):
    * - Validates active account in registry (must be channel='telegram', enabled=true).
    * - Retrieves bot token secret exactly once per start lifecycle.
-   * - Validates token grammar and initializes authoritative buffer.
+   * - Adopts exact provider-returned Buffer directly.
+   * - Validates token grammar; on validation failure, immediately zeroizes Buffer and fails.
    * - Starts asynchronous long-polling loop in the background.
    */
   start() {
@@ -176,7 +270,9 @@ class TelegramInboundAdapter {
       throw new Error('TelegramInboundAdapter is already running');
     }
 
-    // 1. Account verification (M4 / M5)
+    this.#terminalReason = null;
+
+    // 1. Account verification
     const activeAccount = this.#accountRegistry.getActive();
     if (!activeAccount) {
       throw new Error('NO_ACTIVE_TELEGRAM_ACCOUNT: No active account found in AccountRegistry (fail-closed)');
@@ -192,24 +288,34 @@ class TelegramInboundAdapter {
 
     this.#activeAccountId = activeAccount.id;
 
-    // 2. Secret lookup: exactly once per start lifecycle (M13)
+    // 2. Secret lookup: exactly once per start lifecycle
     const secretRef = SecretRef.telegramBotToken(this.#activeAccountId);
     const tokenBuffer = this.#secretProvider.getSecret(secretRef);
     if (!Buffer.isBuffer(tokenBuffer)) {
-      throw new Error('SecretProvider must return a Buffer (fail-closed)');
+      throw new TypeError('SecretProvider must return a Buffer (fail-closed)');
     }
 
-    // 3. Token ASCII grammar validation (M14)
-    validateTelegramTokenBuffer(tokenBuffer);
-    this.#botTokenBuffer = Buffer.from(tokenBuffer);
+    // 3. Adopt exact provider-returned Buffer directly; zeroize on validation failure
+    this.#botTokenBuffer = tokenBuffer;
+    try {
+      validateTelegramTokenBuffer(this.#botTokenBuffer);
+    } catch (err) {
+      this.#zeroizeToken();
+      this.#running = false;
+      this.#terminalReason = 'INVALID_TELEGRAM_TOKEN_SYNTAX';
+      throw err;
+    }
 
     this.#running = true;
     this.#backoffIndex = 0;
 
     // 4. Launch polling loop
-    this.#pollLoopPromise = this.#runPollLoop().catch((err) => {
+    this.#pollLoopPromise = this.#runPollLoop().catch((_err) => {
       this.#running = false;
-      this.#lastError = err;
+      this.#zeroizeToken();
+      if (!this.#terminalReason) {
+        this.#terminalReason = 'INTERNAL_TERMINAL';
+      }
     });
 
     return this;
@@ -218,19 +324,19 @@ class TelegramInboundAdapter {
   /**
    * Stops the adapter and cancels any active polling requests or retry timers.
    *
-   * Invariants (M2, M13):
-   * - Aborts any active HTTP fetch request.
+   * Invariants (M2, M13, R2):
+   * - Aborts any active HTTP fetch request and pending response body parse.
    * - Cancels any pending backoff timer.
    * - Awaits loop quiescence.
-   * - Zeroizes authoritative token buffer.
+   * - Zeroizes authoritative token Buffer.
    * - Does NOT close the repository.
    */
   async stop() {
     this.#running = false;
 
-    // Cancel active timer if waiting
+    // Cancel active retry timer if waiting
     if (this.#activeTimer) {
-      clearTimeout(this.#activeTimer);
+      this.#clearTimeoutFn(this.#activeTimer);
       this.#activeTimer = null;
     }
     if (this.#timerResolve) {
@@ -238,7 +344,7 @@ class TelegramInboundAdapter {
       this.#timerResolve = null;
     }
 
-    // Abort active fetch if pending
+    // Abort active fetch or response body parse if in flight
     if (this.#abortController) {
       try {
         this.#abortController.abort();
@@ -255,12 +361,7 @@ class TelegramInboundAdapter {
     }
 
     // Zeroize authoritative token Buffer
-    if (this.#botTokenBuffer) {
-      try {
-        this.#botTokenBuffer.fill(0);
-      } catch (_) {}
-      this.#botTokenBuffer = null;
-    }
+    this.#zeroizeToken();
   }
 
   /**
@@ -268,204 +369,286 @@ class TelegramInboundAdapter {
    */
   async #runPollLoop() {
     while (this.#running) {
+      // Pre-request hot-switch check (§15)
+      if (!this.#verifyActiveAccount()) {
+        this.#running = false;
+        this.#terminalReason = 'ACTIVE_ACCOUNT_CHANGED';
+        this.#zeroizeToken();
+        break;
+      }
+
+      // 1. Check week rebase and read durable cursor state (§18: repository errors terminal)
+      let offset = undefined;
+      const nowMs = this.#now();
+      let cursorState;
       try {
-        // 1. Check week rebase and read durable cursor state (M8)
-        let offset = undefined;
-        const nowMs = this.#clock();
-        const cursorState = this.#stateRepository.getIngestCursorState(this.#activeAccountId);
+        cursorState = this.#stateRepository.getIngestCursorState(this.#activeAccountId);
+      } catch (_repoErr) {
+        this.#running = false;
+        this.#terminalReason = 'REPOSITORY_TERMINAL';
+        this.#zeroizeToken();
+        break;
+      }
 
-        if (cursorState) {
-          const { cursorValue, updatedAtMs } = cursorState;
-          if (
-            typeof updatedAtMs !== 'number' ||
-            !Number.isSafeInteger(updatedAtMs) ||
-            updatedAtMs < 0 ||
-            updatedAtMs > nowMs
-          ) {
-            throw new Error(
-              `INVALID_CURSOR_TIMESTAMP: Stored cursor timestamp (${updatedAtMs}) is invalid or in the future compared to clock (${nowMs}) (fail-closed)`
-            );
-          }
+      if (cursorState) {
+        const { cursorValue, updatedAtMs } = cursorState;
+        if (
+          typeof updatedAtMs !== 'number' ||
+          !Number.isSafeInteger(updatedAtMs) ||
+          updatedAtMs < 0 ||
+          updatedAtMs > nowMs
+        ) {
+          this.#running = false;
+          this.#terminalReason = 'INVALID_CURSOR_TIMESTAMP';
+          this.#zeroizeToken();
+          break;
+        }
 
-          if (nowMs - updatedAtMs >= this.#weekRebaseMs) {
-            // Week rebase condition met (M8): reset stale cursor via exact-state match and omit offset
+        if (nowMs - updatedAtMs >= TELEGRAM_WEEK_REBASE_MS) {
+          // Week rebase condition met (M8): reset stale cursor via exact-state match and omit offset
+          try {
             this.#stateRepository.resetIngestCursorForTransportRebase({
               accountId: this.#activeAccountId,
               expectedCursorValue: cursorValue,
               expectedUpdatedAtMs: updatedAtMs,
             });
-            offset = undefined;
-          } else {
-            // Safe cursor exists: pass numeric offset to Telegram getUpdates
-            offset = Number(cursorValue);
+          } catch (_rebaseErr) {
+            this.#running = false;
+            this.#terminalReason = 'REPOSITORY_TERMINAL';
+            this.#zeroizeToken();
+            break;
           }
+          offset = undefined;
+        } else {
+          // Safe cursor exists: pass numeric offset to Telegram getUpdates
+          offset = Number(cursorValue);
         }
+      }
 
-        // 2. Protocol-boundary request construction (M14)
-        // Construct ephemeral URL without storing token string in instance fields
-        const tokenString = this.#botTokenBuffer.toString('utf8');
-        const url = `${this.#apiBaseUrl}/bot${tokenString}/getUpdates`;
+      if (!this.#running) {
+        break;
+      }
 
-        const requestBody = {
-          timeout: this.#pollTimeoutSeconds,
-          allowed_updates: [],
-        };
-        if (offset !== undefined) {
-          requestBody.offset = offset;
-        }
+      // 2. Protocol-boundary request construction (§24)
+      const tokenString = this.#botTokenBuffer.toString('utf8');
+      const url = `${TELEGRAM_API_ORIGIN}/bot${tokenString}/getUpdates`;
 
-        // 3. Issue HTTP request with client-side timeout (M11)
-        const ac = new AbortController();
-        this.#abortController = ac;
-        const timerId = setTimeout(() => {
-          ac.abort(new Error('CLIENT_TIMEOUT'));
-        }, this.#clientTimeoutMs);
-        if (typeof timerId?.unref === 'function') {
-          timerId.unref();
-        }
+      const requestBody = {
+        timeout: TELEGRAM_POLL_TIMEOUT_SECONDS,
+        allowed_updates: [],
+      };
+      if (offset !== undefined) {
+        requestBody.offset = offset;
+      }
 
-        let response;
+      // 3. Issue HTTP request with client-side timeout covering fetch & body parse (§19, §20)
+      const ac = this.#abortControllerFactory();
+      this.#abortController = ac;
+      let isClientTimeout = false;
+      const timerId = this.#setTimeoutFn(() => {
+        isClientTimeout = true;
         try {
-          response = await this.#fetchFn(url, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(requestBody),
-            signal: ac.signal,
-          });
-        } finally {
-          clearTimeout(timerId);
-          this.#abortController = null;
-        }
+          ac.abort();
+        } catch (_) {}
+      }, TELEGRAM_CLIENT_TIMEOUT_MS);
+      if (typeof timerId?.unref === 'function') {
+        timerId.unref();
+      }
 
-        if (!this.#running) {
+      let response;
+      let responseBodyParseFailed = false;
+      let payload = null;
+      let isRateLimited = false;
+      let retrySeconds = null;
+
+      try {
+        response = await this.#fetchFn(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(requestBody),
+          signal: ac.signal,
+        });
+
+        // 4. Response handling with AbortController still covering body parsing
+        if (response.status === 409) {
+          this.#running = false;
+          this.#terminalReason = 'TELEGRAM_RECEIVER_CONFLICT';
+          this.#zeroizeToken();
           break;
         }
 
-        // 4. Response handling & error contract (M12)
-        if (response.status === 409) {
-          throw new Error('TELEGRAM_RECEIVER_CONFLICT: HTTP 409 Conflict received from Telegram API (fail-closed)');
-        }
-
         if (response.status === 429) {
-          // Parse retry_after
-          let retrySeconds = null;
+          isRateLimited = true;
           try {
             const body429 = await response.json();
-            if (body429 && body429.parameters && typeof body429.parameters.retry_after === 'number') {
+            if (
+              body429 &&
+              body429.parameters &&
+              typeof body429.parameters.retry_after === 'number'
+            ) {
               const r = body429.parameters.retry_after;
               if (Number.isSafeInteger(r) && r > 0 && r * 1000 <= 2147483647) {
                 retrySeconds = r;
               }
             }
-          } catch (_) {}
-
-          if (retrySeconds === null) {
-            throw new Error('RATE_LIMITED_TERMINAL: Invalid or missing retry_after in 429 response (fail-closed)');
+          } catch (_) {
+            // Malformed 429 body
           }
-          await this.#waitDelay(retrySeconds * 1000);
-          continue;
-        }
-
-        if (response.status >= 500) {
-          // Retryable server error
-          await this.#waitDelay(this.#getBackoffDelay());
-          continue;
-        }
-
-        if (!response.ok) {
-          throw new Error(`HTTP_CLIENT_ERROR: Telegram API returned HTTP status ${response.status} (fail-closed)`);
-        }
-
-        // Parse JSON payload
-        let payload;
-        try {
-          payload = await response.json();
-        } catch (_) {
-          // Malformed JSON is a retryable protocol failure (M12)
-          await this.#waitDelay(this.#getBackoffDelay());
-          continue;
-        }
-
-        if (!payload || typeof payload !== 'object' || payload.ok !== true || !Array.isArray(payload.result)) {
-          if (payload && payload.ok === false) {
-            if (payload.error_code === 409) {
-              throw new Error('TELEGRAM_RECEIVER_CONFLICT: Telegram API returned error 409 (fail-closed)');
-            }
-            if (payload.error_code === 429 && payload.parameters && typeof payload.parameters.retry_after === 'number') {
-              const r = payload.parameters.retry_after;
-              if (Number.isSafeInteger(r) && r > 0 && r * 1000 <= 2147483647) {
-                await this.#waitDelay(r * 1000);
-                continue;
-              }
-            }
-            if (typeof payload.error_code === 'number' && payload.error_code >= 500) {
-              await this.#waitDelay(this.#getBackoffDelay());
-              continue;
-            }
-            throw new Error(
-              `TELEGRAM_API_ERROR: Telegram API returned ok=false: ${payload.description || 'unknown error'} (fail-closed)`
-            );
+        } else if (response.status >= 500) {
+          // Retryable server error (5xx)
+          // Body parse not strictly needed, but let's safely consume or ignore
+        } else if (!response.ok) {
+          // Other 4xx (401, 403, 400, etc.) are terminal fail-closed
+          this.#running = false;
+          this.#terminalReason = 'HTTP_CLIENT_ERROR';
+          this.#zeroizeToken();
+          break;
+        } else {
+          // 2xx response: parse JSON payload while controller & timer active
+          try {
+            payload = await response.json();
+          } catch (_) {
+            responseBodyParseFailed = true;
           }
-          // Result not array or malformed response
+        }
+      } catch (transportErr) {
+        if (!this.#running) {
+          // Manual stop() abort: terminate quietly without retrying (§19)
+          break;
+        }
+        if (isClientTimeout) {
+          // Client timeout fired while running: retryable transport timeout (§19)
           await this.#waitDelay(this.#getBackoffDelay());
           continue;
         }
+        // Network / fetch rejection while running: retryable (§17)
+        await this.#waitDelay(this.#getBackoffDelay());
+        continue;
+      } finally {
+        this.#clearTimeoutFn(timerId);
+        this.#abortController = null;
+      }
 
-        // 5. Valid successful response: reset generic backoff (M12)
-        this.#backoffIndex = 0;
+      if (!this.#running) {
+        break;
+      }
 
-        // 6. Process updates in order (M9, M10)
-        for (const update of payload.result) {
-          if (!this.#running) {
+      // Handle 429 outcome
+      if (isRateLimited) {
+        if (retrySeconds === null) {
+          this.#running = false;
+          this.#terminalReason = 'TELEGRAM_API_ERROR';
+          this.#zeroizeToken();
+          break;
+        }
+        // Valid 429 retry_after: uses exact delay and does NOT advance generic backoff (§27)
+        await this.#waitDelay(retrySeconds * 1000);
+        continue;
+      }
+
+      // Handle 5xx
+      if (response && response.status >= 500) {
+        await this.#waitDelay(this.#getBackoffDelay());
+        continue;
+      }
+
+      // Handle malformed JSON body
+      if (responseBodyParseFailed) {
+        await this.#waitDelay(this.#getBackoffDelay());
+        continue;
+      }
+
+      // Handle payload structure & Telegram API error
+      if (!payload || typeof payload !== 'object' || payload.ok !== true || !Array.isArray(payload.result)) {
+        if (payload && payload.ok === false) {
+          if (payload.error_code === 409) {
+            this.#running = false;
+            this.#terminalReason = 'TELEGRAM_RECEIVER_CONFLICT';
+            this.#zeroizeToken();
             break;
           }
-          this.#processUpdate(update);
+          if (
+            payload.error_code === 429 &&
+            payload.parameters &&
+            typeof payload.parameters.retry_after === 'number'
+          ) {
+            const r = payload.parameters.retry_after;
+            if (Number.isSafeInteger(r) && r > 0 && r * 1000 <= 2147483647) {
+              await this.#waitDelay(r * 1000);
+              continue;
+            }
+            this.#running = false;
+            this.#terminalReason = 'TELEGRAM_API_ERROR';
+            this.#zeroizeToken();
+            break;
+          }
+          if (typeof payload.error_code === 'number' && payload.error_code >= 500) {
+            // Telegram server-side error code >= 500: retryable
+            await this.#waitDelay(this.#getBackoffDelay());
+            continue;
+          }
+          // Non-5xx Telegram API error is terminal; description NEVER exposed (§16)
+          this.#running = false;
+          this.#terminalReason = 'TELEGRAM_API_ERROR';
+          this.#zeroizeToken();
+          break;
         }
+        // Result missing or non-array: retryable protocol failure (§17)
+        await this.#waitDelay(this.#getBackoffDelay());
+        continue;
+      }
 
-        if (this.#pollTimeoutSeconds === 0) {
-          await this.#waitDelay(10);
-        }
-      } catch (err) {
+      // Post-response hot-switch check BEFORE processing any update (§15)
+      if (!this.#verifyActiveAccount()) {
+        this.#running = false;
+        this.#terminalReason = 'ACTIVE_ACCOUNT_CHANGED';
+        this.#zeroizeToken();
+        break;
+      }
+
+      // 5. Valid successful response: reset generic backoff (§27)
+      this.#backoffIndex = 0;
+
+      // 6. Process updates in order (§18: repository errors terminal)
+      let repositoryError = false;
+      for (const update of payload.result) {
         if (!this.#running) {
           break;
         }
-
-        // Check if error is terminal
-        if (
-          err.message &&
-          (err.message.includes('TELEGRAM_RECEIVER_CONFLICT') ||
-            err.message.includes('RATE_LIMITED_TERMINAL') ||
-            err.message.includes('HTTP_CLIENT_ERROR') ||
-            err.message.includes('TELEGRAM_API_ERROR') ||
-            err.message.includes('INVALID_CURSOR_TIMESTAMP'))
-        ) {
+        try {
+          this.#processUpdate(update);
+        } catch (_repoErr) {
+          repositoryError = true;
           this.#running = false;
-          this.#lastError = err;
+          this.#terminalReason = 'REPOSITORY_TERMINAL';
+          this.#zeroizeToken();
           break;
         }
+      }
 
-        // Retryable network or timeout exception: apply generic backoff
-        await this.#waitDelay(this.#getBackoffDelay());
+      if (repositoryError) {
+        break;
       }
     }
   }
 
   /**
-   * Processes a single Telegram Update item according to classification rules (M9, M10).
+   * Processes a single Telegram Update item according to classification rules (§26).
    *
    * @param {object} update
    */
   #processUpdate(update) {
     const classification = classifyTelegramUpdate(update);
     if (classification.type === 'INVALID') {
+      // Invalid/non-safe update_id: zero mutation, no fabricated event, no cursor advance
       return;
     }
 
     const platformEventId = String(update.update_id);
     const cursorValue = String(update.update_id + 1);
-    const cursorObservedAtMs = this.#clock();
+    const cursorObservedAtMs = this.#now();
 
     if (classification.type === 'MESSAGE') {
       this.#stateRepository.ingestMessage({
@@ -488,6 +671,8 @@ class TelegramInboundAdapter {
         cursorObservedAtMs,
       });
     } else {
+      // Valid update_id but unsupported type OR malformed message/edit payload
+      // Durably records IGNORED event and advances cursor, preventing poison loops (§26)
       this.#stateRepository.recordIgnoredEvent({
         accountId: this.#activeAccountId,
         platformEventId,
@@ -522,7 +707,7 @@ class TelegramInboundAdapter {
     }
     return new Promise((resolve) => {
       this.#timerResolve = resolve;
-      this.#activeTimer = setTimeout(() => {
+      this.#activeTimer = this.#setTimeoutFn(() => {
         this.#activeTimer = null;
         this.#timerResolve = null;
         resolve();
@@ -535,7 +720,14 @@ class TelegramInboundAdapter {
 }
 
 /**
- * Classifies an inbound Telegram Update object (M10).
+ * Classifies an inbound Telegram Update object (§26).
+ *
+ * Requirements:
+ * - invalid / absent / non-safe update_id -> INVALID (zero mutation)
+ * - valid update_id + valid message.text identity -> MESSAGE
+ * - valid update_id + valid edited_message.text identity -> EDIT
+ * - valid update_id + malformed/unsupported payload/identity -> IGNORED (durable ignore + cursor advance)
+ * Never silent-return for a valid update_id.
  *
  * @param {object} update
  * @returns {{
@@ -559,43 +751,54 @@ function classifyTelegramUpdate(update) {
     return { type: 'INVALID', reason: 'INVALID_UPDATE_ID' };
   }
 
-  if (update.message && typeof update.message === 'object' && typeof update.message.text === 'string') {
-    const msg = update.message;
-    const chat = msg.chat;
-    const msgId = msg.message_id;
-    if (!chat || typeof chat.id !== 'number' || !Number.isSafeInteger(chat.id) || typeof msgId !== 'number' || !Number.isSafeInteger(msgId)) {
-      return { type: 'INVALID', reason: 'MALFORMED_MESSAGE_IDENTITY' };
-    }
+  // At this point, update_id is a valid non-negative safe integer.
+  // Check for valid MESSAGE identity
+  if (
+    update.message &&
+    typeof update.message === 'object' &&
+    typeof update.message.text === 'string' &&
+    update.message.chat &&
+    typeof update.message.chat.id === 'number' &&
+    Number.isSafeInteger(update.message.chat.id) &&
+    typeof update.message.message_id === 'number' &&
+    Number.isSafeInteger(update.message.message_id)
+  ) {
     return {
       type: 'MESSAGE',
-      platformMsgId: `tg:${chat.id}:${msgId}`,
-      content: msg.text,
+      platformMsgId: `tg:${update.message.chat.id}:${update.message.message_id}`,
+      content: update.message.text,
     };
   }
 
-  if (update.edited_message && typeof update.edited_message === 'object' && typeof update.edited_message.text === 'string') {
-    const msg = update.edited_message;
-    const chat = msg.chat;
-    const msgId = msg.message_id;
-    if (!chat || typeof chat.id !== 'number' || !Number.isSafeInteger(chat.id) || typeof msgId !== 'number' || !Number.isSafeInteger(msgId)) {
-      return { type: 'INVALID', reason: 'MALFORMED_EDIT_IDENTITY' };
-    }
+  // Check for valid EDIT identity
+  if (
+    update.edited_message &&
+    typeof update.edited_message === 'object' &&
+    typeof update.edited_message.text === 'string' &&
+    update.edited_message.chat &&
+    typeof update.edited_message.chat.id === 'number' &&
+    Number.isSafeInteger(update.edited_message.chat.id) &&
+    typeof update.edited_message.message_id === 'number' &&
+    Number.isSafeInteger(update.edited_message.message_id)
+  ) {
     return {
       type: 'EDIT',
-      platformMsgId: `tg:${chat.id}:${msgId}`,
-      content: msg.text,
+      platformMsgId: `tg:${update.edited_message.chat.id}:${update.edited_message.message_id}`,
+      content: update.edited_message.text,
     };
   }
 
+  // Valid update_id with unsupported type OR malformed message/edit payload -> IGNORED
   return {
     type: 'IGNORED',
-    reason: 'UNSUPPORTED_UPDATE_TYPE',
+    reason: 'UNSUPPORTED_OR_MALFORMED_PAYLOAD',
   };
 }
 
 module.exports = {
   TelegramInboundAdapter,
   TELEGRAM_CHANNEL_ID,
+  TELEGRAM_API_ORIGIN,
   TELEGRAM_WEEK_REBASE_MS,
   TELEGRAM_CLIENT_TIMEOUT_MS,
   TELEGRAM_POLL_TIMEOUT_SECONDS,

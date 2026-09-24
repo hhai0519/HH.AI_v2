@@ -78,6 +78,7 @@ test('T8B Test 1: Input Validation Matrix', () => {
       channelId: 'chan_tw',
       content: '測試訊息',
       cursorValue: '100',
+      cursorObservedAtMs: 1727180000000,
     };
 
     // accountId validation
@@ -166,6 +167,7 @@ test('T8B Test 2: Canonical Ingest & Atomic Cursor Upsert (CANARY 1)', () => {
       channelId: 'telegram_main',
       content: '台股加權指數收盤分析',
       cursorValue: '5001',
+      cursorObservedAtMs: 1727180000000,
     });
 
     assert.strictEqual(res.success, true);
@@ -236,6 +238,7 @@ test('T8B Test 3: Unattended Channel Initialization & D6 Holder Invariant (CANAR
       channelId: 'unattended_chan_alpha',
       content: '無人值守測試訊息',
       cursorValue: '99',
+      cursorObservedAtMs: 1727180000000,
     });
     assert.strictEqual(res.success, true);
     assert.strictEqual(res.duplicate, false);
@@ -264,6 +267,7 @@ test('T8B Test 3: Unattended Channel Initialization & D6 Holder Invariant (CANAR
       channelId: 'unattended_chan_alpha',
       content: '無人值守第二則訊息',
       cursorValue: '100',
+      cursorObservedAtMs: 1727180000000,
     });
 
     const stateAfter = repo.getChannelState('unattended_chan_alpha');
@@ -290,6 +294,7 @@ test('T8B Test 4: Idempotent Deduplication & Zero-Mutation No-Op (CANARY 4, 5, 6
       channelId: 'chan_primary',
       content: '原始訊息內容',
       cursorValue: '100',
+      cursorObservedAtMs: 1727180000000,
     });
     assert.strictEqual(firstRes.success, true);
     assert.strictEqual(firstRes.duplicate, false);
@@ -318,6 +323,7 @@ test('T8B Test 4: Idempotent Deduplication & Zero-Mutation No-Op (CANARY 4, 5, 6
       channelId: 'chan_primary',
       content: '重複傳送企圖竄改內容',
       cursorValue: '999',
+      cursorObservedAtMs: 1727180000000,
     });
 
     assert.strictEqual(secondRes.success, true);
@@ -366,6 +372,7 @@ test('T8B Test 5: Independent Cursors & Cross-Account Collision Isolation (CANAR
       channelId: 'chan_1',
       content: '帳號 A 的訊息',
       cursorValue: '1',
+      cursorObservedAtMs: 1727180000000,
     });
     assert.strictEqual(repo.getIngestCursor('account_A'), '1');
 
@@ -376,6 +383,7 @@ test('T8B Test 5: Independent Cursors & Cross-Account Collision Isolation (CANAR
       channelId: 'chan_1',
       content: '帳號 A 第二則訊息',
       cursorValue: '2',
+      cursorObservedAtMs: 1727180000000,
     });
     assert.strictEqual(repo.getIngestCursor('account_A'), '2');
 
@@ -387,6 +395,7 @@ test('T8B Test 5: Independent Cursors & Cross-Account Collision Isolation (CANAR
       channelId: 'chan_1',
       content: '帳號 B 的訊息，相同平台編號',
       cursorValue: '100',
+      cursorObservedAtMs: 1727180000000,
     });
     assert.strictEqual(resB.success, true);
     assert.strictEqual(resB.duplicate, false);
@@ -417,6 +426,7 @@ test('T8B Test 6: Content Exact Persistence (CANARY 14)', () => {
       channelId: 'chan_tc',
       content: traditionalChinese,
       cursorValue: '1',
+      cursorObservedAtMs: 1727180000000,
     });
     const r2 = repo.ingestMessage({
       accountId: 'acc_content',
@@ -425,6 +435,7 @@ test('T8B Test 6: Content Exact Persistence (CANARY 14)', () => {
       channelId: 'chan_tc',
       content: emptyContent,
       cursorValue: '2',
+      cursorObservedAtMs: 1727180000000,
     });
     const r3 = repo.ingestMessage({
       accountId: 'acc_content',
@@ -433,6 +444,7 @@ test('T8B Test 6: Content Exact Persistence (CANARY 14)', () => {
       channelId: 'chan_tc',
       content: multilineContent,
       cursorValue: '3',
+      cursorObservedAtMs: 1727180000000,
     });
 
     const rawDb = new DatabaseSync(repo.databasePath);
@@ -482,6 +494,7 @@ test('T8B Test 7: Atomic Rollback on Cursor Write Failure (CANARY 2)', () => {
           channelId: 'chan_rollback_test',
           content: '這則訊息應當被完整回滾',
           cursorValue: '1',
+          cursorObservedAtMs: 1727180000000,
         }),
       /Simulated cursor write failure/
     );
@@ -523,6 +536,7 @@ test('T8B Test 7: Atomic Rollback on Cursor Write Failure (CANARY 2)', () => {
       channelId: 'chan_rollback_test',
       content: '重試成功',
       cursorValue: '1',
+      cursorObservedAtMs: 1727180000000,
     });
     assert.strictEqual(okRes.success, true);
     assert.strictEqual(okRes.duplicate, false);
@@ -547,6 +561,7 @@ test('T8B Test 8: Atomic Rollback on Inbox Write Failure (CANARY 3)', () => {
       channelId: 'chan_inbox_fail',
       content: '初始正常訊息',
       cursorValue: '10',
+      cursorObservedAtMs: 1727180000000,
     });
     assert.strictEqual(repo.getIngestCursor('acc_fail_inbox'), '10');
 
@@ -575,6 +590,7 @@ test('T8B Test 8: Atomic Rollback on Inbox Write Failure (CANARY 3)', () => {
           channelId: 'chan_inbox_fail',
           content: '此訊息不可存入',
           cursorValue: '20',
+          cursorObservedAtMs: 1727180000000,
         }),
       /Simulated inbox insertion failure/
     );
@@ -609,6 +625,7 @@ test('T8B Test 9: Restart Persistence (CANARY 11, 12)', () => {
       channelId: 'chan_restart',
       content: '跨實例重啟持久化測試',
       cursorValue: '777',
+      cursorObservedAtMs: 1727180000000,
     });
     assert.strictEqual(r.success, true);
     assert.strictEqual(repo.getIngestCursor('acc_restart'), '777');
@@ -630,6 +647,7 @@ test('T8B Test 9: Restart Persistence (CANARY 11, 12)', () => {
       channelId: 'chan_restart',
       content: '嘗試覆寫',
       cursorValue: '888',
+      cursorObservedAtMs: 1727180000000,
     });
     assert.strictEqual(dupRes.duplicate, true);
     assert.strictEqual(repo.getIngestCursor('acc_restart'), '777');
@@ -653,6 +671,7 @@ test('T8B Test 10: Multi-Connection Dedupe (CANARY 13)', () => {
       channelId: 'chan_multi',
       content: 'Connection A 訊息',
       cursorValue: '10',
+      cursorObservedAtMs: 1727180000000,
     });
     assert.strictEqual(resA.success, true);
     assert.strictEqual(resA.duplicate, false);
@@ -664,6 +683,7 @@ test('T8B Test 10: Multi-Connection Dedupe (CANARY 13)', () => {
       channelId: 'chan_multi',
       content: 'Connection B 重複傳送',
       cursorValue: '20',
+      cursorObservedAtMs: 1727180000000,
     });
     assert.strictEqual(resB.success, true);
     assert.strictEqual(resB.duplicate, true);
@@ -700,6 +720,7 @@ test('T8B Test 11: T7B Integration & Backward Compatibility (CANARY 15)', () => 
       channelId: 'chan_e2e',
       content: '台股第一則訊息',
       cursorValue: '1',
+      cursorObservedAtMs: 1727180000000,
     });
     const m2 = repo.ingestMessage({
       accountId: 'acc_tg_1',
@@ -708,6 +729,7 @@ test('T8B Test 11: T7B Integration & Backward Compatibility (CANARY 15)', () => 
       channelId: 'chan_e2e',
       content: '台股第二則訊息',
       cursorValue: '2',
+      cursorObservedAtMs: 1727180000000,
     });
 
     // 2. Subsequent takeover acquires channel holder
@@ -804,6 +826,7 @@ test('v4-ingest Test 13: Event Dedup Canaries (Section 38)', () => {
       channelId: 'chan_dedup',
       content: '第一次事件',
       cursorValue: '100',
+      cursorObservedAtMs: 1727180000000,
     });
     assert.strictEqual(r1.duplicate, false);
 
@@ -827,6 +850,7 @@ test('v4-ingest Test 13: Event Dedup Canaries (Section 38)', () => {
       channelId: 'chan_dedup',
       content: '重播事件企圖推進游標',
       cursorValue: '200',
+      cursorObservedAtMs: 1727180000000,
     });
     assert.strictEqual(r2.duplicate, true);
     assert.strictEqual(r2.cursorAction, 'NOOP');
@@ -857,6 +881,7 @@ test('v4-ingest Test 13: Event Dedup Canaries (Section 38)', () => {
           channelId: 'chan_dedup',
           content: '衝突訊息',
           cursorValue: '300',
+          cursorObservedAtMs: 1727180000000,
         }),
       /EVENT_IDENTITY_CONFLICT/
     );
@@ -869,6 +894,7 @@ test('v4-ingest Test 13: Event Dedup Canaries (Section 38)', () => {
       channelId: 'chan_dedup',
       content: '不同帳號的相同事件編號',
       cursorValue: '100',
+      cursorObservedAtMs: 1727180000000,
     });
     assert.strictEqual(rDiffAcc.success, true);
     assert.strictEqual(rDiffAcc.duplicate, false);
@@ -892,6 +918,7 @@ test('v4-ingest Test 14: Same Logical Message / New Event Canary (Section 39)', 
       channelId: 'chan_msg_test',
       content: '原始訊息內文',
       cursorValue: '10',
+      cursorObservedAtMs: 1727180000000,
     });
     assert.strictEqual(r1.duplicate, false);
     assert.strictEqual(r1.messageCreated, true);
@@ -905,6 +932,7 @@ test('v4-ingest Test 14: Same Logical Message / New Event Canary (Section 39)', 
       channelId: 'chan_msg_test',
       content: '新事件內文（不應覆寫 inbox）',
       cursorValue: '20',
+      cursorObservedAtMs: 1727180000000,
     });
     assert.strictEqual(r2.duplicate, false, 'New event ID must not be duplicate event');
     assert.strictEqual(r2.messageCreated, false, 'Logical message was already created');
@@ -944,6 +972,7 @@ test('v4-ingest Test 15: Cross-Channel Logical Conflict Canary (Section 40)', ()
       channelId: 'chan_1',
       content: '通道1訊息',
       cursorValue: '10',
+      cursorObservedAtMs: 1727180000000,
     });
 
     // Ingest with NEW event ID, same account, same msg_id, but DIFFERENT channel chan_2
@@ -956,6 +985,7 @@ test('v4-ingest Test 15: Cross-Channel Logical Conflict Canary (Section 40)', ()
           channelId: 'chan_2',
           content: '企圖移至通道2',
           cursorValue: '20',
+          cursorObservedAtMs: 1727180000000,
         }),
       /LOGICAL_MESSAGE_CHANNEL_MISMATCH/
     );
@@ -993,6 +1023,7 @@ test('v4-ingest Test 16: Cursor Comparator Canaries (Section 41)', () => {
       channelId: 'chan_cur',
       content: '初始化游標 10',
       cursorValue: '10',
+      cursorObservedAtMs: 1727180000000,
     });
     assert.strictEqual(repo.getIngestCursor('acc_cur_test'), '10');
 
@@ -1004,6 +1035,7 @@ test('v4-ingest Test 16: Cursor Comparator Canaries (Section 41)', () => {
       channelId: 'chan_cur',
       content: '推進游標至 11',
       cursorValue: '11',
+      cursorObservedAtMs: 1727180000000,
     });
     assert.strictEqual(rAdv.cursorAction, 'ADVANCE');
     assert.strictEqual(repo.getIngestCursor('acc_cur_test'), '11');
@@ -1016,6 +1048,7 @@ test('v4-ingest Test 16: Cursor Comparator Canaries (Section 41)', () => {
       channelId: 'chan_cur',
       content: '相同游標 11',
       cursorValue: '11',
+      cursorObservedAtMs: 1727180000000,
     });
     assert.strictEqual(rNoop.cursorAction, 'NOOP');
     assert.strictEqual(repo.getIngestCursor('acc_cur_test'), '11');
@@ -1030,6 +1063,7 @@ test('v4-ingest Test 16: Cursor Comparator Canaries (Section 41)', () => {
           channelId: 'chan_cur',
           content: '回歸游標 10',
           cursorValue: '10',
+          cursorObservedAtMs: 1727180000000,
         }),
       /CURSOR_REGRESSION/
     );
@@ -1053,6 +1087,7 @@ test('v4-ingest Test 16: Cursor Comparator Canaries (Section 41)', () => {
       channelId: 'chan_cur',
       content: '大數游標 1',
       cursorValue: '999999999999999999999',
+      cursorObservedAtMs: 1727180000000,
     });
     assert.strictEqual(repo.getIngestCursor('acc_big_num'), '999999999999999999999');
 
@@ -1063,6 +1098,7 @@ test('v4-ingest Test 16: Cursor Comparator Canaries (Section 41)', () => {
       channelId: 'chan_cur',
       content: '大數游標 2',
       cursorValue: '1000000000000000000000',
+      cursorObservedAtMs: 1727180000000,
     });
     assert.strictEqual(rBigAdv.cursorAction, 'ADVANCE');
     assert.strictEqual(repo.getIngestCursor('acc_big_num'), '1000000000000000000000');
@@ -1129,6 +1165,7 @@ test('v4-ingest Test 18: IGNORED Event Canaries (Section 43)', () => {
       accountId: 'acc_tg_poll',
       platformEventId: 'evt_unsupported_1',
       cursorValue: '500',
+      cursorObservedAtMs: 1727180000000,
     });
     assert.strictEqual(r1.success, true);
     assert.strictEqual(r1.duplicate, false);
@@ -1152,6 +1189,7 @@ test('v4-ingest Test 18: IGNORED Event Canaries (Section 43)', () => {
       accountId: 'acc_tg_poll',
       platformEventId: 'evt_unsupported_1',
       cursorValue: '600',
+      cursorObservedAtMs: 1727180000000,
     });
     assert.strictEqual(r2.duplicate, true);
     assert.strictEqual(r2.cursorAction, 'NOOP');
@@ -1164,6 +1202,7 @@ test('v4-ingest Test 18: IGNORED Event Canaries (Section 43)', () => {
           accountId: 'acc_tg_poll',
           platformEventId: 'evt_unsupported_2',
           cursorValue: '400',
+          cursorObservedAtMs: 1727180000000,
         }),
       /CURSOR_REGRESSION/
     );
@@ -1264,6 +1303,7 @@ test('v4-ingest Test 20: Inbound Event Rollback Canary (Section 45)', () => {
           channelId: 'chan_abort',
           content: '應完整回滾',
           cursorValue: '100',
+          cursorObservedAtMs: 1727180000000,
         }),
       /Simulated inbound_event insertion failure/
     );
@@ -1484,7 +1524,33 @@ test('v5-ingest Test 25: cursorObservedAtMs validation across ingest APIs', () =
   try {
     const repo = SqliteStateRepository.open(harness.stateRoot);
 
-    // Negative timestamp rejected
+    // 1. ingestMessage negative controls
+    assert.throws(
+      () =>
+        repo.ingestMessage({
+          accountId: 'acc_ts',
+          platformEventId: 'evt_ts_m_omitted',
+          platformMsgId: 'msg_ts_m_omitted',
+          channelId: 'chan_ts',
+          content: 'test',
+          cursorValue: '1',
+          // cursorObservedAtMs omitted
+        }),
+      /cursorObservedAtMs/
+    );
+    assert.throws(
+      () =>
+        repo.ingestMessage({
+          accountId: 'acc_ts',
+          platformEventId: 'evt_ts_m_null',
+          platformMsgId: 'msg_ts_m_null',
+          channelId: 'chan_ts',
+          content: 'test',
+          cursorValue: '1',
+          cursorObservedAtMs: null,
+        }),
+      /cursorObservedAtMs/
+    );
     assert.throws(
       () =>
         repo.ingestMessage({
@@ -1498,8 +1564,54 @@ test('v5-ingest Test 25: cursorObservedAtMs validation across ingest APIs', () =
         }),
       /cursorObservedAtMs/
     );
+    assert.throws(
+      () =>
+        repo.ingestMessage({
+          accountId: 'acc_ts',
+          platformEventId: 'evt_ts_m_float',
+          platformMsgId: 'msg_ts_m_float',
+          channelId: 'chan_ts',
+          content: 'test',
+          cursorValue: '1',
+          cursorObservedAtMs: 123.456,
+        }),
+      /cursorObservedAtMs/
+    );
+    assert.throws(
+      () =>
+        repo.ingestMessage({
+          accountId: 'acc_ts',
+          platformEventId: 'evt_ts_m_unsafe',
+          platformMsgId: 'msg_ts_m_unsafe',
+          channelId: 'chan_ts',
+          content: 'test',
+          cursorValue: '1',
+          cursorObservedAtMs: Number.MAX_SAFE_INTEGER + 1000,
+        }),
+      /cursorObservedAtMs/
+    );
 
-    // Non-integer timestamp rejected
+    // 2. recordIgnoredEvent negative controls
+    assert.throws(
+      () =>
+        repo.recordIgnoredEvent({
+          accountId: 'acc_ts',
+          platformEventId: 'evt_ts_ign_omitted',
+          cursorValue: '2',
+          // cursorObservedAtMs omitted
+        }),
+      /cursorObservedAtMs/
+    );
+    assert.throws(
+      () =>
+        repo.recordIgnoredEvent({
+          accountId: 'acc_ts',
+          platformEventId: 'evt_ts_ign_null',
+          cursorValue: '2',
+          cursorObservedAtMs: null,
+        }),
+      /cursorObservedAtMs/
+    );
     assert.throws(
       () =>
         repo.recordIgnoredEvent({
@@ -1510,8 +1622,44 @@ test('v5-ingest Test 25: cursorObservedAtMs validation across ingest APIs', () =
         }),
       /cursorObservedAtMs/
     );
+    assert.throws(
+      () =>
+        repo.recordIgnoredEvent({
+          accountId: 'acc_ts',
+          platformEventId: 'evt_ts_ign_neg',
+          cursorValue: '2',
+          cursorObservedAtMs: -1,
+        }),
+      /cursorObservedAtMs/
+    );
 
-    // String timestamp rejected
+    // 3. ingestEdit negative controls
+    assert.throws(
+      () =>
+        repo.ingestEdit({
+          accountId: 'acc_ts',
+          platformEventId: 'evt_ts_edit_omitted',
+          channelId: 'chan_ts',
+          platformMsgId: 'msg_ts_3',
+          content: 'test',
+          cursorValue: '3',
+          // cursorObservedAtMs omitted
+        }),
+      /cursorObservedAtMs/
+    );
+    assert.throws(
+      () =>
+        repo.ingestEdit({
+          accountId: 'acc_ts',
+          platformEventId: 'evt_ts_edit_null',
+          channelId: 'chan_ts',
+          platformMsgId: 'msg_ts_3',
+          content: 'test',
+          cursorValue: '3',
+          cursorObservedAtMs: null,
+        }),
+      /cursorObservedAtMs/
+    );
     assert.throws(
       () =>
         repo.ingestEdit({
@@ -1522,6 +1670,19 @@ test('v5-ingest Test 25: cursorObservedAtMs validation across ingest APIs', () =
           content: 'test',
           cursorValue: '3',
           cursorObservedAtMs: '1727180000000',
+        }),
+      /cursorObservedAtMs/
+    );
+    assert.throws(
+      () =>
+        repo.ingestEdit({
+          accountId: 'acc_ts',
+          platformEventId: 'evt_ts_edit_neg',
+          channelId: 'chan_ts',
+          platformMsgId: 'msg_ts_3',
+          content: 'test',
+          cursorValue: '3',
+          cursorObservedAtMs: -5,
         }),
       /cursorObservedAtMs/
     );

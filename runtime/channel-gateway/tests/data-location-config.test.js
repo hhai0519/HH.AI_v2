@@ -571,3 +571,54 @@ test('DataLocationConfig - 28. v3 rejects top-level accounts key', () => {
     /Unknown top-level configuration key: 'accounts'/
   );
 });
+
+test('DataLocationConfig - 29. v2 rejects top-level accounts key (fail-closed)', () => {
+  const v2WithAccounts = {
+    schemaVersion: 2,
+    dataLocations: VALID_WINDOWS_CONFIG_V2.dataLocations,
+    gateway: { localPort: 3003 },
+    accounts: { telegram: [] },
+  };
+
+  assert.throws(
+    () => validateResolvedDataLocationConfig(v2WithAccounts),
+    /Unknown top-level configuration key: 'accounts'/
+  );
+});
+
+test('DataLocationConfig - 30. v4 Telegram account item rejects forbidden credential fields (secret, secretRef, botToken, bottoken, credential)', () => {
+  const base = {
+    schemaVersion: 4,
+    dataLocations: VALID_POSIX_CONFIG_V3.dataLocations,
+    gateway: { localPort: 3003 },
+  };
+
+  const forbiddenFields = [
+    { secret: 'my-secret' },
+    { secretRef: 'vault://ref' },
+    { botToken: '123456:ABC-DEF' },
+    { bottoken: '123456:ABC-DEF' },
+    { credential: 'raw-credential' },
+  ];
+
+  for (const forbidden of forbiddenFields) {
+    const fieldName = Object.keys(forbidden)[0];
+    assert.throws(
+      () =>
+        validateResolvedDataLocationConfig({
+          ...base,
+          accounts: {
+            telegram: [
+              {
+                id: 'bot_test',
+                label: 'Bot Test',
+                ...forbidden,
+              },
+            ],
+          },
+        }),
+      new RegExp(`Security rejection: Field '${fieldName}' is forbidden in accounts configuration`),
+      `Expected field '${fieldName}' to be rejected`
+    );
+  }
+});

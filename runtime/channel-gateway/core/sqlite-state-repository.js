@@ -1339,10 +1339,7 @@ function validateCursorObservedAtMs(val, cursorValue) {
     }
     return null;
   }
-  if (val === undefined) {
-    return Date.now();
-  }
-  if (val === null || typeof val !== 'number' || !Number.isSafeInteger(val) || val < 0) {
+  if (val === undefined || val === null || typeof val !== 'number' || !Number.isSafeInteger(val) || val < 0) {
     throw new TypeError('cursorObservedAtMs must be a safe integer >= 0 (fail-closed)');
   }
   return val;

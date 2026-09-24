@@ -152,6 +152,8 @@ ADR-0022 仍保留為 Channel Gateway 之歷史與總體架構權威（Historica
     - TG-MVP-09A 備份維持 SQLite 原生資料格式，不引入自製應用層加密（no application-level encryption in 09A）。
     - 磁碟靜態資料加密（Encryption at Rest）明確定義為使用者作業系統層級責任（USER_RESPONSIBILITY BitLocker on Windows）。
 11. **Node.js 內建 node:sqlite 未來升級監控點 (node:sqlite Future-Upgrade Watchpoint)**：
+    - 持續監控 Node.js 內建 `node:sqlite` API 之演進、Node 24.x 穩定性與後續 LTS 版本升級動向。
+    - 維持當前同步使用（synchronous usage）與未來潛在非同步整合（async integration）或 Worker Thread 隔離間的架構適配性與演進彈性。
 12. **SQLite Schema v5 演進（TG-MVP-10 / M7 / M8）**：
     - `ingest_cursor` 表格升級至 schema version 5，新增 `updated_at_ms INTEGER NOT NULL CHECK(updated_at_ms >= 0)`。
     - Migration 5 在既有 v4 升級時自動建立 v4 備份，並以 migration-time timestamp 初始化既有 cursor 作為保守寬限期基準。

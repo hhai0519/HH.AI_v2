@@ -59,7 +59,7 @@
       "scripts/tests/test_channel_gateway_core.py"
     ],
     "max_plan_revisions": 3,
-    "revision_count": 1,
+    "revision_count": 2,
     "plan_origin": "EXTERNAL_MACRO_PROMPT"
   },
   "actual": {

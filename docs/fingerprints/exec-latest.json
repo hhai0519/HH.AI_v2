@@ -1,5 +1,5 @@
 {
-  "base_head": "bec2fb5",
+  "base_head": "ddd8fcb",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -552,16 +552,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 219,
-      "sha256": "9e04f604e62cfacb27ce8e3a21605daee5144e12f7ce07c7afae317f6abab84c"
+      "lines": 220,
+      "sha256": "9dcccf244ba8f17ac3ccfcc17cff723731f7d8f17610691143ee45fdd32c77fd"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 193,
-      "sha256": "d64a48611930c272041879dfbfadb553b1d18dee398f84afbf3af41078894e15"
+      "lines": 194,
+      "sha256": "74a16effe69a16386b66af4645efeac1d246326ec2686330ee94f3c7826cf493"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -602,7 +602,7 @@
         "## 封存區"
       ],
       "lines": 340,
-      "sha256": "c506c83b55b547e789ac10f2fe0697fc32cfde62bc0f4816ee70f0aecbb726c4"
+      "sha256": "b21c2e959e587582aee2113b88994be99a8898930c19ee3527cdb6aafe5e8697"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -922,8 +922,8 @@
         "### 9. 狀態資料庫與備份衛生治理 (State Database & Backup Hygiene — TG-MVP-09A)",
         "## Consequences"
       ],
-      "lines": 182,
-      "sha256": "009dff1fcaa1e86f0daac094ba16a34ae6a07d895d46f8047df7bfa4c055580e"
+      "lines": 184,
+      "sha256": "9b9ea3cdef566decc457d6a37174372cc92609686cb54b4c4c85667863901bbb"
     },
     "docs/adr/0024-inbound-identity-cursor-semantics.md": {
       "fences": 2,
@@ -941,8 +941,8 @@
         "### 8. TG-MVP-10 Telegram 落地語意與游標重置機制 (TG-MVP-10 Telegram Inbound & Cursor Semantics)",
         "## Consequences"
       ],
-      "lines": 201,
-      "sha256": "5bf342cd8b10cb8343c79747965bb54df283be674b864be23178c67eb216095c"
+      "lines": 204,
+      "sha256": "5ad5a32d1b5dd41f2e353da944cacaa101471935fe6924c503312ace41e0fab4"
     },
     "docs/adr/0025-outbound-reliability-loopback-api-security.md": {
       "fences": 6,
@@ -996,11 +996,11 @@
         "### 6. 自動化測試與 CI 合成規範 (Synthetic Testing & CI Contract)",
         "## Alternatives Considered",
         "## Consequences",
-        "## TG-MVP-10 Telegram Bot API 協議邊界例外 (Telegram Protocol-Boundary Exception — M14)",
+        "## TG-MVP-10 Telegram Bot API 協議邊界例外 (Telegram Protocol-Boundary Exception — M14 / R2 Alignment)",
         "## Relationship to Existing Architecture"
       ],
-      "lines": 136,
-      "sha256": "6fe95a751d58d09d249683ce7675b29f08fc67445b6dc67f99fd7b13f2471dac"
+      "lines": 139,
+      "sha256": "fc1451b1a9f4c7bb2b2e0b6c11c195c1a8818af78a32c46131fb138e9c1c78de"
     },
     "docs/mcp-environment-guide.md": {
       "fences": 0,
@@ -1068,8 +1068,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 5045,
-      "sha256": "dc7095e520b8ae248ff54a1c7ee3d4e3d4c0948a52ac5eadc026e6def726977d"
+      "lines": 5071,
+      "sha256": "a3a44b181f42cda128c5a2fae536a675a7e15e67f2b40e02dfdcdcc483b62c62"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1494,7 +1494,7 @@
       "sha256": "35bf7dbfa3c7d291b550c3c97a6ae398a22b1dc3624c1d2fc1e4db6963d6e115"
     }
   },
-  "generated_at": "2026-09-24T15:40:24Z",
+  "generated_at": "2026-09-24T18:03:15Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {
