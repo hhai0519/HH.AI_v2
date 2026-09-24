@@ -2825,7 +2825,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 5.1 上一批狀態
 
-上次核對通過的 HEAD：291869cc23319d5f5d5ce058388e44e2e684a0fb
+上次核對通過的 HEAD：c6cd9c9986f5834b9777197c7c0012c08d85a3bb
 
 - `23af193`（執行者前置檢查 ＋ 回滾程序 ＋ `AUDIT-LOG.md` ＋ 四缺口修正）
   已於 2026-09-02 由審計官核對通過：6 檔異動（含 2 個新檔）、零夾帶、
@@ -4987,5 +4987,36 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - B-107 保持 OPEN / RESIDUAL / NON-BLOCKING。
   - Node punycode deprecation warning 維持 B-100 R-D NONBLOCKING。
   - §5.4 維持純指標導向（POINTER_ONLY），不保存動態任務佇列或狀態副本。
+
+140. **TG-MVP-09A 狀態資料庫與備份清理衛生規範最終驗收狀態同步（TG-MVP-09A Final Acceptance State Sync）**（2026-09-24）
+- **外部宏觀審計結論（External Macro Final Verdict on Target c6cd9c9986f5834b9777197c7c0012c08d85a3bb）**：
+  - Base：`c6cd9c9986f5834b9777197c7c0012c08d85a3bb`（TG-MVP-09A 實作鏈：Base: `291869cc23319d5f5d5ce058388e44e2e684a0fb` -> R0: `50503a5dd33e8092e153c6f8f3255594449b9cfb` -> R1: `c1763878aef3c0d87a0a3eddbcf3c3956f55eb19` -> R2 / accepted implementation: `c6cd9c9986f5834b9777197c7c0012c08d85a3bb`）。
+  - Implementation Chain & Candidate History：
+    - R0 候選 `50503a5dd33e8092e153c6f8f3255594449b9cfb` 於 Actions Run 35965479245（gateway-windows: success, verify: failure；跨平台隱私測試 harness 缺陷，非 runtime 缺陷）-> 授權有界修復 R1。
+    - R1 候選 `c1763878aef3c0d87a0a3eddbcf3c3956f55eb19` 於 Actions Run 35969326893（verify: success, gateway-windows: success，Ubuntu 514 passed + 13 passed + ALL 5 GATES PASSED, Windows 28 passed）-> External Macro verdict = HOLD，成立 F1（mutation-insensitive safety negative controls）、F2（backup-directory-unavailable health semantics）、F3（ADR-0023 與 runtime AGENTS 治理文件漂移）-> 授權有界修復 R2。
+    - R2 候選 `c6cd9c9986f5834b9777197c7c0012c08d85a3bb` 於 Actions Run 35974805223（verify: success, gateway-windows: success，Ubuntu 514 passed + 13 passed + ALL 5 GATES PASSED, Windows 28 passed）。
+  - Macro findings resolved：F1, F2, F3 全數解決（RESOLVED）。
+  - Mutation proof：4 項反事實突變（M3, M4, M5, M10）經獨立沙盒實測證明全部呈現確定性 RED 失敗。
+  - Cumulative diff：3 commits, exact 24 paths。
+  - Claude second opinion：NON-AUTHORITATIVE ADVISORY ONLY，其 findings 經 External Macro 獨立 reproduction 後形成 R2 repair。
+  - Macro Audit 裁決：TG-MVP-09A R2 IMPLEMENTATION = PASS / ACCEPT ALL, F1 = RESOLVED, F2 = RESOLVED, F3 = RESOLVED, NEW MATERIAL FINDING = NONE, PROMOTION ELIGIBILITY = PASS, SAME-SHA PROMOTION = ACCEPTED, ROLLBACK = NOT REQUIRED。
+  - Same-SHA main promotion：
+    - Transport：NATIVE PINNED FULL-40-CHAR SHA REFSPEC（`c6cd9c9986f5834b9777197c7c0012c08d85a3bb:refs/heads/main`）。
+    - Push attempts：1。
+    - Single-use auth：MAIN_EXACT_SHA（authorized: `c6cd9c9986f5834b9777197c7c0012c08d85a3bb`, expected remote: `291869cc23319d5f5d5ce058388e44e2e684a0fb`）。
+    - AUTH CONSUMED：YES。
+    - Same-SHA landing：YES（origin/main 已推進至 `c6cd9c9986f5834b9777197c7c0012c08d85a3bb`）。
+  - Post-main exact-SHA Actions 驗證：Run 35976037151（event=push, head_branch=main, head_sha=c6cd9c9986f5834b9777197c7c0012c08d85a3bb, attempt=1, run=completed/success, verify=completed/success, gateway-windows=completed/success, raw verify: 514 passed + 13 passed + ALL 5 GATES PASSED, Windows Channel Gateway: 28 passed）。
+  - Ruleset 21301111（HH.AI_V2_main）保持 active、deletion protection=present、non_fast_forward=present、strict required status checks (verify, gateway-windows)=true、bypass_actors=[]、current_user_can_bypass=never。
+  - 任務結案裁決：TG-MVP-09A = ACCEPTED / CLOSED，TG-MVP-09A hard go-live gate = SATISFIED / CLOSED。
+  - accepted checkpoint 推進至 `c6cd9c9986f5834b9777197c7c0012c08d85a3bb`。
+- **後續工作路由與邊界保留（Next Work Routing & Boundary Preservation）**：
+  - NEXT_WORK 保持 E-03，NEXT_SLICE 推進至 TG-MVP-10（READY / NEXT AUTHORIZED SLICE ROUTING AFTER TG-MVP-09A FINAL ACCEPTANCE STATE SYNC）。
+  - TG-MVP-10（Telegram 測試機器人入站適配器）維持待辦，本輪不實作。
+  - TG-MVP-11 / 12 / 13 / 14 / 15 維持待辦，本輪不實作。
+  - B-107 保持 OPEN / RESIDUAL / NON-BLOCKING。
+  - Node punycode deprecation warning 維持 B-100 R-D NONBLOCKING。
+  - §5.4 維持純指標導向（POINTER_ONLY），不保存動態任務佇列或狀態副本。
+  - 本 state-sync candidate 分支為 `batch/tg-mvp-09a-final-acceptance-260924`，Allowed Scope 嚴格限定 6 檔，main_advancement = FORBIDDEN，提交後標記為 AWAITING EXTERNAL MACRO AUDIT。
 
 
