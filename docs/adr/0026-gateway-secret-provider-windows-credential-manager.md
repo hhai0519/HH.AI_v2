@@ -108,9 +108,29 @@
 
 ---
 
+## TG-MVP-10 Telegram Bot API 協議邊界例外 (Telegram Protocol-Boundary Exception — M14)
+
+1. **二進位 Buffer 契約不變**：
+   - `SecretProvider` 介面嚴格維持回傳二進位 `Buffer`，提供者層級絕對不產生或回傳明文字串。
+   - 配接器（Adapter）獨佔擁有金鑰 Buffer 之生命週期；適配器停止或終止時執行最佳努力歸零（`buf.fill(0)`）。
+2. **通訊協定狹隘例外（Protocol Necessity）**：
+   - 經外部宏觀審計查證，Telegram Bot API HTTP 請求路徑強制要求格式為 `https://api.telegram.org/bot<token>/METHOD`。
+   - 因此，Telegram 適配器獲准僅在 HTTP 請求建構之狹隘邊界內，將金鑰 Buffer 暫時解碼為短暫存在之 UTF-8 字串。
+3. **記憶體與日誌嚴格紀律**：
+   - 嚴禁將 Token 字串存入物件實例欄位（No instance field caching）。
+   - 嚴禁回傳、嚴禁序列化為 JSON、嚴禁寫入日誌。
+   - 嚴禁在診斷訊息或例外堆疊中包含完整請求 URL 或原始錯誤。
+   - 使用完畢後立即解除字串參照；適配器權威持有的二進位 Buffer 在生命週期結束時執行 `fill(0)`。
+   - 明確記錄 V8 引擎不可變字串無法保證由應用層精確抹除記憶體之客觀事實，不宣稱完美記憶體抹除。
+4. **Token 字元語法防禦檢驗**：
+   - 在解碼與發送請求前，必須以位元組層級驗證合規之 ASCII Token 語法（`<bot_id>:<secret_token>`），強制拒絕斜線 `/`、問號 `?`、空白、C0 控制字元與 DEL，杜絕路徑或查詢參數注入。
+
+---
+
 ## Relationship to Existing Architecture
 
 - **與 ADR-0016（機密洩漏防線）之關係**：落實 ADR-0016 關於金鑰不入庫、不在工作目錄留存明文之規範。
 - **與 ADR-0022（Channel Gateway 架構）之關係**：實現 D26 帳號金鑰外部非明文儲存與熱切換要求；保持 D15 零額外依賴。
 - **與 ADR-0025（Local API 安全）之關係**：為 §15 Client Wrapper 與 Loopback HTTP 伺服器提供共用之 HMAC 金鑰安全取得基底。
 - **與 E-03 路線圖之關係**：閉合 B-101，解除 `TG-MVP-10`、`TG-MVP-11`、`TG-CUT-04` 之機密提供者前置依賴。
+

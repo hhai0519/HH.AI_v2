@@ -754,18 +754,18 @@ test('T8B Test 12: Architectural Boundaries & Freeze Invariants (CANARY 16-20)',
   try {
     const repo = SqliteStateRepository.open(harness.stateRoot);
 
-    // CANARY 16: schema is v4
-    assert.strictEqual(repo.schemaVersion, 4);
-    assert.strictEqual(SQLITE_STATE_SCHEMA_VERSION, 4);
+    // CANARY 16: schema is v5
+    assert.strictEqual(repo.schemaVersion, 5);
+    assert.strictEqual(SQLITE_STATE_SCHEMA_VERSION, 5);
 
-    // CANARY 17: migrations are [1, 2, 3, 4]
+    // CANARY 17: migrations are [1, 2, 3, 4, 5]
     const rawDb = new DatabaseSync(repo.databasePath);
     try {
       const versions = rawDb
         .prepare('SELECT version FROM schema_migrations ORDER BY version ASC;')
         .all()
         .map((r) => r.version);
-      assert.deepStrictEqual(versions, [1, 2, 3, 4]);
+      assert.deepStrictEqual(versions, [1, 2, 3, 4, 5]);
 
       // CANARY 20: no outbox table exists, but inbound_event exists
       const tables = rawDb
@@ -1180,11 +1180,11 @@ test('v4-ingest Test 19: Legacy Invalid Stored Cursor Canary (Section 44)', () =
   try {
     const repo = SqliteStateRepository.open(harness.stateRoot);
 
-    // Direct seed invalid legacy text into ingest_cursor
+    // Direct seed invalid legacy text into ingest_cursor with updated_at_ms
     const rawDb = new DatabaseSync(repo.databasePath);
     try {
-      rawDb.prepare('INSERT INTO ingest_cursor (account_id, cursor_value) VALUES (?, ?);')
-        .run('acc_legacy', 'legacy_cursor_text');
+      rawDb.prepare('INSERT INTO ingest_cursor (account_id, cursor_value, updated_at_ms) VALUES (?, ?, ?);')
+        .run('acc_legacy', 'legacy_cursor_text', 1000);
     } finally {
       rawDb.close();
     }
@@ -1199,6 +1199,7 @@ test('v4-ingest Test 19: Legacy Invalid Stored Cursor Canary (Section 44)', () =
           channelId: 'chan_legacy',
           content: '嘗試在損壞游標下入站',
           cursorValue: '100',
+          cursorObservedAtMs: 2000,
         }),
       /STORED_CURSOR_INVALID/
     );
@@ -1283,6 +1284,247 @@ test('v4-ingest Test 20: Inbound Event Rollback Canary (Section 45)', () => {
     } finally {
       checkDb.close();
     }
+
+    repo.close();
+  } finally {
+    harness.cleanup();
+  }
+});
+
+test('v5-ingest Test 21: ingestEdit target inbox exists updates content, preserves metadata, advances cursor', () => {
+  const harness = createTempHarness();
+  try {
+    const repo = SqliteStateRepository.open(harness.stateRoot);
+
+    // Initial message
+    const msgRes = repo.ingestMessage({
+      accountId: 'acc_edit',
+      platformEventId: 'evt_orig_01',
+      platformMsgId: 'msg_target_01',
+      channelId: 'chan_edit',
+      content: 'Original Content',
+      cursorValue: '100',
+      cursorObservedAtMs: 1727180000000,
+    });
+    assert.strictEqual(msgRes.success, true);
+
+    // Edit message
+    const editRes = repo.ingestEdit({
+      accountId: 'acc_edit',
+      platformEventId: 'evt_edit_01',
+      channelId: 'chan_edit',
+      platformMsgId: 'msg_target_01',
+      content: 'Updated Content',
+      cursorValue: '101',
+      cursorObservedAtMs: 1727180005000,
+    });
+
+    assert.strictEqual(editRes.success, true);
+    assert.strictEqual(editRes.applied, true);
+    assert.strictEqual(editRes.reason, undefined);
+    assert.strictEqual(editRes.cursorAction, 'ADVANCE');
+
+    // Verify inbox updated
+    const rawDb = new DatabaseSync(repo.databasePath, { readOnly: true });
+    try {
+      const inboxRow = rawDb.prepare('SELECT * FROM inbox WHERE platform_msg_id = ?;').get('msg_target_01');
+      assert.strictEqual(inboxRow.content, 'Updated Content');
+      assert.strictEqual(inboxRow.status, 'queued');
+
+      // Verify inbound_event has EDIT row
+      const evtRow = rawDb.prepare('SELECT * FROM inbound_event WHERE platform_event_id = ?;').get('evt_edit_01');
+      assert.strictEqual(evtRow.event_type, 'EDIT');
+      assert.strictEqual(evtRow.platform_msg_id, 'msg_target_01');
+
+      // Verify cursor advanced
+      const cursorRow = rawDb.prepare('SELECT * FROM ingest_cursor WHERE account_id = ?;').get('acc_edit');
+      assert.strictEqual(cursorRow.cursor_value, '101');
+      assert.strictEqual(cursorRow.updated_at_ms, 1727180005000);
+    } finally {
+      rawDb.close();
+    }
+
+    repo.close();
+  } finally {
+    harness.cleanup();
+  }
+});
+
+test('v5-ingest Test 22: ingestEdit target inbox missing returns applied: false with EDIT_TARGET_NOT_FOUND', () => {
+  const harness = createTempHarness();
+  try {
+    const repo = SqliteStateRepository.open(harness.stateRoot);
+
+    const editRes = repo.ingestEdit({
+      accountId: 'acc_edit',
+      platformEventId: 'evt_edit_notfound',
+      channelId: 'chan_edit',
+      platformMsgId: 'msg_missing_01',
+      content: 'Ghost edit content',
+      cursorValue: '200',
+      cursorObservedAtMs: 1727180010000,
+    });
+
+    assert.strictEqual(editRes.success, true);
+    assert.strictEqual(editRes.applied, false);
+    assert.strictEqual(editRes.reason, 'EDIT_TARGET_NOT_FOUND');
+    assert.strictEqual(editRes.cursorAction, 'ADVANCE');
+
+    // Verify no row created in inbox
+    const rawDb = new DatabaseSync(repo.databasePath, { readOnly: true });
+    try {
+      const inboxRow = rawDb.prepare('SELECT * FROM inbox WHERE platform_msg_id = ?;').get('msg_missing_01');
+      assert.strictEqual(inboxRow, undefined);
+
+      // Inbound event EDIT is still durably recorded
+      const evtRow = rawDb.prepare('SELECT * FROM inbound_event WHERE platform_event_id = ?;').get('evt_edit_notfound');
+      assert.strictEqual(evtRow.event_type, 'EDIT');
+
+      // Cursor still advanced
+      const cursorRow = rawDb.prepare('SELECT * FROM ingest_cursor WHERE account_id = ?;').get('acc_edit');
+      assert.strictEqual(cursorRow.cursor_value, '200');
+      assert.strictEqual(cursorRow.updated_at_ms, 1727180010000);
+    } finally {
+      rawDb.close();
+    }
+
+    repo.close();
+  } finally {
+    harness.cleanup();
+  }
+});
+
+test('v5-ingest Test 23: ingestEdit true duplicate returns zero mutation', () => {
+  const harness = createTempHarness();
+  try {
+    const repo = SqliteStateRepository.open(harness.stateRoot);
+
+    // Initial message
+    repo.ingestMessage({
+      accountId: 'acc_edit',
+      platformEventId: 'evt_orig_02',
+      platformMsgId: 'msg_target_02',
+      channelId: 'chan_edit',
+      content: 'Original Content',
+      cursorValue: '100',
+      cursorObservedAtMs: 1727180000000,
+    });
+
+    // First edit
+    const res1 = repo.ingestEdit({
+      accountId: 'acc_edit',
+      platformEventId: 'evt_edit_02',
+      channelId: 'chan_edit',
+      platformMsgId: 'msg_target_02',
+      content: 'First Edit',
+      cursorValue: '102',
+      cursorObservedAtMs: 1727180002000,
+    });
+    assert.strictEqual(res1.applied, true);
+
+    // Duplicate edit
+    const res2 = repo.ingestEdit({
+      accountId: 'acc_edit',
+      platformEventId: 'evt_edit_02',
+      channelId: 'chan_edit',
+      platformMsgId: 'msg_target_02',
+      content: 'First Edit',
+      cursorValue: '102',
+      cursorObservedAtMs: 1727180002000,
+    });
+    assert.strictEqual(res2.success, true);
+    assert.strictEqual(res2.applied, false);
+    assert.strictEqual(res2.duplicate, true);
+    assert.strictEqual(res2.inboxUpdated, false);
+
+    repo.close();
+  } finally {
+    harness.cleanup();
+  }
+});
+
+test('v5-ingest Test 24: ingestEdit conflicting identity throws EVENT_IDENTITY_CONFLICT', () => {
+  const harness = createTempHarness();
+  try {
+    const repo = SqliteStateRepository.open(harness.stateRoot);
+
+    repo.ingestMessage({
+      accountId: 'acc_edit',
+      platformEventId: 'evt_edit_03',
+      platformMsgId: 'msg_target_03',
+      channelId: 'chan_edit',
+      content: 'Original',
+      cursorValue: '100',
+      cursorObservedAtMs: 1727180000000,
+    });
+
+    // Attempt ingestEdit with same event ID but it was MESSAGE in event table
+    assert.throws(
+      () =>
+        repo.ingestEdit({
+          accountId: 'acc_edit',
+          platformEventId: 'evt_edit_03',
+          channelId: 'chan_edit',
+          platformMsgId: 'msg_target_03',
+          content: 'Conflict',
+          cursorValue: '101',
+          cursorObservedAtMs: 1727180001000,
+        }),
+      /EVENT_IDENTITY_CONFLICT/
+    );
+
+    repo.close();
+  } finally {
+    harness.cleanup();
+  }
+});
+
+test('v5-ingest Test 25: cursorObservedAtMs validation across ingest APIs', () => {
+  const harness = createTempHarness();
+  try {
+    const repo = SqliteStateRepository.open(harness.stateRoot);
+
+    // Negative timestamp rejected
+    assert.throws(
+      () =>
+        repo.ingestMessage({
+          accountId: 'acc_ts',
+          platformEventId: 'evt_ts_1',
+          platformMsgId: 'msg_ts_1',
+          channelId: 'chan_ts',
+          content: 'test',
+          cursorValue: '1',
+          cursorObservedAtMs: -10,
+        }),
+      /cursorObservedAtMs/
+    );
+
+    // Non-integer timestamp rejected
+    assert.throws(
+      () =>
+        repo.recordIgnoredEvent({
+          accountId: 'acc_ts',
+          platformEventId: 'evt_ts_2',
+          cursorValue: '2',
+          cursorObservedAtMs: 123.456,
+        }),
+      /cursorObservedAtMs/
+    );
+
+    // String timestamp rejected
+    assert.throws(
+      () =>
+        repo.ingestEdit({
+          accountId: 'acc_ts',
+          platformEventId: 'evt_ts_3',
+          channelId: 'chan_ts',
+          platformMsgId: 'msg_ts_3',
+          content: 'test',
+          cursorValue: '3',
+          cursorObservedAtMs: '1727180000000',
+        }),
+      /cursorObservedAtMs/
+    );
 
     repo.close();
   } finally {

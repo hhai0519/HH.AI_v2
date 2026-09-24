@@ -1,28 +1,30 @@
 /**
  * runtime/channel-gateway/core/data-location-config.js
  *
- * ADR-0022 D24 / ADR-0023 / TG-MVP-09A: Repo-External Data Location & Gateway Config Contract.
+ * ADR-0022 D24 / ADR-0023 / TG-MVP-09A / TG-MVP-10: Repo-External Data Location & Gateway Config Contract.
  *
  * Invariants:
  * - Pure validation contract for resolved repo-external data location and gateway configuration.
  * - NO filesystem operations (no fs.stat, no fs.mkdir, no fs.access).
  * - NO process.env access or OS known-folder resolution (handled by runtime loader).
  * - NO credentials, tokens, secrets, bot accounts, or listener sockets.
- * - Strict schema validation: supports schemaVersion 3 with backward compatibility for v2.
- * - v2: exact v2 keys only; rejects top-level backup key; normalizes in-memory to v3 with default backup policy.
- * - v3: allows optional top-level backup block with maxTotalBytes (>0 safe integer) and minKeepCount (>=1 safe integer).
- * - Rejects unknown top-level, dataLocations, gateway, and backup keys.
+ * - Strict schema validation: supports schemaVersion 4 with backward compatibility for v2 and v3.
+ * - v2: exact v2 keys only; rejects top-level backup/accounts keys; normalizes in-memory to v4 with default backup policy and accounts.telegram = [].
+ * - v3: allows optional top-level backup block; rejects accounts; normalizes in-memory to v4 with accounts.telegram = [].
+ * - v4: allows optional top-level backup block and optional top-level accounts block.
+ * - accounts in v4: allows only 'telegram' key containing non-secret account metadata (id, label, description, enabled default false).
+ * - Rejects unknown top-level, dataLocations, gateway, backup, and accounts keys.
  * - Path validation: all data paths must be non-empty trimmed strings and absolute.
  * - Location guard helper: rejects UNC network paths and synchronized directory segments for stateRoot ONLY.
- * - Immutability: input object is never mutated; returns a clean normalized schemaVersion 3 object.
+ * - Immutability: input object is never mutated; returns a clean normalized schemaVersion 4 object.
  */
 
 'use strict';
 
 const path = require('node:path');
 
-const CURRENT_SCHEMA_VERSION = 3;
-const LEGACY_SUPPORTED_SCHEMA_VERSION = 2;
+const CURRENT_SCHEMA_VERSION = 4;
+const LEGACY_SUPPORTED_SCHEMA_VERSIONS = new Set([2, 3]);
 const DATA_LOCATION_SCHEMA_VERSION = CURRENT_SCHEMA_VERSION;
 const CANONICAL_GATEWAY_PORT = 3003;
 
@@ -42,6 +44,14 @@ const ALLOWED_TOP_LEVEL_KEYS_V3 = new Set([
   'backup',
 ]);
 
+const ALLOWED_TOP_LEVEL_KEYS_V4 = new Set([
+  'schemaVersion',
+  'dataLocations',
+  'gateway',
+  'backup',
+  'accounts',
+]);
+
 const ALLOWED_DATA_LOCATIONS_KEYS = new Set([
   'archiveRoot',
   'attachmentTempRoot',
@@ -59,12 +69,68 @@ const ALLOWED_BACKUP_KEYS = new Set([
   'minKeepCount',
 ]);
 
+const ALLOWED_ACCOUNTS_KEYS = new Set([
+  'telegram',
+]);
+
+const ALLOWED_TELEGRAM_ACCOUNT_KEYS = new Set([
+  'id',
+  'label',
+  'description',
+  'enabled',
+]);
+
+const FORBIDDEN_SECRET_NAMES = new Set([
+  'token',
+  'bottoken',
+  'secret',
+  'password',
+  'secretref',
+  'credential',
+  'apikey',
+  'api_key',
+  'private_key',
+  'accesstoken',
+  'channelsecret',
+]);
+
+const CONTROL_CHAR_REGEX = /[\x00-\x1F\x7F]/;
+
 const REQUIRED_SINGLETON_PATHS = [
   'archiveRoot',
   'attachmentTempRoot',
   'stateRoot',
   'logsRoot',
 ];
+
+/**
+ * Validates that a string contains only well-formed UTF-16 code units.
+ *
+ * @param {string} str
+ * @returns {boolean}
+ */
+function isWellFormedUtf16(str) {
+  if (typeof str !== 'string') {
+    return false;
+  }
+  const len = str.length;
+  for (let i = 0; i < len; i++) {
+    const code = str.charCodeAt(i);
+    if (code >= 0xD800 && code <= 0xDBFF) {
+      if (i + 1 >= len) {
+        return false;
+      }
+      const nextCode = str.charCodeAt(i + 1);
+      if (nextCode < 0xDC00 || nextCode > 0xDFFF) {
+        return false;
+      }
+      i++;
+    } else if (code >= 0xDC00 && code <= 0xDFFF) {
+      return false;
+    }
+  }
+  return true;
+}
 
 /**
  * Check if a path string is absolute on either Windows or POSIX.
@@ -81,11 +147,6 @@ function isAbsolutePath(val) {
 
 /**
  * Validates that stateRoot is not located on a UNC network share or synchronized directory.
- * Rules (M16 / Section 10):
- * - Rejects UNC paths: \\server\share, //server/share, \\?\UNC\server\share, //?/UNC/server/share.
- * - Rejects known sync root directory segments (case-insensitive):
- *   OneDrive, Dropbox, Google Drive, GoogleDrive, iCloudDrive.
- * - Applies strictly to stateRoot (archiveRoot and other roots are never tested here).
  *
  * @param {string} stateRootPath - Path string to validate.
  * @throws {Error} If path is UNC or inside a synchronized folder.
@@ -127,7 +188,7 @@ function assertSafeStateRootLocation(stateRootPath) {
  * Validates and normalizes a resolved data location and gateway configuration object.
  *
  * @param {object} config - Resolved configuration object
- * @returns {object} Normalized copy of the configuration (schemaVersion 3)
+ * @returns {object} Normalized copy of the configuration (schemaVersion 4)
  * @throws {TypeError|Error} If schema, types, or paths are invalid
  */
 function validateResolvedDataLocationConfig(config) {
@@ -142,28 +203,29 @@ function validateResolvedDataLocationConfig(config) {
   if (
     typeof config.schemaVersion !== 'number' ||
     !Number.isInteger(config.schemaVersion) ||
-    (config.schemaVersion !== LEGACY_SUPPORTED_SCHEMA_VERSION &&
-      config.schemaVersion !== CURRENT_SCHEMA_VERSION)
+    (config.schemaVersion !== CURRENT_SCHEMA_VERSION &&
+      !LEGACY_SUPPORTED_SCHEMA_VERSIONS.has(config.schemaVersion))
   ) {
     throw new Error(
-      `Unsupported schemaVersion: expected ${CURRENT_SCHEMA_VERSION} or ${LEGACY_SUPPORTED_SCHEMA_VERSION}, received ${config.schemaVersion}`
+      `Unsupported schemaVersion: expected ${CURRENT_SCHEMA_VERSION} or supported legacy versions (2, 3), received ${config.schemaVersion}`
     );
   }
 
   const inputVersion = config.schemaVersion;
 
   // 1. Top-level key validation based on declared version
-  if (inputVersion === LEGACY_SUPPORTED_SCHEMA_VERSION) {
-    for (const key of Object.keys(config)) {
-      if (!ALLOWED_TOP_LEVEL_KEYS_V2.has(key)) {
-        throw new Error(`Unknown top-level configuration key: '${key}'`);
-      }
-    }
+  let allowedTopKeys;
+  if (inputVersion === 2) {
+    allowedTopKeys = ALLOWED_TOP_LEVEL_KEYS_V2;
+  } else if (inputVersion === 3) {
+    allowedTopKeys = ALLOWED_TOP_LEVEL_KEYS_V3;
   } else {
-    for (const key of Object.keys(config)) {
-      if (!ALLOWED_TOP_LEVEL_KEYS_V3.has(key)) {
-        throw new Error(`Unknown top-level configuration key: '${key}'`);
-      }
+    allowedTopKeys = ALLOWED_TOP_LEVEL_KEYS_V4;
+  }
+
+  for (const key of Object.keys(config)) {
+    if (!allowedTopKeys.has(key)) {
+      throw new Error(`Unknown top-level configuration key: '${key}'`);
     }
   }
 
@@ -256,13 +318,13 @@ function validateResolvedDataLocationConfig(config) {
     );
   }
 
-  // 6. Backup configuration validation and normalization (v3 or v2 defaults)
+  // 6. Backup configuration validation and normalization (v3/v4 or v2 defaults)
   let normalizedBackup = {
     maxTotalBytes: DEFAULT_MAX_TOTAL_BYTES,
     minKeepCount: DEFAULT_MIN_KEEP_COUNT,
   };
 
-  if (inputVersion === CURRENT_SCHEMA_VERSION && config.backup !== undefined && config.backup !== null) {
+  if ((inputVersion === 3 || inputVersion === CURRENT_SCHEMA_VERSION) && config.backup !== undefined && config.backup !== null) {
     if (typeof config.backup !== 'object' || Array.isArray(config.backup)) {
       throw new TypeError('backup must be a non-null object');
     }
@@ -290,6 +352,90 @@ function validateResolvedDataLocationConfig(config) {
     }
   }
 
+  // 7. Accounts configuration validation and normalization (v4 only, optional)
+  let normalizedAccounts = {
+    telegram: [],
+  };
+
+  if (inputVersion === CURRENT_SCHEMA_VERSION && config.accounts !== undefined && config.accounts !== null) {
+    if (typeof config.accounts !== 'object' || Array.isArray(config.accounts)) {
+      throw new TypeError('accounts must be a non-null object');
+    }
+
+    for (const key of Object.keys(config.accounts)) {
+      if (!ALLOWED_ACCOUNTS_KEYS.has(key)) {
+        throw new Error(`Unknown accounts configuration key: '${key}'`);
+      }
+    }
+
+    if (config.accounts.telegram !== undefined && config.accounts.telegram !== null) {
+      if (!Array.isArray(config.accounts.telegram)) {
+        throw new TypeError('accounts.telegram must be an array');
+      }
+
+      const seenIds = new Set();
+      const normalizedTg = [];
+
+      for (let i = 0; i < config.accounts.telegram.length; i++) {
+        const item = config.accounts.telegram[i];
+        if (!item || typeof item !== 'object' || Array.isArray(item)) {
+          throw new TypeError(`accounts.telegram[${i}] must be a non-null object`);
+        }
+
+        for (const itemKey of Object.keys(item)) {
+          const lower = itemKey.toLowerCase();
+          if (FORBIDDEN_SECRET_NAMES.has(lower)) {
+            throw new Error(`Security rejection: Field '${itemKey}' is forbidden in accounts configuration (fail-closed)`);
+          }
+          if (!ALLOWED_TELEGRAM_ACCOUNT_KEYS.has(itemKey)) {
+            throw new Error(`Unknown account field '${itemKey}' in accounts.telegram[${i}] (fail-closed)`);
+          }
+        }
+
+        const { id, label, description, enabled } = item;
+
+        if (typeof id !== 'string') {
+          throw new TypeError(`accounts.telegram[${i}].id must be a non-empty string`);
+        }
+        if (CONTROL_CHAR_REGEX.test(id)) {
+          throw new Error(`accounts.telegram[${i}].id contains forbidden control characters`);
+        }
+        if (!isWellFormedUtf16(id)) {
+          throw new Error(`accounts.telegram[${i}].id contains ill-formed Unicode surrogate code units`);
+        }
+        const cleanId = id.trim();
+        if (!cleanId) {
+          throw new Error(`accounts.telegram[${i}].id must be a non-empty string`);
+        }
+        if (seenIds.has(cleanId)) {
+          throw new Error(`Duplicate account id '${cleanId}' in accounts.telegram (fail-closed)`);
+        }
+        seenIds.add(cleanId);
+
+        if (typeof label !== 'string' || !label.trim()) {
+          throw new TypeError(`accounts.telegram[${i}].label must be a non-empty string`);
+        }
+
+        if (description !== undefined && typeof description !== 'string') {
+          throw new TypeError(`accounts.telegram[${i}].description must be a string`);
+        }
+
+        if (enabled !== undefined && typeof enabled !== 'boolean') {
+          throw new TypeError(`accounts.telegram[${i}].enabled must be a boolean`);
+        }
+
+        normalizedTg.push({
+          id: cleanId,
+          label: label.trim(),
+          description: description !== undefined ? description.trim() : '',
+          enabled: enabled !== undefined ? enabled : false, // Default is false per M3/M5
+        });
+      }
+
+      normalizedAccounts.telegram = normalizedTg;
+    }
+  }
+
   return {
     schemaVersion: CURRENT_SCHEMA_VERSION,
     dataLocations: normalizedLocations,
@@ -297,20 +443,23 @@ function validateResolvedDataLocationConfig(config) {
       localPort: CANONICAL_GATEWAY_PORT,
     },
     backup: normalizedBackup,
+    accounts: normalizedAccounts,
   };
 }
 
 module.exports = {
   CURRENT_SCHEMA_VERSION,
-  LEGACY_SUPPORTED_SCHEMA_VERSION,
+  LEGACY_SUPPORTED_SCHEMA_VERSIONS: Array.from(LEGACY_SUPPORTED_SCHEMA_VERSIONS),
+  LEGACY_SUPPORTED_SCHEMA_VERSION: 3, // For backward compatibility with older tests referencing this export
   DATA_LOCATION_SCHEMA_VERSION,
   CANONICAL_GATEWAY_PORT,
   DEFAULT_MAX_TOTAL_BYTES,
   DEFAULT_MIN_KEEP_COUNT,
-  ALLOWED_TOP_LEVEL_KEYS: ALLOWED_TOP_LEVEL_KEYS_V3,
+  ALLOWED_TOP_LEVEL_KEYS: ALLOWED_TOP_LEVEL_KEYS_V4,
   ALLOWED_DATA_LOCATIONS_KEYS,
   ALLOWED_GATEWAY_KEYS,
   ALLOWED_BACKUP_KEYS,
+  ALLOWED_ACCOUNTS_KEYS,
   REQUIRED_SINGLETON_PATHS,
   isAbsolutePath,
   assertSafeStateRootLocation,

@@ -469,6 +469,7 @@ function validateStartupDataLocations(resolvedConfig) {
       localPort: validated.gateway.localPort,
     },
     backup: validated.backup,
+    accounts: validated.accounts,
   };
 }
 

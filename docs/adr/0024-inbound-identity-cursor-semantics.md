@@ -161,6 +161,28 @@ LINE 通道採用 Webhook 模型：
 
 ---
 
+---
+
+### 8. TG-MVP-10 Telegram 落地語意與游標重置機制 (TG-MVP-10 Telegram Inbound & Cursor Semantics)
+
+在 TG-MVP-10 正式落地 Telegram 測試 Bot 入站適配器與 SQLite v5 游標管理機制：
+
+1. **Telegram 身分識別規格 (M9)**：
+   - `TELEGRAM_CHANNEL_ID = 'telegram'`
+   - `platform_event_id = String(update.update_id)`，必須為安全整數且 >= 0。
+   - `platform_msg_id = tg:<chat_id>:<message_id>`，以複合鍵杜絕跨聊天室 message_id 碰撞。
+   - 下一游標值：`cursor_value = String(update_id + 1)`。
+2. **編輯入站語意 (`ingestEdit` — M6)**：
+   - 真正重複事件：`(account_id, platform_event_id)` 相同且為 EDIT 類型，保持零突變（Zero Mutation）。
+   - 事件衝突：相同 event_id 但型態或通道不一致，觸發 `EVENT_IDENTITY_CONFLICT` 失敗關閉並完整 rollback。
+   - 目標訊息存在：更新 `inbox.content`，保留現有 status 與領取狀態，寫入 `inbound_event`（EDIT）並原子推進游標。
+   - 目標訊息不存在：**不偽造新訊息、不寫入 inbox**，寫入耐久 `inbound_event`（EDIT）並推進游標，回傳 `applied = false, reason = 'EDIT_TARGET_NOT_FOUND'`，防止毒藥重送迴圈。
+3. **跨週隨機 Update ID 重置機制 (Week-Rebase — M8)**：
+   - Telegram 官方更新於伺服器保留 <= 24 小時，且超過一週無更新時下一 `update_id` 可能隨機重置。
+   - 固化常數 `TELEGRAM_WEEK_REBASE_MS = 604_800_000`（7 天）。
+   - 每次 `getUpdates` 請求前檢驗游標存儲時間戳：若 `nowMs - updatedAtMs >= 604_800_000`，透過 `resetIngestCursorForTransportRebase` 執行**精確條件刪除**（存儲值與時間戳必須完全相符，不接受萬用字元），隨後省略 `offset` 參數重新拉取。
+   - 嚴禁負數 offset、嚴禁任意倒退游標、嚴禁 `drop_pending_updates`。
+
 ## Consequences
 
 1. **架構健全性**：徹底解耦「傳輸事件冪等（Event Deduplication）」與「邏輯訊息關聯（Message Correlation）」，為後續 Telegram 與 LINE 適配器奠定確定性基礎。
@@ -176,3 +198,4 @@ LINE 通道採用 Webhook 模型：
    - **CANARY H**：LINE 收回事件使目標訊息內文不可正常檢視或取用。
    - **CANARY I**：LINE 亂序重送不得因 timestamp 較小而拋棄合法事件。
    - **CANARY J**：LINE 適配器不被強迫產生虛假 `cursor_value`。
+

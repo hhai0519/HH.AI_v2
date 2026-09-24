@@ -146,9 +146,28 @@
 - **F-06**：LINE 適配器相依性收斂留待後續；LINE 實作維持使用者明確觸發或最後順位。
 - **E-04**：特權指令路由切換僅於正式 Cutover 時執行，開發期間不切換。
 
+---
+
+## TG-MVP-10 架構演進與邊界收斂 (TG-MVP-10 Evolution & Boundaries)
+
+1. **元件切片邊界 (Slice Boundary — M1)**：
+   - TG-MVP-10 僅實作可組合之 `TelegramInboundAdapter` 元件，不建立完整 OS process root、不建立 HTTP 本機監聽器（Local API Listener）、不建立 Outbox、不發送出站訊息、不安裝 PM2 或 Windows 服務。
+   - 完整 Gateway 流程與 Local API 由 TG-MVP-11 負責。
+2. **Local Config 綱要升級至 Schema v4 (Local Config Schema v4 — M3)**：
+   - 支援 `accounts` 頂層區塊（非機敏帳號後設資料），明確隔離機密與設定。
+   - 每個 Telegram 帳號包含 `id`、`label`、`description`（可選）、`enabled`（預設 `false`）。
+   - 向後相容 schemaVersion 2 與 3。
+3. **程序關閉順序契約 (Shutdown Ordering Contract — M2)**：
+   - 未來 Gateway 程序關閉順序：
+     1. 優先呼叫 `TelegramInboundAdapter.stop()`。
+     2. 確保 active long-poll fetch 與 retry backoff 定時器完全靜止（quiesced）。
+     3. 始得呼叫 `BackupRuntimeOwner.stop()` 或關閉 SQLite 儲存庫。
+   - 配接器本身嚴禁關閉儲存庫。
+
 ## Consequences
 
 - **架構集中與維護簡化**：由單一 `runtime/channel-gateway/` 統一處理多通道通訊，徹底消滅雙橋接重疊依賴與維護負擔。
 - **執行期責任脫鉤**：Agent 專注於任務推理解題，不再介入作業系統基礎設施的啟停、監聽與 PM2 管理。
 - **資安防線大幅提升**：嚴格的本機檔案外發授權機制、手機端確認流程與 DLP 淨化，杜絕專案與機敏個資未經授權外洩。
 - **平滑遷移與零停機切換**：Telegram 開發階段採 Test Bot，現役正式服務不受干擾；LINE 延後實作不阻礙 Telegram 核心閘道推進。
+

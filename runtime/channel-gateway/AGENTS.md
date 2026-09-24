@@ -45,11 +45,16 @@ T6 階段正式採用 `busy_timeout = 5000`（5000ms），其基礎為 T1 Window
 - 所有資料庫查詢與更新必須一律使用 **Prepared Statements 與 Parameter Binding**。
 - 嚴禁使用字串拼接（String Concatenation）或樣板字串（Template Literals）組裝 SQL 數值。
 
-## 6. 資料庫綱要遷移 (Schema Migration)
+## 6. 資料庫綱要遷移與生命週期排序 (Schema Migration & Lifecycle Ordering)
 
 - 資料庫綱要必須版本化（Versioned Schema，如 `schema_version` 表格）。
-- 綱要變更僅允許向前遷移（Forward-only migrations）。
+- 綱要變更僅允許向前遷移（Forward-only migrations）；TG-MVP-10 綱要版本為 **v5**（`ingest_cursor` 引入 `updated_at_ms` 支援跨週重置）。
 - 執行任何綱要遷移前，必須具備經驗證之備份。
+- **程序關閉順序契約 (Shutdown Ordering Contract — M2)**：
+  1. 優先呼叫 `TelegramInboundAdapter.stop()` 中止長輪詢與重試定時器。
+  2. 確保背景 fetch 與重試定時器完全靜止（quiesced）。
+  3. 始得呼叫 `BackupRuntimeOwner.stop()` 或關閉底層 SQLite 儲存庫（`repo.close()`）。
+  4. Telegram 配接器嚴禁自行關閉儲存庫（Adapter must not close repository）。
 
 ## 7. 備份機制與衛生治理 (Backup & Hygiene — TG-MVP-09 / TG-MVP-09A)
 
@@ -83,6 +88,7 @@ T6 階段正式採用 `busy_timeout = 5000`（5000ms），其基礎為 T1 Window
 
 - `.nvmrc`（`24.21.0`）為版本庫測試與 CI 釘選之 Canonical Node 版本；`package.json` engines（`>=24.15.0 <25`）為本機相容性下限。
 - Ubuntu Canonical Verify 與 Windows Gateway CI 均必須透過 `.nvmrc` 釘選 Node 24 執行。
+- **Windows PowerShell 本機 npm 指令規則**：當 Windows PowerShell ExecutionPolicy 阻擋 `npm.ps1` 腳本執行時，本機命令一律改用 `npm.cmd`（例如 `npm.cmd --prefix runtime/channel-gateway test`）。**嚴禁** 透過 `Set-ExecutionPolicy` 削弱作業系統安全原則僅為執行測試；CI 與工作流行為維持不變。
 - Gateway Node 測試一律由 `tests/*.test.js` 自動探索（Automatic Discovery），嚴禁回到手工登錄測試檔名。
 - 測試跳過政策採 **零未註冊跳過（Zero Unregistered Skips）**：
   - Linux / Ubuntu 環境之核准跳過清單為 EMPTY（任何 skip 一律 FAIL）。

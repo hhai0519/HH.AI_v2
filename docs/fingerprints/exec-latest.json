@@ -1,5 +1,5 @@
 {
-  "base_head": "c6cd9c9",
+  "base_head": "bec2fb5",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -552,16 +552,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 216,
-      "sha256": "3bcee53c503bb141802c44affbf38dbead8faa58e3d2120e0e22aad6bd9d9190"
+      "lines": 219,
+      "sha256": "9e04f604e62cfacb27ce8e3a21605daee5144e12f7ce07c7afae317f6abab84c"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 191,
-      "sha256": "25e43b774d63327f7bf9ebed5ee26bbfe07184b29af024f1f5c2a02602d5919f"
+      "lines": 193,
+      "sha256": "d64a48611930c272041879dfbfadb553b1d18dee398f84afbf3af41078894e15"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -602,7 +602,7 @@
         "## 封存區"
       ],
       "lines": 340,
-      "sha256": "8e217f18c33bc6169a6cc96886d8d8b329f4eb24a031d0f26821667536842fea"
+      "sha256": "c506c83b55b547e789ac10f2fe0697fc32cfde62bc0f4816ee70f0aecbb726c4"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -899,10 +899,11 @@
         "## Relationship to Existing ADRs",
         "## 外部審計發現處置路由 (Macro Finding Routing M2–M8)",
         "## 上線前既有任務交會相依 (Pre-Live Existing Task Intersections)",
+        "## TG-MVP-10 架構演進與邊界收斂 (TG-MVP-10 Evolution & Boundaries)",
         "## Consequences"
       ],
-      "lines": 154,
-      "sha256": "4526c6cb977613a7d7e700c318c8fbf544d19a36cc7629624057ee025ee2054e"
+      "lines": 173,
+      "sha256": "179f791f2d1150c5c7c34c08de1536b1f14d5046a5151da66c0201a9d95e0422"
     },
     "docs/adr/0023-channel-gateway-state-store-sqlite.md": {
       "fences": 0,
@@ -921,8 +922,8 @@
         "### 9. 狀態資料庫與備份衛生治理 (State Database & Backup Hygiene — TG-MVP-09A)",
         "## Consequences"
       ],
-      "lines": 166,
-      "sha256": "1c8c149fe39a847602bbd25f94d08744d4990115b46f386eb32a7b26c1a60220"
+      "lines": 182,
+      "sha256": "009dff1fcaa1e86f0daac094ba16a34ae6a07d895d46f8047df7bfa4c055580e"
     },
     "docs/adr/0024-inbound-identity-cursor-semantics.md": {
       "fences": 2,
@@ -937,10 +938,11 @@
         "### 5. C1 / C2 / C3 架構裁決與處置",
         "### 6. 現行綱要與後續邊界 (Schema Baseline & Follow-Up Routing)",
         "### 7. 平台官方查證事實 (Independently Verified Platform Facts)",
+        "### 8. TG-MVP-10 Telegram 落地語意與游標重置機制 (TG-MVP-10 Telegram Inbound & Cursor Semantics)",
         "## Consequences"
       ],
-      "lines": 178,
-      "sha256": "16419ad615d6a8e22d05be88e03d7f53d28602612d08035838cc8d18b62b125b"
+      "lines": 201,
+      "sha256": "5bf342cd8b10cb8343c79747965bb54df283be674b864be23178c67eb216095c"
     },
     "docs/adr/0025-outbound-reliability-loopback-api-security.md": {
       "fences": 6,
@@ -994,10 +996,11 @@
         "### 6. 自動化測試與 CI 合成規範 (Synthetic Testing & CI Contract)",
         "## Alternatives Considered",
         "## Consequences",
+        "## TG-MVP-10 Telegram Bot API 協議邊界例外 (Telegram Protocol-Boundary Exception — M14)",
         "## Relationship to Existing Architecture"
       ],
-      "lines": 116,
-      "sha256": "59b25f007d0c9819033b495d17a8f57ed8b095fa92a46c61f5adcbfbeab4d734"
+      "lines": 136,
+      "sha256": "6fe95a751d58d09d249683ce7675b29f08fc67445b6dc67f99fd7b13f2471dac"
     },
     "docs/mcp-environment-guide.md": {
       "fences": 0,
@@ -1065,8 +1068,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 5022,
-      "sha256": "0e01839a48d706156a0e61139982a9ef78222eead3c8df07753295273d44ef67"
+      "lines": 5045,
+      "sha256": "dc7095e520b8ae248ff54a1c7ee3d4e3d4c0948a52ac5eadc026e6def726977d"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1198,8 +1201,8 @@
       "headings": [
         "# -*- coding: utf-8 -*-"
       ],
-      "lines": 521,
-      "sha256": "27643357b3cd2e24dcc01ad99c9445fc561a856112c9ebb26d04f0485ad02481"
+      "lines": 523,
+      "sha256": "3ffb86c0438cb2e29be1174161837f6eb84689c1d393c3b1f7401fad9df92360"
     },
     "scripts/tests/test_check_17_18.py": {
       "fences": 0,
@@ -1491,7 +1494,7 @@
       "sha256": "35bf7dbfa3c7d291b550c3c97a6ae398a22b1dc3624c1d2fc1e4db6963d6e115"
     }
   },
-  "generated_at": "2026-09-24T08:51:22Z",
+  "generated_at": "2026-09-24T15:40:24Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

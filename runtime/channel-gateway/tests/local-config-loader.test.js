@@ -97,7 +97,7 @@ test('LocalConfigLoader - 1. valid repo-external config loads', () => {
       repoRoot: harness.repoRoot,
     });
     assert.ok(config);
-    assert.equal(config.schemaVersion, 3);
+    assert.equal(config.schemaVersion, 4);
     assert.equal(config.dataLocations.archiveRoot, harness.dataDirs.archiveRoot);
     assert.equal(config.dataLocations.attachmentTempRoot, harness.dataDirs.attachmentTempRoot);
     assert.equal(config.dataLocations.stateRoot, harness.dataDirs.stateRoot);
@@ -107,6 +107,9 @@ test('LocalConfigLoader - 1. valid repo-external config loads', () => {
     assert.deepEqual(config.backup, {
       maxTotalBytes: 1_000_000_000,
       minKeepCount: 3,
+    });
+    assert.deepEqual(config.accounts, {
+      telegram: [],
     });
   } finally {
     harness.cleanup();
@@ -343,7 +346,7 @@ test('LocalConfigLoader - 13. valid four writable roots accepted', () => {
   try {
     const canonical = validateStartupDataLocations(harness.validConfig);
     assert.ok(canonical);
-    assert.equal(canonical.schemaVersion, 3);
+    assert.equal(canonical.schemaVersion, 4);
     assert.equal(canonical.dataLocations.archiveRoot, fs.realpathSync(harness.dataDirs.archiveRoot));
     assert.equal(canonical.dataLocations.attachmentTempRoot, fs.realpathSync(harness.dataDirs.attachmentTempRoot));
     assert.equal(canonical.dataLocations.stateRoot, fs.realpathSync(harness.dataDirs.stateRoot));
@@ -353,6 +356,9 @@ test('LocalConfigLoader - 13. valid four writable roots accepted', () => {
     assert.deepEqual(canonical.backup, {
       maxTotalBytes: 1_000_000_000,
       minKeepCount: 3,
+    });
+    assert.deepEqual(canonical.accounts, {
+      telegram: [],
     });
   } finally {
     harness.cleanup();
@@ -1087,10 +1093,13 @@ test('LocalConfigLoader - 39. v3 config with explicit backup loads and preserves
     const loaded = loadDataLocationConfigFromFile(configFile, {
       repoRoot: harness.repoRoot,
     });
-    assert.equal(loaded.schemaVersion, 3);
+    assert.equal(loaded.schemaVersion, 4);
     assert.deepEqual(loaded.backup, {
       maxTotalBytes: 500_000_000,
       minKeepCount: 5,
+    });
+    assert.deepEqual(loaded.accounts, {
+      telegram: [],
     });
   } finally {
     harness.cleanup();
@@ -1256,3 +1265,45 @@ test('LocalConfigLoader - 45. stateRoot canonical realpath sync-root canary (M10
     harness.cleanup();
   }
 });
+
+test('LocalConfigLoader - 46. v4 config with accounts loads and preserves metadata', () => {
+  const harness = createTempHarness();
+  try {
+    const configV4 = {
+      schemaVersion: 4,
+      dataLocations: harness.validConfig.dataLocations,
+      gateway: { localPort: 3003 },
+      backup: { maxTotalBytes: 500_000_000, minKeepCount: 5 },
+      accounts: {
+        telegram: [
+          {
+            id: 'test-bot-01',
+            label: 'Test Bot',
+            description: 'Synthetic test bot',
+            enabled: true,
+          },
+        ],
+      },
+    };
+    const configFile = path.join(harness.externalDir, 'config-v4.json');
+    fs.writeFileSync(configFile, JSON.stringify(configV4, null, 2), 'utf8');
+
+    const loaded = loadDataLocationConfigFromFile(configFile, {
+      repoRoot: harness.repoRoot,
+    });
+    assert.equal(loaded.schemaVersion, 4);
+    assert.deepEqual(loaded.accounts, {
+      telegram: [
+        {
+          id: 'test-bot-01',
+          label: 'Test Bot',
+          description: 'Synthetic test bot',
+          enabled: true,
+        },
+      ],
+    });
+  } finally {
+    harness.cleanup();
+  }
+});
+

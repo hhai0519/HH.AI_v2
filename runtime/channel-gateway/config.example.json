@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 3,
+  "schemaVersion": 4,
   "dataLocations": {
     "archiveRoot": "__ARCHIVE_ROOT__",
     "attachmentTempRoot": "__ATTACHMENT_TEMP_ROOT__",
@@ -18,5 +18,15 @@
   "backup": {
     "maxTotalBytes": 1000000000,
     "minKeepCount": 3
+  },
+  "accounts": {
+    "telegram": [
+      {
+        "id": "synthetic-test-bot",
+        "label": "Synthetic Test Bot",
+        "description": "Synthetic test bot metadata template for Telegram Test Bot",
+        "enabled": false
+      }
+    ]
   }
 }

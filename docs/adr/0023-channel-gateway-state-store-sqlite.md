@@ -152,7 +152,22 @@ ADR-0022 仍保留為 Channel Gateway 之歷史與總體架構權威（Historica
     - TG-MVP-09A 備份維持 SQLite 原生資料格式，不引入自製應用層加密（no application-level encryption in 09A）。
     - 磁碟靜態資料加密（Encryption at Rest）明確定義為使用者作業系統層級責任（USER_RESPONSIBILITY BitLocker on Windows）。
 11. **Node.js 內建 node:sqlite 未來升級監控點 (node:sqlite Future-Upgrade Watchpoint)**：
-    - 持續監控 Node.js 原生 `node:sqlite` 之 API 演進（Node 24.x 穩定性與後續 LTS 升級），保留同步與未來非同步執行之適配彈性。
+12. **SQLite Schema v5 演進（TG-MVP-10 / M7 / M8）**：
+    - `ingest_cursor` 表格升級至 schema version 5，新增 `updated_at_ms INTEGER NOT NULL CHECK(updated_at_ms >= 0)`。
+    - Migration 5 在既有 v4 升級時自動建立 v4 備份，並以 migration-time timestamp 初始化既有 cursor 作為保守寬限期基準。
+    - 提供 `getIngestCursorState(accountId)` 與 `resetIngestCursorForTransportRebase({ accountId, expectedCursorValue, expectedUpdatedAtMs })` 精確狀態條件重置原語。
+
+13. **2026-09-24 主機標準執行環境修復與取代宣告（Current Host Canonical Runtime Remediation）**：
+    - 歷史事實保留：2026-09-17 T1 Spike 期間，主機全域 Node 為 v24.18.0，可攜式驗證 Node 為 v24.21.0。此歷史證據維持不變。
+    - 2026-09-24 修復現況：
+      - USER 已手動安裝標準 Node.js v24.21.0 x64（`C:\Program Files\nodejs\node.exe`）。
+      - 當前主機全域 Node：`v24.21.0`，完全符合專案 `.nvmrc`（24.21.0）。
+      - `npm.cmd`：`11.19.0`。
+      - `node:sqlite`：`DatabaseSync` 煙霧測試 PASS，零 `ExperimentalWarning`。
+      - 標準原語：`fetch`、`AbortController`、`AbortSignal.timeout` 全數原生可用。
+      - PowerShell 執行原則：`npm.ps1` 受現行 ExecutionPolicy 限制封鎖；Windows 本機核准使用 `npm.cmd` 適配器，**未變更且未削弱** 系統 ExecutionPolicy。
+      - 安裝檔雜湊／Authenticode：`NOT_REPO_VERIFIED`（因由 USER 手動安裝，安裝檔來源未經版本庫工具鏈捕獲）。
+      - `.nvmrc` 維持權威：`24.21.0`。
 
 ## Consequences
 
@@ -163,4 +178,5 @@ ADR-0022 仍保留為 Channel Gateway 之歷史與總體架構權威（Historica
    - **同步 API 對 Event Loop 之影響**：目前 `DatabaseSync` 為同步呼叫，在 SQLite WAL 模式下單次寫入約 1～3 ms，對 Gateway 預期負載（數筆/秒）影響極低，但實作時需注意避免在單一交易中執行耗時之外部操作。線上備份期間 VACUUM INTO 亦為同步操作，在小資料庫下為數十毫秒級，TG-MVP-09 接受該已知特性，若未來擴展則評估 Worker Thread 隔離。
    - **防毒軟體與檔案鎖定**：已由 V5（10 分鐘測試）證實 Defender 即時防護下無鎖定異常，未來上線需保持此項健全性監控。
    - **路徑防護**：強制在資料庫連線前執行路徑守衛，杜絕在同步目錄或網路掛載點建立 SQLite 資料庫。
+
 

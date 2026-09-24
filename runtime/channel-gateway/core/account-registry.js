@@ -85,6 +85,30 @@ class AccountRegistry {
   }
 
   /**
+   * Pure factory method to create an AccountRegistry populated with normalized non-secret account metadata.
+   * Does NOT activate any account (activeAccountId remains null).
+   *
+   * @param {string} channel - Channel/platform identifier (e.g. 'telegram')
+   * @param {Array<object>} entries - List of non-secret account metadata objects
+   * @returns {AccountRegistry}
+   */
+  static fromMetadata(channel, entries) {
+    if (!channel || typeof channel !== 'string' || !channel.trim()) {
+      throw new TypeError('channel must be a non-empty string');
+    }
+    if (!Array.isArray(entries)) {
+      throw new TypeError('entries must be an array of account metadata objects');
+    }
+
+    const registry = new AccountRegistry(channel.trim());
+    for (let i = 0; i < entries.length; i++) {
+      const entry = entries[i];
+      registry.register(entry);
+    }
+    return registry;
+  }
+
+  /**
    * Validate account data against strict allowlist.
    * Rejects any secret-like or unknown fields.
    *

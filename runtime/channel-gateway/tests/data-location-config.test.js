@@ -64,9 +64,9 @@ const VALID_POSIX_CONFIG_V3 = {
   },
 };
 
-test('DataLocationConfig - 1. valid Windows-style resolved v2 config accepted and normalized to v3', () => {
+test('DataLocationConfig - 1. valid Windows-style resolved v2 config accepted and normalized to v4', () => {
   const result = validateResolvedDataLocationConfig(VALID_WINDOWS_CONFIG_V2);
-  assert.equal(result.schemaVersion, 3);
+  assert.equal(result.schemaVersion, 4);
   assert.equal(result.dataLocations.archiveRoot, 'C:\\Users\\Synthetic\\Desktop\\HH.AI_v2_Archive');
   assert.equal(result.dataLocations.attachmentTempRoot, 'C:\\Users\\Synthetic\\AppData\\Local\\Temp\\hh-ai-attachments');
   assert.equal(result.dataLocations.stateRoot, 'C:\\Users\\Synthetic\\AppData\\Local\\hh-ai-gateway\\state');
@@ -74,16 +74,19 @@ test('DataLocationConfig - 1. valid Windows-style resolved v2 config accepted an
   assert.equal(result.dataLocations.protectedRoots.length, 3);
   assert.equal(result.dataLocations.protectedRoots[0], 'C:\\Users\\Synthetic\\Projects\\HH.AI_v2');
   assert.equal(result.gateway.localPort, 3003);
-  // v2 input automatically acquires v3 defaults
+  // v2 input automatically acquires v4 defaults
   assert.deepEqual(result.backup, {
     maxTotalBytes: 1_000_000_000,
     minKeepCount: 3,
   });
+  assert.deepEqual(result.accounts, {
+    telegram: [],
+  });
 });
 
-test('DataLocationConfig - 2. valid POSIX-style resolved v3 config accepted with backup overrides', () => {
+test('DataLocationConfig - 2. valid POSIX-style resolved v3 config accepted with backup overrides and normalized to v4', () => {
   const result = validateResolvedDataLocationConfig(VALID_POSIX_CONFIG_V3);
-  assert.equal(result.schemaVersion, 3);
+  assert.equal(result.schemaVersion, 4);
   assert.equal(result.dataLocations.archiveRoot, '/var/data/hh-ai/archive');
   assert.equal(result.dataLocations.attachmentTempRoot, '/tmp/hh-ai-attachments');
   assert.equal(result.dataLocations.stateRoot, '/var/lib/hh-ai-gateway/state');
@@ -95,6 +98,9 @@ test('DataLocationConfig - 2. valid POSIX-style resolved v3 config accepted with
     maxTotalBytes: 500_000_000,
     minKeepCount: 5,
   });
+  assert.deepEqual(result.accounts, {
+    telegram: [],
+  });
 });
 
 test('DataLocationConfig - 3. schemaVersion 1 rejected fail-closed', () => {
@@ -104,9 +110,9 @@ test('DataLocationConfig - 3. schemaVersion 1 rejected fail-closed', () => {
   );
 });
 
-test('DataLocationConfig - 4. wrong schemaVersion type or value rejected (v4 rejected)', () => {
+test('DataLocationConfig - 4. wrong schemaVersion type or value rejected (v5 rejected)', () => {
   assert.throws(
-    () => validateResolvedDataLocationConfig({ ...VALID_WINDOWS_CONFIG_V2, schemaVersion: 4 }),
+    () => validateResolvedDataLocationConfig({ ...VALID_WINDOWS_CONFIG_V2, schemaVersion: 5 }),
     /Unsupported schemaVersion/
   );
   assert.throws(
@@ -164,10 +170,13 @@ test('DataLocationConfig - 8. v3 config without backup block acquires default ba
     gateway: { localPort: 3003 },
   };
   const result = validateResolvedDataLocationConfig(configV3NoBackup);
-  assert.equal(result.schemaVersion, 3);
+  assert.equal(result.schemaVersion, 4);
   assert.deepEqual(result.backup, {
     maxTotalBytes: 1_000_000_000,
     minKeepCount: 3,
+  });
+  assert.deepEqual(result.accounts, {
+    telegram: [],
   });
 });
 
@@ -370,7 +379,7 @@ test('DataLocationConfig - 23. stateRoot location guard: safe local path passes'
   );
 });
 
-test('DataLocationConfig - 24. config.example.json validation adheres to schemaVersion 3', () => {
+test('DataLocationConfig - 24. config.example.json validation adheres to schemaVersion 4', () => {
   const templatePath = path.resolve(__dirname, '..', 'config.example.json');
   assert.ok(fs.existsSync(templatePath), 'config.example.json must exist');
 
@@ -378,17 +387,19 @@ test('DataLocationConfig - 24. config.example.json validation adheres to schemaV
   const template = JSON.parse(content);
 
   // Check valid schema structure
-  assert.equal(template.schemaVersion, 3);
+  assert.equal(template.schemaVersion, 4);
   assert.ok(template.dataLocations, 'dataLocations must be present');
   assert.ok(template.gateway, 'gateway must be present');
   assert.equal(template.gateway.localPort, 3003);
   assert.ok(template.backup, 'backup must be present in example');
   assert.equal(template.backup.maxTotalBytes, 1_000_000_000);
   assert.equal(template.backup.minKeepCount, 3);
+  assert.ok(template.accounts, 'accounts must be present in example');
+  assert.ok(Array.isArray(template.accounts.telegram), 'accounts.telegram must be an array');
 
   // Verify only allowlisted keys
   const topKeys = Object.keys(template);
-  assert.deepEqual(topKeys.sort(), ['backup', 'dataLocations', 'gateway', 'schemaVersion']);
+  assert.deepEqual(topKeys.sort(), ['accounts', 'backup', 'dataLocations', 'gateway', 'schemaVersion']);
 
   const locationKeys = Object.keys(template.dataLocations);
   assert.deepEqual(
@@ -401,6 +412,9 @@ test('DataLocationConfig - 24. config.example.json validation adheres to schemaV
 
   const backupKeys = Object.keys(template.backup);
   assert.deepEqual(backupKeys.sort(), ['maxTotalBytes', 'minKeepCount']);
+
+  const accountsKeys = Object.keys(template.accounts);
+  assert.deepEqual(accountsKeys, ['telegram']);
 
   // Check placeholders remain unresolved
   assert.equal(template.dataLocations.archiveRoot, '__ARCHIVE_ROOT__');
@@ -433,5 +447,127 @@ test('DataLocationConfig - 24. config.example.json validation adheres to schemaV
   assert.throws(
     () => validateResolvedDataLocationConfig(template),
     /must be an absolute path/
+  );
+});
+
+test('DataLocationConfig - 25. v4 accounts block with valid telegram accounts normalized', () => {
+  const v4Config = {
+    schemaVersion: 4,
+    dataLocations: VALID_POSIX_CONFIG_V3.dataLocations,
+    gateway: { localPort: 3003 },
+    accounts: {
+      telegram: [
+        {
+          id: 'bot_alpha',
+          label: 'Alpha Bot',
+          description: 'Synthetic Alpha bot',
+          enabled: true,
+        },
+        {
+          id: 'bot_beta',
+          label: 'Beta Bot',
+          // enabled omitted: must default to false
+        },
+      ],
+    },
+  };
+
+  const result = validateResolvedDataLocationConfig(v4Config);
+  assert.equal(result.schemaVersion, 4);
+  assert.equal(result.accounts.telegram.length, 2);
+  assert.deepEqual(result.accounts.telegram[0], {
+    id: 'bot_alpha',
+    label: 'Alpha Bot',
+    description: 'Synthetic Alpha bot',
+    enabled: true,
+  });
+  assert.deepEqual(result.accounts.telegram[1], {
+    id: 'bot_beta',
+    label: 'Beta Bot',
+    description: '',
+    enabled: false,
+  });
+});
+
+test('DataLocationConfig - 26. v4 accounts rejects unknown accounts top keys and secret keys fail-closed', () => {
+  const base = {
+    schemaVersion: 4,
+    dataLocations: VALID_POSIX_CONFIG_V3.dataLocations,
+    gateway: { localPort: 3003 },
+  };
+
+  // Unknown accounts key (e.g. discord)
+  assert.throws(
+    () => validateResolvedDataLocationConfig({ ...base, accounts: { discord: [] } }),
+    /Unknown accounts configuration key/
+  );
+
+  // Secret key in account item
+  assert.throws(
+    () =>
+      validateResolvedDataLocationConfig({
+        ...base,
+        accounts: {
+          telegram: [
+            {
+              id: 'bot_1',
+              label: 'Bot 1',
+              token: '123456:ABC-DEF',
+            },
+          ],
+        },
+      }),
+    /Security rejection: Field 'token' is forbidden/
+  );
+
+  // Unknown account item field
+  assert.throws(
+    () =>
+      validateResolvedDataLocationConfig({
+        ...base,
+        accounts: {
+          telegram: [
+            {
+              id: 'bot_1',
+              label: 'Bot 1',
+              customField: 'evil',
+            },
+          ],
+        },
+      }),
+    /Unknown account field 'customField'/
+  );
+});
+
+test('DataLocationConfig - 27. v4 accounts rejects duplicate normalized account IDs', () => {
+  const base = {
+    schemaVersion: 4,
+    dataLocations: VALID_POSIX_CONFIG_V3.dataLocations,
+    gateway: { localPort: 3003 },
+    accounts: {
+      telegram: [
+        { id: 'bot_duplicate', label: 'Bot 1' },
+        { id: 'bot_duplicate', label: 'Bot 2' },
+      ],
+    },
+  };
+
+  assert.throws(
+    () => validateResolvedDataLocationConfig(base),
+    /Duplicate account id 'bot_duplicate'/
+  );
+});
+
+test('DataLocationConfig - 28. v3 rejects top-level accounts key', () => {
+  const v3WithAccounts = {
+    schemaVersion: 3,
+    dataLocations: VALID_POSIX_CONFIG_V3.dataLocations,
+    gateway: { localPort: 3003 },
+    accounts: { telegram: [] },
+  };
+
+  assert.throws(
+    () => validateResolvedDataLocationConfig(v3WithAccounts),
+    /Unknown top-level configuration key: 'accounts'/
   );
 });

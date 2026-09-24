@@ -2825,7 +2825,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 5.1 上一批狀態
 
-上次核對通過的 HEAD：c6cd9c9986f5834b9777197c7c0012c08d85a3bb
+上次核對通過的 HEAD：bec2fb5d888b1f3049cb72afbf08566a473e8bf0
 
 - `23af193`（執行者前置檢查 ＋ 回滾程序 ＋ `AUDIT-LOG.md` ＋ 四缺口修正）
   已於 2026-09-02 由審計官核對通過：6 檔異動（含 2 個新檔）、零夾帶、
@@ -5017,6 +5017,29 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - B-107 保持 OPEN / RESIDUAL / NON-BLOCKING。
   - Node punycode deprecation warning 維持 B-100 R-D NONBLOCKING。
   - §5.4 維持純指標導向（POINTER_ONLY），不保存動態任務佇列或狀態副本。
-  - 本 state-sync candidate 分支為 `batch/tg-mvp-09a-final-acceptance-260924`，Allowed Scope 嚴格限定 6 檔，main_advancement = FORBIDDEN，提交後標記為 AWAITING EXTERNAL MACRO AUDIT。
+141. **TG-MVP-10 Telegram 測試機器人入站適配器實作、主機 Node 治理修復與 R1 依賴範疇擴充（TG-MVP-10 Implementation, Node Remediation & Scope Expansion R1）**（2026-09-24）
+- **任務目標與邊界（Task Objective & Slice Boundary — M1）**：
+  - 本批為 Phase 2 E-03 TG-MVP-10 正式實作候選（candidate），目標為完成 Telegram 測試機器人長輪詢入站適配器（`TelegramInboundAdapter`）、SQLite v5 游標管理機制、以及相關設定與註冊表擴充。
+  - 元件切片邊界：不建立完整 OS process root、不建立 HTTP Local API Listener、不建立 Outbox、不發送出站訊息、不安裝 PM2 或 Windows 服務；完整流程留待 TG-MVP-11。
+  - 純合成驗收：無真實 Telegram 網路請求、無真實憑證、無 Credential Manager 生產憑證讀取（M15）。
+- **主機 Node 治理修復生命週期（Node Runtime Governance Remediation）**：
+  - 歷史 T1 Spike 事實保留：2026-09-17 實施 T1 時，主機全域 Node 為 v24.18.0，可攜式驗證 Node 為 v24.21.0。此歷史紀錄完整保留，不追溯篡改。
+  - 發現缺口：TG-MVP-10 啟動時檢驗主機全域環境為 Node v24.18.0，觸發 `S1 NODE_PIN_UNAVAILABLE` 停機保護。
+  - 使用者手動修復：USER 親自安裝標準 Node.js v24.21.0 x64（`C:\Program Files\nodejs\node.exe`）。
+  - 修復後機器證明：`node --version` = `v24.21.0`、`npm.cmd --version` = `11.19.0`、`node:sqlite` in-memory smoke 測試 PASS、`ExperimentalWarning` 完全缺席。
+  - PowerShell 執行原則：`npm.ps1` 受現行 ExecutionPolicy 封鎖；Windows 本機核准使用 `npm.cmd` 適配器，未變更且未削弱作業系統 ExecutionPolicy。
+  - 安裝檔雜湊／Authenticode：`NOT_REPO_VERIFIED`（使用者手動安裝，來源未經版本庫工具鏈捕獲）。
+  - S1 結案：`S1 NODE_PIN_UNAVAILABLE = RESOLVED`，不另立獨立 Node 任務。
+- **S1 依賴範疇遺漏與 R1 有界擴充（Missing Dependency in Scope & Bounded Plan Revision R1）**：
+  - 觸發事件：執行 canonical `npm.cmd --prefix runtime/channel-gateway test` 時，第 274 項測試 `SqliteChannelTransactions - 16` 失敗（actual: 5 !== expected: 4）。
+  - 根因：M7 要求 SQLite schema v4 → v5，但既有測試 `runtime/channel-gateway/tests/sqlite-channel-transactions.test.js` 包含硬編碼 v4 架構金絲雀（CANARY 17/18/10）；且該檔案未被 85 條 E24 查詢命中，導致漏列於初始 Allowed 24 範圍中。
+  - 治理停機：執行者依 `Path 25: HARD STOP` 與 `[KERNEL-GOVERNANCE-FREEZE]` 即刻停機回報 `S1 MISSING_DEPENDENCY_IN_SCOPE`，拒絕未授權修改裁判。
+  - 外部審計裁決：External Macro Auditor 確認遺漏事實成立，正式裁決 `S1 = CONFIRMED / RESOLVABLE`，授權 Plan revision_count: 0 → 1，Allowed Scope: 24 → 25，納入 `runtime/channel-gateway/tests/sqlite-channel-transactions.test.js` 進行有界金絲雀同步（CANARY 17/18/10 調整為期望 v5，並認可 `ingestEdit` 為合法 ingress）。
+  - 擴充後驗證：410 項測試全數通過（408 pass, 2 registered skips, 0 fail）。
+- **後續工作路由與邊界保留（Next Work Routing & Boundary Preservation）**：
+  - NEXT_WORK 保持 E-03，NEXT_SLICE 保持 TG-MVP-10（實作候選產出，AWAITING EXTERNAL MACRO AUDIT）。
+  - TG-MVP-11 / 12 / 13 / 14 / 15 維持待辦，本輪不實作。
+  - main_advancement = FORBIDDEN；候選分支為 `batch/tg-mvp-10-telegram-inbound-260924`。
+
 
 

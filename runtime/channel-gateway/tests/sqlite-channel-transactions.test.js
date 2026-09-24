@@ -701,18 +701,19 @@ test('SqliteChannelTransactions - 15. closed repository rejects all operations f
 });
 
 // 16. Architectural invariants and boundaries (CANARY 17-24)
-test('SqliteChannelTransactions - 16. architectural invariants: schema version 4, event-ingest boundary, no outbox, no account-switch', () => {
-  assert.strictEqual(SQLITE_STATE_SCHEMA_VERSION, 4, 'CANARY 17: schema version must remain 4');
+test('SqliteChannelTransactions - 16. architectural invariants: schema version 5, event-ingest boundary, no outbox, no account-switch', () => {
+  assert.strictEqual(SQLITE_STATE_SCHEMA_VERSION, 5, 'CANARY 17: schema version must remain 5');
 
   const harness = createTempHarness();
   try {
     const repo = new SqliteStateRepository(harness.stateRoot);
     try {
-      assert.strictEqual(repo.schemaVersion, 4, 'CANARY 18: applied schema version is 4');
+      assert.strictEqual(repo.schemaVersion, 5, 'CANARY 18: applied schema version is 5');
 
-      // CANARY 19: Authorized ingress in T8B / v4; arbitrary other ingress remains absent
+      // CANARY 19: Authorized ingress in T8B / TG-MVP-10; arbitrary other ingress remains absent
       assert.strictEqual(typeof repo.ingestMessage, 'function');
       assert.strictEqual(typeof repo.recordIgnoredEvent, 'function');
+      assert.strictEqual(typeof repo.ingestEdit, 'function');
       assert.strictEqual(repo.enqueueMessage, undefined);
       assert.strictEqual(repo.receiveMessage, undefined);
       assert.strictEqual(repo.insertInboundMessage, undefined);
@@ -735,9 +736,9 @@ test('SqliteChannelTransactions - 16. architectural invariants: schema version 4
         assert.strictEqual(tNames.includes('inbound_event'), true);
         assert.strictEqual(tNames.includes('outbox'), false);
 
-        // CANARY 10: MIGRATIONS remain [1, 2, 3, 4]
+        // CANARY 10: MIGRATIONS remain [1, 2, 3, 4, 5]
         const mRows = rawDb.prepare('SELECT version FROM schema_migrations ORDER BY version ASC;').all();
-        assert.deepStrictEqual(mRows.map((r) => r.version), [1, 2, 3, 4]);
+        assert.deepStrictEqual(mRows.map((r) => r.version), [1, 2, 3, 4, 5]);
       } finally {
         rawDb.close();
       }

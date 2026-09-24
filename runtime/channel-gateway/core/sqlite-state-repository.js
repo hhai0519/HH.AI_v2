@@ -43,7 +43,7 @@ const { DatabaseSync } = require('node:sqlite');
 const { isAbsolutePath } = require('./data-location-config');
 const { ensureBackupsDirectory } = require('./backup-hygiene');
 
-const SQLITE_STATE_SCHEMA_VERSION = 4;
+const SQLITE_STATE_SCHEMA_VERSION = 5;
 const SQLITE_BUSY_TIMEOUT_MS = 5000;
 const SQLITE_DATABASE_FILENAME = 'channel-gateway-state.sqlite3';
 
@@ -142,12 +142,27 @@ CREATE TABLE inbox (
 ) STRICT;
 `;
 
-const INGEST_CURSOR_SCHEMA_SQL = `
+const INGEST_CURSOR_V3_SCHEMA_SQL = `
 CREATE TABLE ingest_cursor (
   account_id TEXT PRIMARY KEY
     CHECK(length(trim(account_id)) > 0),
   cursor_value TEXT NOT NULL
     CHECK(length(trim(cursor_value)) > 0)
+) STRICT;
+`;
+
+/**
+ * Canonical DDL definitions for domain tables in schema version 5.
+ * Ingest cursor table tracks per-account fetch cursor with observation timestamp.
+ */
+const INGEST_CURSOR_SCHEMA_SQL = `
+CREATE TABLE ingest_cursor (
+  account_id TEXT PRIMARY KEY
+    CHECK(length(trim(account_id)) > 0),
+  cursor_value TEXT NOT NULL
+    CHECK(length(trim(cursor_value)) > 0),
+  updated_at_ms INTEGER NOT NULL
+    CHECK(updated_at_ms >= 0)
 ) STRICT;
 `;
 
@@ -263,13 +278,27 @@ SELECT
 FROM inbox_v2_legacy;
 `);
       db.exec('DROP TABLE inbox_v2_legacy;');
-      db.exec(INGEST_CURSOR_SCHEMA_SQL);
+      db.exec(INGEST_CURSOR_V3_SCHEMA_SQL);
     },
   }),
   Object.freeze({
     version: 4,
     apply(db) {
       db.exec(INBOUND_EVENT_SCHEMA_SQL);
+    },
+  }),
+  Object.freeze({
+    version: 5,
+    apply(db) {
+      db.exec('ALTER TABLE ingest_cursor RENAME TO ingest_cursor_v4_legacy;');
+      db.exec(INGEST_CURSOR_SCHEMA_SQL);
+      const nowMs = Date.now();
+      const insertStmt = db.prepare(`
+        INSERT INTO ingest_cursor (account_id, cursor_value, updated_at_ms)
+        SELECT account_id, cursor_value, ? FROM ingest_cursor_v4_legacy;
+      `);
+      insertStmt.run(nowMs);
+      db.exec('DROP TABLE ingest_cursor_v4_legacy;');
     },
   }),
 ]);
@@ -492,7 +521,7 @@ function getDataVersion(db) {
  * @param {number} [version=SQLITE_STATE_SCHEMA_VERSION]
  */
 function verifyCanonicalDomainSchemaShape(db, version = SQLITE_STATE_SCHEMA_VERSION) {
-  if (version !== 2 && version !== 3 && version !== 4) {
+  if (version !== 2 && version !== 3 && version !== 4 && version !== 5) {
     throw new Error(`Unsupported schema version for domain shape verification: ${version} (fail-closed)`);
   }
 
@@ -728,56 +757,103 @@ function verifyCanonicalDomainSchemaShape(db, version = SQLITE_STATE_SCHEMA_VERS
       throw new Error('inbox schema definition does not match canonical DDL contract (fail-closed)');
     }
 
-    // 3. Verify ingest_cursor for v3
+    // 3. Verify ingest_cursor for v3, v4, v5
     const curList = db.prepare("PRAGMA table_list('ingest_cursor');").all();
     const curEntry = curList ? curList.find((e) => e.name === 'ingest_cursor') : null;
     if (!curEntry || curEntry.type !== 'table' || Number(curEntry.strict) !== 1) {
       throw new Error('ingest_cursor must exist as a STRICT table (fail-closed)');
     }
     const curCols = db.prepare("PRAGMA table_info('ingest_cursor');").all();
-    if (!curCols || curCols.length !== 2) {
-      throw new Error(
-        `ingest_cursor must have exactly 2 columns, found ${curCols ? curCols.length : 0} (fail-closed)`
-      );
-    }
-    const curExpected = {
-      account_id: { type: 'TEXT', notnull: 1, pk: 1 },
-      cursor_value: { type: 'TEXT', notnull: 1, pk: 0 },
-    };
-    for (const col of curCols) {
-      const exp = curExpected[col.name];
-      if (!exp) {
-        throw new Error(`Unexpected column '${col.name}' in ingest_cursor (fail-closed)`);
-      }
-      if (
-        col.type.toUpperCase() !== exp.type ||
-        Number(col.notnull) !== exp.notnull ||
-        Number(col.pk) !== exp.pk
-      ) {
+    if (version === 3 || version === 4) {
+      if (!curCols || curCols.length !== 2) {
         throw new Error(
-          `Column '${col.name}' in ingest_cursor mismatch: expected type=${exp.type}, notnull=${exp.notnull}, pk=${exp.pk}; got type=${col.type}, notnull=${col.notnull}, pk=${col.pk} (fail-closed)`
+          `ingest_cursor must have exactly 2 columns, found ${curCols ? curCols.length : 0} (fail-closed)`
         );
       }
+      const curExpected = {
+        account_id: { type: 'TEXT', notnull: 1, pk: 1 },
+        cursor_value: { type: 'TEXT', notnull: 1, pk: 0 },
+      };
+      for (const col of curCols) {
+        const exp = curExpected[col.name];
+        if (!exp) {
+          throw new Error(`Unexpected column '${col.name}' in ingest_cursor (fail-closed)`);
+        }
+        if (
+          col.type.toUpperCase() !== exp.type ||
+          Number(col.notnull) !== exp.notnull ||
+          Number(col.pk) !== exp.pk
+        ) {
+          throw new Error(
+            `Column '${col.name}' in ingest_cursor mismatch: expected type=${exp.type}, notnull=${exp.notnull}, pk=${exp.pk}; got type=${col.type}, notnull=${col.notnull}, pk=${col.pk} (fail-closed)`
+          );
+        }
+      }
+
+      const curSqlRow = schemaStmt.get('ingest_cursor');
+      if (!curSqlRow || typeof curSqlRow.sql !== 'string') {
+        throw new Error('ingest_cursor table definition not found in sqlite_schema (fail-closed)');
+      }
+      const normCur = normalizeCanonicalSchemaSql(curSqlRow.sql);
+      const expCur = normalizeCanonicalSchemaSql(INGEST_CURSOR_V3_SCHEMA_SQL);
+      if (!normCur.includes('CHECK ( LENGTH ( TRIM ( ACCOUNT_ID ) ) > 0 )')) {
+        throw new Error('ingest_cursor missing account_id nonblank CHECK constraint (fail-closed)');
+      }
+      if (!normCur.includes('CHECK ( LENGTH ( TRIM ( CURSOR_VALUE ) ) > 0 )')) {
+        throw new Error('ingest_cursor missing cursor_value nonblank CHECK constraint (fail-closed)');
+      }
+      if (normCur !== expCur) {
+        throw new Error('ingest_cursor schema definition does not match canonical DDL contract (fail-closed)');
+      }
+    } else if (version === 5) {
+      if (!curCols || curCols.length !== 3) {
+        throw new Error(
+          `ingest_cursor must have exactly 3 columns, found ${curCols ? curCols.length : 0} (fail-closed)`
+        );
+      }
+      const curExpected = {
+        account_id: { type: 'TEXT', notnull: 1, pk: 1 },
+        cursor_value: { type: 'TEXT', notnull: 1, pk: 0 },
+        updated_at_ms: { type: 'INTEGER', notnull: 1, pk: 0 },
+      };
+      for (const col of curCols) {
+        const exp = curExpected[col.name];
+        if (!exp) {
+          throw new Error(`Unexpected column '${col.name}' in ingest_cursor (fail-closed)`);
+        }
+        if (
+          col.type.toUpperCase() !== exp.type ||
+          Number(col.notnull) !== exp.notnull ||
+          Number(col.pk) !== exp.pk
+        ) {
+          throw new Error(
+            `Column '${col.name}' in ingest_cursor mismatch: expected type=${exp.type}, notnull=${exp.notnull}, pk=${exp.pk}; got type=${col.type}, notnull=${col.notnull}, pk=${col.pk} (fail-closed)`
+          );
+        }
+      }
+
+      const curSqlRow = schemaStmt.get('ingest_cursor');
+      if (!curSqlRow || typeof curSqlRow.sql !== 'string') {
+        throw new Error('ingest_cursor table definition not found in sqlite_schema (fail-closed)');
+      }
+      const normCur = normalizeCanonicalSchemaSql(curSqlRow.sql);
+      const expCur = normalizeCanonicalSchemaSql(INGEST_CURSOR_SCHEMA_SQL);
+      if (!normCur.includes('CHECK ( LENGTH ( TRIM ( ACCOUNT_ID ) ) > 0 )')) {
+        throw new Error('ingest_cursor missing account_id nonblank CHECK constraint (fail-closed)');
+      }
+      if (!normCur.includes('CHECK ( LENGTH ( TRIM ( CURSOR_VALUE ) ) > 0 )')) {
+        throw new Error('ingest_cursor missing cursor_value nonblank CHECK constraint (fail-closed)');
+      }
+      if (!normCur.includes('CHECK ( UPDATED_AT_MS >= 0 )')) {
+        throw new Error('ingest_cursor missing updated_at_ms non-negative CHECK constraint (fail-closed)');
+      }
+      if (normCur !== expCur) {
+        throw new Error('ingest_cursor schema definition does not match canonical DDL contract (fail-closed)');
+      }
     }
 
-    const curSqlRow = schemaStmt.get('ingest_cursor');
-    if (!curSqlRow || typeof curSqlRow.sql !== 'string') {
-      throw new Error('ingest_cursor table definition not found in sqlite_schema (fail-closed)');
-    }
-    const normCur = normalizeCanonicalSchemaSql(curSqlRow.sql);
-    const expCur = normalizeCanonicalSchemaSql(INGEST_CURSOR_SCHEMA_SQL);
-    if (!normCur.includes('CHECK ( LENGTH ( TRIM ( ACCOUNT_ID ) ) > 0 )')) {
-      throw new Error('ingest_cursor missing account_id nonblank CHECK constraint (fail-closed)');
-    }
-    if (!normCur.includes('CHECK ( LENGTH ( TRIM ( CURSOR_VALUE ) ) > 0 )')) {
-      throw new Error('ingest_cursor missing cursor_value nonblank CHECK constraint (fail-closed)');
-    }
-    if (normCur !== expCur) {
-      throw new Error('ingest_cursor schema definition does not match canonical DDL contract (fail-closed)');
-    }
-
-    // 4. Verify inbound_event for v4
-    if (version === 4) {
+    // 4. Verify inbound_event for v4 and v5
+    if (version === 4 || version === 5) {
       const eventList = db.prepare("PRAGMA table_list('inbound_event');").all();
       const eventEntry = eventList ? eventList.find((e) => e.name === 'inbound_event') : null;
       if (!eventEntry || eventEntry.type !== 'table' || Number(eventEntry.strict) !== 1) {
@@ -1251,6 +1327,25 @@ function validateMessageContent(content) {
     throw new TypeError('content must be a string (fail-closed)');
   }
   return content;
+}
+
+function validateCursorObservedAtMs(val, cursorValue) {
+  if (cursorValue === null) {
+    if (val !== undefined && val !== null) {
+      if (typeof val !== 'number' || !Number.isSafeInteger(val) || val < 0) {
+        throw new TypeError('cursorObservedAtMs must be a safe integer >= 0 (fail-closed)');
+      }
+      return val;
+    }
+    return null;
+  }
+  if (val === undefined) {
+    return Date.now();
+  }
+  if (val === null || typeof val !== 'number' || !Number.isSafeInteger(val) || val < 0) {
+    throw new TypeError('cursorObservedAtMs must be a safe integer >= 0 (fail-closed)');
+  }
+  return val;
 }
 
 class SqliteStateRepository {
@@ -2178,6 +2273,7 @@ class SqliteStateRepository {
     const chId = validateChannelId(input.channelId);
     const content = validateMessageContent(input.content);
     const curVal = validateCursorValue(input.cursorValue);
+    const observedAtMs = validateCursorObservedAtMs(input.cursorObservedAtMs, curVal);
 
     return this.#runTransaction((db) => {
       // 1. Check canonical event duplicate identity: UNIQUE(account_id, platform_event_id)
@@ -2212,6 +2308,7 @@ class SqliteStateRepository {
           platformMsgId: pMsgId,
           cursorValue: curVal,
           cursorAction: curVal === null ? 'NONE' : 'NOOP',
+          cursorObservedAtMs: curVal === null ? null : observedAtMs,
         };
       }
 
@@ -2287,9 +2384,9 @@ class SqliteStateRepository {
       // 7. Update cursor in SAME transaction if ADVANCE
       if (cursorAction === 'ADVANCE') {
         const upsertCursor = db.prepare(
-          'INSERT INTO ingest_cursor (account_id, cursor_value) VALUES (?, ?) ON CONFLICT(account_id) DO UPDATE SET cursor_value = excluded.cursor_value;'
+          'INSERT INTO ingest_cursor (account_id, cursor_value, updated_at_ms) VALUES (?, ?, ?) ON CONFLICT(account_id) DO UPDATE SET cursor_value = excluded.cursor_value, updated_at_ms = excluded.updated_at_ms;'
         );
-        upsertCursor.run(accId, curVal);
+        upsertCursor.run(accId, curVal, observedAtMs);
       }
 
       return {
@@ -2304,6 +2401,7 @@ class SqliteStateRepository {
         platformMsgId: pMsgId,
         cursorValue: curVal,
         cursorAction,
+        cursorObservedAtMs: curVal === null ? null : observedAtMs,
       };
     });
   }
@@ -2335,6 +2433,7 @@ class SqliteStateRepository {
     const accId = validateAccountId(input.accountId);
     const pEventId = validatePlatformEventId(input.platformEventId);
     const curVal = validateCursorValue(input.cursorValue);
+    const observedAtMs = validateCursorObservedAtMs(input.cursorObservedAtMs, curVal);
 
     return this.#runTransaction((db) => {
       // 1. Dedup lookup
@@ -2355,6 +2454,7 @@ class SqliteStateRepository {
           platformEventId: pEventId,
           cursorValue: curVal,
           cursorAction: curVal === null ? 'NONE' : 'NOOP',
+          cursorObservedAtMs: curVal === null ? null : observedAtMs,
         };
       }
 
@@ -2392,9 +2492,9 @@ class SqliteStateRepository {
       // 4. Update cursor in SAME transaction if ADVANCE
       if (cursorAction === 'ADVANCE') {
         const upsertCursor = db.prepare(
-          'INSERT INTO ingest_cursor (account_id, cursor_value) VALUES (?, ?) ON CONFLICT(account_id) DO UPDATE SET cursor_value = excluded.cursor_value;'
+          'INSERT INTO ingest_cursor (account_id, cursor_value, updated_at_ms) VALUES (?, ?, ?) ON CONFLICT(account_id) DO UPDATE SET cursor_value = excluded.cursor_value, updated_at_ms = excluded.updated_at_ms;'
         );
-        upsertCursor.run(accId, curVal);
+        upsertCursor.run(accId, curVal, observedAtMs);
       }
 
       return {
@@ -2405,6 +2505,252 @@ class SqliteStateRepository {
         platformEventId: pEventId,
         cursorValue: curVal,
         cursorAction,
+        cursorObservedAtMs: curVal === null ? null : observedAtMs,
+      };
+    });
+  }
+
+  /**
+   * Ingests an edited inbound message event (M6 / ADR-0024 Canary B).
+   *
+   * @param {{
+   *   accountId: string,
+   *   platformEventId: string|number,
+   *   platformMsgId: string|number,
+   *   channelId: string,
+   *   content: string,
+   *   cursorValue: string|number|null,
+   *   cursorObservedAtMs?: number|null
+   * }} input
+   * @returns {{
+   *   success: true,
+   *   duplicate: boolean,
+   *   applied: boolean,
+   *   inboxUpdated: boolean,
+   *   sequence: number|null,
+   *   reason?: string,
+   *   eventSequence: number,
+   *   channelId: string,
+   *   accountId: string,
+   *   platformEventId: string,
+   *   platformMsgId: string,
+   *   cursorValue: string|null,
+   *   cursorAction: 'ADVANCE'|'NOOP'|'NONE',
+   *   cursorObservedAtMs: number|null
+   * }}
+   */
+  ingestEdit(input) {
+    if (!input || typeof input !== 'object' || Array.isArray(input)) {
+      throw new TypeError('ingestEdit input must be a non-null object (fail-closed)');
+    }
+
+    const accId = validateAccountId(input.accountId);
+    const pEventId = validatePlatformEventId(input.platformEventId);
+    const pMsgId = validatePlatformMsgId(input.platformMsgId);
+    const chId = validateChannelId(input.channelId);
+    const content = validateMessageContent(input.content);
+    const curVal = validateCursorValue(input.cursorValue);
+    const observedAtMs = validateCursorObservedAtMs(input.cursorObservedAtMs, curVal);
+
+    return this.#runTransaction((db) => {
+      // 1. Check canonical event duplicate identity: UNIQUE(account_id, platform_event_id)
+      const selectExistingEvent = db.prepare(
+        'SELECT event_sequence, account_id, platform_event_id, event_type, channel_id, platform_msg_id FROM inbound_event WHERE account_id = ? AND platform_event_id = ?;'
+      );
+      const existingEvent = selectExistingEvent.get(accId, pEventId);
+
+      if (existingEvent) {
+        if (
+          existingEvent.event_type !== 'EDIT' ||
+          existingEvent.channel_id !== chId ||
+          existingEvent.platform_msg_id !== pMsgId
+        ) {
+          throw new Error('EVENT_IDENTITY_CONFLICT: Existing event in inbound_event has conflicting identity or target (fail-closed)');
+        }
+
+        // True duplicate event: idempotent zero-mutation no-op
+        const existingMsg = db.prepare(
+          'SELECT sequence FROM inbox WHERE account_id = ? AND platform_msg_id = ?;'
+        ).get(accId, pMsgId);
+
+        return {
+          success: true,
+          duplicate: true,
+          applied: false,
+          inboxUpdated: false,
+          eventSequence: existingEvent.event_sequence,
+          sequence: existingMsg ? existingMsg.sequence : null,
+          channelId: chId,
+          accountId: accId,
+          platformEventId: pEventId,
+          platformMsgId: pMsgId,
+          cursorValue: curVal,
+          cursorAction: curVal === null ? 'NONE' : 'NOOP',
+          cursorObservedAtMs: curVal === null ? null : observedAtMs,
+        };
+      }
+
+      // 2. Cursor decision for new event
+      let cursorAction = 'NONE';
+      if (curVal !== null) {
+        const selectCursor = db.prepare('SELECT cursor_value FROM ingest_cursor WHERE account_id = ?;');
+        const cursorRow = selectCursor.get(accId);
+        const storedCursor = cursorRow ? cursorRow.cursor_value : null;
+
+        if (storedCursor === null) {
+          cursorAction = 'ADVANCE';
+        } else {
+          if (!/^(0|[1-9][0-9]*)$/.test(storedCursor)) {
+            throw new Error(`STORED_CURSOR_INVALID: Stored cursor '${storedCursor}' is not a canonical decimal string (fail-closed)`);
+          }
+          const cmp = compareCanonicalDecimals(curVal, storedCursor);
+          if (cmp > 0) {
+            cursorAction = 'ADVANCE';
+          } else if (cmp === 0) {
+            cursorAction = 'NOOP';
+          } else {
+            throw new Error(`CURSOR_REGRESSION: candidate cursor '${curVal}' < stored cursor '${storedCursor}' (fail-closed)`);
+          }
+        }
+      }
+
+      // 3. Ensure channel existence in channel_control
+      const selectChan = db.prepare('SELECT channel_id FROM channel_control WHERE channel_id = ?;');
+      if (!selectChan.get(chId)) {
+        db.prepare(
+          'INSERT INTO channel_control (channel_id, current_holder, fencing_token, last_heartbeat_at) VALUES (?, NULL, 0, NULL);'
+        ).run(chId);
+      }
+
+      // 4. Check if target message exists in inbox: (account_id, platform_msg_id)
+      const selectExistingMsg = db.prepare(
+        'SELECT sequence, channel_id, account_id, platform_msg_id, status FROM inbox WHERE account_id = ? AND platform_msg_id = ?;'
+      );
+      const existingMsg = selectExistingMsg.get(accId, pMsgId);
+      if (existingMsg && existingMsg.channel_id !== chId) {
+        throw new Error(
+          `LOGICAL_MESSAGE_CHANNEL_MISMATCH: Logical message exists in channel '${existingMsg.channel_id}' but received for channel '${chId}' (fail-closed)`
+        );
+      }
+
+      // 5. Insert inbound_event row (EDIT)
+      const insertEvent = db.prepare(
+        "INSERT INTO inbound_event (account_id, platform_event_id, event_type, channel_id, platform_msg_id) VALUES (?, ?, 'EDIT', ?, ?);"
+      );
+      const eventResult = insertEvent.run(accId, pEventId, chId, pMsgId);
+      const eventSequence = Number(eventResult.lastInsertRowid);
+
+      // 6. Handle target inbox row
+      let applied = false;
+      let inboxUpdated = false;
+      let sequence = null;
+      let reason = undefined;
+
+      if (existingMsg) {
+        db.prepare('UPDATE inbox SET content = ? WHERE sequence = ?;').run(content, existingMsg.sequence);
+        applied = true;
+        inboxUpdated = true;
+        sequence = existingMsg.sequence;
+      } else {
+        applied = false;
+        inboxUpdated = false;
+        reason = 'EDIT_TARGET_NOT_FOUND';
+      }
+
+      // 7. Update cursor in SAME transaction if ADVANCE
+      if (cursorAction === 'ADVANCE') {
+        const upsertCursor = db.prepare(
+          'INSERT INTO ingest_cursor (account_id, cursor_value, updated_at_ms) VALUES (?, ?, ?) ON CONFLICT(account_id) DO UPDATE SET cursor_value = excluded.cursor_value, updated_at_ms = excluded.updated_at_ms;'
+        );
+        upsertCursor.run(accId, curVal, observedAtMs);
+      }
+
+      return {
+        success: true,
+        duplicate: false,
+        applied,
+        inboxUpdated,
+        sequence,
+        reason,
+        eventSequence,
+        channelId: chId,
+        accountId: accId,
+        platformEventId: pEventId,
+        platformMsgId: pMsgId,
+        cursorValue: curVal,
+        cursorAction,
+        cursorObservedAtMs: curVal === null ? null : observedAtMs,
+      };
+    });
+  }
+
+  /**
+   * Retrieves full cursor state (cursorValue, updatedAtMs) for an account (M8).
+   *
+   * @param {string} accountId
+   * @returns {{ cursorValue: string, updatedAtMs: number }|null}
+   */
+  getIngestCursorState(accountId) {
+    if (!this.#isOpen || !this.#db) {
+      throw new Error('Repository is closed (cannot read cursor state on closed repository)');
+    }
+    const accId = validateAccountId(accountId);
+    const stmt = this.#db.prepare('SELECT cursor_value, updated_at_ms FROM ingest_cursor WHERE account_id = ?;');
+    const row = stmt.get(accId);
+    if (!row) {
+      return null;
+    }
+    return {
+      cursorValue: row.cursor_value,
+      updatedAtMs: Number(row.updated_at_ms),
+    };
+  }
+
+  /**
+   * Exact-state conditional deletion of an ingest cursor for transport week-rebase (M8).
+   * Deletes the cursor row ONLY if both stored cursor_value and stored updated_at_ms match expected.
+   *
+   * @param {{ accountId: string, expectedCursorValue: string, expectedUpdatedAtMs: number }} input
+   * @returns {{ success: true, accountId: string, deleted: true }}
+   */
+  resetIngestCursorForTransportRebase(input) {
+    if (!input || typeof input !== 'object' || Array.isArray(input)) {
+      throw new TypeError('resetIngestCursorForTransportRebase input must be a non-null object (fail-closed)');
+    }
+    const accId = validateAccountId(input.accountId);
+    const expectedCur = validateCursorValue(input.expectedCursorValue);
+    if (expectedCur === null) {
+      throw new Error('expectedCursorValue must be a non-empty string (fail-closed)');
+    }
+    if (
+      typeof input.expectedUpdatedAtMs !== 'number' ||
+      !Number.isSafeInteger(input.expectedUpdatedAtMs) ||
+      input.expectedUpdatedAtMs < 0
+    ) {
+      throw new TypeError('expectedUpdatedAtMs must be a safe integer >= 0 (fail-closed)');
+    }
+    const expectedTime = input.expectedUpdatedAtMs;
+
+    return this.#runTransaction((db) => {
+      const selectStmt = db.prepare('SELECT cursor_value, updated_at_ms FROM ingest_cursor WHERE account_id = ?;');
+      const row = selectStmt.get(accId);
+      if (!row) {
+        throw new Error('CURSOR_REBASE_STATE_MISMATCH: No cursor row exists for account (fail-closed)');
+      }
+      if (row.cursor_value !== expectedCur || Number(row.updated_at_ms) !== expectedTime) {
+        throw new Error(
+          `CURSOR_REBASE_STATE_MISMATCH: Stored cursor (${row.cursor_value}, ${row.updated_at_ms}) does not match expected (${expectedCur}, ${expectedTime}) (fail-closed)`
+        );
+      }
+      db.prepare('DELETE FROM ingest_cursor WHERE account_id = ? AND cursor_value = ? AND updated_at_ms = ?;').run(
+        accId,
+        expectedCur,
+        expectedTime
+      );
+      return {
+        success: true,
+        accountId: accId,
+        deleted: true,
       };
     });
   }
@@ -2454,6 +2800,7 @@ module.exports = {
   INBOX_SCHEMA_SQL,
   INBOX_V2_SCHEMA_SQL,
   INGEST_CURSOR_SCHEMA_SQL,
+  INGEST_CURSOR_V3_SCHEMA_SQL,
   INBOUND_EVENT_SCHEMA_SQL,
   normalizeCanonicalSchemaSql,
   validatePlatformEventId,

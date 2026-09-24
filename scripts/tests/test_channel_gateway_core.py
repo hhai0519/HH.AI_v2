@@ -503,6 +503,8 @@ def test_channel_gateway_sqlite_gitignore_protection():
     tracked_sample_files = [
         "runtime/channel-gateway/core/sqlite-state-repository.js",
         "runtime/channel-gateway/tests/sqlite-state-repository.test.js",
+        "runtime/channel-gateway/adapters/telegram-inbound-adapter.js",
+        "runtime/channel-gateway/tests/telegram-inbound-adapter.test.js",
     ]
     for rel_f in tracked_sample_files:
         res = subprocess.run(

@@ -466,3 +466,63 @@ test('AccountRegistry - 26. account ID accepts valid surrogate pairs (emoji / su
     assert.strictEqual(registry.getActive().id, c.id);
   }
 });
+
+test('AccountRegistry - 27. fromMetadata creates registry with registered accounts and no active account (M4)', () => {
+  const entries = [
+    {
+      id: 'bot_alpha',
+      label: 'Alpha Bot',
+      description: 'First bot',
+      enabled: true,
+    },
+    {
+      id: 'bot_beta',
+      label: 'Beta Bot',
+      description: 'Second bot',
+      enabled: false,
+    },
+  ];
+
+  const registry = AccountRegistry.fromMetadata('telegram', entries);
+  assert.strictEqual(registry.channel, 'telegram');
+  assert.strictEqual(registry.getActive(), null, 'fromMetadata must not automatically set active account');
+
+  const list = registry.list();
+  assert.strictEqual(list.length, 2);
+  assert.strictEqual(list[0].id, 'bot_alpha');
+  assert.strictEqual(list[0].enabled, true);
+  assert.strictEqual(list[1].id, 'bot_beta');
+  assert.strictEqual(list[1].enabled, false);
+
+  // Enabled bot can be activated
+  registry.setActive('bot_alpha');
+  assert.strictEqual(registry.getActive().id, 'bot_alpha');
+
+  // Disabled bot cannot be activated
+  assert.throws(() => registry.setActive('bot_beta'), /Cannot activate disabled account/);
+});
+
+test('AccountRegistry - 28. fromMetadata rejects invalid arguments and secret fields fail-closed (M4)', () => {
+  assert.throws(() => AccountRegistry.fromMetadata('', []), TypeError);
+  assert.throws(() => AccountRegistry.fromMetadata('telegram', null), TypeError);
+  assert.throws(() => AccountRegistry.fromMetadata('telegram', {}), TypeError);
+
+  // Secret field rejection
+  assert.throws(
+    () =>
+      AccountRegistry.fromMetadata('telegram', [
+        { id: 'bad_bot', label: 'Bad', token: 'secret_token' },
+      ]),
+    /Security rejection: Field 'token' is forbidden/
+  );
+
+  // Channel mismatch rejection
+  assert.throws(
+    () =>
+      AccountRegistry.fromMetadata('telegram', [
+        { id: 'line_bot', label: 'Line Bot', channel: 'line' },
+      ]),
+    /CHANNEL_MISMATCH/
+  );
+});
+
