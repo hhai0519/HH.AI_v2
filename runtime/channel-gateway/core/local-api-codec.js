@@ -177,6 +177,22 @@ function computeHmac(secret, canonicalString) {
   return crypto.createHmac('sha256', secret).update(Buffer.from(canonicalString, 'utf-8')).digest('hex');
 }
 
+const NONCE_REGEX = /^[0-9a-f]{32}$/;
+const SIGNATURE_REGEX = /^[0-9a-f]{64}$/;
+const SESSION_ID_REGEX = /^[0-9a-f]{32}$/;
+
+function isValidNonce(nonce) {
+  return typeof nonce === 'string' && NONCE_REGEX.test(nonce);
+}
+
+function isValidSignature(sig) {
+  return typeof sig === 'string' && SIGNATURE_REGEX.test(sig);
+}
+
+function isValidSessionId(sessionId) {
+  return typeof sessionId === 'string' && SESSION_ID_REGEX.test(sessionId);
+}
+
 /**
  * Verifies HMAC signature using constant-time comparison via crypto.timingSafeEqual.
  *
@@ -192,8 +208,8 @@ function verifyHmac(secret, canonicalString, providedSignatureHex) {
   if (typeof providedSignatureHex !== 'string' || providedSignatureHex.length !== 64) {
     return false;
   }
-  // Validate hex characters
-  if (!/^[0-9a-fA-F]{64}$/.test(providedSignatureHex)) {
+  // Validate lowercase hex characters strictly (no uppercase)
+  if (!SIGNATURE_REGEX.test(providedSignatureHex)) {
     return false;
   }
 
@@ -302,4 +318,10 @@ module.exports = {
   computeHmac,
   verifyHmac,
   parseRawSecurityHeaders,
+  NONCE_REGEX,
+  SIGNATURE_REGEX,
+  SESSION_ID_REGEX,
+  isValidNonce,
+  isValidSignature,
+  isValidSessionId,
 };

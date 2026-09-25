@@ -139,9 +139,29 @@ T6 階段正式採用 `busy_timeout = 5000`（5000ms），其基礎為 T1 Window
 
 - **本機迴路綁定不變式**：Local API 伺服器嚴格僅監聽字面值 `127.0.0.1:3003`，嚴禁綁定 `0.0.0.0`、`::` 或任何外部介面；不允許自動通訊埠回退。
 - **Host / Origin 防護**：`Host` 標頭嚴格比對 `127.0.0.1:3003`，凡帶有 `Origin` 標頭之請求一律拒絕（反跨來源請求 CSRF/DNS Rebinding）。
-- **雙階段 HMAC-SHA-256 驗證**：所有已認證請求必須經由共用金鑰驗證 `X-HHAI-Signature`，包含 timestamp 視窗驗證（+/- 300 秒）、nonce 重放快取驗證與實體內文 SHA-256 雜湊驗證。
+- **雙階段 HMAC-SHA-256 驗證**：所有已認證請求必須經由共用金鑰驗證 `X-HHAI-Signature`，包含 timestamp 視窗驗證（+/- 30 秒）、nonce 重放快取驗證與實體內文 SHA-256 雜湊驗證。
+- **嚴格標頭協定語法 (Strict Protocol Grammar — R1-F4)**：
+  - `X-HHAI-Nonce`：恰好 32 個小寫十六進位字元（`^[0-9a-f]{32}$`）。
+  - `X-HHAI-Signature`：恰好 64 個小寫十六進位字元（`^[0-9a-f]{64}$`）。
+  - `X-HHAI-Session-Id`：恰好 32 個小寫十六進位字元（`^[0-9a-f]{32}$`）。
+  - 嚴禁大寫十六進位或任意非十六進位字串。
+- **會話 Nonce 簽章後記錄順序 (Session Replay Ordering — R1-F5)**：
+  - 會話請求必須先通過實體 socket 綁定、單一業務請求守衛、內文雜湊與 HMAC 簽章驗證。
+  - 僅在 HMAC 簽章驗證通過後，始得檢驗並記錄會話 Nonce；無效簽章請求絕不得記錄 Nonce 亦不消耗業務請求次數。
+- **內文預先與串流有界防護 (Bounded Body — R1-F3)**：
+  - `Content-Length > 65536` 在累積內文前即刻拒絕（413）。
+  - 串流接收過程維持即時累積位元組計數，跨越 65536 即刻中斷接收並 Fail-Closed 回傳 413，嚴禁無界累積記憶體。
+- **Content-Type 嚴格比對 (Content-Type Validation — R1-F7)**：業務請求必須嚴格為 case-insensitive `application/json`；`application/jsonevil` 或其他型態直接回傳 415。
 - **Transfer-Encoding 拒絕**：帶有 `Transfer-Encoding` 之請求直接回傳 501，嚴禁接受分塊傳輸。
 - **同連線會話綁定**：TCP 連線握手成功建立之 session 嚴格綁定底層 socket，換連線使用舊 session 即刻拒絕。
+- **用戶端回應驗證 (Client Response Protocol Validation — R1-F6)**：`local-api-client` 輸出業務回應至 stdout 前，必須完整驗證 `X-HHAI-Version: 1`、十進位時間戳記、32 碼小寫 hex 會話 ID 與 64 碼小寫 hex 簽章，任何驗證失敗退出碼為 3，嚴禁印出未認證內容。
+- **啟動標準錯誤輸出診斷有界化 (Bounded Startup Stderr — R1-F8)**：
+  - 設定、路徑驗證或 D-TG11-3 帳號原則失敗輸出 `GATEWAY_CONFIG_ERROR`。
+  - 執行期啟動失敗輸出 `GATEWAY_STARTUP_ERROR`。
+  - 嚴禁向 stderr 洩漏原始 `err.message`、堆疊追蹤或機敏資訊。
+- **初始活躍帳號單一原則 (D-TG11-3 Initial Active Account)**：
+  - 啟動時檢驗 `config.accounts.telegram`，僅當啟用帳號數量恰好為 1 時始得建構 `AccountRegistry('telegram')`、登錄帳號並 `setActive()`。
+  - 0 個或 2 個以上啟用帳號立即 Fail-Closed，stderr 僅輸出 `GATEWAY_CONFIG_ERROR`；嚴禁依陣列順序或隨機選取；帳號數量異常時嚴禁啟動 Telegram 適配器、綁定 Local API 連線埠或存取金鑰。
 - **同步輪詢容量上限**：`POST /v1/poll` 每批最多 50 筆訊息；若既有 claimed 訊息加上請求量超過 50 筆，僅能領取至滿額（`Math.min(limit, 50 - claimedCount)`），杜絕訊息堆積與未回覆洩漏。
 - **過期回覆嚴格拒絕**：`POST /v1/reply` 檢驗 fencing token，非最新 holder 之過期回覆一律拒絕。
 - **生命週期關閉契約**：由 `GatewayRuntimeOwner` 管理，關閉時停止 Local API 伺服器接受新連線、停止 Telegram 配接器、停止備份排程器、最後安全關閉 SQLite 儲存庫。

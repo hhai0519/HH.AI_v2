@@ -28,6 +28,12 @@ const {
   computeHmac,
   verifyHmac,
   parseRawSecurityHeaders,
+  NONCE_REGEX,
+  SIGNATURE_REGEX,
+  SESSION_ID_REGEX,
+  isValidNonce,
+  isValidSignature,
+  isValidSessionId,
 } = require('./local-api-codec');
 const { LocalApiReplayCache } = require('./local-api-replay-cache');
 
@@ -119,9 +125,13 @@ class LocalApiServer {
     });
   }
 
-  _failClosed(req, res, statusCode) {
+  _failClosed(req, res, statusCode, closeConnection = true) {
     try {
-      res.writeHead(statusCode, { 'Content-Length': '0', Connection: 'close' });
+      const headers = { 'Content-Length': '0' };
+      if (closeConnection) {
+        headers.Connection = 'close';
+      }
+      res.writeHead(statusCode, headers);
       res.end();
     } catch {
       if (req && req.socket) {
@@ -197,20 +207,29 @@ class LocalApiServer {
       return this._failClosed(req, res, 401);
     }
 
-    // 9. Nonce presence
+    // 9. Nonce syntax: exactly 32 lowercase hex ASCII characters
     const nonce = secHeaders.nonce;
-    if (!nonce || typeof nonce !== 'string' || nonce.trim().length === 0) {
+    if (!nonce || !isValidNonce(nonce)) {
       return this._failClosed(req, res, 400);
     }
 
-    // 10. Signature presence
+    // 10. Signature syntax: exactly 64 lowercase hex ASCII characters
     const signature = secHeaders.signature;
-    if (!signature) {
+    if (!signature || !isValidSignature(signature)) {
       return this._failClosed(req, res, 401);
+    }
+
+    // 11. Session ID syntax check for non-hello endpoints
+    const sessionId = secHeaders.sessionId;
+    if (url !== '/v1/hello') {
+      if (!sessionId || !isValidSessionId(sessionId)) {
+        return this._failClosed(req, res, 400);
+      }
     }
 
     // Framing and Content-Length check
     const clHeader = req.headers['content-length'];
+    let expectedBytes = 0;
     if (url === '/v1/hello') {
       if (clHeader !== '0') {
         return this._failClosed(req, res, 400);
@@ -219,26 +238,41 @@ class LocalApiServer {
       if (clHeader === undefined || !/^[0-9]+$/.test(clHeader)) {
         return this._failClosed(req, res, 400);
       }
-      const expectedBytes = parseInt(clHeader, 10);
-      const ct = (req.headers['content-type'] || '').toLowerCase();
-      if (!ct.startsWith('application/json')) {
+      expectedBytes = parseInt(clHeader, 10);
+      if (expectedBytes > MAX_BODY_BYTES) {
+        return this._failClosed(req, res, 413);
+      }
+      const ct = (req.headers['content-type'] || '').trim().toLowerCase();
+      if (ct !== 'application/json') {
         return this._failClosed(req, res, 415);
       }
     }
 
-    // Read and buffer body
+    // Read and buffer body with running byte count bound (R1-F3)
+    let receivedBytes = 0;
     const chunks = [];
+    let aborted = false;
+
     req.on('data', (chunk) => {
+      if (aborted) return;
+      receivedBytes += chunk.length;
+      if (receivedBytes > MAX_BODY_BYTES) {
+        aborted = true;
+        try { req.pause(); } catch {}
+        this._failClosed(req, res, 413, true);
+        return;
+      }
       chunks.push(chunk);
     });
 
     req.on('end', () => {
+      if (aborted) return;
       const rawBody = Buffer.concat(chunks);
 
       if (url === '/v1/hello' && rawBody.length !== 0) {
         return this._failClosed(req, res, 400);
       }
-      if (url !== '/v1/hello' && rawBody.length !== parseInt(clHeader, 10)) {
+      if (url !== '/v1/hello' && rawBody.length !== expectedBytes) {
         return this._failClosed(req, res, 400);
       }
 
@@ -249,7 +283,7 @@ class LocalApiServer {
           path: url,
           nonce,
           timestamp: reqTs,
-          sessionId: secHeaders.sessionId,
+          sessionId,
           signature,
           rawBody,
         });
@@ -339,13 +373,7 @@ class LocalApiServer {
       return this._failClosed(req, res, 403);
     }
 
-    // 3. Replay key check: (session_id, nonce)
-    const replayCheck = this.replayCache.checkAndRecordSessionNonce(sessionId, nonce);
-    if (!replayCheck.allowed) {
-      return this._failClosed(req, res, 401);
-    }
-
-    // 4. Verify HMAC signature
+    // 3. Body hash & Canonical request
     const bodySha = computeSha256(rawBody);
     const canonicalReq = buildCanonicalSessionRequest({
       method: 'POST',
@@ -356,8 +384,15 @@ class LocalApiServer {
       bodySha256: bodySha,
     });
 
+    // 4. Verify HMAC signature (MUST happen BEFORE recording replay nonce - R1-F5)
     const validSig = verifyHmac(this.secret, canonicalReq, signature);
     if (!validSig) {
+      return this._failClosed(req, res, 401, false);
+    }
+
+    // 5. Replay key check: (session_id, nonce) ONLY AFTER HMAC succeeds
+    const replayCheck = this.replayCache.checkAndRecordSessionNonce(sessionId, nonce);
+    if (!replayCheck.allowed) {
       return this._failClosed(req, res, 401);
     }
 

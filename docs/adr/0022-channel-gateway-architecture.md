@@ -27,6 +27,17 @@
 - **D1（單一 Channel Gateway 取代雙橋接）**：建立單一 Channel Gateway 服務，核心（Gateway Core）為多通道（multi-channel）抽象，Telegram 與 LINE 均為其下之通道適配器（Channel Adapters）。目標存放路徑為 `runtime/channel-gateway/`，原先暫訂之 `runtime/telegram-bot/` 正式廢棄。
 - **D2（維持 Agent-in-the-Loop 與官方合規原則）**：堅持人類或排程喚醒之 Agent-in-the-Loop 模式。不採用 CDP 注入（CDP injection），亦不採用 agy CLI wrapper 或 ACP bridge 驅動使用者個人 Antigravity 帳號。決策理由：Google Antigravity 官方條款明文禁止第三方軟體、工具或服務存取該服務，否則可能構成帳號停權或服務終止之事由（本條款以官方條款規範為依據，不宣稱已證實之實際停權案例）。
 - **D3（單一活躍帳號原則）**：各平台允許登錄多個 Bot 帳號，但同一時間每個平台僅允許 exactly one 活躍帳號（Active Account）。Gateway 為該活躍帳號之唯一接收端（sole receiver）。
+  - **D-TG11-3 啟動初始活躍帳號補充規範（Startup Initial Active Account Selection Supplement, 2026-09-25）**：
+    - **決策者**：USER 正式授權裁決。
+    - **核心規則：恰好一個啟用帳號（EXACTLY ONE ENABLED ACCOUNT）**。
+    - **啟動檢驗流程**：
+      1. 讀取 `config.accounts.telegram` 清單。
+      2. 篩選所有 `enabled === true` 之 Telegram 帳號。
+      3. **若且唯若啟用帳號數量恰好為 1**：建構通道網域為 `telegram` 之 `AccountRegistry`，透過既有 `AccountRegistry.register()` API 登錄所有帳號後設資料，並呼叫 `AccountRegistry.setActive(soleEnabledAccount.id)` 將該唯一啟用之帳號設為初始活躍帳號，繼續 Gateway 啟動程序。
+      4. **若啟用帳號數量為 0 或 >= 2**：啟動程序必須立即 **Fail-Closed 終止**。
+    - **外部診斷代碼**：標準錯誤輸出（stderr）嚴格限制僅輸出穩定代碼 `GATEWAY_CONFIG_ERROR`。
+    - **禁止事項**：嚴禁依陣列順序選取第一個帳號；嚴禁隨機挑選；嚴禁在無活躍帳號之狀態下靜默啟動；嚴禁在帳號數量異常條件確立後啟動 `TelegramInboundAdapter`、綁定 Local API 連線埠、讀取憑證或存取金鑰。
+    - **架構邊界不變量**：本補充決策不變更 Local Config 綱要（Schema），不新增 Repository 儲存庫方法。未來若支援多個同時啟用帳號或新增明確的 `activeAccountId` 欄位，須由使用者另行決策，非屬 TG-MVP-11 範疇。
 - **D4（作業系統託管生命週期）**：Gateway 由作業系統啟動管理（如 Windows Startup / 排程服務 / 系統服務託管），Agent 不得也不再負責啟動或重啟基礎設施進程。ADR-0009 記載之 Task / Job Object 啟動繞道不再作為新架構之現行啟動規則（ADR-0009 歷史原文予以保留）。
 
 ### 2. 控制權接管與狀態管理 (Channel Control & Takeover, D5–D10)

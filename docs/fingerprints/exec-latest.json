@@ -1,5 +1,5 @@
 {
-  "base_head": "c106638",
+  "base_head": "0901e06",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -552,16 +552,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 224,
-      "sha256": "1ea0a9e612a948264a155a7e97c9af110d6252f093e0e152b31c58e347985618"
+      "lines": 225,
+      "sha256": "4cbbdc97bc7c7f756848396da64b8a0af8e5457701b8c2f37c65398c69fd9efd"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 195,
-      "sha256": "91d2e7fad224507977e0315683e6c7c79f671fa74ddd308e4861b39183d1168e"
+      "lines": 196,
+      "sha256": "98f514ed32ca99b4c6bebb3f5dc323f69b1f07abd50d7e1e0c5c7c92c9a488cd"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -601,8 +601,8 @@
         "## G. 舊 repo 未盤點區塊（2026-09-02 新發現）",
         "## 封存區"
       ],
-      "lines": 340,
-      "sha256": "68d291546de2dc45aa3e0e82fe8e86f5d9360055747713d6f7d7e192ecea2424"
+      "lines": 341,
+      "sha256": "e4a9ad1eb4e39b52ba970309c2c53a668c6e27580de8b793db6c43f96a46cace"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -903,8 +903,8 @@
         "## TG-MVP-11 架構演進與邊界收斂 (TG-MVP-11 Evolution & Boundaries)",
         "## Consequences"
       ],
-      "lines": 183,
-      "sha256": "328d682b104f137049009b98ee5f8236318de30d15b404cc7e42541a50e2694b"
+      "lines": 194,
+      "sha256": "8763d69bcc4313dec9c2cd109dbe67d754de61398947cef3f8d58a9e20b63c24"
     },
     "docs/adr/0023-channel-gateway-state-store-sqlite.md": {
       "fences": 0,
@@ -1069,8 +1069,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 5187,
-      "sha256": "ae9ef9ad09c7d550dad2af443bb20a009129f91fe83f5f989473991fd78c24ed"
+      "lines": 5218,
+      "sha256": "f08a1ef020d98602cc3013fb6d10cec546e2249287b11f91c1e76fd3af662bc4"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1498,7 +1498,7 @@
       "sha256": "35bf7dbfa3c7d291b550c3c97a6ae398a22b1dc3624c1d2fc1e4db6963d6e115"
     }
   },
-  "generated_at": "2026-09-25T12:24:59Z",
+  "generated_at": "2026-09-25T13:36:55Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

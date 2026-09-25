@@ -565,3 +565,251 @@ test('client: order independence and provider secret isolation across sequential
   assert.equal(FAKE_SECRET_SOURCE.length, 32);
   assert.ok(!FAKE_SECRET_SOURCE.every((b) => b === 0), 'FAKE_SECRET_SOURCE remains immutable');
 });
+
+test('client: default provider path references concrete WindowsCredentialManagerSecretProvider contract (R1-F2)', () => {
+  const { WindowsCredentialManagerSecretProvider: ExportedProvider } = require('../bin/local-api-client');
+  const { WindowsCredentialManagerSecretProvider: ActualProvider } = require('../core/windows-credential-manager-provider');
+  const { SecretProvider } = require('../core/secret-provider');
+
+  assert.strictEqual(ExportedProvider, ActualProvider);
+  assert.strictEqual(ActualProvider.prototype instanceof SecretProvider, true);
+
+  // Default provider instantiated when deps.secretProvider is not supplied
+  let instantiated = false;
+  class SpyProvider extends SecretProvider {
+    constructor() {
+      super();
+      instantiated = true;
+    }
+    async getSecret() {
+      return Buffer.from(FAKE_SECRET_SOURCE);
+    }
+  }
+
+  const stdout = createMockStream();
+  const stderr = createMockStream();
+  runClient('status', '{}', {
+    SecretProviderClass: SpyProvider,
+    stdout,
+    stderr,
+    transport: async () => ({ statusCode: 400 }),
+  });
+  assert.strictEqual(instantiated, true);
+});
+
+test('client: validates HELLO and SESSION response protocol headers and rejects invalid formats with exit 3 (R1-F6)', async () => {
+  const secretProvider = createFakeSecretProvider();
+  const sharedSocket = { id: 'sock-proto' };
+  const validSessionId = '0123456789abcdef0123456789abcdef';
+  const now = 1000;
+
+  // 1. HELLO response with invalid version
+  {
+    const stdout = createMockStream();
+    const stderr = createMockStream();
+    const code = await runClient('status', '{}', {
+      secretProvider,
+      stdout,
+      stderr,
+      nowSec: () => now,
+      transport: async () => ({
+        statusCode: 200,
+        rawHeaders: [
+          'X-HHAI-Version', '2',
+          'X-HHAI-Timestamp', String(now),
+          'X-HHAI-Session-Id', validSessionId,
+          'X-HHAI-Signature', 'aa'.repeat(32),
+        ],
+        body: Buffer.alloc(0),
+        socket: sharedSocket,
+      }),
+    });
+    assert.strictEqual(code, 3);
+    assert.strictEqual(stdout.content, '');
+    assert.match(stderr.content, /INVALID_HELLO_VERSION/);
+  }
+
+  // 2. HELLO response with invalid timestamp syntax
+  {
+    const stdout = createMockStream();
+    const stderr = createMockStream();
+    const code = await runClient('status', '{}', {
+      secretProvider,
+      stdout,
+      stderr,
+      nowSec: () => now,
+      transport: async () => ({
+        statusCode: 200,
+        rawHeaders: [
+          'X-HHAI-Version', '1',
+          'X-HHAI-Timestamp', 'not-a-number',
+          'X-HHAI-Session-Id', validSessionId,
+          'X-HHAI-Signature', 'aa'.repeat(32),
+        ],
+        body: Buffer.alloc(0),
+        socket: sharedSocket,
+      }),
+    });
+    assert.strictEqual(code, 3);
+    assert.strictEqual(stdout.content, '');
+    assert.match(stderr.content, /INVALID_HELLO_TIMESTAMP/);
+  }
+
+  // 3. HELLO response with invalid session ID format (not 32 hex)
+  {
+    const stdout = createMockStream();
+    const stderr = createMockStream();
+    const code = await runClient('status', '{}', {
+      secretProvider,
+      stdout,
+      stderr,
+      nowSec: () => now,
+      transport: async () => ({
+        statusCode: 200,
+        rawHeaders: [
+          'X-HHAI-Version', '1',
+          'X-HHAI-Timestamp', String(now),
+          'X-HHAI-Session-Id', 'not-valid-session-id',
+          'X-HHAI-Signature', 'aa'.repeat(32),
+        ],
+        body: Buffer.alloc(0),
+        socket: sharedSocket,
+      }),
+    });
+    assert.strictEqual(code, 3);
+    assert.strictEqual(stdout.content, '');
+    assert.match(stderr.content, /INVALID_SESSION_ID/);
+  }
+
+  // 4. HELLO response with uppercase signature (not 64 lowercase hex)
+  {
+    const stdout = createMockStream();
+    const stderr = createMockStream();
+    const code = await runClient('status', '{}', {
+      secretProvider,
+      stdout,
+      stderr,
+      nowSec: () => now,
+      transport: async () => ({
+        statusCode: 200,
+        rawHeaders: [
+          'X-HHAI-Version', '1',
+          'X-HHAI-Timestamp', String(now),
+          'X-HHAI-Session-Id', validSessionId,
+          'X-HHAI-Signature', 'AA'.repeat(32),
+        ],
+        body: Buffer.alloc(0),
+        socket: sharedSocket,
+      }),
+    });
+    assert.strictEqual(code, 3);
+    assert.strictEqual(stdout.content, '');
+    assert.match(stderr.content, /INVALID_HELLO_SIGNATURE/);
+  }
+
+  // 5. SESSION response with invalid version
+  {
+    const serverSecret = Buffer.from(FAKE_SECRET_SOURCE);
+    const stdout = createMockStream();
+    const stderr = createMockStream();
+    const code = await runClient('status', '{}', {
+      secretProvider,
+      stdout,
+      stderr,
+      nowSec: () => now,
+      transport: async (options) => {
+        if (options.path === '/v1/hello') {
+          const canonHello = buildCanonicalResponse({
+            mode: 'HELLO',
+            statusCode: 200,
+            requestMethod: 'POST',
+            requestPath: '/v1/hello',
+            requestNonce: options.headers['X-HHAI-Nonce'],
+            responseTimestamp: now,
+            sessionId: validSessionId,
+            bodySha256: computeSha256(Buffer.alloc(0)),
+          });
+          return {
+            statusCode: 200,
+            rawHeaders: [
+              'X-HHAI-Version', '1',
+              'X-HHAI-Timestamp', String(now),
+              'X-HHAI-Session-Id', validSessionId,
+              'X-HHAI-Signature', computeHmac(serverSecret, canonHello),
+            ],
+            body: Buffer.alloc(0),
+            socket: sharedSocket,
+          };
+        } else {
+          return {
+            statusCode: 200,
+            rawHeaders: [
+              'X-HHAI-Version', '2',
+              'X-HHAI-Timestamp', String(now),
+              'X-HHAI-Session-Id', validSessionId,
+              'X-HHAI-Signature', 'aa'.repeat(32),
+            ],
+            body: Buffer.from('{"ok":true}'),
+            socket: sharedSocket,
+          };
+        }
+      },
+    });
+    assert.strictEqual(code, 3);
+    assert.strictEqual(stdout.content, '');
+    assert.match(stderr.content, /INVALID_RESPONSE_VERSION/);
+  }
+
+  // 6. SESSION response with uppercase signature
+  {
+    const serverSecret = Buffer.from(FAKE_SECRET_SOURCE);
+    const stdout = createMockStream();
+    const stderr = createMockStream();
+    const code = await runClient('status', '{}', {
+      secretProvider,
+      stdout,
+      stderr,
+      nowSec: () => now,
+      transport: async (options) => {
+        if (options.path === '/v1/hello') {
+          const canonHello = buildCanonicalResponse({
+            mode: 'HELLO',
+            statusCode: 200,
+            requestMethod: 'POST',
+            requestPath: '/v1/hello',
+            requestNonce: options.headers['X-HHAI-Nonce'],
+            responseTimestamp: now,
+            sessionId: validSessionId,
+            bodySha256: computeSha256(Buffer.alloc(0)),
+          });
+          return {
+            statusCode: 200,
+            rawHeaders: [
+              'X-HHAI-Version', '1',
+              'X-HHAI-Timestamp', String(now),
+              'X-HHAI-Session-Id', validSessionId,
+              'X-HHAI-Signature', computeHmac(serverSecret, canonHello),
+            ],
+            body: Buffer.alloc(0),
+            socket: sharedSocket,
+          };
+        } else {
+          return {
+            statusCode: 200,
+            rawHeaders: [
+              'X-HHAI-Version', '1',
+              'X-HHAI-Timestamp', String(now),
+              'X-HHAI-Session-Id', validSessionId,
+              'X-HHAI-Signature', 'AA'.repeat(32),
+            ],
+            body: Buffer.from('{"ok":true}'),
+            socket: sharedSocket,
+          };
+        }
+      },
+    });
+    assert.strictEqual(code, 3);
+    assert.strictEqual(stdout.content, '');
+    assert.match(stderr.content, /INVALID_RESPONSE_SIGNATURE/);
+  }
+});

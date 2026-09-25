@@ -10,7 +10,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { EventEmitter } = require('node:events');
 const { GatewayRuntimeOwner, OWNER_STATUS } = require('../core/gateway-runtime-owner');
-const { runGateway } = require('../bin/gateway');
+const { runGateway, bootstrapGateway } = require('../bin/gateway');
 
 const FAKE_SECRET_SOURCE = Buffer.from(
   '00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff',
@@ -369,4 +369,206 @@ test('runGateway bootstrap function runs GatewayRuntimeOwner cleanly', async () 
   const result = await runGateway({ owner: mockOwner });
   assert.strictEqual(started, true);
   assert.strictEqual(result, mockOwner);
+});
+
+function createMockStderr() {
+  let content = '';
+  return {
+    write(chunk) {
+      content += chunk;
+    },
+    get content() {
+      return content;
+    },
+  };
+}
+
+test('bootstrapGateway - CASE 0: zero enabled Telegram accounts fails closed with GATEWAY_CONFIG_ERROR (D-TG11-3)', async () => {
+  const stderr = createMockStderr();
+  let ownerStarted = false;
+
+  const mockConfig = {
+    dataLocations: { stateRoot: 'C:\\fake\\state' },
+    gateway: { localPort: 3003 },
+    accounts: {
+      telegram: [
+        { id: 'acc1', label: 'Disabled Account', enabled: false },
+      ],
+    },
+  };
+
+  const result = await bootstrapGateway({
+    configPath: 'C:\\fake\\config.json',
+    loadConfig: () => mockConfig,
+    secretProvider: new FakeSecretProvider(),
+    owner: {
+      start: async () => { ownerStarted = true; },
+    },
+    stderr,
+    exit: () => {},
+  });
+
+  assert.strictEqual(result.ok, false);
+  assert.strictEqual(result.code, 'GATEWAY_CONFIG_ERROR');
+  assert.strictEqual(stderr.content, 'GATEWAY_CONFIG_ERROR\n');
+  assert.strictEqual(ownerStarted, false, 'Runtime owner start MUST NOT be reached');
+});
+
+test('bootstrapGateway - CASE 1: exactly one enabled Telegram account activates sole account and starts owner (D-TG11-3)', async () => {
+  const stderr = createMockStderr();
+  let ownerStarted = false;
+  let receivedDeps = null;
+  let loaderOptionsPassed = null;
+
+  const mockConfig = {
+    dataLocations: { stateRoot: 'C:\\fake\\state' },
+    gateway: { localPort: 3003 },
+    accounts: {
+      telegram: [
+        { id: 'acc-disabled', label: 'Disabled', enabled: false },
+        { id: 'acc-active', label: 'Sole Enabled', enabled: true },
+      ],
+    },
+  };
+
+  const fakeSecretProvider = new FakeSecretProvider();
+
+  class MockOwner {
+    constructor(deps) {
+      receivedDeps = deps;
+    }
+    async start() {
+      ownerStarted = true;
+    }
+  }
+
+  const result = await bootstrapGateway({
+    configPath: 'C:\\fake\\config.json',
+    loadConfig: (_path, opts) => {
+      loaderOptionsPassed = opts;
+      return mockConfig;
+    },
+    secretProvider: fakeSecretProvider,
+    RuntimeOwnerClass: MockOwner,
+    stderr,
+    exit: () => {},
+  });
+
+  assert.strictEqual(result.ok, true);
+  assert.strictEqual(ownerStarted, true);
+  assert.strictEqual(stderr.content, '');
+
+  // Loader contract: repoRoot supplied & validateStartupLocations requested
+  assert.ok(loaderOptionsPassed);
+  assert.strictEqual(typeof loaderOptionsPassed.repoRoot, 'string');
+  assert.strictEqual(loaderOptionsPassed.validateStartupLocations, true);
+
+  // AccountRegistry: channel = telegram, sole enabled account active
+  const registry = result.accountRegistry;
+  assert.strictEqual(registry.channel, 'telegram');
+  const active = registry.getActive();
+  assert.ok(active);
+  assert.strictEqual(active.id, 'acc-active');
+
+  // Owner received correct dependencies
+  assert.strictEqual(receivedDeps.accountRegistry, registry);
+  assert.strictEqual(receivedDeps.secretProvider, fakeSecretProvider);
+  assert.strictEqual(receivedDeps.stateRoot, 'C:\\fake\\state');
+  assert.strictEqual(receivedDeps.config.gateway.localPort, 3003);
+});
+
+test('bootstrapGateway - CASE 2: two enabled Telegram accounts fails closed with GATEWAY_CONFIG_ERROR without arbitrary selection (D-TG11-3)', async () => {
+  const stderr = createMockStderr();
+  let ownerStarted = false;
+
+  const mockConfig = {
+    dataLocations: { stateRoot: 'C:\\fake\\state' },
+    gateway: { localPort: 3003 },
+    accounts: {
+      telegram: [
+        { id: 'acc1', label: 'First Account', enabled: true },
+        { id: 'acc2', label: 'Second Account', enabled: true },
+      ],
+    },
+  };
+
+  const result = await bootstrapGateway({
+    configPath: 'C:\\fake\\config.json',
+    loadConfig: () => mockConfig,
+    secretProvider: new FakeSecretProvider(),
+    owner: {
+      start: async () => { ownerStarted = true; },
+    },
+    stderr,
+    exit: () => {},
+  });
+
+  assert.strictEqual(result.ok, false);
+  assert.strictEqual(result.code, 'GATEWAY_CONFIG_ERROR');
+  assert.strictEqual(stderr.content, 'GATEWAY_CONFIG_ERROR\n');
+  assert.strictEqual(ownerStarted, false, 'Runtime owner start MUST NOT be reached');
+});
+
+test('bootstrapGateway - post-config runtime startup failure emits strictly bounded GATEWAY_STARTUP_ERROR (R1-F8)', async () => {
+  const stderr = createMockStderr();
+
+  const mockConfig = {
+    dataLocations: { stateRoot: 'C:\\fake\\state' },
+    gateway: { localPort: 3003 },
+    accounts: {
+      telegram: [
+        { id: 'acc-single', label: 'Single', enabled: true },
+      ],
+    },
+  };
+
+  const result = await bootstrapGateway({
+    configPath: 'C:\\fake\\config.json',
+    loadConfig: () => mockConfig,
+    secretProvider: new FakeSecretProvider(),
+    owner: {
+      start: async () => {
+        throw new Error('Secret internal connection string / port in use error: raw leak');
+      },
+    },
+    stderr,
+    exit: () => {},
+  });
+
+  assert.strictEqual(result.ok, false);
+  assert.strictEqual(result.code, 'GATEWAY_STARTUP_ERROR');
+  assert.strictEqual(stderr.content, 'GATEWAY_STARTUP_ERROR\n');
+  assert.strictEqual(stderr.content.includes('raw leak'), false, 'Raw error message MUST NOT be leaked');
+});
+
+test('bootstrapGateway - default SecretProvider wires concrete WindowsCredentialManagerSecretProvider (R1-F1-A)', async () => {
+  const { WindowsCredentialManagerSecretProvider } = require('../core/windows-credential-manager-provider');
+
+  const mockConfig = {
+    dataLocations: { stateRoot: 'C:\\fake\\state' },
+    gateway: { localPort: 3003 },
+    accounts: {
+      telegram: [
+        { id: 'acc1', label: 'Single', enabled: true },
+      ],
+    },
+  };
+
+  let capturedDeps = null;
+  class MockOwner {
+    constructor(deps) {
+      capturedDeps = deps;
+    }
+    async start() {}
+  }
+
+  const result = await bootstrapGateway({
+    configPath: 'C:\\fake\\config.json',
+    loadConfig: () => mockConfig,
+    RuntimeOwnerClass: MockOwner,
+    exit: () => {},
+  });
+
+  assert.strictEqual(result.ok, true);
+  assert.ok(capturedDeps.secretProvider instanceof WindowsCredentialManagerSecretProvider);
 });

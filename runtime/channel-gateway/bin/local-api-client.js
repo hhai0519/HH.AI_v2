@@ -27,8 +27,12 @@ const {
   computeHmac,
   verifyHmac,
   parseRawSecurityHeaders,
+  NONCE_REGEX,
+  SIGNATURE_REGEX,
+  SESSION_ID_REGEX,
 } = require('../core/local-api-codec');
 const { SecretRef } = require('../core/secret-provider');
+const { WindowsCredentialManagerSecretProvider } = require('../core/windows-credential-manager-provider');
 
 const VALID_COMMANDS = new Set(['status', 'takeover', 'poll', 'heartbeat', 'reply']);
 
@@ -162,8 +166,11 @@ async function runClient(command, stdinData, deps = {}) {
   try {
     let provider = deps.secretProvider;
     if (!provider) {
-      const { createDefaultSecretProvider } = require('../core/secret-provider');
-      provider = createDefaultSecretProvider();
+      if (deps.SecretProviderClass) {
+        provider = new deps.SecretProviderClass();
+      } else {
+        provider = new WindowsCredentialManagerSecretProvider();
+      }
     }
     const ref = SecretRef.localApiHmac();
     secretBuf = await provider.getSecret(ref);
@@ -226,14 +233,29 @@ async function runClient(command, stdinData, deps = {}) {
     }
 
     const helloSec = helloRawSec.headers;
-    const helloRespTs = parseInt(helloSec.timestamp || '0', 10);
+    const helloRespVer = helloSec.version;
+    const helloRespTsStr = helloSec.timestamp;
     const sessionId = helloSec.sessionId;
     const helloRespSig = helloSec.signature;
 
-    if (!sessionId || !/^[0-9a-f]{32}$/.test(sessionId)) {
+    if (helloRespVer !== '1') {
+      stderr.write('INVALID_HELLO_VERSION\n');
+      return 3;
+    }
+    if (!helloRespTsStr || !/^[0-9]+$/.test(helloRespTsStr)) {
+      stderr.write('INVALID_HELLO_TIMESTAMP\n');
+      return 3;
+    }
+    if (!sessionId || !SESSION_ID_REGEX.test(sessionId)) {
       stderr.write('INVALID_SESSION_ID\n');
       return 3;
     }
+    if (!helloRespSig || !SIGNATURE_REGEX.test(helloRespSig)) {
+      stderr.write('INVALID_HELLO_SIGNATURE\n');
+      return 3;
+    }
+
+    const helloRespTs = parseInt(helloRespTsStr, 10);
     if (Math.abs(nowSec() - helloRespTs) > FRESHNESS_WINDOW_SEC) {
       stderr.write('STALE_HELLO_RESPONSE\n');
       return 3;
@@ -315,14 +337,40 @@ async function runClient(command, stdinData, deps = {}) {
     }
 
     const sessionSec = sessionRawSec.headers;
-    const sessionRespTs = parseInt(sessionSec.timestamp || '0', 10);
+    const sessionRespVer = sessionSec.version;
+    const sessionRespTsStr = sessionSec.timestamp;
     const respSessionId = sessionSec.sessionId;
     const respSig = sessionSec.signature;
+
+    // R1-F6: X-HHAI-Version exactly '1'
+    if (sessionRespVer !== '1') {
+      stderr.write('INVALID_RESPONSE_VERSION\n');
+      return 3;
+    }
+
+    // R1-F6: timestamp decimal syntax valid
+    if (!sessionRespTsStr || !/^[0-9]+$/.test(sessionRespTsStr)) {
+      stderr.write('INVALID_RESPONSE_TIMESTAMP\n');
+      return 3;
+    }
+
+    // R1-F6: session ID exactly 32 lowercase hex
+    if (!respSessionId || !SESSION_ID_REGEX.test(respSessionId)) {
+      stderr.write('INVALID_RESPONSE_SESSION_ID\n');
+      return 3;
+    }
+
+    // R1-F6: signature exactly 64 lowercase hex
+    if (!respSig || !SIGNATURE_REGEX.test(respSig)) {
+      stderr.write('INVALID_RESPONSE_SIGNATURE\n');
+      return 3;
+    }
 
     if (respSessionId !== sessionId) {
       stderr.write('SESSION_CORRELATION_MISMATCH\n');
       return 3;
     }
+    const sessionRespTs = parseInt(sessionRespTsStr, 10);
     if (Math.abs(nowSec() - sessionRespTs) > FRESHNESS_WINDOW_SEC) {
       stderr.write('STALE_RESPONSE_TIMESTAMP\n');
       return 3;
@@ -407,4 +455,5 @@ if (require.main === module) {
 module.exports = {
   runClient,
   readStream,
+  WindowsCredentialManagerSecretProvider,
 };

@@ -5185,3 +5185,34 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - 診斷期間直接調用 `node -e` 繞過 bounded runner 處置留痕：確認分流至 EXISTING B-107，不另立新任務。
   - Antigravity IDE Verification Required 第二次再發留痕：分流至 EXISTING B-107，不另立 B-110；外部 IDE/帳號中斷 CONFIRMED，repo root cause NOT ESTABLISHED，repo 突變 NONE，secret 暴露 NONE，cross-session NONE，bounded-runner bypass after recovery NONE；B-107 保持 OPEN / RESIDUAL / NON-BLOCKING FOR CURRENT E-03 RETURN。
   - TG-MVP-11 候選提交標記為 IN PROGRESS / IMPLEMENTATION CANDIDATE / AWAITING EXTERNAL MACRO AUDIT，執行者嚴禁自審宣稱結案。
+
+147. **TG-MVP-11 R1 生產引導與 Local API 安全有界修復（TG-MVP-11 R1 Production Bootstrap & Local API Security Bounded Repair）**（2026-09-25）
+- **外部宏觀審計結論（External Macro Verdict on Candidate 0901e06b8d3a2a68a3ae4d2bc12309859943e199）**：
+  - MACHINE / SCOPE / CI = PASS（Actions Run 36135220532 completed / success，jobs: verify = success, gateway-windows = success）。
+  - IMPLEMENTATION = HOLD, SECURITY = HOLD, PROMOTION ELIGIBILITY = HOLD。
+  - ACCEPT STATUS = BOUNDED REPAIR R1 REQUIRED, ROLLBACK = NO, E24 REDISCOVERY = NO, SCOPE EXPANSION = NO, MAIN ADVANCEMENT = FORBIDDEN。
+  - 成立八項重大發現（F1–F8）：F1 生產 gateway.js 引導、F2 local-api-client 預設機密提供者、F3 緩衝前請求主體限制、F4 嚴格協定文法、F5 session nonce HMAC 後記帳、F6 客戶端回應協定驗證、F7 Content-Type 嚴格驗證、F8 有界啟動 stderr 診斷。
+- **使用者正式綁定裁決 D-TG11-3（USER Formal Binding Decision D-TG11-3）**：
+  - 決策日期：2026-09-25。
+  - 初始活躍 Telegram 帳號規則：EXACTLY ONE ENABLED ACCOUNT。
+  - 規則細節：在 Gateway 啟動時讀取 `config.accounts.telegram`，判定 `enabled === true` 之帳號數量。恰好 1 個啟用帳號時，以 `telegram` 領域建構 `AccountRegistry`，透過既有 `AccountRegistry.register()` 註冊帳號中繼資料，並以該唯一啟用帳號 ID 調用 `setActive()`；0 個或 >= 2 個啟用帳號時，啟動必須 fail closed，並於 stderr 輸出穩定代碼 `GATEWAY_CONFIG_ERROR`。
+  - 嚴格禁止：禁止依陣列順序選取第一個帳號、禁止隨機選取、無活躍帳號禁止靜默繼續、無效狀態下禁止啟動 TelegramInboundAdapter、禁止綁定 Local API port、禁止讀取憑證或存取機密。
+  - 架構不變量：無 Local Config 綱要變更、無新增倉儲方法；未來多帳號同時啟用或未來 `activeAccountId` 欄位留待未來使用者裁決，非本批範圍。
+  - 已作為補充（SUPPLEMENT）同步至 `docs/adr/0022-channel-gateway-architecture.md` 與 `runtime/channel-gateway/AGENTS.md`，完整保留歷史 D3。
+- **R1 修復落地與驗證（R1 Implementation & Verification）**：
+  - F1：`bin/gateway.js` 引入具體 `WindowsCredentialManagerSecretProvider`，推導確定性 `repoRoot` 並請求啟動路徑驗證，對齊 canonical `config.accounts.telegram`，以 `register()` 與 `setActive()` 落實 D-TG11-3，提供確定性注入接縫；`tests/gateway-runtime-owner.test.js` 涵蓋 Case 0（0 enabled -> fail closed）、Case 1（1 enabled -> active）、Case 2（2 enabled -> fail closed）。
+  - F2：`bin/local-api-client.js` 以 `WindowsCredentialManagerSecretProvider` 作為預設提供者，落實消費者獨立 Buffer 與 finally 歸零契約；單元測試驗證預設類別契約。
+  - F3：`core/local-api-server.js` 於緩衝前檢查 `Content-Length > 65536` 立即 413 拒絕；串流接收中維護即時位元組計數，超過 65536 立即 413 拒絕並停止累加。
+  - F4：`core/local-api-codec.js` 與 `core/local-api-server.js` 實作嚴格正則驗證：nonce (`^[0-9a-f]{32}$`)、signature (`^[0-9a-f]{64}$`)、session ID (`^[0-9a-f]{32}$`)；拒絕短值、非十六進位、大寫十六進位；timingSafeEqual 保持。
+  - F5：`core/local-api-server.js` 重構 SESSION 順序：HMAC 驗證未通過前絕不記錄 session nonce 或消耗配額，無效 HMAC 不污染後續相同 nonce 之合法請求。
+  - F6：`bin/local-api-client.js` 回應驗證：強制檢驗 `X-HHAI-Version === '1'`、時間戳記十進位、32-hex session ID、64-hex signature，失敗以 exit code 3 退出且零未驗證輸出。
+  - F7：`core/local-api-server.js` 嚴格 case-insensitive `application/json` 比對，拒絕 `application/jsonevil`（415）。
+  - F8：`bin/gateway.js` 啟動失敗 stderr 僅輸出穩定代碼 `GATEWAY_CONFIG_ERROR` 或 `GATEWAY_STARTUP_ERROR`，絕不反射 raw `Error.message` 或 stack。
+- **R1 反事實突變矩陣（R1 Counterfactual Mutation Matrix）**：
+  - R1-M1 至 R1-M9 全數經 `.git/tg-mvp-11-bounded-runner.py` 執行：9/9 valid semantic RED，false-red = 0，TEST_HANG = 0，OWNED_PROCESS_REMAINING = 0。突變後還原 SHA-256 100% 吻合，基線 PASS。突變結果寫入 `.git/tg-mvp-11-r1-mutation-results.json`。
+- **後續路由與候選狀態（Next Work Routing & Candidate State）**：
+  - accepted checkpoint 保持 `c106638e5bcea5de1ab1f690ded4dff1a27484e4`。
+  - NEXT_WORK 保持 E-03，NEXT_SLICE 保持 TG-MVP-11。
+  - B-107 保持 OPEN / RESIDUAL / NON-BLOCKING FOR CURRENT E-03 RETURN。
+  - TG-MVP-11 保持 IN PROGRESS / R1 BOUNDED REPAIR AWAITING EXTERNAL MACRO RE-AUDIT。
+  - main_advancement = FORBIDDEN。
