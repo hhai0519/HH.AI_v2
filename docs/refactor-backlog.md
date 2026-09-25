@@ -5216,3 +5216,23 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - B-107 保持 OPEN / RESIDUAL / NON-BLOCKING FOR CURRENT E-03 RETURN。
   - TG-MVP-11 保持 IN PROGRESS / R1 BOUNDED REPAIR AWAITING EXTERNAL MACRO RE-AUDIT。
   - main_advancement = FORBIDDEN。
+148. **TG-MVP-11 R2 跨平台引導驗證與流程留痕有界修復（TG-MVP-11 R2 Cross-Platform Bootstrap Verification & Process Hygiene Bounded Repair）**（2026-09-25）
+- **外部宏觀審計結論（External Macro Re-Audit Verdict on Candidate b5f3b2869d41a015916b7a4e59633949a80fdab6）**：
+  - MACRO RE-AUDIT = HOLD。
+  - R1 IMPLEMENTATION / SECURITY REPAIR = PROVISIONALLY PASS（F1–F8 與 D-TG11-3 修復落地、R1-M1..M9 突變測試 9/9 valid semantic RED 全數通過）。
+  - R1 EXACT-SHA CI = HOLD（Actions Run 36142580126 中 gateway-windows = completed / success，但 verify job 於 ubuntu-latest = completed / failure）。
+  - ROOT CAUSE = CROSS_PLATFORM_BOOTSTRAP_TEST_DESIGN_DEFECT：R1 引導測試 `bootstrapGateway - default SecretProvider wires concrete WindowsCredentialManagerSecretProvider` 未注入 SecretProvider 直接調用 `bootstrapGateway()`，致使生產預設建構子 `new WindowsCredentialManagerSecretProvider()` 在 ubuntu-latest 執行。既有提供者在非 win32 環境正確且依設計 Fail-Closed（UNSUPPORTED_PLATFORM）；生產 Windows 提供者合約保持不變且絕不弱化，修復目標為將測試設計改為跨平台中立驗證。
+- **流程紀律發現處置留痕（Process Hygiene Recurrence Routed to EXISTING B-107）**：
+  - R1 執行期間兩次 direct `node -e` 診斷命令繞過 bounded runner 處置留痕：確認分流至 EXISTING B-107（PROCESS-HYGIENE RECURRENCE）；無新待辦 ID、無殘留進程、無機密外洩、無版本庫未授權異動。
+  - B-107 保持 OPEN / RESIDUAL / NON-BLOCKING FOR CURRENT E-03 RETURN。
+- **R2 有界修復落地與驗證（R2 Implementation & Verification）**：
+  - R2-F1：於 `runtime/channel-gateway/bin/gateway.js` 實作純類別解析器 `resolveSecretProviderClass(options = {})`，生產引導與測試一致調用該解析器；匯出 `resolveSecretProviderClass` 供單元測試進行靜態類別識別比對（strict class identity），不實例化類別、不存取檔案系統或憑證。
+  - 測試重構（`runtime/channel-gateway/tests/gateway-runtime-owner.test.js`）：以跨平台中立之 Test A（預設回傳 WindowsCredentialManagerSecretProvider）、Test B（注入 SecretProviderClass 正確回傳）、Test C（注入 SecretProviderClass 建構子被調用且進入 owner 相依性）取代舊有在所有平台直接建構實體的測試；既有 windows-credential-manager-provider.test.js 維持驗證非 win32 建構拋出 UNSUPPORTED_PLATFORM。
+- **R2 反事實突變矩陣（R2 Counterfactual Mutation Matrix）**：
+  - R2-M1：經 .git/tg-mvp-11-bounded-runner.py 執行將 `resolveSecretProviderClass` 預設回傳突變為 DummyProvider，產生 1/1 valid semantic RED（AssertionError: [class DummyProvider] !== [class WindowsCredentialManagerSecretProvider]），false-red = 0，TEST_HANG = 0，OWNED_PROCESS_REMAINING = 0；還原 SHA-256 100% 吻合，基線 PASS；證據持久化於 .git/tg-mvp-11-r2-mutation-results.json。
+- **計畫修訂預算與後續路由（Plan Revision Budget & Next Work Routing）**：
+  - 本次 R2 修訂計畫 `revision_count` 推進至 3（max_plan_revisions = 3），正式耗盡最終計畫修訂預算（FINAL BUDGET SLOT EXHAUSTED），未經外部宏觀審計處置絕不建立 R3 修復修訂。
+  - accepted checkpoint 保持 c106638e5bcea5de1ab1f690ded4dff1a27484e4。
+  - NEXT_WORK 保持 E-03，NEXT_SLICE 保持 TG-MVP-11。
+  - TG-MVP-11 保持 IN PROGRESS / FINAL BOUNDED R2 REPAIR AWAITING EXTERNAL MACRO RE-AUDIT。
+  - main_advancement = FORBIDDEN。

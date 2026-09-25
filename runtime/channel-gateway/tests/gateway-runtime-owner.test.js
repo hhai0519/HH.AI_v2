@@ -10,7 +10,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { EventEmitter } = require('node:events');
 const { GatewayRuntimeOwner, OWNER_STATUS } = require('../core/gateway-runtime-owner');
-const { runGateway, bootstrapGateway } = require('../bin/gateway');
+const { runGateway, bootstrapGateway, resolveSecretProviderClass } = require('../bin/gateway');
 
 const FAKE_SECRET_SOURCE = Buffer.from(
   '00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff',
@@ -541,15 +541,36 @@ test('bootstrapGateway - post-config runtime startup failure emits strictly boun
   assert.strictEqual(stderr.content.includes('raw leak'), false, 'Raw error message MUST NOT be leaked');
 });
 
-test('bootstrapGateway - default SecretProvider wires concrete WindowsCredentialManagerSecretProvider (R1-F1-A)', async () => {
+test('resolveSecretProviderClass - returns concrete WindowsCredentialManagerSecretProvider by default without instantiation (R2-F1 / Test A)', () => {
   const { WindowsCredentialManagerSecretProvider } = require('../core/windows-credential-manager-provider');
+
+  const resolved = resolveSecretProviderClass();
+  assert.strictEqual(resolved, WindowsCredentialManagerSecretProvider);
+
+  const resolvedEmpty = resolveSecretProviderClass({});
+  assert.strictEqual(resolvedEmpty, WindowsCredentialManagerSecretProvider);
+});
+
+test('resolveSecretProviderClass - returns injected SecretProviderClass when provided (R2-F1 / Test B)', () => {
+  class CustomSecretProvider {}
+  const resolved = resolveSecretProviderClass({ SecretProviderClass: CustomSecretProvider });
+  assert.strictEqual(resolved, CustomSecretProvider);
+});
+
+test('bootstrapGateway - instantiates SecretProviderClass when secretProvider instance is not supplied (R2-F1 / Test C)', async () => {
+  let constructorCalled = false;
+  class InjectedSecretProviderClass {
+    constructor() {
+      constructorCalled = true;
+    }
+  }
 
   const mockConfig = {
     dataLocations: { stateRoot: 'C:\\fake\\state' },
     gateway: { localPort: 3003 },
     accounts: {
       telegram: [
-        { id: 'acc1', label: 'Single', enabled: true },
+        { id: 'acc-single', label: 'Single Account', enabled: true },
       ],
     },
   };
@@ -565,10 +586,13 @@ test('bootstrapGateway - default SecretProvider wires concrete WindowsCredential
   const result = await bootstrapGateway({
     configPath: 'C:\\fake\\config.json',
     loadConfig: () => mockConfig,
+    SecretProviderClass: InjectedSecretProviderClass,
     RuntimeOwnerClass: MockOwner,
     exit: () => {},
   });
 
   assert.strictEqual(result.ok, true);
-  assert.ok(capturedDeps.secretProvider instanceof WindowsCredentialManagerSecretProvider);
+  assert.strictEqual(constructorCalled, true);
+  assert.ok(capturedDeps.secretProvider instanceof InjectedSecretProviderClass);
+  assert.strictEqual(result.accountRegistry.getActive().id, 'acc-single');
 });

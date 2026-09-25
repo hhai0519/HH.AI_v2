@@ -28,6 +28,16 @@ function deriveRepoRoot() {
 }
 
 /**
+ * Pure secret provider class resolver for production bootstrap and unit testing.
+ *
+ * @param {object} [options={}]
+ * @returns {Function} Concrete SecretProvider constructor
+ */
+function resolveSecretProviderClass(options = {}) {
+  return options.SecretProviderClass || WindowsCredentialManagerSecretProvider;
+}
+
+/**
  * Deterministic production bootstrap function.
  *
  * @param {object} [options={}]
@@ -115,7 +125,7 @@ async function bootstrapGateway(options = {}) {
     // Wire secret provider
     let secretProvider = options.secretProvider;
     if (!secretProvider) {
-      const ProviderClass = options.SecretProviderClass || WindowsCredentialManagerSecretProvider;
+      const ProviderClass = resolveSecretProviderClass(options);
       secretProvider = new ProviderClass();
     }
 
@@ -178,4 +188,6 @@ module.exports = {
   runGateway,
   bootstrapGateway,
   deriveRepoRoot,
+  resolveSecretProviderClass,
+  WindowsCredentialManagerSecretProvider,
 };
