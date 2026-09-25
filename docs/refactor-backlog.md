@@ -2825,7 +2825,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 5.1 上一批狀態
 
-上次核對通過的 HEAD：fde3121c93fe1e25f6802cff2f48a51a253c383c
+上次核對通過的 HEAD：cfc6249edd79a14990207d68c9e86644c83fbc0e
 
 - `23af193`（執行者前置檢查 ＋ 回滾程序 ＋ `AUDIT-LOG.md` ＋ 四缺口修正）
   已於 2026-09-02 由審計官核對通過：6 檔異動（含 2 個新檔）、零夾帶、
@@ -5145,5 +5145,27 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
     - 零新增 GOV 規則 ID（不新增 GOV-M4-xxx），rule-registry.json 保持 VERIFY_ONLY。
     - main_advancement = FORBIDDEN；本候選提交不推進 main。
     - B-109 M4 標記為 IN PROGRESS / IMPLEMENTATION CANDIDATE / AWAITING EXTERNAL MACRO AUDIT。
+
+145. **B-109 M4 外部宏觀審計通過、Same-SHA Main 晉升與 B-109 機械治理全面結案（B-109 M4 Macro PASS, Same-SHA Main Promotion & B-109 Mechanical Governance v1 Closure）**（2026-09-25）
+- **B-109 M4 外部宏觀審計通過與 Same-SHA 晉升（B-109 M4 External Macro PASS & Same-SHA Main Promotion）**：
+  - B-109 M4 候選提交 `cfc6249edd79a14990207d68c9e86644c83fbc0e`（Parent: `fde3121c93fe1e25f6802cff2f48a51a253c383c`）。
+  - GitHub Actions Run `36097483288`：`verify = completed / success`、`gateway-windows = completed / success`（External Macro raw Ubuntu: 521 passed + 13 passed + ALL 5 GATES PASSED，Windows: 29 passed）。
+  - External Macro 審查裁決：MACRO AUDIT = PASS；ACCEPT STATUS = ACCEPT ALL；IMPLEMENTATION = PASS；FAIL-FAST ROOT FIX = PASS；OPEN-PIPE REGRESSION = PASS；COUNTERFACTUAL CANARY = PASS；CANDIDATE CI = PASS；SAME-SHA PROMOTION = PASS；POST-MAIN CI = PASS；NEW MATERIAL BLOCKING FINDING = NONE；ROLLBACK = NOT REQUIRED；B-109 M4 = ACCEPTED / CLOSED；B-109 Mechanical Governance v1 (M1–M4) = ACCEPTED / CLOSED；B-109 overall = ACCEPTED / CLOSED。
+  - 單次 main 推進授權建立並經 pre-push hook 成功消耗（`MAIN_EXACT_SHA` `cfc6249edd79a14990207d68c9e86644c83fbc0e` `fde3121c93fe1e25f6802cff2f48a51a253c383c`）。
+  - 採用原生釘選 40-char SHA adapter 成功推進至 `origin/main`（`cfc6249edd79a14990207d68c9e86644c83fbc0e`），無 rebase/cherry-pick/squash/amend/no-verify。
+  - 遠端 post-main exact-SHA GitHub Actions Run `36098739268`（attempt 1, event=push, head_branch=main, head_sha=cfc6249edd79a14990207d68c9e86644c83fbc0e）：`verify = completed / success`、`gateway-windows = completed / success`（External Macro raw Ubuntu: 521 passed + 13 passed + ALL 5 GATES PASSED，Windows: 29 passed）。
+  - Ruleset 21301111 保持 active / strict / no bypass（name=HH.AI_V2_main, required status checks verify and gateway-windows, strict=true, deletion protection, non-fast-forward protection, bypass actors=none, current user bypass=never）。
+  - B-109 M4 正式 ACCEPTED / CLOSED，B-109 Mechanical Governance v1 全面結案（M1–M4 ACCEPTED / CLOSED，B-109 overall ACCEPTED / CLOSED）；accepted checkpoint 推進至 `cfc6249edd79a14990207d68c9e86644c83fbc0e`。
+- **事故與修復留痕（Incident & Repair Provenance）**：
+  - **根本事故（Root Fail-Fast Incident）**：裸呼叫 `governance_preflight.py` 於背景執行時因無模式隱式 fallback 到 stdin 執行 `sys.stdin.read()`，面對 non-TTY open stdin 導致無止境等待 EOF 懸掛。
+  - **永久修復（M4 Permanent Repair）**：CLI 架構層級引入 `argparse` 顯式互斥操作模式（`--prompt-file`, `--verify-push`, `--create-main-auth`, `--create-delete-auth`），裸呼叫強制 fail-fast（exit code 2），徹底移除隱式 stdin fallback；stdin 讀取僅限於顯式 `--prompt-file -` 與 `--verify-push`。
+  - **晉級提示詞修正事故（Promotion Prompt Correction Incident）**：前一版 main promotion 提示詞中 Execution Contract 誤填 `branch_creation: FORBIDDEN`，與版本庫驗證器 `validate_prompt_manifest.py` 之 invariant（必須為 `GIT_SWITCH_C`）衝突而被正確 fail-closed 拒絕；修正為 `branch_creation: GIT_SWITCH_C` 後重跑通過；拒絕過程中未發生任何版本庫突變且未建立 main auth，不歸類為 M4 實作缺陷。
+- **後續工作路由與邊界保留（Next Work Routing & Boundary Preservation）**：
+  - 產品生產主線回歸 E-03，下一產品切片為 TG-MVP-11 — Loopback Local API v1（127.0.0.1 監聽、HMAC 簽章驗證、本機 Agent 出站回覆/狀態入口，待辦零實作）。
+  - B-107 保持 OPEN / RESIDUAL / NON-BLOCKING FOR CURRENT E-03 RETURN（保留 M2-P1、M2-P2、TG-MVP-10 test process hygiene、R2 mutation overclaim correction、R3 TEST_HANG、R3 SM1–SM15 count-label inconsistency 留痕）。
+  - B-108 保持 OPEN。
+  - B-100 CI timeout / liveness 觀察保持 NON-BLOCKING。
+  - B-105 保持 TODO；Jules 保持 DISABLED（本輪不啟用 Jules）。
+  - §5.4 維持純指標導向（POINTER_ONLY），不保存動態任務佇列或狀態副本。
 
 

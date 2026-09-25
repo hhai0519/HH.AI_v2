@@ -1,32 +1,24 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "B-109-M4",
-  "base_oid": "fde3121c93fe1e25f6802cff2f48a51a253c383c",
+  "task_id": "B-109-M4-FINAL-STATE-SYNC",
+  "base_oid": "cfc6249edd79a14990207d68c9e86644c83fbc0e",
   "plan": {
     "allowed_paths": [
-      ".agents/rules/git-and-reporting.md",
-      ".agents/rules/prompt-preflight.md",
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md",
-      "scripts/governance_preflight.py",
-      "scripts/tests/test_governance_preflight.py"
+      "docs/refactor-backlog.md"
     ],
     "required_paths": [
-      ".agents/rules/git-and-reporting.md",
-      ".agents/rules/prompt-preflight.md",
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md",
-      "scripts/governance_preflight.py",
-      "scripts/tests/test_governance_preflight.py"
+      "docs/refactor-backlog.md"
     ],
     "max_plan_revisions": 3,
     "revision_count": 0,
@@ -34,16 +26,12 @@
   },
   "actual": {
     "changed_paths": [
-      ".agents/rules/git-and-reporting.md",
-      ".agents/rules/prompt-preflight.md",
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md",
-      "scripts/governance_preflight.py",
-      "scripts/tests/test_governance_preflight.py"
+      "docs/refactor-backlog.md"
     ]
   },
   "evidence": [
