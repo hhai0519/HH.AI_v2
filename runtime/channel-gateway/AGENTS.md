@@ -125,11 +125,11 @@ T6 階段正式採用 `busy_timeout = 5000`（5000ms），其基礎為 T1 Window
 - ADR-0022 D22 之對話歷史歸檔（Conversation Archive）與 D17 媒體附件（Attachments）為檔案系統資產，**不屬於** SQLite 運作狀態。
 - 嚴禁因採用 SQLite 而將二進位大型附件或對話歸檔日誌塞入資料庫。
 
-## 13. Telegram 入站適配器安全契約 (Telegram Inbound Adapter Safety Contract — TG-MVP-10 / R2)
+## 13. Telegram 入站適配器安全契約 (Telegram Inbound Adapter Safety Contract — TG-MVP-10 / R3)
 
 - **呼叫端專用機密 Buffer 擁有權 (Caller-Exclusive Secret Buffer Ownership)**：`SecretProvider.getSecret()` 回傳新配置且呼叫端專用之二進位 Buffer。適配器直接採納該 Buffer，嚴禁為所有權再次建立額外複本；適配器全權負責該 Buffer 之生命週期與歸零。
 - **終態歸零清理 (Terminal Zeroization Cleanup)**：Token Buffer 必須在以下所有路徑執行確定性歸零（`buf.fill(0)`）：正常 `stop()`、啟動語法驗證失敗、活躍帳號切換或停用、HTTP 4xx/5xx、Telegram API 終態錯誤（如 409 Conflict、401、403）、存儲庫完整性錯誤（如 CURSOR_REGRESSION、EVENT_IDENTITY_CONFLICT）及背景輪詢致命退出。不容許依賴外部稍後呼叫 `stop()` 才進行清理。
-- **活躍帳號雙重守衛 (Active Account Hot-Switch Guards)**：每次發送 HTTP 請求前，以及回應到達後攝取更新前，必須重複驗證目前活躍帳號仍存在、通道為 telegram、已啟用且與啟動時之帳號 ID 相符。若不符，立即終態中止、歸零金鑰，記錄 `ACTIVE_ACCOUNT_CHANGED`，嚴禁攝取更新或推進游標。
+- **活躍帳號四重守衛契約 (Active Account Hot-Switch Guards)**：活躍帳號狀態必須在以下檢查點重複驗證（通道 telegram、啟用中且與啟動帳號 ID 相符）：(1) 每次發送 HTTP 請求前；(2) 傳輸回應到達後、評估狀態碼或重試前；(3) 等待解析回應本體後、排程重試或攝取前；(4) 傳輸例外發生後、排程重試或退避前。若不符，立即終態中止、歸零金鑰，記錄 `ACTIVE_ACCOUNT_CHANGED`，嚴禁任何資料庫突變、重試定時器或後續請求。
 - **嚴格重試白名單 (Strict Retry Allowlist)**：僅允許因網路傳輸拒絕（適配器仍在運行中）、客戶端逾時、HTTP 5xx、非預期畸形 JSON、Telegram `error_code >= 500`、以及 429 具備合法 `retry_after` 進行重試。嚴禁基於 `err.message.includes(...)` 字串匹配授權重試。所有存儲庫錯誤、4xx 錯誤及未知錯誤一律終態失敗關閉。
 - **固定端點與安全常數 (Fixed Endpoint & Safety Constants)**：Telegram API 端點固化為 `https://api.telegram.org`，輪詢逾時固定為 30 秒、客戶端逾時固定為 40 秒、跨週重置門檻固定為 604,800,000 毫秒（7 天）。建構子嚴禁接收外部覆寫選項。
 - **嚴格 Token 結構語法 (Strict Token Grammar)**：在任何字串轉換前必須進行位元組層級語法驗證（`^[0-9]+:[A-Za-z0-9_-]+$`）。錯誤診斷僅輸出穩定代碼 `INVALID_TELEGRAM_TOKEN_SYNTAX`，絕不暴露壞位元組、索引位移或部分 Token。

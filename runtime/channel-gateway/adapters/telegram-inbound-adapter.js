@@ -1,7 +1,7 @@
 /**
  * runtime/channel-gateway/adapters/telegram-inbound-adapter.js
  *
- * ADR-0022 / ADR-0024 / ADR-0026 / TG-MVP-10 R2: Telegram Test-Bot Inbound Adapter.
+ * ADR-0022 / ADR-0024 / ADR-0026 / TG-MVP-10 R3: Telegram Test-Bot Inbound Adapter.
  *
  * Invariants (M1–M15 & R2 Hardening):
  * - Composable inbound long-poll adapter component (NOT an OS process root).
@@ -471,6 +471,14 @@ class TelegramInboundAdapter {
           signal: ac.signal,
         });
 
+        // Response-arrival hot-switch guard (before status evaluation or retry scheduling)
+        if (!this.#verifyActiveAccount()) {
+          this.#running = false;
+          this.#terminalReason = 'ACTIVE_ACCOUNT_CHANGED';
+          this.#zeroizeToken();
+          break;
+        }
+
         // 4. Response handling with AbortController still covering body parsing
         if (response.status === 409) {
           this.#running = false;
@@ -496,6 +504,12 @@ class TelegramInboundAdapter {
           } catch (_) {
             // Malformed 429 body
           }
+          if (!this.#verifyActiveAccount()) {
+            this.#running = false;
+            this.#terminalReason = 'ACTIVE_ACCOUNT_CHANGED';
+            this.#zeroizeToken();
+            break;
+          }
         } else if (response.status >= 500) {
           // Retryable server error (5xx)
           // Body parse not strictly needed, but let's safely consume or ignore
@@ -512,10 +526,22 @@ class TelegramInboundAdapter {
           } catch (_) {
             responseBodyParseFailed = true;
           }
+          if (!this.#verifyActiveAccount()) {
+            this.#running = false;
+            this.#terminalReason = 'ACTIVE_ACCOUNT_CHANGED';
+            this.#zeroizeToken();
+            break;
+          }
         }
       } catch (transportErr) {
         if (!this.#running) {
           // Manual stop() abort: terminate quietly without retrying (§19)
+          break;
+        }
+        if (!this.#verifyActiveAccount()) {
+          this.#running = false;
+          this.#terminalReason = 'ACTIVE_ACCOUNT_CHANGED';
+          this.#zeroizeToken();
           break;
         }
         if (isClientTimeout) {
@@ -598,14 +624,6 @@ class TelegramInboundAdapter {
         // Result missing or non-array: retryable protocol failure (§17)
         await this.#waitDelay(this.#getBackoffDelay());
         continue;
-      }
-
-      // Post-response hot-switch check BEFORE processing any update (§15)
-      if (!this.#verifyActiveAccount()) {
-        this.#running = false;
-        this.#terminalReason = 'ACTIVE_ACCOUNT_CHANGED';
-        this.#zeroizeToken();
-        break;
       }
 
       // 5. Valid successful response: reset generic backoff (§27)

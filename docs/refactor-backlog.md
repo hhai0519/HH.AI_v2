@@ -5066,6 +5066,42 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - main_advancement = FORBIDDEN。
   - §5.4 維持純指標導向（POINTER_ONLY），不保存動態任務佇列或狀態副本。
 
-
-
+143. **TG-MVP-10 R2 候選審查 (Macro HOLD)、測試衛生事件更正與 R3 最終有界修復授權（TG-MVP-10 R2 Review, Process Findings & Final Bounded Repair R3 Authorization）**（2026-09-24 / 2026-09-25）
+- **R2 候選審查與外部裁決（R2 Review & External Macro Verdict）**：
+  - R2 候選提交 `b862fe9f02f3ce0dd6f0ebe19202a00fc9fd9546`（Parent: `ddd8fcbb554e776de8d0805251bd107c89e70890`，Base: `bec2fb5d888b1f3049cb72afbf08566a473e8bf0`）。
+  - GitHub Actions Run `36034177573`：`verify = completed / success`、`gateway-windows = completed / success`。
+  - External Macro 原始機器證據：Ubuntu 516 passed, 13 passed, ALL 5 GATES PASSED；Windows 30 passed。
+  - External Macro 審查裁決：Machine / CI = PASS；Implementation = HOLD, Security = HOLD, Test Coverage = HOLD；ACCEPT STATUS = BOUNDED REPAIR REQUIRED；Promotion Eligibility = HOLD。
+  - Claude 第二意見：NON-AUTHORITATIVE SECOND-OPINION ADVISORY（HOLD — BOUNDED REPAIR REQUIRED）。
+  - External Macro 成立八項重大發現（R3-F1～R3-F8）：
+    - R3-F1：回應到達時（pre-status 評估前）缺乏活躍帳號檢查（SM14 目標）。
+    - R3-F2：本文解析後（429 與 2xx 狀態）缺乏活躍帳號檢查（SM7B 目標）。
+    - R3-F3：傳輸例外時（pre-backoff 延遲前）缺乏活躍帳號檢查（SM15 目標）。
+    - R3-F4：缺乏請求前活躍帳號守衛之負向控制測試（SM7A 金絲雀）。
+    - R3-F5：缺乏機械式 40s 客戶端逾時中止與重試負向控制測試（SM12/SM13 金絲雀）。
+    - R3-F6：缺乏儲存庫終端錯誤矩陣負向控制測試（SM11 游標回歸、識別衝突、SQLite 錯誤）。
+    - R3-F7：缺乏週重設精確邊界負向控制測試（604799999ms 不重設、604800000ms 重設、604800001ms 重設）。
+    - R3-F8：測試載具生命週期衛生缺陷（未設頂層逾時、缺乏模組級資源註冊表、缺乏 afterEach 與 after 確定性清理、微任務飢餓易導致測試懸掛）。
+- **流程異常與審計發現分流（Process Findings & Existing B-107 Disposition）**：
+  - **R2 測試殘留行程事件（USER_PROVIDED evidence）**：USER 於 R2 候選提交後觀察到 3 個殘留之 `node.exe` 測試行程（PIDs 4428, 17476, 14840），對應至 `telegram-inbound-adapter.test.js`；USER 手動終止後 count = 0。而 R2 最終報告回報 TEST_PROCESS_HYGIENE=OK，構成報告真實性不一致（M2-P1 recurrence）。分流至 EXISTING B-107，不另立新任務。
+  - **R2 突變測試過度宣告更正（Mutation Test Overclaim Correction）**：R2 報告宣稱執行 10/10 突變並全過，但當時測試檔案僅含 8 個突變目標，此報告過度宣告已由 R3 正式替代並更正；分流至 EXISTING B-107。
+  - **R3 測試進程懸掛事件（R3 TEST_HANG Process Hygiene Incident）**：
+    - 現象：R3 首輪 focused test 執行 `node --test runtime/channel-gateway/tests/telegram-inbound-adapter.test.js` 時於 `Week Rebase Exact Matrix` 測試發生懸掛約 10 分鐘未返回。
+    - 外部裁決：M3 TEST_HANG = CONFIRMED。
+    - 處置：終止背景任務，安全終止由該 exact invocation 所產生之 4 個殘留 node 進程（PIDs 3080, 3732 與 1356, 23960），確認 MATCHING_TEST_PROCESS_COUNT = 0。
+    - 根因：合成輪詢中的 fakeFetch 同步回傳 resolved Promise 造成微任務飢餓（microtask starvation），事件循環無法取得執行機會；儲存庫終端測試中 active account 註冊表查詢設定缺陷。
+    - 修復：於所有合成輪詢 fakeFetch 加入 `setImmediate` 確定性 macrotask yield，修正儲存庫測試帳號設定；修復後 focused suite 17/17 於 1.648s 內全數 PASS 並自然退出，MATCHING_TEST_PROCESS_COUNT = 0。
+    - 歷史真實性留痕：固定記錄 `R3 TEST_HANG occurred: YES`。
+  - B-107 維持：OPEN / RESIDUAL / NON-BLOCKING FOR CURRENT E-03 RETURN。
+  - B-100 CI 逾時政策觀察記錄為 NON-BLOCKING。
+- **R3 授權與邊界限制（R3 Authorization & Scope Invariants）**：
+  - 本批為 TG-MVP-10 現有 machine plan 之最後一次授權修復（FINAL BOUNDED REPAIR R3）。
+  - `task plan revision_count = 3`，`max_plan_revisions = 3`。本輪完成後不得自行建立 R4。
+  - Allowed cumulative paths = 25（維持 plan base `bec2fb5d888b1f3049cb72afbf08566a473e8bf0`）；R3 授權修復子集嚴格限定於 9 檔（`runtime/channel-gateway/AGENTS.md`、`runtime/channel-gateway/adapters/telegram-inbound-adapter.js`、`runtime/channel-gateway/tests/telegram-inbound-adapter.test.js`、`docs/AUDIT-LOG.md`、`docs/refactor-backlog.md`、`docs/TASKBOARD.md`、`docs/EXEC-LOG.md`、`docs/governance/execution-record.json`、`docs/fingerprints/exec-latest.json`）。
+  - main_advancement = FORBIDDEN；不得 main promotion。
+  - accepted checkpoint 維持 `bec2fb5d888b1f3049cb72afbf08566a473e8bf0`。
+- **後續工作路由與邊界保留（Next Work Routing & Boundary Preservation）**：
+  - NEXT_WORK 保持 E-03，NEXT_SLICE 保持 TG-MVP-10（FINAL BOUNDED REPAIR R3 IN PROGRESS / AWAITING R3 CANDIDATE & EXTERNAL MACRO AUDIT）。
+  - TG-MVP-11 / 12 / 13 / 14 / 15 維持待辦，本輪不實作。
+  - §5.4 維持純指標導向（POINTER_ONLY），不保存動態任務佇列或狀態副本。
 
