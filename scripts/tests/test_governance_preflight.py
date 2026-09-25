@@ -626,3 +626,151 @@ def test_synthetic_remote_branch_deletion_authorization_and_guards(synthetic_git
     # Verify authorization file was consumed
     auth_file = work_dir / ".git" / "hhai-sensitive-push-auth.json"
     assert not auth_file.exists()
+
+
+# ---------------------------------------------------------------------------
+# Section 21-26: B-109 M4 Governance Preflight Fail-Fast CLI Regression Tests
+# ---------------------------------------------------------------------------
+
+VALID_FULL_PROMPT_M4 = f"""BEGIN_HHAI_PROMPT_MANIFEST
+schema_version: 1
+batch_mode: GOAL_SPEC
+base_oid: {VALID_BASE_OID}
+finding_disposition: CURRENT B-109
+backlog_disposition: UPDATE
+taskboard_disposition: UPDATE
+audit_log_disposition: UPDATE
+rules_reread_required: true
+fixed_signature_required: true
+destructive_git_allowed: false
+END_HHAI_PROMPT_MANIFEST
+
+BEGIN_HHAI_EXECUTION_CONTRACT
+contract_version: 2
+task_id: B-109-M4-TEST
+base_oid: {VALID_BASE_OID}
+main_advancement: FORBIDDEN
+authorized_main_sha: NONE
+remote_ref_deletion: FORBIDDEN
+authorized_delete_refs: NONE
+local_destructive_git: FORBIDDEN
+credential_access: FORBIDDEN
+environment_enumeration: FORBIDDEN
+cross_session_access: FORBIDDEN
+browser_github_mutation: FORBIDDEN
+raw_actions_log_access: EXTERNAL_MACRO_ONLY
+branch_creation: GIT_SWITCH_C
+hook_bypass: FORBIDDEN
+goal_pressure_policy: SAFETY_BOUNDARY_WINS
+ide_ephemeral_guards_required: false
+allowed_mutation_paths: scripts/foo.py;scripts/bar.py
+required_mutation_paths: scripts/foo.py
+max_plan_revisions: 3
+execution_record_required: true
+END_HHAI_EXECUTION_CONTRACT"""
+
+
+def test_cli_bare_invocation_open_pipe_regression():
+    """Section 21: Primary regression test. Open pipe stdin must self-exit quickly without parent closing stdin."""
+    script_path = os.path.join(SCRIPTS_DIR, "governance_preflight.py")
+    proc = subprocess.Popen(
+        [sys.executable, script_path],
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+    # Stdin is kept open (DO NOT close or write EOF)
+    try:
+        proc.wait(timeout=2.0)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+        pytest.fail("Bare invocation hung waiting for stdin EOF (regression failure)!")
+
+    assert proc.returncode == 2, f"Expected argparse usage error code 2, got {proc.returncode}"
+    _, stderr = proc.communicate()
+    assert "one of the arguments" in stderr
+    assert "is required" in stderr
+
+
+def test_cli_bare_invocation_with_valid_stdin_fails_fast():
+    """Section 22: Bare invocation with valid stdin prompt text must fail fast and not process prompt without --prompt-file -."""
+    script_path = os.path.join(SCRIPTS_DIR, "governance_preflight.py")
+    proc = subprocess.run(
+        [sys.executable, script_path],
+        input=VALID_FULL_PROMPT_M4,
+        capture_output=True,
+        text=True,
+    )
+    assert proc.returncode == 2, f"Bare invocation must reject stdin without --prompt-file -, got {proc.returncode}"
+    assert "one of the arguments" in proc.stderr
+    assert "is required" in proc.stderr
+
+
+def test_cli_explicit_stdin_prompt_mode():
+    """Section 23: Explicit stdin prompt mode (--prompt-file -) consumes prompt from stdin and evaluates rules."""
+    script_path = os.path.join(SCRIPTS_DIR, "governance_preflight.py")
+    proc = subprocess.run(
+        [sys.executable, script_path, "--prompt-file", "-", "--repo-root", REPO_ROOT],
+        input=VALID_FULL_PROMPT_M4,
+        capture_output=True,
+        text=True,
+    )
+    assert proc.returncode == 0, f"Explicit stdin prompt evaluation failed: {proc.stderr}"
+    assert "[GOVERNANCE PREFLIGHT PASS]" in proc.stdout
+    assert "All 21 governance rules verified." in proc.stdout
+
+
+def test_cli_explicit_file_prompt_mode(tmp_path):
+    """Section 24: Explicit file prompt mode (--prompt-file <path>) reads from file and evaluates rules."""
+    script_path = os.path.join(SCRIPTS_DIR, "governance_preflight.py")
+    prompt_file = tmp_path / "valid_prompt.txt"
+    prompt_file.write_text(VALID_FULL_PROMPT_M4, encoding="utf-8")
+
+    proc = subprocess.run(
+        [sys.executable, script_path, "--prompt-file", str(prompt_file), "--repo-root", REPO_ROOT],
+        capture_output=True,
+        text=True,
+    )
+    assert proc.returncode == 0, f"Explicit file prompt evaluation failed: {proc.stderr}"
+    assert "[GOVERNANCE PREFLIGHT PASS]" in proc.stdout
+    assert "All 21 governance rules verified." in proc.stdout
+
+
+def test_cli_mutual_exclusion_modes(tmp_path):
+    """Section 25: Multiple mode arguments provided simultaneously must trigger argparse fail-fast error."""
+    script_path = os.path.join(SCRIPTS_DIR, "governance_preflight.py")
+    prompt_file = tmp_path / "prompt.txt"
+    prompt_file.write_text("dummy", encoding="utf-8")
+
+    proc = subprocess.run(
+        [
+            sys.executable,
+            script_path,
+            "--prompt-file",
+            str(prompt_file),
+            "--create-main-auth",
+            "TASK-1",
+            "a" * 40,
+            "b" * 40,
+        ],
+        capture_output=True,
+        text=True,
+    )
+    assert proc.returncode == 2, f"Expected mutual exclusion error (code 2), got {proc.returncode}"
+    assert "not allowed with argument" in proc.stderr
+
+
+def test_cli_help():
+    """Section 26: --help option must return code 0 immediately without waiting for stdin."""
+    script_path = os.path.join(SCRIPTS_DIR, "governance_preflight.py")
+    proc = subprocess.run(
+        [sys.executable, script_path, "--help"],
+        capture_output=True,
+        text=True,
+        timeout=2.0,
+    )
+    assert proc.returncode == 0
+    assert "--prompt-file" in proc.stdout
+    assert "--verify-push" in proc.stdout
+

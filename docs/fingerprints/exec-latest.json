@@ -1,5 +1,5 @@
 {
-  "base_head": "b862fe9",
+  "base_head": "fde3121",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -15,8 +15,8 @@
         "## 2.5 遠端健康查證與 GitHub Actions 閉環規範 (Remote Health Verification)",
         "## 3. 查證紀律"
       ],
-      "lines": 248,
-      "sha256": "ec54fc1f4eef79bd169f818c5395c8bde0e355b97d87361cf8bde074f3837a56"
+      "lines": 242,
+      "sha256": "fcc52d7a89dbbd3d59aa385af757ea9c5f547cef630f7005520cae5e2784802b"
     },
     ".agents/rules/governance-gate-integrity.md": {
       "fences": 0,
@@ -75,7 +75,7 @@
         "## 6. 這條規則保護的是誰"
       ],
       "lines": 240,
-      "sha256": "68ed887713d7f3ca7f5c4546c318bad519d7cea208bdd99ae9e9fe4e870ebe8f"
+      "sha256": "2b82b68069694c516d87e92efab20602a0bfdf2e5e72042135f3273fa9b46969"
     },
     ".agents/rules/role-boundaries.md": {
       "fences": 0,
@@ -552,16 +552,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 221,
-      "sha256": "55a8f5dd52df6055c792c4cc5f4c2bb4129c52e35312d23e07d9b181b18ca595"
+      "lines": 222,
+      "sha256": "dce8299d3c0359901fb787a2f7dfff0ffc11c711d4d84c2d5cbca4b15a9cb971"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 192,
-      "sha256": "23259751b2a0513990e9ba239ae0dd49bc7cdcc5a61789f566c8cc0287603e2a"
+      "lines": 193,
+      "sha256": "bd6e1b636a61f9eea348dde2da3535bc5249d18c5704b273038b695998103836"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -602,7 +602,7 @@
         "## 封存區"
       ],
       "lines": 340,
-      "sha256": "2783efabb21ea8f7832e53ebb19670ba873209b1c4750e467a0fa56681b425ff"
+      "sha256": "5a3f69abf13756935ff2f2da5827dd955db5dd50b92fc0c9b52299a444da887f"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1068,8 +1068,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 5107,
-      "sha256": "89e6010012087540c95dd6f45fcbb7097309e05a8bde49f4f648a23d77e7d332"
+      "lines": 5149,
+      "sha256": "7c5bea99c51c1be9465fe09217163841ca23961e59a94f8c97828145095f505e"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1131,8 +1131,8 @@
         "# -*- coding: utf-8 -*-",
         "# Import shared execution contract parser"
       ],
-      "lines": 670,
-      "sha256": "f5477dc16fdf943fb7fc405078324079554d648eb55884cf9181edd0d9739535"
+      "lines": 669,
+      "sha256": "7921099e85128d8cdf77bbe4d453474f372336af6388eb92d730297e3f76c007"
     },
     "scripts/impact_scan.py": {
       "fences": 0,
@@ -1292,10 +1292,13 @@
         "# ---------------------------------------------------------------------------",
         "# ---------------------------------------------------------------------------",
         "# Section 20: Real Synthetic Local Git Push Hook Invocation Tests",
+        "# ---------------------------------------------------------------------------",
+        "# ---------------------------------------------------------------------------",
+        "# Section 21-26: B-109 M4 Governance Preflight Fail-Fast CLI Regression Tests",
         "# ---------------------------------------------------------------------------"
       ],
-      "lines": 628,
-      "sha256": "b438618f4517578a063f3cb2b91705c52a78d8744d24d222c7830bcec8297349"
+      "lines": 776,
+      "sha256": "5b07d33a22702d39d81d8bda60c5b5dc4c11e971db0623ffa456f6af9a45d35b"
     },
     "scripts/tests/test_impact_scan.py": {
       "fences": 0,
@@ -1494,7 +1497,7 @@
       "sha256": "35bf7dbfa3c7d291b550c3c97a6ae398a22b1dc3624c1d2fc1e4db6963d6e115"
     }
   },
-  "generated_at": "2026-09-25T03:30:58Z",
+  "generated_at": "2026-09-25T05:08:53Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

@@ -587,10 +587,11 @@ def evaluate_contract_rules(
 
 def main():
     parser = argparse.ArgumentParser(description="HH.AI Governance Preflight & Push Guard.")
-    parser.add_argument("--prompt-file", help="Path to prompt file (or '-' for stdin)")
-    parser.add_argument("--verify-push", nargs=2, metavar=("REMOTE_NAME", "REMOTE_URL"), help="Verify git push updates from stdin")
-    parser.add_argument("--create-main-auth", nargs=3, metavar=("TASK_ID", "AUTH_SHA", "REMOTE_SHA"), help="Create single-use MAIN_EXACT_SHA authorization")
-    parser.add_argument("--create-delete-auth", nargs=2, metavar=("TASK_ID", "REF_SHA_MAP"), help="Create single-use REMOTE_DELETE_EXACT_SET authorization (format 'ref1@sha1;ref2@sha2')")
+    mode_group = parser.add_mutually_exclusive_group(required=True)
+    mode_group.add_argument("--prompt-file", help="Path to prompt file (or '-' for stdin)")
+    mode_group.add_argument("--verify-push", nargs=2, metavar=("REMOTE_NAME", "REMOTE_URL"), help="Verify git push updates from stdin")
+    mode_group.add_argument("--create-main-auth", nargs=3, metavar=("TASK_ID", "AUTH_SHA", "REMOTE_SHA"), help="Create single-use MAIN_EXACT_SHA authorization")
+    mode_group.add_argument("--create-delete-auth", nargs=2, metavar=("TASK_ID", "REF_SHA_MAP"), help="Create single-use REMOTE_DELETE_EXACT_SET authorization (format 'ref1@sha1;ref2@sha2')")
     parser.add_argument("--repo-root", default=repo_root, help="Repository root path")
 
     args = parser.parse_args()
@@ -608,7 +609,7 @@ def main():
             sys.exit(1)
 
     # 2. Auth creation mode: main
-    if args.create_main_auth:
+    elif args.create_main_auth:
         task_id, auth_sha, remote_sha = args.create_main_auth
         ok, msg = create_main_advancement_auth(args.repo_root, task_id, auth_sha, remote_sha)
         if ok:
@@ -619,7 +620,7 @@ def main():
             sys.exit(1)
 
     # 3. Auth creation mode: delete
-    if args.create_delete_auth:
+    elif args.create_delete_auth:
         task_id, raw_map = args.create_delete_auth
         mapping = {}
         for entry in raw_map.split(";"):
@@ -638,32 +639,30 @@ def main():
             sys.stderr.write(f"[FAIL] {msg}\n")
             sys.exit(1)
 
-    # 4. Default: Governance preflight evaluation on incoming prompt
-    if args.prompt_file and args.prompt_file != "-":
-        if not os.path.exists(args.prompt_file):
-            sys.stderr.write(f"[FAIL] Prompt file not found: {args.prompt_file}\n")
-            sys.exit(1)
-        with open(args.prompt_file, "r", encoding="utf-8") as f:
-            prompt_text = f.read()
+    # 4. Governance preflight evaluation on incoming prompt (--prompt-file)
     else:
-        if sys.stdin.isatty() and not (args.prompt_file == "-"):
-            sys.stderr.write("[FAIL] No prompt provided via --prompt-file or stdin\n")
-            sys.exit(1)
-        prompt_text = sys.stdin.read()
-
-    overall_pass, results = check_governance_rules(prompt_text, args.repo_root)
-    for line in results:
-        if "FAIL" in line:
-            sys.stderr.write(f"{line}\n")
+        if args.prompt_file == "-":
+            prompt_text = sys.stdin.read()
         else:
-            print(line)
+            if not os.path.exists(args.prompt_file):
+                sys.stderr.write(f"[FAIL] Prompt file not found: {args.prompt_file}\n")
+                sys.exit(1)
+            with open(args.prompt_file, "r", encoding="utf-8") as f:
+                prompt_text = f.read()
 
-    if overall_pass:
-        print(f"[GOVERNANCE PREFLIGHT PASS] All {len(results)} governance rules verified.")
-        sys.exit(0)
-    else:
-        sys.stderr.write("[GOVERNANCE PREFLIGHT FAIL] Governance rules violation detected.\n")
-        sys.exit(1)
+        overall_pass, results = check_governance_rules(prompt_text, args.repo_root)
+        for line in results:
+            if "FAIL" in line:
+                sys.stderr.write(f"{line}\n")
+            else:
+                print(line)
+
+        if overall_pass:
+            print(f"[GOVERNANCE PREFLIGHT PASS] All {len(results)} governance rules verified.")
+            sys.exit(0)
+        else:
+            sys.stderr.write("[GOVERNANCE PREFLIGHT FAIL] Governance rules violation detected.\n")
+            sys.exit(1)
 
 
 if __name__ == "__main__":

@@ -2825,7 +2825,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 5.1 上一批狀態
 
-上次核對通過的 HEAD：bec2fb5d888b1f3049cb72afbf08566a473e8bf0
+上次核對通過的 HEAD：fde3121c93fe1e25f6802cff2f48a51a253c383c
 
 - `23af193`（執行者前置檢查 ＋ 回滾程序 ＋ `AUDIT-LOG.md` ＋ 四缺口修正）
   已於 2026-09-02 由審計官核對通過：6 檔異動（含 2 個新檔）、零夾帶、
@@ -5104,4 +5104,46 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - NEXT_WORK 保持 E-03，NEXT_SLICE 保持 TG-MVP-10（FINAL BOUNDED REPAIR R3 IN PROGRESS / AWAITING R3 CANDIDATE & EXTERNAL MACRO AUDIT）。
   - TG-MVP-11 / 12 / 13 / 14 / 15 維持待辦，本輪不實作。
   - §5.4 維持純指標導向（POINTER_ONLY），不保存動態任務佇列或狀態副本。
+
+144. **TG-MVP-10 外部宏觀審計通過、Same-SHA Main 晉升與 B-109 M4 治理預檢防懸掛 CLI 硬化（TG-MVP-10 Macro PASS, Same-SHA Main Promotion & B-109 M4 Governance Preflight Fail-Fast CLI Hardening）**（2026-09-25）
+- **TG-MVP-10 外部宏觀審計通過與 Same-SHA 晉升（TG-MVP-10 External Macro PASS & Same-SHA Main Promotion）**：
+  - TG-MVP-10 R3 候選提交 `fde3121c93fe1e25f6802cff2f48a51a253c383c`（Parent: `b862fe9f02f3ce0dd6f0ebe19202a00fc9fd9546`，Base: `bec2fb5d888b1f3049cb72afbf08566a473e8bf0`）。
+  - GitHub Actions Run `36092485633`：`verify = completed / success`、`gateway-windows = completed / success`（Ubuntu 515 passed + 13 passed + ALL 5 GATES PASSED，Windows 29 passed）。
+  - External Macro 審查裁決：MACRO AUDIT = PASS；ACCEPT STATUS = ACCEPT ALL；F1–F12 / R3-F1–F8 = RESOLVED；PROMOTION ELIGIBILITY = PASS；NEW MATERIAL BLOCKING FINDING = NONE；TG-MVP-10 R3 SAME-SHA PROMOTION = AUTHORIZED。
+  - 單次 main 推進授權建立並經 pre-push hook 成功消耗（`TG-MVP-10` `fde3121c93fe1e25f6802cff2f48a51a253c383c` `bec2fb5d888b1f3049cb72afbf08566a473e8bf0`）。
+  - 採用原生釘選 40-char SHA adapter 成功推進至 `origin/main`（`fde3121c93fe1e25f6802cff2f48a51a253c383c`），無 rebase/cherry-pick/squash/amend/no-verify。
+  - 遠端 post-main exact-SHA GitHub Actions Run `36093663314`（attempt 1, event=push, head_branch=main, head_sha=fde3121c93fe1e25f6802cff2f48a51a253c383c）：`verify = completed / success`、`gateway-windows = completed / success`。
+  - HARD PHASE BARRIER 完整通過；TG-MVP-10 正式 ACCEPTED / CLOSED；accepted checkpoint 推進至 `fde3121c93fe1e25f6802cff2f48a51a253c383c`。
+- **R3 突變測試數量標籤更正（Non-blocking Report Count Inconsistency Route B-107）**：
+  - 需驗證之手術式突變矩陣為 SM1–SM15，實測 15/15 valid semantic RED。
+  - 歷史 R3 報告中出現之「16/16 (15/15 base set)」純屬 count-label 筆誤，無 SM16 存在。
+  - 登錄既有 B-107 流程證據留痕，不重啟 TG-MVP-10 實作。
+  - B-107 保持 OPEN / RESIDUAL / NON-BLOCKING FOR CURRENT E-03 RETURN。
+- **B-109 M4 治理預檢防懸掛 CLI 硬化（B-109 M4 CLI Fail-Fast Hardening）**：
+  - **事故根本原因（Incident Root Cause）**：先前在 Antigravity 背景執行環境中曾兩度發生 `governance_preflight.py` 懸掛。其根本原因在於 CLI 既有設計中，若未傳入 `--prompt-file`、`--verify-push`、`--create-main-auth` 或 `--create-delete-auth` 任何參數時，當 `stdin` 非 TTY 時會進入隱式 fallback 執行 `sys.stdin.read()`。而在 Antigravity 背景 runner 中，stdin 為 non-TTY 且保持 open，導致 `sys.stdin.read()` 無止境等待 EOF。此為確定性架構缺陷，非網路、Python 或 Git 死結。
+  - **架構級永久修復（Permanent Architectural Remediation）**：
+    - 在 `scripts/governance_preflight.py` 引入 `argparse` 之 `add_mutually_exclusive_group(required=True)`。
+    - 顯式互斥操作模式包含：`--prompt-file <path>`、`--verify-push <remote> <url>`、`--create-main-auth <task> <auth-sha> <remote-sha>`、`--create-delete-auth <task> <ref-sha-map>`。`--repo-root` 維持一般非模式參數。
+    - 裸呼叫（無參數）或混用模式時，在進入任何邏輯或讀取 stdin 之前，立即由 argparse fail-fast 退出（exit code 2）。
+    - 徹底移除無模式隱式 fallback 到 stdin 的行為。
+    - 合法 stdin 讀取僅保留於顯式 `--prompt-file -`（呼叫端顯式要求由 stdin 讀入提示詞）與 `--verify-push`（Git pre-push hook 經 stdin 傳遞 ref updates）。
+  - **迴歸測試與反事實突變證明（Regression Tests & Counterfactual Mutation Canary）**：
+    - 新增核心事故迴歸測試 `test_cli_bare_invocation_open_pipe_regression`：以 open pipe 裸呼叫且父進程故意不關閉 stdin，進程必須在 2 秒內自我退出且 exit code 2。
+    - 新增 `test_cli_bare_invocation_with_valid_stdin_fails_fast`：即使 stdin 提供有效 prompt 內容，裸呼叫亦強制 fail-fast。
+    - 新增 `test_cli_explicit_stdin_prompt_mode`：`--prompt-file -` 顯式 stdin 模式驗證 prompt 正確評估並 pass。
+    - 新增 `test_cli_explicit_file_prompt_mode`：`--prompt-file <path>` 顯式檔案模式評估 pass。
+    - 新增 `test_cli_mutual_exclusion_modes`：混用模式 fail-fast。
+    - 新增 `test_cli_help`：`--help` 正常退出且不等待 stdin。
+    - 反事實突變金絲雀：在 repo 外部暫存副本中移除 `required=True` 並恢復隱式 stdin fallback，執行 open-pipe 裸呼叫立即重現超時懸掛，證明本防禦為有效語意 RED。
+  - **規則與作業指引更新（Rules Updates）**：
+    - `.agents/rules/prompt-preflight.md`：規範治理預檢必須使用顯式 `--prompt-file` 模式，禁止裸呼叫。
+    - `.agents/rules/git-and-reporting.md`：記錄手動預檢使用顯式 `--prompt-file` 模式，pre-push hook 使用 `--verify-push` 模式，嚴禁以裸呼叫作為 push 驗證。
+  - **治理與執行範疇（Governance & Scope Invariants）**：
+    - Task ID: `B-109-M4`，Base OID: `fde3121c93fe1e25f6802cff2f48a51a253c383c`。
+    - Revision count = 0，max_plan_revisions = 3。
+    - Allowed / Required paths = exact 10 paths。無 path 11。
+    - 零新增 GOV 規則 ID（不新增 GOV-M4-xxx），rule-registry.json 保持 VERIFY_ONLY。
+    - main_advancement = FORBIDDEN；本候選提交不推進 main。
+    - B-109 M4 標記為 IN PROGRESS / IMPLEMENTATION CANDIDATE / AWAITING EXTERNAL MACRO AUDIT。
+
 

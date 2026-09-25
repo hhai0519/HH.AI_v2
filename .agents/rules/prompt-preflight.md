@@ -18,7 +18,7 @@
 
 任何 repo mutation 前必須執行：
 1. 取得完整 incoming prompt 原文。
-2. 以 scratch 檔或 stdin 餵給 `python scripts/validate_prompt_manifest.py --require-contract`（或 `scripts/governance_preflight.py`）。
+2. 以 scratch 檔或 stdin 餵給 `python scripts/validate_prompt_manifest.py --require-contract`，或以顯式模式執行 `scripts/governance_preflight.py`（指定 `--prompt-file <path>` 或 `--prompt-file -`；嚴格要求顯式模式，裸呼叫立即 fail-fast，絕不於無模式下等待 stdin）。
 3. Production prompt 必須同時具備 Prompt Manifest 與 `BEGIN_HHAI_EXECUTION_CONTRACT` ... `END_HHAI_EXECUTION_CONTRACT` 區塊；缺任一立即判定為 `PROMPT STRUCTURE ERROR` 停機，**不得進行任何 repo mutation**。
 4. Execution Contract 為確定性治理邊界，不得自行放寬。若 task goal、pressure 或 acceptance 與 FORBIDDEN 衝突：升級 `S1 GOVERNANCE_CONTRACT_CONFLICT`，原則為 `SAFETY_BOUNDARY_WINS`。
 5. IDE settings 屬 defense-in-depth 不能取代 Execution Contract。通過後才進入後續檢查。
