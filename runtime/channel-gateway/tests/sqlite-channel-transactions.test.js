@@ -1169,3 +1169,173 @@ test('SqliteChannelTransactions - 24. reply authorization enforces strict channe
     harness.cleanup();
   }
 });
+
+// 25. getClaimedMessages: correct holder and token returns claimed rows in sequence order with content (D-TG11-2)
+test('SqliteChannelTransactions - 25. getClaimedMessages returns claimed rows with content in ascending sequence', { timeout: 5000 }, () => {
+  const harness = createTempHarness();
+  try {
+    const repo = new SqliteStateRepository(harness.stateRoot);
+    try {
+      repo.takeoverChannel('tg:group:1', 'holder_alpha');
+
+      seedInboxMessage(repo.databasePath, 'tg:group:1', 'msg_1', 'acc_1', 'claimed', {
+        claimedBy: 'holder_alpha',
+        claimedAtToken: 1,
+        content: 'Hello message 1',
+      });
+      seedInboxMessage(repo.databasePath, 'tg:group:1', 'msg_2', 'acc_1', 'claimed', {
+        claimedBy: 'holder_alpha',
+        claimedAtToken: 1,
+        content: 'Hello message 2',
+      });
+      seedInboxMessage(repo.databasePath, 'tg:group:1', 'msg_3', 'acc_1', 'queued', {
+        content: 'Queued message 3',
+      });
+
+      const claimed = repo.getClaimedMessages('tg:group:1', 'holder_alpha', 1);
+      assert.strictEqual(claimed.length, 2);
+      assert.strictEqual(claimed[0].messageId, 'msg_1');
+      assert.strictEqual(claimed[0].content, 'Hello message 1');
+      assert.strictEqual(claimed[0].status, 'claimed');
+      assert.strictEqual(claimed[0].claimedBy, 'holder_alpha');
+      assert.strictEqual(claimed[0].claimedAtToken, 1);
+
+      assert.strictEqual(claimed[1].messageId, 'msg_2');
+      assert.strictEqual(claimed[1].content, 'Hello message 2');
+      assert.strictEqual(claimed[1].sequence > claimed[0].sequence, true);
+    } finally {
+      repo.close();
+    }
+  } finally {
+    harness.cleanup();
+  }
+});
+
+// 26. getClaimedMessages: wrong holder returns [] (D-TG11-2, T21)
+test('SqliteChannelTransactions - 26. getClaimedMessages returns [] on wrong holder', { timeout: 5000 }, () => {
+  const harness = createTempHarness();
+  try {
+    const repo = new SqliteStateRepository(harness.stateRoot);
+    try {
+      repo.takeoverChannel('tg:group:1', 'holder_alpha');
+      seedInboxMessage(repo.databasePath, 'tg:group:1', 'msg_1', 'acc_1', 'claimed', {
+        claimedBy: 'holder_alpha',
+        claimedAtToken: 1,
+        content: 'Content',
+      });
+
+      const claimed = repo.getClaimedMessages('tg:group:1', 'wrong_holder', 1);
+      assert.deepStrictEqual(claimed, []);
+    } finally {
+      repo.close();
+    }
+  } finally {
+    harness.cleanup();
+  }
+});
+
+// 27. getClaimedMessages: stale token returns [] (D-TG11-2, T21)
+test('SqliteChannelTransactions - 27. getClaimedMessages returns [] on stale token', { timeout: 5000 }, () => {
+  const harness = createTempHarness();
+  try {
+    const repo = new SqliteStateRepository(harness.stateRoot);
+    try {
+      repo.takeoverChannel('tg:group:1', 'holder_alpha');
+      seedInboxMessage(repo.databasePath, 'tg:group:1', 'msg_1', 'acc_1', 'claimed', {
+        claimedBy: 'holder_alpha',
+        claimedAtToken: 1,
+        content: 'Content',
+      });
+
+      const claimed = repo.getClaimedMessages('tg:group:1', 'holder_alpha', 0);
+      assert.deepStrictEqual(claimed, []);
+
+      const claimedFuture = repo.getClaimedMessages('tg:group:1', 'holder_alpha', 99);
+      assert.deepStrictEqual(claimedFuture, []);
+    } finally {
+      repo.close();
+    }
+  } finally {
+    harness.cleanup();
+  }
+});
+
+// 28. getClaimedMessages: no holder returns [] (D-TG11-2)
+test('SqliteChannelTransactions - 28. getClaimedMessages returns [] when channel has no holder or does not exist', { timeout: 5000 }, () => {
+  const harness = createTempHarness();
+  try {
+    const repo = new SqliteStateRepository(harness.stateRoot);
+    try {
+      const nonExistent = repo.getClaimedMessages('tg:nonexistent', 'holder_alpha', 1);
+      assert.deepStrictEqual(nonExistent, []);
+
+      // Channel exists but holder expired (current_holder is null)
+      repo.takeoverChannel('tg:group:2', 'holder_temp', { timestamp: 1000 });
+      repo.expireChannelHolder('tg:group:2');
+      const expiredHolder = repo.getClaimedMessages('tg:group:2', 'holder_temp', 1);
+      assert.deepStrictEqual(expiredHolder, []);
+    } finally {
+      repo.close();
+    }
+  } finally {
+    harness.cleanup();
+  }
+});
+
+// 29. getClaimedMessages: hard maximum 50 rows returned (D-TG11-2)
+test('SqliteChannelTransactions - 29. getClaimedMessages enforces hard repository limit 50', { timeout: 5000 }, () => {
+  const harness = createTempHarness();
+  try {
+    const repo = new SqliteStateRepository(harness.stateRoot);
+    try {
+      repo.takeoverChannel('tg:group:bulk', 'holder_bulk');
+
+      for (let i = 1; i <= 60; i++) {
+        seedInboxMessage(repo.databasePath, 'tg:group:bulk', `bulk_msg_${i}`, 'acc_bulk', 'claimed', {
+          claimedBy: 'holder_bulk',
+          claimedAtToken: 1,
+          content: `Content ${i}`,
+        });
+      }
+
+      const claimed = repo.getClaimedMessages('tg:group:bulk', 'holder_bulk', 1);
+      assert.strictEqual(claimed.length, 50, 'Hard repository limit 50 must cap returned claimed messages');
+    } finally {
+      repo.close();
+    }
+  } finally {
+    harness.cleanup();
+  }
+});
+
+// 30. getClaimedMessages: claimed_by and claimed_at_token filtering isolates rows from other/stale holders (T21)
+test('SqliteChannelTransactions - 30. getClaimedMessages strict row filter isolates other holder claims', { timeout: 5000 }, () => {
+  const harness = createTempHarness();
+  try {
+    const repo = new SqliteStateRepository(harness.stateRoot);
+    try {
+      repo.takeoverChannel('tg:group:filter', 'holder_current');
+
+      // Seed a claimed row with older token or another holder
+      seedInboxMessage(repo.databasePath, 'tg:group:filter', 'msg_old_holder', 'acc_filter', 'claimed', {
+        claimedBy: 'holder_old',
+        claimedAtToken: 0,
+        content: 'Old claim',
+      });
+      // Seed a claimed row with matching current holder & token
+      seedInboxMessage(repo.databasePath, 'tg:group:filter', 'msg_curr_holder', 'acc_filter', 'claimed', {
+        claimedBy: 'holder_current',
+        claimedAtToken: 1,
+        content: 'Current claim',
+      });
+
+      const claimed = repo.getClaimedMessages('tg:group:filter', 'holder_current', 1);
+      assert.strictEqual(claimed.length, 1);
+      assert.strictEqual(claimed[0].messageId, 'msg_curr_holder');
+    } finally {
+      repo.close();
+    }
+  } finally {
+    harness.cleanup();
+  }
+});

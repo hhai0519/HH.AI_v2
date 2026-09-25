@@ -2082,6 +2082,90 @@ class SqliteStateRepository {
   }
 
   /**
+   * Strictly READ-ONLY query for claimed messages for the current channel holder and token (ADR-0023, D-TG11-2).
+   *
+   * Invariants (D-TG11-2):
+   * - Validates channelId, holderId, fencingToken syntax.
+   * - Fails closed on closed repository.
+   * - Validates current holder in channel_control:
+   *     current holder MUST equal holderId
+   *     current fencing token MUST equal fencingToken
+   *     no current holder => []
+   *     wrong holder => []
+   *     stale/wrong fencing token => []
+   * - SELECT only rows where:
+   *     status = 'claimed'
+   *     claimed_by = holderId
+   *     claimed_at_token = fencingToken
+   * - Includes message content.
+   * - ORDER BY sequence ASC.
+   * - Hard repository LIMIT 50.
+   * - ZERO schema mutation, zero INSERT, zero UPDATE, zero DELETE, zero transaction-state mutation.
+   *
+   * @param {string} channelId
+   * @param {string} holderId
+   * @param {number} fencingToken
+   * @returns {Array<{
+   *   sequence: number,
+   *   channel_id: string,
+   *   channelId: string,
+   *   message_id: string,
+   *   messageId: string,
+   *   account_id: string,
+   *   accountId: string,
+   *   receivingAccountId: string,
+   *   status: string,
+   *   claimed_by: string,
+   *   claimedBy: string,
+   *   claimed_at_token: number,
+   *   claimedAtToken: number,
+   *   content: string
+   * }>}
+   */
+  getClaimedMessages(channelId, holderId, fencingToken) {
+    if (!this.#isOpen || !this.#db) {
+      throw new Error('Repository is closed (cannot inspect claimed messages on closed repository)');
+    }
+
+    const cId = validateChannelId(channelId);
+    const hId = validateHolderId(holderId);
+    const fToken = validateFencingToken(fencingToken);
+
+    const selectCtrl = this.#db.prepare(
+      'SELECT channel_id, current_holder, fencing_token FROM channel_control WHERE channel_id = ?;'
+    );
+    const ctrlRow = selectCtrl.get(cId);
+    if (!ctrlRow || ctrlRow.current_holder === null || ctrlRow.current_holder !== hId) {
+      return [];
+    }
+    if (ctrlRow.fencing_token !== fToken) {
+      return [];
+    }
+
+    const selectClaimed = this.#db.prepare(
+      "SELECT sequence, channel_id, platform_msg_id, account_id, status, claimed_by, claimed_at_token, content FROM inbox WHERE channel_id = ? AND status = 'claimed' AND claimed_by = ? AND claimed_at_token = ? ORDER BY sequence ASC LIMIT 50;"
+    );
+    const rows = selectClaimed.all(cId, hId, fToken);
+
+    return rows.map((r) => ({
+      sequence: r.sequence,
+      channel_id: r.channel_id,
+      channelId: r.channel_id,
+      message_id: r.platform_msg_id,
+      messageId: r.platform_msg_id,
+      account_id: r.account_id,
+      accountId: r.account_id,
+      receivingAccountId: r.account_id,
+      status: 'claimed',
+      claimed_by: r.claimed_by,
+      claimedBy: r.claimed_by,
+      claimed_at_token: r.claimed_at_token,
+      claimedAtToken: r.claimed_at_token,
+      content: r.content !== null && r.content !== undefined ? String(r.content) : '',
+    }));
+  }
+
+  /**
    * Strictly READ-ONLY validation of reply authorization (ADR-0023, ADR-0024 F1).
    *
    * Invariants (D8, D26, R2, F1):

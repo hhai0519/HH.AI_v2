@@ -2825,7 +2825,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 5.1 上一批狀態
 
-上次核對通過的 HEAD：cfc6249edd79a14990207d68c9e86644c83fbc0e
+上次核對通過的 HEAD：c106638e5bcea5de1ab1f690ded4dff1a27484e4
 
 - `23af193`（執行者前置檢查 ＋ 回滾程序 ＋ `AUDIT-LOG.md` ＋ 四缺口修正）
   已於 2026-09-02 由審計官核對通過：6 檔異動（含 2 個新檔）、零夾帶、
@@ -5168,4 +5168,20 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - B-105 保持 TODO；Jules 保持 DISABLED（本輪不啟用 Jules）。
   - §5.4 維持純指標導向（POINTER_ONLY），不保存動態任務佇列或狀態副本。
 
-
+146. **TG-MVP-11 本機迴路 Local API v1 實作候選（TG-MVP-11 Loopback Local API v1 Implementation Candidate）**（2026-09-25）
+- **實作落地與架構契約（Implementation & Architecture Contracts）**：
+  - 實作本機專屬 HTTP 伺服器 `runtime/channel-gateway/core/local-api-server.js`，嚴格僅綁定 `127.0.0.1:3003`，支援安全標頭防護（`Host: 127.0.0.1:3003`、禁止 `Origin` 標頭、拒絕 `Transfer-Encoding` 501）。
+  - 封包編碼解碼器 `core/local-api-codec.js` 提供規範化請求/回應序列化、防時序攻擊比較與重放防護（nonce 驗證與 TTL 視窗）。
+  - 重放快取 `core/local-api-replay-cache.js` 追蹤已消耗之 nonce，杜絕重放攻擊。
+  - 派發器 `core/local-api-dispatcher.js` 協調狀態查詢（status）、控制權接管（takeover）、訊息輪詢（poll）、心跳維護（heartbeat）與回覆處理（reply），實作同步輪詢容量保護（容量上限 50 筆訊息）、fencing token 驗證與過期回覆嚴格拒絕。
+  - 執行期管理員 `core/gateway-runtime-owner.js` 統籌 Local API Server、Telegram 適配器、備份排程與狀態庫生命週期，提供有序非同步關閉。
+  - 入口腳本 `bin/gateway.js` 與本機客戶端 CLI `bin/local-api-client.js`。
+  - 狀態儲存庫擴充 `getClaimedMessages(accountId, limit)`，支援同步輪詢交易邊界。
+- **根因排除與反事實突變驗證（Root-Cause Recovery & Counterfactual Mutation Matrix）**：
+  - 依 Root-Cause Recovery Addendum v2 徹底診斷客戶端 exit 1 缺陷：DIRECT CAUSE 判定為 `OTHER:MISSING_CODEC_IMPORT_REFERENCE_ERROR`（`buildCanonicalResponse` 遺漏引入）；LATENT DEFECT 判定為 `SHARED_SECRET_FIXTURE_CONTAMINATION`（測試模組級 Buffer 共用）；經生產與測試統一落實 canonical `SecretProvider.getSecret()` 契約與 fresh Buffer 歸零後完全修復。
+  - 反事實突變測試矩陣 T1 至 T23 全數通過（23/23 valid semantic RED，false-red = 0，TEST_HANG = 0，OWNED_PROCESS_REMAINING = 0，T23_RESTORED_BASELINE = PASS）。
+  - 突變證據持久化至未追蹤產物 `.git/tg-mvp-11-mutation-results.json`。
+- **流程異常與審計發現分流（Process Findings & Existing B-107 Disposition）**：
+  - 診斷期間直接調用 `node -e` 繞過 bounded runner 處置留痕：確認分流至 EXISTING B-107，不另立新任務。
+  - Antigravity IDE Verification Required 第二次再發留痕：分流至 EXISTING B-107，不另立 B-110；外部 IDE/帳號中斷 CONFIRMED，repo root cause NOT ESTABLISHED，repo 突變 NONE，secret 暴露 NONE，cross-session NONE，bounded-runner bypass after recovery NONE；B-107 保持 OPEN / RESIDUAL / NON-BLOCKING FOR CURRENT E-03 RETURN。
+  - TG-MVP-11 候選提交標記為 IN PROGRESS / IMPLEMENTATION CANDIDATE / AWAITING EXTERNAL MACRO AUDIT，執行者嚴禁自審宣稱結案。

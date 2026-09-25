@@ -171,6 +171,10 @@ ADR-0022 仍保留為 Channel Gateway 之歷史與總體架構權威（Historica
       - 安裝檔雜湊／Authenticode：`NOT_REPO_VERIFIED`（因由 USER 手動安裝，安裝檔來源未經版本庫工具鏈捕獲）。
       - `.nvmrc` 維持權威：`24.21.0`。
 
+14. **TG-MVP-11 狀態查詢與訊息認領查詢擴充 (TG-MVP-11 Message Claim Queries)**：
+    - 新增 `getClaimedMessages(accountId, limit)` 支援 Local API 查詢目前已認領（CLAIMED）狀態訊息。
+    - 確立同步輪詢交易邊界：先查詢已認領訊息，計算剩餘容量（`50 - claimedCount`），僅在容量 > 0 時呼叫 `claimMessages({ limit: claimLimit })`，杜絕超出 50 筆上限。
+
 ## Consequences
 
 1. **治理分層明確化**：本決策確立了持久化技術路線的重大轉變。相關規則同步落地於 `runtime/channel-gateway/AGENTS.md`，根目錄 `AGENTS.md` 僅保留通用的目錄範圍規則擴充，維持漸進式揭露。

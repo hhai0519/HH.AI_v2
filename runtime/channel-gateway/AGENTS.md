@@ -134,3 +134,14 @@ T6 階段正式採用 `busy_timeout = 5000`（5000ms），其基礎為 T1 Window
 - **固定端點與安全常數 (Fixed Endpoint & Safety Constants)**：Telegram API 端點固化為 `https://api.telegram.org`，輪詢逾時固定為 30 秒、客戶端逾時固定為 40 秒、跨週重置門檻固定為 604,800,000 毫秒（7 天）。建構子嚴禁接收外部覆寫選項。
 - **嚴格 Token 結構語法 (Strict Token Grammar)**：在任何字串轉換前必須進行位元組層級語法驗證（`^[0-9]+:[A-Za-z0-9_-]+$`）。錯誤診斷僅輸出穩定代碼 `INVALID_TELEGRAM_TOKEN_SYNTAX`，絕不暴露壞位元組、索引位移或部分 Token。
 - **有效 Update ID 畸形負載防護 (Malformed Valid Update Handling)**：有效之 `update_id` 但 payload / identity 畸形或不支援時，必須持久化寫入耐久之 `IGNORED` 事件後始得推進游標，防止輪詢毒藥迴圈；無效或非安全整數之 `update_id` 則嚴格保持零突變（Zero Mutation）。
+
+## 14. 本機迴路 Local API v1 契約 (Loopback Local API v1 Contract — TG-MVP-11)
+
+- **本機迴路綁定不變式**：Local API 伺服器嚴格僅監聽字面值 `127.0.0.1:3003`，嚴禁綁定 `0.0.0.0`、`::` 或任何外部介面；不允許自動通訊埠回退。
+- **Host / Origin 防護**：`Host` 標頭嚴格比對 `127.0.0.1:3003`，凡帶有 `Origin` 標頭之請求一律拒絕（反跨來源請求 CSRF/DNS Rebinding）。
+- **雙階段 HMAC-SHA-256 驗證**：所有已認證請求必須經由共用金鑰驗證 `X-HHAI-Signature`，包含 timestamp 視窗驗證（+/- 300 秒）、nonce 重放快取驗證與實體內文 SHA-256 雜湊驗證。
+- **Transfer-Encoding 拒絕**：帶有 `Transfer-Encoding` 之請求直接回傳 501，嚴禁接受分塊傳輸。
+- **同連線會話綁定**：TCP 連線握手成功建立之 session 嚴格綁定底層 socket，換連線使用舊 session 即刻拒絕。
+- **同步輪詢容量上限**：`POST /v1/poll` 每批最多 50 筆訊息；若既有 claimed 訊息加上請求量超過 50 筆，僅能領取至滿額（`Math.min(limit, 50 - claimedCount)`），杜絕訊息堆積與未回覆洩漏。
+- **過期回覆嚴格拒絕**：`POST /v1/reply` 檢驗 fencing token，非最新 holder 之過期回覆一律拒絕。
+- **生命週期關閉契約**：由 `GatewayRuntimeOwner` 管理，關閉時停止 Local API 伺服器接受新連線、停止 Telegram 配接器、停止備份排程器、最後安全關閉 SQLite 儲存庫。

@@ -1,7 +1,7 @@
 # ADR-0025: Outbound Delivery Reliability and Loopback Local API Security
 
-- Status: Accepted
-- Date: 2026-09-18
+- Status: Accepted (R3 Implemented in TG-MVP-11 / 2026-09-25; R2 Scheduled for TG-MVP-12)
+- Date: 2026-09-18 (Original), 2026-09-25 (TG-MVP-11 R3 Implementation)
 
 ## Context
 
@@ -471,6 +471,9 @@ Local API 正式定義協定版本與標頭格式：
 - **CANARY R3-P**：無效 HMAC 之 HELLO 請求不得寫入重放快取造成合法 Nonce 遭阻斷。
 - **CANARY R3-Q**：成功 HELLO 回應之簽章完整覆蓋新產生之 Session ID，客戶端驗證成功後始接受。
 - **CANARY R3-R**：正規化字串換行採 CRLF 取代 LF 時，簽章比對立即失敗。
+
+> **TG-MVP-11 實作與反事實突變驗證留痕**：
+> R3 Local API v1 規範（Canaries R3-A 至 R3-R）已由 TG-MVP-11 完整實作落地，涵蓋本機專屬監聽（127.0.0.1:3003）、雙階段 HMAC 驗證、nonce 重放防護、同連線 socket 會話綁定、同步輪詢容量保護（上限 50 筆）、過期回覆嚴格拒絕與非同步生命週期管理。全數 23 項反事實突變測試（T1 至 T23）皆呈現確定性語意 RED（23/23 valid semantic RED, false-red = 0, TEST_HANG = 0, OWNED_PROCESS_REMAINING = 0）。
 
 ---
 

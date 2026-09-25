@@ -164,6 +164,16 @@
      3. 始得呼叫 `BackupRuntimeOwner.stop()` 或關閉 SQLite 儲存庫。
    - 配接器本身嚴禁關閉儲存庫。
 
+## TG-MVP-11 架構演進與邊界收斂 (TG-MVP-11 Evolution & Boundaries)
+
+1. **本機迴路 Local API v1 落地**：
+   - 實作本機專屬 HTTP 伺服器 `runtime/channel-gateway/core/local-api-server.js`，嚴格僅綁定 `127.0.0.1:3003`，支援安全標頭防護與雙階段 HMAC SHA-256 請求驗證。
+   - 封包編碼解碼器 `core/local-api-codec.js` 提供規範化請求/回應序列化、防時序攻擊比較與重放防護（nonce 驗證與 TTL 視窗）。
+   - 重放快取 `core/local-api-replay-cache.js` 追蹤已消耗之 nonce，杜絕重放攻擊。
+   - 派發器 `core/local-api-dispatcher.js` 協調狀態查詢（status）、控制權接管（takeover）、訊息輪詢（poll）、心跳維護（heartbeat）與回覆處理（reply），實作同步輪詢容量保護（容量上限 50 筆訊息）、fencing token 驗證與過期回覆嚴格拒絕。
+   - 執行期管理員 `core/gateway-runtime-owner.js` 統籌 Local API Server、Telegram 適配器、備份排程與狀態庫生命週期，提供有序非同步關閉。
+   - 入口腳本 `bin/gateway.js` 與本機客戶端 CLI `bin/local-api-client.js`。
+
 ## Consequences
 
 - **架構集中與維護簡化**：由單一 `runtime/channel-gateway/` 統一處理多通道通訊，徹底消滅雙橋接重疊依賴與維護負擔。

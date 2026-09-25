@@ -1,7 +1,7 @@
 # ADR-0017: Port 分配規範與通訊通訊埠收斂 (Port Allocation & Convergence)
 
-- Status: Accepted (Updated via TG-MVP-07 / 2026-09-22)
-- Date: 2026-08-26 (Original), 2026-09-22 (TG-MVP-07 Convergence)
+- Status: Accepted (Updated via TG-MVP-11 / 2026-09-25)
+- Date: 2026-08-26 (Original), 2026-09-22 (TG-MVP-07 Convergence), 2026-09-25 (TG-MVP-11 Local API v1)
 
 ## Context
 
@@ -43,7 +43,7 @@
 | Port | 分配對象 | 狀態與約束 |
 |---|---|---|
 | 3002 | 未來 Next.js 網頁應用 | **預留 (Reserved)**。未來重建網頁應用時於 `package.json` 明確指定 `"dev": "next dev -p 3002"`，不得依賴 3000 預設值 |
-| 3003 | Channel Gateway v1 規範通訊埠 (Canonical Local Port) | **已確立分配 (Canonical / Explicit Target)**。Gateway 專屬本地通訊埠。不允許自動回退（no auto fallback）；若發生 collision 必須 fail closed。**本批（TG-MVP-07）不實作 listener**；其 listener 實作與 D24 Local Config 載入分屬 TG-MVP-11 與 TG-MVP-07A |
+| 3003 | Channel Gateway v1 規範通訊埠 (Canonical Local Port) | **已實作上線 (Implemented in TG-MVP-11)**。Gateway 專屬本地通訊埠，嚴格僅綁定本機 `127.0.0.1`。不允許自動回退（no auto fallback）；若發生 collision 必須 fail closed。由 TG-MVP-11 實作 Local API v1 HTTP 伺服器與客戶端 CLI 工具。 |
 | 8888 | 靜態分析頁面 / Skills Dashboard | **預留 (Reserved)** |
 | 6379 | Redis 工具通訊埠 (Tooling Port) | **已知工具通訊埠 (Known Tooling)**（源自 B-33）。不得分配給 Gateway，本輪不宣稱已部署 |
 | 9222 / 9223 | Chrome CDP 工具通訊埠 (Tooling Ports) | **已知工具通訊埠 (Known Tooling)**（源自 B-33）。不得分配給 Gateway，本輪不宣稱已部署 |
@@ -60,4 +60,4 @@
 1. **Gateway Port 規範確立**：Channel Gateway v1 唯一規範通訊埠定為 3003，徹底終結 port 未決狀態（ADR-0022 相關未決文字同步收斂）。
 2. **通訊埠衝突隔離**：Gateway (3003)、未來 Next.js (3002)、Dashboard (5000)、Redis (6379)、Chrome CDP (9222/9223) 與歷史 bridge (3000/3001) 各自獨立，互不重疊。
 3. **無盲目探測**：Playwright 測試收斂為顯式目標模式，消除對外部運行服務（如 Port 5000 儀表板）造成非預期 probe 的風險。
-4. **實作分工邊界**：本 ADR 僅確立規範分配與安全契約；3003 listener 與 D24 Local Config 載入維持由 TG-MVP-11 與 TG-MVP-07A 負責實作，不提前建立網路 socket。
+4. **實作分工邊界**：本 ADR 確立之規範分配已由 TG-MVP-07A（Local Config 載入契約）與 TG-MVP-11（Local API v1 本機迴路 listener 與客戶端工具）完成落地實作，正式綁定 127.0.0.1:3003。

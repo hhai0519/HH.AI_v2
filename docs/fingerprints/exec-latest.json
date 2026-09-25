@@ -1,5 +1,5 @@
 {
-  "base_head": "cfc6249",
+  "base_head": "c106638",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -376,7 +376,7 @@
         "### Step 5：驗證服務健康狀態",
         "# @EXECUTE",
         "# 只有對應服務實體存在且已啟動時，方可進行健康探測（符合 Runtime Availability Boundary）：",
-        "# 歷史雙生橋接留痕：LINE bridge (3000) / TG bridge (3001)（歷史留痕，已由 ADR-0022 單一 Gateway 替代；現行單一 Gateway v1 規範通訊埠定為 3003，但 listener 尚未由 TG-MVP-07 部署，禁止探測未部署之 listener）；未來 Next.js (3002) / 靜態伺服器 (8888)（預留）。",
+        "# 歷史雙生橋接留痕：LINE bridge (3000) / TG bridge (3001)（歷史留痕，已由 ADR-0022 單一 Gateway 替代；現行單一 Gateway v1 規範通訊埠定為 3003，依 TG-MVP-11 實作嚴格綁定 127.0.0.1 迴圈介面，經 HMAC 雙向鑑權）；未來 Next.js (3002) / 靜態伺服器 (8888)（預留）。",
         "# 若服務尚未部署或啟動，跳過該探測，不得判為異常。嚴禁探測 repo-external 服務（如 Port 5000 儀表板）。",
         "## 三、可安全清理的暫存項目",
         "## 四、工作站目錄結構（標準化範本）",
@@ -386,7 +386,7 @@
         "### 服務啟動確認步驟"
       ],
       "lines": 182,
-      "sha256": "cfc69a1e41f6e6c77940030f36596d6d47db1389b5f47d9c354aa4d3869ae000"
+      "sha256": "f8132e2a93db912a06c7b5f3db0a63cb84c7c3774c87a3f93bad1f609b80fa19"
     },
     "SOP/SOP_05_System_Policies.md": {
       "fences": 0,
@@ -430,7 +430,7 @@
         "## 6. 維運紀錄與證據 (Operations Evidence)"
       ],
       "lines": 119,
-      "sha256": "232179817176919823704e8f50a6a0e275ca4fd4175ddd0c2b13a1a43b59a46a"
+      "sha256": "42ab180f88051c19a650535f631ee800d306e2910977637f62f543cbfbdc6172"
     },
     "SOP/SOP_09_AutoResearch_CPU.md": {
       "fences": 16,
@@ -552,16 +552,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 223,
-      "sha256": "68343c19ff22bd05133389b4961c1e9d9605e06807b3002c75320e0cca73a5f0"
+      "lines": 224,
+      "sha256": "1ea0a9e612a948264a155a7e97c9af110d6252f093e0e152b31c58e347985618"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 194,
-      "sha256": "a4b6ce4aade85e84a257da233c9d61c0f7f07bf810d34d53649c9b199e112d66"
+      "lines": 195,
+      "sha256": "91d2e7fad224507977e0315683e6c7c79f671fa74ddd308e4861b39183d1168e"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -602,7 +602,7 @@
         "## 封存區"
       ],
       "lines": 340,
-      "sha256": "80168834104ef5b52646712d0d7c06ea58f59c80b46dcebb5f2d4961cdb92d43"
+      "sha256": "68d291546de2dc45aa3e0e82fe8e86f5d9360055747713d6f7d7e192ecea2424"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -835,7 +835,7 @@
         "## Consequences"
       ],
       "lines": 63,
-      "sha256": "68b8886a3e01e9c1d2710d68e4321295b926e910249e9ee7ebd45bcea436eea2"
+      "sha256": "9abf8cc6b523f4bf1c00c243a0897973c2926abe171b8711d1176a285b5cd36e"
     },
     "docs/adr/0018-vendored-external-assets.md": {
       "fences": 0,
@@ -900,10 +900,11 @@
         "## 外部審計發現處置路由 (Macro Finding Routing M2–M8)",
         "## 上線前既有任務交會相依 (Pre-Live Existing Task Intersections)",
         "## TG-MVP-10 架構演進與邊界收斂 (TG-MVP-10 Evolution & Boundaries)",
+        "## TG-MVP-11 架構演進與邊界收斂 (TG-MVP-11 Evolution & Boundaries)",
         "## Consequences"
       ],
-      "lines": 173,
-      "sha256": "179f791f2d1150c5c7c34c08de1536b1f14d5046a5151da66c0201a9d95e0422"
+      "lines": 183,
+      "sha256": "328d682b104f137049009b98ee5f8236318de30d15b404cc7e42541a50e2694b"
     },
     "docs/adr/0023-channel-gateway-state-store-sqlite.md": {
       "fences": 0,
@@ -922,8 +923,8 @@
         "### 9. 狀態資料庫與備份衛生治理 (State Database & Backup Hygiene — TG-MVP-09A)",
         "## Consequences"
       ],
-      "lines": 184,
-      "sha256": "9b9ea3cdef566decc457d6a37174372cc92609686cb54b4c4c85667863901bbb"
+      "lines": 188,
+      "sha256": "720200ef17322bfd5dacb86074816238f630aeaf39a8e179fceeb3d5c4d7ea48"
     },
     "docs/adr/0024-inbound-identity-cursor-semantics.md": {
       "fences": 2,
@@ -979,8 +980,8 @@
         "### R3 Loopback Local API Canaries",
         "## External Platform & Runtime Facts"
       ],
-      "lines": 497,
-      "sha256": "5fc2989773bd8c3e238fa6ce4ffedf0586b4bd6fb68407927f4e1efcdac1cd94"
+      "lines": 500,
+      "sha256": "981698b521632f7ef46acccb194558e6f22cf1e773abc8e991b6e1ae95799ddb"
     },
     "docs/adr/0026-gateway-secret-provider-windows-credential-manager.md": {
       "fences": 0,
@@ -1068,8 +1069,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 5171,
-      "sha256": "f25b81b5fe105a9592c3353210279dff6481c3d943b903f240af2ed942e7ef38"
+      "lines": 5187,
+      "sha256": "ae9ef9ad09c7d550dad2af443bb20a009129f91fe83f5f989473991fd78c24ed"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1497,7 +1498,7 @@
       "sha256": "35bf7dbfa3c7d291b550c3c97a6ae398a22b1dc3624c1d2fc1e4db6963d6e115"
     }
   },
-  "generated_at": "2026-09-25T05:51:43Z",
+  "generated_at": "2026-09-25T12:24:59Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {
