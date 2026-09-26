@@ -5402,9 +5402,35 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
     - 不新增 backlog ID；B-107 保持 OPEN / RESIDUAL / NON-BLOCKING FOR CURRENT E-03 RETURN。
 - **後續路由與任務狀態（Next Work Routing & Task Status）**：
   - TG-MVP-13 R0 = MACRO HOLD。
-  - TG-MVP-13 R1 = ACTIVE（有界安全修復中）。
+  - TG-MVP-13 R1 = MACRO HOLD。
   - NEXT_WORK = E-03。
   - NEXT_SLICE = TG-MVP-13。
   - 不得進 TG-MVP-14。
   - R1 候選待外部宏觀審計（AWAITING EXTERNAL MACRO RE-AUDIT），執行者嚴禁自審。
+
+140. **TG-MVP-13 R1 外部宏觀審計判定與有界修復 R2 授權（TG-MVP-13 R1 Macro Audit HOLD & Bounded Repair R2 Authorization）**（2026-09-26）
+- **R1 審計結論與客觀生命週期事實（R1 Audit Verdict & Objective Facts）**：
+  - TARGET = `202715167df310d9daed9f420d8a346bdcc5b6ff`，PARENT = `7b22f07cbfef6bd577fe27b18b4aece50f347da6`，ACCEPTED CHECKPOINT = `d55b2b18bb7769cfc80bc412230bd18d0df7fdd3`。
+  - Candidate Actions Run 36249608153 attempt 1（event=push, head_branch=batch/tg-mvp-13-telegram-outbound-260926, head_sha=202715167df310d9daed9f420d8a346bdcc5b6ff, verify: completed/success, gateway-windows: completed/success）。
+  - External Macro independently verified: verify = completed/success, gateway-windows = completed/success; raw verify = 530 passed + 13 passed + ALL 5 GATES PASSED; raw gateway-windows = 38 passed。
+  - R1 F1 = RESOLVED, R1 F2 = RESOLVED, R1 F3 = RESOLVED。
+  - External Macro R1 verdict: MACHINE = PASS, SCOPE = PASS, WSL = PASS, CI = PASS, IMPLEMENTATION = HOLD, SAFETY = HOLD, PROMOTION ELIGIBILITY = HOLD, ROLLBACK = NO, E24 REDISCOVERY = NO, BOUNDED REPAIR R2 = REQUIRED。
+- **新阻擋性發現與狀態同步缺陷（New Blocking Findings & State-Sync Defects）**：
+  - **F4**（Async SecretProvider account-switch race）：After initial active-account check, deliver() awaits getSecret(). If active account changes during lookup, code resumed without re-validating current active account before fetch. Authoritative active account required immediately before every outbound request; old-account command before fetch must return NOT_SENT / ACCOUNT_MISMATCH_PRE_REQUEST with zero network, old adopted Buffer zeroized, no new-account token lookup.
+  - **F5**（Full delivery quiesce / stop lifecycle gap）：TelegramOutboundAdapter active delivery lifecycle did not cover the complete async delivery; stop() could fail to quiesce in-progress secret lookup or post-fetch response body read. Active deliveries count and AbortController ownership must cover whole delivery lifecycle.
+  - **SS-F1**：Committed R1 EXEC-LOG row stated finding_disposition=EXISTING B-107, but actual R1 Prompt Manifest was finding_disposition=CURRENT E-03.
+  - **SS-F2**：docs/governance/execution-record.json contained generic B-109 hard-coded M2 discovery artifact as verification_status=VERIFIED and CLAIM_DISCOVERY_PROVENANCE_VERIFIED.
+- **流程留痕與 B-107 分流（Process Recurrence Routed to EXISTING B-107）**：
+  - Interrupted-Recovery process recurrence: direct Node/Python diagnostics occurred outside required bounded runner discipline.
+  - Routed to EXISTING B-107 (OPEN / RESIDUAL / NON-BLOCKING FOR CURRENT E-03 RETURN)；no new backlog ID.
+  - accepted checkpoint 嚴格保持 `d55b2b18bb7769cfc80bc412230bd18d0df7fdd3`。
+  - ENV-01 remains DEFERRED / UNTOUCHED。
+- **後續路由與任務狀態（Next Work Routing & Task Status）**：
+  - TG-MVP-13 R1 = MACRO HOLD。
+  - TG-MVP-13 R2 = ACTIVE（非阻塞異步帳號邊界與生命週期閉合修復中）。
+  - NEXT_WORK = E-03。
+  - NEXT_SLICE = TG-MVP-13。
+  - 不得進 TG-MVP-14。
+  - R2 候選待外部宏觀審計（AWAITING EXTERNAL MACRO RE-AUDIT），執行者嚴禁自審。
+
 

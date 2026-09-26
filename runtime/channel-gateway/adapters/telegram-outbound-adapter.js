@@ -136,14 +136,14 @@ class TelegramOutboundAdapter {
         ac.abort();
       } catch (_) {}
     }
-    this.#inFlightAbortControllers.clear();
 
-    if (this.#activeDeliveriesCount > 0) {
+    while (this.#activeDeliveriesCount > 0) {
       await new Promise((resolve) => {
         this.#quiesceResolvers.push(resolve);
       });
     }
 
+    this.#inFlightAbortControllers.clear();
     this.#zeroizeToken();
   }
 
@@ -279,263 +279,345 @@ class TelegramOutboundAdapter {
       };
     }
 
-    // Lazy load token buffer once per active lifecycle
-    if (!this.#cachedTokenBuffer) {
-      this.#cachedAccountId = active.id;
-      let tokenBuf = null;
-      try {
-        tokenBuf = await this.#secretProvider.getSecret(SecretRef.telegramBotToken(active.id));
-      } catch (_) {
-        return {
-          transport_phase: 'NOT_SENT',
-          success: false,
-          error_code: 'TELEGRAM_SECRET_UNAVAILABLE',
-        };
-      }
-
-      if (!tokenBuf || !Buffer.isBuffer(tokenBuf)) {
-        return {
-          transport_phase: 'NOT_SENT',
-          success: false,
-          error_code: 'TELEGRAM_SECRET_UNAVAILABLE',
-        };
-      }
-
-      try {
-        validateTelegramTokenBuffer(tokenBuf);
-      } catch (_) {
-        try {
-          tokenBuf.fill(0);
-        } catch (_) {}
-        this.#cachedTokenBuffer = null;
-        this.#cachedAccountId = null;
-        return {
-          transport_phase: 'NOT_SENT',
-          success: false,
-          error_code: 'INVALID_TELEGRAM_TOKEN_SYNTAX',
-        };
-      }
-
-      this.#cachedTokenBuffer = tokenBuf;
-    }
-
-    // Construct payload
-    const requestPayload = {
-      chat_id: recipient,
-      text,
-    };
-    if (replyParameters) {
-      requestPayload.reply_parameters = replyParameters;
-    }
-    const bodyStr = JSON.stringify(requestPayload);
-
-    // Ephemeral URL only at request boundary
-    const tokenStr = this.#cachedTokenBuffer.toString('utf8');
-    const endpointUrl = `${TELEGRAM_API_ORIGIN}/bot${tokenStr}/sendMessage`;
-
-    const ac = this.#abortControllerFactory ? this.#abortControllerFactory() : new AbortController();
-    this.#inFlightAbortControllers.add(ac);
+    // F5: Active delivery ownership covers complete async delivery lifecycle:
+    // secret lookup, request, response, text read, parse, and classification
     this.#activeDeliveriesCount++;
-
-    let timeoutTimer = null;
-    let fetchInvoked = false;
-    let response = null;
-
+    let ac = null;
     try {
-      const timeoutPromise = new Promise((_, reject) => {
-        timeoutTimer = setTimeout(() => {
-          try {
-            ac.abort();
-          } catch (_) {}
-          const err = new Error('Telegram client timeout');
-          err.name = 'AbortError';
-          reject(err);
-        }, TELEGRAM_CLIENT_TIMEOUT_MS);
-      });
-
-      fetchInvoked = true;
-      response = await Promise.race([
-        this.#fetchFn(endpointUrl, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: bodyStr,
-          signal: ac.signal,
-        }),
-        timeoutPromise,
-      ]);
-    } catch (fetchErr) {
-      let phase = 'MAY_HAVE_BEEN_SENT';
-      if (!fetchInvoked) {
-        phase = 'NOT_SENT';
-      } else {
-        const causeCode =
-          fetchErr && fetchErr.cause && typeof fetchErr.cause.code === 'string'
-            ? fetchErr.cause.code
-            : null;
-        if (NOT_SENT_CAUSE_CODES.has(causeCode)) {
-          phase = 'NOT_SENT';
+      // Lazy load token buffer once per active lifecycle
+      if (!this.#cachedTokenBuffer) {
+        this.#cachedAccountId = active.id;
+        let tokenBuf = null;
+        let secretLookupError = null;
+        try {
+          tokenBuf = await this.#secretProvider.getSecret(SecretRef.telegramBotToken(active.id));
+        } catch (err) {
+          secretLookupError = err;
         }
-      }
 
-      // Active account guard after exception
-      const activeAfterErr = this.#accountRegistry.getActive();
-      const isStillActive =
-        activeAfterErr &&
-        activeAfterErr.channel === TELEGRAM_CHANNEL_ID &&
-        activeAfterErr.enabled === true &&
-        activeAfterErr.id === command.account_id;
+        // F4: Account & running re-check after awaited secret lookup settles
+        const activeAfterLookup = this.#accountRegistry.getActive();
+        const activeStillMatches =
+          activeAfterLookup &&
+          activeAfterLookup.channel === TELEGRAM_CHANNEL_ID &&
+          activeAfterLookup.enabled === true &&
+          activeAfterLookup.id === command.account_id;
 
-      if (!isStillActive) {
-        if (this.#cachedAccountId !== null) {
-          this.#zeroizeToken();
-        }
-        if (phase === 'NOT_SENT') {
+        if (!activeStillMatches) {
+          if (tokenBuf && Buffer.isBuffer(tokenBuf)) {
+            try {
+              tokenBuf.fill(0);
+            } catch (_) {}
+          }
+          if (this.#cachedAccountId !== null) {
+            this.#zeroizeToken();
+          }
           return {
             transport_phase: 'NOT_SENT',
             success: false,
             error_code: 'ACCOUNT_MISMATCH_PRE_REQUEST',
           };
         }
+
+        if (!this.#running) {
+          if (tokenBuf && Buffer.isBuffer(tokenBuf)) {
+            try {
+              tokenBuf.fill(0);
+            } catch (_) {}
+          }
+          this.#zeroizeToken();
+          return {
+            transport_phase: 'NOT_SENT',
+            success: false,
+            error_code: 'ADAPTER_NOT_RUNNING',
+          };
+        }
+
+        if (secretLookupError !== null) {
+          return {
+            transport_phase: 'NOT_SENT',
+            success: false,
+            error_code: 'TELEGRAM_SECRET_UNAVAILABLE',
+          };
+        }
+
+        if (!tokenBuf || !Buffer.isBuffer(tokenBuf)) {
+          return {
+            transport_phase: 'NOT_SENT',
+            success: false,
+            error_code: 'TELEGRAM_SECRET_UNAVAILABLE',
+          };
+        }
+
+        try {
+          validateTelegramTokenBuffer(tokenBuf);
+        } catch (_) {
+          try {
+            tokenBuf.fill(0);
+          } catch (_) {}
+          this.#cachedTokenBuffer = null;
+          this.#cachedAccountId = null;
+          return {
+            transport_phase: 'NOT_SENT',
+            success: false,
+            error_code: 'INVALID_TELEGRAM_TOKEN_SYNTAX',
+          };
+        }
+
+        this.#cachedTokenBuffer = tokenBuf;
+      }
+
+      // F4: Final synchronous active/running guard immediately before URL creation & fetch invocation
+      // No await may exist between this final guard and fetch invocation
+      const activeImmediatelyBeforeFetch = this.#accountRegistry.getActive();
+      if (
+        !this.#running ||
+        !activeImmediatelyBeforeFetch ||
+        activeImmediatelyBeforeFetch.channel !== TELEGRAM_CHANNEL_ID ||
+        activeImmediatelyBeforeFetch.enabled !== true ||
+        activeImmediatelyBeforeFetch.id !== command.account_id
+      ) {
+        if (this.#cachedAccountId !== null) {
+          this.#zeroizeToken();
+        }
         return {
-          transport_phase: 'MAY_HAVE_BEEN_SENT',
+          transport_phase: 'NOT_SENT',
           success: false,
+          error_code: !this.#running ? 'ADAPTER_NOT_RUNNING' : 'ACCOUNT_MISMATCH_PRE_REQUEST',
         };
       }
 
+      // Construct payload
+      const requestPayload = {
+        chat_id: recipient,
+        text,
+      };
+      if (replyParameters) {
+        requestPayload.reply_parameters = replyParameters;
+      }
+      const bodyStr = JSON.stringify(requestPayload);
+
+      // Ephemeral URL only at request boundary
+      const tokenStr = this.#cachedTokenBuffer.toString('utf8');
+      const endpointUrl = `${TELEGRAM_API_ORIGIN}/bot${tokenStr}/sendMessage`;
+
+      ac = this.#abortControllerFactory ? this.#abortControllerFactory() : new AbortController();
+      this.#inFlightAbortControllers.add(ac);
+
+      let timeoutTimer = null;
+      let fetchInvoked = false;
+      let response = null;
+
+      try {
+        const timeoutPromise = new Promise((_, reject) => {
+          timeoutTimer = setTimeout(() => {
+            try {
+              ac.abort();
+            } catch (_) {}
+            const err = new Error('Telegram client timeout');
+            err.name = 'AbortError';
+            reject(err);
+          }, TELEGRAM_CLIENT_TIMEOUT_MS);
+        });
+
+        fetchInvoked = true;
+        response = await Promise.race([
+          this.#fetchFn(endpointUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: bodyStr,
+            signal: ac.signal,
+          }),
+          timeoutPromise,
+        ]);
+      } catch (fetchErr) {
+        let phase = 'MAY_HAVE_BEEN_SENT';
+        if (!fetchInvoked) {
+          phase = 'NOT_SENT';
+        } else {
+          const causeCode =
+            fetchErr && fetchErr.cause && typeof fetchErr.cause.code === 'string'
+              ? fetchErr.cause.code
+              : null;
+          if (NOT_SENT_CAUSE_CODES.has(causeCode)) {
+            phase = 'NOT_SENT';
+          }
+        }
+
+        // Active account guard after exception
+        const activeAfterErr = this.#accountRegistry.getActive();
+        const isStillActive =
+          activeAfterErr &&
+          activeAfterErr.channel === TELEGRAM_CHANNEL_ID &&
+          activeAfterErr.enabled === true &&
+          activeAfterErr.id === command.account_id;
+
+        if (!isStillActive) {
+          if (this.#cachedAccountId !== null) {
+            this.#zeroizeToken();
+          }
+          if (phase === 'NOT_SENT') {
+            return {
+              transport_phase: 'NOT_SENT',
+              success: false,
+              error_code: 'ACCOUNT_MISMATCH_PRE_REQUEST',
+            };
+          }
+          return {
+            transport_phase: 'MAY_HAVE_BEEN_SENT',
+            success: false,
+          };
+        }
+
+        return {
+          transport_phase: phase,
+          success: false,
+        };
+      } finally {
+        if (timeoutTimer) {
+          clearTimeout(timeoutTimer);
+        }
+      }
+
+      // Active account guard after response
+      const activeAfterRes = this.#accountRegistry.getActive();
+      if (
+        !activeAfterRes ||
+        activeAfterRes.channel !== TELEGRAM_CHANNEL_ID ||
+        activeAfterRes.enabled !== true ||
+        activeAfterRes.id !== command.account_id
+      ) {
+        if (this.#cachedAccountId !== null) {
+          this.#zeroizeToken();
+        }
+        return {
+          transport_phase: 'MAY_HAVE_BEEN_SENT',
+          success: false,
+          http_status: response.status,
+        };
+      }
+
+      // Read response text (AbortController remains owned by active delivery until complete response handling is finished)
+      let responseText = null;
+      try {
+        responseText = await response.text();
+      } catch (_) {
+        const activeAfterTextErr = this.#accountRegistry.getActive();
+        if (
+          !activeAfterTextErr ||
+          activeAfterTextErr.channel !== TELEGRAM_CHANNEL_ID ||
+          activeAfterTextErr.enabled !== true ||
+          activeAfterTextErr.id !== command.account_id
+        ) {
+          if (this.#cachedAccountId !== null) {
+            this.#zeroizeToken();
+          }
+        }
+        return {
+          transport_phase: 'MAY_HAVE_BEEN_SENT',
+          success: false,
+          http_status: response.status,
+        };
+      }
+
+      // Parse response JSON
+      let parsedJson = null;
+      try {
+        parsedJson = JSON.parse(responseText);
+      } catch (_) {
+        parsedJson = null;
+      }
+
+      // Active account guard after body parse
+      const activeAfterParse = this.#accountRegistry.getActive();
+      if (
+        !activeAfterParse ||
+        activeAfterParse.channel !== TELEGRAM_CHANNEL_ID ||
+        activeAfterParse.enabled !== true ||
+        activeAfterParse.id !== command.account_id
+      ) {
+        if (this.#cachedAccountId !== null) {
+          this.#zeroizeToken();
+        }
+        return {
+          transport_phase: 'MAY_HAVE_BEEN_SENT',
+          success: false,
+          http_status: response.status,
+        };
+      }
+
+      const status = response.status;
+
+      // HTTP 2xx
+      if (status >= 200 && status < 300) {
+        if (
+          parsedJson &&
+          typeof parsedJson === 'object' &&
+          parsedJson.ok === true &&
+          parsedJson.result &&
+          typeof parsedJson.result === 'object'
+        ) {
+          return {
+            transport_phase: 'MAY_HAVE_BEEN_SENT',
+            success: true,
+            http_status: status,
+          };
+        }
+        // Malformed / ambiguous 2xx payload
+        return {
+          transport_phase: 'MAY_HAVE_BEEN_SENT',
+          success: false,
+          http_status: status,
+        };
+      }
+
+      // HTTP 429 Flood Control
+      if (status === 429) {
+        let retryAfter = undefined;
+        if (
+          parsedJson &&
+          typeof parsedJson === 'object' &&
+          parsedJson.parameters &&
+          typeof parsedJson.parameters === 'object' &&
+          parsedJson.parameters.retry_after !== undefined
+        ) {
+          retryAfter = parsedJson.parameters.retry_after;
+        }
+        return {
+          transport_phase: 'MAY_HAVE_BEEN_SENT',
+          success: false,
+          http_status: 429,
+          retry_after: retryAfter,
+        };
+      }
+
+      // Other HTTP 4xx
+      if (status >= 400 && status < 500) {
+        return {
+          transport_phase: 'MAY_HAVE_BEEN_SENT',
+          success: false,
+          http_status: status,
+        };
+      }
+
+      // HTTP 5xx or others
       return {
-        transport_phase: phase,
+        transport_phase: 'MAY_HAVE_BEEN_SENT',
         success: false,
+        http_status: status,
       };
     } finally {
-      if (timeoutTimer) {
-        clearTimeout(timeoutTimer);
+      if (ac) {
+        this.#inFlightAbortControllers.delete(ac);
       }
-      this.#inFlightAbortControllers.delete(ac);
       this.#activeDeliveriesCount--;
       if (this.#activeDeliveriesCount === 0 && this.#quiesceResolvers.length > 0) {
         for (const r of this.#quiesceResolvers) r();
         this.#quiesceResolvers = [];
       }
     }
-
-    // Active account guard after response
-    const activeAfterRes = this.#accountRegistry.getActive();
-    if (
-      !activeAfterRes ||
-      activeAfterRes.channel !== TELEGRAM_CHANNEL_ID ||
-      activeAfterRes.enabled !== true ||
-      activeAfterRes.id !== command.account_id
-    ) {
-      if (this.#cachedAccountId !== null) {
-        this.#zeroizeToken();
-      }
-      return {
-        transport_phase: 'MAY_HAVE_BEEN_SENT',
-        success: false,
-        http_status: response.status,
-      };
-    }
-
-    // Read response text
-    let responseText = null;
-    try {
-      responseText = await response.text();
-    } catch (_) {
-      return {
-        transport_phase: 'MAY_HAVE_BEEN_SENT',
-        success: false,
-        http_status: response.status,
-      };
-    }
-
-    // Parse response JSON
-    let parsedJson = null;
-    try {
-      parsedJson = JSON.parse(responseText);
-    } catch (_) {
-      parsedJson = null;
-    }
-
-    // Active account guard after body parse
-    const activeAfterParse = this.#accountRegistry.getActive();
-    if (
-      !activeAfterParse ||
-      activeAfterParse.channel !== TELEGRAM_CHANNEL_ID ||
-      activeAfterParse.enabled !== true ||
-      activeAfterParse.id !== command.account_id
-    ) {
-      if (this.#cachedAccountId !== null) {
-        this.#zeroizeToken();
-      }
-      return {
-        transport_phase: 'MAY_HAVE_BEEN_SENT',
-        success: false,
-        http_status: response.status,
-      };
-    }
-
-    const status = response.status;
-
-    // HTTP 2xx
-    if (status >= 200 && status < 300) {
-      if (
-        parsedJson &&
-        typeof parsedJson === 'object' &&
-        parsedJson.ok === true &&
-        parsedJson.result &&
-        typeof parsedJson.result === 'object'
-      ) {
-        return {
-          transport_phase: 'MAY_HAVE_BEEN_SENT',
-          success: true,
-          http_status: status,
-        };
-      }
-      // Malformed / ambiguous 2xx payload
-      return {
-        transport_phase: 'MAY_HAVE_BEEN_SENT',
-        success: false,
-        http_status: status,
-      };
-    }
-
-    // HTTP 429 Flood Control
-    if (status === 429) {
-      let retryAfter = undefined;
-      if (
-        parsedJson &&
-        typeof parsedJson === 'object' &&
-        parsedJson.parameters &&
-        typeof parsedJson.parameters === 'object' &&
-        parsedJson.parameters.retry_after !== undefined
-      ) {
-        retryAfter = parsedJson.parameters.retry_after;
-      }
-      return {
-        transport_phase: 'MAY_HAVE_BEEN_SENT',
-        success: false,
-        http_status: 429,
-        retry_after: retryAfter,
-      };
-    }
-
-    // Other HTTP 4xx
-    if (status >= 400 && status < 500) {
-      return {
-        transport_phase: 'MAY_HAVE_BEEN_SENT',
-        success: false,
-        http_status: status,
-      };
-    }
-
-    // HTTP 5xx or others
-    return {
-      transport_phase: 'MAY_HAVE_BEEN_SENT',
-      success: false,
-      http_status: status,
-    };
   }
 }
 

@@ -895,3 +895,331 @@ test('F1: Post-request active account change preserves MAY_HAVE_BEEN_SENT and im
     await adapter.stop();
   }
 });
+
+function createDeferred() {
+  let resolve;
+  let reject;
+  const promise = new Promise((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
+}
+
+test('F4-T1: Active account switch during pending getSecret prevents request and zeroizes token', { timeout: 10000 }, async () => {
+  const reg = createFakeRegistry({ id: 'bot_alpha', channel: 'telegram', enabled: true });
+  let secretCallCount = 0;
+  const deferredSecret = createDeferred();
+  const tokenBufA = Buffer.from('123456:ABC-DEF_ghi', 'utf8');
+
+  const sec = {
+    getSecret: async () => {
+      secretCallCount++;
+      return deferredSecret.promise;
+    },
+  };
+
+  let fetchCalls = 0;
+  const adapter = new TelegramOutboundAdapter({
+    accountRegistry: reg,
+    secretProvider: sec,
+    fetchFn: async () => {
+      fetchCalls++;
+      return {
+        status: 200,
+        text: async () => JSON.stringify({ ok: true, result: { message_id: 1 } }),
+      };
+    },
+  });
+
+  adapter.start();
+  try {
+    const deliverPromise = adapter.deliver({
+      account_id: 'bot_alpha',
+      platform: 'telegram',
+      endpoint_operation: 'sendMessage',
+      message_type: 'text',
+      recipient: '100',
+      body: 'test msg',
+    });
+
+    while (secretCallCount === 0) {
+      await new Promise(r => setImmediate(r));
+    }
+
+    // Switch active account A -> B while getSecret is pending
+    reg.setActive({ id: 'bot_beta', channel: 'telegram', enabled: true });
+
+    // Resolve old A token Buffer
+    deferredSecret.resolve(tokenBufA);
+
+    const result = await deliverPromise;
+
+    assert.strictEqual(fetchCalls, 0, 'fetchCount must be 0');
+    assert.strictEqual(result.transport_phase, 'NOT_SENT');
+    assert.strictEqual(result.error_code, 'ACCOUNT_MISMATCH_PRE_REQUEST');
+    assert.strictEqual(result.success, false);
+    assert.ok(tokenBufA.every(b => b === 0), 'old returned Buffer every byte == 0');
+    assert.strictEqual(adapter.cachedAccountId, null, 'cachedAccountId must be null');
+    assert.strictEqual(secretCallCount, 1, 'no B token lookup');
+  } finally {
+    await adapter.stop();
+  }
+});
+
+test('F4-T2: getSecret rejection after account switch yields ACCOUNT_MISMATCH_PRE_REQUEST over secret failure', { timeout: 10000 }, async () => {
+  const reg = createFakeRegistry({ id: 'bot_alpha', channel: 'telegram', enabled: true });
+  let secretCallCount = 0;
+  const deferredSecret = createDeferred();
+
+  const sec = {
+    getSecret: async () => {
+      secretCallCount++;
+      return deferredSecret.promise;
+    },
+  };
+
+  let fetchCalls = 0;
+  const adapter = new TelegramOutboundAdapter({
+    accountRegistry: reg,
+    secretProvider: sec,
+    fetchFn: async () => {
+      fetchCalls++;
+      return {
+        status: 200,
+        text: async () => JSON.stringify({ ok: true, result: { message_id: 1 } }),
+      };
+    },
+  });
+
+  adapter.start();
+  try {
+    const deliverPromise = adapter.deliver({
+      account_id: 'bot_alpha',
+      platform: 'telegram',
+      endpoint_operation: 'sendMessage',
+      message_type: 'text',
+      recipient: '100',
+      body: 'test msg',
+    });
+
+    while (secretCallCount === 0) {
+      await new Promise(r => setImmediate(r));
+    }
+
+    // Switch active account A -> B
+    reg.setActive({ id: 'bot_beta', channel: 'telegram', enabled: true });
+
+    // Reject getSecret
+    deferredSecret.reject(new Error('KMS provider failure'));
+
+    const result = await deliverPromise;
+
+    assert.strictEqual(fetchCalls, 0, 'zero network');
+    assert.strictEqual(result.transport_phase, 'NOT_SENT');
+    assert.strictEqual(result.error_code, 'ACCOUNT_MISMATCH_PRE_REQUEST');
+    assert.notStrictEqual(result.error_code, 'TELEGRAM_SECRET_UNAVAILABLE');
+    assert.strictEqual(result.success, false);
+    assert.strictEqual(adapter.cachedAccountId, null);
+  } finally {
+    await adapter.stop();
+  }
+});
+
+test('F5-T1: stop() waits for pending getSecret and quiesces without request', { timeout: 10000 }, async () => {
+  const reg = createFakeRegistry({ id: 'bot_alpha', channel: 'telegram', enabled: true });
+  let secretCallCount = 0;
+  const deferredSecret = createDeferred();
+  const tokenBufA = Buffer.from('123456:ABC-DEF_ghi', 'utf8');
+
+  const sec = {
+    getSecret: async () => {
+      secretCallCount++;
+      return deferredSecret.promise;
+    },
+  };
+
+  let fetchCalls = 0;
+  const adapter = new TelegramOutboundAdapter({
+    accountRegistry: reg,
+    secretProvider: sec,
+    fetchFn: async () => {
+      fetchCalls++;
+      return {
+        status: 200,
+        text: async () => JSON.stringify({ ok: true, result: { message_id: 1 } }),
+      };
+    },
+  });
+
+  adapter.start();
+
+  const deliverPromise = adapter.deliver({
+    account_id: 'bot_alpha',
+    platform: 'telegram',
+    endpoint_operation: 'sendMessage',
+    message_type: 'text',
+    recipient: '100',
+    body: 'test msg',
+  });
+
+  while (secretCallCount === 0) {
+    await new Promise(r => setImmediate(r));
+  }
+
+  // Call adapter.stop() while getSecret remains pending
+  let stopCompleted = false;
+  const stopPromise = adapter.stop().then(() => {
+    stopCompleted = true;
+  });
+
+  // Verify stop does not complete prematurely while getSecret is pending
+  await new Promise(r => setImmediate(r));
+  assert.strictEqual(stopCompleted, false, 'stop must not complete prematurely while getSecret is pending');
+
+  // Resolve old token
+  deferredSecret.resolve(tokenBufA);
+
+  const deliverResult = await deliverPromise;
+  await stopPromise;
+
+  assert.strictEqual(stopCompleted, true, 'stop completes after deliver quiesces');
+  assert.strictEqual(fetchCalls, 0, 'no fetch');
+  assert.ok(tokenBufA.every(b => b === 0), 'Buffer zeroized');
+  assert.strictEqual(deliverResult.transport_phase, 'NOT_SENT');
+  assert.strictEqual(deliverResult.success, false);
+});
+
+test('F5-T2: Account switch during pending response.text() rejects body read and zeroizes cached token', { timeout: 10000 }, async () => {
+  const reg = createFakeRegistry({ id: 'bot_alpha', channel: 'telegram', enabled: true });
+  const sec = createFakeSecretProvider('123456:ABC-DEF_ghi');
+  const deferredText = createDeferred();
+
+  let fetchCalls = 0;
+  const adapter = new TelegramOutboundAdapter({
+    accountRegistry: reg,
+    secretProvider: sec,
+    fetchFn: async () => {
+      fetchCalls++;
+      return {
+        status: 200,
+        text: () => deferredText.promise,
+      };
+    },
+  });
+
+  adapter.start();
+  try {
+    const deliverPromise = adapter.deliver({
+      account_id: 'bot_alpha',
+      platform: 'telegram',
+      endpoint_operation: 'sendMessage',
+      message_type: 'text',
+      recipient: '100',
+      body: 'test msg',
+    });
+
+    while (fetchCalls === 0) {
+      await new Promise(r => setImmediate(r));
+    }
+
+    // While response.text pending: switch A -> B and reject body read
+    reg.setActive({ id: 'bot_beta', channel: 'telegram', enabled: true });
+    deferredText.reject(new Error('Connection reset while reading body'));
+
+    const result = await deliverPromise;
+
+    assert.strictEqual(result.transport_phase, 'MAY_HAVE_BEEN_SENT');
+    assert.strictEqual(result.success, false);
+    const tokenBuf = sec.returnedBuffers[0];
+    assert.ok(tokenBuf.every(b => b === 0), 'old token Buffer zeroized');
+    assert.strictEqual(adapter.cachedAccountId, null, 'cachedAccountId null');
+    assert.strictEqual(sec.calls, 1, 'no B token lookup');
+  } finally {
+    await adapter.stop();
+  }
+});
+
+test('F5-T3: stop() during response.text() aborts controller, waits for delivery settlement, and zeroizes token', { timeout: 10000 }, async () => {
+  const reg = createFakeRegistry({ id: 'bot_alpha', channel: 'telegram', enabled: true });
+  const sec = createFakeSecretProvider('123456:ABC-DEF_ghi');
+  let textReadStarted = false;
+
+  let fetchCalls = 0;
+  const adapter = new TelegramOutboundAdapter({
+    accountRegistry: reg,
+    secretProvider: sec,
+    fetchFn: async (url, options) => {
+      fetchCalls++;
+      return {
+        status: 200,
+        text: () => {
+          textReadStarted = true;
+          return new Promise((resolve, reject) => {
+            if (options.signal && options.signal.aborted) {
+              const err = new Error('The operation was aborted');
+              err.name = 'AbortError';
+              return reject(err);
+            }
+            if (options.signal) {
+              options.signal.addEventListener('abort', () => {
+                const err = new Error('The operation was aborted');
+                err.name = 'AbortError';
+                reject(err);
+              });
+            }
+          });
+        },
+      };
+    },
+  });
+
+  adapter.start();
+
+  let deliverSettled = false;
+  const deliverPromise = adapter.deliver({
+    account_id: 'bot_alpha',
+    platform: 'telegram',
+    endpoint_operation: 'sendMessage',
+    message_type: 'text',
+    recipient: '100',
+    body: 'test msg',
+  }).finally(() => {
+    deliverSettled = true;
+  });
+
+  while (!textReadStarted) {
+    await new Promise(r => setImmediate(r));
+  }
+
+  let stopCompleted = false;
+  const stopPromise = adapter.stop().then(() => {
+    stopCompleted = true;
+    assert.strictEqual(deliverSettled, true, 'deliver must be settled when stop completes');
+  });
+
+  const deliverResult = await deliverPromise;
+  await stopPromise;
+
+  assert.strictEqual(stopCompleted, true, 'stop waits for complete delivery settlement');
+  assert.strictEqual(deliverResult.transport_phase, 'MAY_HAVE_BEEN_SENT');
+  assert.strictEqual(deliverResult.success, false);
+
+  const tokenBuf = sec.returnedBuffers[0];
+  assert.ok(tokenBuf.every(b => b === 0), 'final zeroization occurs');
+  assert.strictEqual(adapter.cachedAccountId, null);
+
+  // Assert no post-stop new request occurs
+  const postStopResult = await adapter.deliver({
+    account_id: 'bot_alpha',
+    platform: 'telegram',
+    endpoint_operation: 'sendMessage',
+    message_type: 'text',
+    recipient: '100',
+    body: 'after stop',
+  });
+  assert.strictEqual(postStopResult.transport_phase, 'NOT_SENT');
+  assert.strictEqual(postStopResult.error_code, 'ADAPTER_NOT_RUNNING');
+  assert.strictEqual(fetchCalls, 1, 'no post-stop new request occurs');
+});
+
