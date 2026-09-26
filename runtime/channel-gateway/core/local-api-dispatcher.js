@@ -11,6 +11,7 @@ const {
   POLL_LIMIT_MAX,
   REPLY_TEXT_MAX_UTF16,
 } = require('./local-api-codec');
+const { computeCanonicalPayloadHash } = require('./outbox-delivery-policy');
 
 const ALLOWED_REPLY_REASONS = new Set([
   'NOT_CURRENT_HOLDER',
@@ -60,6 +61,7 @@ class LocalApiDispatcher {
       throw new Error('LocalApiDispatcher requires a repository dependency');
     }
     this.repository = dependencies.repository;
+    this.accountRegistry = dependencies.accountRegistry || null;
     this.nowSec = dependencies.nowSec || (() => Math.floor(Date.now() / 1000));
   }
 
@@ -112,6 +114,7 @@ class LocalApiDispatcher {
       return { status: 404, body: { ok: false, code: 'CHANNEL_NOT_FOUND' } };
     }
 
+    const uncertain = this.repository.getUncertainSummaries(50);
     return {
       status: 200,
       body: {
@@ -122,6 +125,14 @@ class LocalApiDispatcher {
         fencing_token: state.fencingToken,
         last_heartbeat_at: state.lastHeartbeatAt,
         queued_count: state.backlogCount,
+        uncertain_count: uncertain.count,
+        uncertain_commands: uncertain.summaries.map((s) => ({
+          command_id: s.command_id,
+          platform: s.platform,
+          account_id: s.account_id,
+          recipient: s.recipient,
+          created_at: s.created_at,
+        })),
       },
     };
   }
@@ -149,6 +160,7 @@ class LocalApiDispatcher {
       ? res.discardedMessages.map((m) => m.messageId)
       : [];
 
+    const uncertain = this.repository.getUncertainSummaries(50);
     return {
       status: 200,
       body: {
@@ -157,6 +169,14 @@ class LocalApiDispatcher {
         fencing_token: res.fencingToken,
         previous_holder: res.previousHolder,
         discarded_message_ids: discardedIds,
+        uncertain_count: uncertain.count,
+        uncertain_commands: uncertain.summaries.map((s) => ({
+          command_id: s.command_id,
+          platform: s.platform,
+          account_id: s.account_id,
+          recipient: s.recipient,
+          created_at: s.created_at,
+        })),
       },
     };
   }
@@ -299,34 +319,84 @@ class LocalApiDispatcher {
       return { status: 400, body: { ok: false, code: 'INVALID_REQUEST' } };
     }
 
-    const authResult = this.repository.validateReplyAuthorization(
-      body.channel_id,
-      body.holder_id,
-      body.fencing_token,
-      body.message_id,
-      body.replying_account_id
-    );
+    // Platform / recipient authority (ADR-0025 Section 12)
+    if (!this.accountRegistry || typeof this.accountRegistry.get !== 'function') {
+      return { status: 501, body: { ok: false, code: 'OUTBOUND_TARGET_NOT_READY' } };
+    }
+    const account = this.accountRegistry.get(body.replying_account_id);
+    if (!account || account.channel !== 'telegram') {
+      return { status: 501, body: { ok: false, code: 'OUTBOUND_TARGET_NOT_READY' } };
+    }
 
-    if (authResult.authorized === false) {
-      if (ALLOWED_REPLY_REASONS.has(authResult.reason)) {
+    const tgMatch = /^tg:(-?\d+):(\d+)$/.exec(body.message_id);
+    if (!tgMatch) {
+      return { status: 501, body: { ok: false, code: 'OUTBOUND_TARGET_NOT_READY' } };
+    }
+
+    const recipient = tgMatch[1];
+    const endpointOperation = 'sendMessage';
+    const logicalReplyTarget = body.message_id;
+    const messageType = 'text';
+
+    const payloadHash = computeCanonicalPayloadHash({
+      protocol_version: 'v1',
+      platform: 'telegram',
+      account_id: body.replying_account_id,
+      endpoint_operation: endpointOperation,
+      recipient,
+      logical_reply_target: logicalReplyTarget,
+      message_type: messageType,
+      body: body.text,
+    });
+
+    const enqueueRes = this.repository.enqueueAuthorizedReply({
+      clientRequestId: body.client_request_id,
+      channelId: body.channel_id,
+      holderId: body.holder_id,
+      fencingToken: body.fencing_token,
+      messageId: body.message_id,
+      replyingAccountId: body.replying_account_id,
+      text: body.text,
+      platform: 'telegram',
+      endpointOperation,
+      recipient,
+      logicalReplyTarget,
+      messageType,
+      payloadHash,
+      nowSec: this.nowSec(),
+    });
+
+    if (!enqueueRes.success) {
+      if (enqueueRes.reason === 'IDEMPOTENCY_CONFLICT') {
+        return {
+          status: 409,
+          body: {
+            ok: false,
+            code: 'IDEMPOTENCY_CONFLICT',
+          },
+        };
+      }
+      if (ALLOWED_REPLY_REASONS.has(enqueueRes.reason)) {
         return {
           status: 403,
           body: {
             ok: false,
             code: 'REPLY_NOT_AUTHORIZED',
-            reason: authResult.reason,
+            reason: enqueueRes.reason,
           },
         };
       }
       return { status: 500, body: { ok: false, code: 'INTERNAL_ERROR' } };
     }
 
-    // TG-MVP-11 boundary: authorized reply returns 501 OUTBOUND_NOT_READY
     return {
-      status: 501,
+      status: 200,
       body: {
-        ok: false,
-        code: 'OUTBOUND_NOT_READY',
+        ok: true,
+        code: 'OK',
+        command_id: enqueueRes.commandId,
+        outbox_status: enqueueRes.outboxStatus,
+        idempotent_replay: enqueueRes.idempotentReplay,
       },
     };
   }

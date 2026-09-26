@@ -281,10 +281,15 @@ class GatewayRuntimeOwner {
       const repo = this.#backupRuntimeOwner.repository;
       let dispatcher = this.#injectedDispatcher;
       if (!dispatcher) {
+        const dispatcherDeps = {
+          repository: repo,
+          accountRegistry: this.#accountRegistry,
+          nowSec: this.#nowSec,
+        };
         if (this.#dispatcherFactory) {
-          dispatcher = this.#dispatcherFactory({ repository: repo, nowSec: this.#nowSec });
+          dispatcher = this.#dispatcherFactory(dispatcherDeps);
         } else {
-          dispatcher = new LocalApiDispatcher({ repository: repo, nowSec: this.#nowSec });
+          dispatcher = new LocalApiDispatcher(dispatcherDeps);
         }
       }
 

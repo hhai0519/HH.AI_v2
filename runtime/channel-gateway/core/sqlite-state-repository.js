@@ -42,8 +42,12 @@ const crypto = require('node:crypto');
 const { DatabaseSync } = require('node:sqlite');
 const { isAbsolutePath } = require('./data-location-config');
 const { ensureBackupsDirectory } = require('./backup-hygiene');
+const {
+  computeCanonicalPayloadHash,
+  evaluateStartupRecovery,
+} = require('./outbox-delivery-policy');
 
-const SQLITE_STATE_SCHEMA_VERSION = 5;
+const SQLITE_STATE_SCHEMA_VERSION = 6;
 const SQLITE_BUSY_TIMEOUT_MS = 5000;
 const SQLITE_DATABASE_FILENAME = 'channel-gateway-state.sqlite3';
 
@@ -194,6 +198,67 @@ CREATE TABLE inbound_event (
 `;
 
 /**
+ * Canonical DDL definition for durable outbox table in schema version 6 (ADR-0025 R2).
+ * Minimal outbox states: QUEUED, IN_FLIGHT, ACCEPTED_BY_PLATFORM, UNCERTAIN, FAILED_TERMINAL.
+ */
+const OUTBOX_SCHEMA_SQL = `
+CREATE TABLE outbox (
+  command_id TEXT PRIMARY KEY
+    CHECK(length(trim(command_id)) > 0),
+  client_request_id TEXT NOT NULL UNIQUE
+    CHECK(length(trim(client_request_id)) > 0),
+  payload_hash TEXT NOT NULL
+    CHECK(length(payload_hash) = 64),
+  platform TEXT NOT NULL
+    CHECK(length(trim(platform)) > 0),
+  account_id TEXT NOT NULL
+    CHECK(length(trim(account_id)) > 0),
+  endpoint_operation TEXT NOT NULL
+    CHECK(length(trim(endpoint_operation)) > 0),
+  recipient TEXT NOT NULL
+    CHECK(length(trim(recipient)) > 0),
+  logical_reply_target TEXT
+    CHECK(
+      logical_reply_target IS NULL OR
+      length(trim(logical_reply_target)) > 0
+    ),
+  message_type TEXT NOT NULL
+    CHECK(length(trim(message_type)) > 0),
+  body TEXT NOT NULL
+    CHECK(length(trim(body)) > 0),
+  status TEXT NOT NULL
+    CHECK(status IN (
+      'QUEUED',
+      'IN_FLIGHT',
+      'ACCEPTED_BY_PLATFORM',
+      'UNCERTAIN',
+      'FAILED_TERMINAL'
+    )),
+  attempt_count INTEGER NOT NULL DEFAULT 0
+    CHECK(attempt_count >= 0),
+  next_attempt_at INTEGER
+    CHECK(
+      next_attempt_at IS NULL OR
+      next_attempt_at >= 0
+    ),
+  external_retry_key TEXT
+    CHECK(
+      external_retry_key IS NULL OR
+      length(trim(external_retry_key)) > 0
+    ),
+  external_retry_expires_at INTEGER
+    CHECK(
+      external_retry_expires_at IS NULL OR
+      external_retry_expires_at >= 0
+    ),
+  created_at INTEGER NOT NULL
+    CHECK(created_at >= 0),
+  updated_at INTEGER NOT NULL
+    CHECK(updated_at >= 0)
+) STRICT;
+`;
+
+/**
  * Normalizes CREATE TABLE DDL SQL deterministically for canonical schema comparison.
  * Collapses whitespace, trims, normalizes punctuation spacing, strips trailing semicolons,
  * and normalizes keyword case outside single-quoted string literals.
@@ -299,6 +364,12 @@ FROM inbox_v2_legacy;
       `);
       insertStmt.run(nowMs);
       db.exec('DROP TABLE ingest_cursor_v4_legacy;');
+    },
+  }),
+  Object.freeze({
+    version: 6,
+    apply(db) {
+      db.exec(OUTBOX_SCHEMA_SQL);
     },
   }),
 ]);
@@ -521,7 +592,7 @@ function getDataVersion(db) {
  * @param {number} [version=SQLITE_STATE_SCHEMA_VERSION]
  */
 function verifyCanonicalDomainSchemaShape(db, version = SQLITE_STATE_SCHEMA_VERSION) {
-  if (version !== 2 && version !== 3 && version !== 4 && version !== 5) {
+  if (version !== 2 && version !== 3 && version !== 4 && version !== 5 && version !== 6) {
     throw new Error(`Unsupported schema version for domain shape verification: ${version} (fail-closed)`);
   }
 
@@ -805,7 +876,7 @@ function verifyCanonicalDomainSchemaShape(db, version = SQLITE_STATE_SCHEMA_VERS
       if (normCur !== expCur) {
         throw new Error('ingest_cursor schema definition does not match canonical DDL contract (fail-closed)');
       }
-    } else if (version === 5) {
+    } else if (version === 5 || version === 6) {
       if (!curCols || curCols.length !== 3) {
         throw new Error(
           `ingest_cursor must have exactly 3 columns, found ${curCols ? curCols.length : 0} (fail-closed)`
@@ -852,8 +923,8 @@ function verifyCanonicalDomainSchemaShape(db, version = SQLITE_STATE_SCHEMA_VERS
       }
     }
 
-    // 4. Verify inbound_event for v4 and v5
-    if (version === 4 || version === 5) {
+    // 4. Verify inbound_event for v4, v5, and v6
+    if (version === 4 || version === 5 || version === 6) {
       const eventList = db.prepare("PRAGMA table_list('inbound_event');").all();
       const eventEntry = eventList ? eventList.find((e) => e.name === 'inbound_event') : null;
       if (!eventEntry || eventEntry.type !== 'table' || Number(eventEntry.strict) !== 1) {
@@ -945,6 +1016,96 @@ function verifyCanonicalDomainSchemaShape(db, version = SQLITE_STATE_SCHEMA_VERS
       }
       if (normEvent !== expEvent) {
         throw new Error('inbound_event schema definition does not match canonical DDL contract (fail-closed)');
+      }
+    }
+
+    // 5. Verify outbox for v6
+    if (version === 6) {
+      const obList = db.prepare("PRAGMA table_list('outbox');").all();
+      const obEntry = obList ? obList.find((e) => e.name === 'outbox') : null;
+      if (!obEntry || obEntry.type !== 'table' || Number(obEntry.strict) !== 1) {
+        throw new Error('outbox must exist as a STRICT table (fail-closed)');
+      }
+      const obCols = db.prepare("PRAGMA table_info('outbox');").all();
+      if (!obCols || obCols.length !== 17) {
+        throw new Error(
+          `outbox must have exactly 17 columns, found ${obCols ? obCols.length : 0} (fail-closed)`
+        );
+      }
+      const obExpected = {
+        command_id: { type: 'TEXT', notnull: 1, pk: 1 },
+        client_request_id: { type: 'TEXT', notnull: 1, pk: 0 },
+        payload_hash: { type: 'TEXT', notnull: 1, pk: 0 },
+        platform: { type: 'TEXT', notnull: 1, pk: 0 },
+        account_id: { type: 'TEXT', notnull: 1, pk: 0 },
+        endpoint_operation: { type: 'TEXT', notnull: 1, pk: 0 },
+        recipient: { type: 'TEXT', notnull: 1, pk: 0 },
+        logical_reply_target: { type: 'TEXT', notnull: 0, pk: 0 },
+        message_type: { type: 'TEXT', notnull: 1, pk: 0 },
+        body: { type: 'TEXT', notnull: 1, pk: 0 },
+        status: { type: 'TEXT', notnull: 1, pk: 0 },
+        attempt_count: { type: 'INTEGER', notnull: 1, pk: 0, dflt_value: '0' },
+        next_attempt_at: { type: 'INTEGER', notnull: 0, pk: 0 },
+        external_retry_key: { type: 'TEXT', notnull: 0, pk: 0 },
+        external_retry_expires_at: { type: 'INTEGER', notnull: 0, pk: 0 },
+        created_at: { type: 'INTEGER', notnull: 1, pk: 0 },
+        updated_at: { type: 'INTEGER', notnull: 1, pk: 0 },
+      };
+      for (const col of obCols) {
+        const exp = obExpected[col.name];
+        if (!exp) {
+          throw new Error(`Unexpected column '${col.name}' in outbox (fail-closed)`);
+        }
+        if (
+          col.type.toUpperCase() !== exp.type ||
+          Number(col.pk) !== exp.pk
+        ) {
+          throw new Error(
+            `Column '${col.name}' in outbox mismatch: expected type=${exp.type}, pk=${exp.pk}; got type=${col.type}, pk=${col.pk} (fail-closed)`
+          );
+        }
+        if (exp.dflt_value !== undefined && String(col.dflt_value) !== exp.dflt_value) {
+          throw new Error(
+            `Column '${col.name}' in outbox mismatch: expected dflt_value='${exp.dflt_value}', got '${col.dflt_value}' (fail-closed)`
+          );
+        }
+      }
+
+      const obIdxList = db.prepare("PRAGMA index_list('outbox');").all();
+      let hasClientReqUnique = false;
+      if (obIdxList) {
+        for (const idx of obIdxList) {
+          if (Number(idx.unique) === 1) {
+            const info = indexInfoStmt.all(idx.name);
+            const cols = info ? info.map((c) => c.name) : [];
+            if (cols.length === 1 && cols[0] === 'client_request_id') {
+              hasClientReqUnique = true;
+              break;
+            }
+          }
+        }
+      }
+      if (!hasClientReqUnique) {
+        throw new Error('outbox must define UNIQUE constraint on client_request_id (fail-closed)');
+      }
+
+      const obSqlRow = schemaStmt.get('outbox');
+      if (!obSqlRow || typeof obSqlRow.sql !== 'string') {
+        throw new Error('outbox table definition not found in sqlite_schema (fail-closed)');
+      }
+      const normOb = normalizeCanonicalSchemaSql(obSqlRow.sql);
+      const expOb = normalizeCanonicalSchemaSql(OUTBOX_SCHEMA_SQL);
+      if (!normOb.includes('CHECK ( LENGTH ( PAYLOAD_HASH ) = 64 )')) {
+        throw new Error('outbox missing payload_hash length 64 CHECK constraint (fail-closed)');
+      }
+      if (!normOb.includes("CHECK ( STATUS IN ( 'QUEUED' , 'IN_FLIGHT' , 'ACCEPTED_BY_PLATFORM' , 'UNCERTAIN' , 'FAILED_TERMINAL' ) )")) {
+        throw new Error('outbox missing status enum CHECK constraint (fail-closed)');
+      }
+      if (!normOb.includes('CHECK ( ATTEMPT_COUNT >= 0 )')) {
+        throw new Error('outbox missing attempt_count non-negative CHECK constraint (fail-closed)');
+      }
+      if (normOb !== expOb) {
+        throw new Error('outbox schema definition does not match canonical DDL contract (fail-closed)');
       }
     }
   }
@@ -1345,6 +1506,28 @@ function validateCursorObservedAtMs(val, cursorValue) {
   return val;
 }
 
+function validateClientRequestId(val) {
+  if (typeof val !== 'string') {
+    throw new TypeError('clientRequestId must be a string (fail-closed)');
+  }
+  const trimmed = val.trim();
+  if (trimmed.length === 0) {
+    throw new Error('clientRequestId must not be empty (fail-closed)');
+  }
+  return trimmed;
+}
+
+function validatePayloadHash(val) {
+  if (typeof val !== 'string') {
+    throw new TypeError('payloadHash must be a string (fail-closed)');
+  }
+  const trimmed = val.trim();
+  if (!/^[0-9a-f]{64}$/.test(trimmed)) {
+    throw new Error('payloadHash must be 64 lowercase hex characters (fail-closed)');
+  }
+  return trimmed;
+}
+
 class SqliteStateRepository {
   /** @type {DatabaseSync|null} */
   #db = null;
@@ -1539,13 +1722,14 @@ class SqliteStateRepository {
       // 5. Verify canonical domain schema shape for target schema version
       verifyCanonicalDomainSchemaShape(db, SQLITE_STATE_SCHEMA_VERSION);
 
-      // 6. Verify exact user table set for schema v4
+      // 6. Verify exact user table set for schema v6
       const userTables = getCanonicalUserTableNames(db);
       const expectedTables = [
         'channel_control',
         'inbound_event',
         'inbox',
         'ingest_cursor',
+        'outbox',
         'schema_migrations',
       ];
       if (
@@ -2853,6 +3037,422 @@ class SqliteStateRepository {
   }
 
   /**
+   * Atomic authorized reply enqueue primitive (ADR-0025 R2, Section 10).
+   *
+   * Executes in a single BEGIN IMMEDIATE transaction:
+   * A. If client_request_id exists:
+   *    - same payload_hash -> idempotent replay, return existing command_id + status
+   *    - diff payload_hash -> IDEMPOTENCY_CONFLICT, zero mutation
+   * B. If client_request_id does not exist:
+   *    - fresh authorization against channel_control and inbox
+   *    - if authorized: INSERT outbox (QUEUED) + UPDATE inbox status ('replied')
+   *    - COMMIT
+   * Any failure rolls back completely: zero half-rows.
+   *
+   * @param {object} params
+   * @returns {{
+   *   success: boolean,
+   *   reason?: string,
+   *   commandId?: string,
+   *   outboxStatus?: string,
+   *   idempotentReplay?: boolean
+   * }}
+   */
+  enqueueAuthorizedReply(params) {
+    if (!this.#isOpen || !this.#db) {
+      throw new Error('Repository is closed (fail-closed)');
+    }
+    if (!params || typeof params !== 'object') {
+      throw new TypeError('enqueueAuthorizedReply params must be an object');
+    }
+
+    const clientRequestId = validateClientRequestId(params.clientRequestId);
+    const channelId = validateChannelId(params.channelId);
+    const holderId = validateHolderId(params.holderId);
+    const fencingToken = validateFencingToken(params.fencingToken);
+    const messageId = validateMessageId(params.messageId);
+    const replyingAccountId = validateReplyingAccountId(params.replyingAccountId);
+    const text = validateMessageContent(params.text);
+    const platform = validateAccountId(params.platform);
+    const endpointOperation = validateAccountId(params.endpointOperation);
+    const recipient = validateMessageId(params.recipient);
+    const logicalReplyTarget = params.logicalReplyTarget ? String(params.logicalReplyTarget).trim() : null;
+    const messageType = params.messageType ? String(params.messageType).trim() : 'text';
+    const payloadHash = validatePayloadHash(params.payloadHash);
+    const externalRetryKey = params.externalRetryKey ? String(params.externalRetryKey).trim() : null;
+    const externalRetryExpiresAt =
+      params.externalRetryExpiresAt !== undefined && params.externalRetryExpiresAt !== null
+        ? validateFencingToken(params.externalRetryExpiresAt)
+        : null;
+    const nowSec =
+      typeof params.nowSec === 'number' && Number.isSafeInteger(params.nowSec) && params.nowSec >= 0
+        ? params.nowSec
+        : Math.floor(Date.now() / 1000);
+
+    this.#db.exec('BEGIN IMMEDIATE;');
+    try {
+      // Step A: Idempotency probe by client_request_id
+      const selectOutbox = this.#db.prepare(
+        'SELECT command_id, payload_hash, status FROM outbox WHERE client_request_id = ?;'
+      );
+      const existing = selectOutbox.get(clientRequestId);
+
+      if (existing) {
+        if (existing.payload_hash === payloadHash) {
+          // Idempotent Replay: return existing command + status without modifying anything
+          this.#db.exec('COMMIT;');
+          return {
+            success: true,
+            commandId: existing.command_id,
+            outboxStatus: existing.status,
+            idempotentReplay: true,
+          };
+        }
+        // Conflict: same client_request_id, different payload hash
+        this.#db.exec('ROLLBACK;');
+        return {
+          success: false,
+          reason: 'IDEMPOTENCY_CONFLICT',
+        };
+      }
+
+      // Step B: Fresh authorization against channel_control and inbox
+      const selectCtrl = this.#db.prepare(
+        'SELECT channel_id, current_holder, fencing_token FROM channel_control WHERE channel_id = ?;'
+      );
+      const ctrlRow = selectCtrl.get(channelId);
+
+      if (!ctrlRow || ctrlRow.current_holder !== holderId) {
+        this.#db.exec('ROLLBACK;');
+        return { success: false, reason: 'NOT_CURRENT_HOLDER' };
+      }
+
+      if (ctrlRow.fencing_token !== fencingToken) {
+        this.#db.exec('ROLLBACK;');
+        return { success: false, reason: 'STALE_FENCING_TOKEN' };
+      }
+
+      const selectMsg = this.#db.prepare(
+        'SELECT sequence, channel_id, platform_msg_id, account_id, status, claimed_by, claimed_at_token FROM inbox WHERE account_id = ? AND platform_msg_id = ? AND channel_id = ?;'
+      );
+      const msgRow = selectMsg.get(replyingAccountId, messageId, channelId);
+
+      if (!msgRow) {
+        const probeMsg = this.#db.prepare(
+          'SELECT 1 FROM inbox WHERE channel_id = ? AND platform_msg_id = ? LIMIT 1;'
+        );
+        const probeRow = probeMsg.get(channelId, messageId);
+        this.#db.exec('ROLLBACK;');
+        if (probeRow) {
+          return { success: false, reason: 'ACCOUNT_MISMATCH' };
+        }
+        return { success: false, reason: 'MESSAGE_NOT_FOUND' };
+      }
+
+      if (msgRow.status !== 'claimed') {
+        this.#db.exec('ROLLBACK;');
+        return { success: false, reason: 'MESSAGE_NOT_CLAIMED', status: msgRow.status };
+      }
+
+      if (msgRow.claimed_by !== holderId || msgRow.claimed_at_token !== fencingToken) {
+        this.#db.exec('ROLLBACK;');
+        return { success: false, reason: 'CLAIM_MISMATCH' };
+      }
+
+      // Step C: Authorized fresh insert into outbox and update inbox to replied
+      const commandId = `cmd_${crypto.randomUUID()}`;
+      const insertOutbox = this.#db.prepare(`
+        INSERT INTO outbox (
+          command_id,
+          client_request_id,
+          payload_hash,
+          platform,
+          account_id,
+          endpoint_operation,
+          recipient,
+          logical_reply_target,
+          message_type,
+          body,
+          status,
+          attempt_count,
+          next_attempt_at,
+          external_retry_key,
+          external_retry_expires_at,
+          created_at,
+          updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'QUEUED', 0, NULL, ?, ?, ?, ?);
+      `);
+
+      insertOutbox.run(
+        commandId,
+        clientRequestId,
+        payloadHash,
+        platform,
+        replyingAccountId,
+        endpointOperation,
+        recipient,
+        logicalReplyTarget,
+        messageType,
+        text,
+        externalRetryKey,
+        externalRetryExpiresAt,
+        nowSec,
+        nowSec
+      );
+
+      const updateInbox = this.#db.prepare(`
+        UPDATE inbox
+        SET status = 'replied'
+        WHERE account_id = ? AND platform_msg_id = ? AND channel_id = ? AND status = 'claimed' AND claimed_by = ? AND claimed_at_token = ?;
+      `);
+      const updateRes = updateInbox.run(
+        replyingAccountId,
+        messageId,
+        channelId,
+        holderId,
+        fencingToken
+      );
+
+      if (updateRes.changes !== 1) {
+        throw new Error(
+          `Expected exactly 1 inbox row updated to 'replied', updated ${updateRes.changes} (fail-closed)`
+        );
+      }
+
+      this.#db.exec('COMMIT;');
+      return {
+        success: true,
+        commandId,
+        outboxStatus: 'QUEUED',
+        idempotentReplay: false,
+      };
+    } catch (err) {
+      try {
+        this.#db.exec('ROLLBACK;');
+      } catch (_) {}
+      throw err;
+    }
+  }
+
+  /**
+   * Reads bounded summaries of UNCERTAIN outbox commands (ADR-0025 R2-3 Option B).
+   * Strictly excludes message body, text, secret, token, HMAC, or raw payloads.
+   *
+   * @param {number} [limit=50]
+   * @returns {{ count: number, summaries: Array<{ command_id: string, platform: string, account_id: string, recipient: string, created_at: number }> }}
+   */
+  getUncertainSummaries(limit = 50) {
+    if (!this.#isOpen || !this.#db) {
+      throw new Error('Repository is closed (fail-closed)');
+    }
+    const safeLimit = Number.isSafeInteger(limit) && limit > 0 ? limit : 50;
+
+    const countRow = this.#db
+      .prepare("SELECT COUNT(*) AS total FROM outbox WHERE status = 'UNCERTAIN';")
+      .get();
+    const count = countRow ? Number(countRow.total) : 0;
+
+    const rows = this.#db
+      .prepare(`
+        SELECT command_id, platform, account_id, recipient, created_at
+        FROM outbox
+        WHERE status = 'UNCERTAIN'
+        ORDER BY created_at ASC
+        LIMIT ?;
+      `)
+      .all(safeLimit);
+
+    return {
+      count,
+      summaries: rows || [],
+    };
+  }
+
+  /**
+   * Retrieves single outbox command by command_id.
+   *
+   * @param {string} commandId
+   * @returns {object|null}
+   */
+  getOutboxCommand(commandId) {
+    if (!this.#isOpen || !this.#db) {
+      throw new Error('Repository is closed (fail-closed)');
+    }
+    const cId = validateMessageId(commandId);
+    const stmt = this.#db.prepare('SELECT * FROM outbox WHERE command_id = ?;');
+    const row = stmt.get(cId);
+    return row || null;
+  }
+
+  /**
+   * Retrieves single outbox command by client_request_id.
+   *
+   * @param {string} clientRequestId
+   * @returns {object|null}
+   */
+  getOutboxCommandByClientRequestId(clientRequestId) {
+    if (!this.#isOpen || !this.#db) {
+      throw new Error('Repository is closed (fail-closed)');
+    }
+    const cReqId = validateClientRequestId(clientRequestId);
+    const stmt = this.#db.prepare('SELECT * FROM outbox WHERE client_request_id = ?;');
+    const row = stmt.get(cReqId);
+    return row || null;
+  }
+
+  /**
+   * Atomically claims next due QUEUED command for worker delivery attempt.
+   * Transitions QUEUED -> IN_FLIGHT, increments attempt_count.
+   *
+   * @param {number} [nowSec]
+   * @returns {object|null}
+   */
+  claimNextQueuedOutboxCommand(nowSec = Math.floor(Date.now() / 1000)) {
+    if (!this.#isOpen || !this.#db) {
+      throw new Error('Repository is closed (fail-closed)');
+    }
+    this.#db.exec('BEGIN IMMEDIATE;');
+    try {
+      const selectStmt = this.#db.prepare(`
+        SELECT * FROM outbox
+        WHERE status = 'QUEUED' AND (next_attempt_at IS NULL OR next_attempt_at <= ?)
+        ORDER BY created_at ASC
+        LIMIT 1;
+      `);
+      const row = selectStmt.get(nowSec);
+      if (!row) {
+        this.#db.exec('COMMIT;');
+        return null;
+      }
+
+      const nextAttemptCount = row.attempt_count + 1;
+      const updateStmt = this.#db.prepare(`
+        UPDATE outbox
+        SET status = 'IN_FLIGHT', attempt_count = ?, updated_at = ?
+        WHERE command_id = ? AND status = 'QUEUED';
+      `);
+      const updateRes = updateStmt.run(nextAttemptCount, nowSec, row.command_id);
+      if (updateRes.changes !== 1) {
+        this.#db.exec('ROLLBACK;');
+        return null;
+      }
+
+      this.#db.exec('COMMIT;');
+      return {
+        ...row,
+        status: 'IN_FLIGHT',
+        attempt_count: nextAttemptCount,
+        updated_at: nowSec,
+      };
+    } catch (err) {
+      try {
+        this.#db.exec('ROLLBACK;');
+      } catch (_) {}
+      throw err;
+    }
+  }
+
+  /**
+   * Updates outbox command status and retry schedule after delivery attempt.
+   *
+   * @param {string} commandId
+   * @param {object} updateData
+   * @param {string} updateData.status
+   * @param {number|null} [updateData.nextAttemptAt]
+   * @param {string|null} [updateData.externalRetryKey]
+   * @param {number|null} [updateData.externalRetryExpiresAt]
+   * @param {number} [updateData.nowSec]
+   */
+  updateOutboxCommandResult(commandId, updateData) {
+    if (!this.#isOpen || !this.#db) {
+      throw new Error('Repository is closed (fail-closed)');
+    }
+    const cId = validateMessageId(commandId);
+    const status = updateData.status;
+    const nextAttemptAt = updateData.nextAttemptAt !== undefined ? updateData.nextAttemptAt : null;
+    const externalRetryKey = updateData.externalRetryKey !== undefined ? updateData.externalRetryKey : null;
+    const externalRetryExpiresAt = updateData.externalRetryExpiresAt !== undefined ? updateData.externalRetryExpiresAt : null;
+    const nowSec = updateData.nowSec !== undefined ? updateData.nowSec : Math.floor(Date.now() / 1000);
+
+    this.#db.exec('BEGIN IMMEDIATE;');
+    try {
+      const updateStmt = this.#db.prepare(`
+        UPDATE outbox
+        SET status = ?,
+            next_attempt_at = ?,
+            external_retry_key = COALESCE(?, external_retry_key),
+            external_retry_expires_at = COALESCE(?, external_retry_expires_at),
+            updated_at = ?
+        WHERE command_id = ?;
+      `);
+      updateStmt.run(status, nextAttemptAt, externalRetryKey, externalRetryExpiresAt, nowSec, cId);
+      this.#db.exec('COMMIT;');
+    } catch (err) {
+      try {
+        this.#db.exec('ROLLBACK;');
+      } catch (_) {}
+      throw err;
+    }
+  }
+
+  /**
+   * Recovers in-flight commands on startup (ADR-0025 Section 5, Section 18).
+   * Never unconditional reset IN_FLIGHT -> QUEUED.
+   * Telegram or un-idempotent endpoints become UNCERTAIN.
+   *
+   * @param {number} [nowSec]
+   * @returns {{ requeuedCount: number, uncertainCount: number, total: number }}
+   */
+  recoverInFlightCommands(nowSec = Math.floor(Date.now() / 1000)) {
+    if (!this.#isOpen || !this.#db) {
+      throw new Error('Repository is closed (fail-closed)');
+    }
+    this.#db.exec('BEGIN IMMEDIATE;');
+    try {
+      const selectStmt = this.#db.prepare(`
+        SELECT command_id, platform, endpoint_operation, external_retry_key, external_retry_expires_at
+        FROM outbox
+        WHERE status = 'IN_FLIGHT';
+      `);
+      const rows = selectStmt.all();
+      let requeuedCount = 0;
+      let uncertainCount = 0;
+
+      for (const row of rows) {
+        const recovery = evaluateStartupRecovery(
+          {
+            status: 'IN_FLIGHT',
+            platform: row.platform,
+            endpoint_operation: row.endpoint_operation,
+            external_retry_key: row.external_retry_key,
+            external_retry_expires_at: row.external_retry_expires_at,
+          },
+          { nowSec }
+        );
+
+        const updateStmt = this.#db.prepare(`
+          UPDATE outbox SET status = ?, updated_at = ? WHERE command_id = ?;
+        `);
+        updateStmt.run(recovery.target_status, nowSec, row.command_id);
+
+        if (recovery.target_status === 'QUEUED') {
+          requeuedCount++;
+        } else {
+          uncertainCount++;
+        }
+      }
+
+      this.#db.exec('COMMIT;');
+      return { requeuedCount, uncertainCount, total: rows.length };
+    } catch (err) {
+      try {
+        this.#db.exec('ROLLBACK;');
+      } catch (_) {}
+      throw err;
+    }
+  }
+
+  /**
    * Closes the repository and underlying database connection.
    * Idempotent: safe to call multiple times.
    */
@@ -2883,6 +3483,8 @@ module.exports = {
   INGEST_CURSOR_SCHEMA_SQL,
   INGEST_CURSOR_V3_SCHEMA_SQL,
   INBOUND_EVENT_SCHEMA_SQL,
+  OUTBOX_SCHEMA_SQL,
+  computeCanonicalPayloadHash,
   normalizeCanonicalSchemaSql,
   validatePlatformEventId,
   compareCanonicalDecimals,

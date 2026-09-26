@@ -33,6 +33,7 @@ const {
   SqliteStateRepository,
   SQLITE_STATE_SCHEMA_VERSION,
 } = require('../core/sqlite-state-repository');
+const { computeCanonicalPayloadHash } = require('../core/outbox-delivery-policy');
 
 function createTempHarness() {
   const baseDir = fs.mkdtempSync(path.join(os.tmpdir(), 'hhai-sqlite-tx-test-'));
@@ -701,14 +702,14 @@ test('SqliteChannelTransactions - 15. closed repository rejects all operations f
 });
 
 // 16. Architectural invariants and boundaries (CANARY 17-24)
-test('SqliteChannelTransactions - 16. architectural invariants: schema version 5, event-ingest boundary, no outbox, no account-switch', () => {
-  assert.strictEqual(SQLITE_STATE_SCHEMA_VERSION, 5, 'CANARY 17: schema version must remain 5');
+test('SqliteChannelTransactions - 16. architectural invariants: schema version 6, event-ingest boundary, outbox present, no account-switch', () => {
+  assert.strictEqual(SQLITE_STATE_SCHEMA_VERSION, 6, 'CANARY 17: schema version must be 6');
 
   const harness = createTempHarness();
   try {
     const repo = new SqliteStateRepository(harness.stateRoot);
     try {
-      assert.strictEqual(repo.schemaVersion, 5, 'CANARY 18: applied schema version is 5');
+      assert.strictEqual(repo.schemaVersion, 6, 'CANARY 18: applied schema version is 6');
 
       // CANARY 19: Authorized ingress in T8B / TG-MVP-10; arbitrary other ingress remains absent
       assert.strictEqual(typeof repo.ingestMessage, 'function');
@@ -721,24 +722,25 @@ test('SqliteChannelTransactions - 16. architectural invariants: schema version 5
       // CANARY 20: No account-switch mutation
       assert.strictEqual(repo.discardQueuedForAccount, undefined);
 
-      // CANARY 21: No outbox
-      assert.strictEqual(repo.createOutbox, undefined);
+      // CANARY 21: Outbox methods present
+      assert.strictEqual(typeof repo.enqueueAuthorizedReply, 'function');
+      assert.strictEqual(typeof repo.getUncertainSummaries, 'function');
 
-      // CANARY 22: R2 safe - no reply mutation completion
+      // CANARY 22: R2 safe - no reply mutation completion without atomic outbox
       assert.strictEqual(repo.authorizeReply, undefined);
 
-      // CANARY 23: ingest_cursor and inbound_event tables exist; outbox remains absent
+      // CANARY 23: ingest_cursor, inbound_event, and outbox tables exist
       const rawDb = new DatabaseSync(repo.databasePath, { readOnly: true });
       try {
         const tRows = rawDb.prepare("SELECT name FROM sqlite_schema WHERE type = 'table';").all();
         const tNames = tRows.map((r) => r.name);
         assert.strictEqual(tNames.includes('ingest_cursor'), true);
         assert.strictEqual(tNames.includes('inbound_event'), true);
-        assert.strictEqual(tNames.includes('outbox'), false);
+        assert.strictEqual(tNames.includes('outbox'), true);
 
-        // CANARY 10: MIGRATIONS remain [1, 2, 3, 4, 5]
+        // CANARY 10: MIGRATIONS remain [1, 2, 3, 4, 5, 6]
         const mRows = rawDb.prepare('SELECT version FROM schema_migrations ORDER BY version ASC;').all();
-        assert.deepStrictEqual(mRows.map((r) => r.version), [1, 2, 3, 4, 5]);
+        assert.deepStrictEqual(mRows.map((r) => r.version), [1, 2, 3, 4, 5, 6]);
       } finally {
         rawDb.close();
       }
@@ -1332,6 +1334,443 @@ test('SqliteChannelTransactions - 30. getClaimedMessages strict row filter isola
       const claimed = repo.getClaimedMessages('tg:group:filter', 'holder_current', 1);
       assert.strictEqual(claimed.length, 1);
       assert.strictEqual(claimed[0].messageId, 'msg_curr_holder');
+    } finally {
+      repo.close();
+    }
+  } finally {
+    harness.cleanup();
+  }
+});
+
+// 31. enqueueAuthorizedReply - fresh enqueue creates single QUEUED outbox command and marks inbox replied
+test('SqliteChannelTransactions - 31. R2-A: fresh enqueueAuthorizedReply creates durable QUEUED command and marks inbox replied', () => {
+  const harness = createTempHarness();
+  try {
+    const repo = new SqliteStateRepository(harness.stateRoot);
+    try {
+      repo.takeoverChannel('tg:reply:1', 'holder_1');
+      seedInboxMessage(repo.databasePath, 'tg:reply:1', 'msg_reply_1', 'acc_1', 'claimed', {
+        claimedBy: 'holder_1',
+        claimedAtToken: 1,
+      });
+
+      const text = 'Hello world reply';
+      const payloadHash = computeCanonicalPayloadHash({
+        platform: 'telegram',
+        endpointOperation: 'sendMessage',
+        recipient: '123456',
+        messageType: 'text',
+        text,
+      });
+
+      const res = repo.enqueueAuthorizedReply({
+        clientRequestId: 'req-001',
+        channelId: 'tg:reply:1',
+        holderId: 'holder_1',
+        fencingToken: 1,
+        messageId: 'msg_reply_1',
+        replyingAccountId: 'acc_1',
+        platform: 'telegram',
+        endpointOperation: 'sendMessage',
+        recipient: '123456',
+        logicalReplyTarget: 'msg_reply_1',
+        messageType: 'text',
+        text,
+        payloadHash,
+      });
+
+      assert.strictEqual(res.success, true);
+      assert.strictEqual(res.idempotentReplay, false);
+      assert.strictEqual(res.outboxStatus, 'QUEUED');
+      assert.ok(typeof res.commandId === 'string' && res.commandId.length > 0);
+
+      // Verify inbox status transitioned to replied
+      const rawDb = new DatabaseSync(repo.databasePath, { readOnly: true });
+      try {
+        const inboxRow = rawDb.prepare("SELECT status FROM inbox WHERE platform_msg_id = 'msg_reply_1';").get();
+        assert.strictEqual(inboxRow.status, 'replied');
+
+        const outboxRows = rawDb.prepare('SELECT * FROM outbox;').all();
+        assert.strictEqual(outboxRows.length, 1);
+        assert.strictEqual(outboxRows[0].client_request_id, 'req-001');
+        assert.strictEqual(outboxRows[0].status, 'QUEUED');
+        assert.strictEqual(outboxRows[0].body, 'Hello world reply');
+      } finally {
+        rawDb.close();
+      }
+    } finally {
+      repo.close();
+    }
+  } finally {
+    harness.cleanup();
+  }
+});
+
+// 32. R2-A: Same client_request_id + same payload -> idempotent replay returns existing command
+test('SqliteChannelTransactions - 32. R2-A: idempotent replay returns existing command and does not duplicate', () => {
+  const harness = createTempHarness();
+  try {
+    const repo = new SqliteStateRepository(harness.stateRoot);
+    try {
+      repo.takeoverChannel('tg:reply:2', 'holder_1');
+      seedInboxMessage(repo.databasePath, 'tg:reply:2', 'msg_reply_2', 'acc_1', 'claimed', {
+        claimedBy: 'holder_1',
+        claimedAtToken: 1,
+      });
+
+      const text = 'Idempotent text';
+      const payloadHash = computeCanonicalPayloadHash({
+        platform: 'telegram',
+        endpointOperation: 'sendMessage',
+        recipient: '123456',
+        messageType: 'text',
+        text,
+      });
+
+      const params = {
+        clientRequestId: 'req-idem-1',
+        channelId: 'tg:reply:2',
+        holderId: 'holder_1',
+        fencingToken: 1,
+        messageId: 'msg_reply_2',
+        replyingAccountId: 'acc_1',
+        platform: 'telegram',
+        endpointOperation: 'sendMessage',
+        recipient: '123456',
+        logicalReplyTarget: 'msg_reply_2',
+        messageType: 'text',
+        text,
+        payloadHash,
+      };
+
+      const res1 = repo.enqueueAuthorizedReply(params);
+      assert.strictEqual(res1.success, true);
+      assert.strictEqual(res1.idempotentReplay, false);
+
+      // Second identical call (even if holder has changed later!)
+      const res2 = repo.enqueueAuthorizedReply(params);
+      assert.strictEqual(res2.success, true);
+      assert.strictEqual(res2.idempotentReplay, true);
+      assert.strictEqual(res2.commandId, res1.commandId);
+      assert.strictEqual(res2.outboxStatus, 'QUEUED');
+
+      // Exactly one row in outbox table
+      const rawDb = new DatabaseSync(repo.databasePath, { readOnly: true });
+      try {
+        const outboxRows = rawDb.prepare('SELECT * FROM outbox;').all();
+        assert.strictEqual(outboxRows.length, 1);
+      } finally {
+        rawDb.close();
+      }
+    } finally {
+      repo.close();
+    }
+  } finally {
+    harness.cleanup();
+  }
+});
+
+// 33. R2-B: Same client_request_id + different payload -> IDEMPOTENCY_CONFLICT
+test('SqliteChannelTransactions - 33. R2-B: same client_request_id with different payload returns IDEMPOTENCY_CONFLICT', () => {
+  const harness = createTempHarness();
+  try {
+    const repo = new SqliteStateRepository(harness.stateRoot);
+    try {
+      repo.takeoverChannel('tg:reply:3', 'holder_1');
+      seedInboxMessage(repo.databasePath, 'tg:reply:3', 'msg_reply_3', 'acc_1', 'claimed', {
+        claimedBy: 'holder_1',
+        claimedAtToken: 1,
+      });
+
+      const text1 = 'Initial text';
+      const hash1 = computeCanonicalPayloadHash({
+        platform: 'telegram',
+        endpointOperation: 'sendMessage',
+        recipient: '123456',
+        messageType: 'text',
+        text: text1,
+      });
+
+      const res1 = repo.enqueueAuthorizedReply({
+        clientRequestId: 'req-conflict-1',
+        channelId: 'tg:reply:3',
+        holderId: 'holder_1',
+        fencingToken: 1,
+        messageId: 'msg_reply_3',
+        replyingAccountId: 'acc_1',
+        platform: 'telegram',
+        endpointOperation: 'sendMessage',
+        recipient: '123456',
+        logicalReplyTarget: 'msg_reply_3',
+        messageType: 'text',
+        text: text1,
+        payloadHash: hash1,
+      });
+      assert.strictEqual(res1.success, true);
+
+      const text2 = 'DIFFERENT text conflicting payload';
+      const hash2 = computeCanonicalPayloadHash({
+        platform: 'telegram',
+        endpointOperation: 'sendMessage',
+        recipient: '123456',
+        messageType: 'text',
+        text: text2,
+      });
+
+      // Second call with same clientRequestId but DIFFERENT text
+      const res2 = repo.enqueueAuthorizedReply({
+        clientRequestId: 'req-conflict-1',
+        channelId: 'tg:reply:3',
+        holderId: 'holder_1',
+        fencingToken: 1,
+        messageId: 'msg_reply_3',
+        replyingAccountId: 'acc_1',
+        platform: 'telegram',
+        endpointOperation: 'sendMessage',
+        recipient: '123456',
+        logicalReplyTarget: 'msg_reply_3',
+        messageType: 'text',
+        text: text2,
+        payloadHash: hash2,
+      });
+      assert.strictEqual(res2.success, false);
+      assert.strictEqual(res2.reason, 'IDEMPOTENCY_CONFLICT');
+
+      // Verify zero second row in outbox
+      const rawDb = new DatabaseSync(repo.databasePath, { readOnly: true });
+      try {
+        const count = rawDb.prepare('SELECT count(*) as cnt FROM outbox;').get();
+        assert.strictEqual(count.cnt, 1);
+      } finally {
+        rawDb.close();
+      }
+    } finally {
+      repo.close();
+    }
+  } finally {
+    harness.cleanup();
+  }
+});
+
+// 34. R2-D: Takeover after commit preserves committed outbox command
+test('SqliteChannelTransactions - 34. R2-D: takeover after commit preserves committed outbox command', () => {
+  const harness = createTempHarness();
+  try {
+    const repo = new SqliteStateRepository(harness.stateRoot);
+    try {
+      repo.takeoverChannel('tg:reply:4', 'holder_A');
+      seedInboxMessage(repo.databasePath, 'tg:reply:4', 'msg_reply_4', 'acc_1', 'claimed', {
+        claimedBy: 'holder_A',
+        claimedAtToken: 1,
+      });
+
+      const text = 'Committed before takeover';
+      const payloadHash = computeCanonicalPayloadHash({
+        platform: 'telegram',
+        endpointOperation: 'sendMessage',
+        recipient: '123456',
+        messageType: 'text',
+        text,
+      });
+
+      const res = repo.enqueueAuthorizedReply({
+        clientRequestId: 'req-takeover-preserves-1',
+        channelId: 'tg:reply:4',
+        holderId: 'holder_A',
+        fencingToken: 1,
+        messageId: 'msg_reply_4',
+        replyingAccountId: 'acc_1',
+        platform: 'telegram',
+        endpointOperation: 'sendMessage',
+        recipient: '123456',
+        logicalReplyTarget: 'msg_reply_4',
+        messageType: 'text',
+        text,
+        payloadHash,
+      });
+      assert.strictEqual(res.success, true);
+
+      // Takeover by holder_B
+      repo.takeoverChannel('tg:reply:4', 'holder_B');
+
+      // Verify outbox command is untouched
+      const rawDb = new DatabaseSync(repo.databasePath, { readOnly: true });
+      try {
+        const outboxRow = rawDb.prepare('SELECT * FROM outbox WHERE command_id = ?;').get(res.commandId);
+        assert.ok(outboxRow);
+        assert.strictEqual(outboxRow.status, 'QUEUED');
+        assert.strictEqual(outboxRow.client_request_id, 'req-takeover-preserves-1');
+      } finally {
+        rawDb.close();
+      }
+
+      // Idempotent replay by old request still succeeds even after takeover!
+      const replay = repo.enqueueAuthorizedReply({
+        clientRequestId: 'req-takeover-preserves-1',
+        channelId: 'tg:reply:4',
+        holderId: 'holder_A',
+        fencingToken: 1,
+        messageId: 'msg_reply_4',
+        replyingAccountId: 'acc_1',
+        platform: 'telegram',
+        endpointOperation: 'sendMessage',
+        recipient: '123456',
+        logicalReplyTarget: 'msg_reply_4',
+        messageType: 'text',
+        text,
+        payloadHash,
+      });
+      assert.strictEqual(replay.success, true);
+      assert.strictEqual(replay.idempotentReplay, true);
+    } finally {
+      repo.close();
+    }
+  } finally {
+    harness.cleanup();
+  }
+});
+
+// 35. Stale fencing or wrong holder returns false with zero outbox mutation
+test('SqliteChannelTransactions - 35. stale fencing or wrong holder returns false with zero outbox rows', () => {
+  const harness = createTempHarness();
+  try {
+    const repo = new SqliteStateRepository(harness.stateRoot);
+    try {
+      repo.takeoverChannel('tg:reply:5', 'holder_A');
+      seedInboxMessage(repo.databasePath, 'tg:reply:5', 'msg_reply_5', 'acc_1', 'claimed', {
+        claimedBy: 'holder_A',
+        claimedAtToken: 1,
+      });
+
+      const text = 'Fail attempt';
+      const payloadHash = computeCanonicalPayloadHash({
+        platform: 'telegram',
+        endpointOperation: 'sendMessage',
+        recipient: '123456',
+        messageType: 'text',
+        text,
+      });
+
+      // Wrong holder
+      const badHolderRes = repo.enqueueAuthorizedReply({
+        clientRequestId: 'req-bad-holder',
+        channelId: 'tg:reply:5',
+        holderId: 'wrong_holder',
+        fencingToken: 1,
+        messageId: 'msg_reply_5',
+        replyingAccountId: 'acc_1',
+        platform: 'telegram',
+        endpointOperation: 'sendMessage',
+        recipient: '123456',
+        logicalReplyTarget: 'msg_reply_5',
+        messageType: 'text',
+        text,
+        payloadHash,
+      });
+      assert.strictEqual(badHolderRes.success, false);
+      assert.strictEqual(badHolderRes.reason, 'NOT_CURRENT_HOLDER');
+
+      // Stale fencing token
+      const staleTokenRes = repo.enqueueAuthorizedReply({
+        clientRequestId: 'req-stale-tok',
+        channelId: 'tg:reply:5',
+        holderId: 'holder_A',
+        fencingToken: 0,
+        messageId: 'msg_reply_5',
+        replyingAccountId: 'acc_1',
+        platform: 'telegram',
+        endpointOperation: 'sendMessage',
+        recipient: '123456',
+        logicalReplyTarget: 'msg_reply_5',
+        messageType: 'text',
+        text,
+        payloadHash,
+      });
+      assert.strictEqual(staleTokenRes.success, false);
+      assert.strictEqual(staleTokenRes.reason, 'STALE_FENCING_TOKEN');
+
+      // Zero outbox rows created
+      const rawDb = new DatabaseSync(repo.databasePath, { readOnly: true });
+      try {
+        const count = rawDb.prepare('SELECT count(*) as cnt FROM outbox;').get();
+        assert.strictEqual(count.cnt, 0);
+      } finally {
+        rawDb.close();
+      }
+    } finally {
+      repo.close();
+    }
+  } finally {
+    harness.cleanup();
+  }
+});
+
+// 36. Forced outbox INSERT failure rolls back inbox transition
+test('SqliteChannelTransactions - 36. forced outbox insert failure rolls back: inbox remains claimed and zero outbox rows', () => {
+  const harness = createTempHarness();
+  try {
+    const repo = new SqliteStateRepository(harness.stateRoot);
+    try {
+      repo.takeoverChannel('tg:reply:6', 'holder_A');
+      seedInboxMessage(repo.databasePath, 'tg:reply:6', 'msg_reply_6', 'acc_1', 'claimed', {
+        claimedBy: 'holder_A',
+        claimedAtToken: 1,
+      });
+
+      const text = 'Doomed text';
+      const payloadHash = computeCanonicalPayloadHash({
+        platform: 'telegram',
+        endpointOperation: 'sendMessage',
+        recipient: '123456',
+        messageType: 'text',
+        text,
+      });
+
+      // Install abort trigger on outbox
+      const rawDb = new DatabaseSync(repo.databasePath);
+      try {
+        rawDb.exec(`
+          CREATE TRIGGER test_abort_outbox
+          BEFORE INSERT ON outbox
+          BEGIN
+            SELECT RAISE(ABORT, 'Simulated forced outbox INSERT failure');
+          END;
+        `);
+      } finally {
+        rawDb.close();
+      }
+
+      assert.throws(
+        () =>
+          repo.enqueueAuthorizedReply({
+            clientRequestId: 'req-abort-outbox',
+            channelId: 'tg:reply:6',
+            holderId: 'holder_A',
+            fencingToken: 1,
+            messageId: 'msg_reply_6',
+            replyingAccountId: 'acc_1',
+            platform: 'telegram',
+            endpointOperation: 'sendMessage',
+            recipient: '123456',
+            logicalReplyTarget: 'msg_reply_6',
+            messageType: 'text',
+            text,
+            payloadHash,
+          }),
+        /Simulated forced outbox INSERT failure/
+      );
+
+      // Inbox must STILL be claimed (NOT replied)
+      const checkDb = new DatabaseSync(repo.databasePath, { readOnly: true });
+      try {
+        const inboxRow = checkDb.prepare("SELECT status FROM inbox WHERE platform_msg_id = 'msg_reply_6';").get();
+        assert.strictEqual(inboxRow.status, 'claimed', 'Inbox status must remain claimed on rollback');
+
+        const outboxCount = checkDb.prepare('SELECT count(*) as cnt FROM outbox;').get();
+        assert.strictEqual(outboxCount.cnt, 0, 'Zero outbox rows must exist');
+      } finally {
+        checkDb.close();
+      }
     } finally {
       repo.close();
     }

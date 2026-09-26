@@ -776,25 +776,25 @@ test('T8B Test 12: Architectural Boundaries & Freeze Invariants (CANARY 16-20)',
   try {
     const repo = SqliteStateRepository.open(harness.stateRoot);
 
-    // CANARY 16: schema is v5
-    assert.strictEqual(repo.schemaVersion, 5);
-    assert.strictEqual(SQLITE_STATE_SCHEMA_VERSION, 5);
+    // CANARY 16: schema is v6 (upgraded in TG-MVP-12)
+    assert.strictEqual(repo.schemaVersion, 6);
+    assert.strictEqual(SQLITE_STATE_SCHEMA_VERSION, 6);
 
-    // CANARY 17: migrations are [1, 2, 3, 4, 5]
+    // CANARY 17: migrations are [1, 2, 3, 4, 5, 6]
     const rawDb = new DatabaseSync(repo.databasePath);
     try {
       const versions = rawDb
         .prepare('SELECT version FROM schema_migrations ORDER BY version ASC;')
         .all()
         .map((r) => r.version);
-      assert.deepStrictEqual(versions, [1, 2, 3, 4, 5]);
+      assert.deepStrictEqual(versions, [1, 2, 3, 4, 5, 6]);
 
-      // CANARY 20: no outbox table exists, but inbound_event exists
+      // CANARY 20: outbox table exists in v6, inbound_event exists
       const tables = rawDb
         .prepare("SELECT name FROM sqlite_master WHERE type='table';")
         .all()
         .map((r) => r.name);
-      assert.strictEqual(tables.includes('outbox'), false);
+      assert.strictEqual(tables.includes('outbox'), true);
       assert.strictEqual(tables.includes('inbound_event'), true);
     } finally {
       rawDb.close();

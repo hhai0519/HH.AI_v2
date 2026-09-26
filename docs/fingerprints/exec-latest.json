@@ -1,5 +1,5 @@
 {
-  "base_head": "3d94bc2",
+  "base_head": "fed1eeb",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -552,16 +552,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 227,
-      "sha256": "bb18b137dfb8b75304fe6db3c5fb63a7b84f9557505056c95a55988bd95e5aaf"
+      "lines": 228,
+      "sha256": "f44d9ef4fa871b4d78d2f82902f43bc278da502b72f536375e93699990a4b1fd"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 198,
-      "sha256": "fe27b7fbacaf9a449864ebffe94f59734d236a4acdd7f3f03dc71cfb001a4f91"
+      "lines": 200,
+      "sha256": "55d631da40798d1d977d70bc2ba0b69ae2b055c120f791689a5d7c6c34fdd139"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -602,7 +602,7 @@
         "## 封存區"
       ],
       "lines": 341,
-      "sha256": "aa88250e1e6568a40edd941e67d9947c1b42b87134ee0d5532c7f82bc20fa965"
+      "sha256": "de3b5078c9debd6552a7656f81d270dd919cd1f2073996e97817b58270a7ff21"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -924,7 +924,7 @@
         "## Consequences"
       ],
       "lines": 188,
-      "sha256": "720200ef17322bfd5dacb86074816238f630aeaf39a8e179fceeb3d5c4d7ea48"
+      "sha256": "89c9a810d2ade2c05fcbfd9db6f2ad2c0f625d51b80f7dde190bb69a341a647b"
     },
     "docs/adr/0024-inbound-identity-cursor-semantics.md": {
       "fences": 2,
@@ -981,7 +981,7 @@
         "## External Platform & Runtime Facts"
       ],
       "lines": 500,
-      "sha256": "981698b521632f7ef46acccb194558e6f22cf1e773abc8e991b6e1ae95799ddb"
+      "sha256": "c76ccf8cd53546131996d60671760ef9785582864451ce269f5bb81a57dbc085"
     },
     "docs/adr/0026-gateway-secret-provider-windows-credential-manager.md": {
       "fences": 0,
@@ -1069,8 +1069,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 5266,
-      "sha256": "584600dbac62a1e6ce3816ff759668f940db1afd69af64a5f2d94acf599b7736"
+      "lines": 5286,
+      "sha256": "b9a776cc01afc5916b82bdb8c884ec63de10b7f997ca98614db211776712e5cd"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1498,7 +1498,7 @@
       "sha256": "35bf7dbfa3c7d291b550c3c97a6ae398a22b1dc3624c1d2fc1e4db6963d6e115"
     }
   },
-  "generated_at": "2026-09-25T14:42:48Z",
+  "generated_at": "2026-09-26T02:35:49Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

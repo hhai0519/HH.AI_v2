@@ -153,6 +153,8 @@ test('dispatcher: status endpoint returns 200 with mapped fields or 404 CHANNEL_
     assert.equal(res200.body.current_holder, 'holder1');
     assert.equal(res200.body.fencing_token, 1);
     assert.equal(res200.body.queued_count, 1);
+    assert.equal(res200.body.uncertain_count, 0);
+    assert.deepEqual(res200.body.uncertain_commands, []);
   } finally {
     harness.cleanup();
   }
@@ -176,6 +178,8 @@ test('dispatcher: takeover endpoint returns 200 with discarded IDs and ONLY take
     assert.equal(res1.body.fencing_token, 1);
     assert.equal(res1.body.previous_holder, null);
     assert.deepEqual(res1.body.discarded_message_ids, []);
+    assert.equal(res1.body.uncertain_count, 0);
+    assert.deepEqual(res1.body.uncertain_commands, []);
     assert.equal(takeoverCount, 1);
 
     // Seed claimed message under holder_a
@@ -397,26 +401,159 @@ test('dispatcher: heartbeat endpoint returns 200 on match and 409 on holder/toke
   }
 });
 
-test('dispatcher: reply endpoint returns 403 on whitelisted denial reasons and 501 OUTBOUND_NOT_READY when authorized (T14)', { timeout: 5000 }, () => {
+test('dispatcher: status and takeover endpoints return uncertain summaries when UNCERTAIN commands exist (ADR-0025)', { timeout: 5000 }, () => {
   const harness = createTempHarness();
   try {
-    harness.repo.takeoverChannel('tg:reply', 'holder_rep');
-    harness.seedInbox('tg:reply', 'msg_rep_1', 'claimed', {
-      claimedBy: 'holder_rep',
-      claimedAtToken: 1,
-      accountId: 'acc_rep',
-    });
+    harness.repo.takeoverChannel('tg:unc_test', 'holder_unc');
+    const rawDb = new DatabaseSync(harness.repo.databasePath);
+    try {
+      rawDb
+        .prepare(
+          `INSERT INTO outbox (
+            command_id, client_request_id, payload_hash, platform, account_id,
+            endpoint_operation, recipient, logical_reply_target, message_type,
+            body, status, created_at, updated_at
+          ) VALUES (
+            'cmd_unc_1', 'req_unc_1', '${'a'.repeat(64)}', 'telegram', 'acc_unc',
+            'sendMessage', 'chat_123', 'tg:chat_123:1', 'text',
+            'test message', 'UNCERTAIN', 1700000000, 1700000000
+          );`
+        )
+        .run();
+    } finally {
+      rawDb.close();
+    }
 
     const dispatcher = new LocalApiDispatcher({ repository: harness.repo });
+    const resStatus = dispatcher.dispatch('/v1/status', { channel_id: 'tg:unc_test' });
+    assert.equal(resStatus.status, 200);
+    assert.equal(resStatus.body.uncertain_count, 1);
+    assert.equal(resStatus.body.uncertain_commands.length, 1);
+    assert.equal(resStatus.body.uncertain_commands[0].command_id, 'cmd_unc_1');
+    assert.equal(resStatus.body.uncertain_commands[0].platform, 'telegram');
+    assert.equal(resStatus.body.uncertain_commands[0].account_id, 'acc_unc');
+    assert.equal(resStatus.body.uncertain_commands[0].recipient, 'chat_123');
 
-    // Message not found -> 403 MESSAGE_NOT_FOUND
-    const resNotFound = dispatcher.dispatch('/v1/reply', {
+    const resTakeover = dispatcher.dispatch('/v1/takeover', { channel_id: 'tg:unc_test', holder_id: 'new_holder' });
+    assert.equal(resTakeover.status, 200);
+    assert.equal(resTakeover.body.uncertain_count, 1);
+    assert.equal(resTakeover.body.uncertain_commands.length, 1);
+    assert.equal(resTakeover.body.uncertain_commands[0].command_id, 'cmd_unc_1');
+  } finally {
+    harness.cleanup();
+  }
+});
+
+test('dispatcher: reply endpoint returns 501 OUTBOUND_TARGET_NOT_READY when registry or format invalid (ADR-0025)', { timeout: 5000 }, () => {
+  const harness = createTempHarness();
+  try {
+    harness.repo.takeoverChannel('tg:-100123', 'holder_rep');
+    harness.seedInbox('tg:-100123', 'tg:-100123:1', 'claimed', {
+      claimedBy: 'holder_rep',
+      claimedAtToken: 1,
+      accountId: 'acc_tg',
+    });
+
+    // 1. Missing accountRegistry -> 501
+    const dispNoReg = new LocalApiDispatcher({ repository: harness.repo });
+    const resNoReg = dispNoReg.dispatch('/v1/reply', {
       client_request_id: 'req_1',
-      channel_id: 'tg:reply',
+      channel_id: 'tg:-100123',
       holder_id: 'holder_rep',
       fencing_token: 1,
-      message_id: 'non_existent_msg',
-      replying_account_id: 'acc_rep',
+      message_id: 'tg:-100123:1',
+      replying_account_id: 'acc_tg',
+      text: 'hello',
+    });
+    assert.deepEqual(resNoReg, {
+      status: 501,
+      body: { ok: false, code: 'OUTBOUND_TARGET_NOT_READY' },
+    });
+
+    const fakeRegistry = {
+      get(id) {
+        if (id === 'acc_tg') return { channel: 'telegram', accountId: 'acc_tg' };
+        if (id === 'acc_line') return { channel: 'line', accountId: 'acc_line' };
+        return null;
+      },
+    };
+    const dispWithReg = new LocalApiDispatcher({ repository: harness.repo, accountRegistry: fakeRegistry });
+
+    // 2. Unknown account -> 501
+    const resUnknown = dispWithReg.dispatch('/v1/reply', {
+      client_request_id: 'req_2',
+      channel_id: 'tg:-100123',
+      holder_id: 'holder_rep',
+      fencing_token: 1,
+      message_id: 'tg:-100123:1',
+      replying_account_id: 'acc_unknown',
+      text: 'hello',
+    });
+    assert.deepEqual(resUnknown, {
+      status: 501,
+      body: { ok: false, code: 'OUTBOUND_TARGET_NOT_READY' },
+    });
+
+    // 3. Non-telegram account -> 501
+    const resLine = dispWithReg.dispatch('/v1/reply', {
+      client_request_id: 'req_3',
+      channel_id: 'tg:-100123',
+      holder_id: 'holder_rep',
+      fencing_token: 1,
+      message_id: 'tg:-100123:1',
+      replying_account_id: 'acc_line',
+      text: 'hello',
+    });
+    assert.deepEqual(resLine, {
+      status: 501,
+      body: { ok: false, code: 'OUTBOUND_TARGET_NOT_READY' },
+    });
+
+    // 4. Malformed message ID (not tg:<chat_id>:<msg_id>) -> 501
+    const resBadMsgId = dispWithReg.dispatch('/v1/reply', {
+      client_request_id: 'req_4',
+      channel_id: 'tg:-100123',
+      holder_id: 'holder_rep',
+      fencing_token: 1,
+      message_id: 'bad_msg_format',
+      replying_account_id: 'acc_tg',
+      text: 'hello',
+    });
+    assert.deepEqual(resBadMsgId, {
+      status: 501,
+      body: { ok: false, code: 'OUTBOUND_TARGET_NOT_READY' },
+    });
+  } finally {
+    harness.cleanup();
+  }
+});
+
+test('dispatcher: reply endpoint returns 403 on whitelisted denial reasons (T14)', { timeout: 5000 }, () => {
+  const harness = createTempHarness();
+  try {
+    harness.repo.takeoverChannel('tg:-100123', 'holder_rep');
+    harness.seedInbox('tg:-100123', 'tg:-100123:1', 'claimed', {
+      claimedBy: 'holder_rep',
+      claimedAtToken: 1,
+      accountId: 'acc_tg',
+    });
+
+    const fakeRegistry = {
+      get(id) {
+        if (id === 'acc_tg' || id === 'acc_tg_other') return { channel: 'telegram', accountId: id };
+        return null;
+      },
+    };
+    const dispatcher = new LocalApiDispatcher({ repository: harness.repo, accountRegistry: fakeRegistry });
+
+    // 1. Message not found -> 403 MESSAGE_NOT_FOUND
+    const resNotFound = dispatcher.dispatch('/v1/reply', {
+      client_request_id: 'req_1',
+      channel_id: 'tg:-100123',
+      holder_id: 'holder_rep',
+      fencing_token: 1,
+      message_id: 'tg:-100123:999',
+      replying_account_id: 'acc_tg',
       text: 'hello',
     });
     assert.deepEqual(resNotFound, {
@@ -424,19 +561,137 @@ test('dispatcher: reply endpoint returns 403 on whitelisted denial reasons and 5
       body: { ok: false, code: 'REPLY_NOT_AUTHORIZED', reason: 'MESSAGE_NOT_FOUND' },
     });
 
-    // Valid reply authorization -> 501 OUTBOUND_NOT_READY (TG-MVP-11 boundary, T14)
-    const res501 = dispatcher.dispatch('/v1/reply', {
+    // 2. Not current holder -> 403 NOT_CURRENT_HOLDER
+    const resWrongHolder = dispatcher.dispatch('/v1/reply', {
       client_request_id: 'req_2',
-      channel_id: 'tg:reply',
+      channel_id: 'tg:-100123',
+      holder_id: 'wrong_holder',
+      fencing_token: 1,
+      message_id: 'tg:-100123:1',
+      replying_account_id: 'acc_tg',
+      text: 'hello',
+    });
+    assert.deepEqual(resWrongHolder, {
+      status: 403,
+      body: { ok: false, code: 'REPLY_NOT_AUTHORIZED', reason: 'NOT_CURRENT_HOLDER' },
+    });
+
+    // 3. Stale fencing token -> 403 STALE_FENCING_TOKEN
+    const resStale = dispatcher.dispatch('/v1/reply', {
+      client_request_id: 'req_3',
+      channel_id: 'tg:-100123',
+      holder_id: 'holder_rep',
+      fencing_token: 0,
+      message_id: 'tg:-100123:1',
+      replying_account_id: 'acc_tg',
+      text: 'hello',
+    });
+    assert.deepEqual(resStale, {
+      status: 403,
+      body: { ok: false, code: 'REPLY_NOT_AUTHORIZED', reason: 'STALE_FENCING_TOKEN' },
+    });
+
+    // 4. Account mismatch -> 403 ACCOUNT_MISMATCH
+    const resAccMismatch = dispatcher.dispatch('/v1/reply', {
+      client_request_id: 'req_4',
+      channel_id: 'tg:-100123',
       holder_id: 'holder_rep',
       fencing_token: 1,
-      message_id: 'msg_rep_1',
-      replying_account_id: 'acc_rep',
-      text: 'Valid reply text',
+      message_id: 'tg:-100123:1',
+      replying_account_id: 'acc_tg_other',
+      text: 'hello',
     });
-    assert.deepEqual(res501, {
-      status: 501,
-      body: { ok: false, code: 'OUTBOUND_NOT_READY' },
+    assert.deepEqual(resAccMismatch, {
+      status: 403,
+      body: { ok: false, code: 'REPLY_NOT_AUTHORIZED', reason: 'ACCOUNT_MISMATCH' },
+    });
+  } finally {
+    harness.cleanup();
+  }
+});
+
+test('dispatcher: reply endpoint executes atomic outbox enqueue, idempotent replay, and conflict (TG-MVP-12)', { timeout: 5000 }, () => {
+  const harness = createTempHarness();
+  try {
+    harness.repo.takeoverChannel('tg:-100123', 'holder_rep');
+    harness.seedInbox('tg:-100123', 'tg:-100123:1', 'claimed', {
+      claimedBy: 'holder_rep',
+      claimedAtToken: 1,
+      accountId: 'acc_tg',
+    });
+
+    const fakeRegistry = {
+      get(id) {
+        if (id === 'acc_tg') return { channel: 'telegram', accountId: 'acc_tg' };
+        return null;
+      },
+    };
+    const dispatcher = new LocalApiDispatcher({ repository: harness.repo, accountRegistry: fakeRegistry });
+
+    // 1. Fresh enqueue -> 200 OK
+    const resFresh = dispatcher.dispatch('/v1/reply', {
+      client_request_id: 'req_rep_1',
+      channel_id: 'tg:-100123',
+      holder_id: 'holder_rep',
+      fencing_token: 1,
+      message_id: 'tg:-100123:1',
+      replying_account_id: 'acc_tg',
+      text: 'Hello, World!',
+    });
+    assert.equal(resFresh.status, 200);
+    assert.equal(resFresh.body.ok, true);
+    assert.equal(resFresh.body.code, 'OK');
+    assert.equal(typeof resFresh.body.command_id, 'string');
+    assert.equal(resFresh.body.outbox_status, 'QUEUED');
+    assert.equal(resFresh.body.idempotent_replay, false);
+
+    // Verify row in outbox table
+    const rawDb = new DatabaseSync(harness.repo.databasePath);
+    let row;
+    try {
+      row = rawDb.prepare('SELECT * FROM outbox WHERE command_id = ?;').get(resFresh.body.command_id);
+    } finally {
+      rawDb.close();
+    }
+    assert.ok(row);
+    assert.equal(row.client_request_id, 'req_rep_1');
+    assert.equal(row.platform, 'telegram');
+    assert.equal(row.account_id, 'acc_tg');
+    assert.equal(row.recipient, '-100123');
+    assert.equal(row.logical_reply_target, 'tg:-100123:1');
+    assert.equal(row.body, 'Hello, World!');
+    assert.equal(row.status, 'QUEUED');
+
+    // 2. Idempotent replay -> 200 OK, idempotent_replay = true
+    const resReplay = dispatcher.dispatch('/v1/reply', {
+      client_request_id: 'req_rep_1',
+      channel_id: 'tg:-100123',
+      holder_id: 'holder_rep',
+      fencing_token: 1,
+      message_id: 'tg:-100123:1',
+      replying_account_id: 'acc_tg',
+      text: 'Hello, World!',
+    });
+    assert.equal(resReplay.status, 200);
+    assert.equal(resReplay.body.ok, true);
+    assert.equal(resReplay.body.code, 'OK');
+    assert.equal(resReplay.body.command_id, resFresh.body.command_id);
+    assert.equal(resReplay.body.outbox_status, 'QUEUED');
+    assert.equal(resReplay.body.idempotent_replay, true);
+
+    // 3. Idempotency conflict (different text for same client_request_id) -> 409 IDEMPOTENCY_CONFLICT
+    const resConflict = dispatcher.dispatch('/v1/reply', {
+      client_request_id: 'req_rep_1',
+      channel_id: 'tg:-100123',
+      holder_id: 'holder_rep',
+      fencing_token: 1,
+      message_id: 'tg:-100123:1',
+      replying_account_id: 'acc_tg',
+      text: 'Different body text',
+    });
+    assert.deepEqual(resConflict, {
+      status: 409,
+      body: { ok: false, code: 'IDEMPOTENCY_CONFLICT' },
     });
   } finally {
     harness.cleanup();

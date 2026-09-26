@@ -596,3 +596,51 @@ test('bootstrapGateway - instantiates SecretProviderClass when secretProvider in
   assert.ok(capturedDeps.secretProvider instanceof InjectedSecretProviderClass);
   assert.strictEqual(result.accountRegistry.getActive().id, 'acc-single');
 });
+
+test('GatewayRuntimeOwner passes accountRegistry to dispatcherFactory and LocalApiDispatcher (ADR-0025)', async () => {
+  const fakeAccountRegistry = {
+    getActive: () => ({ id: 'acc-active', channel: 'telegram' }),
+    get: (id) => ({ id, channel: 'telegram' }),
+  };
+
+  let capturedDispatcherDeps = null;
+  const fakeDispatcherFactory = (deps) => {
+    capturedDispatcherDeps = deps;
+    return { dispatch: () => ({ status: 200, body: {} }) };
+  };
+
+  const fakeBackup = {
+    repository: { isClosed: false, close: () => {} },
+    start: () => {},
+    stop: () => {},
+  };
+
+  const fakeServer = {
+    start: async () => {},
+    stop: async () => {},
+  };
+
+  const fakeAdapter = {
+    start: async () => {},
+    stop: async () => {},
+  };
+
+  const owner = new GatewayRuntimeOwner({
+    accountRegistry: fakeAccountRegistry,
+    backupRuntimeOwner: fakeBackup,
+    localApiServer: fakeServer,
+    telegramAdapter: fakeAdapter,
+    dispatcherFactory: fakeDispatcherFactory,
+    secretBuffer: Buffer.alloc(32),
+  });
+
+  await owner.start();
+  try {
+    assert.ok(capturedDispatcherDeps);
+    assert.strictEqual(capturedDispatcherDeps.accountRegistry, fakeAccountRegistry);
+    assert.strictEqual(capturedDispatcherDeps.repository, fakeBackup.repository);
+  } finally {
+    await owner.stop();
+  }
+});
+

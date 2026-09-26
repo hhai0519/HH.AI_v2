@@ -48,7 +48,7 @@ T6 階段正式採用 `busy_timeout = 5000`（5000ms），其基礎為 T1 Window
 ## 6. 資料庫綱要遷移與生命週期排序 (Schema Migration & Lifecycle Ordering)
 
 - 資料庫綱要必須版本化（Versioned Schema，如 `schema_version` 表格）。
-- 綱要變更僅允許向前遷移（Forward-only migrations）；TG-MVP-10 綱要版本為 **v5**（`ingest_cursor` 引入 `updated_at_ms` 支援跨週重置）。
+- 綱要變更僅允許向前遷移（Forward-only migrations）；TG-MVP-12 綱要版本為 **v6**（引入 `outbox` 表格支援可靠出站指令佇列與能力感知安全重試；v5 引入 `updated_at_ms` 支援跨週重置）。
 - 執行任何綱要遷移前，必須具備經驗證之備份。
 - **程序關閉順序契約 (Shutdown Ordering Contract — M2)**：
   1. 優先呼叫 `TelegramInboundAdapter.stop()` 中止長輪詢與重試定時器。
@@ -163,5 +163,15 @@ T6 階段正式採用 `busy_timeout = 5000`（5000ms），其基礎為 T1 Window
   - 啟動時檢驗 `config.accounts.telegram`，僅當啟用帳號數量恰好為 1 時始得建構 `AccountRegistry('telegram')`、登錄帳號並 `setActive()`。
   - 0 個或 2 個以上啟用帳號立即 Fail-Closed，stderr 僅輸出 `GATEWAY_CONFIG_ERROR`；嚴禁依陣列順序或隨機選取；帳號數量異常時嚴禁啟動 Telegram 適配器、綁定 Local API 連線埠或存取金鑰。
 - **同步輪詢容量上限**：`POST /v1/poll` 每批最多 50 筆訊息；若既有 claimed 訊息加上請求量超過 50 筆，僅能領取至滿額（`Math.min(limit, 50 - claimedCount)`），杜絕訊息堆積與未回覆洩漏。
-- **過期回覆嚴格拒絕**：`POST /v1/reply` 檢驗 fencing token，非最新 holder 之過期回覆一律拒絕。
 - **生命週期關閉契約**：由 `GatewayRuntimeOwner` 管理，關閉時停止 Local API 伺服器接受新連線、停止 Telegram 配接器、停止備份排程器、最後安全關閉 SQLite 儲存庫。
+
+## 15. 耐久 SQLite 出站佇列與能力感知安全重試 (Durable Outbox & Capability-Aware Safe Retry — TG-MVP-12)
+
+- **資料表結構與不變式**：`outbox` 為 STRICT 資料表，包含 `command_id`（PK）、`client_request_id`（UNIQUE）、`payload_hash`（CHAR(64)）、`platform`、`account_id`、`endpoint_operation`、`recipient`、`logical_reply_target`、`message_type`、`body`、`status`（QUEUED, IN_FLIGHT, ACCEPTED_BY_PLATFORM, UNCERTAIN, FAILED_TERMINAL）、`retry_count`、`next_retry_at_ms`、`external_retry_key`、`external_retry_expires_at`、`last_error_code`、`last_error_category`、`last_error_message`、`created_at`、`updated_at`。
+- **原子授權出站與回覆推進 (Atomic Authorized Reply)**：`POST /v1/reply` 在同一 SQLite 交易內完成回覆授權驗證、寫入 `outbox`（QUEUED）並將 `inbox` 標記為 `replied`。
+- **冪等重放保證 (Idempotent Replay)**：相同 `client_request_id` 與相同 `payload_hash` 重複呼叫為冪等重放（`idempotent_replay: true`），回傳既有 `command_id` 與當前狀態，零重複突變；相同 `client_request_id` 但負載不同時回傳 409 `IDEMPOTENCY_CONFLICT`。
+- **平台與受眾權威驗證 (Platform & Recipient Authority — ADR-0025 §12)**：出站平台、帳號與受眾規格由 Gateway 端權威推導與驗證，不信任客戶端自選；目前僅開放已設定之 Telegram 帳號與合規 `tg:<chat_id>:<msg_id>` 回覆對象；缺失或不符回傳 501 `OUTBOUND_TARGET_NOT_READY`。
+- **能力感知安全重試策略 (Capability-Aware Safe Retry Policy — ADR-0025 R2)**：出站重試決策為純決定性數學函式，嚴格區分傳輸階段（`NOT_SENT` vs `MAY_HAVE_BEEN_SENT`）。Telegram 缺乏客戶端冪等鍵，`MAY_HAVE_BEEN_SENT` 逾時或不明結果轉為 `UNCERTAIN`，嚴禁盲目重送；LINE 具備官方冪等鍵者在金鑰有效期間允許安全重試。
+- **進程崩潰與重啟復原 (Crash Recovery & Non-Idempotent Invariant)**：進程啟動時 `recoverInFlightCommands()` 僅將具備有效持久化冪等金鑰之指令恢復為 `QUEUED`；Telegram 或無冪等鍵之 `IN_FLIGHT` 指令一律轉換為 `UNCERTAIN`，嚴禁無條件復原為 `QUEUED`。
+- **狀態枚舉與終態語意**：`ACCEPTED_BY_PLATFORM` 嚴格代表平台收件成功，絕不宣稱為 `DELIVERED_TO_RECIPIENT`；`UNCERTAIN` 代表狀態不明，不自動重試，暴露於 `/v1/status` 與 `/v1/takeover` 供監控與人工處置。
+

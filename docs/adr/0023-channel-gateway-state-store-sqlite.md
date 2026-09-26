@@ -1,7 +1,7 @@
 # ADR-0023: Channel Gateway 採用 node:sqlite 作為唯一運作狀態來源 (Channel Gateway SQLite State Store)
 
-- Status: Accepted
-- Date: 2026-09-17
+- Status: Accepted (Schema v6 Outbox Implemented in TG-MVP-12 / Candidate Awaiting External Macro Audit)
+- Date: 2026-09-17 (Original), 2026-09-26 (TG-MVP-12 Schema v6 Outbox)
 - Decision Owner: 使用者 HH
 
 ## Context

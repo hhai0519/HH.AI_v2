@@ -2825,7 +2825,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 5.1 上一批狀態
 
-上次核對通過的 HEAD：3d94bc2ccd26870b133d1dca217bb03e1c4cf767
+上次核對通過的 HEAD：fed1eeb888619138001969eb7b2f63ea3da33f6e
 
 - `23af193`（執行者前置檢查 ＋ 回滾程序 ＋ `AUDIT-LOG.md` ＋ 四缺口修正）
   已於 2026-09-02 由審計官核對通過：6 檔異動（含 2 個新檔）、零夾帶、
@@ -5264,3 +5264,23 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - NEXT_SLICE 推進至 TG-MVP-12。
   - B-107 保持 OPEN / RESIDUAL / NON-BLOCKING FOR CURRENT E-03 RETURN。
   - TG-MVP-11 正式結案：ACCEPTED / CLOSED。
+150. **TG-MVP-12 持久化 SQLite Outbox 實作（TG-MVP-12 Durable SQLite Outbox Implementation）**（2026-09-26）
+- **核對基準與非阻擋性觀察（Accepted Checkpoint & Non-Blocking Observations）**：
+  - accepted checkpoint 推進確立為 `fed1eeb888619138001969eb7b2f63ea3da33f6e`。
+  - Actions post-main exact-SHA Run 36174109228（attempt 1 遇 Windows Known-Folder timeout 判定為 B-100 R-01 非阻擋性環境觀察；attempt 2 由 USER 依 D-R4 觸發驗證成功：verify=completed/success, gateway-windows=completed/success，raw verify: Ubuntu 527 passed + 13 passed + ALL 5 GATES PASSED，Windows: 35 passed）。
+  - D-R4（same-SHA CI rerun USER ONLY）與 D-R1（B-100 R-D）確認為現行治理約束；B-107 保持 OPEN / RESIDUAL / NON-BLOCKING FOR CURRENT E-03 RETURN。
+- **TG-MVP-12 核心實作落地與驗證（TG-MVP-12 Implementation & Verification）**：
+  - **Schema v6 遷移與驗證**：SQLITE_STATE_SCHEMA_VERSION 推進為 6；新增 Migration 6 建立 STRICT 表格 `outbox`（`command_id TEXT PRIMARY KEY, deduplication_key TEXT NOT NULL UNIQUE, idempotency_key TEXT NOT NULL UNIQUE, channel TEXT NOT NULL, account_id TEXT NOT NULL, endpoint_operation TEXT NOT NULL, logical_reply_target TEXT NOT NULL, payload_hash TEXT NOT NULL, payload_json TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'queued', retry_count INTEGER NOT NULL DEFAULT 0, next_attempt_at_ms INTEGER NOT NULL, lease_owner TEXT, lease_expires_at_ms INTEGER, last_error_code TEXT, created_at_ms INTEGER NOT NULL, updated_at_ms INTEGER NOT NULL, terminal_at_ms INTEGER, CHECK(length(command_id) > 0), CHECK(length(deduplication_key) > 0), CHECK(length(idempotency_key) > 0), CHECK(channel IN ('telegram', 'line')), CHECK(length(account_id) > 0), CHECK(endpoint_operation IN ('sendMessage', 'editMessageText')), CHECK(length(logical_reply_target) > 0), CHECK(length(payload_hash) = 64), CHECK(status IN ('queued', 'leased', 'delivered', 'terminal_failure', 'uncertain')), CHECK(retry_count >= 0), CHECK(next_attempt_at_ms >= 0), CHECK(created_at_ms >= 0), CHECK(updated_at_ms >= 0))`）；建立索引 `idx_outbox_due_claim ON outbox(status, next_attempt_at_ms)` 與 `idx_outbox_uncertain ON outbox(status, updated_at_ms)`；既有 v5 資料庫開啟時先執行 verified backup（`executeVerifiedBackup` 升級為要求 schemaVersion=6）始套用 migration 6。
+  - **純重試策略（outbox-delivery-policy.js）**：實作純確定性能力感知安全重試策略 `classifyDeliveryOutcome`、`computeNextAttempt`、`computeCanonicalPayloadHash`（支援 camelCase 別名對齊）與 `evaluateOutboxDelivery`；依據端點能力（Telegram sendMessage 支援 idempotency_key 但目前以 local deduplication_key 為準；editMessageText 支援天然冪等）；僅可重試錯誤（網路斷線、429、5xx）進行指數退避（1s, 2s, 4s, 8s, 16s, 32s, 60s cap + deterministic jitter），不可重試錯誤（4xx、身分認證錯誤）直接判定為 `terminal_failure`；超時或未決回應標記為 `uncertain`。
+  - **本機 Outbox Worker 生命週期（outbox-worker.js）**：單一進程邊界內之事件迴圈定期排程（`pollIntervalMs`，預設 1000ms）；透過 `claimNextQueuedOutboxCommand` 租借逾期指令（lease duration 30000ms），調用 Fake/Live Transport 執行傳輸，並以 `updateOutboxCommandResult` 更新終態；啟動與停止時安全回收過期租約（`recoverInFlightCommands`）；支援優雅關閉（`stop()` 清理定時器並等待在途傳輸完成）。
+  - **Local API 整合（local-api-dispatcher.js）**：注入 `accountRegistry`；`/v1/reply` 透過 SQLite 交易原子性驗證回覆授權並呼叫 `enqueueAuthorizedReply` 寫入 outbox；若遇到相同 `idempotency_key` 且相同 `payload_hash` 則回傳 200 與 `idempotent_replay: true`；若相同 key 但 payload 不符回傳 409 `IDEMPOTENCY_CONFLICT`；若目標通道未就緒回傳 501 `OUTBOUND_TARGET_NOT_READY`；`/v1/status` 與 `/v1/takeover` 包含未決指令摘要 `uncertain_outbox_commands`。
+  - **引導與擁有者接線（gateway-runtime-owner.js）**：於 `dispatcherFactory` 與 `LocalApiDispatcher` 建構時注入 `accountRegistry`，確保 `/v1/reply` 與端點能夠即時核驗帳號啟用狀態與能力。
+- **測試矩陣與驗證結果（Test Matrix & Verification Results）**：
+  - channel-gateway 單元測試套件全數通過：504 passed, 0 failed, 2 skipped（涵蓋 `sqlite-ingest-transactions.test.js` 25 passed、`sqlite-channel-transactions.test.js` 36 passed、`sqlite-state-repository.test.js` 78 passed、`local-api-dispatcher.test.js` 13 passed、`gateway-runtime-owner.test.js` 14 passed、`outbox-delivery-policy.test.js` 11 passed、`outbox-worker.test.js` 5 passed）。
+  - 全專案標準驗證入口 `python scripts/verify_all.py` 5 大 Correctness Gates 全數通過（validate_skills 54 passed、check_consistency 26 checks passed、pytest scripts 529 passed in 74.86s、webapp 13 passed in 0.03s）。
+- **後續路由與候選狀態（Next Work Routing & Candidate State）**：
+  - accepted checkpoint 保持 `fed1eeb888619138001969eb7b2f63ea3da33f6e`。
+  - NEXT_WORK 保持 E-03，NEXT_SLICE 保持 TG-MVP-12。
+  - B-107 保持 OPEN / RESIDUAL / NON-BLOCKING FOR CURRENT E-03 RETURN。
+  - TG-MVP-12 保持 IN PROGRESS / Candidate Awaiting External Macro Audit（main_advancement 嚴格為 FORBIDDEN，執行者嚴禁自審）。
+

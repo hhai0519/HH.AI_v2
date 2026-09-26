@@ -1,7 +1,7 @@
 # ADR-0025: Outbound Delivery Reliability and Loopback Local API Security
 
-- Status: Accepted (R3 Implemented in TG-MVP-11 / 2026-09-25; R2 Scheduled for TG-MVP-12)
-- Date: 2026-09-18 (Original), 2026-09-25 (TG-MVP-11 R3 Implementation)
+- Status: Accepted (R3 Implemented in TG-MVP-11; R2 Implemented in TG-MVP-12 / Candidate Awaiting External Macro Audit)
+- Date: 2026-09-18 (Original), 2026-09-25 (TG-MVP-11 R3), 2026-09-26 (TG-MVP-12 R2 Outbox)
 
 ## Context
 
