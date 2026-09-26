@@ -1,5 +1,5 @@
 {
-  "base_head": "8ea3fc6",
+  "base_head": "9cfbc70",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -552,16 +552,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 231,
-      "sha256": "3b75dd29208cdf656e30e083a51ef24757a56eb2b53b20cdc9f8afd4ad5d50d8"
+      "lines": 232,
+      "sha256": "1cf2f907765acaaf32e0e16157059ec92b3c4522a33c7dbe1c2e0b34d085388b"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 203,
-      "sha256": "1aba16315f23ff52a5b70fefffd731974e7e302ecb5a2616b7706f74cf1f9061"
+      "lines": 205,
+      "sha256": "43530d011650d3a606f16ba7def81d0ae6220f8708bac79047ab957f9d5c7a94"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -981,7 +981,7 @@
         "## External Platform & Runtime Facts"
       ],
       "lines": 503,
-      "sha256": "c2daaea8a31c2b680ca040457a34b18069820fedb7df2e535b5a1a54279a9258"
+      "sha256": "a7849af7a8023039bd1653b9b218dac0f69a0299d8d39a18d739dae8f6db54a7"
     },
     "docs/adr/0026-gateway-secret-provider-windows-credential-manager.md": {
       "fences": 0,
@@ -1498,7 +1498,7 @@
       "sha256": "35bf7dbfa3c7d291b550c3c97a6ae398a22b1dc3624c1d2fc1e4db6963d6e115"
     }
   },
-  "generated_at": "2026-09-26T04:02:11Z",
+  "generated_at": "2026-09-26T06:23:14Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {
