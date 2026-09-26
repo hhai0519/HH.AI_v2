@@ -1778,3 +1778,142 @@ test('SqliteChannelTransactions - 36. forced outbox insert failure rolls back: i
     harness.cleanup();
   }
 });
+
+// 37. F1: enqueueAuthorizedReply rejects unpaired, malformed, expired, or far-future LINE retry credentials (fail closed)
+test('SqliteChannelTransactions - 37. F1: enqueueAuthorizedReply rejects unpaired, malformed, expired, or far-future LINE retry credentials and enforces schema pair CHECK', () => {
+  const harness = createTempHarness();
+  try {
+    const repo = new SqliteStateRepository(harness.stateRoot);
+    try {
+      repo.takeoverChannel('line:reply:1', 'holder_line');
+      seedInboxMessage(repo.databasePath, 'line:reply:1', 'msg_line_1', 'acc_line', 'claimed', {
+        claimedBy: 'holder_line',
+        claimedAtToken: 1,
+      });
+
+      const nowSec = 1700000000;
+      const validUUID = '550e8400-e29b-41d4-a716-446655440000';
+      const malformedUUID = 'bad-uuid-format';
+      const text = 'Line push reply';
+      const payloadHash = computeCanonicalPayloadHash({
+        platform: 'line',
+        endpointOperation: 'push',
+        recipient: 'U12345678',
+        messageType: 'text',
+        text,
+      });
+
+      const baseParams = {
+        channelId: 'line:reply:1',
+        holderId: 'holder_line',
+        fencingToken: 1,
+        messageId: 'msg_line_1',
+        replyingAccountId: 'acc_line',
+        platform: 'line',
+        endpointOperation: 'push',
+        recipient: 'U12345678',
+        logicalReplyTarget: 'msg_line_1',
+        messageType: 'text',
+        text,
+        payloadHash,
+        nowSec,
+      };
+
+      // 1. Key with null expiry -> throws TypeError
+      assert.throws(
+        () => repo.enqueueAuthorizedReply({ ...baseParams, clientRequestId: 'req-bad-1', externalRetryKey: validUUID, externalRetryExpiresAt: null }),
+        /must be provided together/
+      );
+
+      // 2. Key with undefined expiry -> throws TypeError
+      assert.throws(
+        () => repo.enqueueAuthorizedReply({ ...baseParams, clientRequestId: 'req-bad-2', externalRetryKey: validUUID, externalRetryExpiresAt: undefined }),
+        /must be provided together/
+      );
+
+      // 3. Expiry without key -> throws TypeError
+      assert.throws(
+        () => repo.enqueueAuthorizedReply({ ...baseParams, clientRequestId: 'req-bad-3', externalRetryKey: null, externalRetryExpiresAt: nowSec + 3600 }),
+        /must be provided together/
+      );
+
+      // 4. Malformed UUID + future expiry -> throws TypeError
+      assert.throws(
+        () => repo.enqueueAuthorizedReply({ ...baseParams, clientRequestId: 'req-bad-4', externalRetryKey: malformedUUID, externalRetryExpiresAt: nowSec + 3600 }),
+        /valid 128-bit UUID/
+      );
+
+      // 5. Expired expiry (nowSec) -> throws RangeError
+      assert.throws(
+        () => repo.enqueueAuthorizedReply({ ...baseParams, clientRequestId: 'req-bad-5', externalRetryKey: validUUID, externalRetryExpiresAt: nowSec }),
+        /must be > nowSec/
+      );
+
+      // 6. Expired expiry (nowSec - 10) -> throws RangeError
+      assert.throws(
+        () => repo.enqueueAuthorizedReply({ ...baseParams, clientRequestId: 'req-bad-6', externalRetryKey: validUUID, externalRetryExpiresAt: nowSec - 10 }),
+        /must be > nowSec/
+      );
+
+      // 7. Far-future initial expiry > nowSec + 86400 -> throws RangeError
+      assert.throws(
+        () => repo.enqueueAuthorizedReply({ ...baseParams, clientRequestId: 'req-bad-7', externalRetryKey: validUUID, externalRetryExpiresAt: nowSec + 86401 }),
+        /must be > nowSec .* and <= nowSec \+ 86400/
+      );
+
+      // 8. Valid UUID + unexpired initial expiry (nowSec + 3600) -> succeeds!
+      const okRes = repo.enqueueAuthorizedReply({
+        ...baseParams,
+        clientRequestId: 'req-ok-1',
+        externalRetryKey: validUUID,
+        externalRetryExpiresAt: nowSec + 3600,
+      });
+      assert.strictEqual(okRes.success, true);
+      assert.strictEqual(okRes.outboxStatus, 'QUEUED');
+
+      const saved = repo.getOutboxCommand(okRes.commandId);
+      assert.strictEqual(saved.external_retry_key, validUUID);
+      assert.strictEqual(saved.external_retry_expires_at, nowSec + 3600);
+
+      // 9. Schema pair CHECK constraint: direct raw insert with only key or only expiry fails with SQLITE_CONSTRAINT
+      const rawDb = new DatabaseSync(repo.databasePath);
+      try {
+        // Raw insert with key but NULL expiry -> SQLITE_CONSTRAINT
+        assert.throws(
+          () =>
+            rawDb
+              .prepare(
+                `INSERT INTO outbox (
+                  command_id, client_request_id, payload_hash, platform, account_id,
+                  endpoint_operation, recipient, message_type, body, status,
+                  created_at, updated_at, external_retry_key, external_retry_expires_at
+                ) VALUES ('cmd_viol_1', 'req_viol_1', '${'a'.repeat(64)}', 'line', 'acc_1', 'push', 'u1', 'text', 'b', 'QUEUED', 1, 1, 'key-only', NULL);`
+              )
+              .run(),
+          /constraint/i
+        );
+
+        // Raw insert with expiry but NULL key -> SQLITE_CONSTRAINT
+        assert.throws(
+          () =>
+            rawDb
+              .prepare(
+                `INSERT INTO outbox (
+                  command_id, client_request_id, payload_hash, platform, account_id,
+                  endpoint_operation, recipient, message_type, body, status,
+                  created_at, updated_at, external_retry_key, external_retry_expires_at
+                ) VALUES ('cmd_viol_2', 'req_viol_2', '${'b'.repeat(64)}', 'line', 'acc_1', 'push', 'u1', 'text', 'b', 'QUEUED', 1, 1, NULL, 12345);`
+              )
+              .run(),
+          /constraint/i
+        );
+      } finally {
+        rawDb.close();
+      }
+    } finally {
+      repo.close();
+    }
+  } finally {
+    harness.cleanup();
+  }
+});

@@ -65,6 +65,33 @@ const LINE_RETRYABLE_PUSH_OPERATIONS = new Set([
   'broadcast',
 ]);
 
+const LINE_RETRY_KEY_UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Validates official LINE retry identity credential.
+ * Fail-closed (F1):
+ * 1. key must be a valid 128-bit UUID textual form (8-4-4-4-12 hex groups).
+ * 2. expiresAt must be explicitly present, a safe integer, and strictly in the future (> nowSec).
+ * null, undefined, non-integer, expired, or malformed -> INVALID (false).
+ *
+ * @param {string|null|undefined} key
+ * @param {number|null|undefined} expiresAt
+ * @param {number} [nowSec]
+ * @returns {boolean}
+ */
+function isValidLineRetryIdentity(key, expiresAt, nowSec = Math.floor(Date.now() / 1000)) {
+  if (typeof key !== 'string' || !LINE_RETRY_KEY_UUID_REGEX.test(key.trim())) {
+    return false;
+  }
+  if (typeof expiresAt !== 'number' || !Number.isSafeInteger(expiresAt)) {
+    return false;
+  }
+  if (expiresAt <= nowSec) {
+    return false;
+  }
+  return true;
+}
+
 /**
  * Computes deterministic SHA-256 canonical payload hash.
  * Includes all delivery-relevant stable fields; excludes transient / authorization fields.
@@ -210,12 +237,12 @@ function evaluateDeliveryAttempt(command, attemptContext) {
         };
       }
 
-      // Check if retry key is expired (LINE retry key valid 24h)
-      const hasValidKey =
-        Boolean(command.external_retry_key) &&
-        (command.external_retry_expires_at === null ||
-          command.external_retry_expires_at === undefined ||
-          command.external_retry_expires_at > nowSec);
+      // Check if retry key is valid and unexpired (fail-closed per F1)
+      const hasValidKey = isValidLineRetryIdentity(
+        command.external_retry_key,
+        command.external_retry_expires_at,
+        nowSec
+      );
 
       // Non-retryable 4xx client errors (e.g. 400, 401, 403)
       if (typeof http_status === 'number' && http_status >= 400 && http_status < 500) {
@@ -318,14 +345,15 @@ function evaluateStartupRecovery(command, options = {}) {
     throw new Error(`Cannot perform crash recovery on command with status '${command.status}'`);
   }
 
-  // LINE push with persisted valid retry key
+  // LINE push with persisted valid retry key (fail-closed per F1)
   if (
     command.platform === 'line' &&
     LINE_RETRYABLE_PUSH_OPERATIONS.has(command.endpoint_operation) &&
-    Boolean(command.external_retry_key) &&
-    (command.external_retry_expires_at === null ||
-      command.external_retry_expires_at === undefined ||
-      command.external_retry_expires_at > nowSec)
+    isValidLineRetryIdentity(
+      command.external_retry_key,
+      command.external_retry_expires_at,
+      nowSec
+    )
   ) {
     return {
       action: 'REQUEUE',
@@ -347,6 +375,8 @@ module.exports = {
   OUTBOX_STATUS,
   POLICY_DECISION,
   LINE_RETRYABLE_PUSH_OPERATIONS,
+  LINE_RETRY_KEY_UUID_REGEX,
+  isValidLineRetryIdentity,
   computeCanonicalPayloadHash,
   evaluateDeliveryAttempt,
   evaluateStartupRecovery,

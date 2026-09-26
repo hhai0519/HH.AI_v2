@@ -15,6 +15,8 @@ const {
   computeCanonicalPayloadHash,
   evaluateDeliveryAttempt,
   evaluateStartupRecovery,
+  isValidLineRetryIdentity,
+  LINE_RETRY_KEY_UUID_REGEX,
 } = require('../core/outbox-delivery-policy');
 
 test('R2-L: ACCEPTED_BY_PLATFORM never exposed as DELIVERED', () => {
@@ -262,14 +264,14 @@ test('R2-K: restart IN_FLIGHT without safe idempotency -> UNCERTAIN', () => {
   assert.strictEqual(lineReplyRecovery.action, 'MARK_UNCERTAIN');
   assert.strictEqual(lineReplyRecovery.target_status, OUTBOX_STATUS.UNCERTAIN);
 
-  // LINE push in-flight restart with valid unexpired retry key
+  // LINE push in-flight restart with valid unexpired retry key (canonical UUID)
   const now = 1700000000;
   const linePushCommandValid = {
     status: OUTBOX_STATUS.IN_FLIGHT,
     platform: 'line',
     endpoint_operation: 'push',
     recipient: 'U123',
-    external_retry_key: 'valid-uuid',
+    external_retry_key: '550e8400-e29b-41d4-a716-446655440000',
     external_retry_expires_at: now + 3600,
   };
   const linePushRecoveryValid = evaluateStartupRecovery(linePushCommandValid, { nowSec: now });
@@ -282,10 +284,128 @@ test('R2-K: restart IN_FLIGHT without safe idempotency -> UNCERTAIN', () => {
     platform: 'line',
     endpoint_operation: 'push',
     recipient: 'U123',
-    external_retry_key: 'expired-uuid',
+    external_retry_key: '550e8400-e29b-41d4-a716-446655440000',
     external_retry_expires_at: now - 10,
   };
   const linePushRecoveryExpired = evaluateStartupRecovery(linePushCommandExpired, { nowSec: now });
   assert.strictEqual(linePushRecoveryExpired.action, 'MARK_UNCERTAIN');
   assert.strictEqual(linePushRecoveryExpired.target_status, OUTBOX_STATUS.UNCERTAIN);
+});
+
+test('F1 negative controls: LINE retry credential validation fails closed', () => {
+  const now = 1700000000;
+  const validUUID = '550e8400-e29b-41d4-a716-446655440000';
+  const malformedUUID = 'not-a-valid-uuid-format';
+
+  // 1. Pure validation function controls
+  assert.strictEqual(isValidLineRetryIdentity(validUUID, now + 3600, now), true);
+  assert.strictEqual(isValidLineRetryIdentity(validUUID, null, now), false);
+  assert.strictEqual(isValidLineRetryIdentity(validUUID, undefined, now), false);
+  assert.strictEqual(isValidLineRetryIdentity(malformedUUID, now + 3600, now), false);
+  assert.strictEqual(isValidLineRetryIdentity(validUUID, now - 1, now), false);
+  assert.strictEqual(isValidLineRetryIdentity(validUUID, now, now), false);
+  assert.strictEqual(isValidLineRetryIdentity(null, now + 3600, now), false);
+  assert.strictEqual(isValidLineRetryIdentity(undefined, now + 3600, now), false);
+  assert.strictEqual(isValidLineRetryIdentity('', now + 3600, now), false);
+  assert.strictEqual(isValidLineRetryIdentity(validUUID, '1700003600', now), false);
+  assert.strictEqual(isValidLineRetryIdentity(validUUID, 1.5, now), false);
+
+  // 2. evaluateDeliveryAttempt negative controls
+  const baseCmd = {
+    platform: 'line',
+    endpoint_operation: 'push',
+    recipient: 'U1234567890abcdef',
+  };
+
+  // key + null expiry -> UNCERTAIN
+  const resNullExp = evaluateDeliveryAttempt(
+    { ...baseCmd, external_retry_key: validUUID, external_retry_expires_at: null },
+    { transport_phase: TRANSPORT_PHASE.MAY_HAVE_BEEN_SENT, http_status: 500, nowSec: now }
+  );
+  assert.strictEqual(resNullExp.decision, POLICY_DECISION.UNCERTAIN);
+
+  // key + undefined expiry -> UNCERTAIN
+  const resUndefExp = evaluateDeliveryAttempt(
+    { ...baseCmd, external_retry_key: validUUID },
+    { transport_phase: TRANSPORT_PHASE.MAY_HAVE_BEEN_SENT, http_status: 500, nowSec: now }
+  );
+  assert.strictEqual(resUndefExp.decision, POLICY_DECISION.UNCERTAIN);
+
+  // malformed UUID + future expiry -> UNCERTAIN
+  const resBadUUID = evaluateDeliveryAttempt(
+    { ...baseCmd, external_retry_key: malformedUUID, external_retry_expires_at: now + 3600 },
+    { transport_phase: TRANSPORT_PHASE.MAY_HAVE_BEEN_SENT, http_status: 500, nowSec: now }
+  );
+  assert.strictEqual(resBadUUID.decision, POLICY_DECISION.UNCERTAIN);
+
+  // expired key -> UNCERTAIN
+  const resExpired = evaluateDeliveryAttempt(
+    { ...baseCmd, external_retry_key: validUUID, external_retry_expires_at: now - 1 },
+    { transport_phase: TRANSPORT_PHASE.MAY_HAVE_BEEN_SENT, http_status: 500, nowSec: now }
+  );
+  assert.strictEqual(resExpired.decision, POLICY_DECISION.UNCERTAIN);
+
+  // 3. evaluateStartupRecovery negative controls
+  const recNullExp = evaluateStartupRecovery(
+    { status: OUTBOX_STATUS.IN_FLIGHT, ...baseCmd, external_retry_key: validUUID, external_retry_expires_at: null },
+    { nowSec: now }
+  );
+  assert.strictEqual(recNullExp.target_status, OUTBOX_STATUS.UNCERTAIN);
+
+  const recUndefExp = evaluateStartupRecovery(
+    { status: OUTBOX_STATUS.IN_FLIGHT, ...baseCmd, external_retry_key: validUUID },
+    { nowSec: now }
+  );
+  assert.strictEqual(recUndefExp.target_status, OUTBOX_STATUS.UNCERTAIN);
+
+  const recBadUUID = evaluateStartupRecovery(
+    { status: OUTBOX_STATUS.IN_FLIGHT, ...baseCmd, external_retry_key: malformedUUID, external_retry_expires_at: now + 3600 },
+    { nowSec: now }
+  );
+  assert.strictEqual(recBadUUID.target_status, OUTBOX_STATUS.UNCERTAIN);
+});
+
+test('F2 negative controls: missing, null, or invalid transport phase must never mean NOT_SENT', () => {
+  const command = {
+    platform: 'telegram',
+    endpoint_operation: 'sendMessage',
+    recipient: '12345678',
+  };
+
+  // missing transport_phase + 500 -> UNCERTAIN (fail-closed, never NOT_SENT)
+  const resMissing = evaluateDeliveryAttempt(command, {
+    http_status: 500,
+  });
+  assert.strictEqual(resMissing.decision, POLICY_DECISION.UNCERTAIN);
+  assert.strictEqual(resMissing.reason, 'TELEGRAM_MAY_HAVE_BEEN_SENT_UNCERTAIN');
+
+  // null transport_phase + 500 -> UNCERTAIN
+  const resNull = evaluateDeliveryAttempt(command, {
+    transport_phase: null,
+    http_status: 500,
+  });
+  assert.strictEqual(resNull.decision, POLICY_DECISION.UNCERTAIN);
+  assert.strictEqual(resNull.reason, 'TELEGRAM_MAY_HAVE_BEEN_SENT_UNCERTAIN');
+
+  // invalid transport_phase string + 500 -> UNCERTAIN
+  const resInvalid = evaluateDeliveryAttempt(command, {
+    transport_phase: 'INVALID_PHASE_STRING',
+    http_status: 500,
+  });
+  assert.strictEqual(resInvalid.decision, POLICY_DECISION.UNCERTAIN);
+  assert.strictEqual(resInvalid.reason, 'TELEGRAM_MAY_HAVE_BEEN_SENT_UNCERTAIN');
+
+  // explicit TRANSPORT_PHASE.NOT_SENT + 500 -> RETRY
+  const resExplicitNotSent = evaluateDeliveryAttempt(command, {
+    transport_phase: TRANSPORT_PHASE.NOT_SENT,
+    http_status: 500,
+  });
+  assert.strictEqual(resExplicitNotSent.decision, POLICY_DECISION.RETRY);
+
+  // explicit TRANSPORT_PHASE.MAY_HAVE_BEEN_SENT + 500 -> UNCERTAIN
+  const resMayHaveSent = evaluateDeliveryAttempt(command, {
+    transport_phase: TRANSPORT_PHASE.MAY_HAVE_BEEN_SENT,
+    http_status: 500,
+  });
+  assert.strictEqual(resMayHaveSent.decision, POLICY_DECISION.UNCERTAIN);
 });

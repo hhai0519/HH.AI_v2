@@ -74,6 +74,10 @@ class OutboxWorker {
     return this.#isProcessing;
   }
 
+  get hasActiveTimer() {
+    return this.#timer !== null;
+  }
+
   /**
    * Starts the Outbox worker:
    * 1. Runs startup crash recovery on any leftover IN_FLIGHT commands.
@@ -89,8 +93,10 @@ class OutboxWorker {
     const nowSec = this.#nowSec();
     this.#repository.recoverInFlightCommands(nowSec);
 
-    // 2. Schedule first tick immediately
-    this.#scheduleNextTick(0);
+    // 2. Schedule polling only if deliveryExecutor is present (F3)
+    if (this.#deliveryExecutor) {
+      this.#scheduleNextTick(0);
+    }
   }
 
   #scheduleNextTick(delayMs) {
@@ -170,8 +176,17 @@ class OutboxWorker {
       let attemptContext;
       try {
         const execRes = await this.#deliveryExecutor(command);
+        const rawPhase = execRes && execRes.phase;
+        // F2: Only explicit NOT_SENT can be treated as NOT_SENT.
+        // Missing, null, empty string, or unknown value must default conservatively to MAY_HAVE_BEEN_SENT.
+        const transportPhase =
+          rawPhase === TRANSPORT_PHASE.NOT_SENT
+            ? TRANSPORT_PHASE.NOT_SENT
+            : TRANSPORT_PHASE.MAY_HAVE_BEEN_SENT;
+
         attemptContext = {
-          transport_phase: (execRes && execRes.phase) || TRANSPORT_PHASE.NOT_SENT,
+          transport_phase: transportPhase,
+          raw_phase: rawPhase,
           success: Boolean(execRes && execRes.success),
           http_status: execRes ? execRes.http_status : undefined,
           retry_after: execRes ? execRes.retry_after : undefined,
@@ -179,8 +194,15 @@ class OutboxWorker {
           nowSec: this.#nowSec(),
         };
       } catch (err) {
+        const rawPhase = err && err.phase;
+        const transportPhase =
+          rawPhase === TRANSPORT_PHASE.NOT_SENT
+            ? TRANSPORT_PHASE.NOT_SENT
+            : TRANSPORT_PHASE.MAY_HAVE_BEEN_SENT;
+
         attemptContext = {
-          transport_phase: (err && err.phase) || TRANSPORT_PHASE.MAY_HAVE_BEEN_SENT,
+          transport_phase: transportPhase,
+          raw_phase: rawPhase,
           success: false,
           http_status: err ? err.http_status : undefined,
           retry_after: err ? err.retry_after : undefined,
@@ -207,7 +229,6 @@ class OutboxWorker {
           this.#repository.updateOutboxCommandResult(command.command_id, {
             status: OUTBOX_STATUS.QUEUED,
             nextAttemptAt,
-            externalRetryKey: policyResult.retry_key || command.external_retry_key,
             nowSec: currentNow,
           });
           break;

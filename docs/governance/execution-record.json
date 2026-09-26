@@ -1,57 +1,47 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "TG-MVP-12",
-  "base_oid": "fed1eeb888619138001969eb7b2f63ea3da33f6e",
+  "task_id": "TG-MVP-12-R1",
+  "base_oid": "4968e8d90c77e51e0745965a2376779a419d85b9",
   "plan": {
     "allowed_paths": [
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
-      "docs/adr/0023-channel-gateway-state-store-sqlite.md",
-      "docs/adr/0025-outbound-reliability-loopback-api-security.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
       "docs/refactor-backlog.md",
       "runtime/channel-gateway/AGENTS.md",
       "runtime/channel-gateway/core/gateway-runtime-owner.js",
-      "runtime/channel-gateway/core/local-api-dispatcher.js",
       "runtime/channel-gateway/core/outbox-delivery-policy.js",
       "runtime/channel-gateway/core/outbox-worker.js",
       "runtime/channel-gateway/core/sqlite-state-repository.js",
       "runtime/channel-gateway/tests/gateway-runtime-owner.test.js",
-      "runtime/channel-gateway/tests/local-api-dispatcher.test.js",
       "runtime/channel-gateway/tests/outbox-delivery-policy.test.js",
       "runtime/channel-gateway/tests/outbox-worker.test.js",
       "runtime/channel-gateway/tests/sqlite-channel-transactions.test.js",
-      "runtime/channel-gateway/tests/sqlite-ingest-transactions.test.js",
       "runtime/channel-gateway/tests/sqlite-state-repository.test.js"
     ],
     "required_paths": [
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
-      "docs/adr/0023-channel-gateway-state-store-sqlite.md",
-      "docs/adr/0025-outbound-reliability-loopback-api-security.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
       "docs/refactor-backlog.md",
       "runtime/channel-gateway/AGENTS.md",
       "runtime/channel-gateway/core/gateway-runtime-owner.js",
-      "runtime/channel-gateway/core/local-api-dispatcher.js",
       "runtime/channel-gateway/core/outbox-delivery-policy.js",
       "runtime/channel-gateway/core/outbox-worker.js",
       "runtime/channel-gateway/core/sqlite-state-repository.js",
       "runtime/channel-gateway/tests/gateway-runtime-owner.test.js",
-      "runtime/channel-gateway/tests/local-api-dispatcher.test.js",
       "runtime/channel-gateway/tests/outbox-delivery-policy.test.js",
       "runtime/channel-gateway/tests/outbox-worker.test.js",
       "runtime/channel-gateway/tests/sqlite-channel-transactions.test.js",
-      "runtime/channel-gateway/tests/sqlite-ingest-transactions.test.js",
       "runtime/channel-gateway/tests/sqlite-state-repository.test.js"
     ],
     "max_plan_revisions": 3,
-    "revision_count": 0,
+    "revision_count": 1,
     "plan_origin": "EXTERNAL_MACRO_PROMPT"
   },
   "actual": {
@@ -59,23 +49,18 @@
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
-      "docs/adr/0023-channel-gateway-state-store-sqlite.md",
-      "docs/adr/0025-outbound-reliability-loopback-api-security.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
       "docs/refactor-backlog.md",
       "runtime/channel-gateway/AGENTS.md",
       "runtime/channel-gateway/core/gateway-runtime-owner.js",
-      "runtime/channel-gateway/core/local-api-dispatcher.js",
       "runtime/channel-gateway/core/outbox-delivery-policy.js",
       "runtime/channel-gateway/core/outbox-worker.js",
       "runtime/channel-gateway/core/sqlite-state-repository.js",
       "runtime/channel-gateway/tests/gateway-runtime-owner.test.js",
-      "runtime/channel-gateway/tests/local-api-dispatcher.test.js",
       "runtime/channel-gateway/tests/outbox-delivery-policy.test.js",
       "runtime/channel-gateway/tests/outbox-worker.test.js",
       "runtime/channel-gateway/tests/sqlite-channel-transactions.test.js",
-      "runtime/channel-gateway/tests/sqlite-ingest-transactions.test.js",
       "runtime/channel-gateway/tests/sqlite-state-repository.test.js"
     ]
   },
@@ -94,10 +79,10 @@
     {
       "id": "M2_DISCOVERY_RAW",
       "origin": "MACHINE_CAPTURED_RAW",
-      "verification_status": "VERIFIED",
+      "verification_status": "NOT_ESTABLISHED",
       "source_kind": "EXTERNAL_ARTIFACT",
       "sha256": "4cd2851da921aab9d371b281f51947e2645b069d38ee56655e37a79c2ded3b4b",
-      "description": "External Macro verified M2 immutable raw discovery artifact identity"
+      "description": "generic B-109 M2 hardcoded provenance；does not establish TG-MVP-12 task-specific E24 identity；routed EXISTING B-107。"
     }
   ],
   "report_claims": [
@@ -107,13 +92,7 @@
       "evidence_ids": [
         "PLAN_ACTUAL_DIFF"
       ]
-    },
-    {
-      "claim_id": "CLAIM_DISCOVERY_PROVENANCE_VERIFIED",
-      "claim_text": "Immutable raw discovery artifact verified against expected SHA256 closure.",
-      "evidence_ids": [
-        "M2_DISCOVERY_RAW"
-      ]
     }
   ]
 }
+

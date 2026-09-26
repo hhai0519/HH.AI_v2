@@ -5284,3 +5284,33 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - B-107 保持 OPEN / RESIDUAL / NON-BLOCKING FOR CURRENT E-03 RETURN。
   - TG-MVP-12 保持 IN PROGRESS / Candidate Awaiting External Macro Audit（main_advancement 嚴格為 FORBIDDEN，執行者嚴禁自審）。
 
+151. **TG-MVP-12 R1 安全重試憑證修復、生命週期接線與版本庫客觀真實校正（TG-MVP-12 R1 Safe Retry Repair, Gateway Lifecycle Wiring & Truth Correction）**（2026-09-26）
+- **外部宏觀審計結論（External Macro Audit Verdict on Candidate 4968e8d90c77e51e0745965a2376779a419d85b9）**：
+  - MACHINE = PASS, SCOPE = PASS, CANDIDATE CI = PASS（Actions Run 36212316461 attempt 1: verify = completed / success, gateway-windows = completed / success，raw verify: Ubuntu 529 passed + 13 passed + ALL 5 GATES PASSED，Windows: 37 passed）。
+  - IMPLEMENTATION / SAFETY = HOLD, PROMOTION ELIGIBILITY = HOLD, BOUNDED REPAIR R1 = AUTHORIZED。
+  - ROLLBACK = NO, E24 REDISCOVERY = NO, MAIN ADVANCEMENT = FORBIDDEN。
+  - 確立 3 項阻擋性發現（F1–F3）與 2 項版本庫真實/待辦同步（F4–F5）：
+    - F1：LINE retry credential validation fail-open（未校驗 UUID 格式、允許 null/undefined 過期時間重送）。
+    - F2：missing transport phase 預設為 NOT_SENT（違反 ADR-0025，NOT_SENT 為積極安全證據而非預設值）。
+    - F3：OutboxWorker absent from production Gateway lifecycle / R2-K not production-wired（未於 GatewayRuntimeOwner 啟動復原與關閉佇列）。
+    - F4：R0 schema/E24 prose mismatch must be corrected in R1。
+    - F5：B-107 residual truth routing。
+- **R0 紀錄校正與取代說明（R0 Historical Record Supersession & Truth Correction — F4）**：
+  - R0 Executor 報告與狀態日誌中對 Outbox schema 之描述存在不準確處（誤記為小寫狀態與非生產欄位名）；然而 production code 本體在 R0 即已嚴格採用 ADR-0025 大寫標準狀態模型（`QUEUED`, `IN_FLIGHT`, `ACCEPTED_BY_PLATFORM`, `UNCERTAIN`, `FAILED_TERMINAL`）與 17 個標準欄位。R1 於版本庫中明確校正此敘述落差。
+  - E24 原生探索識別碼確立為 `.git/tg-mvp-12-e24-raw-fed1eeb.json`（SHA-256: `46f1079fd8cbd5e40a66c40e6ed77feede37b14810eb5d1c870f1bf621b760b2`），查詢集合為 Q01–Q48（共 48 項查詢，非 60 queries）。
+- **R1 具體修復落地（R1 Fix Implementation）**：
+  - **F1 LINE 重試身分 Fail-Closed**：於 `outbox-delivery-policy.js` 建立純函式 `isValidLineRetryIdentity(key, expiresAt, nowSec)`，嚴格檢驗 128-bit UUID 文字格式（8-4-4-4-12 hex）與有效且未過期之整數時間戳記；null/undefined/malformed/expired 一律拒絕重送落入 UNCERTAIN；`sqlite-state-repository.js` 於 DDL 加入 pair CHECK 約束，並於 `enqueueAuthorizedReply` 強制初次寫入時 key 與 expiresAt 成對存在且 expiresAt <= nowSec + 86400；`updateOutboxCommandResult` 絕不於事後建立、輪換或突變 retry key。
+  - **F2 傳輸階段安全保守預設**：`outbox-worker.js` 僅在 executor 明確回傳 `TRANSPORT_PHASE.NOT_SENT` 時視為 NOT_SENT；phase 缺失、null、空值或未知值保守預設為 `MAY_HAVE_BEEN_SENT`，Telegram 5xx 於 phase 缺失時安全落入 `UNCERTAIN`。
+  - **F3 生產 Gateway 接線與生命週期管理**：`GatewayRuntimeOwner` 於啟動時第 2 步啟動 `OutboxWorker`（執行 `recoverInFlightCommands()` 崩潰復原），關閉與回滾時於 SQLite 儲存庫關閉前停止 `OutboxWorker`；TG-MVP-12 無真實傳輸 executor 時 OutboxWorker 不啟動永久輪詢定時器亦不消耗 QUEUED 指令。
+- **B-107 殘留問題分流（B-107 Residual Truth Routing — F5）**：
+  - A. TG-MVP-12 執行期間直接調用 `node -e` 診斷命令：direct-node bounded-runner bypass = CONFIRMED, repo unauthorized mutation = NONE ESTABLISHED, secret exposure = NOT ESTABLISHED, cross-session access = NOT ESTABLISHED, residual process = NONE ESTABLISHED。
+  - B. `scripts/execution_record.py` 產生器硬編碼通用 M2 discovery SHA（`4cd2851d...`）而非 TG-MVP-12 E24 raw（`46f1079f...`），符合既有 B-107 任務專屬證據一般化缺口；本輪裁判規則凍結，不修改 generator 或 verifier；本輪 execution-record 採 fail-honest 將其狀態標記為 `NOT_ESTABLISHED` 並移除相關 claim。
+  - 上述兩項皆分流至 EXISTING B-107（NONBLOCKING），不另立新待辦。
+- **後續路由與檢查點（Next Work Routing & Accepted Checkpoint）**：
+  - accepted checkpoint 保持 `fed1eeb888619138001969eb7b2f63ea3da33f6e`。
+  - NEXT_WORK 保持 E-03，NEXT_SLICE 保持 TG-MVP-12。
+  - B-100 保持 OPEN / NONBLOCKING；B-107 保持 OPEN / RESIDUAL / NONBLOCKING。
+  - D-R3 保持 USER DECISION REQUIRED BEFORE TG-MVP-13 DESIGN。
+  - D-R2 保持 MUST BE DECIDED BEFORE TG-MVP-15 DESIGN / ACCEPTANCE。
+  - TG-MVP-12 保持 進行中（R0 candidate 4968e8d... External Macro HOLD，R1 bounded repair in progress / awaiting re-audit；main_advancement 嚴格為 FORBIDDEN）。
+

@@ -12,6 +12,7 @@
 const { LocalApiServer } = require('./local-api-server');
 const { LocalApiDispatcher } = require('./local-api-dispatcher');
 const { BackupRuntimeOwner } = require('./backup-runtime-owner');
+const { OutboxWorker } = require('./outbox-worker');
 const { TelegramInboundAdapter } = require('../adapters/telegram-inbound-adapter');
 const { SecretRef } = require('./secret-provider');
 const { CANONICAL_PORT } = require('./local-api-codec');
@@ -46,8 +47,12 @@ class GatewayRuntimeOwner {
   #injectedDispatcher;
   #dispatcherFactory;
   #injectedSecretBuf;
+  #injectedOutboxWorker;
+  #outboxWorkerFactory;
+  #outboxDeliveryExecutor;
 
   #backupRuntimeOwner;
+  #outboxWorker;
   #telegramAdapter;
   #server;
   #secretBuf;
@@ -77,6 +82,9 @@ class GatewayRuntimeOwner {
    * @param {object} [options.dispatcher]
    * @param {function} [options.dispatcherFactory]
    * @param {Buffer} [options.secretBuffer]
+   * @param {object} [options.outboxWorker]
+   * @param {function} [options.outboxWorkerFactory]
+   * @param {function} [options.outboxDeliveryExecutor]
    */
   constructor(options = {}) {
     if (!options || typeof options !== 'object' || Array.isArray(options)) {
@@ -104,8 +112,12 @@ class GatewayRuntimeOwner {
     this.#injectedDispatcher = options.dispatcher || null;
     this.#dispatcherFactory = options.dispatcherFactory || null;
     this.#injectedSecretBuf = options.secretBuffer || null;
+    this.#injectedOutboxWorker = options.outboxWorker || null;
+    this.#outboxWorkerFactory = options.outboxWorkerFactory || null;
+    this.#outboxDeliveryExecutor = options.outboxDeliveryExecutor || null;
 
     this.#backupRuntimeOwner = null;
+    this.#outboxWorker = null;
     this.#telegramAdapter = null;
     this.#server = null;
     this.#secretBuf = null;
@@ -141,6 +153,10 @@ class GatewayRuntimeOwner {
 
   get backupRuntimeOwner() {
     return this.#backupRuntimeOwner;
+  }
+
+  get outboxWorker() {
+    return this.#outboxWorker;
   }
 
   #installSignalHandlers() {
@@ -220,7 +236,15 @@ class GatewayRuntimeOwner {
       this.#secretBuf = null;
     }
 
-    // 4. Rollback BackupRuntimeOwner
+    // 4. Rollback OutboxWorker if started
+    if (this.#outboxWorker) {
+      try {
+        await this.#outboxWorker.stop();
+      } catch (_) {}
+      this.#outboxWorker = null;
+    }
+
+    // 5. Rollback BackupRuntimeOwner
     if (this.#backupRuntimeOwner) {
       try {
         this.#backupRuntimeOwner.stop();
@@ -228,7 +252,7 @@ class GatewayRuntimeOwner {
       this.#backupRuntimeOwner = null;
     }
 
-    // 5. Remove signal handlers
+    // 6. Remove signal handlers
     this.#removeSignalHandlers();
 
     this.#status = OWNER_STATUS.STOPPED;
@@ -237,8 +261,9 @@ class GatewayRuntimeOwner {
   /**
    * Starts the Gateway runtime owner:
    * 1. Opens repository and starts BackupRuntimeOwner.
-   * 2. Binds Local API loopback HTTP server.
-   * 3. Starts TelegramInboundAdapter LAST.
+   * 2. Starts OutboxWorker (runs in-flight startup recovery).
+   * 3. Binds Local API loopback HTTP server.
+   * 4. Starts TelegramInboundAdapter LAST.
    * On any failure, performs strict reverse-order rollback.
    *
    * @returns {Promise<GatewayRuntimeOwner>}
@@ -276,7 +301,31 @@ class GatewayRuntimeOwner {
       throw err;
     }
 
-    // Step 2: Local API Server & Dispatcher
+    // Step 2: OutboxWorker (startup recovery & lifecycle ownership)
+    try {
+      const repo = this.#backupRuntimeOwner.repository;
+      let worker = this.#injectedOutboxWorker;
+      if (!worker) {
+        const workerOpts = {
+          repository: repo,
+          deliveryExecutor: this.#outboxDeliveryExecutor || null,
+          logger: this.#logger,
+          nowSec: this.#nowSec,
+        };
+        if (this.#outboxWorkerFactory) {
+          worker = this.#outboxWorkerFactory(workerOpts);
+        } else {
+          worker = new OutboxWorker(workerOpts);
+        }
+      }
+      this.#outboxWorker = worker;
+      await this.#outboxWorker.start();
+    } catch (err) {
+      await this.#rollbackOnStartupFailure();
+      throw err;
+    }
+
+    // Step 3: Local API Server & Dispatcher
     try {
       const repo = this.#backupRuntimeOwner.repository;
       let dispatcher = this.#injectedDispatcher;
@@ -332,7 +381,7 @@ class GatewayRuntimeOwner {
       throw err;
     }
 
-    // Step 3: TelegramInboundAdapter (LAST)
+    // Step 4: TelegramInboundAdapter (LAST)
     try {
       let adapter = this.#injectedTelegramAdapter;
       if (!adapter) {
@@ -369,9 +418,10 @@ class GatewayRuntimeOwner {
    * 1. Set status to STOPPING and close Local API listener to reject new accepts.
    * 2. Await TelegramInboundAdapter.stop() to full quiescence.
    * 3. Drain Local API connections (<= 2000ms) and stop LocalApiServer.
-   * 4. Stop BackupRuntimeOwner (stops scheduler, closes repository).
-   * 5. Best-effort zeroize server HMAC secret buffer.
-   * 6. Remove installed signal handlers.
+   * 4. Await OutboxWorker.stop() before repository close.
+   * 5. Stop BackupRuntimeOwner (stops scheduler, closes repository).
+   * 6. Best-effort zeroize server HMAC secret buffer.
+   * 7. Remove installed signal handlers.
    *
    * @returns {Promise<void>}
    */
@@ -420,7 +470,19 @@ class GatewayRuntimeOwner {
         this.#server = null;
       }
 
-      // 4. Stop BackupRuntimeOwner (stops scheduler then closes repo)
+      // 4. Await OutboxWorker.stop() before repository close
+      if (this.#outboxWorker) {
+        try {
+          await this.#outboxWorker.stop();
+        } catch (err) {
+          if (this.#logger && typeof this.#logger.error === 'function') {
+            this.#logger.error('[GatewayRuntimeOwner] Error stopping OutboxWorker');
+          }
+        }
+        this.#outboxWorker = null;
+      }
+
+      // 5. Stop BackupRuntimeOwner (stops scheduler then closes repo)
       if (this.#backupRuntimeOwner) {
         try {
           this.#backupRuntimeOwner.stop();
@@ -432,7 +494,7 @@ class GatewayRuntimeOwner {
         this.#backupRuntimeOwner = null;
       }
 
-      // 5. Best-effort zeroize HMAC secret Buffer
+      // 6. Best-effort zeroize HMAC secret Buffer
       if (this.#secretBuf) {
         try {
           this.#secretBuf.fill(0);
@@ -440,7 +502,7 @@ class GatewayRuntimeOwner {
         this.#secretBuf = null;
       }
 
-      // 6. Remove installed signal handlers
+      // 7. Remove installed signal handlers
       this.#removeSignalHandlers();
 
       this.#status = OWNER_STATUS.STOPPED;

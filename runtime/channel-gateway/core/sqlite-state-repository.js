@@ -45,6 +45,7 @@ const { ensureBackupsDirectory } = require('./backup-hygiene');
 const {
   computeCanonicalPayloadHash,
   evaluateStartupRecovery,
+  LINE_RETRY_KEY_UUID_REGEX,
 } = require('./outbox-delivery-policy');
 
 const SQLITE_STATE_SCHEMA_VERSION = 6;
@@ -254,7 +255,11 @@ CREATE TABLE outbox (
   created_at INTEGER NOT NULL
     CHECK(created_at >= 0),
   updated_at INTEGER NOT NULL
-    CHECK(updated_at >= 0)
+    CHECK(updated_at >= 0),
+  CHECK(
+    (external_retry_key IS NULL AND external_retry_expires_at IS NULL) OR
+    (external_retry_key IS NOT NULL AND external_retry_expires_at IS NOT NULL)
+  )
 ) STRICT;
 `;
 
@@ -1103,6 +1108,9 @@ function verifyCanonicalDomainSchemaShape(db, version = SQLITE_STATE_SCHEMA_VERS
       }
       if (!normOb.includes('CHECK ( ATTEMPT_COUNT >= 0 )')) {
         throw new Error('outbox missing attempt_count non-negative CHECK constraint (fail-closed)');
+      }
+      if (!normOb.includes('CHECK ( ( EXTERNAL_RETRY_KEY IS NULL AND EXTERNAL_RETRY_EXPIRES_AT IS NULL ) OR ( EXTERNAL_RETRY_KEY IS NOT NULL AND EXTERNAL_RETRY_EXPIRES_AT IS NOT NULL ) )')) {
+        throw new Error('outbox missing external_retry pair CHECK constraint (fail-closed)');
       }
       if (normOb !== expOb) {
         throw new Error('outbox schema definition does not match canonical DDL contract (fail-closed)');
@@ -3079,15 +3087,47 @@ class SqliteStateRepository {
     const logicalReplyTarget = params.logicalReplyTarget ? String(params.logicalReplyTarget).trim() : null;
     const messageType = params.messageType ? String(params.messageType).trim() : 'text';
     const payloadHash = validatePayloadHash(params.payloadHash);
-    const externalRetryKey = params.externalRetryKey ? String(params.externalRetryKey).trim() : null;
-    const externalRetryExpiresAt =
-      params.externalRetryExpiresAt !== undefined && params.externalRetryExpiresAt !== null
-        ? validateFencingToken(params.externalRetryExpiresAt)
-        : null;
     const nowSec =
       typeof params.nowSec === 'number' && Number.isSafeInteger(params.nowSec) && params.nowSec >= 0
         ? params.nowSec
         : Math.floor(Date.now() / 1000);
+
+    let externalRetryKey = null;
+    let externalRetryExpiresAt = null;
+
+    const hasRetryKey = params.externalRetryKey !== undefined && params.externalRetryKey !== null;
+    const hasRetryExpires = params.externalRetryExpiresAt !== undefined && params.externalRetryExpiresAt !== null;
+
+    if (hasRetryKey !== hasRetryExpires) {
+      throw new TypeError(
+        'externalRetryKey and externalRetryExpiresAt must be provided together or both omitted (fail-closed)'
+      );
+    }
+
+    if (hasRetryKey && hasRetryExpires) {
+      if (typeof params.externalRetryKey !== 'string') {
+        throw new TypeError('externalRetryKey must be a string');
+      }
+      const trimmedKey = params.externalRetryKey.trim();
+      if (!LINE_RETRY_KEY_UUID_REGEX.test(trimmedKey)) {
+        throw new TypeError(
+          `externalRetryKey must be a valid 128-bit UUID (8-4-4-4-12 hex groups): received '${params.externalRetryKey}' (fail-closed)`
+        );
+      }
+      const exp = params.externalRetryExpiresAt;
+      if (typeof exp !== 'number' || !Number.isSafeInteger(exp)) {
+        throw new TypeError(
+          `externalRetryExpiresAt must be a safe integer: received ${exp} (fail-closed)`
+        );
+      }
+      if (exp <= nowSec || exp > nowSec + 86400) {
+        throw new RangeError(
+          `externalRetryExpiresAt must be > nowSec (${nowSec}) and <= nowSec + 86400 (${nowSec + 86400}): received ${exp} (fail-closed)`
+        );
+      }
+      externalRetryKey = trimmedKey;
+      externalRetryExpiresAt = exp;
+    }
 
     this.#db.exec('BEGIN IMMEDIATE;');
     try {
@@ -3354,13 +3394,12 @@ class SqliteStateRepository {
 
   /**
    * Updates outbox command status and retry schedule after delivery attempt.
+   * Post-attempt updates never create, rotate, or update external retry credentials (ADR-0025 R2).
    *
    * @param {string} commandId
    * @param {object} updateData
    * @param {string} updateData.status
    * @param {number|null} [updateData.nextAttemptAt]
-   * @param {string|null} [updateData.externalRetryKey]
-   * @param {number|null} [updateData.externalRetryExpiresAt]
    * @param {number} [updateData.nowSec]
    */
   updateOutboxCommandResult(commandId, updateData) {
@@ -3370,8 +3409,6 @@ class SqliteStateRepository {
     const cId = validateMessageId(commandId);
     const status = updateData.status;
     const nextAttemptAt = updateData.nextAttemptAt !== undefined ? updateData.nextAttemptAt : null;
-    const externalRetryKey = updateData.externalRetryKey !== undefined ? updateData.externalRetryKey : null;
-    const externalRetryExpiresAt = updateData.externalRetryExpiresAt !== undefined ? updateData.externalRetryExpiresAt : null;
     const nowSec = updateData.nowSec !== undefined ? updateData.nowSec : Math.floor(Date.now() / 1000);
 
     this.#db.exec('BEGIN IMMEDIATE;');
@@ -3380,12 +3417,10 @@ class SqliteStateRepository {
         UPDATE outbox
         SET status = ?,
             next_attempt_at = ?,
-            external_retry_key = COALESCE(?, external_retry_key),
-            external_retry_expires_at = COALESCE(?, external_retry_expires_at),
             updated_at = ?
         WHERE command_id = ?;
       `);
-      updateStmt.run(status, nextAttemptAt, externalRetryKey, externalRetryExpiresAt, nowSec, cId);
+      updateStmt.run(status, nextAttemptAt, nowSec, cId);
       this.#db.exec('COMMIT;');
     } catch (err) {
       try {

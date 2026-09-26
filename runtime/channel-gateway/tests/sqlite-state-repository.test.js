@@ -2949,3 +2949,30 @@ test('SqliteStateRepository - 78. v6-schema: canonical v5 fixture auto-migrates 
   }
 });
 
+// 79. v6-schema: outbox table enforces external_retry pair CHECK and canonical DDL shape
+test('SqliteStateRepository - 79. v6-schema: outbox table enforces external_retry pair CHECK and canonical DDL shape', () => {
+  const harness = createTempHarness();
+  try {
+    const repo = new SqliteStateRepository(harness.stateRoot);
+    try {
+      assert.strictEqual(repo.schemaVersion, 6);
+      const rawDb = new DatabaseSync(repo.databasePath, { readOnly: true });
+      try {
+        const outboxSqlRow = rawDb.prepare("SELECT sql FROM sqlite_schema WHERE name = 'outbox';").get();
+        assert.ok(outboxSqlRow && typeof outboxSqlRow.sql === 'string');
+        const normSql = normalizeCanonicalSchemaSql(outboxSqlRow.sql);
+        assert.ok(
+          normSql.includes('CHECK ( ( EXTERNAL_RETRY_KEY IS NULL AND EXTERNAL_RETRY_EXPIRES_AT IS NULL ) OR ( EXTERNAL_RETRY_KEY IS NOT NULL AND EXTERNAL_RETRY_EXPIRES_AT IS NOT NULL ) )'),
+          'outbox must include external_retry pair CHECK constraint'
+        );
+      } finally {
+        rawDb.close();
+      }
+    } finally {
+      repo.close();
+    }
+  } finally {
+    harness.cleanup();
+  }
+});
+

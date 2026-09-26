@@ -331,3 +331,159 @@ test('OutboxWorker - R2-K: startup crash recovery transitions Telegram IN_FLIGHT
     harness.cleanup();
   }
 });
+
+test('F2 canary: deliveryExecutor returns { success:false, http_status:500 } without phase -> Telegram command becomes UNCERTAIN', async () => {
+  const harness = createTempHarness();
+  try {
+    seedClaimedMessage(harness.repo, 'tg:chat:501', 'holder1', 1, 'tg:501:1', 'acc_tg');
+    const hash = computeCanonicalPayloadHash({
+      platform: 'telegram',
+      account_id: 'acc_tg',
+      endpoint_operation: 'sendMessage',
+      recipient: '501',
+      logical_reply_target: 'tg:501:1',
+      message_type: 'text',
+      body: 'Missing phase test',
+    });
+
+    const enqueueRes = harness.repo.enqueueAuthorizedReply({
+      clientRequestId: 'req_missing_phase',
+      channelId: 'tg:chat:501',
+      holderId: 'holder1',
+      fencingToken: 1,
+      messageId: 'tg:501:1',
+      replyingAccountId: 'acc_tg',
+      text: 'Missing phase test',
+      platform: 'telegram',
+      endpointOperation: 'sendMessage',
+      recipient: '501',
+      logicalReplyTarget: 'tg:501:1',
+      messageType: 'text',
+      payloadHash: hash,
+    });
+    const cmdId = enqueueRes.commandId;
+
+    // Delivery executor returns 500 without phase
+    const worker = new OutboxWorker({
+      repository: harness.repo,
+      deliveryExecutor: async () => {
+        return { success: false, http_status: 500 }; // no phase property provided!
+      },
+    });
+
+    const processRes = await worker.processNext();
+    assert.strictEqual(processRes.command_id, cmdId);
+    assert.strictEqual(processRes.decision, POLICY_DECISION.UNCERTAIN);
+
+    const afterCmd = harness.repo.getOutboxCommand(cmdId);
+    assert.strictEqual(afterCmd.status, OUTBOX_STATUS.UNCERTAIN);
+  } finally {
+    harness.cleanup();
+  }
+});
+
+test('F2 canary: deliveryExecutor returns invalid phase -> Telegram command becomes UNCERTAIN', async () => {
+  const harness = createTempHarness();
+  try {
+    seedClaimedMessage(harness.repo, 'tg:chat:502', 'holder1', 1, 'tg:502:1', 'acc_tg');
+    const hash = computeCanonicalPayloadHash({
+      platform: 'telegram',
+      account_id: 'acc_tg',
+      endpoint_operation: 'sendMessage',
+      recipient: '502',
+      logical_reply_target: 'tg:502:1',
+      message_type: 'text',
+      body: 'Invalid phase test',
+    });
+
+    const enqueueRes = harness.repo.enqueueAuthorizedReply({
+      clientRequestId: 'req_invalid_phase',
+      channelId: 'tg:chat:502',
+      holderId: 'holder1',
+      fencingToken: 1,
+      messageId: 'tg:502:1',
+      replyingAccountId: 'acc_tg',
+      text: 'Invalid phase test',
+      platform: 'telegram',
+      endpointOperation: 'sendMessage',
+      recipient: '502',
+      logicalReplyTarget: 'tg:502:1',
+      messageType: 'text',
+      payloadHash: hash,
+    });
+    const cmdId = enqueueRes.commandId;
+
+    const worker = new OutboxWorker({
+      repository: harness.repo,
+      deliveryExecutor: async () => {
+        return { success: false, http_status: 500, phase: 'INVALID_BOGUS_PHASE' };
+      },
+    });
+
+    const processRes = await worker.processNext();
+    assert.strictEqual(processRes.command_id, cmdId);
+    assert.strictEqual(processRes.decision, POLICY_DECISION.UNCERTAIN);
+
+    const afterCmd = harness.repo.getOutboxCommand(cmdId);
+    assert.strictEqual(afterCmd.status, OUTBOX_STATUS.UNCERTAIN);
+  } finally {
+    harness.cleanup();
+  }
+});
+
+test('F3: OutboxWorker without deliveryExecutor runs recovery, has no active timer, and does not consume queue', async () => {
+  const harness = createTempHarness();
+  try {
+    seedClaimedMessage(harness.repo, 'tg:chat:503', 'holder1', 1, 'tg:503:1', 'acc_tg');
+    const hash = computeCanonicalPayloadHash({
+      platform: 'telegram',
+      account_id: 'acc_tg',
+      endpoint_operation: 'sendMessage',
+      recipient: '503',
+      logical_reply_target: 'tg:503:1',
+      message_type: 'text',
+      body: 'No executor test',
+    });
+
+    const enqueueRes = harness.repo.enqueueAuthorizedReply({
+      clientRequestId: 'req_no_exec',
+      channelId: 'tg:chat:503',
+      holderId: 'holder1',
+      fencingToken: 1,
+      messageId: 'tg:503:1',
+      replyingAccountId: 'acc_tg',
+      text: 'No executor test',
+      platform: 'telegram',
+      endpointOperation: 'sendMessage',
+      recipient: '503',
+      logicalReplyTarget: 'tg:503:1',
+      messageType: 'text',
+      payloadHash: hash,
+    });
+    const cmdId = enqueueRes.commandId;
+
+    const worker = new OutboxWorker({
+      repository: harness.repo,
+      // no deliveryExecutor
+    });
+
+    assert.strictEqual(worker.hasActiveTimer, false);
+    await worker.start();
+    assert.strictEqual(worker.isRunning, true);
+    assert.strictEqual(worker.hasActiveTimer, false); // no perpetual polling timer!
+
+    // Wait a brief tick to ensure no background consumption
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    // Command must still be QUEUED
+    const cmd = harness.repo.getOutboxCommand(cmdId);
+    assert.strictEqual(cmd.status, OUTBOX_STATUS.QUEUED);
+    assert.strictEqual(cmd.attempt_count, 0);
+
+    await worker.stop();
+    assert.strictEqual(worker.isRunning, false);
+    assert.strictEqual(worker.hasActiveTimer, false);
+  } finally {
+    harness.cleanup();
+  }
+});
