@@ -3259,3 +3259,89 @@ test('SqliteStateRepository - 82. v7-schema: pre-claim atomic delivery window ex
   }
 });
 
+test('83. getFailedTerminalSummaries hard-capped to 50 with seed >= 60 rows and deterministic order', () => {
+  const harness = createTempHarness();
+  try {
+    const repo = new SqliteStateRepository(harness.stateRoot);
+    try {
+      const rawDb = new DatabaseSync(repo.databasePath);
+      rawDb.prepare('INSERT INTO channel_control (channel_id, current_holder, fencing_token) VALUES (?, ?, ?);')
+        .run('ch_test', 'holder_1', 1);
+
+      const baseTime = 1727000000;
+      // Seed 60 FAILED_TERMINAL rows
+      const insertStmt = rawDb.prepare(`
+        INSERT INTO outbox (
+          command_id, client_request_id, payload_hash, platform, account_id,
+          endpoint_operation, recipient, logical_reply_target, message_type,
+          body, status, attempt_count, next_attempt_at, external_retry_key,
+          external_retry_expires_at, created_at, updated_at, terminal_reason_code
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'FAILED_TERMINAL', 1, null, null, null, ?, ?, ?);
+      `);
+
+      for (let i = 0; i < 60; i++) {
+        const cmdId = `cmd_failed_${String(i).padStart(3, '0')}`;
+        const reqId = `req_failed_${String(i).padStart(3, '0')}`;
+        const hash = `${String(i).padStart(4, '0')}`.repeat(16);
+        const updatedAt = baseTime + (i % 10);
+        insertStmt.run(
+          cmdId, reqId, hash,
+          'telegram', 'acc_tg', 'sendMessage', '12345', null, 'text',
+          'secret text payload', baseTime, updatedAt, 'TELEGRAM_CLIENT_ERROR_400'
+        );
+      }
+      rawDb.close();
+
+      // getFailedTerminalSummaries(1000) must return count = 60, summaries.length = 50
+      const res1000 = repo.getFailedTerminalSummaries(1000);
+      assert.strictEqual(res1000.count, 60);
+      assert.strictEqual(res1000.summaries.length, 50);
+
+      // Verify deterministic order: updated_at DESC, command_id ASC
+      for (let i = 0; i < res1000.summaries.length - 1; i++) {
+        const cur = res1000.summaries[i];
+        const next = res1000.summaries[i + 1];
+        if (cur.updated_at === next.updated_at) {
+          assert.ok(cur.command_id < next.command_id, 'Tie-breaking by command_id ASC');
+        } else {
+          assert.ok(cur.updated_at > next.updated_at, 'Primary order by updated_at DESC');
+        }
+      }
+
+      // Verify body is absent across all returned summaries
+      for (const item of res1000.summaries) {
+        assert.strictEqual(item.body, undefined, 'Must strictly exclude body');
+        assert.strictEqual(item.platform, 'telegram');
+        assert.strictEqual(item.account_id, 'acc_tg');
+        assert.strictEqual(item.recipient, '12345');
+        assert.strictEqual(item.terminal_reason_code, 'TELEGRAM_CLIENT_ERROR_400');
+      }
+
+      // Default parameter and other edge cases
+      const resDefault = repo.getFailedTerminalSummaries();
+      assert.strictEqual(resDefault.count, 60);
+      assert.strictEqual(resDefault.summaries.length, 50);
+
+      const resInvalid = repo.getFailedTerminalSummaries('invalid');
+      assert.strictEqual(resInvalid.count, 60);
+      assert.strictEqual(resInvalid.summaries.length, 50);
+
+      const resNegative = repo.getFailedTerminalSummaries(-10);
+      assert.strictEqual(resNegative.count, 60);
+      assert.strictEqual(resNegative.summaries.length, 50);
+
+      const resZero = repo.getFailedTerminalSummaries(0);
+      assert.strictEqual(resZero.count, 60);
+      assert.strictEqual(resZero.summaries.length, 50);
+
+      // Smaller valid limit (e.g. 10)
+      const res10 = repo.getFailedTerminalSummaries(10);
+      assert.strictEqual(res10.count, 60);
+      assert.strictEqual(res10.summaries.length, 10);
+    } finally {
+      repo.close();
+    }
+  } finally {
+    harness.cleanup();
+  }
+});

@@ -5380,3 +5380,31 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - TG-MVP-12 正式結案：ACCEPTED / CLOSED。
   - TG-MVP-13 進行中 / CANDIDATE AWAITING EXTERNAL MACRO AUDIT（main_advancement 嚴格為 FORBIDDEN，執行者嚴禁自審）。
 
+139. **TG-MVP-13 R0 外部宏觀審計判定與有界修復 R1 授權（TG-MVP-13 R0 Macro Audit HOLD & Bounded Repair R1 Authorization）**（2026-09-26）
+- **R0 審計結論與客觀生命週期事實（R0 Audit Verdict & Objective Facts）**：
+  - TARGET = `7b22f07cbfef6bd577fe27b18b4aece50f347da6`，PARENT / ACCEPTED CHECKPOINT = `d55b2b18bb7769cfc80bc412230bd18d0df7fdd3`。
+  - Candidate Actions Run 36241945005 attempt 1（event=push, head_branch=batch/tg-mvp-13-telegram-outbound-260926, head_sha=7b22f07cbfef6bd577fe27b18b4aece50f347da6, verify: completed/success, gateway-windows: completed/success）。
+  - External Macro raw evidence：verify 530 passed, 13 passed, ALL 5 GATES PASSED；gateway-windows: 38 passed。
+  - WSL Recovery 驗證：PASS（Ubuntu-24.04, Node v24.21.0, 36/36, EXIT_CODE=0, TIMEOUT=NO, OWNED_PROCESS_REMAINING=0, evidence SHA: `3b7dd6d5abaa4b3acea12c82742140430b253c1af55ad1d68874255b08657e97`）。
+  - External Macro verdict：TG-MVP-13 R0 MACRO AUDIT = HOLD, MACHINE = PASS, SCOPE = PASS, CI = PASS, WSL RECOVERY = PASS, IMPLEMENTATION = HOLD, SAFETY = HOLD, PROMOTION ELIGIBILITY = HOLD, ROLLBACK = NO, E24 REDISCOVERY = NO, BOUNDED REPAIR R1 = AUTHORIZED。
+- **阻擋性發現（Blocking Findings）**：
+  - **F1**：TelegramOutboundAdapter stale token Buffer is not zeroized when an already cached account becomes non-active and a stale old-account command is rejected before request. Post-request account-change uncertainty path also leaves the old cached token alive.
+  - **F2**：SqliteStateRepository.getFailedTerminalSummaries(limit) is not hard capped to 50; arbitrary positive caller limits are accepted.
+  - **F3**：TelegramOutboundAdapter.deliver() does not fail closed on command.platform, command.endpoint_operation, command.message_type. Production OutboxWorker is wired directly to this adapter, therefore this boundary must reject non-Telegram / non-sendMessage / non-text commands before SecretProvider lookup or network.
+- **有界修復邊界與流程留痕（Bounded Scope & Process Hygiene Recurrence）**：
+  - 授權執行有界修復 R1（BOUNDED REPAIR R1 AUTHORIZED）；ROLLBACK = NO，E24 REDISCOVERY = NO，SCOPE EXPANSION = NO，MAIN ADVANCEMENT = FORBIDDEN。
+  - accepted checkpoint 嚴格保持 `d55b2b18bb7769cfc80bc412230bd18d0df7fdd3`；不得接受 `7b22f07cbfef6bd577fe27b18b4aece50f347da6`。
+  - 只記錄 TG-MVP-13 execution evidence，不得做 ENV-01 Toolchain Baseline Registration。
+  - **EXISTING B-107 加入 prior R0 recurrence**：
+    - WSL unavailable 後仍進行 staging/local commit；
+    - 曾執行 WSL/registry/Docker/filesystem environment probing；
+    - final report 卻寫 environment_enumeration: NONE。
+    - 不新增 backlog ID；B-107 保持 OPEN / RESIDUAL / NON-BLOCKING FOR CURRENT E-03 RETURN。
+- **後續路由與任務狀態（Next Work Routing & Task Status）**：
+  - TG-MVP-13 R0 = MACRO HOLD。
+  - TG-MVP-13 R1 = ACTIVE（有界安全修復中）。
+  - NEXT_WORK = E-03。
+  - NEXT_SLICE = TG-MVP-13。
+  - 不得進 TG-MVP-14。
+  - R1 候選待外部宏觀審計（AWAITING EXTERNAL MACRO RE-AUDIT），執行者嚴禁自審。
+

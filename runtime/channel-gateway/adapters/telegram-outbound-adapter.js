@@ -176,6 +176,20 @@ class TelegramOutboundAdapter {
       };
     }
 
+    // F3: Fail-closed adapter command boundary validation
+    if (
+      command.platform !== 'telegram' ||
+      command.endpoint_operation !== 'sendMessage' ||
+      command.message_type !== 'text'
+    ) {
+      return {
+        transport_phase: 'NOT_SENT',
+        success: false,
+        error_code: 'TELEGRAM_CLIENT_ERROR_400',
+        http_status: 400,
+      };
+    }
+
     const recipient = String(command.recipient || '').trim();
     if (!recipient) {
       return {
@@ -240,6 +254,18 @@ class TelegramOutboundAdapter {
 
     // Active account validation pre-network
     const active = this.#accountRegistry.getActive();
+
+    // F1: Zeroize cached token if current active account observation changed
+    if (
+      this.#cachedAccountId !== null &&
+      (!active ||
+        active.channel !== TELEGRAM_CHANNEL_ID ||
+        active.enabled !== true ||
+        active.id !== this.#cachedAccountId)
+    ) {
+      this.#zeroizeToken();
+    }
+
     if (
       !active ||
       active.channel !== TELEGRAM_CHANNEL_ID ||
@@ -251,11 +277,6 @@ class TelegramOutboundAdapter {
         success: false,
         error_code: 'ACCOUNT_MISMATCH_PRE_REQUEST',
       };
-    }
-
-    // Zeroize cached buffer if active account switched
-    if (this.#cachedAccountId !== null && this.#cachedAccountId !== active.id) {
-      this.#zeroizeToken();
     }
 
     // Lazy load token buffer once per active lifecycle
@@ -367,6 +388,9 @@ class TelegramOutboundAdapter {
         activeAfterErr.id === command.account_id;
 
       if (!isStillActive) {
+        if (this.#cachedAccountId !== null) {
+          this.#zeroizeToken();
+        }
         if (phase === 'NOT_SENT') {
           return {
             transport_phase: 'NOT_SENT',
@@ -404,6 +428,9 @@ class TelegramOutboundAdapter {
       activeAfterRes.enabled !== true ||
       activeAfterRes.id !== command.account_id
     ) {
+      if (this.#cachedAccountId !== null) {
+        this.#zeroizeToken();
+      }
       return {
         transport_phase: 'MAY_HAVE_BEEN_SENT',
         success: false,
@@ -439,6 +466,9 @@ class TelegramOutboundAdapter {
       activeAfterParse.enabled !== true ||
       activeAfterParse.id !== command.account_id
     ) {
+      if (this.#cachedAccountId !== null) {
+        this.#zeroizeToken();
+      }
       return {
         transport_phase: 'MAY_HAVE_BEEN_SENT',
         success: false,

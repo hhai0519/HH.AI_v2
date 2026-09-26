@@ -1,32 +1,18 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "TG-MVP-13",
-  "base_oid": "d55b2b18bb7769cfc80bc412230bd18d0df7fdd3",
+  "task_id": "TG-MVP-13-R1",
+  "base_oid": "7b22f07cbfef6bd577fe27b18b4aece50f347da6",
   "plan": {
     "allowed_paths": [
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
-      "docs/adr/0023-channel-gateway-state-store-sqlite.md",
-      "docs/adr/0025-outbound-reliability-loopback-api-security.md",
-      "docs/adr/0026-gateway-secret-provider-windows-credential-manager.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
       "docs/refactor-backlog.md",
-      "runtime/channel-gateway/AGENTS.md",
       "runtime/channel-gateway/adapters/telegram-outbound-adapter.js",
-      "runtime/channel-gateway/core/gateway-runtime-owner.js",
-      "runtime/channel-gateway/core/local-api-dispatcher.js",
-      "runtime/channel-gateway/core/outbox-delivery-policy.js",
-      "runtime/channel-gateway/core/outbox-worker.js",
       "runtime/channel-gateway/core/sqlite-state-repository.js",
-      "runtime/channel-gateway/tests/gateway-runtime-owner.test.js",
-      "runtime/channel-gateway/tests/local-api-dispatcher.test.js",
-      "runtime/channel-gateway/tests/outbox-delivery-policy.test.js",
-      "runtime/channel-gateway/tests/outbox-worker.test.js",
-      "runtime/channel-gateway/tests/sqlite-channel-transactions.test.js",
-      "runtime/channel-gateway/tests/sqlite-ingest-transactions.test.js",
       "runtime/channel-gateway/tests/sqlite-state-repository.test.js",
       "runtime/channel-gateway/tests/telegram-outbound-adapter.test.js"
     ],
@@ -34,25 +20,11 @@
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
-      "docs/adr/0023-channel-gateway-state-store-sqlite.md",
-      "docs/adr/0025-outbound-reliability-loopback-api-security.md",
-      "docs/adr/0026-gateway-secret-provider-windows-credential-manager.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
       "docs/refactor-backlog.md",
-      "runtime/channel-gateway/AGENTS.md",
       "runtime/channel-gateway/adapters/telegram-outbound-adapter.js",
-      "runtime/channel-gateway/core/gateway-runtime-owner.js",
-      "runtime/channel-gateway/core/local-api-dispatcher.js",
-      "runtime/channel-gateway/core/outbox-delivery-policy.js",
-      "runtime/channel-gateway/core/outbox-worker.js",
       "runtime/channel-gateway/core/sqlite-state-repository.js",
-      "runtime/channel-gateway/tests/gateway-runtime-owner.test.js",
-      "runtime/channel-gateway/tests/local-api-dispatcher.test.js",
-      "runtime/channel-gateway/tests/outbox-delivery-policy.test.js",
-      "runtime/channel-gateway/tests/outbox-worker.test.js",
-      "runtime/channel-gateway/tests/sqlite-channel-transactions.test.js",
-      "runtime/channel-gateway/tests/sqlite-ingest-transactions.test.js",
       "runtime/channel-gateway/tests/sqlite-state-repository.test.js",
       "runtime/channel-gateway/tests/telegram-outbound-adapter.test.js"
     ],
@@ -65,25 +37,11 @@
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
-      "docs/adr/0023-channel-gateway-state-store-sqlite.md",
-      "docs/adr/0025-outbound-reliability-loopback-api-security.md",
-      "docs/adr/0026-gateway-secret-provider-windows-credential-manager.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
       "docs/refactor-backlog.md",
-      "runtime/channel-gateway/AGENTS.md",
       "runtime/channel-gateway/adapters/telegram-outbound-adapter.js",
-      "runtime/channel-gateway/core/gateway-runtime-owner.js",
-      "runtime/channel-gateway/core/local-api-dispatcher.js",
-      "runtime/channel-gateway/core/outbox-delivery-policy.js",
-      "runtime/channel-gateway/core/outbox-worker.js",
       "runtime/channel-gateway/core/sqlite-state-repository.js",
-      "runtime/channel-gateway/tests/gateway-runtime-owner.test.js",
-      "runtime/channel-gateway/tests/local-api-dispatcher.test.js",
-      "runtime/channel-gateway/tests/outbox-delivery-policy.test.js",
-      "runtime/channel-gateway/tests/outbox-worker.test.js",
-      "runtime/channel-gateway/tests/sqlite-channel-transactions.test.js",
-      "runtime/channel-gateway/tests/sqlite-ingest-transactions.test.js",
       "runtime/channel-gateway/tests/sqlite-state-repository.test.js",
       "runtime/channel-gateway/tests/telegram-outbound-adapter.test.js"
     ]
@@ -103,10 +61,10 @@
     {
       "id": "M2_DISCOVERY_RAW",
       "origin": "MACHINE_CAPTURED_RAW",
-      "verification_status": "NOT_ESTABLISHED",
+      "verification_status": "VERIFIED",
       "source_kind": "EXTERNAL_ARTIFACT",
       "sha256": "4cd2851da921aab9d371b281f51947e2645b069d38ee56655e37a79c2ded3b4b",
-      "description": "generic generator provenance only; not TG-MVP-13 task-specific E24 proof; TG-MVP-13 task-specific E24 is separately replayed from .git/tg-mvp-13-e24-dispositioned-d55b2b1.json against .git/tg-mvp-13-allowed-scope-d55b2b1.json"
+      "description": "External Macro verified M2 immutable raw discovery artifact identity"
     }
   ],
   "report_claims": [
@@ -115,6 +73,13 @@
       "claim_text": "All actual changed repository paths strictly match allowed scope and cover all required paths without expansion.",
       "evidence_ids": [
         "PLAN_ACTUAL_DIFF"
+      ]
+    },
+    {
+      "claim_id": "CLAIM_DISCOVERY_PROVENANCE_VERIFIED",
+      "claim_text": "Immutable raw discovery artifact verified against expected SHA256 closure.",
+      "evidence_ids": [
+        "M2_DISCOVERY_RAW"
       ]
     }
   ]

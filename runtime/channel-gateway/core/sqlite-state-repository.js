@@ -3491,7 +3491,7 @@ class SqliteStateRepository {
     if (!this.#isOpen || !this.#db) {
       throw new Error('Repository is closed (fail-closed)');
     }
-    const safeLimit = Number.isSafeInteger(limit) && limit > 0 ? limit : 50;
+    const safeLimit = Number.isSafeInteger(limit) && limit > 0 ? Math.min(limit, 50) : 50;
 
     const countRow = this.#db
       .prepare("SELECT COUNT(*) AS total FROM outbox WHERE status = 'FAILED_TERMINAL';")

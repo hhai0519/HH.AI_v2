@@ -27,9 +27,13 @@ function createFakeRegistry(account = { id: 'tg_bot_1', channel: 'telegram', ena
 function createFakeSecretProvider(token = '123456:ABC-DEF_ghi') {
   let calls = 0;
   let fail = false;
+  const returnedBuffers = [];
   return {
     get calls() {
       return calls;
+    },
+    get returnedBuffers() {
+      return returnedBuffers;
     },
     set fail(val) {
       fail = val;
@@ -39,7 +43,9 @@ function createFakeSecretProvider(token = '123456:ABC-DEF_ghi') {
       if (fail) {
         throw new Error('Secret retrieval failed');
       }
-      return Buffer.from(token, 'utf8');
+      const buf = Buffer.from(token, 'utf8');
+      returnedBuffers.push(buf);
+      return buf;
     },
   };
 }
@@ -101,6 +107,8 @@ test('start() and stop() lifecycle and token zeroization', { timeout: 10000 }, a
   const res = await adapter.deliver({
     account_id: 'tg_bot_1',
     platform: 'telegram',
+    endpoint_operation: 'sendMessage',
+    message_type: 'text',
     recipient: '123456',
     body: 'hello',
   });
@@ -117,6 +125,8 @@ test('start() and stop() lifecycle and token zeroization', { timeout: 10000 }, a
   const postStopRes = await adapter.deliver({
     account_id: 'tg_bot_1',
     platform: 'telegram',
+    endpoint_operation: 'sendMessage',
+    message_type: 'text',
     recipient: '123456',
     body: 'hello',
   });
@@ -146,6 +156,8 @@ test('Strict Native Reply (D-R3-REPLY-A): reply_parameters formatting and valida
     const res = await adapter.deliver({
       account_id: 'tg_bot_1',
       platform: 'telegram',
+      endpoint_operation: 'sendMessage',
+      message_type: 'text',
       recipient: '98765',
       logical_reply_target: 'tg:98765:1001',
       body: 'Replying to message 1001',
@@ -167,6 +179,8 @@ test('Strict Native Reply (D-R3-REPLY-A): reply_parameters formatting and valida
     const mismatchRes = await adapter.deliver({
       account_id: 'tg_bot_1',
       platform: 'telegram',
+      endpoint_operation: 'sendMessage',
+      message_type: 'text',
       recipient: '98765',
       logical_reply_target: 'tg:88888:1001',
       body: 'Chat mismatch',
@@ -180,6 +194,8 @@ test('Strict Native Reply (D-R3-REPLY-A): reply_parameters formatting and valida
       const badRes = await adapter.deliver({
         account_id: 'tg_bot_1',
         platform: 'telegram',
+        endpoint_operation: 'sendMessage',
+        message_type: 'text',
         recipient: '98765',
         logical_reply_target: badTarget,
         body: 'Malformed target',
@@ -211,6 +227,8 @@ test('Account mismatch pre-request -> 0 network, no token lookup', { timeout: 10
     const res = await adapter.deliver({
       account_id: 'old_bot_account',
       platform: 'telegram',
+      endpoint_operation: 'sendMessage',
+      message_type: 'text',
       recipient: '123',
       body: 'hello',
     });
@@ -244,6 +262,8 @@ test('SecretProvider failure -> 0 network, bounded terminal code', { timeout: 10
     const res = await adapter.deliver({
       account_id: 'tg_bot_1',
       platform: 'telegram',
+      endpoint_operation: 'sendMessage',
+      message_type: 'text',
       recipient: '123',
       body: 'hello',
     });
@@ -275,6 +295,8 @@ test('Invalid token syntax -> zero network, zeroize, INVALID_TELEGRAM_TOKEN_SYNT
     const res = await adapter.deliver({
       account_id: 'tg_bot_1',
       platform: 'telegram',
+      endpoint_operation: 'sendMessage',
+      message_type: 'text',
       recipient: '123',
       body: 'hello',
     });
@@ -307,6 +329,8 @@ test('Token reuse for same account across N commands and zeroize on switch', { t
     await adapter.deliver({
       account_id: 'bot_alpha',
       platform: 'telegram',
+      endpoint_operation: 'sendMessage',
+      message_type: 'text',
       recipient: '100',
       body: 'msg 1',
     });
@@ -316,34 +340,47 @@ test('Token reuse for same account across N commands and zeroize on switch', { t
     await adapter.deliver({
       account_id: 'bot_alpha',
       platform: 'telegram',
+      endpoint_operation: 'sendMessage',
+      message_type: 'text',
       recipient: '100',
       body: 'msg 2',
     });
     await adapter.deliver({
       account_id: 'bot_alpha',
       platform: 'telegram',
+      endpoint_operation: 'sendMessage',
+      message_type: 'text',
       recipient: '100',
       body: 'msg 3',
     });
     assert.strictEqual(sec.calls, 1);
 
+    const tokenBufA = sec.returnedBuffers[0];
+    assert.ok(tokenBufA.some(b => b !== 0));
+
     // Switch active account
     reg.setActive({ id: 'bot_beta', channel: 'telegram', enabled: true });
 
-    // Old account command rejected pre-network, does not load token
+    // Old account command rejected pre-network, zeroizes cached buffer, does not load token
     const oldRes = await adapter.deliver({
       account_id: 'bot_alpha',
       platform: 'telegram',
+      endpoint_operation: 'sendMessage',
+      message_type: 'text',
       recipient: '100',
       body: 'old account msg',
     });
     assert.strictEqual(oldRes.error_code, 'ACCOUNT_MISMATCH_PRE_REQUEST');
     assert.strictEqual(sec.calls, 1);
+    assert.ok(tokenBufA.every(b => b === 0), 'Stale token buffer A must be zeroized');
+    assert.strictEqual(adapter.cachedAccountId, null);
 
     // New account command loads new token
     const newRes = await adapter.deliver({
       account_id: 'bot_beta',
       platform: 'telegram',
+      endpoint_operation: 'sendMessage',
+      message_type: 'text',
       recipient: '100',
       body: 'new account msg',
     });
@@ -375,6 +412,8 @@ test('Transport error classification: narrow NOT_SENT vs MAY_HAVE_BEEN_SENT', { 
       const res = await adapter.deliver({
         account_id: 'tg_bot_1',
         platform: 'telegram',
+        endpoint_operation: 'sendMessage',
+        message_type: 'text',
         recipient: '100',
         body: 'test',
       });
@@ -406,6 +445,8 @@ test('Transport error classification: narrow NOT_SENT vs MAY_HAVE_BEEN_SENT', { 
       const res = await adapter.deliver({
         account_id: 'tg_bot_1',
         platform: 'telegram',
+        endpoint_operation: 'sendMessage',
+        message_type: 'text',
         recipient: '100',
         body: 'test',
       });
@@ -436,6 +477,8 @@ test('HTTP Response classification: 2xx structured check, 429 retry_after, 4xx, 
       const res = await adapter.deliver({
         account_id: 'tg_bot_1',
         platform: 'telegram',
+        endpoint_operation: 'sendMessage',
+        message_type: 'text',
         recipient: '100',
         body: 'valid 200',
       });
@@ -461,6 +504,8 @@ test('HTTP Response classification: 2xx structured check, 429 retry_after, 4xx, 
       const res = await adapter.deliver({
         account_id: 'tg_bot_1',
         platform: 'telegram',
+        endpoint_operation: 'sendMessage',
+        message_type: 'text',
         recipient: '100',
         body: 'malformed 200',
       });
@@ -486,6 +531,8 @@ test('HTTP Response classification: 2xx structured check, 429 retry_after, 4xx, 
       const res = await adapter.deliver({
         account_id: 'tg_bot_1',
         platform: 'telegram',
+        endpoint_operation: 'sendMessage',
+        message_type: 'text',
         recipient: '100',
         body: 'throttled',
       });
@@ -512,6 +559,8 @@ test('HTTP Response classification: 2xx structured check, 429 retry_after, 4xx, 
       const res = await adapter.deliver({
         account_id: 'tg_bot_1',
         platform: 'telegram',
+        endpoint_operation: 'sendMessage',
+        message_type: 'text',
         recipient: '100',
         body: 'blocked',
       });
@@ -537,6 +586,8 @@ test('HTTP Response classification: 2xx structured check, 429 retry_after, 4xx, 
       const res = await adapter.deliver({
         account_id: 'tg_bot_1',
         platform: 'telegram',
+        endpoint_operation: 'sendMessage',
+        message_type: 'text',
         recipient: '100',
         body: 'server error',
       });
@@ -571,6 +622,8 @@ test('Active account changes after fetch invocation preserves uncertainty', { ti
     const res = await adapter.deliver({
       account_id: 'tg_bot_1',
       platform: 'telegram',
+      endpoint_operation: 'sendMessage',
+      message_type: 'text',
       recipient: '100',
       body: 'in flight switch',
     });
@@ -578,6 +631,266 @@ test('Active account changes after fetch invocation preserves uncertainty', { ti
     // Must NOT be success, must preserve uncertainty
     assert.strictEqual(res.success, false);
     assert.strictEqual(res.transport_phase, 'MAY_HAVE_BEEN_SENT');
+  } finally {
+    await adapter.stop();
+  }
+});
+
+test('F3 command boundary: platform, endpoint_operation, message_type fail closed before secret/network', { timeout: 10000 }, async () => {
+  const reg = createFakeRegistry();
+  const sec = createFakeSecretProvider();
+  let fetchCalls = 0;
+  const adapter = new TelegramOutboundAdapter({
+    accountRegistry: reg,
+    secretProvider: sec,
+    fetchFn: async () => {
+      fetchCalls++;
+      return { status: 200, text: async () => JSON.stringify({ ok: true, result: { message_id: 1 } }) };
+    },
+  });
+  adapter.start();
+  try {
+    // 1. platform = 'line' -> 0 secret, 0 network, TELEGRAM_CLIENT_ERROR_400
+    const resLine = await adapter.deliver({
+      account_id: 'tg_bot_1',
+      platform: 'line',
+      endpoint_operation: 'sendMessage',
+      message_type: 'text',
+      recipient: '123456',
+      body: 'hello',
+    });
+    assert.strictEqual(resLine.transport_phase, 'NOT_SENT');
+    assert.strictEqual(resLine.success, false);
+    assert.strictEqual(resLine.error_code, 'TELEGRAM_CLIENT_ERROR_400');
+    assert.strictEqual(resLine.http_status, 400);
+    assert.strictEqual(sec.calls, 0);
+    assert.strictEqual(fetchCalls, 0);
+
+    // 2. wrong endpoint_operation -> 0 secret, 0 network
+    const resOp = await adapter.deliver({
+      account_id: 'tg_bot_1',
+      platform: 'telegram',
+      endpoint_operation: 'editMessageText',
+      message_type: 'text',
+      recipient: '123456',
+      body: 'hello',
+    });
+    assert.strictEqual(resOp.transport_phase, 'NOT_SENT');
+    assert.strictEqual(resOp.success, false);
+    assert.strictEqual(resOp.error_code, 'TELEGRAM_CLIENT_ERROR_400');
+    assert.strictEqual(resOp.http_status, 400);
+    assert.strictEqual(sec.calls, 0);
+    assert.strictEqual(fetchCalls, 0);
+
+    // 3. message_type != text -> 0 secret, 0 network
+    const resType = await adapter.deliver({
+      account_id: 'tg_bot_1',
+      platform: 'telegram',
+      endpoint_operation: 'sendMessage',
+      message_type: 'image',
+      recipient: '123456',
+      body: 'hello',
+    });
+    assert.strictEqual(resType.transport_phase, 'NOT_SENT');
+    assert.strictEqual(resType.success, false);
+    assert.strictEqual(resType.error_code, 'TELEGRAM_CLIENT_ERROR_400');
+    assert.strictEqual(resType.http_status, 400);
+    assert.strictEqual(sec.calls, 0);
+    assert.strictEqual(fetchCalls, 0);
+
+    // 4. Missing boundary fields
+    const resMissing = await adapter.deliver({
+      account_id: 'tg_bot_1',
+      recipient: '123456',
+      body: 'hello',
+    });
+    assert.strictEqual(resMissing.transport_phase, 'NOT_SENT');
+    assert.strictEqual(resMissing.success, false);
+    assert.strictEqual(resMissing.error_code, 'TELEGRAM_CLIENT_ERROR_400');
+    assert.strictEqual(resMissing.http_status, 400);
+    assert.strictEqual(sec.calls, 0);
+    assert.strictEqual(fetchCalls, 0);
+
+    // 5. Canonical telegram / sendMessage / text -> existing behavior unchanged
+    const resOk = await adapter.deliver({
+      account_id: 'tg_bot_1',
+      platform: 'telegram',
+      endpoint_operation: 'sendMessage',
+      message_type: 'text',
+      recipient: '123456',
+      body: 'hello',
+    });
+    assert.strictEqual(resOk.success, true);
+    assert.strictEqual(sec.calls, 1);
+    assert.strictEqual(fetchCalls, 1);
+  } finally {
+    await adapter.stop();
+  }
+});
+
+test('F1: Stale token zeroization when active account switches or becomes inactive', { timeout: 10000 }, async () => {
+  const reg = createFakeRegistry({ id: 'bot_alpha', channel: 'telegram', enabled: true });
+  const sec = createFakeSecretProvider('12345:TOKEN_A');
+  let fetchCount = 0;
+
+  const adapter = new TelegramOutboundAdapter({
+    accountRegistry: reg,
+    secretProvider: sec,
+    fetchFn: async () => {
+      fetchCount++;
+      return {
+        status: 200,
+        text: async () => JSON.stringify({ ok: true, result: { message_id: 10 } }),
+      };
+    },
+  });
+  adapter.start();
+  try {
+    // 1. Deliver for bot_alpha -> token cached
+    const res1 = await adapter.deliver({
+      account_id: 'bot_alpha',
+      platform: 'telegram',
+      endpoint_operation: 'sendMessage',
+      message_type: 'text',
+      recipient: '100',
+      body: 'msg alpha',
+    });
+    assert.strictEqual(res1.success, true);
+    assert.strictEqual(sec.calls, 1);
+    assert.strictEqual(fetchCount, 1);
+    assert.strictEqual(adapter.cachedAccountId, 'bot_alpha');
+
+    const tokenBufA = sec.returnedBuffers[0];
+    assert.ok(tokenBufA.some(b => b !== 0), 'Buffer must initially contain non-zero bytes');
+
+    // 2. Active switch to bot_beta -> stale bot_alpha command
+    reg.setActive({ id: 'bot_beta', channel: 'telegram', enabled: true });
+
+    const resStaleA = await adapter.deliver({
+      account_id: 'bot_alpha',
+      platform: 'telegram',
+      endpoint_operation: 'sendMessage',
+      message_type: 'text',
+      recipient: '100',
+      body: 'stale alpha msg',
+    });
+    assert.strictEqual(resStaleA.transport_phase, 'NOT_SENT');
+    assert.strictEqual(resStaleA.error_code, 'ACCOUNT_MISMATCH_PRE_REQUEST');
+
+    // Immediate assert old A Buffer every byte == 0
+    assert.ok(tokenBufA.every(b => b === 0), 'Stale token buffer A must be zeroized');
+    assert.strictEqual(adapter.cachedAccountId, null);
+    assert.strictEqual(sec.calls, 1, 'getSecret count unchanged (no new secret lookup)');
+    assert.strictEqual(fetchCount, 1, 'fetch count unchanged (no network call)');
+
+    // 3. Re-cache for bot_beta
+    const resB = await adapter.deliver({
+      account_id: 'bot_beta',
+      platform: 'telegram',
+      endpoint_operation: 'sendMessage',
+      message_type: 'text',
+      recipient: '100',
+      body: 'msg beta',
+    });
+    assert.strictEqual(resB.success, true);
+    assert.strictEqual(sec.calls, 2);
+    assert.strictEqual(fetchCount, 2);
+    assert.strictEqual(adapter.cachedAccountId, 'bot_beta');
+    const tokenBufB = sec.returnedBuffers[1];
+    assert.ok(tokenBufB.some(b => b !== 0));
+
+    // 4. Active account becomes null -> observation clears stale token
+    reg.setActive(null);
+    const resNull = await adapter.deliver({
+      account_id: 'bot_beta',
+      platform: 'telegram',
+      endpoint_operation: 'sendMessage',
+      message_type: 'text',
+      recipient: '100',
+      body: 'msg when null',
+    });
+    assert.strictEqual(resNull.transport_phase, 'NOT_SENT');
+    assert.strictEqual(resNull.error_code, 'ACCOUNT_MISMATCH_PRE_REQUEST');
+    assert.ok(tokenBufB.every(b => b === 0), 'Token B must be zeroized when active is null');
+    assert.strictEqual(adapter.cachedAccountId, null);
+
+    // 5. Re-cache for bot_alpha, then active becomes disabled
+    reg.setActive({ id: 'bot_alpha', channel: 'telegram', enabled: true });
+    await adapter.deliver({
+      account_id: 'bot_alpha',
+      platform: 'telegram',
+      endpoint_operation: 'sendMessage',
+      message_type: 'text',
+      recipient: '100',
+      body: 'msg alpha 2',
+    });
+    assert.strictEqual(adapter.cachedAccountId, 'bot_alpha');
+    const tokenBufA2 = sec.returnedBuffers[2];
+    assert.ok(tokenBufA2.some(b => b !== 0));
+
+    reg.setActive({ id: 'bot_alpha', channel: 'telegram', enabled: false });
+    const resDisabled = await adapter.deliver({
+      account_id: 'bot_alpha',
+      platform: 'telegram',
+      endpoint_operation: 'sendMessage',
+      message_type: 'text',
+      recipient: '100',
+      body: 'msg when disabled',
+    });
+    assert.strictEqual(resDisabled.transport_phase, 'NOT_SENT');
+    assert.strictEqual(resDisabled.error_code, 'ACCOUNT_MISMATCH_PRE_REQUEST');
+    assert.ok(tokenBufA2.every(b => b === 0), 'Token A2 must be zeroized when active is disabled');
+    assert.strictEqual(adapter.cachedAccountId, null);
+  } finally {
+    await adapter.stop();
+  }
+});
+
+test('F1: Post-request active account change preserves MAY_HAVE_BEEN_SENT and immediately zeroizes old token', { timeout: 10000 }, async () => {
+  const reg = createFakeRegistry({ id: 'bot_alpha', channel: 'telegram', enabled: true });
+  const sec = createFakeSecretProvider('12345:TOKEN_A');
+  let fetchStarted = false;
+  let triggerSwitch = null;
+  const switchTriggered = new Promise((resolve) => { triggerSwitch = resolve; });
+
+  const adapter = new TelegramOutboundAdapter({
+    accountRegistry: reg,
+    secretProvider: sec,
+    fetchFn: async () => {
+      fetchStarted = true;
+      triggerSwitch();
+      // Wait slightly so test switches active account
+      await new Promise(r => setTimeout(r, 40));
+      return {
+        status: 200,
+        text: async () => JSON.stringify({ ok: true, result: { message_id: 99 } }),
+      };
+    },
+  });
+  adapter.start();
+  try {
+    const deliverPromise = adapter.deliver({
+      account_id: 'bot_alpha',
+      platform: 'telegram',
+      endpoint_operation: 'sendMessage',
+      message_type: 'text',
+      recipient: '100',
+      body: 'mid-flight test',
+    });
+
+    await switchTriggered;
+    // Transport has started -> switch active account to bot_beta
+    reg.setActive({ id: 'bot_beta', channel: 'telegram', enabled: true });
+
+    const res = await deliverPromise;
+    assert.strictEqual(fetchStarted, true);
+    assert.strictEqual(res.transport_phase, 'MAY_HAVE_BEEN_SENT');
+    assert.strictEqual(res.success, false);
+
+    const tokenBuf = sec.returnedBuffers[0];
+    assert.ok(tokenBuf.every(b => b === 0), 'Old token buffer must be zeroized in post-request uncertainty path');
+    assert.strictEqual(adapter.cachedAccountId, null);
+    assert.strictEqual(sec.calls, 1, 'Zero B-token lookup');
   } finally {
     await adapter.stop();
   }
