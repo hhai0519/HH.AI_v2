@@ -1,5 +1,5 @@
 {
-  "base_head": "4968e8d",
+  "base_head": "8ea3fc6",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -552,16 +552,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 230,
-      "sha256": "f2897d3d57456d4bd4b76d284e3ceccd1c3d35570802fec904f4d415dff9f585"
+      "lines": 231,
+      "sha256": "3b75dd29208cdf656e30e083a51ef24757a56eb2b53b20cdc9f8afd4ad5d50d8"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 202,
-      "sha256": "54987a0be7c89fb3678198bc358ad4d09d88ab5b291ba20cd584decadcef28aa"
+      "lines": 203,
+      "sha256": "1aba16315f23ff52a5b70fefffd731974e7e302ecb5a2616b7706f74cf1f9061"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -602,7 +602,7 @@
         "## 封存區"
       ],
       "lines": 341,
-      "sha256": "459cbf170d99a42910768ad404a0e9c9f161f8999c2ba6880f1a6a93b2d3ac8d"
+      "sha256": "dc442106d5db81b75473e340b63932c0d075c550b360101100305cbc4caa745d"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -924,7 +924,7 @@
         "## Consequences"
       ],
       "lines": 188,
-      "sha256": "89c9a810d2ade2c05fcbfd9db6f2ad2c0f625d51b80f7dde190bb69a341a647b"
+      "sha256": "12cf8fd2f2151feba0b092b61a1a77788e83ad0a2753374c00612e5db74c393b"
     },
     "docs/adr/0024-inbound-identity-cursor-semantics.md": {
       "fences": 2,
@@ -980,8 +980,8 @@
         "### R3 Loopback Local API Canaries",
         "## External Platform & Runtime Facts"
       ],
-      "lines": 500,
-      "sha256": "c76ccf8cd53546131996d60671760ef9785582864451ce269f5bb81a57dbc085"
+      "lines": 503,
+      "sha256": "c2daaea8a31c2b680ca040457a34b18069820fedb7df2e535b5a1a54279a9258"
     },
     "docs/adr/0026-gateway-secret-provider-windows-credential-manager.md": {
       "fences": 0,
@@ -1069,8 +1069,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 5316,
-      "sha256": "36e516661df86eef8fa05c096437d93984e320e8a1632ee1a696fe7583dfe739"
+      "lines": 5346,
+      "sha256": "8b14475c37d318a925fcb1e86e66c071d313900ccdec30283eca8829b355a666"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1498,7 +1498,7 @@
       "sha256": "35bf7dbfa3c7d291b550c3c97a6ae398a22b1dc3624c1d2fc1e4db6963d6e115"
     }
   },
-  "generated_at": "2026-09-26T03:22:44Z",
+  "generated_at": "2026-09-26T04:02:11Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

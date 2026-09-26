@@ -1,6 +1,6 @@
 # ADR-0023: Channel Gateway 採用 node:sqlite 作為唯一運作狀態來源 (Channel Gateway SQLite State Store)
 
-- Status: Accepted (Schema v6 Outbox Implemented in TG-MVP-12 / Candidate Awaiting External Macro Audit)
+- Status: Accepted (Schema v6 Outbox Implemented / Accepted in TG-MVP-12)
 - Date: 2026-09-17 (Original), 2026-09-26 (TG-MVP-12 Schema v6 Outbox)
 - Decision Owner: 使用者 HH
 
@@ -70,9 +70,9 @@ ADR-0022 仍保留為 Channel Gateway 之歷史與總體架構權威（Historica
 
 > **架構更新宣告**：本節原待決議事項（R2 & R3）已由使用者正式裁決，並由 **ADR-0025（Outbound Delivery Reliability and Loopback Local API Security）** 正式承接與取代（`ADR-0025 supersedes ADR-0023 §7` 對 R2/R3「仍待使用者裁決」之狀態描述）。本處保留歷史決策脈絡，最新權威規範以 ADR-0025 為準。
 
-- **R2（回覆結果不明時的處理 / Reply Result Uncertainty Handling）**：使用者已正式裁決，規範已於 **ADR-0025** 正式落地（`USER DECIDED / CANONICAL ARCHITECTURE LANDED IN ADR-0025 / NOT IMPLEMENTED`）。採能力感知安全重試（Capability-Aware Safe Retry）與持久化 SQLite Outbox；嚴禁無差別盲目重送（NO BLIND RESEND）。
+- **R2（回覆結果不明時的處理 / Reply Result Uncertainty Handling）**：使用者已正式裁決，規範已於 **ADR-0025** 正式落地（`IMPLEMENTED / ACCEPTED IN TG-MVP-12`；final implementation SHA: `8ea3fc6e1301f077ee467174981f0e63978c2de3`）。採能力感知安全重試（Capability-Aware Safe Retry）與持久化 SQLite Outbox；嚴禁無差別盲目重送（NO BLIND RESEND）。
 - **R2-3（配送不確定性之維運體驗 / Delivery Uncertainty Notification）**：使用者已正式裁決採 **Option B**，規範已於 **ADR-0025** 正式落地（`USER DECIDED OPTION B / CANONICAL DETAILS IN ADR-0025`）。由 Gateway 持久化 UNCERTAIN 狀態供 Agent 於 IDE 檢視，嚴禁向使用者手機發送干擾推播。
-- **R3（本機 API 形式 / Local API Form）**：使用者已正式裁決，規範已於 **ADR-0025** 正式落地（`USER DECIDED / CANONICAL ARCHITECTURE LANDED IN ADR-0025 / NOT IMPLEMENTED`）。採本機迴路 API（Loopback HTTP v1，僅監聽字面值 `127.0.0.1`，具備 HMAC 雙向認證、authenticated hello 握手與同連線會話綁定）；Windows 具名管道（Named Pipe）方案正式延後／未獲選（DEFERRED / NOT SELECTED）。
+- **R3（本機 API 形式 / Local API Form）**：使用者已正式裁決，規範已於 **ADR-0025** 正式落地（`IMPLEMENTED / ACCEPTED IN TG-MVP-11`）。採本機迴路 API（Loopback HTTP v1，僅監聽字面值 `127.0.0.1`，具備 HMAC 雙向認證、authenticated hello 握手與同連線會話綁定）；Windows 具名管道（Named Pipe）方案正式延後／未獲選（DEFERRED / NOT SELECTED）。
 
 ### 8. 線上驗證備份排程整合與維運策略 (Periodic Verified Backup Integration — TG-MVP-09 / T11-main)
 
