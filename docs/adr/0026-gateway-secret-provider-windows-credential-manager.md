@@ -128,6 +128,20 @@
    - 外部可見診斷僅限穩定之有界狀態代碼（如 `TELEGRAM_RECEIVER_CONFLICT`、`HTTP_CLIENT_ERROR`、`INVALID_TELEGRAM_TOKEN_SYNTAX` 等）。
    - 使用完畢後立即解除字串參照；適配器權威持有的二進位 Buffer 在生命週期結束與終態處置時執行 `fill(0)`。
 
+## TG-MVP-13 Telegram 出站適配器金鑰取用邊界 (Telegram Outbound Secret Consumption — TG-MVP-13)
+
+1. **惰性取得與生命週期單次解析 (Lazy Lookup & Single Resolution per Active Lifecycle)**：
+   - `TelegramOutboundAdapter` 在 `start()` 時不預先載入金鑰。
+   - 僅在收到第一筆屬於當前啟用中活躍 Telegram 帳號之出站發送指令時，呼叫 `SecretProvider.getSecret(SecretRef.telegramBotToken(accountId))` 恰好一次。
+   - 同一活躍帳號生命週期內之第 2 至第 N 筆指令重用已採納之 Buffer，不重複觸發同步橋接查詢（杜絕熱路徑查詢違規）。
+   - 舊帳號指令在發送前即遭 `ACCOUNT_MISMATCH_PRE_REQUEST` 終態拒絕，絕不觸發金鑰查詢。
+2. **帳號切換與終態歸零契約 (Account Switch & Terminal Zeroization)**：
+   - 當活躍帳號變更時，立即將舊帳號之權威 Token Buffer 執行確定性 `fill(0)` 歸零並釋放參照。
+   - 適配器 `stop()` 時中止進行中之請求，並將快取之 Token Buffer 確定性歸零。
+   - Token Buffer 位元組語法驗證失敗時，立即歸零該 Buffer，零網路發送，回傳 `INVALID_TELEGRAM_TOKEN_SYNTAX`。
+3. **URL 短暫邊界與無洩漏保證**：
+   - 包含 Token 之 URL 僅在發送 HTTP POST 請求之瞬間短暫形成，絕不持久化、絕不快取、絕不記錄於日誌或例外堆疊。
+
 ---
 
 ## Relationship to Existing Architecture
@@ -136,4 +150,5 @@
 - **與 ADR-0022（Channel Gateway 架構）之關係**：實現 D26 帳號金鑰外部非明文儲存與熱切換要求；保持 D15 零額外依賴。
 - **與 ADR-0025（Local API 安全）之關係**：為 §15 Client Wrapper 與 Loopback HTTP 伺服器提供共用之 HMAC 金鑰安全取得基底。
 - **與 E-03 路線圖之關係**：閉合 B-101，解除 `TG-MVP-10`、`TG-MVP-11`、`TG-CUT-04` 之機密提供者前置依賴。
+
 

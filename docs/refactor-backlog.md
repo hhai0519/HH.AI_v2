@@ -2825,7 +2825,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 5.1 上一批狀態
 
-上次核對通過的 HEAD：8ea3fc6e1301f077ee467174981f0e63978c2de3
+上次核對通過的 HEAD：d55b2b18bb7769cfc80bc412230bd18d0df7fdd3
 
 - `23af193`（執行者前置檢查 ＋ 回滾程序 ＋ `AUDIT-LOG.md` ＋ 四缺口修正）
   已於 2026-09-02 由審計官核對通過：6 檔異動（含 2 個新檔）、零夾帶、
@@ -3029,6 +3029,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 - `e8ee1ed`（T1 Bootstrap Successor Repair & Same-SHA Production Promotion）已於 2026-09-21 由 External Macro Auditor 核對通過：T1 repair candidate exact-SHA Run 35515675268 (attempt 1) 驗證成功（verify=success, gateway-windows=success, raw verify log: ALL 5 GATES PASSED）；same-SHA production promotion 經原生釘選 40-char SHA adapter 驗證通過；origin/main == `e8ee1edc45b26984fd737ffeb7d3283c744dbb4d`；post-main exact-SHA Actions Run 35517555366 (attempt 1, event=push, head_branch=main, head_sha=e8ee1edc45b26984fd737ffeb7d3283c744dbb4d) 驗證成功（jobs: verify=success, gateway-windows=success, raw verify log: 24/24 consistency checks PASS, 410 passed, 13 passed, ALL 5 GATES PASSED；gateway-windows: 26 passed）；Ruleset 21301111 remained active with deletion, non_fast_forward, strict required_status_checks, no bypass actors；T1-F1～T1-F4 完全解決（RESOLVED）；NEW MATERIAL CONTENT FINDING = NONE；External Macro Auditor 正式判定 MACRO AUDIT = PASS, ACCEPT STATUS = ACCEPT ALL, T1 SAME-SHA PROMOTION ACCEPTED；new accepted checkpoint = `e8ee1edc45b26984fd737ffeb7d3283c744dbb4d`；main rollback = NOT REQUIRED；同時登錄 Security/process incident (CONFIRMED for old GCM OAuth credential exposure, GITHUB_PERSONAL_ACCESS_TOKEN value exposure = NOT_ESTABLISHED, USER_PROVIDED containment: old GCM authorization revoked, Windows git:https://github.com credential removed, new GCM login completed by user, K6-A UI posture applied)；process findings routed: B-108, B-109 M1, B-107 where applicable。
 - `69b4b6c`（B-103 T1 Final Closure & Accepted Checkpoint Advancement）已於 2026-09-21 由 External Macro Auditor 核對通過：candidate Run 35598122185 (attempt 1, event=push, head_branch=batch/t1-closure-260920, head_sha=69b4b6c72e2bf2b91a46107afb2e7e9a2e538de1, status=completed, conclusion=success, verify=success, gateway-windows=success, raw: 24/24 consistency checks PASS, 410 passed, 13 passed, ALL 5 GATES PASSED, gateway-windows: 26 passed)；same-SHA main promotion 完成；post-main exact-SHA Actions Run 35600445055 (attempt 1, event=push, head_branch=main, head_sha=69b4b6c72e2bf2b91a46107afb2e7e9a2e538de1, status=completed, conclusion=success, verify=success, gateway-windows=success, raw: 24/24 consistency checks PASS, 410 passed, 13 passed, ALL 5 GATES PASSED, gateway-windows: 26 passed)；Ruleset 21301111 active with deletion, non_fast_forward, strict required_status_checks (verify, gateway-windows), bypass_actors=[], current_user_can_bypass=never；NEW MATERIAL FINDING = NONE；External Macro Auditor 正式判定 MACRO AUDIT = PASS, ACCEPT STATUS = ACCEPT ALL, T1 FINAL CLOSURE = ACCEPTED / CLOSED, B-103 = ACCEPTED / CLOSED, TG-MVP-01B = ACCEPTED / CLOSED；new accepted checkpoint = `69b4b6c72e2bf2b91a46107afb2e7e9a2e538de1`。
 - `8ea3fc6`（TG-MVP-12 Durable SQLite Outbox + Capability-Aware Safe Retry Final Acceptance & Same-SHA Main Promotion）已於 2026-09-26 由 External Macro Auditor 核對通過：R0 candidate 4968e8d... External Macro HOLD（findings F1–F3）；R1 candidate 8ea3fc6... Actions Run 36214841659 驗證成功（verify=completed/success, gateway-windows=completed/success，Ubuntu 529 passed + 13 passed + ALL 5 GATES PASSED，Windows: 37 passed）；F1–F3 RESOLVED；External Macro final audit PASS / ACCEPT ALL；same-SHA main promotion accepted（native pinned full-40 SHA refspec，auth consumed，origin/main advanced to 8ea3fc6e1301f077ee467174981f0e63978c2de3）；post-main exact-SHA Actions Run 36215575618 驗證成功（event=push, head_branch=main, head_sha=8ea3fc6e1301f077ee467174981f0e63978c2de3, attempt=1, verify=completed/success, gateway-windows=completed/success，Ubuntu 529 passed + 13 passed + ALL 5 GATES PASSED，Windows: 37 passed）；Ruleset 21301111 active / strict / no bypass；TG-MVP-12 ACCEPTED / CLOSED；new accepted checkpoint = `8ea3fc6e1301f077ee467174981f0e63978c2de3`；B-107 保持 OPEN / RESIDUAL / NON-BLOCKING FOR CURRENT E-03 RETURN；next: TG-MVP-13, gated by D-R3 USER DECISION。
+- `d55b2b1`（TG-MVP-12 Final Closure State-Sync R1 Acceptance & Same-SHA Main Promotion）已於 2026-09-26 由 External Macro Auditor 核對通過：Target = `d55b2b18bb7769cfc80bc412230bd18d0df7fdd3`（Parent: 9cfbc706e1eb3be73789a0ed0e9cea5bc5d5fe5a）；candidate Actions Run 36223793780 attempt 1 驗證成功（verify=completed/success, gateway-windows=completed/success，Ubuntu 529 passed + 13 passed + ALL 5 GATES PASSED，Windows: 37 passed）；SS-F1 false lease wording = RESOLVED；closure-sync R1 = ACCEPT ALL；Same-SHA main promotion 成功推進（previous main: 8ea3fc6e1301f077ee467174981f0e63978c2de3 -> promoted main: d55b2b18bb7769cfc80bc412230bd18d0df7fdd3，SHA transformation: NONE）；Post-main exact-SHA Actions Run 36224325836 驗證成功（attempt 1, event=push, head_branch=main, head_sha=d55b2b18bb7769cfc80bc412230bd18d0df7fdd3, verify=completed/success, gateway-windows=completed/success，raw Ubuntu: 529 passed + 13 passed + ALL 5 GATES PASSED，Windows: 37 passed）；TG-MVP-12 保持結案（ACCEPTED / CLOSED）；accepted checkpoint 推進至 `d55b2b18bb7769cfc80bc412230bd18d0df7fdd3`（注意：TG-MVP-12 final implementation SHA 仍為 `8ea3fc6e1301f077ee467174981f0e63978c2de3`）；登錄使用者裁決（D-R1, D-R3-A+, D-R3-C1, D-R3-REPLY-A, D-R4）與殘留問題（R-01..R-09，R-04 登錄 EXISTING B-107）；NEXT_WORK 保持 E-03，NEXT_SLICE 推進至 TG-MVP-13（進行中，候選待外部宏觀審計）。
 
 ### 5.2 待辦
 
@@ -5343,4 +5344,39 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - D-R2 保持 MUST BE DECIDED BEFORE TG-MVP-15 DESIGN / ACCEPTANCE。
   - B-107 保持 OPEN / RESIDUAL / NON-BLOCKING FOR CURRENT E-03 RETURN。
   - TG-MVP-12 正式結案：ACCEPTED / CLOSED。
+
+153. **TG-MVP-12 最終結案狀態同步 R1 驗收、主分支晉級與使用者決策/殘留登錄（TG-MVP-12 Final Closure State-Sync R1 Acceptance, Main Promotion & User Decision / Residual Registry Sync）**（2026-09-26）
+- **外部宏觀審計結論（External Macro Audit Verdict on Candidate d55b2b18bb7769cfc80bc412230bd18d0df7fdd3）**：
+  - TARGET = `d55b2b18bb7769cfc80bc412230bd18d0df7fdd3`，PARENT = `9cfbc706e1eb3be73789a0ed0e9cea5bc5d5fe5a`。
+  - TG-MVP-12 FINAL CLOSURE STATE-SYNC R1 = ACCEPT ALL。
+  - SS-F1 false lease wording = RESOLVED。
+  - Candidate Actions Run 36223793780 attempt 1（verify: completed/success, gateway-windows: completed/success；External Macro raw evidence: Ubuntu 529 passed + 13 passed + ALL 5 GATES PASSED，Windows: 37 passed）。
+  - Same-SHA main promotion 成功推進：previous main = `8ea3fc6e1301f077ee467174981f0e63978c2de3` -> promoted main = `d55b2b18bb7769cfc80bc412230bd18d0df7fdd3`，SHA transformation: NONE。
+  - Post-main exact-SHA Actions Run 36224325836 attempt 1（event=push, head_branch=main, head_sha=d55b2b18bb7769cfc80bc412230bd18d0df7fdd3, verify: completed/success, gateway-windows: completed/success；raw Ubuntu: 529 passed + 13 passed + ALL 5 GATES PASSED，raw Windows: 37 passed）。
+  - TG-MVP-12 保持結案：ACCEPTED / CLOSED。
+  - 注意：TG-MVP-12 final implementation SHA 仍為 `8ea3fc6e1301f077ee467174981f0e63978c2de3`，不把 closure-sync head 誤記為 implementation SHA。
+- **使用者裁決登錄（User Binding Decisions Registration — §8.C）**：
+  - **D-R1**：跨平台生產行為採用明確依賴/平台注入（explicit dependency/platform injection）；絕不從 CI 宿主 process.platform 推斷應用語意；平台敏感切片必須具備有界針對性 WSL 閘門。
+  - **D-R3-A+**：`retry_after` 合法正整數秒 1..2147483647；無效值一律判定為 FAILED_TERMINAL / `TELEGRAM_RETRY_AFTER_INVALID`；嚴禁 clamp、嚴禁盲目重送。
+  - **D-R3-C1**：`TELEGRAM_DELIVERY_WINDOW_SEC = 86400`；所有 Telegram QUEUED 指令受全域 24 小時窗口約束；逾期 QUEUED 於進入 IN_FLIGHT 前終態過期；IN_FLIGHT 與 UNCERTAIN 不受交付窗口過期改寫。
+  - **D-R3-REPLY-A**：嚴格原生回覆（Strict Native Reply）；`reply_parameters.message_id` 強制由 `logical_reply_target` 解析取得；禁止 `allow_sending_without_reply`；原訊息被刪除時不得回退為普通發送。
+  - **D-R4**：同 SHA CI rerun 為 USER ONLY，禁止執行者自行重試。
+  - **D-R2**：保持延後至 TG-MVP-15 前裁決。
+- **殘留登錄同步（R-01..R-09 Residual Registry Sync — §8.D）**：
+  - **R-01**：Known-Folder live bridge 3 筆暫態超時非版本庫既定缺陷，分流 B-100 R-B；禁止靜默增加超時或自動 rerun。
+  - **R-02**：宿主平台測試假設復發，D-R1 現為約束，分流 B-100 R-D。
+  - **R-03**：D7 IDE 接管通知實作擁有者未決，D-R2 延後至 TG-MVP-15 前。
+  - **R-04**：授權證明路徑復發；規範路徑為 `.git/hhai-sensitive-push-auth.json`；使用者直接提供 repo-root 證據確認單次推播授權已消耗（`Test-Path .git = True`, `Test-Path .git\hhai-sensitive-push-auth.json = False`）；舊 `.git/governance/main_auth.json` 檢查為無效；分流至 EXISTING B-107；不建立新待辦 ID。
+  - **R-05**：Actions job timeout-minutes 缺失屬獨立治理範疇，本批不修改 workflow。
+  - **R-06**：非標準 Node 22 生命週期觀測成因未確立；標準 Node 保持 `.nvmrc`；不擴展執行期策略。
+  - **R-07**：由 D-R3-A+ 裁決正式解決（RESOLVED）。
+  - **R-08**：Credential Manager bridge 延遲保持 TG-MVP-15 觀測點；不授權提供者快取。
+  - **R-09**：由 D-R4 使用者專屬 rerun 規則正式解決（RESOLVED）。
+- **後續路由與檢查點（Next Work Routing & Accepted Checkpoint）**：
+  - accepted checkpoint 推進確立為 `d55b2b18bb7769cfc80bc412230bd18d0df7fdd3`（TG-MVP-12 implementation SHA 保持 `8ea3fc6e1301f077ee467174981f0e63978c2de3`）。
+  - NEXT_WORK 保持 E-03。
+  - NEXT_SLICE 推進至 TG-MVP-13。
+  - B-107 保持 OPEN / RESIDUAL / NON-BLOCKING FOR CURRENT E-03 RETURN。
+  - TG-MVP-12 正式結案：ACCEPTED / CLOSED。
+  - TG-MVP-13 進行中 / CANDIDATE AWAITING EXTERNAL MACRO AUDIT（main_advancement 嚴格為 FORBIDDEN，執行者嚴禁自審）。
 

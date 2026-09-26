@@ -115,6 +115,10 @@ class LocalApiDispatcher {
     }
 
     const uncertain = this.repository.getUncertainSummaries(50);
+    const failedTerminal = typeof this.repository.getFailedTerminalSummaries === 'function'
+      ? this.repository.getFailedTerminalSummaries(50)
+      : { count: 0, summaries: [] };
+
     return {
       status: 200,
       body: {
@@ -132,6 +136,16 @@ class LocalApiDispatcher {
           account_id: s.account_id,
           recipient: s.recipient,
           created_at: s.created_at,
+        })),
+        failed_terminal_count: failedTerminal.count,
+        failed_terminal_commands: failedTerminal.summaries.map((s) => ({
+          command_id: s.command_id,
+          platform: s.platform,
+          account_id: s.account_id,
+          recipient: s.recipient,
+          created_at: s.created_at,
+          updated_at: s.updated_at,
+          terminal_reason_code: s.terminal_reason_code,
         })),
       },
     };
@@ -161,6 +175,10 @@ class LocalApiDispatcher {
       : [];
 
     const uncertain = this.repository.getUncertainSummaries(50);
+    const failedTerminal = typeof this.repository.getFailedTerminalSummaries === 'function'
+      ? this.repository.getFailedTerminalSummaries(50)
+      : { count: 0, summaries: [] };
+
     return {
       status: 200,
       body: {
@@ -176,6 +194,16 @@ class LocalApiDispatcher {
           account_id: s.account_id,
           recipient: s.recipient,
           created_at: s.created_at,
+        })),
+        failed_terminal_count: failedTerminal.count,
+        failed_terminal_commands: failedTerminal.summaries.map((s) => ({
+          command_id: s.command_id,
+          platform: s.platform,
+          account_id: s.account_id,
+          recipient: s.recipient,
+          created_at: s.created_at,
+          updated_at: s.updated_at,
+          terminal_reason_code: s.terminal_reason_code,
         })),
       },
     };

@@ -477,6 +477,10 @@ Local API 正式定義協定版本與標頭格式：
 > 
 > **TG-MVP-12 實作與出站可靠性驗證留痕**：
 > R2 能力感知安全重試與持久化 SQLite Outbox 規範（Canaries R2-A 至 R2-L）已由 TG-MVP-12 完整實作落地（final implementation SHA: `8ea3fc6e1301f077ee467174981f0e63978c2de3`），涵蓋 SQLite Schema v6 出站佇列、能力感知安全退避重試（LINE retry UUID/expires 嚴格校驗、Telegram/LINE 傳輸階段安全保守預設 MAY_HAVE_BEEN_SENT）、單進程事件迴圈 OutboxWorker、IN_FLIGHT 啟動復原與 GatewayRuntimeOwner 生命週期接線。經 External Macro Auditor 最終審查判定 PASS / ACCEPT ALL，TG-MVP-12 正式結案（ACCEPTED / CLOSED）。
+> 
+> **TG-MVP-13 實作與 Telegram 文字出站適配器落地留痕**：
+> TG-MVP-13 完成 Telegram 文字出站適配器（`TelegramOutboundAdapter`）與 Gateway 生產接線，落實使用者裁決之 D-R3-A+（retry_after 合法整數 1..2147483647；無效則為 FAILED_TERMINAL / TELEGRAM_RETRY_AFTER_INVALID；不 clamp 不盲目重試）、D-R3-C1（全域 24h QUEUED 交付窗口 TELEGRAM_DELIVERY_WINDOW_SEC=86400；stale QUEUED 在進入 IN_FLIGHT 前於交易內原子過期）、D-R3-REPLY-A（Strict Native Reply 原生回覆 reply_parameters.message_id；禁止 allow_sending_without_reply，禁止 parse_mode）、Durable Terminal Reason Schema v7（新增 terminal_reason_code 欄位與 domain CHECK 約束）與有界查詢性（Local API /v1/status 與 /v1/takeover 擴充 failed_terminal_count 與 failed_terminal_commands 最多 50 筆，不暴露 body）。
+
 
 ---
 

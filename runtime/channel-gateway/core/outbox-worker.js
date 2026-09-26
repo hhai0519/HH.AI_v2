@@ -176,7 +176,7 @@ class OutboxWorker {
       let attemptContext;
       try {
         const execRes = await this.#deliveryExecutor(command);
-        const rawPhase = execRes && execRes.phase;
+        const rawPhase = execRes && (execRes.phase || execRes.transport_phase);
         // F2: Only explicit NOT_SENT can be treated as NOT_SENT.
         // Missing, null, empty string, or unknown value must default conservatively to MAY_HAVE_BEEN_SENT.
         const transportPhase =
@@ -194,7 +194,7 @@ class OutboxWorker {
           nowSec: this.#nowSec(),
         };
       } catch (err) {
-        const rawPhase = err && err.phase;
+        const rawPhase = err && (err.phase || err.transport_phase);
         const transportPhase =
           rawPhase === TRANSPORT_PHASE.NOT_SENT
             ? TRANSPORT_PHASE.NOT_SENT
@@ -245,6 +245,7 @@ class OutboxWorker {
         default:
           this.#repository.updateOutboxCommandResult(command.command_id, {
             status: OUTBOX_STATUS.FAILED_TERMINAL,
+            terminalReasonCode: policyResult.terminal_reason_code || policyResult.reason,
             nowSec: currentNow,
           });
           break;

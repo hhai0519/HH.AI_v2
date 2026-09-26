@@ -89,6 +89,29 @@ class FakeTelegramAdapter {
   }
 }
 
+class FakeTelegramOutboundAdapter {
+  constructor() {
+    this.started = false;
+    this.stopped = false;
+    this.isZeroized = false;
+    this.deliveries = [];
+  }
+
+  async start() {
+    this.started = true;
+  }
+
+  async stop() {
+    this.stopped = true;
+    this.isZeroized = true;
+  }
+
+  async deliver(cmd) {
+    this.deliveries.push(cmd);
+    return { success: true, http_status: 200, transport_phase: 'MAY_HAVE_BEEN_SENT' };
+  }
+}
+
 test('safe to require bin/gateway.js with zero side effects', () => {
   const mod = require('../bin/gateway');
   assert.strictEqual(typeof mod.runGateway, 'function');
@@ -105,6 +128,15 @@ test('GatewayRuntimeOwner normal startup and ordered shutdown sequence', async (
     },
     stop: () => {
       lifecycleEvents.push('backup.stop');
+    },
+  };
+
+  const fakeOutbound = {
+    start: async () => {
+      lifecycleEvents.push('outbound.start');
+    },
+    stop: async () => {
+      lifecycleEvents.push('outbound.stop');
     },
   };
 
@@ -147,6 +179,7 @@ test('GatewayRuntimeOwner normal startup and ordered shutdown sequence', async (
     stateRoot: 'C:\\fake\\stateRoot',
     secretProvider: fakeProvider,
     backupRuntimeOwner: fakeBackup,
+    telegramOutboundAdapter: fakeOutbound,
     outboxWorker: fakeWorker,
     localApiServer: fakeServer,
     telegramAdapter: fakeAdapter,
@@ -159,9 +192,10 @@ test('GatewayRuntimeOwner normal startup and ordered shutdown sequence', async (
   assert.strictEqual(owner.status, OWNER_STATUS.RUNNING);
   assert.strictEqual(owner.isRunning, true);
 
-  // Assert startup order: 1. backup, 2. worker, 3. server, 4. adapter
+  // Assert startup order: 1. backup, 2. outbound, 3. worker, 4. server, 5. adapter
   assert.deepStrictEqual(lifecycleEvents, [
     'backup.start',
+    'outbound.start',
     'worker.start',
     'server.start',
     'adapter.start',
@@ -174,21 +208,28 @@ test('GatewayRuntimeOwner normal startup and ordered shutdown sequence', async (
   assert.strictEqual(owner.status, OWNER_STATUS.STOPPED);
   assert.strictEqual(owner.isRunning, false);
 
-  // Assert stop order (Mutation T17 requirement):
-  // adapter.stop() and worker.stop() MUST happen BEFORE backup.stop() / repo close
+  // Assert stop order (Mutation T17 requirement & §22/§26):
+  // adapter.stop() and worker.stop() and outbound.stop() MUST happen BEFORE backup.stop() / repo close
+  // worker.stop() MUST happen BEFORE outbound.stop() (quiesce before zeroization)
   const adapterStopIdx = lifecycleEvents.indexOf('adapter.stop');
   const workerStopIdx = lifecycleEvents.indexOf('worker.stop');
+  const outboundStopIdx = lifecycleEvents.indexOf('outbound.stop');
   const backupStopIdx = lifecycleEvents.indexOf('backup.stop');
   assert.ok(adapterStopIdx !== -1, 'adapter.stop must be called');
   assert.ok(workerStopIdx !== -1, 'worker.stop must be called');
+  assert.ok(outboundStopIdx !== -1, 'outbound.stop must be called');
   assert.ok(backupStopIdx !== -1, 'backup.stop must be called');
   assert.ok(
     adapterStopIdx < backupStopIdx,
     'adapter.stop must complete before backup.stop'
   );
   assert.ok(
-    workerStopIdx < backupStopIdx,
-    'worker.stop must complete before backup.stop'
+    workerStopIdx < outboundStopIdx,
+    'worker.stop must complete before outbound.stop'
+  );
+  assert.ok(
+    outboundStopIdx < backupStopIdx,
+    'outbound.stop must complete before backup.stop'
   );
 
   // Assert secret zeroization
@@ -209,6 +250,15 @@ test('GatewayRuntimeOwner startup rollback when telegram adapter fails', async (
     },
     stop: () => {
       rollbackEvents.push('backup.stop');
+    },
+  };
+
+  const fakeOutbound = {
+    start: async () => {
+      rollbackEvents.push('outbound.start');
+    },
+    stop: async () => {
+      rollbackEvents.push('outbound.stop');
     },
   };
 
@@ -245,6 +295,7 @@ test('GatewayRuntimeOwner startup rollback when telegram adapter fails', async (
     stateRoot: 'C:\\fake\\stateRoot',
     secretProvider: fakeProvider,
     backupRuntimeOwner: fakeBackup,
+    telegramOutboundAdapter: fakeOutbound,
     outboxWorker: fakeWorker,
     localApiServer: fakeServer,
     telegramAdapter: fakeAdapter,
@@ -259,10 +310,14 @@ test('GatewayRuntimeOwner startup rollback when telegram adapter fails', async (
 
   assert.strictEqual(owner.status, OWNER_STATUS.STOPPED);
 
-  // Rollback order: server.stop -> worker.stop -> backup.stop
+  // Rollback order: server.stop -> worker.stop -> outbound.stop -> backup.stop
   assert.ok(rollbackEvents.includes('server.stop'));
   assert.ok(rollbackEvents.includes('worker.stop'));
+  assert.ok(rollbackEvents.includes('outbound.stop'));
   assert.ok(rollbackEvents.includes('backup.stop'));
+  const outboundStopIdx = rollbackEvents.indexOf('outbound.stop');
+  const backupStopIdx = rollbackEvents.indexOf('backup.stop');
+  assert.ok(outboundStopIdx < backupStopIdx, 'outbound.stop must occur before backup.stop on rollback');
 
   // Secret must be zeroized on rollback
   assert.ok(fakeProvider.lastReturnedBuffer);
@@ -282,6 +337,15 @@ test('GatewayRuntimeOwner startup rollback when Local API server fails to bind (
     },
     stop: () => {
       rollbackEvents.push('backup.stop');
+    },
+  };
+
+  const fakeOutbound = {
+    start: async () => {
+      rollbackEvents.push('outbound.start');
+    },
+    stop: async () => {
+      rollbackEvents.push('outbound.stop');
     },
   };
 
@@ -317,6 +381,7 @@ test('GatewayRuntimeOwner startup rollback when Local API server fails to bind (
     stateRoot: 'C:\\fake\\stateRoot',
     secretProvider: fakeProvider,
     backupRuntimeOwner: fakeBackup,
+    telegramOutboundAdapter: fakeOutbound,
     outboxWorker: fakeWorker,
     localApiServer: fakeServer,
     telegramAdapter: fakeAdapter,
@@ -332,6 +397,7 @@ test('GatewayRuntimeOwner startup rollback when Local API server fails to bind (
   assert.strictEqual(adapterStarted, false, 'Telegram adapter must NOT start if server bind fails');
   assert.strictEqual(owner.status, OWNER_STATUS.STOPPED);
   assert.ok(rollbackEvents.includes('worker.stop'), 'Worker must be stopped on server bind rollback');
+  assert.ok(rollbackEvents.includes('outbound.stop'), 'Outbound must be stopped on server bind rollback');
   assert.ok(rollbackEvents.includes('backup.stop'), 'Backup owner must be stopped on server bind rollback');
 
   // Secret must be zeroized on rollback
@@ -341,12 +407,65 @@ test('GatewayRuntimeOwner startup rollback when Local API server fails to bind (
   }
 });
 
+test('GatewayRuntimeOwner startup rollback when TelegramOutboundAdapter fails to start', async () => {
+  const rollbackEvents = [];
+  const fakeProvider = new FakeSecretProvider();
+
+  const fakeBackup = {
+    repository: { name: 'mock-repo' },
+    start: () => {
+      rollbackEvents.push('backup.start');
+    },
+    stop: () => {
+      rollbackEvents.push('backup.stop');
+    },
+  };
+
+  const fakeOutbound = {
+    start: async () => {
+      rollbackEvents.push('outbound.start');
+      throw new Error('TELEGRAM_OUTBOUND_STARTUP_FAILURE');
+    },
+    stop: async () => {
+      rollbackEvents.push('outbound.stop');
+    },
+  };
+
+  let workerStarted = false;
+  const fakeWorker = {
+    start: async () => {
+      workerStarted = true;
+    },
+    stop: async () => {},
+  };
+
+  const owner = new GatewayRuntimeOwner({
+    stateRoot: 'C:\\fake\\stateRoot',
+    secretProvider: fakeProvider,
+    backupRuntimeOwner: fakeBackup,
+    telegramOutboundAdapter: fakeOutbound,
+    outboxWorker: fakeWorker,
+  });
+
+  await assert.rejects(
+    async () => {
+      await owner.start();
+    },
+    /TELEGRAM_OUTBOUND_STARTUP_FAILURE/
+  );
+
+  assert.strictEqual(owner.status, OWNER_STATUS.STOPPED);
+  assert.strictEqual(workerStarted, false, 'Worker must not start if outbound adapter fails');
+  assert.ok(rollbackEvents.includes('backup.stop'), 'Backup owner must be stopped on rollback');
+});
+
 test('GatewayRuntimeOwner signal handling triggers stop and removes listeners', async () => {
   const processEmitter = new EventEmitter();
   const fakeProvider = new FakeSecretProvider();
 
   let backupStopped = false;
   let workerStopped = false;
+  let outboundStopped = false;
   const fakeBackup = {
     repository: {
       recoverInFlightCommands: () => ({ requeuedCount: 0, uncertainCount: 0, total: 0 }),
@@ -354,6 +473,13 @@ test('GatewayRuntimeOwner signal handling triggers stop and removes listeners', 
     start: () => {},
     stop: () => {
       backupStopped = true;
+    },
+  };
+
+  const fakeOutbound = {
+    start: async () => {},
+    stop: async () => {
+      outboundStopped = true;
     },
   };
 
@@ -379,6 +505,7 @@ test('GatewayRuntimeOwner signal handling triggers stop and removes listeners', 
     stateRoot: 'C:\\fake\\stateRoot',
     secretProvider: fakeProvider,
     backupRuntimeOwner: fakeBackup,
+    telegramOutboundAdapter: fakeOutbound,
     outboxWorker: fakeWorker,
     localApiServer: fakeServer,
     telegramAdapter: fakeAdapter,
@@ -398,6 +525,7 @@ test('GatewayRuntimeOwner signal handling triggers stop and removes listeners', 
 
   assert.strictEqual(owner.status, OWNER_STATUS.STOPPED);
   assert.strictEqual(workerStopped, true);
+  assert.strictEqual(outboundStopped, true);
   assert.strictEqual(backupStopped, true);
 
   // Listeners must be removed after stop
@@ -685,6 +813,7 @@ test('GatewayRuntimeOwner passes accountRegistry to dispatcherFactory and LocalA
   const owner = new GatewayRuntimeOwner({
     accountRegistry: fakeAccountRegistry,
     backupRuntimeOwner: fakeBackup,
+    telegramOutboundAdapter: new FakeTelegramOutboundAdapter(),
     outboxWorker: fakeWorker,
     localApiServer: fakeServer,
     telegramAdapter: fakeAdapter,
@@ -720,6 +849,7 @@ test('production-wiring: Gateway start calls OutboxWorker.start()', async () => 
   const owner = new GatewayRuntimeOwner({
     stateRoot: 'C:\\fake\\state',
     backupRuntimeOwner: fakeBackup,
+    telegramOutboundAdapter: new FakeTelegramOutboundAdapter(),
     outboxWorker: fakeWorker,
     localApiServer: fakeServer,
     telegramAdapter: fakeAdapter,
@@ -749,11 +879,19 @@ test('production-wiring: Gateway stop calls OutboxWorker.stop() before repositor
       assert.strictEqual(fakeBackup.repository.isClosed, false, 'Repository must still be open when OutboxWorker stops');
     },
   };
+  const fakeOutbound = {
+    start: async () => {},
+    stop: async () => {
+      events.push('outbound.stop');
+      assert.strictEqual(fakeBackup.repository.isClosed, false, 'Repository must still be open when outbound adapter stops');
+    },
+  };
   const fakeServer = { isStopping: false, server: { close: () => {} }, start: async () => {}, stop: async () => {} };
   const fakeAdapter = { start: async () => {}, stop: async () => {} };
   const owner = new GatewayRuntimeOwner({
     stateRoot: 'C:\\fake\\state',
     backupRuntimeOwner: fakeBackup,
+    telegramOutboundAdapter: fakeOutbound,
     outboxWorker: fakeWorker,
     localApiServer: fakeServer,
     telegramAdapter: fakeAdapter,
@@ -762,7 +900,7 @@ test('production-wiring: Gateway stop calls OutboxWorker.stop() before repositor
 
   await owner.start();
   await owner.stop();
-  assert.deepStrictEqual(events, ['worker.stop', 'backup.stop']);
+  assert.deepStrictEqual(events, ['worker.stop', 'outbound.stop', 'backup.stop']);
 });
 
 test('production-wiring: startup failure rollback stops an already-started worker', async () => {
@@ -771,6 +909,10 @@ test('production-wiring: startup failure rollback stops an already-started worke
     repository: {},
     start: () => { events.push('backup.start'); },
     stop: () => { events.push('backup.stop'); },
+  };
+  const fakeOutbound = {
+    start: async () => { events.push('outbound.start'); },
+    stop: async () => { events.push('outbound.stop'); },
   };
   const fakeWorker = {
     start: async () => { events.push('worker.start'); },
@@ -787,6 +929,7 @@ test('production-wiring: startup failure rollback stops an already-started worke
   const owner = new GatewayRuntimeOwner({
     stateRoot: 'C:\\fake\\state',
     backupRuntimeOwner: fakeBackup,
+    telegramOutboundAdapter: fakeOutbound,
     outboxWorker: fakeWorker,
     localApiServer: fakeServer,
     telegramAdapter: fakeAdapter,
@@ -795,19 +938,22 @@ test('production-wiring: startup failure rollback stops an already-started worke
 
   await assert.rejects(async () => { await owner.start(); }, /SERVER_START_FAIL/);
   assert.ok(events.includes('worker.stop'), 'worker.stop must be called on rollback');
+  assert.ok(events.includes('outbound.stop'), 'outbound.stop must be called on rollback');
   const workerStopIdx = events.indexOf('worker.stop');
+  const outboundStopIdx = events.indexOf('outbound.stop');
   const backupStopIdx = events.indexOf('backup.stop');
   assert.ok(workerStopIdx < backupStopIdx, 'worker.stop must occur before backup.stop on rollback');
+  assert.ok(outboundStopIdx < backupStopIdx, 'outbound.stop must occur before backup.stop on rollback');
 });
 
-test('production-wiring: default no-executor worker does not consume QUEUED commands', async () => {
+test('production-wiring: GatewayRuntimeOwner wires TelegramOutboundAdapter.deliver as default OutboxWorker deliveryExecutor', async () => {
   const fs = require('node:fs');
   const path = require('node:path');
   const os = require('node:os');
   const { SqliteStateRepository } = require('../core/sqlite-state-repository');
   const { computeCanonicalPayloadHash } = require('../core/outbox-delivery-policy');
 
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hhai-gw-wiring-noexec-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hhai-gw-wiring-exec-'));
   const repo = new SqliteStateRepository(dir);
   try {
     repo.takeoverChannel('tg:chat:w1', 'holder1');
@@ -830,7 +976,7 @@ test('production-wiring: default no-executor worker does not consume QUEUED comm
       recipient: 'w1',
       logical_reply_target: 'tg:w1:1',
       message_type: 'text',
-      body: 'No executor wiring test',
+      body: 'Executor wiring test',
     });
 
     const enqueueRes = repo.enqueueAuthorizedReply({
@@ -840,7 +986,7 @@ test('production-wiring: default no-executor worker does not consume QUEUED comm
       fencingToken: 1,
       messageId: 'tg:w1:1',
       replyingAccountId: 'acc_tg',
-      text: 'No executor wiring test',
+      text: 'Executor wiring test',
       platform: 'telegram',
       endpointOperation: 'sendMessage',
       recipient: 'w1',
@@ -858,10 +1004,13 @@ test('production-wiring: default no-executor worker does not consume QUEUED comm
     const fakeServer = { isStopping: false, server: { close: () => {} }, start: async () => {}, stop: async () => {} };
     const fakeAdapter = { start: async () => {}, stop: async () => {} };
 
+    const fakeOutbound = new FakeTelegramOutboundAdapter();
+
     const owner = new GatewayRuntimeOwner({
       stateRoot: dir,
       backupRuntimeOwner: fakeBackup,
-      // no deliveryExecutor provided
+      telegramOutboundAdapter: fakeOutbound,
+      // no deliveryExecutor provided: wires fakeOutbound.deliver automatically
       localApiServer: fakeServer,
       telegramAdapter: fakeAdapter,
       secretBuffer: Buffer.alloc(32),
@@ -869,13 +1018,16 @@ test('production-wiring: default no-executor worker does not consume QUEUED comm
 
     await owner.start();
     assert.ok(owner.outboxWorker);
-    assert.strictEqual(owner.outboxWorker.hasActiveTimer, false);
+    assert.strictEqual(owner.outboxWorker.hasActiveTimer, true);
 
     await new Promise((resolve) => setTimeout(resolve, 50));
 
+    assert.strictEqual(fakeOutbound.deliveries.length, 1);
+    assert.strictEqual(fakeOutbound.deliveries[0].command_id, cmdId);
+
     const cmd = repo.getOutboxCommand(cmdId);
-    assert.strictEqual(cmd.status, 'QUEUED');
-    assert.strictEqual(cmd.attempt_count, 0);
+    assert.strictEqual(cmd.status, 'ACCEPTED_BY_PLATFORM');
+    assert.strictEqual(cmd.attempt_count, 1);
 
     await owner.stop();
   } finally {
@@ -957,6 +1109,7 @@ test('production-wiring: Gateway restart path causes Telegram IN_FLIGHT -> UNCER
     const owner = new GatewayRuntimeOwner({
       stateRoot: dir,
       backupRuntimeOwner: fakeBackup,
+      telegramOutboundAdapter: new FakeTelegramOutboundAdapter(),
       localApiServer: fakeServer,
       telegramAdapter: fakeAdapter,
       secretBuffer: Buffer.alloc(32),

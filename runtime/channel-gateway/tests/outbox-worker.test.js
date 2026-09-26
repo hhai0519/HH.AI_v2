@@ -487,3 +487,61 @@ test('F3: OutboxWorker without deliveryExecutor runs recovery, has no active tim
     harness.cleanup();
   }
 });
+
+test('OutboxWorker - propagates terminalReasonCode to repository on terminal failure', async () => {
+  const harness = createTempHarness();
+  try {
+    seedClaimedMessage(harness.repo, 'tg:chat:200', 'holder1', 1, 'tg:200:201', 'acc_tg');
+    const hash = computeCanonicalPayloadHash({
+      platform: 'telegram',
+      account_id: 'acc_tg',
+      endpoint_operation: 'sendMessage',
+      recipient: '200',
+      logical_reply_target: 'tg:200:201',
+      message_type: 'text',
+      body: 'Terminal failure test',
+    });
+
+    const enqueueRes = harness.repo.enqueueAuthorizedReply({
+      clientRequestId: 'req_terminal_reason',
+      channelId: 'tg:chat:200',
+      holderId: 'holder1',
+      fencingToken: 1,
+      messageId: 'tg:200:201',
+      replyingAccountId: 'acc_tg',
+      text: 'Terminal failure test',
+      platform: 'telegram',
+      endpointOperation: 'sendMessage',
+      recipient: '200',
+      logicalReplyTarget: 'tg:200:201',
+      messageType: 'text',
+      payloadHash: hash,
+    });
+    assert.strictEqual(enqueueRes.success, true);
+    const cmdId = enqueueRes.commandId;
+
+    // Delivery executor returns 400 client error
+    const worker = new OutboxWorker({
+      repository: harness.repo,
+      deliveryExecutor: async () => ({
+        success: false,
+        http_status: 400,
+        transport_phase: TRANSPORT_PHASE.MAY_HAVE_BEEN_SENT,
+      }),
+    });
+
+    await worker.start();
+    const result = await worker.processNext();
+    assert.strictEqual(result.decision, POLICY_DECISION.FAILED_TERMINAL);
+
+    const cmd = harness.repo.getOutboxCommand(cmdId);
+    assert.strictEqual(cmd.status, OUTBOX_STATUS.FAILED_TERMINAL);
+    assert.strictEqual(cmd.terminal_reason_code, 'TELEGRAM_CLIENT_ERROR_400');
+    assert.strictEqual(cmd.next_attempt_at, null);
+
+    await worker.stop();
+  } finally {
+    harness.cleanup();
+  }
+});
+

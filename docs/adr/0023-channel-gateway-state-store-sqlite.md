@@ -175,6 +175,17 @@ ADR-0022 仍保留為 Channel Gateway 之歷史與總體架構權威（Historica
     - 新增 `getClaimedMessages(accountId, limit)` 支援 Local API 查詢目前已認領（CLAIMED）狀態訊息。
     - 確立同步輪詢交易邊界：先查詢已認領訊息，計算剩餘容量（`50 - claimedCount`），僅在容量 > 0 時呼叫 `claimMessages({ limit: claimLimit })`，杜絕超出 50 筆上限。
 
+15. **TG-MVP-12 耐久出站佇列資料表 (Schema v6 Outbox Table)**：
+    - 新增 `outbox` STRICT 資料表，包含 17 個標準欄位與 `external_retry` 成對存在 CHECK 約束。
+    - 支援能力感知重試與 `recoverInFlightCommands()` 啟動安全復原。
+
+16. **TG-MVP-13 終態失敗原因持久化與交付窗口原子過期 (Schema v7 & Delivery Window Expiry)**：
+    - `outbox` 表格升級至 schema version 7，新增 nullable 欄位 `terminal_reason_code TEXT CHECK(terminal_reason_code IS NULL OR (length(terminal_reason_code) >= 1 AND length(terminal_reason_code) <= 96 AND terminal_reason_code NOT GLOB '*[^A-Z0-9_]*'))`。
+    - 歷史 v6 `FAILED_TERMINAL` 記錄平滑遷移為 `terminal_reason_code = NULL`。
+    - 新寫入契約：狀態為 `FAILED_TERMINAL` 時必須提供非空且合規之 terminalReasonCode；非終態時必須為 NULL。
+    - 在 `claimNextQueuedOutboxCommand(nowSec)` 之 `BEGIN IMMEDIATE` 交易內，原子式優先將所有建立超過 86400 秒之 Telegram QUEUED 指令直接轉為 `FAILED_TERMINAL`（`TELEGRAM_DELIVERY_WINDOW_EXCEEDED`），不推進 attempt_count、不經由 IN_FLIGHT。
+    - 提供 `getFailedTerminalSummaries(limit=50)` 查詢最新 50 筆終態失敗摘要（排序 `updated_at DESC, command_id ASC`），僅包含安全識別後設資料，絕對排除訊息本體。
+
 ## Consequences
 
 1. **治理分層明確化**：本決策確立了持久化技術路線的重大轉變。相關規則同步落地於 `runtime/channel-gateway/AGENTS.md`，根目錄 `AGENTS.md` 僅保留通用的目錄範圍規則擴充，維持漸進式揭露。

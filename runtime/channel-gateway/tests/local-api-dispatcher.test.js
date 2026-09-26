@@ -444,6 +444,55 @@ test('dispatcher: status and takeover endpoints return uncertain summaries when 
   }
 });
 
+test('dispatcher: status and takeover endpoints return failed terminal summaries when FAILED_TERMINAL commands exist (TG-MVP-13)', { timeout: 5000 }, () => {
+  const harness = createTempHarness();
+  try {
+    harness.repo.takeoverChannel('tg:fail_test', 'holder_fail');
+    const rawDb = new DatabaseSync(harness.repo.databasePath);
+    try {
+      rawDb
+        .prepare(
+          `INSERT INTO outbox (
+            command_id, client_request_id, payload_hash, platform, account_id,
+            endpoint_operation, recipient, logical_reply_target, message_type,
+            body, status, terminal_reason_code, created_at, updated_at
+          ) VALUES (
+            'cmd_fail_1', 'req_fail_1', '${'b'.repeat(64)}', 'telegram', 'acc_fail',
+            'sendMessage', 'chat_fail', 'tg:chat_fail:1', 'text',
+            'super secret body text', 'FAILED_TERMINAL', 'TELEGRAM_RETRY_AFTER_INVALID', 1700000000, 1700000001
+          );`
+        )
+        .run();
+    } finally {
+      rawDb.close();
+    }
+
+    const dispatcher = new LocalApiDispatcher({ repository: harness.repo });
+    const resStatus = dispatcher.dispatch('/v1/status', { channel_id: 'tg:fail_test' });
+    assert.equal(resStatus.status, 200);
+    assert.equal(resStatus.body.failed_terminal_count, 1);
+    assert.equal(resStatus.body.failed_terminal_commands.length, 1);
+    const item = resStatus.body.failed_terminal_commands[0];
+    assert.equal(item.command_id, 'cmd_fail_1');
+    assert.equal(item.platform, 'telegram');
+    assert.equal(item.account_id, 'acc_fail');
+    assert.equal(item.recipient, 'chat_fail');
+    assert.equal(item.terminal_reason_code, 'TELEGRAM_RETRY_AFTER_INVALID');
+    assert.equal('body' in item, false, 'body MUST NOT be exposed in failed terminal summaries');
+    assert.equal('payload' in item, false);
+    assert.equal('token' in item, false);
+
+    const resTakeover = dispatcher.dispatch('/v1/takeover', { channel_id: 'tg:fail_test', holder_id: 'new_holder' });
+    assert.equal(resTakeover.status, 200);
+    assert.equal(resTakeover.body.failed_terminal_count, 1);
+    assert.equal(resTakeover.body.failed_terminal_commands.length, 1);
+    assert.equal(resTakeover.body.failed_terminal_commands[0].command_id, 'cmd_fail_1');
+    assert.equal('body' in resTakeover.body.failed_terminal_commands[0], false);
+  } finally {
+    harness.cleanup();
+  }
+});
+
 test('dispatcher: reply endpoint returns 501 OUTBOUND_TARGET_NOT_READY when registry or format invalid (ADR-0025)', { timeout: 5000 }, () => {
   const harness = createTempHarness();
   try {

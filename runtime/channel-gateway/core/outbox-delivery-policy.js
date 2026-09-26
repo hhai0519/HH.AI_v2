@@ -133,6 +133,29 @@ function computeCanonicalPayloadHash(params) {
   return crypto.createHash('sha256').update(deterministicJson, 'utf8').digest('hex').toLowerCase();
 }
 
+const TELEGRAM_DELIVERY_WINDOW_SEC = 86400;
+
+/**
+ * Checks if proposed retry time falls within the 24-hour delivery window.
+ *
+ * @param {object} command
+ * @param {number} delaySec
+ * @param {number} nowSec
+ * @returns {object|null} FAILED_TERMINAL decision if expired, null if within window
+ */
+function checkTelegramDeliveryWindow(command, delaySec, nowSec) {
+  const createdAt = typeof command.created_at === 'number' ? command.created_at : nowSec;
+  const deadline = createdAt + TELEGRAM_DELIVERY_WINDOW_SEC;
+  if (nowSec + delaySec > deadline) {
+    return {
+      decision: POLICY_DECISION.FAILED_TERMINAL,
+      terminal_reason_code: 'TELEGRAM_DELIVERY_WINDOW_EXCEEDED',
+      reason: 'TELEGRAM_DELIVERY_WINDOW_EXCEEDED',
+    };
+  }
+  return null;
+}
+
 /**
  * Pure policy evaluation for a delivery attempt outcome.
  *
@@ -147,7 +170,8 @@ function computeCanonicalPayloadHash(params) {
  * @returns {{
  *   decision: 'ACCEPTED_BY_PLATFORM' | 'RETRY' | 'UNCERTAIN' | 'FAILED_TERMINAL',
  *   next_attempt_delay_sec?: number,
- *   reason?: string
+ *   reason?: string,
+ *   terminal_reason_code?: string
  * }}
  */
 function evaluateDeliveryAttempt(command, attemptContext) {
@@ -168,58 +192,131 @@ function evaluateDeliveryAttempt(command, attemptContext) {
     nowSec = Math.floor(Date.now() / 1000),
   } = attemptContext;
 
-  // 1. Success response (HTTP 2xx or explicit success)
-  if (success === true || (typeof http_status === 'number' && http_status >= 200 && http_status < 300)) {
-    return {
-      decision: POLICY_DECISION.ACCEPTED_BY_PLATFORM,
-      reason: 'PLATFORM_2XX_ACCEPTED',
-    };
-  }
-
-  // 2. Telegram evaluation
+  // 1. Telegram evaluation
   if (platform === 'telegram') {
-    // 2a. HTTP 429 Flood Control with retry_after
-    if (http_status === 429) {
-      if (
-        typeof retry_after === 'number' &&
-        Number.isSafeInteger(retry_after) &&
-        retry_after > 0
-      ) {
-        return {
-          decision: POLICY_DECISION.RETRY,
-          next_attempt_delay_sec: retry_after,
-          reason: 'TELEGRAM_FLOOD_CONTROL_RETRY_AFTER',
-        };
-      }
-      // Invalid / non-positive retry_after on 429: fail closed, do NOT blind resend immediately
+    // 1a. Pre-request account mismatch -> FAILED_TERMINAL (OUTBOUND_ACCOUNT_SWITCH_DISCARDED)
+    if (error_code === 'ACCOUNT_MISMATCH_PRE_REQUEST') {
       return {
         decision: POLICY_DECISION.FAILED_TERMINAL,
-        reason: 'TELEGRAM_INVALID_RETRY_AFTER',
+        terminal_reason_code: 'OUTBOUND_ACCOUNT_SWITCH_DISCARDED',
+        reason: 'OUTBOUND_ACCOUNT_SWITCH_DISCARDED',
       };
     }
 
-    // 2b. Non-retryable 4xx client errors (400, 401, 403, 404, etc.)
+    // 1b. Pre-request reply target invalid -> FAILED_TERMINAL (TELEGRAM_REPLY_TARGET_INVALID)
+    if (error_code === 'TELEGRAM_REPLY_TARGET_INVALID') {
+      return {
+        decision: POLICY_DECISION.FAILED_TERMINAL,
+        terminal_reason_code: 'TELEGRAM_REPLY_TARGET_INVALID',
+        reason: 'TELEGRAM_REPLY_TARGET_INVALID',
+      };
+    }
+
+    // 1c. Pre-request secret unavailable -> FAILED_TERMINAL (TELEGRAM_SECRET_UNAVAILABLE)
+    if (error_code === 'TELEGRAM_SECRET_UNAVAILABLE') {
+      return {
+        decision: POLICY_DECISION.FAILED_TERMINAL,
+        terminal_reason_code: 'TELEGRAM_SECRET_UNAVAILABLE',
+        reason: 'TELEGRAM_SECRET_UNAVAILABLE',
+      };
+    }
+
+    // 1d. Pre-request invalid token syntax -> FAILED_TERMINAL (INVALID_TELEGRAM_TOKEN_SYNTAX)
+    if (error_code === 'INVALID_TELEGRAM_TOKEN_SYNTAX') {
+      return {
+        decision: POLICY_DECISION.FAILED_TERMINAL,
+        terminal_reason_code: 'INVALID_TELEGRAM_TOKEN_SYNTAX',
+        reason: 'INVALID_TELEGRAM_TOKEN_SYNTAX',
+      };
+    }
+
+    // 1e. Structured 2xx success
+    if (success === true) {
+      return {
+        decision: POLICY_DECISION.ACCEPTED_BY_PLATFORM,
+        reason: 'PLATFORM_2XX_ACCEPTED',
+      };
+    }
+    // Ambiguous/malformed 2xx (status in 200..299 but success !== true)
+    if (typeof http_status === 'number' && http_status >= 200 && http_status < 300) {
+      return {
+        decision: POLICY_DECISION.UNCERTAIN,
+        reason: 'TELEGRAM_MAY_HAVE_BEEN_SENT_UNCERTAIN',
+      };
+    }
+
+    // 1f. HTTP 429 Flood Control with retry_after (D-R3-A+ / §9)
+    if (http_status === 429) {
+      const isValidRetryAfter =
+        typeof retry_after === 'number' &&
+        Number.isSafeInteger(retry_after) &&
+        retry_after >= 1 &&
+        retry_after <= 2147483647;
+
+      if (!isValidRetryAfter) {
+        return {
+          decision: POLICY_DECISION.FAILED_TERMINAL,
+          terminal_reason_code: 'TELEGRAM_RETRY_AFTER_INVALID',
+          reason: 'TELEGRAM_RETRY_AFTER_INVALID',
+        };
+      }
+
+      // Check delivery window (D-R3-C1 / §10)
+      const windowExceeded = checkTelegramDeliveryWindow(command, retry_after, nowSec);
+      if (windowExceeded) {
+        return windowExceeded;
+      }
+
+      return {
+        decision: POLICY_DECISION.RETRY,
+        next_attempt_delay_sec: retry_after,
+        reason: 'TELEGRAM_FLOOD_CONTROL_RETRY_AFTER',
+      };
+    }
+
+    // 1g. Non-retryable 4xx client errors (400, 401, 403, 404, etc.)
     if (typeof http_status === 'number' && http_status >= 400 && http_status < 500) {
       return {
         decision: POLICY_DECISION.FAILED_TERMINAL,
+        terminal_reason_code: `TELEGRAM_CLIENT_ERROR_${http_status}`,
         reason: `TELEGRAM_CLIENT_ERROR_${http_status}`,
       };
     }
 
-    // 2c. Phase analysis
+    // 1h. Server error 5xx -> UNCERTAIN (Telegram-only rule, §12)
+    if (typeof http_status === 'number' && http_status >= 500 && http_status < 600) {
+      return {
+        decision: POLICY_DECISION.UNCERTAIN,
+        reason: 'TELEGRAM_5XX_UNCERTAIN',
+      };
+    }
+
+    // 1i. Explicit NOT_SENT -> retry only within delivery window
     if (transport_phase === TRANSPORT_PHASE.NOT_SENT) {
-      // Safe to retry on NOT_SENT
+      const delaySec = 5;
+      const windowExceeded = checkTelegramDeliveryWindow(command, delaySec, nowSec);
+      if (windowExceeded) {
+        return windowExceeded;
+      }
       return {
         decision: POLICY_DECISION.RETRY,
-        next_attempt_delay_sec: 5,
+        next_attempt_delay_sec: delaySec,
         reason: 'TELEGRAM_NOT_SENT_RETRY',
       };
     }
 
-    // MAY_HAVE_BEEN_SENT or unknown -> UNCERTAIN (Telegram has no idempotency key; NO BLIND RESEND)
+    // 1j. MAY_HAVE_BEEN_SENT or unknown -> UNCERTAIN (Telegram has no idempotency key; NO BLIND RESEND)
     return {
       decision: POLICY_DECISION.UNCERTAIN,
       reason: 'TELEGRAM_MAY_HAVE_BEEN_SENT_UNCERTAIN',
+    };
+  }
+
+  // 2. Success response for non-Telegram platforms
+  if (success === true || (typeof http_status === 'number' && http_status >= 200 && http_status < 300)) {
+    return {
+      decision: POLICY_DECISION.ACCEPTED_BY_PLATFORM,
+      reason: 'PLATFORM_2XX_ACCEPTED',
     };
   }
 
@@ -248,6 +345,7 @@ function evaluateDeliveryAttempt(command, attemptContext) {
       if (typeof http_status === 'number' && http_status >= 400 && http_status < 500) {
         return {
           decision: POLICY_DECISION.FAILED_TERMINAL,
+          terminal_reason_code: `LINE_CLIENT_ERROR_${http_status}`,
           reason: `LINE_CLIENT_ERROR_${http_status}`,
         };
       }
@@ -276,6 +374,7 @@ function evaluateDeliveryAttempt(command, attemptContext) {
       if (command.external_retry_key) {
         return {
           decision: POLICY_DECISION.FAILED_TERMINAL,
+          terminal_reason_code: 'LINE_REPLY_RETRY_KEY_FORBIDDEN',
           reason: 'LINE_REPLY_RETRY_KEY_FORBIDDEN',
         };
       }
@@ -284,6 +383,7 @@ function evaluateDeliveryAttempt(command, attemptContext) {
       if (typeof http_status === 'number' && http_status >= 400 && http_status < 500) {
         return {
           decision: POLICY_DECISION.FAILED_TERMINAL,
+          terminal_reason_code: `LINE_CLIENT_ERROR_${http_status}`,
           reason: `LINE_CLIENT_ERROR_${http_status}`,
         };
       }
@@ -308,6 +408,7 @@ function evaluateDeliveryAttempt(command, attemptContext) {
   if (typeof http_status === 'number' && http_status >= 400 && http_status < 500) {
     return {
       decision: POLICY_DECISION.FAILED_TERMINAL,
+      terminal_reason_code: `CLIENT_ERROR_${http_status}`,
       reason: `CLIENT_ERROR_${http_status}`,
     };
   }
@@ -374,6 +475,7 @@ module.exports = {
   TRANSPORT_PHASE,
   OUTBOX_STATUS,
   POLICY_DECISION,
+  TELEGRAM_DELIVERY_WINDOW_SEC,
   LINE_RETRYABLE_PUSH_OPERATIONS,
   LINE_RETRY_KEY_UUID_REGEX,
   isValidLineRetryIdentity,

@@ -48,7 +48,7 @@ const {
   LINE_RETRY_KEY_UUID_REGEX,
 } = require('./outbox-delivery-policy');
 
-const SQLITE_STATE_SCHEMA_VERSION = 6;
+const SQLITE_STATE_SCHEMA_VERSION = 7;
 const SQLITE_BUSY_TIMEOUT_MS = 5000;
 const SQLITE_DATABASE_FILENAME = 'channel-gateway-state.sqlite3';
 
@@ -200,7 +200,72 @@ CREATE TABLE inbound_event (
 
 /**
  * Canonical DDL definition for durable outbox table in schema version 6 (ADR-0025 R2).
- * Minimal outbox states: QUEUED, IN_FLIGHT, ACCEPTED_BY_PLATFORM, UNCERTAIN, FAILED_TERMINAL.
+ * Preserved for migration 6 runner and v6 backup validation.
+ */
+const OUTBOX_V6_SCHEMA_SQL = `
+CREATE TABLE outbox (
+  command_id TEXT PRIMARY KEY
+    CHECK(length(trim(command_id)) > 0),
+  client_request_id TEXT NOT NULL UNIQUE
+    CHECK(length(trim(client_request_id)) > 0),
+  payload_hash TEXT NOT NULL
+    CHECK(length(payload_hash) = 64),
+  platform TEXT NOT NULL
+    CHECK(length(trim(platform)) > 0),
+  account_id TEXT NOT NULL
+    CHECK(length(trim(account_id)) > 0),
+  endpoint_operation TEXT NOT NULL
+    CHECK(length(trim(endpoint_operation)) > 0),
+  recipient TEXT NOT NULL
+    CHECK(length(trim(recipient)) > 0),
+  logical_reply_target TEXT
+    CHECK(
+      logical_reply_target IS NULL OR
+      length(trim(logical_reply_target)) > 0
+    ),
+  message_type TEXT NOT NULL
+    CHECK(length(trim(message_type)) > 0),
+  body TEXT NOT NULL
+    CHECK(length(trim(body)) > 0),
+  status TEXT NOT NULL
+    CHECK(status IN (
+      'QUEUED',
+      'IN_FLIGHT',
+      'ACCEPTED_BY_PLATFORM',
+      'UNCERTAIN',
+      'FAILED_TERMINAL'
+    )),
+  attempt_count INTEGER NOT NULL DEFAULT 0
+    CHECK(attempt_count >= 0),
+  next_attempt_at INTEGER
+    CHECK(
+      next_attempt_at IS NULL OR
+      next_attempt_at >= 0
+    ),
+  external_retry_key TEXT
+    CHECK(
+      external_retry_key IS NULL OR
+      length(trim(external_retry_key)) > 0
+    ),
+  external_retry_expires_at INTEGER
+    CHECK(
+      external_retry_expires_at IS NULL OR
+      external_retry_expires_at >= 0
+    ),
+  created_at INTEGER NOT NULL
+    CHECK(created_at >= 0),
+  updated_at INTEGER NOT NULL
+    CHECK(updated_at >= 0),
+  CHECK(
+    (external_retry_key IS NULL AND external_retry_expires_at IS NULL) OR
+    (external_retry_key IS NOT NULL AND external_retry_expires_at IS NOT NULL)
+  )
+) STRICT;
+`;
+
+/**
+ * Canonical DDL definition for durable outbox table in schema version 7 (TG-MVP-13 §18).
+ * Adds terminal_reason_code TEXT column with uppercase/digits/underscore check.
  */
 const OUTBOX_SCHEMA_SQL = `
 CREATE TABLE outbox (
@@ -256,6 +321,15 @@ CREATE TABLE outbox (
     CHECK(created_at >= 0),
   updated_at INTEGER NOT NULL
     CHECK(updated_at >= 0),
+  terminal_reason_code TEXT
+    CHECK(
+      terminal_reason_code IS NULL OR
+      (
+        length(terminal_reason_code) >= 1 AND
+        length(terminal_reason_code) <= 96 AND
+        terminal_reason_code NOT GLOB '*[^A-Z0-9_]*'
+      )
+    ),
   CHECK(
     (external_retry_key IS NULL AND external_retry_expires_at IS NULL) OR
     (external_retry_key IS NOT NULL AND external_retry_expires_at IS NOT NULL)
@@ -374,7 +448,57 @@ FROM inbox_v2_legacy;
   Object.freeze({
     version: 6,
     apply(db) {
+      db.exec(OUTBOX_V6_SCHEMA_SQL);
+    },
+  }),
+  Object.freeze({
+    version: 7,
+    apply(db) {
+      db.exec('ALTER TABLE outbox RENAME TO outbox_v6_legacy;');
       db.exec(OUTBOX_SCHEMA_SQL);
+      db.exec(`
+INSERT INTO outbox (
+  command_id,
+  client_request_id,
+  payload_hash,
+  platform,
+  account_id,
+  endpoint_operation,
+  recipient,
+  logical_reply_target,
+  message_type,
+  body,
+  status,
+  attempt_count,
+  next_attempt_at,
+  external_retry_key,
+  external_retry_expires_at,
+  created_at,
+  updated_at,
+  terminal_reason_code
+)
+SELECT
+  command_id,
+  client_request_id,
+  payload_hash,
+  platform,
+  account_id,
+  endpoint_operation,
+  recipient,
+  logical_reply_target,
+  message_type,
+  body,
+  status,
+  attempt_count,
+  next_attempt_at,
+  external_retry_key,
+  external_retry_expires_at,
+  created_at,
+  updated_at,
+  NULL
+FROM outbox_v6_legacy;
+`);
+      db.exec('DROP TABLE outbox_v6_legacy;');
     },
   }),
 ]);
@@ -597,7 +721,14 @@ function getDataVersion(db) {
  * @param {number} [version=SQLITE_STATE_SCHEMA_VERSION]
  */
 function verifyCanonicalDomainSchemaShape(db, version = SQLITE_STATE_SCHEMA_VERSION) {
-  if (version !== 2 && version !== 3 && version !== 4 && version !== 5 && version !== 6) {
+  if (
+    version !== 2 &&
+    version !== 3 &&
+    version !== 4 &&
+    version !== 5 &&
+    version !== 6 &&
+    version !== 7
+  ) {
     throw new Error(`Unsupported schema version for domain shape verification: ${version} (fail-closed)`);
   }
 
@@ -1024,17 +1155,18 @@ function verifyCanonicalDomainSchemaShape(db, version = SQLITE_STATE_SCHEMA_VERS
       }
     }
 
-    // 5. Verify outbox for v6
-    if (version === 6) {
+    // 5. Verify outbox for v6 and v7
+    if (version === 6 || version === 7) {
       const obList = db.prepare("PRAGMA table_list('outbox');").all();
       const obEntry = obList ? obList.find((e) => e.name === 'outbox') : null;
       if (!obEntry || obEntry.type !== 'table' || Number(obEntry.strict) !== 1) {
         throw new Error('outbox must exist as a STRICT table (fail-closed)');
       }
       const obCols = db.prepare("PRAGMA table_info('outbox');").all();
-      if (!obCols || obCols.length !== 17) {
+      const expectedColCount = version === 6 ? 17 : 18;
+      if (!obCols || obCols.length !== expectedColCount) {
         throw new Error(
-          `outbox must have exactly 17 columns, found ${obCols ? obCols.length : 0} (fail-closed)`
+          `outbox must have exactly ${expectedColCount} columns, found ${obCols ? obCols.length : 0} (fail-closed)`
         );
       }
       const obExpected = {
@@ -1056,6 +1188,9 @@ function verifyCanonicalDomainSchemaShape(db, version = SQLITE_STATE_SCHEMA_VERS
         created_at: { type: 'INTEGER', notnull: 1, pk: 0 },
         updated_at: { type: 'INTEGER', notnull: 1, pk: 0 },
       };
+      if (version === 7) {
+        obExpected.terminal_reason_code = { type: 'TEXT', notnull: 0, pk: 0 };
+      }
       for (const col of obCols) {
         const exp = obExpected[col.name];
         if (!exp) {
@@ -1099,7 +1234,9 @@ function verifyCanonicalDomainSchemaShape(db, version = SQLITE_STATE_SCHEMA_VERS
         throw new Error('outbox table definition not found in sqlite_schema (fail-closed)');
       }
       const normOb = normalizeCanonicalSchemaSql(obSqlRow.sql);
-      const expOb = normalizeCanonicalSchemaSql(OUTBOX_SCHEMA_SQL);
+      const expOb = normalizeCanonicalSchemaSql(
+        version === 6 ? OUTBOX_V6_SCHEMA_SQL : OUTBOX_SCHEMA_SQL
+      );
       if (!normOb.includes('CHECK ( LENGTH ( PAYLOAD_HASH ) = 64 )')) {
         throw new Error('outbox missing payload_hash length 64 CHECK constraint (fail-closed)');
       }
@@ -1111,6 +1248,11 @@ function verifyCanonicalDomainSchemaShape(db, version = SQLITE_STATE_SCHEMA_VERS
       }
       if (!normOb.includes('CHECK ( ( EXTERNAL_RETRY_KEY IS NULL AND EXTERNAL_RETRY_EXPIRES_AT IS NULL ) OR ( EXTERNAL_RETRY_KEY IS NOT NULL AND EXTERNAL_RETRY_EXPIRES_AT IS NOT NULL ) )')) {
         throw new Error('outbox missing external_retry pair CHECK constraint (fail-closed)');
+      }
+      if (version === 7) {
+        if (!normOb.includes("CHECK ( TERMINAL_REASON_CODE IS NULL OR ( LENGTH ( TERMINAL_REASON_CODE ) >= 1 AND LENGTH ( TERMINAL_REASON_CODE ) <= 96 AND TERMINAL_REASON_CODE NOT GLOB '*[^A-Z0-9_]*' ) )")) {
+          throw new Error('outbox missing terminal_reason_code CHECK constraint (fail-closed)');
+        }
       }
       if (normOb !== expOb) {
         throw new Error('outbox schema definition does not match canonical DDL contract (fail-closed)');
@@ -1534,6 +1676,34 @@ function validatePayloadHash(val) {
     throw new Error('payloadHash must be 64 lowercase hex characters (fail-closed)');
   }
   return trimmed;
+}
+
+const FIXED_TERMINAL_REASONS = Object.freeze(new Set([
+  'TELEGRAM_RETRY_AFTER_INVALID',
+  'TELEGRAM_DELIVERY_WINDOW_EXCEEDED',
+  'OUTBOUND_ACCOUNT_SWITCH_DISCARDED',
+  'TELEGRAM_REPLY_TARGET_INVALID',
+  'TELEGRAM_SECRET_UNAVAILABLE',
+  'INVALID_TELEGRAM_TOKEN_SYNTAX',
+  'LINE_REPLY_RETRY_KEY_FORBIDDEN',
+]));
+
+const BOUNDED_CLIENT_ERROR_REGEX = /^(?:TELEGRAM_CLIENT_ERROR|LINE_CLIENT_ERROR|CLIENT_ERROR)_[4][0-9]{2}$/;
+const TERMINAL_REASON_SYNTAX_REGEX = /^[A-Z0-9_]{1,96}$/;
+
+function isValidTerminalReasonCode(code) {
+  if (typeof code !== 'string') return false;
+  if (!TERMINAL_REASON_SYNTAX_REGEX.test(code)) return false;
+  if (FIXED_TERMINAL_REASONS.has(code)) return true;
+  if (BOUNDED_CLIENT_ERROR_REGEX.test(code)) return true;
+  return false;
+}
+
+function validateTerminalReasonCode(code) {
+  if (!isValidTerminalReasonCode(code)) {
+    throw new Error(`Invalid terminal_reason_code: '${code}' (fail-closed)`);
+  }
+  return code;
 }
 
 class SqliteStateRepository {
@@ -3219,8 +3389,9 @@ class SqliteStateRepository {
           external_retry_key,
           external_retry_expires_at,
           created_at,
-          updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'QUEUED', 0, NULL, ?, ?, ?, ?);
+          updated_at,
+          terminal_reason_code
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'QUEUED', 0, NULL, ?, ?, ?, ?, NULL);
       `);
 
       insertOutbox.run(
@@ -3309,6 +3480,41 @@ class SqliteStateRepository {
   }
 
   /**
+   * Reads bounded summaries of FAILED_TERMINAL outbox commands (TG-MVP-13 §21).
+   * Ordered by updated_at DESC, command_id ASC.
+   * Strictly excludes message body, text, secret, token, HMAC, or raw payloads.
+   *
+   * @param {number} [limit=50]
+   * @returns {{ count: number, summaries: Array<{ command_id: string, platform: string, account_id: string, recipient: string, created_at: number, updated_at: number, terminal_reason_code: string|null }> }}
+   */
+  getFailedTerminalSummaries(limit = 50) {
+    if (!this.#isOpen || !this.#db) {
+      throw new Error('Repository is closed (fail-closed)');
+    }
+    const safeLimit = Number.isSafeInteger(limit) && limit > 0 ? limit : 50;
+
+    const countRow = this.#db
+      .prepare("SELECT COUNT(*) AS total FROM outbox WHERE status = 'FAILED_TERMINAL';")
+      .get();
+    const count = countRow ? Number(countRow.total) : 0;
+
+    const rows = this.#db
+      .prepare(`
+        SELECT command_id, platform, account_id, recipient, created_at, updated_at, terminal_reason_code
+        FROM outbox
+        WHERE status = 'FAILED_TERMINAL'
+        ORDER BY updated_at DESC, command_id ASC
+        LIMIT ?;
+      `)
+      .all(safeLimit);
+
+    return {
+      count,
+      summaries: rows || [],
+    };
+  }
+
+  /**
    * Retrieves single outbox command by command_id.
    *
    * @param {string} commandId
@@ -3353,6 +3559,19 @@ class SqliteStateRepository {
     }
     this.#db.exec('BEGIN IMMEDIATE;');
     try {
+      // Defense 2: Atomic pre-claim defense: expire stale Telegram QUEUED rows (D-R3-C1 / §20)
+      const expireStmt = this.#db.prepare(`
+        UPDATE outbox
+        SET status = 'FAILED_TERMINAL',
+            terminal_reason_code = 'TELEGRAM_DELIVERY_WINDOW_EXCEEDED',
+            next_attempt_at = NULL,
+            updated_at = ?
+        WHERE lower(platform) = 'telegram'
+          AND status = 'QUEUED'
+          AND ? > created_at + 86400;
+      `);
+      expireStmt.run(nowSec, nowSec);
+
       const selectStmt = this.#db.prepare(`
         SELECT * FROM outbox
         WHERE status = 'QUEUED' AND (next_attempt_at IS NULL OR next_attempt_at <= ?)
@@ -3411,16 +3630,28 @@ class SqliteStateRepository {
     const nextAttemptAt = updateData.nextAttemptAt !== undefined ? updateData.nextAttemptAt : null;
     const nowSec = updateData.nowSec !== undefined ? updateData.nowSec : Math.floor(Date.now() / 1000);
 
+    let terminalReasonCode = null;
+    if (status === 'FAILED_TERMINAL') {
+      terminalReasonCode = validateTerminalReasonCode(updateData.terminalReasonCode);
+    } else {
+      if (updateData.terminalReasonCode !== undefined && updateData.terminalReasonCode !== null) {
+        throw new Error(
+          `terminalReasonCode must be null for non-terminal status '${status}' (fail-closed)`
+        );
+      }
+    }
+
     this.#db.exec('BEGIN IMMEDIATE;');
     try {
       const updateStmt = this.#db.prepare(`
         UPDATE outbox
         SET status = ?,
             next_attempt_at = ?,
+            terminal_reason_code = ?,
             updated_at = ?
         WHERE command_id = ?;
       `);
-      updateStmt.run(status, nextAttemptAt, nowSec, cId);
+      updateStmt.run(status, nextAttemptAt, terminalReasonCode, nowSec, cId);
       this.#db.exec('COMMIT;');
     } catch (err) {
       try {
@@ -3519,8 +3750,12 @@ module.exports = {
   INGEST_CURSOR_V3_SCHEMA_SQL,
   INBOUND_EVENT_SCHEMA_SQL,
   OUTBOX_SCHEMA_SQL,
+  OUTBOX_V6_SCHEMA_SQL,
   computeCanonicalPayloadHash,
   normalizeCanonicalSchemaSql,
   validatePlatformEventId,
   compareCanonicalDecimals,
+  validateTerminalReasonCode,
+  isValidTerminalReasonCode,
+  FIXED_TERMINAL_REASONS,
 };

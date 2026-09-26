@@ -48,13 +48,16 @@ T6 階段正式採用 `busy_timeout = 5000`（5000ms），其基礎為 T1 Window
 ## 6. 資料庫綱要遷移與生命週期排序 (Schema Migration & Lifecycle Ordering)
 
 - 資料庫綱要必須版本化（Versioned Schema，如 `schema_version` 表格）。
-- 綱要變更僅允許向前遷移（Forward-only migrations）；TG-MVP-12 綱要版本為 **v6**（引入 `outbox` 表格支援可靠出站指令佇列與能力感知安全重試；v5 引入 `updated_at_ms` 支援跨週重置）。
+- 綱要變更僅允許向前遷移（Forward-only migrations）；TG-MVP-13 綱要版本為 **v7**（引入 `terminal_reason_code` 欄位支援終態失敗原因持久化查詢；v6 引入 `outbox` 表格支援可靠出站佇列；v5 引入 `updated_at_ms` 支援跨週重置）。
 - 執行任何綱要遷移前，必須具備經驗證之備份。
-- **程序關閉順序契約 (Shutdown Ordering Contract — M2)**：
+- **程序關閉順序契約 (Shutdown Ordering Contract — M2 / TG-MVP-13)**：
   1. 優先呼叫 `TelegramInboundAdapter.stop()` 中止長輪詢與重試定時器。
-  2. 確保背景 fetch 與重試定時器完全靜止（quiesced）。
-  3. 始得呼叫 `BackupRuntimeOwner.stop()` 或關閉底層 SQLite 儲存庫（`repo.close()`）。
-  4. Telegram 配接器嚴禁自行關閉儲存庫（Adapter must not close repository）。
+  2. 停止 Local API 伺服器接受新連線並關閉。
+  3. 停止並靜止 `OutboxWorker`（quiesced）。
+  4. 停止 `TelegramOutboundAdapter`，中止進行中請求並歸零 Token Buffer。
+  5. 歸零 Local API HMAC 機密緩衝區。
+  6. 始得呼叫 `BackupRuntimeOwner.stop()` 或關閉底層 SQLite 儲存庫（`repo.close()`）。
+  7. Telegram 配接器嚴禁自行關閉儲存庫（Adapter must not close repository）。
 
 ## 7. 備份機制與衛生治理 (Backup & Hygiene — TG-MVP-09 / TG-MVP-09A)
 
@@ -167,11 +170,25 @@ T6 階段正式採用 `busy_timeout = 5000`（5000ms），其基礎為 T1 Window
 
 ## 15. 耐久 SQLite 出站佇列與能力感知安全重試 (Durable Outbox & Capability-Aware Safe Retry — TG-MVP-12)
 
-- **資料表結構與不變式**：`outbox` 為 STRICT 資料表，包含 17 個標準欄位：`command_id`（PK）、`client_request_id`（UNIQUE）、`payload_hash`（64 字元 hex）、`platform`、`account_id`、`endpoint_operation`、`recipient`、`logical_reply_target`、`message_type`、`body`、`status`（QUEUED, IN_FLIGHT, ACCEPTED_BY_PLATFORM, UNCERTAIN, FAILED_TERMINAL）、`attempt_count`（INTEGER NOT NULL DEFAULT 0）、`next_attempt_at`（INTEGER）、`external_retry_key`（TEXT）、`external_retry_expires_at`（INTEGER）、`created_at`（INTEGER NOT NULL）、`updated_at`（INTEGER NOT NULL）；並具備 `external_retry` 鍵與有效期限成對存在之 CHECK 約束。
+- **資料表結構與不變式**：`outbox` 為 STRICT 資料表，包含 18 個標準欄位（v7 新增 `terminal_reason_code`）：`command_id`（PK）、`client_request_id`（UNIQUE）、`payload_hash`（64 字元 hex）、`platform`、`account_id`、`endpoint_operation`、`recipient`、`logical_reply_target`、`message_type`、`body`、`status`（QUEUED, IN_FLIGHT, ACCEPTED_BY_PLATFORM, UNCERTAIN, FAILED_TERMINAL）、`attempt_count`（INTEGER NOT NULL DEFAULT 0）、`next_attempt_at`（INTEGER）、`external_retry_key`（TEXT）、`external_retry_expires_at`（INTEGER）、`created_at`（INTEGER NOT NULL）、`updated_at`（INTEGER NOT NULL）、`terminal_reason_code`（TEXT）；並具備 `external_retry` 鍵與有效期限成對存在之 CHECK 約束。
 - **原子授權出站與回覆推進 (Atomic Authorized Reply)**：`POST /v1/reply` 在同一 SQLite 交易內完成回覆授權驗證、寫入 `outbox`（QUEUED）並將 `inbox` 標記為 `replied`。
 - **冪等重放保證 (Idempotent Replay)**：相同 `client_request_id` 與相同 `payload_hash` 重複呼叫為冪等重放（`idempotent_replay: true`），回傳既有 `command_id` 與當前狀態，零重複突變；相同 `client_request_id` 但負載不同時回傳 409 `IDEMPOTENCY_CONFLICT`。
 - **平台與受眾權威驗證 (Platform & Recipient Authority — ADR-0025 §12)**：出站平台、帳號與受眾規格由 Gateway 端權威推導與驗證，不信任客戶端自選；目前僅開放已設定之 Telegram 帳號與合規 `tg:<chat_id>:<msg_id>` 回覆對象；缺失或不符回傳 501 `OUTBOUND_TARGET_NOT_READY`。
 - **能力感知安全重試策略 (Capability-Aware Safe Retry Policy — ADR-0025 R2)**：出站重試決策為純決定性數學函式，嚴格區分傳輸階段（`NOT_SENT` vs `MAY_HAVE_BEEN_SENT`）。Telegram 缺乏客戶端冪等鍵，`MAY_HAVE_BEEN_SENT` 逾時或不明結果轉為 `UNCERTAIN`，嚴禁盲目重送；LINE 具備官方合法 UUID 且未過期之冪等鍵時允許安全重試。
 - **進程崩潰與重啟復原 (Crash Recovery & Non-Idempotent Invariant)**：進程啟動時 `recoverInFlightCommands()` 僅將具備有效未過期官方 UUID 冪等金鑰之指令恢復為 `QUEUED`；Telegram 或無有效冪等鍵之 `IN_FLIGHT` 指令一律轉換為 `UNCERTAIN`，嚴禁無條件復原為 `QUEUED`。
 - **狀態枚舉與終態語意**：`ACCEPTED_BY_PLATFORM` 嚴格代表平台收件成功，絕不宣稱為 `DELIVERED_TO_RECIPIENT`；`UNCERTAIN` 代表狀態不明，不自動重試，暴露於 `/v1/status` 與 `/v1/takeover` 供監控與人工處置。
+
+## 16. Telegram 出站文字發送適配器與生產接線 (Telegram Outbound Adapter & Production Wiring — TG-MVP-13)
+
+- **Telegram 出站文字適配器**：`TelegramOutboundAdapter` 作為 `OutboxWorker` 之生產 `deliveryExecutor`，負責發送文字訊息至 Telegram Bot API（`https://api.telegram.org`）。
+- **嚴格原生回覆 (Strict Native Reply — D-R3-REPLY-A)**：`logical_reply_target`（`^tg:(-?\d+):(\d+)$`）轉換為 `reply_parameters: { message_id: <parsed_id> }`。禁止 `allow_sending_without_reply`，禁止 `parse_mode`，禁止回退為無回覆發送。
+- **429 retry_after 安全政策 (D-R3-A+)**：`retry_after` 必須為安全整數（1..2147483647）。無效/負數/小數/NaN/超出範圍一律判定為 `FAILED_TERMINAL`（`TELEGRAM_RETRY_AFTER_INVALID`），絕不 clamp，絕不盲目重試。
+- **全域 24 小時 QUEUED 交付窗口 (D-R3-C1)**：`TELEGRAM_DELIVERY_WINDOW_SEC = 86400`。所有 Telegram QUEUED 指令在 `nowSec > created_at + 86400` 時過期為 `FAILED_TERMINAL`（`TELEGRAM_DELIVERY_WINDOW_EXCEEDED`）。原子 pre-claim 交易防禦在領取下一筆指令前先過期逾時列。
+- **預先請求終態錯誤分類**：`ACCOUNT_MISMATCH_PRE_REQUEST` -> `OUTBOUND_ACCOUNT_SWITCH_DISCARDED`（0 次網路呼叫）；`TELEGRAM_SECRET_UNAVAILABLE` 與 `INVALID_TELEGRAM_TOKEN_SYNTAX` 為確定性終態錯誤，零網路發送。
+- **傳輸階段與 5xx 不確定性**：僅預請求失敗或 `ENOTFOUND`、`EAI_AGAIN`、`ECONNREFUSED` 判定為 `NOT_SENT`。請求發出後其他例外與 HTTP 5xx 一律判定為 `UNCERTAIN`，嚴禁盲目重試。
+- **生命週期排序契約 (Production Wiring Ordering)**：
+  啟動：(1) Repository / BackupRuntimeOwner -> (2) TelegramOutboundAdapter -> (3) OutboxWorker -> (4) Local API Server -> (5) TelegramInboundAdapter 最後啟動。
+  關閉：TelegramInboundAdapter -> Local API Server -> OutboxWorker (quiesced) -> TelegramOutboundAdapter (abort & zeroize) -> Local API HMAC zeroize -> BackupRuntimeOwner / Repository close。
+- **終態失敗可查詢性 (Bounded Queryability)**：`/v1/status` 與 `/v1/takeover` 回傳 `failed_terminal_count` 與 `failed_terminal_commands`（最多 50 筆，按 `updated_at DESC, command_id ASC` 排序），嚴禁暴露訊息本體（body/text）、金鑰或機敏資訊。
+
 

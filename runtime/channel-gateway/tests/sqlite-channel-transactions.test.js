@@ -702,14 +702,14 @@ test('SqliteChannelTransactions - 15. closed repository rejects all operations f
 });
 
 // 16. Architectural invariants and boundaries (CANARY 17-24)
-test('SqliteChannelTransactions - 16. architectural invariants: schema version 6, event-ingest boundary, outbox present, no account-switch', () => {
-  assert.strictEqual(SQLITE_STATE_SCHEMA_VERSION, 6, 'CANARY 17: schema version must be 6');
+test('SqliteChannelTransactions - 16. architectural invariants: schema version 7, event-ingest boundary, outbox present, no account-switch', () => {
+  assert.strictEqual(SQLITE_STATE_SCHEMA_VERSION, 7, 'CANARY 17: schema version must be 7');
 
   const harness = createTempHarness();
   try {
     const repo = new SqliteStateRepository(harness.stateRoot);
     try {
-      assert.strictEqual(repo.schemaVersion, 6, 'CANARY 18: applied schema version is 6');
+      assert.strictEqual(repo.schemaVersion, 7, 'CANARY 18: applied schema version is 7');
 
       // CANARY 19: Authorized ingress in T8B / TG-MVP-10; arbitrary other ingress remains absent
       assert.strictEqual(typeof repo.ingestMessage, 'function');
@@ -738,9 +738,9 @@ test('SqliteChannelTransactions - 16. architectural invariants: schema version 6
         assert.strictEqual(tNames.includes('inbound_event'), true);
         assert.strictEqual(tNames.includes('outbox'), true);
 
-        // CANARY 10: MIGRATIONS remain [1, 2, 3, 4, 5, 6]
+        // CANARY 10: MIGRATIONS remain [1, 2, 3, 4, 5, 6, 7]
         const mRows = rawDb.prepare('SELECT version FROM schema_migrations ORDER BY version ASC;').all();
-        assert.deepStrictEqual(mRows.map((r) => r.version), [1, 2, 3, 4, 5, 6]);
+        assert.deepStrictEqual(mRows.map((r) => r.version), [1, 2, 3, 4, 5, 6, 7]);
       } finally {
         rawDb.close();
       }
