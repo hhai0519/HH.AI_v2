@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "TG-MVP-13-R2",
-  "base_oid": "202715167df310d9daed9f420d8a346bdcc5b6ff",
+  "task_id": "TG-MVP-13-R3",
+  "base_oid": "1df494a38c97fa2d5d8376ccd57fb112b16bc41f",
   "plan": {
     "allowed_paths": [
       "docs/AUDIT-LOG.md",
@@ -11,8 +11,9 @@
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
       "docs/refactor-backlog.md",
-      "runtime/channel-gateway/adapters/telegram-outbound-adapter.js",
-      "runtime/channel-gateway/tests/telegram-outbound-adapter.test.js"
+      "runtime/channel-gateway/AGENTS.md",
+      "runtime/channel-gateway/core/gateway-runtime-owner.js",
+      "runtime/channel-gateway/tests/gateway-runtime-owner.test.js"
     ],
     "required_paths": [
       "docs/AUDIT-LOG.md",
@@ -21,11 +22,12 @@
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
       "docs/refactor-backlog.md",
-      "runtime/channel-gateway/adapters/telegram-outbound-adapter.js",
-      "runtime/channel-gateway/tests/telegram-outbound-adapter.test.js"
+      "runtime/channel-gateway/AGENTS.md",
+      "runtime/channel-gateway/core/gateway-runtime-owner.js",
+      "runtime/channel-gateway/tests/gateway-runtime-owner.test.js"
     ],
     "max_plan_revisions": 3,
-    "revision_count": 0,
+    "revision_count": 3,
     "plan_origin": "EXTERNAL_MACRO_PROMPT"
   },
   "actual": {
@@ -36,8 +38,9 @@
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
       "docs/refactor-backlog.md",
-      "runtime/channel-gateway/adapters/telegram-outbound-adapter.js",
-      "runtime/channel-gateway/tests/telegram-outbound-adapter.test.js"
+      "runtime/channel-gateway/AGENTS.md",
+      "runtime/channel-gateway/core/gateway-runtime-owner.js",
+      "runtime/channel-gateway/tests/gateway-runtime-owner.test.js"
     ]
   },
   "evidence": [
@@ -53,12 +56,12 @@
       "description": "Deterministic Git diff replay against declared plan allowed/required scope"
     },
     {
-      "id": "M2_DISCOVERY_RAW",
+      "id": "E24_DISCOVERY_RAW",
       "origin": "MACHINE_CAPTURED_RAW",
-      "verification_status": "NOT_ESTABLISHED",
+      "verification_status": "VERIFIED",
       "source_kind": "EXTERNAL_ARTIFACT",
-      "sha256": "4cd2851da921aab9d371b281f51947e2645b069d38ee56655e37a79c2ded3b4b",
-      "description": "generic B-109 M2 artifact; does not establish TG-MVP-13-R2 task-specific discovery provenance."
+      "sha256": "27822796964ef42f47f903642ab6cc09f6e62e3535c20073c740f8bc2c311339",
+      "description": "TG-MVP-13 task-specific raw E24 discovery artifact; independent exact-base Q01-Q13 replay 13/13 PASS"
     }
   ],
   "report_claims": [
@@ -70,10 +73,10 @@
       ]
     },
     {
-      "claim_id": "CLAIM_DISCOVERY_PROVENANCE_NOT_ESTABLISHED",
-      "claim_text": "Task-specific discovery provenance is NOT_ESTABLISHED by the generic M2 artifact.",
+      "claim_id": "CLAIM_E24_PROVENANCE_VERIFIED",
+      "claim_text": "Task-specific raw E24 discovery artifact verified against expected SHA256 closure.",
       "evidence_ids": [
-        "M2_DISCOVERY_RAW"
+        "E24_DISCOVERY_RAW"
       ]
     }
   ]

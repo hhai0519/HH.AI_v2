@@ -247,20 +247,31 @@ class GatewayRuntimeOwner {
       this.#secretBuf = null;
     }
 
-    // 4. Rollback OutboxWorker if started
+    // 4. Initiate OutboxWorker stop if started (halts future scheduling, do not await full quiescence yet)
+    let workerStopPromise = null;
     if (this.#outboxWorker) {
       try {
-        await this.#outboxWorker.stop();
+        const p = this.#outboxWorker.stop();
+        if (p && typeof p.then === 'function') {
+          workerStopPromise = p.catch(() => {});
+        }
       } catch (_) {}
       this.#outboxWorker = null;
     }
 
-    // 5. Rollback Telegram outbound adapter if started
+    // 5. Rollback Telegram outbound adapter if started (aborts in-flight deliveries, quiesces active delivery)
     if (this.#telegramOutboundAdapter) {
       try {
         await this.#telegramOutboundAdapter.stop();
       } catch (_) {}
       this.#telegramOutboundAdapter = null;
+    }
+
+    // 5b. Await OutboxWorker full quiescence and state persistence before repository close
+    if (workerStopPromise) {
+      try {
+        await workerStopPromise;
+      } catch (_) {}
     }
 
     // 6. Rollback BackupRuntimeOwner
@@ -466,11 +477,12 @@ class GatewayRuntimeOwner {
    * 1. Set status to STOPPING and close Local API listener to reject new accepts.
    * 2. Await TelegramInboundAdapter.stop() to full quiescence.
    * 3. Drain Local API connections (<= 2000ms) and stop LocalApiServer.
-   * 4. Await OutboxWorker.stop() to full quiescence before outbound stop.
-   * 5. Await TelegramOutboundAdapter.stop() (abort/zeroize) before repository close.
-   * 6. Stop BackupRuntimeOwner (stops scheduler, closes repository).
-   * 7. Best-effort zeroize server HMAC secret buffer.
-   * 8. Remove installed signal handlers.
+   * 4. Initiate OutboxWorker stop (synchronously halts future scheduling).
+   * 5. Await TelegramOutboundAdapter.stop() (aborts in-flight deliveries, quiesces active delivery, zeroizes token).
+   * 6. Await OutboxWorker full quiescence and state persistence.
+   * 7. Stop BackupRuntimeOwner (stops scheduler, closes repository).
+   * 8. Best-effort zeroize server HMAC secret buffer.
+   * 9. Remove installed signal handlers.
    *
    * @returns {Promise<void>}
    */
@@ -519,19 +531,27 @@ class GatewayRuntimeOwner {
         this.#server = null;
       }
 
-      // 4. Await OutboxWorker.stop() to full quiescence before outbound stop
+      // 4. Initiate OutboxWorker stop (synchronously halts future scheduling, do not await full quiescence yet)
+      let workerStopPromise = null;
       if (this.#outboxWorker) {
         try {
-          await this.#outboxWorker.stop();
+          const p = this.#outboxWorker.stop();
+          if (p && typeof p.then === 'function') {
+            workerStopPromise = p.catch((err) => {
+              if (this.#logger && typeof this.#logger.error === 'function') {
+                this.#logger.error('[GatewayRuntimeOwner] Error stopping OutboxWorker');
+              }
+            });
+          }
         } catch (err) {
           if (this.#logger && typeof this.#logger.error === 'function') {
-            this.#logger.error('[GatewayRuntimeOwner] Error stopping OutboxWorker');
+            this.#logger.error('[GatewayRuntimeOwner] Error initiating OutboxWorker stop');
           }
         }
         this.#outboxWorker = null;
       }
 
-      // 5. Await TelegramOutboundAdapter.stop() before repository close
+      // 5. Await TelegramOutboundAdapter.stop() (aborts in-flight deliveries, quiesces active delivery, zeroizes token)
       if (this.#telegramOutboundAdapter) {
         try {
           await this.#telegramOutboundAdapter.stop();
@@ -541,6 +561,13 @@ class GatewayRuntimeOwner {
           }
         }
         this.#telegramOutboundAdapter = null;
+      }
+
+      // 5b. Await OutboxWorker full quiescence and state persistence before repository close
+      if (workerStopPromise) {
+        try {
+          await workerStopPromise;
+        } catch (_) {}
       }
 
       // 6. Stop BackupRuntimeOwner (stops scheduler then closes repo)

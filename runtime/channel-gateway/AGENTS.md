@@ -50,14 +50,15 @@ T6 階段正式採用 `busy_timeout = 5000`（5000ms），其基礎為 T1 Window
 - 資料庫綱要必須版本化（Versioned Schema，如 `schema_version` 表格）。
 - 綱要變更僅允許向前遷移（Forward-only migrations）；TG-MVP-13 綱要版本為 **v7**（引入 `terminal_reason_code` 欄位支援終態失敗原因持久化查詢；v6 引入 `outbox` 表格支援可靠出站佇列；v5 引入 `updated_at_ms` 支援跨週重置）。
 - 執行任何綱要遷移前，必須具備經驗證之備份。
-- **程序關閉順序契約 (Shutdown Ordering Contract — M2 / TG-MVP-13)**：
+- **程序關閉順序契約 (Shutdown Ordering Contract — M2 / TG-MVP-13 R3)**：
   1. 優先呼叫 `TelegramInboundAdapter.stop()` 中止長輪詢與重試定時器。
   2. 停止 Local API 伺服器接受新連線並關閉。
-  3. 停止並靜止 `OutboxWorker`（quiesced）。
-  4. 停止 `TelegramOutboundAdapter`，中止進行中請求並歸零 Token Buffer。
-  5. 歸零 Local API HMAC 機密緩衝區。
-  6. 始得呼叫 `BackupRuntimeOwner.stop()` 或關閉底層 SQLite 儲存庫（`repo.close()`）。
-  7. Telegram 配接器嚴禁自行關閉儲存庫（Adapter must not close repository）。
+  3. 發起 `OutboxWorker.stop()`（停止後續排程，但不立即阻塞等待完全靜止）。
+  4. 發起並等待 `TelegramOutboundAdapter.stop()` 完成（中止進行中交付請求並靜止；active delivery 結算前不得歸零 Telegram Token Buffer）。
+  5. 待出站配接器交付結算後，始等待 `OutboxWorker` 完全靜止與狀態持久化（quiesced & persisted）。
+  6. 歸零 Local API HMAC 機密緩衝區。
+  7. 始得呼叫 `BackupRuntimeOwner.stop()` 或關閉底層 SQLite 儲存庫（`repo.close()`）。
+  8. Telegram 配接器嚴禁自行關閉儲存庫（Adapter must not close repository）。
 
 ## 7. 備份機制與衛生治理 (Backup & Hygiene — TG-MVP-09 / TG-MVP-09A)
 
@@ -166,7 +167,7 @@ T6 階段正式採用 `busy_timeout = 5000`（5000ms），其基礎為 T1 Window
   - 啟動時檢驗 `config.accounts.telegram`，僅當啟用帳號數量恰好為 1 時始得建構 `AccountRegistry('telegram')`、登錄帳號並 `setActive()`。
   - 0 個或 2 個以上啟用帳號立即 Fail-Closed，stderr 僅輸出 `GATEWAY_CONFIG_ERROR`；嚴禁依陣列順序或隨機選取；帳號數量異常時嚴禁啟動 Telegram 適配器、綁定 Local API 連線埠或存取金鑰。
 - **同步輪詢容量上限**：`POST /v1/poll` 每批最多 50 筆訊息；若既有 claimed 訊息加上請求量超過 50 筆，僅能領取至滿額（`Math.min(limit, 50 - claimedCount)`），杜絕訊息堆積與未回覆洩漏。
-- **生命週期關閉契約**：由 `GatewayRuntimeOwner` 管理，關閉時停止 Local API 伺服器接受新連線、停止 Telegram 配接器、停止 Local API 伺服器、停止 OutboxWorker、停止備份排程器、最後安全關閉 SQLite 儲存庫。
+- **生命週期關閉契約**：由 `GatewayRuntimeOwner` 管理，關閉時停止 Local API 伺服器接受新連線、停止 Telegram 入站配接器、停止 Local API 伺服器、發起 OutboxWorker 停止、等待 Telegram 出站配接器中止交付並靜止（交付結算後始歸零 Token）、等待 OutboxWorker 完全靜止與狀態持久化、停止備份排程器、最後安全關閉 SQLite 儲存庫。
 
 ## 15. 耐久 SQLite 出站佇列與能力感知安全重試 (Durable Outbox & Capability-Aware Safe Retry — TG-MVP-12)
 
@@ -188,7 +189,7 @@ T6 階段正式採用 `busy_timeout = 5000`（5000ms），其基礎為 T1 Window
 - **傳輸階段與 5xx 不確定性**：僅預請求失敗或 `ENOTFOUND`、`EAI_AGAIN`、`ECONNREFUSED` 判定為 `NOT_SENT`。請求發出後其他例外與 HTTP 5xx 一律判定為 `UNCERTAIN`，嚴禁盲目重試。
 - **生命週期排序契約 (Production Wiring Ordering)**：
   啟動：(1) Repository / BackupRuntimeOwner -> (2) TelegramOutboundAdapter -> (3) OutboxWorker -> (4) Local API Server -> (5) TelegramInboundAdapter 最後啟動。
-  關閉：TelegramInboundAdapter -> Local API Server -> OutboxWorker (quiesced) -> TelegramOutboundAdapter (abort & zeroize) -> Local API HMAC zeroize -> BackupRuntimeOwner / Repository close。
+  關閉：TelegramInboundAdapter -> Local API Server -> OutboxWorker (initiate stop) -> TelegramOutboundAdapter (abort & wait settlement & zeroize token) -> OutboxWorker (await full quiescence & persistence) -> Local API HMAC zeroize -> BackupRuntimeOwner / Repository close。
 - **終態失敗可查詢性 (Bounded Queryability)**：`/v1/status` 與 `/v1/takeover` 回傳 `failed_terminal_count` 與 `failed_terminal_commands`（最多 50 筆，按 `updated_at DESC, command_id ASC` 排序），嚴禁暴露訊息本體（body/text）、金鑰或機敏資訊。
 
 

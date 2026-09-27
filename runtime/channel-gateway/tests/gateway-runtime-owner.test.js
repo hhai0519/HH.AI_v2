@@ -136,7 +136,8 @@ test('GatewayRuntimeOwner normal startup and ordered shutdown sequence', async (
       lifecycleEvents.push('outbound.start');
     },
     stop: async () => {
-      lifecycleEvents.push('outbound.stop');
+      lifecycleEvents.push('outbound.stop:initiate');
+      lifecycleEvents.push('outbound.stop:quiesce');
     },
   };
 
@@ -160,7 +161,9 @@ test('GatewayRuntimeOwner normal startup and ordered shutdown sequence', async (
       lifecycleEvents.push('worker.start');
     },
     stop: async () => {
-      lifecycleEvents.push('worker.stop');
+      lifecycleEvents.push('worker.stop:initiate');
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      lifecycleEvents.push('worker.stop:quiesce');
     },
   };
 
@@ -208,28 +211,39 @@ test('GatewayRuntimeOwner normal startup and ordered shutdown sequence', async (
   assert.strictEqual(owner.status, OWNER_STATUS.STOPPED);
   assert.strictEqual(owner.isRunning, false);
 
-  // Assert stop order (Mutation T17 requirement & §22/§26):
-  // adapter.stop() and worker.stop() and outbound.stop() MUST happen BEFORE backup.stop() / repo close
-  // worker.stop() MUST happen BEFORE outbound.stop() (quiesce before zeroization)
+  // Assert stop order (TG-MVP-13 R3 §19 canonical J2 semantics):
+  // 1. worker STOP INITIATION before outbound stop initiation
+  // 2. outbound abort/quiescence completes before worker full quiescence
+  // 3. worker full quiescence completes before repository close (backup.stop)
   const adapterStopIdx = lifecycleEvents.indexOf('adapter.stop');
-  const workerStopIdx = lifecycleEvents.indexOf('worker.stop');
-  const outboundStopIdx = lifecycleEvents.indexOf('outbound.stop');
+  const workerStopInitIdx = lifecycleEvents.indexOf('worker.stop:initiate');
+  const outboundStopInitIdx = lifecycleEvents.indexOf('outbound.stop:initiate');
+  const outboundStopDoneIdx = lifecycleEvents.indexOf('outbound.stop:quiesce');
+  const workerStopDoneIdx = lifecycleEvents.indexOf('worker.stop:quiesce');
   const backupStopIdx = lifecycleEvents.indexOf('backup.stop');
+
   assert.ok(adapterStopIdx !== -1, 'adapter.stop must be called');
-  assert.ok(workerStopIdx !== -1, 'worker.stop must be called');
-  assert.ok(outboundStopIdx !== -1, 'outbound.stop must be called');
+  assert.ok(workerStopInitIdx !== -1, 'worker.stop:initiate must be called');
+  assert.ok(outboundStopInitIdx !== -1, 'outbound.stop:initiate must be called');
+  assert.ok(outboundStopDoneIdx !== -1, 'outbound.stop:quiesce must be called');
+  assert.ok(workerStopDoneIdx !== -1, 'worker.stop:quiesce must be called');
   assert.ok(backupStopIdx !== -1, 'backup.stop must be called');
+
   assert.ok(
     adapterStopIdx < backupStopIdx,
     'adapter.stop must complete before backup.stop'
   );
   assert.ok(
-    workerStopIdx < outboundStopIdx,
-    'worker.stop must complete before outbound.stop'
+    workerStopInitIdx < outboundStopInitIdx,
+    'worker STOP INITIATION must happen before outbound stop initiation'
   );
   assert.ok(
-    outboundStopIdx < backupStopIdx,
-    'outbound.stop must complete before backup.stop'
+    outboundStopDoneIdx < workerStopDoneIdx,
+    'outbound abort/quiescence must complete before worker full quiescence'
+  );
+  assert.ok(
+    workerStopDoneIdx < backupStopIdx,
+    'worker full quiescence must complete before repository close'
   );
 
   // Assert secret zeroization
@@ -1129,3 +1143,307 @@ test('production-wiring: Gateway restart path causes Telegram IN_FLIGHT -> UNCER
   }
 });
 
+test('J2-counterexample: normal stop coordinates OutboxWorker and TelegramOutboundAdapter to avoid response.text() deadlock', async () => {
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const os = require('node:os');
+  const { SqliteStateRepository } = require('../core/sqlite-state-repository');
+  const { TelegramOutboundAdapter } = require('../adapters/telegram-outbound-adapter');
+  const { computeCanonicalPayloadHash } = require('../core/outbox-delivery-policy');
+
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hhai-gw-j2-normal-'));
+  const repo = new SqliteStateRepository(dir);
+  let signalAborted = false;
+  let bodyReadStartedResolve;
+  const bodyReadStartedPromise = new Promise((resolve) => {
+    bodyReadStartedResolve = resolve;
+  });
+
+  const customFetch = async (url, options) => {
+    return {
+      status: 200,
+      text: () =>
+        new Promise((resolve, reject) => {
+          bodyReadStartedResolve();
+          if (options.signal && options.signal.aborted) {
+            signalAborted = true;
+            const err = new Error('The operation was aborted');
+            err.name = 'AbortError';
+            return reject(err);
+          }
+          if (options.signal) {
+            options.signal.addEventListener(
+              'abort',
+              () => {
+                signalAborted = true;
+                const err = new Error('The operation was aborted');
+                err.name = 'AbortError';
+                reject(err);
+              },
+              { once: true }
+            );
+          }
+        }),
+    };
+  };
+
+  const reg = {
+    getActive: () => ({ id: 'tg_acc_j2', channel: 'telegram', enabled: true }),
+  };
+  const fakeTokenBuf = Buffer.from('123456:ABC-DEF_ghi_j2_token');
+  const sec = {
+    getSecret: async () => Buffer.from(fakeTokenBuf),
+  };
+
+  const outboundAdapter = new TelegramOutboundAdapter({
+    accountRegistry: reg,
+    secretProvider: sec,
+    fetchFn: customFetch,
+  });
+
+  try {
+    repo.takeoverChannel('tg:chat:10001', 'holder1');
+    const rawDb = new (require('node:sqlite').DatabaseSync)(repo.databasePath);
+    try {
+      rawDb
+        .prepare(
+          `INSERT INTO inbox (channel_id, account_id, platform_msg_id, status, content, claimed_by, claimed_at_token)
+           VALUES ('tg:chat:10001', 'tg_acc_j2', 'tg:10001:1', 'claimed', 'test j2', 'holder1', 1);`
+        )
+        .run();
+    } finally {
+      rawDb.close();
+    }
+
+    const payloadHash = computeCanonicalPayloadHash({
+      platform: 'telegram',
+      account_id: 'tg_acc_j2',
+      endpoint_operation: 'sendMessage',
+      recipient: '10001',
+      logical_reply_target: 'tg:10001:1',
+      message_type: 'text',
+      body: 'J2 normal stop test',
+    });
+
+    const enqueueRes = repo.enqueueAuthorizedReply({
+      clientRequestId: 'req_j2_normal',
+      channelId: 'tg:chat:10001',
+      holderId: 'holder1',
+      fencingToken: 1,
+      messageId: 'tg:10001:1',
+      replyingAccountId: 'tg_acc_j2',
+      text: 'J2 normal stop test',
+      platform: 'telegram',
+      endpointOperation: 'sendMessage',
+      recipient: '10001',
+      logicalReplyTarget: 'tg:10001:1',
+      messageType: 'text',
+      payloadHash,
+    });
+    const cmdId = enqueueRes.commandId;
+
+    const fakeBackup = {
+      repository: repo,
+      start: () => {},
+      stop: () => {},
+    };
+    const fakeServer = { isStopping: false, server: { close: () => {} }, start: async () => {}, stop: async () => {} };
+    const fakeInbound = { start: async () => {}, stop: async () => {} };
+
+    const owner = new GatewayRuntimeOwner({
+      stateRoot: dir,
+      backupRuntimeOwner: fakeBackup,
+      telegramOutboundAdapter: outboundAdapter,
+      localApiServer: fakeServer,
+      telegramAdapter: fakeInbound,
+      secretBuffer: Buffer.alloc(32),
+    });
+
+    await owner.start();
+
+    // Wait until delivery has started and response.text() is stalled pending abort signal
+    await bodyReadStartedPromise;
+
+    // Initiate stop
+    let stopped = false;
+    const stopPromise = owner.stop().then(() => {
+      stopped = true;
+    });
+
+    // Bounded race: check if owner.stop completes within 250ms
+    await new Promise((resolve) => setTimeout(resolve, 250));
+
+    if (!stopped) {
+      // Under old R2 ordering: stopped is false (deadlock)!
+      // Perform §16 test-controlled cleanup: manually call adapter.stop() to abort signal
+      await outboundAdapter.stop();
+      await stopPromise;
+      assert.fail('J2-normal-stop: owner.stop() deadlocked because OutboxWorker.stop() blocked TelegramOutboundAdapter.stop()');
+    }
+
+    await stopPromise;
+    assert.strictEqual(stopped, true);
+    assert.strictEqual(signalAborted, true);
+    assert.strictEqual(owner.status, OWNER_STATUS.STOPPED);
+
+    const cmd = repo.getOutboxCommand(cmdId);
+    assert.strictEqual(cmd.status, 'UNCERTAIN');
+  } finally {
+    repo.close();
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('J2-counterexample: startup rollback coordinates OutboxWorker and TelegramOutboundAdapter to avoid response.text() deadlock', async () => {
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const os = require('node:os');
+  const { SqliteStateRepository } = require('../core/sqlite-state-repository');
+  const { TelegramOutboundAdapter } = require('../adapters/telegram-outbound-adapter');
+  const { computeCanonicalPayloadHash } = require('../core/outbox-delivery-policy');
+
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hhai-gw-j2-rollback-'));
+  const repo = new SqliteStateRepository(dir);
+  let signalAborted = false;
+  let bodyReadStartedResolve;
+  const bodyReadStartedPromise = new Promise((resolve) => {
+    bodyReadStartedResolve = resolve;
+  });
+
+  const customFetch = async (url, options) => {
+    return {
+      status: 200,
+      text: () =>
+        new Promise((resolve, reject) => {
+          bodyReadStartedResolve();
+          if (options.signal && options.signal.aborted) {
+            signalAborted = true;
+            const err = new Error('The operation was aborted');
+            err.name = 'AbortError';
+            return reject(err);
+          }
+          if (options.signal) {
+            options.signal.addEventListener(
+              'abort',
+              () => {
+                signalAborted = true;
+                const err = new Error('The operation was aborted');
+                err.name = 'AbortError';
+                reject(err);
+              },
+              { once: true }
+            );
+          }
+        }),
+    };
+  };
+
+  const reg = {
+    getActive: () => ({ id: 'tg_acc_j2_rb', channel: 'telegram', enabled: true }),
+  };
+  const fakeTokenBuf = Buffer.from('123456:ABC-DEF_ghi_j2_token_rb');
+  const sec = {
+    getSecret: async () => Buffer.from(fakeTokenBuf),
+  };
+
+  const outboundAdapter = new TelegramOutboundAdapter({
+    accountRegistry: reg,
+    secretProvider: sec,
+    fetchFn: customFetch,
+  });
+
+  try {
+    repo.takeoverChannel('tg:chat:10002', 'holder1');
+    const rawDb = new (require('node:sqlite').DatabaseSync)(repo.databasePath);
+    try {
+      rawDb
+        .prepare(
+          `INSERT INTO inbox (channel_id, account_id, platform_msg_id, status, content, claimed_by, claimed_at_token)
+           VALUES ('tg:chat:10002', 'tg_acc_j2_rb', 'tg:10002:1', 'claimed', 'test j2 rb', 'holder1', 1);`
+        )
+        .run();
+    } finally {
+      rawDb.close();
+    }
+
+    const payloadHash = computeCanonicalPayloadHash({
+      platform: 'telegram',
+      account_id: 'tg_acc_j2_rb',
+      endpoint_operation: 'sendMessage',
+      recipient: '10002',
+      logical_reply_target: 'tg:10002:1',
+      message_type: 'text',
+      body: 'J2 rollback test',
+    });
+
+    const enqueueRes = repo.enqueueAuthorizedReply({
+      clientRequestId: 'req_j2_rollback',
+      channelId: 'tg:chat:10002',
+      holderId: 'holder1',
+      fencingToken: 1,
+      messageId: 'tg:10002:1',
+      replyingAccountId: 'tg_acc_j2_rb',
+      text: 'J2 rollback test',
+      platform: 'telegram',
+      endpointOperation: 'sendMessage',
+      recipient: '10002',
+      logicalReplyTarget: 'tg:10002:1',
+      messageType: 'text',
+      payloadHash,
+    });
+    const cmdId = enqueueRes.commandId;
+
+    const fakeBackup = {
+      repository: repo,
+      start: () => {},
+      stop: () => {},
+    };
+    const fakeServer = { isStopping: false, server: { close: () => {} }, start: async () => {}, stop: async () => {} };
+
+    // Injected inbound adapter that fails during startup AFTER delivery is pending on response.text()
+    const failingInboundAdapter = {
+      start: async () => {
+        await bodyReadStartedPromise;
+        throw new Error('Injected inbound adapter startup failure for rollback test');
+      },
+      stop: async () => {},
+    };
+
+    const owner = new GatewayRuntimeOwner({
+      stateRoot: dir,
+      backupRuntimeOwner: fakeBackup,
+      telegramOutboundAdapter: outboundAdapter,
+      localApiServer: fakeServer,
+      telegramAdapter: failingInboundAdapter,
+      secretBuffer: Buffer.alloc(32),
+    });
+
+    let rollbackCompleted = false;
+    const startPromise = owner.start().catch((err) => {
+      rollbackCompleted = true;
+      return err;
+    });
+
+    // Bounded race: check if rollback completes within 250ms
+    await new Promise((resolve) => setTimeout(resolve, 250));
+
+    if (!rollbackCompleted) {
+      // Under old R2 ordering: rollback is stuck waiting for OutboxWorker!
+      // Cleanup: abort outboundAdapter so delivery settles and rollback finishes
+      await outboundAdapter.stop();
+      await startPromise;
+      assert.fail('J2-startup-rollback: rollback deadlocked because OutboxWorker.stop() blocked TelegramOutboundAdapter.stop()');
+    }
+
+    const err = await startPromise;
+    assert.match(err.message, /Injected inbound adapter startup failure/);
+    assert.strictEqual(owner.status, OWNER_STATUS.STOPPED);
+    assert.strictEqual(signalAborted, true);
+
+    const cmd = repo.getOutboxCommand(cmdId);
+    assert.strictEqual(cmd.status, 'UNCERTAIN');
+  } finally {
+    repo.close();
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
