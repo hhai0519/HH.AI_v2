@@ -2825,7 +2825,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 5.1 上一批狀態
 
-上次核對通過的 HEAD：d55b2b18bb7769cfc80bc412230bd18d0df7fdd3
+上次核對通過的 HEAD：09235c6c8e6b43ec04b885824e2e13b8df9d3bc3
 
 - `23af193`（執行者前置檢查 ＋ 回滾程序 ＋ `AUDIT-LOG.md` ＋ 四缺口修正）
   已於 2026-09-02 由審計官核對通過：6 檔異動（含 2 個新檔）、零夾帶、
@@ -3030,6 +3030,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 - `69b4b6c`（B-103 T1 Final Closure & Accepted Checkpoint Advancement）已於 2026-09-21 由 External Macro Auditor 核對通過：candidate Run 35598122185 (attempt 1, event=push, head_branch=batch/t1-closure-260920, head_sha=69b4b6c72e2bf2b91a46107afb2e7e9a2e538de1, status=completed, conclusion=success, verify=success, gateway-windows=success, raw: 24/24 consistency checks PASS, 410 passed, 13 passed, ALL 5 GATES PASSED, gateway-windows: 26 passed)；same-SHA main promotion 完成；post-main exact-SHA Actions Run 35600445055 (attempt 1, event=push, head_branch=main, head_sha=69b4b6c72e2bf2b91a46107afb2e7e9a2e538de1, status=completed, conclusion=success, verify=success, gateway-windows=success, raw: 24/24 consistency checks PASS, 410 passed, 13 passed, ALL 5 GATES PASSED, gateway-windows: 26 passed)；Ruleset 21301111 active with deletion, non_fast_forward, strict required_status_checks (verify, gateway-windows), bypass_actors=[], current_user_can_bypass=never；NEW MATERIAL FINDING = NONE；External Macro Auditor 正式判定 MACRO AUDIT = PASS, ACCEPT STATUS = ACCEPT ALL, T1 FINAL CLOSURE = ACCEPTED / CLOSED, B-103 = ACCEPTED / CLOSED, TG-MVP-01B = ACCEPTED / CLOSED；new accepted checkpoint = `69b4b6c72e2bf2b91a46107afb2e7e9a2e538de1`。
 - `8ea3fc6`（TG-MVP-12 Durable SQLite Outbox + Capability-Aware Safe Retry Final Acceptance & Same-SHA Main Promotion）已於 2026-09-26 由 External Macro Auditor 核對通過：R0 candidate 4968e8d... External Macro HOLD（findings F1–F3）；R1 candidate 8ea3fc6... Actions Run 36214841659 驗證成功（verify=completed/success, gateway-windows=completed/success，Ubuntu 529 passed + 13 passed + ALL 5 GATES PASSED，Windows: 37 passed）；F1–F3 RESOLVED；External Macro final audit PASS / ACCEPT ALL；same-SHA main promotion accepted（native pinned full-40 SHA refspec，auth consumed，origin/main advanced to 8ea3fc6e1301f077ee467174981f0e63978c2de3）；post-main exact-SHA Actions Run 36215575618 驗證成功（event=push, head_branch=main, head_sha=8ea3fc6e1301f077ee467174981f0e63978c2de3, attempt=1, verify=completed/success, gateway-windows=completed/success，Ubuntu 529 passed + 13 passed + ALL 5 GATES PASSED，Windows: 37 passed）；Ruleset 21301111 active / strict / no bypass；TG-MVP-12 ACCEPTED / CLOSED；new accepted checkpoint = `8ea3fc6e1301f077ee467174981f0e63978c2de3`；B-107 保持 OPEN / RESIDUAL / NON-BLOCKING FOR CURRENT E-03 RETURN；next: TG-MVP-13, gated by D-R3 USER DECISION。
 - `d55b2b1`（TG-MVP-12 Final Closure State-Sync R1 Acceptance & Same-SHA Main Promotion）已於 2026-09-26 由 External Macro Auditor 核對通過：Target = `d55b2b18bb7769cfc80bc412230bd18d0df7fdd3`（Parent: 9cfbc706e1eb3be73789a0ed0e9cea5bc5d5fe5a）；candidate Actions Run 36223793780 attempt 1 驗證成功（verify=completed/success, gateway-windows=completed/success，Ubuntu 529 passed + 13 passed + ALL 5 GATES PASSED，Windows: 37 passed）；SS-F1 false lease wording = RESOLVED；closure-sync R1 = ACCEPT ALL；Same-SHA main promotion 成功推進（previous main: 8ea3fc6e1301f077ee467174981f0e63978c2de3 -> promoted main: d55b2b18bb7769cfc80bc412230bd18d0df7fdd3，SHA transformation: NONE）；Post-main exact-SHA Actions Run 36224325836 驗證成功（attempt 1, event=push, head_branch=main, head_sha=d55b2b18bb7769cfc80bc412230bd18d0df7fdd3, verify=completed/success, gateway-windows=completed/success，raw Ubuntu: 529 passed + 13 passed + ALL 5 GATES PASSED，Windows: 37 passed）；TG-MVP-12 保持結案（ACCEPTED / CLOSED）；accepted checkpoint 推進至 `d55b2b18bb7769cfc80bc412230bd18d0df7fdd3`（注意：TG-MVP-12 final implementation SHA 仍為 `8ea3fc6e1301f077ee467174981f0e63978c2de3`）；登錄使用者裁決（D-R1, D-R3-A+, D-R3-C1, D-R3-REPLY-A, D-R4）與殘留問題（R-01..R-09，R-04 登錄 EXISTING B-107）；NEXT_WORK 保持 E-03，NEXT_SLICE 推進至 TG-MVP-13（TG-MVP-13 R3 IN PROGRESS / AWAITING EXTERNAL MACRO RE-AUDIT）。
+- `09235c6`（TG-MVP-13 Telegram Outbound Text Delivery Final Acceptance & Same-SHA Main Promotion）已於 2026-09-27 由 External Macro Auditor 核對通過：Target = `09235c6c8e6b43ec04b885824e2e13b8df9d3bc3`；Parent = `1df494a38c97fa2d5d8376ccd57fb112b16bc41f`；Candidate Actions Run 36313414214 attempt 1 驗證成功（verify=completed/success, gateway-windows=completed/success）；J2 OWNER-LEVEL SHUTDOWN LIFECYCLE = RESOLVED；IMPLEMENTATION = PASS；SAFETY / LIVENESS = PASS；PROMOTION ELIGIBILITY = PASS；ROLLBACK = NO；NEW MATERIAL BLOCKING FINDING = NONE；Same-SHA main promotion 成功推進（previous main: d55b2b18bb7769cfc80bc412230bd18d0df7fdd3 -> promoted main: 09235c6c8e6b43ec04b885824e2e13b8df9d3bc3，SHA transformation: NONE）；Post-main exact-SHA Actions Run 36314656058 attempt 1 驗證成功（event=push, head_branch=main, head_sha=09235c6c8e6b43ec04b885824e2e13b8df9d3bc3, verify=completed/success, gateway-windows=completed/success）；D-TG13-ACCEPTANCE = USER BINDING / APPROVED；TG-MVP-13 採 component-level synthetic / deterministic acceptance；真實 recipient-visible Test Bot E2E 統一 deferred 至 TG-MVP-15；TG-MVP-10 既有 ACCEPTED / CLOSED 狀態不變；chat_id 不得寫入 tracked docs；TG-MVP-15 未來之 recipient-visible delivery evidence 必須分類為 USER_PROVIDED 並維持 ACCEPTED_BY_PLATFORM != DELIVERED_TO_RECIPIENT；TG-MVP-13 正式結案（ACCEPTED / CLOSED）；accepted checkpoint 推進至 `09235c6c8e6b43ec04b885824e2e13b8df9d3bc3`（注意：本 state-sync candidate 自己尚未被 Macro audit，不得把本 closure-sync candidate 預先寫成 accepted checkpoint）；NEXT_WORK 保持 E-03，NEXT_SLICE 直接投影 ENV-01（ENV-01 = mandatory E-03 inter-slice docs gate before TG-MVP-14；待本 candidate 經 External Macro PASS + promotion 後成為 main current routing authority）。
 
 ### 5.2 待辦
 
@@ -3058,6 +3059,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 | 13 | ~~**D-U16 / B-105 Jules 重啟前置條件**~~ **已於 2026-09-19 裁決** | 需滿足 B-10 協作規範、@google/jules-mcp 版本鎖定（ADR-0019 decision 4）、CHECK 21 維持有效，於 B-105 進行路由與準備。 |
 | 14 | ~~**U-B 歷史工作流重新執行性質確認**~~ **已於 2026-09-19 確立** | 2026-09-19 三筆 historical failure runs re-run 由使用者本人在 GitHub UI 操作，非 Executor 違規。 |
 | 15 | ~~**B-100 R-B Actions 證據留存與假綠燈防護**~~ **已於 2026-09-19 登錄** | 登錄為 NONBLOCKING 事項；包含事故 raw-log 最小留存、一次性歷史成功 run 假綠燈掃描、machine-establish retention setting。 |
+| 16 | **D-TG13-ACCEPTANCE** **已於 2026-09-27 裁決（USER DECIDED 2026-09-27）** | TG-MVP-13 採 component-level synthetic / deterministic acceptance。真實 Telegram Test Bot 的 recipient-visible 雙向 real-network E2E not TG-MVP-13 closure blocker，統一 deferred 至 TG-MVP-15。TG-MVP-10 existing ACCEPTED / CLOSED unchanged。chat_id MUST NOT be written into tracked docs。TG-MVP-15 未來之 recipient-visible delivery evidence 必須分類為 USER_PROVIDED，並維持 ACCEPTED_BY_PLATFORM != DELIVERED_TO_RECIPIENT。 |
 
 ### 5.4 進行中／等待回報
 
@@ -5454,3 +5456,34 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - NEXT_SLICE = TG-MVP-13。
   - 不得進 TG-MVP-14。
   - main_advancement = FORBIDDEN，執行者嚴禁自審。
+
+142. **TG-MVP-13 外部宏觀審計核對通過、Same-SHA Main Promotion 與 Final Acceptance State Sync**（2026-09-27）
+- **TG-MVP-13 實作核對通過與 Promotion 事實（Implementation Audit PASS & Promotion Evidence）**：
+  - TARGET / PROMOTED SHA = `09235c6c8e6b43ec04b885824e2e13b8df9d3bc3`，PARENT = `1df494a38c97fa2d5d8376ccd57fb112b16bc41f`。
+  - 歷程：
+    - R0 = `7b22f07cbfef6bd577fe27b18b4aece50f347da6`（Macro HOLD / F1–F3 BLOCKING）。
+    - R1 = `202715167df310d9daed9f420d8a346bdcc5b6ff`（Macro HOLD / F4–F5 & SS-F1–SS-F2 BLOCKING）。
+    - R2 = `1df494a38c97fa2d5d8376ccd57fb112b16bc41f`（Macro HOLD / J2 BLOCKING）。
+    - R3 = `09235c6c8e6b43ec04b885824e2e13b8df9d3bc3`（External Macro PASS / ACCEPT ALL）。
+  - Candidate Actions Run = 36313414214 attempt 1（verify=completed/success, gateway-windows=completed/success）。
+  - External Macro Final Verdict：FINAL MACRO AUDIT = PASS, ACCEPT STATUS = ACCEPT ALL, IMPLEMENTATION = PASS, SAFETY / LIVENESS = PASS, J2 = RESOLVED, PROMOTION ELIGIBILITY = PASS, ROLLBACK = NO, NEW MATERIAL BLOCKING FINDING = NONE。
+  - Same-SHA main promotion：PROMOTED SHA = `09235c6c8e6b43ec04b885824e2e13b8df9d3bc3`，SHA TRANSFORMATION = NONE。
+  - Post-main exact-SHA Actions Run = 36314656058 attempt 1（event=push, head_branch=main, head_sha=09235c6c8e6b43ec04b885824e2e13b8df9d3bc3, verify=completed/success, gateway-windows=completed/success）。
+- **使用者裁決 D-TG13-ACCEPTANCE 落地（User Binding Decision）**：
+  - TG-MVP-13 採 component-level synthetic / deterministic acceptance。
+  - 真實 Telegram Test Bot recipient-visible 雙向 real-network E2E not TG-MVP-13 closure blocker，統一 deferred 至 TG-MVP-15。
+  - TG-MVP-10 既有 ACCEPTED / CLOSED 狀態不變。
+  - chat_id MUST NOT be written into tracked docs。
+  - TG-MVP-15 未來之 recipient-visible delivery evidence 必須分類為 USER_PROVIDED，並維持 ACCEPTED_BY_PLATFORM != DELIVERED_TO_RECIPIENT。
+  - TG-MVP-13 結案語意：component-level ACCEPTED / CLOSED。
+- **後續路由與任務狀態（Next Work Routing & Task Status）**：
+  - accepted implementation checkpoint 推進至 `09235c6c8e6b43ec04b885824e2e13b8df9d3bc3`。
+  - TG-MVP-13 正式 CLOSED。
+  - NEXT_WORK = E-03。
+  - 本 state-sync candidate 直接投影：NEXT_SLICE = ENV-01。
+  - ENV-01 明確定義為：E-03 ROADMAP MANDATORY INTER-SLICE DOCS GATE，位於 TG-MVP-13 CLOSED 之後、TG-MVP-14 START 之前。
+  - 此 NEXT_SLICE projection 待本 state-sync candidate 經 External Macro PASS + same-SHA promotion 後成為 main current routing authority。
+  - TG-MVP-14 前置相依納入 ENV-01，ENV-01 未完成前 TG-MVP-14 MUST NOT START。
+  - TG-MVP-15 登錄 live E2E 前置要求。
+  - B-100 追加 R-G（Owner shutdown acceptance-evidence hardening）與 R-H（J2 counterexample fixed-wall-clock robustness）兩項 NONBLOCKING 事項。
+  - main advancement = FORBIDDEN；本 state-sync candidate 自身 AWAITING EXTERNAL MACRO AUDIT，執行者嚴禁自審。

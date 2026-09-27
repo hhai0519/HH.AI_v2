@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "TG-MVP-13-R3",
-  "base_oid": "1df494a38c97fa2d5d8376ccd57fb112b16bc41f",
+  "task_id": "TG-MVP-13-FINAL-ACCEPTANCE-SYNC",
+  "base_oid": "09235c6c8e6b43ec04b885824e2e13b8df9d3bc3",
   "plan": {
     "allowed_paths": [
       "docs/AUDIT-LOG.md",
@@ -10,10 +10,7 @@
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md",
-      "runtime/channel-gateway/AGENTS.md",
-      "runtime/channel-gateway/core/gateway-runtime-owner.js",
-      "runtime/channel-gateway/tests/gateway-runtime-owner.test.js"
+      "docs/refactor-backlog.md"
     ],
     "required_paths": [
       "docs/AUDIT-LOG.md",
@@ -21,13 +18,10 @@
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md",
-      "runtime/channel-gateway/AGENTS.md",
-      "runtime/channel-gateway/core/gateway-runtime-owner.js",
-      "runtime/channel-gateway/tests/gateway-runtime-owner.test.js"
+      "docs/refactor-backlog.md"
     ],
     "max_plan_revisions": 3,
-    "revision_count": 3,
+    "revision_count": 0,
     "plan_origin": "EXTERNAL_MACRO_PROMPT"
   },
   "actual": {
@@ -37,10 +31,7 @@
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md",
-      "runtime/channel-gateway/AGENTS.md",
-      "runtime/channel-gateway/core/gateway-runtime-owner.js",
-      "runtime/channel-gateway/tests/gateway-runtime-owner.test.js"
+      "docs/refactor-backlog.md"
     ]
   },
   "evidence": [
@@ -56,12 +47,12 @@
       "description": "Deterministic Git diff replay against declared plan allowed/required scope"
     },
     {
-      "id": "E24_DISCOVERY_RAW",
+      "id": "M2_DISCOVERY_RAW",
       "origin": "MACHINE_CAPTURED_RAW",
-      "verification_status": "VERIFIED",
+      "verification_status": "NOT_ESTABLISHED",
       "source_kind": "EXTERNAL_ARTIFACT",
-      "sha256": "27822796964ef42f47f903642ab6cc09f6e62e3535c20073c740f8bc2c311339",
-      "description": "TG-MVP-13 task-specific raw E24 discovery artifact; independent exact-base Q01-Q13 replay 13/13 PASS"
+      "sha256": "4cd2851da921aab9d371b281f51947e2645b069d38ee56655e37a79c2ded3b4b",
+      "description": "generic B-109 M2 provenance only；not task-specific evidence；this pure state-sync declared E24 NONE；routed EXISTING B-107。"
     }
   ],
   "report_claims": [
@@ -70,13 +61,6 @@
       "claim_text": "All actual changed repository paths strictly match allowed scope and cover all required paths without expansion.",
       "evidence_ids": [
         "PLAN_ACTUAL_DIFF"
-      ]
-    },
-    {
-      "claim_id": "CLAIM_E24_PROVENANCE_VERIFIED",
-      "claim_text": "Task-specific raw E24 discovery artifact verified against expected SHA256 closure.",
-      "evidence_ids": [
-        "E24_DISCOVERY_RAW"
       ]
     }
   ]
