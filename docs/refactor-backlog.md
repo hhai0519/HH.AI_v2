@@ -5608,10 +5608,10 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - 狀態重分類：`OPEN` / `REPAIRABLE_REPO_DEFECT` / `MANDATORY_INTER_SLICE_REPAIR_GATE` / `SCHEDULED_AFTER_TG-MVP-14_BEFORE_TG-MVP-15`（取代舊「非阻擋性暫態觀察」分類）。
   - 問題陳述：版本庫控制之 Windows 必要閘門設計直接依賴真實 Windows PowerShell 5.1 Known-Folder live bridge 調用，外部冷啟動延遲分佈無確定性上限保證，而版本庫設定 60000ms 硬逾時門檻且缺乏成功時間遙測；嚴禁將 Windows VM 冷啟動本身單獨描述為已證明的單一根因。
   - 證據分級（Evidence Levels）：
-    - FACT：F1. resolveWindowsKnownFolders() 使用 child_process.spawnSync 啟動 Windows PowerShell 5.1，逾時 60000ms，觀察到的復發耗時均接近 60 秒邊界，符合硬逾時觸發特徵；F2. 僅 Live Windows bridge 整合測試在 win32 啟動真實 PowerShell 進程，其餘測試使用注入行為；live 測試參與必要之 gateway-windows 驗證且測試編排可能於單次 job 中調用超過一次；F3. windows-known-folder-resolve.ps1 包含未用之死代碼（$utf8NoBom）及 cmdlet 調用（New-Object / ConvertTo-Json），可能觸發 PowerShell 模組自動加載與命令探索，功能負載本身主要僅需 .NET Known-Folder 調用；F4. bridge 傳遞刻意縮減之子進程環境；F5. 明確設定之 Local Config 路徑可完全跳過 Known-Folder 解析。
+    - FACT：F1. resolveWindowsKnownFolders() 使用 child_process.spawnSync 啟動 Windows PowerShell 5.1，逾時 60000ms，觀察到的復發耗時均接近 60 秒邊界，符合硬逾時觸發特徵；F2. 僅 Live Windows bridge 整合測試在 win32 啟動真實 PowerShell 進程，其餘測試使用注入行為；live 測試參與必要之 gateway-windows 驗證且測試編排可能於單次 job 中調用超過一次；F3. （PRE-REPAIR / HISTORICAL REGISTERED PLAN at cde8402dcbdcc017021a5b414b0b9c17566cc74a）windows-known-folder-resolve.ps1 包含未用之死代碼（$utf8NoBom）及 cmdlet 調用（New-Object / ConvertTo-Json），可能觸發 PowerShell 模組自動加載與命令探索，功能負載本身主要僅需 .NET Known-Folder 調用；F4. bridge 傳遞刻意縮減之子進程環境；F5. 明確設定之 Local Config 路徑可完全跳過 Known-Folder 解析。
     - INFERENCE：I1. 可能的促成因素為冷 Windows runner / PowerShell 5.1 / .NET Framework / Defender / AMSI / 模組探索之延遲變異（不升格為 FACT）；I2. 版本庫可修復之缺陷在於必要閘門設計與 bridge 成本/可觀測性：將外部多變之 live 冷啟動路徑作為硬性閘門，卻缺乏充分隔離或遙測。
     - UNKNOWN：成功的 live bridge 耗時分佈；冷啟動 / Defender / 模組探索 / 環境塑造之相對貢獻權重。
-  - 三層修復計畫（Three-Layer Repair Plan，本批僅註冊、不實作）：
+  - 三層修復計畫（Three-Layer Repair Plan，PRE-REPAIR / HISTORICAL REGISTERED PLAN at cde8402dcbdcc017021a5b414b0b9c17566cc74a，本批僅註冊、不實作）：
     - Layer 1（機械式降低 Bridge 成本）：設定 `$PSModuleAutoLoadingPreference = 'None'`、移除 `$utf8NoBom` 死代碼、移除 PowerShell cmdlet 依賴、使用有界 fail-closed .NET / Console 邏輯保持相同 JSON 契約、保留兩個必要的 Known-Folder .NET 調用、定義經 Macro 核准之顯式非機敏 child-env allowlist（禁止環境變數列舉）、不提高 60000ms 逾時、不加入自動 CI 重跑、不加入未註冊測試跳過；確切 allowlist 必須在生產突變前於 R-01 修復提示詞中凍結。
     - Layer 2（機械式延遲證據）：加入機器可讀延遲證據 `KNOWN_FOLDER_BRIDGE_MS=<integer>`，成功時可觀測、機械可行時失敗亦可觀測、由規範 Windows 測試 wrapper / CI 輸出呈現、不反射機敏或私有路徑，使未來運行能區分正常延遲與硬逾時復發。
     - Layer 3（閘門拓撲，USER_DECISION_PENDING）：選項 A（保留 live bridge 於必要 gateway-windows 閘門內）、B（將 live bridge 移至非必要 Windows 診斷 job，必要閘門保留確定性注入測試）、C（保留必要 live 閘門但允許單次有界 live 測試重試，與現行無自動重跑政策衝突需使用者特別修訂）；本 State-Sync 禁止選定 A/B/C，執行者嚴禁代選 Layer 3。
@@ -5700,3 +5700,9 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - TG-MVP-15 保持待辦（NOT STARTED / BLOCKED）。
   - main advancement = FORBIDDEN。
   - 本生產候選批次自身 AWAITING EXTERNAL MACRO AUDIT，執行者嚴禁自審。
+- **R1 真值更正與超前宣告更替（R1 Truth Repair & Current Backlog Truth per B1-A / N1）**：
+  - 當前候選真值更替（Current Candidate Truth）：候選 `604c6fe9beb27ec234045da89b171b1e1fedc9b5` 已正式實作 Layer 1 與 Layer 2；歷史 Item 147 記錄之舊 R-01 F3 描述與三層修復計畫「本批僅註冊、不實作」措辭為基線 `cde8402dcbdcc017021a5b414b0b9c17566cc74a` 時期之 PRE-REPAIR / HISTORICAL REGISTERED PLAN 事實，非當前候選真值。
+  - N1 產權真值更正（N1 Discovery Provenance Correction）：原始 E24 探索產物（`.git/B-100-R-01-E24-260928-raw.json`）係由執行者（Executor / Antigravity）在 External Macro 唯讀探索指令授權下，於精確基線 `cde8402dcbdcc017021a5b414b0b9c17566cc74a` 透過機器掃描獲取（MACHINE_CAPTURED_RAW）；External Macro 提供語意處置（semantic dispositions），嚴禁將 External Macro 描述為執行或捕獲原始掃描器產物之進程。
+  - C2 反事實分類與邊界（B1-A Lexical Token Boundary）：候選 C2 反事實證明僅為語彙層級反事實（LEXICAL_TOKEN_COUNTERFACTUAL ONLY），透過註解注入 `ConvertTo-Json` 證明生產原始碼守衛之語彙禁止 token 偵測機制生效；該偵測器採 `scriptText.includes(token)` 與 `scriptText.includes('|')` 語彙比對，未解析 PowerShell AST/語法，亦不構成語意層級之 cmdlet 依賴偵測；先前宣稱證明機械有效之 cmdlet 依賴屬過度宣稱（OVERCLAIM），在此顯式更替。
+  - 通過基準維護：accepted checkpoint 嚴格保持 `cde8402dcbdcc017021a5b414b0b9c17566cc74a`，不得推進 checkpoint 至 `604c6fe9...` 或未經授權之 R1 候選 SHA。
+  - 任務狀態維持：B-100 R-01 狀態維持 `CANDIDATE_AWAITING_EXTERNAL_MACRO`，Layer 3 維持 `USER_DECISION_PENDING`。
