@@ -207,7 +207,7 @@ T6 階段正式採用 `busy_timeout = 5000`（5000ms），其基礎為 T1 Window
 ## 17. 對話歸檔與主題管理運作不變量 (Conversation Archive & Topics — TG-MVP-14)
 
 - **主題管理與目錄結構不變量 (Topic Management & Directory Structure)**：
-  - `archive_topic` 資料表為 STRICT 模型，具備 3 組嚴格唯一約束：`(account_id, normalized_name)`、`(account_id, entry_sequence)` 與 `(account_id, topic_dir_name)`。
+  - `archive_topic` 資料表為 STRICT 模型，具備 2 組嚴格唯一約束：`UNIQUE(account_id, topic_sequence)` 與 `UNIQUE(account_id, normalized_name)`。欄位包含 `topic_id`（PK AUTOINCREMENT）、`account_id`、`topic_sequence`、`display_name`、`normalized_name`、`account_dir_name`、`topic_dir_name`、`created_at`。
   - 正規化遵循 Unicode NFKC，去除控制字元、折疊連續空白、去除前後空白並轉為小寫；顯示名稱保留原始大小寫；目錄名稱採 `Q<sequence>_<safe-name>` 格式，序號至少 3 位數且零補齊。
   - 帳號目錄名稱採 `TG_<account_label>` 格式（上限 35 字元），全路徑長度受嚴格路徑預算限制（全路徑不得超過 240 字元）。
 - **回覆必要綁定主題與端點契約 (Reply Topic Binding & API Surface)**：
@@ -221,7 +221,7 @@ T6 階段正式採用 `busy_timeout = 5000`（5000ms），其基礎為 T1 Window
   - 在 `enqueueAuthorizedReply` 與 `applyInboundMessageEdit` 交易當下，將邏輯訊息之最新內容作為 `content_snapshot` 持久化於資料庫。
   - 歸檔成功發布後立即清除 `content_snapshot`（設為 NULL）以落實敏感資料生命週期隔離；發布失敗保留快照供離線診斷，不自動重試（FAILED 不自動 retry，re-drive 機制遞延）。
 - **入站編輯增補語意與歷史不回填 (Inbound Edits & Pre-v8 Invariants)**：
-  - 已回覆訊息發生 Telegram 編輯時，於同一交易內記錄 `AMENDMENT` 歸檔協調記錄，指向既有 `ORIGINAL` 記錄，並以當前編輯內容產生獨立增補檔案（`_amendment_<seq>.md`），絕不修改已發布之原始問答檔案。
+  - 已回覆訊息發生 Telegram 編輯時，於同一交易內記錄 `AMENDMENT` 歸檔協調記錄，指向既有 `ORIGINAL` 記錄；ORIGINAL 與 AMENDMENT 均使用正規項目檔名格式 `<entry-sequence>_<summary>_<UTC-time>.md`（序號至少 3 位數，無 999 上限），AMENDMENT 身分由檔案中繼資料與持久化欄位（`record_kind: AMENDMENT`、`original_archive_id`、`source_platform_event_id`）表達，不使用獨立之 `_amendment_<seq>.md` 檔名慣例，且絕不修改已發布之原始問答檔案。
   - 針對 v8 以前產生之歷史已回覆訊息，入站編輯時依循 Pre-v8 不回填規則（no-backfill），不追溯生成未曾存在之原始歸檔。
 - **生命週期關閉保護與運作可觀察性 (Lifecycle Stop Guard & Status Observability)**：
   - `GatewayRuntimeOwner` 停止時發起 `ArchiveWorker.stop()`，具備有限等待超時（10 秒）；超時即標記關閉保護（closed guard），嚴禁延遲磁碟完成回呼在儲存庫關閉後進行任何資料庫突變。

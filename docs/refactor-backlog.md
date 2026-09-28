@@ -5558,3 +5558,33 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - TG-MVP-15 尚未開始（NOT STARTED）。
   - main_advancement = FORBIDDEN。
   - 本 TG-MVP-14 R1 候選批次自身 AWAITING EXTERNAL MACRO AUDIT，執行者嚴禁自審。
+
+146. **TG-MVP-14 對話封存機制 R1 審核不通過（HOLD）與 R2 有界微修復**（2026-09-28）
+- **R1 候選審核與發現事實（R1 Audit Outcome & Blocking Findings）**：
+  - R1 候選：`d25f2a838bb38a33b085ca732f990b620ad13a15`（Parent: `43a71ecb10abb41b589bfc95536e27064263bc30`）。
+  - Candidate Actions Run 36405536588 attempt 1（verify: success, gateway-windows: success）。
+  - External Macro 審查判定：MACHINE = PASS, SCOPE_14 = PASS, PLAN_ACTUAL_DIFF = PASS, CANDIDATE_CI = PASS, WINDOWS_GATE = PASS, WSL_GATE = PASS, F1 = RESOLVED, F2 = RESOLVED, F3 = HOLD, F4 = PASS, F5 = HOLD, F6 = RESOLVED, R1_F7_CLOSED_GUARD_FALSE_GREEN = BLOCKING, R1_F8_RUNTIME_DOC_TRUTH_DRIFT = BLOCKING, IMPLEMENTATION = HOLD, SAFETY_LIVENESS = HOLD, DOC_GOVERNANCE_CONSISTENCY = HOLD, PROMOTION_ELIGIBILITY = HOLD, ROLLBACK = NO, R2_BOUNDED_REPAIR = REQUIRED, E24_REDISCOVERY = NO, E24_REPLAY = NO, R1 PROMOTION = FORBIDDEN。
+  - 阻擋性發現 R1-F7 與 R1-F8 確認：
+    - R1-F7（Closed Guard Post-Await 覆蓋缺口與虛無計數器假綠燈）：R1 於 `await fs.link()` 後未重新檢查 `isClosed()` 即執行 unlink/dir open/fsync/close/cleanup；且 R1 宣告之計數器從未遞增，致使零斷言為虛無假綠燈。
+    - R1-F8（執行期文件真值偏離）：`archive_topic` 綱要與增補檔案命名契約在文件與生產代碼間存在漂移。
+  - Claude 獨立複審意見：撤回前次「無阻擋」結論，獨立重現 R1-F7/R1-F8，確立 C-1～C-6（非授權諮詢意見）。
+- **R2 有界微修復落地（R2 Bounded Micro-Repair Implementation per C-1～C-6）**：
+  - C-1：文件真值修正納入 R2 範疇。修正 `runtime/channel-gateway/AGENTS.md` 與 `docs/adr/0023-channel-gateway-state-store-sqlite.md` 之 `archive_topic` 綱要真值為 8 欄位與 2 組唯一約束 `UNIQUE(account_id, topic_sequence)` 與 `UNIQUE(account_id, normalized_name)`；修正 `runtime/channel-gateway/AGENTS.md` 與 `docs/adr/0024-inbound-identity-cursor-semantics.md` 增補檔案命名契約為 ORIGINAL 與 AMENDMENT 皆使用標準 `<entry-sequence>_<summary>_<UTC-time>.md` 渲染器，不使用 `_amendment_<seq>.md` 檔名後綴。
+  - C-2：關閉後零新檔案系統呼叫語意鎖死（Zero-New-FS-Call After Closed Semantics）。一旦 `isClosed()` 回傳 true，`ArchiveFileWriter` 嚴禁發起任何新的檔案系統呼叫（包含 unlink temp、dir open/fsync/close、cleanup 等），亦無關閉後臨時檔清理例外；協調狀態維持 PENDING，由下次啟動對帳自然收斂。
+  - C-3：測試計數器真實接線、正向對照與反事實 RED/GREEN。測試裝具 `runtime/channel-gateway/tests/gateway-runtime-owner.test.js` 實作 `createTrackedFsFacade`，在呼叫當下依 real ArchiveWorker closed 狀態分類 PRE_CLOSE 與 POST_CLOSE，並包裝 FileHandle（writeFile, sync, close）；實作 3 項真實 active-publication 懸掛測試（link hang、writeFile hang、sync hang）且涵蓋 B1 Windows raw FileHandle teardown 釋放防護；`runtime/channel-gateway/tests/archive-file-writer.test.js` 實作 R2-F7-RETRY-CLOSED-GUARD 重試計時器接線測試。
+  - C-4：歷史 EXEC-LOG 散文顯式更替。R1 歷史 row 保持不變，追加 R2 row 顯式更替 R1 關於關閉檢查之不實散文。
+  - C-5：計畫修訂額度控管。R2 計畫 revision_count = 2，max_plan_revisions = 3；R2 後全專案僅剩 1 次計畫修訂額度。
+  - C-6：機器導出診斷計數報告。最終回報嚴格依據測試發出之機器診斷數值回報。
+- **反事實突變探針驗證（Counterfactual Mutation Canary）**：
+  - 目標測試：`R2-F7-LINK-HANG-CLOSED-GUARD`。
+  - 突變：暫時移除 link 後立即之 closed guard。
+  - RED 判定：測試確定性失敗（`R2_F7_LINK_POST_CLOSE_FS_CALLS = 1 > 0`）。
+  - RESTORE：位元精確還原至 intended SHA256（`b177923678ff2b96878bf9b428812f23ebad7fef1aa0e7b27f2f65dc843f8e55`）。
+  - GREEN 判定：同一測試確定性通過（`R2_F7_LINK_POST_CLOSE_FS_CALLS = 0`）。
+- **後續路由與任務狀態（Next Work Routing & Task Status）**：
+  - accepted checkpoint 嚴格保持 `e695c787c0276994db64780d997bbf75d9a12f0f`。
+  - NEXT_WORK = E-03。
+  - NEXT_SLICE = TG-MVP-14。
+  - TG-MVP-15 尚未開始（NOT STARTED）。
+  - main_advancement = FORBIDDEN。
+  - 本 TG-MVP-14 R2 候選批次自身 AWAITING EXTERNAL MACRO AUDIT，執行者嚴禁自審。

@@ -56,7 +56,7 @@ function assertPathConfinement(targetPath, canonicalRoot) {
  * @param {string} canonicalRoot
  * @param {object} fsPromises
  */
-async function ensureManagedDirectoryStepwise(destDir, canonicalRoot, fsPromises) {
+async function ensureManagedDirectoryStepwise(destDir, canonicalRoot, fsPromises, isClosed = () => false) {
   assertPathConfinement(destDir, canonicalRoot);
   const rel = path.relative(canonicalRoot, destDir);
   if (!rel || rel === '.') {
@@ -66,11 +66,13 @@ async function ensureManagedDirectoryStepwise(destDir, canonicalRoot, fsPromises
   let current = canonicalRoot;
 
   for (const part of parts) {
+    if (isClosed()) return;
     current = path.join(current, part);
     assertPathConfinement(current, canonicalRoot);
 
     let stat = null;
     try {
+      if (isClosed()) return;
       stat = await fsPromises.lstat(current);
     } catch (err) {
       if (err && err.code !== 'ENOENT') {
@@ -79,6 +81,7 @@ async function ensureManagedDirectoryStepwise(destDir, canonicalRoot, fsPromises
         throw wrapErr;
       }
     }
+    if (isClosed()) return;
 
     if (stat) {
       if (stat.isSymbolicLink()) {
@@ -91,9 +94,12 @@ async function ensureManagedDirectoryStepwise(destDir, canonicalRoot, fsPromises
         err.code = 'ARCHIVE_DIR_CREATE_FAILED';
         throw err;
       }
+      if (isClosed()) return;
       const real = await fsPromises.realpath(current);
+      if (isClosed()) return;
       assertPathConfinement(real, canonicalRoot);
     } else {
+      if (isClosed()) return;
       // Absent: mkdir exactly ONE level NON-RECURSIVELY
       try {
         await fsPromises.mkdir(current);
@@ -106,8 +112,10 @@ async function ensureManagedDirectoryStepwise(destDir, canonicalRoot, fsPromises
           throw err;
         }
       }
+      if (isClosed()) return;
 
       const postStat = await fsPromises.lstat(current);
+      if (isClosed()) return;
       if (postStat.isSymbolicLink()) {
         const err = new Error('ARCHIVE_SYMLINK_FORBIDDEN: Symbolic links are forbidden in archive path (fail-closed)');
         err.code = 'ARCHIVE_SYMLINK_FORBIDDEN';
@@ -118,7 +126,9 @@ async function ensureManagedDirectoryStepwise(destDir, canonicalRoot, fsPromises
         err.code = 'ARCHIVE_DIR_CREATE_FAILED';
         throw err;
       }
+      if (isClosed()) return;
       const real = await fsPromises.realpath(current);
+      if (isClosed()) return;
       assertPathConfinement(real, canonicalRoot);
     }
   }
@@ -351,10 +361,16 @@ async function probeHardLinkCapability(archiveRoot, fsPromises = fsPromisesDefau
  * @param {object} fsPromises
  * @returns {Promise<boolean>} True if exact match, false if conflict
  */
-async function reconcileExistingFinalFile(finalPath, expectedBytes, coordination, canonicalRoot, fsPromises) {
+async function reconcileExistingFinalFile(finalPath, expectedBytes, coordination, canonicalRoot, fsPromises, isClosed = () => false) {
   try {
+    if (isClosed()) {
+      return false;
+    }
     assertPathConfinement(finalPath, canonicalRoot);
     const stat = await fsPromises.lstat(finalPath);
+    if (isClosed()) {
+      return false;
+    }
     if (stat.isSymbolicLink()) {
       return false;
     }
@@ -362,9 +378,15 @@ async function reconcileExistingFinalFile(finalPath, expectedBytes, coordination
       return false;
     }
     const real = await fsPromises.realpath(finalPath);
+    if (isClosed()) {
+      return false;
+    }
     assertPathConfinement(real, canonicalRoot);
 
     const existingBytes = await fsPromises.readFile(real);
+    if (isClosed()) {
+      return false;
+    }
     // 1. Byte-for-byte exact equality
     if (Buffer.compare(existingBytes, expectedBytes) !== 0) {
       return false;
@@ -405,15 +427,28 @@ async function reconcileExistingFinalFile(finalPath, expectedBytes, coordination
  * @param {string} destDir
  * @param {number} archiveId
  * @param {object} [fsPromises=fsPromisesDefault]
+ * @param {() => boolean} [isClosed=() => false]
  */
-async function cleanupOrphanTempFiles(destDir, archiveId, fsPromises = fsPromisesDefault) {
+async function cleanupOrphanTempFiles(destDir, archiveId, fsPromises = fsPromisesDefault, isClosed = () => false) {
   try {
+    if (isClosed()) {
+      return;
+    }
     const files = await fsPromises.readdir(destDir);
+    if (isClosed()) {
+      return;
+    }
     for (const file of files) {
+      if (isClosed()) {
+        return;
+      }
       const match = CANONICAL_TEMP_REGEX.exec(file);
       if (match) {
         const fileArchiveId = parseInt(match[1], 10);
         if (fileArchiveId === archiveId) {
+          if (isClosed()) {
+            return;
+          }
           try {
             await fsPromises.unlink(path.join(destDir, file));
           } catch (_) {}
@@ -429,11 +464,21 @@ async function cleanupOrphanTempFiles(destDir, archiveId, fsPromises = fsPromise
  * @param {string} archiveRoot
  * @param {Set<number>} pendingArchiveIds
  * @param {object} [fsPromises=fsPromisesDefault]
+ * @param {() => boolean} [isClosed=() => false]
  */
-async function cleanupNonPendingTempFiles(archiveRoot, pendingArchiveIds, fsPromises = fsPromisesDefault) {
+async function cleanupNonPendingTempFiles(archiveRoot, pendingArchiveIds, fsPromises = fsPromisesDefault, isClosed = () => false) {
   async function walkDir(dir) {
+    if (isClosed()) {
+      return;
+    }
     const entries = await fsPromises.readdir(dir, { withFileTypes: true });
+    if (isClosed()) {
+      return;
+    }
     for (const entry of entries) {
+      if (isClosed()) {
+        return;
+      }
       const fullPath = path.join(dir, entry.name);
       if (entry.isDirectory()) {
         await walkDir(fullPath);
@@ -442,6 +487,9 @@ async function cleanupNonPendingTempFiles(archiveRoot, pendingArchiveIds, fsProm
         if (match) {
           const archiveId = parseInt(match[1], 10);
           if (!pendingArchiveIds.has(archiveId)) {
+            if (isClosed()) {
+              return;
+            }
             try {
               await fsPromises.unlink(fullPath);
             } catch (_) {}
@@ -449,6 +497,9 @@ async function cleanupNonPendingTempFiles(archiveRoot, pendingArchiveIds, fsProm
         }
       }
     }
+  }
+  if (isClosed()) {
+    return;
   }
   await walkDir(archiveRoot);
 }
@@ -518,12 +569,24 @@ class ArchiveFileWriter {
 
     let canonicalRoot;
     try {
+      if (isClosed()) {
+        return { status: 'CANCELLED_CLOSED' };
+      }
       const rootStat = await this.#fs.stat(root);
+      if (isClosed()) {
+        return { status: 'CANCELLED_CLOSED' };
+      }
       if (!rootStat.isDirectory()) {
         return { status: 'FAILED', reasonCode: 'ARCHIVE_ROOT_NOT_DIRECTORY' };
       }
       canonicalRoot = await this.#fs.realpath(root);
+      if (isClosed()) {
+        return { status: 'CANCELLED_CLOSED' };
+      }
     } catch {
+      if (isClosed()) {
+        return { status: 'CANCELLED_CLOSED' };
+      }
       return { status: 'FAILED', reasonCode: 'ARCHIVE_ROOT_UNAVAILABLE' };
     }
 
@@ -539,8 +602,11 @@ class ArchiveFileWriter {
 
     const destDir = path.dirname(targetPath);
     try {
-      await ensureManagedDirectoryStepwise(destDir, canonicalRoot, this.#fs);
+      await ensureManagedDirectoryStepwise(destDir, canonicalRoot, this.#fs, isClosed);
     } catch (err) {
+      if (isClosed()) {
+        return { status: 'CANCELLED_CLOSED' };
+      }
       return { status: 'FAILED', reasonCode: err.code || 'ARCHIVE_PATH_SAFETY_VIOLATION' };
     }
 
@@ -551,8 +617,11 @@ class ArchiveFileWriter {
     // Ensure reserved 附件/ directory
     try {
       const attachmentsDir = path.join(destDir, '附件');
-      await ensureManagedDirectoryStepwise(attachmentsDir, canonicalRoot, this.#fs);
+      await ensureManagedDirectoryStepwise(attachmentsDir, canonicalRoot, this.#fs, isClosed);
     } catch (err) {
+      if (isClosed()) {
+        return { status: 'CANCELLED_CLOSED' };
+      }
       return { status: 'FAILED', reasonCode: err.code || 'ARCHIVE_DIR_CREATE_FAILED' };
     }
 
@@ -582,23 +651,39 @@ class ArchiveFileWriter {
     let targetExists = false;
     try {
       const targetStat = await this.#fs.lstat(targetPath);
+      if (isClosed()) {
+        return { status: 'CANCELLED_CLOSED' };
+      }
       if (targetStat.isSymbolicLink()) {
         return { status: 'FAILED', reasonCode: 'ARCHIVE_SYMLINK_FORBIDDEN' };
       }
       targetExists = true;
     } catch (err) {
+      if (isClosed()) {
+        return { status: 'CANCELLED_CLOSED' };
+      }
       if (err && err.code !== 'ENOENT') {
         return { status: 'FAILED', reasonCode: 'ARCHIVE_FS_INSPECTION_FAILED' };
       }
+    }
+
+    if (isClosed()) {
+      return { status: 'CANCELLED_CLOSED' };
     }
 
     if (targetExists) {
       if (isClosed()) {
         return { status: 'CANCELLED_CLOSED' };
       }
-      const match = await reconcileExistingFinalFile(targetPath, expectedBytes, coordination, canonicalRoot, this.#fs);
+      const match = await reconcileExistingFinalFile(targetPath, expectedBytes, coordination, canonicalRoot, this.#fs, isClosed);
+      if (isClosed()) {
+        return { status: 'CANCELLED_CLOSED' };
+      }
       if (match) {
-        await cleanupOrphanTempFiles(destDir, coordination.archive_id, this.#fs);
+        await cleanupOrphanTempFiles(destDir, coordination.archive_id, this.#fs, isClosed);
+        if (isClosed()) {
+          return { status: 'CANCELLED_CLOSED' };
+        }
         return { status: 'COMPLETED', reconciled: true };
       }
       return { status: 'FAILED', reasonCode: 'ARCHIVE_TARGET_CONFLICT' };
@@ -619,13 +704,14 @@ class ArchiveFileWriter {
       let tempCreated = false;
 
       try {
+        if (isClosed()) {
+          return { status: 'CANCELLED_CLOSED' };
+        }
         // Step 4: Create unique temp file with wx
         handle = await this.#fs.open(tempPath, 'wx');
         tempCreated = true;
 
         if (isClosed()) {
-          await handle.close();
-          try { await this.#fs.unlink(tempPath); } catch (_) {}
           return { status: 'CANCELLED_CLOSED' };
         }
 
@@ -633,63 +719,113 @@ class ArchiveFileWriter {
         await handle.writeFile(expectedBytes);
 
         if (isClosed()) {
-          await handle.close();
-          try { await this.#fs.unlink(tempPath); } catch (_) {}
           return { status: 'CANCELLED_CLOSED' };
         }
 
         // Step 6: File sync
         await handle.sync();
 
+        if (isClosed()) {
+          return { status: 'CANCELLED_CLOSED' };
+        }
+
         // Step 7: Close temp file
         await handle.close();
         handle = null;
 
         if (isClosed()) {
-          try { await this.#fs.unlink(tempPath); } catch (_) {}
           return { status: 'CANCELLED_CLOSED' };
         }
 
         // Step 8: Hard-link publication
         await this.#fs.link(tempPath, targetPath);
 
+        // Immediate post-link closed guard (Canary target)
+        if (isClosed()) {
+          return { status: 'CANCELLED_CLOSED' };
+        }
+
         // Step 9 & 10: Link succeeded; temp unlink is NON-FATAL best-effort
         try {
           await this.#fs.unlink(tempPath);
         } catch (_) {}
 
+        if (isClosed()) {
+          return { status: 'CANCELLED_CLOSED' };
+        }
+
         // Step 11: Directory fsync best-effort
         let dirHandle = null;
         try {
           dirHandle = await this.#fs.open(destDir, 'r');
+          if (isClosed()) {
+            return { status: 'CANCELLED_CLOSED' };
+          }
           await dirHandle.sync();
         } catch (_) {
         } finally {
-          if (dirHandle) {
+          if (dirHandle && !isClosed()) {
             try { await dirHandle.close(); } catch (_) {}
           }
         }
 
+        if (isClosed()) {
+          return { status: 'CANCELLED_CLOSED' };
+        }
+
         // Cleanup any older orphan temp files for this archive_id
-        await cleanupOrphanTempFiles(destDir, coordination.archive_id, this.#fs);
+        await cleanupOrphanTempFiles(destDir, coordination.archive_id, this.#fs, isClosed);
+
+        if (isClosed()) {
+          return { status: 'CANCELLED_CLOSED' };
+        }
 
         return { status: 'COMPLETED', reconciled: false };
       } catch (err) {
+        if (isClosed()) {
+          return { status: 'CANCELLED_CLOSED' };
+        }
+
         if (handle) {
-          try { await handle.close(); } catch (_) {}
+          try {
+            if (!isClosed()) {
+              await handle.close();
+            }
+          } catch (_) {}
           handle = null;
+        }
+
+        if (isClosed()) {
+          return { status: 'CANCELLED_CLOSED' };
         }
 
         // Clean up our own temp file on failure
         if (tempCreated) {
-          try { await this.#fs.unlink(tempPath); } catch (_) {}
+          try {
+            if (!isClosed()) {
+              await this.#fs.unlink(tempPath);
+            }
+          } catch (_) {}
+        }
+
+        if (isClosed()) {
+          return { status: 'CANCELLED_CLOSED' };
         }
 
         // If target already exists (EEXIST), re-attempt F-2 crash reconciliation
         if (err && err.code === 'EEXIST') {
-          const match = await reconcileExistingFinalFile(targetPath, expectedBytes, coordination, canonicalRoot, this.#fs);
+          if (isClosed()) {
+            return { status: 'CANCELLED_CLOSED' };
+          }
+          const match = await reconcileExistingFinalFile(targetPath, expectedBytes, coordination, canonicalRoot, this.#fs, isClosed);
+          if (isClosed()) {
+            return { status: 'CANCELLED_CLOSED' };
+          }
           if (match) {
-            await cleanupOrphanTempFiles(destDir, coordination.archive_id, this.#fs);
+            await cleanupOrphanTempFiles(destDir, coordination.archive_id, this.#fs, isClosed);
+            if (isClosed()) {
+              return { status: 'CANCELLED_CLOSED' };
+            }
             return { status: 'COMPLETED', reconciled: true };
           }
           return { status: 'FAILED', reasonCode: 'ARCHIVE_TARGET_CONFLICT' };

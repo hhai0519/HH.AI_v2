@@ -1840,17 +1840,135 @@ test('R1-INT-1 REAL ARCHIVE PRODUCTION PATH: real GatewayRuntimeOwner, ArchiveWo
   }
 });
 
-test('R1-INT-2 REAL ASYNC HANG COUNTEREXAMPLE: real owner, worker, writer, repo with hung test fs-promises facade', async () => {
-  const fs = require('node:fs');
+function createTrackedFsFacade(getWorker, options = {}) {
   const fsPromises = require('node:fs/promises');
+  let preCloseFsCalls = 0;
+  let postCloseFsCalls = 0;
+  const rawFileHandles = [];
+
+  function recordCall() {
+    const worker = getWorker ? getWorker() : null;
+    const isClosed = worker ? worker.isClosed : false;
+    if (isClosed) {
+      postCloseFsCalls++;
+    } else {
+      preCloseFsCalls++;
+    }
+  }
+
+  function wrapFileHandle(rawHandle, isProbe = false) {
+    rawFileHandles.push(rawHandle);
+    return {
+      get fd() {
+        return rawHandle.fd;
+      },
+      writeFile: async (...args) => {
+        recordCall();
+        if (options.onWriteFile && !isProbe) {
+          await options.onWriteFile(...args);
+        }
+        return rawHandle.writeFile(...args);
+      },
+      sync: async (...args) => {
+        recordCall();
+        if (options.onSync && !isProbe) {
+          await options.onSync(...args);
+        }
+        return rawHandle.sync(...args);
+      },
+      close: async (...args) => {
+        recordCall();
+        return rawHandle.close(...args);
+      },
+    };
+  }
+
+  const facade = {
+    ...fsPromises,
+    stat: async (...args) => {
+      recordCall();
+      return fsPromises.stat(...args);
+    },
+    realpath: async (...args) => {
+      recordCall();
+      return fsPromises.realpath(...args);
+    },
+    lstat: async (...args) => {
+      recordCall();
+      return fsPromises.lstat(...args);
+    },
+    mkdir: async (...args) => {
+      recordCall();
+      return fsPromises.mkdir(...args);
+    },
+    readdir: async (...args) => {
+      recordCall();
+      return fsPromises.readdir(...args);
+    },
+    readFile: async (...args) => {
+      recordCall();
+      return fsPromises.readFile(...args);
+    },
+    unlink: async (...args) => {
+      recordCall();
+      return fsPromises.unlink(...args);
+    },
+    link: async (src, dst) => {
+      recordCall();
+      if (options.onLink && !dst.includes('.probe.')) {
+        await options.onLink(src, dst);
+      }
+      return fsPromises.link(src, dst);
+    },
+    open: async (p, flags, mode) => {
+      recordCall();
+      const rawHandle = await fsPromises.open(p, flags, mode);
+      const isProbe = typeof p === 'string' && p.includes('.probe.');
+      return wrapFileHandle(rawHandle, isProbe);
+    },
+  };
+
+  return {
+    facade,
+    getPreCloseCount: () => preCloseFsCalls,
+    getPostCloseCount: () => postCloseFsCalls,
+    getRawFileHandles: () => rawFileHandles,
+  };
+}
+
+async function runHangClosedGuardScenario({ testPrefix, hangType }) {
+  const fs = require('node:fs');
   const path = require('node:path');
   const os = require('node:os');
   const { SqliteStateRepository } = require('../core/sqlite-state-repository');
   const { AccountRegistry } = require('../core/account-registry');
 
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hhai-gw-r1-int2-state-'));
-  const archiveDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ar2-'));
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), `hhai-gw-${testPrefix}-state-`));
+  const archiveDir = fs.mkdtempSync(path.join(os.tmpdir(), `ar-${testPrefix}-`));
   const repo = new SqliteStateRepository(dir);
+
+  let hangResolve;
+  const hangPromise = new Promise((resolve) => {
+    hangResolve = resolve;
+  });
+  let hangStarted = false;
+  let hangSettled = false;
+
+  let workerRef = null;
+  const trackedFs = createTrackedFsFacade(() => workerRef, {
+    onLink: hangType === 'link' ? async () => {
+      hangStarted = true;
+      await hangPromise;
+    } : null,
+    onWriteFile: hangType === 'writefile' ? async () => {
+      hangStarted = true;
+      await hangPromise;
+    } : null,
+    onSync: hangType === 'sync' ? async () => {
+      hangStarted = true;
+      await hangPromise;
+    } : null,
+  });
 
   try {
     const reg = new AccountRegistry('telegram');
@@ -1864,35 +1982,6 @@ test('R1-INT-2 REAL ASYNC HANG COUNTEREXAMPLE: real owner, worker, writer, repo 
       accountDirName: 'TG_tg_acc_hang',
     });
 
-    let hangResolve;
-    const hangPromise = new Promise((resolve) => {
-      hangResolve = resolve;
-    });
-
-    let linkStarted = false;
-    let newFsStepsAfterClosed = 0;
-    let newRetryTimersAfterClosed = 0;
-
-    // Track fs calls to prove F3-T5 and F3-T6
-    const testFsFacade = {
-      ...fsPromises,
-      stat: (p) => fsPromises.stat(p),
-      realpath: (p) => fsPromises.realpath(p),
-      lstat: (p) => fsPromises.lstat(p),
-      mkdir: (p, opts) => fsPromises.mkdir(p, opts),
-      open: async (...args) => {
-        return fsPromises.open(...args);
-      },
-      link: async (src, dst) => {
-        if (dst.includes('001_hang')) {
-          linkStarted = true;
-          // Hang until release
-          await hangPromise;
-        }
-        return fsPromises.link(src, dst);
-      },
-    };
-
     const fakeBackup = {
       repository: repo,
       start: () => {},
@@ -1903,7 +1992,6 @@ test('R1-INT-2 REAL ASYNC HANG COUNTEREXAMPLE: real owner, worker, writer, repo 
     const fakeServer = { isStopping: false, server: { close: () => {} }, start: async () => {}, stop: async () => {} };
     const fakeAdapter = { start: async () => {}, stop: async () => {} };
 
-    // Real owner + real worker + real writer via test-only fsPromises and archiveWorkerStopTimeoutMs
     const owner = new GatewayRuntimeOwner({
       stateRoot: dir,
       archiveRoot: archiveDir,
@@ -1914,11 +2002,12 @@ test('R1-INT-2 REAL ASYNC HANG COUNTEREXAMPLE: real owner, worker, writer, repo 
       localApiServer: fakeServer,
       telegramAdapter: fakeAdapter,
       secretBuffer: Buffer.alloc(32),
-      fsPromises: testFsFacade,
+      fsPromises: trackedFs.facade,
       archiveWorkerStopTimeoutMs: 50,
     });
 
     await owner.start();
+    workerRef = owner.archiveWorker;
 
     // Insert pending coordination record into database
     let archiveId;
@@ -1944,48 +2033,106 @@ test('R1-INT-2 REAL ASYNC HANG COUNTEREXAMPLE: real owner, worker, writer, repo 
       rawDb.close();
     }
 
-    // Wait until real writer enters hung link
-    for (let i = 0; i < 50 && !linkStarted; i++) {
+    // Wait until real writer enters hung step
+    for (let i = 0; i < 100 && !hangStarted; i++) {
       await new Promise((r) => setTimeout(r, 10));
     }
-    assert.strictEqual(linkStarted, true, 'Hung link step must have been invoked');
+    assert.strictEqual(hangStarted, true, `Hung ${hangType} step must have been invoked`);
 
-    // F3-T1: owner.stop() returns within bounded test equivalent (< 1000ms)
+    // Stop owner: worker times out at 50ms, sets closed guard, and stop completes bounded
     const startTime = Date.now();
     await owner.stop();
     const elapsed = Date.now() - startTime;
     assert.ok(elapsed < 1000, `owner.stop took ${elapsed}ms; must complete within bounded test timeout`);
     assert.strictEqual(owner.status, OWNER_STATUS.STOPPED);
-
-    // F3-T2: repository shutdown completes
     assert.strictEqual(repo.isOpen, false);
+    assert.ok(workerRef, 'workerRef must be present');
+    assert.strictEqual(workerRef.isClosed, true);
 
-    // F3-T3: post-close DB mutation count = 0
+    // Verify DB row remains PENDING before releasing hang
     const verifyDb = new (require('node:sqlite').DatabaseSync)(repo.databasePath);
+    let postCloseDbMutations = 0;
     try {
       const row = verifyDb.prepare('SELECT * FROM archive_coordination WHERE archive_id = ?;').get(archiveId);
       assert.strictEqual(row.status, 'PENDING');
       assert.strictEqual(row.content_snapshot, 'Hung Question Text');
+      const beforeVersion = verifyDb.prepare('PRAGMA data_version;').get().data_version;
 
-      // F3-T4: late filesystem settlement cannot write DB
+      // Release the hung promise
       hangResolve();
+      hangSettled = true;
       await new Promise((r) => setTimeout(r, 50));
 
       const afterRow = verifyDb.prepare('SELECT * FROM archive_coordination WHERE archive_id = ?;').get(archiveId);
       assert.strictEqual(afterRow.status, 'PENDING', 'Row must remain PENDING after late fs resolution');
       assert.strictEqual(afterRow.content_snapshot, 'Hung Question Text');
+      const afterVersion = verifyDb.prepare('PRAGMA data_version;').get().data_version;
+      postCloseDbMutations = afterVersion - beforeVersion;
+      if (postCloseDbMutations < 0) postCloseDbMutations = 0;
     } finally {
       verifyDb.close();
     }
 
-    // F3-T5 & F3-T6: no new filesystem steps or retry timers after closed guard was active
-    assert.strictEqual(newFsStepsAfterClosed, 0);
-    assert.strictEqual(newRetryTimersAfterClosed, 0);
+    const preClose = trackedFs.getPreCloseCount();
+    const postClose = trackedFs.getPostCloseCount();
+
+    // Invariant assertions
+    assert.ok(preClose > 0, `PRE_CLOSE_FS_CALLS must be > 0 (got ${preClose})`);
+    assert.strictEqual(postClose, 0, `POST_CLOSE_FS_CALLS must be 0 (got ${postClose})`);
+    assert.strictEqual(postCloseDbMutations, 0, `POST_CLOSE_DB_MUTATIONS must be 0 (got ${postCloseDbMutations})`);
+
+    // Diagnostics emission
+    const upperPrefix = testPrefix.toUpperCase();
+    console.log(`R2_F7_${upperPrefix}_PRE_CLOSE_FS_CALLS=${preClose}`);
+    console.log(`R2_F7_${upperPrefix}_POST_CLOSE_FS_CALLS=${postClose}`);
+    console.log(`R2_F7_${upperPrefix}_POST_CLOSE_DB_MUTATIONS=${postCloseDbMutations}`);
   } finally {
+    // B1 Teardown ordering:
+    // 3. Ensure hung Promise has been released / settled
+    if (!hangSettled) {
+      hangResolve();
+      await new Promise((r) => setTimeout(r, 50));
+    }
+
+    // 4. ONLY AFTER assertions and diagnostics are complete, TEST ITSELF directly closes any still-open raw handles
+    for (const rawHandle of trackedFs.getRawFileHandles()) {
+      try {
+        await rawHandle.close();
+      } catch (err) {
+        if (err && (err.code === 'EBADF' || err.code === 'ERR_CLOSED_FILEHANDLE')) {
+          // Already closed by production code before worker closed
+        } else {
+          throw err;
+        }
+      }
+    }
+
+    // 5. Remove temporary test directories
     if (!repo.isClosed) {
       repo.close();
     }
-    fs.rmSync(dir, { recursive: true, force: true });
-    fs.rmSync(archiveDir, { recursive: true, force: true });
+    fs.rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    fs.rmSync(archiveDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
   }
+}
+
+test('R2-F7-LINK-HANG-CLOSED-GUARD: real owner, worker, writer, repo with hung link()', async () => {
+  await runHangClosedGuardScenario({
+    testPrefix: 'link',
+    hangType: 'link',
+  });
+});
+
+test('R2-F7-WRITEFILE-HANG-CLOSED-GUARD: real owner, worker, writer, repo with hung FileHandle.writeFile()', async () => {
+  await runHangClosedGuardScenario({
+    testPrefix: 'writefile',
+    hangType: 'writefile',
+  });
+});
+
+test('R2-F7-SYNC-HANG-CLOSED-GUARD: real owner, worker, writer, repo with hung FileHandle.sync()', async () => {
+  await runHangClosedGuardScenario({
+    testPrefix: 'sync',
+    hangType: 'sync',
+  });
 });

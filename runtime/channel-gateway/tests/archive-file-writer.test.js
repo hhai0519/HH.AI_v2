@@ -673,3 +673,119 @@ test('readArchiveEntry and listTopicEntries: internal readback with positional r
     await fsPromises.rm(tmpDir, { recursive: true, force: true });
   }
 });
+
+test('R2-F7-RETRY-CLOSED-GUARD: injectable sleep counter proves positive retry and zero post-close retry timer', async () => {
+  const tmpDir = await fsPromises.mkdtemp(path.join(os.tmpdir(), 'hhai-retry-closed-'));
+  try {
+    let isClosed = false;
+    let preCloseSleepCalls = 0;
+    let postCloseSleepCalls = 0;
+
+    const testSleep = async (ms) => {
+      if (isClosed) {
+        postCloseSleepCalls++;
+      } else {
+        preCloseSleepCalls++;
+      }
+    };
+
+    // Positive control: closed=false and eligible transient failure
+    let transientCount = 0;
+    const transientFs = {
+      ...fsPromises,
+      open: async (...args) => {
+        transientCount++;
+        if (transientCount === 1) {
+          const err = new Error('EBUSY: resource busy or locked');
+          err.code = 'EBUSY';
+          throw err;
+        }
+        return fsPromises.open(...args);
+      },
+    };
+
+    const writer1 = new ArchiveFileWriter({
+      archiveRoot: tmpDir,
+      sleep: testSleep,
+      retryDelays: [10],
+      fsPromises: transientFs,
+    });
+
+    const coord1 = {
+      archive_id: 801,
+      account_id: 'acc_retry',
+      topic_id: 1,
+      entry_sequence: 1,
+      record_kind: 'ORIGINAL',
+      platform_msg_id: 'tg:801:1',
+      command_id: 'cmd-801',
+      created_at: 1774780200,
+      relative_path: 'acc_retry/topic1/001_Test_20260928-120000.md',
+    };
+
+    const res1 = await writer1.publishArchiveRecord({
+      archiveRoot: tmpDir,
+      coordination: coord1,
+      topic: { display_name: 'Topic 1' },
+      questionSnapshot: 'Q',
+      replyBody: 'A',
+      isClosed: () => isClosed,
+    });
+
+    assert.strictEqual(res1.status, 'COMPLETED');
+    assert.ok(preCloseSleepCalls > 0, 'PRE_CLOSE_RETRY_SLEEP_CALLS must be > 0');
+
+    // Closed case: eligible transient filesystem failure observed after closed=true
+    isClosed = false;
+    let closedCaseTriggered = false;
+    const closedFs = {
+      ...fsPromises,
+      open: async (...args) => {
+        if (closedCaseTriggered) {
+          isClosed = true;
+          const err = new Error('EBUSY: resource busy or locked');
+          err.code = 'EBUSY';
+          throw err;
+        }
+        return fsPromises.open(...args);
+      },
+    };
+
+    const writer2 = new ArchiveFileWriter({
+      archiveRoot: tmpDir,
+      sleep: testSleep,
+      retryDelays: [10],
+      fsPromises: closedFs,
+    });
+
+    const coord2 = {
+      archive_id: 802,
+      account_id: 'acc_retry',
+      topic_id: 1,
+      entry_sequence: 2,
+      record_kind: 'ORIGINAL',
+      platform_msg_id: 'tg:802:1',
+      command_id: 'cmd-802',
+      created_at: 1774780200,
+      relative_path: 'acc_retry/topic1/002_Test_20260928-120000.md',
+    };
+
+    closedCaseTriggered = true;
+    const res2 = await writer2.publishArchiveRecord({
+      archiveRoot: tmpDir,
+      coordination: coord2,
+      topic: { display_name: 'Topic 1' },
+      questionSnapshot: 'Q2',
+      replyBody: 'A2',
+      isClosed: () => isClosed,
+    });
+
+    assert.strictEqual(res2.status, 'CANCELLED_CLOSED');
+    assert.strictEqual(postCloseSleepCalls, 0, 'POST_CLOSE_RETRY_SLEEP_CALLS must be 0');
+
+    console.log(`R2_F7_RETRY_PRE_CLOSE_SLEEP_CALLS=${preCloseSleepCalls}`);
+    console.log(`R2_F7_RETRY_POST_CLOSE_SLEEP_CALLS=${postCloseSleepCalls}`);
+  } finally {
+    await fsPromises.rm(tmpDir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+  }
+});

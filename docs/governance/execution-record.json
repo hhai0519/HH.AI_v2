@@ -1,43 +1,39 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "TG-MVP-14-CONVERSATION-ARCHIVE-PRODUCTION-R1",
-  "base_oid": "43a71ecb10abb41b589bfc95536e27064263bc30",
+  "task_id": "TG-MVP-14-CONVERSATION-ARCHIVE-PRODUCTION-R2",
+  "base_oid": "d25f2a838bb38a33b085ca732f990b620ad13a15",
   "plan": {
     "allowed_paths": [
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
-      "docs/adr/0025-outbound-reliability-loopback-api-security.md",
+      "docs/adr/0023-channel-gateway-state-store-sqlite.md",
+      "docs/adr/0024-inbound-identity-cursor-semantics.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
       "docs/refactor-backlog.md",
       "runtime/channel-gateway/AGENTS.md",
       "runtime/channel-gateway/core/archive-file-writer.js",
-      "runtime/channel-gateway/core/archive-worker.js",
-      "runtime/channel-gateway/core/gateway-runtime-owner.js",
       "runtime/channel-gateway/tests/archive-file-writer.test.js",
-      "runtime/channel-gateway/tests/archive-worker.test.js",
       "runtime/channel-gateway/tests/gateway-runtime-owner.test.js"
     ],
     "required_paths": [
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
-      "docs/adr/0025-outbound-reliability-loopback-api-security.md",
+      "docs/adr/0023-channel-gateway-state-store-sqlite.md",
+      "docs/adr/0024-inbound-identity-cursor-semantics.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
       "docs/refactor-backlog.md",
       "runtime/channel-gateway/AGENTS.md",
       "runtime/channel-gateway/core/archive-file-writer.js",
-      "runtime/channel-gateway/core/archive-worker.js",
-      "runtime/channel-gateway/core/gateway-runtime-owner.js",
       "runtime/channel-gateway/tests/archive-file-writer.test.js",
-      "runtime/channel-gateway/tests/archive-worker.test.js",
       "runtime/channel-gateway/tests/gateway-runtime-owner.test.js"
     ],
     "max_plan_revisions": 3,
-    "revision_count": 1,
+    "revision_count": 2,
     "plan_origin": "EXTERNAL_MACRO_PROMPT"
   },
   "actual": {
@@ -45,16 +41,14 @@
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
-      "docs/adr/0025-outbound-reliability-loopback-api-security.md",
+      "docs/adr/0023-channel-gateway-state-store-sqlite.md",
+      "docs/adr/0024-inbound-identity-cursor-semantics.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
       "docs/refactor-backlog.md",
       "runtime/channel-gateway/AGENTS.md",
       "runtime/channel-gateway/core/archive-file-writer.js",
-      "runtime/channel-gateway/core/archive-worker.js",
-      "runtime/channel-gateway/core/gateway-runtime-owner.js",
       "runtime/channel-gateway/tests/archive-file-writer.test.js",
-      "runtime/channel-gateway/tests/archive-worker.test.js",
       "runtime/channel-gateway/tests/gateway-runtime-owner.test.js"
     ]
   },
@@ -76,7 +70,7 @@
       "verification_status": "VERIFIED",
       "source_kind": "EXTERNAL_ARTIFACT",
       "sha256": "4bf6a520f2b176e40c03854adbf161f1e2d572b3a04827680696c06bbef31cbb",
-      "description": "Reused immutable TG-MVP-14 Primary E24 raw evidence from pre-R0 base discovery; R1 performs no rediscovery and no replay because R1 is a bounded repair inside the already-audited R0 30-path scope."
+      "description": "Reused immutable TG-MVP-14 Primary E24 raw evidence; R2 performs no rediscovery and no replay; evidence is reused from already-audited TG-MVP-14 discovery."
     },
     {
       "id": "E24_R0_SUPPLEMENTAL_RAW_REUSED",
@@ -84,7 +78,7 @@
       "verification_status": "VERIFIED",
       "source_kind": "EXTERNAL_ARTIFACT",
       "sha256": "cd4884281b2d7897ea51060b6f40287f766c05a8fdf860d1b188efbf03bbeaf3",
-      "description": "Reused immutable TG-MVP-14 Supplemental E24 raw evidence; R1 performs no rediscovery and no replay; exact SHA verified locally."
+      "description": "Reused immutable TG-MVP-14 Supplemental E24 raw evidence; R2 performs no rediscovery and no replay; evidence is reused from already-audited TG-MVP-14 discovery."
     }
   ],
   "report_claims": [
