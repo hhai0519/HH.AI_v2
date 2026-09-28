@@ -1,39 +1,29 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "TG-MVP-14-CONVERSATION-ARCHIVE-PRODUCTION-R2",
-  "base_oid": "d25f2a838bb38a33b085ca732f990b620ad13a15",
+  "task_id": "TG-MVP-14-FINAL-ACCEPTANCE-STATE-SYNC",
+  "base_oid": "1183790f41fe22b8825090692e86109ccfc97fc7",
   "plan": {
     "allowed_paths": [
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
       "docs/adr/0023-channel-gateway-state-store-sqlite.md",
-      "docs/adr/0024-inbound-identity-cursor-semantics.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md",
-      "runtime/channel-gateway/AGENTS.md",
-      "runtime/channel-gateway/core/archive-file-writer.js",
-      "runtime/channel-gateway/tests/archive-file-writer.test.js",
-      "runtime/channel-gateway/tests/gateway-runtime-owner.test.js"
+      "docs/refactor-backlog.md"
     ],
     "required_paths": [
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
       "docs/adr/0023-channel-gateway-state-store-sqlite.md",
-      "docs/adr/0024-inbound-identity-cursor-semantics.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md",
-      "runtime/channel-gateway/AGENTS.md",
-      "runtime/channel-gateway/core/archive-file-writer.js",
-      "runtime/channel-gateway/tests/archive-file-writer.test.js",
-      "runtime/channel-gateway/tests/gateway-runtime-owner.test.js"
+      "docs/refactor-backlog.md"
     ],
     "max_plan_revisions": 3,
-    "revision_count": 2,
+    "revision_count": 0,
     "plan_origin": "EXTERNAL_MACRO_PROMPT"
   },
   "actual": {
@@ -42,14 +32,9 @@
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
       "docs/adr/0023-channel-gateway-state-store-sqlite.md",
-      "docs/adr/0024-inbound-identity-cursor-semantics.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md",
-      "runtime/channel-gateway/AGENTS.md",
-      "runtime/channel-gateway/core/archive-file-writer.js",
-      "runtime/channel-gateway/tests/archive-file-writer.test.js",
-      "runtime/channel-gateway/tests/gateway-runtime-owner.test.js"
+      "docs/refactor-backlog.md"
     ]
   },
   "evidence": [
@@ -65,20 +50,12 @@
       "description": "Deterministic Git diff replay against declared plan allowed/required scope"
     },
     {
-      "id": "E24_R0_PRIMARY_RAW_REUSED",
+      "id": "M2_DISCOVERY_RAW",
       "origin": "MACHINE_CAPTURED_RAW",
-      "verification_status": "VERIFIED",
+      "verification_status": "NOT_ESTABLISHED",
       "source_kind": "EXTERNAL_ARTIFACT",
-      "sha256": "4bf6a520f2b176e40c03854adbf161f1e2d572b3a04827680696c06bbef31cbb",
-      "description": "Reused immutable TG-MVP-14 Primary E24 raw evidence; R2 performs no rediscovery and no replay; evidence is reused from already-audited TG-MVP-14 discovery."
-    },
-    {
-      "id": "E24_R0_SUPPLEMENTAL_RAW_REUSED",
-      "origin": "MACHINE_CAPTURED_RAW",
-      "verification_status": "VERIFIED",
-      "source_kind": "EXTERNAL_ARTIFACT",
-      "sha256": "cd4884281b2d7897ea51060b6f40287f766c05a8fdf860d1b188efbf03bbeaf3",
-      "description": "Reused immutable TG-MVP-14 Supplemental E24 raw evidence; R2 performs no rediscovery and no replay; evidence is reused from already-audited TG-MVP-14 discovery."
+      "sha256": "4cd2851da921aab9d371b281f51947e2645b069d38ee56655e37a79c2ded3b4b",
+      "description": "generic B-109 M2 provenance only; not task-specific evidence; this pure state-sync declared E24 NONE; routed EXISTING B-107"
     }
   ],
   "report_claims": [
@@ -87,14 +64,6 @@
       "claim_text": "All actual changed repository paths strictly match allowed scope and cover all required paths without expansion.",
       "evidence_ids": [
         "PLAN_ACTUAL_DIFF"
-      ]
-    },
-    {
-      "claim_id": "CLAIM_R0_E24_PROVENANCE_REUSED",
-      "claim_text": "Reused immutable TG-MVP-14 Primary and Supplemental E24 raw evidence verified against expected SHA256 without rediscovery or replay.",
-      "evidence_ids": [
-        "E24_R0_PRIMARY_RAW_REUSED",
-        "E24_R0_SUPPLEMENTAL_RAW_REUSED"
       ]
     }
   ]
