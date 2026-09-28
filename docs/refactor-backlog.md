@@ -2825,7 +2825,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 5.1 上一批狀態
 
-上次核對通過的 HEAD：32be9c92435dba042b13a9d8364edd8e80bba86b
+上次核對通過的 HEAD：ffee52f463ca3f03277644ff213741cbc3999434
 
 - `23af193`（執行者前置檢查 ＋ 回滾程序 ＋ `AUDIT-LOG.md` ＋ 四缺口修正）
   已於 2026-09-02 由審計官核對通過：6 檔異動（含 2 個新檔）、零夾帶、
@@ -5488,3 +5488,24 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - TG-MVP-15 登錄 live E2E 前置要求。
   - B-100 追加 R-G（Owner shutdown acceptance-evidence hardening）與 R-H（J2 counterexample fixed-wall-clock robustness）兩項 NONBLOCKING 事項。
   - main advancement = FORBIDDEN；本 state-sync candidate 自身 AWAITING EXTERNAL MACRO AUDIT，執行者嚴禁自審。
+
+143. **ENV-01 工具鏈基準登錄外部宏觀審計核對通過、Same-SHA Main Promotion 與 Closure State Sync**（2026-09-28）
+- **ENV-01 實作核對通過與 Promotion 事實（Implementation Audit PASS & Promotion Evidence）**：
+  - TARGET / PROMOTED SHA = `ffee52f463ca3f03277644ff213741cbc3999434`，PARENT = `32be9c92435dba042b13a9d8364edd8e80bba86b`。
+  - Candidate Actions Run = 36374998221 attempt 1（event=push, head_branch=batch/env-01-toolchain-baseline-260928, head_sha=ffee52f463ca3f03277644ff213741cbc3999434, verify=success, gateway-windows=success）。
+  - External Macro Final Verdict：ENV-01 PRODUCTION CANDIDATE = PASS / ACCEPT ALL，MACHINE = PASS，E24 = PASS，SCOPE = PASS，CONTENT = PASS，PRIVACY = PASS，SOP POLICY / ANCHOR = PASS，TOOLCHAIN BASELINE = PASS，WSL CONTRACT = PASS，EXECUTION RECORD = PASS，NEW MATERIAL BLOCKING FINDING = NONE，ROLLBACK = NO，PROMOTION ELIGIBILITY = PASS。
+  - Same-SHA main promotion：previous main = `32be9c92435dba042b13a9d8364edd8e80bba86b`，promoted main = `ffee52f463ca3f03277644ff213741cbc3999434`，SHA TRANSFORMATION = NONE。
+  - Post-main exact-SHA Actions Run = 36376066461 attempt 1（event=push, head_branch=main, head_sha=ffee52f463ca3f03277644ff213741cbc3999434, verify=completed / success, gateway-windows=completed / success）。
+- **結案語意與狀態（Closure Semantics & Status）**：
+  - ENV-01 = ACCEPTED / CLOSED ON MAIN。
+  - accepted implementation checkpoint 推進至 `ffee52f463ca3f03277644ff213741cbc3999434`。
+  - NEXT_WORK = E-03。
+  - NEXT_SLICE = TG-MVP-14。
+  - TG-MVP-14 前置相依 ENV-01 = SATISFIED / CLOSED。
+  - 本 closure-sync 批次不得啟動 TG-MVP-14 實作。
+- **強制結轉原則（Mandatory Carry-Forward Principle）**：
+  - TG-MVP-14 的第一個 production batch 必須將 docs/refactor-backlog.md §5.1 推進至 ENV-01 closure-sync 的 promoted SHA，並補記該 closure-sync 的 candidate Run 與 post-main Run。
+  - 此結轉應併入 TG-MVP-14 第一個 production batch，不得另開第三個 ENV-01 closure-sync batch。
+- **後續路由與任務狀態（Next Work Routing & Task Status）**：
+  - main advancement = FORBIDDEN。
+  - 本 closure-sync candidate 自身 AWAITING EXTERNAL MACRO AUDIT，執行者嚴禁自審。
