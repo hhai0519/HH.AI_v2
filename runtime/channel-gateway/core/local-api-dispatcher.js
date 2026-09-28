@@ -12,6 +12,12 @@ const {
   REPLY_TEXT_MAX_UTF16,
 } = require('./local-api-codec');
 const { computeCanonicalPayloadHash } = require('./outbox-delivery-policy');
+const {
+  normalizeTopicName,
+  cleanDisplayName,
+  formatAccountDirName,
+  formatTopicDirName,
+} = require('./topic-manager');
 
 const ALLOWED_REPLY_REASONS = new Set([
   'NOT_CURRENT_HOLDER',
@@ -20,6 +26,7 @@ const ALLOWED_REPLY_REASONS = new Set([
   'MESSAGE_NOT_FOUND',
   'MESSAGE_NOT_CLAIMED',
   'CLAIM_MISMATCH',
+  'TOPIC_NOT_FOUND',
 ]);
 
 /**
@@ -48,6 +55,13 @@ function isNonNegativeSafeInteger(val) {
  */
 function isBoundedInteger(val, min, max) {
   return typeof val === 'number' && Number.isSafeInteger(val) && val >= min && val <= max;
+}
+
+/**
+ * Checks if value is a positive safe integer (> 0).
+ */
+function isPositiveSafeInteger(val) {
+  return typeof val === 'number' && Number.isSafeInteger(val) && val > 0;
 }
 
 class LocalApiDispatcher {
@@ -89,6 +103,10 @@ class LocalApiDispatcher {
           return this._handleHeartbeat(body);
         case '/v1/reply':
           return this._handleReply(body);
+        case '/v1/topics/list':
+          return this._handleTopicsList(body);
+        case '/v1/topics/create':
+          return this._handleTopicsCreate(body);
         default:
           return { status: 400, body: { ok: false, code: 'INVALID_REQUEST' } };
       }
@@ -118,6 +136,9 @@ class LocalApiDispatcher {
     const failedTerminal = typeof this.repository.getFailedTerminalSummaries === 'function'
       ? this.repository.getFailedTerminalSummaries(50)
       : { count: 0, summaries: [] };
+    const archiveFailed = typeof this.repository.getFailedArchiveSummaries === 'function'
+      ? this.repository.getFailedArchiveSummaries(50)
+      : { count: 0, summaries: [] };
 
     return {
       status: 200,
@@ -146,6 +167,17 @@ class LocalApiDispatcher {
           created_at: s.created_at,
           updated_at: s.updated_at,
           terminal_reason_code: s.terminal_reason_code,
+        })),
+        archive_failed_count: archiveFailed.count,
+        archive_failed_records: archiveFailed.summaries.map((s) => ({
+          archive_id: s.archive_id,
+          account_id: s.account_id,
+          topic_id: s.topic_id,
+          entry_sequence: s.entry_sequence,
+          record_kind: s.record_kind,
+          failed_reason_code: s.failed_reason_code,
+          created_at: s.created_at,
+          updated_at: s.updated_at,
         })),
       },
     };
@@ -328,13 +360,14 @@ class LocalApiDispatcher {
    *   "fencing_token": non-negative safe integer,
    *   "message_id": string,
    *   "replying_account_id": string,
-   *   "text": string
+   *   "text": string,
+   *   "topic_id": positive safe integer
    * }
    */
   _handleReply(body) {
     const keys = Object.keys(body);
     if (
-      keys.length !== 7 ||
+      keys.length !== 8 ||
       !isNonEmptyString(body.client_request_id) ||
       !isNonEmptyString(body.channel_id) ||
       !isNonEmptyString(body.holder_id) ||
@@ -342,7 +375,8 @@ class LocalApiDispatcher {
       !isNonEmptyString(body.message_id) ||
       !isNonEmptyString(body.replying_account_id) ||
       !isNonEmptyString(body.text) ||
-      body.text.length > REPLY_TEXT_MAX_UTF16
+      body.text.length > REPLY_TEXT_MAX_UTF16 ||
+      !isPositiveSafeInteger(body.topic_id)
     ) {
       return { status: 400, body: { ok: false, code: 'INVALID_REQUEST' } };
     }
@@ -385,6 +419,7 @@ class LocalApiDispatcher {
       messageId: body.message_id,
       replyingAccountId: body.replying_account_id,
       text: body.text,
+      topicId: body.topic_id,
       platform: 'telegram',
       endpointOperation,
       recipient,
@@ -425,6 +460,118 @@ class LocalApiDispatcher {
         command_id: enqueueRes.commandId,
         outbox_status: enqueueRes.outboxStatus,
         idempotent_replay: enqueueRes.idempotentReplay,
+      },
+    };
+  }
+
+  /**
+   * POST /v1/topics/list
+   * Body: {
+   *   "account_id": string,
+   *   "after_topic_sequence"?: non-negative safe integer,
+   *   "limit"?: integer (1..100)
+   * }
+   */
+  _handleTopicsList(body) {
+    const keys = Object.keys(body);
+    if (
+      keys.length < 1 ||
+      keys.length > 3 ||
+      !isNonEmptyString(body.account_id) ||
+      (body.after_topic_sequence !== undefined && !isNonNegativeSafeInteger(body.after_topic_sequence)) ||
+      (body.limit !== undefined && !isBoundedInteger(body.limit, 1, 100)) ||
+      keys.some((k) => k !== 'account_id' && k !== 'after_topic_sequence' && k !== 'limit')
+    ) {
+      return { status: 400, body: { ok: false, code: 'INVALID_REQUEST' } };
+    }
+
+    if (!this.accountRegistry || typeof this.accountRegistry.get !== 'function') {
+      return { status: 400, body: { ok: false, code: 'INVALID_REQUEST' } };
+    }
+    const account = this.accountRegistry.get(body.account_id);
+    if (!account || account.channel !== 'telegram') {
+      return { status: 400, body: { ok: false, code: 'INVALID_REQUEST' } };
+    }
+
+    const afterTopicSequence = body.after_topic_sequence !== undefined ? body.after_topic_sequence : 0;
+    const limit = body.limit !== undefined ? body.limit : 50;
+
+    const result = this.repository.getArchiveTopics({
+      accountId: body.account_id,
+      afterTopicSequence,
+      limit,
+    });
+
+    return {
+      status: 200,
+      body: {
+        ok: true,
+        code: 'OK',
+        topics: result.topics,
+        next_after_topic_sequence: result.next_after_topic_sequence,
+      },
+    };
+  }
+
+  /**
+   * POST /v1/topics/create
+   * Body: {
+   *   "account_id": string,
+   *   "name": string,
+   *   "confirmed": true
+   * }
+   */
+  _handleTopicsCreate(body) {
+    const keys = Object.keys(body);
+    if (
+      keys.length !== 3 ||
+      !isNonEmptyString(body.account_id) ||
+      !isNonEmptyString(body.name) ||
+      body.confirmed !== true
+    ) {
+      return { status: 400, body: { ok: false, code: 'INVALID_REQUEST' } };
+    }
+
+    if (!this.accountRegistry || typeof this.accountRegistry.get !== 'function') {
+      return { status: 400, body: { ok: false, code: 'INVALID_REQUEST' } };
+    }
+    const account = this.accountRegistry.get(body.account_id);
+    if (!account || account.channel !== 'telegram') {
+      return { status: 400, body: { ok: false, code: 'INVALID_REQUEST' } };
+    }
+
+    let normalized;
+    let displayName;
+    try {
+      normalized = normalizeTopicName(body.name);
+      displayName = cleanDisplayName(body.name);
+    } catch {
+      return { status: 400, body: { ok: false, code: 'INVALID_REQUEST' } };
+    }
+
+    if (!normalized || normalized.length === 0) {
+      return { status: 400, body: { ok: false, code: 'INVALID_REQUEST' } };
+    }
+
+    const accountDirName = formatAccountDirName(account.label, body.account_id);
+
+    const res = this.repository.createArchiveTopic({
+      accountId: body.account_id,
+      displayName,
+      normalizedName: normalized,
+      accountDirName,
+      nowSec: this.nowSec(),
+    });
+
+    return {
+      status: 200,
+      body: {
+        ok: true,
+        code: 'OK',
+        created: res.created,
+        topic_id: res.topic_id,
+        topic_sequence: res.topic_sequence,
+        display_name: res.display_name,
       },
     };
   }

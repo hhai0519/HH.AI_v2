@@ -178,6 +178,8 @@ class LocalApiServer {
       '/v1/poll',
       '/v1/heartbeat',
       '/v1/reply',
+      '/v1/topics/list',
+      '/v1/topics/create',
     ]);
     if (!ALLOWED_PATHS.has(url)) {
       return this._failClosed(req, res, 404);

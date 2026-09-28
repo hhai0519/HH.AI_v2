@@ -38,6 +38,7 @@ const { DatabaseSync } = require('node:sqlite');
 const {
   SqliteStateRepository,
   SQLITE_STATE_SCHEMA_VERSION,
+  computeCanonicalPayloadHash,
 } = require('../core/sqlite-state-repository');
 
 function createTempHarness() {
@@ -776,26 +777,28 @@ test('T8B Test 12: Architectural Boundaries & Freeze Invariants (CANARY 16-20)',
   try {
     const repo = SqliteStateRepository.open(harness.stateRoot);
 
-    // CANARY 16: schema is v7 (upgraded in TG-MVP-13)
-    assert.strictEqual(repo.schemaVersion, 7);
-    assert.strictEqual(SQLITE_STATE_SCHEMA_VERSION, 7);
+    // CANARY 16: schema is v8 (upgraded in TG-MVP-14)
+    assert.strictEqual(repo.schemaVersion, 8);
+    assert.strictEqual(SQLITE_STATE_SCHEMA_VERSION, 8);
 
-    // CANARY 17: migrations are [1, 2, 3, 4, 5, 6, 7]
+    // CANARY 17: migrations are [1, 2, 3, 4, 5, 6, 7, 8]
     const rawDb = new DatabaseSync(repo.databasePath);
     try {
       const versions = rawDb
         .prepare('SELECT version FROM schema_migrations ORDER BY version ASC;')
         .all()
         .map((r) => r.version);
-      assert.deepStrictEqual(versions, [1, 2, 3, 4, 5, 6, 7]);
+      assert.deepStrictEqual(versions, [1, 2, 3, 4, 5, 6, 7, 8]);
 
-      // CANARY 20: outbox table exists in v7, inbound_event exists
+      // CANARY 20: outbox table exists, inbound_event exists, archive tables exist
       const tables = rawDb
         .prepare("SELECT name FROM sqlite_master WHERE type='table';")
         .all()
         .map((r) => r.name);
       assert.strictEqual(tables.includes('outbox'), true);
       assert.strictEqual(tables.includes('inbound_event'), true);
+      assert.strictEqual(tables.includes('archive_topic'), true);
+      assert.strictEqual(tables.includes('archive_coordination'), true);
     } finally {
       rawDb.close();
     }
@@ -1686,6 +1689,281 @@ test('v5-ingest Test 25: cursorObservedAtMs validation across ingest APIs', () =
         }),
       /cursorObservedAtMs/
     );
+
+    repo.close();
+  } finally {
+    harness.cleanup();
+  }
+});
+
+test('v8-archive Test 26: post-reply EDIT on v8 message with ORIGINAL coordination creates AMENDMENT coordination', () => {
+  const harness = createTempHarness();
+  try {
+    const repo = SqliteStateRepository.open(harness.stateRoot);
+    const accountId = 'acc_tg_edit';
+
+    // 1. Create topic
+    const topic = repo.createArchiveTopic({
+      accountId,
+      displayName: 'General Support',
+      normalizedName: 'general support',
+      accountDirName: 'TG_acc_tg_edit',
+      topicDirName: 'Q001_General_Support',
+    });
+
+    // 2. Ingest message
+    repo.ingestMessage({
+      accountId,
+      platformEventId: 'evt_edit_orig_1',
+      platformMsgId: 'msg_edit_orig_1',
+      channelId: 'chan_edit',
+      content: 'Original user question',
+      cursorValue: '10',
+      cursorObservedAtMs: 1727180000000,
+    });
+
+    // 3. Takeover, claim, reply
+    repo.takeoverChannel('chan_edit', 'worker-1');
+    const claimRes = repo.claimMessages('chan_edit', 'worker-1', 1, 10);
+    assert.strictEqual(claimRes.success, true);
+    assert.strictEqual(claimRes.claimedMessages.length, 1);
+
+    const payloadHash = computeCanonicalPayloadHash({
+      platform: 'telegram',
+      endpointOperation: 'sendMessage',
+      recipient: 'user_123',
+      messageType: 'text',
+      text: 'Original assistant answer',
+    });
+
+    const replyResult = repo.enqueueAuthorizedReply({
+      clientRequestId: 'req_edit_orig_1',
+      channelId: 'chan_edit',
+      holderId: 'worker-1',
+      fencingToken: 1,
+      messageId: 'msg_edit_orig_1',
+      replyingAccountId: accountId,
+      platform: 'telegram',
+      endpointOperation: 'sendMessage',
+      recipient: 'user_123',
+      logicalReplyTarget: 'msg_edit_orig_1',
+      messageType: 'text',
+      text: 'Original assistant answer',
+      payloadHash,
+      topicId: topic.topic_id,
+      commandId: 'cmd_edit_orig_1',
+    });
+    assert.strictEqual(replyResult.success, true);
+
+    // Verify ORIGINAL coordination created
+    const rawDb = new DatabaseSync(repo.databasePath);
+    let coords;
+    try {
+      coords = rawDb.prepare('SELECT * FROM archive_coordination ORDER BY entry_sequence ASC;').all();
+    } finally {
+      rawDb.close();
+    }
+    assert.strictEqual(coords.length, 1);
+    const origCoord = coords[0];
+    assert.strictEqual(origCoord.record_kind, 'ORIGINAL');
+    assert.strictEqual(origCoord.content_snapshot, 'Original user question');
+    assert.strictEqual(origCoord.topic_id, topic.topic_id);
+    assert.strictEqual(origCoord.entry_sequence, 1);
+    assert.strictEqual(origCoord.status, 'PENDING');
+
+    // 4. Now ingest EDIT on replied message
+    const editResult = repo.ingestEdit({
+      accountId,
+      platformEventId: 'evt_edit_amend_1',
+      channelId: 'chan_edit',
+      platformMsgId: 'msg_edit_orig_1',
+      content: 'Edited user question (amended)',
+      cursorValue: '11',
+      cursorObservedAtMs: 1727180050000,
+    });
+
+    assert.strictEqual(editResult.applied, true);
+
+    // Check coordination rows: should now have 2 rows (ORIGINAL + AMENDMENT)
+    const rawDb2 = new DatabaseSync(repo.databasePath);
+    try {
+      coords = rawDb2.prepare('SELECT * FROM archive_coordination ORDER BY entry_sequence ASC;').all();
+      assert.strictEqual(coords.length, 2);
+
+      const amendCoord = coords[1];
+      assert.strictEqual(amendCoord.record_kind, 'AMENDMENT');
+      assert.strictEqual(amendCoord.original_archive_id, origCoord.archive_id);
+      assert.strictEqual(amendCoord.source_platform_event_id, 'evt_edit_amend_1');
+      assert.strictEqual(amendCoord.content_snapshot, 'Edited user question (amended)');
+      assert.strictEqual(amendCoord.topic_id, topic.topic_id);
+      assert.strictEqual(amendCoord.entry_sequence, 2);
+      assert.strictEqual(amendCoord.status, 'PENDING');
+      assert.ok(amendCoord.relative_path.includes('.md'));
+
+      // Check inbox content updated
+      const inboxRow = rawDb2.prepare('SELECT content, status FROM inbox WHERE account_id = ? AND platform_msg_id = ?').get(accountId, 'msg_edit_orig_1');
+      assert.strictEqual(inboxRow.content, 'Edited user question (amended)');
+      assert.strictEqual(inboxRow.status, 'replied');
+    } finally {
+      rawDb2.close();
+    }
+
+    repo.close();
+  } finally {
+    harness.cleanup();
+  }
+});
+
+test('v8-archive Test 27: post-reply EDIT on legacy message without ORIGINAL coordination updates content but creates NO amendment', () => {
+  const harness = createTempHarness();
+  try {
+    const repo = SqliteStateRepository.open(harness.stateRoot);
+    const accountId = 'acc_tg_legacy';
+
+    // 1. Ingest message
+    repo.ingestMessage({
+      accountId,
+      platformEventId: 'evt_legacy_1',
+      platformMsgId: 'msg_legacy_1',
+      channelId: 'chan_legacy',
+      content: 'Legacy question',
+      cursorValue: '100',
+      cursorObservedAtMs: 1727180000000,
+    });
+
+    // 2. Mark replied directly in DB (simulating pre-v8 message that was replied before v8 existed)
+    const rawDb = new DatabaseSync(repo.databasePath);
+    try {
+      rawDb.prepare("UPDATE inbox SET status = 'replied' WHERE account_id = ? AND platform_msg_id = ?").run(accountId, 'msg_legacy_1');
+      const count = rawDb.prepare('SELECT count(*) AS cnt FROM archive_coordination;').get().cnt;
+      assert.strictEqual(count, 0);
+    } finally {
+      rawDb.close();
+    }
+
+    // 3. Ingest EDIT on legacy replied message
+    const editResult = repo.ingestEdit({
+      accountId,
+      platformEventId: 'evt_legacy_edit_1',
+      channelId: 'chan_legacy',
+      platformMsgId: 'msg_legacy_1',
+      content: 'Edited legacy question',
+      cursorValue: '101',
+      cursorObservedAtMs: 1727180050000,
+    });
+
+    assert.strictEqual(editResult.applied, true);
+
+    // Verify inbox content was updated to preserve runtime semantics
+    const rawDb2 = new DatabaseSync(repo.databasePath);
+    try {
+      const inboxRow = rawDb2.prepare('SELECT content, status FROM inbox WHERE account_id = ? AND platform_msg_id = ?').get(accountId, 'msg_legacy_1');
+      assert.strictEqual(inboxRow.content, 'Edited legacy question');
+      assert.strictEqual(inboxRow.status, 'replied');
+
+      // Verify NO amendment coordination was created
+      const count2 = rawDb2.prepare('SELECT count(*) AS cnt FROM archive_coordination;').get().cnt;
+      assert.strictEqual(count2, 0);
+    } finally {
+      rawDb2.close();
+    }
+
+    repo.close();
+  } finally {
+    harness.cleanup();
+  }
+});
+
+test('v8-archive Test 28: duplicate EDIT on replied message deduplicates (zero new coordination)', () => {
+  const harness = createTempHarness();
+  try {
+    const repo = SqliteStateRepository.open(harness.stateRoot);
+    const accountId = 'acc_tg_dup_edit';
+
+    const topic = repo.createArchiveTopic({
+      accountId,
+      displayName: 'General Support',
+      normalizedName: 'general support',
+      accountDirName: 'TG_acc_tg_dup_edit',
+      topicDirName: 'Q001_General_Support',
+    });
+
+    repo.ingestMessage({
+      accountId,
+      platformEventId: 'evt_dedup_orig_1',
+      platformMsgId: 'msg_dedup_orig_1',
+      channelId: 'chan_dedup',
+      content: 'Original question',
+      cursorValue: '20',
+      cursorObservedAtMs: 1727180000000,
+    });
+
+    repo.takeoverChannel('chan_dedup', 'worker-1');
+    const claimRes = repo.claimMessages('chan_dedup', 'worker-1', 1, 10);
+    assert.strictEqual(claimRes.success, true);
+
+    const payloadHash = computeCanonicalPayloadHash({
+      platform: 'telegram',
+      endpointOperation: 'sendMessage',
+      recipient: 'user_123',
+      messageType: 'text',
+      text: 'Answer',
+    });
+
+    repo.enqueueAuthorizedReply({
+      clientRequestId: 'req_dedup_1',
+      channelId: 'chan_dedup',
+      holderId: 'worker-1',
+      fencingToken: 1,
+      messageId: 'msg_dedup_orig_1',
+      replyingAccountId: accountId,
+      platform: 'telegram',
+      endpointOperation: 'sendMessage',
+      recipient: 'user_123',
+      logicalReplyTarget: 'msg_dedup_orig_1',
+      messageType: 'text',
+      text: 'Answer',
+      payloadHash,
+      topicId: topic.topic_id,
+      commandId: 'cmd_dedup_1',
+    });
+
+    // First edit
+    const edit1 = repo.ingestEdit({
+      accountId,
+      platformEventId: 'evt_dedup_edit_1',
+      channelId: 'chan_dedup',
+      platformMsgId: 'msg_dedup_orig_1',
+      content: 'Edited question',
+      cursorValue: '21',
+      cursorObservedAtMs: 1727180050000,
+    });
+    assert.strictEqual(edit1.applied, true);
+
+    const rawDb = new DatabaseSync(repo.databasePath);
+    try {
+      let count = rawDb.prepare('SELECT count(*) AS cnt FROM archive_coordination;').get().cnt;
+      assert.strictEqual(count, 2);
+
+      // Duplicate edit (same platformEventId)
+      const edit2 = repo.ingestEdit({
+        accountId,
+        platformEventId: 'evt_dedup_edit_1',
+        channelId: 'chan_dedup',
+        platformMsgId: 'msg_dedup_orig_1',
+        content: 'Edited question',
+        cursorValue: '21',
+        cursorObservedAtMs: 1727180050000,
+      });
+      assert.strictEqual(edit2.applied, false);
+      assert.strictEqual(edit2.duplicate, true);
+
+      // Confirm no additional coordination created
+      count = rawDb.prepare('SELECT count(*) AS cnt FROM archive_coordination;').get().cnt;
+      assert.strictEqual(count, 2);
+    } finally {
+      rawDb.close();
+    }
 
     repo.close();
   } finally {

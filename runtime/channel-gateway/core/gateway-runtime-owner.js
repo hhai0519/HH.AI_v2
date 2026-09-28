@@ -13,6 +13,9 @@ const { LocalApiServer } = require('./local-api-server');
 const { LocalApiDispatcher } = require('./local-api-dispatcher');
 const { BackupRuntimeOwner } = require('./backup-runtime-owner');
 const { OutboxWorker } = require('./outbox-worker');
+const { ArchiveFileWriter, probeHardLinkCapability } = require('./archive-file-writer');
+const { ArchiveWorker } = require('./archive-worker');
+const { TopicManager } = require('./topic-manager');
 const { TelegramInboundAdapter } = require('../adapters/telegram-inbound-adapter');
 const { TelegramOutboundAdapter } = require('../adapters/telegram-outbound-adapter');
 const { SecretRef } = require('./secret-provider');
@@ -53,9 +56,15 @@ class GatewayRuntimeOwner {
   #injectedOutboxWorker;
   #outboxWorkerFactory;
   #outboxDeliveryExecutor;
+  #archiveRoot;
+  #injectedArchiveWorker;
+  #archiveWorkerFactory;
+  #injectedArchiveFileWriter;
 
   #backupRuntimeOwner;
   #outboxWorker;
+  #archiveWorker;
+  #archiveFileWriter;
   #telegramAdapter;
   #telegramOutboundAdapter;
   #server;
@@ -68,6 +77,7 @@ class GatewayRuntimeOwner {
   /**
    * @param {object} [options={}]
    * @param {string} [options.stateRoot]
+   * @param {string} [options.archiveRoot]
    * @param {object} [options.config]
    * @param {object} [options.accountRegistry]
    * @param {object} [options.secretProvider]
@@ -89,6 +99,9 @@ class GatewayRuntimeOwner {
    * @param {object} [options.outboxWorker]
    * @param {function} [options.outboxWorkerFactory]
    * @param {function} [options.outboxDeliveryExecutor]
+   * @param {object} [options.archiveWorker]
+   * @param {function} [options.archiveWorkerFactory]
+   * @param {object} [options.archiveFileWriter]
    */
   constructor(options = {}) {
     if (!options || typeof options !== 'object' || Array.isArray(options)) {
@@ -98,6 +111,7 @@ class GatewayRuntimeOwner {
     this.#status = OWNER_STATUS.INITIALIZED;
     this.#config = options.config || null;
     this.#stateRoot = options.stateRoot || (this.#config && this.#config.dataLocations && this.#config.dataLocations.stateRoot) || null;
+    this.#archiveRoot = options.archiveRoot || (this.#config && this.#config.dataLocations && this.#config.dataLocations.archiveRoot) || null;
     this.#accountRegistry = options.accountRegistry || null;
     this.#secretProvider = options.secretProvider || null;
     this.#port = options.port !== undefined ? options.port : CANONICAL_PORT;
@@ -121,9 +135,14 @@ class GatewayRuntimeOwner {
     this.#injectedOutboxWorker = options.outboxWorker || null;
     this.#outboxWorkerFactory = options.outboxWorkerFactory || null;
     this.#outboxDeliveryExecutor = options.outboxDeliveryExecutor || null;
+    this.#injectedArchiveWorker = options.archiveWorker || null;
+    this.#archiveWorkerFactory = options.archiveWorkerFactory || null;
+    this.#injectedArchiveFileWriter = options.archiveFileWriter || null;
 
     this.#backupRuntimeOwner = null;
     this.#outboxWorker = null;
+    this.#archiveWorker = null;
+    this.#archiveFileWriter = null;
     this.#telegramAdapter = null;
     this.#telegramOutboundAdapter = null;
     this.#server = null;
@@ -168,6 +187,14 @@ class GatewayRuntimeOwner {
 
   get outboxWorker() {
     return this.#outboxWorker;
+  }
+
+  get archiveWorker() {
+    return this.#archiveWorker;
+  }
+
+  get archiveFileWriter() {
+    return this.#archiveFileWriter;
   }
 
   #installSignalHandlers() {
@@ -239,7 +266,19 @@ class GatewayRuntimeOwner {
       this.#server = null;
     }
 
-    // 3. Best-effort zeroize secret buffer
+    // 3. Initiate ArchiveWorker stop if started
+    let archiveWorkerStopPromise = null;
+    if (this.#archiveWorker) {
+      try {
+        const p = this.#archiveWorker.stop();
+        if (p && typeof p.then === 'function') {
+          archiveWorkerStopPromise = p.catch(() => {});
+        }
+      } catch (_) {}
+      this.#archiveWorker = null;
+    }
+
+    // 4. Best-effort zeroize secret buffer
     if (this.#secretBuf) {
       try {
         this.#secretBuf.fill(0);
@@ -247,7 +286,7 @@ class GatewayRuntimeOwner {
       this.#secretBuf = null;
     }
 
-    // 4. Initiate OutboxWorker stop if started (halts future scheduling, do not await full quiescence yet)
+    // 5. Initiate OutboxWorker stop if started
     let workerStopPromise = null;
     if (this.#outboxWorker) {
       try {
@@ -259,7 +298,7 @@ class GatewayRuntimeOwner {
       this.#outboxWorker = null;
     }
 
-    // 5. Rollback Telegram outbound adapter if started (aborts in-flight deliveries, quiesces active delivery)
+    // 6. Rollback Telegram outbound adapter if started
     if (this.#telegramOutboundAdapter) {
       try {
         await this.#telegramOutboundAdapter.stop();
@@ -267,14 +306,21 @@ class GatewayRuntimeOwner {
       this.#telegramOutboundAdapter = null;
     }
 
-    // 5b. Await OutboxWorker full quiescence and state persistence before repository close
+    // 6b. Await OutboxWorker full quiescence and state persistence before repository close
     if (workerStopPromise) {
       try {
         await workerStopPromise;
       } catch (_) {}
     }
 
-    // 6. Rollback BackupRuntimeOwner
+    // 6c. Await ArchiveWorker full quiescence before repository close
+    if (archiveWorkerStopPromise) {
+      try {
+        await archiveWorkerStopPromise;
+      } catch (_) {}
+    }
+
+    // 7. Rollback BackupRuntimeOwner
     if (this.#backupRuntimeOwner) {
       try {
         this.#backupRuntimeOwner.stop();
@@ -282,7 +328,7 @@ class GatewayRuntimeOwner {
       this.#backupRuntimeOwner = null;
     }
 
-    // 7. Remove signal handlers
+    // 8. Remove signal handlers
     this.#removeSignalHandlers();
 
     this.#status = OWNER_STATUS.STOPPED;
@@ -293,8 +339,9 @@ class GatewayRuntimeOwner {
    * 1. Opens repository and starts BackupRuntimeOwner.
    * 2. Starts TelegramOutboundAdapter.
    * 3. Starts OutboxWorker (runs in-flight startup recovery, wires outbound delivery executor).
-   * 4. Binds Local API loopback HTTP server.
-   * 5. Starts TelegramInboundAdapter LAST.
+   * 4. Archive-specific startup capability validation & ArchiveWorker start.
+   * 5. Binds Local API loopback HTTP server.
+   * 6. Starts TelegramInboundAdapter LAST.
    * On any failure, performs strict reverse-order rollback.
    *
    * @returns {Promise<GatewayRuntimeOwner>}
@@ -384,7 +431,66 @@ class GatewayRuntimeOwner {
       throw err;
     }
 
-    // Step 4: Local API Server & Dispatcher
+    // Step 4: Archive startup capability validation & ArchiveWorker start
+    try {
+      let archiveWorker = this.#injectedArchiveWorker;
+      if (!archiveWorker) {
+        if (!this.#archiveRoot) {
+          throw new Error('archiveRoot is required to initialize archive subsystem');
+        }
+
+        // Prove archiveRoot supports hard-link capability
+        await probeHardLinkCapability(this.#archiveRoot);
+
+        // Validate topic manager startup invariants
+        const repo = this.#backupRuntimeOwner.repository;
+        TopicManager.validateStartup({
+          repository: repo,
+          accountRegistry: this.#accountRegistry,
+          archiveRoot: this.#archiveRoot,
+        });
+
+        let fileWriter = this.#injectedArchiveFileWriter;
+        if (!fileWriter) {
+          fileWriter = new ArchiveFileWriter({
+            archiveRoot: this.#archiveRoot,
+            repository: repo,
+          });
+        }
+        this.#archiveFileWriter = fileWriter;
+
+        const workerOpts = {
+          repository: repo,
+          fileWriter,
+          logger: this.#logger,
+          nowSec: this.#nowSec,
+        };
+        if (this.#archiveWorkerFactory) {
+          archiveWorker = this.#archiveWorkerFactory(workerOpts);
+        } else {
+          archiveWorker = new ArchiveWorker(workerOpts);
+        }
+      } else {
+        if (this.#archiveRoot) {
+          await probeHardLinkCapability(this.#archiveRoot);
+          const repo = this.#backupRuntimeOwner.repository;
+          if (repo && typeof repo.getAllAccountArchiveTopics === 'function') {
+            TopicManager.validateStartup({
+              repository: repo,
+              accountRegistry: this.#accountRegistry,
+              archiveRoot: this.#archiveRoot,
+            });
+          }
+        }
+      }
+      this.#archiveWorker = archiveWorker;
+      await this.#archiveWorker.start();
+    } catch (err) {
+      await this.#rollbackOnStartupFailure();
+      throw err;
+    }
+
+    // Step 5: Local API Server & Dispatcher
     try {
       const repo = this.#backupRuntimeOwner.repository;
       let dispatcher = this.#injectedDispatcher;
@@ -440,7 +546,7 @@ class GatewayRuntimeOwner {
       throw err;
     }
 
-    // Step 5: TelegramInboundAdapter (LAST)
+    // Step 6: TelegramInboundAdapter (LAST)
     try {
       let adapter = this.#injectedTelegramAdapter;
       if (!adapter) {
@@ -478,11 +584,13 @@ class GatewayRuntimeOwner {
    * 2. Await TelegramInboundAdapter.stop() to full quiescence.
    * 3. Drain Local API connections (<= 2000ms) and stop LocalApiServer.
    * 4. Initiate OutboxWorker stop (synchronously halts future scheduling).
-   * 5. Await TelegramOutboundAdapter.stop() (aborts in-flight deliveries, quiesces active delivery, zeroizes token).
-   * 6. Await OutboxWorker full quiescence and state persistence.
-   * 7. Stop BackupRuntimeOwner (stops scheduler, closes repository).
-   * 8. Best-effort zeroize server HMAC secret buffer.
-   * 9. Remove installed signal handlers.
+   * 5. Initiate ArchiveWorker stop (waits only for currently executing item, upper bound 10s).
+   * 6. Await TelegramOutboundAdapter.stop() (aborts in-flight deliveries, quiesces active delivery, zeroizes token).
+   * 7. Await OutboxWorker full quiescence and state persistence.
+   * 8. Await ArchiveWorker.stop result (bounded by 10,000ms).
+   * 9. Stop BackupRuntimeOwner (stops scheduler, closes repository).
+   * 10. Best-effort zeroize server HMAC secret buffer.
+   * 11. Remove installed signal handlers.
    *
    * @returns {Promise<void>}
    */
@@ -551,7 +659,27 @@ class GatewayRuntimeOwner {
         this.#outboxWorker = null;
       }
 
-      // 5. Await TelegramOutboundAdapter.stop() (aborts in-flight deliveries, quiesces active delivery, zeroizes token)
+      // 5. Initiate ArchiveWorker stop (do not await full quiescence yet)
+      let archiveWorkerStopPromise = null;
+      if (this.#archiveWorker) {
+        try {
+          const p = this.#archiveWorker.stop();
+          if (p && typeof p.then === 'function') {
+            archiveWorkerStopPromise = p.catch((err) => {
+              if (this.#logger && typeof this.#logger.error === 'function') {
+                this.#logger.error('[GatewayRuntimeOwner] Error stopping ArchiveWorker');
+              }
+            });
+          }
+        } catch (err) {
+          if (this.#logger && typeof this.#logger.error === 'function') {
+            this.#logger.error('[GatewayRuntimeOwner] Error initiating ArchiveWorker stop');
+          }
+        }
+        this.#archiveWorker = null;
+      }
+
+      // 6. Await TelegramOutboundAdapter.stop() (aborts in-flight deliveries, quiesces active delivery, zeroizes token)
       if (this.#telegramOutboundAdapter) {
         try {
           await this.#telegramOutboundAdapter.stop();
@@ -563,14 +691,21 @@ class GatewayRuntimeOwner {
         this.#telegramOutboundAdapter = null;
       }
 
-      // 5b. Await OutboxWorker full quiescence and state persistence before repository close
+      // 7. Await OutboxWorker full quiescence and state persistence before repository close
       if (workerStopPromise) {
         try {
           await workerStopPromise;
         } catch (_) {}
       }
 
-      // 6. Stop BackupRuntimeOwner (stops scheduler then closes repo)
+      // 8. Await ArchiveWorker.stop result (bounded by 10,000ms in production)
+      if (archiveWorkerStopPromise) {
+        try {
+          await archiveWorkerStopPromise;
+        } catch (_) {}
+      }
+
+      // 9. Stop BackupRuntimeOwner (stops scheduler then closes repo)
       if (this.#backupRuntimeOwner) {
         try {
           this.#backupRuntimeOwner.stop();
@@ -582,7 +717,7 @@ class GatewayRuntimeOwner {
         this.#backupRuntimeOwner = null;
       }
 
-      // 7. Best-effort zeroize HMAC secret Buffer
+      // 10. Best-effort zeroize HMAC secret Buffer
       if (this.#secretBuf) {
         try {
           this.#secretBuf.fill(0);
@@ -590,7 +725,7 @@ class GatewayRuntimeOwner {
         this.#secretBuf = null;
       }
 
-      // 8. Remove installed signal handlers
+      // 11. Remove installed signal handlers
       this.#removeSignalHandlers();
 
       this.#status = OWNER_STATUS.STOPPED;

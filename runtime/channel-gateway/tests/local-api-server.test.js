@@ -583,3 +583,50 @@ test('server: invalid HMAC on SESSION request does NOT record nonce or poison re
     await server.stop();
   }
 });
+
+test('server: dispatches /v1/topics/list over authenticated session (TG-MVP-14)', { timeout: 5000 }, async () => {
+  let dispatchedPath = null;
+  let dispatchedBody = null;
+  const { server } = createTestServer({
+    dispatcher: {
+      dispatch(path, body) {
+        dispatchedPath = path;
+        dispatchedBody = body;
+        if (path === '/v1/topics/list') {
+          return { status: 200, body: { ok: true, code: 'OK', topics: [{ topic_id: 'top_1', display_name: 'General' }] } };
+        }
+        return { status: 404, body: { ok: false, code: 'NOT_FOUND' } };
+      },
+    },
+  });
+  const { port } = await server.start();
+
+  try {
+    const socket = net.connect({ port, host: '127.0.0.1' });
+    const { sessionId, timestamp: ts } = await performHello(socket, port, '55555555555555555555555555555551');
+
+    const body = Buffer.from(JSON.stringify({ account_id: 'acc_1' }), 'utf-8');
+    const nonce1 = '55555555555555555555555555555552';
+    const canonReq = buildCanonicalSessionRequest({
+      method: 'POST',
+      path: '/v1/topics/list',
+      timestamp: ts,
+      nonce: nonce1,
+      sessionId,
+      bodySha256: computeSha256(body),
+    });
+    const sig = computeHmac(FAKE_SECRET, canonReq);
+
+    const reqHttp = `POST /v1/topics/list HTTP/1.1\r\nHost: 127.0.0.1:${port}\r\nX-HHAI-Version: 1\r\nX-HHAI-Timestamp: ${ts}\r\nX-HHAI-Nonce: ${nonce1}\r\nX-HHAI-Session-Id: ${sessionId}\r\nX-HHAI-Signature: ${sig}\r\nContent-Type: application/json\r\nContent-Length: ${body.length}\r\n\r\n${body.toString('utf-8')}`;
+
+    const res = await sendRawHttp(socket, reqHttp);
+    assert.match(res, /^HTTP\/1\.1 200/);
+    assert.match(res, /"topics":/);
+    assert.equal(dispatchedPath, '/v1/topics/list');
+    assert.deepEqual(dispatchedBody, { account_id: 'acc_1' });
+
+    socket.destroy();
+  } finally {
+    await server.stop();
+  }
+});

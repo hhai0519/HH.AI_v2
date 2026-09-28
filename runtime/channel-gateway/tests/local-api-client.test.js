@@ -813,3 +813,83 @@ test('client: validates HELLO and SESSION response protocol headers and rejects 
     assert.match(stderr.content, /INVALID_RESPONSE_SIGNATURE/);
   }
 });
+
+test('client: topics/list and topics/create map to /v1/topics/* and exit 0 (TG-MVP-14)', async () => {
+  const sessionId = '0123456789abcdef0123456789abcdef';
+  const sharedSocket = { id: 'sock-topics' };
+  let now = 1000;
+
+  for (const cmd of ['topics/list', 'topics/create']) {
+    const stdout = createMockStream();
+    const stderr = createMockStream();
+    const secretProvider = createFakeSecretProvider();
+    let requestedPath = null;
+
+    const mockTransport = async (options) => {
+      const serverSecret = Buffer.from(FAKE_SECRET_SOURCE);
+      if (options.path === '/v1/hello') {
+        const canonHello = buildCanonicalResponse({
+          mode: 'HELLO',
+          statusCode: 200,
+          requestMethod: 'POST',
+          requestPath: '/v1/hello',
+          requestNonce: options.headers['X-HHAI-Nonce'],
+          responseTimestamp: now,
+          sessionId,
+          bodySha256: computeSha256(Buffer.alloc(0)),
+        });
+        return {
+          statusCode: 200,
+          rawHeaders: [
+            'X-HHAI-Version', '1',
+            'X-HHAI-Timestamp', String(now),
+            'X-HHAI-Session-Id', sessionId,
+            'X-HHAI-Signature', computeHmac(serverSecret, canonHello),
+            'Content-Length', '0',
+          ],
+          body: Buffer.alloc(0),
+          socket: sharedSocket,
+        };
+      } else {
+        requestedPath = options.path;
+        const respBuf = Buffer.from(JSON.stringify({ ok: true, code: 'OK' }), 'utf-8');
+        const canonSession = buildCanonicalResponse({
+          mode: 'SESSION',
+          statusCode: 200,
+          requestMethod: 'POST',
+          requestPath: options.path,
+          requestNonce: options.headers['X-HHAI-Nonce'],
+          responseTimestamp: now,
+          sessionId,
+          bodySha256: computeSha256(respBuf),
+        });
+        return {
+          statusCode: 200,
+          rawHeaders: [
+            'X-HHAI-Version', '1',
+            'X-HHAI-Timestamp', String(now),
+            'X-HHAI-Session-Id', sessionId,
+            'X-HHAI-Signature', computeHmac(serverSecret, canonSession),
+            'Content-Type', 'application/json',
+            'Content-Length', String(respBuf.length),
+          ],
+          body: respBuf,
+          socket: sharedSocket,
+        };
+      }
+    };
+
+    const code = await runClient(cmd, JSON.stringify({ account_id: 'acc_1' }), {
+      secretProvider,
+      transport: mockTransport,
+      stdout,
+      stderr,
+      nowSec: () => now,
+    });
+
+    assert.equal(code, 0);
+    assert.equal(requestedPath, `/v1/${cmd}`);
+    assert.equal(JSON.parse(stdout.content).ok, true);
+    assert.equal(stderr.content, '');
+  }
+});

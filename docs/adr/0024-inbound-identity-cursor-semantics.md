@@ -185,6 +185,11 @@ LINE 通道採用 Webhook 模型：
 4. **有效 Update ID 畸形負載與無效 Update ID 處置 (R2 Alignment)**：
    - 有效 `update_id`（安全非負整數）但 payload / identity 畸形或不支援（例如缺少必要文字或屬性）：持久化寫入耐久 `inbound_event`（`event_type = 'IGNORED'`），完成後推進游標，防止輪詢毒藥迴圈。
    - 無效 / 缺失 / 非安全整數之 `update_id`：嚴格保持零突變（Zero Mutation），不寫入任何事件亦不推進游標。
+5. **已回覆訊息之後續編輯與歸檔增補 (Post-Reply Inbound Edit & Archive Amendments — TG-MVP-14)**：
+   - 當已回覆（`replied`）之訊息在 Telegram 端被使用者編輯時，`applyInboundMessageEdit` 在更新 `inbox.content` 的同時，檢查該訊息是否存在對應之 `ORIGINAL` 歸檔協調記錄。
+   - 若存在已發布或協調中之原始問答歸檔，於同一交易內生成 `AMENDMENT` 歸檔協調記錄，並將編輯後文字記為 `content_snapshot`。
+   - 歷史相容性（Pre-v8 規則）：若該訊息為 Schema v8 以前已回覆之舊訊息（無原始協調記錄），編輯時維持更新 `inbox.content`，但**嚴格不回填（no-backfill）**虛擬之原始問答歸檔，保持歷史邊界乾淨。
+   - 增補檔案獨立性：後續由 `ArchiveWorker` 產製 `_amendment_<seq>.md` 檔案發布至對應主題，嚴格不改寫原始 `001_...md` 歸檔檔案。
 
 ## Consequences
 

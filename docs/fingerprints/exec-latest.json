@@ -1,5 +1,5 @@
 {
-  "base_head": "ffee52f",
+  "base_head": "e695c78",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -552,16 +552,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 238,
-      "sha256": "0643b6236efb4d981d27ff1a962d168c70a4512b1463736b0c3edf70c73e33e7"
+      "lines": 239,
+      "sha256": "a051b003959ff875c96d88ef3874f5fa65ad71a261e471abe53bf82425790c16"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 209,
-      "sha256": "73ea3fd83c22c676c72ffd61f503f9a1bede8ea31a8eb4a34c1c04c79d3577ab"
+      "lines": 210,
+      "sha256": "a3f0e3706f04b91657b2d3154d783c327882e429f7636528e3a87bf547b2d9fb"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -602,7 +602,7 @@
         "## 封存區"
       ],
       "lines": 347,
-      "sha256": "cb668a67681be80601c1ed2e3b6dcd403d6cb4aa1b3842afef43885e5a1d787c"
+      "sha256": "a3359db2b734b92deadd15b449b5aef6b6939c660f3def5405be30922f9f1b94"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -901,10 +901,11 @@
         "## 上線前既有任務交會相依 (Pre-Live Existing Task Intersections)",
         "## TG-MVP-10 架構演進與邊界收斂 (TG-MVP-10 Evolution & Boundaries)",
         "## TG-MVP-11 架構演進與邊界收斂 (TG-MVP-11 Evolution & Boundaries)",
+        "## TG-MVP-14 架構演進：對話歸檔與主題管理 (Conversation Archive & Topics)",
         "## Consequences"
       ],
-      "lines": 194,
-      "sha256": "8763d69bcc4313dec9c2cd109dbe67d754de61398947cef3f8d58a9e20b63c24"
+      "lines": 207,
+      "sha256": "6ac18642b25fdb955fb21c77734fcbee23f1d3a4063efb7e66e38f73c3111299"
     },
     "docs/adr/0023-channel-gateway-state-store-sqlite.md": {
       "fences": 0,
@@ -923,8 +924,8 @@
         "### 9. 狀態資料庫與備份衛生治理 (State Database & Backup Hygiene — TG-MVP-09A)",
         "## Consequences"
       ],
-      "lines": 210,
-      "sha256": "3e4024849de62593af17578dff321492ad2ba959194e78e4833602d216451089"
+      "lines": 218,
+      "sha256": "69d9e374ce94651bfc7ca0da0123ed6b15737cfb1f99002306d1565aa91d2a8c"
     },
     "docs/adr/0024-inbound-identity-cursor-semantics.md": {
       "fences": 2,
@@ -942,8 +943,8 @@
         "### 8. TG-MVP-10 Telegram 落地語意與游標重置機制 (TG-MVP-10 Telegram Inbound & Cursor Semantics)",
         "## Consequences"
       ],
-      "lines": 204,
-      "sha256": "5ad5a32d1b5dd41f2e353da944cacaa101471935fe6924c503312ace41e0fab4"
+      "lines": 209,
+      "sha256": "1b22b242694d6d5725402e93d8f477e22095abc36edc44487e0ddb62acbfd7e7"
     },
     "docs/adr/0025-outbound-reliability-loopback-api-security.md": {
       "fences": 6,
@@ -980,8 +981,8 @@
         "### R3 Loopback Local API Canaries",
         "## External Platform & Runtime Facts"
       ],
-      "lines": 507,
-      "sha256": "2370dbdb4e2eedcd951ba6b9b2716a69a3b61075040eb956fc1f1665536b5052"
+      "lines": 512,
+      "sha256": "3a74f3c4d2a2e1a244e8d45978568e974180fcf95a8045630c5652de409a3e3f"
     },
     "docs/adr/0026-gateway-secret-provider-windows-credential-manager.md": {
       "fences": 0,
@@ -1070,8 +1071,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 5511,
-      "sha256": "940d2ce86526a059811ba101bb38dafd664b3b682be2064d4b8988ed8b1e4129"
+      "lines": 5529,
+      "sha256": "b958ff011cf0e297470917a48a667f940fa745280a31d11343d1dcde4ebd2b25"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1499,7 +1500,7 @@
       "sha256": "35bf7dbfa3c7d291b550c3c97a6ae398a22b1dc3624c1d2fc1e4db6963d6e115"
     }
   },
-  "generated_at": "2026-09-28T04:29:48Z",
+  "generated_at": "2026-09-28T08:20:15Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

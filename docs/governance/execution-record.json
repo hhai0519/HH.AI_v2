@@ -1,24 +1,72 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "ENV-01-CLOSURE-SYNC",
-  "base_oid": "ffee52f463ca3f03277644ff213741cbc3999434",
+  "task_id": "TG-MVP-14-CONVERSATION-ARCHIVE-PRODUCTION",
+  "base_oid": "e695c787c0276994db64780d997bbf75d9a12f0f",
   "plan": {
     "allowed_paths": [
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
+      "docs/adr/0022-channel-gateway-architecture.md",
+      "docs/adr/0023-channel-gateway-state-store-sqlite.md",
+      "docs/adr/0024-inbound-identity-cursor-semantics.md",
+      "docs/adr/0025-outbound-reliability-loopback-api-security.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md"
+      "docs/refactor-backlog.md",
+      "runtime/channel-gateway/AGENTS.md",
+      "runtime/channel-gateway/bin/local-api-client.js",
+      "runtime/channel-gateway/core/archive-file-writer.js",
+      "runtime/channel-gateway/core/archive-worker.js",
+      "runtime/channel-gateway/core/gateway-runtime-owner.js",
+      "runtime/channel-gateway/core/local-api-dispatcher.js",
+      "runtime/channel-gateway/core/local-api-server.js",
+      "runtime/channel-gateway/core/sqlite-state-repository.js",
+      "runtime/channel-gateway/core/topic-manager.js",
+      "runtime/channel-gateway/tests/archive-file-writer.test.js",
+      "runtime/channel-gateway/tests/archive-worker.test.js",
+      "runtime/channel-gateway/tests/gateway-runtime-owner.test.js",
+      "runtime/channel-gateway/tests/local-api-client.test.js",
+      "runtime/channel-gateway/tests/local-api-dispatcher.test.js",
+      "runtime/channel-gateway/tests/local-api-server.test.js",
+      "runtime/channel-gateway/tests/outbox-worker.test.js",
+      "runtime/channel-gateway/tests/sqlite-channel-transactions.test.js",
+      "runtime/channel-gateway/tests/sqlite-ingest-transactions.test.js",
+      "runtime/channel-gateway/tests/sqlite-state-repository.test.js",
+      "runtime/channel-gateway/tests/topic-manager.test.js"
     ],
     "required_paths": [
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
+      "docs/adr/0022-channel-gateway-architecture.md",
+      "docs/adr/0023-channel-gateway-state-store-sqlite.md",
+      "docs/adr/0024-inbound-identity-cursor-semantics.md",
+      "docs/adr/0025-outbound-reliability-loopback-api-security.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md"
+      "docs/refactor-backlog.md",
+      "runtime/channel-gateway/AGENTS.md",
+      "runtime/channel-gateway/bin/local-api-client.js",
+      "runtime/channel-gateway/core/archive-file-writer.js",
+      "runtime/channel-gateway/core/archive-worker.js",
+      "runtime/channel-gateway/core/gateway-runtime-owner.js",
+      "runtime/channel-gateway/core/local-api-dispatcher.js",
+      "runtime/channel-gateway/core/local-api-server.js",
+      "runtime/channel-gateway/core/sqlite-state-repository.js",
+      "runtime/channel-gateway/core/topic-manager.js",
+      "runtime/channel-gateway/tests/archive-file-writer.test.js",
+      "runtime/channel-gateway/tests/archive-worker.test.js",
+      "runtime/channel-gateway/tests/gateway-runtime-owner.test.js",
+      "runtime/channel-gateway/tests/local-api-client.test.js",
+      "runtime/channel-gateway/tests/local-api-dispatcher.test.js",
+      "runtime/channel-gateway/tests/local-api-server.test.js",
+      "runtime/channel-gateway/tests/outbox-worker.test.js",
+      "runtime/channel-gateway/tests/sqlite-channel-transactions.test.js",
+      "runtime/channel-gateway/tests/sqlite-ingest-transactions.test.js",
+      "runtime/channel-gateway/tests/sqlite-state-repository.test.js",
+      "runtime/channel-gateway/tests/topic-manager.test.js"
     ],
     "max_plan_revisions": 3,
     "revision_count": 0,
@@ -29,9 +77,33 @@
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
+      "docs/adr/0022-channel-gateway-architecture.md",
+      "docs/adr/0023-channel-gateway-state-store-sqlite.md",
+      "docs/adr/0024-inbound-identity-cursor-semantics.md",
+      "docs/adr/0025-outbound-reliability-loopback-api-security.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md"
+      "docs/refactor-backlog.md",
+      "runtime/channel-gateway/AGENTS.md",
+      "runtime/channel-gateway/bin/local-api-client.js",
+      "runtime/channel-gateway/core/archive-file-writer.js",
+      "runtime/channel-gateway/core/archive-worker.js",
+      "runtime/channel-gateway/core/gateway-runtime-owner.js",
+      "runtime/channel-gateway/core/local-api-dispatcher.js",
+      "runtime/channel-gateway/core/local-api-server.js",
+      "runtime/channel-gateway/core/sqlite-state-repository.js",
+      "runtime/channel-gateway/core/topic-manager.js",
+      "runtime/channel-gateway/tests/archive-file-writer.test.js",
+      "runtime/channel-gateway/tests/archive-worker.test.js",
+      "runtime/channel-gateway/tests/gateway-runtime-owner.test.js",
+      "runtime/channel-gateway/tests/local-api-client.test.js",
+      "runtime/channel-gateway/tests/local-api-dispatcher.test.js",
+      "runtime/channel-gateway/tests/local-api-server.test.js",
+      "runtime/channel-gateway/tests/outbox-worker.test.js",
+      "runtime/channel-gateway/tests/sqlite-channel-transactions.test.js",
+      "runtime/channel-gateway/tests/sqlite-ingest-transactions.test.js",
+      "runtime/channel-gateway/tests/sqlite-state-repository.test.js",
+      "runtime/channel-gateway/tests/topic-manager.test.js"
     ]
   },
   "evidence": [
@@ -47,12 +119,20 @@
       "description": "Deterministic Git diff replay against declared plan allowed/required scope"
     },
     {
-      "id": "M2_DISCOVERY_RAW",
+      "id": "E24_PRIMARY_DISCOVERY_RAW",
       "origin": "MACHINE_CAPTURED_RAW",
-      "verification_status": "NOT_ESTABLISHED",
+      "verification_status": "VERIFIED",
       "source_kind": "EXTERNAL_ARTIFACT",
-      "sha256": "4cd2851da921aab9d371b281f51947e2645b069d38ee56655e37a79c2ded3b4b",
-      "description": "generic B-109 M2 provenance only; not task-specific evidence; this pure state-sync declared E24 NONE; routed EXISTING B-107."
+      "sha256": "4bf6a520f2b176e40c03854adbf161f1e2d572b3a04827680696c06bbef31cbb",
+      "description": "raw discovery captured by Executor at exact base e695c787c0276994db64780d997bbf75d9a12f0f (.git/tg-mvp-14-e24-260928-raw.json); External Macro supplied semantic dispositions; pre-mutation replay passed."
+    },
+    {
+      "id": "E24_SUPPLEMENTAL_DISCOVERY_RAW",
+      "origin": "MACHINE_CAPTURED_RAW",
+      "verification_status": "VERIFIED",
+      "source_kind": "EXTERNAL_ARTIFACT",
+      "sha256": "cd4884281b2d7897ea51060b6f40287f766c05a8fdf860d1b188efbf03bbeaf3",
+      "description": "supplemental raw discovery captured by Executor at exact base e695c787c0276994db64780d997bbf75d9a12f0f (.git/tg-mvp-14-e24-supplemental-260928-raw.json); External Macro supplied semantic dispositions; pre-mutation replay passed."
     }
   ],
   "report_claims": [
@@ -61,6 +141,14 @@
       "claim_text": "All actual changed repository paths strictly match allowed scope and cover all required paths without expansion.",
       "evidence_ids": [
         "PLAN_ACTUAL_DIFF"
+      ]
+    },
+    {
+      "claim_id": "CLAIM_E24_PROVENANCE_VERIFIED",
+      "claim_text": "Immutable raw discovery artifacts (primary and supplemental) verified against expected SHA256 closure.",
+      "evidence_ids": [
+        "E24_PRIMARY_DISCOVERY_RAW",
+        "E24_SUPPLEMENTAL_DISCOVERY_RAW"
       ]
     }
   ]

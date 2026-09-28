@@ -112,6 +112,21 @@ class FakeTelegramOutboundAdapter {
   }
 }
 
+class FakeArchiveWorker {
+  constructor() {
+    this.started = false;
+    this.stopped = false;
+  }
+
+  async start() {
+    this.started = true;
+  }
+
+  async stop() {
+    this.stopped = true;
+  }
+}
+
 test('safe to require bin/gateway.js with zero side effects', () => {
   const mod = require('../bin/gateway');
   assert.strictEqual(typeof mod.runGateway, 'function');
@@ -167,6 +182,15 @@ test('GatewayRuntimeOwner normal startup and ordered shutdown sequence', async (
     },
   };
 
+  const fakeArchiveWorker = {
+    start: async () => {
+      lifecycleEvents.push('archiveWorker.start');
+    },
+    stop: async () => {
+      lifecycleEvents.push('archiveWorker.stop');
+    },
+  };
+
   const fakeAdapter = {
     start: async () => {
       lifecycleEvents.push('adapter.start');
@@ -184,6 +208,7 @@ test('GatewayRuntimeOwner normal startup and ordered shutdown sequence', async (
     backupRuntimeOwner: fakeBackup,
     telegramOutboundAdapter: fakeOutbound,
     outboxWorker: fakeWorker,
+    archiveWorker: fakeArchiveWorker,
     localApiServer: fakeServer,
     telegramAdapter: fakeAdapter,
     processEmitter,
@@ -195,11 +220,12 @@ test('GatewayRuntimeOwner normal startup and ordered shutdown sequence', async (
   assert.strictEqual(owner.status, OWNER_STATUS.RUNNING);
   assert.strictEqual(owner.isRunning, true);
 
-  // Assert startup order: 1. backup, 2. outbound, 3. worker, 4. server, 5. adapter
+  // Assert startup order: 1. backup, 2. outbound, 3. worker, 4. archiveWorker, 5. server, 6. adapter
   assert.deepStrictEqual(lifecycleEvents, [
     'backup.start',
     'outbound.start',
     'worker.start',
+    'archiveWorker.start',
     'server.start',
     'adapter.start',
   ]);
@@ -211,15 +237,17 @@ test('GatewayRuntimeOwner normal startup and ordered shutdown sequence', async (
   assert.strictEqual(owner.status, OWNER_STATUS.STOPPED);
   assert.strictEqual(owner.isRunning, false);
 
-  // Assert stop order (TG-MVP-13 R3 §19 canonical J2 semantics):
+  // Assert stop order (TG-MVP-14 canonical ordering):
   // 1. worker STOP INITIATION before outbound stop initiation
   // 2. outbound abort/quiescence completes before worker full quiescence
   // 3. worker full quiescence completes before repository close (backup.stop)
+  // 4. archiveWorker.stop completes before repository close
   const adapterStopIdx = lifecycleEvents.indexOf('adapter.stop');
   const workerStopInitIdx = lifecycleEvents.indexOf('worker.stop:initiate');
   const outboundStopInitIdx = lifecycleEvents.indexOf('outbound.stop:initiate');
   const outboundStopDoneIdx = lifecycleEvents.indexOf('outbound.stop:quiesce');
   const workerStopDoneIdx = lifecycleEvents.indexOf('worker.stop:quiesce');
+  const archiveWorkerStopIdx = lifecycleEvents.indexOf('archiveWorker.stop');
   const backupStopIdx = lifecycleEvents.indexOf('backup.stop');
 
   assert.ok(adapterStopIdx !== -1, 'adapter.stop must be called');
@@ -227,6 +255,7 @@ test('GatewayRuntimeOwner normal startup and ordered shutdown sequence', async (
   assert.ok(outboundStopInitIdx !== -1, 'outbound.stop:initiate must be called');
   assert.ok(outboundStopDoneIdx !== -1, 'outbound.stop:quiesce must be called');
   assert.ok(workerStopDoneIdx !== -1, 'worker.stop:quiesce must be called');
+  assert.ok(archiveWorkerStopIdx !== -1, 'archiveWorker.stop must be called');
   assert.ok(backupStopIdx !== -1, 'backup.stop must be called');
 
   assert.ok(
@@ -244,6 +273,10 @@ test('GatewayRuntimeOwner normal startup and ordered shutdown sequence', async (
   assert.ok(
     workerStopDoneIdx < backupStopIdx,
     'worker full quiescence must complete before repository close'
+  );
+  assert.ok(
+    archiveWorkerStopIdx < backupStopIdx,
+    'archiveWorker.stop must complete before repository close'
   );
 
   // Assert secret zeroization
@@ -295,6 +328,15 @@ test('GatewayRuntimeOwner startup rollback when telegram adapter fails', async (
     },
   };
 
+  const fakeArchiveWorker = {
+    start: async () => {
+      rollbackEvents.push('archiveWorker.start');
+    },
+    stop: async () => {
+      rollbackEvents.push('archiveWorker.stop');
+    },
+  };
+
   const fakeAdapter = {
     start: async () => {
       rollbackEvents.push('adapter.start');
@@ -311,6 +353,7 @@ test('GatewayRuntimeOwner startup rollback when telegram adapter fails', async (
     backupRuntimeOwner: fakeBackup,
     telegramOutboundAdapter: fakeOutbound,
     outboxWorker: fakeWorker,
+    archiveWorker: fakeArchiveWorker,
     localApiServer: fakeServer,
     telegramAdapter: fakeAdapter,
   });
@@ -324,13 +367,18 @@ test('GatewayRuntimeOwner startup rollback when telegram adapter fails', async (
 
   assert.strictEqual(owner.status, OWNER_STATUS.STOPPED);
 
-  // Rollback order: server.stop -> worker.stop -> outbound.stop -> backup.stop
+  // Rollback order: server.stop -> archiveWorker.stop -> worker.stop -> outbound.stop -> backup.stop
   assert.ok(rollbackEvents.includes('server.stop'));
+  assert.ok(rollbackEvents.includes('archiveWorker.stop'));
   assert.ok(rollbackEvents.includes('worker.stop'));
   assert.ok(rollbackEvents.includes('outbound.stop'));
   assert.ok(rollbackEvents.includes('backup.stop'));
+  const archiveStopIdx = rollbackEvents.indexOf('archiveWorker.stop');
+  const workerStopIdx = rollbackEvents.indexOf('worker.stop');
   const outboundStopIdx = rollbackEvents.indexOf('outbound.stop');
   const backupStopIdx = rollbackEvents.indexOf('backup.stop');
+  assert.ok(archiveStopIdx < workerStopIdx, 'archiveWorker.stop must occur before worker.stop on rollback');
+  assert.ok(workerStopIdx < outboundStopIdx, 'worker.stop must occur before outbound.stop on rollback');
   assert.ok(outboundStopIdx < backupStopIdx, 'outbound.stop must occur before backup.stop on rollback');
 
   // Secret must be zeroized on rollback
@@ -397,6 +445,7 @@ test('GatewayRuntimeOwner startup rollback when Local API server fails to bind (
     backupRuntimeOwner: fakeBackup,
     telegramOutboundAdapter: fakeOutbound,
     outboxWorker: fakeWorker,
+    archiveWorker: new FakeArchiveWorker(),
     localApiServer: fakeServer,
     telegramAdapter: fakeAdapter,
   });
@@ -521,6 +570,7 @@ test('GatewayRuntimeOwner signal handling triggers stop and removes listeners', 
     backupRuntimeOwner: fakeBackup,
     telegramOutboundAdapter: fakeOutbound,
     outboxWorker: fakeWorker,
+    archiveWorker: new FakeArchiveWorker(),
     localApiServer: fakeServer,
     telegramAdapter: fakeAdapter,
     processEmitter,
@@ -829,6 +879,7 @@ test('GatewayRuntimeOwner passes accountRegistry to dispatcherFactory and LocalA
     backupRuntimeOwner: fakeBackup,
     telegramOutboundAdapter: new FakeTelegramOutboundAdapter(),
     outboxWorker: fakeWorker,
+    archiveWorker: new FakeArchiveWorker(),
     localApiServer: fakeServer,
     telegramAdapter: fakeAdapter,
     dispatcherFactory: fakeDispatcherFactory,
@@ -865,6 +916,7 @@ test('production-wiring: Gateway start calls OutboxWorker.start()', async () => 
     backupRuntimeOwner: fakeBackup,
     telegramOutboundAdapter: new FakeTelegramOutboundAdapter(),
     outboxWorker: fakeWorker,
+    archiveWorker: new FakeArchiveWorker(),
     localApiServer: fakeServer,
     telegramAdapter: fakeAdapter,
     secretBuffer: Buffer.alloc(32),
@@ -893,6 +945,13 @@ test('production-wiring: Gateway stop calls OutboxWorker.stop() before repositor
       assert.strictEqual(fakeBackup.repository.isClosed, false, 'Repository must still be open when OutboxWorker stops');
     },
   };
+  const fakeArchiveWorker = {
+    start: async () => {},
+    stop: async () => {
+      events.push('archiveWorker.stop');
+      assert.strictEqual(fakeBackup.repository.isClosed, false, 'Repository must still be open when ArchiveWorker stops');
+    },
+  };
   const fakeOutbound = {
     start: async () => {},
     stop: async () => {
@@ -907,6 +966,7 @@ test('production-wiring: Gateway stop calls OutboxWorker.stop() before repositor
     backupRuntimeOwner: fakeBackup,
     telegramOutboundAdapter: fakeOutbound,
     outboxWorker: fakeWorker,
+    archiveWorker: fakeArchiveWorker,
     localApiServer: fakeServer,
     telegramAdapter: fakeAdapter,
     secretBuffer: Buffer.alloc(32),
@@ -914,7 +974,7 @@ test('production-wiring: Gateway stop calls OutboxWorker.stop() before repositor
 
   await owner.start();
   await owner.stop();
-  assert.deepStrictEqual(events, ['worker.stop', 'outbound.stop', 'backup.stop']);
+  assert.deepStrictEqual(events, ['worker.stop', 'archiveWorker.stop', 'outbound.stop', 'backup.stop']);
 });
 
 test('production-wiring: startup failure rollback stops an already-started worker', async () => {
@@ -932,6 +992,10 @@ test('production-wiring: startup failure rollback stops an already-started worke
     start: async () => { events.push('worker.start'); },
     stop: async () => { events.push('worker.stop'); },
   };
+  const fakeArchiveWorker = {
+    start: async () => { events.push('archiveWorker.start'); },
+    stop: async () => { events.push('archiveWorker.stop'); },
+  };
   const fakeServer = {
     start: async () => {
       events.push('server.start');
@@ -945,6 +1009,7 @@ test('production-wiring: startup failure rollback stops an already-started worke
     backupRuntimeOwner: fakeBackup,
     telegramOutboundAdapter: fakeOutbound,
     outboxWorker: fakeWorker,
+    archiveWorker: fakeArchiveWorker,
     localApiServer: fakeServer,
     telegramAdapter: fakeAdapter,
     secretBuffer: Buffer.alloc(32),
@@ -952,11 +1017,14 @@ test('production-wiring: startup failure rollback stops an already-started worke
 
   await assert.rejects(async () => { await owner.start(); }, /SERVER_START_FAIL/);
   assert.ok(events.includes('worker.stop'), 'worker.stop must be called on rollback');
+  assert.ok(events.includes('archiveWorker.stop'), 'archiveWorker.stop must be called on rollback');
   assert.ok(events.includes('outbound.stop'), 'outbound.stop must be called on rollback');
+  const archiveStopIdx = events.indexOf('archiveWorker.stop');
   const workerStopIdx = events.indexOf('worker.stop');
   const outboundStopIdx = events.indexOf('outbound.stop');
   const backupStopIdx = events.indexOf('backup.stop');
-  assert.ok(workerStopIdx < backupStopIdx, 'worker.stop must occur before backup.stop on rollback');
+  assert.ok(archiveStopIdx < workerStopIdx, 'archiveWorker.stop must occur before worker.stop on rollback');
+  assert.ok(workerStopIdx < outboundStopIdx, 'worker.stop must occur before outbound.stop on rollback');
   assert.ok(outboundStopIdx < backupStopIdx, 'outbound.stop must occur before backup.stop on rollback');
 });
 
@@ -983,6 +1051,13 @@ test('production-wiring: GatewayRuntimeOwner wires TelegramOutboundAdapter.deliv
       rawDb.close();
     }
 
+    const topic = repo.createArchiveTopic({
+      accountId: 'acc_tg',
+      displayName: 'General',
+      normalizedName: 'general',
+      accountDirName: 'acc_tg',
+    });
+
     const hash = computeCanonicalPayloadHash({
       platform: 'telegram',
       account_id: 'acc_tg',
@@ -1000,6 +1075,7 @@ test('production-wiring: GatewayRuntimeOwner wires TelegramOutboundAdapter.deliv
       fencingToken: 1,
       messageId: 'tg:w1:1',
       replyingAccountId: 'acc_tg',
+      topicId: topic.topic_id,
       text: 'Executor wiring test',
       platform: 'telegram',
       endpointOperation: 'sendMessage',
@@ -1025,6 +1101,7 @@ test('production-wiring: GatewayRuntimeOwner wires TelegramOutboundAdapter.deliv
       backupRuntimeOwner: fakeBackup,
       telegramOutboundAdapter: fakeOutbound,
       // no deliveryExecutor provided: wires fakeOutbound.deliver automatically
+      archiveWorker: new FakeArchiveWorker(),
       localApiServer: fakeServer,
       telegramAdapter: fakeAdapter,
       secretBuffer: Buffer.alloc(32),
@@ -1074,6 +1151,13 @@ test('production-wiring: Gateway restart path causes Telegram IN_FLIGHT -> UNCER
       rawDb.close();
     }
 
+    const topic = repo1.createArchiveTopic({
+      accountId: 'acc_tg',
+      displayName: 'General',
+      normalizedName: 'general',
+      accountDirName: 'acc_tg',
+    });
+
     const hash = computeCanonicalPayloadHash({
       platform: 'telegram',
       account_id: 'acc_tg',
@@ -1091,6 +1175,7 @@ test('production-wiring: Gateway restart path causes Telegram IN_FLIGHT -> UNCER
       fencingToken: 1,
       messageId: 'tg:w2:1',
       replyingAccountId: 'acc_tg',
+      topicId: topic.topic_id,
       text: 'Restart recovery test',
       platform: 'telegram',
       endpointOperation: 'sendMessage',
@@ -1124,6 +1209,7 @@ test('production-wiring: Gateway restart path causes Telegram IN_FLIGHT -> UNCER
       stateRoot: dir,
       backupRuntimeOwner: fakeBackup,
       telegramOutboundAdapter: new FakeTelegramOutboundAdapter(),
+      archiveWorker: new FakeArchiveWorker(),
       localApiServer: fakeServer,
       telegramAdapter: fakeAdapter,
       secretBuffer: Buffer.alloc(32),
@@ -1215,6 +1301,13 @@ test('J2-counterexample: normal stop coordinates OutboxWorker and TelegramOutbou
       rawDb.close();
     }
 
+    const topic = repo.createArchiveTopic({
+      accountId: 'tg_acc_j2',
+      displayName: 'J2 Topic',
+      normalizedName: 'j2 topic',
+      accountDirName: 'tg_acc_j2',
+    });
+
     const payloadHash = computeCanonicalPayloadHash({
       platform: 'telegram',
       account_id: 'tg_acc_j2',
@@ -1232,6 +1325,7 @@ test('J2-counterexample: normal stop coordinates OutboxWorker and TelegramOutbou
       fencingToken: 1,
       messageId: 'tg:10001:1',
       replyingAccountId: 'tg_acc_j2',
+      topicId: topic.topic_id,
       text: 'J2 normal stop test',
       platform: 'telegram',
       endpointOperation: 'sendMessage',
@@ -1254,6 +1348,7 @@ test('J2-counterexample: normal stop coordinates OutboxWorker and TelegramOutbou
       stateRoot: dir,
       backupRuntimeOwner: fakeBackup,
       telegramOutboundAdapter: outboundAdapter,
+      archiveWorker: new FakeArchiveWorker(),
       localApiServer: fakeServer,
       telegramAdapter: fakeInbound,
       secretBuffer: Buffer.alloc(32),
@@ -1366,6 +1461,13 @@ test('J2-counterexample: startup rollback coordinates OutboxWorker and TelegramO
       rawDb.close();
     }
 
+    const topic = repo.createArchiveTopic({
+      accountId: 'tg_acc_j2_rb',
+      displayName: 'J2 RB Topic',
+      normalizedName: 'j2 rb topic',
+      accountDirName: 'tg_acc_j2_rb',
+    });
+
     const payloadHash = computeCanonicalPayloadHash({
       platform: 'telegram',
       account_id: 'tg_acc_j2_rb',
@@ -1383,6 +1485,7 @@ test('J2-counterexample: startup rollback coordinates OutboxWorker and TelegramO
       fencingToken: 1,
       messageId: 'tg:10002:1',
       replyingAccountId: 'tg_acc_j2_rb',
+      topicId: topic.topic_id,
       text: 'J2 rollback test',
       platform: 'telegram',
       endpointOperation: 'sendMessage',
@@ -1413,6 +1516,7 @@ test('J2-counterexample: startup rollback coordinates OutboxWorker and TelegramO
       stateRoot: dir,
       backupRuntimeOwner: fakeBackup,
       telegramOutboundAdapter: outboundAdapter,
+      archiveWorker: new FakeArchiveWorker(),
       localApiServer: fakeServer,
       telegramAdapter: failingInboundAdapter,
       secretBuffer: Buffer.alloc(32),
@@ -1445,5 +1549,134 @@ test('J2-counterexample: startup rollback coordinates OutboxWorker and TelegramO
   } finally {
     repo.close();
     fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('Section 21 counterexample: hung archive write does not block owner.stop(), repository closes, and delayed write cannot mutate DB', async () => {
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const os = require('node:os');
+  const { SqliteStateRepository } = require('../core/sqlite-state-repository');
+  const { ArchiveWorker } = require('../core/archive-worker');
+
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hhai-gw-archive-stop-counter-'));
+  const archiveDir = fs.mkdtempSync(path.join(os.tmpdir(), 'hhai-gw-archive-root-'));
+  const repo = new SqliteStateRepository(dir);
+
+  try {
+    const topic = repo.createArchiveTopic({
+      accountId: 'acc_hung',
+      displayName: 'Hung Write Topic',
+      normalizedName: 'hung write topic',
+      accountDirName: 'acc_hung',
+    });
+
+    // Insert pending coordination record into database
+    let archiveId;
+    const rawDb = new (require('node:sqlite').DatabaseSync)(repo.databasePath);
+    try {
+      const res = rawDb.prepare(`
+        INSERT INTO archive_coordination (
+          account_id, topic_id, entry_sequence, record_kind, original_archive_id,
+          platform_msg_id, source_platform_event_id, command_id, status,
+          content_snapshot, relative_path, completed_at, failed_reason_code,
+          created_at, updated_at
+        ) VALUES (
+          'acc_hung', ?, 1, 'ORIGINAL', NULL,
+          'msg_hung_1', NULL, 999, 'PENDING',
+          'Hung question text', 'TG_acc_hung/Q001_hung/001_hung_20260928-120000.md',
+          NULL, NULL, ?, ?
+        );
+      `).run(topic.topic_id, Math.floor(Date.now() / 1000), Math.floor(Date.now() / 1000));
+      archiveId = Number(res.lastInsertRowid);
+    } finally {
+      rawDb.close();
+    }
+
+    let writeHangResolve;
+    const writeHangingPromise = new Promise((resolve) => {
+      writeHangResolve = resolve;
+    });
+
+    let writeStarted = false;
+    const hungArchiveFileWriter = {
+      archiveRoot: archiveDir,
+      publishArchiveRecord: async () => {
+        writeStarted = true;
+        // Hangs until release is triggered
+        await writeHangingPromise;
+        return { status: 'COMPLETED', relativePath: 'TG_acc_hung/Q001_hung/001_hung_20260928-120000.md' };
+      },
+    };
+
+    // Use a short shutdownTimeoutMs (50ms) to avoid real 10s wait in tests
+    const archiveWorker = new ArchiveWorker({
+      repository: repo,
+      archiveRoot: archiveDir,
+      archiveFileWriter: hungArchiveFileWriter,
+      pollIntervalMs: 10,
+      shutdownTimeoutMs: 50,
+    });
+
+    const fakeBackup = {
+      repository: repo,
+      start: () => {},
+      stop: () => {
+        repo.close();
+      },
+    };
+    const fakeServer = { isStopping: false, server: { close: () => {} }, start: async () => {}, stop: async () => {} };
+    const fakeAdapter = { start: async () => {}, stop: async () => {} };
+
+    const owner = new GatewayRuntimeOwner({
+      stateRoot: dir,
+      archiveRoot: archiveDir,
+      backupRuntimeOwner: fakeBackup,
+      telegramOutboundAdapter: new FakeTelegramOutboundAdapter(),
+      outboxWorker: { start: async () => {}, stop: async () => {} },
+      archiveWorker: archiveWorker,
+      localApiServer: fakeServer,
+      telegramAdapter: fakeAdapter,
+      secretBuffer: Buffer.alloc(32),
+    });
+
+    await owner.start();
+
+    // Wait until the archive worker picks up the item and enters publishArchiveRecord
+    for (let i = 0; i < 50 && !writeStarted; i++) {
+      await new Promise((r) => setTimeout(r, 10));
+    }
+    assert.strictEqual(writeStarted, true, 'Hung archive write should have started');
+
+    const startTime = Date.now();
+    await owner.stop();
+    const elapsed = Date.now() - startTime;
+
+    // Stop must complete within bounded test equivalent (< 1000ms)
+    assert.ok(elapsed < 1000, `owner.stop took ${elapsed}ms; must complete within bounded test timeout`);
+    assert.strictEqual(owner.status, OWNER_STATUS.STOPPED);
+
+    // Repository must be closed
+    assert.strictEqual(repo.isOpen, false);
+
+    // Now release the hung write
+    writeHangResolve();
+    await new Promise((r) => setTimeout(r, 50));
+
+    // Verify no delayed callback mutated DB: inspect raw database to check coordination status
+    const verifyDb = new (require('node:sqlite').DatabaseSync)(repo.databasePath);
+    try {
+      const row = verifyDb.prepare('SELECT * FROM archive_coordination WHERE archive_id = ?;').get(archiveId);
+      assert.strictEqual(row.status, 'PENDING', 'Record must remain PENDING because DB mutation was prevented after stop timeout');
+      assert.strictEqual(row.content_snapshot, 'Hung question text');
+    } finally {
+      verifyDb.close();
+    }
+  } finally {
+    if (!repo.isClosed) {
+      repo.close();
+    }
+    fs.rmSync(dir, { recursive: true, force: true });
+    fs.rmSync(archiveDir, { recursive: true, force: true });
   }
 });

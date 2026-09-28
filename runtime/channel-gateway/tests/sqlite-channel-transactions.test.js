@@ -702,14 +702,14 @@ test('SqliteChannelTransactions - 15. closed repository rejects all operations f
 });
 
 // 16. Architectural invariants and boundaries (CANARY 17-24)
-test('SqliteChannelTransactions - 16. architectural invariants: schema version 7, event-ingest boundary, outbox present, no account-switch', () => {
-  assert.strictEqual(SQLITE_STATE_SCHEMA_VERSION, 7, 'CANARY 17: schema version must be 7');
+test('SqliteChannelTransactions - 16. architectural invariants: schema version 8, event-ingest boundary, outbox present, no account-switch', () => {
+  assert.strictEqual(SQLITE_STATE_SCHEMA_VERSION, 8, 'CANARY 17: schema version must be 8');
 
   const harness = createTempHarness();
   try {
     const repo = new SqliteStateRepository(harness.stateRoot);
     try {
-      assert.strictEqual(repo.schemaVersion, 7, 'CANARY 18: applied schema version is 7');
+      assert.strictEqual(repo.schemaVersion, 8, 'CANARY 18: applied schema version is 8');
 
       // CANARY 19: Authorized ingress in T8B / TG-MVP-10; arbitrary other ingress remains absent
       assert.strictEqual(typeof repo.ingestMessage, 'function');
@@ -738,9 +738,9 @@ test('SqliteChannelTransactions - 16. architectural invariants: schema version 7
         assert.strictEqual(tNames.includes('inbound_event'), true);
         assert.strictEqual(tNames.includes('outbox'), true);
 
-        // CANARY 10: MIGRATIONS remain [1, 2, 3, 4, 5, 6, 7]
+        // CANARY 10: MIGRATIONS remain [1, 2, 3, 4, 5, 6, 7, 8]
         const mRows = rawDb.prepare('SELECT version FROM schema_migrations ORDER BY version ASC;').all();
-        assert.deepStrictEqual(mRows.map((r) => r.version), [1, 2, 3, 4, 5, 6, 7]);
+        assert.deepStrictEqual(mRows.map((r) => r.version), [1, 2, 3, 4, 5, 6, 7, 8]);
       } finally {
         rawDb.close();
       }
@@ -1363,6 +1363,14 @@ test('SqliteChannelTransactions - 31. R2-A: fresh enqueueAuthorizedReply creates
         text,
       });
 
+      const topic1 = repo.createArchiveTopic({
+        accountId: 'acc_1',
+        displayName: 'General',
+        normalizedName: 'general',
+        accountDirName: 'TG_acc_1',
+        topicDirName: 'Q001_General',
+      });
+
       const res = repo.enqueueAuthorizedReply({
         clientRequestId: 'req-001',
         channelId: 'tg:reply:1',
@@ -1370,6 +1378,7 @@ test('SqliteChannelTransactions - 31. R2-A: fresh enqueueAuthorizedReply creates
         fencingToken: 1,
         messageId: 'msg_reply_1',
         replyingAccountId: 'acc_1',
+        topicId: topic1.topic_id,
         platform: 'telegram',
         endpointOperation: 'sendMessage',
         recipient: '123456',
@@ -1418,6 +1427,14 @@ test('SqliteChannelTransactions - 32. R2-A: idempotent replay returns existing c
         claimedAtToken: 1,
       });
 
+      const topic2 = repo.createArchiveTopic({
+        accountId: 'acc_1',
+        displayName: 'General',
+        normalizedName: 'general',
+        accountDirName: 'TG_acc_1',
+        topicDirName: 'Q001_General',
+      });
+
       const text = 'Idempotent text';
       const payloadHash = computeCanonicalPayloadHash({
         platform: 'telegram',
@@ -1434,6 +1451,7 @@ test('SqliteChannelTransactions - 32. R2-A: idempotent replay returns existing c
         fencingToken: 1,
         messageId: 'msg_reply_2',
         replyingAccountId: 'acc_1',
+        topicId: topic2.topic_id,
         platform: 'telegram',
         endpointOperation: 'sendMessage',
         recipient: '123456',
@@ -1482,6 +1500,14 @@ test('SqliteChannelTransactions - 33. R2-B: same client_request_id with differen
         claimedAtToken: 1,
       });
 
+      const topic3 = repo.createArchiveTopic({
+        accountId: 'acc_1',
+        displayName: 'General',
+        normalizedName: 'general',
+        accountDirName: 'TG_acc_1',
+        topicDirName: 'Q001_General',
+      });
+
       const text1 = 'Initial text';
       const hash1 = computeCanonicalPayloadHash({
         platform: 'telegram',
@@ -1498,6 +1524,7 @@ test('SqliteChannelTransactions - 33. R2-B: same client_request_id with differen
         fencingToken: 1,
         messageId: 'msg_reply_3',
         replyingAccountId: 'acc_1',
+        topicId: topic3.topic_id,
         platform: 'telegram',
         endpointOperation: 'sendMessage',
         recipient: '123456',
@@ -1525,6 +1552,7 @@ test('SqliteChannelTransactions - 33. R2-B: same client_request_id with differen
         fencingToken: 1,
         messageId: 'msg_reply_3',
         replyingAccountId: 'acc_1',
+        topicId: topic3.topic_id,
         platform: 'telegram',
         endpointOperation: 'sendMessage',
         recipient: '123456',
@@ -1564,6 +1592,14 @@ test('SqliteChannelTransactions - 34. R2-D: takeover after commit preserves comm
         claimedAtToken: 1,
       });
 
+      const topic4 = repo.createArchiveTopic({
+        accountId: 'acc_1',
+        displayName: 'General',
+        normalizedName: 'general',
+        accountDirName: 'TG_acc_1',
+        topicDirName: 'Q001_General',
+      });
+
       const text = 'Committed before takeover';
       const payloadHash = computeCanonicalPayloadHash({
         platform: 'telegram',
@@ -1580,6 +1616,7 @@ test('SqliteChannelTransactions - 34. R2-D: takeover after commit preserves comm
         fencingToken: 1,
         messageId: 'msg_reply_4',
         replyingAccountId: 'acc_1',
+        topicId: topic4.topic_id,
         platform: 'telegram',
         endpointOperation: 'sendMessage',
         recipient: '123456',
@@ -1612,6 +1649,7 @@ test('SqliteChannelTransactions - 34. R2-D: takeover after commit preserves comm
         fencingToken: 1,
         messageId: 'msg_reply_4',
         replyingAccountId: 'acc_1',
+        topicId: topic4.topic_id,
         platform: 'telegram',
         endpointOperation: 'sendMessage',
         recipient: '123456',
@@ -1642,6 +1680,14 @@ test('SqliteChannelTransactions - 35. stale fencing or wrong holder returns fals
         claimedAtToken: 1,
       });
 
+      const topic5 = repo.createArchiveTopic({
+        accountId: 'acc_1',
+        displayName: 'General',
+        normalizedName: 'general',
+        accountDirName: 'TG_acc_1',
+        topicDirName: 'Q001_General',
+      });
+
       const text = 'Fail attempt';
       const payloadHash = computeCanonicalPayloadHash({
         platform: 'telegram',
@@ -1659,6 +1705,7 @@ test('SqliteChannelTransactions - 35. stale fencing or wrong holder returns fals
         fencingToken: 1,
         messageId: 'msg_reply_5',
         replyingAccountId: 'acc_1',
+        topicId: topic5.topic_id,
         platform: 'telegram',
         endpointOperation: 'sendMessage',
         recipient: '123456',
@@ -1678,6 +1725,7 @@ test('SqliteChannelTransactions - 35. stale fencing or wrong holder returns fals
         fencingToken: 0,
         messageId: 'msg_reply_5',
         replyingAccountId: 'acc_1',
+        topicId: topic5.topic_id,
         platform: 'telegram',
         endpointOperation: 'sendMessage',
         recipient: '123456',
@@ -1717,6 +1765,14 @@ test('SqliteChannelTransactions - 36. forced outbox insert failure rolls back: i
         claimedAtToken: 1,
       });
 
+      const topic6 = repo.createArchiveTopic({
+        accountId: 'acc_1',
+        displayName: 'General',
+        normalizedName: 'general',
+        accountDirName: 'TG_acc_1',
+        topicDirName: 'Q001_General',
+      });
+
       const text = 'Doomed text';
       const payloadHash = computeCanonicalPayloadHash({
         platform: 'telegram',
@@ -1749,6 +1805,7 @@ test('SqliteChannelTransactions - 36. forced outbox insert failure rolls back: i
             fencingToken: 1,
             messageId: 'msg_reply_6',
             replyingAccountId: 'acc_1',
+            topicId: topic6.topic_id,
             platform: 'telegram',
             endpointOperation: 'sendMessage',
             recipient: '123456',
@@ -1791,6 +1848,14 @@ test('SqliteChannelTransactions - 37. F1: enqueueAuthorizedReply rejects unpaire
         claimedAtToken: 1,
       });
 
+      const lineTopic = repo.createArchiveTopic({
+        accountId: 'acc_line',
+        displayName: 'Line Topic',
+        normalizedName: 'line topic',
+        accountDirName: 'TG_acc_line',
+        topicDirName: 'Q001_Line_Topic',
+      });
+
       const nowSec = 1700000000;
       const validUUID = '550e8400-e29b-41d4-a716-446655440000';
       const malformedUUID = 'bad-uuid-format';
@@ -1809,6 +1874,7 @@ test('SqliteChannelTransactions - 37. F1: enqueueAuthorizedReply rejects unpaire
         fencingToken: 1,
         messageId: 'msg_line_1',
         replyingAccountId: 'acc_line',
+        topicId: lineTopic.topic_id,
         platform: 'line',
         endpointOperation: 'push',
         recipient: 'U12345678',
@@ -1907,6 +1973,232 @@ test('SqliteChannelTransactions - 37. F1: enqueueAuthorizedReply rejects unpaire
               .run(),
           /constraint/i
         );
+      } finally {
+        rawDb.close();
+      }
+    } finally {
+      repo.close();
+    }
+  } finally {
+    harness.cleanup();
+  }
+});
+
+// 38. TG-MVP-14: enqueueAuthorizedReply topic_id validation contract
+test('SqliteChannelTransactions - 38. TG-MVP-14: topic_id validation and account ownership enforcement', () => {
+  const harness = createTempHarness();
+  try {
+    const repo = new SqliteStateRepository(harness.stateRoot);
+    try {
+      repo.takeoverChannel('tg:topic:1', 'holder_1');
+      seedInboxMessage(repo.databasePath, 'tg:topic:1', 'msg_top_1', 'acc_1', 'claimed', {
+        claimedBy: 'holder_1',
+        claimedAtToken: 1,
+      });
+
+      const topicOtherAccount = repo.createArchiveTopic({
+        accountId: 'acc_2',
+        displayName: 'Acc2 Topic',
+        normalizedName: 'acc2 topic',
+        accountDirName: 'TG_acc_2',
+        topicDirName: 'Q001_Acc2_Topic',
+      });
+
+      const text = 'Topic test reply';
+      const payloadHash = computeCanonicalPayloadHash({
+        platform: 'telegram',
+        endpointOperation: 'sendMessage',
+        recipient: '123456',
+        messageType: 'text',
+        text,
+      });
+
+      const base = {
+        clientRequestId: 'req-top-val-1',
+        channelId: 'tg:topic:1',
+        holderId: 'holder_1',
+        fencingToken: 1,
+        messageId: 'msg_top_1',
+        replyingAccountId: 'acc_1',
+        platform: 'telegram',
+        endpointOperation: 'sendMessage',
+        recipient: '123456',
+        logicalReplyTarget: 'msg_top_1',
+        messageType: 'text',
+        text,
+        payloadHash,
+      };
+
+      // 1. Missing topicId -> TypeError
+      assert.throws(() => repo.enqueueAuthorizedReply(base), /topic_id/);
+
+      // 2. Non-integer / negative topicId -> TypeError
+      assert.throws(() => repo.enqueueAuthorizedReply({ ...base, topicId: -1 }), /topic_id/);
+      assert.throws(() => repo.enqueueAuthorizedReply({ ...base, topicId: '1' }), /topic_id/);
+
+      // 3. Non-existent topicId -> returns TOPIC_NOT_FOUND
+      const resNonExistent = repo.enqueueAuthorizedReply({ ...base, topicId: 99999 });
+      assert.strictEqual(resNonExistent.success, false);
+      assert.strictEqual(resNonExistent.reason, 'TOPIC_NOT_FOUND');
+
+      // 4. Topic belonging to different account -> returns TOPIC_NOT_FOUND
+      const resWrongAccount = repo.enqueueAuthorizedReply({ ...base, topicId: topicOtherAccount.topic_id });
+      assert.strictEqual(resWrongAccount.success, false);
+      assert.strictEqual(resWrongAccount.reason, 'TOPIC_NOT_FOUND');
+    } finally {
+      repo.close();
+    }
+  } finally {
+    harness.cleanup();
+  }
+});
+
+// 39. TG-MVP-14: enqueueAuthorizedReply idempotency conflict on different topic_id
+test('SqliteChannelTransactions - 39. TG-MVP-14: same client_request_id + same payload + different topic_id returns IDEMPOTENCY_CONFLICT', () => {
+  const harness = createTempHarness();
+  try {
+    const repo = new SqliteStateRepository(harness.stateRoot);
+    try {
+      repo.takeoverChannel('tg:topic:2', 'holder_1');
+      seedInboxMessage(repo.databasePath, 'tg:topic:2', 'msg_top_2', 'acc_1', 'claimed', {
+        claimedBy: 'holder_1',
+        claimedAtToken: 1,
+      });
+
+      const topicA = repo.createArchiveTopic({
+        accountId: 'acc_1',
+        displayName: 'Topic A',
+        normalizedName: 'topic a',
+        accountDirName: 'TG_acc_1',
+        topicDirName: 'Q001_Topic_A',
+      });
+
+      const topicB = repo.createArchiveTopic({
+        accountId: 'acc_1',
+        displayName: 'Topic B',
+        normalizedName: 'topic b',
+        accountDirName: 'TG_acc_1',
+        topicDirName: 'Q002_Topic_B',
+      });
+
+      const text = 'Replay test reply';
+      const payloadHash = computeCanonicalPayloadHash({
+        platform: 'telegram',
+        endpointOperation: 'sendMessage',
+        recipient: '123456',
+        messageType: 'text',
+        text,
+      });
+
+      const res1 = repo.enqueueAuthorizedReply({
+        clientRequestId: 'req-top-replay-1',
+        channelId: 'tg:topic:2',
+        holderId: 'holder_1',
+        fencingToken: 1,
+        messageId: 'msg_top_2',
+        replyingAccountId: 'acc_1',
+        topicId: topicA.topic_id,
+        platform: 'telegram',
+        endpointOperation: 'sendMessage',
+        recipient: '123456',
+        logicalReplyTarget: 'msg_top_2',
+        messageType: 'text',
+        text,
+        payloadHash,
+      });
+      assert.strictEqual(res1.success, true);
+      assert.strictEqual(res1.idempotentReplay, false);
+
+      // Same request ID + same payload + DIFFERENT topic_id -> IDEMPOTENCY_CONFLICT
+      const res2 = repo.enqueueAuthorizedReply({
+        clientRequestId: 'req-top-replay-1',
+        channelId: 'tg:topic:2',
+        holderId: 'holder_1',
+        fencingToken: 1,
+        messageId: 'msg_top_2',
+        replyingAccountId: 'acc_1',
+        topicId: topicB.topic_id,
+        platform: 'telegram',
+        endpointOperation: 'sendMessage',
+        recipient: '123456',
+        logicalReplyTarget: 'msg_top_2',
+        messageType: 'text',
+        text,
+        payloadHash,
+      });
+      assert.strictEqual(res2.success, false);
+      assert.strictEqual(res2.reason, 'IDEMPOTENCY_CONFLICT');
+    } finally {
+      repo.close();
+    }
+  } finally {
+    harness.cleanup();
+  }
+});
+
+// 40. TG-MVP-14: successful reply creates exactly one ORIGINAL archive coordination in same transaction
+test('SqliteChannelTransactions - 40. TG-MVP-14: creates ORIGINAL archive coordination with content snapshot in same transaction', () => {
+  const harness = createTempHarness();
+  try {
+    const repo = new SqliteStateRepository(harness.stateRoot);
+    try {
+      repo.takeoverChannel('tg:topic:3', 'holder_1');
+      seedInboxMessage(repo.databasePath, 'tg:topic:3', 'msg_top_3', 'acc_1', 'claimed', {
+        claimedBy: 'holder_1',
+        claimedAtToken: 1,
+        content: 'Original question from user',
+      });
+
+      const topic = repo.createArchiveTopic({
+        accountId: 'acc_1',
+        displayName: 'Project HH',
+        normalizedName: 'project hh',
+        accountDirName: 'TG_acc_1',
+        topicDirName: 'Q001_Project_HH',
+      });
+
+      const text = 'Here is the authoritative answer';
+      const payloadHash = computeCanonicalPayloadHash({
+        platform: 'telegram',
+        endpointOperation: 'sendMessage',
+        recipient: '123456',
+        messageType: 'text',
+        text,
+      });
+
+      const res = repo.enqueueAuthorizedReply({
+        clientRequestId: 'req-top-coord-1',
+        channelId: 'tg:topic:3',
+        holderId: 'holder_1',
+        fencingToken: 1,
+        messageId: 'msg_top_3',
+        replyingAccountId: 'acc_1',
+        topicId: topic.topic_id,
+        platform: 'telegram',
+        endpointOperation: 'sendMessage',
+        recipient: '123456',
+        logicalReplyTarget: 'msg_top_3',
+        messageType: 'text',
+        text,
+        payloadHash,
+      });
+      assert.strictEqual(res.success, true);
+
+      // Verify archive_coordination row in raw DB
+      const rawDb = new DatabaseSync(repo.databasePath, { readOnly: true });
+      try {
+        const rows = rawDb.prepare('SELECT * FROM archive_coordination WHERE account_id = ?;').all('acc_1');
+        assert.strictEqual(rows.length, 1);
+        const row = rows[0];
+        assert.strictEqual(row.topic_id, topic.topic_id);
+        assert.strictEqual(row.entry_sequence, 1);
+        assert.strictEqual(row.record_kind, 'ORIGINAL');
+        assert.strictEqual(row.command_id, res.commandId);
+        assert.strictEqual(row.platform_msg_id, 'msg_top_3');
+        assert.strictEqual(row.status, 'PENDING');
+        assert.strictEqual(row.content_snapshot, 'Original question from user');
+        assert.ok(row.relative_path.startsWith('TG_acc_1/Q001_Project_HH/001_'));
+        assert.ok(row.relative_path.endsWith('.md'));
       } finally {
         rawDb.close();
       }

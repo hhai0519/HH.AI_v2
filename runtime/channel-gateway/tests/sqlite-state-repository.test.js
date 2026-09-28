@@ -30,6 +30,8 @@ const {
   INBOUND_EVENT_SCHEMA_SQL,
   OUTBOX_SCHEMA_SQL,
   OUTBOX_V6_SCHEMA_SQL,
+  ARCHIVE_TOPIC_SCHEMA_SQL,
+  ARCHIVE_COORDINATION_SCHEMA_SQL,
   normalizeCanonicalSchemaSql,
   validateTerminalReasonCode,
   isValidTerminalReasonCode,
@@ -56,10 +58,10 @@ function createTempHarness() {
   };
 }
 
-// 1. constants contract: schema version 7, busy timeout 5000, fixed filename
+// 1. constants contract: schema version 8, busy timeout 5000, fixed filename
 test('SqliteStateRepository - 1. constants contract matches specification', () => {
-  assert.strictEqual(SQLITE_STATE_SCHEMA_VERSION, 7);
-  assert.strictEqual(SQLite_STATE_SCHEMA_VERSION, 7);
+  assert.strictEqual(SQLITE_STATE_SCHEMA_VERSION, 8);
+  assert.strictEqual(SQLite_STATE_SCHEMA_VERSION, 8);
   assert.strictEqual(SQLITE_BUSY_TIMEOUT_MS, 5000);
   assert.strictEqual(SQLITE_DATABASE_FILENAME, 'channel-gateway-state.sqlite3');
 });
@@ -168,12 +170,12 @@ test('SqliteStateRepository - 8. new repository PRAGMA readback matches wal / 2 
   }
 });
 
-// 9. new repository schema_migrations exists and exactly contains [1, 2, 3, 4, 5, 6, 7]
-test('SqliteStateRepository - 9. new repository schema_migrations exists and contains [1, 2, 3, 4, 5, 6, 7]', () => {
+// 9. new repository schema_migrations exists and exactly contains [1, 2, 3, 4, 5, 6, 7, 8]
+test('SqliteStateRepository - 9. new repository schema_migrations exists and contains [1, 2, 3, 4, 5, 6, 7, 8]', () => {
   const harness = createTempHarness();
   try {
     const repo = new SqliteStateRepository(harness.stateRoot);
-    assert.strictEqual(repo.schemaVersion, 7);
+    assert.strictEqual(repo.schemaVersion, 8);
     const dbPath = repo.databasePath;
     repo.close();
 
@@ -185,8 +187,8 @@ test('SqliteStateRepository - 9. new repository schema_migrations exists and con
       assert.ok(tableRow, 'schema_migrations table must exist');
 
       const rows = rawDb.prepare('SELECT version FROM schema_migrations ORDER BY version ASC;').all();
-      assert.strictEqual(rows.length, 7);
-      assert.deepStrictEqual(rows.map((r) => r.version), [1, 2, 3, 4, 5, 6, 7]);
+      assert.strictEqual(rows.length, 8);
+      assert.deepStrictEqual(rows.map((r) => r.version), [1, 2, 3, 4, 5, 6, 7, 8]);
     } finally {
       rawDb.close();
     }
@@ -244,16 +246,16 @@ test('SqliteStateRepository - 12. reopen existing valid DB succeeds', () => {
   }
 });
 
-// 13. reopen preserves schema version 7
-test('SqliteStateRepository - 13. reopen preserves schema version 7', () => {
+// 13. reopen preserves schema version 8
+test('SqliteStateRepository - 13. reopen preserves schema version 8', () => {
   const harness = createTempHarness();
   try {
     const repo1 = new SqliteStateRepository(harness.stateRoot);
-    assert.strictEqual(repo1.schemaVersion, 7);
+    assert.strictEqual(repo1.schemaVersion, 8);
     repo1.close();
 
     const repo2 = SqliteStateRepository.open(harness.stateRoot);
-    assert.strictEqual(repo2.schemaVersion, 7);
+    assert.strictEqual(repo2.schemaVersion, 8);
     repo2.close();
   } finally {
     harness.cleanup();
@@ -278,8 +280,8 @@ test('SqliteStateRepository - 14. existing SQLite DB without schema_migrations r
   }
 });
 
-// 15. future schema version 8 rejected fail-closed
-test('SqliteStateRepository - 15. future schema version 8 rejected fail-closed', () => {
+// 15. future schema version 9 rejected fail-closed
+test('SqliteStateRepository - 15. future schema version 9 rejected fail-closed', () => {
   const harness = createTempHarness();
   try {
     const dbPath = path.join(harness.stateRoot, SQLITE_DATABASE_FILENAME);
@@ -293,6 +295,7 @@ test('SqliteStateRepository - 15. future schema version 8 rejected fail-closed',
     rawDb.prepare('INSERT INTO schema_migrations (version) VALUES (6);').run();
     rawDb.prepare('INSERT INTO schema_migrations (version) VALUES (7);').run();
     rawDb.prepare('INSERT INTO schema_migrations (version) VALUES (8);').run();
+    rawDb.prepare('INSERT INTO schema_migrations (version) VALUES (9);').run();
     rawDb.close();
 
     assert.throws(
@@ -410,19 +413,19 @@ test('SqliteStateRepository - 19. database remains usable across open -> close -
   try {
     const repo1 = new SqliteStateRepository(harness.stateRoot);
     assert.strictEqual(repo1.isOpen, true);
-    assert.strictEqual(repo1.schemaVersion, 7);
+    assert.strictEqual(repo1.schemaVersion, 8);
     repo1.close();
     assert.strictEqual(repo1.isOpen, false);
 
     const repo2 = new SqliteStateRepository(harness.stateRoot);
     assert.strictEqual(repo2.isOpen, true);
-    assert.strictEqual(repo2.schemaVersion, 7);
+    assert.strictEqual(repo2.schemaVersion, 8);
     repo2.close();
     assert.strictEqual(repo2.isOpen, false);
 
     const repo3 = SqliteStateRepository.open(harness.stateRoot);
     assert.strictEqual(repo3.isOpen, true);
-    assert.strictEqual(repo3.schemaVersion, 7);
+    assert.strictEqual(repo3.schemaVersion, 8);
     repo3.close();
     assert.strictEqual(repo3.isOpen, false);
   } finally {
@@ -430,8 +433,8 @@ test('SqliteStateRepository - 19. database remains usable across open -> close -
   }
 });
 
-// 20. domain tables created in v6 and forbidden tables absent
-test('SqliteStateRepository - 20. domain tables channel_control, inbound_event, inbox, ingest_cursor, and outbox created, forbidden tables absent', () => {
+// 20. domain tables created in v8 and forbidden tables absent
+test('SqliteStateRepository - 20. domain tables channel_control, inbound_event, inbox, ingest_cursor, outbox, archive_topic, archive_coordination created, forbidden tables absent', () => {
   const harness = createTempHarness();
   try {
     const repo = new SqliteStateRepository(harness.stateRoot);
@@ -444,8 +447,8 @@ test('SqliteStateRepository - 20. domain tables channel_control, inbound_event, 
         "SELECT name FROM sqlite_schema WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name ASC;"
       ).all();
 
-      assert.strictEqual(tables.length, 6);
-      assert.deepStrictEqual(tables.map((t) => t.name), ['channel_control', 'inbound_event', 'inbox', 'ingest_cursor', 'outbox', 'schema_migrations']);
+      assert.strictEqual(tables.length, 8);
+      assert.deepStrictEqual(tables.map((t) => t.name), ['archive_coordination', 'archive_topic', 'channel_control', 'inbound_event', 'inbox', 'ingest_cursor', 'outbox', 'schema_migrations']);
 
       // Explicit check that forbidden tables do not exist
       const forbiddenTables = ['messages', 'channels', 'accounts', 'cursors', 'payload'];
@@ -653,7 +656,7 @@ test('SqliteStateRepository - 28. F2: canonical STRICT schema_migrations with PK
 
     const repo = new SqliteStateRepository(harness.stateRoot);
     assert.strictEqual(repo.isOpen, true);
-    assert.strictEqual(repo.schemaVersion, 7);
+    assert.strictEqual(repo.schemaVersion, 8);
     repo.close();
 
     // Verify pre-migration backup for v1 was created
@@ -789,7 +792,7 @@ test('SqliteStateRepository - 32. F3: unified pending migration runner architect
     'Pending migration selection must use: version > currentVersion && version <= targetVersion'
   );
 
-  // 4. MIGRATIONS registry contains exactly version 1, 2, 3, 4, 5, 6, and 7, and no version 8
+  // 4. MIGRATIONS registry contains exactly version 1, 2, 3, 4, 5, 6, 7, and 8, and no version 9
   assert.ok(/version:\s*1\b/.test(moduleSource));
   assert.ok(/version:\s*2\b/.test(moduleSource));
   assert.ok(/version:\s*3\b/.test(moduleSource));
@@ -797,36 +800,37 @@ test('SqliteStateRepository - 32. F3: unified pending migration runner architect
   assert.ok(/version:\s*5\b/.test(moduleSource));
   assert.ok(/version:\s*6\b/.test(moduleSource));
   assert.ok(/version:\s*7\b/.test(moduleSource));
+  assert.ok(/version:\s*8\b/.test(moduleSource));
   assert.strictEqual(
-    /version:\s*8\b/.test(moduleSource),
+    /version:\s*9\b/.test(moduleSource),
     false,
-    'Production source must NOT contain migration version 8'
+    'Production source must NOT contain migration version 9'
   );
 });
 
 // 33. F3: Existing DB passes through generic runner with 0 pending migrations
-test('SqliteStateRepository - 33. F3: existing valid DB [1, 2, 3, 4, 5, 6, 7] executes 0 pending migrations and preserves schema', () => {
+test('SqliteStateRepository - 33. F3: existing valid DB [1, 2, 3, 4, 5, 6, 7, 8] executes 0 pending migrations and preserves schema', () => {
   const harness = createTempHarness();
   try {
-    // First open: creates new DB and applies migration 1, 2, 3, 4, 5, 6, and 7
+    // First open: creates new DB and applies migration 1, 2, 3, 4, 5, 6, 7, and 8
     const repo1 = new SqliteStateRepository(harness.stateRoot);
     assert.strictEqual(repo1.isOpen, true);
-    assert.strictEqual(repo1.schemaVersion, 7);
+    assert.strictEqual(repo1.schemaVersion, 8);
     repo1.close();
 
-    // Second open: existing DB with currentVersion = 7 runs through runPendingMigrations(db, 7, 7)
+    // Second open: existing DB with currentVersion = 8 runs through runPendingMigrations(db, 8, 8)
     // Pending list is empty, zero migrations run, schema remains canonical and valid
     const repo2 = new SqliteStateRepository(harness.stateRoot);
     assert.strictEqual(repo2.isOpen, true);
-    assert.strictEqual(repo2.schemaVersion, 7);
+    assert.strictEqual(repo2.schemaVersion, 8);
     repo2.close();
 
-    // Verify raw DB has exactly version 1, 2, 3, 4, 5, 6, and 7
+    // Verify raw DB has exactly version 1, 2, 3, 4, 5, 6, 7, and 8
     const rawDb = new DatabaseSync(path.join(harness.stateRoot, SQLITE_DATABASE_FILENAME));
     try {
       const rows = rawDb.prepare('SELECT version FROM schema_migrations ORDER BY version ASC;').all();
-      assert.strictEqual(rows.length, 7);
-      assert.deepStrictEqual(rows.map((r) => r.version), [1, 2, 3, 4, 5, 6, 7]);
+      assert.strictEqual(rows.length, 8);
+      assert.deepStrictEqual(rows.map((r) => r.version), [1, 2, 3, 4, 5, 6, 7, 8]);
     } finally {
       rawDb.close();
     }
@@ -844,7 +848,7 @@ test('SqliteStateRepository - 34. T11A: createVerifiedBackup succeeds and return
 
     assert.strictEqual(result.success, true);
     assert.strictEqual(typeof result.backupPath, 'string');
-    assert.strictEqual(result.sourceSchemaVersion, 7);
+    assert.strictEqual(result.sourceSchemaVersion, 8);
     assert.strictEqual(result.integrity, 'ok');
 
     // Return metadata exposes no raw handles
@@ -877,8 +881,8 @@ test('SqliteStateRepository - 35. T11A: backup path confinement, safe naming, an
     // 3. Filename matches safe pattern
     const basename = path.basename(result.backupPath);
     const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    const match = basename.match(/^channel-gateway-state\.backup-v7-([0-9a-f-]+)\.sqlite3$/);
-    assert.ok(match, `Backup filename '${basename}' must match pattern channel-gateway-state.backup-v7-<uuid>.sqlite3`);
+    const match = basename.match(/^channel-gateway-state\.backup-v8-([0-9a-f-]+)\.sqlite3$/);
+    assert.ok(match, `Backup filename '${basename}' must match pattern channel-gateway-state.backup-v8-<uuid>.sqlite3`);
     assert.ok(uuidPattern.test(match[1]), `UUID segment '${match[1]}' must be valid UUID`);
 
     // 4. File attributes: regular file, non-symlink
@@ -902,15 +906,15 @@ test('SqliteStateRepository - 36. T11A: source repository remains open, schema v
 
     // Source remains open
     assert.strictEqual(repo.isOpen, true);
-    assert.strictEqual(repo.schemaVersion, 7);
+    assert.strictEqual(repo.schemaVersion, 8);
     assert.strictEqual(repo.databasePath, path.join(fs.realpathSync(harness.stateRoot), SQLITE_DATABASE_FILENAME));
 
-    // Source migration history unchanged [1, 2, 3, 4, 5, 6, 7]
+    // Source migration history unchanged [1, 2, 3, 4, 5, 6, 7, 8]
     const rawDb = new DatabaseSync(repo.databasePath, { readOnly: true });
     try {
       const rows = rawDb.prepare('SELECT version FROM schema_migrations ORDER BY version ASC;').all();
-      assert.strictEqual(rows.length, 7);
-      assert.deepStrictEqual(rows.map((r) => r.version), [1, 2, 3, 4, 5, 6, 7]);
+      assert.strictEqual(rows.length, 8);
+      assert.deepStrictEqual(rows.map((r) => r.version), [1, 2, 3, 4, 5, 6, 7, 8]);
     } finally {
       rawDb.close();
     }
@@ -923,7 +927,7 @@ test('SqliteStateRepository - 36. T11A: source repository remains open, schema v
 });
 
 // 37. T11A: backup database read-only verification: integrity_check, schema shape, migration history, user tables
-test('SqliteStateRepository - 37. T11A: backup read-only verification passes integrity_check, canonical schema, history [1, 2, 3, 4, 5, 6, 7]', () => {
+test('SqliteStateRepository - 37. T11A: backup read-only verification passes integrity_check, canonical schema, history [1, 2, 3, 4, 5, 6, 7, 8]', () => {
   const harness = createTempHarness();
   try {
     const repo = new SqliteStateRepository(harness.stateRoot);
@@ -951,17 +955,17 @@ test('SqliteStateRepository - 37. T11A: backup read-only verification passes int
       assert.strictEqual(colInfo[0].type.toUpperCase(), 'INTEGER');
       assert.ok(Number(colInfo[0].pk) > 0);
 
-      // 3. migration history exact [1, 2, 3, 4, 5, 6, 7]
+      // 3. migration history exact [1, 2, 3, 4, 5, 6, 7, 8]
       const rows = backupDb.prepare('SELECT version FROM schema_migrations ORDER BY version ASC;').all();
-      assert.strictEqual(rows.length, 7);
-      assert.deepStrictEqual(rows.map((r) => r.version), [1, 2, 3, 4, 5, 6, 7]);
+      assert.strictEqual(rows.length, 8);
+      assert.deepStrictEqual(rows.map((r) => r.version), [1, 2, 3, 4, 5, 6, 7, 8]);
 
-      // 4. user tables in v7 backup: channel_control, inbound_event, inbox, ingest_cursor, outbox, schema_migrations
+      // 4. user tables in v8 backup: archive_coordination, archive_topic, channel_control, inbound_event, inbox, ingest_cursor, outbox, schema_migrations
       const tables = backupDb.prepare(
         "SELECT name FROM sqlite_schema WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name ASC;"
       ).all();
-      assert.strictEqual(tables.length, 6);
-      assert.deepStrictEqual(tables.map((t) => t.name), ['channel_control', 'inbound_event', 'inbox', 'ingest_cursor', 'outbox', 'schema_migrations']);
+      assert.strictEqual(tables.length, 8);
+      assert.deepStrictEqual(tables.map((t) => t.name), ['archive_coordination', 'archive_topic', 'channel_control', 'inbound_event', 'inbox', 'ingest_cursor', 'outbox', 'schema_migrations']);
     } finally {
       backupDb.close();
     }
@@ -1040,7 +1044,7 @@ test('SqliteStateRepository - 41. T11A: pre-existing destination entry fails clo
     fs.mkdirSync(backupDir, { recursive: true });
     const existingBackupPath = path.join(
       backupDir,
-      `channel-gateway-state.backup-v7-${fixedUuid}.sqlite3`
+      `channel-gateway-state.backup-v8-${fixedUuid}.sqlite3`
     );
 
     // Pre-create destination file with sentinel content
@@ -1109,17 +1113,17 @@ test('SqliteStateRepository - 43. T11A-F1 Regression: external schema_migrations
   const harness = createTempHarness();
   try {
     const repo = new SqliteStateRepository(harness.stateRoot);
-    assert.strictEqual(repo.schemaVersion, 7);
+    assert.strictEqual(repo.schemaVersion, 8);
 
-    // Keep repo open; simulate external connection inserting migration version 8
+    // Keep repo open; simulate external connection inserting migration version 9
     const externalDb = new DatabaseSync(repo.databasePath);
     try {
-      externalDb.prepare('INSERT INTO schema_migrations (version) VALUES (8);').run();
+      externalDb.prepare('INSERT INTO schema_migrations (version) VALUES (9);').run();
     } finally {
       externalDb.close();
     }
 
-    // createVerifiedBackup must detect version drift (7 vs 8) and throw fail-closed
+    // createVerifiedBackup must detect version drift (8 vs 9) and throw fail-closed
     assert.throws(
       () => repo.createVerifiedBackup(),
       /drift|schema version/i
@@ -1185,22 +1189,22 @@ test('SqliteStateRepository - 44. T11A-F1: pre-vacuum source baseline capture an
   );
 });
 
-// 45. T11A: normal v7 source produces consistent backup and verified metadata
-test('SqliteStateRepository - 45. T11A: normal v7 source produces consistent backup and verified metadata', () => {
+// 45. T11A: normal v8 source produces consistent backup and verified metadata
+test('SqliteStateRepository - 45. T11A: normal v8 source produces consistent backup and verified metadata', () => {
   const harness = createTempHarness();
   try {
     const repo = new SqliteStateRepository(harness.stateRoot);
-    assert.strictEqual(repo.schemaVersion, 7);
+    assert.strictEqual(repo.schemaVersion, 8);
 
     const result = repo.createVerifiedBackup();
     assert.strictEqual(result.success, true);
-    assert.strictEqual(result.sourceSchemaVersion, 7);
+    assert.strictEqual(result.sourceSchemaVersion, 8);
     assert.strictEqual(result.integrity, 'ok');
 
     const backupDb = new DatabaseSync(result.backupPath, { readOnly: true });
     try {
       const rows = backupDb.prepare('SELECT version FROM schema_migrations ORDER BY version ASC;').all();
-      assert.deepStrictEqual(rows.map((r) => r.version), [1, 2, 3, 4, 5, 6, 7]);
+      assert.deepStrictEqual(rows.map((r) => r.version), [1, 2, 3, 4, 5, 6, 7, 8]);
     } finally {
       backupDb.close();
     }
@@ -1215,26 +1219,26 @@ test('SqliteStateRepository - 45. T11A: normal v7 source produces consistent bac
 // T7A Test Matrix Additions (Items 1-25)
 // ============================================================================
 
-// 46. T7A Matrix Items 1-5: new database lifecycle, registry, history [1, 2, 3, 4, 5, 6, 7], tables, and zero backup-v0
+// 46. T7A Matrix Items 1-5: new database lifecycle, registry, history [1, 2, 3, 4, 5, 6, 7, 8], tables, and zero backup-v0
 test('SqliteStateRepository - 46. T7A: new database lifecycle, user tables, and zero backup-v0 generation', () => {
   const harness = createTempHarness();
   try {
     const repo = new SqliteStateRepository(harness.stateRoot);
     assert.strictEqual(repo.isOpen, true);
-    assert.strictEqual(repo.schemaVersion, 7);
+    assert.strictEqual(repo.schemaVersion, 8);
     repo.close();
 
     const rawDb = new DatabaseSync(path.join(harness.stateRoot, SQLITE_DATABASE_FILENAME), { readOnly: true });
     try {
-      // 1. Exact registry & history [1, 2, 3, 4, 5, 6, 7]
+      // 1. Exact registry & history [1, 2, 3, 4, 5, 6, 7, 8]
       const rows = rawDb.prepare('SELECT version FROM schema_migrations ORDER BY version ASC;').all();
-      assert.deepStrictEqual(rows.map((r) => r.version), [1, 2, 3, 4, 5, 6, 7]);
+      assert.deepStrictEqual(rows.map((r) => r.version), [1, 2, 3, 4, 5, 6, 7, 8]);
 
       // 2. Exact user tables
       const tables = rawDb.prepare(
         "SELECT name FROM sqlite_schema WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name ASC;"
       ).all();
-      assert.deepStrictEqual(tables.map((t) => t.name), ['channel_control', 'inbound_event', 'inbox', 'ingest_cursor', 'outbox', 'schema_migrations']);
+      assert.deepStrictEqual(tables.map((t) => t.name), ['archive_coordination', 'archive_topic', 'channel_control', 'inbound_event', 'inbox', 'ingest_cursor', 'outbox', 'schema_migrations']);
     } finally {
       rawDb.close();
     }
@@ -1259,10 +1263,10 @@ test('SqliteStateRepository - 47. T7A: canonical v1 fixture automatically migrat
     rawDb.prepare('INSERT INTO schema_migrations (version) VALUES (1);').run();
     rawDb.close();
 
-    // Open repository: must create verified v1 backup BEFORE running migration 2, 3, 4, 5, 6, and 7
+    // Open repository: must create verified v1 backup BEFORE running migration 2, 3, 4, 5, 6, 7, and 8
     const repo = new SqliteStateRepository(harness.stateRoot);
     assert.strictEqual(repo.isOpen, true);
-    assert.strictEqual(repo.schemaVersion, 7);
+    assert.strictEqual(repo.schemaVersion, 8);
     repo.close();
 
     // Inspect files in stateRoot/backups: exactly one backup-v1-* file
@@ -1295,24 +1299,24 @@ test('SqliteStateRepository - 47. T7A: canonical v1 fixture automatically migrat
       backupDb.close();
     }
 
-    // Inspect live DB after migration: history is [1, 2, 3, 4, 5, 6, 7]
+    // Inspect live DB after migration: history is [1, 2, 3, 4, 5, 6, 7, 8]
     const liveDb = new DatabaseSync(dbPath, { readOnly: true });
     try {
       const lRows = liveDb.prepare('SELECT version FROM schema_migrations ORDER BY version ASC;').all();
-      assert.deepStrictEqual(lRows.map((r) => r.version), [1, 2, 3, 4, 5, 6, 7]);
+      assert.deepStrictEqual(lRows.map((r) => r.version), [1, 2, 3, 4, 5, 6, 7, 8]);
 
       const lTables = liveDb.prepare(
         "SELECT name FROM sqlite_schema WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name ASC;"
       ).all();
-      assert.deepStrictEqual(lTables.map((t) => t.name), ['channel_control', 'inbound_event', 'inbox', 'ingest_cursor', 'outbox', 'schema_migrations']);
+      assert.deepStrictEqual(lTables.map((t) => t.name), ['archive_coordination', 'archive_topic', 'channel_control', 'inbound_event', 'inbox', 'ingest_cursor', 'outbox', 'schema_migrations']);
     } finally {
       liveDb.close();
     }
 
-    // Reopen already-v7 DB: no new migration backup created
+    // Reopen already-v8 DB: no new migration backup created
     const repo2 = new SqliteStateRepository(harness.stateRoot);
     assert.strictEqual(repo2.isOpen, true);
-    assert.strictEqual(repo2.schemaVersion, 7);
+    assert.strictEqual(repo2.schemaVersion, 8);
     repo2.close();
 
     const filesAfterReopen = fs.readdirSync(backupDir);
@@ -1618,16 +1622,16 @@ test('SqliteStateRepository - 51. T8A: architectural boundaries: ingest_cursor a
   }
 });
 
-// 52. T8A: public createVerifiedBackup on v7 repository produces verified v7 snapshot
-test('SqliteStateRepository - 52. T8A: public createVerifiedBackup on v7 repository: sourceSchemaVersion = 7, history [1, 2, 3, 4, 5, 6, 7]', () => {
+// 52. T8A: public createVerifiedBackup on v8 repository produces verified v8 snapshot
+test('SqliteStateRepository - 52. T8A: public createVerifiedBackup on v8 repository: sourceSchemaVersion = 8, history [1, 2, 3, 4, 5, 6, 7, 8]', () => {
   const harness = createTempHarness();
   try {
     const repo = new SqliteStateRepository(harness.stateRoot);
-    assert.strictEqual(repo.schemaVersion, 7);
+    assert.strictEqual(repo.schemaVersion, 8);
 
     const backupResult = repo.createVerifiedBackup();
     assert.strictEqual(backupResult.success, true);
-    assert.strictEqual(backupResult.sourceSchemaVersion, 7);
+    assert.strictEqual(backupResult.sourceSchemaVersion, 8);
     assert.strictEqual(backupResult.integrity, 'ok');
 
     const backupDb = new DatabaseSync(backupResult.backupPath, { readOnly: true });
@@ -1636,12 +1640,12 @@ test('SqliteStateRepository - 52. T8A: public createVerifiedBackup on v7 reposit
       assert.strictEqual(integrity.integrity_check ?? Object.values(integrity)[0], 'ok');
 
       const rows = backupDb.prepare('SELECT version FROM schema_migrations ORDER BY version ASC;').all();
-      assert.deepStrictEqual(rows.map((r) => r.version), [1, 2, 3, 4, 5, 6, 7]);
+      assert.deepStrictEqual(rows.map((r) => r.version), [1, 2, 3, 4, 5, 6, 7, 8]);
 
       const tables = backupDb.prepare(
         "SELECT name FROM sqlite_schema WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name ASC;"
       ).all();
-      assert.deepStrictEqual(tables.map((t) => t.name), ['channel_control', 'inbound_event', 'inbox', 'ingest_cursor', 'outbox', 'schema_migrations']);
+      assert.deepStrictEqual(tables.map((t) => t.name), ['archive_coordination', 'archive_topic', 'channel_control', 'inbound_event', 'inbox', 'ingest_cursor', 'outbox', 'schema_migrations']);
     } finally {
       backupDb.close();
       repo.close();
@@ -1820,17 +1824,17 @@ test('SqliteStateRepository - 56. T7A-F1: inbox missing AUTOINCREMENT on sequenc
   }
 });
 
-// 57. T8A: canonical v7 database reopen succeeds and preserves schema contract
-test('SqliteStateRepository - 57. T8A: canonical v7 database reopen succeeds and preserves schema', () => {
+// 57. T8A: canonical v8 database reopen succeeds and preserves schema contract
+test('SqliteStateRepository - 57. T8A: canonical v8 database reopen succeeds and preserves schema', () => {
   const harness = createTempHarness();
   try {
     const repo1 = new SqliteStateRepository(harness.stateRoot);
-    assert.strictEqual(repo1.schemaVersion, 7);
+    assert.strictEqual(repo1.schemaVersion, 8);
     assert.strictEqual(repo1.isOpen, true);
     repo1.close();
 
     const repo2 = new SqliteStateRepository(harness.stateRoot);
-    assert.strictEqual(repo2.schemaVersion, 7);
+    assert.strictEqual(repo2.schemaVersion, 8);
     assert.strictEqual(repo2.isOpen, true);
     repo2.close();
   } finally {
@@ -1914,7 +1918,7 @@ test('SqliteStateRepository - 60. T8A: canonical v2 fixture automatically migrat
 
     const repo = new SqliteStateRepository(harness.stateRoot);
     try {
-      assert.strictEqual(repo.schemaVersion, 7);
+      assert.strictEqual(repo.schemaVersion, 8);
       assert.strictEqual(repo.isOpen, true);
 
       // Verify backup was automatically created in stateRoot/backups
@@ -1938,14 +1942,14 @@ test('SqliteStateRepository - 60. T8A: canonical v2 fixture automatically migrat
         backupDb.close();
       }
 
-      // Verify live DB has migrated to v7
+      // Verify live DB has migrated to v8
       const liveDb = new DatabaseSync(repo.databasePath, { readOnly: true });
       try {
         const versions = liveDb.prepare('SELECT version FROM schema_migrations ORDER BY version ASC;').all();
-        assert.deepStrictEqual(versions.map((r) => r.version), [1, 2, 3, 4, 5, 6, 7]);
+        assert.deepStrictEqual(versions.map((r) => r.version), [1, 2, 3, 4, 5, 6, 7, 8]);
 
         const tables = liveDb.prepare("SELECT name FROM sqlite_schema WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name ASC;").all();
-        assert.deepStrictEqual(tables.map((t) => t.name), ['channel_control', 'inbound_event', 'inbox', 'ingest_cursor', 'outbox', 'schema_migrations']);
+        assert.deepStrictEqual(tables.map((t) => t.name), ['archive_coordination', 'archive_topic', 'channel_control', 'inbound_event', 'inbox', 'ingest_cursor', 'outbox', 'schema_migrations']);
 
         const inboxRows = liveDb.prepare('SELECT * FROM inbox;').all();
         assert.strictEqual(inboxRows.length, 1);
@@ -2005,7 +2009,7 @@ test('SqliteStateRepository - 61. T8A: historical row migration from v2 to v3 pr
 
     const repo = new SqliteStateRepository(harness.stateRoot);
     try {
-      assert.strictEqual(repo.schemaVersion, 7);
+      assert.strictEqual(repo.schemaVersion, 8);
 
       const liveDb = new DatabaseSync(repo.databasePath, { readOnly: true });
       try {
@@ -2372,12 +2376,12 @@ test('SqliteStateRepository - 67. T8A: malformed ingest_cursor missing PK or non
   }
 });
 
-// 68. T8A: canonical v7 database reopen preserves version 7 without creating redundant backups
-test('SqliteStateRepository - 68. T8A: canonical v7 database reopen preserves version 7 without creating redundant backups', () => {
+// 68. T8A: canonical v8 database reopen preserves version 8 without creating redundant backups
+test('SqliteStateRepository - 68. T8A: canonical v8 database reopen preserves version 8 without creating redundant backups', () => {
   const harness = createTempHarness();
   try {
     const repo1 = new SqliteStateRepository(harness.stateRoot);
-    assert.strictEqual(repo1.schemaVersion, 7);
+    assert.strictEqual(repo1.schemaVersion, 8);
     assert.strictEqual(repo1.isOpen, true);
     repo1.close();
 
@@ -2385,7 +2389,7 @@ test('SqliteStateRepository - 68. T8A: canonical v7 database reopen preserves ve
     assert.strictEqual(backupsBefore.length, 0);
 
     const repo2 = new SqliteStateRepository(harness.stateRoot);
-    assert.strictEqual(repo2.schemaVersion, 7);
+    assert.strictEqual(repo2.schemaVersion, 8);
     assert.strictEqual(repo2.isOpen, true);
     repo2.close();
 
@@ -2533,10 +2537,10 @@ test('SqliteStateRepository - 70. v4-schema: canonical v3 fixture auto-migrates 
       rawDb.close();
     }
 
-    // Open repo: must create verified v3 backup before running migration 4, 5, 6, and 7
+    // Open repo: must create verified v3 backup before running migration 4, 5, 6, 7, and 8
     const repo = new SqliteStateRepository(harness.stateRoot);
     try {
-      assert.strictEqual(repo.schemaVersion, 7);
+      assert.strictEqual(repo.schemaVersion, 8);
       assert.strictEqual(repo.isOpen, true);
 
       // Verify backup-v3 created in backups/
@@ -2560,14 +2564,14 @@ test('SqliteStateRepository - 70. v4-schema: canonical v3 fixture auto-migrates 
         backupDb.close();
       }
 
-      // Verify live DB has migrated to v7
+      // Verify live DB has migrated to v8
       const liveDb = new DatabaseSync(repo.databasePath, { readOnly: true });
       try {
         const versions = liveDb.prepare('SELECT version FROM schema_migrations ORDER BY version ASC;').all();
-        assert.deepStrictEqual(versions.map((r) => r.version), [1, 2, 3, 4, 5, 6, 7]);
+        assert.deepStrictEqual(versions.map((r) => r.version), [1, 2, 3, 4, 5, 6, 7, 8]);
 
         const tables = liveDb.prepare("SELECT name FROM sqlite_schema WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name ASC;").all();
-        assert.deepStrictEqual(tables.map((t) => t.name), ['channel_control', 'inbound_event', 'inbox', 'ingest_cursor', 'outbox', 'schema_migrations']);
+        assert.deepStrictEqual(tables.map((t) => t.name), ['archive_coordination', 'archive_topic', 'channel_control', 'inbound_event', 'inbox', 'ingest_cursor', 'outbox', 'schema_migrations']);
 
         // Historical inbox, channel, and cursor data preserved
         const inboxRow = liveDb.prepare('SELECT * FROM inbox WHERE platform_msg_id = ?;').get('msg_v3_01');
@@ -2679,16 +2683,16 @@ test('SqliteStateRepository - 72. v4-schema: malformed v4 inbound_event table re
   }
 });
 
-// 73. createVerifiedBackup on v7 DB successfully verifies inbound_event
-test('SqliteStateRepository - 73. v4-schema: createVerifiedBackup on v7 DB verifies inbound_event schema and metadata', () => {
+// 73. createVerifiedBackup on v8 DB successfully verifies inbound_event
+test('SqliteStateRepository - 73. v4-schema: createVerifiedBackup on v8 DB verifies inbound_event schema and metadata', () => {
   const harness = createTempHarness();
   try {
     const repo = new SqliteStateRepository(harness.stateRoot);
-    assert.strictEqual(repo.schemaVersion, 7);
+    assert.strictEqual(repo.schemaVersion, 8);
 
     const result = repo.createVerifiedBackup();
     assert.strictEqual(result.success, true);
-    assert.strictEqual(result.sourceSchemaVersion, 7);
+    assert.strictEqual(result.sourceSchemaVersion, 8);
 
     const backupDb = new DatabaseSync(result.backupPath, { readOnly: true });
     try {
@@ -2696,7 +2700,7 @@ test('SqliteStateRepository - 73. v4-schema: createVerifiedBackup on v7 DB verif
       assert.strictEqual(integrity.integrity_check ?? Object.values(integrity)[0], 'ok');
 
       const tables = backupDb.prepare("SELECT name FROM sqlite_schema WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name ASC;").all();
-      assert.deepStrictEqual(tables.map((t) => t.name), ['channel_control', 'inbound_event', 'inbox', 'ingest_cursor', 'outbox', 'schema_migrations']);
+      assert.deepStrictEqual(tables.map((t) => t.name), ['archive_coordination', 'archive_topic', 'channel_control', 'inbound_event', 'inbox', 'ingest_cursor', 'outbox', 'schema_migrations']);
     } finally {
       backupDb.close();
       repo.close();
@@ -2767,7 +2771,7 @@ test('SqliteStateRepository - 75. v5-schema: canonical v4 fixture auto-migrates 
 
     const repo = new SqliteStateRepository(harness.stateRoot);
     try {
-      assert.strictEqual(repo.schemaVersion, 7);
+      assert.strictEqual(repo.schemaVersion, 8);
       assert.strictEqual(repo.isOpen, true);
 
       // Verify backup-v4 exists
@@ -2785,7 +2789,7 @@ test('SqliteStateRepository - 75. v5-schema: canonical v4 fixture auto-migrates 
         assert.ok(typeof cursorRow.updated_at_ms === 'number' && cursorRow.updated_at_ms > 0);
 
         const versions = liveDb.prepare('SELECT version FROM schema_migrations ORDER BY version ASC;').all();
-        assert.deepStrictEqual(versions.map((r) => r.version), [1, 2, 3, 4, 5, 6, 7]);
+        assert.deepStrictEqual(versions.map((r) => r.version), [1, 2, 3, 4, 5, 6, 7, 8]);
       } finally {
         liveDb.close();
       }
@@ -2922,7 +2926,7 @@ test('SqliteStateRepository - 78. v6-schema: canonical v5 fixture auto-migrates 
 
     const repo = new SqliteStateRepository(harness.stateRoot);
     try {
-      assert.strictEqual(repo.schemaVersion, 7);
+      assert.strictEqual(repo.schemaVersion, 8);
       assert.strictEqual(repo.isOpen, true);
 
       // Verify backup-v5 exists
@@ -2932,14 +2936,14 @@ test('SqliteStateRepository - 78. v6-schema: canonical v5 fixture auto-migrates 
       );
       assert.strictEqual(backupEntries.length, 1);
 
-      // Verify live DB has outbox table and migrated to v7
+      // Verify live DB has outbox table and migrated to v8
       const liveDb = new DatabaseSync(repo.databasePath, { readOnly: true });
       try {
         const versions = liveDb.prepare('SELECT version FROM schema_migrations ORDER BY version ASC;').all();
-        assert.deepStrictEqual(versions.map((r) => r.version), [1, 2, 3, 4, 5, 6, 7]);
+        assert.deepStrictEqual(versions.map((r) => r.version), [1, 2, 3, 4, 5, 6, 7, 8]);
 
         const tables = liveDb.prepare("SELECT name FROM sqlite_schema WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name ASC;").all();
-        assert.deepStrictEqual(tables.map((t) => t.name), ['channel_control', 'inbound_event', 'inbox', 'ingest_cursor', 'outbox', 'schema_migrations']);
+        assert.deepStrictEqual(tables.map((t) => t.name), ['archive_coordination', 'archive_topic', 'channel_control', 'inbound_event', 'inbox', 'ingest_cursor', 'outbox', 'schema_migrations']);
 
         // Check outbox table is STRICT
         const outboxTable = liveDb.prepare("PRAGMA table_list('outbox');").all().find((e) => e.name === 'outbox');
@@ -2962,7 +2966,7 @@ test('SqliteStateRepository - 79. v6-schema: outbox table enforces external_retr
   try {
     const repo = new SqliteStateRepository(harness.stateRoot);
     try {
-      assert.strictEqual(repo.schemaVersion, 7);
+      assert.strictEqual(repo.schemaVersion, 8);
       const rawDb = new DatabaseSync(repo.databasePath, { readOnly: true });
       try {
         const outboxSqlRow = rawDb.prepare("SELECT sql FROM sqlite_schema WHERE name = 'outbox';").get();
@@ -3029,7 +3033,7 @@ test('SqliteStateRepository - 80. v7-schema: canonical v6 fixture auto-migrates 
 
     const repo = new SqliteStateRepository(harness.stateRoot);
     try {
-      assert.strictEqual(repo.schemaVersion, 7);
+      assert.strictEqual(repo.schemaVersion, 8);
       assert.strictEqual(repo.isOpen, true);
 
       // Verify backup-v6 exists
@@ -3039,11 +3043,11 @@ test('SqliteStateRepository - 80. v7-schema: canonical v6 fixture auto-migrates 
       );
       assert.strictEqual(backupEntries.length, 1);
 
-      // Verify live DB has migrated to v7
+      // Verify live DB has migrated to v8
       const liveDb = new DatabaseSync(repo.databasePath, { readOnly: true });
       try {
         const versions = liveDb.prepare('SELECT version FROM schema_migrations ORDER BY version ASC;').all();
-        assert.deepStrictEqual(versions.map((r) => r.version), [1, 2, 3, 4, 5, 6, 7]);
+        assert.deepStrictEqual(versions.map((r) => r.version), [1, 2, 3, 4, 5, 6, 7, 8]);
 
         // Verify outbox schema has terminal_reason_code
         const colInfo = liveDb.prepare('PRAGMA table_info(outbox);').all();
@@ -3338,6 +3342,274 @@ test('83. getFailedTerminalSummaries hard-capped to 50 with seed >= 60 rows and 
       const res10 = repo.getFailedTerminalSummaries(10);
       assert.strictEqual(res10.count, 60);
       assert.strictEqual(res10.summaries.length, 10);
+    } finally {
+      repo.close();
+    }
+  } finally {
+    harness.cleanup();
+  }
+});
+
+// ============================================================================
+// v8-schema Schema v8 Test Suite (Items 83-84)
+// ============================================================================
+
+// 83. v7 -> v8 migration creates verified backup-v7, creates archive_topic and archive_coordination
+test('SqliteStateRepository - 83. v8-schema: canonical v7 fixture auto-migrates to v8 with verified v7 backup and archive tables created', () => {
+  const harness = createTempHarness();
+  try {
+    const dbPath = path.join(harness.stateRoot, SQLITE_DATABASE_FILENAME);
+    const rawDb = new DatabaseSync(dbPath);
+    try {
+      rawDb.exec('PRAGMA journal_mode = WAL;');
+      rawDb.exec('PRAGMA foreign_keys = ON;');
+      rawDb.exec('CREATE TABLE schema_migrations (version INTEGER PRIMARY KEY) STRICT;');
+      rawDb.exec('INSERT INTO schema_migrations (version) VALUES (1), (2), (3), (4), (5), (6), (7);');
+      rawDb.exec(CHANNEL_CONTROL_SCHEMA_SQL);
+      rawDb.exec(INBOX_SCHEMA_SQL);
+      rawDb.exec(INGEST_CURSOR_SCHEMA_SQL);
+      rawDb.exec(INBOUND_EVENT_SCHEMA_SQL);
+      rawDb.exec(OUTBOX_SCHEMA_SQL);
+
+      rawDb.prepare('INSERT INTO channel_control (channel_id, current_holder, fencing_token) VALUES (?, ?, ?);')
+        .run('ch_v7', 'holder_v7', 12);
+      rawDb.prepare('INSERT INTO ingest_cursor (account_id, cursor_value, updated_at_ms) VALUES (?, ?, ?);')
+        .run('acc_v7', '54321', 1727000000);
+      rawDb.prepare('INSERT INTO inbox (channel_id, account_id, platform_msg_id, status, content) VALUES (?, ?, ?, ?, ?);')
+        .run('ch_v7', 'acc_v7', 'msg_v7_1', 'replied', 'hello v7');
+    } finally {
+      rawDb.close();
+    }
+
+    const repo = new SqliteStateRepository(harness.stateRoot);
+    try {
+      assert.strictEqual(repo.schemaVersion, 8);
+      assert.strictEqual(repo.isOpen, true);
+
+      // Verify backup-v7 exists
+      const backupDir = path.join(harness.stateRoot, 'backups');
+      const backupEntries = fs.readdirSync(backupDir).filter(
+        (f) => f.startsWith('channel-gateway-state.backup-v7-') && f.endsWith('.sqlite3')
+      );
+      assert.strictEqual(backupEntries.length, 1, 'Exactly one v7 pre-migration backup must exist');
+
+      // Verify backup db is valid v7
+      const backupPath = path.join(backupDir, backupEntries[0]);
+      const backupDb = new DatabaseSync(backupPath, { readOnly: true });
+      try {
+        const integrity = backupDb.prepare('PRAGMA integrity_check;').get();
+        assert.strictEqual(integrity.integrity_check ?? Object.values(integrity)[0], 'ok');
+        const versions = backupDb.prepare('SELECT version FROM schema_migrations ORDER BY version ASC;').all();
+        assert.deepStrictEqual(versions.map((r) => r.version), [1, 2, 3, 4, 5, 6, 7]);
+        const tables = backupDb.prepare("SELECT name FROM sqlite_schema WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name ASC;").all();
+        assert.deepStrictEqual(tables.map((t) => t.name), ['channel_control', 'inbound_event', 'inbox', 'ingest_cursor', 'outbox', 'schema_migrations']);
+      } finally {
+        backupDb.close();
+      }
+
+      // Verify live DB has migrated to v8
+      const liveDb = new DatabaseSync(repo.databasePath, { readOnly: true });
+      try {
+        const versions = liveDb.prepare('SELECT version FROM schema_migrations ORDER BY version ASC;').all();
+        assert.deepStrictEqual(versions.map((r) => r.version), [1, 2, 3, 4, 5, 6, 7, 8]);
+
+        const tables = liveDb.prepare("SELECT name FROM sqlite_schema WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name ASC;").all();
+        assert.deepStrictEqual(tables.map((t) => t.name), ['archive_coordination', 'archive_topic', 'channel_control', 'inbound_event', 'inbox', 'ingest_cursor', 'outbox', 'schema_migrations']);
+
+        // Verify archive_topic and archive_coordination are STRICT
+        const topicTable = liveDb.prepare("PRAGMA table_list('archive_topic');").all().find((e) => e.name === 'archive_topic');
+        assert.ok(topicTable, 'archive_topic must exist');
+        assert.strictEqual(Number(topicTable.strict), 1, 'archive_topic must be STRICT');
+
+        const coordTable = liveDb.prepare("PRAGMA table_list('archive_coordination');").all().find((e) => e.name === 'archive_coordination');
+        assert.ok(coordTable, 'archive_coordination must exist');
+        assert.strictEqual(Number(coordTable.strict), 1, 'archive_coordination must be STRICT');
+      } finally {
+        liveDb.close();
+      }
+    } finally {
+      repo.close();
+    }
+  } finally {
+    harness.cleanup();
+  }
+});
+
+// 84. v8-schema: archive_topic and archive_coordination dedupe and constraint enforcement
+test('SqliteStateRepository - 84. v8-schema: archive_topic and archive_coordination mechanical dedupe and FK enforcement', () => {
+  const harness = createTempHarness();
+  try {
+    const repo = new SqliteStateRepository(harness.stateRoot);
+    try {
+      const now = Math.floor(Date.now() / 1000);
+
+      // Create topic for acc1
+      const t1 = repo.createArchiveTopic({
+        accountId: 'acc1',
+        displayName: 'General',
+        normalizedName: 'general',
+        accountDirName: 'TG_acc1',
+        topicDirName: 'Q001_General',
+        nowSec: now,
+      });
+      assert.ok(t1.topic_id > 0);
+      assert.strictEqual(t1.created, true);
+      assert.strictEqual(t1.topic_sequence, 1);
+
+      // Re-creating with same normalized name returns existing topic
+      const t1Dup = repo.createArchiveTopic({
+        accountId: 'acc1',
+        displayName: 'GENERAL',
+        normalizedName: 'general',
+        accountDirName: 'TG_acc1',
+        topicDirName: 'Q001_General',
+        nowSec: now,
+      });
+      assert.strictEqual(t1Dup.created, false);
+      assert.strictEqual(t1Dup.topic_id, t1.topic_id);
+
+      // Different account can use same sequence and normalized name
+      const t2 = repo.createArchiveTopic({
+        accountId: 'acc2',
+        displayName: 'General',
+        normalizedName: 'general',
+        accountDirName: 'TG_acc2',
+        topicDirName: 'Q001_General',
+        nowSec: now,
+      });
+      assert.ok(t2.topic_id > 0);
+      assert.strictEqual(t2.created, true);
+      assert.strictEqual(t2.topic_sequence, 1);
+
+      const rawDb = new DatabaseSync(repo.databasePath);
+      try {
+        rawDb.exec('PRAGMA foreign_keys = ON;');
+
+        // 1. Raw duplicate topic_sequence on same account fails
+        assert.throws(() => {
+          rawDb.prepare(`
+            INSERT INTO archive_topic (
+              account_id, topic_sequence, display_name, normalized_name,
+              account_dir_name, topic_dir_name, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?);
+          `).run('acc1', 1, 'Other', 'other', 'TG_acc1', 'Q001_Other', now);
+        }, /UNIQUE constraint failed/);
+
+        // 2. Raw duplicate normalized_name on same account fails
+        assert.throws(() => {
+          rawDb.prepare(`
+            INSERT INTO archive_topic (
+              account_id, topic_sequence, display_name, normalized_name,
+              account_dir_name, topic_dir_name, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?);
+          `).run('acc1', 2, 'Different', 'general', 'TG_acc1', 'Q002_Different', now);
+        }, /UNIQUE constraint failed/);
+
+        // 3. Raw insert valid ORIGINAL coordination
+        rawDb.prepare(`
+          INSERT INTO archive_coordination (
+            account_id, topic_id, entry_sequence, record_kind,
+            original_archive_id, platform_msg_id, source_platform_event_id,
+            command_id, status, content_snapshot, relative_path,
+            completed_at, failed_reason_code, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+        `).run(
+          'acc1', t1.topic_id, 1, 'ORIGINAL',
+          null, 'msg100', null,
+          'cmd100', 'PENDING', 'Original question', 'TG_acc1/Q001_General/001_msg_20260928-120000.md',
+          null, null, now, now
+        );
+
+        // 4. Duplicate original platform_msg_id on same account fails
+        assert.throws(() => {
+          rawDb.prepare(`
+            INSERT INTO archive_coordination (
+              account_id, topic_id, entry_sequence, record_kind,
+              original_archive_id, platform_msg_id, source_platform_event_id,
+              command_id, status, content_snapshot, relative_path,
+              completed_at, failed_reason_code, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+          `).run(
+            'acc1', t1.topic_id, 2, 'ORIGINAL',
+            null, 'msg100', null,
+            'cmd101', 'PENDING', 'Duplicate question', 'TG_acc1/Q001_General/002_msg_20260928-120000.md',
+            null, null, now, now
+          );
+        }, /UNIQUE constraint failed/);
+
+        // 5. Duplicate command_id fails
+        assert.throws(() => {
+          rawDb.prepare(`
+            INSERT INTO archive_coordination (
+              account_id, topic_id, entry_sequence, record_kind,
+              original_archive_id, platform_msg_id, source_platform_event_id,
+              command_id, status, content_snapshot, relative_path,
+              completed_at, failed_reason_code, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+          `).run(
+            'acc1', t1.topic_id, 3, 'ORIGINAL',
+            null, 'msg102', null,
+            'cmd100', 'PENDING', 'Question', 'TG_acc1/Q001_General/003_msg_20260928-120000.md',
+            null, null, now, now
+          );
+        }, /UNIQUE constraint failed/);
+
+        // 6. Duplicate entry_sequence in same topic fails
+        assert.throws(() => {
+          rawDb.prepare(`
+            INSERT INTO archive_coordination (
+              account_id, topic_id, entry_sequence, record_kind,
+              original_archive_id, platform_msg_id, source_platform_event_id,
+              command_id, status, content_snapshot, relative_path,
+              completed_at, failed_reason_code, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+          `).run(
+            'acc1', t1.topic_id, 1, 'AMENDMENT',
+            1, 'msg100', 'evt_edit_1',
+            null, 'PENDING', 'Amendment', 'TG_acc1/Q001_General/001_edit_20260928-120000.md',
+            null, null, now, now
+          );
+        }, /UNIQUE constraint failed/);
+
+        // 7. Valid amendment with entry_sequence 2
+        rawDb.prepare(`
+          INSERT INTO archive_coordination (
+            account_id, topic_id, entry_sequence, record_kind,
+            original_archive_id, platform_msg_id, source_platform_event_id,
+            command_id, status, content_snapshot, relative_path,
+            completed_at, failed_reason_code, created_at, updated_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+        `).run(
+          'acc1', t1.topic_id, 2, 'AMENDMENT',
+          1, 'msg100', 'evt_edit_1',
+          null, 'PENDING', 'Amendment content', 'TG_acc1/Q001_General/002_edit_20260928-120000.md',
+          null, null, now, now
+        );
+
+        // 8. Duplicate source_platform_event_id on amendment fails
+        assert.throws(() => {
+          rawDb.prepare(`
+            INSERT INTO archive_coordination (
+              account_id, topic_id, entry_sequence, record_kind,
+              original_archive_id, platform_msg_id, source_platform_event_id,
+              command_id, status, content_snapshot, relative_path,
+              completed_at, failed_reason_code, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+          `).run(
+            'acc1', t1.topic_id, 3, 'AMENDMENT',
+            1, 'msg100', 'evt_edit_1',
+            null, 'PENDING', 'Duplicate edit', 'TG_acc1/Q001_General/003_edit_20260928-120000.md',
+            null, null, now, now
+          );
+        }, /UNIQUE constraint failed/);
+
+        // 9. Topic FK RESTRICT: deleting topic with coordination fails
+        assert.throws(() => {
+          rawDb.prepare('DELETE FROM archive_topic WHERE topic_id = ?;').run(t1.topic_id);
+        }, /FOREIGN KEY constraint failed/);
+      } finally {
+        rawDb.close();
+      }
     } finally {
       repo.close();
     }

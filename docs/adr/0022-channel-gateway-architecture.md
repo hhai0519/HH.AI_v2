@@ -185,6 +185,19 @@
    - 執行期管理員 `core/gateway-runtime-owner.js` 統籌 Local API Server、Telegram 適配器、備份排程與狀態庫生命週期，提供有序非同步關閉。
    - 入口腳本 `bin/gateway.js` 與本機客戶端 CLI `bin/local-api-client.js`。
 
+## TG-MVP-14 架構演進：對話歸檔與主題管理 (Conversation Archive & Topics)
+
+1. **核心元件與職責劃分**：
+   - `TopicManager`：負責主題（Topic）之規格化、顯示名稱清洗、目錄名稱衍生（`Q<sequence>_<safe-name>`）、啟動目錄不變式驗證與快取。
+   - `ArchiveFileWriter`：負責以不可分割之硬連結（`fs.linkSync`）從 `.staging/` 暫存目錄原子發布問答記錄至正式主題目錄，並實作嚴格路徑預算（<=240 字元）與 DLP 淨化檔名衍生。
+   - `ArchiveWorker`：背景順序非同步消費 `archive_coordination` 佇列，協調檔案發布並更新狀態（`COMPLETED` / `FAILED`），成功後清除 SQLite 中之 pre-DLP 暫存快照。
+2. **硬連結不可分割發布 (Hard-Link Publication — H-1 ~ H-4)**：
+   - 啟動階段透過 `probeHardLinkCapability` 驗證 `archiveRoot` 之硬連結支援，失敗即時 Fail-Closed。
+   - 寫入與目標目錄必須位於同一檔案系統分割區，杜絕外部觀察到部分寫入之殘留檔案。
+3. **程序生命週期收斂**：
+   - 啟動：(1) Repository / Backup -> (2) TelegramOutboundAdapter -> (3) OutboxWorker -> (4) TopicManager 啟動驗證 / ArchiveWorker -> (5) Local API Server -> (6) TelegramInboundAdapter。
+   - 關閉：(1) TelegramInboundAdapter -> (2) Local API Server -> (3) OutboxWorker (initiate stop) -> (4) ArchiveWorker (initiate stop) -> (5) TelegramOutboundAdapter (abort & settle) -> (6) OutboxWorker (await) -> (7) ArchiveWorker (await with bounded timeout & closed guard) -> (8) Repository / Backup close。
+
 ## Consequences
 
 - **架構集中與維護簡化**：由單一 `runtime/channel-gateway/` 統一處理多通道通訊，徹底消滅雙橋接重疊依賴與維護負擔。

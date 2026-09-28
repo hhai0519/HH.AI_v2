@@ -47,8 +47,15 @@ const {
   evaluateStartupRecovery,
   LINE_RETRY_KEY_UUID_REGEX,
 } = require('./outbox-delivery-policy');
+const {
+  computeRelativePath,
+  formatTimestamp,
+  formatAccountDirName,
+  formatTopicDirName,
+  deriveSummarySafeSegment,
+} = require('./topic-manager');
 
-const SQLITE_STATE_SCHEMA_VERSION = 7;
+const SQLITE_STATE_SCHEMA_VERSION = 8;
 const SQLITE_BUSY_TIMEOUT_MS = 5000;
 const SQLITE_DATABASE_FILENAME = 'channel-gateway-state.sqlite3';
 
@@ -338,6 +345,80 @@ CREATE TABLE outbox (
 `;
 
 /**
+ * Canonical DDL definition for archive_topic table in schema version 8 (Prompt §9).
+ */
+const ARCHIVE_TOPIC_SCHEMA_SQL = `
+CREATE TABLE archive_topic (
+  topic_id INTEGER PRIMARY KEY AUTOINCREMENT,
+  account_id TEXT NOT NULL
+    CHECK(length(trim(account_id)) > 0),
+  topic_sequence INTEGER NOT NULL
+    CHECK(topic_sequence >= 1),
+  display_name TEXT NOT NULL
+    CHECK(length(trim(display_name)) > 0),
+  normalized_name TEXT NOT NULL
+    CHECK(length(trim(normalized_name)) > 0),
+  account_dir_name TEXT NOT NULL
+    CHECK(length(trim(account_dir_name)) > 0),
+  topic_dir_name TEXT NOT NULL
+    CHECK(length(trim(topic_dir_name)) > 0),
+  created_at INTEGER NOT NULL
+    CHECK(created_at >= 0),
+  UNIQUE(account_id, topic_sequence),
+  UNIQUE(account_id, normalized_name)
+) STRICT;
+`;
+
+/**
+ * Canonical DDL definition for archive_coordination table in schema version 8 (Prompt §9).
+ */
+const ARCHIVE_COORDINATION_SCHEMA_SQL = `
+CREATE TABLE archive_coordination (
+  archive_id INTEGER PRIMARY KEY AUTOINCREMENT,
+  account_id TEXT NOT NULL
+    CHECK(length(trim(account_id)) > 0),
+  topic_id INTEGER NOT NULL,
+  entry_sequence INTEGER NOT NULL
+    CHECK(entry_sequence >= 1),
+  record_kind TEXT NOT NULL
+    CHECK(record_kind IN ('ORIGINAL', 'AMENDMENT')),
+  original_archive_id INTEGER,
+  platform_msg_id TEXT NOT NULL
+    CHECK(length(trim(platform_msg_id)) > 0),
+  source_platform_event_id TEXT,
+  command_id TEXT UNIQUE,
+  status TEXT NOT NULL
+    CHECK(status IN ('PENDING', 'COMPLETED', 'FAILED')),
+  content_snapshot TEXT,
+  relative_path TEXT NOT NULL
+    CHECK(length(trim(relative_path)) > 0),
+  completed_at INTEGER
+    CHECK(completed_at IS NULL OR completed_at >= 0),
+  failed_reason_code TEXT
+    CHECK(failed_reason_code IS NULL OR length(trim(failed_reason_code)) > 0),
+  created_at INTEGER NOT NULL
+    CHECK(created_at >= 0),
+  updated_at INTEGER NOT NULL
+    CHECK(updated_at >= 0),
+  CHECK(
+    (record_kind = 'ORIGINAL' AND command_id IS NOT NULL AND original_archive_id IS NULL) OR
+    (record_kind = 'AMENDMENT' AND command_id IS NULL AND original_archive_id IS NOT NULL AND source_platform_event_id IS NOT NULL)
+  ),
+  CHECK(
+    (status = 'COMPLETED' AND content_snapshot IS NULL) OR
+    (status IN ('PENDING', 'FAILED') AND content_snapshot IS NOT NULL)
+  ),
+  UNIQUE(account_id, topic_id, entry_sequence),
+  FOREIGN KEY(topic_id)
+    REFERENCES archive_topic(topic_id)
+    ON DELETE RESTRICT,
+  FOREIGN KEY(original_archive_id)
+    REFERENCES archive_coordination(archive_id)
+    ON DELETE RESTRICT
+) STRICT;
+`;
+
+/**
  * Normalizes CREATE TABLE DDL SQL deterministically for canonical schema comparison.
  * Collapses whitespace, trims, normalizes punctuation spacing, strips trailing semicolons,
  * and normalizes keyword case outside single-quoted string literals.
@@ -499,6 +580,23 @@ SELECT
 FROM outbox_v6_legacy;
 `);
       db.exec('DROP TABLE outbox_v6_legacy;');
+    },
+  }),
+  Object.freeze({
+    version: 8,
+    apply(db) {
+      db.exec(ARCHIVE_TOPIC_SCHEMA_SQL);
+      db.exec(ARCHIVE_COORDINATION_SCHEMA_SQL);
+      db.exec(`
+CREATE UNIQUE INDEX idx_archive_coord_orig
+ON archive_coordination(account_id, platform_msg_id)
+WHERE record_kind = 'ORIGINAL';
+`);
+      db.exec(`
+CREATE UNIQUE INDEX idx_archive_coord_amend
+ON archive_coordination(account_id, source_platform_event_id)
+WHERE source_platform_event_id IS NOT NULL;
+`);
     },
   }),
 ]);
@@ -727,7 +825,8 @@ function verifyCanonicalDomainSchemaShape(db, version = SQLITE_STATE_SCHEMA_VERS
     version !== 4 &&
     version !== 5 &&
     version !== 6 &&
-    version !== 7
+    version !== 7 &&
+    version !== 8
   ) {
     throw new Error(`Unsupported schema version for domain shape verification: ${version} (fail-closed)`);
   }
@@ -1155,8 +1254,8 @@ function verifyCanonicalDomainSchemaShape(db, version = SQLITE_STATE_SCHEMA_VERS
       }
     }
 
-    // 5. Verify outbox for v6 and v7
-    if (version === 6 || version === 7) {
+    // 5. Verify outbox for v6, v7, and v8
+    if (version === 6 || version === 7 || version === 8) {
       const obList = db.prepare("PRAGMA table_list('outbox');").all();
       const obEntry = obList ? obList.find((e) => e.name === 'outbox') : null;
       if (!obEntry || obEntry.type !== 'table' || Number(obEntry.strict) !== 1) {
@@ -1188,7 +1287,7 @@ function verifyCanonicalDomainSchemaShape(db, version = SQLITE_STATE_SCHEMA_VERS
         created_at: { type: 'INTEGER', notnull: 1, pk: 0 },
         updated_at: { type: 'INTEGER', notnull: 1, pk: 0 },
       };
-      if (version === 7) {
+      if (version === 7 || version === 8) {
         obExpected.terminal_reason_code = { type: 'TEXT', notnull: 0, pk: 0 };
       }
       for (const col of obCols) {
@@ -1249,13 +1348,243 @@ function verifyCanonicalDomainSchemaShape(db, version = SQLITE_STATE_SCHEMA_VERS
       if (!normOb.includes('CHECK ( ( EXTERNAL_RETRY_KEY IS NULL AND EXTERNAL_RETRY_EXPIRES_AT IS NULL ) OR ( EXTERNAL_RETRY_KEY IS NOT NULL AND EXTERNAL_RETRY_EXPIRES_AT IS NOT NULL ) )')) {
         throw new Error('outbox missing external_retry pair CHECK constraint (fail-closed)');
       }
-      if (version === 7) {
+      if (version === 7 || version === 8) {
         if (!normOb.includes("CHECK ( TERMINAL_REASON_CODE IS NULL OR ( LENGTH ( TERMINAL_REASON_CODE ) >= 1 AND LENGTH ( TERMINAL_REASON_CODE ) <= 96 AND TERMINAL_REASON_CODE NOT GLOB '*[^A-Z0-9_]*' ) )")) {
           throw new Error('outbox missing terminal_reason_code CHECK constraint (fail-closed)');
         }
       }
       if (normOb !== expOb) {
         throw new Error('outbox schema definition does not match canonical DDL contract (fail-closed)');
+      }
+    }
+
+    // 6. Verify archive_topic and archive_coordination for v8 (Prompt §9)
+    if (version === 8) {
+      // 6a. Verify archive_topic
+      const atList = db.prepare("PRAGMA table_list('archive_topic');").all();
+      const atEntry = atList ? atList.find((e) => e.name === 'archive_topic') : null;
+      if (!atEntry || atEntry.type !== 'table' || Number(atEntry.strict) !== 1) {
+        throw new Error('archive_topic must exist as a STRICT table (fail-closed)');
+      }
+      const atCols = db.prepare("PRAGMA table_info('archive_topic');").all();
+      if (!atCols || atCols.length !== 8) {
+        throw new Error(
+          `archive_topic must have exactly 8 columns, found ${atCols ? atCols.length : 0} (fail-closed)`
+        );
+      }
+      const atExpected = {
+        topic_id: { type: 'INTEGER', notnull: 0, pk: 1 },
+        account_id: { type: 'TEXT', notnull: 1, pk: 0 },
+        topic_sequence: { type: 'INTEGER', notnull: 1, pk: 0 },
+        display_name: { type: 'TEXT', notnull: 1, pk: 0 },
+        normalized_name: { type: 'TEXT', notnull: 1, pk: 0 },
+        account_dir_name: { type: 'TEXT', notnull: 1, pk: 0 },
+        topic_dir_name: { type: 'TEXT', notnull: 1, pk: 0 },
+        created_at: { type: 'INTEGER', notnull: 1, pk: 0 },
+      };
+      for (const col of atCols) {
+        const exp = atExpected[col.name];
+        if (!exp) {
+          throw new Error(`Unexpected column '${col.name}' in archive_topic (fail-closed)`);
+        }
+        if (
+          col.type.toUpperCase() !== exp.type ||
+          Number(col.notnull) !== exp.notnull ||
+          Number(col.pk) !== exp.pk
+        ) {
+          throw new Error(
+            `Column '${col.name}' in archive_topic mismatch: expected type=${exp.type}, notnull=${exp.notnull}, pk=${exp.pk}; got type=${col.type}, notnull=${col.notnull}, pk=${col.pk} (fail-closed)`
+          );
+        }
+      }
+
+      const atIdxList = db.prepare("PRAGMA index_list('archive_topic');").all();
+      let hasTopicSeqUnique = false;
+      let hasTopicNormUnique = false;
+      if (atIdxList) {
+        for (const idx of atIdxList) {
+          if (Number(idx.unique) === 1) {
+            const info = indexInfoStmt.all(idx.name);
+            const cols = info ? info.map((c) => c.name) : [];
+            if (cols.length === 2 && cols[0] === 'account_id' && cols[1] === 'topic_sequence') {
+              hasTopicSeqUnique = true;
+            }
+            if (cols.length === 2 && cols[0] === 'account_id' && cols[1] === 'normalized_name') {
+              hasTopicNormUnique = true;
+            }
+          }
+        }
+      }
+      if (!hasTopicSeqUnique) {
+        throw new Error('archive_topic must define UNIQUE(account_id, topic_sequence) constraint (fail-closed)');
+      }
+      if (!hasTopicNormUnique) {
+        throw new Error('archive_topic must define UNIQUE(account_id, normalized_name) constraint (fail-closed)');
+      }
+
+      const atSqlRow = schemaStmt.get('archive_topic');
+      if (!atSqlRow || typeof atSqlRow.sql !== 'string') {
+        throw new Error('archive_topic table definition not found in sqlite_schema (fail-closed)');
+      }
+      const normAt = normalizeCanonicalSchemaSql(atSqlRow.sql);
+      const expAt = normalizeCanonicalSchemaSql(ARCHIVE_TOPIC_SCHEMA_SQL);
+      if (!normAt.includes('AUTOINCREMENT')) {
+        throw new Error('archive_topic topic_id column missing AUTOINCREMENT (fail-closed)');
+      }
+      if (!normAt.includes('CHECK ( LENGTH ( TRIM ( ACCOUNT_ID ) ) > 0 )')) {
+        throw new Error('archive_topic missing account_id nonblank CHECK constraint (fail-closed)');
+      }
+      if (!normAt.includes('CHECK ( TOPIC_SEQUENCE >= 1 )')) {
+        throw new Error('archive_topic missing topic_sequence >= 1 CHECK constraint (fail-closed)');
+      }
+      if (!normAt.includes('CHECK ( CREATED_AT >= 0 )')) {
+        throw new Error('archive_topic missing created_at non-negative CHECK constraint (fail-closed)');
+      }
+      if (normAt !== expAt) {
+        throw new Error('archive_topic schema definition does not match canonical DDL contract (fail-closed)');
+      }
+
+      // 6b. Verify archive_coordination
+      const acList = db.prepare("PRAGMA table_list('archive_coordination');").all();
+      const acEntry = acList ? acList.find((e) => e.name === 'archive_coordination') : null;
+      if (!acEntry || acEntry.type !== 'table' || Number(acEntry.strict) !== 1) {
+        throw new Error('archive_coordination must exist as a STRICT table (fail-closed)');
+      }
+      const acCols = db.prepare("PRAGMA table_info('archive_coordination');").all();
+      if (!acCols || acCols.length !== 16) {
+        throw new Error(
+          `archive_coordination must have exactly 16 columns, found ${acCols ? acCols.length : 0} (fail-closed)`
+        );
+      }
+      const acExpected = {
+        archive_id: { type: 'INTEGER', notnull: 0, pk: 1 },
+        account_id: { type: 'TEXT', notnull: 1, pk: 0 },
+        topic_id: { type: 'INTEGER', notnull: 1, pk: 0 },
+        entry_sequence: { type: 'INTEGER', notnull: 1, pk: 0 },
+        record_kind: { type: 'TEXT', notnull: 1, pk: 0 },
+        original_archive_id: { type: 'INTEGER', notnull: 0, pk: 0 },
+        platform_msg_id: { type: 'TEXT', notnull: 1, pk: 0 },
+        source_platform_event_id: { type: 'TEXT', notnull: 0, pk: 0 },
+        command_id: { type: 'TEXT', notnull: 0, pk: 0 },
+        status: { type: 'TEXT', notnull: 1, pk: 0 },
+        content_snapshot: { type: 'TEXT', notnull: 0, pk: 0 },
+        relative_path: { type: 'TEXT', notnull: 1, pk: 0 },
+        completed_at: { type: 'INTEGER', notnull: 0, pk: 0 },
+        failed_reason_code: { type: 'TEXT', notnull: 0, pk: 0 },
+        created_at: { type: 'INTEGER', notnull: 1, pk: 0 },
+        updated_at: { type: 'INTEGER', notnull: 1, pk: 0 },
+      };
+      for (const col of acCols) {
+        const exp = acExpected[col.name];
+        if (!exp) {
+          throw new Error(`Unexpected column '${col.name}' in archive_coordination (fail-closed)`);
+        }
+        if (
+          col.type.toUpperCase() !== exp.type ||
+          Number(col.pk) !== exp.pk
+        ) {
+          throw new Error(
+            `Column '${col.name}' in archive_coordination mismatch: expected type=${exp.type}, pk=${exp.pk}; got type=${col.type}, pk=${col.pk} (fail-closed)`
+          );
+        }
+      }
+
+      // Foreign keys on archive_coordination
+      const acFks = db.prepare("PRAGMA foreign_key_list('archive_coordination');").all();
+      const topicFk = acFks
+        ? acFks.find(
+            (k) =>
+              k.table === 'archive_topic' &&
+              k.from === 'topic_id' &&
+              k.to === 'topic_id'
+          )
+        : null;
+      if (!topicFk || !topicFk.on_delete || topicFk.on_delete.toUpperCase() !== 'RESTRICT') {
+        throw new Error(
+          'archive_coordination must define FOREIGN KEY (topic_id) REFERENCES archive_topic(topic_id) ON DELETE RESTRICT (fail-closed)'
+        );
+      }
+      const selfFk = acFks
+        ? acFks.find(
+            (k) =>
+              k.table === 'archive_coordination' &&
+              k.from === 'original_archive_id' &&
+              k.to === 'archive_id'
+          )
+        : null;
+      if (!selfFk || !selfFk.on_delete || selfFk.on_delete.toUpperCase() !== 'RESTRICT') {
+        throw new Error(
+          'archive_coordination must define FOREIGN KEY (original_archive_id) REFERENCES archive_coordination(archive_id) ON DELETE RESTRICT (fail-closed)'
+        );
+      }
+
+      // Unique indexes on archive_coordination
+      const acIdxList = db.prepare("PRAGMA index_list('archive_coordination');").all();
+      let hasEntrySeqUnique = false;
+      let hasCommandIdUnique = false;
+      let hasOrigPartialUnique = false;
+      let hasAmendPartialUnique = false;
+
+      if (acIdxList) {
+        for (const idx of acIdxList) {
+          if (Number(idx.unique) === 1) {
+            const info = indexInfoStmt.all(idx.name);
+            const cols = info ? info.map((c) => c.name) : [];
+            if (cols.length === 3 && cols[0] === 'account_id' && cols[1] === 'topic_id' && cols[2] === 'entry_sequence') {
+              hasEntrySeqUnique = true;
+            }
+            if (cols.length === 1 && cols[0] === 'command_id') {
+              hasCommandIdUnique = true;
+            }
+            if (idx.name === 'idx_archive_coord_orig' && Number(idx.partial) === 1) {
+              if (cols.length === 2 && cols[0] === 'account_id' && cols[1] === 'platform_msg_id') {
+                hasOrigPartialUnique = true;
+              }
+            }
+            if (idx.name === 'idx_archive_coord_amend' && Number(idx.partial) === 1) {
+              if (cols.length === 2 && cols[0] === 'account_id' && cols[1] === 'source_platform_event_id') {
+                hasAmendPartialUnique = true;
+              }
+            }
+          }
+        }
+      }
+      if (!hasEntrySeqUnique) {
+        throw new Error('archive_coordination must define UNIQUE(account_id, topic_id, entry_sequence) constraint (fail-closed)');
+      }
+      if (!hasCommandIdUnique) {
+        throw new Error('archive_coordination must define UNIQUE constraint on command_id (fail-closed)');
+      }
+      if (!hasOrigPartialUnique) {
+        throw new Error('archive_coordination must define idx_archive_coord_orig partial unique index (fail-closed)');
+      }
+      if (!hasAmendPartialUnique) {
+        throw new Error('archive_coordination must define idx_archive_coord_amend partial unique index (fail-closed)');
+      }
+
+      const acSqlRow = schemaStmt.get('archive_coordination');
+      if (!acSqlRow || typeof acSqlRow.sql !== 'string') {
+        throw new Error('archive_coordination table definition not found in sqlite_schema (fail-closed)');
+      }
+      const normAc = normalizeCanonicalSchemaSql(acSqlRow.sql);
+      const expAc = normalizeCanonicalSchemaSql(ARCHIVE_COORDINATION_SCHEMA_SQL);
+      if (!normAc.includes('AUTOINCREMENT')) {
+        throw new Error('archive_coordination archive_id column missing AUTOINCREMENT (fail-closed)');
+      }
+      if (!normAc.includes('CHECK ( LENGTH ( TRIM ( ACCOUNT_ID ) ) > 0 )')) {
+        throw new Error('archive_coordination missing account_id nonblank CHECK constraint (fail-closed)');
+      }
+      if (!normAc.includes('CHECK ( ENTRY_SEQUENCE >= 1 )')) {
+        throw new Error('archive_coordination missing entry_sequence >= 1 CHECK constraint (fail-closed)');
+      }
+      if (!normAc.includes("CHECK ( RECORD_KIND IN ( 'ORIGINAL' , 'AMENDMENT' ) )")) {
+        throw new Error('archive_coordination missing record_kind enum CHECK constraint (fail-closed)');
+      }
+      if (!normAc.includes("CHECK ( STATUS IN ( 'PENDING' , 'COMPLETED' , 'FAILED' ) )")) {
+        throw new Error('archive_coordination missing status enum CHECK constraint (fail-closed)');
+      }
+      if (normAc !== expAc) {
+        throw new Error('archive_coordination schema definition does not match canonical DDL contract (fail-closed)');
       }
     }
   }
@@ -1900,9 +2229,11 @@ class SqliteStateRepository {
       // 5. Verify canonical domain schema shape for target schema version
       verifyCanonicalDomainSchemaShape(db, SQLITE_STATE_SCHEMA_VERSION);
 
-      // 6. Verify exact user table set for schema v6
+      // 6. Verify exact user table set for schema v8
       const userTables = getCanonicalUserTableNames(db);
       const expectedTables = [
+        'archive_coordination',
+        'archive_topic',
         'channel_control',
         'inbound_event',
         'inbox',
@@ -3094,6 +3425,81 @@ class SqliteStateRepository {
         applied = true;
         inboxUpdated = true;
         sequence = existingMsg.sequence;
+
+        // If inbox status is 'replied', check if an ORIGINAL archive coordination exists
+        if (existingMsg.status === 'replied') {
+          const selectOrigCoord = db.prepare(
+            "SELECT archive_id, topic_id, account_id FROM archive_coordination WHERE account_id = ? AND platform_msg_id = ? AND record_kind = 'ORIGINAL';"
+          );
+          const origCoord = selectOrigCoord.get(accId, pMsgId);
+
+          if (origCoord) {
+            // ORIGINAL coordination exists -> create AMENDMENT in SAME transaction (Prompt §14)
+            const selectTopic = db.prepare(
+              'SELECT topic_id, account_id, account_dir_name, topic_dir_name FROM archive_topic WHERE topic_id = ?;'
+            );
+            const topicRow = selectTopic.get(origCoord.topic_id);
+            if (!topicRow) {
+              throw new Error('ARCHIVE_TOPIC_MISSING_FOR_AMENDMENT: Referenced topic not found (fail-closed)');
+            }
+
+            const selectEntrySeq = db.prepare(
+              'SELECT COALESCE(MAX(entry_sequence), 0) + 1 AS next_entry_seq FROM archive_coordination WHERE account_id = ? AND topic_id = ?;'
+            );
+            const entrySeqRow = selectEntrySeq.get(accId, origCoord.topic_id);
+            const entrySequence = Number(entrySeqRow.next_entry_seq);
+            if (!Number.isSafeInteger(entrySequence) || entrySequence < 1) {
+              throw new Error('ARCHIVE_SEQUENCE_EXHAUSTED: Entry sequence space exhausted for amendment (fail-closed)');
+            }
+
+            // Prompt §13: For AMENDMENT, if cursorObservedAtMs is non-null: floor(cursorObservedAtMs / 1000),
+            // otherwise floor(Date.now() / 1000) captured once inside the same ingestEdit transaction.
+            const amendCreatedAtSec = observedAtMs !== null
+              ? Math.floor(observedAtMs / 1000)
+              : Math.floor(Date.now() / 1000);
+
+            const amendRelativePath = computeRelativePath(
+              topicRow.account_dir_name,
+              topicRow.topic_dir_name,
+              entrySequence,
+              content,
+              amendCreatedAtSec
+            );
+
+            const insertAmend = db.prepare(`
+              INSERT INTO archive_coordination (
+                account_id,
+                topic_id,
+                entry_sequence,
+                record_kind,
+                original_archive_id,
+                platform_msg_id,
+                source_platform_event_id,
+                command_id,
+                status,
+                content_snapshot,
+                relative_path,
+                completed_at,
+                failed_reason_code,
+                created_at,
+                updated_at
+              ) VALUES (?, ?, ?, 'AMENDMENT', ?, ?, ?, NULL, 'PENDING', ?, ?, NULL, NULL, ?, ?);
+            `);
+            insertAmend.run(
+              accId,
+              origCoord.topic_id,
+              entrySequence,
+              origCoord.archive_id,
+              pMsgId,
+              pEventId,
+              content,
+              amendRelativePath,
+              amendCreatedAtSec,
+              amendCreatedAtSec
+            );
+          }
+          // If no ORIGINAL coordination exists (e.g. replied before v8), do NOT create amendment (Prompt §14, §24)
+        }
       } else {
         applied = false;
         inboxUpdated = false;
@@ -3244,6 +3650,11 @@ class SqliteStateRepository {
       throw new TypeError('enqueueAuthorizedReply params must be an object');
     }
 
+    const topicId = params.topicId !== undefined ? params.topicId : params.topic_id;
+    if (typeof topicId !== 'number' || !Number.isSafeInteger(topicId) || topicId < 1) {
+      throw new TypeError('topic_id must be a positive safe integer (fail-closed)');
+    }
+
     const clientRequestId = validateClientRequestId(params.clientRequestId);
     const channelId = validateChannelId(params.channelId);
     const holderId = validateHolderId(params.holderId);
@@ -3309,7 +3720,25 @@ class SqliteStateRepository {
 
       if (existing) {
         if (existing.payload_hash === payloadHash) {
-          // Idempotent Replay: return existing command + status without modifying anything
+          // Idempotent Replay:
+          // Check if an ORIGINAL coordination exists for this command_id
+          const selectOrig = this.#db.prepare(
+            "SELECT archive_id, topic_id FROM archive_coordination WHERE command_id = ? AND record_kind = 'ORIGINAL';"
+          );
+          const origCoord = selectOrig.get(existing.command_id);
+
+          if (origCoord) {
+            // v8 command with coordination: verify topic_id match (Prompt §12)
+            if (origCoord.topic_id !== topicId) {
+              this.#db.exec('ROLLBACK;');
+              return {
+                success: false,
+                reason: 'IDEMPOTENCY_CONFLICT',
+              };
+            }
+          }
+          // Pre-v8 command lacking coordination: returns unchanged without backfill or topic check (Prompt §12)
+
           this.#db.exec('COMMIT;');
           return {
             success: true,
@@ -3326,7 +3755,17 @@ class SqliteStateRepository {
         };
       }
 
-      // Step B: Fresh authorization against channel_control and inbox
+      // Step B: Validate topic ownership
+      const selectTopic = this.#db.prepare(
+        'SELECT topic_id, account_id, topic_sequence, account_dir_name, topic_dir_name FROM archive_topic WHERE topic_id = ?;'
+      );
+      const topicRow = selectTopic.get(topicId);
+      if (!topicRow || topicRow.account_id !== replyingAccountId) {
+        this.#db.exec('ROLLBACK;');
+        return { success: false, reason: 'TOPIC_NOT_FOUND' };
+      }
+
+      // Step C: Fresh authorization against channel_control and inbox
       const selectCtrl = this.#db.prepare(
         'SELECT channel_id, current_holder, fencing_token FROM channel_control WHERE channel_id = ?;'
       );
@@ -3343,7 +3782,7 @@ class SqliteStateRepository {
       }
 
       const selectMsg = this.#db.prepare(
-        'SELECT sequence, channel_id, platform_msg_id, account_id, status, claimed_by, claimed_at_token FROM inbox WHERE account_id = ? AND platform_msg_id = ? AND channel_id = ?;'
+        'SELECT sequence, channel_id, platform_msg_id, account_id, status, content, claimed_by, claimed_at_token FROM inbox WHERE account_id = ? AND platform_msg_id = ? AND channel_id = ?;'
       );
       const msgRow = selectMsg.get(replyingAccountId, messageId, channelId);
 
@@ -3369,7 +3808,7 @@ class SqliteStateRepository {
         return { success: false, reason: 'CLAIM_MISMATCH' };
       }
 
-      // Step C: Authorized fresh insert into outbox and update inbox to replied
+      // Step D: Authorized fresh insert into outbox and update inbox to replied
       const commandId = `cmd_${crypto.randomUUID()}`;
       const insertOutbox = this.#db.prepare(`
         INSERT INTO outbox (
@@ -3430,6 +3869,57 @@ class SqliteStateRepository {
         );
       }
 
+      // Step E: Allocate entry_sequence transactionally (per topic: MAX + 1)
+      const selectEntrySeq = this.#db.prepare(
+        'SELECT COALESCE(MAX(entry_sequence), 0) + 1 AS next_entry_seq FROM archive_coordination WHERE account_id = ? AND topic_id = ?;'
+      );
+      const entrySeqRow = selectEntrySeq.get(replyingAccountId, topicId);
+      const entrySequence = Number(entrySeqRow.next_entry_seq);
+      if (!Number.isSafeInteger(entrySequence) || entrySequence < 1) {
+        throw new Error('ARCHIVE_SEQUENCE_EXHAUSTED: Entry sequence space exhausted (fail-closed)');
+      }
+
+      // Step F: Compute deterministic relative_path in SAME transaction
+      const relativePath = computeRelativePath(
+        topicRow.account_dir_name,
+        topicRow.topic_dir_name,
+        entrySequence,
+        msgRow.content || '',
+        nowSec
+      );
+
+      // Step G: Create exactly one ORIGINAL archive PENDING coordination for that logical message
+      const insertCoord = this.#db.prepare(`
+        INSERT INTO archive_coordination (
+          account_id,
+          topic_id,
+          entry_sequence,
+          record_kind,
+          original_archive_id,
+          platform_msg_id,
+          source_platform_event_id,
+          command_id,
+          status,
+          content_snapshot,
+          relative_path,
+          completed_at,
+          failed_reason_code,
+          created_at,
+          updated_at
+        ) VALUES (?, ?, ?, 'ORIGINAL', NULL, ?, NULL, ?, 'PENDING', ?, ?, NULL, NULL, ?, ?);
+      `);
+      insertCoord.run(
+        replyingAccountId,
+        topicId,
+        entrySequence,
+        messageId,
+        commandId,
+        msgRow.content || '',
+        relativePath,
+        nowSec,
+        nowSec
+      );
+
       this.#db.exec('COMMIT;');
       return {
         success: true,
@@ -3443,6 +3933,341 @@ class SqliteStateRepository {
       } catch (_) {}
       throw err;
     }
+  }
+
+  /**
+   * Creates an archive topic row (ADR-0023 v8, Prompt §9, §10, §11).
+   *
+   * @param {{
+   *   accountId: string,
+   *   displayName: string,
+   *   normalizedName: string,
+   *   accountDirName: string,
+   *   topicDirName: string,
+   *   nowSec?: number
+   * }} params
+   * @returns {{
+   *   ok: true,
+   *   created: boolean,
+   *   topic_id: number,
+   *   topic_sequence: number,
+   *   display_name: string
+   * }}
+   */
+  createArchiveTopic(params) {
+    if (!this.#isOpen || !this.#db) {
+      throw new Error('Repository is closed (fail-closed)');
+    }
+    const accId = validateAccountId(params.accountId || params.account_id);
+    const dispName = String(params.displayName || params.display_name || '').trim();
+    if (!dispName) {
+      throw new Error('displayName must be non-empty (fail-closed)');
+    }
+    const normName = String(params.normalizedName || params.normalized_name || '').trim();
+    if (!normName) {
+      throw new Error('normalizedName must be non-empty (fail-closed)');
+    }
+    const accDir = String(params.accountDirName || params.account_dir_name || '').trim();
+    if (!accDir) {
+      throw new Error('accountDirName must be non-empty (fail-closed)');
+    }
+    const providedTopicDir = (params.topicDirName || params.topic_dir_name)
+      ? String(params.topicDirName || params.topic_dir_name).trim()
+      : null;
+    const createdAt = typeof params.nowSec === 'number' && Number.isSafeInteger(params.nowSec) && params.nowSec >= 0
+      ? params.nowSec
+      : Math.floor(Date.now() / 1000);
+
+    return this.#runTransaction((db) => {
+      // Check existing normalized_name for account
+      const selectExisting = db.prepare(
+        'SELECT topic_id, topic_sequence, display_name FROM archive_topic WHERE account_id = ? AND normalized_name = ?;'
+      );
+      const existing = selectExisting.get(accId, normName);
+      if (existing) {
+        return {
+          ok: true,
+          created: false,
+          topic_id: existing.topic_id,
+          topic_sequence: existing.topic_sequence,
+          display_name: existing.display_name,
+        };
+      }
+
+      // Allocate per-account topic_sequence: MAX + 1
+      const selectMax = db.prepare(
+        'SELECT COALESCE(MAX(topic_sequence), 0) + 1 AS next_seq FROM archive_topic WHERE account_id = ?;'
+      );
+      const seqRow = selectMax.get(accId);
+      const topicSequence = Number(seqRow.next_seq);
+      if (!Number.isSafeInteger(topicSequence) || topicSequence < 1) {
+        throw new Error('ARCHIVE_SEQUENCE_EXHAUSTED: Topic sequence space exhausted (fail-closed)');
+      }
+
+      const finalTopicDir = providedTopicDir || formatTopicDirName(topicSequence, dispName);
+      if (!finalTopicDir) {
+        throw new Error('topicDirName must be non-empty (fail-closed)');
+      }
+
+      const insertStmt = db.prepare(`
+        INSERT INTO archive_topic (
+          account_id,
+          topic_sequence,
+          display_name,
+          normalized_name,
+          account_dir_name,
+          topic_dir_name,
+          created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?);
+      `);
+      const res = insertStmt.run(accId, topicSequence, dispName, normName, accDir, finalTopicDir, createdAt);
+      const topicId = Number(res.lastInsertRowid);
+
+      return {
+        ok: true,
+        created: true,
+        topic_id: topicId,
+        topic_sequence: topicSequence,
+        display_name: dispName,
+      };
+    });
+  }
+
+  getArchiveTopicById(topicId) {
+    if (!this.#isOpen || !this.#db) {
+      throw new Error('Repository is closed (fail-closed)');
+    }
+    if (typeof topicId !== 'number' || !Number.isSafeInteger(topicId) || topicId < 1) {
+      throw new TypeError('topicId must be a positive safe integer (fail-closed)');
+    }
+    const stmt = this.#db.prepare('SELECT * FROM archive_topic WHERE topic_id = ?;');
+    return stmt.get(topicId) || null;
+  }
+
+  getArchiveTopicByNormalizedName(accountId, normalizedName) {
+    if (!this.#isOpen || !this.#db) {
+      throw new Error('Repository is closed (fail-closed)');
+    }
+    const accId = validateAccountId(accountId);
+    const norm = String(normalizedName || '').trim();
+    if (!norm) return null;
+    const stmt = this.#db.prepare(
+      'SELECT * FROM archive_topic WHERE account_id = ? AND normalized_name = ?;'
+    );
+    return stmt.get(accId, norm) || null;
+  }
+
+  getArchiveTopics({ accountId, afterTopicSequence = 0, limit = 50 }) {
+    if (!this.#isOpen || !this.#db) {
+      throw new Error('Repository is closed (fail-closed)');
+    }
+    const accId = validateAccountId(accountId);
+    const afterSeq = typeof afterTopicSequence === 'number' && Number.isSafeInteger(afterTopicSequence) && afterTopicSequence >= 0
+      ? afterTopicSequence
+      : 0;
+    const lim = typeof limit === 'number' && Number.isSafeInteger(limit) && limit >= 1 && limit <= 100
+      ? limit
+      : 50;
+
+    const stmt = this.#db.prepare(
+      'SELECT topic_id, topic_sequence, display_name FROM archive_topic WHERE account_id = ? AND topic_sequence > ? ORDER BY topic_sequence ASC LIMIT ?;'
+    );
+    const rows = stmt.all(accId, afterSeq, lim);
+    const nextAfter = rows.length > 0 ? rows[rows.length - 1].topic_sequence : null;
+
+    let hasMore = false;
+    if (nextAfter !== null) {
+      const probe = this.#db.prepare(
+        'SELECT 1 FROM archive_topic WHERE account_id = ? AND topic_sequence > ? LIMIT 1;'
+      ).get(accId, nextAfter);
+      hasMore = Boolean(probe);
+    }
+
+    return {
+      topics: rows.map((r) => ({
+        topic_id: r.topic_id,
+        topic_sequence: r.topic_sequence,
+        display_name: r.display_name,
+      })),
+      next_after_topic_sequence: hasMore ? nextAfter : null,
+    };
+  }
+
+  getAllAccountArchiveTopics(accountId) {
+    if (!this.#isOpen || !this.#db) {
+      throw new Error('Repository is closed (fail-closed)');
+    }
+    const accId = validateAccountId(accountId);
+    const stmt = this.#db.prepare('SELECT * FROM archive_topic WHERE account_id = ? ORDER BY topic_sequence ASC;');
+    return stmt.all(accId);
+  }
+
+  claimNextPendingArchiveCoordination() {
+    if (!this.#isOpen || !this.#db) {
+      throw new Error('Repository is closed (fail-closed)');
+    }
+    const stmt = this.#db.prepare(`
+      SELECT
+        c.archive_id,
+        c.account_id,
+        c.topic_id,
+        c.entry_sequence,
+        c.record_kind,
+        c.original_archive_id,
+        c.platform_msg_id,
+        c.source_platform_event_id,
+        c.command_id,
+        c.status,
+        c.content_snapshot,
+        c.relative_path,
+        c.created_at,
+        c.updated_at,
+        o.body AS outbox_body
+      FROM archive_coordination c
+      LEFT JOIN outbox o ON c.command_id = o.command_id
+      WHERE c.status = 'PENDING'
+      ORDER BY c.archive_id ASC
+      LIMIT 1;
+    `);
+    return stmt.get() || null;
+  }
+
+  markArchiveCoordinationCompleted(archiveIdOrOpts, completedAtSec) {
+    if (!this.#isOpen || !this.#db) {
+      throw new Error('Repository is closed (fail-closed)');
+    }
+    let archiveId, completedAt;
+    if (typeof archiveIdOrOpts === 'object' && archiveIdOrOpts !== null) {
+      archiveId = archiveIdOrOpts.archiveId;
+      completedAt = archiveIdOrOpts.completedAtSec !== undefined
+        ? archiveIdOrOpts.completedAtSec
+        : archiveIdOrOpts.nowSec;
+    } else {
+      archiveId = archiveIdOrOpts;
+      completedAt = completedAtSec;
+    }
+    if (typeof archiveId !== 'number' || !Number.isSafeInteger(archiveId)) {
+      throw new TypeError('archiveId must be a safe integer (fail-closed)');
+    }
+    const finalCompletedAt = typeof completedAt === 'number' && Number.isSafeInteger(completedAt) && completedAt >= 0
+      ? completedAt
+      : Math.floor(Date.now() / 1000);
+
+    return this.#runTransaction((db) => {
+      const stmt = db.prepare(`
+        UPDATE archive_coordination
+        SET status = 'COMPLETED',
+            content_snapshot = NULL,
+            completed_at = ?,
+            updated_at = ?
+        WHERE archive_id = ? AND status = 'PENDING';
+      `);
+      const res = stmt.run(finalCompletedAt, finalCompletedAt, archiveId);
+      return res.changes === 1;
+    });
+  }
+
+  markArchiveCoordinationFailed(archiveIdOrOpts, reasonCode, failedAtSec) {
+    if (!this.#isOpen || !this.#db) {
+      throw new Error('Repository is closed (fail-closed)');
+    }
+    let archiveId, rawCode, failedAt;
+    if (typeof archiveIdOrOpts === 'object' && archiveIdOrOpts !== null) {
+      archiveId = archiveIdOrOpts.archiveId;
+      rawCode = archiveIdOrOpts.failedReasonCode || archiveIdOrOpts.reasonCode;
+      failedAt = archiveIdOrOpts.failedAtSec !== undefined
+        ? archiveIdOrOpts.failedAtSec
+        : archiveIdOrOpts.nowSec;
+    } else {
+      archiveId = archiveIdOrOpts;
+      rawCode = reasonCode;
+      failedAt = failedAtSec;
+    }
+    if (typeof archiveId !== 'number' || !Number.isSafeInteger(archiveId)) {
+      throw new TypeError('archiveId must be a safe integer (fail-closed)');
+    }
+    const code = String(rawCode || 'ARCHIVE_UNKNOWN_ERROR').trim();
+    const finalFailedAt = typeof failedAt === 'number' && Number.isSafeInteger(failedAt) && failedAt >= 0
+      ? failedAt
+      : Math.floor(Date.now() / 1000);
+
+    return this.#runTransaction((db) => {
+      const stmt = db.prepare(`
+        UPDATE archive_coordination
+        SET status = 'FAILED',
+            failed_reason_code = ?,
+            updated_at = ?
+        WHERE archive_id = ? AND status = 'PENDING';
+      `);
+      const res = stmt.run(code, finalFailedAt, archiveId);
+      return res.changes === 1;
+    });
+  }
+
+  getPendingArchiveIds() {
+    if (!this.#isOpen || !this.#db) {
+      throw new Error('Repository is closed (fail-closed)');
+    }
+    const rows = this.#db.prepare("SELECT archive_id FROM archive_coordination WHERE status = 'PENDING';").all();
+    return rows ? rows.map((r) => r.archive_id) : [];
+  }
+
+  getFailedArchiveSummaries(limit = 50) {
+    if (!this.#isOpen || !this.#db) {
+      throw new Error('Repository is closed (fail-closed)');
+    }
+    const lim = typeof limit === 'number' && Number.isSafeInteger(limit) && limit >= 1 && limit <= 100
+      ? limit
+      : 50;
+
+    const countRow = this.#db.prepare("SELECT count(*) AS cnt FROM archive_coordination WHERE status = 'FAILED';").get();
+    const count = countRow ? countRow.cnt : 0;
+
+    const rows = this.#db.prepare(`
+      SELECT
+        archive_id,
+        account_id,
+        topic_id,
+        entry_sequence,
+        record_kind,
+        failed_reason_code,
+        created_at,
+        updated_at
+      FROM archive_coordination
+      WHERE status = 'FAILED'
+      ORDER BY updated_at DESC, archive_id ASC
+      LIMIT ?;
+    `).all(lim);
+
+    return {
+      count,
+      summaries: rows || [],
+    };
+  }
+
+  getArchiveCoordinationBySequence(accountId, topicId, entrySequence) {
+    if (!this.#isOpen || !this.#db) {
+      throw new Error('Repository is closed (fail-closed)');
+    }
+    const accId = validateAccountId(accountId);
+    const stmt = this.#db.prepare(`
+      SELECT * FROM archive_coordination
+      WHERE account_id = ? AND topic_id = ? AND entry_sequence = ?;
+    `);
+    return stmt.get(accId, topicId, entrySequence) || null;
+  }
+
+  listTopicArchiveCoordinations(accountId, topicId) {
+    if (!this.#isOpen || !this.#db) {
+      throw new Error('Repository is closed (fail-closed)');
+    }
+    const accId = validateAccountId(accountId);
+    const stmt = this.#db.prepare(`
+      SELECT * FROM archive_coordination
+      WHERE account_id = ? AND topic_id = ?
+      ORDER BY entry_sequence ASC;
+    `);
+    return stmt.all(accId, topicId) || [];
   }
 
   /**
@@ -3751,6 +4576,8 @@ module.exports = {
   INBOUND_EVENT_SCHEMA_SQL,
   OUTBOX_SCHEMA_SQL,
   OUTBOX_V6_SCHEMA_SQL,
+  ARCHIVE_TOPIC_SCHEMA_SQL,
+  ARCHIVE_COORDINATION_SCHEMA_SQL,
   computeCanonicalPayloadHash,
   normalizeCanonicalSchemaSql,
   validatePlatformEventId,

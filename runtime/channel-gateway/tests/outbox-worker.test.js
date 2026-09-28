@@ -38,7 +38,6 @@ function createTempHarness() {
 function seedClaimedMessage(repo, channelId, holderId, fencingToken, messageId, accountId) {
   repo.takeoverChannel(channelId, holderId);
   // Direct raw seed in inbox
-  const db = repo; // use repo's internal mechanism through raw seed or ingest
   const rawDb = new (require('node:sqlite').DatabaseSync)(repo.databasePath);
   try {
     rawDb
@@ -50,6 +49,14 @@ function seedClaimedMessage(repo, channelId, holderId, fencingToken, messageId, 
   } finally {
     rawDb.close();
   }
+  const topic = repo.createArchiveTopic({
+    accountId,
+    displayName: 'Default Topic',
+    normalizedName: 'default topic',
+    accountDirName: `TG_${accountId}`,
+    topicDirName: 'Q001_Default_Topic',
+  });
+  return topic.topic_id;
 }
 
 test('OutboxWorker - lifecycle start and clean stop with zero timer leak', async () => {
@@ -74,7 +81,7 @@ test('OutboxWorker - lifecycle start and clean stop with zero timer leak', async
 test('OutboxWorker - without deliveryExecutor never consumes or drops QUEUED commands (Section 21)', async () => {
   const harness = createTempHarness();
   try {
-    seedClaimedMessage(harness.repo, 'tg:chat:100', 'holder1', 1, 'tg:100:101', 'acc_tg');
+    const topicId = seedClaimedMessage(harness.repo, 'tg:chat:100', 'holder1', 1, 'tg:100:101', 'acc_tg');
     const hash = computeCanonicalPayloadHash({
       platform: 'telegram',
       account_id: 'acc_tg',
@@ -92,6 +99,7 @@ test('OutboxWorker - without deliveryExecutor never consumes or drops QUEUED com
       fencingToken: 1,
       messageId: 'tg:100:101',
       replyingAccountId: 'acc_tg',
+      topicId,
       text: 'Hello',
       platform: 'telegram',
       endpointOperation: 'sendMessage',
@@ -125,7 +133,7 @@ test('OutboxWorker - without deliveryExecutor never consumes or drops QUEUED com
 test('OutboxWorker - R2-C: caller disconnect -> command persisted; standalone worker + fake executor processes to ACCEPTED_BY_PLATFORM', async () => {
   const harness = createTempHarness();
   try {
-    seedClaimedMessage(harness.repo, 'tg:chat:100', 'holder1', 1, 'tg:100:102', 'acc_tg');
+    const topicId = seedClaimedMessage(harness.repo, 'tg:chat:100', 'holder1', 1, 'tg:100:102', 'acc_tg');
     const hash = computeCanonicalPayloadHash({
       platform: 'telegram',
       account_id: 'acc_tg',
@@ -144,6 +152,7 @@ test('OutboxWorker - R2-C: caller disconnect -> command persisted; standalone wo
       fencingToken: 1,
       messageId: 'tg:100:102',
       replyingAccountId: 'acc_tg',
+      topicId,
       text: 'Autonomous reply',
       platform: 'telegram',
       endpointOperation: 'sendMessage',
@@ -190,7 +199,7 @@ test('OutboxWorker - R2-C: caller disconnect -> command persisted; standalone wo
 test('OutboxWorker - R2-J: valid Telegram retry_after schedules controlled delayed retry', async () => {
   const harness = createTempHarness();
   try {
-    seedClaimedMessage(harness.repo, 'tg:chat:200', 'holder1', 1, 'tg:200:201', 'acc_tg');
+    const topicId = seedClaimedMessage(harness.repo, 'tg:chat:200', 'holder1', 1, 'tg:200:201', 'acc_tg');
     const hash = computeCanonicalPayloadHash({
       platform: 'telegram',
       account_id: 'acc_tg',
@@ -209,6 +218,7 @@ test('OutboxWorker - R2-J: valid Telegram retry_after schedules controlled delay
       fencingToken: 1,
       messageId: 'tg:200:201',
       replyingAccountId: 'acc_tg',
+      topicId,
       text: 'Rate limited text',
       platform: 'telegram',
       endpointOperation: 'sendMessage',
@@ -264,7 +274,7 @@ test('OutboxWorker - R2-J: valid Telegram retry_after schedules controlled delay
 test('OutboxWorker - R2-K: startup crash recovery transitions Telegram IN_FLIGHT -> UNCERTAIN (never blind resend)', async () => {
   const harness = createTempHarness();
   try {
-    seedClaimedMessage(harness.repo, 'tg:chat:300', 'holder1', 1, 'tg:300:301', 'acc_tg');
+    const topicId = seedClaimedMessage(harness.repo, 'tg:chat:300', 'holder1', 1, 'tg:300:301', 'acc_tg');
     const hash = computeCanonicalPayloadHash({
       platform: 'telegram',
       account_id: 'acc_tg',
@@ -282,6 +292,7 @@ test('OutboxWorker - R2-K: startup crash recovery transitions Telegram IN_FLIGHT
       fencingToken: 1,
       messageId: 'tg:300:301',
       replyingAccountId: 'acc_tg',
+      topicId,
       text: 'Crash test',
       platform: 'telegram',
       endpointOperation: 'sendMessage',
@@ -335,7 +346,7 @@ test('OutboxWorker - R2-K: startup crash recovery transitions Telegram IN_FLIGHT
 test('F2 canary: deliveryExecutor returns { success:false, http_status:500 } without phase -> Telegram command becomes UNCERTAIN', async () => {
   const harness = createTempHarness();
   try {
-    seedClaimedMessage(harness.repo, 'tg:chat:501', 'holder1', 1, 'tg:501:1', 'acc_tg');
+    const topicId = seedClaimedMessage(harness.repo, 'tg:chat:501', 'holder1', 1, 'tg:501:1', 'acc_tg');
     const hash = computeCanonicalPayloadHash({
       platform: 'telegram',
       account_id: 'acc_tg',
@@ -353,6 +364,7 @@ test('F2 canary: deliveryExecutor returns { success:false, http_status:500 } wit
       fencingToken: 1,
       messageId: 'tg:501:1',
       replyingAccountId: 'acc_tg',
+      topicId,
       text: 'Missing phase test',
       platform: 'telegram',
       endpointOperation: 'sendMessage',
@@ -385,7 +397,7 @@ test('F2 canary: deliveryExecutor returns { success:false, http_status:500 } wit
 test('F2 canary: deliveryExecutor returns invalid phase -> Telegram command becomes UNCERTAIN', async () => {
   const harness = createTempHarness();
   try {
-    seedClaimedMessage(harness.repo, 'tg:chat:502', 'holder1', 1, 'tg:502:1', 'acc_tg');
+    const topicId = seedClaimedMessage(harness.repo, 'tg:chat:502', 'holder1', 1, 'tg:502:1', 'acc_tg');
     const hash = computeCanonicalPayloadHash({
       platform: 'telegram',
       account_id: 'acc_tg',
@@ -403,6 +415,7 @@ test('F2 canary: deliveryExecutor returns invalid phase -> Telegram command beco
       fencingToken: 1,
       messageId: 'tg:502:1',
       replyingAccountId: 'acc_tg',
+      topicId,
       text: 'Invalid phase test',
       platform: 'telegram',
       endpointOperation: 'sendMessage',
@@ -434,7 +447,7 @@ test('F2 canary: deliveryExecutor returns invalid phase -> Telegram command beco
 test('F3: OutboxWorker without deliveryExecutor runs recovery, has no active timer, and does not consume queue', async () => {
   const harness = createTempHarness();
   try {
-    seedClaimedMessage(harness.repo, 'tg:chat:503', 'holder1', 1, 'tg:503:1', 'acc_tg');
+    const topicId = seedClaimedMessage(harness.repo, 'tg:chat:503', 'holder1', 1, 'tg:503:1', 'acc_tg');
     const hash = computeCanonicalPayloadHash({
       platform: 'telegram',
       account_id: 'acc_tg',
@@ -452,6 +465,7 @@ test('F3: OutboxWorker without deliveryExecutor runs recovery, has no active tim
       fencingToken: 1,
       messageId: 'tg:503:1',
       replyingAccountId: 'acc_tg',
+      topicId,
       text: 'No executor test',
       platform: 'telegram',
       endpointOperation: 'sendMessage',
@@ -491,7 +505,7 @@ test('F3: OutboxWorker without deliveryExecutor runs recovery, has no active tim
 test('OutboxWorker - propagates terminalReasonCode to repository on terminal failure', async () => {
   const harness = createTempHarness();
   try {
-    seedClaimedMessage(harness.repo, 'tg:chat:200', 'holder1', 1, 'tg:200:201', 'acc_tg');
+    const topicId = seedClaimedMessage(harness.repo, 'tg:chat:200', 'holder1', 1, 'tg:200:201', 'acc_tg');
     const hash = computeCanonicalPayloadHash({
       platform: 'telegram',
       account_id: 'acc_tg',
@@ -509,6 +523,7 @@ test('OutboxWorker - propagates terminalReasonCode to repository on terminal fai
       fencingToken: 1,
       messageId: 'tg:200:201',
       replyingAccountId: 'acc_tg',
+      topicId,
       text: 'Terminal failure test',
       platform: 'telegram',
       endpointOperation: 'sendMessage',

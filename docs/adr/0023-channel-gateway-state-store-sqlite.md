@@ -197,6 +197,14 @@ ADR-0022 仍保留為 Channel Gateway 之歷史與總體架構權威（Historica
     - 在 `claimNextQueuedOutboxCommand(nowSec)` 之 `BEGIN IMMEDIATE` 交易內，原子式優先將所有建立超過 86400 秒之 Telegram QUEUED 指令直接轉為 `FAILED_TERMINAL`（`TELEGRAM_DELIVERY_WINDOW_EXCEEDED`），不推進 attempt_count、不經由 IN_FLIGHT。
     - 提供 `getFailedTerminalSummaries(limit=50)` 查詢最新 50 筆終態失敗摘要（排序 `updated_at DESC, command_id ASC`），僅包含安全識別後設資料，絕對排除訊息本體。
 
+17. **TG-MVP-14 歸檔主題與協調資料表 (Schema v8 Archive Tables)**：
+    - 資料庫綱要升級至 schema version 8，新增 `archive_topic` 與 `archive_coordination` 兩張 STRICT 資料表，完成 migrations [1..8] 完整鏈路與 schema integrity strict check。
+    - `archive_topic`：儲存 `topic_id`（PK AUTOINCREMENT）、`account_id`、`display_name`、`normalized_name`、`account_dir_name`、`topic_dir_name`、`entry_sequence`（帳號內單調遞增，1..2147483647）、`created_at`、`updated_at`。具備 `UNIQUE(account_id, normalized_name)`、`UNIQUE(account_id, entry_sequence)` 與 `UNIQUE(account_id, topic_dir_name)` 3 組唯一約束。
+    - `archive_coordination`：儲存 `archive_id`（PK AUTOINCREMENT）、`account_id`、`topic_id`（FK）、`entry_sequence`（主題內單調遞增，1..2147483647）、`record_kind`（`ORIGINAL` / `AMENDMENT`）、`original_archive_id`（nullable FK）、`platform_msg_id`、`source_platform_event_id`、`command_id`（nullable）、`status`（`PENDING` / `COMPLETED` / `FAILED`）、`content_snapshot`（TEXT，在發布完成後清空為 NULL）、`relative_path`（TEXT NOT NULL）、`completed_at`、`failed_reason_code`、`created_at`、`updated_at`。
+    - 交易原子性保證：`enqueueAuthorizedReply` 於同一交易內完成授權核對、Outbox 排入、Inbox 推進與 `ORIGINAL` 協調記錄新增；`applyInboundMessageEdit` 於同一交易內完成既有訊息版本保存與 `AMENDMENT` 協調記錄新增。
+    - 敏感資料生命週期隔離：歸檔協調記錄在 PENDING 期間保存 `content_snapshot` 作為 pre-DLP 快照；發布成功時調用 `markArchiveCoordinationCompleted` 將快照清空（NULL），降低 SQLite 靜態保存機敏資料風險。
+    - 崩潰與重啟協調語意：`PENDING` 記錄於進程重啟時維持 `PENDING`，由 `ArchiveWorker` 於啟動後自然接續排程消費；`FAILED` 記錄不自動 retry，作為確定性終態供管理處置。
+
 ## Consequences
 
 1. **治理分層明確化**：本決策確立了持久化技術路線的重大轉變。相關規則同步落地於 `runtime/channel-gateway/AGENTS.md`，根目錄 `AGENTS.md` 僅保留通用的目錄範圍規則擴充，維持漸進式揭露。

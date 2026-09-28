@@ -34,7 +34,15 @@ const {
 const { SecretRef } = require('../core/secret-provider');
 const { WindowsCredentialManagerSecretProvider } = require('../core/windows-credential-manager-provider');
 
-const VALID_COMMANDS = new Set(['status', 'takeover', 'poll', 'heartbeat', 'reply']);
+const VALID_COMMANDS = new Set([
+  'status',
+  'takeover',
+  'poll',
+  'heartbeat',
+  'reply',
+  'topics/list',
+  'topics/create',
+]);
 
 /**
  * Reads all bytes from a readable stream up to maxBytes.
@@ -434,7 +442,7 @@ if (require.main === module) {
   (async () => {
     const args = process.argv.slice(2);
     if (args.length !== 1) {
-      process.stderr.write('Usage: node local-api-client.js <status|takeover|poll|heartbeat|reply>\n');
+      process.stderr.write('Usage: node local-api-client.js <status|takeover|poll|heartbeat|reply|topics/list|topics/create>\n');
       process.exit(2);
     }
 

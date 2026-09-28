@@ -503,6 +503,14 @@ test('dispatcher: reply endpoint returns 501 OUTBOUND_TARGET_NOT_READY when regi
       accountId: 'acc_tg',
     });
 
+    const topic = harness.repo.createArchiveTopic({
+      accountId: 'acc_tg',
+      displayName: 'General',
+      normalizedName: 'general',
+      accountDirName: 'TG_acc_tg',
+      topicDirName: 'Q001_General',
+    });
+
     // 1. Missing accountRegistry -> 501
     const dispNoReg = new LocalApiDispatcher({ repository: harness.repo });
     const resNoReg = dispNoReg.dispatch('/v1/reply', {
@@ -512,6 +520,7 @@ test('dispatcher: reply endpoint returns 501 OUTBOUND_TARGET_NOT_READY when regi
       fencing_token: 1,
       message_id: 'tg:-100123:1',
       replying_account_id: 'acc_tg',
+      topic_id: topic.topic_id,
       text: 'hello',
     });
     assert.deepEqual(resNoReg, {
@@ -536,6 +545,7 @@ test('dispatcher: reply endpoint returns 501 OUTBOUND_TARGET_NOT_READY when regi
       fencing_token: 1,
       message_id: 'tg:-100123:1',
       replying_account_id: 'acc_unknown',
+      topic_id: topic.topic_id,
       text: 'hello',
     });
     assert.deepEqual(resUnknown, {
@@ -551,6 +561,7 @@ test('dispatcher: reply endpoint returns 501 OUTBOUND_TARGET_NOT_READY when regi
       fencing_token: 1,
       message_id: 'tg:-100123:1',
       replying_account_id: 'acc_line',
+      topic_id: topic.topic_id,
       text: 'hello',
     });
     assert.deepEqual(resLine, {
@@ -566,6 +577,7 @@ test('dispatcher: reply endpoint returns 501 OUTBOUND_TARGET_NOT_READY when regi
       fencing_token: 1,
       message_id: 'bad_msg_format',
       replying_account_id: 'acc_tg',
+      topic_id: topic.topic_id,
       text: 'hello',
     });
     assert.deepEqual(resBadMsgId, {
@@ -587,6 +599,14 @@ test('dispatcher: reply endpoint returns 403 on whitelisted denial reasons (T14)
       accountId: 'acc_tg',
     });
 
+    const topic = harness.repo.createArchiveTopic({
+      accountId: 'acc_tg',
+      displayName: 'General',
+      normalizedName: 'general',
+      accountDirName: 'TG_acc_tg',
+      topicDirName: 'Q001_General',
+    });
+
     const fakeRegistry = {
       get(id) {
         if (id === 'acc_tg' || id === 'acc_tg_other') return { channel: 'telegram', accountId: id };
@@ -603,6 +623,7 @@ test('dispatcher: reply endpoint returns 403 on whitelisted denial reasons (T14)
       fencing_token: 1,
       message_id: 'tg:-100123:999',
       replying_account_id: 'acc_tg',
+      topic_id: topic.topic_id,
       text: 'hello',
     });
     assert.deepEqual(resNotFound, {
@@ -618,6 +639,7 @@ test('dispatcher: reply endpoint returns 403 on whitelisted denial reasons (T14)
       fencing_token: 1,
       message_id: 'tg:-100123:1',
       replying_account_id: 'acc_tg',
+      topic_id: topic.topic_id,
       text: 'hello',
     });
     assert.deepEqual(resWrongHolder, {
@@ -633,6 +655,7 @@ test('dispatcher: reply endpoint returns 403 on whitelisted denial reasons (T14)
       fencing_token: 0,
       message_id: 'tg:-100123:1',
       replying_account_id: 'acc_tg',
+      topic_id: topic.topic_id,
       text: 'hello',
     });
     assert.deepEqual(resStale, {
@@ -641,6 +664,13 @@ test('dispatcher: reply endpoint returns 403 on whitelisted denial reasons (T14)
     });
 
     // 4. Account mismatch -> 403 ACCOUNT_MISMATCH
+    const topicOther = harness.repo.createArchiveTopic({
+      accountId: 'acc_tg_other',
+      displayName: 'Other',
+      normalizedName: 'other',
+      accountDirName: 'TG_acc_tg_other',
+      topicDirName: 'Q001_Other',
+    });
     const resAccMismatch = dispatcher.dispatch('/v1/reply', {
       client_request_id: 'req_4',
       channel_id: 'tg:-100123',
@@ -648,6 +678,7 @@ test('dispatcher: reply endpoint returns 403 on whitelisted denial reasons (T14)
       fencing_token: 1,
       message_id: 'tg:-100123:1',
       replying_account_id: 'acc_tg_other',
+      topic_id: topicOther.topic_id,
       text: 'hello',
     });
     assert.deepEqual(resAccMismatch, {
@@ -677,6 +708,21 @@ test('dispatcher: reply endpoint executes atomic outbox enqueue, idempotent repl
     };
     const dispatcher = new LocalApiDispatcher({ repository: harness.repo, accountRegistry: fakeRegistry });
 
+    const topic1 = harness.repo.createArchiveTopic({
+      accountId: 'acc_tg',
+      displayName: 'General',
+      normalizedName: 'general',
+      accountDirName: 'TG_acc_tg',
+      topicDirName: 'Q001_General',
+    });
+    const topic2 = harness.repo.createArchiveTopic({
+      accountId: 'acc_tg',
+      displayName: 'Billing',
+      normalizedName: 'billing',
+      accountDirName: 'TG_acc_tg',
+      topicDirName: 'Q002_Billing',
+    });
+
     // 1. Fresh enqueue -> 200 OK
     const resFresh = dispatcher.dispatch('/v1/reply', {
       client_request_id: 'req_rep_1',
@@ -685,6 +731,7 @@ test('dispatcher: reply endpoint executes atomic outbox enqueue, idempotent repl
       fencing_token: 1,
       message_id: 'tg:-100123:1',
       replying_account_id: 'acc_tg',
+      topic_id: topic1.topic_id,
       text: 'Hello, World!',
     });
     assert.equal(resFresh.status, 200);
@@ -719,6 +766,7 @@ test('dispatcher: reply endpoint executes atomic outbox enqueue, idempotent repl
       fencing_token: 1,
       message_id: 'tg:-100123:1',
       replying_account_id: 'acc_tg',
+      topic_id: topic1.topic_id,
       text: 'Hello, World!',
     });
     assert.equal(resReplay.status, 200);
@@ -736,12 +784,234 @@ test('dispatcher: reply endpoint executes atomic outbox enqueue, idempotent repl
       fencing_token: 1,
       message_id: 'tg:-100123:1',
       replying_account_id: 'acc_tg',
+      topic_id: topic1.topic_id,
       text: 'Different body text',
     });
     assert.deepEqual(resConflict, {
       status: 409,
       body: { ok: false, code: 'IDEMPOTENCY_CONFLICT' },
     });
+
+    // 4. Idempotency conflict (different topic_id for same client_request_id + same text) -> 409 IDEMPOTENCY_CONFLICT
+    const resTopicConflict = dispatcher.dispatch('/v1/reply', {
+      client_request_id: 'req_rep_1',
+      channel_id: 'tg:-100123',
+      holder_id: 'holder_rep',
+      fencing_token: 1,
+      message_id: 'tg:-100123:1',
+      replying_account_id: 'acc_tg',
+      topic_id: topic2.topic_id,
+      text: 'Hello, World!',
+    });
+    assert.deepEqual(resTopicConflict, {
+      status: 409,
+      body: { ok: false, code: 'IDEMPOTENCY_CONFLICT' },
+    });
+  } finally {
+    harness.cleanup();
+  }
+});
+
+test('dispatcher: topics endpoints /v1/topics/list and /v1/topics/create (TG-MVP-14)', () => {
+  const harness = createTempHarness();
+  try {
+    const fakeRegistry = {
+      get(id) {
+        if (id === 'acc_tg') return { channel: 'telegram', accountId: 'acc_tg', accountDirName: 'TG_acc_tg' };
+        if (id === 'acc_line') return { channel: 'line', accountId: 'acc_line' };
+        return null;
+      },
+    };
+    const dispatcher = new LocalApiDispatcher({ repository: harness.repo, accountRegistry: fakeRegistry });
+
+    // 1. topics/create requires confirmed: true
+    const unconfirmed = dispatcher.dispatch('/v1/topics/create', {
+      account_id: 'acc_tg',
+      name: 'General Discussion',
+      confirmed: false,
+    });
+    assert.deepEqual(unconfirmed, {
+      status: 400,
+      body: { ok: false, code: 'INVALID_REQUEST' },
+    });
+
+    // 2. topics/create requires registered Telegram account
+    const lineAccount = dispatcher.dispatch('/v1/topics/create', {
+      account_id: 'acc_line',
+      name: 'General Discussion',
+      confirmed: true,
+    });
+    assert.deepEqual(lineAccount, {
+      status: 400,
+      body: { ok: false, code: 'INVALID_REQUEST' },
+    });
+
+    // 3. Successful create
+    const created = dispatcher.dispatch('/v1/topics/create', {
+      account_id: 'acc_tg',
+      name: 'General Discussion',
+      confirmed: true,
+    });
+    assert.equal(created.status, 200);
+    assert.equal(created.body.ok, true);
+    assert.equal(created.body.created, true);
+    assert.equal(typeof created.body.topic_id, 'number');
+    assert.equal(created.body.topic_sequence, 1);
+    assert.equal(created.body.display_name, 'General Discussion');
+
+    // 4. Duplicate create returns existing topic deterministically (created: false)
+    const dupCreate = dispatcher.dispatch('/v1/topics/create', {
+      account_id: 'acc_tg',
+      name: '  general   discussion  ',
+      confirmed: true,
+    });
+    assert.equal(dupCreate.status, 200);
+    assert.equal(dupCreate.body.ok, true);
+    assert.equal(dupCreate.body.created, false);
+    assert.equal(dupCreate.body.topic_id, created.body.topic_id);
+    assert.equal(dupCreate.body.topic_sequence, 1);
+
+    // 5. Create second topic
+    const created2 = dispatcher.dispatch('/v1/topics/create', {
+      account_id: 'acc_tg',
+      name: 'Technical Support',
+      confirmed: true,
+    });
+    assert.equal(created2.body.topic_sequence, 2);
+
+    // 6. topics/list returns ordered list
+    const listRes = dispatcher.dispatch('/v1/topics/list', {
+      account_id: 'acc_tg',
+    });
+    assert.equal(listRes.status, 200);
+    assert.equal(listRes.body.ok, true);
+    assert.equal(listRes.body.topics.length, 2);
+    assert.equal(listRes.body.topics[0].topic_sequence, 1);
+    assert.equal(listRes.body.topics[1].topic_sequence, 2);
+    assert.equal(listRes.body.next_after_topic_sequence, null);
+
+    // 7. topics/list with limit and pagination
+    const pagedRes = dispatcher.dispatch('/v1/topics/list', {
+      account_id: 'acc_tg',
+      limit: 1,
+    });
+    assert.equal(pagedRes.body.topics.length, 1);
+    assert.equal(pagedRes.body.topics[0].topic_sequence, 1);
+    assert.equal(pagedRes.body.next_after_topic_sequence, 1);
+
+    const nextRes = dispatcher.dispatch('/v1/topics/list', {
+      account_id: 'acc_tg',
+      after_topic_sequence: 1,
+      limit: 1,
+    });
+    assert.equal(nextRes.body.topics.length, 1);
+    assert.equal(nextRes.body.topics[0].topic_sequence, 2);
+    assert.equal(nextRes.body.next_after_topic_sequence, null);
+  } finally {
+    harness.cleanup();
+  }
+});
+
+test('dispatcher: /v1/reply rejects missing topic_id (TG-MVP-14)', () => {
+  const harness = createTempHarness();
+  try {
+    harness.repo.takeoverChannel('tg:-100123', 'holder_rep');
+    harness.seedInbox('tg:-100123', 'tg:-100123:1', 'claimed', {
+      claimedBy: 'holder_rep',
+      claimedAtToken: 1,
+      accountId: 'acc_tg',
+    });
+
+    const fakeRegistry = {
+      get(id) {
+        if (id === 'acc_tg') return { channel: 'telegram', accountId: 'acc_tg' };
+        return null;
+      },
+    };
+    const dispatcher = new LocalApiDispatcher({ repository: harness.repo, accountRegistry: fakeRegistry });
+
+    // Missing topic_id -> 400 INVALID_REQUEST
+    const resNoTopic = dispatcher.dispatch('/v1/reply', {
+      client_request_id: 'req_rep_notopic',
+      channel_id: 'tg:-100123',
+      holder_id: 'holder_rep',
+      fencing_token: 1,
+      message_id: 'tg:-100123:1',
+      replying_account_id: 'acc_tg',
+      text: 'Hello without topic',
+    });
+    assert.deepEqual(resNoTopic, {
+      status: 400,
+      body: { ok: false, code: 'INVALID_REQUEST' },
+    });
+  } finally {
+    harness.cleanup();
+  }
+});
+
+test('dispatcher: /v1/status includes archive_failed summaries with bounded schema (TG-MVP-14)', () => {
+  const harness = createTempHarness();
+  try {
+    const fakeRegistry = {
+      get(id) {
+        if (id === 'acc_tg') return { channel: 'telegram', accountId: 'acc_tg' };
+        return null;
+      },
+    };
+    const dispatcher = new LocalApiDispatcher({ repository: harness.repo, accountRegistry: fakeRegistry });
+    harness.repo.takeoverChannel('tg:-100123', 'holder_rep');
+
+    // Initial status: archive_failed_count = 0, records = []
+    const res0 = dispatcher.dispatch('/v1/status', { channel_id: 'tg:-100123' });
+    assert.equal(res0.status, 200);
+    assert.equal(res0.body.archive_failed_count, 0);
+    assert.deepEqual(res0.body.archive_failed_records, []);
+
+    // Create a topic and coordination, mark it FAILED
+    const topic = harness.repo.createArchiveTopic({
+      accountId: 'acc_tg',
+      displayName: 'General',
+      normalizedName: 'general',
+      accountDirName: 'TG_acc_tg',
+      topicDirName: 'Q001_General',
+    });
+
+    const rawDb = new DatabaseSync(harness.repo.databasePath);
+    try {
+      rawDb.prepare(`
+        INSERT INTO archive_coordination (
+          account_id, topic_id, entry_sequence, record_kind, platform_msg_id,
+          command_id, status, content_snapshot, relative_path, created_at, updated_at
+        ) VALUES (?, ?, 1, 'ORIGINAL', 'msg_1', 'cmd_1', 'PENDING', 'sensitive question', 'rel/path.md', 1000, 1000);
+      `).run('acc_tg', topic.topic_id);
+    } finally {
+      rawDb.close();
+    }
+
+    const nextCoord = harness.repo.claimNextPendingArchiveCoordination();
+    assert.ok(nextCoord);
+    harness.repo.markArchiveCoordinationFailed(nextCoord.archive_id, 'ARCHIVE_FS_TRANSIENT_EXHAUSTED', 1050);
+
+    const res1 = dispatcher.dispatch('/v1/status', { channel_id: 'tg:-100123' });
+    assert.equal(res1.status, 200);
+    assert.equal(res1.body.archive_failed_count, 1);
+    assert.equal(res1.body.archive_failed_records.length, 1);
+
+    const rec = res1.body.archive_failed_records[0];
+    assert.equal(rec.archive_id, nextCoord.archive_id);
+    assert.equal(rec.account_id, 'acc_tg');
+    assert.equal(rec.topic_id, topic.topic_id);
+    assert.equal(rec.entry_sequence, 1);
+    assert.equal(rec.record_kind, 'ORIGINAL');
+    assert.equal(rec.failed_reason_code, 'ARCHIVE_FS_TRANSIENT_EXHAUSTED');
+    assert.equal(rec.created_at, 1000);
+    assert.equal(rec.updated_at, 1050);
+
+    // Verify sensitive data is NOT leaked in status
+    assert.equal('content_snapshot' in rec, false);
+    assert.equal('relative_path' in rec, false);
+    assert.equal('reply_body' in rec, false);
+    assert.equal('outbox_body' in rec, false);
   } finally {
     harness.cleanup();
   }
