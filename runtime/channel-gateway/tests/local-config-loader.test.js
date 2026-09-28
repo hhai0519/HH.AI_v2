@@ -551,10 +551,20 @@ test('LocalConfigLoader - 22. Known-Folder resolver: valid payload accepted', ()
   assert.ok(capturedArgs.includes('-NoProfile'));
   assert.ok(capturedArgs.includes('-File'));
 
-  // Verify minimal non-secret child environment (no USERPROFILE or LOCALAPPDATA as authority)
+  // A. Sorted explicit JS seed keys only (options.env only, not final effective Windows child environment)
+  const sortedEnvKeys = Object.keys(capturedOptions.env).sort();
+  assert.deepStrictEqual(sortedEnvKeys, ['SystemDrive', 'SystemRoot', 'TEMP', 'TMP']);
+
+  // B. Explicit seed absence assertions
+  assert.strictEqual(capturedOptions.env.PATH, undefined);
+  assert.strictEqual(capturedOptions.env.PATHEXT, undefined);
+  assert.strictEqual(capturedOptions.env.PSModulePath, undefined);
   assert.strictEqual(capturedOptions.env.USERPROFILE, undefined);
+  assert.strictEqual(capturedOptions.env.HOME, undefined);
+  assert.strictEqual(capturedOptions.env.APPDATA, undefined);
   assert.strictEqual(capturedOptions.env.LOCALAPPDATA, undefined);
-  assert.ok(capturedOptions.env.SystemRoot);
+  assert.strictEqual(capturedOptions.env.USERNAME, undefined);
+  assert.strictEqual(capturedOptions.env.OneDrive, undefined);
 });
 
 test('LocalConfigLoader - 23. Known-Folder resolver: empty DesktopDirectory fails closed', () => {
@@ -760,6 +770,50 @@ test('LocalConfigLoader - Known-Folder resolver: nonexistent powershellPath fail
   );
 
   assert.strictEqual(spawnInvoked, false, 'spawnSync must not be called when executable does not exist');
+});
+
+test('LocalConfigLoader - Known-Folder PowerShell bridge source guard', () => {
+  const scriptPath = path.resolve(__dirname, '..', 'bin', 'windows-known-folder-resolve.ps1');
+  assert.ok(fs.existsSync(scriptPath), `Script must exist at: ${scriptPath}`);
+
+  const rawBytes = fs.readFileSync(scriptPath);
+  for (let i = 0; i < rawBytes.length; i++) {
+    assert.ok(rawBytes[i] <= 127, `Byte at index ${i} is not 7-bit ASCII: 0x${rawBytes[i].toString(16)}`);
+  }
+
+  const scriptText = rawBytes.toString('utf8');
+
+  assert.ok(
+    scriptText.includes('$PSModuleAutoLoadingPreference'),
+    'Script must contain $PSModuleAutoLoadingPreference'
+  );
+
+  const forbiddenTokens = [
+    '$utf8NoBom',
+    'New-Object',
+    'ConvertTo-Json',
+    'Write-Output',
+    'Write-Error',
+    'Out-String',
+    'Out-File',
+    'Set-Content',
+    'Add-Content',
+  ];
+
+  for (const token of forbiddenTokens) {
+    assert.strictEqual(
+      scriptText.includes(token),
+      false,
+      `Script must NOT contain forbidden token: ${token}`
+    );
+  }
+
+  // Functional source does not introduce a PowerShell pipeline (|)
+  assert.strictEqual(
+    scriptText.includes('|'),
+    false,
+    'Functional source must NOT introduce a PowerShell pipeline (|)'
+  );
 });
 
 // ==========================================
@@ -1054,7 +1108,15 @@ test('LocalConfigLoader - 37. default resolution does not auto-create directory 
 
 test('LocalConfigLoader - 38. Live Windows bridge integration', () => {
   if (process.platform === 'win32') {
-    const result = resolveWindowsKnownFolders();
+    let result;
+    const startNs = process.hrtime.bigint();
+    try {
+      result = resolveWindowsKnownFolders();
+    } finally {
+      const endNs = process.hrtime.bigint();
+      const elapsedMs = (endNs - startNs) / 1000000n;
+      console.log(`KNOWN_FOLDER_BRIDGE_MS=${elapsedMs.toString()}`);
+    }
     assert.ok(result, 'Result should be returned');
     assert.ok(typeof result.desktopDirectory === 'string', 'DesktopDirectory should be string');
     assert.ok(result.desktopDirectory.length > 0, 'DesktopDirectory should not be empty');

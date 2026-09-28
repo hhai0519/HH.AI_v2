@@ -62,4 +62,4 @@ jobs:
 
       - name: Run Channel Gateway core tests
         run: |
-          python -m pytest scripts/tests/test_channel_gateway_core.py -v
+          python -m pytest scripts/tests/test_channel_gateway_core.py -v -rfEP

@@ -2825,7 +2825,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 5.1 上一批狀態
 
-上次核對通過的 HEAD：1183790f41fe22b8825090692e86109ccfc97fc7
+上次核對通過的 HEAD：cde8402dcbdcc017021a5b414b0b9c17566cc74a
 
 - `23af193`（執行者前置檢查 ＋ 回滾程序 ＋ `AUDIT-LOG.md` ＋ 四缺口修正）
   已於 2026-09-02 由審計官核對通過：6 檔異動（含 2 個新檔）、零夾帶、
@@ -3033,6 +3033,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 - `09235c6`（TG-MVP-13 Telegram Outbound Text Delivery Final Acceptance & Same-SHA Main Promotion）已於 2026-09-27 由 External Macro Auditor 核對通過：Target = `09235c6c8e6b43ec04b885824e2e13b8df9d3bc3`；Parent = `1df494a38c97fa2d5d8376ccd57fb112b16bc41f`；Candidate Actions Run 36313414214 attempt 1 驗證成功（verify=completed/success, gateway-windows=completed/success）；J2 OWNER-LEVEL SHUTDOWN LIFECYCLE = RESOLVED；IMPLEMENTATION = PASS；SAFETY / LIVENESS = PASS；PROMOTION ELIGIBILITY = PASS；ROLLBACK = NO；NEW MATERIAL BLOCKING FINDING = NONE；Same-SHA main promotion 成功推進（previous main: d55b2b18bb7769cfc80bc412230bd18d0df7fdd3 -> promoted main: 09235c6c8e6b43ec04b885824e2e13b8df9d3bc3，SHA transformation: NONE）；Post-main exact-SHA Actions Run 36314656058 attempt 1 驗證成功（event=push, head_branch=main, head_sha=09235c6c8e6b43ec04b885824e2e13b8df9d3bc3, verify=completed/success, gateway-windows=completed/success）；D-TG13-ACCEPTANCE = USER BINDING / APPROVED；TG-MVP-13 採 component-level synthetic / deterministic acceptance；真實 recipient-visible Test Bot E2E 統一 deferred 至 TG-MVP-15；TG-MVP-10 既有 ACCEPTED / CLOSED 狀態不變；chat_id 不得寫入 tracked docs；TG-MVP-15 未來之 recipient-visible delivery evidence 必須分類為 USER_PROVIDED 並維持 ACCEPTED_BY_PLATFORM != DELIVERED_TO_RECIPIENT；TG-MVP-13 正式結案（ACCEPTED / CLOSED）；accepted checkpoint 推進至 `09235c6c8e6b43ec04b885824e2e13b8df9d3bc3`（注意：本 state-sync candidate 自己尚未被 Macro audit，不得把本 closure-sync candidate 預先寫成 accepted checkpoint）；NEXT_WORK 保持 E-03，NEXT_SLICE 直接投影 ENV-01（ENV-01 = mandatory E-03 inter-slice docs gate before TG-MVP-14；待本 candidate 經 External Macro PASS + promotion 後成為 main current routing authority）。
 - `32be9c9`（TG-MVP-13 Final Acceptance State Sync Acceptance & Same-SHA Main Promotion）已於 2026-09-27 由 External Macro Auditor 核對通過：Target = `32be9c92435dba042b13a9d8364edd8e80bba86b`；Parent = `09235c6c8e6b43ec04b885824e2e13b8df9d3bc3`；Final Acceptance State Sync: External Macro PASS；Candidate Run 36317629817（attempt 1: verify success, gateway-windows failed, 分類為 EXISTING B-100 R-01 Windows Known-Folder resolution bridge timeout, 非 TG-MVP-13 回歸且非 state-sync 文件回歸；attempt 2: 使用者依 D-R4 觸發同 SHA 重跑成功）；Same-SHA main promotion 成功推進；Post-main exact-SHA Actions Run 36318956532（attempt 1: verify success, gateway-windows success）；TG-MVP-13 正式 ACCEPTED / CLOSED ON MAIN；accepted checkpoint 推進至 `32be9c92435dba042b13a9d8364edd8e80bba86b`（ENV-01 候選批次自身尚未經 External Macro 審查，不得自稱為 checkpoint）；NEXT_WORK 保持 E-03，NEXT_SLICE 為 ENV-01。
 - `1183790`（TG-MVP-14 Conversation Archive & Topics Final Acceptance & Same-SHA Main Promotion）已於 2026-09-28 由 External Macro Auditor 核對通過：Target = `1183790f41fe22b8825090692e86109ccfc97fc7`；Parent = `d25f2a838bb38a33b085ca732f990b620ad13a15`；Candidate Actions Run 36412100888（attempt 1 verify success, gateway-windows failed 分類為 EXISTING B-100 R-01 recurrence；attempt 2 經使用者依 D-R4 觸發同 SHA 重跑驗證成功）；External Macro 審查判定 PASS / ACCEPT ALL（MACHINE=PASS, IMPLEMENTATION=PASS, SAFETY_LIVENESS=PASS, DOC_TRUTH_R2_SCOPE=PASS, GOVERNANCE=PASS, NEW MATERIAL BLOCKING FINDING=NONE, ROLLBACK=NO, R3_REQUIRED=NO）；Claude 結構審查意見已吸收（B1/B2 resolved，依 USER 指示不需再次送 Claude）；Same-SHA main promotion 成功推進（previous main: e695c787c0276994db64780d997bbf75d9a12f0f -> promoted main: 1183790f41fe22b8825090692e86109ccfc97fc7，SHA transformation: NONE）；Post-main exact-SHA Actions Run 36419863588 attempt 1 驗證成功（verify success, gateway-windows success）；TG-MVP-14 正式 ACCEPTED / CLOSED ON MAIN；accepted checkpoint 推進至 `1183790f41fe22b8825090692e86109ccfc97fc7`（本 state-sync candidate 自身尚未經 External Macro 審查，不得自稱為 checkpoint）；NEXT_WORK 保持 E-03，NEXT_SLICE 為 B-100 R-01。
+- `cde8402`（TG-MVP-14 Final State-Sync / Acceptance & Same-SHA Main Promotion）已於 2026-09-28 由 External Macro Auditor 核對通過：Target = `cde8402dcbdcc017021a5b414b0b9c17566cc74a`；Parent = `1183790f41fe22b8825090692e86109ccfc97fc7`；Candidate Actions Run 36422534790 attempt 1 驗證成功（verify: success, gateway-windows: success）；Same-SHA main promotion 成功推進（previous main: 1183790f41fe22b8825090692e86109ccfc97fc7 -> promoted main: cde8402dcbdcc017021a5b414b0b9c17566cc74a，SHA transformation: NONE）；Post-main exact-SHA Actions Run 36423811275 attempt 1 驗證成功（verify: success, gateway-windows: success）；TG-MVP-14 保持結案（ACCEPTED / CLOSED ON MAIN）；accepted checkpoint 推進至 `cde8402dcbdcc017021a5b414b0b9c17566cc74a`；B-100 R-01 生產修復候選批次自身仍 AWAITING EXTERNAL MACRO AUDIT，執行者嚴禁自審宣稱結案、自填 R-01 PASS 或擅推 main。
 
 ### 5.2 待辦
 
@@ -5630,3 +5631,72 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - TG-MVP-15 保持待辦（NOT STARTED）。
   - main advancement = FORBIDDEN。
   - 本 State-Sync 候選批次自身 AWAITING EXTERNAL MACRO AUDIT，執行者嚴禁自審。
+
+148. **B-100 R-01 Windows Known-Folder Bridge Repair（Layer 1 + Layer 2 Production Final）生產修復實作與候選**（2026-09-28）
+- **TG-MVP-14 強制結轉（TG-MVP-14 Carry-Forward Evidence）**：
+  - accepted checkpoint 依結轉原則由 `1183790f41fe22b8825090692e86109ccfc97fc7` 推進至 `cde8402dcbdcc017021a5b414b0b9c17566cc74a`。
+  - TG-MVP-14 Final State-Sync candidate: SHA `cde8402dcbdcc017021a5b414b0b9c17566cc74a`，Actions Run 36422534790 attempt 1 success。
+  - TG-MVP-14 Final State-Sync post-main: Actions Run 36423811275 attempt 1 success。
+  - 不開展第三次 TG-MVP-14 state-sync，於本 R-01 生產修復批次中完整結轉。
+- **E24 權威依據與重放（E24 Authority & Machine Replay）**：
+  - E24 raw evidence: `.git/B-100-R-01-E24-260928-raw.json`，mode = REQUIRED。
+  - expected & verified raw SHA-256 = `f8084412d6fc3f8d3153d6ac52c3d8bd4d8c01f926158adb931caf5bcaccd74c`。
+  - 套用 External Macro 處置（10 UPDATE 嚴格符合 allowed scope，3 HISTORICAL_NO_CHANGE，其餘 VERIFY_ONLY；`docs/governance/execution-record.json` 為授權治理產出路徑）。
+  - `scripts/impact_scan.py check` 重放比對 100% PASS（E24 replay PASS）。
+- **B1 修正：子進程環境種子非有效子環境白名單（B1 Correction — spawn options env seed vs libuv backfill）**：
+  - JS `spawnSync options.env` 顯式種子（SPAWN_OPTIONS_ENV_SEED）僅包含 4 個命名鍵：`SystemRoot`、`SystemDrive`、`TEMP`、`TMP`。
+  - 自 JS 種子中移除 `PATH` 與 `PATHEXT`。
+  - 確立 Windows libuv 行為真相：Windows 平台 libuv 於父進程存在時可能自動回填 `required_vars`（如 `PATH`、`USERPROFILE`、`USERNAME`、`WINDIR`、`HOMEDRIVE`、`HOMEPATH`、`LOGONSERVER`、`USERDOMAIN` 等）；此接受之 libuv 機制意味著四鍵 JS 種子非 OS 級有效子行程環境白名單。
+  - 嚴禁將任何回填值記錄至日誌或反映至遙測；未經獨立直接證據不得聲稱有效子環境完全排除該等變數。
+  - 修正 TASKBOARD 與 backlog 既有 F4 措辭。
+  - 保持 `shell = false`、`windowsHide = true`、`stdio = ['ignore', 'pipe', 'pipe']`、`timeout = 60000ms`。
+- **Layer 1：Cmdlet-Free 7-Bit ASCII PowerShell Bridge 實作（Layer 1 Implementation）**：
+  - `runtime/channel-gateway/bin/windows-known-folder-resolve.ps1`：
+    - 原始碼嚴格為 7-bit ASCII，消除 Windows PowerShell 5.1 no-BOM 編碼歧義。
+    - 函式邏輯前設定 `$PSModuleAutoLoadingPreference = 'None'`，防止模組自動加載與命令探索。
+    - 藉由 .NET `[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false)` 保持確定性無 BOM UTF-8 標準輸出。
+    - 移除所有 Cmdlet 與 Pipeline：無 `$utf8NoBom`、無 `New-Object`、無 `ConvertTo-Json`、無 `Write-Output`、無 `Write-Error`、無 `Out-String`、無 `Out-File`、無 `Set-Content`、無 `Add-Content`，無管線運算子。
+    - 僅使用 PowerShell 語言結構、.NET 靜態/實例方法、`[Console]` 與 `exit`。
+    - 保留兩個必要之 SpecialFolder 呼叫（`DesktopDirectory` 與 `LocalApplicationData`）。
+    - 採用有界 fail-closed .NET `StringBuilder` 進行 JSON 轉義（涵蓋雙引號、反斜線、U+0000..U+001F 使用 `.ToString("x4")` 十六進位轉義），輸出單一緊湊 JSON 物件。
+    - 錯誤輸出有界且不包含已解析路徑值；零檔案寫入、零註冊表存取、零網路、零憑證存取、零環境變數列舉。
+  - `runtime/channel-gateway/core/local-config-loader.js`：`childEnv` 收斂至四個顯式種子鍵。
+  - `runtime/channel-gateway/tests/local-config-loader.test.js`：
+    - Test 22 強化：斷言 `options.env` 排序鍵名精確等於 `['SystemDrive', 'SystemRoot', 'TEMP', 'TMP']`；斷言 `PATH`、`PATHEXT`、`PSModulePath`、`USERPROFILE`、`HOME`、`APPDATA`、`LOCALAPPDATA`、`USERNAME`、`OneDrive` 全數 absent；逾時維持 60000ms。
+    - 新增 PowerShell 原始碼守衛測試：7-bit ASCII 位元組檢驗、包含 `$PSModuleAutoLoadingPreference`、禁止清單（`$utf8NoBom`, `New-Object`, `ConvertTo-Json`, `Write-Output`, `Write-Error`, `Out-String`, `Out-File`, `Set-Content`, `Add-Content`）零出現、功能原始碼零管線。
+- **Layer 2：真實 Live Bridge 時間標記與 Python 嚴格轉發（Layer 2 Telemetry & Forwarder）**：
+  - `runtime/channel-gateway/tests/local-config-loader.test.js` Test 38：
+    - 僅於 win32 上以單調 `process.hrtime.bigint()` 量測真實 `resolveWindowsKnownFolders()` 呼叫，置於 try/finally 中。
+    - 每次 live 呼叫輸出恰好一行 `KNOWN_FOLDER_BRIDGE_MS=<integer>`；non-win32 零標記。
+    - 測試名稱與斷言文字不包含該 token；遙測行嚴格不包含任何路徑、使用者名稱、主機名稱或錯誤訊息。
+  - `scripts/tests/test_channel_gateway_core.py`：
+    - 實作確定性解析器與轉發器（`parse_and_validate_timing_markers`、`forward_timing_markers`、`assert_timing_marker_count`），支援 TAP `# ` 前綴語法。
+    - 嚴格非負整數語法，任何帶額外字串、路徑後綴、負數、小數之一律 fail closed。
+    - Windows 標記預期：個別 `local-config-loader.test.js` 恰好 1 筆、其餘個別 Node 測試 0 筆、combined runner 恰好 1 筆；non-Windows 全數 0 筆。
+    - A1 平台注入控制：合成金絲雀透過平台注入在 Linux `verify` 與 `gateway-windows` 均全數執行，無 skip/xfail。
+    - A2 合成金絲雀不污染 live 遙測：合成測試呼叫純 helper，不向 pytest stdout 輸出或轉發任何合成時間標記，使 CI PASSES 輸出中的遙測 100% 來自真實 live 調用。
+  - B2 `.github/workflows/verify.yml`：
+    - gateway-windows 執行旗標改為 `python -m pytest scripts/tests/test_channel_gateway_core.py -v -rfEP`。
+    - `P` 顯示通過測試之捕獲輸出（暴露轉發的時間標記），`fE` 保留失敗/錯誤簡要分類，保留 pytest capture。
+- **本機驗證閘門與反事實負向控制（Local Gates & Counterfactual Controls）**：
+  - Windows targeted suite：48 tests（46 pass, 0 fail, 2 skip, 0 todo），成功捕獲 `# KNOWN_FOLDER_BRIDGE_MS=<integer>`，無路徑洩漏。
+  - Canonical Windows pytest gate：`pytest -v -rfEP` 49 passed，成功在 output 中呈現 2 筆來自真實 live 調用之純整數標記，合成金絲雀零污染。
+  - Bounded canonical WSL targeted gate：使用 Ubuntu-24.04 與 Node v24.21.0 於 `/mnt/c/<Windows-path-to-repo>` 執行，48 tests PASS，0 標記輸出。
+  - 反事實負向控制證明：
+    - C1：暫時將 `PATH` 加回 `local-config-loader.js` 顯式種子，執行 Test 22 確定性 RED（`ERR_ASSERTION`，5 keys vs 4 keys）；還原候選原始位元組並經 SHA-256 核對完全吻合（`7bf7e35fe1b6363bcfb2098d53473fd1cf6b4c83cc9798b8f44032215cfdebe1`）。
+    - C2：暫時將 `ConvertTo-Json` 加回 `windows-known-folder-resolve.ps1`，執行 source guard 測試確定性 RED（`ERR_ASSERTION`，forbidden token detected）；還原候選原始位元組並經 SHA-256 核對完全吻合（`10ddfeb0f1ee2b52b51e4c4b18c6bf27755d23f5be8f217efa5d123f6bef6a08`）。
+    - C3–C7 金絲雀測試：C3（路徑後綴標記拒絕）、C4（負數標記拒絕）、C5（小數標記拒絕）、C6（Windows 預期 1 筆卻缺少失敗）、C7（非 Windows 預期 0 筆卻注入失敗）全部確定性通過。
+- **殘留項目持久化註冊（Residual Registrations T1–T5 & Adopted O1）**：
+  - T1 + T2：註冊至新子項 `B-100 R-J`（Archive shutdown native residuals，NONBLOCKING / OBSERVATION；T1 為 pending libuv fs requests，T2 為 FileHandle GC cleanup / DEP0137，需未來重現確認）。
+  - T3：註冊至既有 `B-56`（SOP_00A `$$自動化$$` fragment 缺少，CHECK 5 僅驗證檔案存在性，REPAIRABLE / PENDING，R-01 範圍外）。
+  - T4：註冊至既有 `B-100 R-C`（Kernel Rule 5 措辭釐清，LOW-PRIORITY / NONBLOCKING）。
+  - T5：註冊至既有 `B-100 R-C`（受管文件/日誌路徑正規化為可攜式佔位符，NONBLOCKING）。
+  - O1：註冊至新子項 `B-100 R-K`（Other Windows PowerShell live-bridge cold-start observation，Credential Manager bridge 觀察，NONBLOCKING）。
+- **後續路由與候選狀態（Next Work Routing & Task Status）**：
+  - NEXT_WORK = E-03。
+  - NEXT_SLICE = B-100 R-01。
+  - B-100 R-01 狀態：`CANDIDATE_AWAITING_EXTERNAL_MACRO`（嚴禁自標 REPAIRED_OBSERVING 或 CLOSED，Stage 1 尚未完成）。
+  - Layer 3 維持 `USER_DECISION_PENDING`（禁止代選 A/B/C）。
+  - TG-MVP-15 保持待辦（NOT STARTED / BLOCKED）。
+  - main advancement = FORBIDDEN。
+  - 本生產候選批次自身 AWAITING EXTERNAL MACRO AUDIT，執行者嚴禁自審。

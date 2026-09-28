@@ -174,6 +174,73 @@ def assert_registered_skips(tap_output: str, policy: dict, current_platform: str
             )
 
 
+TIMING_MARKER_PREFIX = "KNOWN_FOLDER_BRIDGE_MS="
+STRICT_TIMING_REGEX = re.compile(r"^(?:#\s*)?KNOWN_FOLDER_BRIDGE_MS=(\d+)$")
+
+
+def parse_and_validate_timing_markers(tap_output: str) -> list[int]:
+    r"""
+    Parse and validate KNOWN_FOLDER_BRIDGE_MS timing markers from captured stdout.
+    Strict fail-closed grammar:
+    - If any line contains KNOWN_FOLDER_BRIDGE_MS=, the complete logical line must match:
+      ^(?:#\s*)?KNOWN_FOLDER_BRIDGE_MS=(\d+)$
+    - Otherwise raises AssertionError (FAIL CLOSED).
+    - Returns list of parsed non-negative integer millisecond values.
+    """
+    markers = []
+    for line in tap_output.splitlines():
+        trimmed = line.strip()
+        if TIMING_MARKER_PREFIX in trimmed:
+            m = STRICT_TIMING_REGEX.match(trimmed)
+            if not m:
+                raise AssertionError(
+                    f"Malformed or contaminated KNOWN_FOLDER_BRIDGE_MS line (FAIL-CLOSED): {trimmed!r}"
+                )
+            val = int(m.group(1))
+            markers.append(val)
+    return markers
+
+
+def get_expected_timing_marker_count(test_file: str | None, current_platform: str) -> int:
+    """
+    Returns the expected number of timing markers:
+    - On non-win32 platforms: 0
+    - On win32:
+      - If test_file is None (combined runner): 1
+      - If test_file basename is 'local-config-loader.test.js': 1
+      - For every other test_file: 0
+    """
+    if current_platform != "win32":
+        return 0
+    if test_file is None:
+        return 1
+    if os.path.basename(test_file) == "local-config-loader.test.js":
+        return 1
+    return 0
+
+
+def assert_timing_marker_count(markers: list[int], test_file: str | None, current_platform: str):
+    """
+    Pure validation helper asserting exact expected timing marker count for platform and suite.
+    """
+    expected = get_expected_timing_marker_count(test_file, current_platform)
+    if len(markers) != expected:
+        suite_desc = os.path.basename(test_file) if test_file else "combined"
+        raise AssertionError(
+            f"Expected {expected} timing marker(s) for '{suite_desc}' on platform '{current_platform}', "
+            f"got {len(markers)}: {markers} (FAIL-CLOSED)"
+        )
+
+
+def forward_timing_markers(markers: list[int]):
+    """
+    Re-emit ONLY normalized KNOWN_FOLDER_BRIDGE_MS=<integer> lines.
+    Never re-emit surrounding successful Node TAP stdout/stderr.
+    """
+    for val in markers:
+        print(f"KNOWN_FOLDER_BRIDGE_MS={val}")
+
+
 DISCOVERED_TEST_FILES = discover_gateway_test_files()
 
 
@@ -255,10 +322,16 @@ def test_channel_gateway_individual_test_file(test_file):
         encoding="utf-8",
         errors="replace"
     )
+
+    markers = parse_and_validate_timing_markers(res.stdout)
+    forward_timing_markers(markers)
+
     assert res.returncode == 0, (
         f"{os.path.basename(test_file)} failed with code {res.returncode}:\n"
         f"STDOUT:\n{res.stdout}\nSTDERR:\n{res.stderr}"
     )
+
+    assert_timing_marker_count(markers, test_file, current_platform=sys.platform)
 
     policy = load_gateway_test_policy()
     assert_registered_skips(res.stdout, policy)
@@ -277,10 +350,16 @@ def test_channel_gateway_combined_node_test_runner():
         encoding="utf-8",
         errors="replace"
     )
+
+    markers = parse_and_validate_timing_markers(res.stdout)
+    forward_timing_markers(markers)
+
     assert res.returncode == 0, (
         f"Combined node --test failed with code {res.returncode}:\n"
         f"STDOUT:\n{res.stdout}\nSTDERR:\n{res.stderr}"
     )
+
+    assert_timing_marker_count(markers, None, current_platform=sys.platform)
 
     policy = load_gateway_test_policy()
     assert_registered_skips(res.stdout, policy)
@@ -521,3 +600,77 @@ def test_channel_gateway_sqlite_gitignore_protection():
         check=False
     )
     assert res_pos.returncode == 0, "Runtime sqlite3 file must be ignored by .gitignore (check-ignore exit 0 expected)"
+
+
+# ==========================================
+# K. Layer 2 Timing Marker Canaries (Synthetic & Platform-Injected)
+# ==========================================
+
+def test_canary_timing_marker_valid_parsing():
+    """Canary: valid timing marker parsing from plain and TAP comment lines."""
+    tap = (
+        "TAP version 13\n"
+        "# KNOWN_FOLDER_BRIDGE_MS=250\n"
+        "ok 1 - test\n"
+        "KNOWN_FOLDER_BRIDGE_MS=0\n"
+    )
+    markers = parse_and_validate_timing_markers(tap)
+    assert markers == [250, 0]
+
+
+def test_canary_c3_path_suffixed_timing_marker_rejected():
+    """Canary C3: path-suffixed timing marker rejected fail-closed."""
+    tap = "ok 1 - test\nKNOWN_FOLDER_BRIDGE_MS=12 C:\\synthetic\\path\n"
+    with pytest.raises(AssertionError, match="FAIL-CLOSED"):
+        parse_and_validate_timing_markers(tap)
+
+
+def test_canary_c4_negative_timing_value_rejected():
+    """Canary C4: negative timing value rejected fail-closed."""
+    tap = "ok 1 - test\nKNOWN_FOLDER_BRIDGE_MS=-1\n"
+    with pytest.raises(AssertionError, match="FAIL-CLOSED"):
+        parse_and_validate_timing_markers(tap)
+
+
+def test_canary_c5_fractional_timing_value_rejected():
+    """Canary C5: fractional timing value rejected fail-closed."""
+    tap = "ok 1 - test\nKNOWN_FOLDER_BRIDGE_MS=1.5\n"
+    with pytest.raises(AssertionError, match="FAIL-CLOSED"):
+        parse_and_validate_timing_markers(tap)
+
+
+def test_canary_malformed_marker_trailing_text_rejected():
+    """Canary: malformed timing marker with extra payload rejected fail-closed."""
+    tap = "ok 1 - test\nKNOWN_FOLDER_BRIDGE_MS=12 extra\n"
+    with pytest.raises(AssertionError, match="FAIL-CLOSED"):
+        parse_and_validate_timing_markers(tap)
+
+
+def test_canary_c6_windows_expected_one_marker_absent_fails():
+    """Canary C6: Windows expected-one with marker absent fails closed (platform injected)."""
+    assert get_expected_timing_marker_count("local-config-loader.test.js", current_platform="win32") == 1
+    assert get_expected_timing_marker_count(None, current_platform="win32") == 1
+
+    with pytest.raises(AssertionError, match="FAIL-CLOSED"):
+        assert_timing_marker_count([], "local-config-loader.test.js", current_platform="win32")
+    with pytest.raises(AssertionError, match="FAIL-CLOSED"):
+        assert_timing_marker_count([], None, current_platform="win32")
+
+
+def test_canary_c7_non_windows_expected_zero_injected_marker_fails():
+    """Canary C7: non-Windows expected-zero with injected marker fails closed (platform injected)."""
+    assert get_expected_timing_marker_count("local-config-loader.test.js", current_platform="linux") == 0
+    assert get_expected_timing_marker_count(None, current_platform="linux") == 0
+
+    with pytest.raises(AssertionError, match="FAIL-CLOSED"):
+        assert_timing_marker_count([42], "local-config-loader.test.js", current_platform="linux")
+    with pytest.raises(AssertionError, match="FAIL-CLOSED"):
+        assert_timing_marker_count([42], None, current_platform="linux")
+
+
+def test_canary_non_target_individual_suite_zero_behavior():
+    """Canary: non-target individual suite expects zero markers even on win32 (platform injected)."""
+    assert get_expected_timing_marker_count("sqlite-state-repository.test.js", current_platform="win32") == 0
+    assert_timing_marker_count([], "sqlite-state-repository.test.js", current_platform="win32")
+    with pytest.raises(AssertionError, match="FAIL-CLOSED"):
+        assert_timing_marker_count([42], "sqlite-state-repository.test.js", current_platform="win32")

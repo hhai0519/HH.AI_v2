@@ -1,26 +1,34 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "TG-MVP-14-FINAL-ACCEPTANCE-STATE-SYNC",
-  "base_oid": "1183790f41fe22b8825090692e86109ccfc97fc7",
+  "task_id": "B-100-R-01-PRODUCTION",
+  "base_oid": "cde8402dcbdcc017021a5b414b0b9c17566cc74a",
   "plan": {
     "allowed_paths": [
+      ".github/workflows/verify.yml",
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
-      "docs/adr/0023-channel-gateway-state-store-sqlite.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md"
+      "docs/refactor-backlog.md",
+      "runtime/channel-gateway/bin/windows-known-folder-resolve.ps1",
+      "runtime/channel-gateway/core/local-config-loader.js",
+      "runtime/channel-gateway/tests/local-config-loader.test.js",
+      "scripts/tests/test_channel_gateway_core.py"
     ],
     "required_paths": [
+      ".github/workflows/verify.yml",
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
-      "docs/adr/0023-channel-gateway-state-store-sqlite.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md"
+      "docs/refactor-backlog.md",
+      "runtime/channel-gateway/bin/windows-known-folder-resolve.ps1",
+      "runtime/channel-gateway/core/local-config-loader.js",
+      "runtime/channel-gateway/tests/local-config-loader.test.js",
+      "scripts/tests/test_channel_gateway_core.py"
     ],
     "max_plan_revisions": 3,
     "revision_count": 0,
@@ -28,13 +36,17 @@
   },
   "actual": {
     "changed_paths": [
+      ".github/workflows/verify.yml",
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
-      "docs/adr/0023-channel-gateway-state-store-sqlite.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md"
+      "docs/refactor-backlog.md",
+      "runtime/channel-gateway/bin/windows-known-folder-resolve.ps1",
+      "runtime/channel-gateway/core/local-config-loader.js",
+      "runtime/channel-gateway/tests/local-config-loader.test.js",
+      "scripts/tests/test_channel_gateway_core.py"
     ]
   },
   "evidence": [
@@ -50,12 +62,12 @@
       "description": "Deterministic Git diff replay against declared plan allowed/required scope"
     },
     {
-      "id": "M2_DISCOVERY_RAW",
+      "id": "E24_DISCOVERY_RAW",
       "origin": "MACHINE_CAPTURED_RAW",
-      "verification_status": "NOT_ESTABLISHED",
+      "verification_status": "VERIFIED",
       "source_kind": "EXTERNAL_ARTIFACT",
-      "sha256": "4cd2851da921aab9d371b281f51947e2645b069d38ee56655e37a79c2ded3b4b",
-      "description": "generic B-109 M2 provenance only; not task-specific evidence; this pure state-sync declared E24 NONE; routed EXISTING B-107"
+      "sha256": "f8084412d6fc3f8d3153d6ac52c3d8bd4d8c01f926158adb931caf5bcaccd74c",
+      "description": "raw discovery captured by External Macro at exact base cde8402dcbdcc017021a5b414b0b9c17566cc74a (.git/B-100-R-01-E24-260928-raw.json); External Macro supplied semantic dispositions; pre-mutation replay passed."
     }
   ],
   "report_claims": [
@@ -64,6 +76,13 @@
       "claim_text": "All actual changed repository paths strictly match allowed scope and cover all required paths without expansion.",
       "evidence_ids": [
         "PLAN_ACTUAL_DIFF"
+      ]
+    },
+    {
+      "claim_id": "CLAIM_E24_PROVENANCE_VERIFIED",
+      "claim_text": "Immutable raw discovery artifact verified against expected SHA256 closure.",
+      "evidence_ids": [
+        "E24_DISCOVERY_RAW"
       ]
     }
   ]

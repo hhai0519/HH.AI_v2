@@ -105,8 +105,6 @@ function resolveWindowsKnownFolders(options = {}) {
   const childEnv = {
     SystemRoot: systemRoot,
     SystemDrive: process.env.SystemDrive || 'C:',
-    PATH: process.env.PATH || `${systemRoot}\\System32;${systemRoot}`,
-    PATHEXT: process.env.PATHEXT || '.COM;.EXE;.BAT;.CMD;.VBS;.VBE;.JS;.JSE;.WSF;.WSH;.MSC',
     TEMP: process.env.TEMP || `${systemRoot}\\Temp`,
     TMP: process.env.TMP || `${systemRoot}\\Temp`,
   };

@@ -1,5 +1,5 @@
 {
-  "base_head": "1183790",
+  "base_head": "cde8402",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -218,7 +218,7 @@
       "fences": 0,
       "headings": [],
       "lines": 65,
-      "sha256": "f47d4b25dc0e304ee9f8b354ff1ba6ba58449cf95fd105bc43ec8a4e66ac02bc"
+      "sha256": "5ec01ff310285e5c24b36d207c4cbdb5ff6de50fed440d97da58eb27d5df9f43"
     },
     "AGENTS.md": {
       "fences": 2,
@@ -552,16 +552,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 242,
-      "sha256": "12f48eaafe136fb916e36851050b635fc594517c8a8155cd3030d1928dc7c2dc"
+      "lines": 244,
+      "sha256": "1692a90f19bb7116b36306a5748d56b0601f469d93a8704a7d8dd7ee089e2b75"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 213,
-      "sha256": "c45f13d02f55e260eb66a4783f1c8aacdc88739732c80aae7a566dc33a5f9ed0"
+      "lines": 214,
+      "sha256": "4da51f41facbe9cadd5a19caa02e693abab62b2d42b70c83031bc92b4627967f"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -602,7 +602,7 @@
         "## 封存區"
       ],
       "lines": 347,
-      "sha256": "6b63e67d6b4648ae53d93237d583c845accd3d0a7a19905309db230c04d1e329"
+      "sha256": "1507c36885a6f278a57195c44cffb41fed450a1733adc7043e4e0e6e2af5ce1c"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1071,8 +1071,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 5632,
-      "sha256": "a4f73f11fb3357e6eabb4908fd2cd691aa49268210b6d4b2f3b7ea81a3863326"
+      "lines": 5702,
+      "sha256": "a51fe797ac500255c10962a7eb0a693ca91d1630ec3c5ccd4b448f20efe7e02c"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1202,10 +1202,13 @@
     "scripts/tests/test_channel_gateway_core.py": {
       "fences": 0,
       "headings": [
-        "# -*- coding: utf-8 -*-"
+        "# -*- coding: utf-8 -*-",
+        "# ==========================================",
+        "# K. Layer 2 Timing Marker Canaries (Synthetic & Platform-Injected)",
+        "# =========================================="
       ],
-      "lines": 523,
-      "sha256": "3ffb86c0438cb2e29be1174161837f6eb84689c1d393c3b1f7401fad9df92360"
+      "lines": 676,
+      "sha256": "a10c66433abedd681745ddffea475bf129fc92cc73e35ee6a81610ae5902cd38"
     },
     "scripts/tests/test_check_17_18.py": {
       "fences": 0,
@@ -1500,7 +1503,7 @@
       "sha256": "35bf7dbfa3c7d291b550c3c97a6ae398a22b1dc3624c1d2fc1e4db6963d6e115"
     }
   },
-  "generated_at": "2026-09-28T12:29:37Z",
+  "generated_at": "2026-09-28T15:06:31Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {
