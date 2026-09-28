@@ -1,5 +1,5 @@
 {
-  "base_head": "09235c6",
+  "base_head": "32be9c9",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -325,15 +325,15 @@
         "### 3.3 成果輸出 (Reporting)",
         "## 4. 例外處理 (Exception Handling)",
         "## 5. 可信工具與環境 (Trusted Tools & Environments)",
-        "### 5.1 工具授權管理",
+        "### 5.1 工具授權管理與執行期權限方針",
         "### 5.2 自動化執行模式 (Headless Mode)",
         "## 6. Skills 資料夾路徑對照",
         "### 6.1 路徑設定（v260503 版）",
         "### 6.2 核心技能清單 (Core Skills Inventory)",
         "### 6.3 合規要求"
       ],
-      "lines": 161,
-      "sha256": "42f7c2b64e1b1f59db3dfbbd97b1c15707fc1a2f0081eb9ab6402e1f2d0e3437"
+      "lines": 165,
+      "sha256": "055c1bc6a26c7d1cd7783e736e0707035ed047c86d921a060ac91141c7355b6c"
     },
     "SOP/SOP_02_Security_Guidelines.md": {
       "fences": 0,
@@ -552,16 +552,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 236,
-      "sha256": "352bf63502a0b3f17038825299f02f03818ceec0c00fb0843e9851ffbf06dbd0"
+      "lines": 237,
+      "sha256": "ca1760744bfcef27aa19b5bbd6a58fdc85efe05dc38a3aa88c928b37aacb4c90"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 207,
-      "sha256": "2b4f3b90522f537ecdda61000102bac38ada62049e559371f4e70aa621e72c6e"
+      "lines": 208,
+      "sha256": "eb6e17f50aae53782c454825abc8402985321af5b71215d99e8c747f3cb99f67"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -602,7 +602,7 @@
         "## 封存區"
       ],
       "lines": 347,
-      "sha256": "c48113b1f0fbe1e4bc6a7c8ad77fee93fbddb456550542a0bf539b62676b044d"
+      "sha256": "7e57ef2f87306191ff06e093c3db8f6e5fa2839291dc224871d24c3da23dce1b"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -923,8 +923,8 @@
         "### 9. 狀態資料庫與備份衛生治理 (State Database & Backup Hygiene — TG-MVP-09A)",
         "## Consequences"
       ],
-      "lines": 199,
-      "sha256": "cce34a1b58021a86c7f447e9adccae6fd57b1713261a5cd64d93cc5e3635fc6c"
+      "lines": 210,
+      "sha256": "3e4024849de62593af17578dff321492ad2ba959194e78e4833602d216451089"
     },
     "docs/adr/0024-inbound-identity-cursor-semantics.md": {
       "fences": 2,
@@ -1070,8 +1070,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 5489,
-      "sha256": "287094e4d24acfaaca56be2fc78b749f71560dc557cb1e58a0329c28a7314225"
+      "lines": 5490,
+      "sha256": "cb1887cade27e902d6142103c88b9b147672ace08fd0571cbfb70b225dc9fda5"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1499,7 +1499,7 @@
       "sha256": "35bf7dbfa3c7d291b550c3c97a6ae398a22b1dc3624c1d2fc1e4db6963d6e115"
     }
   },
-  "generated_at": "2026-09-27T11:58:49Z",
+  "generated_at": "2026-09-28T03:44:19Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

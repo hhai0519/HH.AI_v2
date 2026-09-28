@@ -66,8 +66,9 @@ UPDATE session_quota_state
 | 關鍵字 | 授權範圍 | 執行限制 |
 |--------|---------|---------|
 | `$$自動化$$` | 啟動深度研究迴圈 | 僅允許研究領域內之讀取與探索操作 |
-| `$$Allow All$$` | 啟動全域工具授權 | 僅活躍會話期間有效；**嚴禁擴張 Allowed Scope、嚴禁覆蓋破壞性 Git 操作禁令、嚴禁允許歷史重寫、且不得取代金鑰敏感變更之個別授權** |
+| `$$Allow All$$` | 活躍會話之領域授權原語 | 僅活躍會話（session-scoped）期間有效之領域層級授權原語；**不代表 Antigravity IDE 持久性 `Always allow`，亦不自動核准所有 IDE 權限提示**；**嚴禁擴張 Allowed Scope、嚴禁覆蓋 Execution Contract、嚴禁違背破壞性 Git 操作禁令、嚴禁跨越機密與憑證邊界（credential boundary）、嚴禁環境列舉（environment-enumeration boundary）、且嚴禁突破主要分支 exact-SHA 晉級授權（exact-SHA main authorization）** |
 
+- **領域語意邊界**：`$$Allow All$$` 僅屬任務內領域層級之授權確認，絕不得作為繞過 IDE 安全防護、環境邊界或治理合約之依據。
 - **關鍵字驗證**：未包含上述明確關鍵字時，拒絕執行批量自動化研究。
 - **誤觸保護**：錯誤觸發時，立即終止並通報使用者。
 
@@ -117,12 +118,15 @@ UPDATE session_quota_state
 
 ## 5. 可信工具與環境 (Trusted Tools & Environments)
 
-### 5.1 工具授權管理
-- **長效授權快取**：若工具需要 `$$Allow All$$` 授權，在「設定 → Always allow」中永久存檔。
-- **授權步驟**：
-  1. 出現 `Opening URL in browser` 提示時點選「Configure」。
-  2. 勾選 `Always allow ... to open localhost:XXXX`。
-  3. **重要提醒**：啟用 `$$Allow All$$` 後，所有工具授權詢問將自動通過。
+### 5.1 工具授權管理與執行期權限方針
+- **權威持久基線（Persistent Baseline）**：
+  - 關於 Antigravity IDE 之持久性 K6-A 安全配置（包括 `localhost` 執行權限、Terminal Commands Deny 清單與 GitHub read-class MCP permanent Allow 等），一律以 `docs/ops/antigravity-environment-baseline.md` §4 與 §6 為單一事實來源與權威持久基準。SOP_01 不另行重複定義或削弱其安全姿態。
+- **執行期動態權限提示方針（Ad-hoc Runtime Prompts）**：
+  - 面對未被上述持久基線涵蓋之 Antigravity 執行期動態權限詢問，在經 Execution Contract 明確授權且受限於 Allowed Scope 之單一操作下，一律選擇 **`Allow this time`**（單次允許）。
+  - **嚴禁**在執行期提示中擅自點選或新增持久性的 **`Always allow`** 授權。
+- **持久權限變更邊界**：
+  - 任何新增之持久性權限皆屬於 K6-A 基準之變更，必須由 **USER 決策**並於 `docs/ops/antigravity-environment-baseline.md` 進行同步修訂。
+  - 不得為未識別之第三方權限介面宣稱語意或預設自動通過。
 
 ### 5.2 自動化執行模式 (Headless Mode)
 - **原則**：有人監督的正式工作流程中，瀏覽器需顯示介面以確認操作正確性。

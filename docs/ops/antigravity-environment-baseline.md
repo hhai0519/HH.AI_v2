@@ -305,3 +305,66 @@ Executor 永遠嚴格遵守：
 4. **底層儲存探索記錄**：
    先前以 sentinel 字串 `git switch --discard-changes` 搜尋 `%USERPROFILE%\.gemini`、`%APPDATA%\Antigravity IDE`、`%LOCALAPPDATA%` 等路徑（排除 brain、conversations、cache），以 UTF-8 與 UTF-16 搜尋皆為 **zero plaintext match**。
    **結論**：Searched locations 中未發現 plaintext persistence，底層實際儲存機制（internal/compressed/cloud sync）為 **UNKNOWN**。因此本 recovery checklist 為唯一的可靠手動恢復與驗證基準。
+
+---
+
+## 10. Toolchain Baseline (ENV-01)
+
+### 10.1 Baseline Evidence & Canonical Node
+
+- **evidence_origin**：`USER_PROVIDED`
+- **evidence date**：2026-09-28
+- **verified IDE version**：2.5.5
+- **IDE_UPDATE_TRIGGER**：`NO`
+
+#### Canonical Project Node
+- **.nvmrc**：`24.21.0`（版本庫單一事實來源權威）
+- **Windows project Node**：`v24.21.0`
+- **WSL project Node**：`v24.21.0`
+- **Antigravity / Electron internal Node**：`Node.js 22.21.1` 為 IDE / Electron 內嵌執行期，**NOT** HH.AI_v2 project Node，與 `.nvmrc` 無衝突。
+
+### 10.2 Observed Baseline Environments
+
+以下環境數值屬於 **OBSERVED BASELINE**，僅記錄當前可工作基準事實，非全專案之強制版本鎖定（not project-wide version pins）：
+
+#### Windows Observed Baseline
+- **Node**：v24.21.0
+- **npm.cmd**：11.19.0
+- **Python**：3.14.7
+- **Git for Windows**：2.55.0.windows.3
+- **WSL**：2.7.11.0
+- **WSL kernel**：6.18.33.2-2
+- **Windows OS Build**：10.0.26200.9457
+
+#### WSL Observed Baseline
+- **WSL Distro**：Ubuntu-24.04
+- **nvm**：0.40.8
+- **Node**：v24.21.0
+- **npm**：11.19.0
+- **python3**：3.12.3
+- **git**：2.43.0
+- **Privacy-safe Node target**：`$HOME/.nvm/versions/node/v24.21.0/bin/node`
+- **Repo mount representation**：`/mnt/c/<Windows-path-to-repo>`
+
+### 10.3 Antigravity Permission Prompt Policy
+
+1. **Persistent Baseline Posture**：
+   - 本基準 §4 與 §6 所確立之 K6-A 持久化配置，包含 **Terminal Command Auto Execution**（`Always Proceed`）、**Execute URLs localhost**（`Allow`）及 **GitHub read-class MCP permanent Allow**，維持為專案權威持久基準。
+   - ENV-01 不覆蓋、不削弱、亦不擴展該等設定。
+2. **Ad-hoc Runtime Prompts**：
+   - 針對未被 §4 / §6 基準涵蓋之 Antigravity 執行期動態權限提示（runtime permission prompts），在經授權且受限於 Allowed Scope 之單一操作下，一律選擇 **`Allow this time`**。
+   - 嚴禁擅自建立新的持久性 **`Always allow`** 授權。
+3. **New Persistent Permission Boundary**：
+   - 任何新增之持久性權限授權（new persistent permission grant）皆屬 K6-A 基準之變更，必須由 **USER 決策**，並於本基準 §4 / §6 進行同步更新。
+   - Executor 自身不得擅自建立或持久化該等授權。
+
+### 10.4 Toolchain Recovery Checklist (USER Procedure)
+
+> **注意**：以下步驟為供 **USER 本人**於環境重建、遷移或版本升級時執行之復原程序，**非**授予 Executor 進行環境列舉（environment enumeration）之授權。既有 §6 之 14 項 Environment Baseline Completion Checklist 保持不變。
+
+- [ ] 1. 確認 Windows 終端機之 Node 為 canonical `24.21.0`（依 `.nvmrc`）
+- [ ] 2. 確認 Windows 終端機之 Python 具備執行 `scripts/verify_all.py` 之環境
+- [ ] 3. 確認 WSL Ubuntu-24.04 之 `$HOME/.nvm/versions/node/v24.21.0/bin/node` 可執行且版本為 `v24.21.0`
+- [ ] 4. 確認 Git for Windows 正常運作且與 repo 換行符設定相容
+- [ ] 5. 確認 Antigravity 2.5.5 未觸發 IDE_UPDATE_TRIGGER（版本更新時依 §8 重新核驗）
+- [ ] 6. 依本基準 §6 執行 14 點環境基線核對

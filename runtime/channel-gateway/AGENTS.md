@@ -99,6 +99,18 @@ T6 階段正式採用 `busy_timeout = 5000`（5000ms），其基礎為 T1 Window
   - Windows 環境僅允許 `test-policy.json` 精確列出之平台能力限制跳過（Capability Skips）；清單項目代表許可（Permission）而非強制計數（Expected Count）。
   - 任何未註冊之 skip 或未完成之 TODO 一律視為 FAIL-CLOSED。
   - 新增任何 skip 許可必須經過有邊界之架構治理變更（Bounded Governance Change），執行者嚴禁自行擴充白名單。
+- **有界標準 WSL 驗證閘門規則 (Bounded Canonical WSL Gate Rule — ENV-01)**：
+  - **已知發行版 (Known Distro)**：`Ubuntu-24.04`。
+  - **已知 Node 二進位路徑 (Known Node Binary)**：`$HOME/.nvm/versions/node/v24.21.0/bin/node`。
+  - **驗證程序**：先以 `test -x` 驗證可執行，再比對 `--version` 精確等於 `v24.21.0`。
+  - **不符處置 (FAIL-CLOSED)**：任一條件不符立即 Fail-Closed，映射為穩定錯誤代碼：
+    - `exit 41` = `KNOWN_NODE_PATH_UNAVAILABLE`（已知 Node 路徑不存在或不可執行）
+    - `exit 42` = `KNOWN_NODE_VERSION_MISMATCH`（已知 Node 版本與 `v24.21.0` 不符）
+  - **生產驗證傳輸模式 (Production-Proven Transport)**：採 PowerShell here-string 導向 stdin，由 `wsl.exe -d Ubuntu-24.04 -- bash -c "tr -d '\r' | bash"` 接收執行。
+  - **掛載工作區表徵 (Mounted Working-Tree Representation)**：`/mnt/c/<Windows-path-to-repo>`。
+  - **工作區查證範圍**：閘門驗證的對象為當前掛載工作區（current mounted working tree），包含經授權之未提交候選變更（authorized uncommitted candidate changes）。
+  - **已知目標驗證邊界**：僅允許針對已知目標（known-target）進行存在性與版本驗證，**嚴禁** 進行任何探索搜尋（discovery/search is forbidden）；嚴禁搜尋發行版、nvm、Node、PATH、設定檔（profiles）或檔案系統位置。
+  - **非泛用宣告**：`bash -lc` 結合 nvm 函式 **NOT** 為 HH.AI_v2 標準 WSL 閘門適配器，亦不得將本規則泛化為通用之 Bash/Linux 主張。
 
 ## 10. 資料保留與清理邊界 (Retention & Cleanup)
 

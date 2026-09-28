@@ -154,6 +154,7 @@ ADR-0022 仍保留為 Channel Gateway 之歷史與總體架構權威（Historica
 11. **Node.js 內建 node:sqlite 未來升級監控點 (node:sqlite Future-Upgrade Watchpoint)**：
     - 持續監控 Node.js 內建 `node:sqlite` API 之演進、Node 24.x 穩定性與後續 LTS 版本升級動向。
     - 維持當前同步使用（synchronous usage）與未來潛在非同步整合（async integration）或 Worker Thread 隔離間的架構適配性與演進彈性。
+    - **標準 Node 升級同步監控點 (Canonical Node Upgrade Synchronization Watchpoint)**：當專案標準 Node（Canonical Node）版本變更時，Windows 專案 Node（Windows project Node）、WSL nvm 執行環境（WSL nvm execution environment）與 CI / `.nvmrc` 必須共同同步檢視，且所有相關之相容性與生命週期閘門（compatibility/lifecycle gates）必須重跑驗證。本批不引入新的標準 Node 版本，維持 `.nvmrc` 釘選為 `24.21.0`。
 12. **SQLite Schema v5 演進（TG-MVP-10 / M7 / M8）**：
     - `ingest_cursor` 表格升級至 schema version 5，新增 `updated_at_ms INTEGER NOT NULL CHECK(updated_at_ms >= 0)`。
     - Migration 5 在既有 v4 升級時自動建立 v4 備份，並以 migration-time timestamp 初始化既有 cursor 作為保守寬限期基準。
@@ -170,6 +171,16 @@ ADR-0022 仍保留為 Channel Gateway 之歷史與總體架構權威（Historica
       - PowerShell 執行原則：`npm.ps1` 受現行 ExecutionPolicy 限制封鎖；Windows 本機核准使用 `npm.cmd` 適配器，**未變更且未削弱** 系統 ExecutionPolicy。
       - 安裝檔雜湊／Authenticode：`NOT_REPO_VERIFIED`（因由 USER 手動安裝，安裝檔來源未經版本庫工具鏈捕獲）。
       - `.nvmrc` 維持權威：`24.21.0`。
+    - 2026-09-28 WSL 觀察基準追加（WSL Observed Baseline Append — ENV-01）：
+      - WSL Distro：`Ubuntu-24.04`
+      - nvm：`0.40.8`
+      - Node：`v24.21.0`
+      - npm：`11.19.0`
+      - python3：`3.12.3`
+      - git：`2.43.0`
+      - evidence_origin：`USER_PROVIDED`
+      - nvm/install provenance：`NOT_REPO_VERIFIED`
+      - 權威性界定：全環境僅 Node `24.21.0` 經由 `.nvmrc` 具備專案標準權威（canonical by `.nvmrc`），其餘環境數值僅屬可工作觀察基準（`OBSERVED BASELINE`）。
 
 14. **TG-MVP-11 狀態查詢與訊息認領查詢擴充 (TG-MVP-11 Message Claim Queries)**：
     - 新增 `getClaimedMessages(accountId, limit)` 支援 Local API 查詢目前已認領（CLAIMED）狀態訊息。
