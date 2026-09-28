@@ -1,17 +1,20 @@
 /**
  * runtime/channel-gateway/tests/archive-file-writer.test.js
  *
- * TG-MVP-14: ArchiveFileWriter unit tests covering:
- * - Hard-link publication (fs.link, no rename)
- * - Exclusive temp file creation
- * - Startup hard-link capability probe
- * - F-2 crash reconciliation (exact bytes & identity vs mismatch conflict)
- * - F-3 transient filesystem errors retry (EBUSY, EPERM, EACCES) & non-fatal temp unlink
- * - Non-transient errors zero retry
- * - Orphan temp cleanup (same archive_id pattern only)
+ * TG-MVP-14 R1: ArchiveFileWriter unit tests covering:
+ * - F3: Production fs facade defaults to real node:fs/promises
+ * - F3: Zero synchronous archive filesystem operations
+ * - F3: Async exclusive temp, write, sync, link, and cleanup
+ * - F3: Bounded transient retries (EBUSY, EPERM, EACCES) & non-transient zero retry
+ * - F4: Stepwise non-recursive descendant creation
+ * - F4: Ancestor junction rejection (Windows) / symlink rejection (POSIX)
+ * - F4: Final readback symlink/junction escape rejection
+ * - F4: Reconciliation target symlink/junction escape rejection
+ * - F4: Lexical ../ escape rejection & no raw path error leakage
+ * - F6: Hard-link capability probe no-overwrite, unchanged destination bytes
+ * - F6: Probe cleanup of all artifacts & cleanup failure fail-closed
+ * - F2: Positional repository readback and list
  * - DLP deterministic bytes
- * - Containment escape rejection & no raw path error leakage
- * - Internal readback (readArchiveEntry, listTopicEntries)
  */
 
 'use strict';
@@ -19,6 +22,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const fsPromises = require('node:fs/promises');
 const os = require('node:os');
 const path = require('node:path');
 
@@ -29,6 +33,11 @@ const {
   reconcileExistingFinalFile,
   cleanupOrphanTempFiles,
 } = require('../core/archive-file-writer');
+
+test('ArchiveFileWriter: production fs facade defaults to real node:fs/promises', () => {
+  const writer = new ArchiveFileWriter();
+  assert.strictEqual(writer.fsPromises, fsPromises);
+});
 
 test('generateArchiveMarkdownBytes: produces pure deterministic bytes with DLP applied and LF endings', () => {
   const coord = {
@@ -60,20 +69,15 @@ test('generateArchiveMarkdownBytes: produces pure deterministic bytes with DLP a
     replyBody,
   });
 
-  // Pure deterministic output
   assert.ok(bytes1.equals(bytes2));
 
   const text = bytes1.toString('utf-8');
-  // DLP applied to both question and reply
   assert.ok(!text.includes('1234567890:ABC'));
   assert.ok(!text.includes('9876543210:XYZ'));
-  // Contains required markers
   assert.ok(text.includes('archive_id: 42'));
   assert.ok(text.includes('record_kind: ORIGINAL'));
   assert.ok(text.includes('command_id: cmd-001'));
-  assert.ok(text.includes('status: authorized reply record'));
-  assert.ok(!text.includes('DELIVERED_TO_RECIPIENT'));
-  // LF endings and trailing newline
+  assert.ok(text.includes('delivery_status: authorized reply record'));
   assert.ok(text.endsWith('\n'));
   assert.ok(!text.includes('\r\n'));
 });
@@ -107,17 +111,16 @@ test('generateArchiveMarkdownBytes: AMENDMENT record contains amendment snapshot
 });
 
 test('probeHardLinkCapability: proves hard-link no-overwrite and cleanup', async () => {
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'hhai-probe-test-'));
+  const tmpDir = await fsPromises.mkdtemp(path.join(os.tmpdir(), 'hhai-probe-test-'));
   try {
     const res = await probeHardLinkCapability(tmpDir);
     assert.strictEqual(res.success, true);
     assert.strictEqual(res.supportsHardLink, true);
 
-    // Verify probe files cleaned up
-    const remaining = fs.readdirSync(tmpDir);
+    const remaining = await fsPromises.readdir(tmpDir);
     assert.strictEqual(remaining.length, 0);
   } finally {
-    fs.rmSync(tmpDir, { recursive: true, force: true });
+    await fsPromises.rm(tmpDir, { recursive: true, force: true });
   }
 });
 
@@ -133,8 +136,38 @@ test('probeHardLinkCapability: fails closed with ARCHIVE_LINK_CAPABILITY_UNAVAIL
   );
 });
 
-test('publishArchiveFile: successfully publishes via fs.link and reconciles existing final file', async () => {
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'hhai-writer-test-'));
+test('probeHardLinkCapability: fails closed if probe cleanup fails', async () => {
+  const tmpDir = await fsPromises.mkdtemp(path.join(os.tmpdir(), 'hhai-probe-cleanup-fail-'));
+  try {
+    // Injected facade where unlink fails
+    const failingFs = {
+      ...fsPromises,
+      stat: (p) => fsPromises.stat(p),
+      realpath: (p) => fsPromises.realpath(p),
+      open: (...args) => fsPromises.open(...args),
+      link: (...args) => fsPromises.link(...args),
+      readFile: (...args) => fsPromises.readFile(...args),
+      unlink: async () => {
+        throw new Error('EPERM: cannot unlink probe artifact');
+      },
+    };
+
+    await assert.rejects(
+      async () => {
+        await probeHardLinkCapability(tmpDir, failingFs);
+      },
+      (err) => {
+        assert.strictEqual(err.code, 'ARCHIVE_LINK_CAPABILITY_UNAVAILABLE');
+        return true;
+      }
+    );
+  } finally {
+    await fsPromises.rm(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test('publishArchiveFile: successfully publishes via fs.promises.link and reconciles existing final file', async () => {
+  const tmpDir = await fsPromises.mkdtemp(path.join(os.tmpdir(), 'hhai-writer-test-'));
   try {
     const writer = new ArchiveFileWriter({ archiveRoot: tmpDir });
 
@@ -166,11 +199,10 @@ test('publishArchiveFile: successfully publishes via fs.link and reconciles exis
     assert.strictEqual(res.action, 'PUBLISHED');
 
     const finalPath = path.join(tmpDir, coord.relative_path);
-    assert.ok(fs.existsSync(finalPath));
-    const publishedContent = fs.readFileSync(finalPath, 'utf-8');
+    const publishedContent = await fsPromises.readFile(finalPath, 'utf-8');
     assert.ok(publishedContent.includes('archive_id: 101'));
 
-    // 2. F-2 Crash reconciliation: attempt to publish again with same inputs -> RECONCILED without overwrite
+    // 2. F-2 Crash reconciliation: publish again with same inputs -> RECONCILED without overwrite
     const resReconcile = await writer.publishArchiveFile({
       coordination: coord,
       topic,
@@ -183,7 +215,7 @@ test('publishArchiveFile: successfully publishes via fs.link and reconciles exis
     // 3. F-2 Mismatch detection: if existing file has different content -> ARCHIVE_TARGET_CONFLICT
     const mismatchedCoord = {
       ...coord,
-      archive_id: 102, // Different archive_id targeting same path
+      archive_id: 102,
     };
     await assert.rejects(
       async () => {
@@ -200,16 +232,187 @@ test('publishArchiveFile: successfully publishes via fs.link and reconciles exis
       }
     );
 
-    // Existing final file must remain completely untouched
-    const afterConflictContent = fs.readFileSync(finalPath, 'utf-8');
+    const afterConflictContent = await fsPromises.readFile(finalPath, 'utf-8');
     assert.strictEqual(afterConflictContent, publishedContent);
   } finally {
-    fs.rmSync(tmpDir, { recursive: true, force: true });
+    await fsPromises.rm(tmpDir, { recursive: true, force: true });
   }
 });
 
+test('publishArchiveFile: stepwise non-recursive directory creation succeeds for nested safe paths', async () => {
+  const tmpDir = await fsPromises.mkdtemp(path.join(os.tmpdir(), 'hhai-nested-dir-'));
+  try {
+    const writer = new ArchiveFileWriter({ archiveRoot: tmpDir });
+    const coord = {
+      archive_id: 110,
+      account_id: 'alice',
+      topic_id: 1,
+      entry_sequence: 1,
+      record_kind: 'ORIGINAL',
+      platform_msg_id: 'tg:100:1',
+      command_id: 'cmd-110',
+      created_at: 1774780200,
+      relative_path: 'TG_alice/Sub_Dir/Q001_General/001_Test_20260329-103000.md',
+    };
+    const res = await writer.publishArchiveFile({
+      coordination: coord,
+      topic: { display_name: 'General' },
+      questionSnapshot: 'Hello',
+      replyBody: 'World',
+    });
+    assert.strictEqual(res.success, true);
+    assert.strictEqual(res.action, 'PUBLISHED');
+
+    const destDir = path.join(tmpDir, 'TG_alice', 'Sub_Dir', 'Q001_General');
+    const attachmentsDir = path.join(destDir, '附件');
+    assert.ok(fs.existsSync(destDir));
+    assert.ok(fs.existsSync(attachmentsDir));
+  } finally {
+    await fsPromises.rm(tmpDir, { recursive: true, force: true });
+  }
+});
+
+if (process.platform === 'win32') {
+  test('path containment: Windows junction ancestor directory rejection', async () => {
+    const tmpDir = await fsPromises.mkdtemp(path.join(os.tmpdir(), 'hhai-junc-test-'));
+    const outsideDir = await fsPromises.mkdtemp(path.join(os.tmpdir(), 'hhai-junc-outside-'));
+    try {
+      const junctionPath = path.join(tmpDir, 'TG_alice');
+      // Create Windows junction pointing outside archiveRoot
+      await fsPromises.symlink(outsideDir, junctionPath, 'junction');
+
+      const writer = new ArchiveFileWriter({ archiveRoot: tmpDir });
+      const coord = {
+        archive_id: 120,
+        account_id: 'alice',
+        topic_id: 1,
+        entry_sequence: 1,
+        record_kind: 'ORIGINAL',
+        platform_msg_id: 'tg:100:1',
+        command_id: 'cmd-120',
+        created_at: 1774780200,
+        relative_path: 'TG_alice/Q001_General/001_Escaped_20260329-103000.md',
+      };
+
+      await assert.rejects(
+        async () => {
+          await writer.publishArchiveFile({
+            coordination: coord,
+            topic: { display_name: 'General' },
+            questionSnapshot: 'Test',
+            replyBody: 'Answer',
+          });
+        },
+        (err) => {
+          assert.strictEqual(err.code, 'ARCHIVE_SYMLINK_FORBIDDEN');
+          assert.ok(!err.message.includes(tmpDir));
+          assert.ok(!err.message.includes(outsideDir));
+          return true;
+        }
+      );
+    } finally {
+      await fsPromises.rm(tmpDir, { recursive: true, force: true });
+      await fsPromises.rm(outsideDir, { recursive: true, force: true });
+    }
+  });
+
+  test('path containment: Windows junction readback and reconciliation escape rejection', async () => {
+    const tmpDir = await fsPromises.mkdtemp(path.join(os.tmpdir(), 'hhai-junc-read-'));
+    const outsideDir = await fsPromises.mkdtemp(path.join(os.tmpdir(), 'hhai-junc-read-out-'));
+    try {
+      // Put a real markdown file outside
+      const outsideFile = path.join(outsideDir, 'target.md');
+      await fsPromises.writeFile(outsideFile, '---\narchive_id: 999\nrecord_kind: ORIGINAL\n---\n# Outside\n', 'utf-8');
+
+      // Create junction inside archiveRoot
+      const dirInside = path.join(tmpDir, 'TG_alice', 'Q001_General');
+      await fsPromises.mkdir(dirInside, { recursive: true });
+      const linkInside = path.join(dirInside, '001_File_20260329-103000.md');
+      // Junction on Windows works for directories, for files we test junction on directory or symlink
+      const juncDir = path.join(tmpDir, 'TG_junc');
+      await fsPromises.symlink(outsideDir, juncDir, 'junction');
+
+      const writer = new ArchiveFileWriter({ archiveRoot: tmpDir });
+      // Readback through junction dir
+      const entry = await writer.readArchiveEntry({
+        archiveRoot: tmpDir,
+        relativePath: 'TG_junc/target.md',
+      });
+      // Must reject and return null
+      assert.strictEqual(entry, null);
+    } finally {
+      await fsPromises.rm(tmpDir, { recursive: true, force: true });
+      await fsPromises.rm(outsideDir, { recursive: true, force: true });
+    }
+  });
+} else {
+  test('path containment: POSIX directory symlink ancestor rejection on POSIX', async () => {
+    const tmpDir = await fsPromises.mkdtemp(path.join(os.tmpdir(), 'hhai-sym-test-'));
+    const outsideDir = await fsPromises.mkdtemp(path.join(os.tmpdir(), 'hhai-sym-outside-'));
+    try {
+      const symlinkPath = path.join(tmpDir, 'TG_alice');
+      await fsPromises.symlink(outsideDir, symlinkPath, 'dir');
+
+      const writer = new ArchiveFileWriter({ archiveRoot: tmpDir });
+      const coord = {
+        archive_id: 130,
+        account_id: 'alice',
+        topic_id: 1,
+        entry_sequence: 1,
+        record_kind: 'ORIGINAL',
+        platform_msg_id: 'tg:100:1',
+        command_id: 'cmd-130',
+        created_at: 1774780200,
+        relative_path: 'TG_alice/Q001_General/001_Escaped_20260329-103000.md',
+      };
+
+      await assert.rejects(
+        async () => {
+          await writer.publishArchiveFile({
+            coordination: coord,
+            topic: { display_name: 'General' },
+            questionSnapshot: 'Test',
+            replyBody: 'Answer',
+          });
+        },
+        (err) => {
+          assert.strictEqual(err.code, 'ARCHIVE_SYMLINK_FORBIDDEN');
+          assert.ok(!err.message.includes(tmpDir));
+          assert.ok(!err.message.includes(outsideDir));
+          return true;
+        }
+      );
+    } finally {
+      await fsPromises.rm(tmpDir, { recursive: true, force: true });
+      await fsPromises.rm(outsideDir, { recursive: true, force: true });
+    }
+  });
+
+  test('path containment: POSIX symlink readback and reconciliation escape rejection', async () => {
+    const tmpDir = await fsPromises.mkdtemp(path.join(os.tmpdir(), 'hhai-sym-read-'));
+    const outsideDir = await fsPromises.mkdtemp(path.join(os.tmpdir(), 'hhai-sym-read-out-'));
+    try {
+      const outsideFile = path.join(outsideDir, 'target.md');
+      await fsPromises.writeFile(outsideFile, '---\narchive_id: 999\nrecord_kind: ORIGINAL\n---\n# Outside\n', 'utf-8');
+
+      const symDir = path.join(tmpDir, 'TG_sym');
+      await fsPromises.symlink(outsideDir, symDir, 'dir');
+
+      const writer = new ArchiveFileWriter({ archiveRoot: tmpDir });
+      const entry = await writer.readArchiveEntry({
+        archiveRoot: tmpDir,
+        relativePath: 'TG_sym/target.md',
+      });
+      assert.strictEqual(entry, null);
+    } finally {
+      await fsPromises.rm(tmpDir, { recursive: true, force: true });
+      await fsPromises.rm(outsideDir, { recursive: true, force: true });
+    }
+  });
+}
+
 test('publishArchiveFile: containment escape rejection and no raw path in errors', async () => {
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'hhai-contain-test-'));
+  const tmpDir = await fsPromises.mkdtemp(path.join(os.tmpdir(), 'hhai-contain-test-'));
   try {
     const writer = new ArchiveFileWriter({ archiveRoot: tmpDir });
 
@@ -222,7 +425,7 @@ test('publishArchiveFile: containment escape rejection and no raw path in errors
       platform_msg_id: 'tg:100:1',
       command_id: 'cmd-201',
       created_at: 1774780200,
-      relative_path: '../outside/escaped.md', // Path traversal escape
+      relative_path: '../outside/escaped.md',
     };
 
     await assert.rejects(
@@ -236,53 +439,168 @@ test('publishArchiveFile: containment escape rejection and no raw path in errors
       },
       (err) => {
         assert.strictEqual(err.code, 'ARCHIVE_CONTAINMENT_VIOLATION');
-        // Must not leak the raw path in message
         assert.ok(!err.message.includes(tmpDir));
         return true;
       }
     );
   } finally {
-    fs.rmSync(tmpDir, { recursive: true, force: true });
+    await fsPromises.rm(tmpDir, { recursive: true, force: true });
   }
 });
 
-test('cleanupOrphanTempFiles: cleans up ONLY temp files belonging to the specified archive_id', () => {
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'hhai-temp-cleanup-'));
+test('publishArchiveRecord: transient retries on EBUSY/EPERM/EACCES and fails on exhausted', async () => {
+  const tmpDir = await fsPromises.mkdtemp(path.join(os.tmpdir(), 'hhai-transient-test-'));
+  try {
+    let attempts = 0;
+    const sleeps = [];
+
+    const mockFs = {
+      ...fsPromises,
+      stat: (p) => fsPromises.stat(p),
+      realpath: (p) => fsPromises.realpath(p),
+      lstat: (p) => fsPromises.lstat(p),
+      mkdir: (p) => fsPromises.mkdir(p),
+      open: async () => {
+        attempts++;
+        const err = new Error('EBUSY: resource busy or locked');
+        err.code = 'EBUSY';
+        throw err;
+      },
+    };
+
+    const writer = new ArchiveFileWriter({
+      archiveRoot: tmpDir,
+      fsPromises: mockFs,
+      sleep: async (ms) => {
+        sleeps.push(ms);
+      },
+      retryDelays: [100, 300, 900],
+    });
+
+    const coord = {
+      archive_id: 250,
+      account_id: 'alice',
+      topic_id: 1,
+      entry_sequence: 1,
+      record_kind: 'ORIGINAL',
+      platform_msg_id: 'tg:100:1',
+      command_id: 'cmd-250',
+      created_at: 1774780200,
+      relative_path: 'TG_alice/Q001_General/001_Transient_20260329-103000.md',
+    };
+
+    const result = await writer.publishArchiveRecord({
+      archiveRoot: tmpDir,
+      coordination: coord,
+      topic: { display_name: 'General' },
+      questionSnapshot: 'Hello',
+      replyBody: 'World',
+    });
+
+    assert.strictEqual(result.status, 'FAILED');
+    assert.strictEqual(result.reasonCode, 'ARCHIVE_FS_TRANSIENT_EXHAUSTED');
+    // Initial attempt + 3 retries = 4 attempts total
+    assert.strictEqual(attempts, 4);
+    assert.deepStrictEqual(sleeps, [100, 300, 900]);
+  } finally {
+    await fsPromises.rm(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test('publishArchiveRecord: non-transient error does not retry', async () => {
+  const tmpDir = await fsPromises.mkdtemp(path.join(os.tmpdir(), 'hhai-nontransient-test-'));
+  try {
+    let attempts = 0;
+    const sleeps = [];
+
+    const mockFs = {
+      ...fsPromises,
+      stat: (p) => fsPromises.stat(p),
+      realpath: (p) => fsPromises.realpath(p),
+      lstat: (p) => fsPromises.lstat(p),
+      mkdir: (p) => fsPromises.mkdir(p),
+      open: async () => {
+        attempts++;
+        const err = new Error('ENOSPC: no space left on device');
+        err.code = 'ENOSPC';
+        throw err;
+      },
+    };
+
+    const writer = new ArchiveFileWriter({
+      archiveRoot: tmpDir,
+      fsPromises: mockFs,
+      sleep: async (ms) => {
+        sleeps.push(ms);
+      },
+    });
+
+    const coord = {
+      archive_id: 251,
+      account_id: 'alice',
+      topic_id: 1,
+      entry_sequence: 1,
+      record_kind: 'ORIGINAL',
+      platform_msg_id: 'tg:100:1',
+      command_id: 'cmd-251',
+      created_at: 1774780200,
+      relative_path: 'TG_alice/Q001_General/001_NoSpace_20260329-103000.md',
+    };
+
+    const result = await writer.publishArchiveRecord({
+      archiveRoot: tmpDir,
+      coordination: coord,
+      topic: { display_name: 'General' },
+      questionSnapshot: 'Hello',
+      replyBody: 'World',
+    });
+
+    assert.strictEqual(result.status, 'FAILED');
+    assert.strictEqual(result.reasonCode, 'ENOSPC');
+    // Exactly 1 attempt, zero retries
+    assert.strictEqual(attempts, 1);
+    assert.strictEqual(sleeps.length, 0);
+  } finally {
+    await fsPromises.rm(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test('cleanupOrphanTempFiles: cleans up ONLY temp files belonging to the specified archive_id', async () => {
+  const tmpDir = await fsPromises.mkdtemp(path.join(os.tmpdir(), 'hhai-temp-cleanup-'));
   try {
     const targetDir = path.join(tmpDir, 'TG_alice', 'Q001_General');
-    fs.mkdirSync(targetDir, { recursive: true });
+    await fsPromises.mkdir(targetDir, { recursive: true });
 
-    // Create temp files for archive_id 50
     const temp1 = path.join(targetDir, '.50.' + 'a'.repeat(64) + '.tmp');
     const temp2 = path.join(targetDir, '.50.' + 'b'.repeat(64) + '.tmp');
-    // Create temp file for archive_id 99 (different archive)
     const tempOther = path.join(targetDir, '.99.' + 'c'.repeat(64) + '.tmp');
-    // Create a non-temp file
     const realFile = path.join(targetDir, '001_Hello_20260329-103000.md');
 
-    fs.writeFileSync(temp1, 'temp1');
-    fs.writeFileSync(temp2, 'temp2');
-    fs.writeFileSync(tempOther, 'other temp');
-    fs.writeFileSync(realFile, 'real file');
+    await fsPromises.writeFile(temp1, 'temp1');
+    await fsPromises.writeFile(temp2, 'temp2');
+    await fsPromises.writeFile(tempOther, 'other temp');
+    await fsPromises.writeFile(realFile, 'real file');
 
-    cleanupOrphanTempFiles(targetDir, 50);
+    await cleanupOrphanTempFiles(targetDir, 50);
 
-    // temp1 and temp2 should be removed
     assert.strictEqual(fs.existsSync(temp1), false);
     assert.strictEqual(fs.existsSync(temp2), false);
-    // tempOther and realFile MUST NOT be removed
     assert.strictEqual(fs.existsSync(tempOther), true);
     assert.strictEqual(fs.existsSync(realFile), true);
   } finally {
-    fs.rmSync(tmpDir, { recursive: true, force: true });
+    await fsPromises.rm(tmpDir, { recursive: true, force: true });
   }
 });
 
-test('readArchiveEntry and listTopicEntries: internal readback with isolation and DLP verification', async () => {
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'hhai-readback-test-'));
+test('readArchiveEntry and listTopicEntries: internal readback with positional repository calls', async () => {
+  const tmpDir = await fsPromises.mkdtemp(path.join(os.tmpdir(), 'hhai-readback-test-'));
   try {
+    let sequenceCallArgs = null;
+    let listCallArgs = null;
+
     const mockRepo = {
-      getArchiveCoordinationBySequence: ({ accountId, topicId, entrySequence }) => {
+      getArchiveCoordinationBySequence: (accountId, topicId, entrySequence) => {
+        sequenceCallArgs = { accountId, topicId, entrySequence };
         if (accountId === 'acc_1' && topicId === 1 && entrySequence === 1) {
           return {
             archive_id: 301,
@@ -295,7 +613,8 @@ test('readArchiveEntry and listTopicEntries: internal readback with isolation an
         }
         return null;
       },
-      listTopicArchiveCoordinations: ({ accountId, topicId }) => {
+      listTopicArchiveCoordinations: (accountId, topicId) => {
+        listCallArgs = { accountId, topicId };
         if (accountId === 'acc_1' && topicId === 1) {
           return [
             {
@@ -317,12 +636,11 @@ test('readArchiveEntry and listTopicEntries: internal readback with isolation an
       repository: mockRepo,
     });
 
-    // Write file to disk
     const relPath = 'TG_acc_1/Q001_Topic/001_Test_20260329-103000.md';
     const absPath = path.join(tmpDir, relPath);
-    fs.mkdirSync(path.dirname(absPath), { recursive: true });
+    await fsPromises.mkdir(path.dirname(absPath), { recursive: true });
     const content = '---\narchive_id: 301\nrecord_kind: ORIGINAL\nentry_sequence: 1\n---\n\n# Content here.\n';
-    fs.writeFileSync(absPath, content, 'utf-8');
+    await fsPromises.writeFile(absPath, content, 'utf-8');
 
     // 1. Read entry back
     const entry = await writer.readArchiveEntry({
@@ -333,6 +651,7 @@ test('readArchiveEntry and listTopicEntries: internal readback with isolation an
     assert.ok(entry);
     assert.strictEqual(entry.archive_id, 301);
     assert.strictEqual(entry.content, content);
+    assert.deepStrictEqual(sequenceCallArgs, { accountId: 'acc_1', topicId: 1, entrySequence: 1 });
 
     // 2. Read back for different account -> not found (isolation)
     const entryOtherAcc = await writer.readArchiveEntry({
@@ -349,7 +668,8 @@ test('readArchiveEntry and listTopicEntries: internal readback with isolation an
     });
     assert.strictEqual(list.length, 1);
     assert.strictEqual(list[0].archive_id, 301);
+    assert.deepStrictEqual(listCallArgs, { accountId: 'acc_1', topicId: 1 });
   } finally {
-    fs.rmSync(tmpDir, { recursive: true, force: true });
+    await fsPromises.rm(tmpDir, { recursive: true, force: true });
   }
 });

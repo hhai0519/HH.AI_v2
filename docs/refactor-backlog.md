@@ -5527,3 +5527,34 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 - **後續路由與任務狀態（Next Work Routing & Task Status）**：
   - main advancement = FORBIDDEN。
   - 本 TG-MVP-14 候選批次自身 AWAITING EXTERNAL MACRO AUDIT，執行者嚴禁自審。
+
+145. **TG-MVP-14 對話封存機制 R0 審核不通過（HOLD）與 R1 有界安全修復**（2026-09-28）
+- **R0 候選審核與發現事實（R0 Audit Outcome & Blocking Findings）**：
+  - R0 候選：`43a71ecb10abb41b589bfc95536e27064263bc30`（Parent: `e695c787c0276994db64780d997bbf75d9a12f0f`）。
+  - Candidate Actions Run 36396873627 attempt 1（verify: success, gateway-windows: success）。
+  - External Macro 審查判定：MACHINE = PASS, SCOPE = PASS, E24 = PASS, CANDIDATE_CI = PASS, IMPLEMENTATION = HOLD, SAFETY_LIVENESS = HOLD, DOC_GOVERNANCE_CONSISTENCY = HOLD, PROMOTION_ELIGIBILITY = HOLD, ROLLBACK = NO, R1_BOUNDED_REPAIR = REQUIRED, R0 PROMOTION = FORBIDDEN。
+  - F1～F6 阻擋性發現確認：
+    - F1：GatewayRuntimeOwner 於生產引導路徑未傳遞 canonical archiveRoot 給 ArchiveWorker。
+    - F2：ArchiveFileWriter 調用 SqliteStateRepository 誤用物件參數（`{ accountId, topicId, ... }`），與倉儲位置參數簽名不符。
+    - F3：ArchiveFileWriter 檔案系統發布路徑使用同步 fs 操作，損害 Node 事件循環活性，破壞停機時間上限。
+    - F4：路徑容納檢查未嚴格驗證符號連結與 Windows junction。
+    - F5：文件陳述（ADR-0025、EXEC-LOG）存在真值偏離（GET /v1/topics/list 應為 POST，E24 query 計數與規格說明不一致）。
+    - F6：硬連結能力探測未完整驗證並妥善清理探測產物。
+- **R1 有界修復落地（R1 Bounded Repair Implementation）**：
+  - F1：GatewayRuntimeOwner 明確傳遞 canonical archiveRoot 至 ArchiveWorker 建構路徑，不暴露 mutable getter，新增真實三者（Owner, Worker, Writer, Repo）整合測試。
+  - F2：修正 ArchiveFileWriter 呼叫端，採用倉儲原生位置參數（`getArchiveCoordinationBySequence(accountId, topicId, entrySequence)` 及 `listTopicArchiveCoordinations(accountId, topicId)`），不擴大倉儲 API。
+  - F3：ArchiveFileWriter 全面轉換為純非同步 `node:fs/promises`，同步檔案系統呼叫歸零（`F3_SYNC_ARCHIVE_FS_CALLS = 0`），保留有界重試機制（EBUSY/EPERM/EACCES，100/300/900ms）。
+  - B1：ArchiveWorker.start() 正確 await cleanupNonPendingTempFiles()，並安全包容清理異常，防止 unhandled rejection。
+  - 關閉防護（Closed Guard）：ArchiveWorker 提供 isClosed 斷言，ArchiveFileWriter 於每個 fs 步驟與重試計時前檢查 closed 狀態；若已關閉則終止後續 fs 操作與重試排程，且禁止 mutation SQLite。
+  - F4：建立階梯式非遞迴目錄建立與容納驗證（`ensureManagedDirectoryStepwise`），以 `lstat().isSymbolicLink()` 阻擋 symlink 與 Windows junction，以 `realpath` 驗證 canonicalRoot 容納；讀回與崩潰對帳路徑均嚴格落實 lstat + realpath 驗證。
+  - F6：硬連結探測全面改為 async，並於 cleanup 時全力清理所有探測產物，清理失敗即 Fail-Closed（`ARCHIVE_LINK_CAPABILITY_UNAVAILABLE`）。
+  - F5 文件與留痕更正：ADR-0025 與 channel-gateway AGENTS.md 修正為 `POST /v1/topics/list` 與 async fs.promises 規格；EXEC-LOG 追加 R1 記錄明確更正 R0 敘述偏離。
+- **非阻擋性殘留（Non-blocking Residual）**：
+  - 已派發至 OS libuv threadpool 的檔案系統非同步請求無法由 R1 合約強制中斷，因此 owner.stop() 安全返回後，未結之底層原生請求可能延遲 Node 行程自然退出。經 Closed Guard 保證關閉後零 DB mutation，安全邊界成立。本項記錄為 NONBLOCKING TG-MVP-14 R1 residual，不開展進程管理員或架構重寫。
+- **後續路由與任務狀態（Next Work Routing & Task Status）**：
+  - accepted checkpoint 嚴格保持 `e695c787c0276994db64780d997bbf75d9a12f0f`。
+  - NEXT_WORK = E-03。
+  - NEXT_SLICE = TG-MVP-14。
+  - TG-MVP-15 尚未開始（NOT STARTED）。
+  - main_advancement = FORBIDDEN。
+  - 本 TG-MVP-14 R1 候選批次自身 AWAITING EXTERNAL MACRO AUDIT，執行者嚴禁自審。

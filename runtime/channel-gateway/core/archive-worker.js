@@ -123,8 +123,10 @@ class ArchiveWorker {
       const pendingIds = this.#repository.getPendingArchiveIds
         ? new Set(this.#repository.getPendingArchiveIds())
         : new Set();
-      cleanupNonPendingTempFiles(this.#archiveRoot, pendingIds);
-    } catch (_) {}
+      await cleanupNonPendingTempFiles(this.#archiveRoot, pendingIds, this.#writer ? this.#writer.fsPromises : undefined);
+    } catch (_) {
+      // Contained as best-effort startup cleanup; never fails startup or leaves unhandled rejection
+    }
 
     this.#scheduleNext(0);
   }
@@ -225,6 +227,7 @@ class ArchiveWorker {
       outboxBody,
       questionSnapshot: item.content_snapshot,
       amendmentSnapshot: item.content_snapshot,
+      isClosed: () => this.#isClosed,
     });
 
     // CLOSED GUARD: If worker was closed during processing (e.g. stop timed out),

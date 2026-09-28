@@ -60,6 +60,8 @@ class GatewayRuntimeOwner {
   #injectedArchiveWorker;
   #archiveWorkerFactory;
   #injectedArchiveFileWriter;
+  #testFsPromises;
+  #archiveWorkerStopTimeoutMs;
 
   #backupRuntimeOwner;
   #outboxWorker;
@@ -138,6 +140,8 @@ class GatewayRuntimeOwner {
     this.#injectedArchiveWorker = options.archiveWorker || null;
     this.#archiveWorkerFactory = options.archiveWorkerFactory || null;
     this.#injectedArchiveFileWriter = options.archiveFileWriter || null;
+    this.#testFsPromises = options.fsPromises || null;
+    this.#archiveWorkerStopTimeoutMs = options.archiveWorkerStopTimeoutMs !== undefined ? options.archiveWorkerStopTimeoutMs : null;
 
     this.#backupRuntimeOwner = null;
     this.#outboxWorker = null;
@@ -440,7 +444,7 @@ class GatewayRuntimeOwner {
         }
 
         // Prove archiveRoot supports hard-link capability
-        await probeHardLinkCapability(this.#archiveRoot);
+        await probeHardLinkCapability(this.#archiveRoot, this.#testFsPromises || undefined);
 
         // Validate topic manager startup invariants
         const repo = this.#backupRuntimeOwner.repository;
@@ -455,16 +459,22 @@ class GatewayRuntimeOwner {
           fileWriter = new ArchiveFileWriter({
             archiveRoot: this.#archiveRoot,
             repository: repo,
+            fsPromises: this.#testFsPromises || undefined,
           });
         }
         this.#archiveFileWriter = fileWriter;
 
         const workerOpts = {
           repository: repo,
+          archiveRoot: this.#archiveRoot,
           fileWriter,
           logger: this.#logger,
           nowSec: this.#nowSec,
         };
+        if (this.#archiveWorkerStopTimeoutMs !== null) {
+          workerOpts.shutdownTimeoutMs = this.#archiveWorkerStopTimeoutMs;
+          workerOpts.stopTimeoutMs = this.#archiveWorkerStopTimeoutMs;
+        }
         if (this.#archiveWorkerFactory) {
           archiveWorker = this.#archiveWorkerFactory(workerOpts);
         } else {
@@ -472,7 +482,7 @@ class GatewayRuntimeOwner {
         }
       } else {
         if (this.#archiveRoot) {
-          await probeHardLinkCapability(this.#archiveRoot);
+          await probeHardLinkCapability(this.#archiveRoot, this.#testFsPromises || undefined);
           const repo = this.#backupRuntimeOwner.repository;
           if (repo && typeof repo.getAllAccountArchiveTopics === 'function') {
             TopicManager.validateStartup({

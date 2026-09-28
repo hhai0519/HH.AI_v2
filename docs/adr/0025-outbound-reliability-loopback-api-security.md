@@ -482,7 +482,7 @@ Local API 正式定義協定版本與標頭格式：
 >
 > **TG-MVP-14 實作與對話歸檔／主題管理 API 落地留痕**：
 > TG-MVP-14 擴充 Local API 端點與回覆安全契約：
-> 1. 新增主題端點：`GET /v1/topics/list`（分頁查詢當前帳號可用主題）與 `POST /v1/topics/create`（建立新主題或冪等取得既有主題）。
+> 1. 新增主題端點：`POST /v1/topics/list`（分頁查詢當前帳號可用主題）與 `POST /v1/topics/create`（建立新主題或冪等取得既有主題）。
 > 2. 回覆強制綁定主題：`POST /v1/reply` 必須包含 `topic_id`（安全正整數），非所屬帳號主題或不存在之 topic_id 回傳 404 `TOPIC_NOT_FOUND`，格式不符回傳 400 `INVALID_ARGUMENT`。
 > 3. 有界狀態查詢擴充：`/v1/status` 與 `/v1/takeover` 回傳 `archive_pending_count` 與 `archive_failed_records`（最多 50 筆，按 `created_at DESC` 排序），提供運作可觀察性，嚴格不暴露訊息本文、快照或機敏資訊。
 

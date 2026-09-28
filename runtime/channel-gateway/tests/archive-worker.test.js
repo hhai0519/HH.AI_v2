@@ -1,7 +1,10 @@
 /**
  * runtime/channel-gateway/tests/archive-worker.test.js
  *
- * TG-MVP-14: ArchiveWorker lifecycle and queue processing tests.
+ * TG-MVP-14 R1: ArchiveWorker lifecycle and queue processing tests.
+ * - B1: Startup cleanup Promise is awaited, rejection is contained, no unhandled rejection, normal start continues.
+ * - F3: Closed guard prevents post-close DB mutation, new fs steps, and retry timers.
+ * - FAILED remains no-auto-retry.
  */
 
 'use strict';
@@ -142,7 +145,6 @@ test('ArchiveWorker: failure -> FAILED with stable reason and snapshot retained'
 
     assert.strictEqual(failedMarked, true);
     assert.strictEqual(failedReason, 'ARCHIVE_TARGET_CONFLICT');
-    // Content snapshot is NOT cleared in DB (markArchiveCoordinationFailed preserves it)
 
     await worker.stop();
   } finally {
@@ -194,16 +196,16 @@ test('ArchiveWorker: stop does not drain entire queue and honors timeout with cl
       getArchiveTopicById: () => ({ display_name: 'General' }),
       getOutboxCommand: () => ({ body: 'Reply' }),
       markArchiveCoordinationCompleted: ({ archiveId }) => {
-        // If closed guard is active, this must not be reached
         attemptedMutationAfterClose = true;
       },
       markArchiveCoordinationFailed: () => {},
     };
 
+    let isClosedPassed = null;
     const mockWriter = {
       archiveRoot: tmpDir,
-      publishArchiveRecord: async () => {
-        // Hung / slow write that exceeds test stop timeout
+      publishArchiveRecord: async (params) => {
+        isClosedPassed = params.isClosed;
         await slowWritePromise;
         return { status: 'COMPLETED' };
       },
@@ -213,32 +215,115 @@ test('ArchiveWorker: stop does not drain entire queue and honors timeout with cl
       repository: mockRepo,
       fileWriter: mockWriter,
       archiveRoot: tmpDir,
-      stopTimeoutMs: 50, // Short injected stop timeout for test
+      stopTimeoutMs: 50,
     });
 
     await worker.start();
-    // Schedule item 601
     worker.notifyPending();
 
-    // Give it a tick to start processing item 1
     await new Promise((r) => setTimeout(r, 10));
 
-    // Call stop() while item 1 is hanging
     const stopPromise = worker.stop();
     await stopPromise;
 
-    // Stop must have completed within bounded time (< 200ms)
     assert.strictEqual(worker.isStopped, true);
-
-    // Second item (602) was NEVER claimed because stop halts queue drainage
     assert.strictEqual(claimedIndex, 1);
 
-    // Now resolve slow write after stop has closed
+    // Verify writer received isClosed predicate and it evaluates to true after stop timeout
+    assert.strictEqual(typeof isClosedPassed, 'function');
+    assert.strictEqual(isClosedPassed(), true);
+
     resolveSlowWrite();
     await new Promise((r) => setTimeout(r, 20));
 
-    // Closed guard prevents DB mutation after timeout
     assert.strictEqual(attemptedMutationAfterClose, false);
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test('B1: ArchiveWorker.start awaits async cleanup, contains rejection without unhandled rejection, and continues start', async () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'hhai-worker-cleanup-b1-'));
+  try {
+    let unhandledOccurred = false;
+    const unhandledListener = () => {
+      unhandledOccurred = true;
+    };
+    process.on('unhandledRejection', unhandledListener);
+
+    let cleanupStarted = false;
+    let cleanupCompleted = false;
+
+    // Injected mock writer whose fsPromises rejects during cleanup
+    const failingFs = {
+      readdir: async () => {
+        cleanupStarted = true;
+        // Delay slightly to prove start awaits cleanup
+        await new Promise((r) => setTimeout(r, 20));
+        cleanupCompleted = true;
+        const err = new Error('EPERM: disk permission denied during startup cleanup');
+        err.code = 'EPERM';
+        throw err;
+      },
+    };
+
+    const mockWriter = {
+      archiveRoot: tmpDir,
+      fsPromises: failingFs,
+      publishArchiveRecord: async () => ({ status: 'COMPLETED' }),
+    };
+
+    let itemProcessed = false;
+    const mockRepo = {
+      getPendingArchiveIds: () => new Set([701]),
+      claimNextPendingArchiveCoordination: () => {
+        if (!itemProcessed) {
+          itemProcessed = true;
+          return {
+            archive_id: 701,
+            account_id: 'alice',
+            topic_id: 1,
+            entry_sequence: 1,
+            record_kind: 'ORIGINAL',
+            command_id: 'cmd-701',
+            platform_msg_id: 'tg:100:1',
+            relative_path: 'TG_alice/Q001_General/001_Hello_20260329-103000.md',
+          };
+        }
+        return null;
+      },
+      getArchiveTopicById: () => ({ display_name: 'General' }),
+      getOutboxCommand: () => ({ body: 'Reply' }),
+      markArchiveCoordinationCompleted: () => {},
+      markArchiveCoordinationFailed: () => {},
+    };
+
+    const worker = new ArchiveWorker({
+      repository: mockRepo,
+      fileWriter: mockWriter,
+      archiveRoot: tmpDir,
+    });
+
+    // 1. start() must await cleanup and contain the rejection
+    await worker.start();
+
+    // Verify cleanup was awaited
+    assert.strictEqual(cleanupStarted, true, 'cleanup must have started');
+    assert.strictEqual(cleanupCompleted, true, 'cleanup must have finished before start returned');
+
+    // 2. Normal start continues despite cleanup failure
+    assert.strictEqual(worker.isRunning, true, 'worker must be running');
+
+    // 3. Process item to prove normal operation continues
+    await worker.triggerProcessing();
+    assert.strictEqual(itemProcessed, true, 'normal processing continues');
+
+    // 4. Verify no unhandled rejection occurred
+    await new Promise((r) => setTimeout(r, 20));
+    assert.strictEqual(unhandledOccurred, false, 'no unhandledRejection must occur');
+
+    process.removeListener('unhandledRejection', unhandledListener);
+    await worker.stop();
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }

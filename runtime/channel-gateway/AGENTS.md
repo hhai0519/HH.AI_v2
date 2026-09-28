@@ -212,9 +212,9 @@ T6 階段正式採用 `busy_timeout = 5000`（5000ms），其基礎為 T1 Window
   - 帳號目錄名稱採 `TG_<account_label>` 格式（上限 35 字元），全路徑長度受嚴格路徑預算限制（全路徑不得超過 240 字元）。
 - **回覆必要綁定主題與端點契約 (Reply Topic Binding & API Surface)**：
   - `POST /v1/reply` 強制要求 `topic_id`（正整數安全整數，fail-closed）；缺失或無效時拒絕請求並回傳 400 `INVALID_ARGUMENT`；非當前帳號所屬主題回傳 404 `TOPIC_NOT_FOUND`。
-  - 提供 `GET /v1/topics/list`（分頁查詢帳號主題）與 `POST /v1/topics/create`（冪等建立或取得主題）。
+  - 提供 `POST /v1/topics/list`（分頁查詢帳號主題）與 `POST /v1/topics/create`（冪等建立或取得主題）。
 - **硬連結原子發布與暫存目錄語意 (Hard-link Publication & Staging Semantics)**：
-  - 歸檔寫入採硬連結發布不變量（`fs.linkSync`）：先將完整 Markdown 檔案寫入同檔案系統之 `.staging/` 目錄，再以不可分割之硬連結掛載至目標主題目錄，最後移除暫存檔案；杜絕讀取端觀察到部分寫入或未完成檔案。
+  - 歸檔寫入採非同步硬連結發布不變量（`fs.promises.link`）：先將完整 Markdown 檔案寫入同目錄之暫存檔案，再以不可分割之硬連結掛載至目標主題目錄，最後非致命移除暫存檔案；杜絕讀取端觀察到部分寫入或未完成檔案。
   - 啟動階段（Step 4）執行 probeHardLinkCapability 探測 `archiveRoot` 之硬連結支援，不支援時立即 Fail-Closed 終止啟動。
 - **協調狀態與 DLP 快照復原語意 (Archive Coordination & Pre-DLP Snapshot Lifecycle)**：
   - `archive_coordination` 記錄歸檔作業生命週期（`PENDING` -> `COMPLETED` / `FAILED`）。

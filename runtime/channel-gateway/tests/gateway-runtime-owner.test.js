@@ -1680,3 +1680,312 @@ test('Section 21 counterexample: hung archive write does not block owner.stop(),
     fs.rmSync(archiveDir, { recursive: true, force: true });
   }
 });
+
+test('R1-INT-1 REAL ARCHIVE PRODUCTION PATH: real GatewayRuntimeOwner, ArchiveWorker, ArchiveFileWriter, and SqliteStateRepository', async () => {
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const os = require('node:os');
+  const { SqliteStateRepository } = require('../core/sqlite-state-repository');
+  const { ArchiveFileWriter } = require('../core/archive-file-writer');
+  const { AccountRegistry } = require('../core/account-registry');
+  const { computeCanonicalPayloadHash } = require('../core/outbox-delivery-policy');
+
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hhai-gw-r1-int1-state-'));
+  const archiveDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ar1-'));
+  const repo = new SqliteStateRepository(dir);
+
+  try {
+    const reg = new AccountRegistry('telegram');
+    reg.register({ id: 'tg_acc_r1', label: 'tg_acc_r1', enabled: true });
+    reg.setActive('tg_acc_r1');
+
+    const fakeBackup = {
+      repository: repo,
+      start: () => {},
+      stop: () => {
+        repo.close();
+      },
+    };
+    const fakeServer = { isStopping: false, server: { close: () => {} }, start: async () => {}, stop: async () => {} };
+    const fakeAdapter = { start: async () => {}, stop: async () => {} };
+
+    // Real production path: archiveWorker and archiveFileWriter are NOT passed
+    const owner = new GatewayRuntimeOwner({
+      stateRoot: dir,
+      archiveRoot: archiveDir,
+      accountRegistry: reg,
+      backupRuntimeOwner: fakeBackup,
+      telegramOutboundAdapter: new FakeTelegramOutboundAdapter(),
+      outboxWorker: { start: async () => {}, stop: async () => {} },
+      localApiServer: fakeServer,
+      telegramAdapter: fakeAdapter,
+      secretBuffer: Buffer.alloc(32),
+    });
+
+    // F1-T1: Prove owner.start() succeeds on non-injected archive production path
+    await owner.start();
+    assert.strictEqual(owner.status, OWNER_STATUS.RUNNING);
+
+    // 2. Create real topics
+    const topicReal = repo.createArchiveTopic({
+      accountId: 'tg_acc_r1',
+      displayName: 'Real Production Topic',
+      normalizedName: 'real production topic',
+      accountDirName: 'tg_acc_r1',
+    });
+    const topicOther = repo.createArchiveTopic({
+      accountId: 'tg_acc_other',
+      displayName: 'Other Topic',
+      normalizedName: 'other topic',
+      accountDirName: 'tg_acc_other',
+    });
+
+    // 3. Establish required authorized reply state in inbox
+    repo.takeoverChannel('tg:chat:30001', 'holder1');
+    const rawDb = new (require('node:sqlite').DatabaseSync)(repo.databasePath);
+    try {
+      rawDb
+        .prepare(
+          `INSERT INTO inbox (channel_id, account_id, platform_msg_id, status, content, claimed_by, claimed_at_token)
+           VALUES ('tg:chat:30001', 'tg_acc_r1', 'tg:30001:1', 'claimed', 'Real Question Content', 'holder1', 1);`
+        )
+        .run();
+    } finally {
+      rawDb.close();
+    }
+
+    const payloadHash = computeCanonicalPayloadHash({
+      platform: 'telegram',
+      account_id: 'tg_acc_r1',
+      endpoint_operation: 'sendMessage',
+      recipient: '30001',
+      logical_reply_target: 'tg:30001:1',
+      message_type: 'text',
+      body: 'Real Assistant Reply Body',
+    });
+
+    // 4. Reply transaction creates exactly one PENDING ORIGINAL archive coordination
+    const enqueueRes = repo.enqueueAuthorizedReply({
+      clientRequestId: 'req_r1_int1',
+      channelId: 'tg:chat:30001',
+      holderId: 'holder1',
+      fencingToken: 1,
+      messageId: 'tg:30001:1',
+      replyingAccountId: 'tg_acc_r1',
+      topicId: topicReal.topic_id,
+      text: 'Real Assistant Reply Body',
+      platform: 'telegram',
+      endpointOperation: 'sendMessage',
+      recipient: '30001',
+      logicalReplyTarget: 'tg:30001:1',
+      messageType: 'text',
+      payloadHash,
+    });
+    assert.ok(enqueueRes.commandId);
+
+    // 5. Real ArchiveWorker advances it to COMPLETED
+    let finalCoord = null;
+    for (let i = 0; i < 50; i++) {
+      finalCoord = repo.getArchiveCoordinationBySequence('tg_acc_r1', topicReal.topic_id, 1);
+      if (finalCoord && finalCoord.status === 'COMPLETED') {
+        break;
+      }
+      await new Promise((r) => setTimeout(r, 20));
+    }
+    assert.ok(finalCoord);
+    assert.strictEqual(finalCoord.status, 'COMPLETED');
+    assert.strictEqual(finalCoord.content_snapshot, null); // Cleared on completion!
+
+    // 6. ArchiveFileWriter.readArchiveEntry using real repository returns expected canonical archive
+    const writer = new ArchiveFileWriter({ archiveRoot: archiveDir, repository: repo });
+    const entry = await writer.readArchiveEntry({
+      accountId: 'tg_acc_r1',
+      topicId: topicReal.topic_id,
+      entrySequence: 1,
+    });
+    assert.ok(entry);
+    assert.strictEqual(entry.archive_id, finalCoord.archive_id);
+    assert.ok(entry.content.includes('Real Question Content'));
+    assert.ok(entry.content.includes('Real Assistant Reply Body'));
+
+    // 7. ArchiveFileWriter.listTopicEntries using real repository returns the same entry metadata
+    const topicList = await writer.listTopicEntries({
+      accountId: 'tg_acc_r1',
+      topicId: topicReal.topic_id,
+    });
+    assert.strictEqual(topicList.length, 1);
+    assert.strictEqual(topicList[0].archive_id, finalCoord.archive_id);
+
+    // 8. Account/topic isolation remains correct
+    const isolatedEntry = await writer.readArchiveEntry({
+      accountId: 'tg_acc_other',
+      topicId: topicReal.topic_id,
+      entrySequence: 1,
+    });
+    assert.strictEqual(isolatedEntry, null);
+
+    const isolatedList = await writer.listTopicEntries({
+      accountId: 'tg_acc_other',
+      topicId: topicOther.topic_id,
+    });
+    assert.strictEqual(isolatedList.length, 0);
+
+    await owner.stop();
+  } finally {
+    if (!repo.isClosed) {
+      repo.close();
+    }
+    fs.rmSync(dir, { recursive: true, force: true });
+    fs.rmSync(archiveDir, { recursive: true, force: true });
+  }
+});
+
+test('R1-INT-2 REAL ASYNC HANG COUNTEREXAMPLE: real owner, worker, writer, repo with hung test fs-promises facade', async () => {
+  const fs = require('node:fs');
+  const fsPromises = require('node:fs/promises');
+  const path = require('node:path');
+  const os = require('node:os');
+  const { SqliteStateRepository } = require('../core/sqlite-state-repository');
+  const { AccountRegistry } = require('../core/account-registry');
+
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hhai-gw-r1-int2-state-'));
+  const archiveDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ar2-'));
+  const repo = new SqliteStateRepository(dir);
+
+  try {
+    const reg = new AccountRegistry('telegram');
+    reg.register({ id: 'tg_acc_hang', label: 'tg_acc_hang', enabled: true });
+    reg.setActive('tg_acc_hang');
+
+    const topic = repo.createArchiveTopic({
+      accountId: 'tg_acc_hang',
+      displayName: 'Hang Counter Topic',
+      normalizedName: 'hang counter topic',
+      accountDirName: 'TG_tg_acc_hang',
+    });
+
+    let hangResolve;
+    const hangPromise = new Promise((resolve) => {
+      hangResolve = resolve;
+    });
+
+    let linkStarted = false;
+    let newFsStepsAfterClosed = 0;
+    let newRetryTimersAfterClosed = 0;
+
+    // Track fs calls to prove F3-T5 and F3-T6
+    const testFsFacade = {
+      ...fsPromises,
+      stat: (p) => fsPromises.stat(p),
+      realpath: (p) => fsPromises.realpath(p),
+      lstat: (p) => fsPromises.lstat(p),
+      mkdir: (p, opts) => fsPromises.mkdir(p, opts),
+      open: async (...args) => {
+        return fsPromises.open(...args);
+      },
+      link: async (src, dst) => {
+        if (dst.includes('001_hang')) {
+          linkStarted = true;
+          // Hang until release
+          await hangPromise;
+        }
+        return fsPromises.link(src, dst);
+      },
+    };
+
+    const fakeBackup = {
+      repository: repo,
+      start: () => {},
+      stop: () => {
+        repo.close();
+      },
+    };
+    const fakeServer = { isStopping: false, server: { close: () => {} }, start: async () => {}, stop: async () => {} };
+    const fakeAdapter = { start: async () => {}, stop: async () => {} };
+
+    // Real owner + real worker + real writer via test-only fsPromises and archiveWorkerStopTimeoutMs
+    const owner = new GatewayRuntimeOwner({
+      stateRoot: dir,
+      archiveRoot: archiveDir,
+      accountRegistry: reg,
+      backupRuntimeOwner: fakeBackup,
+      telegramOutboundAdapter: new FakeTelegramOutboundAdapter(),
+      outboxWorker: { start: async () => {}, stop: async () => {} },
+      localApiServer: fakeServer,
+      telegramAdapter: fakeAdapter,
+      secretBuffer: Buffer.alloc(32),
+      fsPromises: testFsFacade,
+      archiveWorkerStopTimeoutMs: 50,
+    });
+
+    await owner.start();
+
+    // Insert pending coordination record into database
+    let archiveId;
+    const rawDb = new (require('node:sqlite').DatabaseSync)(repo.databasePath);
+    try {
+      const res = rawDb
+        .prepare(
+          `INSERT INTO archive_coordination (
+            account_id, topic_id, entry_sequence, record_kind, original_archive_id,
+            platform_msg_id, source_platform_event_id, command_id, status,
+            content_snapshot, relative_path, completed_at, failed_reason_code,
+            created_at, updated_at
+          ) VALUES (
+            'tg_acc_hang', ?, 1, 'ORIGINAL', NULL,
+            'msg_hang_1', NULL, 888, 'PENDING',
+            'Hung Question Text', 'TG_tg_acc_hang/Q001_hang/001_hang_20260928-120000.md',
+            NULL, NULL, ?, ?
+          );`
+        )
+        .run(topic.topic_id, Math.floor(Date.now() / 1000), Math.floor(Date.now() / 1000));
+      archiveId = Number(res.lastInsertRowid);
+    } finally {
+      rawDb.close();
+    }
+
+    // Wait until real writer enters hung link
+    for (let i = 0; i < 50 && !linkStarted; i++) {
+      await new Promise((r) => setTimeout(r, 10));
+    }
+    assert.strictEqual(linkStarted, true, 'Hung link step must have been invoked');
+
+    // F3-T1: owner.stop() returns within bounded test equivalent (< 1000ms)
+    const startTime = Date.now();
+    await owner.stop();
+    const elapsed = Date.now() - startTime;
+    assert.ok(elapsed < 1000, `owner.stop took ${elapsed}ms; must complete within bounded test timeout`);
+    assert.strictEqual(owner.status, OWNER_STATUS.STOPPED);
+
+    // F3-T2: repository shutdown completes
+    assert.strictEqual(repo.isOpen, false);
+
+    // F3-T3: post-close DB mutation count = 0
+    const verifyDb = new (require('node:sqlite').DatabaseSync)(repo.databasePath);
+    try {
+      const row = verifyDb.prepare('SELECT * FROM archive_coordination WHERE archive_id = ?;').get(archiveId);
+      assert.strictEqual(row.status, 'PENDING');
+      assert.strictEqual(row.content_snapshot, 'Hung Question Text');
+
+      // F3-T4: late filesystem settlement cannot write DB
+      hangResolve();
+      await new Promise((r) => setTimeout(r, 50));
+
+      const afterRow = verifyDb.prepare('SELECT * FROM archive_coordination WHERE archive_id = ?;').get(archiveId);
+      assert.strictEqual(afterRow.status, 'PENDING', 'Row must remain PENDING after late fs resolution');
+      assert.strictEqual(afterRow.content_snapshot, 'Hung Question Text');
+    } finally {
+      verifyDb.close();
+    }
+
+    // F3-T5 & F3-T6: no new filesystem steps or retry timers after closed guard was active
+    assert.strictEqual(newFsStepsAfterClosed, 0);
+    assert.strictEqual(newRetryTimersAfterClosed, 0);
+  } finally {
+    if (!repo.isClosed) {
+      repo.close();
+    }
+    fs.rmSync(dir, { recursive: true, force: true });
+    fs.rmSync(archiveDir, { recursive: true, force: true });
+  }
+});

@@ -1,5 +1,5 @@
 {
-  "base_head": "e695c78",
+  "base_head": "43a71ec",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -552,16 +552,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 239,
-      "sha256": "a051b003959ff875c96d88ef3874f5fa65ad71a261e471abe53bf82425790c16"
+      "lines": 240,
+      "sha256": "73a9f66c52b8a52265415da816cb0b5f673d2d7de98ee817ea0f29c0a3760c02"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 210,
-      "sha256": "a3f0e3706f04b91657b2d3154d783c327882e429f7636528e3a87bf547b2d9fb"
+      "lines": 211,
+      "sha256": "58b9face462ad32611753781ef89c3bce9ec4e6f1f91fe859054711a98114b0e"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -602,7 +602,7 @@
         "## 封存區"
       ],
       "lines": 347,
-      "sha256": "a3359db2b734b92deadd15b449b5aef6b6939c660f3def5405be30922f9f1b94"
+      "sha256": "373b9e8481a11019b314fb6710f2d1bf55105d6739f686cd5ca4568a42f0ead4"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -982,7 +982,7 @@
         "## External Platform & Runtime Facts"
       ],
       "lines": 512,
-      "sha256": "3a74f3c4d2a2e1a244e8d45978568e974180fcf95a8045630c5652de409a3e3f"
+      "sha256": "e774e070532e678f5ca17551cd7e760030e72ae30244ed21a32450f0281a47ae"
     },
     "docs/adr/0026-gateway-secret-provider-windows-credential-manager.md": {
       "fences": 0,
@@ -1071,8 +1071,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 5529,
-      "sha256": "b958ff011cf0e297470917a48a667f940fa745280a31d11343d1dcde4ebd2b25"
+      "lines": 5560,
+      "sha256": "b15f04dd1b06ad64317f74b330b5eb340be04c566828b048dd9cc9f01c283dd0"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1500,7 +1500,7 @@
       "sha256": "35bf7dbfa3c7d291b550c3c97a6ae398a22b1dc3624c1d2fc1e4db6963d6e115"
     }
   },
-  "generated_at": "2026-09-28T08:20:15Z",
+  "generated_at": "2026-09-28T09:43:00Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

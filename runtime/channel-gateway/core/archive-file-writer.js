@@ -6,17 +6,21 @@
  *
  * Invariants:
  * - Publication primitive MUST NOT use rename(temp, final).
- * - Hard-link no-overwrite: fs.link(temp, final).
- * - Startup hard-link capability probe: probeHardLinkCapability(archiveRoot).
+ * - Hard-link no-overwrite: fs.promises.link(temp, final).
+ * - 100% async fs.promises; zero synchronous filesystem I/O.
+ * - Startup hard-link capability probe: probeHardLinkCapability(archiveRoot, fsPromises).
  * - Crash reconciliation (F-2): byte-for-byte exact equality + embedded archive_id + metadata match.
  * - Intra-attempt transient retry (F-3): EBUSY/EPERM/EACCES only, 100/300/900ms.
+ * - Closed guard: checked before each fs step and before retry sleep.
  * - Non-fatal temp unlink: leftover temp unlink failure never converts a published archive to FAILED.
+ * - Path containment (F-4): stepwise non-recursive directory creation, lstat/realpath symlink/junction rejection.
+ * - Readback / reconciliation containment: lstat/realpath symlink/junction rejection before reading final file.
  * - Zero raw absolute archive paths in errors or logging.
  */
 
 'use strict';
 
-const fs = require('node:fs');
+const fsPromisesDefault = require('node:fs/promises');
 const path = require('node:path');
 const crypto = require('node:crypto');
 const { sanitizeDlp } = require('../../../shared/dlpSanitizer');
@@ -42,35 +46,95 @@ function assertPathConfinement(targetPath, canonicalRoot) {
 }
 
 /**
- * Ensures directory is not a symlink/junction escaping canonicalRoot.
+ * Creates destination directory and all intermediate directories stepwise from canonicalRoot (F-4).
+ * For each component:
+ * - If exists: lstat, reject if isSymbolicLink(), realpath, assert containment.
+ * - If absent: mkdir non-recursively, lstat, reject if isSymbolicLink(), realpath, assert containment.
+ * Strictly no recursive:true!
  *
- * @param {string} dirPath
+ * @param {string} destDir
  * @param {string} canonicalRoot
+ * @param {object} fsPromises
  */
-function assertDirectorySafety(dirPath, canonicalRoot) {
-  assertPathConfinement(dirPath, canonicalRoot);
-  let lstat;
-  try {
-    lstat = fs.lstatSync(dirPath);
-  } catch (err) {
-    if (err && err.code === 'ENOENT') return;
-    throw new Error('ARCHIVE_FS_INSPECTION_FAILED');
+async function ensureManagedDirectoryStepwise(destDir, canonicalRoot, fsPromises) {
+  assertPathConfinement(destDir, canonicalRoot);
+  const rel = path.relative(canonicalRoot, destDir);
+  if (!rel || rel === '.') {
+    return;
   }
-  if (lstat.isSymbolicLink()) {
-    throw new Error('ARCHIVE_SYMLINK_FORBIDDEN: Symbolic links are forbidden in archive path (fail-closed)');
+  const parts = rel.split(/[\\/]+/).filter(Boolean);
+  let current = canonicalRoot;
+
+  for (const part of parts) {
+    current = path.join(current, part);
+    assertPathConfinement(current, canonicalRoot);
+
+    let stat = null;
+    try {
+      stat = await fsPromises.lstat(current);
+    } catch (err) {
+      if (err && err.code !== 'ENOENT') {
+        const wrapErr = new Error('ARCHIVE_FS_INSPECTION_FAILED');
+        wrapErr.code = 'ARCHIVE_FS_INSPECTION_FAILED';
+        throw wrapErr;
+      }
+    }
+
+    if (stat) {
+      if (stat.isSymbolicLink()) {
+        const err = new Error('ARCHIVE_SYMLINK_FORBIDDEN: Symbolic links are forbidden in archive path (fail-closed)');
+        err.code = 'ARCHIVE_SYMLINK_FORBIDDEN';
+        throw err;
+      }
+      if (!stat.isDirectory()) {
+        const err = new Error('ARCHIVE_DIR_CREATE_FAILED: Path component is not a directory');
+        err.code = 'ARCHIVE_DIR_CREATE_FAILED';
+        throw err;
+      }
+      const real = await fsPromises.realpath(current);
+      assertPathConfinement(real, canonicalRoot);
+    } else {
+      // Absent: mkdir exactly ONE level NON-RECURSIVELY
+      try {
+        await fsPromises.mkdir(current);
+      } catch (mkdirErr) {
+        if (mkdirErr && mkdirErr.code === 'EEXIST') {
+          // Concurrent creation: will be checked by postStat below
+        } else {
+          const err = new Error('ARCHIVE_DIR_CREATE_FAILED');
+          err.code = 'ARCHIVE_DIR_CREATE_FAILED';
+          throw err;
+        }
+      }
+
+      const postStat = await fsPromises.lstat(current);
+      if (postStat.isSymbolicLink()) {
+        const err = new Error('ARCHIVE_SYMLINK_FORBIDDEN: Symbolic links are forbidden in archive path (fail-closed)');
+        err.code = 'ARCHIVE_SYMLINK_FORBIDDEN';
+        throw err;
+      }
+      if (!postStat.isDirectory()) {
+        const err = new Error('ARCHIVE_DIR_CREATE_FAILED: Created component is not a directory');
+        err.code = 'ARCHIVE_DIR_CREATE_FAILED';
+        throw err;
+      }
+      const real = await fsPromises.realpath(current);
+      assertPathConfinement(real, canonicalRoot);
+    }
   }
-  const real = fs.realpathSync(dirPath);
-  assertPathConfinement(real, canonicalRoot);
 }
 
 /**
- * Generates deterministic expected Markdown bytes for an archive coordination record (Prompt §15).
+ * Generates deterministic expected Markdown bytes for an archive coordination record.
  * Pure deterministic function of persisted inputs.
  *
  * @param {object} params
  * @param {object} params.coordination
- * @param {object} params.topic
+ * @param {object} [params.topic]
  * @param {string} [params.outboxBody]
+ * @param {string} [params.replyBody]
+ * @param {string} [params.questionSnapshot]
+ * @param {string} [params.amendmentSnapshot]
  * @returns {Buffer}
  */
 function generateArchiveMarkdownBytes(params) {
@@ -151,17 +215,19 @@ function generateArchiveMarkdownBytes(params) {
 }
 
 /**
- * Hard-link capability probe (Prompt §17):
+ * Hard-link capability probe (F-6):
  * Mechanically proves inside archiveRoot:
  * A. Exclusive temp creation works (wx)
  * B. Hard-link source -> new destination works
- * C. Hard-link to existing destination fails with EEXIST / fail-without-replacement
+ * C. Hard-link to existing destination fails without replacement (EEXIST)
  * D. Existing destination bytes remain unchanged
- * E. Probe cleanup succeeds
+ * E. Cleanup of ALL owned probe artifacts succeeds
  *
  * @param {string} archiveRoot
+ * @param {object} [fsPromises=fsPromisesDefault]
+ * @returns {Promise<{ success: true, supportsHardLink: true }>}
  */
-function probeHardLinkCapability(archiveRoot) {
+async function probeHardLinkCapability(archiveRoot, fsPromises = fsPromisesDefault) {
   const makeErr = () => {
     const err = new Error('ARCHIVE_LINK_CAPABILITY_UNAVAILABLE');
     err.code = 'ARCHIVE_LINK_CAPABILITY_UNAVAILABLE';
@@ -174,11 +240,11 @@ function probeHardLinkCapability(archiveRoot) {
 
   let canonicalRoot;
   try {
-    const stat = fs.statSync(archiveRoot);
+    const stat = await fsPromises.stat(archiveRoot);
     if (!stat.isDirectory()) {
       throw makeErr();
     }
-    canonicalRoot = fs.realpathSync(archiveRoot);
+    canonicalRoot = await fsPromises.realpath(archiveRoot);
   } catch {
     throw makeErr();
   }
@@ -188,29 +254,38 @@ function probeHardLinkCapability(archiveRoot) {
   const probeLink = path.join(canonicalRoot, `.${probeUuid}.probe.link`);
   const testBytes = Buffer.from('ARCHIVE_PROBE_CAPABILITY_VALIDATION', 'utf8');
 
+  let probeTempCreated = false;
+  let probeLinkCreated = false;
+  let probeSuccess = false;
+
   try {
     // A. Exclusive temp creation works
-    const fd = fs.openSync(probeTemp, 'wx');
+    let handle;
     try {
-      fs.writeSync(fd, testBytes);
-      fs.fsyncSync(fd);
+      handle = await fsPromises.open(probeTemp, 'wx');
+      probeTempCreated = true;
+      await handle.writeFile(testBytes);
+      await handle.sync();
     } finally {
-      fs.closeSync(fd);
+      if (handle) {
+        await handle.close();
+      }
     }
 
     // B. Hard-link source -> new destination works
-    fs.linkSync(probeTemp, probeLink);
-    const linkBytes = fs.readFileSync(probeLink);
+    await fsPromises.link(probeTemp, probeLink);
+    probeLinkCreated = true;
+    const linkBytes = await fsPromises.readFile(probeLink);
     if (Buffer.compare(linkBytes, testBytes) !== 0) {
       throw new Error('Probe link content mismatch');
     }
 
-    // C. Attempting hard-link to already-existing destination fails with EEXIST
+    // C. Attempting hard-link to already-existing destination fails with EEXIST / without replacement
     let failedWithEexist = false;
     try {
-      fs.linkSync(probeTemp, probeLink);
+      await fsPromises.link(probeTemp, probeLink);
     } catch (linkErr) {
-      if (linkErr.code === 'EEXIST') {
+      if (linkErr && linkErr.code === 'EEXIST') {
         failedWithEexist = true;
       }
     }
@@ -219,34 +294,77 @@ function probeHardLinkCapability(archiveRoot) {
     }
 
     // D. Existing destination bytes remain unchanged
-    const afterBytes = fs.readFileSync(probeLink);
+    const afterBytes = await fsPromises.readFile(probeLink);
     if (Buffer.compare(afterBytes, testBytes) !== 0) {
       throw new Error('Destination bytes were corrupted on duplicate link attempt');
     }
 
-    return { success: true, supportsHardLink: true };
+    probeSuccess = true;
   } catch (err) {
     if (err && err.code === 'ARCHIVE_LINK_CAPABILITY_UNAVAILABLE') {
       throw err;
     }
     throw makeErr();
   } finally {
-    try { fs.unlinkSync(probeTemp); } catch (_) {}
-    try { fs.unlinkSync(probeLink); } catch (_) {}
+    // E. Attempt cleanup of ALL owned probe artifacts even if one fails
+    let cleanupFailed = false;
+    if (probeTempCreated) {
+      try {
+        await fsPromises.unlink(probeTemp);
+      } catch {
+        cleanupFailed = true;
+      }
+    }
+    if (probeLinkCreated) {
+      try {
+        await fsPromises.unlink(probeLink);
+      } catch {
+        cleanupFailed = true;
+      }
+    }
+    // If cleanup success cannot be established, startup fail closed
+    if (cleanupFailed) {
+      throw makeErr();
+    }
   }
+
+  if (!probeSuccess) {
+    throw makeErr();
+  }
+
+  return { success: true, supportsHardLink: true };
 }
 
 /**
- * Reconciles an existing final archive file against expected bytes and metadata (F-2).
+ * Reconciles an existing final archive file against expected bytes and metadata (F-2, F-4).
+ * Lexical relative checks alone are insufficient:
+ * 1. lstat final target
+ * 2. reject symbolic link/junction
+ * 3. realpath final target
+ * 4. verify canonical containment under archiveRoot
+ * 5. read bytes
  *
  * @param {string} finalPath
  * @param {Buffer} expectedBytes
  * @param {object} coordination
- * @returns {boolean} True if exact match, false if conflict
+ * @param {string} canonicalRoot
+ * @param {object} fsPromises
+ * @returns {Promise<boolean>} True if exact match, false if conflict
  */
-function reconcileExistingFinalFile(finalPath, expectedBytes, coordination) {
+async function reconcileExistingFinalFile(finalPath, expectedBytes, coordination, canonicalRoot, fsPromises) {
   try {
-    const existingBytes = fs.readFileSync(finalPath);
+    assertPathConfinement(finalPath, canonicalRoot);
+    const stat = await fsPromises.lstat(finalPath);
+    if (stat.isSymbolicLink()) {
+      return false;
+    }
+    if (!stat.isFile()) {
+      return false;
+    }
+    const real = await fsPromises.realpath(finalPath);
+    assertPathConfinement(real, canonicalRoot);
+
+    const existingBytes = await fsPromises.readFile(real);
     // 1. Byte-for-byte exact equality
     if (Buffer.compare(existingBytes, expectedBytes) !== 0) {
       return false;
@@ -286,17 +404,18 @@ function reconcileExistingFinalFile(finalPath, expectedBytes, coordination) {
  *
  * @param {string} destDir
  * @param {number} archiveId
+ * @param {object} [fsPromises=fsPromisesDefault]
  */
-function cleanupOrphanTempFiles(destDir, archiveId) {
+async function cleanupOrphanTempFiles(destDir, archiveId, fsPromises = fsPromisesDefault) {
   try {
-    const files = fs.readdirSync(destDir);
+    const files = await fsPromises.readdir(destDir);
     for (const file of files) {
       const match = CANONICAL_TEMP_REGEX.exec(file);
       if (match) {
         const fileArchiveId = parseInt(match[1], 10);
         if (fileArchiveId === archiveId) {
           try {
-            fs.unlinkSync(path.join(destDir, file));
+            await fsPromises.unlink(path.join(destDir, file));
           } catch (_) {}
         }
       }
@@ -305,34 +424,33 @@ function cleanupOrphanTempFiles(destDir, archiveId) {
 }
 
 /**
- * Cleans up canonical archive temp files whose archive_id is NOT currently PENDING (Prompt §20).
+ * Cleans up canonical archive temp files whose archive_id is NOT currently PENDING.
  *
  * @param {string} archiveRoot
  * @param {Set<number>} pendingArchiveIds
+ * @param {object} [fsPromises=fsPromisesDefault]
  */
-function cleanupNonPendingTempFiles(archiveRoot, pendingArchiveIds) {
-  try {
-    function walkDir(dir) {
-      const entries = fs.readdirSync(dir, { withFileTypes: true });
-      for (const entry of entries) {
-        const fullPath = path.join(dir, entry.name);
-        if (entry.isDirectory()) {
-          walkDir(fullPath);
-        } else if (entry.isFile()) {
-          const match = CANONICAL_TEMP_REGEX.exec(entry.name);
-          if (match) {
-            const archiveId = parseInt(match[1], 10);
-            if (!pendingArchiveIds.has(archiveId)) {
-              try {
-                fs.unlinkSync(fullPath);
-              } catch (_) {}
-            }
+async function cleanupNonPendingTempFiles(archiveRoot, pendingArchiveIds, fsPromises = fsPromisesDefault) {
+  async function walkDir(dir) {
+    const entries = await fsPromises.readdir(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      const fullPath = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        await walkDir(fullPath);
+      } else if (entry.isFile()) {
+        const match = CANONICAL_TEMP_REGEX.exec(entry.name);
+        if (match) {
+          const archiveId = parseInt(match[1], 10);
+          if (!pendingArchiveIds.has(archiveId)) {
+            try {
+              await fsPromises.unlink(fullPath);
+            } catch (_) {}
           }
         }
       }
     }
-    walkDir(archiveRoot);
-  } catch (_) {}
+  }
+  await walkDir(archiveRoot);
 }
 
 class ArchiveFileWriter {
@@ -340,6 +458,7 @@ class ArchiveFileWriter {
   #repository;
   #sleep;
   #retryDelays;
+  #fs;
 
   /**
    * @param {object} [options]
@@ -347,25 +466,48 @@ class ArchiveFileWriter {
    * @param {object} [options.repository]
    * @param {(ms: number) => Promise<void>} [options.sleep]
    * @param {number[]} [options.retryDelays]
+   * @param {object} [options.fsPromises]
    */
   constructor(options = {}) {
     this.#archiveRoot = options.archiveRoot || null;
     this.#repository = options.repository || null;
     this.#sleep = options.sleep || ((ms) => new Promise((resolve) => setTimeout(resolve, ms)));
     this.#retryDelays = options.retryDelays || DEFAULT_TRANSIENT_BACKOFF_MS;
+    this.#fs = options.fsPromises || fsPromisesDefault;
+  }
+
+  get fsPromises() {
+    return this.#fs;
   }
 
   /**
-   * Publishes one archive record using hard-link no-overwrite primitive (Prompt §16, §18, §19).
+   * Publishes one archive record using hard-link no-overwrite primitive (F-2, F-3, F-4).
    *
    * @param {object} params
    * @param {string} [params.archiveRoot]
    * @param {object} params.coordination
-   * @param {object} params.topic
+   * @param {object} [params.topic]
    * @param {string} [params.outboxBody]
-   * @returns {Promise<{ status: 'COMPLETED'|'FAILED', reasonCode?: string, reconciled?: boolean }>}
+   * @param {string} [params.replyBody]
+   * @param {string} [params.questionSnapshot]
+   * @param {string} [params.amendmentSnapshot]
+   * @param {() => boolean} [params.isClosed]
+   * @returns {Promise<{ status: 'COMPLETED'|'FAILED'|'CANCELLED_CLOSED', reasonCode?: string, reconciled?: boolean }>}
    */
-  async publishArchiveRecord({ archiveRoot, coordination, topic, outboxBody, questionSnapshot, amendmentSnapshot }) {
+  async publishArchiveRecord({
+    archiveRoot,
+    coordination,
+    topic,
+    outboxBody,
+    replyBody,
+    questionSnapshot,
+    amendmentSnapshot,
+    isClosed = () => false,
+  }) {
+    if (isClosed()) {
+      return { status: 'CANCELLED_CLOSED' };
+    }
+
     const root = archiveRoot || this.#archiveRoot;
     if (!root || typeof root !== 'string') {
       return { status: 'FAILED', reasonCode: 'ARCHIVE_ROOT_INVALID' };
@@ -376,13 +518,17 @@ class ArchiveFileWriter {
 
     let canonicalRoot;
     try {
-      const rootStat = fs.statSync(root);
+      const rootStat = await this.#fs.stat(root);
       if (!rootStat.isDirectory()) {
         return { status: 'FAILED', reasonCode: 'ARCHIVE_ROOT_NOT_DIRECTORY' };
       }
-      canonicalRoot = fs.realpathSync(root);
+      canonicalRoot = await this.#fs.realpath(root);
     } catch {
       return { status: 'FAILED', reasonCode: 'ARCHIVE_ROOT_UNAVAILABLE' };
+    }
+
+    if (isClosed()) {
+      return { status: 'CANCELLED_CLOSED' };
     }
 
     // Resolve target path and verify containment
@@ -393,18 +539,25 @@ class ArchiveFileWriter {
 
     const destDir = path.dirname(targetPath);
     try {
-      assertDirectorySafety(destDir, canonicalRoot);
+      await ensureManagedDirectoryStepwise(destDir, canonicalRoot, this.#fs);
     } catch (err) {
       return { status: 'FAILED', reasonCode: err.code || 'ARCHIVE_PATH_SAFETY_VIOLATION' };
     }
 
-    // Create managed destination directory and reserved 附件/ directory if not existing
+    if (isClosed()) {
+      return { status: 'CANCELLED_CLOSED' };
+    }
+
+    // Ensure reserved 附件/ directory
     try {
-      fs.mkdirSync(destDir, { recursive: true });
       const attachmentsDir = path.join(destDir, '附件');
-      fs.mkdirSync(attachmentsDir, { recursive: true });
-    } catch {
-      return { status: 'FAILED', reasonCode: 'ARCHIVE_DIR_CREATE_FAILED' };
+      await ensureManagedDirectoryStepwise(attachmentsDir, canonicalRoot, this.#fs);
+    } catch (err) {
+      return { status: 'FAILED', reasonCode: err.code || 'ARCHIVE_DIR_CREATE_FAILED' };
+    }
+
+    if (isClosed()) {
+      return { status: 'CANCELLED_CLOSED' };
     }
 
     // Generate expected deterministic bytes
@@ -413,24 +566,39 @@ class ArchiveFileWriter {
       expectedBytes = generateArchiveMarkdownBytes({
         coordination,
         topic,
-        outboxBody,
+        outboxBody: outboxBody !== undefined ? outboxBody : replyBody,
         questionSnapshot,
         amendmentSnapshot,
       });
-    } catch (err) {
+    } catch {
       return { status: 'FAILED', reasonCode: 'ARCHIVE_BYTES_GENERATION_FAILED' };
+    }
+
+    if (isClosed()) {
+      return { status: 'CANCELLED_CLOSED' };
     }
 
     // Check if target file already exists -> F-2 Crash reconciliation
     let targetExists = false;
     try {
-      targetExists = fs.existsSync(targetPath);
-    } catch (_) {}
+      const targetStat = await this.#fs.lstat(targetPath);
+      if (targetStat.isSymbolicLink()) {
+        return { status: 'FAILED', reasonCode: 'ARCHIVE_SYMLINK_FORBIDDEN' };
+      }
+      targetExists = true;
+    } catch (err) {
+      if (err && err.code !== 'ENOENT') {
+        return { status: 'FAILED', reasonCode: 'ARCHIVE_FS_INSPECTION_FAILED' };
+      }
+    }
 
     if (targetExists) {
-      const match = reconcileExistingFinalFile(targetPath, expectedBytes, coordination);
+      if (isClosed()) {
+        return { status: 'CANCELLED_CLOSED' };
+      }
+      const match = await reconcileExistingFinalFile(targetPath, expectedBytes, coordination, canonicalRoot, this.#fs);
       if (match) {
-        cleanupOrphanTempFiles(destDir, coordination.archive_id);
+        await cleanupOrphanTempFiles(destDir, coordination.archive_id, this.#fs);
         return { status: 'COMPLETED', reconciled: true };
       }
       return { status: 'FAILED', reasonCode: 'ARCHIVE_TARGET_CONFLICT' };
@@ -439,79 +607,111 @@ class ArchiveFileWriter {
     // Transient retry loop for hard-link publication (F-3)
     const delays = this.#retryDelays;
     for (let attempt = 0; attempt <= delays.length; attempt++) {
+      if (isClosed()) {
+        return { status: 'CANCELLED_CLOSED' };
+      }
+
       const randomHex = crypto.randomBytes(32).toString('hex').toLowerCase();
       const tempFilename = `.${coordination.archive_id}.${randomHex}.tmp`;
       const tempPath = path.join(destDir, tempFilename);
 
-      let fd = null;
+      let handle = null;
       let tempCreated = false;
 
       try {
         // Step 4: Create unique temp file with wx
-        fd = fs.openSync(tempPath, 'wx');
+        handle = await this.#fs.open(tempPath, 'wx');
         tempCreated = true;
 
+        if (isClosed()) {
+          await handle.close();
+          try { await this.#fs.unlink(tempPath); } catch (_) {}
+          return { status: 'CANCELLED_CLOSED' };
+        }
+
         // Step 5: Write complete bytes
-        fs.writeSync(fd, expectedBytes);
+        await handle.writeFile(expectedBytes);
+
+        if (isClosed()) {
+          await handle.close();
+          try { await this.#fs.unlink(tempPath); } catch (_) {}
+          return { status: 'CANCELLED_CLOSED' };
+        }
 
         // Step 6: File sync
-        fs.fsyncSync(fd);
+        await handle.sync();
 
         // Step 7: Close temp file
-        fs.closeSync(fd);
-        fd = null;
+        await handle.close();
+        handle = null;
+
+        if (isClosed()) {
+          try { await this.#fs.unlink(tempPath); } catch (_) {}
+          return { status: 'CANCELLED_CLOSED' };
+        }
 
         // Step 8: Hard-link publication
-        fs.linkSync(tempPath, targetPath);
+        await this.#fs.link(tempPath, targetPath);
 
         // Step 9 & 10: Link succeeded; temp unlink is NON-FATAL best-effort
         try {
-          fs.unlinkSync(tempPath);
+          await this.#fs.unlink(tempPath);
         } catch (_) {}
 
         // Step 11: Directory fsync best-effort
+        let dirHandle = null;
         try {
-          const dirFd = fs.openSync(destDir, 'r');
-          fs.fsyncSync(dirFd);
-          fs.closeSync(dirFd);
-        } catch (_) {}
+          dirHandle = await this.#fs.open(destDir, 'r');
+          await dirHandle.sync();
+        } catch (_) {
+        } finally {
+          if (dirHandle) {
+            try { await dirHandle.close(); } catch (_) {}
+          }
+        }
 
         // Cleanup any older orphan temp files for this archive_id
-        cleanupOrphanTempFiles(destDir, coordination.archive_id);
+        await cleanupOrphanTempFiles(destDir, coordination.archive_id, this.#fs);
 
         return { status: 'COMPLETED', reconciled: false };
       } catch (err) {
-        if (fd !== null) {
-          try { fs.closeSync(fd); } catch (_) {}
-          fd = null;
+        if (handle) {
+          try { await handle.close(); } catch (_) {}
+          handle = null;
         }
 
         // Clean up our own temp file on failure
         if (tempCreated) {
-          try { fs.unlinkSync(tempPath); } catch (_) {}
+          try { await this.#fs.unlink(tempPath); } catch (_) {}
         }
 
         // If target already exists (EEXIST), re-attempt F-2 crash reconciliation
-        if (err.code === 'EEXIST') {
-          const match = reconcileExistingFinalFile(targetPath, expectedBytes, coordination);
+        if (err && err.code === 'EEXIST') {
+          const match = await reconcileExistingFinalFile(targetPath, expectedBytes, coordination, canonicalRoot, this.#fs);
           if (match) {
-            cleanupOrphanTempFiles(destDir, coordination.archive_id);
+            await cleanupOrphanTempFiles(destDir, coordination.archive_id, this.#fs);
             return { status: 'COMPLETED', reconciled: true };
           }
           return { status: 'FAILED', reasonCode: 'ARCHIVE_TARGET_CONFLICT' };
         }
 
         // Check if transient error eligible for bounded retry
-        if (attempt < delays.length && TRANSIENT_FS_CODES.has(err.code)) {
+        if (attempt < delays.length && err && TRANSIENT_FS_CODES.has(err.code)) {
+          if (isClosed()) {
+            return { status: 'CANCELLED_CLOSED' };
+          }
           await this.#sleep(delays[attempt]);
+          if (isClosed()) {
+            return { status: 'CANCELLED_CLOSED' };
+          }
           continue;
         }
 
-        if (TRANSIENT_FS_CODES.has(err.code)) {
+        if (err && TRANSIENT_FS_CODES.has(err.code)) {
           return { status: 'FAILED', reasonCode: 'ARCHIVE_FS_TRANSIENT_EXHAUSTED' };
         }
 
-        return { status: 'FAILED', reasonCode: err.code || 'ARCHIVE_FS_ERROR' };
+        return { status: 'FAILED', reasonCode: (err && err.code) || 'ARCHIVE_FS_ERROR' };
       }
     }
 
@@ -543,8 +743,8 @@ class ArchiveFileWriter {
   }
 
   /**
-   * Internal readback for one canonical archive entry (Prompt §27).
-   * Supports { accountId, topicId, entrySequence } using repository or { archiveRoot, relativePath }.
+   * Internal readback for one canonical archive entry (F-2, F-4).
+   * Supports positional repository call: getArchiveCoordinationBySequence(accountId, topicId, entrySequence).
    *
    * @param {object} params
    * @param {string} [params.archiveRoot]
@@ -552,20 +752,20 @@ class ArchiveFileWriter {
    * @param {string} [params.accountId]
    * @param {number} [params.topicId]
    * @param {number} [params.entrySequence]
-   * @returns {{ metadata: object, body: string, raw: string, content: string, archive_id?: number } | null}
+   * @returns {Promise<{ metadata: object, body: string, raw: string, content: string, archive_id?: number } | null>}
    */
-  readArchiveEntry(params) {
+  async readArchiveEntry(params) {
     const archiveRoot = params.archiveRoot || this.#archiveRoot;
     if (!archiveRoot) {
       return null;
     }
     let relativePath = params.relativePath;
     if (!relativePath && this.#repository && params.accountId && params.topicId && params.entrySequence) {
-      const coord = this.#repository.getArchiveCoordinationBySequence({
-        accountId: params.accountId,
-        topicId: params.topicId,
-        entrySequence: params.entrySequence,
-      });
+      const coord = this.#repository.getArchiveCoordinationBySequence(
+        params.accountId,
+        params.topicId,
+        params.entrySequence
+      );
       if (!coord) {
         return null;
       }
@@ -575,15 +775,46 @@ class ArchiveFileWriter {
       return null;
     }
 
-    const canonicalRoot = fs.realpathSync(archiveRoot);
-    const fullPath = path.join(canonicalRoot, relativePath);
-    assertPathConfinement(fullPath, canonicalRoot);
-
-    if (!fs.existsSync(fullPath)) {
+    let canonicalRoot;
+    try {
+      canonicalRoot = await this.#fs.realpath(archiveRoot);
+    } catch {
       return null;
     }
 
-    const raw = fs.readFileSync(fullPath, 'utf8');
+    const fullPath = path.join(canonicalRoot, relativePath);
+    try {
+      assertPathConfinement(fullPath, canonicalRoot);
+    } catch {
+      return null;
+    }
+
+    let stat;
+    try {
+      stat = await this.#fs.lstat(fullPath);
+    } catch {
+      return null;
+    }
+
+    if (stat.isSymbolicLink() || !stat.isFile()) {
+      return null;
+    }
+
+    let real;
+    try {
+      real = await this.#fs.realpath(fullPath);
+      assertPathConfinement(real, canonicalRoot);
+    } catch {
+      return null;
+    }
+
+    let raw;
+    try {
+      raw = await this.#fs.readFile(real, 'utf8');
+    } catch {
+      return null;
+    }
+
     const metadata = {};
     let body = '';
 
@@ -608,23 +839,23 @@ class ArchiveFileWriter {
   }
 
   /**
-   * Internal list of entries for a topic in entry_sequence ASC order (Prompt §27).
-   * Supports { accountId, topicId } with repository or { archiveRoot, accountDirName, topicDirName }.
+   * Internal list of entries for a topic in entry_sequence ASC order (F-2, F-4).
+   * Supports positional repository call: listTopicArchiveCoordinations(accountId, topicId).
    */
-  listTopicEntries(params) {
+  async listTopicEntries(params) {
     const archiveRoot = params.archiveRoot || this.#archiveRoot;
     if (!archiveRoot) {
       return [];
     }
 
     if (this.#repository && params.accountId && params.topicId) {
-      const coords = this.#repository.listTopicArchiveCoordinations({
-        accountId: params.accountId,
-        topicId: params.topicId,
-      });
+      const coords = this.#repository.listTopicArchiveCoordinations(
+        params.accountId,
+        params.topicId
+      );
       const results = [];
       for (const coord of coords) {
-        const entry = this.readArchiveEntry({
+        const entry = await this.readArchiveEntry({
           archiveRoot,
           relativePath: coord.relative_path,
         });
@@ -635,21 +866,53 @@ class ArchiveFileWriter {
       return results;
     }
 
-    const canonicalRoot = fs.realpathSync(archiveRoot);
-    const topicPath = path.join(canonicalRoot, params.accountDirName, params.topicDirName);
-    assertPathConfinement(topicPath, canonicalRoot);
-
-    if (!fs.existsSync(topicPath)) {
+    let canonicalRoot;
+    try {
+      canonicalRoot = await this.#fs.realpath(archiveRoot);
+    } catch {
       return [];
     }
 
-    const files = fs.readdirSync(topicPath).filter((f) => f.endsWith('.md')).sort();
+    const topicPath = path.join(canonicalRoot, params.accountDirName, params.topicDirName);
+    try {
+      assertPathConfinement(topicPath, canonicalRoot);
+    } catch {
+      return [];
+    }
+
+    let stat;
+    try {
+      stat = await this.#fs.lstat(topicPath);
+    } catch {
+      return [];
+    }
+    if (stat.isSymbolicLink() || !stat.isDirectory()) {
+      return [];
+    }
+
+    let realTopicPath;
+    try {
+      realTopicPath = await this.#fs.realpath(topicPath);
+      assertPathConfinement(realTopicPath, canonicalRoot);
+    } catch {
+      return [];
+    }
+
+    let files;
+    try {
+      files = (await this.#fs.readdir(realTopicPath)).filter((f) => f.endsWith('.md')).sort();
+    } catch {
+      return [];
+    }
+
     const entries = [];
     for (const f of files) {
       const relPath = path.join(params.accountDirName, params.topicDirName, f);
       try {
-        const entry = this.readArchiveEntry({ archiveRoot: canonicalRoot, relativePath: relPath });
-        entries.push({ filename: f, relativePath: relPath, ...entry });
+        const entry = await this.readArchiveEntry({ archiveRoot: canonicalRoot, relativePath: relPath });
+        if (entry) {
+          entries.push({ filename: f, relativePath: relPath, ...entry });
+        }
       } catch (_) {}
     }
 
