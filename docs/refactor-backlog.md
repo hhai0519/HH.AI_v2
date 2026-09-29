@@ -2825,7 +2825,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 5.1 上一批狀態
 
-上次核對通過的 HEAD：d8833454604e0724336946d525cf4984e514b0db
+上次核對通過的 HEAD：00111d5ade6171d1e715499d4c879f13f10cfac6
 
 - `23af193`（執行者前置檢查 ＋ 回滾程序 ＋ `AUDIT-LOG.md` ＋ 四缺口修正）
   已於 2026-09-02 由審計官核對通過：6 檔異動（含 2 個新檔）、零夾帶、
@@ -5939,3 +5939,40 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - TG-MVP-14A 保持未結案（CANDIDATE / R2 PROCESS TRUTH REPAIR AWAITING EXTERNAL MACRO AUDIT）。
   - TG-MVP-15 保持 `NOT STARTED`（依賴 TG-MVP-14A accepted closure）。
   - main advancement 嚴格為 `FORBIDDEN`。
+
+154. **TG-MVP-14A Final Acceptance State Sync**（2026-09-29）
+- **A. TG-MVP-14A 最終交付與晉級事實（TG-MVP-14A Final Targets & Promotion Lineage）**：
+  - 最終晉級目標：`00111d5ade6171d1e715499d4c879f13f10cfac6`
+  - 演進譜系：
+    - 原始實作候選：`96b83cf505738bb682ee51f5ab37217f0ebf5eef`
+    - R1 治理與證據修復：`f8e9625da4a0825467c46989bff09cc6427672c5`
+    - R2 過程真相修復：`00111d5ade6171d1e715499d4c879f13f10cfac6`
+    - 完整譜系鏈：`d8833454604e0724336946d525cf4984e514b0db` -> `96b83cf505738bb682ee51f5ab37217f0ebf5eef` -> `f8e9625da4a0825467c46989bff09cc6427672c5` -> `00111d5ade6171d1e715499d4c879f13f10cfac6`
+  - 晉級關係：自前期 main（`d8833454604e0724336946d525cf4984e514b0db`）推進 3 commits，ahead 3 / behind 0，純 fast-forward，無 SHA transformation，累積異動 exact 10 檔。
+- **B. 外部審計官最終裁決與生命週期結案（External Macro Final Verdict & Lifecycle Closure）**：
+  - 最終裁決：`PASS / ACCEPT ALL`
+  - TG-MVP-14A 生命週期：`ACCEPTED / CLOSED`
+  - 晉級判定：`PROMOTION = PASS`
+  - 主分支健康：`POST_MAIN = PASS`
+  - 回滾判定：`ROLLBACK = NO`
+  - 新重大阻擋發現：`NEW MATERIAL BLOCKING FINDING = NONE`
+  - 實作範疇涵蓋：舊持有者 TAKEN_OVER 世代覆蓋語意（409 TAKEN_OVER）、輪詢與心跳映射、回覆語意保持不變、N2 資訊最小化（排除 currentHolder）、CANARY 13 契約遷移、P1-P6 / H1-H6 / E1 確定性控制、E17 C1/C2 負向控制、E24 依賴閉包、R1 治理與證據修復、R2 過程真相修復。D-R2 Option A 實作部分完整達成。
+- **C. 候選與主分支 CI 機器證據（Candidate & Post-Main CI Evidence）**：
+  - 候選提交驗證：Run `36545356981`（head_sha: `00111d5ade6171d1e715499d4c879f13f10cfac6`，head_branch: `batch/tg-mvp-14a-d7-r2-process-truth-repair-260929`，attempt: 1，event: push，overall: completed / success，verify: success，gateway-windows: success；raw verify: 541 passed + 13 passed + ALL 5 GATES PASSED；raw gateway: 2206ms / 237ms，49 passed；Stage 2 分類為 QUALIFYING #8/10）。
+  - 主分支驗證：Run `36547276469`（head_sha: `00111d5ade6171d1e715499d4c879f13f10cfac6`，head_branch: `main`，attempt: 1，event: push，status: completed，conclusion: success，verify: completed / success，gateway-windows: completed / success；raw verify: 541 passed + 13 passed + ALL 5 GATES PASSED；raw gateway: 3492ms / 225ms，49 passed；Stage 2 分類為 QUALIFYING #9/10）。
+- **D. B-100 R-01 觀察狀態與殘留處置（B-100 R-01 Observing & Residuals Status）**：
+  - B-100 R-01 狀態：`REPAIRED_OBSERVING`
+  - Stage 1：`COMPLETE`
+  - Stage 2 計數進度：`9 / 10`（#8 = Run 36545356981, #9 = Run 36547276469；嚴禁預先計入 #10，由 External Macro 獨立判定）。
+  - Layer 3：`USER_DECISION_PENDING`
+  - R-01 不得標記 CLOSED。
+  - B-100 R-C 殘留：F3（transcript 存取）、F4（brain scratch 存取）、F5（commit message 偏差）保持 `OPEN / RESIDUAL / NONBLOCKING`。
+  - `CONTEXT_LOSS_RECOVERY_RULE`：保持 `REGISTERED / PENDING FUTURE GOVERNANCE IMPLEMENTATION / NONBLOCKING`（待辦 TODO，不修改現行規則檔）。
+- **E. 專案基準推進與後續路由（Project Baseline Advancement & Subsequent Routing）**：
+  - accepted checkpoint 推進至：`00111d5ade6171d1e715499d4c879f13f10cfac6`
+  - NEXT_WORK：`E-03`
+  - NEXT_SLICE：`TG-MVP-15`
+  - TG-MVP-14A：`ACCEPTED / CLOSED`
+  - TG-MVP-15：`NOT STARTED / NEXT SLICE`（TG-MVP-14、B-100 R-01 Stage 1、TG-MVP-14A 前置相依已全數 SATISFIED；Stage 2 9/10 為 NONBLOCKING；TG-MVP-15 保持 real Telegram Test Bot E2E 驗收主體，本狀態同步批次內嚴禁啟動）。
+  - main advancement 嚴格為 `FORBIDDEN`。
+  - 本 state-sync 候選自身仍處於 `AWAITING EXTERNAL MACRO AUDIT`。
