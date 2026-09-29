@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "TG-MVP-14A-FINAL-ACCEPTANCE-STATE-SYNC",
-  "base_oid": "00111d5ade6171d1e715499d4c879f13f10cfac6",
+  "task_id": "B-100-R-01-FINAL-CLOSURE-STATE-SYNC",
+  "base_oid": "14c0ba3e1fc6bc30c7ed35f37dc2ff759cfba935",
   "plan": {
     "allowed_paths": [
       "docs/AUDIT-LOG.md",

@@ -2825,7 +2825,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 5.1 上一批狀態
 
-上次核對通過的 HEAD：00111d5ade6171d1e715499d4c879f13f10cfac6
+上次核對通過的 HEAD：14c0ba3e1fc6bc30c7ed35f37dc2ff759cfba935
 
 - `23af193`（執行者前置檢查 ＋ 回滾程序 ＋ `AUDIT-LOG.md` ＋ 四缺口修正）
   已於 2026-09-02 由審計官核對通過：6 檔異動（含 2 個新檔）、零夾帶、
@@ -5976,3 +5976,57 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - TG-MVP-15：`NOT STARTED / NEXT SLICE`（TG-MVP-14、B-100 R-01 Stage 1、TG-MVP-14A 前置相依已全數 SATISFIED；Stage 2 9/10 為 NONBLOCKING；TG-MVP-15 保持 real Telegram Test Bot E2E 驗收主體，本狀態同步批次內嚴禁啟動）。
   - main advancement 嚴格為 `FORBIDDEN`。
   - 本 state-sync 候選自身仍處於 `AWAITING EXTERNAL MACRO AUDIT`。
+155. **B-100 R-01 Final Closure / Stage 2 10-of-10 State Sync**（2026-09-29）
+- **A. accepted checkpoint 推進（Accepted Checkpoint Advancement）**：
+  - accepted checkpoint 推進至：`14c0ba3e1fc6bc30c7ed35f37dc2ff759cfba935`
+  - 推進依據：該 exact SHA 已完成 TG-MVP-14A 最終驗收狀態同步、External Macro 候選審計、same-SHA 主分支晉級（ahead 1 / behind 0，純 fast-forward，無 SHA transformation）、post-main exact-SHA 驗證（Run 36551295645 verify 與 gateway-windows 雙綠燈，CHECK 26 reached，541 passed，13 passed，ALL 5 GATES PASSED，Windows 49 passed），且為目前最新 main。
+  - 邊界約束：本 closure state-sync 候選提交自身尚未建立，嚴禁預先寫入為 checkpoint。未來 carry-forward 規則：本候選提交後續取得 External Macro PASS、same-SHA 晉級與 post-main 驗證後，由下一個自然生產狀態批次（預期為 TG-MVP-15）於提交 backlog 更新前，將 accepted checkpoint 推進至該晉級之 closure-sync SHA。不得為了追逐自身未來 SHA 建立遞歸 closure-sync。
+- **B. Stage 2 最終達成與十次合格序列（Stage 2 Final Closure & Authoritative Sequence）**：
+  - Stage 2 目標：連續 10 次合格 gateway-windows 工作流嘗試（qualifying workflow attempts）零 R-01 復發。
+  - 判定單位：WORKFLOW ATTEMPT（非 timing-marker count）。
+  - 權威十次連續合格序列（Authoritative Sequence #1–#10）：
+    - #1 = Run 36516585500（post-main exact-SHA, 4046ms / 243ms, QUALIFYING）
+    - #2 = Run 36519993890（candidate, 2307ms / 215ms, QUALIFYING）
+    - #3 = Run 36521179999（post-main exact-SHA, 2221ms / 219ms, QUALIFYING）
+    - #4 = Run 36523169081（candidate, 2315ms / 228ms, QUALIFYING）
+    - #5 = Run 36524644818（post-main exact-SHA, 2227ms / 206ms, QUALIFYING）
+    - #6 = Run 36539646963（candidate, 2259ms / 219ms, QUALIFYING）
+    - #7 = Run 36543184650（candidate, 2389ms / 247ms, QUALIFYING）
+    - #8 = Run 36545356981（candidate, 2206ms / 237ms, QUALIFYING）
+    - #9 = Run 36547276469（post-main exact-SHA, 3492ms / 225ms, QUALIFYING）
+    - #10 = Run 36550021844（candidate, 2780ms / 169ms, QUALIFYING）
+  - 達成結論：全數十次皆為 QUALIFYING，全序列零確認 R-01 復發（zero confirmed R-01 recurrence in sequence）。
+  - Stage 2 狀態：`COMPLETE / 10 OF 10 / TARGET ACHIEVED`。嚴禁合成復發總數，保留既有確定復發歷史紀錄。
+- **C. #10 機器證據與主分支健康佐證（#10 Machine Evidence & Post-Main Health Evidence）**：
+  - #10 候選機器證據：Run `36550021844`（attempt 1, event=push, head_branch=`batch/tg-mvp-14a-final-acceptance-sync-260929`, head_sha=`14c0ba3e1fc6bc30c7ed35f37dc2ff759cfba935`, overall: completed / success, verify: completed / success, gateway-windows: completed / success；raw verify: 541 passed + 13 passed + ALL 5 GATES PASSED；raw gateway: KNOWN_FOLDER_BRIDGE_MS=2780, KNOWN_FOLDER_BRIDGE_MS=169, 49 passed；comparability: PASS, R-01 recurrence: NONE；分類：`QUALIFYING #10/10`）。
+  - 主分支健康佐證：Run `36551295645`（attempt 1, event=push, head_branch=`main`, head_sha=`14c0ba3e1fc6bc30c7ed35f37dc2ff759cfba935`, status: completed, conclusion: success, verify: completed / success, gateway-windows: completed / success；raw verify: 541 passed + 13 passed + ALL 5 GATES PASSED；raw gateway: KNOWN_FOLDER_BRIDGE_MS=312, KNOWN_FOLDER_BRIDGE_MS=285, 49 passed；分類：`POST-MAIN PROMOTION HEALTH EVIDENCE`，明確標註 `NOT #11`；Stage 2 計數永久保持 `10 / 10`，不建立超額計數，不重啟計數）。
+- **D. 使用者 Layer 3 最終裁決與決策邊界（USER Layer 3 Final Decision & Evidence Boundary）**：
+  - 使用者裁決：USER DECIDED 2026-09-29，Layer 3 = `OPTION A`。
+  - 決策精確語意：保留真實 live Known-Folder bridge 於 Windows 必要閘門（`gateway-windows`）內；現有閘門拓撲保持不變；不移至非必要診斷 job；不新增自動重試（no automatic retry）；不削弱 Windows 必要閘門；不移除確定性注入測試；不修改逾時（維持 60000ms）；不修改遙測；不變更工作流拓撲。
+  - 拓撲狀態：`USER_DECIDED / OPTION_A / SATISFIED_BY_CURRENT_TOPOLOGY / COMPLETE`。
+  - 變更邊界：無需任何 runtime mutation、test mutation、workflow mutation、retry-policy mutation、timeout mutation 或 telemetry mutation。
+  - 決策支持依據與脈絡邊界：
+    - A. 專案客觀機器證據：Layer 1 修復已接受、Layer 2 遙測已接受、Stage 2 達成 10/10、十次序列零 R-01 復發、live bridge 於 required gateway-windows 持續穩定成功、現有 60000ms 逾時維持不變、結案無自動重試需求。
+    - B. 使用者提供之 Claude 第二意見脈絡：Claude 報告修復後觀察之冷啟動最大值為 4475ms（約佔 60000ms 逾時之 7.5%）。重要證據邊界宣告：該 4475ms 數值為 `USER-PROVIDED CLAUDE SECOND-OPINION CONTEXT`，嚴禁標記為 External Macro raw 日誌量測、嚴禁標記為 Stage 2 #10 marker、嚴禁標記為 Executor 獨立量測，亦不取代權威 Stage 2 序列；僅作為支持使用者選定 Option A 之決策脈絡留痕。
+- **E. B-100 R-01 最終生命週期結案（B-100 R-01 Final Lifecycle Closure）**：
+  - 最終判定：`B-100 R-01 = CLOSED / ACCEPTED`。
+  - Stage 1：`COMPLETE`。
+  - Stage 2：`COMPLETE / 10 OF 10`。
+  - Layer 3：`USER_DECIDED / OPTION_A / SATISFIED_BY_CURRENT_TOPOLOGY / COMPLETE`。
+  - 回滾判定：`ROLLBACK = NO`。
+  - 新重大阻擋發現：`NEW MATERIAL BLOCKING FINDING = NONE`。
+  - 切片間強制修復閘門：`SATISFIED / CLOSED`。
+  - TG-MVP-15 R-01 相依：`SATISFIED`。
+  - R-01 狀態不再為 `REPAIRED_OBSERVING` 或 `USER_DECISION_PENDING`。
+- **F. 橫向殘留傘狀任務與 R-C 邊界（Cross-Cutting Umbrella & R-C Boundary）**：
+  - B-100 傘狀任務：保持 `OPEN / TODO`（因尚有 R-A、R-B、R-C、R-D、R-E、R-F、R-G、R-H、R-I、R-J、R-K 等獨立子項，僅子項 R-01 結案，不關閉未相關子項）。
+  - B-100 R-C 殘留：F3（transcript 讀取）、F4（brain scratch 存取）、F5（commit message 偏差）保持 `OPEN / RESIDUAL / NONBLOCKING`。
+  - `CONTEXT_LOSS_RECOVERY_RULE`：保持 `REGISTERED / PENDING FUTURE GOVERNANCE IMPLEMENTATION / NONBLOCKING`（待辦 TODO；語意：授權恢復僅限 `.git/<task-id>-prompt.txt`，缺失即 S1 CONTEXT_LOSS 停機，禁 transcript/brain 回退，暫存與 CI 輪詢輔助僅限 `.git/`；本批嚴禁修改任何現行規則檔案）。
+- **G. 專案後續路由與相依結案（Subsequent Project Routing & Dependency Closure）**：
+  - NEXT_WORK：`E-03`
+  - NEXT_SLICE：`TG-MVP-15`
+  - 前置相依：TG-MVP-14（SATISFIED / CLOSED）、B-100 R-01（SATISFIED / CLOSED）、TG-MVP-14A（SATISFIED / CLOSED）。
+  - TG-MVP-15 狀態：`NOT STARTED / NEXT SLICE / UNBLOCKED`。
+  - TG-MVP-15 保持 real Telegram Test Bot E2E 驗收主體（涵蓋先前延後之 recipient-visible 驗收義務），本狀態同步批次內嚴禁執行、嚴禁存取 Telegram 憑證、嚴禁收集 recipient-visible 證據。
+  - main advancement 嚴格為 `FORBIDDEN`。
+  - 本 closure state-sync 候選提交自身處於 `AWAITING EXTERNAL MACRO AUDIT`。
