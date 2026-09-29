@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "B-100-R-01-PRODUCTION-R1",
-  "base_oid": "604c6fe9beb27ec234045da89b171b1e1fedc9b5",
+  "task_id": "B-100-R-01-STAGE1-STATE-SYNC",
+  "base_oid": "de98c8a3b15fd3db8846891c4b582696293575ce",
   "plan": {
     "allowed_paths": [
       "docs/AUDIT-LOG.md",
@@ -21,7 +21,7 @@
       "docs/refactor-backlog.md"
     ],
     "max_plan_revisions": 3,
-    "revision_count": 1,
+    "revision_count": 0,
     "plan_origin": "EXTERNAL_MACRO_PROMPT"
   },
   "actual": {
@@ -44,7 +44,7 @@
         "path": "scripts/execution_record.py",
         "sha256": "9a2a7fd3e8dcdcaa742807c62f800a0e178f391f12c202a6b761b8e5b4c9eea2"
       },
-      "description": "Deterministic Git diff replay against declared plan allowed/required scope"
+      "description": "deterministic plan-vs-actual replay against declared allowed/required scope"
     }
   ],
   "report_claims": [

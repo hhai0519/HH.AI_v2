@@ -2825,7 +2825,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 5.1 上一批狀態
 
-上次核對通過的 HEAD：cde8402dcbdcc017021a5b414b0b9c17566cc74a
+上次核對通過的 HEAD：de98c8a3b15fd3db8846891c4b582696293575ce
 
 - `23af193`（執行者前置檢查 ＋ 回滾程序 ＋ `AUDIT-LOG.md` ＋ 四缺口修正）
   已於 2026-09-02 由審計官核對通過：6 檔異動（含 2 個新檔）、零夾帶、
@@ -3034,6 +3034,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 - `32be9c9`（TG-MVP-13 Final Acceptance State Sync Acceptance & Same-SHA Main Promotion）已於 2026-09-27 由 External Macro Auditor 核對通過：Target = `32be9c92435dba042b13a9d8364edd8e80bba86b`；Parent = `09235c6c8e6b43ec04b885824e2e13b8df9d3bc3`；Final Acceptance State Sync: External Macro PASS；Candidate Run 36317629817（attempt 1: verify success, gateway-windows failed, 分類為 EXISTING B-100 R-01 Windows Known-Folder resolution bridge timeout, 非 TG-MVP-13 回歸且非 state-sync 文件回歸；attempt 2: 使用者依 D-R4 觸發同 SHA 重跑成功）；Same-SHA main promotion 成功推進；Post-main exact-SHA Actions Run 36318956532（attempt 1: verify success, gateway-windows success）；TG-MVP-13 正式 ACCEPTED / CLOSED ON MAIN；accepted checkpoint 推進至 `32be9c92435dba042b13a9d8364edd8e80bba86b`（ENV-01 候選批次自身尚未經 External Macro 審查，不得自稱為 checkpoint）；NEXT_WORK 保持 E-03，NEXT_SLICE 為 ENV-01。
 - `1183790`（TG-MVP-14 Conversation Archive & Topics Final Acceptance & Same-SHA Main Promotion）已於 2026-09-28 由 External Macro Auditor 核對通過：Target = `1183790f41fe22b8825090692e86109ccfc97fc7`；Parent = `d25f2a838bb38a33b085ca732f990b620ad13a15`；Candidate Actions Run 36412100888（attempt 1 verify success, gateway-windows failed 分類為 EXISTING B-100 R-01 recurrence；attempt 2 經使用者依 D-R4 觸發同 SHA 重跑驗證成功）；External Macro 審查判定 PASS / ACCEPT ALL（MACHINE=PASS, IMPLEMENTATION=PASS, SAFETY_LIVENESS=PASS, DOC_TRUTH_R2_SCOPE=PASS, GOVERNANCE=PASS, NEW MATERIAL BLOCKING FINDING=NONE, ROLLBACK=NO, R3_REQUIRED=NO）；Claude 結構審查意見已吸收（B1/B2 resolved，依 USER 指示不需再次送 Claude）；Same-SHA main promotion 成功推進（previous main: e695c787c0276994db64780d997bbf75d9a12f0f -> promoted main: 1183790f41fe22b8825090692e86109ccfc97fc7，SHA transformation: NONE）；Post-main exact-SHA Actions Run 36419863588 attempt 1 驗證成功（verify success, gateway-windows success）；TG-MVP-14 正式 ACCEPTED / CLOSED ON MAIN；accepted checkpoint 推進至 `1183790f41fe22b8825090692e86109ccfc97fc7`（本 state-sync candidate 自身尚未經 External Macro 審查，不得自稱為 checkpoint）；NEXT_WORK 保持 E-03，NEXT_SLICE 為 B-100 R-01。
 - `cde8402`（TG-MVP-14 Final State-Sync / Acceptance & Same-SHA Main Promotion）已於 2026-09-28 由 External Macro Auditor 核對通過：Target = `cde8402dcbdcc017021a5b414b0b9c17566cc74a`；Parent = `1183790f41fe22b8825090692e86109ccfc97fc7`；Candidate Actions Run 36422534790 attempt 1 驗證成功（verify: success, gateway-windows: success）；Same-SHA main promotion 成功推進（previous main: 1183790f41fe22b8825090692e86109ccfc97fc7 -> promoted main: cde8402dcbdcc017021a5b414b0b9c17566cc74a，SHA transformation: NONE）；Post-main exact-SHA Actions Run 36423811275 attempt 1 驗證成功（verify: success, gateway-windows: success）；TG-MVP-14 保持結案（ACCEPTED / CLOSED ON MAIN）；accepted checkpoint 推進至 `cde8402dcbdcc017021a5b414b0b9c17566cc74a`；B-100 R-01 生產修復候選批次自身仍 AWAITING EXTERNAL MACRO AUDIT，執行者嚴禁自審宣稱結案、自填 R-01 PASS 或擅推 main。
+- `de98c8a`（B-100 R-01 Windows Known-Folder Bridge Repair Final Acceptance & Same-SHA Main Promotion）已於 2026-09-29 由 External Macro Auditor 核對通過：Target = `de98c8a3b15fd3db8846891c4b582696293575ce`；Parent = `604c6fe9beb27ec234045da89b171b1e1fedc9b5`；Candidate Actions Run 36450306456 attempt 1 驗證成功（verify: completed/success, gateway-windows: completed/success，live markers: 2215ms / 263ms）；External Macro R1 審查判定 PASS / ACCEPT ALL（MACHINE=PASS, SCOPE_6=PASS, R01-R1-F1=RESOLVED, R01-R1-F2=RESOLVED, B1-A=PASS, B2=PASS, N1=PASS, DOC/GOVERNANCE=PASS, CANDIDATE CI=PASS, NEW MATERIAL BLOCKING FINDING=NONE, ROLLBACK=NO, PROMOTION ELIGIBILITY=PASS）；Same-SHA main promotion 成功推進（previous main: cde8402dcbdcc017021a5b414b0b9c17566cc74a -> promoted main: de98c8a3b15fd3db8846891c4b582696293575ce，SHA transformation: NONE）；Post-main exact-SHA Actions Run 36516585500 attempt 1 驗證成功（event=push, head_branch=main, head_sha=de98c8a3b15fd3db8846891c4b582696293575ce, verify: completed/success, gateway-windows: completed/success，live markers: 4046ms / 243ms）；External Macro 判定滿足 Q1-Q6，Stage 2 連續計數起算為 1 / 10；Stage 1 正式標記 COMPLETE；Stage 2 保持 OPEN / OBSERVING（1 / 10）；Layer 3 維持 USER_DECISION_PENDING（選項 A/B/C 待使用者裁決，執行者嚴禁代選）；TG-MVP-15 解除 Stage-1 阻擋（TG-MVP-14 = SATISFIED, B-100 R-01 Stage-1 gate = SATISFIED / REPAIRED_OBSERVING）；accepted checkpoint 推進至 `de98c8a3b15fd3db8846891c4b582696293575ce`（注意：本 state-sync candidate 自身尚未經 External Macro 審查，不得自稱為 checkpoint）；NEXT_WORK 保持 E-03，NEXT_SLICE 推進至 TG-MVP-15（TG-MVP-15 保持 NOT STARTED，嚴禁在本狀態同步批次內啟動）。
 
 ### 5.2 待辦
 
@@ -5706,3 +5707,52 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - C2 反事實分類與邊界（B1-A Lexical Token Boundary）：候選 C2 反事實證明僅為語彙層級反事實（LEXICAL_TOKEN_COUNTERFACTUAL ONLY），透過註解注入 `ConvertTo-Json` 證明生產原始碼守衛之語彙禁止 token 偵測機制生效；該偵測器採 `scriptText.includes(token)` 與 `scriptText.includes('|')` 語彙比對，未解析 PowerShell AST/語法，亦不構成語意層級之 cmdlet 依賴偵測；先前宣稱證明機械有效之 cmdlet 依賴屬過度宣稱（OVERCLAIM），在此顯式更替。
   - 通過基準維護：accepted checkpoint 嚴格保持 `cde8402dcbdcc017021a5b414b0b9c17566cc74a`，不得推進 checkpoint 至 `604c6fe9...` 或未經授權之 R1 候選 SHA。
   - 任務狀態維持：B-100 R-01 狀態維持 `CANDIDATE_AWAITING_EXTERNAL_MACRO`，Layer 3 維持 `USER_DECISION_PENDING`。
+
+149. **B-100 R-01 Stage 1 Final State-Sync / Post-Promotion Truth Sync**（2026-09-29）
+- **A. §5.1 accepted checkpoint 推進（Accepted Checkpoint Advancement）**：
+  - accepted checkpoint 推進至 `de98c8a3b15fd3db8846891c4b582696293575ce`。
+  - External Macro 已獨立確認 R1 審查通過、same-SHA main promotion 通過、以及 post-main exact-SHA 工作流通過。
+- **B. R-01 完整生命週期與事實（R-01 Exact Lifecycle Truth）**：
+  - R1 final repair SHA = `de98c8a3b15fd3db8846891c4b582696293575ce`。
+  - R1 parent = `604c6fe9beb27ec234045da89b171b1e1fedc9b5`。
+  - candidate Run = 36450306456 attempt 1 success（verify: completed/success, gateway-windows: completed/success，live markers: 2215ms / 263ms，49 passed，ALL 5 GATES PASSED）。
+  - same-SHA promotion = PASS（previous main: `cde8402dcbdcc017021a5b414b0b9c17566cc74a` -> promoted main: `de98c8a3b15fd3db8846891c4b582696293575ce`，SHA transformation: NONE）。
+  - post-main Run = 36516585500 attempt 1 success（event=push, head_branch=main, head_sha=`de98c8a3b15fd3db8846891c4b582696293575ce`, verify: completed/success, gateway-windows: completed/success，CHECK 26 reached, 541 passed, 13 passed, ALL 5 GATES PASSED, live markers: 4046ms / 243ms, 49 passed）。
+  - R1 External Macro verdict = PASS / ACCEPT ALL（MACHINE=PASS, SCOPE_6=PASS, R01-R1-F1=RESOLVED, R01-R1-F2=RESOLVED, B1-A=PASS, B2=PASS, N1=PASS, DOC/GOVERNANCE=PASS, CANDIDATE CI=PASS, NEW MATERIAL BLOCKING FINDING=NONE, ROLLBACK=NO, PROMOTION ELIGIBILITY=PASS）。
+  - R01-R1-F1 = RESOLVED。
+  - R01-R1-F2 = RESOLVED。
+  - ROLLBACK = NO。
+  - NEW MATERIAL BLOCKING FINDING = NONE。
+- **C. 當前生命週期狀態（Current Lifecycle State）**：
+  - B-100 R-01 = `REPAIRED_OBSERVING`。
+  - Stage 1 = `COMPLETE`（Layer 1 實作完成、Layer 2 實作完成、repair SHA 以 SAME SHA 晉級至 main、candidate exact-SHA CI 綠燈、post-main exact-SHA CI 綠燈、Layer 3 維持 USER_DECISION_PENDING）。
+  - Stage 2 = `1 / 10`。
+  - Layer 3 = `USER_DECISION_PENDING`（選項 A/B/C 待使用者裁決，執行者嚴禁代選）。
+  - TG-MVP-15 Stage-1 相依閘門 = `SATISFIED / REPAIRED_OBSERVING`（TG-MVP-15 解除 Stage-1 阻擋，但本批次保持 NOT STARTED / NEXT SLICE，嚴禁在本狀態同步批次內啟動）。
+- **D. Stage 2 權威計數與規則（Stage 2 Authoritative Count & Counting Rules）**：
+  - External Macro 擁有單一權威計數。
+  - 目標：連續 10 次合格之 gateway-windows 工作流嘗試且零 R-01 復發。
+  - Pre-promotion 候選工作流 Run 36450306456 不計入 Stage 2。
+  - Post-main 工作流 Run 36516585500 經 External Macro 判定符合凍結 Q1-Q6，計為 #1/10。
+  - 其內部之兩次 live 調用（4046ms / 243ms）為單次工作流嘗試內之兩次 live bridge 標記，計為一個工作流嘗試，非兩次嘗試。
+  - 後續純 state-sync 候選工作流僅在滿足下列條件時方得計為獨立合格嘗試：
+    1. 其 commit 為已晉級 de98c8a3... 之子孫節點（descendant）；
+    2. R-01 執行期實作、live-bridge 測試選取、gateway-windows 拓撲、逾時語意與遙測語意均實質未變；
+    3. gateway-windows 實際到達並執行 live Known-Folder bridge；
+    4. External Macro 具備足夠證據分類是否復發；
+    5. 未發生任何 R-01 復發。
+  - 該後續 state-sync SHA 若晉級至 main，其獨立之 post-main 工作流若個別滿足相同要件，亦為獨立嘗試。
+  - 使用者手動觸發之 same-SHA 重跑（D-R4 rerun）若符合條件可計為獨立嘗試。
+  - 執行者嚴禁自行觸發 CI 重跑。
+  - 被取消、跳過、未執行 live bridge 或證據不足之嘗試不增加計數。
+  - 任何確認之 R-01 復發將連續計數重設歸零。
+  - 若後續子孫 commit 實質改變 R-01 執行期、測試或工作流語意，計數延續性不得自動假設，必須由 External Macro 明確判定可比性。
+  - 工作流嘗試（ATTEMPT）為單一計數單位，非標記數量。
+  - 重要：本 state-sync 候選分支未來之 CI 運行嚴禁在版本庫文件中預先計為 #2/10；其尚未經 External Macro 獨立審查；本批次寫入之權威計數嚴格保持 1 / 10。
+- **後續路由與任務狀態（Next Work Routing & Task Status）**：
+  - NEXT_WORK = E-03。
+  - NEXT_SLICE = TG-MVP-15。
+  - B-100 R-01 狀態：`REPAIRED_OBSERVING`。
+  - TG-MVP-15 保持待辦（NOT STARTED / NEXT SLICE），嚴禁在本狀態同步批次內啟動；保持 TG-MVP-15 憑證與 USER_PROVIDED recipient-visible 證據邊界。
+  - main advancement = FORBIDDEN。
+  - 本 state-sync 候選批次自身 AWAITING EXTERNAL MACRO AUDIT，執行者嚴禁自審。
