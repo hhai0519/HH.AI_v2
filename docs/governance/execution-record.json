@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "B-100-R-01-STAGE2-COUNT-SYNC",
-  "base_oid": "7e9ecf82f4555114f4e6c0ec7161086262dd9f08",
+  "task_id": "TG-MVP-14A-D7-TAKEOVER-NOTIFICATION",
+  "base_oid": "d8833454604e0724336946d525cf4984e514b0db",
   "plan": {
     "allowed_paths": [
       "docs/AUDIT-LOG.md",
@@ -10,7 +10,11 @@
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md"
+      "docs/refactor-backlog.md",
+      "runtime/channel-gateway/core/local-api-dispatcher.js",
+      "runtime/channel-gateway/core/sqlite-state-repository.js",
+      "runtime/channel-gateway/tests/local-api-dispatcher.test.js",
+      "runtime/channel-gateway/tests/sqlite-channel-transactions.test.js"
     ],
     "required_paths": [
       "docs/AUDIT-LOG.md",
@@ -18,7 +22,11 @@
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md"
+      "docs/refactor-backlog.md",
+      "runtime/channel-gateway/core/local-api-dispatcher.js",
+      "runtime/channel-gateway/core/sqlite-state-repository.js",
+      "runtime/channel-gateway/tests/local-api-dispatcher.test.js",
+      "runtime/channel-gateway/tests/sqlite-channel-transactions.test.js"
     ],
     "max_plan_revisions": 3,
     "revision_count": 0,
@@ -31,7 +39,11 @@
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md"
+      "docs/refactor-backlog.md",
+      "runtime/channel-gateway/core/local-api-dispatcher.js",
+      "runtime/channel-gateway/core/sqlite-state-repository.js",
+      "runtime/channel-gateway/tests/local-api-dispatcher.test.js",
+      "runtime/channel-gateway/tests/sqlite-channel-transactions.test.js"
     ]
   },
   "evidence": [
@@ -44,7 +56,15 @@
         "path": "scripts/execution_record.py",
         "sha256": "9a2a7fd3e8dcdcaa742807c62f800a0e178f391f12c202a6b761b8e5b4c9eea2"
       },
-      "description": "deterministic plan-vs-actual replay against declared allowed/required scope"
+      "description": "Deterministic Git diff replay against declared plan allowed/required scope"
+    },
+    {
+      "id": "E24_DISCOVERY_RAW",
+      "origin": "MACHINE_CAPTURED_RAW",
+      "verification_status": "VERIFIED",
+      "source_kind": "EXTERNAL_ARTIFACT",
+      "sha256": "5b8e2af1e9000d9d855eabc341ac0b579c9aaaef02f43e06d11289e3d064fe0a",
+      "description": "raw discovery machine-captured by Executor (Antigravity) under the READ_ONLY E24 discovery prompt at exact base d8833454604e0724336946d525cf4984e514b0db; External Macro supplied semantic dispositions only; pre-mutation replay passed."
     }
   ],
   "report_claims": [
@@ -53,6 +73,13 @@
       "claim_text": "All actual changed repository paths strictly match allowed scope and cover all required paths without expansion.",
       "evidence_ids": [
         "PLAN_ACTUAL_DIFF"
+      ]
+    },
+    {
+      "claim_id": "CLAIM_E24_PROVENANCE_VERIFIED",
+      "claim_text": "Immutable raw discovery artifact verified against expected SHA256 closure.",
+      "evidence_ids": [
+        "E24_DISCOVERY_RAW"
       ]
     }
   ]

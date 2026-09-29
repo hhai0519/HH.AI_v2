@@ -1016,3 +1016,123 @@ test('dispatcher: /v1/status includes archive_failed summaries with bounded sche
     harness.cleanup();
   }
 });
+
+test('dispatcher: D7 takeover notification acceptance (D1-D7) for poll and heartbeat', { timeout: 5000 }, () => {
+  const harness = createTempHarness();
+  try {
+    const dispatcher = new LocalApiDispatcher({ repository: harness.repo });
+
+    // Establish initial holder A (token 1)
+    harness.repo.takeoverChannel('tg:takeover_test', 'holder_A');
+    harness.seedInbox('tg:takeover_test', 'msg_1', 'queued');
+
+    // Subsequent takeover by holder B (token 2)
+    harness.repo.takeoverChannel('tg:takeover_test', 'holder_B');
+
+    // D1 & D7: poll receives repository TAKEN_OVER => HTTP 409, exact body: {ok:false, code:"TAKEN_OVER"}
+    const pollRes = dispatcher.dispatch('/v1/poll', {
+      channel_id: 'tg:takeover_test',
+      holder_id: 'holder_A',
+      fencing_token: 1,
+      limit: 10,
+    });
+    assert.deepEqual(pollRes, {
+      status: 409,
+      body: { ok: false, code: 'TAKEN_OVER' },
+    });
+    assert.equal('currentHolder' in pollRes.body, false);
+    assert.equal(Object.keys(pollRes.body).length, 2);
+
+    // D2 & D7: heartbeat receives repository TAKEN_OVER => HTTP 409, exact body: {ok:false, code:"TAKEN_OVER"}
+    const hbRes = dispatcher.dispatch('/v1/heartbeat', {
+      channel_id: 'tg:takeover_test',
+      holder_id: 'holder_A',
+      fencing_token: 1,
+    });
+    assert.deepEqual(hbRes, {
+      status: 409,
+      body: { ok: false, code: 'TAKEN_OVER' },
+    });
+    assert.equal('currentHolder' in hbRes.body, false);
+    assert.equal(Object.keys(hbRes.body).length, 2);
+
+    // D3: generic NOT_CURRENT_HOLDER remains unchanged
+    // Case A: channel absent
+    const pollAbsent = dispatcher.dispatch('/v1/poll', {
+      channel_id: 'tg:nonexistent',
+      holder_id: 'holder_A',
+      fencing_token: 1,
+      limit: 10,
+    });
+    assert.deepEqual(pollAbsent, {
+      status: 409,
+      body: { ok: false, code: 'NOT_CURRENT_HOLDER' },
+    });
+    // Case B: wrong holder with current token (CASE 4)
+    const pollWrongHolderCurrentToken = dispatcher.dispatch('/v1/poll', {
+      channel_id: 'tg:takeover_test',
+      holder_id: 'wrong_holder',
+      fencing_token: 2,
+      limit: 10,
+    });
+    assert.deepEqual(pollWrongHolderCurrentToken, {
+      status: 409,
+      body: { ok: false, code: 'NOT_CURRENT_HOLDER' },
+    });
+
+    // D4: generic HOLDER_MISMATCH remains unchanged
+    // Case A: channel absent
+    const hbAbsent = dispatcher.dispatch('/v1/heartbeat', {
+      channel_id: 'tg:nonexistent',
+      holder_id: 'holder_A',
+      fencing_token: 1,
+    });
+    assert.deepEqual(hbAbsent, {
+      status: 409,
+      body: { ok: false, code: 'HOLDER_MISMATCH' },
+    });
+    // Case B: wrong holder with current token (CASE 4)
+    const hbWrongHolderCurrentToken = dispatcher.dispatch('/v1/heartbeat', {
+      channel_id: 'tg:takeover_test',
+      holder_id: 'wrong_holder',
+      fencing_token: 2,
+    });
+    assert.deepEqual(hbWrongHolderCurrentToken, {
+      status: 409,
+      body: { ok: false, code: 'HOLDER_MISMATCH' },
+    });
+
+    // D5: STALE_FENCING_TOKEN remains unchanged
+    // Current holder B with stale token 1
+    const pollStaleToken = dispatcher.dispatch('/v1/poll', {
+      channel_id: 'tg:takeover_test',
+      holder_id: 'holder_B',
+      fencing_token: 1,
+      limit: 10,
+    });
+    assert.deepEqual(pollStaleToken, {
+      status: 409,
+      body: { ok: false, code: 'STALE_FENCING_TOKEN' },
+    });
+
+    const hbStaleToken = dispatcher.dispatch('/v1/heartbeat', {
+      channel_id: 'tg:takeover_test',
+      holder_id: 'holder_B',
+      fencing_token: 1,
+    });
+    assert.deepEqual(hbStaleToken, {
+      status: 409,
+      body: { ok: false, code: 'STALE_FENCING_TOKEN' },
+    });
+
+    // D6: poll and heartbeat never call takeoverChannel implicitly
+    const state = harness.repo.getChannelState('tg:takeover_test');
+    assert.equal(state.currentHolder, 'holder_B');
+    assert.equal(state.fencingToken, 2);
+
+    const absentState = harness.repo.getChannelState('tg:nonexistent');
+    assert.equal(absentState, null);
+  } finally {
+    harness.cleanup();
+  }
+});

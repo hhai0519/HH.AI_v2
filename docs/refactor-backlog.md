@@ -2825,7 +2825,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 5.1 上一批狀態
 
-上次核對通過的 HEAD：7e9ecf82f4555114f4e6c0ec7161086262dd9f08
+上次核對通過的 HEAD：d8833454604e0724336946d525cf4984e514b0db
 
 - `23af193`（執行者前置檢查 ＋ 回滾程序 ＋ `AUDIT-LOG.md` ＋ 四缺口修正）
   已於 2026-09-02 由審計官核對通過：6 檔異動（含 2 個新檔）、零夾帶、
@@ -5808,3 +5808,40 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - TG-MVP-15 保持待辦（NOT STARTED / NEXT SLICE），嚴禁在本狀態同步批次內啟動；保持 TG-MVP-15 憑證與 USER_PROVIDED recipient-visible 證據邊界。
   - main advancement = FORBIDDEN。
   - 本 state-sync 候選批次自身 AWAITING EXTERNAL MACRO AUDIT，執行者嚴禁自審。
+
+151. **TG-MVP-14A D7 Takeover Notification Completion**（2026-09-29）
+- **A. 使用者架構裁決與職責邊界（USER Architecture Decision & Owner Assignment）**：
+  - 使用者正式裁決 D-R2 採 Option A ＋ A1 ＋ A2：
+    - Option A：實作舊持有者輪詢與心跳之 `TAKEN_OVER` 世代覆蓋訊號（HTTP 409 `TAKEN_OVER`）。
+    - A1：測試契約遷移（CANARY 13 步驟 3 與步驟 4 期望 `TAKEN_OVER`，步驟 5 活躍持有者成功保持不變）。
+    - A2：完備 P1–P6、H1–H6、E1 確定性驗證矩陣。
+  - R-03 職責邊界指派：
+    - Implementation owner：`TG-MVP-14A`（D7 IDE Takeover Notification Completion）。
+    - Acceptance owner：`TG-MVP-15`（Telegram MVP real Test Bot E2E）。
+- **B. 世代覆蓋精確語意與邊界控制（TAKEN_OVER Exact Semantics & Boundary Controls）**：
+  - 精確語意：記錄存在 且 `current_holder !== caller holder` 且 `caller fencing_token < stored fencing_token`。
+  - 語意內涵：呼叫者之世代已被至少一個後續接管世代覆蓋，非歷史持有者身分證明。
+  - 控制組保持通用錯誤：
+    - CASE 4：持有者不符但持當前 token → 通用 `NOT_CURRENT_HOLDER` / `HOLDER_MISMATCH`。
+    - CASE 7：持有者不符且持未來 token → 通用 `NOT_CURRENT_HOLDER` / `HOLDER_MISMATCH`。
+  - N2 採納（Data Minimization）：`TAKEN_OVER` 倉儲回傳與 HTTP 409 回應主體嚴格排除 `currentHolder`，HTTP 409 回應主體精確為 `{ ok: false, code: "TAKEN_OVER" }`。
+  - N1 排除：Local API 輪詢對未知原因之通用例外降級維持原樣，不在此擴大修改。
+  - 回覆合約不變：`ALLOWED_REPLY_REASONS` 嚴格禁止納入 `TAKEN_OVER`。
+- **C. 依賴掃描與審查事實（E24 Discovery, Macro Disposition & Claude Review Truth）**：
+  - 探索基準：`d8833454604e0724336946d525cf4984e514b0db`。
+  - 原始產物：`.git/TG-MVP-14A-D7-E24-260929-raw.json`。
+  - 原始 SHA-256：`5b8e2af1e9000d9d855eabc341ac0b579c9aaaef02f43e06d11289e3d064fe0a`。
+  - 產權事實：原始掃描產物由執行者（Antigravity IDE Agent）於獨立唯讀探索指令授權下機械捕獲（`MACHINE_CAPTURED_RAW`）；External Macro Auditor 完成獨立語意處置（`.git/TG-MVP-14A-D7-E24-260929-dispositioned.json` 與 `.git/TG-MVP-14A-D7-allowed-scope.json`）。
+  - Claude 審查：獨立預審與最終生產預審確認 PASS，F1 修正納入 CANARY 13 步驟 3/4 契約遷移，精確 10 檔範圍確認。
+- **D. 測試契約遷移與 E17 逆事實驗證（CANARY 13 Migration & E17 Counterfactuals）**：
+  - CANARY 13 契約遷移：`SqliteChannelTransactions - 13. multi-connection durable fencing: stale caller rejected` 步驟 3（舊持有者心跳）與步驟 4（舊持有者取訊）遷移為預期 `TAKEN_OVER`；步驟 5（活躍持有者取訊）維持成功；此為使用者授權之契約遷移，非測試弱化。
+  - E17 C1（逆事實欠覆蓋／世代覆蓋偵測回退為 false）：RED（exit code 1；CANARY 13 步驟 3/4 與 Test 41 顯式失敗）。
+  - E17 C2（逆事實過度泛化／誤將通用持有者不符標記為 TAKEN_OVER）：RED（exit code 1；Test 41 控制組 P2/P3/P4/P6、H2/H3/H4/H6 顯式失敗）。
+  - 候選位元組精確還原驗證通過（SHA-256 完全相符）。
+  - 目標常態測試重跑：`sqlite-channel-transactions.test.js`（41 測試 PASS）與 `local-api-dispatcher.test.js`（18 測試 PASS）全綠。
+- **E. 專案基準與後續路由（Project Baseline & Subsequent Routing）**：
+  - accepted checkpoint：`d8833454604e0724336946d525cf4984e514b0db`。
+  - B-100 R-01 Stage 2 計數：`5 / 10`（合格 Runs #4 `36523169081`、#5 `36524644818`；嚴禁預先計入 #6）。
+  - main advancement：`FORBIDDEN`。
+  - TG-MVP-15：`NOT STARTED`（待 TG-MVP-14A 完成驗收結案後始得啟動）。
+  - 本候選狀態：`CANDIDATE AWAITING EXTERNAL MACRO AUDIT`（執行者嚴禁自審）。

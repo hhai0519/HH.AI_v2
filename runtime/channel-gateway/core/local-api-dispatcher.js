@@ -280,6 +280,9 @@ class LocalApiDispatcher {
     if (claimLimit > 0) {
       const claimResult = this.repository.claimMessages(channelId, holderId, fencingToken, claimLimit);
       if (!claimResult.success) {
+        if (claimResult.reason === 'TAKEN_OVER') {
+          return { status: 409, body: { ok: false, code: 'TAKEN_OVER' } };
+        }
         if (claimResult.reason === 'NOT_CURRENT_HOLDER') {
           return { status: 409, body: { ok: false, code: 'NOT_CURRENT_HOLDER' } };
         }
@@ -338,6 +341,10 @@ class LocalApiDispatcher {
 
     if (res.success) {
       return { status: 200, body: { ok: true, code: 'OK' } };
+    }
+
+    if (res.reason === 'TAKEN_OVER') {
+      return { status: 409, body: { ok: false, code: 'TAKEN_OVER' } };
     }
 
     if (res.reason === 'HOLDER_MISMATCH') {

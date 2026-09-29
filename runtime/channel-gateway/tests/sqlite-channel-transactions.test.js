@@ -623,12 +623,14 @@ test('SqliteChannelTransactions - 13. multi-connection durable fencing: stale ca
       // 3. Stale caller on Connection A with holder_A and token 1 attempts heartbeat
       const hbStale = repoA.heartbeatChannel('line:shared:1', 'holder_A', 1);
       assert.strictEqual(hbStale.success, false);
-      assert.strictEqual(hbStale.reason, 'HOLDER_MISMATCH');
+      assert.strictEqual(hbStale.reason, 'TAKEN_OVER');
+      assert.strictEqual(hbStale.currentHolder, undefined);
 
       // 4. Stale caller on Connection A with holder_A and token 1 attempts claim
       const claimStale = repoA.claimMessages('line:shared:1', 'holder_A', 1, 1);
       assert.strictEqual(claimStale.success, false);
-      assert.strictEqual(claimStale.reason, 'NOT_CURRENT_HOLDER');
+      assert.strictEqual(claimStale.reason, 'TAKEN_OVER');
+      assert.deepStrictEqual(claimStale.claimedMessages, []);
 
       // 5. Active holder B on Connection B successfully claims
       const claimActive = repoB.claimMessages('line:shared:1', 'holder_B', 2, 1);
@@ -2202,6 +2204,126 @@ test('SqliteChannelTransactions - 40. TG-MVP-14: creates ORIGINAL archive coordi
       } finally {
         rawDb.close();
       }
+    } finally {
+      repo.close();
+    }
+  } finally {
+    harness.cleanup();
+  }
+});
+
+// 41. TG-MVP-14A: Deterministic TAKEN_OVER matrix (P1-P6, H1-H6, E1) and non-mutation guarantees
+test('SqliteChannelTransactions - 41. D7 takeover notification matrix (P1-P6, H1-H6, E1)', () => {
+  const harness = createTempHarness();
+  try {
+    const repo = new SqliteStateRepository(harness.stateRoot);
+    try {
+      // P1: A takeover token1, B takeover token2, A claim token1 => TAKEN_OVER
+      repo.takeoverChannel('ch_p1', 'holder_A');
+      seedInboxMessage(repo.databasePath, 'ch_p1', 'p1_msg_1', 'acc_1');
+      repo.takeoverChannel('ch_p1', 'holder_B');
+      const p1 = repo.claimMessages('ch_p1', 'holder_A', 1, 10);
+      assert.strictEqual(p1.success, false);
+      assert.strictEqual(p1.reason, 'TAKEN_OVER');
+      assert.deepStrictEqual(p1.claimedMessages, []);
+      assert.strictEqual(p1.currentHolder, undefined);
+      // verify no control mutation or message claiming
+      const rawDb = new DatabaseSync(repo.databasePath, { readOnly: true });
+      try {
+        const ctrl = rawDb.prepare('SELECT current_holder, fencing_token FROM channel_control WHERE channel_id = ?;').get('ch_p1');
+        assert.strictEqual(ctrl.current_holder, 'holder_B');
+        assert.strictEqual(ctrl.fencing_token, 2);
+        const msg = rawDb.prepare('SELECT status FROM inbox WHERE channel_id = ?;').get('ch_p1');
+        assert.strictEqual(msg.status, 'queued');
+      } finally {
+        rawDb.close();
+      }
+
+      // P2: row absent => NOT_CURRENT_HOLDER
+      const p2 = repo.claimMessages('ch_p2_absent', 'holder_A', 1, 10);
+      assert.strictEqual(p2.success, false);
+      assert.strictEqual(p2.reason, 'NOT_CURRENT_HOLDER');
+      assert.deepStrictEqual(p2.claimedMessages, []);
+
+      // P3: A takeover token1, A expires, A claim token1 => NOT_CURRENT_HOLDER
+      repo.takeoverChannel('ch_p3', 'holder_A');
+      repo.expireChannelHolder('ch_p3');
+      const p3 = repo.claimMessages('ch_p3', 'holder_A', 1, 10);
+      assert.strictEqual(p3.success, false);
+      assert.strictEqual(p3.reason, 'NOT_CURRENT_HOLDER');
+      assert.deepStrictEqual(p3.claimedMessages, []);
+
+      // P4: B current token2, C wrong holder token2 => NOT_CURRENT_HOLDER
+      repo.takeoverChannel('ch_p4', 'holder_B');
+      repo.takeoverChannel('ch_p4', 'holder_B'); // token 2
+      const p4 = repo.claimMessages('ch_p4', 'holder_C', 2, 10);
+      assert.strictEqual(p4.success, false);
+      assert.strictEqual(p4.reason, 'NOT_CURRENT_HOLDER');
+      assert.deepStrictEqual(p4.claimedMessages, []);
+
+      // P5: B current token2, B stale token1 => STALE_FENCING_TOKEN
+      const p5 = repo.claimMessages('ch_p4', 'holder_B', 1, 10);
+      assert.strictEqual(p5.success, false);
+      assert.strictEqual(p5.reason, 'STALE_FENCING_TOKEN');
+      assert.deepStrictEqual(p5.claimedMessages, []);
+
+      // P6: B current token2, C wrong holder token3 => NOT_CURRENT_HOLDER
+      const p6 = repo.claimMessages('ch_p4', 'holder_C', 3, 10);
+      assert.strictEqual(p6.success, false);
+      assert.strictEqual(p6.reason, 'NOT_CURRENT_HOLDER');
+      assert.deepStrictEqual(p6.claimedMessages, []);
+
+      // H1: A takeover token1, B takeover token2, A heartbeat token1 => TAKEN_OVER
+      repo.takeoverChannel('ch_h1', 'holder_A');
+      repo.takeoverChannel('ch_h1', 'holder_B');
+      const h1 = repo.heartbeatChannel('ch_h1', 'holder_A', 1);
+      assert.strictEqual(h1.success, false);
+      assert.strictEqual(h1.reason, 'TAKEN_OVER');
+      assert.strictEqual(h1.currentHolder, undefined);
+
+      // H2: row absent => HOLDER_MISMATCH
+      const h2 = repo.heartbeatChannel('ch_h2_absent', 'holder_A', 1);
+      assert.strictEqual(h2.success, false);
+      assert.strictEqual(h2.reason, 'HOLDER_MISMATCH');
+
+      // H3: A takeover token1, A expires, A heartbeat token1 => HOLDER_MISMATCH
+      repo.takeoverChannel('ch_h3', 'holder_A');
+      repo.expireChannelHolder('ch_h3');
+      const h3 = repo.heartbeatChannel('ch_h3', 'holder_A', 1);
+      assert.strictEqual(h3.success, false);
+      assert.strictEqual(h3.reason, 'HOLDER_MISMATCH');
+
+      // H4: B current token2, C wrong holder token2 => HOLDER_MISMATCH
+      repo.takeoverChannel('ch_h4', 'holder_B');
+      repo.takeoverChannel('ch_h4', 'holder_B'); // token 2
+      const h4 = repo.heartbeatChannel('ch_h4', 'holder_C', 2);
+      assert.strictEqual(h4.success, false);
+      assert.strictEqual(h4.reason, 'HOLDER_MISMATCH');
+
+      // H5: B current token2, B heartbeat token1 => STALE_FENCING_TOKEN
+      const h5 = repo.heartbeatChannel('ch_h4', 'holder_B', 1);
+      assert.strictEqual(h5.success, false);
+      assert.strictEqual(h5.reason, 'STALE_FENCING_TOKEN');
+
+      // H6: B current token2, C wrong holder token3 => HOLDER_MISMATCH
+      const h6 = repo.heartbeatChannel('ch_h4', 'holder_C', 3);
+      assert.strictEqual(h6.success, false);
+      assert.strictEqual(h6.reason, 'HOLDER_MISMATCH');
+
+      // E1: A takeover token1, B takeover token2, B expires, A token1 => TAKEN_OVER
+      repo.takeoverChannel('ch_e1', 'holder_A'); // token 1
+      repo.takeoverChannel('ch_e1', 'holder_B'); // token 2
+      repo.expireChannelHolder('ch_e1'); // holder NULL, token 2
+      const e1Claim = repo.claimMessages('ch_e1', 'holder_A', 1, 10);
+      assert.strictEqual(e1Claim.success, false);
+      assert.strictEqual(e1Claim.reason, 'TAKEN_OVER');
+      assert.deepStrictEqual(e1Claim.claimedMessages, []);
+      assert.strictEqual(e1Claim.currentHolder, undefined);
+
+      const e1Hb = repo.heartbeatChannel('ch_e1', 'holder_A', 1);
+      assert.strictEqual(e1Hb.success, false);
+      assert.strictEqual(e1Hb.reason, 'TAKEN_OVER');
+      assert.strictEqual(e1Hb.currentHolder, undefined);
     } finally {
       repo.close();
     }

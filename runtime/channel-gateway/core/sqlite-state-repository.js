@@ -2035,6 +2035,25 @@ function validateTerminalReasonCode(code) {
   return code;
 }
 
+/**
+ * Evaluates whether caller holder generation is superseded by a subsequent takeover generation.
+ * Exact semantics: row exists, caller is not current holder, and caller token < stored token.
+ *
+ * @param {object|null|undefined} row
+ * @param {string} holderId
+ * @param {number} fencingToken
+ * @returns {boolean}
+ */
+function isSupersededHolderGeneration(row, holderId, fencingToken) {
+  return Boolean(
+    row &&
+    row.current_holder !== holderId &&
+    typeof row.fencing_token === 'number' &&
+    typeof fencingToken === 'number' &&
+    fencingToken < row.fencing_token
+  );
+}
+
 class SqliteStateRepository {
   /** @type {DatabaseSync|null} */
   #db = null;
@@ -2550,6 +2569,12 @@ class SqliteStateRepository {
       const row = selectStmt.get(cId);
 
       if (!row || row.current_holder === null || row.current_holder !== hId) {
+        if (isSupersededHolderGeneration(row, hId, fToken)) {
+          return {
+            success: false,
+            reason: 'TAKEN_OVER',
+          };
+        }
         return {
           success: false,
           reason: 'HOLDER_MISMATCH',
@@ -2718,6 +2743,13 @@ class SqliteStateRepository {
       const row = selectStmt.get(cId);
 
       if (!row || row.current_holder === null || row.current_holder !== hId) {
+        if (isSupersededHolderGeneration(row, hId, fToken)) {
+          return {
+            success: false,
+            reason: 'TAKEN_OVER',
+            claimedMessages: [],
+          };
+        }
         return {
           success: false,
           reason: 'NOT_CURRENT_HOLDER',
