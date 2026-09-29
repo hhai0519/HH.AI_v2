@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "B-100-R-01-FINAL-CLOSURE-STATE-SYNC",
-  "base_oid": "14c0ba3e1fc6bc30c7ed35f37dc2ff759cfba935",
+  "task_id": "W3-SEC-DOC-260929",
+  "base_oid": "ef9434c235e74b5a3355c9a246c7a93b6e12c995",
   "plan": {
     "allowed_paths": [
       "docs/AUDIT-LOG.md",

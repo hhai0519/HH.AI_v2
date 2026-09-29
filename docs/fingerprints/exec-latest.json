@@ -1,5 +1,5 @@
 {
-  "base_head": "14c0ba3",
+  "base_head": "ef9434c",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -552,16 +552,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 255,
-      "sha256": "64cdf8663487aa715ccdac9424d92d5de1b951f87195f440ab43a765c80e4404"
+      "lines": 256,
+      "sha256": "9475bb7b8cc26a0c7ae948ba87c5fc05e4fcfcce21b61185a83c6db39dcfafbb"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 222,
-      "sha256": "0d0bd87920f4777bf2e4e8bccf765a506ec291614730af366a1dba2e64c7068d"
+      "lines": 223,
+      "sha256": "f6d0200873b6789e39f9b841d2c87aafbe6c76db64e3ff372bc849b8cc32bb0f"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -594,6 +594,7 @@
         "## E. 舊 repo 遷移主線（`refactor-backlog.md` §二 A–F）",
         "### E-03 執行層專屬路線圖（E-03 ROADMAP — CANONICAL CURRENT-STATE AUTHORITY）",
         "#### 1. M-TG-MVP（Telegram MVP 第一版核心）",
+        "#### 1b. M-SEC（統一金鑰保管庫與一鍵配置 — B-110 / SEC-01～SEC-05）",
         "#### 2. M-TG-CUTOVER（Telegram 正式切換與舊版停用）",
         "#### 3. M-LINE（LINE 平台整合與雙平台值守）",
         "#### 4. M-TG-POST-MVP（Telegram POST-MVP 擴充功能）",
@@ -601,8 +602,8 @@
         "## G. 舊 repo 未盤點區塊（2026-09-02 新發現）",
         "## 封存區"
       ],
-      "lines": 350,
-      "sha256": "7faa6cd9617f58f0eff2e6b01b2d25f03cb0c7139f867d0fb4ece20303099a54"
+      "lines": 369,
+      "sha256": "5137b0ab66e4817053349ab80c019480a62f95617d053ba95ace2e54fd4905f8"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1071,8 +1072,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6032,
-      "sha256": "863844d7333e0f6779d044cc408df829797c653502bdfe59c01fc8e6fda7931f"
+      "lines": 6066,
+      "sha256": "8e66650b5e61f3634b27975a37310628c77fb4579ee12137492b6c08b81ae711"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1503,7 +1504,7 @@
       "sha256": "35bf7dbfa3c7d291b550c3c97a6ae398a22b1dc3624c1d2fc1e4db6963d6e115"
     }
   },
-  "generated_at": "2026-09-29T11:25:03Z",
+  "generated_at": "2026-09-29T14:27:20Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {
