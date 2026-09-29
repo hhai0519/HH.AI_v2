@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "TG-MVP-14A-D7-R1-TRUTH-REPAIR",
-  "base_oid": "96b83cf505738bb682ee51f5ab37217f0ebf5eef",
+  "task_id": "TG-MVP-14A-D7-R2-PROCESS-TRUTH-REPAIR",
+  "base_oid": "f8e9625da4a0825467c46989bff09cc6427672c5",
   "plan": {
     "allowed_paths": [
       "docs/AUDIT-LOG.md",

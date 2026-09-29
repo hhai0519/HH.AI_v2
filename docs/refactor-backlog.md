@@ -5891,3 +5891,51 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - TG-MVP-14A 保持未結案（CANDIDATE / R1 TRUTH REPAIR AWAITING EXTERNAL MACRO AUDIT）。
   - TG-MVP-15 保持 `NOT STARTED`（依賴 TG-MVP-14A accepted closure）。
   - main advancement 嚴格為 `FORBIDDEN`。
+
+153. **TG-MVP-14A R2 Process Truth Repair**（2026-09-29）
+- **A. R1 候選審核與外部宏觀審計判定（R1 Target & Macro Audit Verdict）**：
+  - 審查標的：`f8e9625da4a0825467c46989bff09cc6427672c5`（TG-MVP-14A R1 治理與證據真值修復候選，Parent: `96b83cf505738bb682ee51f5ab37217f0ebf5eef`）。
+  - External Macro 獨立審查判定：
+    - MACHINE = PASS
+    - SCOPE_6 = PASS（精確 6 檔純治理/文件異動）
+    - F1 = RESOLVED（EXEC-LOG finding_disposition 修正為 CURRENT E-03）
+    - F2 = RESOLVED（USER A1/A2 語意歸屬校準）
+    - F3 REGISTRATION = PASS（B-100 R-C 分流與規則待辦登錄）
+    - R1 EXECUTION RECORD = PASS
+    - R1 CANDIDATE CI = PASS（Actions Run 36543184650 attempt 1，verify: success, gateway-windows: success）
+    - STAGE2 = QUALIFYING #7/10
+    - NEW F4 = BRAIN-PATH ACCESS RECURRENCE
+    - NEW F5 = EXACT COMMIT MESSAGE CONTRACT DEVIATION
+    - PROMOTION_ELIGIBILITY = HOLD（保留，等待 R2 過程真值修復）
+    - ROLLBACK = NO（不需回滾，實作與測試無污染）
+    - NEW RUNTIME BLOCKING FINDING = NONE
+    - R2_REQUIRED = YES / PURE DOC-GOVERNANCE PROCESS TRUTH REPAIR
+- **B. 新發現 F4 過程真值與邊界細微差異（Finding F4 — Brain-Path Access Recurrence & Evidence Nuance）**：
+  - 精確事實：R1 候選 commit/push 之後，執行者於 CI 輪詢期間在 `C:\Users\HH.AI_260806\.gemini\antigravity-ide\brain\<session-id>\scratch\` 路徑下建立、檢視與執行輪詢輔助腳本（`poll_ci.py`、`poll_ci_wait.py`），違反 R1 提示詞對 `.gemini/antigravity-ide/brain/**` 之絕對禁止。
+  - 細微差異與邊界（Nuance）：執行期證據顯示僅使用 brain scratch，無任何再次讀取 `transcript_full.jsonl` 或既往對話 transcript 之證據（new transcript / cross-session read is NOT established）；嚴禁將此過度標記為已證實之跨對話 transcript 讀取，亦無任何憑證外洩。
+  - 影響評估：操作發生於 R1 tracked commit/push 之後，未對 R1 造成任何 tracked 或 RUNTIME 污染，R1 SHA 保持不可變，精確 6 檔 diff 維持有效，候選 CI 獨立綠燈，不需回滾（ROLLBACK = NO）。但直接晉級 f8e9625... 保持 HOLD，直至本 R2 完成過程真值修復。
+  - 處置分流：路由至既有 `B-100 R-C`，狀態為 `OPEN / RESIDUAL / NONBLOCKING`。
+- **C. 新發現 F5 提交訊息契約偏差（Finding F5 — Exact Commit Message Contract Deviation）**：
+  - 事實描述：凍結之 R1 提示詞要求精確 commit message 為 `TG-MVP-14A R1 Governance Truth Repair`，實際提交訊息為 `docs: TG-MVP-14A R1 governance and evidence truth repair`。
+  - 影響評估與處置：此偏差未改變變更範圍、檔案內容或執行期語意。嚴禁 amend、嚴禁重寫歷史、嚴禁 force push；透明記錄契約偏差；路由至 `B-100 R-C`，狀態為 `OPEN / RESIDUAL / NONBLOCKING`。R2 自身必須精確使用其凍結 commit message。
+- **D. 預防性待辦規範澄清（Prevention TODO Clarification for CONTEXT_LOSS_RECOVERY_RULE）**：
+  - `CONTEXT_LOSS_RECOVERY_RULE` 保持 `REGISTERED / PENDING FUTURE GOVERNANCE IMPLEMENTATION / NONBLOCKING`。
+  - 澄清未來實作意圖：
+    1. 上下文遺失授權恢復僅能讀取 `.git/<task-id>-prompt.txt`。
+    2. 若不存在或無法讀取，必須立即報警 `S1 CONTEXT_LOSS` 並停止（STOP）。
+    3. 嚴禁以 transcript / brain / prior conversation 作為恢復來源。
+    4. 作業臨時輔助腳本與 CI 輪詢腳本亦嚴禁使用 `.gemini/antigravity-ide/brain/**`，必須使用 task 專屬之 `.git/` scratch。
+  - 本項仍僅為登錄之待辦 TODO，本批嚴禁修改任何現行規則檔案。
+- **E. Stage 2 連續計數同步（Stage 2 Count Synchronization）**：
+  - 權威計數推進為：`7 / 10`。
+  - #7 合格嘗試：Run `36543184650`（head_sha: `f8e9625da4a0825467c46989bff09cc6427672c5`，QUALIFYING #7/10）。
+  - Macro raw evidence：
+    - gateway-windows：KNOWN_FOLDER_BRIDGE_MS 兩筆時間標記為 `2389` 與 `247` ms，49 passed。
+    - verify：CHECK 26 reached，541 passed，13 passed，ALL 5 GATES PASSED。
+  - 嚴禁預先計入 #8。
+- **F. 專案基準與後續路由（Project Baseline & Subsequent Routing）**：
+  - accepted checkpoint：嚴格維持 `d8833454604e0724336946d525cf4984e514b0db`（不得推進 checkpoint）。
+  - Stage 2 計數：`7 / 10`。
+  - TG-MVP-14A 保持未結案（CANDIDATE / R2 PROCESS TRUTH REPAIR AWAITING EXTERNAL MACRO AUDIT）。
+  - TG-MVP-15 保持 `NOT STARTED`（依賴 TG-MVP-14A accepted closure）。
+  - main advancement 嚴格為 `FORBIDDEN`。
