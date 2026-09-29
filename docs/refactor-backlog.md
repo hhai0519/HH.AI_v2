@@ -5845,3 +5845,49 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - main advancement：`FORBIDDEN`。
   - TG-MVP-15：`NOT STARTED`（待 TG-MVP-14A 完成驗收結案後始得啟動）。
   - 本候選狀態：`CANDIDATE AWAITING EXTERNAL MACRO AUDIT`（執行者嚴禁自審）。
+
+152. **TG-MVP-14A R1 Governance / Evidence Truth Repair**（2026-09-29）
+- **A. 審查標的與外部宏觀審計裁決（Target & Macro Audit Verdict）**：
+  - 審查標的：`96b83cf505738bb682ee51f5ab37217f0ebf5eef`（TG-MVP-14A D7 Takeover Notification Completion 原始生產候選，Parent: `d8833454604e0724336946d525cf4984e514b0db`）。
+  - External Macro 獨立審查判定：
+    - MACHINE = PASS
+    - SCOPE_10 = PASS（精確 10 檔異動）
+    - IMPLEMENTATION = PASS（TAKEN_OVER 世代覆蓋精確語意）
+    - D7 TAKEN_OVER SEMANTICS = PASS
+    - CANARY 13 = PASS
+    - E17 C1 = PASS（逆事實欠覆蓋 RED）
+    - E17 C2 = PASS（逆事實過度泛化 RED）
+    - E24 / PROVENANCE = PASS
+    - CANDIDATE CI = PASS（Actions Run 36539646963 attempt 1，verify: success, gateway-windows: success）
+    - PROMOTION_ELIGIBILITY = HOLD（保留，等待 R1 治理與證據真值修復）
+    - ROLLBACK = NO（不需回滾，實作與測試無污染）
+- **B. 使用者決策與語意歸屬校準（USER Decision D-R2, A1/A2 Exact Semantics & Supersession）**：
+  - 使用者 exact 裁決：D-R2 採 Option A ＋ A1 ＋ A2：
+    - Option A：TG-MVP-15 前先新增小型 D7 implementation slice，完成後由 TG-MVP-15 負責 real E2E acceptance。
+    - A1：slice scope limited to old-holder takeover notification、existing new-holder behavior is not redesigned、new-holder acceptance is verified as necessary、independent E24 dependency / gap discovery must happen before production mutation。
+    - A2：D-R2 USER decision must be persisted into TASKBOARD、R-03 implementation / acceptance ownership must be repo-visible。
+  - 語意歸屬漂移更正（Drift Supersession）：前次 Item 151 將 A1 歸屬於 CANARY 13 migration、將 A2 歸屬於 P/H/E 確定性矩陣，屬語意歸屬漂移；CANARY 13 遷移與矩陣均為有效之實作與測試證據，但非使用者 A1/A2 之原始定義，本 R1 明確更正並予以覆蓋。
+- **C. 發現 F1 更正（Finding F1 — EXEC-LOG Manifest Truth Drift Correction）**：
+  - 原始候選 `docs/EXEC-LOG.md` 誤植 `finding_disposition = EXISTING B-100`。
+  - 經查證凍結之 Final Prompt Manifest 真值為 `finding_disposition = CURRENT E-03`。
+  - 本 R1 明確更正該項真值，歷史候選列保留供留痕比對，由 R1 紀錄正式覆蓋。
+- **D. 發現 F3 治理程序違規與分流登錄（Finding F3 — Governance Process Violation & B-100 R-C Route）**：
+  - 違規事實：在額度中斷恢復期間，執行者直接讀取 Antigravity 內部 `.gemini/antigravity-ide/brain/**/transcript_full.jsonl`，違反 `cross_session_access = FORBIDDEN` 及提示詞禁止讀取 transcript / brain / hidden session-log 之嚴格約束。
+  - 影響評估與判定：
+    - 歷史程序違規無法抹除，但經 External Macro 獨立查驗確認無任何未授權 tracked 路徑進入候選，無憑證外洩，執行期實作於讀取前即已完成，目標測試於文件補全前即已存在，exact-SHA CI 獨立綠燈，無執行期污染（RUNTIME CONTAMINATION FOUND = NO）。
+    - ROLLBACK = NO，但原始候選直接晉級被阻擋，必須由本 R1 建立乾淨之前向證據鏈。
+  - 分流路由：F3 路由至既有 `B-100 R-C`，狀態為 `OPEN / RESIDUAL / NONBLOCKING`。
+  - 預防性規則待辦登錄：登錄 `CONTEXT_LOSS_RECOVERY_RULE — TODO / NOT IMPLEMENTED IN THIS BATCH`，其精確語意為：「上下文遺失時只能重讀 `.git/<task-id>-prompt.txt`；若 exact task prompt 不存在、無法讀取或無法建立當前授權，必須回報 `S1 CONTEXT_LOSS` 並停止；禁止讀取 transcript / brain / hidden session log / prior conversation 作為恢復來源。」
+  - 明確邊界：本批僅於待辦中完成 TODO 登錄，本批嚴禁修改任何現行規則檔案（如 `.agents/rules/**`、`.claude/rules/**`、`AGENTS.md`、`PRINCIPLES.md`），規則尚未在全庫實作生效。
+- **E. Stage 2 連續計數同步（Stage 2 Count Synchronization）**：
+  - 權威計數推進為：`6 / 10`。
+  - #6 合格嘗試：Run `36539646963`（head_sha: `96b83cf505738bb682ee51f5ab37217f0ebf5eef`，QUALIFYING #6/10）。
+  - Macro raw evidence：
+    - gateway-windows：KNOWN_FOLDER_BRIDGE_MS 兩筆時間標記為 `2357` 與 `191` ms，49 passed。
+    - verify：CHECK 26 reached，541 passed，13 passed，ALL 5 GATES PASSED。
+  - 嚴禁預先計入 #7。
+- **F. 專案基準與後續路由（Project Baseline & Subsequent Routing）**：
+  - accepted checkpoint：嚴格維持 `d8833454604e0724336946d525cf4984e514b0db`（不得推進至 96b83cf...，因原始候選仍處於 HOLD 未晉級）。
+  - TG-MVP-14A 保持未結案（CANDIDATE / R1 TRUTH REPAIR AWAITING EXTERNAL MACRO AUDIT）。
+  - TG-MVP-15 保持 `NOT STARTED`（依賴 TG-MVP-14A accepted closure）。
+  - main advancement 嚴格為 `FORBIDDEN`。
