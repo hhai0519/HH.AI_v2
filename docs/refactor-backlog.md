@@ -2825,7 +2825,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 5.1 上一批狀態
 
-上次核對通過的 HEAD：de98c8a3b15fd3db8846891c4b582696293575ce
+上次核對通過的 HEAD：7e9ecf82f4555114f4e6c0ec7161086262dd9f08
 
 - `23af193`（執行者前置檢查 ＋ 回滾程序 ＋ `AUDIT-LOG.md` ＋ 四缺口修正）
   已於 2026-09-02 由審計官核對通過：6 檔異動（含 2 個新檔）、零夾帶、
@@ -5749,6 +5749,58 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - 若後續子孫 commit 實質改變 R-01 執行期、測試或工作流語意，計數延續性不得自動假設，必須由 External Macro 明確判定可比性。
   - 工作流嘗試（ATTEMPT）為單一計數單位，非標記數量。
   - 重要：本 state-sync 候選分支未來之 CI 運行嚴禁在版本庫文件中預先計為 #2/10；其尚未經 External Macro 獨立審查；本批次寫入之權威計數嚴格保持 1 / 10。
+- **後續路由與任務狀態（Next Work Routing & Task Status）**：
+  - NEXT_WORK = E-03。
+  - NEXT_SLICE = TG-MVP-15。
+  - B-100 R-01 狀態：`REPAIRED_OBSERVING`。
+  - TG-MVP-15 保持待辦（NOT STARTED / NEXT SLICE），嚴禁在本狀態同步批次內啟動；保持 TG-MVP-15 憑證與 USER_PROVIDED recipient-visible 證據邊界。
+  - main advancement = FORBIDDEN。
+  - 本 state-sync 候選批次自身 AWAITING EXTERNAL MACRO AUDIT，執行者嚴禁自審。
+
+150. **B-100 R-01 Post-Promotion Stage 2 Count State-Sync**（2026-09-29）
+- **A. §5.1 accepted checkpoint 推進（Accepted Checkpoint Advancement）**：
+  - accepted checkpoint 推進至 `7e9ecf82f4555114f4e6c0ec7161086262dd9f08`。
+  - 原因：`7e9ecf82f4555114f4e6c0ec7161086262dd9f08` 已由 External Macro 完成獨立審查判定 PASS / ACCEPT ALL，並以 SAME SHA 成功晉級至 main，且經 post-main exact-SHA GitHub Actions 工作流雙綠燈完成驗證。
+- **B. State-Sync 候選審查通過紀錄（Record State-Sync Candidate Acceptance）**：
+  - Target = `7e9ecf82f4555114f4e6c0ec7161086262dd9f08`。
+  - Parent = `de98c8a3b15fd3db8846891c4b582696293575ce`。
+  - Candidate Run = 36519993890 attempt 1 success（event=push, head_branch=batch/b-100-r-01-stage1-state-sync-260929, head_sha=7e9ecf82f4555114f4e6c0ec7161086262dd9f08）。
+  - Candidate verify = completed / success（CHECK 26 reached, 541 passed, 13 passed, ALL 5 GATES PASSED）。
+  - Candidate gateway-windows = completed / success（49 passed，live markers: 2268ms / 260ms）。
+  - External Macro candidate verdict = PASS / ACCEPT ALL（SCOPE_6=PASS, PLAN/ACTUAL=PASS, DOC/GOVERNANCE CONSISTENCY=PASS, EXECUTION RECORD=PASS, NEW MATERIAL BLOCKING FINDING=NONE, ROLLBACK=NO, FINDING DISPOSITION=EXISTING B-100）。
+  - NEW MATERIAL BLOCKING FINDING = NONE。
+  - ROLLBACK = NO。
+  - Candidate Stage 2 classification = QUALIFYING #2/10。
+- **C. Same-SHA 晉級紀錄（Record Same-SHA Promotion）**：
+  - Previous main = `de98c8a3b15fd3db8846891c4b582696293575ce`。
+  - Promoted main = `7e9ecf82f4555114f4e6c0ec7161086262dd9f08`。
+  - SHA transformation = NONE。
+  - Promotion result = PASS。
+- **D. Post-Main exact-SHA 工作流紀錄（Record Post-Main Exact-SHA Workflow）**：
+  - Run = 36521179999 attempt 1。
+  - event = push, head_branch = main, head_sha = `7e9ecf82f4555114f4e6c0ec7161086262dd9f08`。
+  - overall: completed / success。
+  - verify = completed / success（CHECK 26 reached, 541 passed, 13 passed, ALL 5 GATES PASSED）。
+  - gateway-windows = completed / success（KNOWN_FOLDER_BRIDGE_MS=3619, KNOWN_FOLDER_BRIDGE_MS=200, 49 passed）。
+  - External Macro Stage 2 classification = QUALIFYING #3/10。
+- **E. 當前生命週期狀態（Current Lifecycle State）**：
+  - B-100 R-01 = `REPAIRED_OBSERVING`。
+  - Stage 1 = `COMPLETE`。
+  - Stage 2 = `3 / 10`。
+  - Layer 3 = `USER_DECISION_PENDING`（選項 A/B/C 待使用者裁決，執行者嚴禁代選）。
+  - TG-MVP-15 Stage-1 相依閘門 = `SATISFIED / REPAIRED_OBSERVING`。
+  - NEXT_WORK = E-03。
+  - NEXT_SLICE = TG-MVP-15（NOT STARTED / NEXT SLICE，嚴禁在本狀態同步批次內啟動）。
+- **F. Stage 2 權威計數與規則（Stage 2 Authoritative Count & Counting Rules）**：
+  - External Macro 擁有單一權威計數。
+  - 目標：連續 10 次合格 gateway-windows 工作流嘗試且零 R-01 復發。
+  - 當前序列：
+    - PRE-PROMOTION / DOES NOT COUNT: Run 36450306456（candidate de98c8a3...）。
+    - #1/10: Run 36516585500（post-main de98c8a3..., markers 4046ms / 243ms, QUALIFYING）。
+    - #2/10: Run 36519993890（candidate 7e9ecf82..., markers 2268ms / 260ms, QUALIFYING）。
+    - #3/10: Run 36521179999（post-main 7e9ecf82..., markers 3619ms / 200ms, QUALIFYING）。
+  - 計數規則：工作流嘗試（ATTEMPT）為單一計數單位；marker 數量不是嘗試數量；單次 gateway-windows 工作流內兩次 marker 仍屬單次嘗試；使用者手動觸發之 same-SHA 重跑（D-R4 rerun）若符合條件可計為獨立嘗試；執行者嚴禁自行觸發 CI 重跑；被取消、跳過、未執行 live bridge 或證據不足之嘗試不增加計數；任何確認之 R-01 復發將連續計數重設歸零；若後續子孫 commit 實質改變 R-01 執行期、測試或工作流語意，計數延續性不得自動假設，必須由 External Macro 明確判定可比性。
+  - 重要：本狀態同步批次自身建立之新候選 commit CI 嚴禁預先計為 #4/10；其 CI 發生於 commit 之後，需留待日後 External Macro 獨立 raw-log 審查分類；本批次寫入之版本庫權威計數精確為 3 / 10，不得寫入 #4。
 - **後續路由與任務狀態（Next Work Routing & Task Status）**：
   - NEXT_WORK = E-03。
   - NEXT_SLICE = TG-MVP-15。
