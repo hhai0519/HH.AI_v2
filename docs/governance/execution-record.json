@@ -1,24 +1,42 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "W3-FINAL-STATE-SYNC-260929",
-  "base_oid": "9b6358ca837880e79dd73d20fa758475eb68de47",
+  "task_id": "W2-GATE-DOC-RECOVERY-260930",
+  "base_oid": "d546be603d11b8e2e43f2ef013a0f364c7bdda30",
   "plan": {
     "allowed_paths": [
+      ".agents/rules/git-and-reporting.md",
+      ".agents/rules/prompt-preflight.md",
+      ".agents/rules/role-boundaries.md",
+      ".claude/rules/auditor-protocol.md",
+      ".claude/rules/auditor-selftest.md",
+      "AGENTS.md",
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
+      "docs/generated/rule-traceability.md",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md"
+      "docs/refactor-backlog.md",
+      "scripts/governance_preflight.py",
+      "scripts/tests/test_governance_preflight.py"
     ],
     "required_paths": [
+      ".agents/rules/git-and-reporting.md",
+      ".agents/rules/prompt-preflight.md",
+      ".agents/rules/role-boundaries.md",
+      ".claude/rules/auditor-protocol.md",
+      ".claude/rules/auditor-selftest.md",
+      "AGENTS.md",
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
+      "docs/generated/rule-traceability.md",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md"
+      "docs/refactor-backlog.md",
+      "scripts/governance_preflight.py",
+      "scripts/tests/test_governance_preflight.py"
     ],
     "max_plan_revisions": 3,
     "revision_count": 0,
@@ -26,12 +44,21 @@
   },
   "actual": {
     "changed_paths": [
+      ".agents/rules/git-and-reporting.md",
+      ".agents/rules/prompt-preflight.md",
+      ".agents/rules/role-boundaries.md",
+      ".claude/rules/auditor-protocol.md",
+      ".claude/rules/auditor-selftest.md",
+      "AGENTS.md",
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
+      "docs/generated/rule-traceability.md",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md"
+      "docs/refactor-backlog.md",
+      "scripts/governance_preflight.py",
+      "scripts/tests/test_governance_preflight.py"
     ]
   },
   "evidence": [

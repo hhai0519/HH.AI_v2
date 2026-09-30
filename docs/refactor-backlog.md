@@ -2825,7 +2825,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 5.1 上一批狀態
 
-上次核對通過的 HEAD：9b6358ca837880e79dd73d20fa758475eb68de47
+上次核對通過的 HEAD：d546be603d11b8e2e43f2ef013a0f364c7bdda30
 
 - `23af193`（執行者前置檢查 ＋ 回滾程序 ＋ `AUDIT-LOG.md` ＋ 四缺口修正）
   已於 2026-09-02 由審計官核對通過：6 檔異動（含 2 個新檔）、零夾帶、
@@ -3037,6 +3037,8 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 - `de98c8a`（B-100 R-01 Windows Known-Folder Bridge Repair Final Acceptance & Same-SHA Main Promotion）已於 2026-09-29 由 External Macro Auditor 核對通過：Target = `de98c8a3b15fd3db8846891c4b582696293575ce`；Parent = `604c6fe9beb27ec234045da89b171b1e1fedc9b5`；Candidate Actions Run 36450306456 attempt 1 驗證成功（verify: completed/success, gateway-windows: completed/success，live markers: 2215ms / 263ms）；External Macro R1 審查判定 PASS / ACCEPT ALL（MACHINE=PASS, SCOPE_6=PASS, R01-R1-F1=RESOLVED, R01-R1-F2=RESOLVED, B1-A=PASS, B2=PASS, N1=PASS, DOC/GOVERNANCE=PASS, CANDIDATE CI=PASS, NEW MATERIAL BLOCKING FINDING=NONE, ROLLBACK=NO, PROMOTION ELIGIBILITY=PASS）；Same-SHA main promotion 成功推進（previous main: cde8402dcbdcc017021a5b414b0b9c17566cc74a -> promoted main: de98c8a3b15fd3db8846891c4b582696293575ce，SHA transformation: NONE）；Post-main exact-SHA Actions Run 36516585500 attempt 1 驗證成功（event=push, head_branch=main, head_sha=de98c8a3b15fd3db8846891c4b582696293575ce, verify: completed/success, gateway-windows: completed/success，live markers: 4046ms / 243ms）；External Macro 判定滿足 Q1-Q6，Stage 2 連續計數起算為 1 / 10；Stage 1 正式標記 COMPLETE；Stage 2 保持 OPEN / OBSERVING（1 / 10）；Layer 3 維持 USER_DECISION_PENDING（選項 A/B/C 待使用者裁決，執行者嚴禁代選）；TG-MVP-15 解除 Stage-1 阻擋（TG-MVP-14 = SATISFIED, B-100 R-01 Stage-1 gate = SATISFIED / REPAIRED_OBSERVING）；accepted checkpoint 推進至 `de98c8a3b15fd3db8846891c4b582696293575ce`（注意：本 state-sync candidate 自身尚未經 External Macro 審查，不得自稱為 checkpoint）；NEXT_WORK 保持 E-03，NEXT_SLICE 推進至 TG-MVP-15（TG-MVP-15 保持 NOT STARTED，嚴禁在本狀態同步批次內啟動）。
 - `ef9434c`（B-100 R-01 Final Closure State-Sync & Predecessor Macro Audit Acceptance）已於 2026-09-29 由前任唯一 External Macro Auditor 在對話完成 post-main 裁決 PASS / ACCEPT ALL，來源標為 USER_PROVIDED handoff of predecessor Macro verdict，非 Executor 或本任 Macro 親讀 raw log；Target = `ef9434c235e74b5a3355c9a246c7a93b6e12c995`；Parent = `14c0ba3e1fc6bc30c7ed35f37dc2ff759cfba935`；GitHub Actions Run 36563596261 attempt 1（event=push, head_branch=main, head_sha=ef9434c235e74b5a3355c9a246c7a93b6e12c995, verify: completed/success, gateway-windows: completed/success），此 metadata 已由本任 Macro 獨立以 GitHub API 核實；gateway-windows job 109390063658 的兩個 KNOWN_FOLDER_BRIDGE_MS marker = 11216 / 240 ms 與 Windows 49 passed，來源明記 CLAUDE-VERIFIED RAW / NON-AUTHORITATIVE SECOND OPINION；本任 Macro 匿名 raw log 查詢被 GitHub 403 拒絕，未親讀 raw log，不得升格為本任 Macro 原始量測；該 Run 僅是 post-main health，不是 Stage 2 #11，不重開 B-100 R-01；Stage 2 保持 10/10，Layer 3 保持 USER DECIDED OPTION A；accepted checkpoint 由 `14c0ba3e1fc6bc30c7ed35f37dc2ff759cfba935` 推進到 `ef9434c235e74b5a3355c9a246c7a93b6e12c995`；本 W3 未來候選 SHA 不能預寫為 checkpoint，不建立遞迴 state-sync；保持舊歷史 4475 ms 約 7.5% 的原始敘述與證據分類不改寫；本 W3 候選批次自身仍 AWAITING EXTERNAL MACRO AUDIT。
 - `9b6358c`（W3 SEC Decision and Backlog Registration）已於 2026-09-29 由 External Macro Auditor 核對通過：Target = `9b6358ca837880e79dd73d20fa758475eb68de47`；Parent = `ef9434c235e74b5a3355c9a246c7a93b6e12c995`；External Macro 審查判定 PASS / ACCEPT ALL（NEW MATERIAL BLOCKING FINDING = NONE, ROLLBACK = NO, PROMOTION ELIGIBILITY = PASS）；Candidate Actions Run 36583235644 attempt 1 驗證成功（event=push, branch=batch/w3-sec-doc-260929, head_sha=9b6358ca837880e79dd73d20fa758475eb68de47, verify job 109456629545 completed/success, gateway-windows job 109456629591 completed/success）；Candidate raw test counts & markers 來源嚴格為 USER_PROVIDED handoff of CLAUDE-VERIFIED RAW / NON-AUTHORITATIVE SECOND OPINION（verify 541 + 13 passed, ALL 5 GATES PASSED; gateway-windows 49 passed, KNOWN_FOLDER_BRIDGE_MS=2628/272；Macro 未親讀 raw log，嚴禁冒名）；Same-SHA main promotion: 第一次 push pre-push hook PASS 但 GitHub 遠端 Internal Server Error，main 未更新、單次授權消耗（不作為候選 CI failure）；經 Macro 獨立驗證後授權有界 R1，以 native pinned full-40 SHA refspec 將 main pure fast-forward 至 SAME 9b6358ca837880e79dd73d20fa758475eb68de47，SHA transformation = NONE，Same-SHA promotion = PASS；Macro 獨立以 git ls-remote 及 GitHub API 核實 main 現為 exact 9b6358ca837880e79dd73d20fa758475eb68de47；Post-main Actions Run 36587401427 attempt 1（event=push, head_branch=main, head_sha=9b6358ca837880e79dd73d20fa758475eb68de47, status=completed, conclusion=success, verify job 109471273857 completed/success, gateway-windows job 109471274394 completed/success）僅作 metadata health；Post-main raw log Macro 未讀且目前無 Claude 報告，未填寫 post-main raw 測試數據或 timing markers，亦不稱 Macro 親見 post-main ALL 5 GATES PASSED；Post-main 是 promotion health，非 Stage 2 #11；R-01 保持 CLOSED/ACCEPTED、Stage 2 保持 10/10、Layer 3 保持 USER DECIDED OPTION A；B-110 與 SEC-01～05 仍為 REGISTERED, NOT IMPLEMENTED；accepted checkpoint 推進至 `9b6358ca837880e79dd73d20fa758475eb68de47`（本 state-sync candidate 自身尚未經 External Macro 審查，處於 AWAITING EXTERNAL MACRO AUDIT，不得自稱為 checkpoint）；NEXT_WORK 保持 E-03，NEXT_SLICE 保持 B-100 R-C。
+
+- d546be6（W3 Final State Sync）已於 2026-09-30 經 External Macro Auditor 核對通過：Target = d546be603d11b8e2e43f2ef013a0f364c7bdda30；Parent = 9b6358ca837880e79dd73d20fa758475eb68de47；純 state/evidence-only candidate 未修改 runtime 與 active rules；External Macro 審查判定 PASS / ACCEPT ALL，FINDING_DISPOSITION = NONE，ROLLBACK = NO；已獲 native same-SHA promotion 至 main，SHA transformation = NONE；Candidate Actions Run 36593105978 attempt 1 驗證成功（push, batch/w3-final-state-sync-260929, head_sha=d546be603d11b8e2e43f2ef013a0f364c7bdda30, verify job 109491007971 completed/success, gateway-windows job 109491008415 completed/success）；Macro 親讀 raw log：ALL 5 GATES PASSED，541／13 passed，Windows 49 passed，KNOWN_FOLDER_BRIDGE_MS 2480／257 ms；Post-main Actions Run 36660929717 attempt 1 驗證成功（push, main, head_sha=d546be603d11b8e2e43f2ef013a0f364c7bdda30, verify job 109715299485 completed/success, gateway-windows job 109715299174 completed/success）；Macro 親讀 raw log：ALL 5 GATES PASSED，541／13 passed，Windows 49 passed，KNOWN_FOLDER_BRIDGE_MS 2191／287 ms；新增讀取 provenance：前一任 accepted main 9b6358ca837880e79dd73d20fa758475eb68de47 之 post-main Run 36587401427 attempt 1 現已由 Macro 親讀 raw 之 Gates、541／13 passed、Windows 49 passed、markers 2367／284 ms（新增讀取 provenance，非重跑「親讀當時」）；main ruleset 21301111 active，required checks verify、gateway-windows，無 bypass actors；Macro 本地核對 execution-record、fingerprint、consistency 通過；因環境缺 pytest 及 Gates 4／5，非指 Macro local all-five PASS；Claude 報 PASS 屬 USER_PROVIDED second opinion；最終五 Gates PASS 依 Macro 親讀 GitHub raw；accepted checkpoint 推進至 d546be603d11b8e2e43f2ef013a0f364c7bdda30；本批獨立事故修復候選自身處於 AWAITING EXTERNAL MACRO AUDIT，不可自稱為 checkpoint；NEXT_WORK 仍為 E-03，NEXT_SLICE 仍為 B-100 R-C。
 
 ### 5.2 待辦
 
@@ -6086,3 +6088,48 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - TG-MVP-15 狀態：保持 `NOT STARTED` 且 SEC-04 前置未滿足。
   - main advancement 嚴格為 `FORBIDDEN`。
   - 本 state-sync 候選自身處於 `AWAITING EXTERNAL MACRO AUDIT`。
+
+158. **W2 Current-Task Context Recovery and Evidence Provenance**（2026-09-30）
+- **A. accepted checkpoint 推進與外部審計官裁決同步（Accepted Checkpoint Advancement & External Macro Verdict）**：
+  - accepted checkpoint 推進至：d546be603d11b8e2e43f2ef013a0f364c7bdda30。
+  - 推進依據：W3 Final State Sync 候選 d546be603d11b8e2e43f2ef013a0f364c7bdda30（Parent: 9b6358ca837880e79dd73d20fa758475eb68de47；純 state/evidence-only candidate 未修改 runtime 與 active rules）經唯一 External Macro Auditor 獨立核對，正式裁決 PASS / ACCEPT ALL，FINDING_DISPOSITION = NONE，ROLLBACK = NO。已獲 native same-SHA promotion 至 main，SHA transformation = NONE。
+  - 邊界約束：原 W2 候選（ae7fdf83b9ad634b185d8e36c66c3303d753ae57）經 External Macro 裁決 HOLD，PROMOTION = FORBIDDEN；checkpoint 保持 d546be603d11b8e2e43f2ef013a0f364c7bdda30。
+- **B. 候選驗證、主分支晉級與 post-main 健康證據（Candidate CI, Same-SHA Promotion & Post-Main Health Evidence）**：
+  - 候選提交驗證：Candidate Actions Run 36593105978 attempt 1（event=push, branch=batch/w3-final-state-sync-260929, head_sha=d546be603d11b8e2e43f2ef013a0f364c7bdda30, verify job 109491007971 completed/success, gateway-windows job 109491008415 completed/success）。
+  - 候選 raw log 數據（Macro 親讀 raw）：ALL 5 GATES PASSED，541／13 passed；Windows 49 passed；KNOWN_FOLDER_BRIDGE_MS 2480／257 ms。
+  - 主分支晉級（Same-SHA Promotion）：native same-SHA promotion 至 main，SHA transformation = NONE，Same-SHA promotion = PASS；Macro 獨立以 git ls-remote 及 GitHub API 核實 main 現為 exact d546be603d11b8e2e43f2ef013a0f364c7bdda30。
+  - post-main 健康驗證：GitHub Actions Run 36660929717 attempt 1（event=push, head_branch=main, head_sha=d546be603d11b8e2e43f2ef013a0f364c7bdda30, status=completed, conclusion=success, verify job 109715299485 completed/success, gateway-windows job 109715299174 completed/success）。
+  - post-main raw log 數據（Macro 親讀 raw）：ALL 5 GATES PASSED，541／13 passed；Windows 49 passed；KNOWN_FOLDER_BRIDGE_MS 2191／287 ms。
+  - 新增讀取 provenance：前一任 accepted main 9b6358ca837880e79dd73d20fa758475eb68de47 之 post-main Run 36587401427 attempt 1 現由 Macro 親讀 raw 之 Gates、541／13 passed、Windows 49 passed、markers 2367／284 ms（新增讀取 provenance，非重跑「親讀當時」）。
+  - 觀察角色邊界：該 Run 僅是 promotion health，不是 Stage 2 #11；R-01 保持 CLOSED/ACCEPTED、Stage 2 保持 10/10、Layer 3 保持 USER DECIDED OPTION A。
+- **C. W2 原始工作與審計保留（W2 Original Implementation & Audit HOLD）**：
+  - W2 候選（ae7fdf83b9ad634b185d8e36c66c3303d753ae57）經 Macro 裁決 HOLD。Actions Run 36668643851 attempt 1 gateway-windows failure（CredMan J bridge timeout PROVIDER_UNAVAILABLE 62995ms 與 Telegram Case A 5610ms），attempt 2 success。Macro 提出反例 W2-F1（symlink traversal escape）與 W2-F2（stderr sentinel echo），及 USER_PROVIDED trace 記錄之程序 finding W2-P1。
+- **D. 專案後續路由與任務狀態（Project Subsequent Routing & Task Status）**：
+  - NEXT_WORK：保持 E-03。
+  - NEXT_SLICE：保持 B-100 R-C。
+
+159. **W2 Independent Incident Recovery — Path Guard and Safe Diagnostics**（2026-09-30）
+- **A. accepted checkpoint 與外部審計官裁決同步（Accepted Checkpoint & External Macro Verdict）**：
+  - accepted checkpoint 僅為：d546be603d11b8e2e43f2ef013a0f364c7bdda30（與既有 Macro PASS 列配對）。
+  - Source e7fdf83b9ad634b185d8e36c66c3303d753ae57 裁決為 HOLD，PROMOTION = FORBIDDEN；不改寫 Source 歷史，不要求 rollback main（main 仍為 Base d546be603d11b8e2e43f2ef013a0f364c7bdda30）。
+  - 本批獨立事故修復候選自身處於 AWAITING EXTERNAL MACRO AUDIT，其未來 SHA 嚴禁預寫為 checkpoint，不建立遞迴 state-sync，不追逐自身 SHA。
+- **B. 事故修復、缺陷分流與反例處置（Incident Fixes, Finding Dispositions & Counterexamples）**：
+  - W2-F1（BLOCKING / CURRENT W2）：原始輸入路徑檢查在 abspath／normpath 等折疊之前檢查原始 native path segments，拒絕任何 '..' traversal 與無效形態；固定 relative input 解析基準為 repo_root，absolute input 僅接受指向同一安全 canonical task location；.git anchor 驗證為正規目錄且非 symlink／junction／reparse；leaf 限定 direct child .git/<task-id>-<suffix>；支援 pre-write destination 檢查且不建立檔案。test_governance_preflight.py 加入真實 symlink／junction 與 '..' traversal 反例，驗證 exit 1、S1 TASK_ARTIFACT_SCOPE 且外部 sentinel 未被讀寫。
+  - W2-F2（BLOCKING / CURRENT W2）：安全錯誤分類與診斷輸出防護。--prompt-file 與 --check-task-artifact 兩入口均採用固定安全 reason code 分類（如 S1 CONTEXT_LOSS、S1 TASK_ARTIFACT_SCOPE），嚴禁回顯不可信 Manifest／Contract 欄位、requested／received 值、validator 原文、fail_lines 拼接、外部完整路徑或 prompt 全文。test_governance_preflight.py 加入 4 組不同 synthetic sentinel 反例，驗證 stdout／stderr 均不含 sentinel 或 prompt 全文。
+  - W2-P1（USER_PROVIDED 程序 finding）：USER trace 顯示前批在未完成全部 code／tests／rules 前即啟動 targeted pytest 與 loadability pytest。本批作為獨立事故修復，嚴格落實 B1 方案甲治理凍結硬規則：先完整完成所有 candidate source、tests、active rules、狀態文件、generated truth、execution-record／fingerprint，然後建立 freeze hash snapshot，之後才可啟動任何候選測試或 prospective verify。快照前嚴禁任何試跑。
+  - 歷史 F3／F4／F5：保留原舊歷史身份，於 B-100 R-C 中維持 OPEN / RESIDUAL / NONBLOCKING，不混號。
+- **C. 規則預算與字元驗證（Rule Character Budget Verification）**：
+  - AGENTS.md（5617 <= 6000）
+  - .agents/rules/role-boundaries.md（11652 <= 12000）
+  - .agents/rules/prompt-preflight.md（9311 <= base 9348，<= 9500）
+  - .agents/rules/git-and-reporting.md（11925 <= base 11964，<= 12000）
+- **D. 專案後續路由與任務狀態（Project Subsequent Routing & Task Status）**：
+  - NEXT_WORK 保持 E-03。
+  - NEXT_SLICE 保持 B-100 R-C（W2 獨立事故修復，candidate / AWAITING EXTERNAL MACRO AUDIT；原 W2 HOLD，不能提前 SEC-01）。
+  - B-100 傘狀任務保持 OPEN / TODO；R-C 未整體 CLOSED。
+  - B-100 R-01 保持 CLOSED / ACCEPTED，Stage 2 保持 10/10，Layer 3 保持 OPTION A。Run 36668643851 attempt 2 是健康證據，不加 #11。
+  - B-100 R-K 登錄 CredMan bridge timeout 實際復發為 NONBLOCKING umbrella residual；Telegram Case A timing 記 NONBLOCKING 新觀察。不能將整個 job 逾時歸為 R-01 再開／重置。SEC-02 列後續 scope review pointer，不在本批新增 SEC 實作或架構裁決。
+  - B-110 與 SEC-01～05 均仍為 REGISTERED, NOT IMPLEMENTED。
+  - TG-MVP-15 保持 NOT STARTED 且 SEC-04 前置未滿足。
+  - main advancement 嚴格為 FORBIDDEN。
+  - 本候選自身處於 AWAITING EXTERNAL MACRO AUDIT。

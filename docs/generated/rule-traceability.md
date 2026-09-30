@@ -67,6 +67,8 @@
 | .agents/rules/git-and-reporting.md | 223 | ## 3. 查證紀律 | SECTION | §11 | docs/archive/handover/HANDOVER-pre-router-568209e.md#§11 | RESOLVED |
 | .agents/rules/git-and-reporting.md | 224 | ## 3. 查證紀律 | FILE | `docs/HANDOVER.md` | docs/HANDOVER.md | RESOLVED |
 | .agents/rules/git-and-reporting.md | 226 | ## 3. 查證紀律 | FILE | `PRINCIPLES.md` | PRINCIPLES.md | RESOLVED |
+| .agents/rules/git-and-reporting.md | 241 | ## 3. 查證紀律 | FILE | `[`.agents/rules/role-boundaries.md §9`](./role-boundaries.md)` | .agents/rules/role-boundaries.md | RESOLVED |
+| .agents/rules/git-and-reporting.md | 241 | ## 3. 查證紀律 | SECTION | §9 | .agents/rules/role-boundaries.md#§9 | RESOLVED |
 | .agents/rules/governance-gate-integrity.md | 12 | ## 1. 候選提交治理凍結不變量 (Candidate Governance Freeze Invariant) | FILE | `scripts/verify_all.py` | scripts/verify_all.py | RESOLVED |
 | .agents/rules/governance-gate-integrity.md | 13 | ## 1. 候選提交治理凍結不變量 (Candidate Governance Freeze Invariant) | FILE | `scripts/check_consistency.py` | scripts/check_consistency.py | RESOLVED |
 | .agents/rules/governance-gate-integrity.md | 46 | ## 3. 閘門變更確定性負向控制 (Deterministic Negative Controls) | FILE | `scripts/check_consistency.py` | scripts/check_consistency.py | RESOLVED |
@@ -84,7 +86,8 @@
 | .agents/rules/prompt-preflight.md | 9 | ## 1. 目的 | ADR | docs/adr/0007-macro-auditor-role.md | docs/adr/0007-macro-auditor-role.md | RESOLVED |
 | .agents/rules/prompt-preflight.md | 15 | ## 2. 這是審查，不是建議 | FILE | `.agents/rules/role-boundaries.md` | .agents/rules/role-boundaries.md | RESOLVED |
 | .agents/rules/prompt-preflight.md | 15 | ## 2. 這是審查，不是建議 | SECTION | §7 | .agents/rules/role-boundaries.md#§7 | RESOLVED |
-| .agents/rules/prompt-preflight.md | 21 | ### 2.1 最前置硬規則：Prompt Manifest 與 Execution Contract 機械驗證（Hard Rule） | FILE | `scripts/governance_preflight.py` | scripts/governance_preflight.py | RESOLVED |
+| .agents/rules/prompt-preflight.md | 21 | ### 2.1 最前置硬規則：Prompt Manifest 與 Execution Contract 機械驗證（Hard Rule） | FILE | `[`.agents/rules/role-boundaries.md §9`](./role-boundaries.md)` | .agents/rules/role-boundaries.md | RESOLVED |
+| .agents/rules/prompt-preflight.md | 21 | ### 2.1 最前置硬規則：Prompt Manifest 與 Execution Contract 機械驗證（Hard Rule） | SECTION | §9 | .agents/rules/role-boundaries.md#§9 | RESOLVED |
 | .agents/rules/prompt-preflight.md | 25 | ### 2.1 最前置硬規則：Prompt Manifest 與 Execution Contract 機械驗證（Hard Rule） | TASK | B-109 | docs/TASKBOARD.md | RESOLVED |
 | .agents/rules/prompt-preflight.md | 28 | ### 2.1 最前置硬規則：Prompt Manifest 與 Execution Contract 機械驗證（Hard Rule） | CHECK | CHECK 26 | scripts/check_consistency.py | RESOLVED |
 | .agents/rules/prompt-preflight.md | 28 | ### 2.1 最前置硬規則：Prompt Manifest 與 Execution Contract 機械驗證（Hard Rule） | FILE | `docs/governance/execution-record.json` | docs/governance/execution-record.json | RESOLVED |
@@ -184,6 +187,8 @@
 | .claude/rules/auditor-protocol.md | 13 | # 宏觀審計官作業協定 | FILE | `docs/archive/claude-control-plane/auditor-protocol-pre-slim-76b5e9.md` | docs/archive/claude-control-plane/auditor-protocol-pre-slim-76b5e9.md | RESOLVED |
 | .claude/rules/auditor-protocol.md | 20 | ## 1. 職責範圍與查證模式 | ADR | ADR-0021 | docs/adr/0021-qualification-based-macro-auditor-role.md | RESOLVED |
 | .claude/rules/auditor-protocol.md | 35 | ## 1. 職責範圍與查證模式 | ADR | docs/adr/0005-high-risk-skill-three-layer-review.md | docs/adr/0005-high-risk-skill-three-layer-review.md | RESOLVED |
+| .claude/rules/auditor-protocol.md | 36 | ## 1. 職責範圍與查證模式 | FILE | `[`.agents/rules/role-boundaries.md §9.5`](../../.agents/rules/role-boundaries.md#95-遠端-actions-證據分工權威-remote-actions-log-provenance-division)` | .agents/rules/role-boundaries.md#95-遠端-actions-證據分工權威-remote-actions-log-provenance-division | RESOLVED |
+| .claude/rules/auditor-protocol.md | 36 | ## 1. 職責範圍與查證模式 | SECTION | §9.5 | .agents/rules/role-boundaries.md#§9.5 | RESOLVED |
 | .claude/rules/auditor-protocol.md | 60 | ### 3.1 候選提交治理凍結不變量（Candidate Governance Freeze Invariant） | FILE | `scripts/verify_all.py` | scripts/verify_all.py | RESOLVED |
 | .claude/rules/auditor-protocol.md | 61 | ### 3.1 候選提交治理凍結不變量（Candidate Governance Freeze Invariant） | FILE | `scripts/check_consistency.py` | scripts/check_consistency.py | RESOLVED |
 | .claude/rules/auditor-protocol.md | 112 | ### 5.4 逐行 diff 兩個 clone 或獨立 GitHub 查證，不只讀回報 | SECTION | §5.1 | docs/refactor-backlog.md#§5.1 | RESOLVED |
@@ -208,16 +213,20 @@
 | .claude/rules/auditor-protocol.md | 152 | ### 6.1 每份提示詞的必備要素 | SECTION | §5 | docs/refactor-backlog.md#§5 | RESOLVED |
 | .claude/rules/auditor-protocol.md | 153 | ### 6.1 每份提示詞的必備要素 | FILE | `docs/TASKBOARD.md` | docs/TASKBOARD.md | RESOLVED |
 | .claude/rules/auditor-protocol.md | 154 | ### 6.1 每份提示詞的必備要素 | FILE | `docs/AUDIT-LOG.md` | docs/AUDIT-LOG.md | RESOLVED |
+| .claude/rules/auditor-protocol.md | 156 | ### 6.1 每份提示詞的必備要素 | FILE | `[`.agents/rules/role-boundaries.md §9`](../../.agents/rules/role-boundaries.md#9-上下文遺失恢復任務產物紀律與證據分工權威-context_loss_recovery_rule)` | .agents/rules/role-boundaries.md#9-上下文遺失恢復任務產物紀律與證據分工權威-context_loss_recovery_rule | RESOLVED |
 | .claude/rules/auditor-protocol.md | 156 | ### 6.1 每份提示詞的必備要素 | FILE | `docs/EXEC-LOG.md` | docs/EXEC-LOG.md | RESOLVED |
+| .claude/rules/auditor-protocol.md | 156 | ### 6.1 每份提示詞的必備要素 | SECTION | §9 | .agents/rules/role-boundaries.md#§9 | RESOLVED |
 | .claude/rules/auditor-protocol.md | 158 | ### 6.1 每份提示詞的必備要素 | SECTION | §5.1 | docs/refactor-backlog.md#§5.1 | RESOLVED |
 | .claude/rules/auditor-protocol.md | 160 | ### 6.1 每份提示詞的必備要素 | FILE | `.agents/rules/prompt-preflight.md` | .agents/rules/prompt-preflight.md | RESOLVED |
 | .claude/rules/auditor-protocol.md | 160 | ### 6.1 每份提示詞的必備要素 | SECTION | §3.1 | .agents/rules/prompt-preflight.md#§3.1 | RESOLVED |
 | .claude/rules/auditor-protocol.md | 160 | ### 6.1 每份提示詞的必備要素 | SECTION | §3.2 | .agents/rules/prompt-preflight.md#§3.2 | RESOLVED |
 | .claude/rules/auditor-protocol.md | 161 | ### 6.1 每份提示詞的必備要素 | FILE | `.agents/rules/prompt-preflight.md` | .agents/rules/prompt-preflight.md | RESOLVED |
 | .claude/rules/auditor-protocol.md | 161 | ### 6.1 每份提示詞的必備要素 | FILE | `.agents/rules/prompt-preflight.md` | .agents/rules/prompt-preflight.md | RESOLVED |
+| .claude/rules/auditor-protocol.md | 161 | ### 6.1 每份提示詞的必備要素 | FILE | `[`.agents/rules/role-boundaries.md §9`](../../.agents/rules/role-boundaries.md#9-上下文遺失恢復任務產物紀律與證據分工權威-context_loss_recovery_rule)` | .agents/rules/role-boundaries.md#9-上下文遺失恢復任務產物紀律與證據分工權威-context_loss_recovery_rule | RESOLVED |
 | .claude/rules/auditor-protocol.md | 161 | ### 6.1 每份提示詞的必備要素 | FILE | `scripts/validate_prompt_manifest.py` | scripts/validate_prompt_manifest.py | RESOLVED |
 | .claude/rules/auditor-protocol.md | 161 | ### 6.1 每份提示詞的必備要素 | SECTION | §2.1 | .agents/rules/prompt-preflight.md#§2.1 | RESOLVED |
 | .claude/rules/auditor-protocol.md | 161 | ### 6.1 每份提示詞的必備要素 | SECTION | §3.4 | .agents/rules/prompt-preflight.md#§3.4 | RESOLVED |
+| .claude/rules/auditor-protocol.md | 161 | ### 6.1 每份提示詞的必備要素 | SECTION | §9 | .agents/rules/role-boundaries.md#§9 | RESOLVED |
 | .claude/rules/auditor-protocol.md | 163 | ### 6.1 每份提示詞的必備要素 | CHECK | CHECK 10 | scripts/check_consistency.py | RESOLVED |
 | .claude/rules/auditor-protocol.md | 166 | ### 6.1 每份提示詞的必備要素 | FILE | `PRINCIPLES.md` | PRINCIPLES.md | RESOLVED |
 | .claude/rules/auditor-protocol.md | 166 | ### 6.1 每份提示詞的必備要素 | SECTION | §2.9 | PRINCIPLES.md#§2.9 | RESOLVED |
@@ -362,11 +371,15 @@
 | .claude/rules/auditor-selftest.md | 106 | ## E. 交付（產出提示詞之前） | SECTION | §6.2 | .claude/rules/auditor-protocol.md#§6.2 | RESOLVED |
 | .claude/rules/auditor-selftest.md | 107 | ## E. 交付（產出提示詞之前） | SECTION | §6.1 | .claude/rules/auditor-protocol.md#§6.1 | RESOLVED |
 | .claude/rules/auditor-selftest.md | 107 | ## E. 交付（產出提示詞之前） | SECTION | §6.6 | .claude/rules/auditor-protocol.md#§6.6 | RESOLVED |
-| .claude/rules/auditor-selftest.md | 108 | ## E. 交付（產出提示詞之前） | SECTION | §6.1 | .claude/rules/auditor-protocol.md#§6.1 | RESOLVED |
+| .claude/rules/auditor-selftest.md | 108 | ## E. 交付（產出提示詞之前） | FILE | `[`.agents/rules/role-boundaries.md §9`](../../.agents/rules/role-boundaries.md#9-上下文遺失恢復任務產物紀律與證據分工權威-context_loss_recovery_rule)` | .agents/rules/role-boundaries.md#9-上下文遺失恢復任務產物紀律與證據分工權威-context_loss_recovery_rule | RESOLVED |
+| .claude/rules/auditor-selftest.md | 108 | ## E. 交付（產出提示詞之前） | SECTION | §6.1 | .agents/rules/role-boundaries.md#§6.1 | RESOLVED |
+| .claude/rules/auditor-selftest.md | 108 | ## E. 交付（產出提示詞之前） | SECTION | §9 | .agents/rules/role-boundaries.md#§9 | RESOLVED |
 | .claude/rules/auditor-selftest.md | 109 | ## E. 交付（產出提示詞之前） | SECTION | §5.1 | docs/refactor-backlog.md#§5.1 | RESOLVED |
 | .claude/rules/auditor-selftest.md | 109 | ## E. 交付（產出提示詞之前） | SECTION | §6.1 | .claude/rules/auditor-protocol.md#§6.1 | RESOLVED |
+| .claude/rules/auditor-selftest.md | 110 | ## E. 交付（產出提示詞之前） | FILE | `[`.agents/rules/role-boundaries.md §9`](../../.agents/rules/role-boundaries.md#9-上下文遺失恢復任務產物紀律與證據分工權威-context_loss_recovery_rule)` | .agents/rules/role-boundaries.md#9-上下文遺失恢復任務產物紀律與證據分工權威-context_loss_recovery_rule | RESOLVED |
 | .claude/rules/auditor-selftest.md | 110 | ## E. 交付（產出提示詞之前） | FILE | `scripts/validate_prompt_manifest.py` | scripts/validate_prompt_manifest.py | RESOLVED |
-| .claude/rules/auditor-selftest.md | 110 | ## E. 交付（產出提示詞之前） | SECTION | §6.1 | .claude/rules/auditor-protocol.md#§6.1 | RESOLVED |
+| .claude/rules/auditor-selftest.md | 110 | ## E. 交付（產出提示詞之前） | SECTION | §6.1 | .agents/rules/role-boundaries.md#§6.1 | RESOLVED |
+| .claude/rules/auditor-selftest.md | 110 | ## E. 交付（產出提示詞之前） | SECTION | §9 | .agents/rules/role-boundaries.md#§9 | RESOLVED |
 | .claude/rules/auditor-selftest.md | 111 | ## E. 交付（產出提示詞之前） | SECTION | §6.1 | .claude/rules/auditor-protocol.md#§6.1 | RESOLVED |
 | .claude/rules/auditor-selftest.md | 112 | ## E. 交付（產出提示詞之前） | CHECK | CHECK 10 | scripts/check_consistency.py | RESOLVED |
 | .claude/rules/auditor-selftest.md | 112 | ## E. 交付（產出提示詞之前） | SECTION | §6.1 | .claude/rules/auditor-protocol.md#§6.1 | RESOLVED |
@@ -403,6 +416,8 @@
 | AGENTS.md | 8 | # HH.AI 核心執行者架構規範 (Runtime Kernel & Global Router) | FILE | `[`MISSION.md`](./MISSION.md)` | MISSION.md | RESOLVED |
 | AGENTS.md | 8 | # HH.AI 核心執行者架構規範 (Runtime Kernel & Global Router) | FILE | `[`PRINCIPLES.md`](./PRINCIPLES.md)` | PRINCIPLES.md | RESOLVED |
 | AGENTS.md | 17 | ## 0. 工程紀律規則（最高優先） | FILE | `scripts/secret_presence.py` | scripts/secret_presence.py | RESOLVED |
+| AGENTS.md | 18 | ## 0. 工程紀律規則（最高優先） | FILE | `[`.agents/rules/role-boundaries.md §9`](./.agents/rules/role-boundaries.md#9-上下文遺失恢復任務產物紀律與證據分工權威-context_loss_recovery_rule)` | .agents/rules/role-boundaries.md#9-上下文遺失恢復任務產物紀律與證據分工權威-context_loss_recovery_rule | RESOLVED |
+| AGENTS.md | 18 | ## 0. 工程紀律規則（最高優先） | SECTION | §9 | .agents/rules/role-boundaries.md#§9 | RESOLVED |
 | AGENTS.md | 25 | ## 0. 工程紀律規則（最高優先） | FILE | `docs/EXEC-LOG.md` | docs/EXEC-LOG.md | RESOLVED |
 | AGENTS.md | 34 | ## 1. 目錄結構 | FILE | `[`skills/AGENTS.md §1`](./skills/AGENTS.md#1-目錄結構)` | skills/AGENTS.md#1-目錄結構 | RESOLVED |
 | AGENTS.md | 34 | ## 1. 目錄結構 | SECTION | §1 | skills/AGENTS.md#§1 | RESOLVED |

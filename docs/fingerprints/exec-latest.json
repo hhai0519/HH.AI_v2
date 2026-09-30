@@ -1,5 +1,5 @@
 {
-  "base_head": "9b6358c",
+  "base_head": "d546be6",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -16,7 +16,7 @@
         "## 3. 查證紀律"
       ],
       "lines": 242,
-      "sha256": "fcc52d7a89dbbd3d59aa385af757ea9c5f547cef630f7005520cae5e2784802b"
+      "sha256": "ff4fd17122e471f9802954540951fc0200c3da246ef01205be645ab4d0988fcb"
     },
     ".agents/rules/governance-gate-integrity.md": {
       "fences": 0,
@@ -75,10 +75,10 @@
         "## 6. 這條規則保護的是誰"
       ],
       "lines": 240,
-      "sha256": "2b82b68069694c516d87e92efab20602a0bfdf2e5e72042135f3273fa9b46969"
+      "sha256": "463fc35750376a4fd026a33b782ee38c902fbe96e6b40a4be6f290daed494c04"
     },
     ".agents/rules/role-boundaries.md": {
-      "fences": 0,
+      "fences": 4,
       "headings": [
         "# 角色邊界規則",
         "## 1. 你的身分",
@@ -90,10 +90,16 @@
         "### 6.1 GOAL_SPEC（正常重構與功能實作預設）",
         "### 6.2 EXACT_SPEC（精確替換／規範契約重構）",
         "## 7. 什麼時候該停下來回報，什麼時候該自己處理",
-        "## 8. 個人工作資料與日誌邊界（Personal Work Data Boundary — D-U2）"
+        "## 8. 個人工作資料與日誌邊界（Personal Work Data Boundary — D-U2）",
+        "## 9. 上下文遺失恢復、任務產物紀律與證據分工權威 (CONTEXT_LOSS_RECOVERY_RULE)",
+        "### 9.1 上下文遺失恢復規範 (Context Loss Recovery Protocol)",
+        "### 9.2 任務輔助產物路徑紀律 (Task Artifact Discipline)",
+        "### 9.3 治理預檢 CLI 與模式邊界 (Governance Preflight CLI)",
+        "### 9.4 守衛能力邊界與安全錯誤分類 (Guard Capability Boundary & Safe Diagnostics)",
+        "### 9.5 遠端 Actions 證據分工權威 (Remote Actions Log Provenance Division)"
       ],
-      "lines": 196,
-      "sha256": "5170eb0c420e9abbb767f520b2ebcc32c37b3e31d5695603e52cdc4aad594ca2"
+      "lines": 244,
+      "sha256": "1bea2d5b0d1ad93e9dc61bcac96331b2329caa9db90c508cd1f79cf9429cd9b7"
     },
     ".agents/rules/secret-output-safety.md": {
       "fences": 6,
@@ -197,7 +203,7 @@
         "### 12.2 Tier-M 微修復分類規範 (Tier-M Micro Repair)"
       ],
       "lines": 532,
-      "sha256": "2e954f4a3cbbf2b7eda609ce196b8b008fc97e6f35fbb5b030234269df45204d"
+      "sha256": "0fe3947b663f3d275b2ba446bc40dcf3ac5b614cc78e0623dca31e9a7be1047f"
     },
     ".claude/rules/auditor-selftest.md": {
       "fences": 0,
@@ -212,7 +218,7 @@
         "## F. 額度（每一輪回覆的開頭與結尾）"
       ],
       "lines": 139,
-      "sha256": "5ebbf7f52c142470142b943a6de9a4ab76b9740ca6f44422f10d068cff8e2a2e"
+      "sha256": "886f2f1f715ee7fcf27940d721a912fde8605f0847ff83b443b4f54cb251d69c"
     },
     ".github/workflows/verify.yml": {
       "fences": 0,
@@ -242,7 +248,7 @@
         "### 10.2 禁止文字摘要辯論 (Anti-Debate Policy)"
       ],
       "lines": 114,
-      "sha256": "df33e1b4e08218035dd68f8850b4f685735af09a2cf60d6b91d087d9d2eaef51"
+      "sha256": "17902cc4cc7339a0a23a92ea3a34e5195cf605bf40f25d6a721e1504e0ec0158"
     },
     "MISSION.md": {
       "fences": 0,
@@ -552,16 +558,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 257,
-      "sha256": "a22350d90f15f8620792a799cc8cfb159a42fd396037025e396f996ef14d587c"
+      "lines": 259,
+      "sha256": "9c8b8698aee83723fac0a2ceadb41a72dbd985dcd8a37f2bdc87cc39f7607902"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 224,
-      "sha256": "1881497309d3c1e71fed57e2d1198b928625332e74dd839137b6ffee98b6b38a"
+      "lines": 226,
+      "sha256": "cca251818c18405c119738471756f23fd5621e4d3f843625ab661c499c738ff3"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -603,7 +609,7 @@
         "## 封存區"
       ],
       "lines": 369,
-      "sha256": "2c3559f4e1d954fd26ea299acaceaab79c200461d58f5a58bdac6134e57176a3"
+      "sha256": "1968e89ca02ee40ecff908cb41dd2375507692eb3eb7c0d0fa78e0599ceea92d"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1072,8 +1078,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6088,
-      "sha256": "648537df3c097db2a0ba11b7b7dbee67865f2db41c03f918a6bc16d4f70dd9cf"
+      "lines": 6135,
+      "sha256": "a40b269a4837fdd5175b9bb540d166dc4ca06699d2324b78896a601049611280"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1135,8 +1141,8 @@
         "# -*- coding: utf-8 -*-",
         "# Import shared execution contract parser"
       ],
-      "lines": 669,
-      "sha256": "7921099e85128d8cdf77bbe4d453474f372336af6388eb92d730297e3f76c007"
+      "lines": 961,
+      "sha256": "3f4cdec559695e1cb57980c0d142dd598b09b0305337ba64d3f56540bffbadf0"
     },
     "scripts/impact_scan.py": {
       "fences": 0,
@@ -1304,8 +1310,8 @@
         "# Section 21-26: B-109 M4 Governance Preflight Fail-Fast CLI Regression Tests",
         "# ---------------------------------------------------------------------------"
       ],
-      "lines": 776,
-      "sha256": "5b07d33a22702d39d81d8bda60c5b5dc4c11e971db0623ffa456f6af9a45d35b"
+      "lines": 1461,
+      "sha256": "f2879c092ad22b03880beb88c682a7f7d1e3d8d126ece1d93c32d7597b5b03fe"
     },
     "scripts/tests/test_impact_scan.py": {
       "fences": 0,
@@ -1504,7 +1510,7 @@
       "sha256": "35bf7dbfa3c7d291b550c3c97a6ae398a22b1dc3624c1d2fc1e4db6963d6e115"
     }
   },
-  "generated_at": "2026-09-29T15:44:10Z",
+  "generated_at": "2026-09-30T08:00:08Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

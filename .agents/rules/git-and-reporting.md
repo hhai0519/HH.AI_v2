@@ -238,5 +238,5 @@
 - **執行 `python3 scripts/validate_skills.py` 前先設定編碼**：
   `$env:PYTHONIOENCODING = "utf-8"`，避免 Windows cp950 終端機無法輸出
   emoji 而報錯。
-- **機械治理預檢與 Push Hook 模式邊界**：手動治理提示詞預檢必須使用顯式 --prompt-file 模式（例如 `--prompt-file <path>` 或 `--prompt-file -`）。Git pre-push hook 使用 `--verify-push` 且為唯一合法的 Git push stdin 引用更新模式。嚴禁手動裸呼叫 governance_preflight.py 作為 pre-push 驗證步驟；裸呼叫直接 fail-fast，絕不於無模式下等待 stdin。
+- **機械治理預檢與 Push Hook 模式邊界**：手動治理預檢必須帶 `--task-id` 與 exact `.git/<task-id>-prompt.txt`；`--verify-push` 為唯一合法 Git push stdin 模式；裸呼叫一律 fail-fast。完整 CLI 模式邊界見 [`.agents/rules/role-boundaries.md §9`](./role-boundaries.md)。
 

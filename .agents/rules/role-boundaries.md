@@ -194,3 +194,51 @@ CI 紅燈只有兩條合法出路：修到它綠，或由審計官開新批次�
    - Data/logs
 2. **遷移禁止**：遷移舊專案或外部資料時，上述個人工作資料與日誌嚴禁遷入 `HH.AI_v2` 版本庫。
 3. **生命週期處置**：舊專案之 `Data/logs` 依使用者裁決 C-08 採「本機 repo-external 隔離封存，待 E-05 查證無參考與鑑識保留需求後始得授權刪除（REPO_EXTERNAL_QUARANTINE_THEN_DELETE）」，執行者不得自行將其納入版本庫，亦不得擅自立即刪除。
+
+---
+
+## 9. 上下文遺失恢復、任務產物紀律與證據分工權威 (CONTEXT_LOSS_RECOVERY_RULE)
+
+### 9.1 上下文遺失恢復規範 (Context Loss Recovery Protocol)
+1. **單一授權恢復來源**：執行者若發生對話中斷、上下文遺失或記憶壓縮（Compaction），**唯一合法之授權恢復來源為當前任務 prompt 原文檔案**（本機 exact 路徑 `.git/<task-id>-prompt.txt`）。
+2. **禁止隱含或跨 session 假想恢復**：嚴禁依賴任何 IDE transcript、brain/session logs、歷史交談隱藏產物、前批交接記憶或口頭宣稱進行上下文恢復。若 `.git/<task-id>-prompt.txt` 缺失、不可讀或與合約不符，執行者必須立即停止並報告 `S1 CONTEXT_LOSS`。
+3. **版本庫與 Git 狀態角色**：版本庫追蹤檔案與 Git 客觀狀態僅供查證客觀事實，不得替代 incoming prompt 的動態合約授權。
+4. **恢復後前置重檢**：完成上下文恢復後，執行者在進行下一次 tracked mutation 前，必須重新執行 bound governance preflight（`python scripts/governance_preflight.py --task-id <task-id> --prompt-file .git/<task-id>-prompt.txt`）並自 local disk 重讀 active rules。
+
+### 9.2 任務輔助產物路徑紀律 (Task Artifact Discipline)
+1. **命名與位置唯一約束**：執行者自建之查詢腳本、CI polling 腳本、執行計畫（plan）、證據檔及臨時輔助檔，**僅得存放於當前任務之 `.git/<task-id>-<suffix>`**（其中 suffix 不得為空，且不得包含目錄分隔符或 traversal 符號）。
+2. **禁止範本跨批次讀取**：嚴禁讀取、複製、執行前批任務遺留之 `.git/` 產物作為工作範本或恢復來源。
+3. **原始輸入路徑檢查先行**：在任何 `abspath` 或 `normpath` 折疊之前，必須先檢查原始輸入路徑字串之原生路徑片段（native segments），嚴格拒絕包含任何 `'..'` traversal 符號、巢狀目錄、非法字元或無效形態；不能只檢查正規化後之 basename 或 suffix。
+4. **解析基準與安全 Location 判定**：相對路徑（relative input）一律以版本庫根目錄（`repo_root`）為唯一確定解析基準，嚴格禁止依據「當前工作目錄是否存在該檔」動態切換解析基準；絕對路徑僅接受指向同一安全 canonical task location。產物與 prompt 共用一致的安全 location 判定，在讀取 prompt 或檢查產物前，必須同時檢查 `.git` anchor 與目標 leaf 之 regular/directory 屬性、symlink/junction/reparse 標記與 resolved containment，嚴禁 `.git` 自身連結成外部位置。
+5. **產物檢查預檢**：在讀取、寫入或執行自建任務輔助產物前，必須先調用 `python scripts/governance_preflight.py --task-id <task-id> --check-task-artifact <path>` 進行路徑與 prompt 授權守衛驗證；若非零退出即刻終止。
+6. **Pre-write Check 語意**：`--check-task-artifact` 支援寫入前預檢（destination 尚不存在時驗證 parent containment 與檔名規範，且不建立該檔案）。已有檔案必須為合法 regular file，嚴禁目錄、symlink、Windows directory junction 或 reparse point。
+
+### 9.3 治理預檢 CLI 與模式邊界 (Governance Preflight CLI)
+1. **Current Prompt Binding 模式**：
+   ```bash
+   python scripts/governance_preflight.py --task-id <task-id> --prompt-file .git/<task-id>-prompt.txt
+   ```
+   - 僅接受安全 ASCII task-id（無路徑分隔符、磁碟機代號、空白或 traversal）。
+   - 僅讀取 repo 內部之 `.git/<task-id>-prompt.txt`；禁止讀取任意外部路徑。
+   - 驗證 Prompt Manifest、Execution Contract v2 與 task_id 三方一致，且 21 項機械治理規則全部 PASS。
+   - 嚴禁用 `--prompt-file -`（stdin）作為 production 授權預檢；stdin 輸入必 fail-fast 報告 `S1 CONTEXT_LOSS`。
+   - Macro/Claude 產出草案時，得先將草案保存至其 local clone 的 `.git/<task-id>-prompt.txt`，再以本 CLI 預檢結構與邊界（若已有同名產物先確認屬本批，禁覆寫他批；預檢不給予執行授權）。
+2. **Task Artifact Guard 模式**：
+   ```bash
+   python scripts/governance_preflight.py --task-id <task-id> --check-task-artifact <artifact-path>
+   ```
+   - 先驗證當前任務 prompt 授權（若失效報告 `S1 CONTEXT_LOSS`），再驗證產物路徑合規性（若不合規報告 `S1 TASK_ARTIFACT_SCOPE`）。
+3. **Push 驗證與敏感操作授權模式**：
+   - `--verify-push <remote-name> <remote-url>` 為 Git pre-push hook 唯一專用 stdin 模式。
+   - `--create-main-auth` 與 `--create-delete-auth` 維持單次 exact-SHA / exact-set 授權消耗。
+   - Bare invocation（無參數）一律 argparse fail-fast 退出碼 2，不讀取 stdin，不阻塞管線。
+
+### 9.4 守衛能力邊界與安全錯誤分類 (Guard Capability Boundary & Safe Diagnostics)
+1. **非全域攔截器**：`--check-task-artifact` 為執行者主動執行的輸入路徑守衛（input path guard），非作業系統層級或 IDE 底層全域檔案存取攔截器；亦不宣稱消除了檢查後外部竄改或一般 TOCTOU。
+2. **資訊最小化與安全錯誤分類**：CLI caller（包含 `--prompt-file` 與 `--check-task-artifact`）在驗證失敗時，嚴格採固定安全 reason code／分類（如 `S1 CONTEXT_LOSS` 或 `S1 TASK_ARTIFACT_SCOPE`），絕對不得在 stdout/stderr 回顯不可信 Manifest／Contract 欄位內容、requested/received 值、validator error 原始文字、fail_lines 拼接、外部完整路徑或 prompt/檔案內容（避免 sentinel 字串外洩）。
+
+### 9.5 遠端 Actions 證據分工權威 (Remote Actions Log Provenance Division)
+1. **執行者邊界**：執行者（Executor）身分固定為 `EXTERNAL_MACRO_ONLY`，嚴禁讀取 GitHub Actions raw log、嚴禁攜帶 Authorization header 或訪問機敏 credentials，僅得以公開匿名 exact-SHA metadata 查驗 workflow 完成狀態。
+2. **Macro 審計官親讀權**：`ACTIVE_MACRO_AUDITOR`（外部審計官）在實際可讀取 GitHub raw log 時，應自行讀取 raw log，並在審計紀錄明確標示「Macro 親讀」（如 ALL 5 GATES PASSED、測試數與耗時）。
+3. **Claude 查驗邊界**：Claude 僅於需要時提供 cross-check / second opinion，不取得裁決權。若新 session 或權限變動無法親讀 raw log，必須按實際來源真實標示（如「未親讀」或 `CLAUDE-VERIFIED RAW`），不得宣稱永久可讀，亦不得改寫歷史記錄。
+4. **Windows 證據分層 (N2 Tier)**：Windows 本機結果記 `MACHINE_CAPTURED_RAW by Executor`，明標 Linux CI 未覆蓋 Windows junction/reparse 等原生平台特性；本機與 CI verification_status 分離。
