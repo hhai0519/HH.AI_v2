@@ -69,9 +69,14 @@ C. **Manage MCP Servers → GitHub**：
 D. **Advanced Command Access → Terminal Commands**：
 - 12 entries 全部設為 **Deny**；
 - 明確不在 Deny：`git push`、`git switch -c`；
-- 持久性證據精度（Direct-vs-inferred persistence distinction）：
-  - **DIRECTLY RESTART-VERIFIED**：`git credential`、`git reset`。
+- **USER_PROVIDED 最新截圖事實確立（2026-09-30）**：
+  - Advanced Command Access → Terminal Commands 畫面清晰顯示 12 Deny entries 全部存在（`--delete`、`git branch -D`、`git checkout`、`git clean`、`git commit --amend`、`git credential`、`git rebase`、`git reset`、`git restore`、`git stash`、`git switch --discard-changes`、`git switch -C`）。
+  - Advanced Web Access 畫面顯示：Read github.com = `Allow`、Execute github.com = `Deny`。
+  - 此可見配置完全符合持久基線態勢。
+- **持久性證據精度與執行期攔截能力區隔（Setting Persistence vs Invocation Defense）**：
+  - **DIRECTLY RESTART-VERIFIED**：`git credential`、`git reset` 曾直接觀察到重啟後 entry 依然存在。
   - **SAME-MECHANISM PERSISTENCE INFERENCE**：其餘 10 entries（`--delete`、`git branch -D`、`git checkout`、`git clean`、`git commit --amend`、`git rebase`、`git restore`、`git stash`、`git switch --discard-changes`、`git switch -C`）位於同一持久清單中，為同機制推論，非逐一重啟測試事實。下次正常重啟可順便確認，但不得當作每批 production 之前提。
+  - **重要概念澄清**：「restart-verified」僅證明可見設定在重啟後成功保留（persistence of visible setting only），**絕不證明匹配之命令調用會被實際攔截**（does NOT prove invocation blocking）。
 
 E. **Advanced Web Access → Execute URLs**：
 - `localhost` = Allow
@@ -83,6 +88,37 @@ E. **Advanced Web Access → Execute URLs**：
 
 - **舊「Deny List Terminal Commands」**：實測重啟後會清空（restart -> empty），已正式標記為 **DEPRECATED / NON-PERSISTENT / DO NOT USE**。不得作為 production prerequisite、security authority 或 recovery target。
 - **Execute URLs delete-to-restrict**：實測若直接 delete `github.com` entry，重啟後 `github.com` 會重新以 `Allow` 出現。因此 delete entry 不得視為 web 限制手段。
+
+### 2.3 執行期前置攔截探針實測與 Matcher 語意邊界（2026-09-30 實證）
+
+A. **非工作區 Help-only 探針實測事實**：
+- 執行地點：`C:\Windows\System32`（非 Git 工作區，`git rev-parse --is-inside-work-tree` = NO）。
+- 探針性質：唯讀、不修改檔案、僅請求 help 用法。
+- 實測結果：
+  - `git reset -h`：執行並回傳用法（EXECUTED_USAGE，exit 1），未見 IDE 阻擋，未見審批提示（no IDE block, no approval prompt）。
+  - `git checkout -h`：執行並回傳用法（EXECUTED_USAGE，exit 1），未見 IDE 阻擋，未見審批提示（no IDE block, no approval prompt）。
+  - `git stash -h`：執行並回傳用法（EXECUTED_USAGE，exit 1），未見 IDE 阻擋，未見審批提示（no IDE block, no approval prompt）。
+- **當前防禦邊界判定**：
+  - **IDE 前置破壞性命令防禦（IDE destructive-command pre-execution defense）** = **NOT ESTABLISHED**。
+  - **Matcher 實際比對語意（Matcher semantics）** = **UNKNOWN**。
+  - **全行精確比對假說（Whole-line exact equality hypothesis）**：若 matcher 採全行字串完全相等比對，則帶參數形式（如 `git reset --hard`）亦可能繞過可見之 `git reset` Deny entry；此項僅為 **INFERENCE ONLY / NOT ESTABLISHED**，嚴禁升格為事實。
+
+B. **Mandatory pre-SEC-03 USER Verification Protocol（SEC-03 前置 USER 手動驗證協議）**：
+- **執行主體**：**USER 本人**（執行者嚴禁在狀態同步批次或日常任務中執行此等裸探針）。
+- **執行時機**：在 SEC-03 正式開始前。
+- **驗證步驟**：
+  1. USER 檢視當前 Antigravity IDE Settings，確認 12 Deny entries 狀態。
+  2. 終端機切換至 `C:\Windows\System32`。
+  3. 先確認該處非 Git 工作區：`git rev-parse --is-inside-work-tree`（必須回傳 fatal / 非工作區）。
+  4. USER 手動輸入完全匹配 Deny 清單之 exact bare 字串進行測試：
+     - `git reset`
+     - `git checkout`
+     - `git stash`
+  5. **結果判定標準（Expected Interpretation）**：
+     - 若命令在 Git 啟動前被 IDE 攔截：`IDE_BLOCKED`。
+     - 若 IDE 彈出確認對話框詢問許可：`IDE_APPROVAL_PROMPT`。
+     - 若 Git 啟動並回傳 `fatal: not a git repository (or any of the parent directories): .git`：判定為命令已實際執行（**EXECUTED**），**NOT IDE_BLOCKED**。
+  6. 記錄實測結果以供 SEC-03 安全設計依據。
 
 ---
 
@@ -126,7 +162,7 @@ git switch -C
 - `git switch -c` **不存在**於 Deny。
 
 記錄：
-- `git credential` 與 `git reset` 已 direct restart-tested；
+- `git credential` 與 `git reset` 已 direct restart-tested（僅證明可見設定持久性，不證明調用攔截能力，見 §2.3）；
 - 其餘 10 項為 same-mechanism persistence inference，下次重啟順便核對即可。
 
 ### 4.3 Advanced File Access
@@ -300,7 +336,7 @@ Executor 永遠嚴格遵守：
 1. **舊 Deny List Terminal Commands**：實測重啟後直接變為 empty，確認為 non-persistent。
 2. **Execute URLs github.com 刪除**：實測 delete entry 後重啟，`github.com` 會自動以 `Allow` 重現；改為 explicit Deny entry 後重啟，`Deny` 狀態成功保存。
 3. **Advanced Command Access explicit Deny**：
-   - `git credential` 與 `git reset`：實測重啟後 `Deny` 狀態成功保存（directly restart-tested）；
+   - `git credential` 與 `git reset`：實測重啟後 `Deny` 狀態成功保存（directly restart-tested，確立設定持久性，惟執行期攔截能力見 §2.3）；
    - 其他 10 項：基於相同儲存機制推論（same-mechanism inference），非逐一測試。
 4. **底層儲存探索記錄**：
    先前以 sentinel 字串 `git switch --discard-changes` 搜尋 `%USERPROFILE%\.gemini`、`%APPDATA%\Antigravity IDE`、`%LOCALAPPDATA%` 等路徑（排除 brain、conversations、cache），以 UTF-8 與 UTF-16 搜尋皆為 **zero plaintext match**。
