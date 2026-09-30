@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "W2-FINAL-STATE-SYNC-R2-260930",
-  "base_oid": "0384a52fd81c168fea6c37c714e7ed1927012466",
+  "task_id": "W2-FINAL-STATE-SYNC-R3-260930",
+  "base_oid": "4fd6748ab5522d2d86a2a01832048bf5ce7943a7",
   "plan": {
     "allowed_paths": [
       "docs/AUDIT-LOG.md",
@@ -10,7 +10,6 @@
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/ops/antigravity-environment-baseline.md",
       "docs/refactor-backlog.md"
     ],
     "required_paths": [
@@ -19,7 +18,6 @@
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/ops/antigravity-environment-baseline.md",
       "docs/refactor-backlog.md"
     ],
     "max_plan_revisions": 3,
@@ -33,7 +31,6 @@
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/ops/antigravity-environment-baseline.md",
       "docs/refactor-backlog.md"
     ]
   },
