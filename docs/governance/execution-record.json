@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "W2-854C310-R2-260930",
-  "base_oid": "854c310d522410eea908c5229fe33d288d09d0ca",
+  "task_id": "W2-5D4FBD7-R4-260930",
+  "base_oid": "5d4fbd70a652705c680aa3cdb399a3871bb98618",
   "plan": {
     "allowed_paths": [
       "docs/AUDIT-LOG.md",
