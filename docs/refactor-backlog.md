@@ -6111,7 +6111,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 159. **W2 Independent Incident Recovery — Path Guard and Safe Diagnostics**（2026-09-30）
 - **A. accepted checkpoint 與外部審計官裁決同步（Accepted Checkpoint & External Macro Verdict）**：
   - accepted checkpoint 僅為：d546be603d11b8e2e43f2ef013a0f364c7bdda30（與既有 Macro PASS 列配對）。
-  - Source e7fdf83b9ad634b185d8e36c66c3303d753ae57 裁決為 HOLD，PROMOTION = FORBIDDEN；不改寫 Source 歷史，不要求 rollback main（main 仍為 Base d546be603d11b8e2e43f2ef013a0f364c7bdda30）。
+  - Source ae7fdf83b9ad634b185d8e36c66c3303d753ae57 裁決為 HOLD，PROMOTION = FORBIDDEN；不改寫 Source 歷史，不要求 rollback main（main 仍為 Base d546be603d11b8e2e43f2ef013a0f364c7bdda30）。
   - 本批獨立事故修復候選自身處於 AWAITING EXTERNAL MACRO AUDIT，其未來 SHA 嚴禁預寫為 checkpoint，不建立遞迴 state-sync，不追逐自身 SHA。
 - **B. 事故修復、缺陷分流與反例處置（Incident Fixes, Finding Dispositions & Counterexamples）**：
   - W2-F1（BLOCKING / CURRENT W2）：原始輸入路徑檢查在 abspath／normpath 等折疊之前檢查原始 native path segments，拒絕任何 '..' traversal 與無效形態；固定 relative input 解析基準為 repo_root，absolute input 僅接受指向同一安全 canonical task location；.git anchor 驗證為正規目錄且非 symlink／junction／reparse；leaf 限定 direct child .git/<task-id>-<suffix>；支援 pre-write destination 檢查且不建立檔案。test_governance_preflight.py 加入真實 symlink／junction 與 '..' traversal 反例，驗證 exit 1、S1 TASK_ARTIFACT_SCOPE 且外部 sentinel 未被讀寫。
@@ -6133,3 +6133,6 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - TG-MVP-15 保持 NOT STARTED 且 SEC-04 前置未滿足。
   - main advancement 嚴格為 FORBIDDEN。
   - 本候選自身處於 AWAITING EXTERNAL MACRO AUDIT。
+- **E. R1 事故留痕與非阻擄觀察指向（R1 Incident Recovery & Non-blocking Observations）**：
+  - R1 事故留痕：65d CI 綠但 Macro HOLD，F1 前輪 dispositioned 越界讀取，F2 新 Source OID 控制字元，R1 新證據重建中；不宣稱 W2 ACCEPTED。
+  - 非阻擄觀察指向：此類反斜線跳脫與 CHECK 1 未覆蓋之跨工具／字元驗證殘留對應既有 B-69（不新設任務，不改 Base 兩處 BEL）；Run 36687154350 的 windows-credential-manager-provider.test.js 單檔由 Macro 親讀 raw 時間戳推算約 34.7 秒、低於 60 秒門檻，歸既有 B-100 R-K 觀察，不宣稱故障或重開 R-01。
