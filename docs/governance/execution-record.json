@@ -1,42 +1,24 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "W2-65D166B-R1-260930",
-  "base_oid": "d546be603d11b8e2e43f2ef013a0f364c7bdda30",
+  "task_id": "W2-854C310-R2-260930",
+  "base_oid": "854c310d522410eea908c5229fe33d288d09d0ca",
   "plan": {
     "allowed_paths": [
-      ".agents/rules/git-and-reporting.md",
-      ".agents/rules/prompt-preflight.md",
-      ".agents/rules/role-boundaries.md",
-      ".claude/rules/auditor-protocol.md",
-      ".claude/rules/auditor-selftest.md",
-      "AGENTS.md",
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
-      "docs/generated/rule-traceability.md",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md",
-      "scripts/governance_preflight.py",
-      "scripts/tests/test_governance_preflight.py"
+      "docs/refactor-backlog.md"
     ],
     "required_paths": [
-      ".agents/rules/git-and-reporting.md",
-      ".agents/rules/prompt-preflight.md",
-      ".agents/rules/role-boundaries.md",
-      ".claude/rules/auditor-protocol.md",
-      ".claude/rules/auditor-selftest.md",
-      "AGENTS.md",
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
-      "docs/generated/rule-traceability.md",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md",
-      "scripts/governance_preflight.py",
-      "scripts/tests/test_governance_preflight.py"
+      "docs/refactor-backlog.md"
     ],
     "max_plan_revisions": 3,
     "revision_count": 0,
@@ -44,21 +26,12 @@
   },
   "actual": {
     "changed_paths": [
-      ".agents/rules/git-and-reporting.md",
-      ".agents/rules/prompt-preflight.md",
-      ".agents/rules/role-boundaries.md",
-      ".claude/rules/auditor-protocol.md",
-      ".claude/rules/auditor-selftest.md",
-      "AGENTS.md",
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
-      "docs/generated/rule-traceability.md",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md",
-      "scripts/governance_preflight.py",
-      "scripts/tests/test_governance_preflight.py"
+      "docs/refactor-backlog.md"
     ]
   },
   "evidence": [
@@ -72,14 +45,6 @@
         "sha256": "9a2a7fd3e8dcdcaa742807c62f800a0e178f391f12c202a6b761b8e5b4c9eea2"
       },
       "description": "Deterministic Git diff replay against declared plan allowed/required scope"
-    },
-    {
-      "id": "M2_DISCOVERY_RAW",
-      "origin": "MACHINE_CAPTURED_RAW",
-      "verification_status": "VERIFIED",
-      "source_kind": "EXTERNAL_ARTIFACT",
-      "sha256": "4cd2851da921aab9d371b281f51947e2645b069d38ee56655e37a79c2ded3b4b",
-      "description": "External Macro verified M2 immutable raw discovery artifact identity"
     }
   ],
   "report_claims": [
@@ -88,13 +53,6 @@
       "claim_text": "All actual changed repository paths strictly match allowed scope and cover all required paths without expansion.",
       "evidence_ids": [
         "PLAN_ACTUAL_DIFF"
-      ]
-    },
-    {
-      "claim_id": "CLAIM_DISCOVERY_PROVENANCE_VERIFIED",
-      "claim_text": "Immutable raw discovery artifact verified against expected SHA256 closure.",
-      "evidence_ids": [
-        "M2_DISCOVERY_RAW"
       ]
     }
   ]

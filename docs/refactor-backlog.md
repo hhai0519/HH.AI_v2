@@ -6136,3 +6136,13 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 - **E. R1 事故留痕與非阻擄觀察指向（R1 Incident Recovery & Non-blocking Observations）**：
   - R1 事故留痕：65d CI 綠但 Macro HOLD，F1 前輪 dispositioned 越界讀取，F2 新 Source OID 控制字元，R1 新證據重建中；不宣稱 W2 ACCEPTED。
   - 非阻擄觀察指向：此類反斜線跳脫與 CHECK 1 未覆蓋之跨工具／字元驗證殘留對應既有 B-69（不新設任務，不改 Base 兩處 BEL）；Run 36687154350 的 windows-credential-manager-provider.test.js 單檔由 Macro 親讀 raw 時間戳推算約 34.7 秒、低於 60 秒門檻，歸既有 B-100 R-K 觀察，不宣稱故障或重開 R-01。
+- **F. R1 HOLD、R2 留痕與 N1～N5 處置（R1 HOLD, R2 Repair & N1-N5 Dispositions）**：
+  - 854 R1 HOLD 與 F1～F4 留痕：854c310d522410eea908c5229fe33d288d09d0ca 經 External Macro 裁決 HOLD，PROMOTION = FORBIDDEN；Run 36694301164 attempt 1 verify / gateway-windows 雙 completed / success（verify 551 + 13 passed、ALL 5 GATES PASSED、Windows 49 passed、KNOWN_FOLDER_BRIDGE_MS 3186 / 245 ms 由本次 Macro 親讀 raw），但 machine green != Macro PASS，機器綠燈不解除 Macro HOLD。明確四項 blocking 發現：R1-F1（freeze snapshot 前已先執行 execution_record verify、fingerprint --verify、byte guard，且 EXEC-LOG 未完整揭露）、R1-F2（freeze inventory 使用 glob，漏掉 docs/governance/rule-registry.json）、R1-F3（曾以 python -c 內嵌字串寫入文件，違反本事故修復明文邊界）、R1-F4（docs/governance/execution-record.json 重新帶入未被本批建立／驗證之 M2_DISCOVERY_RAW 與 CLAIM_DISCOVERY_PROVENANCE_VERIFIED）。F1～F3 來源為 USER_PROVIDED handoff of predecessor Macro / CLAUDE-VERIFIED evidence，R1-F4 經本次 External Macro 以 fresh Git bytes 獨立確認。
+  - R2 事故修復定位：R2 為 pending candidate 的最小前向證據／文件真值修復（minimal evidence/document repair），不修改 W2 runtime、tests、workflow、scripts 或治理規則；accepted checkpoint 保持 d546be603d11b8e2e43f2ef013a0f364c7bdda30；本候選自身處於 AWAITING EXTERNAL MACRO AUDIT，不宣稱 W2 PASS、CLOSED 或自行推 main。
+  - N1～N5 觀察處置：
+    - N1（task-id prefix collision）：歸 EXISTING B-100 R-C / RESIDUAL / NONBLOCKING；只在 item 159 留痕簡要登錄，本批不改 scripts；未來 task-id 命名不得讓新 task-id 以任一既有 task-id + "-" 開頭，亦不得讓既有 task-id 以新 task-id + "-" 開頭。
+    - N2（git worktree 中 .git 為檔案時 guard fail-closed）：NONBLOCKING compatibility limitation，不新增 task，R2 不修。
+    - N3（get_canonical_git_dir realpath equality dead check）：NONBLOCKING / no demonstrated security impact，不新增 task，R2 不修。
+    - N4（CredMan live bridge latency）：歸 EXISTING B-100 R-K，不重開 R-01，R2 不修；SEC-02 scope review 保持既有路由。
+    - N5（反斜線 escape 造成 BEL 且 CHECK 1 無法攔截）：歸 EXISTING B-69；反斜線 escape / BEL 事件已累計三次，CHECK 1 存在 gap；本批不改 Base 既有控制字元。
+    - execution_record.py 固定產生兩個 M2 節點之 generator 缺陷：歸 EXISTING B-107 / NONBLOCKING，R2 不修 generator。

@@ -21,7 +21,7 @@
 > 若發生以下任一事件：**換電腦**、**重新安裝 Antigravity**、**IDE 版本更新**，
 > 在開始任何 production work 之前，必須先閱讀 [docs/ops/antigravity-environment-baseline.md](ops/antigravity-environment-baseline.md) 並完整完成 Environment Baseline Checklist 與重啟核對。
 
-**最後更新**：2026-09-30，W2 事故 R1 修復中，待 Macro 審計；活動狀態請參照 NEXT_WORK 與 NEXT_SLICE。
+**最後更新**：2026-09-30，W2 事故 R2 evidence/freeze repair candidate 執行中／待外部 Macro 審計；活動狀態請參照 NEXT_WORK 與 NEXT_SLICE。
 
 ---
 
