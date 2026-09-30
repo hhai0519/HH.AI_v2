@@ -17,6 +17,7 @@ import os
 import sys
 import json
 import re
+import stat
 import argparse
 from datetime import datetime, timezone
 
@@ -35,6 +36,212 @@ from scripts.validate_prompt_manifest import (
 
 AUTH_FILE_NAME = "hhai-sensitive-push-auth.json"
 RULE_REGISTRY_PATH = os.path.join("docs", "governance", "rule-registry.json")
+
+
+def is_safe_task_id(task_id: str) -> bool:
+    """Validate task_id is safe ASCII without traversal, separators, or whitespace."""
+    if not task_id or not isinstance(task_id, str):
+        return False
+    return bool(re.fullmatch(r"[A-Za-z0-9_-]+", task_id))
+
+
+def is_safe_regular_file(path: str) -> bool:
+    """Validate that path exists, is a regular file, and is not a symlink or reparse point."""
+    try:
+        st = os.lstat(path)
+        if os.path.islink(path) or stat.S_ISLNK(st.st_mode):
+            return False
+        if getattr(st, "st_reparse_tag", 0) != 0:
+            return False
+        return stat.S_ISREG(st.st_mode)
+    except Exception:
+        return False
+
+
+def verify_current_task_prompt(
+    repo_root: str,
+    task_id: str,
+    prompt_file: str | None = None,
+) -> tuple[bool, str, str, list[str]]:
+    """
+    Validates current task prompt binding:
+    1. Safe ASCII task_id
+    2. Exact location .git/<task-id>-prompt.txt (lexical and resolved containment)
+    3. Regular file, non-symlink, non-reparse point
+    4. Valid Manifest, Execution Contract v2, matching task_id, and governance rules pass.
+    Returns (ok, err_message, prompt_text, rule_results).
+    """
+    if not is_safe_task_id(task_id):
+        return False, "S1 CONTEXT_LOSS: Task ID is missing, empty, or contains invalid characters", "", []
+
+    repo_root_abs = os.path.abspath(repo_root)
+    if os.path.basename(repo_root_abs) == ".git":
+        git_dir = repo_root_abs
+    else:
+        git_dir = os.path.join(repo_root_abs, ".git")
+
+    expected_filename = f"{task_id}-prompt.txt"
+    expected_prompt_path = os.path.abspath(os.path.join(git_dir, expected_filename))
+
+    if prompt_file is None:
+        target_path = expected_prompt_path
+    else:
+        if prompt_file == "-":
+            return False, "S1 CONTEXT_LOSS: Stdin prompt input is not permitted for production governance preflight", "", []
+
+        if os.path.isabs(prompt_file):
+            norm_input = os.path.abspath(prompt_file)
+        else:
+            if os.path.exists(os.path.abspath(prompt_file)):
+                norm_input = os.path.abspath(prompt_file)
+            else:
+                norm_input = os.path.abspath(os.path.join(repo_root_abs, prompt_file))
+
+        if os.path.normcase(norm_input) != os.path.normcase(expected_prompt_path):
+            return False, "S1 CONTEXT_LOSS: Prompt file must point to exact repo .git/<task-id>-prompt.txt", "", []
+        target_path = norm_input
+
+    if not os.path.lexists(target_path):
+        return False, "S1 CONTEXT_LOSS: Task prompt file does not exist", "", []
+
+    try:
+        st = os.lstat(target_path)
+    except Exception:
+        return False, "S1 CONTEXT_LOSS: Cannot inspect prompt file metadata", "", []
+
+    if os.path.islink(target_path) or stat.S_ISLNK(st.st_mode):
+        return False, "S1 CONTEXT_LOSS: Prompt file is a symlink", "", []
+
+    if getattr(st, "st_reparse_tag", 0) != 0:
+        return False, "S1 CONTEXT_LOSS: Prompt file is a reparse point or junction", "", []
+
+    if not stat.S_ISREG(st.st_mode):
+        return False, "S1 CONTEXT_LOSS: Prompt file is not a regular file", "", []
+
+    resolved_target = os.path.realpath(target_path)
+    resolved_git = os.path.realpath(git_dir)
+    resolved_expected = os.path.realpath(expected_prompt_path)
+    if os.path.normcase(resolved_target) != os.path.normcase(resolved_expected):
+        return False, "S1 CONTEXT_LOSS: Resolved prompt path does not match expected prompt file", "", []
+    if os.path.normcase(os.path.dirname(resolved_target)) != os.path.normcase(resolved_git):
+        return False, "S1 CONTEXT_LOSS: Resolved prompt directory escapes .git directory", "", []
+
+    try:
+        with open(target_path, "r", encoding="utf-8") as f:
+            prompt_text = f.read()
+    except Exception:
+        return False, "S1 CONTEXT_LOSS: Failed to read prompt file content", "", []
+
+    manifest_ok, manifest_err, manifest = validate_prompt_manifest(prompt_text)
+    if not manifest_ok:
+        return False, f"S1 CONTEXT_LOSS: Manifest validation failed: {manifest_err}", "", []
+
+    contract_ok, contract_err, contract = validate_execution_contract(prompt_text, manifest)
+    if not contract_ok:
+        return False, f"S1 CONTEXT_LOSS: Execution contract validation failed: {contract_err}", "", []
+
+    if str(contract.get("contract_version")) != "2":
+        return False, f"S1 CONTEXT_LOSS: Execution contract must be version 2, got {contract.get('contract_version')!r}", "", []
+
+    if contract.get("task_id") != task_id:
+        return False, f"S1 CONTEXT_LOSS: Task ID in contract ({contract.get('task_id')}) does not match requested task_id ({task_id})", "", []
+
+    overall_pass, results = check_governance_rules(prompt_text, repo_root_abs)
+    if not overall_pass:
+        fail_lines = [line for line in results if "FAIL" in line]
+        return False, f"S1 CONTEXT_LOSS: Governance rules failed: {'; '.join(fail_lines)}", prompt_text, results
+
+    return True, "", prompt_text, results
+
+
+def verify_task_artifact_path(
+    repo_root: str,
+    task_id: str,
+    artifact_path: str,
+) -> tuple[bool, str]:
+    """
+    Validates task artifact path discipline:
+    1. Safe ASCII task_id
+    2. Direct child file under .git (<task-id>-<suffix>)
+    3. No other task prefix, nested directory, traversal, symlink, or reparse escape
+    4. Pre-write check supported (destination non-existence allowed)
+    5. Existing object must be a safe regular file
+    Returns (ok, err_message).
+    """
+    if not is_safe_task_id(task_id):
+        return False, "S1 CONTEXT_LOSS: Task ID is missing, empty, or contains invalid characters"
+
+    if not artifact_path or not isinstance(artifact_path, str) or not artifact_path.strip():
+        return False, "S1 TASK_ARTIFACT_SCOPE: Artifact path must be non-empty"
+
+    if artifact_path.endswith(("/", "\\")):
+        return False, "S1 TASK_ARTIFACT_SCOPE: Artifact path must be a file, not a directory"
+
+    repo_root_abs = os.path.abspath(repo_root)
+    if os.path.basename(repo_root_abs) == ".git":
+        git_dir = repo_root_abs
+    else:
+        git_dir = os.path.join(repo_root_abs, ".git")
+
+    git_dir_abs = os.path.abspath(git_dir)
+    if not os.path.exists(git_dir_abs):
+        return False, "S1 TASK_ARTIFACT_SCOPE: Git directory does not exist"
+
+    try:
+        st_git = os.lstat(git_dir_abs)
+        if os.path.islink(git_dir_abs) or stat.S_ISLNK(st_git.st_mode) or getattr(st_git, "st_reparse_tag", 0) != 0:
+            return False, "S1 TASK_ARTIFACT_SCOPE: .git directory is a symlink or reparse point"
+    except Exception:
+        return False, "S1 TASK_ARTIFACT_SCOPE: Failed to inspect .git directory"
+
+    if os.path.isabs(artifact_path):
+        art_abs = os.path.abspath(artifact_path)
+    else:
+        if os.path.exists(os.path.abspath(artifact_path)):
+            art_abs = os.path.abspath(artifact_path)
+        else:
+            art_abs = os.path.abspath(os.path.join(repo_root_abs, artifact_path))
+
+    parent_dir = os.path.dirname(art_abs)
+    if os.path.normcase(parent_dir) != os.path.normcase(git_dir_abs):
+        return False, "S1 TASK_ARTIFACT_SCOPE: Artifact must be a direct child file of .git directory"
+
+    filename = os.path.basename(art_abs)
+    prefix = f"{task_id}-"
+    if not filename.startswith(prefix):
+        return False, f"S1 TASK_ARTIFACT_SCOPE: Artifact filename must start with '{prefix}'"
+
+    suffix = filename[len(prefix):]
+    if not suffix or not suffix.strip():
+        return False, "S1 TASK_ARTIFACT_SCOPE: Artifact filename must have a non-empty suffix"
+
+    if "/" in suffix or "\\" in suffix or ".." in suffix or ":" in suffix:
+        return False, "S1 TASK_ARTIFACT_SCOPE: Artifact suffix contains illegal characters or traversal"
+
+    resolved_parent = os.path.realpath(parent_dir)
+    resolved_git = os.path.realpath(git_dir_abs)
+    if os.path.normcase(resolved_parent) != os.path.normcase(resolved_git):
+        return False, "S1 TASK_ARTIFACT_SCOPE: Resolved artifact parent directory escapes .git"
+
+    if os.path.lexists(art_abs):
+        try:
+            st_art = os.lstat(art_abs)
+            if os.path.islink(art_abs) or stat.S_ISLNK(st_art.st_mode):
+                return False, "S1 TASK_ARTIFACT_SCOPE: Existing artifact is a symlink"
+            if getattr(st_art, "st_reparse_tag", 0) != 0:
+                return False, "S1 TASK_ARTIFACT_SCOPE: Existing artifact is a reparse point"
+            if not stat.S_ISREG(st_art.st_mode):
+                return False, "S1 TASK_ARTIFACT_SCOPE: Existing artifact is not a regular file"
+        except Exception:
+            return False, "S1 TASK_ARTIFACT_SCOPE: Failed to inspect existing artifact"
+
+        resolved_art = os.path.realpath(art_abs)
+        if os.path.normcase(os.path.dirname(resolved_art)) != os.path.normcase(resolved_git):
+            return False, "S1 TASK_ARTIFACT_SCOPE: Resolved artifact path escapes .git directory"
+        if os.path.basename(resolved_art) != filename:
+            return False, "S1 TASK_ARTIFACT_SCOPE: Resolved artifact filename mismatch"
+
+    return True, ""
 
 
 def get_auth_file_path(root_dir: str) -> str:
@@ -588,10 +795,12 @@ def evaluate_contract_rules(
 def main():
     parser = argparse.ArgumentParser(description="HH.AI Governance Preflight & Push Guard.")
     mode_group = parser.add_mutually_exclusive_group(required=True)
-    mode_group.add_argument("--prompt-file", help="Path to prompt file (or '-' for stdin)")
+    mode_group.add_argument("--prompt-file", help="Path to prompt file (must be exact repo .git/<task-id>-prompt.txt)")
+    mode_group.add_argument("--check-task-artifact", help="Verify task artifact path discipline and prompt authorization")
     mode_group.add_argument("--verify-push", nargs=2, metavar=("REMOTE_NAME", "REMOTE_URL"), help="Verify git push updates from stdin")
     mode_group.add_argument("--create-main-auth", nargs=3, metavar=("TASK_ID", "AUTH_SHA", "REMOTE_SHA"), help="Create single-use MAIN_EXACT_SHA authorization")
     mode_group.add_argument("--create-delete-auth", nargs=2, metavar=("TASK_ID", "REF_SHA_MAP"), help="Create single-use REMOTE_DELETE_EXACT_SET authorization (format 'ref1@sha1;ref2@sha2')")
+    parser.add_argument("--task-id", help="Current task ID (required for --prompt-file and --check-task-artifact)")
     parser.add_argument("--repo-root", default=repo_root, help="Repository root path")
 
     args = parser.parse_args()
@@ -639,30 +848,53 @@ def main():
             sys.stderr.write(f"[FAIL] {msg}\n")
             sys.exit(1)
 
-    # 4. Governance preflight evaluation on incoming prompt (--prompt-file)
+    # 4. Task artifact path verification mode
+    elif args.check_task_artifact:
+        if not args.task_id:
+            sys.stderr.write("S1 CONTEXT_LOSS: --task-id is required for --check-task-artifact\n")
+            sys.exit(1)
+
+        ok_prompt, err_prompt, _, _ = verify_current_task_prompt(args.repo_root, args.task_id)
+        if not ok_prompt:
+            sys.stderr.write(f"{err_prompt}\n")
+            sys.exit(1)
+
+        ok_art, err_art = verify_task_artifact_path(args.repo_root, args.task_id, args.check_task_artifact)
+        if not ok_art:
+            sys.stderr.write(f"{err_art}\n")
+            sys.exit(1)
+
+        print(f"[TASK ARTIFACT PASS] Artifact path verified for task {args.task_id}.")
+        sys.exit(0)
+
+    # 5. Governance preflight evaluation on incoming prompt (--prompt-file)
     else:
         if args.prompt_file == "-":
-            prompt_text = sys.stdin.read()
-        else:
-            if not os.path.exists(args.prompt_file):
-                sys.stderr.write(f"[FAIL] Prompt file not found: {args.prompt_file}\n")
-                sys.exit(1)
-            with open(args.prompt_file, "r", encoding="utf-8") as f:
-                prompt_text = f.read()
+            sys.stderr.write("S1 CONTEXT_LOSS: Stdin prompt input is not permitted for production governance preflight.\n")
+            sys.exit(1)
 
-        overall_pass, results = check_governance_rules(prompt_text, args.repo_root)
+        if not args.task_id:
+            sys.stderr.write("S1 CONTEXT_LOSS: --task-id is required for --prompt-file\n")
+            sys.exit(1)
+
+        ok_prompt, err_prompt, prompt_text, results = verify_current_task_prompt(args.repo_root, args.task_id, args.prompt_file)
+        if not ok_prompt:
+            for line in results:
+                if "FAIL" in line:
+                    sys.stderr.write(f"{line}\n")
+                else:
+                    print(line)
+            sys.stderr.write(f"{err_prompt}\n")
+            sys.exit(1)
+
         for line in results:
             if "FAIL" in line:
                 sys.stderr.write(f"{line}\n")
             else:
                 print(line)
 
-        if overall_pass:
-            print(f"[GOVERNANCE PREFLIGHT PASS] All {len(results)} governance rules verified.")
-            sys.exit(0)
-        else:
-            sys.stderr.write("[GOVERNANCE PREFLIGHT FAIL] Governance rules violation detected.\n")
-            sys.exit(1)
+        print(f"[GOVERNANCE PREFLIGHT PASS] All {len(results)} governance rules verified.")
+        sys.exit(0)
 
 
 if __name__ == "__main__":

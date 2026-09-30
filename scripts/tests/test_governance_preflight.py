@@ -707,34 +707,351 @@ def test_cli_bare_invocation_with_valid_stdin_fails_fast():
     assert "is required" in proc.stderr
 
 
+def _setup_isolated_repo(tmp_path, task_id="B-109-M4-TEST", prompt_text=VALID_FULL_PROMPT_M4):
+    """Helper to create an isolated repo directory with .git and governance rule registry."""
+    repo_dir = tmp_path / "repo"
+    git_dir = repo_dir / ".git"
+    git_dir.mkdir(parents=True)
+    gov_dir = repo_dir / "docs" / "governance"
+    gov_dir.mkdir(parents=True)
+    shutil.copyfile(
+        os.path.join(REPO_ROOT, "docs", "governance", "rule-registry.json"),
+        str(gov_dir / "rule-registry.json"),
+    )
+    prompt_file = git_dir / f"{task_id}-prompt.txt"
+    prompt_file.write_text(prompt_text, encoding="utf-8")
+    return repo_dir, git_dir, prompt_file
+
+
 def test_cli_explicit_stdin_prompt_mode():
-    """Section 23: Explicit stdin prompt mode (--prompt-file -) consumes prompt from stdin and evaluates rules."""
+    """Section 23: Explicit stdin prompt mode (--prompt-file -) is forbidden in production and fails fast."""
     script_path = os.path.join(SCRIPTS_DIR, "governance_preflight.py")
     proc = subprocess.run(
-        [sys.executable, script_path, "--prompt-file", "-", "--repo-root", REPO_ROOT],
+        [sys.executable, script_path, "--prompt-file", "-", "--task-id", "B-109-M4-TEST", "--repo-root", REPO_ROOT],
         input=VALID_FULL_PROMPT_M4,
         capture_output=True,
         text=True,
     )
-    assert proc.returncode == 0, f"Explicit stdin prompt evaluation failed: {proc.stderr}"
-    assert "[GOVERNANCE PREFLIGHT PASS]" in proc.stdout
-    assert "All 21 governance rules verified." in proc.stdout
+    assert proc.returncode == 1, f"Expected stdin rejection returncode 1, got {proc.returncode}"
+    assert "S1 CONTEXT_LOSS" in proc.stderr
+    assert "Stdin prompt input is not permitted" in proc.stderr
+
+    # Bounded fail-fast: open pipe stdin without closing must self-exit quickly
+    pipe_proc = subprocess.Popen(
+        [sys.executable, script_path, "--prompt-file", "-", "--task-id", "B-109-M4-TEST", "--repo-root", REPO_ROOT],
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+    try:
+        pipe_proc.wait(timeout=2.0)
+    except subprocess.TimeoutExpired:
+        pipe_proc.kill()
+        pytest.fail("--prompt-file - hung waiting for stdin EOF!")
+    assert pipe_proc.returncode == 1
 
 
 def test_cli_explicit_file_prompt_mode(tmp_path):
-    """Section 24: Explicit file prompt mode (--prompt-file <path>) reads from file and evaluates rules."""
+    """Section 24: Explicit file prompt mode requires --task-id and exact repo .git/<task-id>-prompt.txt."""
     script_path = os.path.join(SCRIPTS_DIR, "governance_preflight.py")
-    prompt_file = tmp_path / "valid_prompt.txt"
-    prompt_file.write_text(VALID_FULL_PROMPT_M4, encoding="utf-8")
+    task_id = "B-109-M4-TEST"
+    repo_dir, git_dir, prompt_file = _setup_isolated_repo(tmp_path, task_id)
 
-    proc = subprocess.run(
-        [sys.executable, script_path, "--prompt-file", str(prompt_file), "--repo-root", REPO_ROOT],
+    # 1. Arbitrary external prompt path is rejected
+    external_file = tmp_path / "valid_prompt.txt"
+    external_file.write_text(VALID_FULL_PROMPT_M4, encoding="utf-8")
+    proc_ext = subprocess.run(
+        [sys.executable, script_path, "--prompt-file", str(external_file), "--task-id", task_id, "--repo-root", str(repo_dir)],
         capture_output=True,
         text=True,
     )
-    assert proc.returncode == 0, f"Explicit file prompt evaluation failed: {proc.stderr}"
-    assert "[GOVERNANCE PREFLIGHT PASS]" in proc.stdout
-    assert "All 21 governance rules verified." in proc.stdout
+    assert proc_ext.returncode == 1
+    assert "S1 CONTEXT_LOSS" in proc_ext.stderr
+
+    # 2. Legitimate prompt at .git/<task-id>-prompt.txt succeeds
+    proc_ok = subprocess.run(
+        [sys.executable, script_path, "--prompt-file", str(prompt_file), "--task-id", task_id, "--repo-root", str(repo_dir)],
+        capture_output=True,
+        text=True,
+    )
+    assert proc_ok.returncode == 0, f"Valid prompt evaluation failed: {proc_ok.stderr}"
+    assert "[GOVERNANCE PREFLIGHT PASS]" in proc_ok.stdout
+    assert "All 21 governance rules verified." in proc_ok.stdout
+
+    # Relative path from repo_dir also succeeds
+    proc_rel = subprocess.run(
+        [sys.executable, script_path, "--prompt-file", f".git/{task_id}-prompt.txt", "--task-id", task_id, "--repo-root", str(repo_dir)],
+        cwd=str(repo_dir),
+        capture_output=True,
+        text=True,
+    )
+    assert proc_rel.returncode == 0
+
+
+def test_cli_prompt_binding_negative_controls(tmp_path):
+    """Section 27: Prompt binding negative controls (missing task-id, mismatch, unreadable, traversal, external)."""
+    script_path = os.path.join(SCRIPTS_DIR, "governance_preflight.py")
+    task_id = "B-109-M4-TEST"
+    repo_dir, git_dir, prompt_file = _setup_isolated_repo(tmp_path, task_id)
+
+    # 1. Missing --task-id
+    proc_missing_task = subprocess.run(
+        [sys.executable, script_path, "--prompt-file", str(prompt_file), "--repo-root", str(repo_dir)],
+        capture_output=True,
+        text=True,
+    )
+    assert proc_missing_task.returncode == 1
+    assert "S1 CONTEXT_LOSS" in proc_missing_task.stderr
+    assert "--task-id is required" in proc_missing_task.stderr
+
+    # Bounded fail-fast for missing --task-id with open stdin
+    pipe_proc = subprocess.Popen(
+        [sys.executable, script_path, "--prompt-file", str(prompt_file), "--repo-root", str(repo_dir)],
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+    try:
+        pipe_proc.wait(timeout=2.0)
+    except subprocess.TimeoutExpired:
+        pipe_proc.kill()
+        pytest.fail("Missing --task-id hung waiting for stdin!")
+    assert pipe_proc.returncode == 1
+
+    # 2. Unsafe ASCII task ID
+    for bad_task in ["TASK/1", "../TASK", "TASK:1", "TASK ID"]:
+        proc_bad_task = subprocess.run(
+            [sys.executable, script_path, "--prompt-file", str(prompt_file), "--task-id", bad_task, "--repo-root", str(repo_dir)],
+            capture_output=True,
+            text=True,
+        )
+        assert proc_bad_task.returncode == 1
+        assert "S1 CONTEXT_LOSS" in proc_bad_task.stderr
+
+    # 3. Contract task ID mismatch
+    proc_mismatch = subprocess.run(
+        [sys.executable, script_path, "--prompt-file", str(prompt_file), "--task-id", "OTHER-TASK-ID", "--repo-root", str(repo_dir)],
+        capture_output=True,
+        text=True,
+    )
+    assert proc_mismatch.returncode == 1
+    assert "S1 CONTEXT_LOSS" in proc_mismatch.stderr
+
+    # 4. Synthetic brain / transcript path rejected without accessing real historical sessions
+    synthetic_transcript = tmp_path / "brain" / "session" / "transcript.jsonl"
+    synthetic_transcript.parent.mkdir(parents=True)
+    synthetic_transcript.write_text('{"type": "fake"}', encoding="utf-8")
+    proc_brain = subprocess.run(
+        [sys.executable, script_path, "--prompt-file", str(synthetic_transcript), "--task-id", task_id, "--repo-root", str(repo_dir)],
+        capture_output=True,
+        text=True,
+    )
+    assert proc_brain.returncode == 1
+    assert "S1 CONTEXT_LOSS" in proc_brain.stderr
+
+    # 5. Missing prompt file
+    proc_not_found = subprocess.run(
+        [sys.executable, script_path, "--prompt-file", str(git_dir / "NONEXISTENT-prompt.txt"), "--task-id", "NONEXISTENT", "--repo-root", str(repo_dir)],
+        capture_output=True,
+        text=True,
+    )
+    assert proc_not_found.returncode == 1
+    assert "S1 CONTEXT_LOSS" in proc_not_found.stderr
+
+
+def test_cli_prompt_context_recovery_reread(tmp_path):
+    """Section 28: Consecutive context recovery preflights on same exact prompt file both PASS."""
+    script_path = os.path.join(SCRIPTS_DIR, "governance_preflight.py")
+    task_id = "B-109-M4-TEST"
+    repo_dir, git_dir, prompt_file = _setup_isolated_repo(tmp_path, task_id)
+
+    cmd = [sys.executable, script_path, "--prompt-file", str(prompt_file), "--task-id", task_id, "--repo-root", str(repo_dir)]
+    proc1 = subprocess.run(cmd, capture_output=True, text=True)
+    assert proc1.returncode == 0
+    proc2 = subprocess.run(cmd, capture_output=True, text=True)
+    assert proc2.returncode == 0
+
+
+def test_cli_artifact_guard_positive_and_prewrite(tmp_path):
+    """Section 29: Artifact guard positive verification and destination pre-write check."""
+    script_path = os.path.join(SCRIPTS_DIR, "governance_preflight.py")
+    task_id = "B-109-M4-TEST"
+    repo_dir, git_dir, prompt_file = _setup_isolated_repo(tmp_path, task_id)
+
+    # 1. Existing valid artifact passes
+    existing_art = git_dir / f"{task_id}-plan.json"
+    existing_art.write_text('{"plan": "ok"}', encoding="utf-8")
+    proc_exist = subprocess.run(
+        [sys.executable, script_path, "--check-task-artifact", str(existing_art), "--task-id", task_id, "--repo-root", str(repo_dir)],
+        capture_output=True,
+        text=True,
+    )
+    assert proc_exist.returncode == 0, f"Existing artifact check failed: {proc_exist.stderr}"
+    assert "[TASK ARTIFACT PASS]" in proc_exist.stdout
+
+    # 2. Non-existing destination pre-write check passes and does NOT create the destination
+    prewrite_art = git_dir / f"{task_id}-new-artifact.txt"
+    assert not prewrite_art.exists()
+    proc_prewrite = subprocess.run(
+        [sys.executable, script_path, "--check-task-artifact", str(prewrite_art), "--task-id", task_id, "--repo-root", str(repo_dir)],
+        capture_output=True,
+        text=True,
+    )
+    assert proc_prewrite.returncode == 0, f"Pre-write artifact check failed: {proc_prewrite.stderr}"
+    assert "[TASK ARTIFACT PASS]" in proc_prewrite.stdout
+    assert not prewrite_art.exists(), "Pre-write check must not create destination file!"
+
+
+def test_cli_artifact_guard_negative_shapes(tmp_path):
+    """Section 30: Artifact guard rejects other-task prefix, empty suffix, nested, traversal, directories."""
+    script_path = os.path.join(SCRIPTS_DIR, "governance_preflight.py")
+    task_id = "B-109-M4-TEST"
+    repo_dir, git_dir, prompt_file = _setup_isolated_repo(tmp_path, task_id)
+
+    # 1. Other task prefix
+    other_art = git_dir / "OTHER-TASK-plan.json"
+    proc_other = subprocess.run(
+        [sys.executable, script_path, "--check-task-artifact", str(other_art), "--task-id", task_id, "--repo-root", str(repo_dir)],
+        capture_output=True,
+        text=True,
+    )
+    assert proc_other.returncode == 1
+    assert "S1 TASK_ARTIFACT_SCOPE" in proc_other.stderr
+
+    # 2. Empty suffix (.git/<task-id>-)
+    empty_suffix = git_dir / f"{task_id}-"
+    proc_empty = subprocess.run(
+        [sys.executable, script_path, "--check-task-artifact", str(empty_suffix), "--task-id", task_id, "--repo-root", str(repo_dir)],
+        capture_output=True,
+        text=True,
+    )
+    assert proc_empty.returncode == 1
+    assert "S1 TASK_ARTIFACT_SCOPE" in proc_empty.stderr
+
+    # 3. Nested directory
+    nested_dir = git_dir / "subdir"
+    nested_dir.mkdir()
+    nested_art = nested_dir / f"{task_id}-artifact.json"
+    proc_nested = subprocess.run(
+        [sys.executable, script_path, "--check-task-artifact", str(nested_art), "--task-id", task_id, "--repo-root", str(repo_dir)],
+        capture_output=True,
+        text=True,
+    )
+    assert proc_nested.returncode == 1
+    assert "S1 TASK_ARTIFACT_SCOPE" in proc_nested.stderr
+
+    # 4. Traversal escape
+    traversal_art = git_dir / ".." / f"{task_id}-escaped.json"
+    proc_trav = subprocess.run(
+        [sys.executable, script_path, "--check-task-artifact", str(traversal_art), "--task-id", task_id, "--repo-root", str(repo_dir)],
+        capture_output=True,
+        text=True,
+    )
+    assert proc_trav.returncode == 1
+    assert "S1 TASK_ARTIFACT_SCOPE" in proc_trav.stderr
+
+    # 5. Trailing slash / directory destination
+    proc_dir_dest = subprocess.run(
+        [sys.executable, script_path, "--check-task-artifact", f".git/{task_id}-mydir/", "--task-id", task_id, "--repo-root", str(repo_dir)],
+        cwd=str(repo_dir),
+        capture_output=True,
+        text=True,
+    )
+    assert proc_dir_dest.returncode == 1
+    assert "S1 TASK_ARTIFACT_SCOPE" in proc_dir_dest.stderr
+
+    # 6. Existing directory as artifact
+    existing_dir = git_dir / f"{task_id}-somefolder"
+    existing_dir.mkdir()
+    proc_dir_exist = subprocess.run(
+        [sys.executable, script_path, "--check-task-artifact", str(existing_dir), "--task-id", task_id, "--repo-root", str(repo_dir)],
+        capture_output=True,
+        text=True,
+    )
+    assert proc_dir_exist.returncode == 1
+    assert "S1 TASK_ARTIFACT_SCOPE" in proc_dir_exist.stderr
+
+
+def test_cli_artifact_guard_reparse_junction_windows(tmp_path):
+    """Section 31: N2 Windows junction/reparse point validation and symlink escape rejection."""
+    task_id = "B-109-M4-TEST"
+    repo_dir, git_dir, prompt_file = _setup_isolated_repo(tmp_path, task_id)
+    script_path = os.path.join(SCRIPTS_DIR, "governance_preflight.py")
+
+    # If running on Windows, test live Windows junction via _winapi
+    if sys.platform == "win32":
+        import _winapi
+
+        # Create external directory
+        target_external = tmp_path / "external_target"
+        target_external.mkdir()
+        secret_file = target_external / "secret.txt"
+        secret_file.write_text("classified", encoding="utf-8")
+
+        # Create junction under .git
+        junction_path = git_dir / f"{task_id}-junction"
+        _winapi.CreateJunction(str(target_external), str(junction_path))
+
+        # Check that artifact guard rejects this junction
+        proc_junc = subprocess.run(
+            [sys.executable, script_path, "--check-task-artifact", str(junction_path), "--task-id", task_id, "--repo-root", str(repo_dir)],
+            capture_output=True,
+            text=True,
+        )
+        assert proc_junc.returncode == 1
+        assert "S1 TASK_ARTIFACT_SCOPE" in proc_junc.stderr
+
+        # Check that file inside junction is rejected as nested/reparse escape
+        junc_file = junction_path / f"{task_id}-classified.txt"
+        proc_junc_file = subprocess.run(
+            [sys.executable, script_path, "--check-task-artifact", str(junc_file), "--task-id", task_id, "--repo-root", str(repo_dir)],
+            capture_output=True,
+            text=True,
+        )
+        assert proc_junc_file.returncode == 1
+        assert "S1 TASK_ARTIFACT_SCOPE" in proc_junc_file.stderr
+
+    # Test symlink rejection if symlinks supported
+    symlink_file = git_dir / f"{task_id}-symlink.json"
+    target_real = git_dir / f"{task_id}-real.json"
+    target_real.write_text("real content", encoding="utf-8")
+    try:
+        os.symlink(str(target_real), str(symlink_file))
+        proc_sym = subprocess.run(
+            [sys.executable, script_path, "--check-task-artifact", str(symlink_file), "--task-id", task_id, "--repo-root", str(repo_dir)],
+            capture_output=True,
+            text=True,
+        )
+        assert proc_sym.returncode == 1
+        assert "S1 TASK_ARTIFACT_SCOPE" in proc_sym.stderr
+    except OSError:
+        pass  # Symlinks may require elevated privileges on older Windows configurations
+
+
+def test_cli_failure_output_sentinel_containment(tmp_path):
+    """Section 32: Negative failure messages must not leak sensitive sentinel strings or dump prompt text."""
+    task_id = "B-109-M4-TEST"
+    repo_dir, git_dir, prompt_file = _setup_isolated_repo(tmp_path, task_id)
+    script_path = os.path.join(SCRIPTS_DIR, "governance_preflight.py")
+
+    sentinel = "SYNTHETIC_SECRET_SENTINEL_ALPHA_9999"
+    sentinel_file = tmp_path / "sentinel_artifact.txt"
+    sentinel_file.write_text(f"SECRET_DATA = '{sentinel}'\n", encoding="utf-8")
+
+    # Pass external sentinel path as artifact check
+    proc = subprocess.run(
+        [sys.executable, script_path, "--check-task-artifact", str(sentinel_file), "--task-id", task_id, "--repo-root", str(repo_dir)],
+        capture_output=True,
+        text=True,
+    )
+    assert proc.returncode == 1
+    # Check that sentinel is never dumped in stdout or stderr
+    assert sentinel not in proc.stdout
+    assert sentinel not in proc.stderr
+    # Verify file remains intact and unmodified
+    assert sentinel_file.read_text(encoding="utf-8") == f"SECRET_DATA = '{sentinel}'\n"
 
 
 def test_cli_mutual_exclusion_modes(tmp_path):
@@ -772,5 +1089,6 @@ def test_cli_help():
     )
     assert proc.returncode == 0
     assert "--prompt-file" in proc.stdout
+    assert "--check-task-artifact" in proc.stdout
     assert "--verify-push" in proc.stdout
 
