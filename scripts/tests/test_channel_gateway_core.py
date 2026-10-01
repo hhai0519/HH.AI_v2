@@ -349,12 +349,12 @@ def forward_credman_timing_markers(markers: list[tuple[str, int]]):
 EXPECTED_PROBE_CELLS = [
     (r, env, cmd)
     for r in (1, 2, 3)
-    for env in ("STRIPPED", "STRIPPED_PLUS_OS", "INHERITED")
+    for env in ("STRIPPED", "STRIPPED_PSMODULEPATH", "INHERITED")
     for cmd in ("NOOP", "ADDTYPE")
 ]
 
 PROBE_LINE_REGEX = re.compile(
-    r"^PROBE round=([123]) env=(STRIPPED|STRIPPED_PLUS_OS|INHERITED) cmd=(NOOP|ADDTYPE) ms=(\d+) status=(-?\d+|null) timedout=([01])$"
+    r"^PROBE round=([123]) env=(STRIPPED|STRIPPED_PSMODULEPATH|INHERITED) cmd=(NOOP|ADDTYPE) ms=(\d+) status=(-?\d+|null) timedout=([01])$"
 )
 
 
@@ -943,7 +943,7 @@ def test_credman_timing_marker_parser_canaries():
 
 def test_credman_ab_probe_parser_canaries():
     """Canary: pure parser tests for hosted A/B/C probe."""
-    # 1. Valid exact 18-cell matrix passes & STRIPPED_PLUS_OS accepted
+    # 1. Valid exact 18-cell matrix passes & STRIPPED_PSMODULEPATH accepted
     valid_lines = [
         f"PROBE round={r} env={e} cmd={c} ms=100 status=0 timedout=0"
         for r, e, c in EXPECTED_PROBE_CELLS
@@ -951,6 +951,12 @@ def test_credman_ab_probe_parser_canaries():
     valid_text = "\n".join(valid_lines)
     parsed = parse_and_validate_credman_ab_probe(valid_text)
     assert len(parsed) == 18
+
+    # 1b. Old STRIPPED_PLUS_OS rejected
+    old_env_lines = list(valid_lines)
+    old_env_lines[2] = "PROBE round=1 env=STRIPPED_PLUS_OS cmd=NOOP ms=100 status=0 timedout=0"
+    with pytest.raises(AssertionError, match="FAIL-CLOSED"):
+        parse_and_validate_credman_ab_probe("\n".join(old_env_lines))
 
     # 2. Reordered matrix fails
     reordered = list(valid_lines)

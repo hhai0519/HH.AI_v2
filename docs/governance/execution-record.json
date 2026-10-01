@@ -1,15 +1,14 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "B-100-R-K-D1-261001",
-  "base_oid": "5a77f2a7d22336f4bf689ac3ff3c7b064152c777",
+  "task_id": "B-100-R-K-D2-261001",
+  "base_oid": "4e37b5b1308b5a01a50f8db50a01099aacd5c541",
   "plan": {
     "allowed_paths": [
       "docs/EXEC-LOG.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
       "runtime/channel-gateway/tests/credman-env-ab-probe.js",
-      "runtime/channel-gateway/tests/windows-credential-manager-provider.test.js",
       "scripts/tests/test_channel_gateway_core.py"
     ],
     "required_paths": [
@@ -17,7 +16,6 @@
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
       "runtime/channel-gateway/tests/credman-env-ab-probe.js",
-      "runtime/channel-gateway/tests/windows-credential-manager-provider.test.js",
       "scripts/tests/test_channel_gateway_core.py"
     ],
     "max_plan_revisions": 3,
@@ -30,7 +28,6 @@
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
       "runtime/channel-gateway/tests/credman-env-ab-probe.js",
-      "runtime/channel-gateway/tests/windows-credential-manager-provider.test.js",
       "scripts/tests/test_channel_gateway_core.py"
     ]
   },

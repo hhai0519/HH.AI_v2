@@ -16,24 +16,16 @@ const stripped = {
   TMP: process.env.TMP || `${sr}\\Temp`,
 };
 
-const strippedPlusOs = { ...stripped };
-
-const extraOsPathKeys = [
-  'USERPROFILE',
-  'LOCALAPPDATA',
-  'APPDATA',
-  'HOMEDRIVE',
-  'HOMEPATH',
-  'windir',
-  'ProgramData',
-];
-
-for (const key of extraOsPathKeys) {
-  const value = process.env[key];
-  if (typeof value === 'string' && value.length > 0) {
-    strippedPlusOs[key] = value;
-  }
-}
+const strippedPsModulePath = {
+  ...stripped,
+  PSModulePath: path.join(
+    sr,
+    'System32',
+    'WindowsPowerShell',
+    'v1.0',
+    'Modules'
+  ),
+};
 
 const cmds = {
   NOOP: '$null = 1',
@@ -42,12 +34,12 @@ const cmds = {
 
 const envs = {
   STRIPPED: stripped,
-  STRIPPED_PLUS_OS: strippedPlusOs,
+  STRIPPED_PSMODULEPATH: strippedPsModulePath,
   INHERITED: undefined,
 };
 
 for (let r = 1; r <= 3; r++) {
-  for (const e of ['STRIPPED', 'STRIPPED_PLUS_OS', 'INHERITED']) {
+  for (const e of ['STRIPPED', 'STRIPPED_PSMODULEPATH', 'INHERITED']) {
     for (const c of ['NOOP', 'ADDTYPE']) {
       const t0 = process.hrtime.bigint();
 
