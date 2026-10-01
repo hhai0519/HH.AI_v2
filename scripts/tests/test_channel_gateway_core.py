@@ -241,6 +241,183 @@ def forward_timing_markers(markers: list[int]):
         print(f"KNOWN_FOLDER_BRIDGE_MS={val}")
 
 
+CREDM_MARKER_NAMES = [
+    "CREDM_SYN_WRITE_MS",
+    "CREDM_PROV_READ_EXISTING_MS",
+    "CREDM_SYN_DEL_MS",
+    "CREDM_PROV_READ_MISSING_MS",
+]
+CREDM_MARKER_NAMES_SET = set(CREDM_MARKER_NAMES)
+
+
+def parse_credman_timing_markers(tap_output: str) -> list[tuple[str, int]]:
+    r"""
+    Parse and validate CREDM timing markers from captured stdout.
+    Strict fail-closed grammar:
+    - Any line containing 'CREDM_' must match optional TAP '# ' prefix + exact marker name + '=' + digits.
+    - Rejects negative, fraction, suffix text, duplicate, unknown CREDM marker, contaminated line.
+    - Returns list of (marker_name, int_val).
+    """
+    parsed = []
+    seen = set()
+    for line in tap_output.splitlines():
+        trimmed = line.strip()
+        if "CREDM_" in trimmed:
+            m = re.match(r"^(?:#\s*)?([A-Za-z0-9_]+)=(\S.*)$", trimmed)
+            if not m:
+                raise AssertionError(f"Contaminated or malformed CREDM line (FAIL-CLOSED): {trimmed!r}")
+            name = m.group(1)
+            val_str = m.group(2)
+            if name not in CREDM_MARKER_NAMES_SET:
+                raise AssertionError(f"Unknown CREDM marker (FAIL-CLOSED): {name!r}")
+            if not re.match(r"^\d+$", val_str):
+                raise AssertionError(f"Invalid CREDM marker value (FAIL-CLOSED): {val_str!r} on line {trimmed!r}")
+            if name in seen:
+                raise AssertionError(f"Duplicate CREDM marker (FAIL-CLOSED): {name!r}")
+            seen.add(name)
+            parsed.append((name, int(val_str)))
+    return parsed
+
+
+def is_credman_target_suite(test_file: str | None) -> bool:
+    if test_file is None:
+        return False
+    return os.path.basename(test_file) == "windows-credential-manager-provider.test.js"
+
+
+def get_expected_credman_timing_marker_count(test_file: str | None, current_platform: str) -> int:
+    """
+    Returns the expected number of CREDM timing markers:
+    - On non-win32 platforms: 0
+    - On win32:
+      - If test_file is None (combined runner): 4
+      - If test_file basename is 'windows-credential-manager-provider.test.js': 4
+      - For every other test_file: 0
+    """
+    if current_platform != "win32":
+        return 0
+    if test_file is None or is_credman_target_suite(test_file):
+        return 4
+    return 0
+
+
+def assert_credman_timing_marker_count(
+    markers: list[tuple[str, int]],
+    test_file: str | None,
+    current_platform: str,
+    node_succeeded: bool = True
+):
+    """
+    Asserts exact expected CREDM timing markers for platform and suite.
+    - If node_succeeded is False: do not require all 4 markers, but still reject on non-win32 or non-target.
+    - If node_succeeded is True:
+      - On non-win32 or non-target: count must be 0.
+      - On win32 target or combined: count must be 4, and each of the 4 CREDM names must appear exactly once.
+    """
+    if current_platform != "win32" or (test_file is not None and not is_credman_target_suite(test_file)):
+        if len(markers) != 0:
+            suite_desc = os.path.basename(test_file) if test_file else "combined"
+            raise AssertionError(
+                f"Expected 0 CREDM marker(s) for '{suite_desc}' on platform '{current_platform}', "
+                f"got {len(markers)} (FAIL-CLOSED)"
+            )
+        return
+
+    if node_succeeded:
+        if len(markers) != 4:
+            suite_desc = os.path.basename(test_file) if test_file else "combined"
+            raise AssertionError(
+                f"Expected 4 CREDM marker(s) for '{suite_desc}' on platform '{current_platform}', "
+                f"got {len(markers)} (FAIL-CLOSED)"
+            )
+        marker_names = [name for name, _ in markers]
+        if set(marker_names) != CREDM_MARKER_NAMES_SET:
+            raise AssertionError(
+                f"CREDM markers missing or incorrect: expected {CREDM_MARKER_NAMES}, got {marker_names} (FAIL-CLOSED)"
+            )
+
+
+def forward_credman_timing_markers(markers: list[tuple[str, int]]):
+    """
+    Re-emit ONLY normalized CREDM_<NAME>=<integer> lines.
+    Never re-emit surrounding successful Node TAP stdout/stderr.
+    """
+    for name, val in markers:
+        print(f"{name}={val}")
+
+
+EXPECTED_PROBE_CELLS = [
+    (r, env, cmd)
+    for r in (1, 2, 3)
+    for env in ("STRIPPED", "STRIPPED_PLUS_OS", "INHERITED")
+    for cmd in ("NOOP", "ADDTYPE")
+]
+
+PROBE_LINE_REGEX = re.compile(
+    r"^PROBE round=([123]) env=(STRIPPED|STRIPPED_PLUS_OS|INHERITED) cmd=(NOOP|ADDTYPE) ms=(\d+) status=(-?\d+|null) timedout=([01])$"
+)
+
+
+def parse_and_validate_credman_ab_probe(output_text: str) -> list[str]:
+    """
+    Parse and validate the 18-cell hosted A/B/C probe stdout.
+    Fail-closed requirements:
+    - Exactly 18 nonblank lines.
+    - Each line matches exact grammar.
+    - Matrix matches exact sequence of EXPECTED_PROBE_CELLS.
+    - No missing, duplicate, reordered, or extra lines.
+    - Returns list of normalized probe lines.
+    """
+    nonblank_lines = [line.strip() for line in output_text.splitlines() if line.strip()]
+    if len(nonblank_lines) != 18:
+        raise AssertionError(
+            f"Hosted A/B/C probe output must have exactly 18 nonblank lines, got {len(nonblank_lines)} (FAIL-CLOSED)"
+        )
+
+    parsed_lines = []
+    for idx, line in enumerate(nonblank_lines):
+        m = PROBE_LINE_REGEX.match(line)
+        if not m:
+            raise AssertionError(f"Hosted A/B/C probe line {idx + 1} malformed (FAIL-CLOSED): {line!r}")
+        r = int(m.group(1))
+        env = m.group(2)
+        cmd = m.group(3)
+        expected_cell = EXPECTED_PROBE_CELLS[idx]
+        actual_cell = (r, env, cmd)
+        if actual_cell != expected_cell:
+            raise AssertionError(
+                f"Hosted A/B/C probe cell mismatch at line {idx + 1}: expected {expected_cell}, got {actual_cell} (FAIL-CLOSED)"
+            )
+        parsed_lines.append(line)
+
+    return parsed_lines
+
+
+def run_and_validate_credman_ab_probe(repo_root: str = REPO_ROOT):
+    """
+    Execute hosted credman A/B/C probe once on Windows after individual Test J.
+    Top-level probe process must exit 0.
+    Capture stdout and validate 18 lines.
+    Forward all 18 normalized PROBE lines to pytest stdout.
+    """
+    probe_rel = "runtime/channel-gateway/tests/credman-env-ab-probe.js"
+    res = subprocess.run(
+        ["node", probe_rel],
+        cwd=repo_root,
+        capture_output=True,
+        encoding="utf-8",
+        errors="replace"
+    )
+    if res.returncode != 0:
+        raise AssertionError(
+            f"Hosted A/B/C probe process failed with exit code {res.returncode}:\n"
+            f"STDOUT:\n{res.stdout}\nSTDERR:\n{res.stderr}"
+        )
+    parsed_lines = parse_and_validate_credman_ab_probe(res.stdout)
+    for line in parsed_lines:
+        print(line)
+
+
 DISCOVERED_TEST_FILES = discover_gateway_test_files()
 
 
@@ -326,12 +503,20 @@ def test_channel_gateway_individual_test_file(test_file):
     markers = parse_and_validate_timing_markers(res.stdout)
     forward_timing_markers(markers)
 
+    credm_markers = parse_credman_timing_markers(res.stdout)
+    if is_credman_target_suite(test_file):
+        forward_credman_timing_markers(credm_markers)
+
+    if sys.platform == "win32" and is_credman_target_suite(test_file):
+        run_and_validate_credman_ab_probe()
+
     assert res.returncode == 0, (
         f"{os.path.basename(test_file)} failed with code {res.returncode}:\n"
         f"STDOUT:\n{res.stdout}\nSTDERR:\n{res.stderr}"
     )
 
     assert_timing_marker_count(markers, test_file, current_platform=sys.platform)
+    assert_credman_timing_marker_count(credm_markers, test_file, current_platform=sys.platform, node_succeeded=True)
 
     policy = load_gateway_test_policy()
     assert_registered_skips(res.stdout, policy)
@@ -354,12 +539,16 @@ def test_channel_gateway_combined_node_test_runner():
     markers = parse_and_validate_timing_markers(res.stdout)
     forward_timing_markers(markers)
 
+    credm_markers = parse_credman_timing_markers(res.stdout)
+    # RAW LOG POLICY: For combined runner, validate the four but DO NOT forward the second set.
+
     assert res.returncode == 0, (
         f"Combined node --test failed with code {res.returncode}:\n"
         f"STDOUT:\n{res.stdout}\nSTDERR:\n{res.stderr}"
     )
 
     assert_timing_marker_count(markers, None, current_platform=sys.platform)
+    assert_credman_timing_marker_count(credm_markers, None, current_platform=sys.platform, node_succeeded=True)
 
     policy = load_gateway_test_policy()
     assert_registered_skips(res.stdout, policy)
@@ -674,3 +863,140 @@ def test_canary_non_target_individual_suite_zero_behavior():
     assert_timing_marker_count([], "sqlite-state-repository.test.js", current_platform="win32")
     with pytest.raises(AssertionError, match="FAIL-CLOSED"):
         assert_timing_marker_count([42], "sqlite-state-repository.test.js", current_platform="win32")
+
+
+def test_credman_timing_marker_parser_canaries():
+    """Canary: pure parser tests for CREDM timing markers."""
+    # 1. Valid four markers pass
+    valid_tap = (
+        "CREDM_SYN_WRITE_MS=120\n"
+        "CREDM_PROV_READ_EXISTING_MS=350\n"
+        "CREDM_SYN_DEL_MS=85\n"
+        "CREDM_PROV_READ_MISSING_MS=40\n"
+    )
+    markers = parse_credman_timing_markers(valid_tap)
+    assert len(markers) == 4
+    assert_credman_timing_marker_count(
+        markers, "windows-credential-manager-provider.test.js", current_platform="win32", node_succeeded=True
+    )
+    assert_credman_timing_marker_count(
+        markers, None, current_platform="win32", node_succeeded=True
+    )
+
+    # 2. Optional TAP prefix passes
+    tap_prefix = (
+        "# CREDM_SYN_WRITE_MS=120\n"
+        "# CREDM_PROV_READ_EXISTING_MS=350\n"
+        "# CREDM_SYN_DEL_MS=85\n"
+        "# CREDM_PROV_READ_MISSING_MS=40\n"
+    )
+    markers_tap = parse_credman_timing_markers(tap_prefix)
+    assert len(markers_tap) == 4
+
+    # 3. Negative rejected
+    with pytest.raises(AssertionError, match="FAIL-CLOSED"):
+        parse_credman_timing_markers("CREDM_SYN_WRITE_MS=-10\n")
+
+    # 4. Fraction rejected
+    with pytest.raises(AssertionError, match="FAIL-CLOSED"):
+        parse_credman_timing_markers("CREDM_SYN_WRITE_MS=12.5\n")
+
+    # 5. Trailing text rejected
+    with pytest.raises(AssertionError, match="FAIL-CLOSED"):
+        parse_credman_timing_markers("CREDM_SYN_WRITE_MS=100 trailing text\n")
+
+    # 6. Duplicate rejected
+    with pytest.raises(AssertionError, match="FAIL-CLOSED"):
+        parse_credman_timing_markers("CREDM_SYN_WRITE_MS=100\nCREDM_SYN_WRITE_MS=200\n")
+
+    # 7. Missing marker rejected for successful Windows target
+    incomplete = [
+        ("CREDM_SYN_WRITE_MS", 100),
+        ("CREDM_PROV_READ_EXISTING_MS", 200),
+        ("CREDM_SYN_DEL_MS", 50),
+    ]
+    with pytest.raises(AssertionError, match="FAIL-CLOSED"):
+        assert_credman_timing_marker_count(
+            incomplete, "windows-credential-manager-provider.test.js", current_platform="win32", node_succeeded=True
+        )
+
+    # 8. Unknown marker rejected
+    with pytest.raises(AssertionError, match="FAIL-CLOSED"):
+        parse_credman_timing_markers("CREDM_UNKNOWN_FOO_MS=100\n")
+
+    # 9. Markers on successful non-target rejected
+    with pytest.raises(AssertionError, match="FAIL-CLOSED"):
+        assert_credman_timing_marker_count(
+            markers, "local-config-loader.test.js", current_platform="win32", node_succeeded=True
+        )
+
+    # 10. Non-win32 expected zero
+    assert get_expected_credman_timing_marker_count("windows-credential-manager-provider.test.js", current_platform="linux") == 0
+    assert_credman_timing_marker_count(
+        [], "windows-credential-manager-provider.test.js", current_platform="linux", node_succeeded=True
+    )
+    with pytest.raises(AssertionError, match="FAIL-CLOSED"):
+        assert_credman_timing_marker_count(
+            markers, "windows-credential-manager-provider.test.js", current_platform="linux", node_succeeded=True
+        )
+
+
+def test_credman_ab_probe_parser_canaries():
+    """Canary: pure parser tests for hosted A/B/C probe."""
+    # 1. Valid exact 18-cell matrix passes & STRIPPED_PLUS_OS accepted
+    valid_lines = [
+        f"PROBE round={r} env={e} cmd={c} ms=100 status=0 timedout=0"
+        for r, e, c in EXPECTED_PROBE_CELLS
+    ]
+    valid_text = "\n".join(valid_lines)
+    parsed = parse_and_validate_credman_ab_probe(valid_text)
+    assert len(parsed) == 18
+
+    # 2. Reordered matrix fails
+    reordered = list(valid_lines)
+    reordered[0], reordered[1] = reordered[1], reordered[0]
+    with pytest.raises(AssertionError, match="FAIL-CLOSED"):
+        parse_and_validate_credman_ab_probe("\n".join(reordered))
+
+    # 3. Missing fails
+    with pytest.raises(AssertionError, match="FAIL-CLOSED"):
+        parse_and_validate_credman_ab_probe("\n".join(valid_lines[:17]))
+
+    # 4. Duplicate fails
+    dup_lines = valid_lines[:17] + [valid_lines[0]]
+    with pytest.raises(AssertionError, match="FAIL-CLOSED"):
+        parse_and_validate_credman_ab_probe("\n".join(dup_lines))
+
+    # 5. Extra line fails
+    with pytest.raises(AssertionError, match="FAIL-CLOSED"):
+        parse_and_validate_credman_ab_probe("\n".join(valid_lines + [valid_lines[0]]))
+
+    # 6. Malformed fails
+    malformed = list(valid_lines)
+    malformed[0] = "MALFORMED line"
+    with pytest.raises(AssertionError, match="FAIL-CLOSED"):
+        parse_and_validate_credman_ab_probe("\n".join(malformed))
+
+    # 7. Integer-or-null status accepted
+    null_status = list(valid_lines)
+    null_status[1] = "PROBE round=1 env=STRIPPED cmd=ADDTYPE ms=120000 status=null timedout=1"
+    parsed_null = parse_and_validate_credman_ab_probe("\n".join(null_status))
+    assert len(parsed_null) == 18
+
+    neg_status = list(valid_lines)
+    neg_status[1] = "PROBE round=1 env=STRIPPED cmd=ADDTYPE ms=250 status=-1 timedout=0"
+    parsed_neg = parse_and_validate_credman_ab_probe("\n".join(neg_status))
+    assert len(parsed_neg) == 18
+
+    # 8. Timedout 0/1 accepted (tested in null_status above and valid_lines)
+
+    # 9. Invalid timedout rejected
+    invalid_to = list(valid_lines)
+    invalid_to[0] = "PROBE round=1 env=STRIPPED cmd=NOOP ms=100 status=0 timedout=2"
+    with pytest.raises(AssertionError, match="FAIL-CLOSED"):
+        parse_and_validate_credman_ab_probe("\n".join(invalid_to))
+
+    invalid_to_bool = list(valid_lines)
+    invalid_to_bool[0] = "PROBE round=1 env=STRIPPED cmd=NOOP ms=100 status=0 timedout=false"
+    with pytest.raises(AssertionError, match="FAIL-CLOSED"):
+        parse_and_validate_credman_ab_probe("\n".join(invalid_to_bool))

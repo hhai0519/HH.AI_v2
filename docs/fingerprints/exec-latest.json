@@ -1,5 +1,5 @@
 {
-  "base_head": "3c67598",
+  "base_head": "5a77f2a",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -566,8 +566,8 @@
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 236,
-      "sha256": "e4221f0f19cff32161c819808df288ae648dc3c33daad636d40239260b4c4708"
+      "lines": 237,
+      "sha256": "731ff77c8df6a841f2ecb329501f05b3ecad7d663b8268446abccdb0d3e81db2"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -1214,8 +1214,8 @@
         "# K. Layer 2 Timing Marker Canaries (Synthetic & Platform-Injected)",
         "# =========================================="
       ],
-      "lines": 676,
-      "sha256": "a10c66433abedd681745ddffea475bf129fc92cc73e35ee6a81610ae5902cd38"
+      "lines": 1002,
+      "sha256": "62723b3c70f46501d46b6d5c1208d6111932f7eb175075d06bf40f90e23e53bf"
     },
     "scripts/tests/test_check_17_18.py": {
       "fences": 0,
@@ -1510,7 +1510,7 @@
       "sha256": "35bf7dbfa3c7d291b550c3c97a6ae398a22b1dc3624c1d2fc1e4db6963d6e115"
     }
   },
-  "generated_at": "2026-10-01T02:15:08Z",
+  "generated_at": "2026-10-01T03:46:33Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

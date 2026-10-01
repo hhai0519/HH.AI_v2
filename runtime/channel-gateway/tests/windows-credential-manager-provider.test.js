@@ -353,7 +353,14 @@ if ($ok) { exit 0 } else { exit 1 }
 `;
 
   // 1. Write synthetic credential
-  const writeRes = runEncodedPs(writeScript);
+  let writeRes;
+  const t0Write = process.hrtime.bigint();
+  try {
+    writeRes = runEncodedPs(writeScript);
+  } finally {
+    const elapsedWriteMs = (process.hrtime.bigint() - t0Write) / 1000000n;
+    console.log(`CREDM_SYN_WRITE_MS=${elapsedWriteMs.toString()}`);
+  }
   assert.strictEqual(writeRes.status, 0, `Synthetic credential write should succeed: ${writeRes.stderr}`);
 
   let retrieved = null;
@@ -361,7 +368,13 @@ if ($ok) { exit 0 } else { exit 1 }
     // 2. Read through actual provider with production default constructor (F2-A parity)
     const realProvider = new WindowsCredentialManagerSecretProvider();
     assert.strictEqual(realProvider.timeoutMs, 60000, 'Live provider must use production DEFAULT_TIMEOUT_MS');
-    retrieved = realProvider.getSecret(secretRef);
+    const t0ReadExisting = process.hrtime.bigint();
+    try {
+      retrieved = realProvider.getSecret(secretRef);
+    } finally {
+      const elapsedReadExistingMs = (process.hrtime.bigint() - t0ReadExisting) / 1000000n;
+      console.log(`CREDM_PROV_READ_EXISTING_MS=${elapsedReadExistingMs.toString()}`);
+    }
 
     // 3. Assert bytes equal in memory
     assert.strictEqual(Buffer.isBuffer(retrieved), true);
@@ -373,7 +386,14 @@ if ($ok) { exit 0 } else { exit 1 }
     }
 
     // 5. Clean up synthetic credential
-    const delRes = runEncodedPs(deleteScript);
+    let delRes;
+    const t0Del = process.hrtime.bigint();
+    try {
+      delRes = runEncodedPs(deleteScript);
+    } finally {
+      const elapsedDelMs = (process.hrtime.bigint() - t0Del) / 1000000n;
+      console.log(`CREDM_SYN_DEL_MS=${elapsedDelMs.toString()}`);
+    }
     assert.strictEqual(delRes.status, 0, `Synthetic credential cleanup should succeed: ${delRes.stderr}`);
   }
 
@@ -381,7 +401,15 @@ if ($ok) { exit 0 } else { exit 1 }
   const missingProvider = new WindowsCredentialManagerSecretProvider();
   assert.strictEqual(missingProvider.timeoutMs, 60000, 'Post-delete provider must use production DEFAULT_TIMEOUT_MS');
   assert.throws(
-    () => missingProvider.getSecret(secretRef),
+    () => {
+      const t0Missing = process.hrtime.bigint();
+      try {
+        return missingProvider.getSecret(secretRef);
+      } finally {
+        const elapsedMissingMs = (process.hrtime.bigint() - t0Missing) / 1000000n;
+        console.log(`CREDM_PROV_READ_MISSING_MS=${elapsedMissingMs.toString()}`);
+      }
+    },
     { code: 'SECRET_NOT_FOUND' }
   );
 });
