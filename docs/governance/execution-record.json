@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "B-100-R-K-D2-261001",
-  "base_oid": "4e37b5b1308b5a01a50f8db50a01099aacd5c541",
+  "task_id": "B-100-R-K-D3-261001",
+  "base_oid": "49848c43f187ce58132ece921cef8721223a07fc",
   "plan": {
     "allowed_paths": [
       "docs/EXEC-LOG.md",

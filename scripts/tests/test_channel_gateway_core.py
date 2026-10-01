@@ -346,47 +346,56 @@ def forward_credman_timing_markers(markers: list[tuple[str, int]]):
         print(f"{name}={val}")
 
 
+D3_PROBE_LAYERS = (
+    "L0_NOOP",
+    "L1_CODEDOM_INIT",
+    "L2_CODEDOM_COMPILE",
+    "L3_CSC_START",
+    "L3_CSC_COMPILE",
+    "L4_EMIT_PINVOKE",
+)
+
 EXPECTED_PROBE_CELLS = [
-    (r, env, cmd)
+    (r, env, layer)
     for r in (1, 2, 3)
-    for env in ("STRIPPED", "STRIPPED_PSMODULEPATH", "INHERITED")
-    for cmd in ("NOOP", "ADDTYPE")
+    for env in ("STRIPPED", "INHERITED")
+    for layer in D3_PROBE_LAYERS
 ]
 
 PROBE_LINE_REGEX = re.compile(
-    r"^PROBE round=([123]) env=(STRIPPED|STRIPPED_PSMODULEPATH|INHERITED) cmd=(NOOP|ADDTYPE) ms=(\d+) status=(-?\d+|null) timedout=([01])$"
+    r"^PROBE round=([123]) env=(STRIPPED|INHERITED) layer=(L0_NOOP|L1_CODEDOM_INIT|L2_CODEDOM_COMPILE|L3_CSC_START|L3_CSC_COMPILE|L4_EMIT_PINVOKE) ms=(\d+) status=(-?\d+|null) timedout=([01])$"
 )
 
 
 def parse_and_validate_credman_ab_probe(output_text: str) -> list[str]:
     """
-    Parse and validate the 18-cell hosted A/B/C probe stdout.
+    Parse and validate the 36-cell hosted D3 probe stdout.
     Fail-closed requirements:
-    - Exactly 18 nonblank lines.
+    - Exactly 36 nonblank lines.
     - Each line matches exact grammar.
     - Matrix matches exact sequence of EXPECTED_PROBE_CELLS.
     - No missing, duplicate, reordered, or extra lines.
     - Returns list of normalized probe lines.
     """
     nonblank_lines = [line.strip() for line in output_text.splitlines() if line.strip()]
-    if len(nonblank_lines) != 18:
+    if len(nonblank_lines) != 36:
         raise AssertionError(
-            f"Hosted A/B/C probe output must have exactly 18 nonblank lines, got {len(nonblank_lines)} (FAIL-CLOSED)"
+            f"Hosted D3 probe output must have exactly 36 nonblank lines, got {len(nonblank_lines)} (FAIL-CLOSED)"
         )
 
     parsed_lines = []
     for idx, line in enumerate(nonblank_lines):
         m = PROBE_LINE_REGEX.match(line)
         if not m:
-            raise AssertionError(f"Hosted A/B/C probe line {idx + 1} malformed (FAIL-CLOSED): {line!r}")
+            raise AssertionError(f"Hosted D3 probe line {idx + 1} malformed (FAIL-CLOSED): {line!r}")
         r = int(m.group(1))
         env = m.group(2)
-        cmd = m.group(3)
+        layer = m.group(3)
         expected_cell = EXPECTED_PROBE_CELLS[idx]
-        actual_cell = (r, env, cmd)
+        actual_cell = (r, env, layer)
         if actual_cell != expected_cell:
             raise AssertionError(
-                f"Hosted A/B/C probe cell mismatch at line {idx + 1}: expected {expected_cell}, got {actual_cell} (FAIL-CLOSED)"
+                f"Hosted D3 probe cell mismatch at line {idx + 1}: expected {expected_cell}, got {actual_cell} (FAIL-CLOSED)"
             )
         parsed_lines.append(line)
 
@@ -395,10 +404,10 @@ def parse_and_validate_credman_ab_probe(output_text: str) -> list[str]:
 
 def run_and_validate_credman_ab_probe(repo_root: str = REPO_ROOT):
     """
-    Execute hosted credman A/B/C probe once on Windows after individual Test J.
+    Execute hosted credman D3 probe once on Windows after individual Test J.
     Top-level probe process must exit 0.
-    Capture stdout and validate 18 lines.
-    Forward all 18 normalized PROBE lines to pytest stdout.
+    Capture stdout and validate 36 lines.
+    Forward all 36 normalized PROBE lines to pytest stdout.
     """
     probe_rel = "runtime/channel-gateway/tests/credman-env-ab-probe.js"
     res = subprocess.run(
@@ -410,7 +419,7 @@ def run_and_validate_credman_ab_probe(repo_root: str = REPO_ROOT):
     )
     if res.returncode != 0:
         raise AssertionError(
-            f"Hosted A/B/C probe process failed with exit code {res.returncode}:\n"
+            f"Hosted D3 probe process failed with exit code {res.returncode}:\n"
             f"STDOUT:\n{res.stdout}\nSTDERR:\n{res.stderr}"
         )
     parsed_lines = parse_and_validate_credman_ab_probe(res.stdout)
@@ -942,67 +951,97 @@ def test_credman_timing_marker_parser_canaries():
 
 
 def test_credman_ab_probe_parser_canaries():
-    """Canary: pure parser tests for hosted A/B/C probe."""
-    # 1. Valid exact 18-cell matrix passes & STRIPPED_PSMODULEPATH accepted
+    """Canary: pure parser tests for hosted D3 layer-isolation probe."""
+    # 1. Valid exact 36-cell matrix passes & all six layer names accepted
     valid_lines = [
-        f"PROBE round={r} env={e} cmd={c} ms=100 status=0 timedout=0"
-        for r, e, c in EXPECTED_PROBE_CELLS
+        f"PROBE round={r} env={e} layer={l} ms=100 status=0 timedout=0"
+        for r, e, l in EXPECTED_PROBE_CELLS
     ]
     valid_text = "\n".join(valid_lines)
     parsed = parse_and_validate_credman_ab_probe(valid_text)
-    assert len(parsed) == 18
+    assert len(parsed) == 36
 
-    # 1b. Old STRIPPED_PLUS_OS rejected
-    old_env_lines = list(valid_lines)
-    old_env_lines[2] = "PROBE round=1 env=STRIPPED_PLUS_OS cmd=NOOP ms=100 status=0 timedout=0"
-    with pytest.raises(AssertionError, match="FAIL-CLOSED"):
-        parse_and_validate_credman_ab_probe("\n".join(old_env_lines))
-
-    # 2. Reordered matrix fails
+    # 2. Reordered cell rejected
     reordered = list(valid_lines)
     reordered[0], reordered[1] = reordered[1], reordered[0]
     with pytest.raises(AssertionError, match="FAIL-CLOSED"):
         parse_and_validate_credman_ab_probe("\n".join(reordered))
 
-    # 3. Missing fails
+    # 3. Missing cell rejected
     with pytest.raises(AssertionError, match="FAIL-CLOSED"):
-        parse_and_validate_credman_ab_probe("\n".join(valid_lines[:17]))
+        parse_and_validate_credman_ab_probe("\n".join(valid_lines[:35]))
 
-    # 4. Duplicate fails
-    dup_lines = valid_lines[:17] + [valid_lines[0]]
+    # 4. Duplicate cell rejected
+    dup_lines = valid_lines[:35] + [valid_lines[0]]
     with pytest.raises(AssertionError, match="FAIL-CLOSED"):
         parse_and_validate_credman_ab_probe("\n".join(dup_lines))
 
-    # 5. Extra line fails
+    # 5. Extra cell rejected
     with pytest.raises(AssertionError, match="FAIL-CLOSED"):
         parse_and_validate_credman_ab_probe("\n".join(valid_lines + [valid_lines[0]]))
 
-    # 6. Malformed fails
+    # 6. Malformed line rejected
     malformed = list(valid_lines)
     malformed[0] = "MALFORMED line"
     with pytest.raises(AssertionError, match="FAIL-CLOSED"):
         parse_and_validate_credman_ab_probe("\n".join(malformed))
 
-    # 7. Integer-or-null status accepted
-    null_status = list(valid_lines)
-    null_status[1] = "PROBE round=1 env=STRIPPED cmd=ADDTYPE ms=120000 status=null timedout=1"
-    parsed_null = parse_and_validate_credman_ab_probe("\n".join(null_status))
-    assert len(parsed_null) == 18
+    # 7. Negative ms rejected
+    neg_ms = list(valid_lines)
+    neg_ms[0] = "PROBE round=1 env=STRIPPED layer=L0_NOOP ms=-1 status=0 timedout=0"
+    with pytest.raises(AssertionError, match="FAIL-CLOSED"):
+        parse_and_validate_credman_ab_probe("\n".join(neg_ms))
 
+    # 8. Fractional ms rejected
+    frac_ms = list(valid_lines)
+    frac_ms[0] = "PROBE round=1 env=STRIPPED layer=L0_NOOP ms=12.5 status=0 timedout=0"
+    with pytest.raises(AssertionError, match="FAIL-CLOSED"):
+        parse_and_validate_credman_ab_probe("\n".join(frac_ms))
+
+    # 9. Integer status accepted (status=0 is in valid_lines)
+    # 10. Negative integer status accepted
     neg_status = list(valid_lines)
-    neg_status[1] = "PROBE round=1 env=STRIPPED cmd=ADDTYPE ms=250 status=-1 timedout=0"
+    neg_status[1] = "PROBE round=1 env=STRIPPED layer=L1_CODEDOM_INIT ms=250 status=-1 timedout=0"
     parsed_neg = parse_and_validate_credman_ab_probe("\n".join(neg_status))
-    assert len(parsed_neg) == 18
+    assert len(parsed_neg) == 36
 
-    # 8. Timedout 0/1 accepted (tested in null_status above and valid_lines)
+    # 11. Null status accepted
+    null_status = list(valid_lines)
+    null_status[1] = "PROBE round=1 env=STRIPPED layer=L1_CODEDOM_INIT ms=120000 status=null timedout=1"
+    parsed_null = parse_and_validate_credman_ab_probe("\n".join(null_status))
+    assert len(parsed_null) == 36
 
-    # 9. Invalid timedout rejected
+    # 12. Timedout 0 accepted (in valid_lines), timedout 1 accepted (in null_status above and below)
+    to1 = list(valid_lines)
+    to1[0] = "PROBE round=1 env=STRIPPED layer=L0_NOOP ms=100 status=0 timedout=1"
+    parsed_to1 = parse_and_validate_credman_ab_probe("\n".join(to1))
+    assert len(parsed_to1) == 36
+
+    # 13. Invalid timedout rejected
     invalid_to = list(valid_lines)
-    invalid_to[0] = "PROBE round=1 env=STRIPPED cmd=NOOP ms=100 status=0 timedout=2"
+    invalid_to[0] = "PROBE round=1 env=STRIPPED layer=L0_NOOP ms=100 status=0 timedout=2"
     with pytest.raises(AssertionError, match="FAIL-CLOSED"):
         parse_and_validate_credman_ab_probe("\n".join(invalid_to))
 
     invalid_to_bool = list(valid_lines)
-    invalid_to_bool[0] = "PROBE round=1 env=STRIPPED cmd=NOOP ms=100 status=0 timedout=false"
+    invalid_to_bool[0] = "PROBE round=1 env=STRIPPED layer=L0_NOOP ms=100 status=0 timedout=false"
     with pytest.raises(AssertionError, match="FAIL-CLOSED"):
         parse_and_validate_credman_ab_probe("\n".join(invalid_to_bool))
+
+    # 14. Old environment: STRIPPED_PSMODULEPATH rejected
+    old_psmod = list(valid_lines)
+    old_psmod[0] = "PROBE round=1 env=STRIPPED_PSMODULEPATH layer=L0_NOOP ms=100 status=0 timedout=0"
+    with pytest.raises(AssertionError, match="FAIL-CLOSED"):
+        parse_and_validate_credman_ab_probe("\n".join(old_psmod))
+
+    # 15. Old environment: STRIPPED_PLUS_OS rejected
+    old_plus_os = list(valid_lines)
+    old_plus_os[0] = "PROBE round=1 env=STRIPPED_PLUS_OS layer=L0_NOOP ms=100 status=0 timedout=0"
+    with pytest.raises(AssertionError, match="FAIL-CLOSED"):
+        parse_and_validate_credman_ab_probe("\n".join(old_plus_os))
+
+    # 16. Old D2: cmd=NOOP grammar rejected
+    old_d2 = list(valid_lines)
+    old_d2[0] = "PROBE round=1 env=STRIPPED cmd=NOOP ms=100 status=0 timedout=0"
+    with pytest.raises(AssertionError, match="FAIL-CLOSED"):
+        parse_and_validate_credman_ab_probe("\n".join(old_d2))
