@@ -15,6 +15,7 @@ G. Node.js built-in SQLite smoke contract (DatabaseSync, in-memory, no Experimen
 H. Negative policy canary tests ensuring TAP parser and skip registry fail closed.
 """
 
+import base64
 import json
 import os
 import re
@@ -241,6 +242,90 @@ def forward_timing_markers(markers: list[int]):
         print(f"KNOWN_FOLDER_BRIDGE_MS={val}")
 
 
+CREDM_MARKER_KEYS = [
+    "CREDM_SYN_WRITE_MS",
+    "CREDM_PROV_READ_EXISTING_MS",
+    "CREDM_SYN_DEL_MS",
+    "CREDM_PROV_READ_MISSING_MS",
+]
+CREDM_PROVIDER_MAX_MS = 15000
+CREDM_LINE_REGEX = re.compile(r"^(?:#\s*)?([A-Za-z0-9_]+)=(.*)$")
+STRICT_INT_REGEX = re.compile(r"^\d+$")
+
+
+def parse_and_validate_credman_timing_markers(tap_output: str, expect_markers: bool) -> dict[str, int]:
+    r"""
+    Parse and validate CREDM timing markers from captured stdout/TAP.
+    - If expect_markers is True:
+        - Must contain exact four markers, each exactly once.
+        - Any unknown CREDM_* marker -> AssertionError (FAIL CLOSED).
+        - Any duplicate marker -> AssertionError (FAIL CLOSED).
+        - Any malformed line containing CREDM_ -> AssertionError (FAIL CLOSED).
+        - Any negative / non-integer value -> AssertionError (FAIL CLOSED).
+        - CREDM_PROV_READ_EXISTING_MS <= 15000, else AssertionError.
+        - CREDM_PROV_READ_MISSING_MS <= 15000, else AssertionError.
+    - If expect_markers is False:
+        - Must contain zero CREDM markers. Any CREDM line -> AssertionError (FAIL CLOSED).
+    Returns dict mapping marker key to integer value.
+    """
+    found_markers = {}
+    for line in tap_output.splitlines():
+        trimmed = line.strip()
+        if "CREDM_" in trimmed:
+            m = CREDM_LINE_REGEX.match(trimmed)
+            if not m:
+                raise AssertionError(f"Malformed CREDM line (FAIL-CLOSED): {trimmed!r}")
+            key, val_str = m.group(1), m.group(2)
+            if not key.startswith("CREDM_"):
+                raise AssertionError(f"Malformed CREDM key prefix (FAIL-CLOSED): {trimmed!r}")
+            if key not in CREDM_MARKER_KEYS:
+                raise AssertionError(f"Unknown CREDM marker key '{key}' (FAIL-CLOSED)")
+            if not STRICT_INT_REGEX.match(val_str):
+                raise AssertionError(f"Malformed or negative CREDM value '{val_str}' for '{key}' (FAIL-CLOSED)")
+            if key in found_markers:
+                raise AssertionError(f"Duplicate CREDM marker '{key}' (FAIL-CLOSED)")
+            found_markers[key] = int(val_str)
+
+    if not expect_markers:
+        if found_markers:
+            raise AssertionError(f"Expected zero CREDM markers, got {list(found_markers.keys())} (FAIL-CLOSED)")
+        return found_markers
+
+    for expected_key in CREDM_MARKER_KEYS:
+        if expected_key not in found_markers:
+            raise AssertionError(f"Missing required CREDM marker '{expected_key}' (FAIL-CLOSED)")
+
+    read_existing = found_markers["CREDM_PROV_READ_EXISTING_MS"]
+    if read_existing > CREDM_PROVIDER_MAX_MS:
+        raise AssertionError(
+            f"CREDM_PROV_READ_EXISTING_MS ({read_existing}ms) exceeded threshold {CREDM_PROVIDER_MAX_MS}ms (FAIL-CLOSED)"
+        )
+
+    read_missing = found_markers["CREDM_PROV_READ_MISSING_MS"]
+    if read_missing > CREDM_PROVIDER_MAX_MS:
+        raise AssertionError(
+            f"CREDM_PROV_READ_MISSING_MS ({read_missing}ms) exceeded threshold {CREDM_PROVIDER_MAX_MS}ms (FAIL-CLOSED)"
+        )
+
+    return found_markers
+
+
+def should_expect_credman_markers(test_file: str | None, current_platform: str) -> bool:
+    """
+    Returns True if exact four CREDM markers are expected for the suite and platform:
+    - On non-win32 platforms: False
+    - On win32:
+      - If test_file is None (combined runner): True
+      - If test_file basename is 'windows-credential-manager-provider.test.js': True
+      - For every other test_file: False
+    """
+    if current_platform != "win32":
+        return False
+    if test_file is None:
+        return True
+    return os.path.basename(test_file) == "windows-credential-manager-provider.test.js"
+
+
 DISCOVERED_TEST_FILES = discover_gateway_test_files()
 
 
@@ -326,6 +411,12 @@ def test_channel_gateway_individual_test_file(test_file):
     markers = parse_and_validate_timing_markers(res.stdout)
     forward_timing_markers(markers)
 
+    expect_credman = should_expect_credman_markers(test_file, current_platform=sys.platform)
+    credman_markers = parse_and_validate_credman_timing_markers(res.stdout, expect_markers=expect_credman)
+    if sys.platform == "win32" and os.path.basename(test_file) == "windows-credential-manager-provider.test.js":
+        for k in CREDM_MARKER_KEYS:
+            print(f"{k}={credman_markers[k]}")
+
     assert res.returncode == 0, (
         f"{os.path.basename(test_file)} failed with code {res.returncode}:\n"
         f"STDOUT:\n{res.stdout}\nSTDERR:\n{res.stderr}"
@@ -353,6 +444,9 @@ def test_channel_gateway_combined_node_test_runner():
 
     markers = parse_and_validate_timing_markers(res.stdout)
     forward_timing_markers(markers)
+
+    expect_credman = should_expect_credman_markers(None, current_platform=sys.platform)
+    parse_and_validate_credman_timing_markers(res.stdout, expect_markers=expect_credman)
 
     assert res.returncode == 0, (
         f"Combined node --test failed with code {res.returncode}:\n"
@@ -674,3 +768,225 @@ def test_canary_non_target_individual_suite_zero_behavior():
     assert_timing_marker_count([], "sqlite-state-repository.test.js", current_platform="win32")
     with pytest.raises(AssertionError, match="FAIL-CLOSED"):
         assert_timing_marker_count([42], "sqlite-state-repository.test.js", current_platform="win32")
+
+
+def test_credman_timing_marker_parser_canaries():
+    """
+    Parser canary suite covering all required cases:
+    - valid four PASS
+    - missing FAIL
+    - duplicate FAIL
+    - malformed FAIL
+    - negative FAIL
+    - unknown CREDM marker FAIL
+    - read-existing 15000 PASS
+    - read-existing 15001 FAIL
+    - read-missing 15000 PASS
+    - read-missing 15001 FAIL
+    - synthetic write >15000 PASS
+    - synthetic delete >15000 PASS
+    - expected-zero + zero PASS
+    - expected-zero + marker present FAIL
+    """
+    base_tap = (
+        "ok 1 - test\n"
+        "CREDM_SYN_WRITE_MS=120\n"
+        "CREDM_PROV_READ_EXISTING_MS=350\n"
+        "CREDM_SYN_DEL_MS=85\n"
+        "CREDM_PROV_READ_MISSING_MS=210\n"
+    )
+
+    # 1. valid four PASS
+    parsed = parse_and_validate_credman_timing_markers(base_tap, expect_markers=True)
+    assert parsed == {
+        "CREDM_SYN_WRITE_MS": 120,
+        "CREDM_PROV_READ_EXISTING_MS": 350,
+        "CREDM_SYN_DEL_MS": 85,
+        "CREDM_PROV_READ_MISSING_MS": 210,
+    }
+
+    # 2. missing FAIL
+    missing_tap = (
+        "CREDM_SYN_WRITE_MS=120\n"
+        "CREDM_PROV_READ_EXISTING_MS=350\n"
+        "CREDM_SYN_DEL_MS=85\n"
+    )
+    with pytest.raises(AssertionError, match="Missing required CREDM marker"):
+        parse_and_validate_credman_timing_markers(missing_tap, expect_markers=True)
+
+    # 3. duplicate FAIL
+    dup_tap = base_tap + "CREDM_SYN_WRITE_MS=99\n"
+    with pytest.raises(AssertionError, match="Duplicate CREDM marker"):
+        parse_and_validate_credman_timing_markers(dup_tap, expect_markers=True)
+
+    # 4. malformed FAIL
+    malformed_tap = base_tap.replace("CREDM_SYN_WRITE_MS=120", "CREDM_SYN_WRITE_MS=not_a_number")
+    with pytest.raises(AssertionError, match="Malformed or negative CREDM value"):
+        parse_and_validate_credman_timing_markers(malformed_tap, expect_markers=True)
+
+    # 5. negative FAIL
+    neg_tap = base_tap.replace("CREDM_SYN_WRITE_MS=120", "CREDM_SYN_WRITE_MS=-10")
+    with pytest.raises(AssertionError, match="Malformed or negative CREDM value"):
+        parse_and_validate_credman_timing_markers(neg_tap, expect_markers=True)
+
+    # 6. unknown CREDM marker FAIL
+    unk_tap = base_tap + "CREDM_UNKNOWN_MS=100\n"
+    with pytest.raises(AssertionError, match="Unknown CREDM marker key"):
+        parse_and_validate_credman_timing_markers(unk_tap, expect_markers=True)
+
+    # 7. read-existing 15000 PASS
+    p_15000 = base_tap.replace("CREDM_PROV_READ_EXISTING_MS=350", "CREDM_PROV_READ_EXISTING_MS=15000")
+    res_15000 = parse_and_validate_credman_timing_markers(p_15000, expect_markers=True)
+    assert res_15000["CREDM_PROV_READ_EXISTING_MS"] == 15000
+
+    # 8. read-existing 15001 FAIL
+    f_15001 = base_tap.replace("CREDM_PROV_READ_EXISTING_MS=350", "CREDM_PROV_READ_EXISTING_MS=15001")
+    with pytest.raises(AssertionError, match="CREDM_PROV_READ_EXISTING_MS.*exceeded threshold"):
+        parse_and_validate_credman_timing_markers(f_15001, expect_markers=True)
+
+    # 9. read-missing 15000 PASS
+    pm_15000 = base_tap.replace("CREDM_PROV_READ_MISSING_MS=210", "CREDM_PROV_READ_MISSING_MS=15000")
+    res_m15000 = parse_and_validate_credman_timing_markers(pm_15000, expect_markers=True)
+    assert res_m15000["CREDM_PROV_READ_MISSING_MS"] == 15000
+
+    # 10. read-missing 15001 FAIL
+    fm_15001 = base_tap.replace("CREDM_PROV_READ_MISSING_MS=210", "CREDM_PROV_READ_MISSING_MS=15001")
+    with pytest.raises(AssertionError, match="CREDM_PROV_READ_MISSING_MS.*exceeded threshold"):
+        parse_and_validate_credman_timing_markers(fm_15001, expect_markers=True)
+
+    # 11. synthetic write >15000 PASS
+    sw_large = base_tap.replace("CREDM_SYN_WRITE_MS=120", "CREDM_SYN_WRITE_MS=25000")
+    res_sw = parse_and_validate_credman_timing_markers(sw_large, expect_markers=True)
+    assert res_sw["CREDM_SYN_WRITE_MS"] == 25000
+
+    # 12. synthetic delete >15000 PASS
+    sd_large = base_tap.replace("CREDM_SYN_DEL_MS=85", "CREDM_SYN_DEL_MS=30000")
+    res_sd = parse_and_validate_credman_timing_markers(sd_large, expect_markers=True)
+    assert res_sd["CREDM_SYN_DEL_MS"] == 30000
+
+    # 13. expected-zero + zero PASS
+    zero_tap = "ok 1 - test without credman\n# tests 1\n"
+    res_zero = parse_and_validate_credman_timing_markers(zero_tap, expect_markers=False)
+    assert res_zero == {}
+
+    # 14. expected-zero + marker present FAIL
+    with pytest.raises(AssertionError, match="Expected zero CREDM markers"):
+        parse_and_validate_credman_timing_markers(base_tap, expect_markers=False)
+
+
+def test_windows_gateway_powershell_bridges_have_no_external_cmdlets():
+    """
+    Mechanical authority: Gateway production PowerShell bridges have no external cmdlets.
+    Requires Windows platform (skips on non-Windows).
+    Uses Windows PowerShell 5.1 exact executable and -EncodedCommand.
+    Validates exact set:
+    - runtime/channel-gateway/bin/windows-credential-manager-read.ps1
+    - runtime/channel-gateway/bin/windows-known-folder-resolve.ps1
+    Deterministic controls:
+    - New-Object -> FAIL
+    - Add-Type -> FAIL
+    - Local function definition + invocation -> PASS
+    """
+    if sys.platform != "win32":
+        pytest.skip("PowerShell bridge AST verification requires Windows platform")
+
+    bin_dir = os.path.join(GATEWAY_DIR, "bin")
+    actual_ps1_files = sorted([
+        os.path.relpath(os.path.join(bin_dir, f), REPO_ROOT).replace("\\", "/")
+        for f in os.listdir(bin_dir)
+        if f.endswith(".ps1")
+    ])
+    expected_ps1_files = sorted([
+        "runtime/channel-gateway/bin/windows-credential-manager-read.ps1",
+        "runtime/channel-gateway/bin/windows-known-folder-resolve.ps1",
+    ])
+    assert actual_ps1_files == expected_ps1_files, (
+        f"Production bridge exact set mismatch: expected {expected_ps1_files}, got {actual_ps1_files} (FAIL-CLOSED)"
+    )
+
+    ps_code = """
+$PSModuleAutoLoadingPreference = 'None'
+$ErrorActionPreference = 'Stop'
+
+function Analyze-Code([string]$name, [string]$code) {
+    $tokens = $null
+    $errors = $null
+    $ast = [System.Management.Automation.Language.Parser]::ParseInput($code, [ref]$tokens, [ref]$errors)
+    if ($errors.Count -gt 0) {
+        return $false
+    }
+    $functionDefs = $ast.FindAll({ $args[0] -is [System.Management.Automation.Language.FunctionDefinitionAst] }, $true)
+    $localFns = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+    foreach ($fn in $functionDefs) {
+        [void]$localFns.Add($fn.Name)
+    }
+    $commandNodes = $ast.FindAll({ $args[0] -is [System.Management.Automation.Language.CommandAst] }, $true)
+    foreach ($cmd in $commandNodes) {
+        $cmdName = $cmd.GetCommandName()
+        if ([string]::IsNullOrWhiteSpace($cmdName)) {
+            return $false
+        }
+        if (-not $localFns.Contains($cmdName)) {
+            return $false
+        }
+    }
+    return $true
+}
+
+$bridges = @(
+    'runtime/channel-gateway/bin/windows-credential-manager-read.ps1',
+    'runtime/channel-gateway/bin/windows-known-folder-resolve.ps1'
+)
+
+foreach ($b in $bridges) {
+    if (-not [System.IO.File]::Exists($b)) {
+        [Console]::Error.WriteLine([string]::Concat('MISSING_FILE: ', $b))
+        exit 10
+    }
+    $code = [System.IO.File]::ReadAllText($b)
+    if (-not (Analyze-Code $b $code)) {
+        [Console]::Error.WriteLine([string]::Concat('FAIL_BRIDGE: ', $b))
+        exit 11
+    }
+}
+
+# Deterministic controls
+# Control 1: New-Object should fail
+if (Analyze-Code 'ctl_new_object' '$x = New-Object System.Object') {
+    [Console]::Error.WriteLine('CONTROL_FAILED: New-Object unexpectedly passed')
+    exit 21
+}
+
+# Control 2: Add-Type should fail
+if (Analyze-Code 'ctl_add_type' 'Add-Type "public class X {}"') {
+    [Console]::Error.WriteLine('CONTROL_FAILED: Add-Type unexpectedly passed')
+    exit 22
+}
+
+# Control 3: Local function definition + invocation should pass
+if (-not (Analyze-Code 'ctl_local_fn' 'function My-Local { 42 }; My-Local')) {
+    [Console]::Error.WriteLine('CONTROL_FAILED: local function unexpectedly failed')
+    exit 23
+}
+
+exit 0
+"""
+
+    b64 = base64.b64encode(ps_code.encode("utf-16le")).decode("ascii")
+    system_root = os.environ.get("SystemRoot", "C:\\Windows")
+    powershell_path = os.path.join(system_root, "System32", "WindowsPowerShell", "v1.0", "powershell.exe")
+    assert os.path.isfile(powershell_path), f"Windows PowerShell executable missing: {powershell_path}"
+
+    res = subprocess.run([
+        powershell_path,
+        "-NoLogo",
+        "-NoProfile",
+        "-NonInteractive",
+        "-ExecutionPolicy", "Bypass",
+        "-EncodedCommand", b64
+    ], cwd=REPO_ROOT, capture_output=True, text=True)
+
+    assert res.returncode == 0, (
+        f"PowerShell AST verification failed (code {res.returncode}):\n"
+        f"STDOUT: {res.stdout}\nSTDERR: {res.stderr}"
+    )

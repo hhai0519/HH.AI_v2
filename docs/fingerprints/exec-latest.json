@@ -1,5 +1,5 @@
 {
-  "base_head": "3c67598",
+  "base_head": "5a77f2a",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -558,16 +558,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 269,
-      "sha256": "1d296948cdefd1e02527aedb00a0ba01b0292a2ad3dcdccf6e8194ab51f2d662"
+      "lines": 270,
+      "sha256": "c703c6f707c87c1907206cfb8d66fab7b7e30480bc60903308bdc7042b5698b7"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 236,
-      "sha256": "e4221f0f19cff32161c819808df288ae648dc3c33daad636d40239260b4c4708"
+      "lines": 237,
+      "sha256": "dddace28f30c4c7a165349a06dcdde43babac4c5488f0bc63f6b3c64ece558d2"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -609,7 +609,7 @@
         "## 封存區"
       ],
       "lines": 369,
-      "sha256": "c53d8e3bdecfe47fa0cf6b303ea9cb11e7e559d55e1667e7dccaf8d11be1c73d"
+      "sha256": "af15020fa263e6ec1b6c627a94974cf2af9073b2656fc20a44cd008398f08511"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1078,8 +1078,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6258,
-      "sha256": "f8c9975de6d280291fb0e15a288e7447add99b0bff00f9fe46dcf9abd61aaf01"
+      "lines": 6287,
+      "sha256": "0d6f4870d51a596baec9b10d33cdb4efe2dbc0bb7aed216d2de79bc959c4267f"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1212,10 +1212,14 @@
         "# -*- coding: utf-8 -*-",
         "# ==========================================",
         "# K. Layer 2 Timing Marker Canaries (Synthetic & Platform-Injected)",
-        "# =========================================="
+        "# ==========================================",
+        "# Deterministic controls",
+        "# Control 1: New-Object should fail",
+        "# Control 2: Add-Type should fail",
+        "# Control 3: Local function definition + invocation should pass"
       ],
-      "lines": 676,
-      "sha256": "a10c66433abedd681745ddffea475bf129fc92cc73e35ee6a81610ae5902cd38"
+      "lines": 992,
+      "sha256": "ee04e9e3d03f47a784273559882398bbb941ec814a1a95a979c5c9d8976107fb"
     },
     "scripts/tests/test_check_17_18.py": {
       "fences": 0,
@@ -1510,7 +1514,7 @@
       "sha256": "35bf7dbfa3c7d291b550c3c97a6ae398a22b1dc3624c1d2fc1e4db6963d6e115"
     }
   },
-  "generated_at": "2026-10-01T02:15:08Z",
+  "generated_at": "2026-10-02T09:15:11Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

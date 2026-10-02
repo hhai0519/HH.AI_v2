@@ -67,16 +67,25 @@ C. **Manage MCP Servers → GitHub**：
 - restart-persistent observed。
 
 D. **Advanced Command Access → Terminal Commands**：
-- 12 entries 全部設為 **Deny**；
+- 14 entries 全部設為 **Deny**（包含 12 條 Git 相關條目及 `gh`、`gh.exe`）；
 - 明確不在 Deny：`git push`、`git switch -c`；
-- **USER_PROVIDED 最新截圖事實確立（2026-09-30）**：
-  - Advanced Command Access → Terminal Commands 畫面清晰顯示 12 Deny entries 全部存在（`--delete`、`git branch -D`、`git checkout`、`git clean`、`git commit --amend`、`git credential`、`git rebase`、`git reset`、`git restore`、`git stash`、`git switch --discard-changes`、`git switch -C`）。
+- **USER_PROVIDED 最新截圖事實確立（2026-09-30 / 2026-10-01）**：
+  - Advanced Command Access → Terminal Commands 畫面清晰顯示 14 Deny entries 全部存在（`--delete`、`git branch -D`、`git checkout`、`git clean`、`git commit --amend`、`git credential`、`git rebase`、`git reset`、`git restore`、`git stash`、`git switch --discard-changes`、`git switch -C`、`gh`、`gh.exe`）。
   - Advanced Web Access 畫面顯示：Read github.com = `Allow`、Execute github.com = `Deny`。
   - 此可見配置完全符合持久基線態勢。
+- **gh 工具安裝真值與完整命令形式設定事實**：
+  - `gh` CLI 本身目前**未安裝**（uninstalled truth），使用者（USER）決定不安裝；未來安裝需經 USER + Macro 核准。
+  - 既有 `gh *` 暫存條目已刪除（wildcard 不支援之既有 evidence 保持）；現行配置採 `gh` 與 `gh.exe` 完整命令形式登錄。
 - **持久性證據精度與執行期攔截能力區隔（Setting Persistence vs Invocation Defense）**：
   - **DIRECTLY RESTART-VERIFIED**：`git credential`、`git reset` 曾直接觀察到重啟後 entry 依然存在。
-  - **SAME-MECHANISM PERSISTENCE INFERENCE**：其餘 10 entries（`--delete`、`git branch -D`、`git checkout`、`git clean`、`git commit --amend`、`git rebase`、`git restore`、`git stash`、`git switch --discard-changes`、`git switch -C`）位於同一持久清單中，為同機制推論，非逐一重啟測試事實。下次正常重啟可順便確認，但不得當作每批 production 之前提。
-  - **重要概念澄清**：「restart-verified」僅證明可見設定在重啟後成功保留（persistence of visible setting only），**絕不證明匹配之命令調用會被實際攔截**（does NOT prove invocation blocking）。
+  - **SAME-MECHANISM PERSISTENCE INFERENCE**：其餘 12 entries 位於同一持久清單中，為同機制推論，非逐一重啟測試事實。下次正常重啟可順便確認，但不得當作每批 production 之前提。
+  - **核心防禦邊界釐清（Critical Safety Boundary Distinction）**：
+    - 「setting persistence ≠ machine enforcement」：設定持久性僅證明可見設定在重啟後成功保留（persistence of visible setting only），其執行期機器攔截能力為 **NOT ESTABLISHED**（does NOT prove invocation blocking，見 §2.3 實證）。
+    - **IDE Deny 不得描述為安全邊界（security boundary）**。
+    - 現行專案安全邊界權威（safety authority）為：模型層級／版本庫治理安全合約（model-level / repository governance safety contract）。
+  - **CHECK 25 殘留說明（CHECK 25 Residual Invariant）**：
+    - CHECK 25 目前機械檢查僅守護既有 12-entry invariant；`gh` / `gh.exe` 尚未被該 12-entry CHECK 25 invariant 機械守護；CHECK 25 info text 仍為 12 Deny 語意。
+    - 本項治理殘留由 EXISTING B-108 承接（Owner = EXISTING B-108），本 R1 批次不修改檢驗器。
 
 E. **Advanced Web Access → Execute URLs**：
 - `localhost` = Allow
@@ -140,7 +149,7 @@ B. **Mandatory pre-SEC-03 USER Verification Protocol（SEC-03 前置 USER 手動
 - **Target**：`Always Proceed`
 
 ### 4.2 Advanced Command Access → Terminal Commands
-點擊 **Add entry**，逐條輸入以下 **12 entries**（12 Deny entries），並將下拉選單設為 **Deny**：
+點擊 **Add entry**，逐條輸入以下 **14 entries**（14 Deny entries），並將下拉選單設為 **Deny**：
 
 ```text
 --delete
@@ -155,6 +164,8 @@ git restore
 git stash
 git switch --discard-changes
 git switch -C
+gh
+gh.exe
 ```
 
 確認：
@@ -163,7 +174,9 @@ git switch -C
 
 記錄：
 - `git credential` 與 `git reset` 已 direct restart-tested（僅證明可見設定持久性，不證明調用攔截能力，見 §2.3）；
-- 其餘 10 項為 same-mechanism persistence inference，下次重啟順便核對即可。
+- 其餘 12 項為 same-mechanism persistence inference，下次重啟順便核對即可。
+- `gh` CLI 本身未安裝（USER 決定不安裝）；現行設定包含 `gh` 與 `gh.exe` 完整命令形式，已刪除舊 `gh *` 暫存項。
+- 設定持久性（setting persistence）不等於執行期攔截能力（machine enforcement = NOT ESTABLISHED），IDE Deny 不是 security boundary，安全防護以專案治理契約為準。
 
 ### 4.3 Advanced File Access
 移除／確認不存在下列項目（File Access deletion 為 restart-persistent observed）：
@@ -270,7 +283,7 @@ Executor 永遠嚴格遵守：
 
 - [ ] 1. Verified IDE version（2.5.5 或更新紀錄版本）
 - [ ] 2. Terminal Command Auto Execution 設為 `Always Proceed`
-- [ ] 3. Advanced Command Access → Terminal Commands 包含上述 **12 Deny entries**
+- [ ] 3. Advanced Command Access → Terminal Commands 包含上述 **14 Deny entries**（12 項 Git 指令 + gh / gh.exe）
 - [ ] 4. `git push` **不存在**於 Deny
 - [ ] 5. `git switch -c` **不存在**於 Deny
 - [ ] 6. Advanced File Access 已移除舊 repo `.env.local` write、Desktop broad read、obsolete skills read

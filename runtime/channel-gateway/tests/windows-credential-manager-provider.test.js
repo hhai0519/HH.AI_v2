@@ -353,15 +353,28 @@ if ($ok) { exit 0 } else { exit 1 }
 `;
 
   // 1. Write synthetic credential
-  const writeRes = runEncodedPs(writeScript);
+  const writeStart = process.hrtime.bigint();
+  let writeRes;
+  try {
+    writeRes = runEncodedPs(writeScript);
+  } finally {
+    const elapsedMs = Number((process.hrtime.bigint() - writeStart) / 1000000n);
+    console.log(`CREDM_SYN_WRITE_MS=${elapsedMs}`);
+  }
   assert.strictEqual(writeRes.status, 0, `Synthetic credential write should succeed: ${writeRes.stderr}`);
 
   let retrieved = null;
   try {
     // 2. Read through actual provider with production default constructor (F2-A parity)
-    const realProvider = new WindowsCredentialManagerSecretProvider();
-    assert.strictEqual(realProvider.timeoutMs, 60000, 'Live provider must use production DEFAULT_TIMEOUT_MS');
-    retrieved = realProvider.getSecret(secretRef);
+    const readExistingStart = process.hrtime.bigint();
+    try {
+      const realProvider = new WindowsCredentialManagerSecretProvider();
+      assert.strictEqual(realProvider.timeoutMs, 60000, 'Live provider must use production DEFAULT_TIMEOUT_MS');
+      retrieved = realProvider.getSecret(secretRef);
+    } finally {
+      const elapsedMs = Number((process.hrtime.bigint() - readExistingStart) / 1000000n);
+      console.log(`CREDM_PROV_READ_EXISTING_MS=${elapsedMs}`);
+    }
 
     // 3. Assert bytes equal in memory
     assert.strictEqual(Buffer.isBuffer(retrieved), true);
@@ -373,17 +386,30 @@ if ($ok) { exit 0 } else { exit 1 }
     }
 
     // 5. Clean up synthetic credential
-    const delRes = runEncodedPs(deleteScript);
+    const delStart = process.hrtime.bigint();
+    let delRes;
+    try {
+      delRes = runEncodedPs(deleteScript);
+    } finally {
+      const elapsedMs = Number((process.hrtime.bigint() - delStart) / 1000000n);
+      console.log(`CREDM_SYN_DEL_MS=${elapsedMs}`);
+    }
     assert.strictEqual(delRes.status, 0, `Synthetic credential cleanup should succeed: ${delRes.stderr}`);
   }
 
   // 6. Verify missing target fails closed after deletion using production default provider (F2-A parity)
-  const missingProvider = new WindowsCredentialManagerSecretProvider();
-  assert.strictEqual(missingProvider.timeoutMs, 60000, 'Post-delete provider must use production DEFAULT_TIMEOUT_MS');
-  assert.throws(
-    () => missingProvider.getSecret(secretRef),
-    { code: 'SECRET_NOT_FOUND' }
-  );
+  const readMissingStart = process.hrtime.bigint();
+  try {
+    const missingProvider = new WindowsCredentialManagerSecretProvider();
+    assert.strictEqual(missingProvider.timeoutMs, 60000, 'Post-delete provider must use production DEFAULT_TIMEOUT_MS');
+    assert.throws(
+      () => missingProvider.getSecret(secretRef),
+      { code: 'SECRET_NOT_FOUND' }
+    );
+  } finally {
+    const elapsedMs = Number((process.hrtime.bigint() - readMissingStart) / 1000000n);
+    console.log(`CREDM_PROV_READ_MISSING_MS=${elapsedMs}`);
+  }
 });
 
 test('WindowsCredManProvider - K. spawn options contain bounded timeout and custom timeoutMs (F1-B)', () => {
@@ -659,4 +685,117 @@ if ($ok) { exit 0 } else { exit 1 }
     const delRes = runEncodedPs(deleteScript);
     assert.strictEqual(delRes.status, 0, `Synthetic credential cleanup should succeed: ${delRes.stderr}`);
   }
+});
+
+test('WindowsCredManProvider - Q. PowerShell 5.1 Reflection.Emit type-load smoke', () => {
+  if (process.platform !== 'win32') {
+    return;
+  }
+
+  const scriptPath = path.resolve(__dirname, '..', 'bin', 'windows-credential-manager-read.ps1');
+  assert.strictEqual(fs.existsSync(scriptPath), true, 'Production bridge script must exist');
+  const content = fs.readFileSync(scriptPath, 'utf8');
+
+  // 2. Fail-closed find production literal CredRead invocation boundary
+  const marker = '[WinCredBridge]::CredRead';
+  const matches = [...content.matchAll(/\[WinCredBridge\]::CredRead/g)];
+  assert.strictEqual(matches.length, 1, 'Literal CredRead boundary must be uniquely determinable');
+  const boundaryIdx = matches[0].index;
+
+  // 3. Slicing strictly before CredRead line
+  const lastNewlineBefore = content.lastIndexOf('\n', boundaryIdx);
+  assert.strictEqual(lastNewlineBefore !== -1, true, 'Newline before CredRead boundary must exist');
+  const prefix = content.slice(0, lastNewlineBefore);
+
+  // 4. Reflection metadata assertions
+  const assertScript = `
+# Assertions on CREDENTIAL
+$cred = [CREDENTIAL]
+if (-not $cred.IsValueType) { exit 101 }
+if (-not $cred.IsLayoutSequential) { exit 102 }
+
+$expectedFields = @(
+    @('Flags', 'UInt32'),
+    @('Type', 'UInt32'),
+    @('TargetName', 'IntPtr'),
+    @('Comment', 'IntPtr'),
+    @('LastWrittenLowDateTime', 'UInt32'),
+    @('LastWrittenHighDateTime', 'UInt32'),
+    @('CredentialBlobSize', 'UInt32'),
+    @('CredentialBlob', 'IntPtr'),
+    @('Persist', 'UInt32'),
+    @('AttributeCount', 'UInt32'),
+    @('Attributes', 'IntPtr'),
+    @('TargetAlias', 'IntPtr'),
+    @('UserName', 'IntPtr')
+)
+$actualFields = $cred.GetFields([System.Reflection.BindingFlags]'Public, Instance')
+if ($actualFields.Length -ne $expectedFields.Length) { exit 103 }
+for ($i = 0; $i -lt $expectedFields.Length; $i++) {
+    if ($actualFields[$i].Name -ne $expectedFields[$i][0] -or $actualFields[$i].FieldType.Name -ne $expectedFields[$i][1]) {
+        exit (110 + $i)
+    }
+}
+
+# Assertions on WinCredBridge
+$bridge = [WinCredBridge]
+$readM = $bridge.GetMethod('CredRead', [System.Reflection.BindingFlags]'Public, Static')
+if ($null -eq $readM -or $readM.ReturnType.Name -ne 'Boolean') { exit 201 }
+$readParams = $readM.GetParameters()
+if ($readParams.Length -ne 4) { exit 202 }
+if ($readParams[0].ParameterType.Name -ne 'String' -or
+    $readParams[1].ParameterType.Name -ne 'UInt32' -or
+    $readParams[2].ParameterType.Name -ne 'UInt32' -or
+    $readParams[3].ParameterType.Name -ne 'IntPtr&') { exit 203 }
+
+$readAttrs = $readM.GetCustomAttributes([System.Runtime.InteropServices.DllImportAttribute], $false)
+if ($readAttrs.Length -ne 1) { exit 204 }
+$ra = $readAttrs[0]
+if ($ra.Value -ne 'advapi32.dll' -or
+    $ra.EntryPoint -ne 'CredReadW' -or
+    $ra.SetLastError -ne $true -or
+    $ra.CharSet -ne [System.Runtime.InteropServices.CharSet]::Unicode -or
+    $ra.CallingConvention -ne [System.Runtime.InteropServices.CallingConvention]::Winapi -or
+    $ra.PreserveSig -ne $true) { exit 205 }
+
+$freeM = $bridge.GetMethod('CredFree', [System.Reflection.BindingFlags]'Public, Static')
+if ($null -eq $freeM -or $freeM.ReturnType.Name -ne 'Void') { exit 301 }
+$freeParams = $freeM.GetParameters()
+if ($freeParams.Length -ne 1 -or $freeParams[0].ParameterType.Name -ne 'IntPtr') { exit 302 }
+
+$freeAttrs = $freeM.GetCustomAttributes([System.Runtime.InteropServices.DllImportAttribute], $false)
+if ($freeAttrs.Length -ne 1) { exit 303 }
+$fa = $freeAttrs[0]
+if ($fa.Value -ne 'advapi32.dll' -or
+    $fa.EntryPoint -ne 'CredFree' -or
+    $fa.CallingConvention -ne [System.Runtime.InteropServices.CallingConvention]::Winapi -or
+    $fa.PreserveSig -ne $true) { exit 304 }
+
+exit 0
+`;
+
+  const combinedScript = `& {
+${prefix}
+
+${assertScript}
+} 'HH.AI_v2/channel-gateway/v1/telegram/test-account/bot-token'`;
+
+  const b64 = Buffer.from(combinedScript, 'utf16le').toString('base64');
+  const systemRoot = process.env.SystemRoot || 'C:\\Windows';
+  const powershellPath = path.join(systemRoot, 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe');
+
+  const res = child_process.spawnSync(powershellPath, [
+    '-NoLogo',
+    '-NoProfile',
+    '-NonInteractive',
+    '-ExecutionPolicy', 'Bypass',
+    '-EncodedCommand', b64
+  ], {
+    stdio: ['ignore', 'pipe', 'pipe'],
+    encoding: 'utf8',
+    windowsHide: true,
+    timeout: 30000
+  });
+
+  assert.strictEqual(res.status, 0, `Type-load smoke failed with status ${res.status}: ${res.stderr}`);
 });

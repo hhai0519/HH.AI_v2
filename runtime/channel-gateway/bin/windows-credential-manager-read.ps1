@@ -3,11 +3,11 @@
 # ADR-0026: Gateway Secret Provider Windows Credential Manager Read Bridge.
 #
 # Invariants:
-# - Pure Win32 CredReadW / CredFree bridge via advapi32.dll built-in APIs.
+# - Pure Win32 CredReadW / CredFree bridge via Reflection.Emit dynamic P/Invoke (advapi32.dll).
 # - Reads exactly one CRED_TYPE_GENERIC credential target.
 # - Zero credential enumeration (never calls CredEnumerate or cmdkey list).
 # - Zero fallback to environment, files, or DPAPI.
-# - Zero third-party PowerShell modules or external dependencies.
+# - Zero third-party PowerShell modules, external cmdlets, or external dependencies.
 # - Zero informational text or headers on standard output.
 # - Binary secret payload emitted directly to standard output stream only.
 # - Never writes secret bytes or raw payload to standard error.
@@ -30,6 +30,8 @@ param (
     [string]$TestFaultStage = $null
 )
 
+# Defense-in-depth: Disable automatic module loading across bridge execution
+$PSModuleAutoLoadingPreference = 'None'
 $ErrorActionPreference = 'Stop'
 
 if ([string]::IsNullOrWhiteSpace($TargetName)) {
@@ -43,42 +45,104 @@ if ($TargetName -notmatch $canonicalTargetPattern) {
     exit 1
 }
 
-$signature = @'
-using System;
-using System.Runtime.InteropServices;
+# Reflection.Emit dynamic assembly and module for Win32 Credential Manager bridge
+$asmName = [System.Reflection.AssemblyName]::new('HHAI.ChannelGateway.WinCredBridge')
+$asmBuilder = [System.Reflection.Emit.AssemblyBuilder]::DefineDynamicAssembly($asmName, [System.Reflection.Emit.AssemblyBuilderAccess]::Run)
+$modBuilder = $asmBuilder.DefineDynamicModule('WinCredBridgeModule')
 
-[StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
-public struct CREDENTIAL {
-    public uint Flags;
-    public uint Type;
-    public string TargetName;
-    public string Comment;
-    public System.Runtime.InteropServices.ComTypes.FILETIME LastWritten;
-    public uint CredentialBlobSize;
-    public IntPtr CredentialBlob;
-    public uint Persist;
-    public uint AttributeCount;
-    public IntPtr Attributes;
-    public string TargetAlias;
-    public string UserName;
+# Define CREDENTIAL value type (SequentialLayout)
+$credTypeAttr = [System.Reflection.TypeAttributes]'Public, SequentialLayout, Sealed, BeforeFieldInit'
+$credTypeBuilder = $modBuilder.DefineType('CREDENTIAL', $credTypeAttr, [System.ValueType])
+
+$credFields = @(
+    @('Flags', [UInt32]),
+    @('Type', [UInt32]),
+    @('TargetName', [IntPtr]),
+    @('Comment', [IntPtr]),
+    @('LastWrittenLowDateTime', [UInt32]),
+    @('LastWrittenHighDateTime', [UInt32]),
+    @('CredentialBlobSize', [UInt32]),
+    @('CredentialBlob', [IntPtr]),
+    @('Persist', [UInt32]),
+    @('AttributeCount', [UInt32]),
+    @('Attributes', [IntPtr]),
+    @('TargetAlias', [IntPtr]),
+    @('UserName', [IntPtr])
+)
+
+foreach ($f in $credFields) {
+    [void]$credTypeBuilder.DefineField($f[0], $f[1], [System.Reflection.FieldAttributes]::Public)
 }
 
-public class WinCredBridge {
-    [DllImport("advapi32.dll", EntryPoint = "CredReadW", CharSet = CharSet.Unicode, SetLastError = true)]
-    public static extern bool CredRead(string target, uint type, uint flags, out IntPtr pCred);
+$credType = $credTypeBuilder.CreateType()
 
-    [DllImport("advapi32.dll", EntryPoint = "CredFree", SetLastError = true)]
-    public static extern void CredFree(IntPtr pCred);
-}
-'@
+# Define WinCredBridge static class
+$bridgeTypeBuilder = $modBuilder.DefineType('WinCredBridge', [System.Reflection.TypeAttributes]'Public, Abstract, Sealed, BeforeFieldInit')
 
-try {
-    if (-not ([System.Management.Automation.PSTypeName]'WinCredBridge').Type) {
-        Add-Type -TypeDefinition $signature -ErrorAction Stop
-    }
-} catch {
-    exit 1
-}
+$dllImportCtor = [System.Runtime.InteropServices.DllImportAttribute].GetConstructor(@([string]))
+$entryPointField = [System.Runtime.InteropServices.DllImportAttribute].GetField('EntryPoint')
+$charSetField = [System.Runtime.InteropServices.DllImportAttribute].GetField('CharSet')
+$setLastErrorField = [System.Runtime.InteropServices.DllImportAttribute].GetField('SetLastError')
+$callingConventionField = [System.Runtime.InteropServices.DllImportAttribute].GetField('CallingConvention')
+$preserveSigField = [System.Runtime.InteropServices.DllImportAttribute].GetField('PreserveSig')
+
+$methodAttr = [System.Reflection.MethodAttributes]'Public, Static, PinvokeImpl'
+
+# CredRead(string target, uint type, uint flags, out IntPtr pCred)
+$byRefIntPtr = [IntPtr].MakeByRefType()
+$credReadMethod = $bridgeTypeBuilder.DefineMethod('CredRead', $methodAttr, [bool], @([string], [UInt32], [UInt32], $byRefIntPtr))
+$credReadAttrBuilder = [System.Reflection.Emit.CustomAttributeBuilder]::new(
+    $dllImportCtor,
+    @('advapi32.dll'),
+    @($entryPointField, $charSetField, $setLastErrorField, $callingConventionField, $preserveSigField),
+    @('CredReadW', [System.Runtime.InteropServices.CharSet]::Unicode, $true, [System.Runtime.InteropServices.CallingConvention]::Winapi, $true)
+)
+$credReadMethod.SetCustomAttribute($credReadAttrBuilder)
+
+# CredFree(IntPtr pCred)
+$credFreeMethod = $bridgeTypeBuilder.DefineMethod('CredFree', $methodAttr, [void], @([IntPtr]))
+$credFreeAttrBuilder = [System.Reflection.Emit.CustomAttributeBuilder]::new(
+    $dllImportCtor,
+    @('advapi32.dll'),
+    @($entryPointField, $callingConventionField, $preserveSigField),
+    @('CredFree', [System.Runtime.InteropServices.CallingConvention]::Winapi, $true)
+)
+$credFreeMethod.SetCustomAttribute($credFreeAttrBuilder)
+
+$bridgeType = $bridgeTypeBuilder.CreateType()
+
+# Runtime fail-closed metadata assertions
+$readM = $bridgeType.GetMethod('CredRead', [System.Reflection.BindingFlags]'Public, Static')
+if ($null -eq $readM -or $readM.ReturnType -ne [bool]) { exit 1 }
+$readParams = $readM.GetParameters()
+if ($readParams.Count -ne 4 -or
+    $readParams[0].ParameterType -ne [string] -or
+    $readParams[1].ParameterType -ne [UInt32] -or
+    $readParams[2].ParameterType -ne [UInt32] -or
+    $readParams[3].ParameterType -ne $byRefIntPtr) { exit 1 }
+
+$readAttrs = $readM.GetCustomAttributes([System.Runtime.InteropServices.DllImportAttribute], $false)
+if ($readAttrs.Length -ne 1) { exit 1 }
+$ra = $readAttrs[0]
+if ($ra.Value -ne 'advapi32.dll' -or
+    $ra.EntryPoint -ne 'CredReadW' -or
+    $ra.SetLastError -ne $true -or
+    $ra.CharSet -ne [System.Runtime.InteropServices.CharSet]::Unicode -or
+    $ra.CallingConvention -ne [System.Runtime.InteropServices.CallingConvention]::Winapi -or
+    $ra.PreserveSig -ne $true) { exit 1 }
+
+$freeM = $bridgeType.GetMethod('CredFree', [System.Reflection.BindingFlags]'Public, Static')
+if ($null -eq $freeM -or $freeM.ReturnType -ne [void]) { exit 1 }
+$freeParams = $freeM.GetParameters()
+if ($freeParams.Count -ne 1 -or $freeParams[0].ParameterType -ne [IntPtr]) { exit 1 }
+
+$freeAttrs = $freeM.GetCustomAttributes([System.Runtime.InteropServices.DllImportAttribute], $false)
+if ($freeAttrs.Length -ne 1) { exit 1 }
+$fa = $freeAttrs[0]
+if ($fa.Value -ne 'advapi32.dll' -or
+    $fa.EntryPoint -ne 'CredFree' -or
+    $fa.CallingConvention -ne [System.Runtime.InteropServices.CallingConvention]::Winapi -or
+    $fa.PreserveSig -ne $true) { exit 1 }
 
 $pCred = [IntPtr]::Zero
 $blob = $null
@@ -101,19 +165,19 @@ if (-not $success) {
 
 $exitCode = 1
 try {
-    $cred = [System.Runtime.InteropServices.Marshal]::PtrToStructure($pCred, [Type][CREDENTIAL])
+    $cred = [System.Runtime.InteropServices.Marshal]::PtrToStructure($pCred, [Type]$credType)
     $blobSize = $cred.CredentialBlobSize
     if ($blobSize -eq 0) {
         $exitCode = 0
     } else {
-        $blob = New-Object byte[] $blobSize
+        $blob = [byte[]]::new($blobSize)
         [System.Runtime.InteropServices.Marshal]::Copy($cred.CredentialBlob, $blob, 0, $blobSize)
 
         $stdoutStream = [Console]::OpenStandardOutput()
 
         # Test seam: simulate stdout write failure after native acquisition
         if ($TestFaultStage -eq 'stdout') {
-            throw (New-Object System.IO.IOException "Simulated stdout failure after acquisition")
+            throw ([System.IO.IOException]::new('Simulated stdout failure after acquisition'))
         }
 
         $stdoutStream.Write($blob, 0, $blob.Length)
