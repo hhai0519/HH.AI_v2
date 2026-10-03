@@ -6265,7 +6265,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
   - accepted checkpoint 正式推進至 5a77f2a7d22336f4bf689ac3ff3c7b064152c777。不得把未來 R1 candidate SHA 寫成 accepted checkpoint。
 - **N. B-100 R-K R1 Candidate Execution State & Carry-forward (B-100-R-K-R1-261001)**：
   - 任務目標：Cmdlet-Free Reflection.Emit CredMan Bridge Repair（TASK_ID: B-100-R-K-R1-261001）。
-  - 當前狀態：**R1 ACCEPTED / REPAIR ACCEPTED / REPAIRED_OBSERVING / stability count = 1 / 5**（first qualifying post-main attempt-1 = Run 37106440133；B-69 bounded verification-tool pilot = UNLOCKED as NEXT_SLICE；R-K CLOSED = NO；ROLLBACK = NO；NEW MATERIAL BLOCKING FINDING = NONE；new accepted checkpoint = a323c46bc84afe67610c9e0d4c3762b63cdb3f52；嚴禁預寫 2/5、3/5 或 5/5）。
+  - 當前狀態：**R1 ACCEPTED / REPAIR ACCEPTED / REPAIRED_OBSERVING / stability count = 2 / 5**（#1 = Run 37106440133 post-main qualifying attempt-1；#2 = Run 37109532244 state-sync candidate attempt-1 TECHNICALLY COMPARABLE qualifying；B-69 bounded verification-tool pilot = UNLOCKED as NEXT_SLICE；R-K CLOSED = NO；ROLLBACK = NO；NEW MATERIAL BLOCKING FINDING = NONE；accepted checkpoint = a323c46bc84afe67610c9e0d4c3762b63cdb3f52；嚴禁預寫 3/5、4/5 或 5/5）。
   - 診斷事實確立（Diagnostic Lineage Facts）：
     - D1 (`4e37b5b1308b5a01a50f8db50a01099aacd5c541`)、D2 (`49848c43f187ce58132ece921cef8721223a07fc`)、D3 (`73fd7873165073392fb8bea9260acc7ca81cd4d5`) 均為 diagnostic-only、off-main；永不得成為 R1 ancestor；不得 merge、cherry-pick、rebase 或 promotion 至 main。
     - D2：PASS / DIAGNOSTIC ACCEPTED，PSMODULEPATH_CANDIDATE_NOT_SUPPORTED，PSModulePath production R1 = CANCELLED。
@@ -6276,10 +6276,12 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
     - STRONG INFERENCE：病態延遲與 external PowerShell command-resolution / module-analysis / runtime-compilation path family 高度相關；Add-Type 為目前正式觀察之 trigger。
     - UNKNOWN：exact internal PowerShell / Defender / AMSI / cache contribution weighting（不得宣稱已證明單一 OS 內部 root cause）。
   - R-K 驗收與計數合約（Acceptance & Future Counting Contract）：
-    - Current count = 1 / 5（#1 = post-main Run 37106440133 attempt 1 qualifying；provider read-existing = 369 ms <= 15000 ms, provider read-missing = 283 ms <= 15000 ms）。
-    - future #2–#5 只能由 External Macro Auditor 在各次 run 已完成後，依 raw evidence 與技術可比性逐次事後判定。
+    - Current count = 2 / 5：
+      - #1 = post-main Run 37106440133 attempt 1 qualifying（provider read-existing = 369 ms <= 15000 ms, provider read-missing = 283 ms <= 15000 ms）。
+      - #2 = Run 37109532244 state-sync candidate attempt 1 TECHNICALLY COMPARABLE qualifying（provider read-existing = 380 ms <= 15000 ms, provider read-missing = 304 ms <= 15000 ms）。
+    - future #3–#5 只能由 External Macro Auditor 在各次 run 已完成後，依 raw evidence 與技術可比性逐次事後判定。
     - technical comparability 至少要求：R-K production runtime semantics unchanged；CredMan provider timing-gate semantics unchanged；timeout remains 60000 ms；no retry added；Test J acceptance semantics unchanged；Test Q non-live smoke semantics not weakened；provider JS contract not materially altered；attempt 1；verify success；gateway-windows success；read-existing <= 15000 ms；read-missing <= 15000 ms；no same-family CredMan J PROVIDER_UNAVAILABLE recurrence。
-    - 本 state-sync candidate 自身：PENDING EXTERNAL MACRO COMPARABILITY REVIEW，不得預先 count。
+    - 本 repair candidate 自身未來之 CI：PENDING EXTERNAL MACRO COMPARABILITY REVIEW，不得預先 count（嚴禁預寫 3/5、4/5、5/5）。
     - attempt >= 2 永不計入；同型 attempt-1 recurrence：reset to 0 / 5 並交回 External Macro 重評；連續 5/5 才得宣告 R-K CLOSED。
     - REPAIR ACCEPTED 後正式解鎖 B-69 bounded pilot；R-K CLOSED = NO。
   - 繼承事項分流（Carry-forward Owners，NEW B-ID = NONE）：
@@ -6298,4 +6300,18 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
     - External Macro formally establishes：R1 = ACCEPTED, B-100 R-K = REPAIR ACCEPTED, B-100 R-K = REPAIRED_OBSERVING, stability count = 1 / 5（first qualifying post-main attempt-1 = Run 37106440133）, B-69 bounded verification-tool pilot = UNLOCKED, R-K CLOSED = NO, ROLLBACK = NO, NEW MATERIAL BLOCKING FINDING = NONE。
     - New accepted checkpoint = `a323c46bc84afe67610c9e0d4c3762b63cdb3f52`。
   - 當前路由（Routing）：NEXT_WORK = E-03，NEXT_SLICE = B-69 bounded verification-tool pilot（UNLOCKED BY B-100 R-K REPAIR ACCEPTED；SEC-01 仍不得開始）。
-  - 本 state-sync candidate 自身狀態：STATE-SYNC CANDIDATE / AWAITING EXTERNAL MACRO AUDIT。本批完成 commit / push 後成為新的 pending Macro-audit range；嚴禁自審宣稱 PASS、ACCEPT ALL、promoted 或 accepted checkpoint。未來本 state-sync 通過 External Macro audit 與 same-SHA promotion 後，不再另開遞迴式 state-sync，其 acceptance 將併入下一個正常 B-69 batch 或後續 state/evidence batch 前向記錄。
+  - State-Sync Candidate e244d191 外部審計裁決（External Macro Verdict on e244d191bcbd145963f2755404187ae801dc6532）：
+    - 機器／CI 狀態：**PASS**（Candidate Actions Run 37109532244 attempt 1: verify completed/success, ALL 5 GATES PASSED; gateway-windows completed/success, 51 passed, CREDM_PROV_READ_EXISTING_MS=380, CREDM_PROV_READ_MISSING_MS=304）。
+    - External Macro 審查裁決：**HOLD**。
+    - ACCEPT STATUS：**ONE BOUNDED EVIDENCE REPAIR REQUIRED**。
+    - PROMOTION：**FORBIDDEN**。
+    - ROLLBACK：**NO**。
+    - RUNTIME / TEST / WORKFLOW DEFECT：**NONE**。
+    - FINDING：**R1-STATE-SYNC-F1 STALE M2 PROVENANCE IN EXECUTION RECORD**（候選 docs/governance/execution-record.json 誤保留 M2_DISCOVERY_RAW 與 CLAIM_DISCOVERY_PROVENANCE_VERIFIED 等歷史 M2 節點，違反本任務 E24 NONE 之宣告與提示詞規範）。
+    - 權責分流：**CURRENT B-100 R-K R1 POST-MAIN STATE-SYNC**（NEW B-ID = NONE）。
+    - R-K 技術可比性與計數推進：External Macro 獨立確立 Run 37109532244 在技術上可比於 accepted R1（變更僅限 6 個狀態／證據檔案，runtime/tests/workflow 零變更，read-existing 380 ms <= 15000, read-missing 304 ms <= 15000，無同家族 PROVIDER_UNAVAILABLE 復發）；Macro HOLD 僅針對 execution-record 留痕陳舊節點，不否定技術可比性觀察；R-K stability count 正式推進至 **2 / 5**（#1 = Run 37106440133, #2 = Run 37109532244；嚴禁預寫 3/5、4/5、5/5）。
+    - accepted checkpoint 嚴格維持 `a323c46bc84afe67610c9e0d4c3762b63cdb3f52`，絕不將 e244 設為 checkpoint。
+  - 當前前向修復候選狀態（Current Successor Repair Candidate State，TASK_ID: B-100-R-K-R1-POSTMAIN-SYNC-R1-261003）：
+    - 本批為 e244d191bcbd145963f2755404187ae801dc6532 之 forward successor repair commit，禁止 amend。
+    - 修復範圍：exact five tracked paths（docs/AUDIT-LOG.md, docs/EXEC-LOG.md, docs/fingerprints/exec-latest.json, docs/governance/execution-record.json, docs/refactor-backlog.md）；docs/TASKBOARD.md 嚴格不變。
+    - 本修復候選狀態：**AWAITING EXTERNAL MACRO AUDIT** after future commit/push。本修復候選自身未來 CI 處於 **PENDING EXTERNAL MACRO COMPARABILITY REVIEW**，不得預先計入 3/5。嚴禁自審宣稱結案、自填 Macro PASS 或擅推 main。
