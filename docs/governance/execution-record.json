@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "B-100-R-K-R1-261001",
-  "base_oid": "5a77f2a7d22336f4bf689ac3ff3c7b064152c777",
+  "task_id": "B-100-R-K-R1-POSTMAIN-SYNC-261003",
+  "base_oid": "a323c46bc84afe67610c9e0d4c3762b63cdb3f52",
   "plan": {
     "allowed_paths": [
       "docs/AUDIT-LOG.md",
@@ -10,11 +10,7 @@
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/ops/antigravity-environment-baseline.md",
-      "docs/refactor-backlog.md",
-      "runtime/channel-gateway/bin/windows-credential-manager-read.ps1",
-      "runtime/channel-gateway/tests/windows-credential-manager-provider.test.js",
-      "scripts/tests/test_channel_gateway_core.py"
+      "docs/refactor-backlog.md"
     ],
     "required_paths": [
       "docs/AUDIT-LOG.md",
@@ -22,14 +18,10 @@
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/ops/antigravity-environment-baseline.md",
-      "docs/refactor-backlog.md",
-      "runtime/channel-gateway/bin/windows-credential-manager-read.ps1",
-      "runtime/channel-gateway/tests/windows-credential-manager-provider.test.js",
-      "scripts/tests/test_channel_gateway_core.py"
+      "docs/refactor-backlog.md"
     ],
     "max_plan_revisions": 3,
-    "revision_count": 0,
+    "revision_count": 1,
     "plan_origin": "EXTERNAL_MACRO_PROMPT"
   },
   "actual": {
@@ -39,11 +31,7 @@
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/ops/antigravity-environment-baseline.md",
-      "docs/refactor-backlog.md",
-      "runtime/channel-gateway/bin/windows-credential-manager-read.ps1",
-      "runtime/channel-gateway/tests/windows-credential-manager-provider.test.js",
-      "scripts/tests/test_channel_gateway_core.py"
+      "docs/refactor-backlog.md"
     ]
   },
   "evidence": [
@@ -57,6 +45,14 @@
         "sha256": "9a2a7fd3e8dcdcaa742807c62f800a0e178f391f12c202a6b761b8e5b4c9eea2"
       },
       "description": "Deterministic Git diff replay against declared plan allowed/required scope"
+    },
+    {
+      "id": "M2_DISCOVERY_RAW",
+      "origin": "MACHINE_CAPTURED_RAW",
+      "verification_status": "VERIFIED",
+      "source_kind": "EXTERNAL_ARTIFACT",
+      "sha256": "4cd2851da921aab9d371b281f51947e2645b069d38ee56655e37a79c2ded3b4b",
+      "description": "External Macro verified M2 immutable raw discovery artifact identity"
     }
   ],
   "report_claims": [
@@ -65,6 +61,13 @@
       "claim_text": "All actual changed repository paths strictly match allowed scope and cover all required paths without expansion.",
       "evidence_ids": [
         "PLAN_ACTUAL_DIFF"
+      ]
+    },
+    {
+      "claim_id": "CLAIM_DISCOVERY_PROVENANCE_VERIFIED",
+      "claim_text": "Immutable raw discovery artifact verified against expected SHA256 closure.",
+      "evidence_ids": [
+        "M2_DISCOVERY_RAW"
       ]
     }
   ]
