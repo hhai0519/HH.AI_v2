@@ -1,64 +1,37 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "B-107-PROMPT-MARKER-FINALGATE-INC1-261004",
-  "base_oid": "471e847f9591436b0f6ec726fd20328ffa0ce17e",
+  "task_id": "B-107-INC1-ACCEPT-STATE-CLOSURE-261005",
+  "base_oid": "cede061166b829c8e5be46b5e6456900163215d1",
   "plan": {
     "allowed_paths": [
-      ".agents/rules/git-and-reporting.md",
-      ".agents/rules/prompt-preflight.md",
-      ".claude/rules/auditor-protocol.md",
-      ".claude/rules/auditor-selftest.md",
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
-      "docs/generated/rule-traceability.md",
       "docs/governance/execution-record.json",
-      "docs/governance/rule-registry.json",
-      "docs/refactor-backlog.md",
-      "scripts/tests/test_governance_preflight.py",
-      "scripts/tests/test_prompt_manifest.py",
-      "scripts/validate_prompt_manifest.py"
+      "docs/refactor-backlog.md"
     ],
     "required_paths": [
-      ".agents/rules/git-and-reporting.md",
-      ".agents/rules/prompt-preflight.md",
-      ".claude/rules/auditor-protocol.md",
-      ".claude/rules/auditor-selftest.md",
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
-      "docs/generated/rule-traceability.md",
       "docs/governance/execution-record.json",
-      "docs/governance/rule-registry.json",
-      "docs/refactor-backlog.md",
-      "scripts/tests/test_governance_preflight.py",
-      "scripts/tests/test_prompt_manifest.py",
-      "scripts/validate_prompt_manifest.py"
+      "docs/refactor-backlog.md"
     ],
     "max_plan_revisions": 3,
     "revision_count": 0,
-    "plan_origin": "EXTERNAL_MACRO_FREEZE_DEFECT_INC1"
+    "plan_origin": "EXTERNAL_MACRO_PROMPT"
   },
   "actual": {
     "changed_paths": [
-      ".agents/rules/git-and-reporting.md",
-      ".agents/rules/prompt-preflight.md",
-      ".claude/rules/auditor-protocol.md",
-      ".claude/rules/auditor-selftest.md",
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
-      "docs/generated/rule-traceability.md",
       "docs/governance/execution-record.json",
-      "docs/governance/rule-registry.json",
-      "docs/refactor-backlog.md",
-      "scripts/tests/test_governance_preflight.py",
-      "scripts/tests/test_prompt_manifest.py",
-      "scripts/validate_prompt_manifest.py"
+      "docs/refactor-backlog.md"
     ]
   },
   "evidence": [

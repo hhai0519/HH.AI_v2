@@ -1,5 +1,5 @@
 {
-  "base_head": "471e847",
+  "base_head": "cede061",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -559,16 +559,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 275,
-      "sha256": "de6d647165e0d8174beacf72d84883370e077ea1d5ae4d25835c858e19f85b58"
+      "lines": 276,
+      "sha256": "5be292acc0aea48479d5276589e483a55672854603b3fc4ff7585eb7fbf1c60e"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 243,
-      "sha256": "3219941cd79388271c84a08339e9d800ea6a6a97f853e9150ef9efc76802b6df"
+      "lines": 244,
+      "sha256": "da9007c64b553f49666143d2f7ae5cdd1926a700276b65c2e4f7fd5f91df0c30"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -609,8 +609,8 @@
         "## G. 舊 repo 未盤點區塊（2026-09-02 新發現）",
         "## 封存區"
       ],
-      "lines": 369,
-      "sha256": "bd5caa33afcf22ea8cffdc99f7a08b7c11c0ac87884e9ee21316f8537d9ef99b"
+      "lines": 370,
+      "sha256": "31e3d7cbb64b538bc79b0624174239b5395240a8c6118301809837e1993c843c"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1079,8 +1079,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6342,
-      "sha256": "ca23e29effc442fee2e85fa90ca793e8a9321608b4295060d1cf6dc54e6a4e34"
+      "lines": 6343,
+      "sha256": "7956e098bbf048f530f1d0eb5beea86e68bc68da58afd2f038326e6c6af6c7e2"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1527,7 +1527,7 @@
       "sha256": "35bf7dbfa3c7d291b550c3c97a6ae398a22b1dc3624c1d2fc1e4db6963d6e115"
     }
   },
-  "generated_at": "2026-10-04T14:41:29Z",
+  "generated_at": "2026-10-04T16:43:08Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {
