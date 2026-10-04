@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "B-107-INC1-ACCEPT-STATE-CLOSURE-261005",
-  "base_oid": "cede061166b829c8e5be46b5e6456900163215d1",
+  "task_id": "B-69-INCA-VERIFICATION-PRIMITIVES-261005",
+  "base_oid": "8c8c3f95d64790a9e4bf75cab1c196e9abdb6b2e",
   "plan": {
     "allowed_paths": [
       "docs/AUDIT-LOG.md",
@@ -10,7 +10,9 @@
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md"
+      "docs/refactor-backlog.md",
+      "scripts/tests/test_verification_primitives.py",
+      "scripts/verification_primitives.py"
     ],
     "required_paths": [
       "docs/AUDIT-LOG.md",
@@ -18,7 +20,9 @@
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md"
+      "docs/refactor-backlog.md",
+      "scripts/tests/test_verification_primitives.py",
+      "scripts/verification_primitives.py"
     ],
     "max_plan_revisions": 3,
     "revision_count": 0,
@@ -31,7 +35,9 @@
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md"
+      "docs/refactor-backlog.md",
+      "scripts/tests/test_verification_primitives.py",
+      "scripts/verification_primitives.py"
     ]
   },
   "evidence": [
