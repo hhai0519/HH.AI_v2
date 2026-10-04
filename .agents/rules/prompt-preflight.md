@@ -18,16 +18,19 @@
 
 任何 repo mutation 前必須執行：
 1. 取得完整 incoming prompt 原文。
-2. 執行 `python scripts/validate_prompt_manifest.py --require-contract` 語法檢驗，並依當前任務 prompt 執行 bound 治理預檢；完整 CLI、恢復與產物路徑規則見 [`.agents/rules/role-boundaries.md §9`](./role-boundaries.md)。
-3. Production prompt 必須同時具備 Prompt Manifest 與 `BEGIN_HHAI_EXECUTION_CONTRACT` ... `END_HHAI_EXECUTION_CONTRACT` 區塊；缺任一立即判定為 `PROMPT STRUCTURE ERROR` 停機，**不得進行任何 repo mutation**。
-4. Execution Contract 為確定性治理邊界，不得自行放寬。若 task goal、pressure 或 acceptance 與 FORBIDDEN 衝突：升級 `S1 GOVERNANCE_CONTRACT_CONFLICT`，原則為 `SAFETY_BOUNDARY_WINS`。
-5. IDE settings 屬 defense-in-depth 不能取代 Execution Contract。通過後才進入後續檢查。
+2. 執行 `python scripts/validate_prompt_manifest.py --require-contract` 語法檢驗，並依當前任務 prompt 執行 bound 治理預檢；完整 CLI 見 [`.agents/rules/role-boundaries.md §9`](./role-boundaries.md)。
+3. **邊界、預檢與完成屏障**：
+   - 邊界：Manifest/Contract 為 fenced code 外 standalone logical line；prose/fenced example 不計入；duplicate/missing/reversed/nested fail-closed。
+   - 預檢：交付 bytes 交付前必經 validator+preflight 雙重 PASS；改動須重驗；未通過只能 `NOT_PASTEABLE`。
+   - 完成屏障：launched/backgrounded!=PASS；commit/staging 前置 gate 須 observed completed + exit 0 方越 barrier。
+4. Production prompt 必含合法 Manifest、Execution Contract（`BEGIN_HHAI_EXECUTION_CONTRACT`）；缺任一：`PROMPT STRUCTURE ERROR`，禁 mutation。
+5. Execution Contract 為確定性治理邊界，禁自行放寬；衝突時升級 `S1 GOVERNANCE_CONTRACT_CONFLICT`，原則 `SAFETY_BOUNDARY_WINS`。IDE 設定僅屬 defense-in-depth。
 6. **Execution Contract v2 規範（B-109 M2）**：
    - 欄位包含：`contract_version: 2`、`allowed_mutation_paths`、`required_mutation_paths`、`max_plan_revisions`（<= 3）、`execution_record_required`。
    - 約束：若 `allowed_mutation_paths == NONE`，則 required 為 `NONE` 且 record 為 `false`；非 NONE 則 `required_mutation_paths ⊆ allowed_mutation_paths` 且 record 為 `true`。超出 scope 或 revision > 3 即刻停機升級 S1。
    - 計畫與紀錄：變更批次維護 `.git/<task-id>-plan.json`；commit 前由 `scripts/execution_record.py` 輸出並驗證 `docs/governance/execution-record.json`；CI CHECK 26 依 `base_oid..HEAD` 重放 git diff 查驗。
-   - Origin=MACHINE_CAPTURED_RAW|MACHINE_DERIVED|AGENT_ASSERTED|USER_PROVIDED；Status=VERIFIED|UNVERIFIED|NOT_ESTABLISHED|PENDING_EXTERNAL；兩軸獨立；VERIFIED受source-kind機械可驗證性限制。schema v1/CHECK26：EXTERNAL_ARTIFACT 禁 VERIFIED，須機械綁定 external_artifact（task_id、`.git/<task-id>-*`、canonical 64-hex SHA-256）。
-   - 完整性標準：REG-11（PATH-EXISTENCE，REPO_PATH 必存在）、REG-12（GENERATOR-IN-BUNDLE，MACHINE_DERIVED 生成器存在且 fresh SHA-256 一致）、REG-13（REPORT-TRACEABILITY，報告宣稱必關聯非空合法證據 ID）。
+   - Origin=MACHINE_CAPTURED_RAW|MACHINE_DERIVED|AGENT_ASSERTED|USER_PROVIDED；Status=VERIFIED|UNVERIFIED|NOT_ESTABLISHED|PENDING_EXTERNAL；兩軸獨立；EXTERNAL_ARTIFACT 禁 VERIFIED 且須綁定憑證。
+   - 完整性標準：REG-11（PATH-EXISTENCE）、REG-12（GENERATOR-IN-BUNDLE）、REG-13（REPORT-TRACEABILITY）。
 
 本驗證器不取代 M1/M2/M3/S1 錯誤路由，將第一層結構與契約檢驗移至確定性程式碼。
 
@@ -84,7 +87,7 @@ GOAL_SPEC 模式不得要求 E-1～E-4，其正確性由測試與 Gate 守護。
 | 動作 A | 必須配對的動作 B | 理由 |
 |---|---|---|
 | `git pull origin main` | `git status --porcelain=v1` 為空 | 確保基準乾淨，避免髒檔案混入 |
-| `git push`（batch/**） | 需查驗 Actions 成功 | Actions 成功才是 proof；authorized batch/** push → checks 成功 → fast-forward main (SAME SHA) → main push 成功。普通分支禁升 main |
+| `git push`（batch/**） | 需查驗 Actions 成功 | Actions 成功才是 proof；普通分支禁升 main |
 | 新增或修改規則檔 | 更新自檢清單（`auditor-selftest.md`） | 規則與自檢必須同步 |
 | 聲明某 commit 通過核對 | 更新 `docs/AUDIT-LOG.md` 與交接區 §5.1 | 審計狀態必須雙向留痕 |
 
@@ -140,7 +143,7 @@ GOAL_SPEC 模式不得要求 E-1～E-4，其正確性由測試與 Gate 守護。
 | E1 身分宣告 | 提示詞含執行者身分界定 |
 | E2 基準與規格識別 | 載明基準 commit full OID；GOAL_SPEC 需 base OID 與 Allowed Scope；EXACT_SPEC 另需規格與 SHA |
 | E3 錨點原文定位 | EXACT_SPEC 附 structural anchor；GOAL_SPEC 僅需目標與邊界，不需錨點 |
-| E4 機器驗證證據落地 | 要求執行 Required Machine Gates 且證據記於 docs/EXEC-LOG.md / Actions |
+| E4 機器驗證與完成屏障 | 要求執行 Required Machine Gates 且 observed completed + exit 0 方越 barrier；launched/backgrounded 禁視為 PASS；證據進 EXEC-LOG/Actions |
 | E5 `git add` 明確路徑 | 禁 `git add -A` / `.`。GOAL_SPEC 逐檔加入；EXACT_SPEC 依規格 |
 | E6 結尾格式 | 要求純文字回覆與固定署名行 |
 | E7 回報通道約束 | 正常成功批次未要求貼 full diff/file/terminal dump，遵守 Repo Evidence Channel |
@@ -150,7 +153,7 @@ GOAL_SPEC 模式不得要求 E-1～E-4，其正確性由測試與 Gate 守護。
 | E11 錨點唯一性驗證 | EXACT_SPEC 套用前驗證錨點 count == 1；GOAL_SPEC 為 N/A |
 | E12 動手前必讀 | 要求讀取規則檔或執行基準前置檢查 |
 | E13 配對與覆蓋 | 依 §3.1 與 §3.2 比對範圍、diff、git add 與 gates |
-| E14 自檢聲明區塊 | 區塊存在且項目連號無缺 |
+| E14 自檢聲明與交付前預檢 | 區塊存在且連號；交付 bytes 必經 validator+preflight PASS，改動須重驗，未驗只能 NOT_PASTEABLE |
 | E15 錨點基準來源 | EXACT_SPEC 錨點對應 base commit；GOAL_SPEC 為 N/A |
 | E16 跨檔引用同行 | 跨檔 `§X.Y` 檔名與章節號同行且 target 存在 |
 | E17 結構序列與失敗路徑驗收 | 結構變更附驗收準則；資源取得依 failure-path 定義狀態、owner、exits、exactly-once 清理與反例 |

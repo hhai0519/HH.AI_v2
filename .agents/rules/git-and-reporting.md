@@ -89,11 +89,7 @@
 
 ### 2.0 歷史教訓與已退役之舊回報機制（Historical Rationale / Retired Reporting Mechanism）
 
-以下條目為早期針對虛構回報設計之過渡手段。**這些機制（口頭貼全文、行號、總行數、raw diff、指令輸出等）已全面由 B-36（Repo Evidence Channel ＋ Actions 遠端健康權威）正式取代，退役為歷史留痕，不得作現行對話回報要求**。保留其背景用以說明現代架構建立版本庫機器證據鏈之必要：
-
-- **[已退役] 不接受只回報「已完成」**：早期曾因缺乏客觀機器證據要求口頭貼出內容與 staged 清單；現行由 `docs/EXEC-LOG.md`、Git commit 與 GitHub Actions 自動化保留客觀證據。
-- **[已退役] 回報檔案內容附行號與總行數**：早期曾為防範虛構回報（如 2026-08-29 `PRINCIPLES.md` §4.2 事件與 2026-09-01 重整版本事件）要求腳本讀檔附行號與總行數；現行已全面由版本庫客觀證據與自動化閘門接管。
-- **[已退役] 貼出原始 git diff**：早期曾用於防止局部虛構，現已由 GitHub CI 與標準驗證流程接管。讀檔或 diff 失敗時誠實回報，嚴禁憑記憶填補。
+> **退役說明**：早期過渡手段（口頭貼全文、行號、總行數、raw diff、指令輸出等）已由 B-36（Repo Evidence Channel ＋ Actions 遠端健康權威）全面取代並退役為歷史留痕，不得作為現行對話回報要求。版本庫客觀證據鏈由 `docs/EXEC-LOG.md`、Git commit 與 Actions 自動化接管。
 
 ## 2.1 撰寫測試時，依規格而非依實作
 
@@ -133,32 +129,7 @@
 ## 2.3 [已退役] commit 與 push 的狀態，早期以指令輸出為準
 
 > **現行規範**：本機制已由 B-36 與 §2.5 正式取代。遠端狀態一律由 exact origin/main OID 與 Actions 狀態為客觀憑證並記錄於 `docs/EXEC-LOG.md`，禁止對話貼指令輸出或文字摘要辯論。
-
-以下保留 2026-09-05 歷史事故記錄：
-
-回報 commit 或 push 是否執行時，早期曾要求不得以敘述代替，必須貼出三條指令的實際輸出：
-
-    git log -1 --format=%h
-    git rev-parse --short origin/main
-    git status --porcelain
-
-判準：
-
-- 兩個 hash **相同** → 已 commit 且已 push
-- 本機 hash **超前** → 已 commit 但未 push
-- 兩者相同但 `git status --porcelain` **有輸出** → 工作區有未提交的修改
-
-**同樣適用於「我回滾了」的宣告**：執行 `git restore` 或 `git checkout --`
-之後，必須貼出 `git status --porcelain` 證明工作區真的乾淨。
-
-**失效紀錄**：2026-09-05 連續兩輪發生。第一輪回報「本批次未執行 commit 與 push」，
-但遠端 HEAD 確為該批 commit、訊息完全相同、五項修改全數進版控。
-第二輪回報某段文字是交接區 §5.1 的實際內容，
-而審計官於遠端 clone 實測該字串 `count=0`——那段只存在於本機工作區。
-
-**這是回報與實際不符的第五類：動作狀態虛構。**
-前四類虛構的是檔案內容、行數與上下文行，會在審計官 clone 核對時被抓到；
-**動作狀態虛構若不主動查 `git log` 就看不見**。
+> 歷史留痕（2026-09-05 動作狀態虛構事故）：早期曾要求貼出 `git log -1`、`git rev-parse origin/main`、`git status` 比對狀態。現代架構全面由版本庫客觀證據與 GitHub Actions 遠端健康權威接管。
 
 ## 2.4 提交前機密檢查與 Git Hook 守衛規範 (Secret Commit Guard & Hook Protocol)
 
@@ -178,6 +149,14 @@
    - 掃描器與執行者回報中，**絕對不得**印出或記錄比對到的原始機敏數值（Raw Matched Secret Value）或上下文整行文字。
    - 違規回報僅允許記錄：偵測器 ID（Detector ID）、檔案路徑（Path）與行號（Line Number）。
 5. **正常提交自動執行**：直接進行 `git commit` 時，必須讓追蹤中的 `.githooks/pre-commit` 自動觸發並執行上述檢查，未經 Hook 驗證之提交不得宣告成功。
+
+## 2.4.1 機械前置閘門完工屏障 (Prerequisite Gate Completion Barrier)
+
+執行者在進行任何相依之 staging、commit 或 push 前，必須落實命令執行完畢之硬屏障（Hard Completion Barrier）：
+1. **指令啟動不等於執行通過（Launched/Backgrounded != PASS）**：嚴禁將 `run_command` 回傳「Task launched」或進入背景（backgrounded）視為命令成功或閘門通過。任何前置指令若被環境自動切入背景，必須主動等待其完全結束（completed），並確認程序回傳碼為 0（exit code 0）。
+2. **前置檢核完成始得暫存與提交**：提示詞要求之所有前置檢核（包含 `scripts/secret_scan.py --staged`、`scripts/execution_record.py verify --as-if-committed` 及相關 pytest 等）必須於實際執行 `git commit` 前完全跑完且取得 exit code 0。
+3. **Pre-commit Hook 不取代顯式驗證**：Git hook 自動化防護僅為安全底線，不得作為略過或未等待提示詞明訂前置驗證指令之藉口。
+4. **遠端綠燈不得反證本地順序**：即使遠端 GitHub Actions CI 最終成功，亦不得作為反證或合理化本地未等前置驗證完工即行 staging/commit 之違規依據。
 
 ## 2.5 遠端健康查證與 GitHub Actions 閉環規範 (Remote Health Verification)
 

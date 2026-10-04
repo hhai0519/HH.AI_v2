@@ -44,31 +44,28 @@
 | .agents/rules/git-and-reporting.md | 64 | ## 2. 回報紀律 | FILE | `docs/EXEC-LOG.md` | docs/EXEC-LOG.md | RESOLVED |
 | .agents/rules/git-and-reporting.md | 87 | ## 2. 回報紀律 | FILE | `.agents/rules/role-boundaries.md` | .agents/rules/role-boundaries.md | RESOLVED |
 | .agents/rules/git-and-reporting.md | 87 | ## 2. 回報紀律 | SECTION | §7 | .agents/rules/role-boundaries.md#§7 | RESOLVED |
+| .agents/rules/git-and-reporting.md | 92 | ### 2.0 歷史教訓與已退役之舊回報機制（Historical Rationale / Retired Reporting Mechanism） | FILE | `docs/EXEC-LOG.md` | docs/EXEC-LOG.md | RESOLVED |
 | .agents/rules/git-and-reporting.md | 92 | ### 2.0 歷史教訓與已退役之舊回報機制（Historical Rationale / Retired Reporting Mechanism） | TASK | B-36 | docs/TASKBOARD.md | RESOLVED |
-| .agents/rules/git-and-reporting.md | 94 | ### 2.0 歷史教訓與已退役之舊回報機制（Historical Rationale / Retired Reporting Mechanism） | FILE | `docs/EXEC-LOG.md` | docs/EXEC-LOG.md | RESOLVED |
-| .agents/rules/git-and-reporting.md | 95 | ### 2.0 歷史教訓與已退役之舊回報機制（Historical Rationale / Retired Reporting Mechanism） | FILE | `PRINCIPLES.md` | PRINCIPLES.md | RESOLVED |
-| .agents/rules/git-and-reporting.md | 95 | ### 2.0 歷史教訓與已退役之舊回報機制（Historical Rationale / Retired Reporting Mechanism） | SECTION | §4.2 | PRINCIPLES.md#§4.2 | RESOLVED |
-| .agents/rules/git-and-reporting.md | 106 | ## 2.1 撰寫測試時，依規格而非依實作 | CHECK | CHECK 8-15 | scripts/check_consistency.py | RESOLVED |
-| .agents/rules/git-and-reporting.md | 108 | ## 2.1 撰寫測試時，依規格而非依實作 | CHECK | CHECK 12 | scripts/check_consistency.py | RESOLVED |
-| .agents/rules/git-and-reporting.md | 108 | ## 2.1 撰寫測試時，依規格而非依實作 | CHECK | CHECK 15 | scripts/check_consistency.py | RESOLVED |
-| .agents/rules/git-and-reporting.md | 121 | ## 2.2 提示詞指定的寫入內容，逐字照抄 | FILE | `.agents/rules/prompt-preflight.md` | .agents/rules/prompt-preflight.md | RESOLVED |
-| .agents/rules/git-and-reporting.md | 121 | ## 2.2 提示詞指定的寫入內容，逐字照抄 | SECTION | §3.3 | .agents/rules/prompt-preflight.md#§3.3 | RESOLVED |
-| .agents/rules/git-and-reporting.md | 124 | ## 2.2 提示詞指定的寫入內容，逐字照抄 | SECTION | §5.1 | docs/refactor-backlog.md#§5.1 | RESOLVED |
-| .agents/rules/git-and-reporting.md | 131 | ## 2.2 提示詞指定的寫入內容，逐字照抄 | SECTION | §4.1 | .agents/rules/prompt-preflight.md#§4.1 | RESOLVED |
-| .agents/rules/git-and-reporting.md | 135 | ## 2.3 [已退役] commit 與 push 的狀態，早期以指令輸出為準 | FILE | `docs/EXEC-LOG.md` | docs/EXEC-LOG.md | RESOLVED |
-| .agents/rules/git-and-reporting.md | 135 | ## 2.3 [已退役] commit 與 push 的狀態，早期以指令輸出為準 | SECTION | §2.5 | .agents/rules/git-and-reporting.md#§2.5 | RESOLVED |
-| .agents/rules/git-and-reporting.md | 135 | ## 2.3 [已退役] commit 與 push 的狀態，早期以指令輸出為準 | TASK | B-36 | docs/TASKBOARD.md | RESOLVED |
-| .agents/rules/git-and-reporting.md | 156 | ## 2.3 [已退役] commit 與 push 的狀態，早期以指令輸出為準 | SECTION | §5.1 | docs/refactor-backlog.md#§5.1 | RESOLVED |
-| .agents/rules/git-and-reporting.md | 193 | ## 2.5 遠端健康查證與 GitHub Actions 閉環規範 (Remote Health Verification) | TASK | B-109 | docs/TASKBOARD.md | RESOLVED |
-| .agents/rules/git-and-reporting.md | 210 | ## 3. 查證紀律 | FILE | `skills/agents/README.md` | skills/agents/README.md | RESOLVED |
-| .agents/rules/git-and-reporting.md | 222 | ## 3. 查證紀律 | FILE | `docs/HANDOVER.md` | docs/HANDOVER.md | RESOLVED |
-| .agents/rules/git-and-reporting.md | 223 | ## 3. 查證紀律 | FILE | `docs/archive/handover/HANDOVER-pre-router-568209e.md` | docs/archive/handover/HANDOVER-pre-router-568209e.md | RESOLVED |
-| .agents/rules/git-and-reporting.md | 223 | ## 3. 查證紀律 | SECTION | §10.4 | docs/archive/handover/HANDOVER-pre-router-568209e.md#§10.4 | RESOLVED |
-| .agents/rules/git-and-reporting.md | 223 | ## 3. 查證紀律 | SECTION | §11 | docs/archive/handover/HANDOVER-pre-router-568209e.md#§11 | RESOLVED |
-| .agents/rules/git-and-reporting.md | 224 | ## 3. 查證紀律 | FILE | `docs/HANDOVER.md` | docs/HANDOVER.md | RESOLVED |
-| .agents/rules/git-and-reporting.md | 226 | ## 3. 查證紀律 | FILE | `PRINCIPLES.md` | PRINCIPLES.md | RESOLVED |
-| .agents/rules/git-and-reporting.md | 241 | ## 3. 查證紀律 | FILE | `[`.agents/rules/role-boundaries.md §9`](./role-boundaries.md)` | .agents/rules/role-boundaries.md | RESOLVED |
-| .agents/rules/git-and-reporting.md | 241 | ## 3. 查證紀律 | SECTION | §9 | .agents/rules/role-boundaries.md#§9 | RESOLVED |
+| .agents/rules/git-and-reporting.md | 102 | ## 2.1 撰寫測試時，依規格而非依實作 | CHECK | CHECK 8-15 | scripts/check_consistency.py | RESOLVED |
+| .agents/rules/git-and-reporting.md | 104 | ## 2.1 撰寫測試時，依規格而非依實作 | CHECK | CHECK 12 | scripts/check_consistency.py | RESOLVED |
+| .agents/rules/git-and-reporting.md | 104 | ## 2.1 撰寫測試時，依規格而非依實作 | CHECK | CHECK 15 | scripts/check_consistency.py | RESOLVED |
+| .agents/rules/git-and-reporting.md | 117 | ## 2.2 提示詞指定的寫入內容，逐字照抄 | FILE | `.agents/rules/prompt-preflight.md` | .agents/rules/prompt-preflight.md | RESOLVED |
+| .agents/rules/git-and-reporting.md | 117 | ## 2.2 提示詞指定的寫入內容，逐字照抄 | SECTION | §3.3 | .agents/rules/prompt-preflight.md#§3.3 | RESOLVED |
+| .agents/rules/git-and-reporting.md | 120 | ## 2.2 提示詞指定的寫入內容，逐字照抄 | SECTION | §5.1 | docs/refactor-backlog.md#§5.1 | RESOLVED |
+| .agents/rules/git-and-reporting.md | 127 | ## 2.2 提示詞指定的寫入內容，逐字照抄 | SECTION | §4.1 | .agents/rules/prompt-preflight.md#§4.1 | RESOLVED |
+| .agents/rules/git-and-reporting.md | 131 | ## 2.3 [已退役] commit 與 push 的狀態，早期以指令輸出為準 | FILE | `docs/EXEC-LOG.md` | docs/EXEC-LOG.md | RESOLVED |
+| .agents/rules/git-and-reporting.md | 131 | ## 2.3 [已退役] commit 與 push 的狀態，早期以指令輸出為準 | SECTION | §2.5 | .agents/rules/git-and-reporting.md#§2.5 | RESOLVED |
+| .agents/rules/git-and-reporting.md | 131 | ## 2.3 [已退役] commit 與 push 的狀態，早期以指令輸出為準 | TASK | B-36 | docs/TASKBOARD.md | RESOLVED |
+| .agents/rules/git-and-reporting.md | 172 | ## 2.5 遠端健康查證與 GitHub Actions 閉環規範 (Remote Health Verification) | TASK | B-109 | docs/TASKBOARD.md | RESOLVED |
+| .agents/rules/git-and-reporting.md | 189 | ## 3. 查證紀律 | FILE | `skills/agents/README.md` | skills/agents/README.md | RESOLVED |
+| .agents/rules/git-and-reporting.md | 201 | ## 3. 查證紀律 | FILE | `docs/HANDOVER.md` | docs/HANDOVER.md | RESOLVED |
+| .agents/rules/git-and-reporting.md | 202 | ## 3. 查證紀律 | FILE | `docs/archive/handover/HANDOVER-pre-router-568209e.md` | docs/archive/handover/HANDOVER-pre-router-568209e.md | RESOLVED |
+| .agents/rules/git-and-reporting.md | 202 | ## 3. 查證紀律 | SECTION | §10.4 | docs/archive/handover/HANDOVER-pre-router-568209e.md#§10.4 | RESOLVED |
+| .agents/rules/git-and-reporting.md | 202 | ## 3. 查證紀律 | SECTION | §11 | docs/archive/handover/HANDOVER-pre-router-568209e.md#§11 | RESOLVED |
+| .agents/rules/git-and-reporting.md | 203 | ## 3. 查證紀律 | FILE | `docs/HANDOVER.md` | docs/HANDOVER.md | RESOLVED |
+| .agents/rules/git-and-reporting.md | 205 | ## 3. 查證紀律 | FILE | `PRINCIPLES.md` | PRINCIPLES.md | RESOLVED |
+| .agents/rules/git-and-reporting.md | 220 | ## 3. 查證紀律 | FILE | `[`.agents/rules/role-boundaries.md §9`](./role-boundaries.md)` | .agents/rules/role-boundaries.md | RESOLVED |
+| .agents/rules/git-and-reporting.md | 220 | ## 3. 查證紀律 | SECTION | §9 | .agents/rules/role-boundaries.md#§9 | RESOLVED |
 | .agents/rules/governance-gate-integrity.md | 12 | ## 1. 候選提交治理凍結不變量 (Candidate Governance Freeze Invariant) | FILE | `scripts/verify_all.py` | scripts/verify_all.py | RESOLVED |
 | .agents/rules/governance-gate-integrity.md | 13 | ## 1. 候選提交治理凍結不變量 (Candidate Governance Freeze Invariant) | FILE | `scripts/check_consistency.py` | scripts/check_consistency.py | RESOLVED |
 | .agents/rules/governance-gate-integrity.md | 46 | ## 3. 閘門變更確定性負向控制 (Deterministic Negative Controls) | FILE | `scripts/check_consistency.py` | scripts/check_consistency.py | RESOLVED |
@@ -89,35 +86,35 @@
 | .agents/rules/prompt-preflight.md | 15 | ## 2. 這是審查，不是建議 | SECTION | §7 | .agents/rules/role-boundaries.md#§7 | RESOLVED |
 | .agents/rules/prompt-preflight.md | 21 | ### 2.1 最前置硬規則：Prompt Manifest 與 Execution Contract 機械驗證（Hard Rule） | FILE | `[`.agents/rules/role-boundaries.md §9`](./role-boundaries.md)` | .agents/rules/role-boundaries.md | RESOLVED |
 | .agents/rules/prompt-preflight.md | 21 | ### 2.1 最前置硬規則：Prompt Manifest 與 Execution Contract 機械驗證（Hard Rule） | SECTION | §9 | .agents/rules/role-boundaries.md#§9 | RESOLVED |
-| .agents/rules/prompt-preflight.md | 25 | ### 2.1 最前置硬規則：Prompt Manifest 與 Execution Contract 機械驗證（Hard Rule） | TASK | B-109 | docs/TASKBOARD.md | RESOLVED |
-| .agents/rules/prompt-preflight.md | 28 | ### 2.1 最前置硬規則：Prompt Manifest 與 Execution Contract 機械驗證（Hard Rule） | CHECK | CHECK 26 | scripts/check_consistency.py | RESOLVED |
-| .agents/rules/prompt-preflight.md | 28 | ### 2.1 最前置硬規則：Prompt Manifest 與 Execution Contract 機械驗證（Hard Rule） | FILE | `docs/governance/execution-record.json` | docs/governance/execution-record.json | RESOLVED |
-| .agents/rules/prompt-preflight.md | 28 | ### 2.1 最前置硬規則：Prompt Manifest 與 Execution Contract 機械驗證（Hard Rule） | FILE | `scripts/execution_record.py` | scripts/execution_record.py | RESOLVED |
-| .agents/rules/prompt-preflight.md | 65 | ### 3.0A 所有模式共同必備要素（缺一即停） | SECTION | §3.9 | .agents/rules/prompt-preflight.md#§3.9 | RESOLVED |
-| .agents/rules/prompt-preflight.md | 74 | ### 3.0B EXACT_SPEC 專屬必備要素（僅在 EXACT_SPEC 模式下檢查） | CHECK | CHECK 17 | scripts/check_consistency.py | RESOLVED |
-| .agents/rules/prompt-preflight.md | 89 | ## 3.1 配對規則（缺一即停） | FILE | `docs/AUDIT-LOG.md` | docs/AUDIT-LOG.md | RESOLVED |
-| .agents/rules/prompt-preflight.md | 89 | ## 3.1 配對規則（缺一即停） | SECTION | §5.1 | docs/refactor-backlog.md#§5.1 | RESOLVED |
-| .agents/rules/prompt-preflight.md | 91 | ## 3.1 配對規則（缺一即停） | FILE | `docs/AUDIT-LOG.md` | docs/AUDIT-LOG.md | RESOLVED |
-| .agents/rules/prompt-preflight.md | 91 | ## 3.1 配對規則（缺一即停） | FILE | `docs/refactor-backlog.md` | docs/refactor-backlog.md | RESOLVED |
-| .agents/rules/prompt-preflight.md | 91 | ## 3.1 配對規則（缺一即停） | SECTION | §5.1 | docs/refactor-backlog.md#§5.1 | RESOLVED |
-| .agents/rules/prompt-preflight.md | 113 | ### B. EXACT_SPEC 覆蓋鏈 | CHECK | CHECK 17 | scripts/check_consistency.py | RESOLVED |
-| .agents/rules/prompt-preflight.md | 119 | ## 3.3 遇到疑問而非缺失時 | FILE | `.agents/rules/role-boundaries.md` | .agents/rules/role-boundaries.md | RESOLVED |
-| .agents/rules/prompt-preflight.md | 119 | ## 3.3 遇到疑問而非缺失時 | SECTION | §7 | .agents/rules/role-boundaries.md#§7 | RESOLVED |
-| .agents/rules/prompt-preflight.md | 120 | ## 3.3 遇到疑問而非缺失時 | FILE | `docs/EXEC-LOG.md` | docs/EXEC-LOG.md | RESOLVED |
+| .agents/rules/prompt-preflight.md | 28 | ### 2.1 最前置硬規則：Prompt Manifest 與 Execution Contract 機械驗證（Hard Rule） | TASK | B-109 | docs/TASKBOARD.md | RESOLVED |
+| .agents/rules/prompt-preflight.md | 31 | ### 2.1 最前置硬規則：Prompt Manifest 與 Execution Contract 機械驗證（Hard Rule） | CHECK | CHECK 26 | scripts/check_consistency.py | RESOLVED |
+| .agents/rules/prompt-preflight.md | 31 | ### 2.1 最前置硬規則：Prompt Manifest 與 Execution Contract 機械驗證（Hard Rule） | FILE | `docs/governance/execution-record.json` | docs/governance/execution-record.json | RESOLVED |
+| .agents/rules/prompt-preflight.md | 31 | ### 2.1 最前置硬規則：Prompt Manifest 與 Execution Contract 機械驗證（Hard Rule） | FILE | `scripts/execution_record.py` | scripts/execution_record.py | RESOLVED |
+| .agents/rules/prompt-preflight.md | 68 | ### 3.0A 所有模式共同必備要素（缺一即停） | SECTION | §3.9 | .agents/rules/prompt-preflight.md#§3.9 | RESOLVED |
+| .agents/rules/prompt-preflight.md | 77 | ### 3.0B EXACT_SPEC 專屬必備要素（僅在 EXACT_SPEC 模式下檢查） | CHECK | CHECK 17 | scripts/check_consistency.py | RESOLVED |
+| .agents/rules/prompt-preflight.md | 92 | ## 3.1 配對規則（缺一即停） | FILE | `docs/AUDIT-LOG.md` | docs/AUDIT-LOG.md | RESOLVED |
+| .agents/rules/prompt-preflight.md | 92 | ## 3.1 配對規則（缺一即停） | SECTION | §5.1 | docs/refactor-backlog.md#§5.1 | RESOLVED |
+| .agents/rules/prompt-preflight.md | 94 | ## 3.1 配對規則（缺一即停） | FILE | `docs/AUDIT-LOG.md` | docs/AUDIT-LOG.md | RESOLVED |
+| .agents/rules/prompt-preflight.md | 94 | ## 3.1 配對規則（缺一即停） | FILE | `docs/refactor-backlog.md` | docs/refactor-backlog.md | RESOLVED |
+| .agents/rules/prompt-preflight.md | 94 | ## 3.1 配對規則（缺一即停） | SECTION | §5.1 | docs/refactor-backlog.md#§5.1 | RESOLVED |
+| .agents/rules/prompt-preflight.md | 116 | ### B. EXACT_SPEC 覆蓋鏈 | CHECK | CHECK 17 | scripts/check_consistency.py | RESOLVED |
+| .agents/rules/prompt-preflight.md | 122 | ## 3.3 遇到疑問而非缺失時 | FILE | `.agents/rules/role-boundaries.md` | .agents/rules/role-boundaries.md | RESOLVED |
+| .agents/rules/prompt-preflight.md | 122 | ## 3.3 遇到疑問而非缺失時 | SECTION | §7 | .agents/rules/role-boundaries.md#§7 | RESOLVED |
 | .agents/rules/prompt-preflight.md | 123 | ## 3.3 遇到疑問而非缺失時 | FILE | `docs/EXEC-LOG.md` | docs/EXEC-LOG.md | RESOLVED |
-| .agents/rules/prompt-preflight.md | 152 | ## 3.4 審計官自檢聲明的交叉驗證 | SECTION | §3.1 | .agents/rules/prompt-preflight.md#§3.1 | RESOLVED |
-| .agents/rules/prompt-preflight.md | 152 | ## 3.4 審計官自檢聲明的交叉驗證 | SECTION | §3.2 | .agents/rules/prompt-preflight.md#§3.2 | RESOLVED |
-| .agents/rules/prompt-preflight.md | 161 | ## 3.4 審計官自檢聲明的交叉驗證 | SECTION | §5.1 | docs/refactor-backlog.md#§5.1 | RESOLVED |
-| .agents/rules/prompt-preflight.md | 173 | ## 3.5 執行者檢查證據持久化（已落地） | CHECK | CHECK 16 | scripts/check_consistency.py | RESOLVED |
-| .agents/rules/prompt-preflight.md | 173 | ## 3.5 執行者檢查證據持久化（已落地） | FILE | `docs/EXEC-LOG.md` | docs/EXEC-LOG.md | RESOLVED |
-| .agents/rules/prompt-preflight.md | 173 | ## 3.5 執行者檢查證據持久化（已落地） | SECTION | §3.8 | .agents/rules/prompt-preflight.md#§3.8 | RESOLVED |
-| .agents/rules/prompt-preflight.md | 189 | ## 3.7 E 節每一項都可機械驗證，沒有例外 | FILE | `.claude/rules/auditor-selftest.md` | .claude/rules/auditor-selftest.md | RESOLVED |
-| .agents/rules/prompt-preflight.md | 189 | ## 3.7 E 節每一項都可機械驗證，沒有例外 | SECTION | §3.4 | .agents/rules/prompt-preflight.md#§3.4 | RESOLVED |
-| .agents/rules/prompt-preflight.md | 189 | ## 3.7 E 節每一項都可機械驗證，沒有例外 | SECTION | §3.4 | .agents/rules/prompt-preflight.md#§3.4 | RESOLVED |
-| .agents/rules/prompt-preflight.md | 195 | ## 3.8 你的檢查結果必須留在 repo | FILE | `docs/EXEC-LOG.md` | docs/EXEC-LOG.md | RESOLVED |
-| .agents/rules/prompt-preflight.md | 196 | ## 3.8 你的檢查結果必須留在 repo | CHECK | CHECK 16 | scripts/check_consistency.py | RESOLVED |
-| .agents/rules/prompt-preflight.md | 196 | ## 3.8 你的檢查結果必須留在 repo | FILE | `docs/EXEC-LOG.md` | docs/EXEC-LOG.md | RESOLVED |
-| .agents/rules/prompt-preflight.md | 205 | ## 3.9 FINDING_DISPOSITION 機械檢查契約 | FILE | `docs/TASKBOARD.md` | docs/TASKBOARD.md | RESOLVED |
+| .agents/rules/prompt-preflight.md | 126 | ## 3.3 遇到疑問而非缺失時 | FILE | `docs/EXEC-LOG.md` | docs/EXEC-LOG.md | RESOLVED |
+| .agents/rules/prompt-preflight.md | 155 | ## 3.4 審計官自檢聲明的交叉驗證 | SECTION | §3.1 | .agents/rules/prompt-preflight.md#§3.1 | RESOLVED |
+| .agents/rules/prompt-preflight.md | 155 | ## 3.4 審計官自檢聲明的交叉驗證 | SECTION | §3.2 | .agents/rules/prompt-preflight.md#§3.2 | RESOLVED |
+| .agents/rules/prompt-preflight.md | 164 | ## 3.4 審計官自檢聲明的交叉驗證 | SECTION | §5.1 | docs/refactor-backlog.md#§5.1 | RESOLVED |
+| .agents/rules/prompt-preflight.md | 176 | ## 3.5 執行者檢查證據持久化（已落地） | CHECK | CHECK 16 | scripts/check_consistency.py | RESOLVED |
+| .agents/rules/prompt-preflight.md | 176 | ## 3.5 執行者檢查證據持久化（已落地） | FILE | `docs/EXEC-LOG.md` | docs/EXEC-LOG.md | RESOLVED |
+| .agents/rules/prompt-preflight.md | 176 | ## 3.5 執行者檢查證據持久化（已落地） | SECTION | §3.8 | .agents/rules/prompt-preflight.md#§3.8 | RESOLVED |
+| .agents/rules/prompt-preflight.md | 192 | ## 3.7 E 節每一項都可機械驗證，沒有例外 | FILE | `.claude/rules/auditor-selftest.md` | .claude/rules/auditor-selftest.md | RESOLVED |
+| .agents/rules/prompt-preflight.md | 192 | ## 3.7 E 節每一項都可機械驗證，沒有例外 | SECTION | §3.4 | .agents/rules/prompt-preflight.md#§3.4 | RESOLVED |
+| .agents/rules/prompt-preflight.md | 192 | ## 3.7 E 節每一項都可機械驗證，沒有例外 | SECTION | §3.4 | .agents/rules/prompt-preflight.md#§3.4 | RESOLVED |
+| .agents/rules/prompt-preflight.md | 198 | ## 3.8 你的檢查結果必須留在 repo | FILE | `docs/EXEC-LOG.md` | docs/EXEC-LOG.md | RESOLVED |
+| .agents/rules/prompt-preflight.md | 199 | ## 3.8 你的檢查結果必須留在 repo | CHECK | CHECK 16 | scripts/check_consistency.py | RESOLVED |
+| .agents/rules/prompt-preflight.md | 199 | ## 3.8 你的檢查結果必須留在 repo | FILE | `docs/EXEC-LOG.md` | docs/EXEC-LOG.md | RESOLVED |
+| .agents/rules/prompt-preflight.md | 208 | ## 3.9 FINDING_DISPOSITION 機械檢查契約 | FILE | `docs/TASKBOARD.md` | docs/TASKBOARD.md | RESOLVED |
 | .agents/rules/role-boundaries.md | 4 | # 角色邊界規則 | FILE | `AGENTS.md` | AGENTS.md | RESOLVED |
 | .agents/rules/role-boundaries.md | 5 | # 角色邊界規則 | FILE | `PRINCIPLES.md` | PRINCIPLES.md | RESOLVED |
 | .agents/rules/role-boundaries.md | 5 | # 角色邊界規則 | SECTION | §0 | PRINCIPLES.md#§0 | RESOLVED |

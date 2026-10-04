@@ -429,3 +429,236 @@ def test_contract_v2_negative_duplicate():
     assert ok is False
     assert "Duplicate path in allowed_mutation_paths" in err
 
+
+# ---------------------------------------------------------------------------
+# Structural Marker Parser Hardening Deterministic Controls (Tests A - Q)
+# ---------------------------------------------------------------------------
+
+def test_manifest_a_formal_manifest_with_prose_reference_passes():
+    """A. one formal manifest + prose 中引用完整 marker 文字 => PASS"""
+    prompt = (
+        "Instructions: Please ensure BEGIN_HHAI_PROMPT_MANIFEST is present in the prompt.\n"
+        "And also make sure END_HHAI_PROMPT_MANIFEST closes the block.\n\n"
+        + VALID_GOAL_SPEC_PROMPT
+        + "\nReminder: do not forget BEGIN_HHAI_PROMPT_MANIFEST in prose."
+    )
+    ok, err, manifest = validate_prompt_manifest(prompt)
+    assert ok is True, f"Expected PASS with prose reference, got: {err}"
+    assert manifest["batch_mode"] == "GOAL_SPEC"
+
+
+def test_manifest_b_formal_manifest_with_fenced_code_example_passes():
+    """B. one formal manifest + fenced code example 內 marker lines => PASS"""
+    fenced_example = (
+        "Here is an example in markdown:\n\n"
+        "```yaml\n"
+        "BEGIN_HHAI_PROMPT_MANIFEST\n"
+        "schema_version: 1\n"
+        "batch_mode: GOAL_SPEC\n"
+        "END_HHAI_PROMPT_MANIFEST\n"
+        "```\n\n"
+    )
+    prompt = fenced_example + VALID_GOAL_SPEC_PROMPT
+    ok, err, manifest = validate_prompt_manifest(prompt)
+    assert ok is True, f"Expected PASS with fenced code example, got: {err}"
+    assert manifest["batch_mode"] == "GOAL_SPEC"
+
+
+def test_manifest_c_valid_manifest_lf_and_crlf_equivalent():
+    """C. valid manifest LF / CRLF => 兩者 PASS 且 parsed result equivalent"""
+    prompt_lf = VALID_GOAL_SPEC_PROMPT.replace("\r\n", "\n")
+    prompt_crlf = prompt_lf.replace("\n", "\r\n")
+
+    ok_lf, err_lf, manifest_lf = validate_prompt_manifest(prompt_lf)
+    ok_crlf, err_crlf, manifest_crlf = validate_prompt_manifest(prompt_crlf)
+
+    assert ok_lf is True, f"LF failed: {err_lf}"
+    assert ok_crlf is True, f"CRLF failed: {err_crlf}"
+    assert manifest_lf == manifest_crlf
+
+
+def test_manifest_d_two_real_formal_manifest_blocks_fails():
+    """D. two real formal manifest blocks => FAIL"""
+    prompt = (
+        VALID_GOAL_SPEC_PROMPT
+        + "\n\n"
+        + VALID_GOAL_SPEC_PROMPT
+    )
+    ok, err, _ = validate_prompt_manifest(prompt)
+    assert ok is False
+    assert "Duplicate manifest markers found" in err
+
+
+def test_manifest_e_missing_begin_fails():
+    """E. missing BEGIN => FAIL"""
+    prompt = VALID_GOAL_SPEC_PROMPT.replace("BEGIN_HHAI_PROMPT_MANIFEST\n", "")
+    ok, err, _ = validate_prompt_manifest(prompt)
+    assert ok is False
+    assert "missing BEGIN marker" in err or "missing BEGIN or END marker" in err
+
+
+def test_manifest_f_missing_end_fails():
+    """F. missing END => FAIL"""
+    prompt = VALID_GOAL_SPEC_PROMPT.replace("END_HHAI_PROMPT_MANIFEST\n", "")
+    ok, err, _ = validate_prompt_manifest(prompt)
+    assert ok is False
+    assert "missing END marker" in err or "missing BEGIN or END marker" in err
+
+
+def test_manifest_g_reversed_end_begin_fails():
+    """G. reversed END / BEGIN => FAIL"""
+    prompt = (
+        "END_HHAI_PROMPT_MANIFEST\n"
+        "schema_version: 1\n"
+        "BEGIN_HHAI_PROMPT_MANIFEST\n"
+    )
+    ok, err, _ = validate_prompt_manifest(prompt)
+    assert ok is False
+    assert "END appears before BEGIN" in err
+
+
+def test_manifest_h_nested_repeated_formal_markers_fails():
+    """H. nested/repeated formal markers => FAIL"""
+    nested_prompt = (
+        "BEGIN_HHAI_PROMPT_MANIFEST\n"
+        "schema_version: 1\n"
+        "BEGIN_HHAI_EXECUTION_CONTRACT\n"
+        "contract_version: 2\n"
+        "END_HHAI_EXECUTION_CONTRACT\n"
+        "batch_mode: GOAL_SPEC\n"
+        "END_HHAI_PROMPT_MANIFEST\n"
+    )
+    ok, err, _ = validate_prompt_manifest(nested_prompt)
+    assert ok is False
+    assert "Nested or repeated structural marker" in err or "Duplicate" in err
+
+
+def test_manifest_i_fenced_example_only_fails_missing_formal_block():
+    """I. fenced example only、外部無正式 manifest => FAIL missing formal block"""
+    prompt = (
+        "Here is the documentation template:\n\n"
+        "```yaml\n"
+        "BEGIN_HHAI_PROMPT_MANIFEST\n"
+        "schema_version: 1\n"
+        "batch_mode: GOAL_SPEC\n"
+        "base_oid: dac592166eb1d29baba58a19dab333fbab62270f\n"
+        "finding_disposition: CURRENT A-14\n"
+        "backlog_disposition: UPDATE\n"
+        "taskboard_disposition: UPDATE\n"
+        "audit_log_disposition: UPDATE\n"
+        "rules_reread_required: true\n"
+        "fixed_signature_required: true\n"
+        "destructive_git_allowed: false\n"
+        "END_HHAI_PROMPT_MANIFEST\n"
+        "```\n\n"
+        "End of documentation."
+    )
+    ok, err, _ = validate_prompt_manifest(prompt)
+    assert ok is False
+    assert "missing BEGIN or END marker" in err
+
+
+def test_contract_j_formal_contract_with_prose_reference_passes():
+    """J. one formal contract + prose literal reference => PASS"""
+    prompt = (
+        "Remember that BEGIN_HHAI_EXECUTION_CONTRACT specifies execution constraints.\n"
+        "And END_HHAI_EXECUTION_CONTRACT terminates the contract block.\n\n"
+        + BASE_V2_CONTRACT
+        + "\nContract verified."
+    )
+    ok, err, contract = validate_execution_contract(prompt)
+    assert ok is True, f"Expected contract PASS with prose reference, got: {err}"
+    assert contract["task_id"] == "B-109-M2-V2-TEST"
+
+
+def test_contract_k_formal_contract_with_fenced_code_example_passes():
+    """K. one formal contract + fenced code example => PASS"""
+    fenced = (
+        "Example contract:\n\n"
+        "```text\n"
+        "BEGIN_HHAI_EXECUTION_CONTRACT\n"
+        "contract_version: 2\n"
+        "END_HHAI_EXECUTION_CONTRACT\n"
+        "```\n\n"
+    )
+    prompt = fenced + BASE_V2_CONTRACT
+    ok, err, contract = validate_execution_contract(prompt)
+    assert ok is True, f"Expected contract PASS with fenced example, got: {err}"
+    assert contract["task_id"] == "B-109-M2-V2-TEST"
+
+
+def test_contract_l_valid_contract_lf_and_crlf_equivalent():
+    """L. valid contract LF / CRLF => PASS / equivalent"""
+    contract_lf = BASE_V2_CONTRACT.replace("\r\n", "\n")
+    contract_crlf = contract_lf.replace("\n", "\r\n")
+
+    ok_lf, err_lf, c_lf = validate_execution_contract(contract_lf)
+    ok_crlf, err_crlf, c_crlf = validate_execution_contract(contract_crlf)
+
+    assert ok_lf is True, f"Contract LF failed: {err_lf}"
+    assert ok_crlf is True, f"Contract CRLF failed: {err_crlf}"
+    assert c_lf == c_crlf
+
+
+def test_contract_m_two_real_formal_contract_blocks_fails():
+    """M. two real formal contract blocks => FAIL"""
+    prompt = BASE_V2_CONTRACT + "\n\n" + BASE_V2_CONTRACT
+    ok, err, _ = validate_execution_contract(prompt)
+    assert ok is False
+    assert "Duplicate contract markers found" in err
+
+
+def test_contract_n_missing_begin_or_end_fails():
+    """N. missing BEGIN / missing END => FAIL"""
+    bad_no_begin = BASE_V2_CONTRACT.replace("BEGIN_HHAI_EXECUTION_CONTRACT\n", "")
+    ok, err, _ = validate_execution_contract(bad_no_begin)
+    assert ok is False
+    assert "missing" in err.lower()
+
+    bad_no_end = BASE_V2_CONTRACT.replace("END_HHAI_EXECUTION_CONTRACT", "")
+    ok2, err2, _ = validate_execution_contract(bad_no_end)
+    assert ok2 is False
+    assert "missing" in err2.lower()
+
+
+def test_contract_o_reversed_marker_ordering_fails():
+    """O. reversed marker ordering => FAIL"""
+    reversed_contract = (
+        "END_HHAI_EXECUTION_CONTRACT\n"
+        "contract_version: 2\n"
+        "BEGIN_HHAI_EXECUTION_CONTRACT\n"
+    )
+    ok, err, _ = validate_execution_contract(reversed_contract)
+    assert ok is False
+    assert "END appears before BEGIN" in err
+
+
+def test_contract_p_nested_repeated_formal_markers_fails():
+    """P. nested/repeated formal markers => FAIL"""
+    nested_contract = (
+        "BEGIN_HHAI_EXECUTION_CONTRACT\n"
+        "contract_version: 2\n"
+        "BEGIN_HHAI_PROMPT_MANIFEST\n"
+        "schema_version: 1\n"
+        "END_HHAI_PROMPT_MANIFEST\n"
+        "task_id: B-TEST\n"
+        "END_HHAI_EXECUTION_CONTRACT\n"
+    )
+    ok, err, _ = validate_execution_contract(nested_contract)
+    assert ok is False
+    assert "Nested or repeated structural marker" in err or "Duplicate" in err
+
+
+def test_contract_q_fenced_example_only_contract_fails_missing_formal_block():
+    """Q. fenced-example-only contract => FAIL missing formal block"""
+    prompt = (
+        "Here is the contract documentation:\n\n"
+        "```text\n"
+        + BASE_V2_CONTRACT + "\n"
+        "```\n\n"
+        "No formal contract follows."
+    )
+    ok, err, _ = validate_execution_contract(prompt)
+    assert ok is False
+    assert "missing" in err.lower()
+

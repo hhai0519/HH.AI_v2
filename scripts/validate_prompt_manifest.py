@@ -66,35 +66,162 @@ CONTRACT_REQUIRED_KEYS_V2 = CONTRACT_REQUIRED_KEYS_V1 + CONTRACT_V2_EXTRA_KEYS
 CONTRACT_REQUIRED_KEYS = CONTRACT_REQUIRED_KEYS_V1
 
 
+def check_code_fence(line: str, active_fence: tuple[str, int] | None) -> tuple[str, int] | None:
+    """
+    Track markdown fenced code block state according to CommonMark.
+    A code fence opens with 0-3 leading spaces followed by 3+ backticks or tildes.
+    It closes with 0-3 leading spaces, the same fence char, at least the same length,
+    and only trailing spaces.
+    """
+    stripped_leading = line.lstrip(" ")
+    indent = len(line) - len(stripped_leading)
+    if indent > 3:
+        return active_fence
+
+    if active_fence is not None:
+        char, min_len = active_fence
+        if char == "`" and stripped_leading.startswith("`" * min_len):
+            rest = stripped_leading.lstrip("`")
+            if rest.strip() == "":
+                return None
+        elif char == "~" and stripped_leading.startswith("~" * min_len):
+            rest = stripped_leading.lstrip("~")
+            if rest.strip() == "":
+                return None
+        return active_fence
+
+    # Outside fence: check if opening
+    if stripped_leading.startswith("```"):
+        fence_len = len(stripped_leading) - len(stripped_leading.lstrip("`"))
+        info = stripped_leading[fence_len:]
+        if "`" not in info:
+            return ("`", fence_len)
+    elif stripped_leading.startswith("~~~"):
+        fence_len = len(stripped_leading) - len(stripped_leading.lstrip("~"))
+        return ("~", fence_len)
+
+    return None
+
+
+def locate_structural_block(
+    prompt_text: str,
+    begin_marker: str,
+    end_marker: str,
+    block_name: str,
+    display_name: str,
+) -> tuple[bool, str, list[str]]:
+    """
+    Locates and extracts the unique formal structural block (manifest or execution contract).
+    Ensures:
+    1. Standalone logical line boundary outside markdown code fences (line.strip() == marker).
+    2. No prefix/suffix prose on marker line.
+    3. Exactly one BEGIN and one END marker.
+    4. END appears after BEGIN.
+    5. No duplicate, missing, reversed, or nested/repeated structural markers.
+    Returns (ok, err_msg, inner_lines).
+    """
+    lines = prompt_text.splitlines()
+    active_fence: tuple[str, int] | None = None
+
+    boundary_events = []
+
+    for line_idx, line in enumerate(lines):
+        new_fence = check_code_fence(line, active_fence)
+        if active_fence is not None:
+            active_fence = new_fence
+            continue
+        if new_fence is not None:
+            active_fence = new_fence
+            continue
+
+        stripped = line.strip()
+        if stripped in (begin_marker, end_marker):
+            boundary_events.append((line_idx, stripped))
+
+    begins = [idx for idx, m in boundary_events if m == begin_marker]
+    ends = [idx for idx, m in boundary_events if m == end_marker]
+
+    if len(begins) == 0 and len(ends) == 0:
+        return False, f"{display_name} missing BEGIN or END marker", []
+    if len(begins) == 0:
+        return False, f"{display_name} missing BEGIN marker", []
+    if len(ends) == 0:
+        return False, f"{display_name} missing END marker", []
+
+    if len(begins) > 1 or len(ends) > 1:
+        return False, f"Duplicate {block_name} markers found (BEGIN={len(begins)}, END={len(ends)})", []
+
+    begin_idx = begins[0]
+    end_idx = ends[0]
+
+    if begin_idx >= end_idx:
+        if block_name == "manifest":
+            return False, "Manifest marker ordering error: END appears before BEGIN", []
+        else:
+            return False, "Contract marker ordering error: END appears before BEGIN", []
+
+    inner_lines = []
+    fence_in_block: tuple[str, int] | None = None
+    all_structural = (BEGIN_MARKER, END_MARKER, CONTRACT_BEGIN_MARKER, CONTRACT_END_MARKER)
+
+    for curr_idx in range(begin_idx + 1, end_idx):
+        raw_line = lines[curr_idx]
+        new_fence = check_code_fence(raw_line, fence_in_block)
+        if fence_in_block is not None:
+            fence_in_block = new_fence
+            inner_lines.append(raw_line)
+            continue
+        if new_fence is not None:
+            fence_in_block = new_fence
+            inner_lines.append(raw_line)
+            continue
+
+        stripped = raw_line.strip()
+        if stripped in all_structural:
+            return False, f"Nested or repeated structural marker inside {display_name}: {stripped}", []
+        inner_lines.append(raw_line)
+
+    return True, "", inner_lines
+
+
+def has_formal_contract_markers(prompt_text: str) -> bool:
+    """Check if formal standalone contract markers exist outside markdown code fences."""
+    lines = prompt_text.splitlines()
+    active_fence: tuple[str, int] | None = None
+    for line in lines:
+        new_fence = check_code_fence(line, active_fence)
+        if active_fence is not None:
+            active_fence = new_fence
+            continue
+        if new_fence is not None:
+            active_fence = new_fence
+            continue
+        if line.strip() in (CONTRACT_BEGIN_MARKER, CONTRACT_END_MARKER):
+            return True
+    return False
+
+
 def parse_execution_contract_block(prompt_text: str) -> tuple[bool, str, dict]:
     """
     從 prompt_text 中抽取出唯一的 execution contract 區塊並解析為 key-value dict。
     fail-closed：缺失、重複、順序錯誤、格式錯誤、未知欄位皆立即回傳失敗。
     支援 contract_version = 1 與 contract_version = 2。
     """
-    begin_count = prompt_text.count(CONTRACT_BEGIN_MARKER)
-    end_count = prompt_text.count(CONTRACT_END_MARKER)
-
-    if begin_count == 0 or end_count == 0:
-        return False, "Execution contract missing BEGIN or END marker", {}
-
-    if begin_count > 1 or end_count > 1:
-        return False, f"Duplicate contract markers found (BEGIN={begin_count}, END={end_count})", {}
-
-    begin_idx = prompt_text.find(CONTRACT_BEGIN_MARKER)
-    end_idx = prompt_text.find(CONTRACT_END_MARKER)
-
-    if begin_idx >= end_idx:
-        return False, "Contract marker ordering error: END appears before BEGIN", {}
-
-    block_text = prompt_text[begin_idx + len(CONTRACT_BEGIN_MARKER):end_idx]
-    lines = block_text.splitlines()
+    ok, err, inner_lines = locate_structural_block(
+        prompt_text,
+        begin_marker=CONTRACT_BEGIN_MARKER,
+        end_marker=CONTRACT_END_MARKER,
+        block_name="contract",
+        display_name="Execution contract",
+    )
+    if not ok:
+        return False, err, {}
 
     raw_pairs = []
     seen_keys = set()
     contract_version = "1"
 
-    for line_no, raw_line in enumerate(lines, 1):
+    for line_no, raw_line in enumerate(inner_lines, 1):
         line = raw_line.strip()
         if not line:
             continue
@@ -358,28 +485,20 @@ def parse_manifest_block(prompt_text: str) -> tuple[bool, str, dict]:
     從 prompt_text 中抽取出唯一的 manifest 區塊並解析為 key-value dict。
     fail-closed：缺失、重複、順序錯誤、格式錯誤皆立即回傳失敗。
     """
-    begin_count = prompt_text.count(BEGIN_MARKER)
-    end_count = prompt_text.count(END_MARKER)
-
-    if begin_count == 0 or end_count == 0:
-        return False, "Prompt manifest missing BEGIN or END marker", {}
-
-    if begin_count > 1 or end_count > 1:
-        return False, f"Duplicate manifest markers found (BEGIN={begin_count}, END={end_count})", {}
-
-    begin_idx = prompt_text.find(BEGIN_MARKER)
-    end_idx = prompt_text.find(END_MARKER)
-
-    if begin_idx >= end_idx:
-        return False, "Manifest marker ordering error: END appears before BEGIN", {}
-
-    block_text = prompt_text[begin_idx + len(BEGIN_MARKER):end_idx]
-    lines = block_text.splitlines()
+    ok, err, inner_lines = locate_structural_block(
+        prompt_text,
+        begin_marker=BEGIN_MARKER,
+        end_marker=END_MARKER,
+        block_name="manifest",
+        display_name="Prompt manifest",
+    )
+    if not ok:
+        return False, err, {}
 
     manifest = {}
     seen_keys = set()
 
-    for line_no, raw_line in enumerate(lines, 1):
+    for line_no, raw_line in enumerate(inner_lines, 1):
         line = raw_line.strip()
         if not line:
             continue
@@ -522,7 +641,7 @@ def main():
         sys.stderr.write(f"[FAIL] {err_msg}\n")
         sys.exit(1)
 
-    if args.require_contract or CONTRACT_BEGIN_MARKER in prompt_text:
+    if args.require_contract or has_formal_contract_markers(prompt_text):
         c_ok, c_err, contract = validate_execution_contract(prompt_text, manifest)
         if not c_ok:
             sys.stderr.write(f"[FAIL] Execution Contract invalid: {c_err}\n")

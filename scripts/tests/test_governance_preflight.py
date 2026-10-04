@@ -1459,3 +1459,70 @@ def test_direct_artifact_helper_anchor_classification(tmp_path):
     ok_pos, err_pos = governance_preflight.verify_task_artifact_path(str(pos_repo), task_id, pos_artifact)
     assert ok_pos is True
     assert err_pos == ""
+
+
+# ---------------------------------------------------------------------------
+# Integration Deterministic Controls (Tests R & S)
+# ---------------------------------------------------------------------------
+
+def test_integration_r_canonical_governance_preflight_with_prose_and_fenced_examples_passes(tmp_path):
+    """R. governance_preflight canonical path with prose references and fenced examples passes."""
+    task_id = "B-109-M4-TEST"
+    prompt_with_examples = (
+        "Instructions: Ensure BEGIN_HHAI_PROMPT_MANIFEST and BEGIN_HHAI_EXECUTION_CONTRACT are used.\n\n"
+        "```yaml\n"
+        "BEGIN_HHAI_PROMPT_MANIFEST\n"
+        "schema_version: 1\n"
+        "END_HHAI_PROMPT_MANIFEST\n"
+        "BEGIN_HHAI_EXECUTION_CONTRACT\n"
+        "contract_version: 2\n"
+        "END_HHAI_EXECUTION_CONTRACT\n"
+        "```\n\n"
+        + VALID_FULL_PROMPT_M4
+        + "\nReminder: do not forget END_HHAI_PROMPT_MANIFEST."
+    )
+    repo_dir, git_dir, prompt_file = _setup_isolated_repo(tmp_path, task_id=task_id, prompt_text=prompt_with_examples)
+    script_path = os.path.join(SCRIPTS_DIR, "governance_preflight.py")
+    res = subprocess.run(
+        [sys.executable, script_path, "--task-id", task_id, "--prompt-file", str(prompt_file), "--repo-root", str(repo_dir)],
+        capture_output=True,
+        text=True,
+    )
+    assert res.returncode == 0, f"Expected preflight PASS, got rc={res.returncode}, stderr={res.stderr}"
+    assert "[GOVERNANCE PREFLIGHT PASS]" in res.stdout
+
+
+def test_integration_s_canonical_governance_preflight_true_duplicate_block_fails_closed(tmp_path):
+    """S. governance_preflight canonical path with true duplicate structural block fails closed."""
+    task_id = "B-109-M4-TEST"
+    prompt_with_duplicate = (
+        VALID_FULL_PROMPT_M4
+        + "\n\n"
+        + "BEGIN_HHAI_PROMPT_MANIFEST\n"
+        + "schema_version: 1\n"
+        + "batch_mode: GOAL_SPEC\n"
+        + f"base_oid: {VALID_BASE_OID}\n"
+        + "finding_disposition: NONE\n"
+        + "backlog_disposition: UPDATE\n"
+        + "taskboard_disposition: UPDATE\n"
+        + "audit_log_disposition: UPDATE\n"
+        + "rules_reread_required: true\n"
+        + "fixed_signature_required: true\n"
+        + "destructive_git_allowed: false\n"
+        + "END_HHAI_PROMPT_MANIFEST\n"
+    )
+    # 1. Underlying parser fails closed with duplicate markers error
+    ok, err, _ = validate_prompt_manifest.validate_prompt_manifest(prompt_with_duplicate)
+    assert ok is False
+    assert "Duplicate manifest markers found" in err
+
+    # 2. Canonical CLI invocation fails closed with exit code 1
+    repo_dir, git_dir, prompt_file = _setup_isolated_repo(tmp_path, task_id=task_id, prompt_text=prompt_with_duplicate)
+    script_path = os.path.join(SCRIPTS_DIR, "governance_preflight.py")
+    res = subprocess.run(
+        [sys.executable, script_path, "--task-id", task_id, "--prompt-file", str(prompt_file), "--repo-root", str(repo_dir)],
+        capture_output=True,
+        text=True,
+    )
+    assert res.returncode != 0, f"Expected preflight FAIL on duplicate block, got rc={res.returncode}"
+    assert "S1 CONTEXT_LOSS: Manifest validation failed" in res.stderr

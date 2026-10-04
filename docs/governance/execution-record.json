@@ -1,11 +1,11 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "B-107-EXECREC-PROVENANCE-R1-INC3-261004",
-  "base_oid": "1a3d8bb4ecd967cf811ab70203da742de618afd1",
+  "task_id": "B-107-PROMPT-MARKER-FINALGATE-INC1-261004",
+  "base_oid": "471e847f9591436b0f6ec726fd20328ffa0ce17e",
   "plan": {
     "allowed_paths": [
-      ".agents/rules/governance-gate-integrity.md",
+      ".agents/rules/git-and-reporting.md",
       ".agents/rules/prompt-preflight.md",
       ".claude/rules/auditor-protocol.md",
       ".claude/rules/auditor-selftest.md",
@@ -17,12 +17,12 @@
       "docs/governance/execution-record.json",
       "docs/governance/rule-registry.json",
       "docs/refactor-backlog.md",
-      "scripts/execution_record.py",
-      "scripts/tests/test_check_consistency.py",
-      "scripts/tests/test_execution_record.py"
+      "scripts/tests/test_governance_preflight.py",
+      "scripts/tests/test_prompt_manifest.py",
+      "scripts/validate_prompt_manifest.py"
     ],
     "required_paths": [
-      ".agents/rules/governance-gate-integrity.md",
+      ".agents/rules/git-and-reporting.md",
       ".agents/rules/prompt-preflight.md",
       ".claude/rules/auditor-protocol.md",
       ".claude/rules/auditor-selftest.md",
@@ -34,17 +34,17 @@
       "docs/governance/execution-record.json",
       "docs/governance/rule-registry.json",
       "docs/refactor-backlog.md",
-      "scripts/execution_record.py",
-      "scripts/tests/test_check_consistency.py",
-      "scripts/tests/test_execution_record.py"
+      "scripts/tests/test_governance_preflight.py",
+      "scripts/tests/test_prompt_manifest.py",
+      "scripts/validate_prompt_manifest.py"
     ],
     "max_plan_revisions": 3,
     "revision_count": 0,
-    "plan_origin": "EXTERNAL_MACRO_GOVERNANCE_INCIDENT"
+    "plan_origin": "EXTERNAL_MACRO_FREEZE_DEFECT_INC1"
   },
   "actual": {
     "changed_paths": [
-      ".agents/rules/governance-gate-integrity.md",
+      ".agents/rules/git-and-reporting.md",
       ".agents/rules/prompt-preflight.md",
       ".claude/rules/auditor-protocol.md",
       ".claude/rules/auditor-selftest.md",
@@ -56,9 +56,9 @@
       "docs/governance/execution-record.json",
       "docs/governance/rule-registry.json",
       "docs/refactor-backlog.md",
-      "scripts/execution_record.py",
-      "scripts/tests/test_check_consistency.py",
-      "scripts/tests/test_execution_record.py"
+      "scripts/tests/test_governance_preflight.py",
+      "scripts/tests/test_prompt_manifest.py",
+      "scripts/validate_prompt_manifest.py"
     ]
   },
   "evidence": [

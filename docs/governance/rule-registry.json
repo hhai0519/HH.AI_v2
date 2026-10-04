@@ -14,7 +14,7 @@
       "enforcement_strength": "STRONG",
       "failure_semantics": "FAIL_CLOSED_BLOCK",
       "owner": "Executor / Macro Auditor",
-      "description": "Every production prompt must include exactly one valid BEGIN_HHAI_EXECUTION_CONTRACT block."
+      "description": "Every production prompt must include exactly one valid BEGIN_HHAI_EXECUTION_CONTRACT block whose boundaries are standalone logical-line markers outside markdown code fences. Prose literal or code-example references do not constitute a structural block, while duplicate, missing, reversed, or nested blocks remain fail-closed."
     },
     {
       "id": "GOV-M1-002",

@@ -1,5 +1,5 @@
 {
-  "base_head": "1a3d8bb",
+  "base_head": "471e847",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -12,11 +12,12 @@
         "## 2.2 提示詞指定的寫入內容，逐字照抄",
         "## 2.3 [已退役] commit 與 push 的狀態，早期以指令輸出為準",
         "## 2.4 提交前機密檢查與 Git Hook 守衛規範 (Secret Commit Guard & Hook Protocol)",
+        "## 2.4.1 機械前置閘門完工屏障 (Prerequisite Gate Completion Barrier)",
         "## 2.5 遠端健康查證與 GitHub Actions 閉環規範 (Remote Health Verification)",
         "## 3. 查證紀律"
       ],
-      "lines": 242,
-      "sha256": "ff4fd17122e471f9802954540951fc0200c3da246ef01205be645ab4d0988fcb"
+      "lines": 221,
+      "sha256": "93fe3551048a750e06ecccc2eb76ddfc4580668d5edfe578bc46c707cf2d62ae"
     },
     ".agents/rules/governance-gate-integrity.md": {
       "fences": 0,
@@ -74,8 +75,8 @@
         "## 5. 例外",
         "## 6. 這條規則保護的是誰"
       ],
-      "lines": 240,
-      "sha256": "68f13cffbc601d70134d69944271c58cafca637749244fc8c0bbb3693eca88f4"
+      "lines": 243,
+      "sha256": "b1e02d8f746cfd394346814bb004b9782c6c434e5dd724a34f58d3e6b09cff32"
     },
     ".agents/rules/role-boundaries.md": {
       "fences": 4,
@@ -203,7 +204,7 @@
         "### 12.2 Tier-M 微修復分類規範 (Tier-M Micro Repair)"
       ],
       "lines": 532,
-      "sha256": "dc2262a1253491b8098446f37d4784db99710503c870810f71e991030345b632"
+      "sha256": "3736bdfa56b6541384b28d12cd5ca1c29a7aa5f15bb7a6c7e72110ee1f0ba08d"
     },
     ".claude/rules/auditor-selftest.md": {
       "fences": 0,
@@ -218,7 +219,7 @@
         "## F. 額度（每一輪回覆的開頭與結尾）"
       ],
       "lines": 139,
-      "sha256": "45a544fd79a436a5e6bc6dbc4ea269089e50d9536153dec2ae8f54ac54227860"
+      "sha256": "f22ec32f5a5fdfb9944b5e2db7d4805cde5a4289fb1f12d370eec294c4d8a793"
     },
     ".github/workflows/verify.yml": {
       "fences": 0,
@@ -558,16 +559,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 274,
-      "sha256": "776d0dd812c8f109bf1a032c9a4bb3579f8cd37674b83349f7cd3bb0d2d11d18"
+      "lines": 275,
+      "sha256": "de6d647165e0d8174beacf72d84883370e077ea1d5ae4d25835c858e19f85b58"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 242,
-      "sha256": "96b37d1530d148e89a9239c5fb00f7e6fd56ee4987be4654929ba8cdc5b23e3f"
+      "lines": 243,
+      "sha256": "3219941cd79388271c84a08339e9d800ea6a6a97f853e9150ef9efc76802b6df"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -609,7 +610,7 @@
         "## 封存區"
       ],
       "lines": 369,
-      "sha256": "3bddc55c0fbdc94eda807f8581078326a690f17d73b421794070b55c0e13658b"
+      "sha256": "bd5caa33afcf22ea8cffdc99f7a08b7c11c0ac87884e9ee21316f8537d9ef99b"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1079,7 +1080,7 @@
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
       "lines": 6342,
-      "sha256": "05d7ad3b1a2bb03661553f6ebee760f933a9635cbb8b3cc47a5604eaac5e6ebe"
+      "sha256": "ca23e29effc442fee2e85fa90ca793e8a9321608b4295060d1cf6dc54e6a4e34"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1318,10 +1319,13 @@
         "# ---------------------------------------------------------------------------",
         "# ---------------------------------------------------------------------------",
         "# Section 21-26: B-109 M4 Governance Preflight Fail-Fast CLI Regression Tests",
+        "# ---------------------------------------------------------------------------",
+        "# ---------------------------------------------------------------------------",
+        "# Integration Deterministic Controls (Tests R & S)",
         "# ---------------------------------------------------------------------------"
       ],
-      "lines": 1461,
-      "sha256": "f2879c092ad22b03880beb88c682a7f7d1e3d8d126ece1d93c32d7597b5b03fe"
+      "lines": 1528,
+      "sha256": "afa5d92fee796174e12b4bdcc234ee085cb100336f9b485e155337c5b4c9e202"
     },
     "scripts/tests/test_impact_scan.py": {
       "fences": 0,
@@ -1350,10 +1354,13 @@
       "headings": [
         "# ---------------------------------------------------------------------------",
         "# Contract v2 Future Specification Tests",
+        "# ---------------------------------------------------------------------------",
+        "# ---------------------------------------------------------------------------",
+        "# Structural Marker Parser Hardening Deterministic Controls (Tests A - Q)",
         "# ---------------------------------------------------------------------------"
       ],
-      "lines": 431,
-      "sha256": "c3c7e253892309468cbe4ac9daa3303c80a84c248b36027f7e7ddb3d959280e0"
+      "lines": 664,
+      "sha256": "f8149a73ca44aa5e0b2bdb05bd43a9de71573e3d15effb55ee7f4bfa8251c901"
     },
     "scripts/tests/test_rule_loadability.py": {
       "fences": 0,
@@ -1499,8 +1506,8 @@
     "scripts/validate_prompt_manifest.py": {
       "fences": 0,
       "headings": [],
-      "lines": 538,
-      "sha256": "ee31296806ec00e99f312a700dc1c4cb655c3bb0c224ad078a914acaad8e8fe5"
+      "lines": 657,
+      "sha256": "6c6e77c04762eed8d961632cce869eb36fbe164829b945f22689d7f029f44dd7"
     },
     "scripts/validate_skills.py": {
       "fences": 0,
@@ -1520,7 +1527,7 @@
       "sha256": "35bf7dbfa3c7d291b550c3c97a6ae398a22b1dc3624c1d2fc1e4db6963d6e115"
     }
   },
-  "generated_at": "2026-10-04T11:54:04Z",
+  "generated_at": "2026-10-04T14:41:29Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {
