@@ -81,6 +81,7 @@
 | .agents/rules/governance-gate-integrity.md | 61 | ## 4. 變更重放與證據完整性守衛 (Diff Replay & Evidence Integrity Guard — B-109 M2 / CHECK 26) | CHECK | CHECK 26 | scripts/check_consistency.py | RESOLVED |
 | .agents/rules/governance-gate-integrity.md | 62 | ## 4. 變更重放與證據完整性守衛 (Diff Replay & Evidence Integrity Guard — B-109 M2 / CHECK 26) | FILE | `docs/governance/execution-record.json` | docs/governance/execution-record.json | RESOLVED |
 | .agents/rules/governance-gate-integrity.md | 66 | ## 4. 變更重放與證據完整性守衛 (Diff Replay & Evidence Integrity Guard — B-109 M2 / CHECK 26) | CHECK | CHECK 26 | scripts/check_consistency.py | RESOLVED |
+| .agents/rules/governance-gate-integrity.md | 75 | ## 4. 變更重放與證據完整性守衛 (Diff Replay & Evidence Integrity Guard — B-109 M2 / CHECK 26) | CHECK | CHECK 26 | scripts/check_consistency.py | RESOLVED |
 | .agents/rules/powershell-encoding-protocol.md | 48 | ## 3. PowerShell 強制 UTF-8 宣告 (PowerShell UTF-8 Lock) | FILE | `.agents/rules/git-and-reporting.md` | .agents/rules/git-and-reporting.md | RESOLVED |
 | .agents/rules/powershell-encoding-protocol.md | 61 | ## 5. 命令列參數與多行文字傳遞協定 (Parameter Passing & Payload Protocol) | ADR | ADR-0010 | docs/adr/0010-powershell-parameter-passing-pitfalls.md | RESOLVED |
 | .agents/rules/prompt-preflight.md | 9 | ## 1. 目的 | ADR | docs/adr/0007-macro-auditor-role.md | docs/adr/0007-macro-auditor-role.md | RESOLVED |
@@ -241,6 +242,7 @@
 | .claude/rules/auditor-protocol.md | 171 | ### 6.1 每份提示詞的必備要素 | FILE | `scripts/impact_scan.py` | scripts/impact_scan.py | RESOLVED |
 | .claude/rules/auditor-protocol.md | 173 | ### 6.1 每份提示詞的必備要素 | FILE | `scripts/validate_prompt_manifest.py` | scripts/validate_prompt_manifest.py | RESOLVED |
 | .claude/rules/auditor-protocol.md | 173 | ### 6.1 每份提示詞的必備要素 | TASK | B-104 | docs/TASKBOARD.md | RESOLVED |
+| .claude/rules/auditor-protocol.md | 174 | ### 6.1 每份提示詞的必備要素 | CHECK | CHECK 26 | scripts/check_consistency.py | RESOLVED |
 | .claude/rules/auditor-protocol.md | 174 | ### 6.1 每份提示詞的必備要素 | CHECK | CHECK 26 | scripts/check_consistency.py | RESOLVED |
 | .claude/rules/auditor-protocol.md | 174 | ### 6.1 每份提示詞的必備要素 | FILE | `docs/governance/execution-record.json` | docs/governance/execution-record.json | RESOLVED |
 | .claude/rules/auditor-protocol.md | 174 | ### 6.1 每份提示詞的必備要素 | TASK | B-109 | docs/TASKBOARD.md | RESOLVED |

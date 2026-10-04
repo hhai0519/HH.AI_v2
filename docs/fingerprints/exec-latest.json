@@ -1,5 +1,5 @@
 {
-  "base_head": "e244d19",
+  "base_head": "1a3d8bb",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -28,8 +28,8 @@
         "## 3. 閘門變更確定性負向控制 (Deterministic Negative Controls)",
         "## 4. 變更重放與證據完整性守衛 (Diff Replay & Evidence Integrity Guard — B-109 M2 / CHECK 26)"
       ],
-      "lines": 72,
-      "sha256": "72e2642b1bc4809a5d4a7a4022668655b18e12c3f5257efd5755847c550a025a"
+      "lines": 77,
+      "sha256": "1e62fd3a75e143b4edf5dff4c5d160ec6bd6a3a41b1f6306145ca38bf65c97ef"
     },
     ".agents/rules/powershell-encoding-protocol.md": {
       "fences": 6,
@@ -75,7 +75,7 @@
         "## 6. 這條規則保護的是誰"
       ],
       "lines": 240,
-      "sha256": "463fc35750376a4fd026a33b782ee38c902fbe96e6b40a4be6f290daed494c04"
+      "sha256": "68f13cffbc601d70134d69944271c58cafca637749244fc8c0bbb3693eca88f4"
     },
     ".agents/rules/role-boundaries.md": {
       "fences": 4,
@@ -203,7 +203,7 @@
         "### 12.2 Tier-M 微修復分類規範 (Tier-M Micro Repair)"
       ],
       "lines": 532,
-      "sha256": "0fe3947b663f3d275b2ba446bc40dcf3ac5b614cc78e0623dca31e9a7be1047f"
+      "sha256": "dc2262a1253491b8098446f37d4784db99710503c870810f71e991030345b632"
     },
     ".claude/rules/auditor-selftest.md": {
       "fences": 0,
@@ -218,7 +218,7 @@
         "## F. 額度（每一輪回覆的開頭與結尾）"
       ],
       "lines": 139,
-      "sha256": "886f2f1f715ee7fcf27940d721a912fde8605f0847ff83b443b4f54cb251d69c"
+      "sha256": "45a544fd79a436a5e6bc6dbc4ea269089e50d9536153dec2ae8f54ac54227860"
     },
     ".github/workflows/verify.yml": {
       "fences": 0,
@@ -558,16 +558,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 273,
-      "sha256": "8a970deed7d8b679aa79b14bca87940f668340dc7a49145be9a99fa79e019f4f"
+      "lines": 274,
+      "sha256": "776d0dd812c8f109bf1a032c9a4bb3579f8cd37674b83349f7cd3bb0d2d11d18"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 239,
-      "sha256": "7252aa80ad00067aaa77f446ab517dff0af51350395d90c00a847c0a79b988ea"
+      "lines": 242,
+      "sha256": "96b37d1530d148e89a9239c5fb00f7e6fd56ee4987be4654929ba8cdc5b23e3f"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -609,7 +609,7 @@
         "## 封存區"
       ],
       "lines": 369,
-      "sha256": "2060b32c7d92c7ff69c3a5c7da1c64bc7d03f2813a8b415a94de10aa975790b4"
+      "sha256": "3bddc55c0fbdc94eda807f8581078326a690f17d73b421794070b55c0e13658b"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1078,8 +1078,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6317,
-      "sha256": "7eafe870a51fa7deedbf5558cc47b532612fa0549f8d5c6cb075ec0353a4bb90"
+      "lines": 6342,
+      "sha256": "05d7ad3b1a2bb03661553f6ebee760f933a9635cbb8b3cc47a5604eaac5e6ebe"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1114,8 +1114,8 @@
       "headings": [
         "# -*- coding: utf-8 -*-"
       ],
-      "lines": 545,
-      "sha256": "9a2a7fd3e8dcdcaa742807c62f800a0e178f391f12c202a6b761b8e5b4c9eea2"
+      "lines": 642,
+      "sha256": "ba132b0341fd6c96bddc5838616adc3228fcce014d53bf17c44906596b618d2a"
     },
     "scripts/fingerprint.py": {
       "fences": 0,
@@ -1268,8 +1268,8 @@
         "# CHECK 26 Tests: M2 Plan-vs-Actual / Evidence Integrity Replay Guard",
         "# ---------------------------------------------------------------------------"
       ],
-      "lines": 2273,
-      "sha256": "175507e35c01160ae1b1ab2fd269c0cc0aaac52d1f3eb222abaa94424609ebb3"
+      "lines": 2372,
+      "sha256": "fd1fca3e955b46daf2b7b7799259b175d5d2b892f60153fe8ddd35af738ae7fd"
     },
     "scripts/tests/test_execution_record.py": {
       "fences": 0,
@@ -1283,10 +1283,16 @@
         "# ---------------------------------------------------------------------------",
         "# ---------------------------------------------------------------------------",
         "# Negative Tests: REG-11, REG-12, REG-13",
+        "# ---------------------------------------------------------------------------",
+        "# ---------------------------------------------------------------------------",
+        "# Negative Tests: EXTERNAL_ARTIFACT constraints (N1 - N10)",
+        "# ---------------------------------------------------------------------------",
+        "# ---------------------------------------------------------------------------",
+        "# Writer tests: WRITER-N1 and WRITER-P1",
         "# ---------------------------------------------------------------------------"
       ],
-      "lines": 364,
-      "sha256": "3c90c68727555f454ec7df1e0c3f587380476099c6c51ce22deccbbc85c81558"
+      "lines": 736,
+      "sha256": "b4b1a446119d5de56d03eae86a5d885b0f4b10ae4249cd101436ba32d8834eed"
     },
     "scripts/tests/test_fingerprint.py": {
       "fences": 0,
@@ -1514,7 +1520,7 @@
       "sha256": "35bf7dbfa3c7d291b550c3c97a6ae398a22b1dc3624c1d2fc1e4db6963d6e115"
     }
   },
-  "generated_at": "2026-10-03T08:55:10Z",
+  "generated_at": "2026-10-04T11:54:04Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

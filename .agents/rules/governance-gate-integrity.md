@@ -70,3 +70,8 @@
    - **REG-12（GENERATOR-IN-BUNDLE）**：所有宣告為 `MACHINE_DERIVED` 之衍生證據，其生成器路徑必須存在於版本庫中，且即時計算之 SHA-256 必須與宣告雜湊值完全一致。
    - **REG-13（REPORT-TRACEABILITY）**：所有報告宣稱（report claims）必須附帶非空之 `evidence_ids`，且引用的證據 ID 必須存在於證據集合中，嚴禁無溯源證據之口頭宣稱。
 
+3. **外部產物來源憑證約束（GOV-M2-004 / External Provenance Hardening）**：
+   - 證據來源與驗證狀態分類軸嚴格分離（Evidence Origin 與 Verification Status 仍為獨立分類軸）。
+   - `VERIFIED` 狀態受限於 source-kind 機械可驗證性：在現行 execution-record schema v1 / CHECK 26 子系統中，`source_kind == EXTERNAL_ARTIFACT` 嚴禁標記為 `verification_status == VERIFIED`，必為 `UNVERIFIED` 或 `PENDING_EXTERNAL` 等非已驗狀態。
+   - `EXTERNAL_ARTIFACT` 必須具備 `external_artifact` 區塊且其 `task_id`、repo-relative safe `.git/<task_id>-*` 路徑及 canonical 64-hex SHA-256 嚴格機器綁定；本地存在時即時驗證雜湊與正規檔案性，CI/無本地環境時真偽保持外部相依，絕不得將 absence 冒充為已驗通過。
+

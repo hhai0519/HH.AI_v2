@@ -235,7 +235,7 @@
       "enforcement_strength": "STRONG",
       "failure_semantics": "FAIL_CLOSED_BLOCK",
       "owner": "Executor / Macro Auditor",
-      "description": "Evidence origin (MACHINE_CAPTURED_RAW, MACHINE_DERIVED, AGENT_ASSERTED, USER_PROVIDED) and verification_status (VERIFIED, UNVERIFIED, NOT_ESTABLISHED, PENDING_EXTERNAL) are strictly decoupled and independent axes."
+      "description": "Evidence origin (MACHINE_CAPTURED_RAW, MACHINE_DERIVED, AGENT_ASSERTED, USER_PROVIDED) and verification_status (VERIFIED, UNVERIFIED, NOT_ESTABLISHED, PENDING_EXTERNAL) are strictly decoupled and independent axes. VERIFIED status is constrained by source-kind machine-verifiability; schema v1 EXTERNAL_ARTIFACT cannot assert VERIFIED status, and its task/source/hash identity is strictly machine-bound."
     },
     {
       "id": "GOV-M2-005",

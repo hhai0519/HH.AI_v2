@@ -27,6 +27,7 @@ import re
 import hashlib
 import argparse
 import subprocess
+import stat
 
 REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 DEFAULT_RECORD_PATH = os.path.join("docs", "governance", "execution-record.json")
@@ -64,6 +65,22 @@ def compute_file_sha256(filepath: str) -> str:
     return h.hexdigest()
 
 
+def compute_bounded_file_sha256(filepath: str, max_bytes: int = 100 * 1024 * 1024) -> str:
+    """Compute SHA256 hex digest of a file with bounded size and context-managed handle."""
+    h = hashlib.sha256()
+    total_read = 0
+    with open(filepath, "rb") as f:
+        while True:
+            chunk = f.read(65536)
+            if not chunk:
+                break
+            total_read += len(chunk)
+            if total_read > max_bytes:
+                raise ValueError(f"File exceeds maximum allowed size ({max_bytes} bytes): {filepath}")
+            h.update(chunk)
+    return h.hexdigest()
+
+
 def normalize_repo_path(path: str) -> str:
     """Normalize path to repo-relative forward-slash path."""
     p = path.replace("\\", "/").strip()
@@ -84,6 +101,52 @@ def validate_path_syntax(p: str, field_name: str) -> tuple[bool, str]:
     if any(c in norm for c in ("*", "?", "[", "]")):
         return False, f"Wildcard forbidden in {field_name}: {p!r}"
     return True, norm
+
+
+def validate_external_artifact_path(raw_path: str, record_task_id: str) -> tuple[bool, str]:
+    """
+    Validate EXTERNAL_ARTIFACT path strictly adheres to direct-child contract:
+    - Must be repo-relative safe syntax: .git/<filename>
+    - Direct child of .git (no nested directories)
+    - filename must start with '<record.task_id>-' prefix
+    - suffix must be non-empty
+    - suffix cannot contain '..', ':', '/', '\\', '*', '?', '[', ']'
+    - absolute paths forbidden
+    - raw path checks executed before any normpath/abspath folding
+    """
+    if not isinstance(raw_path, str) or not raw_path.strip():
+        return False, "Evidence external_artifact path must be a non-empty string"
+
+    # Absolute path check on raw string
+    if raw_path.startswith("/") or raw_path.startswith("\\") or re.match(r"^[a-zA-Z]:", raw_path):
+        return False, f"Absolute path forbidden for external_artifact: {raw_path!r}"
+
+    # Normalize slashes only
+    norm_slash = raw_path.replace("\\", "/").strip()
+    if norm_slash.startswith("./"):
+        norm_slash = norm_slash[2:]
+
+    parts = norm_slash.split("/")
+    if len(parts) != 2 or parts[0] != ".git":
+        return False, f"VIOLATES_EXTERNAL_TASK_ARTIFACT_DIRECT_CHILD_CONTRACT: path must be a direct child of .git (got {raw_path!r})"
+
+    filename = parts[1]
+    expected_prefix = f"{record_task_id}-"
+    if not filename.startswith(expected_prefix):
+        return False, f"Evidence external_artifact path must start with '{expected_prefix}': {raw_path!r}"
+
+    suffix = filename[len(expected_prefix):]
+    if not suffix:
+        return False, f"Evidence external_artifact path has empty suffix after '{expected_prefix}': {raw_path!r}"
+
+    if ".." in suffix:
+        return False, f"VIOLATES_EXTERNAL_TASK_ARTIFACT_DIRECT_CHILD_CONTRACT: '..' forbidden in external_artifact suffix: {raw_path!r}"
+
+    forbidden_chars = (":", "/", "\\", "*", "?", "[", "]", "<", ">", "|", '"')
+    if any(c in suffix for c in forbidden_chars):
+        return False, f"Evidence external_artifact path contains forbidden characters in suffix: {raw_path!r}"
+
+    return True, norm_slash
 
 
 def get_head_oid(repo_root: str = REPO_ROOT) -> str:
@@ -153,7 +216,8 @@ def validate_execution_record(
         return False, f"Unsupported schema_version: {record.get('schema_version')}"
     if record.get("governance_version") != "B109-M2":
         return False, f"Unsupported governance_version: {record.get('governance_version')}"
-    if not record.get("task_id"):
+    record_task_id = record.get("task_id")
+    if not record_task_id or not isinstance(record_task_id, str):
         return False, "Missing task_id"
 
     base_oid = record.get("base_oid", "").strip().lower()
@@ -324,6 +388,52 @@ def validate_execution_record(
             if fresh_gen_sha != gen_sha:
                 return False, f"REG-12 violation: Generator SHA mismatch for {gen_path}: declared {gen_sha}, fresh {fresh_gen_sha}"
 
+        # EXTERNAL_ARTIFACT constraint & identity integrity
+        if s_kind == "EXTERNAL_ARTIFACT":
+            if v_status == "VERIFIED":
+                return False, f"Evidence {ev_id}: EXTERNAL_ARTIFACT cannot have verification_status VERIFIED"
+
+            ext_block = ev.get("external_artifact")
+            if not isinstance(ext_block, dict):
+                return False, f"Evidence {ev_id}: EXTERNAL_ARTIFACT missing 'external_artifact' block"
+
+            for k in ("task_id", "path", "sha256"):
+                if k not in ext_block or not isinstance(ext_block[k], str) or not ext_block[k]:
+                    return False, f"Evidence {ev_id}: external_artifact missing or empty '{k}'"
+
+            ext_task_id = ext_block["task_id"]
+            if ext_task_id != record_task_id:
+                return False, f"Evidence {ev_id}: external_artifact task_id mismatch ({ext_task_id!r} != {record_task_id!r})"
+
+            ext_path = ext_block["path"]
+            ok_ext_p, norm_ext_p = validate_external_artifact_path(ext_path, record_task_id)
+            if not ok_ext_p:
+                return False, f"Evidence {ev_id}: {norm_ext_p}"
+
+            ext_sha = ext_block["sha256"]
+            if not re.match(r"^[0-9a-f]{64}$", ext_sha):
+                return False, f"Evidence {ev_id}: external_artifact sha256 must be canonical lowercase 64-hex: {ext_sha!r}"
+
+            abs_ext_path = os.path.join(repo_root, norm_ext_p)
+            if os.path.exists(abs_ext_path):
+                try:
+                    st = os.lstat(abs_ext_path)
+                    if stat.S_ISLNK(st.st_mode):
+                        return False, f"Evidence {ev_id}: external_artifact source cannot be a symlink: {ext_path}"
+                    if hasattr(st, "st_file_attributes") and hasattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT"):
+                        if st.st_file_attributes & stat.FILE_ATTRIBUTE_REPARSE_POINT:
+                            return False, f"Evidence {ev_id}: external_artifact source cannot be a reparse point: {ext_path}"
+                    if not stat.S_ISREG(st.st_mode):
+                        return False, f"Evidence {ev_id}: external_artifact source must be a regular file: {ext_path}"
+                    fresh_ext_sha = compute_bounded_file_sha256(abs_ext_path)
+                    if fresh_ext_sha != ext_sha:
+                        return False, f"Evidence {ev_id}: external_artifact fresh SHA-256 mismatch for {ext_path}: declared {ext_sha}, fresh {fresh_ext_sha}"
+                except Exception as e:
+                    return False, f"Evidence {ev_id}: external_artifact file read/hash error for {ext_path}: {e}"
+        else:
+            if "external_artifact" in ev:
+                return False, f"Evidence {ev_id}: non-EXTERNAL_ARTIFACT source_kind cannot contain 'external_artifact' block"
+
     # 6. Report claims & traceability (REG-13)
     claims = record.get("report_claims")
     if not isinstance(claims, list):
@@ -424,14 +534,6 @@ def write_execution_record(
             },
             "description": "Deterministic Git diff replay against declared plan allowed/required scope",
         },
-        {
-            "id": "M2_DISCOVERY_RAW",
-            "origin": "MACHINE_CAPTURED_RAW",
-            "verification_status": "VERIFIED",
-            "source_kind": "EXTERNAL_ARTIFACT",
-            "sha256": "4cd2851da921aab9d371b281f51947e2645b069d38ee56655e37a79c2ded3b4b",
-            "description": "External Macro verified M2 immutable raw discovery artifact identity",
-        },
     ]
 
     report_claims = [
@@ -439,11 +541,6 @@ def write_execution_record(
             "claim_id": "CLAIM_PLAN_VS_ACTUAL_MATCHED",
             "claim_text": "All actual changed repository paths strictly match allowed scope and cover all required paths without expansion.",
             "evidence_ids": ["PLAN_ACTUAL_DIFF"],
-        },
-        {
-            "claim_id": "CLAIM_DISCOVERY_PROVENANCE_VERIFIED",
-            "claim_text": "Immutable raw discovery artifact verified against expected SHA256 closure.",
-            "evidence_ids": ["M2_DISCOVERY_RAW"],
         },
     ]
 

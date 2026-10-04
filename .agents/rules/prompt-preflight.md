@@ -26,7 +26,7 @@
    - 欄位包含：`contract_version: 2`、`allowed_mutation_paths`、`required_mutation_paths`、`max_plan_revisions`（<= 3）、`execution_record_required`。
    - 約束：若 `allowed_mutation_paths == NONE`，則 required 為 `NONE` 且 record 為 `false`；非 NONE 則 `required_mutation_paths ⊆ allowed_mutation_paths` 且 record 為 `true`。超出 scope 或 revision > 3 即刻停機升級 S1。
    - 計畫與紀錄：變更批次維護 `.git/<task-id>-plan.json`；commit 前由 `scripts/execution_record.py` 輸出並驗證 `docs/governance/execution-record.json`；CI CHECK 26 依 `base_oid..HEAD` 重放 git diff 查驗。
-   - 證據來源與狀態分離：Origin 包含 `MACHINE_CAPTURED_RAW`、`MACHINE_DERIVED`、`AGENT_ASSERTED`、`USER_PROVIDED`；Verification Status 包含 `VERIFIED`、`UNVERIFIED`、`NOT_ESTABLISHED`、`PENDING_EXTERNAL` 且獨立於 origin。
+   - Origin=MACHINE_CAPTURED_RAW|MACHINE_DERIVED|AGENT_ASSERTED|USER_PROVIDED；Status=VERIFIED|UNVERIFIED|NOT_ESTABLISHED|PENDING_EXTERNAL；兩軸獨立；VERIFIED受source-kind機械可驗證性限制。schema v1/CHECK26：EXTERNAL_ARTIFACT 禁 VERIFIED，須機械綁定 external_artifact（task_id、`.git/<task-id>-*`、canonical 64-hex SHA-256）。
    - 完整性標準：REG-11（PATH-EXISTENCE，REPO_PATH 必存在）、REG-12（GENERATOR-IN-BUNDLE，MACHINE_DERIVED 生成器存在且 fresh SHA-256 一致）、REG-13（REPORT-TRACEABILITY，報告宣稱必關聯非空合法證據 ID）。
 
 本驗證器不取代 M1/M2/M3/S1 錯誤路由，將第一層結構與契約檢驗移至確定性程式碼。
@@ -162,7 +162,7 @@ GOAL_SPEC 模式不得要求 E-1～E-4，其正確性由測試與 Gate 守護。
 | E23 批次規格進 repo | EXACT_SPEC 附規格路徑與 sha256 且 add；GOAL_SPEC 不要求規格進 repo |
 | E24 依賴閉包檢驗 | 宣告 E24 且 mode=REQUIRED 時重放 impact_scan replay 比對 |
 | E25 Execution Contract 完整性 | 含唯一合法 Execution Contract 區塊，base_oid 一致，安全邊界全 FORBIDDEN |
-| E26 Plan-vs-Actual / 證據完整性重放 | 契約 v2（allowed/required paths, revisions <= 3, record required），計畫/紀錄與 origin 及 CI diff 重放標準 |
+| E26 Plan-vs-Actual / 證據完整性重放 | 契約 v2（allowed/required paths, revisions <= 3, record required），計畫/紀錄與 origin 及 CI diff 重放標準，EXTERNAL_ARTIFACT 禁標 VERIFIED 且憑證機器綁定 |
 
 **自檢聲明不接受豁免。** 比對為「否」一律停機回報，標為 ⚠️ 或「刻意不做」不構成豁免。偏離規則唯一合法路徑為開批修改規則本身。
 

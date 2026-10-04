@@ -1,34 +1,64 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "B-100-R-K-R1-POSTMAIN-SYNC-R1-261003",
-  "base_oid": "e244d191bcbd145963f2755404187ae801dc6532",
+  "task_id": "B-107-EXECREC-PROVENANCE-R1-INC3-261004",
+  "base_oid": "1a3d8bb4ecd967cf811ab70203da742de618afd1",
   "plan": {
     "allowed_paths": [
+      ".agents/rules/governance-gate-integrity.md",
+      ".agents/rules/prompt-preflight.md",
+      ".claude/rules/auditor-protocol.md",
+      ".claude/rules/auditor-selftest.md",
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
+      "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
+      "docs/generated/rule-traceability.md",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md"
+      "docs/governance/rule-registry.json",
+      "docs/refactor-backlog.md",
+      "scripts/execution_record.py",
+      "scripts/tests/test_check_consistency.py",
+      "scripts/tests/test_execution_record.py"
     ],
     "required_paths": [
+      ".agents/rules/governance-gate-integrity.md",
+      ".agents/rules/prompt-preflight.md",
+      ".claude/rules/auditor-protocol.md",
+      ".claude/rules/auditor-selftest.md",
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
+      "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
+      "docs/generated/rule-traceability.md",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md"
+      "docs/governance/rule-registry.json",
+      "docs/refactor-backlog.md",
+      "scripts/execution_record.py",
+      "scripts/tests/test_check_consistency.py",
+      "scripts/tests/test_execution_record.py"
     ],
     "max_plan_revisions": 3,
     "revision_count": 0,
-    "plan_origin": "EXTERNAL_MACRO_PROMPT"
+    "plan_origin": "EXTERNAL_MACRO_GOVERNANCE_INCIDENT"
   },
   "actual": {
     "changed_paths": [
+      ".agents/rules/governance-gate-integrity.md",
+      ".agents/rules/prompt-preflight.md",
+      ".claude/rules/auditor-protocol.md",
+      ".claude/rules/auditor-selftest.md",
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
+      "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
+      "docs/generated/rule-traceability.md",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md"
+      "docs/governance/rule-registry.json",
+      "docs/refactor-backlog.md",
+      "scripts/execution_record.py",
+      "scripts/tests/test_check_consistency.py",
+      "scripts/tests/test_execution_record.py"
     ]
   },
   "evidence": [
@@ -39,7 +69,7 @@
       "source_kind": "GIT_DIFF",
       "generator": {
         "path": "scripts/execution_record.py",
-        "sha256": "9a2a7fd3e8dcdcaa742807c62f800a0e178f391f12c202a6b761b8e5b4c9eea2"
+        "sha256": "ba132b0341fd6c96bddc5838616adc3228fcce014d53bf17c44906596b618d2a"
       },
       "description": "Deterministic Git diff replay against declared plan allowed/required scope"
     }

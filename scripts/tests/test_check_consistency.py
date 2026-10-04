@@ -4,6 +4,8 @@ import json
 import shutil
 import pytest
 import re
+import subprocess
+import hashlib
 
 # Ensure scripts dir is on sys.path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
@@ -2270,4 +2272,101 @@ def test_check_26_valid_execution_record_pass(tmp_path):
     # In tmp_path, we test without git checking
     ok, msg = execution_record.validate_execution_record(rec, repo_root=str(tmp_path), check_git=False)
     assert ok is True
+
+
+def test_check_26_external_artifact_verified_counterexample_fails(tmp_path):
+    """
+    Integration counterexample entering genuinely through check_26_plan_actual_evidence_integrity:
+    Temp Git baseline + structurally valid malicious record + valid task-local external file +
+    correct hash + status=VERIFIED => CHECK 26 FAIL.
+    Strictly forbids monkeypatching validator.
+    """
+    # 1. Initialize temp git repo
+    subprocess.run(["git", "init"], cwd=str(tmp_path), capture_output=True, check=True)
+    subprocess.run(["git", "config", "user.name", "Test User"], cwd=str(tmp_path), capture_output=True, check=True)
+    subprocess.run(["git", "config", "user.email", "test@example.com"], cwd=str(tmp_path), capture_output=True, check=True)
+
+    # 2. Setup repo files and initial commit
+    gov_dir = tmp_path / "docs" / "governance"
+    gov_dir.mkdir(parents=True)
+    scripts_dir = tmp_path / "scripts"
+    scripts_dir.mkdir(parents=True)
+    script_file = scripts_dir / "execution_record.py"
+    script_content = b"# dummy execution record script\n"
+    script_file.write_bytes(script_content)
+
+    subprocess.run(["git", "add", "."], cwd=str(tmp_path), capture_output=True, check=True)
+    subprocess.run(["git", "commit", "-m", "initial base commit"], cwd=str(tmp_path), capture_output=True, check=True)
+
+    base_oid = subprocess.run(["git", "rev-parse", "HEAD"], cwd=str(tmp_path), capture_output=True, text=True, check=True).stdout.strip().lower()
+
+    # 3. Create valid task-local external artifact
+    task_id = "TASK-B107-TEST"
+    dot_git = tmp_path / ".git"
+    art_path = dot_git / f"{task_id}-artifact.json"
+    art_content = b'{"hello": "world"}'
+    art_path.write_bytes(art_content)
+    art_sha256 = hashlib.sha256(art_content).hexdigest()
+
+    rec_rel = "docs/governance/execution-record.json"
+    gen_sha = hashlib.sha256(script_content).hexdigest()
+
+    # 4. Create structurally valid malicious record:
+    # All fields, diffs, generators, and hashes match truth, EXCEPT status=VERIFIED on EXTERNAL_ARTIFACT
+    malicious_record = {
+        "schema_version": 1,
+        "governance_version": "B109-M2",
+        "task_id": task_id,
+        "base_oid": base_oid,
+        "plan": {
+            "allowed_paths": [rec_rel],
+            "required_paths": [rec_rel],
+            "max_plan_revisions": 3,
+            "revision_count": 0,
+            "plan_origin": "EXTERNAL_MACRO_PROMPT",
+        },
+        "actual": {
+            "changed_paths": [rec_rel],
+        },
+        "evidence": [
+            {
+                "id": "EV_DIFF",
+                "origin": "MACHINE_DERIVED",
+                "verification_status": "VERIFIED",
+                "source_kind": "GIT_DIFF",
+                "generator": {
+                    "path": "scripts/execution_record.py",
+                    "sha256": gen_sha,
+                },
+                "description": "Deterministic Git diff replay",
+            },
+            {
+                "id": "EV_EXT_MALICIOUS",
+                "origin": "USER_PROVIDED",
+                "verification_status": "VERIFIED",  # Malicious assertion on EXTERNAL_ARTIFACT
+                "source_kind": "EXTERNAL_ARTIFACT",
+                "external_artifact": {
+                    "task_id": task_id,
+                    "path": f".git/{task_id}-artifact.json",
+                    "sha256": art_sha256,
+                },
+                "description": "Valid external file and hash, but invalid status VERIFIED",
+            },
+        ],
+        "report_claims": [
+            {
+                "claim_id": "CLAIM_1",
+                "claim_text": "Claim referencing external artifact",
+                "evidence_ids": ["EV_DIFF", "EV_EXT_MALICIOUS"],
+            },
+        ],
+    }
+
+    rec_file = tmp_path / rec_rel
+    rec_file.write_text(json.dumps(malicious_record, indent=2), encoding="utf-8")
+
+    # 5. Genuinely invoke check_26_plan_actual_evidence_integrity without monkeypatching
+    fails, infos = check_26_plan_actual_evidence_integrity(root_dir=str(tmp_path), as_if_committed=True)
+    assert len(fails) >= 1, "CHECK 26 must FAIL on malicious record claiming VERIFIED for EXTERNAL_ARTIFACT"
+    assert any("EXTERNAL_ARTIFACT cannot have verification_status VERIFIED" in f for f in fails)
 
