@@ -108,3 +108,7 @@ SEC-01 → SEC-02 → SEC-03 → SEC-04 → 有界 Gateway 行為修正 → TG-M
 ## 2026-10-05 補充（SEC-01 INC-2）：偵測覆蓋矩陣
 
 本節依歷史更正慣例新增，上方原文除 Consequences 第 1 點之語氣更正外保留不改。受管金鑰格式類別與偵測器之對應，以 `docs/governance/secret-detection-matrix.json` 為非機密權威清單：標為 REQUIRED 之格式類別，須同時被 `scripts/secret_scan.py` 之對應偵測器與 `shared/dlpSanitizer.js` 之對應標籤偵測，並由 `scripts/tests/test_secret_detection_matrix.py` 以合成樣本與誤報反例驗證；無穩定前綴、格式未確立或僅登錄之類別明列為不可依格式偵測或不適用，不構成「所有秘密皆可辨識」之宣稱。scanner 與 DLP 各自保留其通用規則。Google API Key 之支援格式定為「AIza 後接恰好 35 個 [0-9A-Za-z_-] 字元，且前後不緊鄰同集合字元」；DLP 既有之 AIzaSy 規則較寬而保留。覆蓋結論另受 B-113 所載限制：scanner 遇無法讀取之內容時略過，且含 TEST 等 placeholder 字樣之 token 被豁免。
+
+## 2026-10-05 補充（SEC-01 INC-3）：受管金鑰持久存放指引守衛
+
+本節依歷史更正慣例新增，上方原文保留不改。`scripts/check_consistency.py` 之 CHECK 27 掃描有效技能文字（`skills/` 下追蹤之 Markdown，排除 `skills/deprecated/`）與 `docs/mcp-environment-guide.md`，以 Markdown 標題區塊為判定單位：同一區塊內同時出現持久存放指示（使用者層級環境變數、`SetEnvironmentVariable`、`setx`，或 `.env` 檔搭配存放動詞）與受管金鑰名稱或憑證字詞者即為命中。既存之過渡指引與現況描述須於 `docs/governance/secret-guidance-exceptions.json` 逐區塊列管，每筆例外綁定區塊全文 SHA-256、一對一對應、owner 須為看板上未完成之任務；區塊改動、owner 結案或例外失配均使 CHECK 失敗。依 ADR-0027 存入 Windows Credential Manager 之指令不屬持久存放指示；子程序執行期環境變數注入亦不構成命中。輸入缺失、格式不符、Git 列舉或讀檔失敗一律判定失敗。

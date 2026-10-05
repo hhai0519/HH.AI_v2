@@ -28,6 +28,7 @@
   CHECK 24 — 活動狀態投影漂移守衛 (Active State Projection Drift Guard)
   CHECK 25 — 機械治理 v1 完整性守衛 (Mechanical Governance v1 Integrity Guard)
   CHECK 26 — M2 計畫與執行重放暨證據完整性守衛 (M2 Plan-vs-Actual / Evidence Integrity Replay Guard)
+  CHECK 27 — 受管金鑰持久存放指引守衛 (Managed Secret Storage Guidance Guard)
 
 本腳本的檢查項來自 2026-08-29 的一次全庫實測掃描，每一項都曾實際命中過真實缺陷，不是憑空設計。
 新增檢查項時，必須先確認該檢查在當前 repo 的誤報率，誤報多的檢查會讓人習慣忽略輸出。
@@ -55,7 +56,7 @@ def run_checks(argv=None):
     as_if_committed = "--as-if-committed" in argv
     if as_if_committed:
         print("[MODE] 啟用 --as-if-committed 本地 commit 拓撲預演模式")
-    total_checks = 26
+    total_checks = 27
     passed = 0
     failed = 0
     
@@ -511,6 +512,22 @@ def run_checks(argv=None):
     else:
         print(f"  [FAIL] {len(c26_fails)} 命中")
         for fail in c26_fails:
+            print(f"    {fail}")
+        failed += 1
+
+    # ---------------------------------------------------------
+    # CHECK 27: 受管金鑰持久存放指引守衛
+    # ---------------------------------------------------------
+    print("\nCHECK 27: 受管金鑰持久存放指引守衛")
+    c27_fails, c27_infos = check_27_secret_guidance_guard(repo_root)
+    for info in c27_infos:
+        print(f"  [INFO] {info}")
+    if len(c27_fails) == 0:
+        print("  [PASS] 0 命中")
+        passed += 1
+    else:
+        print(f"  [FAIL] {len(c27_fails)} 命中")
+        for fail in c27_fails:
             print(f"    {fail}")
         failed += 1
 
@@ -3246,9 +3263,229 @@ def check_26_plan_actual_evidence_integrity(root_dir=None, as_if_committed=False
 check_26_plan_actual_evidence_integrity_guard = check_26_plan_actual_evidence_integrity
 
 
+# ---------------------------------------------------------------------------
+# CHECK 27 — 受管金鑰持久存放指引守衛 (Managed Secret Storage Guidance Guard)
+# SEC-01 INC-3：攔截有效技能文字與 docs/mcp-environment-guide.md 中，
+# 指示以使用者層級持久環境變數或 .env 檔存放受管金鑰之指引。
+# 判定單位為 Markdown 標題區塊；既存之過渡指引與現況描述須以
+# docs/governance/secret-guidance-exceptions.json 逐區塊列管（一對一、綁定全文雜湊、
+# owner 須為未完成之看板任務）。任何輸入缺失、畸形或讀取失敗一律判定失敗。
+# ---------------------------------------------------------------------------
+C27_INVENTORY_REL = "docs/governance/secret-inventory.json"
+C27_EXCEPTIONS_REL = "docs/governance/secret-guidance-exceptions.json"
+C27_TASKBOARD_REL = "docs/TASKBOARD.md"
+C27_SCOPE_PATHSPECS = ("skills", "docs/mcp-environment-guide.md")
+C27_EXCLUDED_PREFIX = "skills/deprecated/"
+C27_KINDS = ("TRANSITIONAL_GUIDANCE", "CURRENT_STATE_DESCRIPTION")
+C27_EXCEPTION_KEYS = ("path", "heading", "unit_sha256", "kind", "owner", "reason", "removal_condition")
+C27_HEADING_RE = re.compile(r"^#{1,6}\s")
+C27_FENCE_RE = re.compile(r"^\s*(```|~~~)")
+C27_PERSIST_PATTERNS = (
+    re.compile(r"SetEnvironmentVariable\s*\(", re.IGNORECASE),
+    re.compile(r"(?<![A-Za-z0-9_])setx(?![A-Za-z0-9_])", re.IGNORECASE),
+)
+C27_LEVEL_RE = re.compile(r"(User|使用者)\s*層級")
+C27_ENVWORD_RE = re.compile(r"環境變數|environment variable", re.IGNORECASE)
+C27_DOTENV_RE = re.compile(r"(?<![A-Za-z0-9_])\.env(\.local)?(?![A-Za-z0-9_])")
+C27_STORE_VERB_RE = re.compile(r"設定|存放|儲存|寫入|填入|放在|放入|單一真實來源|一致")
+C27_GENERIC_CRED_RE = re.compile(
+    r"金鑰|憑證|API\s*key|(?<![A-Za-z0-9_])tokens?(?![A-Za-z0-9_])|(?<![A-Za-z0-9_])secrets?(?![A-Za-z0-9_])",
+    re.IGNORECASE,
+)
+
+
+def c27_split_units(text):
+    """Split Markdown text into heading-delimited units. Returns list of (start_line, heading, unit_text)."""
+    lines = text.replace("\r\n", "\n").split("\n")
+    units = []
+    cur = []
+    start = 1
+    in_fence = False
+    for idx, line in enumerate(lines, 1):
+        if not in_fence and C27_HEADING_RE.match(line):
+            if cur:
+                units.append((start, cur))
+            cur = [line]
+            start = idx
+            continue
+        if C27_FENCE_RE.match(line):
+            in_fence = not in_fence
+        if not cur:
+            start = idx
+        cur.append(line)
+    if cur:
+        units.append((start, cur))
+    result = []
+    for start_line, unit_lines in units:
+        unit_text = "\n".join(l.rstrip() for l in unit_lines).strip("\n")
+        if not unit_text:
+            continue
+        first = unit_text.split("\n", 1)[0]
+        heading = first if C27_HEADING_RE.match(first) else ""
+        result.append((start_line, heading, unit_text))
+    return result
+
+
+def c27_unit_flagged(unit_text, names_re):
+    persist = any(p.search(unit_text) for p in C27_PERSIST_PATTERNS)
+    if not persist and C27_LEVEL_RE.search(unit_text) and C27_ENVWORD_RE.search(unit_text):
+        persist = True
+    if not persist and C27_DOTENV_RE.search(unit_text) and C27_STORE_VERB_RE.search(unit_text):
+        persist = True
+    if not persist:
+        return False
+    if names_re is not None and names_re.search(unit_text):
+        return True
+    return bool(C27_GENERIC_CRED_RE.search(unit_text))
+
+
+def check_27_secret_guidance_guard(root_dir=None):
+    """
+    CHECK 27 — 受管金鑰持久存放指引守衛 (Managed Secret Storage Guidance Guard).
+    Fail-closed on missing/malformed inputs, Git enumeration failure and unreadable files.
+    """
+    import hashlib
+    if root_dir is None:
+        root_dir = repo_root
+    fails = []
+    infos = []
+
+    try:
+        with open(os.path.join(root_dir, C27_INVENTORY_REL), "r", encoding="utf-8") as f:
+            inventory = json.load(f)
+        entries = inventory["entries"]
+        if not isinstance(entries, list):
+            raise ValueError("entries is not a list")
+        names = set()
+        for entry in entries:
+            for name in entry["legacy_names"]:
+                if not isinstance(name, str) or not name:
+                    raise ValueError("invalid legacy name")
+                names.add(name)
+    except Exception as exc:
+        fails.append(f"{C27_INVENTORY_REL}: 無法讀取或格式不符（{type(exc).__name__}）")
+        return fails, infos
+    names_re = re.compile("|".join(re.escape(n) for n in sorted(names))) if names else None
+
+    try:
+        with open(os.path.join(root_dir, C27_EXCEPTIONS_REL), "r", encoding="utf-8") as f:
+            exc_doc = json.load(f)
+        if exc_doc.get("schema_version") != 1 or not isinstance(exc_doc.get("exceptions"), list):
+            raise ValueError("schema")
+        exceptions = exc_doc["exceptions"]
+    except Exception as exc:
+        fails.append(f"{C27_EXCEPTIONS_REL}: 無法讀取或格式不符（{type(exc).__name__}）")
+        return fails, infos
+
+    try:
+        with open(os.path.join(root_dir, C27_TASKBOARD_REL), "r", encoding="utf-8") as f:
+            board_lines = f.read().splitlines()
+    except Exception as exc:
+        fails.append(f"{C27_TASKBOARD_REL}: 無法讀取（{type(exc).__name__}）")
+        return fails, infos
+
+    seen_keys = set()
+    valid_exceptions = []
+    for i, ex in enumerate(exceptions):
+        label = f"{C27_EXCEPTIONS_REL}: exceptions[{i}]"
+        if not isinstance(ex, dict) or any(k not in ex for k in C27_EXCEPTION_KEYS):
+            fails.append(f"{label} 缺少必要欄位")
+            continue
+        if any(not isinstance(ex[k], str) for k in C27_EXCEPTION_KEYS):
+            fails.append(f"{label} 欄位型別錯誤")
+            continue
+        if not re.fullmatch(r"[0-9a-f]{64}", ex["unit_sha256"]):
+            fails.append(f"{label} unit_sha256 格式錯誤")
+            continue
+        if ex["kind"] not in C27_KINDS:
+            fails.append(f"{label} kind 不合法")
+            continue
+        if not ex["reason"].strip() or not ex["removal_condition"].strip() or not ex["owner"].strip():
+            fails.append(f"{label} owner、reason 或 removal_condition 為空")
+            continue
+        key = (ex["path"], ex["unit_sha256"])
+        if key in seen_keys:
+            fails.append(f"{label} 與其他例外重複（{ex['path']}）")
+            continue
+        seen_keys.add(key)
+        owner_rows = [l for l in board_lines if l.startswith(f"| {ex['owner']} |")]
+        if len(owner_rows) != 1:
+            fails.append(f"{label} owner {ex['owner']} 在看板中不存在或不唯一")
+            continue
+        status = owner_rows[0].split("|")[2].strip()
+        if status == "已完成":
+            fails.append(f"{label} owner {ex['owner']} 已完成，例外之移除條件已成立，須移除此例外")
+            continue
+        valid_exceptions.append(ex)
+
+    try:
+        proc = subprocess.run(
+            ["git", "ls-files", "-z", "--", *C27_SCOPE_PATHSPECS],
+            cwd=root_dir, capture_output=True, timeout=120,
+        )
+    except Exception as exc:
+        fails.append(f"git ls-files 無法執行（{type(exc).__name__}）")
+        return fails, infos
+    if proc.returncode != 0:
+        fails.append(f"git ls-files 失敗（exit {proc.returncode}）")
+        return fails, infos
+    paths = []
+    for raw in proc.stdout.split(b"\0"):
+        if not raw:
+            continue
+        try:
+            rel = raw.decode("utf-8")
+        except UnicodeDecodeError:
+            fails.append("git ls-files 回傳無法解碼之路徑")
+            return fails, infos
+        if rel.endswith(".md") and not rel.startswith(C27_EXCLUDED_PREFIX):
+            paths.append(rel)
+    if "docs/mcp-environment-guide.md" not in paths:
+        fails.append("docs/mcp-environment-guide.md 不在追蹤檔案中，掃描範圍不完整")
+
+    units_by_path = {}
+    flagged = []
+    for rel in sorted(paths):
+        try:
+            with open(os.path.join(root_dir, rel), "rb") as f:
+                text = f.read().decode("utf-8")
+        except Exception as exc:
+            fails.append(f"{rel}: 無法讀取或解碼（{type(exc).__name__}）")
+            continue
+        units = c27_split_units(text)
+        hashed = []
+        for start_line, heading, unit_text in units:
+            digest = hashlib.sha256(unit_text.encode("utf-8")).hexdigest()
+            hashed.append((start_line, heading, digest))
+            if c27_unit_flagged(unit_text, names_re):
+                flagged.append((rel, start_line, heading, digest))
+        units_by_path[rel] = hashed
+
+    exceptions_by_key = {(ex["path"], ex["unit_sha256"]): ex for ex in valid_exceptions}
+    for rel, start_line, heading, digest in flagged:
+        ex = exceptions_by_key.get((rel, digest))
+        if ex is None:
+            fails.append(f"{rel}:{start_line}  受管金鑰持久存放指引未列管（區塊：{heading or '(無標題)'}）")
+        elif ex["heading"] != heading:
+            fails.append(f"{rel}:{start_line}  例外之 heading 與區塊標題不符")
+
+    flagged_keys = {(rel, digest) for rel, _, _, digest in flagged}
+    for ex in valid_exceptions:
+        matches = [u for u in units_by_path.get(ex["path"], []) if u[2] == ex["unit_sha256"]]
+        if len(matches) == 0:
+            fails.append(f"{C27_EXCEPTIONS_REL}: {ex['path']} 例外已失效（找不到相符區塊），須移除或由審計官更新")
+        elif len(matches) > 1:
+            fails.append(f"{C27_EXCEPTIONS_REL}: {ex['path']} 例外比對到 {len(matches)} 個區塊，須一對一")
+        elif (ex["path"], ex["unit_sha256"]) not in flagged_keys:
+            fails.append(f"{C27_EXCEPTIONS_REL}: {ex['path']} 例外對應區塊已不再命中，須移除")
+
+    infos.append(f"掃描 {len(paths)} 個檔案，命中 {len(flagged)} 個區塊，列管例外 {len(valid_exceptions)} 筆")
+    return fails, infos
+
+
 def verify_check_consistency_inventory(file_content: str) -> tuple[bool, str, dict]:
     """
-    Validates complete, consistent, and duplicate-free inventory (1..26)
+    Validates complete, consistent, and duplicate-free inventory (1..27)
     across docstring and run_checks(). Supports both 'CHECK N -' and 'CHECK N:' punctuations.
     """
     # 1. Parse docstring inventory
@@ -3287,9 +3524,9 @@ def verify_check_consistency_inventory(file_content: str) -> tuple[bool, str, di
         seen_rc_ids.add(cid)
         run_checks_ids.append(cid)
 
-    expected_ids = list(range(1, 27))
-    if total_checks != 26:
-        return False, f"total_checks must be 26 (got {total_checks})", {}
+    expected_ids = list(range(1, 28))
+    if total_checks != 27:
+        return False, f"total_checks must be 27 (got {total_checks})", {}
 
     if docstring_ids != expected_ids:
         missing = set(expected_ids) - set(docstring_ids)

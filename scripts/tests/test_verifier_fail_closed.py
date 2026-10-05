@@ -514,14 +514,14 @@ def extract_active_check_ids_from_source(source_text: str):
     return check_ids
 
 
-def test_active_check_inventory_continuous_1_to_26():
-    """現行 active CHECK IDs 必須為 1..26 連續、無重複、無缺號"""
+def test_active_check_inventory_continuous_1_to_27():
+    """現行 active CHECK IDs 必須為 1..27 連續、無重複、無缺號"""
     import check_consistency
     import inspect
     source = inspect.getsource(check_consistency.run_checks)
     check_ids = extract_active_check_ids_from_source(source)
-    expected = list(range(1, 27))
-    assert len(check_ids) == 26, f"Expected 26 checks, found {len(check_ids)}: {check_ids}"
+    expected = list(range(1, 28))
+    assert len(check_ids) == 27, f"Expected 27 checks, found {len(check_ids)}: {check_ids}"
     assert check_ids == expected, f"Check IDs drift: {check_ids} != {expected}"
 
 
@@ -536,12 +536,12 @@ def test_active_check_inventory_negative_controls():
     with open(cc_path, "r", encoding="utf-8") as f:
         real_content = f.read()
 
-    # Positive control: current real source 1..26 exactly once -> PASS
+    # Positive control: current real source 1..27 exactly once -> PASS
     ok, err, metadata = verify_check_consistency_inventory(real_content)
     assert ok is True, f"Positive control failed: {err}"
-    assert metadata["total_checks"] == 26
-    assert metadata["docstring_ids"] == list(range(1, 27))
-    assert metadata["run_checks_ids"] == list(range(1, 27))
+    assert metadata["total_checks"] == 27
+    assert metadata["docstring_ids"] == list(range(1, 28))
+    assert metadata["run_checks_ids"] == list(range(1, 28))
 
     # A. Active CHECK 26 removed -> full inventory validation FAIL
     tampered_a = real_content.replace('print("\\nCHECK 26: M2 計畫與執行重放暨證據完整性守衛")', '# removed check 26')
@@ -596,7 +596,7 @@ def test_active_check_inventory_negative_controls():
     tampered_e = tampered_e.replace('print("\\nCHECK 26: M2 計畫與執行重放暨證據完整性守衛")', 'print("\\nCHECK 26 - M2 計畫與執行重放暨證據完整性守衛")')
     ok_e, err_e, meta_e = verify_check_consistency_inventory(tampered_e)
     assert ok_e is True, f"Expected punctuation tolerance but got: {err_e}"
-    assert meta_e["run_checks_ids"] == list(range(1, 27))
+    assert meta_e["run_checks_ids"] == list(range(1, 28))
 
 
 
