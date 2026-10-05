@@ -1,36 +1,34 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "SEC01-INC1-SPEC-INVENTORY-261005",
-  "base_oid": "5b6f04d8cdc8a8724ef9b64cf710c1f760245d92",
+  "task_id": "SEC01-INC2-DETECTION-MATRIX-261005",
+  "base_oid": "6215e1a7475d20ec7325567f81c376d82b53683e",
   "plan": {
     "allowed_paths": [
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
-      "docs/adr/0019-jules-official-cli-and-mcp.md",
-      "docs/adr/0022-channel-gateway-architecture.md",
-      "docs/adr/0026-gateway-secret-provider-windows-credential-manager.md",
       "docs/adr/0027-managed-secret-inventory-and-storage-policy.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/governance/secret-inventory.json",
+      "docs/governance/secret-detection-matrix.json",
       "docs/refactor-backlog.md",
-      "skills/agents/jules-integration/SKILL.md"
+      "scripts/secret_scan.py",
+      "scripts/tests/test_secret_detection_matrix.py",
+      "shared/dlpSanitizer.js"
     ],
     "required_paths": [
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
-      "docs/adr/0019-jules-official-cli-and-mcp.md",
-      "docs/adr/0022-channel-gateway-architecture.md",
-      "docs/adr/0026-gateway-secret-provider-windows-credential-manager.md",
       "docs/adr/0027-managed-secret-inventory-and-storage-policy.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/governance/secret-inventory.json",
+      "docs/governance/secret-detection-matrix.json",
       "docs/refactor-backlog.md",
-      "skills/agents/jules-integration/SKILL.md"
+      "scripts/secret_scan.py",
+      "scripts/tests/test_secret_detection_matrix.py",
+      "shared/dlpSanitizer.js"
     ],
     "max_plan_revisions": 3,
     "revision_count": 0,
@@ -41,15 +39,14 @@
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
-      "docs/adr/0019-jules-official-cli-and-mcp.md",
-      "docs/adr/0022-channel-gateway-architecture.md",
-      "docs/adr/0026-gateway-secret-provider-windows-credential-manager.md",
       "docs/adr/0027-managed-secret-inventory-and-storage-policy.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/governance/secret-inventory.json",
+      "docs/governance/secret-detection-matrix.json",
       "docs/refactor-backlog.md",
-      "skills/agents/jules-integration/SKILL.md"
+      "scripts/secret_scan.py",
+      "scripts/tests/test_secret_detection_matrix.py",
+      "shared/dlpSanitizer.js"
     ]
   },
   "evidence": [

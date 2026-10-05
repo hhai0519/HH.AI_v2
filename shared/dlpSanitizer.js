@@ -31,6 +31,9 @@ function sanitizeDlp(text) {
   // ── Tier 1：精準模式匹配 ──
   sanitized = sanitized.replace(/AIzaSy[A-Za-z0-9_-]{33,45}/g, '[DLP_GEMINI_KEY]');
   sanitized = sanitized.replace(/\d{8,10}:[A-Za-z0-9_-]{35}/g, '[DLP_TELEGRAM_TOKEN]');
+  sanitized = sanitized.replace(/(?<![0-9A-Za-z_-])AIza[0-9A-Za-z_-]{35}(?![0-9A-Za-z_-])/g, '[DLP_GEMINI_KEY]');
+  sanitized = sanitized.replace(/\b(?:ghp|gho|ghu|ghs|ghr)_[A-Za-z0-9]{36,}\b|\bgithub_pat_[A-Za-z0-9_]{82,}\b/g, '[DLP_GITHUB_TOKEN]');
+  sanitized = sanitized.replace(/\bntn_[A-Za-z0-9]{30,}\b|\bsecret_[A-Za-z0-9]{40,}\b/g, '[DLP_NOTION_TOKEN]');
   sanitized = sanitized.replace(/(eyJhbGciOiJIUzI1NiJ9\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+)/g, '[DLP_LINE_JWT]');
   sanitized = sanitized.replace(/postgres:\/\/([^:]+):([^@]+)@/g, 'postgres://$1:[DLP_DB_PWD]@');
 

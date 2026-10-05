@@ -1,5 +1,5 @@
 {
-  "base_head": "5b6f04d",
+  "base_head": "6215e1a",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -559,16 +559,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 281,
-      "sha256": "a2e20efe33adfd8e90050ec6d2c565f1016707cac71e7893d7f28de9c2b54d5a"
+      "lines": 282,
+      "sha256": "53eaa8af560c721ce732db031713eb3459dd88251171511e41b206b4b9a1d891"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 249,
-      "sha256": "6e9ec4aeb900d1f7a309fe3f9a0bf4726807bad9a5641550b6e8984f9f8158ba"
+      "lines": 250,
+      "sha256": "16db3caf1b132994cdad956f8296fcd724e7fab3203b575c24e481df4380e1a5"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -609,8 +609,8 @@
         "## G. 舊 repo 未盤點區塊（2026-09-02 新發現）",
         "## 封存區"
       ],
-      "lines": 371,
-      "sha256": "b26681e665be24a94dc90e72d2e8b54be33500ef1148ed63f4dc2f1990b64587"
+      "lines": 372,
+      "sha256": "bf1083e81bd34062f5c2514d288a483969aec863dae4505470c6953ef6183269"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1033,10 +1033,11 @@
         "### 8. 實作順序",
         "### 9. 非機密受管金鑰盤點清單",
         "## Consequences",
-        "## 附錄 A：人類可讀對照（非機密）"
+        "## 附錄 A：人類可讀對照（非機密）",
+        "## 2026-10-05 補充（SEC-01 INC-2）：偵測覆蓋矩陣"
       ],
-      "lines": 106,
-      "sha256": "ecbe715c334ea3e3b222a1e158982167378948622714eeb37301af8a2d8f0e48"
+      "lines": 110,
+      "sha256": "9817bb771849af7ab8f009d624b8d0c6d0e21c9b5a5904f8b91a4ac06f606af0"
     },
     "docs/mcp-environment-guide.md": {
       "fences": 0,
@@ -1104,8 +1105,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6348,
-      "sha256": "913dcfd05f25b9b42679817d4c53e92a1dd41068370842144362bf4e52ac6120"
+      "lines": 6349,
+      "sha256": "e5070a9b47ba9d12062d1026041871239ddf4234102d6da67e74b538889fef66"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1212,8 +1213,8 @@
         "# 3. Mode Execution: Staged & Tracked",
         "# ---------------------------------------------------------------------------"
       ],
-      "lines": 299,
-      "sha256": "de0ab32c9182723530643f2a9b41d574b03edb2b624c7fe36c135ff6b68bca5a"
+      "lines": 304,
+      "sha256": "f275871cd3612d57b9947839c832d8731a8445670a7744615fbede705ab6fcdc"
     },
     "scripts/tests/test_anchor.py": {
       "fences": 0,
@@ -1408,6 +1409,30 @@
       "lines": 309,
       "sha256": "6bd14ebf5d71fb20ca470a656045792dd4e8f852371146cf71a08c2f8c9d946c"
     },
+    "scripts/tests/test_secret_detection_matrix.py": {
+      "fences": 0,
+      "headings": [
+        "# -*- coding: utf-8 -*-",
+        "# Deterministic random generator for synthetic samples",
+        "# ==============================================================================",
+        "# M1 Closure Test",
+        "# ==============================================================================",
+        "# ==============================================================================",
+        "# M2 REQUIRED Classes Detection & Sanitization Test",
+        "# ==============================================================================",
+        "# ==============================================================================",
+        "# M3 Derived Class Test",
+        "# ==============================================================================",
+        "# ==============================================================================",
+        "# M4 False Positive Counterexamples Test",
+        "# ==============================================================================",
+        "# ==============================================================================",
+        "# M5 Non-Format Classes Test",
+        "# =============================================================================="
+      ],
+      "lines": 335,
+      "sha256": "e4edb92a55025b75c404837cfad6f9dfee95192b072e3714db8816d62adebf71"
+    },
     "scripts/tests/test_secret_hardening.py": {
       "fences": 0,
       "headings": [
@@ -1564,7 +1589,7 @@
       "sha256": "35bf7dbfa3c7d291b550c3c97a6ae398a22b1dc3624c1d2fc1e4db6963d6e115"
     }
   },
-  "generated_at": "2026-10-05T08:46:08Z",
+  "generated_at": "2026-10-05T10:03:44Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

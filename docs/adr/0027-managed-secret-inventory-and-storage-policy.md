@@ -81,7 +81,7 @@ SEC-01 → SEC-02 → SEC-03 → SEC-04 → 有界 Gateway 行為修正 → TG-M
 
 ## Consequences
 
-1. 確立受管金鑰統一政策，消滅分散存放於環境變數或設定檔之長期風險。
+1. 確立受管金鑰統一政策；目標為於 SEC-02～04 實作並經驗收後，消除分散存放於環境變數或設定檔之長期風險（實作與驗收前未生效）。
 2. 達成獨立金鑰與衍生設定之解耦，杜絕同一憑證多處重複儲存。
 3. 明確區隔三態，確保未經驗收之目標行為不被提前視為已生效。
 4. 排除 GCM 與 IDE SecretStorage，降低對外部工具既有安全鏈路之干擾。
@@ -104,3 +104,7 @@ SEC-01 → SEC-02 → SEC-03 → SEC-04 → 有界 Gateway 行為修正 → TG-M
 | `ide-secret-storage` | REGISTERED_ONLY | EXTERNAL_TOOL_MANAGED | — | — | NOT_MANAGED_BY_HH_AI_V2 | — |
 
 註：「目標狀態」欄取自 secret-inventory.json 之 target_status；現行實作與環境狀態以該檔之 current_state 欄為準（例如 Channel Gateway 已有 ADR-0026 之精確查找讀取提供者）。
+
+## 2026-10-05 補充（SEC-01 INC-2）：偵測覆蓋矩陣
+
+本節依歷史更正慣例新增，上方原文除 Consequences 第 1 點之語氣更正外保留不改。受管金鑰格式類別與偵測器之對應，以 `docs/governance/secret-detection-matrix.json` 為非機密權威清單：標為 REQUIRED 之格式類別，須同時被 `scripts/secret_scan.py` 之對應偵測器與 `shared/dlpSanitizer.js` 之對應標籤偵測，並由 `scripts/tests/test_secret_detection_matrix.py` 以合成樣本與誤報反例驗證；無穩定前綴、格式未確立或僅登錄之類別明列為不可依格式偵測或不適用，不構成「所有秘密皆可辨識」之宣稱。scanner 與 DLP 各自保留其通用規則。Google API Key 之支援格式定為「AIza 後接恰好 35 個 [0-9A-Za-z_-] 字元，且前後不緊鄰同集合字元」；DLP 既有之 AIzaSy 規則較寬而保留。覆蓋結論另受 B-113 所載限制：scanner 遇無法讀取之內容時略過，且含 TEST 等 placeholder 字樣之 token 被豁免。

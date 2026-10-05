@@ -90,6 +90,11 @@ SIGNATURE_PATTERNS = [
         "TELEGRAM_BOT_TOKEN",
         re.compile(r'\b\d{8,10}:[A-Za-z0-9_-]{35}\b')
     ),
+    # C2. Google API Key (SEC-01 INC-2): AIza + exactly 35 chars of [0-9A-Za-z_-]
+    (
+        "GOOGLE_API_KEY",
+        re.compile(r'(?<![0-9A-Za-z_-])AIza[0-9A-Za-z_-]{35}(?![0-9A-Za-z_-])')
+    ),
     # D. Google Session Cookies
     (
         "GOOGLE_SESSION_COOKIE",
