@@ -1,5 +1,5 @@
 {
-  "base_head": "65706d7",
+  "base_head": "5b6f04d",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -559,16 +559,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 280,
-      "sha256": "719e3544b5546076aa5a035b5abcef76bb30f48ea2c3fc8fd622c42beaf74e27"
+      "lines": 281,
+      "sha256": "a2e20efe33adfd8e90050ec6d2c565f1016707cac71e7893d7f28de9c2b54d5a"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 248,
-      "sha256": "c24a3ae11d1f0f5082148ce4d3c5bcdb00bb02daedf12e68587e8fe9a3b939ef"
+      "lines": 249,
+      "sha256": "6e9ec4aeb900d1f7a309fe3f9a0bf4726807bad9a5641550b6e8984f9f8158ba"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -610,7 +610,7 @@
         "## 封存區"
       ],
       "lines": 371,
-      "sha256": "bede4e2df4d77063cb45fd125151e3f450af54a0f37a7444b731cc70170bbc6e"
+      "sha256": "b26681e665be24a94dc90e72d2e8b54be33500ef1148ed63f4dc2f1990b64587"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -863,10 +863,11 @@
         "## Context",
         "## Decision",
         "## 2026-08-29 當日更正",
-        "## Consequences"
+        "## Consequences",
+        "## 2026-10-05 更正（SEC-01）"
       ],
-      "lines": 117,
-      "sha256": "df899180af4acaf413f1fcc23b2d4be928bbf79a581356e4063cbd9d2a8a1bb8"
+      "lines": 127,
+      "sha256": "d133dcd2e49f043bd91f06648a066b60f46fa052b8bf320dcd75f44b15a7d318"
     },
     "docs/adr/0020-github-actions-remote-health-authority.md": {
       "fences": 0,
@@ -910,10 +911,11 @@
         "## TG-MVP-10 架構演進與邊界收斂 (TG-MVP-10 Evolution & Boundaries)",
         "## TG-MVP-11 架構演進與邊界收斂 (TG-MVP-11 Evolution & Boundaries)",
         "## TG-MVP-14 架構演進：對話歸檔與主題管理 (Conversation Archive & Topics)",
-        "## Consequences"
+        "## Consequences",
+        "## 2026-10-05 更正（SEC-01）"
       ],
-      "lines": 207,
-      "sha256": "6ac18642b25fdb955fb21c77734fcbee23f1d3a4063efb7e66e38f73c3111299"
+      "lines": 210,
+      "sha256": "9e7f24b4cab74ae7be06a46640ec8a19f35b62009b4ec2756159a031ea2ed454"
     },
     "docs/adr/0023-channel-gateway-state-store-sqlite.md": {
       "fences": 0,
@@ -1008,10 +1010,33 @@
         "## Consequences",
         "## TG-MVP-10 Telegram Bot API 協議邊界例外 (Telegram Protocol-Boundary Exception — M14 / R2 Alignment)",
         "## TG-MVP-13 Telegram 出站適配器金鑰取用邊界 (Telegram Outbound Secret Consumption — TG-MVP-13)",
-        "## Relationship to Existing Architecture"
+        "## Relationship to Existing Architecture",
+        "## SEC-01 後續擴展：專案層級規格由 ADR-0027 定稿 (Project-Level Specification — SEC-01)"
       ],
-      "lines": 154,
-      "sha256": "561e7d93dc8aaae8f66002756d2778aa2138a270675623a0c0e3466d701a4fe0"
+      "lines": 156,
+      "sha256": "426943d758226e769736df9370176ea13923d02dc8aa5466abee845e3c45c296"
+    },
+    "docs/adr/0027-managed-secret-inventory-and-storage-policy.md": {
+      "fences": 0,
+      "headings": [
+        "# ADR-0027: 受管金鑰盤點與儲存政策 (Managed Secret Inventory & Storage Policy)",
+        "## Context",
+        "## 三態區分",
+        "## Decision",
+        "### 1. 儲存類別與衍生設定區分",
+        "### 2. 命名空間與元件劃分",
+        "### 3. 憑證型態、持久化與精確查找",
+        "### 4. Blob 格式契約",
+        "### 5. 納管範圍與僅登錄項目",
+        "### 6. GitHub 委派授權模式",
+        "### 7. 零備份值原則與安全防護",
+        "### 8. 實作順序",
+        "### 9. 非機密受管金鑰盤點清單",
+        "## Consequences",
+        "## 附錄 A：人類可讀對照（非機密）"
+      ],
+      "lines": 106,
+      "sha256": "ecbe715c334ea3e3b222a1e158982167378948622714eeb37301af8a2d8f0e48"
     },
     "docs/mcp-environment-guide.md": {
       "fences": 0,
@@ -1079,8 +1104,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6347,
-      "sha256": "d4e7da0e1afc44eee24b9c5071e9e0418bdf028905a9253e22fa0447d8ab1e40"
+      "lines": 6348,
+      "sha256": "913dcfd05f25b9b42679817d4c53e92a1dd41068370842144362bf4e52ac6120"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1539,7 +1564,7 @@
       "sha256": "35bf7dbfa3c7d291b550c3c97a6ae398a22b1dc3624c1d2fc1e4db6963d6e115"
     }
   },
-  "generated_at": "2026-10-05T04:51:50Z",
+  "generated_at": "2026-10-05T08:46:08Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

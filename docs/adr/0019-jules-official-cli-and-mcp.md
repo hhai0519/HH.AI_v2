@@ -115,3 +115,13 @@ Decision 第二條依據「官方 MCP 套件的 `--help` 只提供 `config` 子�
 - `docs/mcp-environment-guide.md` 原本記錄 5 個 MCP server，現為 6 個，需補上。
 - Jules 在雲端 VM 是孤立環境，只能依賴 `AGENTS.md` 判斷如何執行測試。本專案
   `AGENTS.md` 原本沒有測試指令，已於同批補上；日後變更測試方式時務必一併檢查。
+
+## 2026-10-05 更正（SEC-01）
+
+本節依歷史更正慣例新增，上方原文保留不改。
+
+**更正三：Consequences 第三點已過期。** 「代價：金鑰以明文存在本機設定檔……若日後官方支援環境變數，應重新評估」一項，已被同日「更正一」推翻：`JULES_API_KEY` 自 2026-08-29 起改由 Windows 使用者層級環境變數提供，`mcp_config.json` 不含明文金鑰（見 `docs/mcp-environment-guide.md`「金鑰存放方式」）。該環境變數作法屬過渡現況；受管金鑰之目標儲存與遷移條件依 ADR-0027 定稿，於 SEC-04 實作並經使用者本機確認前不生效。
+
+**更正四：Context 表格中的具體使用者路徑屬歷史紀錄。** 「金鑰位置」一列記載之路徑含舊工作站的 Windows 使用者名稱，僅為當時實測紀錄，不構成現行路徑規範；現行文件以 `%USERPROFILE%` 等代稱表示使用者目錄。殘留分類由 B-100 R-I 承接。
+
+**註：jules-integration 技能改寫。** Consequences 第四點所述之技能整體改寫（擴充套件路線改為 CLI／MCP、`authorized_mcp_tools` 更新）仍由 B-10 與 B-105 承接；SEC-01 僅更正該技能中金鑰存放於 SecretStorage 之舊描述。

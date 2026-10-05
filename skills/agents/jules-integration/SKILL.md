@@ -12,7 +12,7 @@ semantic_firewall: true
 [Germain-L/Send2Jules](https://github.com/Germain-L/Send2Jules)），將工作交接給雲端 Jules 代理人執行。
 
 **前置條件**：這個擴充套件必須已經透過 Antigravity 的 Extensions 面板安裝，並執行過
-`Jules: Set API Key` 完成金鑰設定（金鑰存放在 OS 層級的 SecretStorage，不會落地成明文檔案）。
+`Jules: Set API Key` 完成金鑰設定（此為 ADR-0003 擴充套件路線之歷史描述，該路線已依 ADR-0019 停用；現行 `JULES_API_KEY` 由 Windows 使用者層級環境變數提供，見 `docs/mcp-environment-guide.md`；受管金鑰之目標儲存依 ADR-0027，於 SEC-04 實作前不生效；本技能之整體改寫由 B-10 與 B-105 承接）。
 這個技能**不包含**任何自行 vendor 原始碼或編譯部署的步驟——所有橋接邏輯由官方擴充套件負責，
 本技能只定義「什麼時候該用、用之前要檢查什麼」。
 

@@ -151,4 +151,6 @@
 - **與 ADR-0025（Local API 安全）之關係**：為 §15 Client Wrapper 與 Loopback HTTP 伺服器提供共用之 HMAC 金鑰安全取得基底。
 - **與 E-03 路線圖之關係**：閉合 B-101，解除 `TG-MVP-10`、`TG-MVP-11`、`TG-CUT-04` 之機密提供者前置依賴。
 
+## SEC-01 後續擴展：專案層級規格由 ADR-0027 定稿 (Project-Level Specification — SEC-01)
 
+本 ADR 之 TargetName 規則以 `HH.AI_v2/channel-gateway/v1` 為根，僅適用 Channel Gateway。專案層級之受管金鑰盤點、命名空間推廣（`HH.AI_v2/<component>/v1/<path>`，含 `mcp-launcher` 元件）、Blob 格式契約（UTF-16LE，D-SEC-2）與遷移條件，由 ADR-0027 定稿；非機密清單見 `docs/governance/secret-inventory.json`。本 ADR 第 2 節之最終語法斷言仍只涵蓋 Channel Gateway 目標，不因 ADR-0027 而放寬。D-SEC-2 記載現有 Gateway 使用端為 UTF-8 Buffer；writer、reader、provider 與 consumer 依 UTF-16LE 契約一起變更由 SEC-02 實作，實作前本 ADR 之現行行為不變。
