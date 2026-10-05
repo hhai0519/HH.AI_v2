@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "B-69-INCA-VERIFICATION-PRIMITIVES-261005",
-  "base_oid": "8c8c3f95d64790a9e4bf75cab1c196e9abdb6b2e",
+  "task_id": "B-69-INCB-CI-STATUS-261005",
+  "base_oid": "ca43d5016f6e6d0d0500b2a347259360078d0c85",
   "plan": {
     "allowed_paths": [
       "docs/AUDIT-LOG.md",
