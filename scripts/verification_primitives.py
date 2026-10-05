@@ -1,4 +1,4 @@
-"""Verification Primitives Tool (Pilot INC-B, B-69).
+"""Verification Primitives Tool (Pilot INC-C, B-69).
 
 This module provides cross-platform read-only verification primitives designed
 to produce identical results across Windows and Linux environments.
@@ -328,15 +328,15 @@ def cmd_ci_status(args: argparse.Namespace) -> None:
     command = "ci-status"
 
     api_base = getattr(args, "api_base", "https://api.github.com")
-    if api_base != "https://api.github.com" and not re.match(r"^http://127\.0\.0\.1:[0-9]{1,5}$", api_base):
+    if api_base != "https://api.github.com" and not re.fullmatch(r"^http://127\.0\.0\.1:[0-9]{1,5}$", api_base):
         emit_unable(command, "INVALID_API_BASE")
 
     head_sha = getattr(args, "head_sha", "")
-    if not re.match(r"^[0-9a-f]{40}$", head_sha):
+    if not re.fullmatch(r"^[0-9a-f]{40}$", head_sha):
         emit_unable(command, "INVALID_HEAD_SHA")
 
     repo = getattr(args, "repo", "")
-    if not re.match(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$", repo):
+    if not re.fullmatch(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$", repo):
         emit_unable(command, "INVALID_ARGUMENT")
 
     branch = getattr(args, "branch", "")

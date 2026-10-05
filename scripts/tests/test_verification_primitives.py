@@ -1,4 +1,4 @@
-"""Unit tests for verification_primitives.py (Pilot INC-B, B-69).
+"""Unit tests for verification_primitives.py (Pilot INC-C, B-69).
 
 All tests execute the production tool via subprocess using sys.executable.
 No parallel comparison logic replaces the production tool.
@@ -1092,3 +1092,64 @@ def test_t16_ci_status_unable() -> None:
         assert res8.returncode == 2
         data8 = json.loads(res8.stdout.decode("ascii"))
         assert data8["reason"] == "INVALID_HEAD_SHA"
+
+
+def test_t17_ci_status_reject_trailing_newline() -> None:
+    with mock_github_server() as srv:
+        head_sha = "c" * 40
+        branch = "main"
+
+        # (a) head-sha with trailing LF -> exit 2 / INVALID_HEAD_SHA
+        srv.state["recorded_requests"].clear()
+        res_sha = run_tool(
+            "ci-status",
+            "--repo", "hhai0519/HH.AI_v2",
+            "--head-sha", head_sha + "\n",
+            "--branch", branch,
+            "--require-job", "verify",
+            "--api-base", srv.url,
+            "--max-attempts", "1",
+            "--interval-seconds", "0",
+        )
+        assert res_sha.returncode == 2
+        data_sha = json.loads(res_sha.stdout.decode("ascii"))
+        assert data_sha["status"] == "VERIFICATION_TOOL_UNABLE_TO_COMPLETE"
+        assert data_sha["reason"] == "INVALID_HEAD_SHA"
+        assert len(srv.state["recorded_requests"]) == 0
+
+        # (b) api-base with trailing LF -> exit 2 / INVALID_API_BASE
+        srv.state["recorded_requests"].clear()
+        res_api = run_tool(
+            "ci-status",
+            "--repo", "hhai0519/HH.AI_v2",
+            "--head-sha", head_sha,
+            "--branch", branch,
+            "--require-job", "verify",
+            "--api-base", srv.url + "\n",
+            "--max-attempts", "1",
+            "--interval-seconds", "0",
+        )
+        assert res_api.returncode == 2
+        data_api = json.loads(res_api.stdout.decode("ascii"))
+        assert data_api["status"] == "VERIFICATION_TOOL_UNABLE_TO_COMPLETE"
+        assert data_api["reason"] == "INVALID_API_BASE"
+        assert len(srv.state["recorded_requests"]) == 0
+
+        # (c) repo with trailing LF -> exit 2 / INVALID_ARGUMENT
+        srv.state["recorded_requests"].clear()
+        res_repo = run_tool(
+            "ci-status",
+            "--repo", "hhai0519/HH.AI_v2\n",
+            "--head-sha", head_sha,
+            "--branch", branch,
+            "--require-job", "verify",
+            "--api-base", srv.url,
+            "--max-attempts", "1",
+            "--interval-seconds", "0",
+        )
+        assert res_repo.returncode == 2
+        data_repo = json.loads(res_repo.stdout.decode("ascii"))
+        assert data_repo["status"] == "VERIFICATION_TOOL_UNABLE_TO_COMPLETE"
+        assert data_repo["reason"] == "INVALID_ARGUMENT"
+        assert len(srv.state["recorded_requests"]) == 0
+

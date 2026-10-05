@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "B-69-INCB-CI-STATUS-261005",
-  "base_oid": "ca43d5016f6e6d0d0500b2a347259360078d0c85",
+  "task_id": "B-69-INCC-FULLMATCH-261005",
+  "base_oid": "66b565eeeb1ba425ba0585a23b698d37474d8b99",
   "plan": {
     "allowed_paths": [
       "docs/AUDIT-LOG.md",
