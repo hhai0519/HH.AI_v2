@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "B-69-INCC-FULLMATCH-261005",
-  "base_oid": "66b565eeeb1ba425ba0585a23b698d37474d8b99",
+  "task_id": "SEC01-PREP-STATE-SYNC-261005",
+  "base_oid": "65706d75ab56a9c03de0972ff78f4247678fe9f5",
   "plan": {
     "allowed_paths": [
       "docs/AUDIT-LOG.md",
@@ -10,9 +10,7 @@
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md",
-      "scripts/tests/test_verification_primitives.py",
-      "scripts/verification_primitives.py"
+      "docs/refactor-backlog.md"
     ],
     "required_paths": [
       "docs/AUDIT-LOG.md",
@@ -20,9 +18,7 @@
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md",
-      "scripts/tests/test_verification_primitives.py",
-      "scripts/verification_primitives.py"
+      "docs/refactor-backlog.md"
     ],
     "max_plan_revisions": 3,
     "revision_count": 0,
@@ -35,9 +31,7 @@
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md",
-      "scripts/tests/test_verification_primitives.py",
-      "scripts/verification_primitives.py"
+      "docs/refactor-backlog.md"
     ]
   },
   "evidence": [
