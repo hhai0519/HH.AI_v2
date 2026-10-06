@@ -1,34 +1,20 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "SEC01-INC2-DETECTION-MATRIX-261005",
-  "base_oid": "6215e1a7475d20ec7325567f81c376d82b53683e",
+  "task_id": "AUDITOR-HANDOFF-GPT-R3-261006",
+  "base_oid": "a0ab3af6bf6d4d7bdeddf43d68ce42b132a598de",
   "plan": {
     "allowed_paths": [
-      "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
-      "docs/adr/0027-managed-secret-inventory-and-storage-policy.md",
       "docs/fingerprints/exec-latest.json",
-      "docs/governance/execution-record.json",
-      "docs/governance/secret-detection-matrix.json",
-      "docs/refactor-backlog.md",
-      "scripts/secret_scan.py",
-      "scripts/tests/test_secret_detection_matrix.py",
-      "shared/dlpSanitizer.js"
+      "docs/governance/execution-record.json"
     ],
     "required_paths": [
-      "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
-      "docs/adr/0027-managed-secret-inventory-and-storage-policy.md",
       "docs/fingerprints/exec-latest.json",
-      "docs/governance/execution-record.json",
-      "docs/governance/secret-detection-matrix.json",
-      "docs/refactor-backlog.md",
-      "scripts/secret_scan.py",
-      "scripts/tests/test_secret_detection_matrix.py",
-      "shared/dlpSanitizer.js"
+      "docs/governance/execution-record.json"
     ],
     "max_plan_revisions": 3,
     "revision_count": 0,
@@ -36,17 +22,10 @@
   },
   "actual": {
     "changed_paths": [
-      "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
-      "docs/adr/0027-managed-secret-inventory-and-storage-policy.md",
       "docs/fingerprints/exec-latest.json",
-      "docs/governance/execution-record.json",
-      "docs/governance/secret-detection-matrix.json",
-      "docs/refactor-backlog.md",
-      "scripts/secret_scan.py",
-      "scripts/tests/test_secret_detection_matrix.py",
-      "shared/dlpSanitizer.js"
+      "docs/governance/execution-record.json"
     ]
   },
   "evidence": [
