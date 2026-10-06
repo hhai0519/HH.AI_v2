@@ -1,38 +1,32 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "SEC01-INC3-R2-261006",
-  "base_oid": "91bd7c08eb48c37efa18cb2e9dda486f8820bb1b",
+  "task_id": "B107-TOOLING-261006",
+  "base_oid": "ba7d7dba05885a8813cd45f216a8469ced9d0e1e",
   "plan": {
     "allowed_paths": [
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
-      "docs/adr/0027-managed-secret-inventory-and-storage-policy.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/governance/secret-guidance-exceptions.json",
       "docs/refactor-backlog.md",
-      "scripts/check_consistency.py",
-      "scripts/tests/test_check_27_secret_guidance.py",
-      "scripts/tests/test_check_consistency.py",
-      "scripts/tests/test_verifier_fail_closed.py",
-      "skills/platform/connect-apps/REFERENCE.md"
+      "scripts/gate_runner.py",
+      "scripts/prompt_intake.py",
+      "scripts/tests/test_gate_runner.py",
+      "scripts/tests/test_prompt_intake.py"
     ],
     "required_paths": [
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
-      "docs/adr/0027-managed-secret-inventory-and-storage-policy.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/governance/secret-guidance-exceptions.json",
       "docs/refactor-backlog.md",
-      "scripts/check_consistency.py",
-      "scripts/tests/test_check_27_secret_guidance.py",
-      "scripts/tests/test_check_consistency.py",
-      "scripts/tests/test_verifier_fail_closed.py",
-      "skills/platform/connect-apps/REFERENCE.md"
+      "scripts/gate_runner.py",
+      "scripts/prompt_intake.py",
+      "scripts/tests/test_gate_runner.py",
+      "scripts/tests/test_prompt_intake.py"
     ],
     "max_plan_revisions": 3,
     "revision_count": 0,
@@ -43,16 +37,13 @@
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
-      "docs/adr/0027-managed-secret-inventory-and-storage-policy.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/governance/secret-guidance-exceptions.json",
       "docs/refactor-backlog.md",
-      "scripts/check_consistency.py",
-      "scripts/tests/test_check_27_secret_guidance.py",
-      "scripts/tests/test_check_consistency.py",
-      "scripts/tests/test_verifier_fail_closed.py",
-      "skills/platform/connect-apps/REFERENCE.md"
+      "scripts/gate_runner.py",
+      "scripts/prompt_intake.py",
+      "scripts/tests/test_gate_runner.py",
+      "scripts/tests/test_prompt_intake.py"
     ]
   },
   "evidence": [
