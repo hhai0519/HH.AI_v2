@@ -1,5 +1,5 @@
 {
-  "base_head": "a0ab3af",
+  "base_head": "91bd7c0",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -559,16 +559,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 282,
-      "sha256": "53eaa8af560c721ce732db031713eb3459dd88251171511e41b206b4b9a1d891"
+      "lines": 284,
+      "sha256": "6b156f9fd63f4bfc09ce1a8dd59aaed3036f200e03ac63dee5accf23cad8e1d4"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 251,
-      "sha256": "9c7b90fa696f2db9c241cc289c1e1556b49833aaf445c78144f4d1b054d4d46e"
+      "lines": 252,
+      "sha256": "9a8c507e2ff94e84eeefad6d21f97db423f6206d922c4025f7065d39990ece9d"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -610,7 +610,7 @@
         "## 封存區"
       ],
       "lines": 372,
-      "sha256": "2052cfbb13df4f4a14a87eb80616819d5518d9ae94ddfb5a14c4b96170c75803"
+      "sha256": "3d708b0f6e6388c3f5323b6c4e8ccdb644ef098aec9cbc221e08bc79dbbf89c2"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1034,10 +1034,11 @@
         "### 9. 非機密受管金鑰盤點清單",
         "## Consequences",
         "## 附錄 A：人類可讀對照（非機密）",
-        "## 2026-10-05 補充（SEC-01 INC-2）：偵測覆蓋矩陣"
+        "## 2026-10-05 補充（SEC-01 INC-2）：偵測覆蓋矩陣",
+        "## 2026-10-05 補充（SEC-01 INC-3）：受管金鑰持久存放指引守衛"
       ],
-      "lines": 110,
-      "sha256": "9817bb771849af7ab8f009d624b8d0c6d0e21c9b5a5904f8b91a4ac06f606af0"
+      "lines": 114,
+      "sha256": "fb7981c8af7ee4958d80261790a29678476772dd3f42cae715bddb8130d48a0c"
     },
     "docs/mcp-environment-guide.md": {
       "fences": 0,
@@ -1105,8 +1106,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6349,
-      "sha256": "e5070a9b47ba9d12062d1026041871239ddf4234102d6da67e74b538889fef66"
+      "lines": 6351,
+      "sha256": "c3d739e1749cf4271a4cc3b7ea66c996f75a5e64aa559954f4b06154292cf797"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1131,10 +1132,18 @@
         "# Known pending migration routes registry (exact key + exact target + rationale)",
         "# Backward compatibility alias",
         "# 已知指向錯誤的歷史 tag。本清單只能縮短、不得加長。",
-        "# 修復批次完成後必須清空；清單中的 tag 若已修復卻未移除，CHECK 18 會 FAIL。"
+        "# 修復批次完成後必須清空；清單中的 tag 若已修復卻未移除，CHECK 18 會 FAIL。",
+        "# ---------------------------------------------------------------------------",
+        "# CHECK 27 — 受管金鑰持久存放指引守衛 (Managed Secret Storage Guidance Guard)",
+        "# SEC-01 INC-3：攔截有效技能文字與 docs/mcp-environment-guide.md 中，",
+        "# 指示以使用者層級持久環境變數或 .env 檔存放受管金鑰之指引。",
+        "# 判定單位為 Markdown 標題區塊；既存之過渡指引與現況描述須以",
+        "# docs/governance/secret-guidance-exceptions.json 逐區塊列管（一對一、綁定全文雜湊、",
+        "# owner 須為未完成之看板任務）。任何輸入缺失、畸形或讀取失敗一律判定失敗。",
+        "# ---------------------------------------------------------------------------"
       ],
-      "lines": 3313,
-      "sha256": "5a2feb0b318ca2fab286777bcb402f392e20b6df6b243f7fd44bc14b3bf4e488"
+      "lines": 3550,
+      "sha256": "5e8dc4d3a98a10e0bf7391c9c805fbdaa2e4342a4ecaf664b62891e65bf08e26"
     },
     "scripts/execution_record.py": {
       "fences": 0,
@@ -1257,6 +1266,26 @@
       "lines": 638,
       "sha256": "49f9eec086adf97788037850da382f2aaa6eb80cf4ad772917ad054a3c4407d8"
     },
+    "scripts/tests/test_check_27_secret_guidance.py": {
+      "fences": 0,
+      "headings": [
+        "# Ensure scripts dir is on sys.path",
+        "# T1 未列管命中：區塊內有「User 層級環境變數」與「金鑰」→ 失敗訊息含「未列管」",
+        "# T2 跨段落：同一標題區塊內，一段只有 SetEnvironmentVariable(名稱, 值, 'User')，另一段表格列出 inventory 舊名稱 → 命中",
+        "# T3 表格：區塊標頭寫「設在 Windows User 層級」之表格，資料列含舊名稱 → 命中",
+        "# T4 .env.local 單一真實來源：同一區塊內一段表格列出 .env.local 與憑證名稱、另一段寫「使 .env.local 成為單一真實來源」→ 命中",
+        "# T5 已列管：例外之 unit_sha256 以 c27_split_units 取得之區塊全文計算 → 無失敗；隨後改動該區塊一字 → 失敗",
+        "# T6 同檔複製：把已列管區塊在同檔複製一份 → 失敗訊息含「一對一」",
+        "# T7 重複例外條目 → 失敗訊息含「重複」；T8 heading 不符 → 失敗訊息含「heading」",
+        "# T9 owner 不存在於看板 → 失敗；owner 狀態為「已完成」→ 失敗訊息含「已完成」",
+        "# T10 例外缺欄位、kind 不合法、unit_sha256 非 64 位小寫 hex → 各自失敗",
+        "# T11 fail-closed（每項各自失敗且不得無失敗）：inventory 缺失；inventory 畸形 JSON；例外檔缺失；例外檔畸形 JSON；TASKBOARD 缺失；目錄不是 Git repo（git ls-files 失敗）；範圍內 .md 為非 UTF-8 位元組",
+        "# T12 不命中：只寫執行期需含舊名稱之環境變數（無持久存放指示）；skills/deprecated/ 下之違規文字；描述存入 Windows Credential Manager → 皆無失敗",
+        "# T13 接線：以 monkeypatch 使 check_27_secret_guidance_guard 回傳一筆失敗時，run_checks([]) 以 SystemExit 結束且 code == 1，輸出含「CHECK 27」；對真實 repo 呼叫 check_27_secret_guidance_guard() 回傳零失敗"
+      ],
+      "lines": 473,
+      "sha256": "e4420af172b497b1ddbf545487677138ed43ba5cbf9e84a77ccfcb3d22a25676"
+    },
     "scripts/tests/test_check_consistency.py": {
       "fences": 0,
       "headings": [
@@ -1295,8 +1324,8 @@
         "# CHECK 26 Tests: M2 Plan-vs-Actual / Evidence Integrity Replay Guard",
         "# ---------------------------------------------------------------------------"
       ],
-      "lines": 2372,
-      "sha256": "fd1fca3e955b46daf2b7b7799259b175d5d2b892f60153fe8ddd35af738ae7fd"
+      "lines": 2374,
+      "sha256": "5b66258d32bf4b9fae2b956040155628126e38b24e4b6ecd52ac1830827f22f8"
     },
     "scripts/tests/test_execution_record.py": {
       "fences": 0,
@@ -1551,7 +1580,7 @@
         "# ==========================================================================="
       ],
       "lines": 747,
-      "sha256": "890e6d95658b3db479339d39e9a6e20dce724796f246cf030c284f2de7753229"
+      "sha256": "439887bb9712704139e1eb55af9c387e416ed7b095f3060a4d6e56d205fa62d8"
     },
     "scripts/tests/test_verify_all.py": {
       "fences": 0,
@@ -1589,7 +1618,7 @@
       "sha256": "35bf7dbfa3c7d291b550c3c97a6ae398a22b1dc3624c1d2fc1e4db6963d6e115"
     }
   },
-  "generated_at": "2026-10-06T05:25:43Z",
+  "generated_at": "2026-10-06T06:55:30Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

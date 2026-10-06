@@ -111,7 +111,7 @@ CREDENTIALS = {
 def validate_credentials(services: list):
     missing = [s for s in services if not CREDENTIALS.get(f"{s}_token")]
     if missing:
-        raise ValueError(f"缺少以下服務的 Token：{', '.join(missing)}\n請在環境變數或 .env 中設定")
+        raise ValueError(f"缺少以下服務的 Token：{', '.join(missing)}\n受管金鑰請依 ADR-0027 與 docs/governance/secret-inventory.json 之流程提供")
 ```
 
 ---
