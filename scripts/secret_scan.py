@@ -11,7 +11,9 @@ Modes:
 
 Invariants:
 - Pure Python standard library only.
-- Fail-closed: exits with code 1 if any secret or forbidden filename is detected.
+- Fail-closed: exits with code 1 if any secret or forbidden filename is detected,
+  and also when tracked or staged content that should be scanned cannot be read
+  (detector SCAN_READ_ERROR, line=0). B-113: no silent skip of unreadable content.
 - Safe output contract: NEVER prints matched secret values, partial tokens, hashes,
   lengths, or context lines.
   Only outputs:
@@ -67,11 +69,17 @@ def check_forbidden_filename(path):
 # 2. Content Detectors (§24)
 # ---------------------------------------------------------------------------
 
-# Placeholder keywords that denote obvious test fixtures, documentation examples, or templates
+# Placeholder keywords that denote obvious test fixtures, documentation examples, or templates.
+# B-113: a keyword only exempts a match when it is a delimited segment (bounded by the start/end
+# of the value or by a non-alphanumeric character such as '_' or '-'), so a random token that
+# merely contains e.g. "test" inside its alphanumeric body is still reported.
+PLACEHOLDER_KEYWORDS = ("SYNTHETIC", "FAKE", "EXAMPLE", "PLACEHOLDER", "REDACTED", "DUMMY", "TEST", "CHANGEME")
 PLACEHOLDER_REGEX = re.compile(
-    r'(?:SYNTHETIC|FAKE|EXAMPLE|PLACEHOLDER|REDACTED|DUMMY|TEST|CHANGEME|<[^>]+>|\$\{[^}]+\}|__[A-Z0-9_]+__)',
+    r'(?<![A-Za-z0-9])(?:' + '|'.join(PLACEHOLDER_KEYWORDS) + r')(?![A-Za-z0-9])'
+    r'|<[^>]+>|\$\{[^}]+\}|__[A-Z0-9_]+__',
     re.IGNORECASE
 )
+SCAN_READ_ERROR = "SCAN_READ_ERROR"
 
 # Individual signature patterns with detector IDs
 SIGNATURE_PATTERNS = [
@@ -150,12 +158,6 @@ def scan_content_lines(content_bytes, file_path):
                     if PLACEHOLDER_REGEX.search(matched_str):
                         continue
 
-                # Also skip if the line itself contains an explicit documentation placeholder marker
-                if PLACEHOLDER_REGEX.search(line):
-                    # Check if the match itself looks like synthetic or placeholder
-                    if any(ph in matched_str.upper() for ph in ("SYNTHETIC", "FAKE", "EXAMPLE", "PLACEHOLDER", "TEST")):
-                        continue
-
                 yield (detector_id, idx)
 
 
@@ -166,6 +168,34 @@ def scan_content_lines(content_bytes, file_path):
 def get_repo_root():
     out = subprocess.check_output(['git', 'rev-parse', '--show-toplevel'], text=True)
     return out.strip()
+
+
+def read_index_entries(repo_root):
+    """
+    Returns {path: (mode, blob_sha, stage)} for index entries (git ls-files -s -z).
+    Paths with several stages (unmerged) map to the entry with the highest stage.
+    """
+    out = subprocess.check_output(['git', 'ls-files', '-s', '-z'], cwd=repo_root)
+    entries = {}
+    for raw in out.split(b'\x00'):
+        if not raw:
+            continue
+        meta, _, path_bytes = raw.partition(b'\t')
+        parts = meta.decode('ascii', errors='replace').split()
+        if len(parts) != 3:
+            continue
+        mode, blob_sha, stage = parts
+        path = path_bytes.decode('utf-8', errors='replace')
+        entries[path] = (mode, blob_sha, stage)
+    return entries
+
+
+def read_index_blob(repo_root, blob_sha):
+    return subprocess.check_output(
+        ['git', 'cat-file', 'blob', blob_sha],
+        cwd=repo_root,
+        stderr=subprocess.DEVNULL
+    )
 
 
 def run_staged_scan(repo_root=None):
@@ -209,6 +239,7 @@ def run_staged_scan(repo_root=None):
             i += 2
 
     findings = []
+    index_entries = read_index_entries(repo_root)
 
     for status_code, path in staged_items:
         # 1. Filename guard: applies to all prospective additions / renames / modifications
@@ -221,15 +252,18 @@ def run_staged_scan(repo_root=None):
         if status_code == 'D':
             continue
 
-        # Read prospective blob from Git index: git show :<path>
+        # Read prospective blob from the Git index (stage 0). Gitlinks (submodules) carry no
+        # file content and are skipped; any other unreadable or unmerged entry fails closed.
+        entry = index_entries.get(path)
+        if entry is not None and entry[0] == '160000':
+            continue
+        if entry is None or entry[2] != '0':
+            findings.append((SCAN_READ_ERROR, path, 0))
+            continue
         try:
-            blob_bytes = subprocess.check_output(
-                ['git', 'show', f':{path}'],
-                cwd=repo_root,
-                stderr=subprocess.DEVNULL
-            )
-        except subprocess.CalledProcessError:
-            # File might be a submodule or broken symlink in index
+            blob_bytes = read_index_blob(repo_root, entry[1])
+        except (subprocess.CalledProcessError, OSError):
+            findings.append((SCAN_READ_ERROR, path, 0))
             continue
 
         for det_id, line_num in scan_content_lines(blob_bytes, path):
@@ -259,13 +293,22 @@ def run_tracked_scan(repo_root):
             findings.append((fn_detector, rel_path, 1))
 
         full_path = os.path.join(repo_root, rel_path)
-        if not os.path.isfile(full_path):
+        # Deleted in the working tree: nothing on disk to scan.
+        if not os.path.lexists(full_path):
+            continue
+        # Gitlink (submodule) checkout directories carry no file content.
+        if os.path.isdir(full_path) and not os.path.islink(full_path):
             continue
 
         try:
-            with open(full_path, 'rb') as f:
-                content_bytes = f.read()
+            if os.path.islink(full_path):
+                # Git stores a symlink as its target text; scan that text, never the target file.
+                content_bytes = os.readlink(full_path).encode('utf-8', errors='replace')
+            else:
+                with open(full_path, 'rb') as f:
+                    content_bytes = f.read()
         except OSError:
+            findings.append((SCAN_READ_ERROR, rel_path, 0))
             continue
 
         for det_id, line_num in scan_content_lines(content_bytes, rel_path):

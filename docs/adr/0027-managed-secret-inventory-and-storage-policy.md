@@ -112,3 +112,7 @@ SEC-01 → SEC-02 → SEC-03 → SEC-04 → 有界 Gateway 行為修正 → TG-M
 ## 2026-10-05 補充（SEC-01 INC-3）：受管金鑰持久存放指引守衛
 
 本節依歷史更正慣例新增，上方原文保留不改。`scripts/check_consistency.py` 之 CHECK 27 掃描有效技能文字（`skills/` 下追蹤之 Markdown，排除 `skills/deprecated/`）與 `docs/mcp-environment-guide.md`，以 Markdown 標題區塊為判定單位：同一區塊內同時出現持久存放指示（使用者層級環境變數、`SetEnvironmentVariable`、`setx`，或 `.env` 檔搭配存放動詞）與受管金鑰名稱或憑證字詞者即為命中。既存之過渡指引與現況描述須於 `docs/governance/secret-guidance-exceptions.json` 逐區塊列管，每筆例外綁定區塊全文 SHA-256、一對一對應、owner 須為看板上未完成之任務；區塊改動、owner 結案或例外失配均使 CHECK 失敗。依 ADR-0027 存入 Windows Credential Manager 之指令不屬持久存放指示；子程序執行期環境變數注入亦不構成命中。輸入缺失、格式不符、Git 列舉或讀檔失敗一律判定失敗。
+
+## 2026-10-06 補充（B-113）：scanner 失效關閉與 placeholder 豁免收斂
+
+本節依歷史更正慣例新增，上方原文保留不改。`scripts/secret_scan.py` 於 tracked 或 staged 模式遇應掃描而無法讀取之內容（含 index 項目缺失、未合併或 blob 讀取失敗）一律以 SCAN_READ_ERROR 判定失敗；僅工作樹已刪除之檔案、gitlink 與暫存區刪除不屬掃描對象。placeholder 字樣僅在值中以非英數字元或首尾為界之獨立片段出現時豁免，夾於 token 英數主體中之字樣不再豁免，亦不再依同行其他位置之標記豁免。2026-10-05 SEC-01 INC-2 補充所載之 B-113 限制自此解除；含獨立 placeholder 片段之 token 仍不在覆蓋結論內。

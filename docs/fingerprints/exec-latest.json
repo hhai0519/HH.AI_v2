@@ -1,5 +1,5 @@
 {
-  "base_head": "ba7d7db",
+  "base_head": "1e9ec40",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -559,16 +559,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 285,
-      "sha256": "329c67c271bbf54c7da31ec3dfc363fe30ac47be452bd651a43a16b2e8dccab8"
+      "lines": 286,
+      "sha256": "28cc62ef2358a7dc5586fa6fff6f3e77102a17b97c2381d349901a64f8882e8c"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 253,
-      "sha256": "dcbab7336eac58bb5c604c55aaa8d5372de83f33d07348df0257cd07e37b58d3"
+      "lines": 254,
+      "sha256": "931d8cb266e46c01255423c75eaad04e67e9643f6fc896c239d4e2e0ac54c5a1"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -610,7 +610,7 @@
         "## 封存區"
       ],
       "lines": 372,
-      "sha256": "6e1b8c68330ccbbdfdcba0ef238f7b94866ccbe5fe80bc3a03c41712d6a653c5"
+      "sha256": "44f2a82a9d443f77cdcbd3a612189a6f0bdf7b99b09f217f72740dc172009691"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1035,10 +1035,11 @@
         "## Consequences",
         "## 附錄 A：人類可讀對照（非機密）",
         "## 2026-10-05 補充（SEC-01 INC-2）：偵測覆蓋矩陣",
-        "## 2026-10-05 補充（SEC-01 INC-3）：受管金鑰持久存放指引守衛"
+        "## 2026-10-05 補充（SEC-01 INC-3）：受管金鑰持久存放指引守衛",
+        "## 2026-10-06 補充（B-113）：scanner 失效關閉與 placeholder 豁免收斂"
       ],
-      "lines": 114,
-      "sha256": "fb7981c8af7ee4958d80261790a29678476772dd3f42cae715bddb8130d48a0c"
+      "lines": 118,
+      "sha256": "c9fe7372fb66c155636d60981ed64e331514e7920b5140523932614866b8c919"
     },
     "docs/mcp-environment-guide.md": {
       "fences": 0,
@@ -1106,8 +1107,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6352,
-      "sha256": "c58999c4fcf0609b7d57c0f7c9b2c10e103973346b63338dbabc489dc3a3d60c"
+      "lines": 6353,
+      "sha256": "2f95278cd6e3d5a458eebcb4f74cded9ddd6b61def9c6270fe63fa70da7effa7"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1232,14 +1233,17 @@
         "# ---------------------------------------------------------------------------",
         "# 2. Content Detectors (§24)",
         "# ---------------------------------------------------------------------------",
-        "# Placeholder keywords that denote obvious test fixtures, documentation examples, or templates",
+        "# Placeholder keywords that denote obvious test fixtures, documentation examples, or templates.",
+        "# B-113: a keyword only exempts a match when it is a delimited segment (bounded by the start/end",
+        "# of the value or by a non-alphanumeric character such as '_' or '-'), so a random token that",
+        "# merely contains e.g. \"test\" inside its alphanumeric body is still reported.",
         "# Individual signature patterns with detector IDs",
         "# ---------------------------------------------------------------------------",
         "# 3. Mode Execution: Staged & Tracked",
         "# ---------------------------------------------------------------------------"
       ],
-      "lines": 304,
-      "sha256": "f275871cd3612d57b9947839c832d8731a8445670a7744615fbede705ab6fcdc"
+      "lines": 347,
+      "sha256": "86384f81c4f46a95257c59d8666a04857302aed4758c2def4592cd9ca2ed7f19"
     },
     "scripts/tests/test_anchor.py": {
       "fences": 0,
@@ -1518,6 +1522,17 @@
       "lines": 892,
       "sha256": "cbd75836f71340919793044ab846fa502a6149b547bf72c129cd973deb21879c"
     },
+    "scripts/tests/test_secret_scan_fail_closed.py": {
+      "fences": 0,
+      "headings": [
+        "# -*- coding: utf-8 -*-",
+        "# ---------------------------------------------------------------- placeholder semantics",
+        "# ---------------------------------------------------------------- tracked mode",
+        "# ---------------------------------------------------------------- staged mode"
+      ],
+      "lines": 215,
+      "sha256": "a04f0ac80e442a3cb3fe05747ef965bf1fb4d08b242d4cfb52faccf2ba9d1e66"
+    },
     "scripts/tests/test_shared_primitives.py": {
       "fences": 0,
       "headings": [
@@ -1650,7 +1665,7 @@
       "sha256": "35bf7dbfa3c7d291b550c3c97a6ae398a22b1dc3624c1d2fc1e4db6963d6e115"
     }
   },
-  "generated_at": "2026-10-06T10:52:34Z",
+  "generated_at": "2026-10-06T15:13:46Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {
