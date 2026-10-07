@@ -1,32 +1,24 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "SEC02-INC1-R2-261006",
-  "base_oid": "103ef21358cb1f4d97cadaea6d1685d81a19c59c",
+  "task_id": "AUDITOR-SYNC-GPT-261007",
+  "base_oid": "3fadf60f6085809c16c3a6135a7ec9ac7518affa",
   "plan": {
     "allowed_paths": [
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
-      "docs/adr/0026-gateway-secret-provider-windows-credential-manager.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md",
-      "runtime/channel-gateway/core/secret-provider.js",
-      "runtime/channel-gateway/core/windows-credential-manager-provider.js",
-      "runtime/channel-gateway/tests/windows-credential-manager-provider.test.js"
+      "docs/refactor-backlog.md"
     ],
     "required_paths": [
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
-      "docs/adr/0026-gateway-secret-provider-windows-credential-manager.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md",
-      "runtime/channel-gateway/core/secret-provider.js",
-      "runtime/channel-gateway/core/windows-credential-manager-provider.js",
-      "runtime/channel-gateway/tests/windows-credential-manager-provider.test.js"
+      "docs/refactor-backlog.md"
     ],
     "max_plan_revisions": 3,
     "revision_count": 0,
@@ -37,13 +29,9 @@
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
-      "docs/adr/0026-gateway-secret-provider-windows-credential-manager.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md",
-      "runtime/channel-gateway/core/secret-provider.js",
-      "runtime/channel-gateway/core/windows-credential-manager-provider.js",
-      "runtime/channel-gateway/tests/windows-credential-manager-provider.test.js"
+      "docs/refactor-backlog.md"
     ]
   },
   "evidence": [
