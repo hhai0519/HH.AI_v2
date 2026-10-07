@@ -1,32 +1,32 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "B113-FAILCLOSED-261006",
-  "base_oid": "1e9ec4083c5ce3bde355572de0e83a4d3728ce76",
+  "task_id": "SEC02-INC1-R2-261006",
+  "base_oid": "103ef21358cb1f4d97cadaea6d1685d81a19c59c",
   "plan": {
     "allowed_paths": [
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
-      "docs/adr/0027-managed-secret-inventory-and-storage-policy.md",
+      "docs/adr/0026-gateway-secret-provider-windows-credential-manager.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/governance/secret-detection-matrix.json",
       "docs/refactor-backlog.md",
-      "scripts/secret_scan.py",
-      "scripts/tests/test_secret_scan_fail_closed.py"
+      "runtime/channel-gateway/core/secret-provider.js",
+      "runtime/channel-gateway/core/windows-credential-manager-provider.js",
+      "runtime/channel-gateway/tests/windows-credential-manager-provider.test.js"
     ],
     "required_paths": [
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
-      "docs/adr/0027-managed-secret-inventory-and-storage-policy.md",
+      "docs/adr/0026-gateway-secret-provider-windows-credential-manager.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/governance/secret-detection-matrix.json",
       "docs/refactor-backlog.md",
-      "scripts/secret_scan.py",
-      "scripts/tests/test_secret_scan_fail_closed.py"
+      "runtime/channel-gateway/core/secret-provider.js",
+      "runtime/channel-gateway/core/windows-credential-manager-provider.js",
+      "runtime/channel-gateway/tests/windows-credential-manager-provider.test.js"
     ],
     "max_plan_revisions": 3,
     "revision_count": 0,
@@ -37,13 +37,13 @@
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
-      "docs/adr/0027-managed-secret-inventory-and-storage-policy.md",
+      "docs/adr/0026-gateway-secret-provider-windows-credential-manager.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/governance/secret-detection-matrix.json",
       "docs/refactor-backlog.md",
-      "scripts/secret_scan.py",
-      "scripts/tests/test_secret_scan_fail_closed.py"
+      "runtime/channel-gateway/core/secret-provider.js",
+      "runtime/channel-gateway/core/windows-credential-manager-provider.js",
+      "runtime/channel-gateway/tests/windows-credential-manager-provider.test.js"
     ]
   },
   "evidence": [

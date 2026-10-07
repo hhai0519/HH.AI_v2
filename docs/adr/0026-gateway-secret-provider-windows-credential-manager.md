@@ -154,3 +154,7 @@
 ## SEC-01 後續擴展：專案層級規格由 ADR-0027 定稿 (Project-Level Specification — SEC-01)
 
 本 ADR 之 TargetName 規則以 `HH.AI_v2/channel-gateway/v1` 為根，僅適用 Channel Gateway。專案層級之受管金鑰盤點、命名空間推廣（`HH.AI_v2/<component>/v1/<path>`，含 `mcp-launcher` 元件）、Blob 格式契約（UTF-16LE，D-SEC-2）與遷移條件，由 ADR-0027 定稿；非機密清單見 `docs/governance/secret-inventory.json`。本 ADR 第 2 節之最終語法斷言仍只涵蓋 Channel Gateway 目標，不因 ADR-0027 而放寬。D-SEC-2 記載現有 Gateway 使用端為 UTF-8 Buffer；writer、reader、provider 與 consumer 依 UTF-16LE 契約一起變更由 SEC-02 實作，實作前本 ADR 之現行行為不變。
+
+## 2026-10-06 補充（SEC-02 INC-1）：Credential blob UTF-16LE 解碼契約
+
+本節依歷史更正慣例新增，上方原文保留不改。依 D-SEC-2，`WindowsCredentialManagerSecretProvider` 將讀取橋接輸出之 credential blob 視為 UTF-16LE，於提供者邊界嚴格解碼後轉為 UTF-8 `Buffer` 交付使用端：奇數位元組長度、開頭之位元組順序標記（U+FEFF）、任何 U+0000 碼元與未配對之代理碼元，一律以穩定錯誤碼 `SECRET_ENCODING_INVALID` 失敗關閉，不推測或回退至其他編碼。轉碼過程不建立含機密內容之字串；橋接原始位元組與轉碼暫存區於成功與失敗路徑皆以最佳努力歸零；回傳之 `Buffer` 為新配置且由呼叫端獨佔。讀取橋接、TargetName 規則、逾時與零列舉契約不變；寫入、刪除與存在性查詢由 SEC-02 後續增量實作；現有 Gateway 使用端仍接收 UTF-8 `Buffer`。

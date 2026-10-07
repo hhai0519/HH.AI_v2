@@ -14,9 +14,10 @@ const assert = require('node:assert');
 const fs = require('node:fs');
 const path = require('node:path');
 const child_process = require('node:child_process');
-const { SecretRef } = require('../core/secret-provider');
+const { SecretRef, SecretProviderError } = require('../core/secret-provider');
 const {
   WindowsCredentialManagerSecretProvider,
+  decodeCredentialBlobUtf16le,
 } = require('../core/windows-credential-manager-provider');
 
 test('WindowsCredManProvider - A. non-win32 fails UNSUPPORTED_PLATFORM without OS lookup', () => {
@@ -42,7 +43,7 @@ test('WindowsCredManProvider - B. bridge invocation has shell=false, target exac
     capturedOptions = opts;
     return {
       status: 0,
-      stdout: Buffer.from('mock-secret-payload'),
+      stdout: Buffer.from('mock-secret-payload', 'utf16le'),
       stderr: Buffer.from(''),
     };
   };
@@ -85,7 +86,7 @@ test('WindowsCredManProvider - C. provider never requests enumeration', () => {
 
   const mockSpawn = (cmd, args, opts) => {
     spawnedArgs = args;
-    return { status: 0, stdout: Buffer.from('non-empty-secret'), stderr: Buffer.from('') };
+    return { status: 0, stdout: Buffer.from('non-empty-secret', 'utf16le'), stderr: Buffer.from('') };
   };
 
   const provider = new WindowsCredentialManagerSecretProvider({
@@ -107,7 +108,7 @@ test('WindowsCredManProvider - C. provider never requests enumeration', () => {
 test('WindowsCredManProvider - D. successful bridge output becomes Buffer', () => {
   const mockSpawn = () => ({
     status: 0,
-    stdout: Buffer.from([0x01, 0x02, 0x03, 0x04]),
+    stdout: Buffer.from([0x01, 0x00, 0x02, 0x00, 0x03, 0x00, 0x04, 0x00]),
     stderr: Buffer.from(''),
   });
 
@@ -272,7 +273,7 @@ test('WindowsCredManProvider - J. Windows live synthetic CredMan integration', (
   const secretRef = SecretRef.telegramBotToken(uniqueAccountId);
   const targetName = secretRef.getTargetName();
 
-  const syntheticSecretText = 'SyntheticPayload_' + Math.random().toString(36).slice(2);
+  const syntheticSecretText = 'SyntheticPayload_ASCII_é_中_😀_' + Math.random().toString(36).slice(2);
   const syntheticBytes = Buffer.from(syntheticSecretText, 'utf8');
 
   const runEncodedPs = (script) => {
@@ -319,7 +320,7 @@ if (-not ([System.Management.Automation.PSTypeName]'WinCredLiveHelper').Type) {
 }
 
 $target = '${targetName}'
-$bytes = [System.Text.Encoding]::UTF8.GetBytes('${syntheticSecretText}')
+$bytes = [System.Text.Encoding]::Unicode.GetBytes('${syntheticSecretText}')
 $h = [System.Runtime.InteropServices.Marshal]::AllocHGlobal($bytes.Length)
 [System.Runtime.InteropServices.Marshal]::Copy($bytes, 0, $h, $bytes.Length)
 
@@ -379,6 +380,8 @@ if ($ok) { exit 0 } else { exit 1 }
     // 3. Assert bytes equal in memory
     assert.strictEqual(Buffer.isBuffer(retrieved), true);
     assert.strictEqual(retrieved.equals(syntheticBytes), true);
+    retrieved.fill(0);
+    retrieved = null;
   } finally {
     // 4. Best-effort zeroization of retrieved buffer
     if (retrieved && Buffer.isBuffer(retrieved)) {
@@ -397,7 +400,7 @@ if ($ok) { exit 0 } else { exit 1 }
     assert.strictEqual(delRes.status, 0, `Synthetic credential cleanup should succeed: ${delRes.stderr}`);
   }
 
-  // 6. Verify missing target fails closed after deletion using production default provider (F2-A parity)
+  // 7. Verify missing target fails closed after deletion using production default provider (F2-A parity)
   const readMissingStart = process.hrtime.bigint();
   try {
     const missingProvider = new WindowsCredentialManagerSecretProvider();
@@ -416,7 +419,7 @@ test('WindowsCredManProvider - K. spawn options contain bounded timeout and cust
   let capturedOptions = null;
   const mockSpawn = (cmd, args, opts) => {
     capturedOptions = opts;
-    return { status: 0, stdout: Buffer.from('data'), stderr: Buffer.from('') };
+    return { status: 0, stdout: Buffer.from('data', 'utf16le'), stderr: Buffer.from('') };
   };
 
   // 1. Default timeout
@@ -489,7 +492,7 @@ test('WindowsCredManProvider - M. subclass getTargetName override and mutation c
   let spawned = false;
   const mockSpawn = () => {
     spawned = true;
-    return { status: 0, stdout: Buffer.from('data'), stderr: Buffer.from('') };
+    return { status: 0, stdout: Buffer.from('data', 'utf16le'), stderr: Buffer.from('') };
   };
 
   const provider = new WindowsCredentialManagerSecretProvider({
@@ -522,7 +525,7 @@ test('WindowsCredManProvider - N. invalid canonical target fails closed before c
   let spawned = false;
   const mockSpawn = () => {
     spawned = true;
-    return { status: 0, stdout: Buffer.from('data'), stderr: Buffer.from('') };
+    return { status: 0, stdout: Buffer.from('data', 'utf16le'), stderr: Buffer.from('') };
   };
 
   const provider = new WindowsCredentialManagerSecretProvider({
@@ -798,4 +801,187 @@ ${assertScript}
   });
 
   assert.strictEqual(res.status, 0, `Type-load smoke failed with status ${res.status}: ${res.stderr}`);
+});
+
+test('WindowsCredManProvider - R. decodeCredentialBlobUtf16le decodes ASCII, BMP, and supplementary plane characters', () => {
+  // 1. ASCII
+  const asciiText = 'ASCII_Test_String_123!@#$';
+  const asciiBlob = Buffer.from(asciiText, 'utf16le');
+  const asciiDecoded = decodeCredentialBlobUtf16le(asciiBlob);
+  assert.strictEqual(Buffer.isBuffer(asciiDecoded), true);
+  assert.strictEqual(asciiDecoded.equals(Buffer.from(asciiText, 'utf8')), true);
+
+  // 2. BMP non-ASCII
+  const bmpText = 'BMP_é_à_ö_中_文_測試_€';
+  const bmpBlob = Buffer.from(bmpText, 'utf16le');
+  const bmpDecoded = decodeCredentialBlobUtf16le(bmpBlob);
+  assert.strictEqual(Buffer.isBuffer(bmpDecoded), true);
+  assert.strictEqual(bmpDecoded.equals(Buffer.from(bmpText, 'utf8')), true);
+
+  // 3. Supplementary plane (U+1F600 emoji via surrogate pair)
+  const suppText = '😀🚀🎉';
+  const suppBlob = Buffer.from(suppText, 'utf16le');
+  const suppDecoded = decodeCredentialBlobUtf16le(suppBlob);
+  assert.strictEqual(Buffer.isBuffer(suppDecoded), true);
+  assert.strictEqual(suppDecoded.length, 12); // 3 * 4 bytes
+  assert.strictEqual(suppDecoded.equals(Buffer.from(suppText, 'utf8')), true);
+
+  // 4. Mixed combined text
+  const mixedText = 'Prefix_ASCII_é_中_😀_Suffix_123';
+  const mixedBlob = Buffer.from(mixedText, 'utf16le');
+  const mixedDecoded = decodeCredentialBlobUtf16le(mixedBlob);
+  assert.strictEqual(mixedDecoded.equals(Buffer.from(mixedText, 'utf8')), true);
+});
+
+test('WindowsCredManProvider - S. decodeCredentialBlobUtf16le fails closed with SECRET_ENCODING_INVALID on all invalid encodings', () => {
+  // 1. Odd byte length
+  assert.throws(
+    () => decodeCredentialBlobUtf16le(Buffer.from([0x61])),
+    { code: 'SECRET_ENCODING_INVALID' }
+  );
+  assert.throws(
+    () => decodeCredentialBlobUtf16le(Buffer.from([0x61, 0x00, 0x62])),
+    { code: 'SECRET_ENCODING_INVALID' }
+  );
+
+  // 2. Initial BOM (0xFEFF)
+  assert.throws(
+    () => decodeCredentialBlobUtf16le(Buffer.from('\uFEFFvalid', 'utf16le')),
+    { code: 'SECRET_ENCODING_INVALID' }
+  );
+
+  // 3. Embedded U+0000
+  assert.throws(
+    () => decodeCredentialBlobUtf16le(Buffer.from('hello\u0000world', 'utf16le')),
+    { code: 'SECRET_ENCODING_INVALID' }
+  );
+
+  // 4. Trailing U+0000
+  assert.throws(
+    () => decodeCredentialBlobUtf16le(Buffer.from('hello\u0000', 'utf16le')),
+    { code: 'SECRET_ENCODING_INVALID' }
+  );
+
+  // 5. Unpaired high surrogate at end
+  assert.throws(
+    () => decodeCredentialBlobUtf16le(Buffer.from('valid\uD83D', 'utf16le')),
+    { code: 'SECRET_ENCODING_INVALID' }
+  );
+
+  // 6. High surrogate followed by non-low surrogate
+  assert.throws(
+    () => decodeCredentialBlobUtf16le(Buffer.from('valid\uD83Da', 'utf16le')),
+    { code: 'SECRET_ENCODING_INVALID' }
+  );
+  assert.throws(
+    () => decodeCredentialBlobUtf16le(Buffer.from('valid\uD83D\uD83D', 'utf16le')),
+    { code: 'SECRET_ENCODING_INVALID' }
+  );
+
+  // 7. Lone low surrogate
+  assert.throws(
+    () => decodeCredentialBlobUtf16le(Buffer.from('\uDE00', 'utf16le')),
+    { code: 'SECRET_ENCODING_INVALID' }
+  );
+  assert.throws(
+    () => decodeCredentialBlobUtf16le(Buffer.from('prefix\uDE00suffix', 'utf16le')),
+    { code: 'SECRET_ENCODING_INVALID' }
+  );
+});
+
+test('WindowsCredManProvider - T. getSecret zeroes stdout buffer on success and failure, and returns fresh distinct Buffer', () => {
+  // 1. Success case: stdout buffer zeroed, returned Buffer is fresh distinct object
+  const secretString = 'confidential-token-value-999';
+  const stdoutBufSuccess = Buffer.from(secretString, 'utf16le');
+  const mockSpawnSuccess = () => ({
+    status: 0,
+    stdout: stdoutBufSuccess,
+    stderr: Buffer.from(''),
+  });
+
+  const providerSuccess = new WindowsCredentialManagerSecretProvider({
+    platform: 'win32',
+    powershellPath: process.execPath,
+    scriptPath: __filename,
+    spawnSync: mockSpawnSuccess,
+  });
+
+  const secretResult = providerSuccess.getSecret(SecretRef.telegramBotToken('acc-zero'));
+  assert.strictEqual(Buffer.isBuffer(secretResult), true);
+  assert.strictEqual(secretResult !== stdoutBufSuccess, true, 'Returned Buffer must not be bridge stdout object');
+  assert.strictEqual(secretResult.toString('utf8'), secretString);
+
+  // Verify stdout buffer was zeroed
+  assert.strictEqual(stdoutBufSuccess.every((byte) => byte === 0), true, 'Stdout buffer must be zeroed on success');
+  secretResult.fill(0);
+
+  // 2. Transcoding failure case: stdout buffer zeroed on error
+  const stdoutBufFailure = Buffer.from('corrupt\u0000secret', 'utf16le');
+  const mockSpawnFailure = () => ({
+    status: 0,
+    stdout: stdoutBufFailure,
+    stderr: Buffer.from(''),
+  });
+
+  const providerFailure = new WindowsCredentialManagerSecretProvider({
+    platform: 'win32',
+    powershellPath: process.execPath,
+    scriptPath: __filename,
+    spawnSync: mockSpawnFailure,
+  });
+
+  assert.throws(
+    () => providerFailure.getSecret(SecretRef.telegramBotToken('acc-zero-fail')),
+    { code: 'SECRET_ENCODING_INVALID' }
+  );
+  assert.strictEqual(stdoutBufFailure.every((byte) => byte === 0), true, 'Stdout buffer must be zeroed on transcode failure');
+});
+
+test('WindowsCredManProvider - U. error message and stack never leak secret marker string', () => {
+  const canaryMarker = 'CANARY_SENSITIVE_SECRET_TOKEN_DO_NOT_LEAK_48201';
+  const invalidBlob = Buffer.from(`auth_${canaryMarker}_\u0000`, 'utf16le');
+
+  try {
+    decodeCredentialBlobUtf16le(invalidBlob);
+    assert.fail('Should have thrown SECRET_ENCODING_INVALID');
+  } catch (err) {
+    assert.strictEqual(err.code, 'SECRET_ENCODING_INVALID');
+    assert.strictEqual(err.message.includes(canaryMarker), false, 'Error message must not leak canary marker');
+    assert.strictEqual(err.stack.includes(canaryMarker), false, 'Error stack must not leak canary marker');
+  }
+
+  // Also verify through getSecret with mock spawn
+  const mockSpawn = () => ({
+    status: 0,
+    stdout: Buffer.from(`auth_${canaryMarker}_\u0000`, 'utf16le'),
+    stderr: Buffer.from(''),
+  });
+
+  const provider = new WindowsCredentialManagerSecretProvider({
+    platform: 'win32',
+    powershellPath: process.execPath,
+    scriptPath: __filename,
+    spawnSync: mockSpawn,
+  });
+
+  try {
+    provider.getSecret(SecretRef.telegramBotToken('canary-acc'));
+    assert.fail('Should have thrown SECRET_ENCODING_INVALID');
+  } catch (err) {
+    assert.strictEqual(err.code, 'SECRET_ENCODING_INVALID');
+    assert.strictEqual(err.message.includes(canaryMarker), false, 'Error message must not leak canary marker');
+    assert.strictEqual(err.stack.includes(canaryMarker), false, 'Error stack must not leak canary marker');
+  }
+});
+
+test('WindowsCredManProvider - V. static source inspection guarantees absence of forbidden decoders', () => {
+  const providerSourcePath = path.resolve(__dirname, '..', 'core', 'windows-credential-manager-provider.js');
+  assert.strictEqual(fs.existsSync(providerSourcePath), true, 'Provider source file must exist');
+  const source = fs.readFileSync(providerSourcePath, 'utf8');
+
+  assert.strictEqual(source.includes('TextDecoder'), false, 'Source must not contain TextDecoder');
+  assert.strictEqual(source.includes('fromCharCode'), false, 'Source must not contain fromCharCode');
+  assert.strictEqual(source.includes('fromCodePoint'), false, 'Source must not contain fromCodePoint');
+  assert.strictEqual(source.includes("toString('utf16le')"), false, "Source must not contain toString('utf16le')");
+  assert.strictEqual(source.includes('toString("utf16le")'), false, 'Source must not contain toString("utf16le")');
 });

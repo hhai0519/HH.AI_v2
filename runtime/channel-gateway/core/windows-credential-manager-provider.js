@@ -12,6 +12,7 @@
  * - Private, captured stdio only; secrets never leak to terminal, args, or environment.
  * - Minimal, non-secret environment passed to bridge child process.
  * - Returns secret material strictly as a Buffer; no string conversion, no JSON serialization.
+ * - Decodes credential blob as UTF-16LE at provider boundary into fresh UTF-8 Buffer (D-SEC-2).
  * - Zero in-memory secret caching inside provider v1 (retrieved on-demand).
  * - Consumer owns Buffer lifecycle and is expected to best-effort zeroize (buf.fill(0)).
  * - Throws stable, non-secret SecretProviderError; never includes raw secret, stdout, or stderr.
@@ -32,6 +33,86 @@ const {
 
 const DEFAULT_TIMEOUT_MS = 60000;
 const MAX_TIMEOUT_MS = 60000;
+
+/**
+ * Decodes a raw credential blob from Windows Credential Manager as UTF-16LE into a freshly
+ * allocated UTF-8 Buffer, strictly rejecting malformed sequences fail-closed (D-SEC-2).
+ *
+ * @param {Buffer} blob - Raw non-empty buffer returned from credential bridge
+ * @returns {Buffer} Freshly allocated UTF-8 buffer
+ */
+function decodeCredentialBlobUtf16le(blob) {
+  if (!Buffer.isBuffer(blob) || blob.length === 0 || blob.length % 2 !== 0) {
+    throw new SecretProviderError(
+      'Invalid credential blob UTF-16LE encoding',
+      'SECRET_ENCODING_INVALID'
+    );
+  }
+
+  if (blob.readUInt16LE(0) === 0xFEFF) {
+    throw new SecretProviderError(
+      'Invalid credential blob UTF-16LE encoding',
+      'SECRET_ENCODING_INVALID'
+    );
+  }
+
+  const numCodeUnits = blob.length / 2;
+  const tempBuf = Buffer.alloc(numCodeUnits * 3);
+  let outIdx = 0;
+
+  try {
+    for (let i = 0; i < blob.length; i += 2) {
+      const cu = blob.readUInt16LE(i);
+      if (cu === 0x0000) {
+        throw new SecretProviderError(
+          'Invalid credential blob UTF-16LE encoding',
+          'SECRET_ENCODING_INVALID'
+        );
+      }
+      if (cu >= 0xD800 && cu <= 0xDBFF) {
+        if (i + 2 >= blob.length) {
+          throw new SecretProviderError(
+            'Invalid credential blob UTF-16LE encoding',
+            'SECRET_ENCODING_INVALID'
+          );
+        }
+        const cu2 = blob.readUInt16LE(i + 2);
+        if (cu2 < 0xDC00 || cu2 > 0xDFFF) {
+          throw new SecretProviderError(
+            'Invalid credential blob UTF-16LE encoding',
+            'SECRET_ENCODING_INVALID'
+          );
+        }
+        i += 2;
+        const codePoint = 0x10000 + ((cu - 0xD800) << 10) + (cu2 - 0xDC00);
+        tempBuf[outIdx++] = 0xF0 | (codePoint >> 18);
+        tempBuf[outIdx++] = 0x80 | ((codePoint >> 12) & 0x3F);
+        tempBuf[outIdx++] = 0x80 | ((codePoint >> 6) & 0x3F);
+        tempBuf[outIdx++] = 0x80 | (codePoint & 0x3F);
+      } else if (cu >= 0xDC00 && cu <= 0xDFFF) {
+        throw new SecretProviderError(
+          'Invalid credential blob UTF-16LE encoding',
+          'SECRET_ENCODING_INVALID'
+        );
+      } else if (cu <= 0x7F) {
+        tempBuf[outIdx++] = cu;
+      } else if (cu <= 0x7FF) {
+        tempBuf[outIdx++] = 0xC0 | (cu >> 6);
+        tempBuf[outIdx++] = 0x80 | (cu & 0x3F);
+      } else {
+        tempBuf[outIdx++] = 0xE0 | (cu >> 12);
+        tempBuf[outIdx++] = 0x80 | ((cu >> 6) & 0x3F);
+        tempBuf[outIdx++] = 0x80 | (cu & 0x3F);
+      }
+    }
+
+    const outBuf = Buffer.alloc(outIdx);
+    tempBuf.copy(outBuf, 0, 0, outIdx);
+    return outBuf;
+  } finally {
+    tempBuf.fill(0);
+  }
+}
 
 class WindowsCredentialManagerSecretProvider extends SecretProvider {
   /**
@@ -147,58 +228,65 @@ class WindowsCredentialManagerSecretProvider extends SecretProvider {
       );
     }
 
-    if (result.error) {
-      if (result.error.code === 'ETIMEDOUT') {
-        throw new SecretProviderError(
-          'Windows Credential Manager bridge timed out',
-          'PROVIDER_UNAVAILABLE'
-        );
-      }
-      throw new SecretProviderError(
-        'Error executing Windows Credential Manager bridge',
-        'PROVIDER_UNAVAILABLE'
-      );
-    }
-
-    if (result.status === 2) {
-      throw new SecretProviderError(
-        'Credential target not found in Windows Credential Manager',
-        'SECRET_NOT_FOUND'
-      );
-    }
-
-    if (result.status === 3) {
-      throw new SecretProviderError(
-        'Access denied accessing Windows Credential Manager target',
-        'PROVIDER_ACCESS_DENIED'
-      );
-    }
-
-    if (result.status !== 0) {
-      throw new SecretProviderError(
-        `Windows Credential Manager bridge failed with status ${result.status}`,
-        'PROVIDER_PROTOCOL_ERROR'
-      );
-    }
-
-    let payload = result.stdout;
+    let payload = result ? result.stdout : null;
     if (!Buffer.isBuffer(payload)) {
       payload = Buffer.from(payload || '');
     }
 
-    if (payload.length === 0) {
-      throw new SecretProviderError(
-        'Credential payload is empty in Windows Credential Manager',
-        'SECRET_EMPTY'
-      );
-    }
+    try {
+      if (result.error) {
+        if (result.error.code === 'ETIMEDOUT') {
+          throw new SecretProviderError(
+            'Windows Credential Manager bridge timed out',
+            'PROVIDER_UNAVAILABLE'
+          );
+        }
+        throw new SecretProviderError(
+          'Error executing Windows Credential Manager bridge',
+          'PROVIDER_UNAVAILABLE'
+        );
+      }
 
-    return payload;
+      if (result.status === 2) {
+        throw new SecretProviderError(
+          'Credential target not found in Windows Credential Manager',
+          'SECRET_NOT_FOUND'
+        );
+      }
+
+      if (result.status === 3) {
+        throw new SecretProviderError(
+          'Access denied accessing Windows Credential Manager target',
+          'PROVIDER_ACCESS_DENIED'
+        );
+      }
+
+      if (result.status !== 0) {
+        throw new SecretProviderError(
+          `Windows Credential Manager bridge failed with status ${result.status}`,
+          'PROVIDER_PROTOCOL_ERROR'
+        );
+      }
+
+      if (payload.length === 0) {
+        throw new SecretProviderError(
+          'Credential payload is empty in Windows Credential Manager',
+          'SECRET_EMPTY'
+        );
+      }
+
+      return decodeCredentialBlobUtf16le(payload);
+    } finally {
+      if (payload.length > 0) {
+        payload.fill(0);
+      }
+    }
   }
 }
 
 module.exports = {
   WindowsCredentialManagerSecretProvider,
+  decodeCredentialBlobUtf16le,
   DEFAULT_TIMEOUT_MS,
   MAX_TIMEOUT_MS,
 };

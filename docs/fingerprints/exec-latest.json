@@ -1,5 +1,5 @@
 {
-  "base_head": "1e9ec40",
+  "base_head": "103ef21",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -559,16 +559,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 286,
-      "sha256": "28cc62ef2358a7dc5586fa6fff6f3e77102a17b97c2381d349901a64f8882e8c"
+      "lines": 287,
+      "sha256": "a96ed83a0a37c48bb2cb97a7ad983ca5be0f6aeee8a3e1c6b64de5fbbeff7e01"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 254,
-      "sha256": "931d8cb266e46c01255423c75eaad04e67e9643f6fc896c239d4e2e0ac54c5a1"
+      "lines": 255,
+      "sha256": "c5fe4b897964bc5df53f1fd78faf3c6779caf63c8fb0193f93eb652d6a6987d5"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -610,7 +610,7 @@
         "## 封存區"
       ],
       "lines": 372,
-      "sha256": "44f2a82a9d443f77cdcbd3a612189a6f0bdf7b99b09f217f72740dc172009691"
+      "sha256": "55cc07ebdee709a108b33069941d3f573ebb5b0984f6f63d775b97038e168f98"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1011,10 +1011,11 @@
         "## TG-MVP-10 Telegram Bot API 協議邊界例外 (Telegram Protocol-Boundary Exception — M14 / R2 Alignment)",
         "## TG-MVP-13 Telegram 出站適配器金鑰取用邊界 (Telegram Outbound Secret Consumption — TG-MVP-13)",
         "## Relationship to Existing Architecture",
-        "## SEC-01 後續擴展：專案層級規格由 ADR-0027 定稿 (Project-Level Specification — SEC-01)"
+        "## SEC-01 後續擴展：專案層級規格由 ADR-0027 定稿 (Project-Level Specification — SEC-01)",
+        "## 2026-10-06 補充（SEC-02 INC-1）：Credential blob UTF-16LE 解碼契約"
       ],
-      "lines": 156,
-      "sha256": "426943d758226e769736df9370176ea13923d02dc8aa5466abee845e3c45c296"
+      "lines": 160,
+      "sha256": "24964d1218213e47b4c0bf8da9456fdc09fd0f903b610607e2304986e46c8613"
     },
     "docs/adr/0027-managed-secret-inventory-and-storage-policy.md": {
       "fences": 0,
@@ -1107,8 +1108,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6353,
-      "sha256": "2f95278cd6e3d5a458eebcb4f74cded9ddd6b61def9c6270fe63fa70da7effa7"
+      "lines": 6354,
+      "sha256": "5d503e238b938b486a963ab8c1154fb73a0b8a86161783882c62b59ea1796fd8"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1665,7 +1666,7 @@
       "sha256": "35bf7dbfa3c7d291b550c3c97a6ae398a22b1dc3624c1d2fc1e4db6963d6e115"
     }
   },
-  "generated_at": "2026-10-06T15:13:46Z",
+  "generated_at": "2026-10-07T02:26:56Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {
