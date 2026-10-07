@@ -1,5 +1,5 @@
 {
-  "base_head": "3fadf60",
+  "base_head": "8a46cba",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -559,16 +559,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 288,
-      "sha256": "f6310ac2144a6c4a45ca9e4ba6d59e04ed9baec21cedfa4b3ceb04d90f3255c7"
+      "lines": 290,
+      "sha256": "b9a6cfd7e181209758b666f6d4ca329605f4ae94f2c1fe6c04bafed980a3f7a7"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 256,
-      "sha256": "b42281b5adc031a59487a3a6a2237510138b600f498172f4515b4ff89f9d7408"
+      "lines": 257,
+      "sha256": "46db78010d07813e050d529492d76d8ef8848b3729e4f63b5a3f6e0177a06cd9"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -610,7 +610,7 @@
         "## 封存區"
       ],
       "lines": 372,
-      "sha256": "eee5667adf428c40fd6b0ba884974632759f6e27b96feb2260a51667cdae2224"
+      "sha256": "f37ce0236de2db743e842430d16bf3ccfacb3ddffe0f29e15ba3e1ca6081fe76"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1108,8 +1108,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6355,
-      "sha256": "aa341d7ecf1e554061c2d05c59b0de7a7a9d0191525a50b7e74032e07efd9413"
+      "lines": 6361,
+      "sha256": "3732e9f0ec7b1b2d39831214ea12c56b58b01977d3fbf91aa4ea93004780b1c6"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1275,8 +1275,8 @@
         "# Control 2: Add-Type should fail",
         "# Control 3: Local function definition + invocation should pass"
       ],
-      "lines": 992,
-      "sha256": "ee04e9e3d03f47a784273559882398bbb941ec814a1a95a979c5c9d8976107fb"
+      "lines": 995,
+      "sha256": "29b3e15c83aa9aee72cbf93fc9e8e29c4bf2063f907e721e43243551d898fad5"
     },
     "scripts/tests/test_check_17_18.py": {
       "fences": 0,
@@ -1666,7 +1666,7 @@
       "sha256": "35bf7dbfa3c7d291b550c3c97a6ae398a22b1dc3624c1d2fc1e4db6963d6e115"
     }
   },
-  "generated_at": "2026-10-07T04:24:30Z",
+  "generated_at": "2026-10-07T17:53:21Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

@@ -985,3 +985,101 @@ test('WindowsCredManProvider - V. static source inspection guarantees absence of
   assert.strictEqual(source.includes("toString('utf16le')"), false, "Source must not contain toString('utf16le')");
   assert.strictEqual(source.includes('toString("utf16le")'), false, 'Source must not contain toString("utf16le")');
 });
+
+test('WindowsCredManProvider - W. INC-1-F3 transcoding temporary buffer is zeroized on success and partial-write failure', () => {
+  const originalAlloc = Buffer.alloc;
+  let spiedBuffers = [];
+
+  const installSpy = () => {
+    spiedBuffers = [];
+    Buffer.alloc = function (size, fill, encoding) {
+      const buf = originalAlloc.call(Buffer, size, fill, encoding);
+      spiedBuffers.push(buf);
+      return buf;
+    };
+  };
+
+  const restoreSpy = () => {
+    Buffer.alloc = originalAlloc;
+  };
+
+  // 1. Success path: tempBuf must be zeroized in finally
+  const payload = Buffer.from('hello-world-secret', 'utf16le');
+  let result = null;
+  try {
+    installSpy();
+    result = decodeCredentialBlobUtf16le(payload);
+    restoreSpy();
+
+    assert.strictEqual(Buffer.isBuffer(result), true);
+    assert.strictEqual(result.toString('utf8'), 'hello-world-secret');
+
+    // In decodeCredentialBlobUtf16le:
+    // First alloc is tempBuf (size numCodeUnits * 3), second alloc is outBuf (size outIdx).
+    assert.strictEqual(spiedBuffers.length, 2, 'Must allocate tempBuf and outBuf');
+    const tempBuf = spiedBuffers[0];
+    const outBuf = spiedBuffers[1];
+    assert.strictEqual(tempBuf !== outBuf, true, 'tempBuf must be distinct from outBuf');
+    assert.strictEqual(result === outBuf, true, 'Returned buffer must be outBuf');
+
+    // Assert tempBuf is completely zeroed
+    assert.strictEqual(
+      tempBuf.every((byte) => byte === 0),
+      true,
+      'Transcoding tempBuf must be zeroized on success'
+    );
+  } finally {
+    restoreSpy();
+    if (result) {
+      result.fill(0);
+    }
+    payload.fill(0);
+  }
+
+  // 2. Partial-write failure path: writes some bytes, then encounters NUL (0x0000)
+  const partialPayload = Buffer.from('partial\u0000more', 'utf16le');
+  try {
+    installSpy();
+    assert.throws(
+      () => decodeCredentialBlobUtf16le(partialPayload),
+      { code: 'SECRET_ENCODING_INVALID' }
+    );
+    restoreSpy();
+
+    assert.strictEqual(spiedBuffers.length >= 1, true, 'tempBuf must have been allocated');
+    const tempBuf = spiedBuffers[0];
+    assert.strictEqual(
+      tempBuf.every((byte) => byte === 0),
+      true,
+      'Transcoding tempBuf must be zeroized on partial-write failure'
+    );
+  } finally {
+    restoreSpy();
+    partialPayload.fill(0);
+  }
+
+  // 3. Partial-write failure path: writes some bytes, then encounters unpaired surrogate
+  const partialSurrogatePayload = Buffer.concat([
+    Buffer.from('partial', 'utf16le'),
+    Buffer.from([0x00, 0xD8, 0x61, 0x00]), // lone high surrogate followed by 'a' (0x0061 not in 0xDC00..0xDFFF)
+  ]);
+  try {
+    installSpy();
+    assert.throws(
+      () => decodeCredentialBlobUtf16le(partialSurrogatePayload),
+      { code: 'SECRET_ENCODING_INVALID' }
+    );
+    restoreSpy();
+
+    assert.strictEqual(spiedBuffers.length >= 1, true, 'tempBuf must have been allocated');
+    const tempBuf = spiedBuffers[0];
+    assert.strictEqual(
+      tempBuf.every((byte) => byte === 0),
+      true,
+      'Transcoding tempBuf must be zeroized on partial surrogate failure'
+    );
+  } finally {
+    restoreSpy();
+    partialSurrogatePayload.fill(0);
+  }
+});
