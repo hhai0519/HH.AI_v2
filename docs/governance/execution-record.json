@@ -1,32 +1,32 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "B107-BOUNDED-S2-R2-261008",
-  "base_oid": "ccf1253dfe82ccdf4ccf7586708cf304d2e1889d",
+  "task_id": "B107-ASSURANCE-S3-261009",
+  "base_oid": "6b948f5220569b4a5776cb549b10cc04dcebedc5",
   "plan": {
     "allowed_paths": [
+      ".agents/rules/prompt-preflight.md",
+      ".claude/rules/auditor-protocol.md",
+      ".claude/rules/auditor-selftest.md",
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
+      "docs/generated/rule-traceability.md",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md",
-      "scripts/bounded_process.py",
-      "scripts/tests/test_batch_runner.py",
-      "scripts/tests/test_bounded_process.py",
-      "scripts/tests/test_channel_gateway_core.py"
+      "docs/refactor-backlog.md"
     ],
     "required_paths": [
+      ".agents/rules/prompt-preflight.md",
+      ".claude/rules/auditor-protocol.md",
+      ".claude/rules/auditor-selftest.md",
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
+      "docs/generated/rule-traceability.md",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md",
-      "scripts/bounded_process.py",
-      "scripts/tests/test_batch_runner.py",
-      "scripts/tests/test_bounded_process.py",
-      "scripts/tests/test_channel_gateway_core.py"
+      "docs/refactor-backlog.md"
     ],
     "max_plan_revisions": 3,
     "revision_count": 0,
@@ -34,16 +34,16 @@
   },
   "actual": {
     "changed_paths": [
+      ".agents/rules/prompt-preflight.md",
+      ".claude/rules/auditor-protocol.md",
+      ".claude/rules/auditor-selftest.md",
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
+      "docs/generated/rule-traceability.md",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md",
-      "scripts/bounded_process.py",
-      "scripts/tests/test_batch_runner.py",
-      "scripts/tests/test_bounded_process.py",
-      "scripts/tests/test_channel_gateway_core.py"
+      "docs/refactor-backlog.md"
     ]
   },
   "evidence": [

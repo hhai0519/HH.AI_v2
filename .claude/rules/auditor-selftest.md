@@ -88,7 +88,7 @@
 ---
 
 > **ID 語意消歧義（ID Disambiguation Note）**：
-> 本自檢清單 E 節之編號（E1–E26）為**提示詞必備要素之檢核項目代碼（checklist item IDs）**，
+> 本自檢清單 E 節之編號（E1–E27）為**提示詞必備要素之檢核項目代碼（checklist item IDs）**，
 > 絕非專案交接驗證階段代碼（如歷史之 E1 注入測試／E2 正式交接）。
 > 嚴禁依 E 節檢核項目編號推斷或關聯專案當前工作任務。
 
@@ -121,6 +121,7 @@
 - [ ] E24 **Dependency Closure 依賴閉包驗證——若本批修改／移除／rename 既有識別字、文字、路徑、章節或契約，是否已於 Allowed Scope 形成前取得確定性反向依賴掃描（`scripts/impact_scan.py`）證據？所有依賴項是否皆有 disposition（UPDATE/VERIFY_ONLY/HISTORICAL_NO_CHANGE）且 UPDATE 項全數納入 Allowed Scope？production replay 是否能接收 Allowed Scope machine artifact 進行機械配對驗證？REQUIRED 批次是否未僅靠 prose 宣稱配對？若無本機執行權限是否先發 read-only discovery？若為 NONE 是否符合免除條件並附理由？**（§6.1-22；核心流程：Intent → Impact Scan → Disposition → Allowed Scope → Prompt → Replay）
 - [ ] E25 **Execution Contract Integrity 完整性——提示詞是否包含 exactly one 合法之 Execution Contract 區塊？contract base_oid 是否與 manifest base_oid 完全一致？main advancement（常態 FORBIDDEN / promotion EXACT_SHA）與 remote deletion（常態 FORBIDDEN / B-104 EXACT_SET）語意是否正確？安全邊界（local destructive Git、credential、env enumeration、cross session、browser mutation、hook bypass）是否全數為 FORBIDDEN？raw log 權威是否為 EXTERNAL_MACRO_ONLY？目標壓力是否 SAFETY_BOUNDARY_WINS？分支建立是否 GIT_SWITCH_C？IDE persistent harness 是否僅視為 defense-in-depth 且確認不以舊 non-persistent Deny List 為 safety authority？**（§6.1-23）
 - [ ] E26 **Plan-vs-Actual / 證據完整性重放（E26 — Plan-vs-Actual & Evidence Integrity Replay）——提示詞是否採用契約 v2（`allowed_mutation_paths`、`required_mutation_paths ⊆ allowed`、`max_plan_revisions: 3`、`execution_record_required`）？是否要求執行者維護機器可讀計畫並輸出 `docs/governance/execution-record.json`？CI 是否以 CHECK 26 重放 `base_oid..HEAD` git diff？提示詞是否落實 Evidence Origin 與 Verification Status 分離、REG-11～13 證據完整性標準，以及 EXTERNAL_ARTIFACT 禁標 VERIFIED 且憑證機器綁定？**（§6.1-24）
+- [ ] E27 **驗證器類變更之執行前保證（E27 — Verifier-Class Pre-Execution Assurance）——本批是否新增或改變驗證、驗收或閘門判定語意（輔以 `scripts/**`、`.github/workflows/**`、rule-registry、裁判或閘門規則、驗收測試等路徑判準）？適用時是否附「承諾對測試」對照（每項行為、時間或結果承諾各對應至少一個測試名稱，無測試之承諾未寫入）？本批新增、修改或直接受影響之證據探針是否附故障注入反例（可引用既有負向測試），證明探針失敗、逾時或無法判定時結果為失敗？交付 Executor 前是否已提供執行前第二意見複核請求——Macro 預先定稿者以作者檔最終 SHA-256 綁定、Executor 自主實作之 GOAL_SPEC 以設計／範圍／驗收／測試策略文件 SHA-256 綁定——並於提示詞記錄複核意見與處置或 USER 未啟用？不適用時是否標記 N/A 並附理由？**（§6.1-25）
 
 
 ★ 2026-09-02 稽核發現本節原只有七項，`auditor-protocol.md` §6.1 有九項，

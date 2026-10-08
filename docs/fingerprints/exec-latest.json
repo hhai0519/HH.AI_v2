@@ -1,5 +1,5 @@
 {
-  "base_head": "ccf1253",
+  "base_head": "6b948f5",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -75,8 +75,8 @@
         "## 5. 例外",
         "## 6. 這條規則保護的是誰"
       ],
-      "lines": 243,
-      "sha256": "b1e02d8f746cfd394346814bb004b9782c6c434e5dd724a34f58d3e6b09cff32"
+      "lines": 244,
+      "sha256": "4e201fce5388a7832e4197030fde1e790e3dca5082c29a937f58c42663c51152"
     },
     ".agents/rules/role-boundaries.md": {
       "fences": 4,
@@ -203,8 +203,8 @@
         "### 12.1 風險分級宏觀審計核心原則 (D-U6)",
         "### 12.2 Tier-M 微修復分類規範 (Tier-M Micro Repair)"
       ],
-      "lines": 532,
-      "sha256": "3736bdfa56b6541384b28d12cd5ca1c29a7aa5f15bb7a6c7e72110ee1f0ba08d"
+      "lines": 533,
+      "sha256": "0bdc53c80ba20466658d718e9a2626ff81dc0766b8f44311de5a7effd535c3d9"
     },
     ".claude/rules/auditor-selftest.md": {
       "fences": 0,
@@ -218,8 +218,8 @@
         "## E. 交付（產出提示詞之前）",
         "## F. 額度（每一輪回覆的開頭與結尾）"
       ],
-      "lines": 139,
-      "sha256": "f22ec32f5a5fdfb9944b5e2db7d4805cde5a4289fb1f12d370eec294c4d8a793"
+      "lines": 140,
+      "sha256": "281b12393d61ea3eb7c41f0dac21011fbd414dce87ebb0147c9828b72390557d"
     },
     ".github/workflows/verify.yml": {
       "fences": 0,
@@ -559,16 +559,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 296,
-      "sha256": "06d6e1ad1c0a0893f3c2be25e6a9e1c0975052af3280ac0949234175b94d7b3d"
+      "lines": 297,
+      "sha256": "76b6b7bec53b490ad4fd1ada41076fb10ac3389135c69c842733f8e503564ac8"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 263,
-      "sha256": "305f5b7c3c795363df88a86c2a33733d9fcfdffb47df53a3e7697ca413a155d6"
+      "lines": 264,
+      "sha256": "3ab9a681033ac1f03b7c882800f5e55f109f322f1d3367626cefc36e0a079f3d"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -610,7 +610,7 @@
         "## 封存區"
       ],
       "lines": 372,
-      "sha256": "d5e4440694ff1fac0e230ae60883cc98efdb9e4ff272a6c0d94722cd725250e7"
+      "sha256": "2bf56e5b07807de03d8d3b347687e7e2d585d0027a8d9a6345b8b5ebea77f1b8"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1108,8 +1108,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6362,
-      "sha256": "0e9d6e6c0e619c90dde1c7824e02c7c0b2da4ca9fe6d17c3242afb56b7ee4c4d"
+      "lines": 6363,
+      "sha256": "8af51abda0117d2c38502549177c165e59bcb6df1f780a87775dee4f2837127e"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1739,7 +1739,7 @@
       "sha256": "35bf7dbfa3c7d291b550c3c97a6ae398a22b1dc3624c1d2fc1e4db6963d6e115"
     }
   },
-  "generated_at": "2026-10-08T21:33:03Z",
+  "generated_at": "2026-10-08T22:50:47Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

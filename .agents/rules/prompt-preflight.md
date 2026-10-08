@@ -153,7 +153,7 @@ GOAL_SPEC 模式不得要求 E-1～E-4，其正確性由測試與 Gate 守護。
 | E11 錨點唯一性驗證 | EXACT_SPEC 套用前驗證錨點 count == 1；GOAL_SPEC 為 N/A |
 | E12 動手前必讀 | 要求讀取規則檔或執行基準前置檢查 |
 | E13 配對與覆蓋 | 依 §3.1 與 §3.2 比對範圍、diff、git add 與 gates |
-| E14 自檢聲明與交付前預檢 | 區塊存在且連號；交付 bytes 必經 validator+preflight PASS，改動須重驗，未驗只能 NOT_PASTEABLE |
+| E14 自檢聲明與交付前預檢 | 區塊存在且連號；交付 bytes 之預檢依 §2.1 第 3 點 |
 | E15 錨點基準來源 | EXACT_SPEC 錨點對應 base commit；GOAL_SPEC 為 N/A |
 | E16 跨檔引用同行 | 跨檔 `§X.Y` 檔名與章節號同行且 target 存在 |
 | E17 結構序列與失敗路徑驗收 | 結構變更附驗收準則；資源取得依 failure-path 定義狀態、owner、exits、exactly-once 清理與反例 |
@@ -165,7 +165,8 @@ GOAL_SPEC 模式不得要求 E-1～E-4，其正確性由測試與 Gate 守護。
 | E23 批次規格進 repo | EXACT_SPEC 附規格路徑與 sha256 且 add；GOAL_SPEC 不要求規格進 repo |
 | E24 依賴閉包檢驗 | 宣告 E24 且 mode=REQUIRED 時重放 impact_scan replay 比對 |
 | E25 Execution Contract 完整性 | 含唯一合法 Execution Contract 區塊，base_oid 一致，安全邊界全 FORBIDDEN |
-| E26 Plan-vs-Actual / 證據完整性重放 | 契約 v2（allowed/required paths, revisions <= 3, record required），計畫/紀錄與 origin 及 CI diff 重放標準，EXTERNAL_ARTIFACT 禁標 VERIFIED 且憑證機器綁定 |
+| E26 Plan-vs-Actual / 證據完整性重放 | 依 §2.1 第 6 點核對契約 v2、計畫與紀錄重放、Origin／Status 分類及憑證綁定 |
+| E27 驗證器類變更之執行前保證 | 依 `.claude/rules/auditor-protocol.md` 第 6.1 節第 25 項：適用時含承諾對測試、探針反例與複核紀錄（意見與處置或 USER 未啟用皆合法）；否則 N/A 附理由 |
 
 **自檢聲明不接受豁免。** 比對為「否」一律停機回報，標為 ⚠️ 或「刻意不做」不構成豁免。偏離規則唯一合法路徑為開批修改規則本身。
 
