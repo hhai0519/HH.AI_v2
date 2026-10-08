@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "B107-BOUNDED-S2-R1-261008",
-  "base_oid": "afdf0bab9478fa9eeef920f0a2ba6d4b6d7a1445",
+  "task_id": "B107-BOUNDED-S2-R2-261008",
+  "base_oid": "ccf1253dfe82ccdf4ccf7586708cf304d2e1889d",
   "plan": {
     "allowed_paths": [
       "docs/AUDIT-LOG.md",
@@ -12,6 +12,7 @@
       "docs/governance/execution-record.json",
       "docs/refactor-backlog.md",
       "scripts/bounded_process.py",
+      "scripts/tests/test_batch_runner.py",
       "scripts/tests/test_bounded_process.py",
       "scripts/tests/test_channel_gateway_core.py"
     ],
@@ -23,6 +24,7 @@
       "docs/governance/execution-record.json",
       "docs/refactor-backlog.md",
       "scripts/bounded_process.py",
+      "scripts/tests/test_batch_runner.py",
       "scripts/tests/test_bounded_process.py",
       "scripts/tests/test_channel_gateway_core.py"
     ],
@@ -39,6 +41,7 @@
       "docs/governance/execution-record.json",
       "docs/refactor-backlog.md",
       "scripts/bounded_process.py",
+      "scripts/tests/test_batch_runner.py",
       "scripts/tests/test_bounded_process.py",
       "scripts/tests/test_channel_gateway_core.py"
     ]

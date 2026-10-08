@@ -229,23 +229,9 @@ def test_bounded_run_returns_exit_code_and_writes_output_to_file(tmp_path):
 
 
 def _alive(pid):
-    if os.name == "nt":
-        out = subprocess.run(["tasklist", "/FI", "PID eq " + str(pid), "/NH"], capture_output=True).stdout.decode("utf-8", "replace")
-        return str(pid) in out
-    stat = "/proc/" + str(pid) + "/stat"
-    if os.path.exists("/proc"):
-        try:
-            with open(stat, encoding="utf-8") as f:
-                return f.read().rsplit(")", 1)[1].split()[0] != "Z"
-        except OSError:
-            return False
-    try:
-        os.kill(pid, 0)
-    except ProcessLookupError:
-        return False
-    except PermissionError:
-        return True
-    return True
+    # Shared probe: a failed platform query raises instead of reporting the process as dead.
+    import bounded_process
+    return bounded_process.process_alive(pid)
 
 
 def test_bounded_run_timeout_terminates_whole_tree(tmp_path):

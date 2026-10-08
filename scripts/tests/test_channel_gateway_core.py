@@ -37,7 +37,8 @@ TESTS_DIR = os.path.join(GATEWAY_DIR, "tests")
 
 if REPO_ROOT not in sys.path:
     sys.path.insert(0, REPO_ROOT)
-from scripts.bounded_process import run_bounded  # noqa: E402
+from scripts.bounded_process import process_alive as bounded_process_alive  # noqa: E402
+from scripts.bounded_process import run_bounded, tasklist_alive  # noqa: E402
 
 # Time limits for child processes started by this referee. Observed Windows CI durations:
 # longest single suite about 20 s, combined run about 45 s.
@@ -77,8 +78,8 @@ def find_unbounded_process_calls(source: str) -> list[str]:
 
     Syntactic guard: imports of subprocess, importlib, multiprocessing or pty (any alias or
     from-import), __import__, os launch functions (system, popen, fork, spawn*, exec*,
-    posix_spawn*) through os, an alias of os or a from-import. Dynamic lookups such as
-    getattr(os, name) or eval are outside its reach.
+    posix_spawn*) through os, an alias of os or a from-import, and "from os import *".
+    Dynamic lookups such as getattr(os, name) or eval are outside its reach.
     """
     tree = ast.parse(source)
     os_names = {"os"}
@@ -97,7 +98,7 @@ def find_unbounded_process_calls(source: str) -> list[str]:
                 hits.append((node.lineno, f"from {module} import"))
             elif module == "os":
                 for a in node.names:
-                    if _is_os_launcher(a.name):
+                    if a.name == "*" or _is_os_launcher(a.name):
                         hits.append((node.lineno, f"from os import {a.name}"))
         elif isinstance(node, ast.Attribute) and isinstance(node.value, ast.Name):
             if node.value.id == "subprocess" or (node.value.id in os_names and _is_os_launcher(node.attr)):
@@ -108,23 +109,8 @@ def find_unbounded_process_calls(source: str) -> list[str]:
 
 
 def process_alive(pid: int) -> bool:
-    """Liveness probe that treats zombies as dead (Windows: tasklist through run_bounded_text)."""
-    if sys.platform == "win32":
-        res = run_bounded_text(["tasklist", "/FI", f"PID eq {pid}", "/NH"], SHORT_COMMAND_TIMEOUT_SEC)
-        return str(pid) in res.stdout
-    if os.path.exists("/proc"):
-        try:
-            with open(f"/proc/{pid}/stat", "r", encoding="utf-8") as f:
-                return f.read().rsplit(")", 1)[1].split()[0] != "Z"
-        except OSError:
-            return False
-    try:
-        os.kill(pid, 0)
-    except ProcessLookupError:
-        return False
-    except PermissionError:
-        return True
-    return True
+    """Shared liveness probe (scripts/bounded_process.py); a failed platform query raises, never reports death."""
+    return bounded_process_alive(pid)
 
 
 def discover_gateway_test_files() -> list[str]:
@@ -1096,12 +1082,13 @@ def test_referee_child_processes_are_bounded():
         "from multiprocessing import Process\n"
         "os.posix_spawn\n"
         "os.getcwd()\n"
+        "from os import *\n"
     )
     assert find_unbounded_process_calls(unbounded) == [
         "line 1: import subprocess", "line 3: subprocess.run", "line 4: os.system", "line 5: import subprocess",
         "line 6: from subprocess import", "line 8: o.popen", "line 9: from os import execvp",
         "line 9: from os import system", "line 10: __import__", "line 11: import importlib",
-        "line 12: from multiprocessing import", "line 13: os.posix_spawn"]
+        "line 12: from multiprocessing import", "line 13: os.posix_spawn", "line 15: from os import *"]
 
 
 def test_bounded_child_timeout_terminates_nested_tree(tmp_path):
@@ -1118,14 +1105,31 @@ def test_bounded_child_timeout_terminates_nested_tree(tmp_path):
         run_bounded_text([sys.executable, "-c", nested, str(pid_file), REPO_ROOT], 15)
     assert pid_file.exists(), "nested worker must have started before the timeout"
     worker = int(pid_file.read_text())
-    deadline = time.monotonic() + 15
-    while process_alive(worker) and time.monotonic() < deadline:
-        time.sleep(0.2)
     try:
+        deadline = time.monotonic() + 15
+        while process_alive(worker) and time.monotonic() < deadline:
+            time.sleep(0.2)
         assert not process_alive(worker), "nested worker must be terminated with the referee child tree"
     finally:
-        if process_alive(worker):
+        try:
+            still_running = process_alive(worker)
+        except RuntimeError:
+            still_running = True
+        if still_running:
             try:
                 os.kill(worker, 9 if sys.platform != "win32" else 15)
             except OSError:
                 pass
+
+
+def test_liveness_probe_query_failure_is_not_death():
+    """The Windows liveness probe must fail closed: a failed tasklist query is never read as a dead process."""
+    def failed_query(cmd, cwd, timeout):
+        return types.SimpleNamespace(returncode=1, stdout=b"", timed_out=False, launch_error=None)
+    with pytest.raises(RuntimeError):
+        tasklist_alive(4321, runner=failed_query)
+
+    def other_pid(cmd, cwd, timeout):
+        return types.SimpleNamespace(returncode=0, stdout=b'"python.exe","43210","Console","1","9 K"\r\n',
+                                     timed_out=False, launch_error=None)
+    assert tasklist_alive(4321, runner=other_pid) is False

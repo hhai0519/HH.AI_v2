@@ -4,15 +4,19 @@ scripts/tests/test_bounded_process.py
 
 Positive and negative controls for scripts/bounded_process.py (B-107 slice 2): exit codes and
 separate output capture, launch errors, whole-tree termination on timeout (including a nested
-run_bounded call whose descendants run in their own process group or session), and a bounded
-return when a descendant survives and keeps the inherited output handle open.
+run_bounded call whose descendants run in their own process group or session), a bounded
+return when a descendant survives and keeps the inherited output handle open, the POSIX
+deadline, namespace and PID-identity guards, and a liveness probe that never reports a failed
+query as a dead process.
 """
 
 import os
 import signal
-import subprocess
 import sys
 import time
+import types
+
+import pytest
 
 SCRIPTS_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if SCRIPTS_DIR not in sys.path:
@@ -45,23 +49,8 @@ NESTED_CHILD = (
 
 
 def alive(pid):
-    if os.name == "nt":
-        out = subprocess.run(["tasklist", "/FI", "PID eq " + str(pid), "/NH"], capture_output=True).stdout
-        return str(pid) in out.decode("utf-8", "replace")
-    stat = "/proc/" + str(pid) + "/stat"
-    if os.path.exists("/proc"):
-        try:
-            with open(stat, encoding="utf-8") as f:
-                return f.read().rsplit(")", 1)[1].split()[0] != "Z"
-        except OSError:
-            return False
-    try:
-        os.kill(pid, 0)
-    except ProcessLookupError:
-        return False
-    except PermissionError:
-        return True
-    return True
+    # Shared probe: a failed platform query raises instead of reporting the process as dead.
+    return bp.process_alive(pid)
 
 
 def wait_dead(pid, seconds):
@@ -120,7 +109,11 @@ def test_timeout_terminates_nested_bounded_tree(tmp_path):
     try:
         assert wait_dead(worker, 15), "nested worker in its own group must be terminated with the tree"
     finally:
-        if alive(worker):
+        try:
+            still_running = alive(worker)
+        except RuntimeError:
+            still_running = True
+        if still_running:
             try:
                 os.kill(worker, signal.SIGKILL if hasattr(signal, "SIGKILL") else signal.SIGTERM)
             except OSError:
@@ -146,3 +139,66 @@ def test_surviving_descendant_cannot_block_return(tmp_path):
         except OSError:
             pass
         wait_dead(grandchild, 15)
+
+
+def _fake_tasklist(returncode, stdout, timed_out=False, launch_error=None):
+    def runner(cmd, cwd, timeout):
+        assert cmd[:5] == ["tasklist", "/FO", "CSV", "/NH", "/FI"]
+        return types.SimpleNamespace(returncode=returncode, stdout=stdout, timed_out=timed_out, launch_error=launch_error)
+    return runner
+
+
+def test_tasklist_query_failure_is_not_death():
+    # Counterexample for the substring probe: a failed query with empty output must not mean "dead".
+    for runner in (_fake_tasklist(1, b""), _fake_tasklist(None, b"", timed_out=True),
+                   _fake_tasklist(None, b"", launch_error="FileNotFoundError")):
+        with pytest.raises(RuntimeError):
+            bp.tasklist_alive(4321, runner=runner)
+
+
+def test_tasklist_requires_exact_pid_column():
+    row = b'"python.exe","4321","Console","1","10,000 K"\r\n'
+    assert bp.tasklist_alive(4321, runner=_fake_tasklist(0, row)) is True
+    assert bp.tasklist_alive(432, runner=_fake_tasklist(0, row)) is False
+    assert bp.tasklist_alive(21, runner=_fake_tasklist(0, b"INFO: No tasks are running which match the specified criteria.\r\n")) is False
+
+
+posix_only = pytest.mark.skipif(os.name == "nt", reason="POSIX tree-kill internals")
+
+
+@posix_only
+def test_posix_discovery_past_deadline_is_reported_as_failed(tmp_path, monkeypatch):
+    # Counterexample for a round-limited loop: slow discovery must not end in TREE_SIGNALLED.
+    def slow(root_pid, deadline=None):
+        time.sleep(0.3)
+        return {}, True
+    monkeypatch.setattr(bp, "posix_descendants", slow)
+    res = bp.run_bounded([PY, "-c", "import time; time.sleep(60)"], cwd=str(tmp_path), timeout=2, grace=0.05)
+    assert res.timed_out and res.kill_status == bp.KILL_TREE_FAILED
+
+
+@posix_only
+def test_posix_foreign_proc_namespace_is_reported_as_failed(tmp_path, monkeypatch):
+    monkeypatch.setattr(bp, "proc_describes_own_namespace", lambda: False)
+    assert bp.posix_descendants(os.getpid()) == ({}, False)
+    res = bp.run_bounded([PY, "-c", "import time; time.sleep(60)"], cwd=str(tmp_path), timeout=2)
+    assert res.timed_out and res.kill_status == bp.KILL_TREE_FAILED
+
+
+@posix_only
+def test_posix_reused_pid_is_not_signalled(tmp_path):
+    # A process whose start time differs from the one first seen stands for a reused PID.
+    res_dir = tmp_path
+    proc = bp.subprocess.Popen([PY, "-c", "import time; time.sleep(60)"], cwd=str(res_dir))
+    try:
+        start = bp._start_time(proc.pid)
+        assert start is not None
+        assert bp._signal_identified(proc.pid, start + 1, signal.SIGKILL) is True
+        time.sleep(0.5)
+        assert proc.poll() is None, "a process with another start time must not be signalled"
+        assert bp._signal_identified(proc.pid, start, signal.SIGKILL) is True
+        assert proc.wait(timeout=15) is not None
+    finally:
+        if proc.poll() is None:
+            proc.kill()
+            proc.wait(timeout=15)
