@@ -880,6 +880,7 @@ def test_windows_gateway_powershell_bridges_have_no_external_cmdlets():
     Requires Windows platform (skips on non-Windows).
     Uses Windows PowerShell 5.1 exact executable and -EncodedCommand.
     Validates exact set:
+    - runtime/channel-gateway/bin/windows-credential-manager-access.ps1
     - runtime/channel-gateway/bin/windows-credential-manager-read.ps1
     - runtime/channel-gateway/bin/windows-known-folder-resolve.ps1
     Deterministic controls:
@@ -897,6 +898,7 @@ def test_windows_gateway_powershell_bridges_have_no_external_cmdlets():
         if f.endswith(".ps1")
     ])
     expected_ps1_files = sorted([
+        "runtime/channel-gateway/bin/windows-credential-manager-access.ps1",
         "runtime/channel-gateway/bin/windows-credential-manager-read.ps1",
         "runtime/channel-gateway/bin/windows-known-folder-resolve.ps1",
     ])
@@ -934,6 +936,7 @@ function Analyze-Code([string]$name, [string]$code) {
 }
 
 $bridges = @(
+    'runtime/channel-gateway/bin/windows-credential-manager-access.ps1',
     'runtime/channel-gateway/bin/windows-credential-manager-read.ps1',
     'runtime/channel-gateway/bin/windows-known-folder-resolve.ps1'
 )

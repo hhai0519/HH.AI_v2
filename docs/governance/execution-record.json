@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "AUDITOR-SYNC-CLAUDE-261008",
-  "base_oid": "8a46cba2379e143bd3f861464e4cc62c9e8bd440",
+  "task_id": "SEC02-INC2-EXACT-REPAIR-R3-261008",
+  "base_oid": "9f3da81e8b4dcfbbd73268275b235b601712f225",
   "plan": {
     "allowed_paths": [
       "docs/AUDIT-LOG.md",
@@ -10,7 +10,15 @@
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md"
+      "docs/governance/secret-inventory.json",
+      "docs/ops/windows-credential-manager-access.md",
+      "docs/refactor-backlog.md",
+      "runtime/channel-gateway/bin/windows-credential-manager-access.ps1",
+      "runtime/channel-gateway/core/managed-credential-target.js",
+      "runtime/channel-gateway/core/windows-credential-manager-access.js",
+      "runtime/channel-gateway/tests/windows-credential-manager-access.test.js",
+      "runtime/channel-gateway/tests/windows-credential-manager-provider.test.js",
+      "scripts/tests/test_channel_gateway_core.py"
     ],
     "required_paths": [
       "docs/AUDIT-LOG.md",
@@ -18,7 +26,15 @@
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md"
+      "docs/governance/secret-inventory.json",
+      "docs/ops/windows-credential-manager-access.md",
+      "docs/refactor-backlog.md",
+      "runtime/channel-gateway/bin/windows-credential-manager-access.ps1",
+      "runtime/channel-gateway/core/managed-credential-target.js",
+      "runtime/channel-gateway/core/windows-credential-manager-access.js",
+      "runtime/channel-gateway/tests/windows-credential-manager-access.test.js",
+      "runtime/channel-gateway/tests/windows-credential-manager-provider.test.js",
+      "scripts/tests/test_channel_gateway_core.py"
     ],
     "max_plan_revisions": 3,
     "revision_count": 0,
@@ -31,7 +47,15 @@
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md"
+      "docs/governance/secret-inventory.json",
+      "docs/ops/windows-credential-manager-access.md",
+      "docs/refactor-backlog.md",
+      "runtime/channel-gateway/bin/windows-credential-manager-access.ps1",
+      "runtime/channel-gateway/core/managed-credential-target.js",
+      "runtime/channel-gateway/core/windows-credential-manager-access.js",
+      "runtime/channel-gateway/tests/windows-credential-manager-access.test.js",
+      "runtime/channel-gateway/tests/windows-credential-manager-provider.test.js",
+      "scripts/tests/test_channel_gateway_core.py"
     ]
   },
   "evidence": [
