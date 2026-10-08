@@ -1,5 +1,5 @@
 {
-  "base_head": "2c3a3c1",
+  "base_head": "cd36a9a",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -559,16 +559,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 292,
-      "sha256": "0220a88821e39fd5ded7b0d07e31dd61bc82560ac6bb473c21efa4aa2143107b"
+      "lines": 293,
+      "sha256": "bfef06e22ca12f2a3586801a75f64c335c2c7021bd09b459f375658bc8bc1e82"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 259,
-      "sha256": "a0a79992083cf76a3a0cdc1f9174504ec17c4c4760e22704f2c8aa03465f3334"
+      "lines": 260,
+      "sha256": "daad6d6034013f00ee85f53013566892a6b7b7cd3ebefde2ef0e57871687fb85"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -610,7 +610,7 @@
         "## 封存區"
       ],
       "lines": 372,
-      "sha256": "2f8abe9515bb8888b0d4f66da0bdd280691ed18cdc836fd20bff62eb8188c113"
+      "sha256": "2f0b0ae4394e0a51347f9d8d7fec43781fd3e4823752f21d2924587921c42250"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1108,8 +1108,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6358,
-      "sha256": "542170ac866b001a39a9c9bff18d18249224b476577d9c94edd9355ef505cf72"
+      "lines": 6359,
+      "sha256": "19cae91d4ef297848e03a0a9eda20807c4ebbc10aedfaaf2a432ec1bd07f81f2"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1119,6 +1119,32 @@
       ],
       "lines": 97,
       "sha256": "60f5ed235b015c9cedf6fb5e100f82a2f3d46e0e64ffb3561e092a6b098b82fc"
+    },
+    "scripts/batch_runner.py": {
+      "fences": 0,
+      "headings": [
+        "# -*- coding: utf-8 -*-",
+        "# ---------------------------------------------------------------------------",
+        "# Process helpers: stdout and stderr are always separate; only stdout is parsed.",
+        "# ---------------------------------------------------------------------------",
+        "# ---------------------------------------------------------------------------",
+        "# Prompt blocks and batch specification",
+        "# ---------------------------------------------------------------------------",
+        "# ---------------------------------------------------------------------------",
+        "# Author content",
+        "# ---------------------------------------------------------------------------",
+        "# ---------------------------------------------------------------------------",
+        "# Working tree state",
+        "# ---------------------------------------------------------------------------",
+        "# ---------------------------------------------------------------------------",
+        "# Bounded execution: output to a file, whole process tree terminated on timeout.",
+        "# ---------------------------------------------------------------------------",
+        "# ---------------------------------------------------------------------------",
+        "# Control record and entry point",
+        "# ---------------------------------------------------------------------------"
+      ],
+      "lines": 751,
+      "sha256": "43c46fdb0733b2617fbae9a103896b6855a68f68d5613d680fd5803d335c2175"
     },
     "scripts/build_prompt_evidence.py": {
       "fences": 0,
@@ -1251,6 +1277,20 @@
       "headings": [],
       "lines": 65,
       "sha256": "ee8bb5eb421f95bf95d041f051539d52b13c999fa2fff12ce111d9055da61671"
+    },
+    "scripts/tests/test_batch_runner.py": {
+      "fences": 0,
+      "headings": [
+        "# -*- coding: utf-8 -*-",
+        "# --- blocks -----------------------------------------------------------------",
+        "# --- spec -------------------------------------------------------------------",
+        "# --- control ------------------------------------------------------------------",
+        "# --- author content ---------------------------------------------------------------",
+        "# --- git output parsing --------------------------------------------------------------",
+        "# --- bounded execution -----------------------------------------------------------------"
+      ],
+      "lines": 270,
+      "sha256": "2ad321719ab869e7ae7f861cb6f66668a8e5ce43c33d99b68c64799ce90d54be"
     },
     "scripts/tests/test_build_prompt_evidence.py": {
       "fences": 0,
@@ -1666,7 +1706,7 @@
       "sha256": "35bf7dbfa3c7d291b550c3c97a6ae398a22b1dc3624c1d2fc1e4db6963d6e115"
     }
   },
-  "generated_at": "2026-10-08T09:26:01Z",
+  "generated_at": "2026-10-08T11:22:44Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

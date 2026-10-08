@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "SYNC-SEC02-CLOSE-261008",
-  "base_oid": "2c3a3c195121e43093fb6e0db555dd9ba0d7dd8f",
+  "task_id": "B107-RUNNER-S1-261008",
+  "base_oid": "cd36a9a6062162a932811bd4816eaef9a70725e4",
   "plan": {
     "allowed_paths": [
       "docs/AUDIT-LOG.md",
@@ -10,8 +10,9 @@
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/ops/windows-credential-manager-access.md",
-      "docs/refactor-backlog.md"
+      "docs/refactor-backlog.md",
+      "scripts/batch_runner.py",
+      "scripts/tests/test_batch_runner.py"
     ],
     "required_paths": [
       "docs/AUDIT-LOG.md",
@@ -19,8 +20,9 @@
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/ops/windows-credential-manager-access.md",
-      "docs/refactor-backlog.md"
+      "docs/refactor-backlog.md",
+      "scripts/batch_runner.py",
+      "scripts/tests/test_batch_runner.py"
     ],
     "max_plan_revisions": 3,
     "revision_count": 0,
@@ -33,8 +35,9 @@
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/ops/windows-credential-manager-access.md",
-      "docs/refactor-backlog.md"
+      "docs/refactor-backlog.md",
+      "scripts/batch_runner.py",
+      "scripts/tests/test_batch_runner.py"
     ]
   },
   "evidence": [
