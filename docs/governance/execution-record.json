@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "B107-RUNNER-S1-261008",
-  "base_oid": "cd36a9a6062162a932811bd4816eaef9a70725e4",
+  "task_id": "B107-BOUNDED-S2-261008",
+  "base_oid": "1951dc66ab348bdae1b44115fd471d429fadacfa",
   "plan": {
     "allowed_paths": [
       "docs/AUDIT-LOG.md",
@@ -11,8 +11,11 @@
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
       "docs/refactor-backlog.md",
-      "scripts/batch_runner.py",
-      "scripts/tests/test_batch_runner.py"
+      "scripts/bounded_process.py",
+      "scripts/gate_runner.py",
+      "scripts/tests/test_bounded_process.py",
+      "scripts/tests/test_channel_gateway_core.py",
+      "scripts/tests/test_gate_runner.py"
     ],
     "required_paths": [
       "docs/AUDIT-LOG.md",
@@ -21,8 +24,11 @@
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
       "docs/refactor-backlog.md",
-      "scripts/batch_runner.py",
-      "scripts/tests/test_batch_runner.py"
+      "scripts/bounded_process.py",
+      "scripts/gate_runner.py",
+      "scripts/tests/test_bounded_process.py",
+      "scripts/tests/test_channel_gateway_core.py",
+      "scripts/tests/test_gate_runner.py"
     ],
     "max_plan_revisions": 3,
     "revision_count": 0,
@@ -36,8 +42,11 @@
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
       "docs/refactor-backlog.md",
-      "scripts/batch_runner.py",
-      "scripts/tests/test_batch_runner.py"
+      "scripts/bounded_process.py",
+      "scripts/gate_runner.py",
+      "scripts/tests/test_bounded_process.py",
+      "scripts/tests/test_channel_gateway_core.py",
+      "scripts/tests/test_gate_runner.py"
     ]
   },
   "evidence": [

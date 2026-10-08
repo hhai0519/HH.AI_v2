@@ -2825,7 +2825,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 5.1 上一批狀態
 
-上次核對通過的 HEAD：cd36a9a6062162a932811bd4816eaef9a70725e4
+上次核對通過的 HEAD：1951dc66ab348bdae1b44115fd471d429fadacfa
 
 - `23af193`（執行者前置檢查 ＋ 回滾程序 ＋ `AUDIT-LOG.md` ＋ 四缺口修正）
   已於 2026-09-02 由審計官核對通過：6 檔異動（含 2 個新檔）、零夾帶、
@@ -3066,6 +3066,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 - `9f3da81`（AUD-CLAUDE-261008 Assignment & SEC-02 INC-2 Incident State Sync）：Target = `9f3da81e8b4dcfbbd73268275b235b601712f225`；Parent = `8a46cba2379e143bd3f861464e4cc62c9e8bd440`；純狀態同步，六個狀態與生成檔，四個逐字狀態檔與當批交付雜湊相同；External Macro Auditor AUD-CLAUDE-261008-B（USER 2026-10-08 指派；A1 = FULL_CLONE）獨立裁決 PASS；Candidate Run 37725555435 與 Post-main Run 37726539017 均 attempt 1、exact target SHA、verify 與 gateway-windows success，Macro 親讀兩份 verify raw log 均為 ALL 5 GATES PASSED；main 與候選為同一完整 SHA，SHA transformation = NONE；accepted checkpoint 推進至 `9f3da81e8b4dcfbbd73268275b235b601712f225`。SEC-02 INC-2 後續狀態以 TASKBOARD 與 AUDIT-LOG 為準。
 - `2c3a3c1`（SEC-02 INC-2 Guarded Credential Access & Same-SHA Main Promotion）：Target = `2c3a3c195121e43093fb6e0db555dd9ba0d7dd8f`；Parent = `9f3da81e8b4dcfbbd73268275b235b601712f225`；TASK_ID: SEC02-INC2-EXACT-REPAIR-R3-261008；十四個授權路徑；External Macro Auditor AUD-CLAUDE-261008-B（A1 = FULL_CLONE）獨立裁決 PASS，USER 啟用之非權威第二意見結論為無阻擋性疑點；Candidate Run 37748428076 與 Post-main Run 37752072669 均 attempt 1、exact target SHA、verify 與 gateway-windows success，Macro 親讀兩份 verify raw log 為 ALL 5 GATES PASSED；晉級批 PROMOTE-SEC02-INC2-R3-261008 以 native pinned full-SHA refspec 與單次 MAIN_EXACT_SHA 授權推送，SHA transformation = NONE；accepted checkpoint 推進至 `2c3a3c195121e43093fb6e0db555dd9ba0d7dd8f`。SEC-02 結案狀態以 TASKBOARD 為準。
 - `cd36a9a`（SEC-02 Closure, B-111 USER Decision & 2c3a3c1 Audit State Sync）：Target = `cd36a9a6062162a932811bd4816eaef9a70725e4`；Parent = `2c3a3c195121e43093fb6e0db555dd9ba0d7dd8f`；TASK_ID: SYNC-SEC02-CLOSE-261008；七個狀態、操作文件與生成檔；External Macro Auditor AUD-CLAUDE-261008-B（A1 = FULL_CLONE）獨立裁決 PASS；Candidate Run 37757275104 與 Post-main Run 37760455392 均 attempt 1、exact target SHA、verify 與 gateway-windows success，Macro 親讀兩份 verify raw log 為 ALL 5 GATES PASSED；晉級批 PROMOTE-SYNC-SEC02-CLOSE-261008 經 USER 逐案授權，以 native pinned full-SHA refspec 與單次 MAIN_EXACT_SHA 授權推送，SHA transformation = NONE；accepted checkpoint 推進至 `cd36a9a6062162a932811bd4816eaef9a70725e4`。
+- `1951dc6`（B-107 Slice 1 Canonical Batch Runner & cd36a9a Audit State Sync）：Target = `1951dc66ab348bdae1b44115fd471d429fadacfa`；Parent = `cd36a9a6062162a932811bd4816eaef9a70725e4`；TASK_ID: B107-RUNNER-S1-261008；八個路徑（canonical runner、其測試、四個狀態檔與兩個生成檔）；External Macro Auditor AUD-CLAUDE-261008-B（A1 = FULL_CLONE）獨立裁決 PASS；Candidate Run 37770354962 與 Post-main Run 37777846365 均 attempt 1、exact target SHA、verify 與 gateway-windows success，Macro 親讀兩份 verify raw log 為 ALL 5 GATES PASSED；晉級批 PROMOTE-B107-RUNNER-S1-261008 經 USER 逐案授權，首次以 canonical runner 執行，以 native pinned full-SHA refspec 與單次 MAIN_EXACT_SHA 授權推送，SHA transformation = NONE；accepted checkpoint 推進至 `1951dc66ab348bdae1b44115fd471d429fadacfa`。
 
 ### 5.2 待辦
 

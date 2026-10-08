@@ -13,14 +13,17 @@ E. Dynamic discovery of runtime/channel-gateway/tests/*.test.js test suites.
 F. Per-file and combined Node test runner execution via TAP reporter.
 G. Node.js built-in SQLite smoke contract (DatabaseSync, in-memory, no ExperimentalWarning).
 H. Negative policy canary tests ensuring TAP parser and skip registry fail closed.
+Every child process started by this referee runs through scripts/bounded_process.py:
+a timeout terminates the whole process tree and fails the test (B-107 slice 2).
 """
 
+import ast
 import base64
 import json
 import os
 import re
-import subprocess
 import sys
+import types
 import pytest
 
 REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
@@ -30,6 +33,47 @@ PACKAGE_LOCK_PATH = os.path.join(GATEWAY_DIR, "package-lock.json")
 TEST_POLICY_PATH = os.path.join(GATEWAY_DIR, "test-policy.json")
 NVMRC_PATH = os.path.join(REPO_ROOT, ".nvmrc")
 TESTS_DIR = os.path.join(GATEWAY_DIR, "tests")
+
+if REPO_ROOT not in sys.path:
+    sys.path.insert(0, REPO_ROOT)
+from scripts.bounded_process import run_bounded  # noqa: E402
+
+# Time limits for child processes started by this referee. Observed Windows CI durations:
+# longest single suite about 20 s, combined run about 45 s.
+NODE_TEST_FILE_TIMEOUT_SEC = 300
+NODE_COMBINED_TIMEOUT_SEC = 600
+SHORT_COMMAND_TIMEOUT_SEC = 120
+
+
+def _universal_newlines(data: bytes) -> str:
+    return data.decode("utf-8", errors="replace").replace("\r\n", "\n").replace("\r", "\n")
+
+
+def run_bounded_text(cmd: list[str], timeout: int) -> types.SimpleNamespace:
+    """Run cmd from REPO_ROOT with a time limit and whole-tree termination; a timeout or launch error fails."""
+    res = run_bounded(cmd, cwd=REPO_ROOT, timeout=timeout)
+    stdout = _universal_newlines(res.stdout)
+    stderr = _universal_newlines(res.stderr)
+    assert res.launch_error is None, f"{cmd[0]} could not be started: {res.launch_error}"
+    assert not res.timed_out, (
+        f"{' '.join(cmd[:3])} exceeded {timeout}s; process tree {res.kill_status}\n"
+        f"STDOUT:\n{stdout}\nSTDERR:\n{stderr}"
+    )
+    return types.SimpleNamespace(returncode=res.returncode, stdout=stdout, stderr=stderr)
+
+
+def find_unbounded_process_calls(source: str) -> list[str]:
+    """Return direct process-launch references that bypass run_bounded (subprocess.*, os.system, os.popen)."""
+    hits = []
+    for node in ast.walk(ast.parse(source)):
+        if isinstance(node, (ast.Import, ast.ImportFrom)):
+            names = [a.name for a in node.names] + ([node.module] if isinstance(node, ast.ImportFrom) else [])
+            if "subprocess" in names:
+                hits.append((node.lineno, "import subprocess"))
+        elif isinstance(node, ast.Attribute) and isinstance(node.value, ast.Name):
+            if node.value.id == "subprocess" or (node.value.id == "os" and node.attr in ("system", "popen")):
+                hits.append((node.lineno, f"{node.value.id}.{node.attr}"))
+    return [f"line {n}: {what}" for n, what in sorted(hits)]
 
 
 def discover_gateway_test_files() -> list[str]:
@@ -400,13 +444,7 @@ def test_channel_gateway_individual_test_file(test_file):
     assert os.path.isfile(test_file), f"Test file missing: {test_file}"
     rel_path = os.path.relpath(test_file, REPO_ROOT).replace("\\", "/")
 
-    res = subprocess.run(
-        ["node", "--test", "--test-reporter=tap", rel_path],
-        cwd=REPO_ROOT,
-        capture_output=True,
-        encoding="utf-8",
-        errors="replace"
-    )
+    res = run_bounded_text(["node", "--test", "--test-reporter=tap", rel_path], NODE_TEST_FILE_TIMEOUT_SEC)
 
     markers = parse_and_validate_timing_markers(res.stdout)
     forward_timing_markers(markers)
@@ -434,13 +472,7 @@ def test_channel_gateway_combined_node_test_runner():
     rel_paths = [os.path.relpath(p, REPO_ROOT).replace("\\", "/") for p in files]
 
     cmd = ["node", "--test", "--test-reporter=tap"] + rel_paths
-    res = subprocess.run(
-        cmd,
-        cwd=REPO_ROOT,
-        capture_output=True,
-        encoding="utf-8",
-        errors="replace"
-    )
+    res = run_bounded_text(cmd, NODE_COMBINED_TIMEOUT_SEC)
 
     markers = parse_and_validate_timing_markers(res.stdout)
     forward_timing_markers(markers)
@@ -461,7 +493,7 @@ def test_channel_gateway_combined_node_test_runner():
 
 def test_channel_gateway_node_sqlite_smoke():
     """Requirement G: Verify Node.js semver major=24 (>=24.15.0 <25), node:sqlite load, and zero ExperimentalWarning."""
-    ver_res = subprocess.run(["node", "--version"], capture_output=True, text=True, check=False)
+    ver_res = run_bounded_text(["node", "--version"], SHORT_COMMAND_TIMEOUT_SEC)
     assert ver_res.returncode == 0, f"node --version failed: {ver_res.stderr}"
     raw_ver = ver_res.stdout.strip().lstrip("v")
     parts = [int(p) for p in raw_ver.split(".")]
@@ -477,13 +509,7 @@ def test_channel_gateway_node_sqlite_smoke():
         "if (!row || !row.v) { throw new Error('Query failed'); }\n"
         "db.close();\n"
     )
-    smoke_res = subprocess.run(
-        ["node", "-e", smoke_script],
-        cwd=REPO_ROOT,
-        capture_output=True,
-        text=True,
-        check=False
-    )
+    smoke_res = run_bounded_text(["node", "-e", smoke_script], SHORT_COMMAND_TIMEOUT_SEC)
     assert smoke_res.returncode == 0, f"node:sqlite smoke failed: {smoke_res.stderr}\nstdout: {smoke_res.stdout}"
     assert "ExperimentalWarning" not in smoke_res.stderr, (
         f"node:sqlite emitted ExperimentalWarning: {smoke_res.stderr}"
@@ -680,18 +706,13 @@ def test_channel_gateway_sqlite_gitignore_protection():
         "runtime/channel-gateway/tests/telegram-inbound-adapter.test.js",
     ]
     for rel_f in tracked_sample_files:
-        res = subprocess.run(
-            ["git", "check-ignore", "-q", rel_f],
-            cwd=REPO_ROOT,
-            check=False
-        )
+        res = run_bounded_text(["git", "check-ignore", "-q", rel_f], SHORT_COMMAND_TIMEOUT_SEC)
         assert res.returncode == 1, f"Tracked file {rel_f} must NOT be ignored by .gitignore (check-ignore exit 1 expected)"
 
     # Positive check: verify a runtime sqlite3 file is ignored
-    res_pos = subprocess.run(
+    res_pos = run_bounded_text(
         ["git", "check-ignore", "-q", "runtime/channel-gateway/state/channel-gateway-state.sqlite3"],
-        cwd=REPO_ROOT,
-        check=False
+        SHORT_COMMAND_TIMEOUT_SEC,
     )
     assert res_pos.returncode == 0, "Runtime sqlite3 file must be ignored by .gitignore (check-ignore exit 0 expected)"
 
@@ -980,16 +1001,40 @@ exit 0
     powershell_path = os.path.join(system_root, "System32", "WindowsPowerShell", "v1.0", "powershell.exe")
     assert os.path.isfile(powershell_path), f"Windows PowerShell executable missing: {powershell_path}"
 
-    res = subprocess.run([
+    res = run_bounded_text([
         powershell_path,
         "-NoLogo",
         "-NoProfile",
         "-NonInteractive",
         "-ExecutionPolicy", "Bypass",
         "-EncodedCommand", b64
-    ], cwd=REPO_ROOT, capture_output=True, text=True)
+    ], SHORT_COMMAND_TIMEOUT_SEC)
 
     assert res.returncode == 0, (
         f"PowerShell AST verification failed (code {res.returncode}):\n"
         f"STDOUT: {res.stdout}\nSTDERR: {res.stderr}"
     )
+
+
+# ==========================================
+# L. Bounded child-process canaries (B-107 slice 2)
+# ==========================================
+
+def test_bounded_child_timeout_fails_closed():
+    """A child that outlives its limit must fail the referee instead of hanging it."""
+    with pytest.raises(AssertionError, match="exceeded 2s; process tree TREE_SIGNALLED"):
+        run_bounded_text([sys.executable, "-c", "import time; time.sleep(60)"], 2)
+
+
+def test_referee_child_processes_are_bounded():
+    """Structural guard: this referee starts child processes only through run_bounded."""
+    with open(os.path.abspath(__file__), "r", encoding="utf-8") as f:
+        assert find_unbounded_process_calls(f.read()) == []
+    unbounded = (
+        "import subprocess\n"
+        "import os\n"
+        "subprocess.run(['node', '--version'])\n"
+        "os.system('node --version')\n"
+    )
+    assert find_unbounded_process_calls(unbounded) == [
+        "line 1: import subprocess", "line 3: subprocess.run", "line 4: os.system"]

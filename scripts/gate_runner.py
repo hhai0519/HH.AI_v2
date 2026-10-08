@@ -16,23 +16,28 @@ run:    validates the current task prompt and the .git/<T>-local-gates.txt artif
         with "> "), and "EXIT_CODE: <n>" written only after the process has ended.
         The first non-zero gate stops the run and writes a FAILED marker; a fully passing
         run ends with a COMPLETE marker. Earlier runs are never modified or removed.
+        Each gate runs through scripts/bounded_process.py: it starts in its own process
+        group, its output goes to an anonymous temporary file instead of a pipe, and on
+        timeout the whole gate process tree is terminated; the gate is then recorded as
+        "TREE_KILL: <status>" followed by "EXIT_CODE: TIMEOUT".
 verify: re-reads the log and passes only if the latest run of the stage contains every
         gate header in order, each followed by EXIT_CODE: 0, and the COMPLETE marker.
 
 Exit codes: run returns 0 on success, the failing gate's exit code (or 1) otherwise;
-verify returns 0 or 1; usage errors return 2. No temporary files are created and
-nothing is deleted.
+verify returns 0 or 1; usage errors return 2. Apart from the log, only anonymous
+temporary files that the operating system removes on close are created; nothing is
+deleted.
 """
 
 import argparse
 import os
-import subprocess
 import sys
 
 repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if repo_root not in sys.path:
     sys.path.insert(0, repo_root)
 
+from scripts.bounded_process import run_bounded  # noqa: E402
 from scripts.governance_preflight import (  # noqa: E402
     is_safe_task_id,
     verify_current_task_prompt,
@@ -119,25 +124,23 @@ def run_stage(root, stage, gates, log_path, timeout=GATE_TIMEOUT_SECONDS):
     env["PYTHONIOENCODING"] = "utf-8"
     for idx, cmd in enumerate(gates, 1):
         append_lines(log_path, [gate_header(stage, run_no, idx, cmd)])
-        try:
-            proc = subprocess.run(
-                resolve_command(cmd), cwd=root, env=env,
-                stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=timeout,
-            )
-            output = proc.stdout.decode("utf-8", errors="replace")
-            code = proc.returncode
-            code_text = str(code)
-        except subprocess.TimeoutExpired as exc:
-            output = (exc.stdout or b"").decode("utf-8", errors="replace")
-            code = 1
-            code_text = "TIMEOUT"
-        except OSError:
-            output = ""
+        res = run_bounded(resolve_command(cmd), cwd=root, timeout=timeout, env=env, merge_stderr=True)
+        output = res.stdout.decode("utf-8", errors="replace")
+        trailer = []
+        if res.launch_error is not None:
             code = 1
             code_text = "LAUNCH_FAILED"
+        elif res.timed_out:
+            code = 1
+            code_text = "TIMEOUT"
+            trailer = [f"TREE_KILL: {res.kill_status}"]
+        else:
+            code = res.returncode
+            code_text = str(code)
         body = [OUTPUT_PREFIX + l for l in output.replace("\r\n", "\n").rstrip("\n").split("\n")] if output else []
-        append_lines(log_path, body + [f"EXIT_CODE: {code_text}"])
-        print(f"{stage} RUN {run_no} GATE {idx}: EXIT_CODE {code_text}")
+        append_lines(log_path, body + trailer + [f"EXIT_CODE: {code_text}"])
+        suffix = f" TREE_KILL {res.kill_status}" if trailer else ""
+        print(f"{stage} RUN {run_no} GATE {idx}: EXIT_CODE {code_text}{suffix}")
         if code != 0:
             append_lines(log_path, [failed_marker(stage, run_no, idx)])
             return code if code > 0 else 1

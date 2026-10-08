@@ -8,6 +8,7 @@ Negative and positive controls for scripts/gate_runner.py (B-107 canonical tooli
 import os
 import subprocess
 import sys
+import time
 
 import pytest
 
@@ -16,6 +17,7 @@ if SCRIPTS_DIR not in sys.path:
     sys.path.insert(0, SCRIPTS_DIR)
 
 import gate_runner  # noqa: E402
+from test_bounded_process import wait_dead  # noqa: E402
 
 PY = gate_runner.PY
 
@@ -110,8 +112,39 @@ def test_timeout_is_failure(tmp_path):
     log = tmp_path / "gates.txt"
     gates = [[PY, "-c", "import time; time.sleep(5)"]]
     assert gate_runner.run_stage(str(tmp_path), "STAGED", gates, str(log), timeout=1) == 1
-    assert "EXIT_CODE: TIMEOUT" in log.read_text(encoding="utf-8")
+    text = log.read_text(encoding="utf-8")
+    assert "EXIT_CODE: TIMEOUT" in text and "TREE_KILL: TREE_SIGNALLED" in text
     assert not gate_runner.verify_stage(read(log), "STAGED", gates)[0]
+
+
+def test_timeout_terminates_gate_tree_that_holds_output(tmp_path):
+    # Counterexample for the pipe-based runner: a grandchild keeps the inherited output handle open.
+    log = tmp_path / "gates.txt"
+    pid_file = tmp_path / "grandchild.pid"
+    child = (
+        "import subprocess, sys, time\n"
+        "g = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(120)'])\n"
+        f"open(r'{pid_file}', 'w').write(str(g.pid))\n"
+        "print('started', flush=True)\n"
+        "time.sleep(120)\n"
+    )
+    gates = [[PY, "-c", child], [PY, "-c", "print('must not run')"]]
+    started = time.monotonic()
+    assert gate_runner.run_stage(str(tmp_path), "STAGED", gates, str(log), timeout=10) == 1
+    assert time.monotonic() - started < 90
+    text = log.read_text(encoding="utf-8")
+    assert "> started" in text and "must not run" not in text
+    assert "TREE_KILL: TREE_SIGNALLED" in text and "STAGED RUN 1 FAILED AT GATE 1" in text
+    grandchild = int(pid_file.read_text())
+    assert wait_dead(grandchild, 15), "grandchild must be terminated with the gate tree"
+    assert not gate_runner.verify_stage(read(log), "STAGED", gates)[0]
+
+
+def test_launch_failure_is_recorded(tmp_path):
+    log = tmp_path / "gates.txt"
+    gates = [[os.path.join(str(tmp_path), "no-such-program")]]
+    assert gate_runner.run_stage(str(tmp_path), "STAGED", gates, str(log)) == 1
+    assert "EXIT_CODE: LAUNCH_FAILED" in log.read_text(encoding="utf-8")
 
 
 def test_stage_presets_are_canonical():

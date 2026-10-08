@@ -1,5 +1,5 @@
 {
-  "base_head": "cd36a9a",
+  "base_head": "1951dc6",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -559,16 +559,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 293,
-      "sha256": "bfef06e22ca12f2a3586801a75f64c335c2c7021bd09b459f375658bc8bc1e82"
+      "lines": 294,
+      "sha256": "7c66f6764af006d3920704586edb2172c3695b3ec5436ce9dff77453cf6bb99f"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 260,
-      "sha256": "daad6d6034013f00ee85f53013566892a6b7b7cd3ebefde2ef0e57871687fb85"
+      "lines": 261,
+      "sha256": "14c3cc599b4d40a8e0d236335f1419a67db72e84af1d4dcf8d2c358d94b5401a"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -610,7 +610,7 @@
         "## 封存區"
       ],
       "lines": 372,
-      "sha256": "2f0b0ae4394e0a51347f9d8d7fec43781fd3e4823752f21d2924587921c42250"
+      "sha256": "3a8ae07fabd484406a2f2f214b524dd702c21e12441c8ea81b708fef2a5d74f2"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1108,8 +1108,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6359,
-      "sha256": "19cae91d4ef297848e03a0a9eda20807c4ebbc10aedfaaf2a432ec1bd07f81f2"
+      "lines": 6360,
+      "sha256": "d3319413f1e784849ef1cc2058e455921f96a918f13cd4a267d174c79c5ca219"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1145,6 +1145,14 @@
       ],
       "lines": 751,
       "sha256": "43c46fdb0733b2617fbae9a103896b6855a68f68d5613d680fd5803d335c2175"
+    },
+    "scripts/bounded_process.py": {
+      "fences": 0,
+      "headings": [
+        "# -*- coding: utf-8 -*-"
+      ],
+      "lines": 115,
+      "sha256": "a4d88b823de4c9d31d3ca59d2c2033d766db14937f06a4511d4ce46edc8fa92c"
     },
     "scripts/build_prompt_evidence.py": {
       "fences": 0,
@@ -1195,8 +1203,8 @@
       "headings": [
         "# -*- coding: utf-8 -*-"
       ],
-      "lines": 223,
-      "sha256": "2203dec3878767ec7ab64ae47a7f1d870679602f9317b8576b4da953c5d9ea43"
+      "lines": 226,
+      "sha256": "7822c658e7c639dc95ddbb2e66ec4d61966416e5a573bff3c1ea96afa67eaa4b"
     },
     "scripts/generate_rule_traceability.py": {
       "fences": 0,
@@ -1292,6 +1300,15 @@
       "lines": 270,
       "sha256": "2ad321719ab869e7ae7f861cb6f66668a8e5ce43c33d99b68c64799ce90d54be"
     },
+    "scripts/tests/test_bounded_process.py": {
+      "fences": 0,
+      "headings": [
+        "# -*- coding: utf-8 -*-",
+        "# A child that starts a long-lived grandchild, records its PID and keeps running."
+      ],
+      "lines": 116,
+      "sha256": "f02dba7014374e37e09aa60088e4596771a215589e1b6b2d2a29b8a4b81b5df8"
+    },
     "scripts/tests/test_build_prompt_evidence.py": {
       "fences": 0,
       "headings": [
@@ -1307,16 +1324,21 @@
       "fences": 0,
       "headings": [
         "# -*- coding: utf-8 -*-",
+        "# Time limits for child processes started by this referee. Observed Windows CI durations:",
+        "# longest single suite about 20 s, combined run about 45 s.",
         "# ==========================================",
         "# K. Layer 2 Timing Marker Canaries (Synthetic & Platform-Injected)",
         "# ==========================================",
         "# Deterministic controls",
         "# Control 1: New-Object should fail",
         "# Control 2: Add-Type should fail",
-        "# Control 3: Local function definition + invocation should pass"
+        "# Control 3: Local function definition + invocation should pass",
+        "# ==========================================",
+        "# L. Bounded child-process canaries (B-107 slice 2)",
+        "# =========================================="
       ],
-      "lines": 995,
-      "sha256": "29b3e15c83aa9aee72cbf93fc9e8e29c4bf2063f907e721e43243551d898fad5"
+      "lines": 1040,
+      "sha256": "ad974febec2f2d2cfc57815409917c424d3b3e785c852be9a8466281c828ce45"
     },
     "scripts/tests/test_check_17_18.py": {
       "fences": 0,
@@ -1422,8 +1444,8 @@
       "headings": [
         "# -*- coding: utf-8 -*-"
       ],
-      "lines": 147,
-      "sha256": "3263e4a3ded3c53c31a8d27b7c6ea2b005f5e1a8f7c7d3f9bf1f22ab5213deb4"
+      "lines": 180,
+      "sha256": "4b71eb22f0ded62c9a88c6e599e0a3e3f72f674f11618f0d914e7feefbe7f29b"
     },
     "scripts/tests/test_governance_preflight.py": {
       "fences": 0,
@@ -1706,7 +1728,7 @@
       "sha256": "35bf7dbfa3c7d291b550c3c97a6ae398a22b1dc3624c1d2fc1e4db6963d6e115"
     }
   },
-  "generated_at": "2026-10-08T11:22:44Z",
+  "generated_at": "2026-10-08T13:07:14Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {
