@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "AUDITOR-SYNC-GPT-261007",
-  "base_oid": "3fadf60f6085809c16c3a6135a7ec9ac7518affa",
+  "task_id": "AUDITOR-SYNC-CLAUDE-261008",
+  "base_oid": "8a46cba2379e143bd3f861464e4cc62c9e8bd440",
   "plan": {
     "allowed_paths": [
       "docs/AUDIT-LOG.md",
