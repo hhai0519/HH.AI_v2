@@ -1,5 +1,5 @@
 {
-  "base_head": "1951dc6",
+  "base_head": "afdf0ba",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -559,16 +559,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 294,
-      "sha256": "7c66f6764af006d3920704586edb2172c3695b3ec5436ce9dff77453cf6bb99f"
+      "lines": 295,
+      "sha256": "67902e74f9599328cf2df6ab95af84eb22086c6d3a5232b1100296ee7f3de0cc"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 261,
-      "sha256": "14c3cc599b4d40a8e0d236335f1419a67db72e84af1d4dcf8d2c358d94b5401a"
+      "lines": 262,
+      "sha256": "c0606b69c41d820b93c329fa5ec40062c46a1e07078a8338e26db2d622666857"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -610,7 +610,7 @@
         "## 封存區"
       ],
       "lines": 372,
-      "sha256": "3a8ae07fabd484406a2f2f214b524dd702c21e12441c8ea81b708fef2a5d74f2"
+      "sha256": "dd4f20afbf68e3d825dcc459ea65aeff489a69fb6c3d5f023b6c8361e9465411"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1108,8 +1108,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6360,
-      "sha256": "d3319413f1e784849ef1cc2058e455921f96a918f13cd4a267d174c79c5ca219"
+      "lines": 6361,
+      "sha256": "4b514e56ccd5e58b8f84d94eec71ad085b89f4f9c8ead2bdd55b021cbea732fb"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1151,8 +1151,8 @@
       "headings": [
         "# -*- coding: utf-8 -*-"
       ],
-      "lines": 115,
-      "sha256": "a4d88b823de4c9d31d3ca59d2c2033d766db14937f06a4511d4ce46edc8fa92c"
+      "lines": 179,
+      "sha256": "3e8d813600798efa4138e73dd11655baf079137bd0c47577d765c2251f5a9ccd"
     },
     "scripts/build_prompt_evidence.py": {
       "fences": 0,
@@ -1304,10 +1304,12 @@
       "fences": 0,
       "headings": [
         "# -*- coding: utf-8 -*-",
-        "# A child that starts a long-lived grandchild, records its PID and keeps running."
+        "# A child that starts a long-lived grandchild, records its PID and keeps running.",
+        "# A child that runs a long-lived worker through a nested run_bounded call (its own group or session),",
+        "# as gate_runner -> verify_all -> pytest -> gateway referee does; the worker records its PID."
       ],
-      "lines": 116,
-      "sha256": "f02dba7014374e37e09aa60088e4596771a215589e1b6b2d2a29b8a4b81b5df8"
+      "lines": 148,
+      "sha256": "0dad5dab51d18e9d760e5db44b3f752994467e9936f0ef504d2445b024c43f47"
     },
     "scripts/tests/test_build_prompt_evidence.py": {
       "fences": 0,
@@ -1337,8 +1339,8 @@
         "# L. Bounded child-process canaries (B-107 slice 2)",
         "# =========================================="
       ],
-      "lines": 1040,
-      "sha256": "ad974febec2f2d2cfc57815409917c424d3b3e785c852be9a8466281c828ce45"
+      "lines": 1131,
+      "sha256": "704a5619b88031d957f039f16d8b9bdd5d9aaa6cc830bdaf4e6bece4fda5d273"
     },
     "scripts/tests/test_check_17_18.py": {
       "fences": 0,
@@ -1728,7 +1730,7 @@
       "sha256": "35bf7dbfa3c7d291b550c3c97a6ae398a22b1dc3624c1d2fc1e4db6963d6e115"
     }
   },
-  "generated_at": "2026-10-08T13:07:14Z",
+  "generated_at": "2026-10-08T14:19:52Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

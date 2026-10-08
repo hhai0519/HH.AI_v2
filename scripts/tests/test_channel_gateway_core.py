@@ -23,6 +23,7 @@ import json
 import os
 import re
 import sys
+import time
 import types
 import pytest
 
@@ -62,18 +63,68 @@ def run_bounded_text(cmd: list[str], timeout: int) -> types.SimpleNamespace:
     return types.SimpleNamespace(returncode=res.returncode, stdout=stdout, stderr=stderr)
 
 
+FORBIDDEN_LAUNCH_MODULES = ("subprocess", "importlib", "multiprocessing", "pty")
+OS_LAUNCH_NAMES = ("system", "popen", "fork", "forkpty")
+OS_LAUNCH_PREFIXES = ("spawn", "exec", "posix_spawn")
+
+
+def _is_os_launcher(name: str) -> bool:
+    return name in OS_LAUNCH_NAMES or name.startswith(OS_LAUNCH_PREFIXES)
+
+
 def find_unbounded_process_calls(source: str) -> list[str]:
-    """Return direct process-launch references that bypass run_bounded (subprocess.*, os.system, os.popen)."""
+    """Return process-launch references that bypass run_bounded.
+
+    Syntactic guard: imports of subprocess, importlib, multiprocessing or pty (any alias or
+    from-import), __import__, os launch functions (system, popen, fork, spawn*, exec*,
+    posix_spawn*) through os, an alias of os or a from-import. Dynamic lookups such as
+    getattr(os, name) or eval are outside its reach.
+    """
+    tree = ast.parse(source)
+    os_names = {"os"}
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            os_names.update(a.asname for a in node.names if a.name == "os" and a.asname)
     hits = []
-    for node in ast.walk(ast.parse(source)):
-        if isinstance(node, (ast.Import, ast.ImportFrom)):
-            names = [a.name for a in node.names] + ([node.module] if isinstance(node, ast.ImportFrom) else [])
-            if "subprocess" in names:
-                hits.append((node.lineno, "import subprocess"))
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for a in node.names:
+                if a.name.split(".")[0] in FORBIDDEN_LAUNCH_MODULES:
+                    hits.append((node.lineno, f"import {a.name}"))
+        elif isinstance(node, ast.ImportFrom):
+            module = node.module or ""
+            if module.split(".")[0] in FORBIDDEN_LAUNCH_MODULES:
+                hits.append((node.lineno, f"from {module} import"))
+            elif module == "os":
+                for a in node.names:
+                    if _is_os_launcher(a.name):
+                        hits.append((node.lineno, f"from os import {a.name}"))
         elif isinstance(node, ast.Attribute) and isinstance(node.value, ast.Name):
-            if node.value.id == "subprocess" or (node.value.id == "os" and node.attr in ("system", "popen")):
+            if node.value.id == "subprocess" or (node.value.id in os_names and _is_os_launcher(node.attr)):
                 hits.append((node.lineno, f"{node.value.id}.{node.attr}"))
+        elif isinstance(node, ast.Name) and node.id == "__import__":
+            hits.append((node.lineno, "__import__"))
     return [f"line {n}: {what}" for n, what in sorted(hits)]
+
+
+def process_alive(pid: int) -> bool:
+    """Liveness probe that treats zombies as dead (Windows: tasklist through run_bounded_text)."""
+    if sys.platform == "win32":
+        res = run_bounded_text(["tasklist", "/FI", f"PID eq {pid}", "/NH"], SHORT_COMMAND_TIMEOUT_SEC)
+        return str(pid) in res.stdout
+    if os.path.exists("/proc"):
+        try:
+            with open(f"/proc/{pid}/stat", "r", encoding="utf-8") as f:
+                return f.read().rsplit(")", 1)[1].split()[0] != "Z"
+        except OSError:
+            return False
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    return True
 
 
 def discover_gateway_test_files() -> list[str]:
@@ -1035,6 +1086,46 @@ def test_referee_child_processes_are_bounded():
         "import os\n"
         "subprocess.run(['node', '--version'])\n"
         "os.system('node --version')\n"
+        "import subprocess as sp\n"
+        "from subprocess import run\n"
+        "import os as o\n"
+        "o.popen('node --version')\n"
+        "from os import system, execvp, getcwd\n"
+        "__import__('subprocess')\n"
+        "import importlib\n"
+        "from multiprocessing import Process\n"
+        "os.posix_spawn\n"
+        "os.getcwd()\n"
     )
     assert find_unbounded_process_calls(unbounded) == [
-        "line 1: import subprocess", "line 3: subprocess.run", "line 4: os.system"]
+        "line 1: import subprocess", "line 3: subprocess.run", "line 4: os.system", "line 5: import subprocess",
+        "line 6: from subprocess import", "line 8: o.popen", "line 9: from os import execvp",
+        "line 9: from os import system", "line 10: __import__", "line 11: import importlib",
+        "line 12: from multiprocessing import", "line 13: os.posix_spawn"]
+
+
+def test_bounded_child_timeout_terminates_nested_tree(tmp_path):
+    """A timed-out referee child is terminated together with a nested bounded worker in its own group."""
+    pid_file = tmp_path / "nested.pid"
+    nested = (
+        "import sys\n"
+        "sys.path.insert(0, sys.argv[2])\n"
+        "from scripts.bounded_process import run_bounded\n"
+        "worker = \"import os, sys, time\\nopen(sys.argv[1], 'w').write(str(os.getpid()))\\ntime.sleep(120)\\n\"\n"
+        "run_bounded([sys.executable, '-c', worker, sys.argv[1]], cwd='.', timeout=120)\n"
+    )
+    with pytest.raises(AssertionError, match="exceeded 15s; process tree TREE_SIGNALLED"):
+        run_bounded_text([sys.executable, "-c", nested, str(pid_file), REPO_ROOT], 15)
+    assert pid_file.exists(), "nested worker must have started before the timeout"
+    worker = int(pid_file.read_text())
+    deadline = time.monotonic() + 15
+    while process_alive(worker) and time.monotonic() < deadline:
+        time.sleep(0.2)
+    try:
+        assert not process_alive(worker), "nested worker must be terminated with the referee child tree"
+    finally:
+        if process_alive(worker):
+            try:
+                os.kill(worker, 9 if sys.platform != "win32" else 15)
+            except OSError:
+                pass

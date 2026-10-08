@@ -3,8 +3,9 @@
 scripts/tests/test_bounded_process.py
 
 Positive and negative controls for scripts/bounded_process.py (B-107 slice 2): exit codes and
-separate output capture, launch errors, whole-tree termination on timeout, and a bounded return
-when a descendant survives and keeps the inherited output handle open.
+separate output capture, launch errors, whole-tree termination on timeout (including a nested
+run_bounded call whose descendants run in their own process group or session), and a bounded
+return when a descendant survives and keeps the inherited output handle open.
 """
 
 import os
@@ -28,6 +29,18 @@ TREE_CHILD = (
     "open(sys.argv[1], 'w').write(str(g.pid))\n"
     "print('tree started', flush=True)\n"
     "time.sleep(120)\n"
+)
+
+
+# A child that runs a long-lived worker through a nested run_bounded call (its own group or session),
+# as gate_runner -> verify_all -> pytest -> gateway referee does; the worker records its PID.
+NESTED_CHILD = (
+    "import sys\n"
+    "sys.path.insert(0, sys.argv[2])\n"
+    "from bounded_process import run_bounded\n"
+    "worker = \"import os, sys, time\\nopen(sys.argv[1], 'w').write(str(os.getpid()))\\ntime.sleep(120)\\n\"\n"
+    "print('nested started', flush=True)\n"
+    "run_bounded([sys.executable, '-c', worker, sys.argv[1]], cwd='.', timeout=120)\n"
 )
 
 
@@ -93,6 +106,25 @@ def test_timeout_terminates_whole_tree(tmp_path):
     assert b"tree started" in res.stdout, "output written before the timeout must be kept"
     assert pid_file.exists(), "grandchild must have started before the timeout"
     assert wait_dead(int(pid_file.read_text()), 15), "grandchild must be terminated with the tree"
+
+
+def test_timeout_terminates_nested_bounded_tree(tmp_path):
+    # Counterexample for a group-only kill: the nested worker runs in its own process group or session.
+    pid_file = tmp_path / "nested.pid"
+    started = time.monotonic()
+    res = bp.run_bounded([PY, "-c", NESTED_CHILD, str(pid_file), SCRIPTS_DIR], cwd=str(tmp_path), timeout=15)
+    assert time.monotonic() - started < 90
+    assert res.timed_out and res.kill_status == bp.KILL_TREE_SIGNALLED
+    assert pid_file.exists(), "nested worker must have started before the timeout"
+    worker = int(pid_file.read_text())
+    try:
+        assert wait_dead(worker, 15), "nested worker in its own group must be terminated with the tree"
+    finally:
+        if alive(worker):
+            try:
+                os.kill(worker, signal.SIGKILL if hasattr(signal, "SIGKILL") else signal.SIGTERM)
+            except OSError:
+                pass
 
 
 def test_surviving_descendant_cannot_block_return(tmp_path):
