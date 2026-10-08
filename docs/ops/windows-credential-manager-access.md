@@ -45,7 +45,7 @@ timeout 為 60000ms 上限，不增加重試。子程序被強制終止時，不
 
 ## 輸出與錯誤
 
-native stdout 僅為 PRESENT、ABSENT、CREATED 或 DELETED；wrapper 依操作嚴格配對，拒絕其他輸出。成功 token 只在所有已取得資源的清理結算後才寫出；任一清理失敗即 exit 1 且 stdout 為空，即使 CredWriteW 已成功亦同，wrapper 映射 PROVIDER_UNAVAILABLE，呼叫端以 isPresent 確認實際狀態，不自動重試寫入。原始 stdout／stderr、參數、blob、值、長度、值雜湊與機敏片段不得進入錯誤或日誌。
+native stdout 僅為 PRESENT、ABSENT、CREATED 或 DELETED；wrapper 依操作嚴格配對，拒絕其他輸出。成功 token 只在所有已取得資源的清理結算後才寫出；任一清理失敗即 exit 1 且 stdout 為空，即使 CredWriteW 已成功亦同，wrapper 映射 PROVIDER_UNAVAILABLE，呼叫端不得自動重試寫入；isPresent 只能確認目標目前是否存在，不能證明本次寫入成功或內容正確。原始 stdout／stderr、參數、blob、值、長度、值雜湊與機敏片段不得進入錯誤或日誌。
 固定錯誤碼為 INVALID_SECRET_REFERENCE、UNSUPPORTED_PLATFORM、PROVIDER_UNAVAILABLE、PROVIDER_PROTOCOL_ERROR、PROVIDER_ACCESS_DENIED、CREDENTIAL_ALREADY_EXISTS、CREDENTIAL_BUSY、SECRET_ENCODING_INVALID。
 秘密只經捕獲的 binary stdin 傳入，不能出現在命令列、環境、檔案或 JSON；非機密 reference 經 argument array 傳遞，shell=false、NoProfile、NonInteractive，子程序只取得六個既有非機密環境鍵。
 
