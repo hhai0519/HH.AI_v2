@@ -1,34 +1,26 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "B107-SCOPED-RULES-S5-R2-261009",
-  "base_oid": "45a2c80be6600be314514ba284917607de27c950",
+  "task_id": "B107-STATE-SYNC-261009",
+  "base_oid": "dfe88d6df94494dfed9dfba82395a7dda16e94ac",
   "plan": {
     "allowed_paths": [
-      ".claude/rules/auditor-protocol.md",
-      ".claude/rules/auditor-selftest.md",
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
+      "docs/HANDOVER.md",
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
-      "docs/generated/rule-traceability.md",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md",
-      "scripts/tests/test_prompt_manifest.py",
-      "scripts/validate_prompt_manifest.py"
+      "docs/refactor-backlog.md"
     ],
     "required_paths": [
-      ".claude/rules/auditor-protocol.md",
-      ".claude/rules/auditor-selftest.md",
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
+      "docs/HANDOVER.md",
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
-      "docs/generated/rule-traceability.md",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md",
-      "scripts/tests/test_prompt_manifest.py",
-      "scripts/validate_prompt_manifest.py"
+      "docs/refactor-backlog.md"
     ],
     "max_plan_revisions": 3,
     "revision_count": 0,
@@ -36,17 +28,13 @@
   },
   "actual": {
     "changed_paths": [
-      ".claude/rules/auditor-protocol.md",
-      ".claude/rules/auditor-selftest.md",
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
+      "docs/HANDOVER.md",
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
-      "docs/generated/rule-traceability.md",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md",
-      "scripts/tests/test_prompt_manifest.py",
-      "scripts/validate_prompt_manifest.py"
+      "docs/refactor-backlog.md"
     ]
   },
   "evidence": [

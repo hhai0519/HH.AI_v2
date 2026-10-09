@@ -19,6 +19,7 @@
 - **當前活躍審計官指派（單一事實來源）**：導航至 [`docs/TASKBOARD.md`](./TASKBOARD.md) 讀取 `**ACTIVE_MACRO_AUDITOR**` 標記
 - **審計官工作協議與核對規範**：[`.claude/rules/auditor-protocol.md`](../.claude/rules/auditor-protocol.md)
 - **宏觀審計官自檢清單**：[`.claude/rules/auditor-selftest.md`](../.claude/rules/auditor-selftest.md)
+- **批次執行工具（canonical runner）**：[`scripts/batch_runner.py`](../scripts/batch_runner.py)（固定步驟批次執行）與 [`scripts/prompt_intake.py`](../scripts/prompt_intake.py)（提示詞接收與雜湊核對）；現行用法與限制見各工具檔頭說明及 [`docs/TASKBOARD.md`](./TASKBOARD.md) 相關任務列
 
 ### 3. 執行者接手導引 (Executor / Antigravity Control Plane)
 - **全域執行者安全核心與路由**：[`AGENTS.md`](../AGENTS.md)

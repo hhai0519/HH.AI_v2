@@ -1,5 +1,5 @@
 {
-  "base_head": "45a2c80",
+  "base_head": "dfe88d6",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -559,16 +559,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 299,
-      "sha256": "2eca41ea7e7feec007841e0a87894f3874ff5a6cf800d7a12320e6ade254f934"
+      "lines": 300,
+      "sha256": "b1c6e2cfb13f10d7fb7e10e4e5e5065918d961b830f33f684465ad2d18a2161c"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 266,
-      "sha256": "f863f55bcbc4ee0d2d61d5694617e602452707b760b33f63bac22be833d03172"
+      "lines": 267,
+      "sha256": "611b1434e32afa2229c54f80196c6586e54c3ba389063fb368206eefccba56eb"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -587,8 +587,8 @@
         "### 10. 歸檔與歷史資料 (Archive & Historical Material)",
         "### 11. 規範驗證入口 (Canonical Verification)"
       ],
-      "lines": 66,
-      "sha256": "0e3e8eed4119655ac80b6a150ba5ccbaf477dcd7eaf83a3870939e2c87dbec26"
+      "lines": 67,
+      "sha256": "ab4a9e2e9f985f146ec2abc340ab132e8c077c019756d854fe9afef1baf5ab77"
     },
     "docs/TASKBOARD.md": {
       "fences": 0,
@@ -609,8 +609,8 @@
         "## G. 舊 repo 未盤點區塊（2026-09-02 新發現）",
         "## 封存區"
       ],
-      "lines": 372,
-      "sha256": "e3ea6557e1f403b8b75bcf1f837790dd7b2ef120b9772a5ed85442c05da3bbe4"
+      "lines": 374,
+      "sha256": "2937e5181daefde6a231fe36462deb1344dc8f829c466c37700f23d5a2002d1f"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1108,8 +1108,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6365,
-      "sha256": "f420fbae7239228489e6c505e6cec72271d75f4fb52d79556a247dfc6d41d0e9"
+      "lines": 6367,
+      "sha256": "91ac19c2fcba03be65e18eb687a29bcccc997cef5884c329a2dd25ac29b0850f"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1751,7 +1751,7 @@
       "sha256": "35bf7dbfa3c7d291b550c3c97a6ae398a22b1dc3624c1d2fc1e4db6963d6e115"
     }
   },
-  "generated_at": "2026-10-09T06:11:43Z",
+  "generated_at": "2026-10-09T08:27:37Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {
