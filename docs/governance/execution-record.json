@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "B107-RUNNER-UPDATE-S6-R1-261009",
-  "base_oid": "cc0fcae1505081caad0796ca2330101808974df3",
+  "task_id": "B107-RUNNER-CONVERGE-S7-R1-261009",
+  "base_oid": "1f09c6d334a47f8bad6acea373e0bfc40793c5b2",
   "plan": {
     "allowed_paths": [
       "docs/AUDIT-LOG.md",

@@ -220,13 +220,88 @@ def test_changed_paths_ignore_crlf_warning_on_stderr(tmp_path):
     assert br.changed_paths(repo, base) == ["gen.json", "new file.txt"]
 
 
-# --- bounded execution -----------------------------------------------------------------
+# --- bounded execution (shared primitive: scripts/bounded_process.py) ---------------------
 
-def test_bounded_run_returns_exit_code_and_writes_output_to_file(tmp_path):
-    log = tmp_path / "log.txt"
-    code = br.bounded_run([sys.executable, "-c", "import sys; print('done'); sys.exit(3)"], str(tmp_path), log, 60)
-    assert code == 3
-    assert "done" in log.read_text(encoding="utf-8")
+def _bounded_batch(tmp_path, monkeypatch):
+    batch = br.Batch.__new__(br.Batch)
+    batch.root, batch.task_id = str(tmp_path), TASK
+    monkeypatch.setattr(batch, "artifact", lambda suffix: suffix)
+    return batch
+
+
+def test_runner_has_no_private_process_code():
+    # Convergence guard: the runner launches bounded steps only through bounded_process.run_bounded.
+    source = open(br.__file__, encoding="utf-8").read()
+    assert not hasattr(br, "bounded_run") and not hasattr(br, "kill_tree")
+    assert "Popen(" not in source and "killpg" not in source and "taskkill" not in source
+    import bounded_process
+    assert br.run_bounded is bounded_process.run_bounded
+
+
+def test_bounded_writes_record_and_reports_exit_code(tmp_path, monkeypatch, capsys):
+    batch = _bounded_batch(tmp_path, monkeypatch)
+    with pytest.raises(br.Halt) as exc:
+        batch.bounded("FOCUSED", ["-c", "import sys; print('done'); sys.stderr.write('err\\n'); sys.exit(3)"], 60)
+    assert str(exc.value) == "FOCUSED_NONZERO"
+    record = (tmp_path / "bounded-focused.txt").read_text(encoding="utf-8")
+    assert "done" in record and "err" in record, "stdout and stderr are both kept in the step record"
+    assert "BOUNDED_EXIT FOCUSED code=3 | (summary withheld)" in capsys.readouterr().out
+    (tmp_path / "ok").mkdir()
+    _bounded_batch(tmp_path / "ok", monkeypatch).bounded("FOCUSED", ["-c", "print('7 passed in 0.10s')"], 60)
+    assert "BOUNDED_EXIT FOCUSED code=0 | 7 passed in 0.10s" in capsys.readouterr().out
+
+
+def test_bounded_passes_runner_environment_and_merges_output(tmp_path, monkeypatch):
+    seen = {}
+
+    import bounded_process
+
+    def fake(cmd, cwd, timeout, env=None, merge_stderr=False, **kw):
+        seen.update(cmd=cmd, cwd=cwd, timeout=timeout, env=env, merge=merge_stderr)
+        return bounded_process.BoundedResult(0, False, None, b"1 passed in 0.01s\n", b"", "NOT_NEEDED")
+
+    monkeypatch.setattr(br, "run_bounded", fake)
+    _bounded_batch(tmp_path, monkeypatch).bounded("PRECOMMIT", ["scripts/gate_runner.py"], 123)
+    assert seen["cmd"][0] == br.PY and seen["timeout"] == 123 and seen["merge"] is True
+    assert seen["env"]["PYTHONUTF8"] == "1" and seen["env"]["PYTHONIOENCODING"] == "utf-8"
+
+
+@pytest.mark.parametrize("result,code,printed", [
+    ((None, False, "OSError", b"", b"", "NOT_NEEDED"), "FOCUSED_LAUNCH_FAILED", None),
+    ((None, True, None, b"partial\n", b"", "TREE_KILL_FAILED"), "FOCUSED_TIMEOUT", "kill=TREE_KILL_FAILED"),
+    ((None, True, None, b"", b"", "TREE_SIGNALLED"), "FOCUSED_TIMEOUT", "kill=TREE_SIGNALLED"),
+])
+def test_bounded_failure_paths_stop(tmp_path, monkeypatch, capsys, result, code, printed):
+    # Fault injection: launch failure and timeouts (including a failed tree kill) are stops, never passes.
+    import bounded_process
+    monkeypatch.setattr(br, "run_bounded", lambda *a, **k: bounded_process.BoundedResult(*result))
+    batch = _bounded_batch(tmp_path, monkeypatch)
+    assert halt_code(batch.bounded, "FOCUSED", ["-c", "pass"], 60) == code
+    out = capsys.readouterr().out
+    if printed:
+        assert "BOUNDED_TIMEOUT FOCUSED limit=60s " + printed in out
+    assert "BOUNDED_EXIT" not in out
+    # Whatever was captured before the stop (for example partial output before a timeout) is kept in the record.
+    assert (tmp_path / "bounded-focused.txt").read_bytes() == result[3]
+
+
+def test_bounded_capture_failure_stops_and_leaves_only_the_empty_record(tmp_path, monkeypatch):
+    # Documented limitation: the record is written after run_bounded returns, so a failure inside the shared
+    # primitive leaves an empty record; the step still stops (main reports UNEXPECTED_<type>), never passes.
+    def broken(*a, **k):
+        raise OSError("injected capture failure")
+
+    monkeypatch.setattr(br, "run_bounded", broken)
+    batch = _bounded_batch(tmp_path, monkeypatch)
+    with pytest.raises(OSError):
+        batch.bounded("FOCUSED", ["-c", "print('x')"], 60)
+    assert (tmp_path / "bounded-focused.txt").read_bytes() == b""
+
+
+def test_bounded_refuses_second_run_of_a_stage(tmp_path, monkeypatch):
+    batch = _bounded_batch(tmp_path, monkeypatch)
+    (tmp_path / "bounded-focused.txt").write_text("", encoding="utf-8")
+    assert halt_code(batch.bounded, "FOCUSED", ["-c", "pass"], 60) == "FOCUSED_ALREADY_RUN"
 
 
 def _alive(pid):
@@ -235,7 +310,7 @@ def _alive(pid):
     return bounded_process.process_alive(pid)
 
 
-def test_bounded_run_timeout_terminates_whole_tree(tmp_path):
+def test_bounded_timeout_terminates_whole_tree(tmp_path, monkeypatch, capsys):
     pid_file = tmp_path / "grandchild.pid"
     child = (
         "import subprocess, sys, time\n"
@@ -243,12 +318,12 @@ def test_bounded_run_timeout_terminates_whole_tree(tmp_path):
         "open(sys.argv[1], 'w').write(str(g.pid))\n"
         "time.sleep(120)\n"
     )
-    log = tmp_path / "log.txt"
+    batch = _bounded_batch(tmp_path, monkeypatch)
     started = time.monotonic()
     # The limit leaves room for two interpreter start-ups on slow Windows hosts before the tree is terminated.
-    code = br.bounded_run([sys.executable, "-c", child, str(pid_file)], str(tmp_path), log, 10)
-    assert code is None
+    assert halt_code(batch.bounded, "FOCUSED", ["-c", child, str(pid_file)], 10) == "FOCUSED_TIMEOUT"
     assert time.monotonic() - started < 90
+    assert "BOUNDED_TIMEOUT FOCUSED limit=10s kill=TREE_SIGNALLED" in capsys.readouterr().out
     assert pid_file.exists(), "grandchild must have started before the timeout"
     grandchild = int(pid_file.read_text())
     deadline = time.monotonic() + 15

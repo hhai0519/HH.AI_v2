@@ -30,7 +30,10 @@ Invariants (fail closed; a failing step prints one "S1 <CODE> | step <name>" lin
 - Author files are rebuilt only from declared sources (base blob, pinned blob, prompt block, or the
   verified current file in adopt mode) plus unique-anchor replacements, and must match the declared
   LF SHA-256 before anything is written.
-- Gate steps write output to a file (never a pipe) and terminate the whole process tree on timeout.
+- Bounded steps (focused and the three gates) run through scripts/bounded_process.py run_bounded, the
+  same primitive the gate runner uses: output goes to temporary files (never pipes), the whole process
+  tree is terminated on timeout, and the tree-kill status is reported in a fixed vocabulary. The
+  captured output is written to the step's .git/<TASK_ID>-bounded-<stage>.txt record.
 - Main advancement exists only in promotion specs: native pinned full-SHA refspec push with a
   single-use MAIN_EXACT_SHA authorization consumed by the repository pre-push hook.
 - Only task artifacts with the .git/<TASK_ID>- prefix, the declared author paths and the two
@@ -53,11 +56,16 @@ import hashlib
 import json
 import os
 import re
-import signal
 import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+try:
+    from bounded_process import run_bounded  # noqa: E402 - shared bounded-execution primitive (B-107)
+finally:
+    sys.path.pop(0)
 
 SCHEMA_VERSION = 1
 RUNNER_REL = 'scripts/batch_runner.py'
@@ -415,42 +423,6 @@ def expect_adopt_scope(root, spec, label):
         raise Halt(label + '_SCOPE_MISMATCH')
 
 
-# ---------------------------------------------------------------------------
-# Bounded execution: output to a file, whole process tree terminated on timeout.
-# ---------------------------------------------------------------------------
-
-def kill_tree(proc):
-    if os.name == 'nt':
-        subprocess.run(['taskkill', '/T', '/F', '/PID', str(proc.pid)], stdin=subprocess.DEVNULL,
-                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=120)
-    else:
-        try:
-            os.killpg(proc.pid, signal.SIGKILL)
-        except (ProcessLookupError, PermissionError):
-            pass
-
-
-def bounded_run(args, cwd, log_path, limit):
-    """Run args with output appended to log_path. Returns exit code, or None after a timeout."""
-    kwargs = {}
-    if os.name == 'nt':
-        kwargs['creationflags'] = subprocess.CREATE_NEW_PROCESS_GROUP
-    else:
-        kwargs['start_new_session'] = True
-    with open(log_path, 'ab') as log:
-        proc = subprocess.Popen(args, cwd=cwd, stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT,
-                                env=child_env(), **kwargs)
-        try:
-            return proc.wait(timeout=limit)
-        except subprocess.TimeoutExpired:
-            kill_tree(proc)
-            try:
-                proc.wait(timeout=120)
-            except subprocess.TimeoutExpired:
-                pass
-            return None
-
-
 class Batch:
     def __init__(self, root, task_id):
         self.root = root
@@ -482,13 +454,17 @@ class Batch:
         if os.path.lexists(path):
             raise Halt(stage + '_ALREADY_RUN')
         path.touch(exist_ok=False)
-        code = bounded_run([PY] + args, self.root, path, limit)
-        tail = [l for l in path.read_bytes().decode('utf-8', 'replace').splitlines() if l.strip()]
-        summary = bounded_summary(tail)
-        if code is None:
-            print('BOUNDED_TIMEOUT ' + stage + ' limit=' + str(limit) + 's tree_terminated')
+        res = run_bounded([PY] + args, cwd=self.root, timeout=limit, env=child_env(), merge_stderr=True)
+        with open(path, 'ab') as log:
+            log.write(res.stdout)
+        if res.launch_error is not None:
+            raise Halt(stage + '_LAUNCH_FAILED')
+        if res.timed_out:
+            print('BOUNDED_TIMEOUT ' + stage + ' limit=' + str(limit) + 's kill=' + res.kill_status)
             raise Halt(stage + '_TIMEOUT')
-        print('BOUNDED_EXIT ' + stage + ' code=' + str(code) + ' | ' + summary)
+        code = res.returncode
+        tail = [l for l in res.stdout.decode('utf-8', 'replace').splitlines() if l.strip()]
+        print('BOUNDED_EXIT ' + stage + ' code=' + str(code) + ' | ' + bounded_summary(tail))
         if code != 0:
             raise Halt(stage + '_NONZERO')
 

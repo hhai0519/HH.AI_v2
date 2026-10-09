@@ -1,5 +1,5 @@
 {
-  "base_head": "cc0fcae",
+  "base_head": "1f09c6d",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -559,16 +559,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 301,
-      "sha256": "e9e284768317c6f1e4d13b298e023bea53ea972f46091e262cadaf7b390f7198"
+      "lines": 302,
+      "sha256": "7592e03ee94ecdf24d52807fda56518b86817b14716dfeafc7613379fcf7d163"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 268,
-      "sha256": "97f66b42cd725da042db6f46d86f7749ef54c2466971f5fe391447236ee70753"
+      "lines": 269,
+      "sha256": "b225a46d0b1430ece1e9d9232099a076084c06b77348aeef83326050ae84555d"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -610,7 +610,7 @@
         "## 封存區"
       ],
       "lines": 374,
-      "sha256": "8b460cb4118c230438a4c103789607dbbf98543bbf72effd341d69955e4b5bad"
+      "sha256": "02dc35f7600323dbba2eb31e79106f2c3fdd5956d233cc865b6fcba5f8cbdd0b"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1108,8 +1108,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6369,
-      "sha256": "ef803d32d963037df39b185df2ed2f342aa86ea8c03830ca67671c45a6112d3f"
+      "lines": 6370,
+      "sha256": "a0b32158a38d74f43318950b61683efd7219b13c7788095cf1d84866b731979d"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1139,14 +1139,11 @@
         "# Working tree state",
         "# ---------------------------------------------------------------------------",
         "# ---------------------------------------------------------------------------",
-        "# Bounded execution: output to a file, whole process tree terminated on timeout.",
-        "# ---------------------------------------------------------------------------",
-        "# ---------------------------------------------------------------------------",
         "# Control record and entry point",
         "# ---------------------------------------------------------------------------"
       ],
-      "lines": 873,
-      "sha256": "2af92f84f1fb67704f99301b1543803134905396e010a06441700689ee30e6b1"
+      "lines": 849,
+      "sha256": "41facaaa7b30a72e6a0f3018ed31c8e8577a9bb230cc3c09da8c9c558e63aae6"
     },
     "scripts/bounded_process.py": {
       "fences": 0,
@@ -1306,14 +1303,14 @@
         "# --- control ------------------------------------------------------------------",
         "# --- author content ---------------------------------------------------------------",
         "# --- git output parsing --------------------------------------------------------------",
-        "# --- bounded execution -----------------------------------------------------------------",
+        "# --- bounded execution (shared primitive: scripts/bounded_process.py) ---------------------",
         "# --- B-107 runner update path: (2) fixed-vocabulary failure detail ------------------------------",
         "# --- (3) author hashes at stage and commit -----------------------------------------------",
         "# --- (7) adopt a workspace that stopped before generate ------------------------------------",
         "# --- runner update: controlled succession ----------------------------------------------------"
       ],
-      "lines": 590,
-      "sha256": "fadba2ceb6213ab3ba7044310a2d56c93459e7387cab91baad8153089aeed3ff"
+      "lines": 665,
+      "sha256": "8c2356a4631624edffe865dc1bf9bda76dcb671471312be7b0eead65e2d94096"
     },
     "scripts/tests/test_bounded_process.py": {
       "fences": 0,
@@ -1757,7 +1754,7 @@
       "sha256": "35bf7dbfa3c7d291b550c3c97a6ae398a22b1dc3624c1d2fc1e4db6963d6e115"
     }
   },
-  "generated_at": "2026-10-09T10:21:20Z",
+  "generated_at": "2026-10-09T11:51:04Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {
