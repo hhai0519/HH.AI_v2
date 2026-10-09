@@ -1,5 +1,5 @@
 {
-  "base_head": "1f09c6d",
+  "base_head": "9c79f2d",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -559,16 +559,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 302,
-      "sha256": "7592e03ee94ecdf24d52807fda56518b86817b14716dfeafc7613379fcf7d163"
+      "lines": 303,
+      "sha256": "5950cdf1a1f4cd399bece1326c5ac05cbb9aa65cb2f24d01a8dd2096bc4ba451"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 269,
-      "sha256": "b225a46d0b1430ece1e9d9232099a076084c06b77348aeef83326050ae84555d"
+      "lines": 270,
+      "sha256": "4672d4d4377d3b55c68a3d7f3cc7fac748c878e58453b1ddb744eda54086c645"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -587,8 +587,8 @@
         "### 10. 歸檔與歷史資料 (Archive & Historical Material)",
         "### 11. 規範驗證入口 (Canonical Verification)"
       ],
-      "lines": 67,
-      "sha256": "ab4a9e2e9f985f146ec2abc340ab132e8c077c019756d854fe9afef1baf5ab77"
+      "lines": 68,
+      "sha256": "4ede8a0bf69ed484b9ab9fe25e8a10ec18e0efc6d8ad2552d2c9abcd7ef7e7a6"
     },
     "docs/TASKBOARD.md": {
       "fences": 0,
@@ -610,7 +610,7 @@
         "## 封存區"
       ],
       "lines": 374,
-      "sha256": "02dc35f7600323dbba2eb31e79106f2c3fdd5956d233cc865b6fcba5f8cbdd0b"
+      "sha256": "cd20ce51f4299700aaa9f33e24a29291348d02748cd77d27d60fd77ae8455f84"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1108,8 +1108,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6370,
-      "sha256": "a0b32158a38d74f43318950b61683efd7219b13c7788095cf1d84866b731979d"
+      "lines": 6371,
+      "sha256": "0f81d97f9c94cb7a2a4b4caf69454f84d0c5a50a8615d78ff5f209b9eaabe6bf"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1247,6 +1247,14 @@
       ],
       "lines": 141,
       "sha256": "18781171876a0540640da4572101dad23561976de5908f08e880f4d034ec3ada"
+    },
+    "scripts/prompt_builder.py": {
+      "fences": 0,
+      "headings": [
+        "# -*- coding: utf-8 -*-"
+      ],
+      "lines": 521,
+      "sha256": "c6a570a91fd697986720645fda7ee99f0adadd9bed4258ee612471fd0147bea4"
     },
     "scripts/prompt_intake.py": {
       "fences": 0,
@@ -1514,6 +1522,17 @@
       "lines": 88,
       "sha256": "249f0fb19ce70855ae87ef31c51c88d8673be77b5269924f93081ffaafb9c62e"
     },
+    "scripts/tests/test_prompt_builder.py": {
+      "fences": 0,
+      "headings": [
+        "# -*- coding: utf-8 -*-",
+        "# --- build -------------------------------------------------------------------------------------",
+        "# --- outputs, start-up text and check -----------------------------------------------------------",
+        "# --- second-opinion fixes (R1–R4) ------------------------------------------------------------------"
+      ],
+      "lines": 638,
+      "sha256": "1dede0257931da49a386aa119c74acfa20be70c0aca823a690657afcc8b316c7"
+    },
     "scripts/tests/test_prompt_intake.py": {
       "fences": 0,
       "headings": [
@@ -1754,7 +1773,7 @@
       "sha256": "35bf7dbfa3c7d291b550c3c97a6ae398a22b1dc3624c1d2fc1e4db6963d6e115"
     }
   },
-  "generated_at": "2026-10-09T11:51:04Z",
+  "generated_at": "2026-10-09T19:02:05Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {
