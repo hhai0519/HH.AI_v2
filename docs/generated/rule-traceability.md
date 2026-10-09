@@ -214,9 +214,12 @@
 | .claude/rules/auditor-protocol.md | 152 | ### 6.1 每份提示詞的必備要素 | SECTION | §5 | docs/refactor-backlog.md#§5 | RESOLVED |
 | .claude/rules/auditor-protocol.md | 153 | ### 6.1 每份提示詞的必備要素 | FILE | `docs/TASKBOARD.md` | docs/TASKBOARD.md | RESOLVED |
 | .claude/rules/auditor-protocol.md | 154 | ### 6.1 每份提示詞的必備要素 | FILE | `docs/AUDIT-LOG.md` | docs/AUDIT-LOG.md | RESOLVED |
+| .claude/rules/auditor-protocol.md | 156 | ### 6.1 每份提示詞的必備要素 | FILE | `AGENTS.md` | AGENTS.md | RESOLVED |
 | .claude/rules/auditor-protocol.md | 156 | ### 6.1 每份提示詞的必備要素 | FILE | `[`.agents/rules/role-boundaries.md §9`](../../.agents/rules/role-boundaries.md#9-上下文遺失恢復任務產物紀律與證據分工權威-context_loss_recovery_rule)` | .agents/rules/role-boundaries.md#9-上下文遺失恢復任務產物紀律與證據分工權威-context_loss_recovery_rule | RESOLVED |
 | .claude/rules/auditor-protocol.md | 156 | ### 6.1 每份提示詞的必備要素 | FILE | `docs/EXEC-LOG.md` | docs/EXEC-LOG.md | RESOLVED |
+| .claude/rules/auditor-protocol.md | 156 | ### 6.1 每份提示詞的必備要素 | FILE | `scripts/validate_prompt_manifest.py` | scripts/validate_prompt_manifest.py | RESOLVED |
 | .claude/rules/auditor-protocol.md | 156 | ### 6.1 每份提示詞的必備要素 | SECTION | §9 | .agents/rules/role-boundaries.md#§9 | RESOLVED |
+| .claude/rules/auditor-protocol.md | 156 | ### 6.1 每份提示詞的必備要素 | TASK | B-107 | docs/TASKBOARD.md | RESOLVED |
 | .claude/rules/auditor-protocol.md | 158 | ### 6.1 每份提示詞的必備要素 | SECTION | §5.1 | docs/refactor-backlog.md#§5.1 | RESOLVED |
 | .claude/rules/auditor-protocol.md | 160 | ### 6.1 每份提示詞的必備要素 | FILE | `.agents/rules/prompt-preflight.md` | .agents/rules/prompt-preflight.md | RESOLVED |
 | .claude/rules/auditor-protocol.md | 160 | ### 6.1 每份提示詞的必備要素 | SECTION | §3.1 | .agents/rules/prompt-preflight.md#§3.1 | RESOLVED |

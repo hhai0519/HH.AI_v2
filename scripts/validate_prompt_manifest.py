@@ -14,6 +14,7 @@ scripts/validate_prompt_manifest.py
 import sys
 import os
 import re
+import stat
 import argparse
 
 REQUIRED_KEYS = [
@@ -64,6 +65,146 @@ CONTRACT_V2_EXTRA_KEYS = [
 
 CONTRACT_REQUIRED_KEYS_V2 = CONTRACT_REQUIRED_KEYS_V1 + CONTRACT_V2_EXTRA_KEYS
 CONTRACT_REQUIRED_KEYS = CONTRACT_REQUIRED_KEYS_V1
+
+# Scoped rule reading (B-107): every directory-scoped AGENTS.md that governs an allowed mutation path
+# (root AGENTS.md excluded) must be listed in the prompt's single "動手前必讀" section, as the leading path
+# list of a numbered item ("4. runtime/channel-gateway/AGENTS.md（說明）").
+REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+SCOPED_RULE_FILENAME = "AGENTS.md"
+MUST_READ_TITLE = "動手前必讀"
+SECTION_HEADING_RE = re.compile(r"^(?:[一二三四五六七八九十]+、|#{1,6}\s)")
+MUST_READ_ITEM_RE = re.compile(r"^\s*\d+\.\s+([A-Za-z0-9_./-]+(?:、[A-Za-z0-9_./-]+)*)(?![A-Za-z0-9_./\\-])")
+RUNNER_BLOCK_BEGIN_RE = re.compile(r"^<<<BEGIN ([A-Z0-9_]+)>>>$")
+
+
+def _rule_file_state(path: str) -> bool:
+    """True：一般檔案存在；False：確定不存在；其他（權限、I/O、非一般檔案）一律 ValueError（fail closed）。"""
+    try:
+        st = os.stat(path)
+    except (FileNotFoundError, NotADirectoryError):
+        return False
+    except OSError as e:
+        raise ValueError(f"cannot stat {path!r}: {e.__class__.__name__}") from e
+    if not stat.S_ISREG(st.st_mode):
+        raise ValueError(f"rule path is not a regular file: {path!r}")
+    return True
+
+
+def find_governing_scoped_rules(paths: list[str], repo_root: str = REPO_ROOT) -> list[str]:
+    """
+    回傳治理各路徑之目錄層級 AGENTS.md（不含根目錄，repo 相對路徑、排序）。
+    只有「確定不存在」才略過；根目錄缺少 AGENTS.md、查詢權限或 I/O 錯誤、非一般檔案皆 ValueError（fail closed）。
+    """
+    if not _rule_file_state(os.path.join(repo_root, SCOPED_RULE_FILENAME)):
+        raise ValueError(f"repository root has no {SCOPED_RULE_FILENAME}: {repo_root!r}")
+    found = set()
+    for raw in paths:
+        parts = raw.replace("\\", "/").split("/")[:-1]
+        for depth in range(1, len(parts) + 1):
+            rel = "/".join(parts[:depth] + [SCOPED_RULE_FILENAME])
+            if _rule_file_state(os.path.join(repo_root, *rel.split("/"))):
+                found.add(rel)
+    return sorted(found)
+
+
+def _instruction_line_mask(lines: list[str]) -> list[bool]:
+    """標記指令行；程式碼圍欄、HTML 註解、manifest／contract 區塊與 runner 機器區塊（含其邊界行）皆非指令行。"""
+    mask = []
+    fence = None
+    formal_end = None
+    runner_end = None
+    in_comment = False
+    for line in lines:
+        stripped = line.strip()
+        if fence is not None:
+            fence = check_code_fence(line, fence)
+            mask.append(False)
+            continue
+        if formal_end is not None:
+            mask.append(False)
+            if stripped == formal_end:
+                formal_end = None
+            continue
+        if runner_end is not None:
+            mask.append(False)
+            if line == runner_end:
+                runner_end = None
+            continue
+        if in_comment:
+            mask.append(False)
+            if "-->" in line:
+                in_comment = False
+            continue
+        new_fence = check_code_fence(line, None)
+        if new_fence is not None:
+            fence = new_fence
+            mask.append(False)
+            continue
+        if stripped == BEGIN_MARKER:
+            formal_end = END_MARKER
+            mask.append(False)
+            continue
+        if stripped == CONTRACT_BEGIN_MARKER:
+            formal_end = CONTRACT_END_MARKER
+            mask.append(False)
+            continue
+        m = RUNNER_BLOCK_BEGIN_RE.match(line)
+        if m:
+            runner_end = "<<<END " + m.group(1) + ">>>"
+            mask.append(False)
+            continue
+        if "<!--" in line:
+            in_comment = "-->" not in line[line.index("<!--") + 4:]
+            mask.append(False)
+            continue
+        mask.append(True)
+    return mask
+
+
+def extract_must_read_section(prompt_text: str) -> tuple[bool, str, str]:
+    """取出唯一之正式「動手前必讀」章節：只認指令行中之標題；章節止於下一個標題或任何非指令區域。"""
+    lines = prompt_text.replace("\r\n", "\n").split("\n")
+    mask = _instruction_line_mask(lines)
+    starts = [i for i, line in enumerate(lines) if mask[i] and SECTION_HEADING_RE.match(line) and MUST_READ_TITLE in line]
+    if len(starts) != 1:
+        return False, f"expected exactly one '{MUST_READ_TITLE}' section heading outside code fences, comments and machine blocks, found {len(starts)}", ""
+    end = len(lines)
+    for j in range(starts[0] + 1, len(lines)):
+        if not mask[j] or SECTION_HEADING_RE.match(lines[j]):
+            end = j
+            break
+    return True, "", "\n".join(lines[starts[0]:end])
+
+
+def listed_must_read_paths(section: str) -> set[str]:
+    """章節中編號項目開頭之路徑清單（以「、」分隔）；項目內其他位置之路徑不算列出。"""
+    listed = set()
+    for line in section.split("\n"):
+        m = MUST_READ_ITEM_RE.match(line)
+        if m:
+            listed.update(m.group(1).split("、"))
+    return listed
+
+
+def validate_scoped_rule_reading(prompt_text: str, paths: list[str], repo_root: str = REPO_ROOT) -> tuple[bool, str]:
+    """
+    驗證治理 allowed_mutation_paths 之 scoped AGENTS.md 全數列於「動手前必讀」章節之編號項目開頭路徑清單。
+    探索失敗、章節缺漏或重複、任一檔未列出，皆回傳失敗。
+    """
+    try:
+        required = find_governing_scoped_rules(paths, repo_root)
+    except ValueError as e:
+        return False, f"Scoped rule discovery failed: {e}"
+    if not required:
+        return True, ""
+    ok, err, section = extract_must_read_section(prompt_text)
+    if not ok:
+        return False, f"Scoped rule files {required} govern allowed_mutation_paths, but {err}"
+    listed = listed_must_read_paths(section)
+    missing = [rel for rel in required if rel not in listed]
+    if missing:
+        return False, f"'{MUST_READ_TITLE}' section does not list (as the leading path of a numbered item) scoped rule files governing allowed_mutation_paths: {missing}"
+    return True, ""
 
 
 def check_code_fence(line: str, active_fence: tuple[str, int] | None) -> tuple[str, int] | None:
@@ -289,10 +430,14 @@ def validate_execution_contract(
        - required_mutation_paths (NONE 或分號分隔之 exact paths，必須 required ⊆ allowed)
        - max_plan_revisions == '3'
        - execution_record_required ('true' 若 allowed!=NONE，否則 'false')
+       - 輸入為完整提示詞時，治理 allowed_mutation_paths 之 scoped AGENTS.md（不含根目錄）
+         必須列於唯一之正式「動手前必讀」章節之編號項目開頭路徑清單（validate_scoped_rule_reading）
     """
+    prompt_text = None
     if isinstance(prompt_text_or_contract, dict):
         contract = dict(prompt_text_or_contract)
     else:
+        prompt_text = prompt_text_or_contract
         ok, err, parsed = parse_execution_contract_block(prompt_text_or_contract)
         if not ok:
             return False, err, {}
@@ -476,6 +621,12 @@ def validate_execution_contract(
                     normalized_req.append(p_norm)
 
                 contract["required_mutation_paths"] = ";".join(sorted(normalized_req))
+
+            # Scoped rule reading (B-107): only checkable when the full prompt text is available.
+            if prompt_text is not None:
+                scoped_ok, scoped_err = validate_scoped_rule_reading(prompt_text, normalized_allowed)
+                if not scoped_ok:
+                    return False, scoped_err, {}
 
     return True, "", contract
 

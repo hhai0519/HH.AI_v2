@@ -18,6 +18,16 @@ from scripts.validate_prompt_manifest import (
 )
 
 
+
+def utf8_child_env():
+    """CLI tests exchange CJK text with a child Python: pin UTF-8 on both sides so the result never depends
+    on the host locale (Windows cp950) or on which runner launched pytest (.agents/rules/git-and-reporting.md)."""
+    env = dict(os.environ)
+    env["PYTHONIOENCODING"] = "utf-8"
+    env["PYTHONUTF8"] = "1"
+    return env
+
+
 VALID_GOAL_SPEC_PROMPT = """
 你是 HH.AI_v2 專案的執行者（Antigravity IDE Agent / Executor）。
 
@@ -295,6 +305,8 @@ def test_cli_file_mode(tmp_path):
         [sys.executable, "scripts/validate_prompt_manifest.py", "--file", str(prompt_file)],
         capture_output=True,
         text=True,
+        encoding="utf-8",
+        env=utf8_child_env(),
     )
     assert res.returncode == 0
     assert "[PASS]" in res.stdout
@@ -306,6 +318,8 @@ def test_cli_stdin_mode():
         input=VALID_GOAL_SPEC_PROMPT,
         capture_output=True,
         text=True,
+        encoding="utf-8",
+        env=utf8_child_env(),
     )
     assert res.returncode == 0
     assert "[PASS]" in res.stdout
@@ -319,6 +333,8 @@ def test_cli_fail_closed_mode(tmp_path):
         [sys.executable, "scripts/validate_prompt_manifest.py", "--file", str(bad_file)],
         capture_output=True,
         text=True,
+        encoding="utf-8",
+        env=utf8_child_env(),
     )
     assert res.returncode != 0
     assert "[FAIL]" in res.stderr
@@ -662,3 +678,205 @@ def test_contract_q_fenced_example_only_contract_fails_missing_formal_block():
     assert ok is False
     assert "missing" in err.lower()
 
+
+
+# ---------------------------------------------------------------------------
+# Scoped rule reading (B-107): scoped AGENTS.md governing allowed paths must be in "動手前必讀"
+# ---------------------------------------------------------------------------
+import errno  # noqa: E402
+
+import scripts.validate_prompt_manifest as vpm  # noqa: E402
+from scripts.validate_prompt_manifest import (  # noqa: E402
+    REPO_ROOT,
+    extract_must_read_section,
+    find_governing_scoped_rules,
+    listed_must_read_paths,
+    validate_scoped_rule_reading,
+)
+
+SCOPED_GATEWAY_PATH = "runtime/channel-gateway/tests/windows-credential-manager-access.test.js"
+SCOPED_GATEWAY_RULE = "runtime/channel-gateway/AGENTS.md"
+
+
+def _scoped_prompt(must_read_lines, allowed):
+    body = "\n".join([
+        "你是 HH.AI_v2 專案的執行者（Antigravity IDE Agent / Executor）。",
+        "一、本批唯一工作方式",
+        "1. 只依第三節命令執行；本節提到 " + SCOPED_GATEWAY_RULE + " 不算必讀。",
+        "二、動手前必讀（IDE 原生檢視工具，完整閱讀至檔尾）",
+        *must_read_lines,
+        "三、固定命令",
+        "python scripts/batch_runner.py --task-id T preflight",
+        "",
+    ])
+    contract = BASE_V2_CONTRACT.replace(
+        "allowed_mutation_paths: scripts/foo.py;scripts/bar.py",
+        "allowed_mutation_paths: scripts/foo.py;" + ";".join(allowed),
+    )
+    return body + contract + "\n"
+
+
+def _write(root, rel, text="x\n"):
+    path = root / rel
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(text, encoding="utf-8")
+
+
+def test_scoped_rules_discovered_for_nested_and_new_paths(tmp_path):
+    _write(tmp_path, "AGENTS.md")
+    _write(tmp_path, "skills/AGENTS.md")
+    _write(tmp_path, "skills/analysis/AGENTS.md")
+    _write(tmp_path, "runtime/svc/AGENTS.md")
+    paths = ["skills/analysis/new-skill/SKILL.md", "runtime/svc/core/x.js", "scripts/foo.py", "README.md"]
+    assert find_governing_scoped_rules(paths, str(tmp_path)) == [
+        "runtime/svc/AGENTS.md", "skills/AGENTS.md", "skills/analysis/AGENTS.md",
+    ]
+    assert find_governing_scoped_rules(["skills/AGENTS.md"], str(tmp_path)) == ["skills/AGENTS.md"]
+
+
+def test_scoped_rule_discovery_fails_closed_without_root_rules(tmp_path):
+    _write(tmp_path, "runtime/svc/AGENTS.md")
+    with pytest.raises(ValueError):
+        find_governing_scoped_rules(["runtime/svc/x.js"], str(tmp_path))
+    ok, err = validate_scoped_rule_reading("二、動手前必讀\nruntime/svc/AGENTS.md\n", ["runtime/svc/x.js"], str(tmp_path))
+    assert ok is False and "Scoped rule discovery failed" in err
+
+
+def test_real_repo_gateway_path_requires_gateway_rules():
+    assert find_governing_scoped_rules([SCOPED_GATEWAY_PATH], REPO_ROOT) == [SCOPED_GATEWAY_RULE]
+    assert find_governing_scoped_rules(["scripts/validate_prompt_manifest.py", "docs/TASKBOARD.md"], REPO_ROOT) == []
+
+
+def test_contract_passes_when_scoped_rule_is_in_must_read_section():
+    prompt = _scoped_prompt(["1. AGENTS.md", "2. " + SCOPED_GATEWAY_RULE + "（讀至檔尾）"], [SCOPED_GATEWAY_PATH])
+    ok, err, contract = validate_execution_contract(prompt)
+    assert ok is True, err
+    assert SCOPED_GATEWAY_PATH in contract["allowed_mutation_paths"]
+
+
+def test_contract_fails_when_scoped_rule_missing_or_outside_section():
+    prompt = _scoped_prompt(["1. AGENTS.md"], [SCOPED_GATEWAY_PATH])
+    ok, err, _ = validate_execution_contract(prompt)
+    assert ok is False
+    assert SCOPED_GATEWAY_RULE in err and "does not list" in err
+
+
+def test_contract_fails_on_lookalike_path_in_section():
+    for lookalike in (SCOPED_GATEWAY_RULE + ".bak", "x/" + SCOPED_GATEWAY_RULE, "runtime/channel-gateway/AGENTS.mdx"):
+        prompt = _scoped_prompt(["1. " + lookalike], [SCOPED_GATEWAY_PATH])
+        ok, _, _ = validate_execution_contract(prompt)
+        assert ok is False, lookalike
+
+
+def test_contract_fails_without_or_with_duplicate_must_read_heading():
+    no_heading = _scoped_prompt(["1. " + SCOPED_GATEWAY_RULE], [SCOPED_GATEWAY_PATH]).replace(
+        "二、動手前必讀（IDE 原生檢視工具，完整閱讀至檔尾）", "二、閱讀清單")
+    ok, err, _ = validate_execution_contract(no_heading)
+    assert ok is False and "found 0" in err
+    duplicate = _scoped_prompt(["1. " + SCOPED_GATEWAY_RULE, "## 動手前必讀（補充）"], [SCOPED_GATEWAY_PATH])
+    ok, err, _ = validate_execution_contract(duplicate)
+    assert ok is False and "found 2" in err
+
+
+def test_scoped_check_skipped_for_unscoped_paths_dict_input_and_none_scope():
+    ok, err, _ = validate_execution_contract(_scoped_prompt([], []).replace(";\n", "\n"))
+    assert ok is True, err
+    ok, err, _ = validate_execution_contract(BASE_V2_CONTRACT)
+    assert ok is True, err
+
+
+def test_must_read_section_ends_at_next_heading_and_machine_block():
+    text = "二、動手前必讀\na\n三、命令\nb\n"
+    assert extract_must_read_section(text) == (True, "", "二、動手前必讀\na")
+    text = "## 動手前必讀\na\nBEGIN_HHAI_EXECUTION_CONTRACT\nb\n"
+    assert extract_must_read_section(text)[2] == "## 動手前必讀\na"
+    runner_block = "二、動手前必讀\na\n<<<BEGIN PLAN_JSON>>>\n1. " + SCOPED_GATEWAY_RULE + "\n<<<END PLAN_JSON>>>\n"
+    assert extract_must_read_section(runner_block)[2] == "二、動手前必讀\na"
+    assert validate_scoped_rule_reading(runner_block, [SCOPED_GATEWAY_PATH])[0] is False
+    crlf = "二、動手前必讀\r\n1. " + SCOPED_GATEWAY_RULE + "\r\n三、命令\r\n"
+    assert validate_scoped_rule_reading(crlf, [SCOPED_GATEWAY_PATH]) == (True, "")
+
+
+def test_cli_rejects_prompt_missing_scoped_rule(tmp_path):
+    base = "dac592166eb1d29baba58a19dab333fbab62270f"
+    contract_prompt = _scoped_prompt(["1. AGENTS.md"], [SCOPED_GATEWAY_PATH]).replace(
+        "base_oid: 69b4b6c72e2bf2b91a46107afb2e7e9a2e538de1", "base_oid: " + base)
+    script = os.path.join(REPO_ROOT, "scripts", "validate_prompt_manifest.py")
+    results = []
+    for listed in (False, True):
+        text = contract_prompt if not listed else contract_prompt.replace("1. AGENTS.md", "1. AGENTS.md\n2. " + SCOPED_GATEWAY_RULE)
+        prompt_file = tmp_path / ("prompt-%s.txt" % listed)
+        prompt_file.write_text(VALID_GOAL_SPEC_PROMPT + "\n" + text, encoding="utf-8")
+        results.append(subprocess.run([sys.executable, script, "--file", str(prompt_file), "--require-contract"],
+                                      capture_output=True, text=True, encoding="utf-8", env=utf8_child_env(), timeout=120))
+    assert results[0].returncode != 0 and SCOPED_GATEWAY_RULE in results[0].stderr, results[0].stderr
+    assert results[1].returncode == 0, results[1].stderr
+
+
+def _cli(tmp_path, name, contract_text):
+    base = "dac592166eb1d29baba58a19dab333fbab62270f"
+    prompt_file = tmp_path / name
+    prompt_file.write_text(VALID_GOAL_SPEC_PROMPT + "\n" + contract_text.replace(
+        "base_oid: 69b4b6c72e2bf2b91a46107afb2e7e9a2e538de1", "base_oid: " + base), encoding="utf-8")
+    script = os.path.join(REPO_ROOT, "scripts", "validate_prompt_manifest.py")
+    return subprocess.run([sys.executable, script, "--file", str(prompt_file), "--require-contract"],
+                          capture_output=True, text=True, encoding="utf-8", env=utf8_child_env(), timeout=120)
+
+
+def test_cli_rejects_must_read_heading_only_inside_example_or_machine_block(tmp_path):
+    contract_only = _scoped_prompt(["1. AGENTS.md"], [SCOPED_GATEWAY_PATH]).replace(
+        "二、動手前必讀（IDE 原生檢視工具，完整閱讀至檔尾）", "二、閱讀清單")
+    example = "```text\n二、動手前必讀\n1. " + SCOPED_GATEWAY_RULE + "\n```\n"
+    runner = "<<<BEGIN AUTHOR_TEXT>>>\n二、動手前必讀\n1. " + SCOPED_GATEWAY_RULE + "\n<<<END AUTHOR_TEXT>>>\n"
+    comment = "<!--\n二、動手前必讀\n1. " + SCOPED_GATEWAY_RULE + "\n-->\n"
+    for name, extra in (("fence", example), ("runner", runner), ("comment", comment)):
+        res = _cli(tmp_path, name + ".txt", extra + contract_only)
+        assert res.returncode != 0, name
+        assert "found 0" in res.stderr, (name, res.stderr)
+
+
+def test_must_read_item_must_lead_with_exact_path():
+    good = "二、動手前必讀\n1. AGENTS.md、" + SCOPED_GATEWAY_RULE + "（讀至檔尾）\n"
+    assert listed_must_read_paths(good) == {"AGENTS.md", SCOPED_GATEWAY_RULE}
+    for bad in ("1. 不需閱讀 " + SCOPED_GATEWAY_RULE,
+                "1. archive\\" + SCOPED_GATEWAY_RULE,
+                "- " + SCOPED_GATEWAY_RULE,
+                SCOPED_GATEWAY_RULE,
+                "1. `" + SCOPED_GATEWAY_RULE + "`",
+                "1. Runtime/channel-gateway/AGENTS.md"):
+        text = "二、動手前必讀\n" + bad + "\n三、命令\n"
+        ok, err = validate_scoped_rule_reading(text, [SCOPED_GATEWAY_PATH])
+        assert ok is False and "does not list" in err, bad
+    inline_comment = "二、動手前必讀\n<!-- 1. " + SCOPED_GATEWAY_RULE + " -->\n三、命令\n"
+    assert validate_scoped_rule_reading(inline_comment, [SCOPED_GATEWAY_PATH])[0] is False
+
+
+def test_scoped_rule_stat_errors_fail_closed(tmp_path, monkeypatch):
+    _write(tmp_path, "AGENTS.md")
+    _write(tmp_path, "runtime/svc/AGENTS.md")
+    target = os.path.join(str(tmp_path), "runtime", "svc", "AGENTS.md")
+    real_stat = os.stat
+    prompt = "二、動手前必讀\n1. AGENTS.md\n"
+    for code in (errno.EACCES, errno.EIO):
+        def fake_stat(path, *args, _code=code, **kwargs):
+            if os.fspath(path) == target:
+                raise OSError(_code, os.strerror(_code), target)
+            return real_stat(path, *args, **kwargs)
+        monkeypatch.setattr(vpm.os, "stat", fake_stat)
+        ok, err = validate_scoped_rule_reading(prompt, ["runtime/svc/x.js"], str(tmp_path))
+        assert ok is False and "Scoped rule discovery failed" in err, code
+        monkeypatch.setattr(vpm.os, "stat", real_stat)
+    os.remove(target)
+    os.mkdir(target)
+    ok, err = validate_scoped_rule_reading(prompt, ["runtime/svc/x.js"], str(tmp_path))
+    assert ok is False and "not a regular file" in err
+
+
+def test_cli_subprocess_calls_pin_utf8():
+    """Every child-process call in this file must pin UTF-8 (B-107: host-locale decoding failed on Windows)."""
+    with open(__file__, "r", encoding="utf-8") as f:
+        source = f.read()
+    calls = source.count("subprocess" + ".run(")
+    assert calls >= 5
+    assert source.count("env=" + "utf8_child_env()") == calls
+    assert source.count('encoding="utf-8", env=' + "utf8_child_env()") + source.count('encoding="utf-8",\n        env=' + "utf8_child_env()") == calls

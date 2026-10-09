@@ -1,5 +1,5 @@
 {
-  "base_head": "972acd8",
+  "base_head": "45a2c80",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -204,7 +204,7 @@
         "### 12.2 Tier-M 微修復分類規範 (Tier-M Micro Repair)"
       ],
       "lines": 533,
-      "sha256": "0bdc53c80ba20466658d718e9a2626ff81dc0766b8f44311de5a7effd535c3d9"
+      "sha256": "81af59e27c220cd1bc501066e51b2789e68eb5bbe3dc15edf635289de6569693"
     },
     ".claude/rules/auditor-selftest.md": {
       "fences": 0,
@@ -219,7 +219,7 @@
         "## F. 額度（每一輪回覆的開頭與結尾）"
       ],
       "lines": 140,
-      "sha256": "281b12393d61ea3eb7c41f0dac21011fbd414dce87ebb0147c9828b72390557d"
+      "sha256": "c594951fd17cc754690a5da162bb937db972e657030d2ac294b68d0efd50ec80"
     },
     ".github/workflows/verify.yml": {
       "fences": 0,
@@ -559,16 +559,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 298,
-      "sha256": "e637e9868803b95275c2e9724557a6b21737013812432cc6d14a411884b14d25"
+      "lines": 299,
+      "sha256": "2eca41ea7e7feec007841e0a87894f3874ff5a6cf800d7a12320e6ade254f934"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 265,
-      "sha256": "3665679fad7f269732b2eb798398e56c2785a553c980007a11a6667b5d63a45f"
+      "lines": 266,
+      "sha256": "f863f55bcbc4ee0d2d61d5694617e602452707b760b33f63bac22be833d03172"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -610,7 +610,7 @@
         "## 封存區"
       ],
       "lines": 372,
-      "sha256": "e209445932448814e091421d826bb415358d9b0a28ee9573f2b0903d14247a1e"
+      "sha256": "e3ea6557e1f403b8b75bcf1f837790dd7b2ef120b9772a5ed85442c05da3bbe4"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1108,8 +1108,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6364,
-      "sha256": "66aaed732995f60366c88c06d94f0d09cfd5a225fd808933a89b53b7ba187ba8"
+      "lines": 6365,
+      "sha256": "f420fbae7239228489e6c505e6cec72271d75f4fb52d79556a247dfc6d41d0e9"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1527,10 +1527,13 @@
         "# ---------------------------------------------------------------------------",
         "# ---------------------------------------------------------------------------",
         "# Structural Marker Parser Hardening Deterministic Controls (Tests A - Q)",
+        "# ---------------------------------------------------------------------------",
+        "# ---------------------------------------------------------------------------",
+        "# Scoped rule reading (B-107): scoped AGENTS.md governing allowed paths must be in \"動手前必讀\"",
         "# ---------------------------------------------------------------------------"
       ],
-      "lines": 664,
-      "sha256": "f8149a73ca44aa5e0b2bdb05bd43a9de71573e3d15effb55ee7f4bfa8251c901"
+      "lines": 882,
+      "sha256": "86f4dbed78c5d265b562b6f3bdc96c39d712921d98d52ab7af26c35ff6ee95f2"
     },
     "scripts/tests/test_rule_loadability.py": {
       "fences": 0,
@@ -1716,9 +1719,13 @@
     },
     "scripts/validate_prompt_manifest.py": {
       "fences": 0,
-      "headings": [],
-      "lines": 657,
-      "sha256": "6c6e77c04762eed8d961632cce869eb36fbe164829b945f22689d7f029f44dd7"
+      "headings": [
+        "# Scoped rule reading (B-107): every directory-scoped AGENTS.md that governs an allowed mutation path",
+        "# (root AGENTS.md excluded) must be listed in the prompt's single \"動手前必讀\" section, as the leading path",
+        "# list of a numbered item (\"4. runtime/channel-gateway/AGENTS.md（說明）\")."
+      ],
+      "lines": 808,
+      "sha256": "3ccd660b4657b01c6ae7ec13725dce9db5f50476d5745fc2d11888bade6022af"
     },
     "scripts/validate_skills.py": {
       "fences": 0,
@@ -1744,7 +1751,7 @@
       "sha256": "35bf7dbfa3c7d291b550c3c97a6ae398a22b1dc3624c1d2fc1e4db6963d6e115"
     }
   },
-  "generated_at": "2026-10-09T03:27:17Z",
+  "generated_at": "2026-10-09T06:11:43Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {
