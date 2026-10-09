@@ -2825,7 +2825,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 5.1 上一批狀態
 
-上次核對通過的 HEAD：6b948f5220569b4a5776cb549b10cc04dcebedc5
+上次核對通過的 HEAD：972acd82ca0f202b5e769302b39399b55f76355c
 
 - `23af193`（執行者前置檢查 ＋ 回滾程序 ＋ `AUDIT-LOG.md` ＋ 四缺口修正）
   已於 2026-09-02 由審計官核對通過：6 檔異動（含 2 個新檔）、零夾帶、
@@ -3070,6 +3070,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 - `afdf0ba`（B-107 Slice 2 Bounded Gate & Referee Execution & 1951dc6 Audit State Sync）：Target = `afdf0bab9478fa9eeef920f0a2ba6d4b6d7a1445`；Parent = `1951dc66ab348bdae1b44115fd471d429fadacfa`；TASK_ID: B107-BOUNDED-S2-261008；十一個路徑（新模組 bounded_process 與其測試、gate_runner、兩個既有測試檔、四個狀態檔與兩個生成檔）；External Macro Auditor AUD-CLAUDE-261008-B（A1 = FULL_CLONE）獨立裁決 PASS（第二意見 Q1、Q4、Q5 由緊接之修補批處理）；Candidate Run 37782847260 與 Post-main Run 37787453885 均 attempt 1、exact target SHA、verify 與 gateway-windows success，Macro 親讀兩份 verify raw log 為 ALL 5 GATES PASSED；晉級批 PROMOTE-B107-BOUNDED-S2-261008 經 USER 逐案授權，以 native pinned full-SHA refspec 與單次 MAIN_EXACT_SHA 授權推送，SHA transformation = NONE；accepted checkpoint 推進至 `afdf0bab9478fa9eeef920f0a2ba6d4b6d7a1445`。
 - `ccf1253`（B-107 Slice 2 R1 Nested Bounded Tree Termination & afdf0ba Audit State Sync）：Target = `ccf1253dfe82ccdf4ccf7586708cf304d2e1889d`；Parent = `afdf0bab9478fa9eeef920f0a2ba6d4b6d7a1445`；TASK_ID: B107-BOUNDED-S2-R1-261008；九個路徑（bounded_process、兩個測試檔、四個狀態檔與兩個生成檔）；External Macro Auditor AUD-CLAUDE-261008-B（A1 = FULL_CLONE）獨立裁決 PASS（第二意見第二輪事項由緊接之修補批處理）；Candidate Run 37792814754 與 Post-main Run 37795764965 均 attempt 1、exact target SHA、verify 與 gateway-windows success，Macro 親讀兩份 verify raw log 為 ALL 5 GATES PASSED；晉級批 PROMOTE-B107-BOUNDED-S2-R1-261008 經 USER 逐案授權，以 native pinned full-SHA refspec 與單次 MAIN_EXACT_SHA 授權推送，SHA transformation = NONE；accepted checkpoint 推進至 `ccf1253dfe82ccdf4ccf7586708cf304d2e1889d`。
 - `6b948f5`（B-107 Slice 2 R2 Deadline, Identity & Fail-Closed Liveness & ccf1253 Audit State Sync）：Target = `6b948f5220569b4a5776cb549b10cc04dcebedc5`；Parent = `ccf1253dfe82ccdf4ccf7586708cf304d2e1889d`；TASK_ID: B107-BOUNDED-S2-R2-261008；十個路徑（bounded_process、三個測試檔、四個狀態檔與兩個生成檔）；External Macro Auditor AUD-CLAUDE-261008-B（A1 = FULL_CLONE）獨立裁決 PASS；Candidate Run 37848702279 與 Post-main Run 37850958899 均 attempt 1、exact target SHA、verify 與 gateway-windows success，Macro 親讀兩份 verify raw log 為 ALL 5 GATES PASSED；晉級批 PROMOTE-B107-BOUNDED-S2-R2-261008 經 USER 逐案授權，以 native pinned full-SHA refspec 與單次 MAIN_EXACT_SHA 授權推送，SHA transformation = NONE；accepted checkpoint 推進至 `6b948f5220569b4a5776cb549b10cc04dcebedc5`。
+- `972acd8`（B-107 Slice 3 Verifier-Class Pre-Execution Assurance Rule E27 & 6b948f5 Audit State Sync）：Target = `972acd82ca0f202b5e769302b39399b55f76355c`；Parent = `6b948f5220569b4a5776cb549b10cc04dcebedc5`；TASK_ID: B107-ASSURANCE-S3-261009；十個路徑（三個規則檔、規則追溯產物、四個狀態檔與兩個生成檔）；External Macro Auditor AUD-CLAUDE-261008-B（A1 = FULL_CLONE）獨立裁決 PASS；Candidate Run 37856843648 attempt 1 雙 job success；Post-main Run 37857878788 attempt 1 之 gateway-windows failure（原生測試時限違反 F2-A；該次成因推定）、verify success，USER 依 D-R4 重跑後 attempt 2 gateway-windows success；Macro 親讀 raw log；晉級批 PROMOTE-B107-ASSURANCE-S3-R1-261009（前一批 FETCH_FAILED 停止）經 USER 逐案授權，以 native pinned full-SHA refspec 與單次 MAIN_EXACT_SHA 授權推送，SHA transformation = NONE；accepted checkpoint 推進至 `972acd82ca0f202b5e769302b39399b55f76355c`。
 
 ### 5.2 待辦
 

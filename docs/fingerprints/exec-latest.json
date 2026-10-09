@@ -1,5 +1,5 @@
 {
-  "base_head": "6b948f5",
+  "base_head": "972acd8",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -559,16 +559,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 297,
-      "sha256": "76b6b7bec53b490ad4fd1ada41076fb10ac3389135c69c842733f8e503564ac8"
+      "lines": 298,
+      "sha256": "e637e9868803b95275c2e9724557a6b21737013812432cc6d14a411884b14d25"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 264,
-      "sha256": "3ab9a681033ac1f03b7c882800f5e55f109f322f1d3367626cefc36e0a079f3d"
+      "lines": 265,
+      "sha256": "3665679fad7f269732b2eb798398e56c2785a553c980007a11a6667b5d63a45f"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -610,7 +610,7 @@
         "## 封存區"
       ],
       "lines": 372,
-      "sha256": "2bf56e5b07807de03d8d3b347687e7e2d585d0027a8d9a6345b8b5ebea77f1b8"
+      "sha256": "e209445932448814e091421d826bb415358d9b0a28ee9573f2b0903d14247a1e"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1108,8 +1108,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6363,
-      "sha256": "8af51abda0117d2c38502549177c165e59bcb6df1f780a87775dee4f2837127e"
+      "lines": 6364,
+      "sha256": "66aaed732995f60366c88c06d94f0d09cfd5a225fd808933a89b53b7ba187ba8"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1346,10 +1346,15 @@
         "# Control 3: Local function definition + invocation should pass",
         "# ==========================================",
         "# L. Bounded child-process canaries (B-107 slice 2)",
-        "# =========================================="
+        "# ==========================================",
+        "# ==========================================",
+        "# M. Native PowerShell timing budgets (B-107; runtime/channel-gateway/AGENTS.md F2-A)",
+        "# ==========================================",
+        "# Closed world: the only lines in NATIVE_TEST_FILES that may reference child_process.",
+        "# Exact lines that must appear once in every NATIVE_TEST_FILES entry (helper + runtime guard)."
       ],
-      "lines": 1135,
-      "sha256": "312be51ede2fefee43a31b647a0cc31c26c03a38b0b5b6acd651b6c536a64022"
+      "lines": 1278,
+      "sha256": "99ed0ef2a457a455e44e8ddad5acdfc918b2cac7c8a8030aa88946d62da55c4e"
     },
     "scripts/tests/test_check_17_18.py": {
       "fences": 0,
@@ -1739,7 +1744,7 @@
       "sha256": "35bf7dbfa3c7d291b550c3c97a6ae398a22b1dc3624c1d2fc1e4db6963d6e115"
     }
   },
-  "generated_at": "2026-10-08T22:50:47Z",
+  "generated_at": "2026-10-09T03:27:17Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

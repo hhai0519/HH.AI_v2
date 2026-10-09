@@ -1,32 +1,30 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "B107-ASSURANCE-S3-261009",
-  "base_oid": "6b948f5220569b4a5776cb549b10cc04dcebedc5",
+  "task_id": "B107-NATIVE-TIMING-S4-261009",
+  "base_oid": "972acd82ca0f202b5e769302b39399b55f76355c",
   "plan": {
     "allowed_paths": [
-      ".agents/rules/prompt-preflight.md",
-      ".claude/rules/auditor-protocol.md",
-      ".claude/rules/auditor-selftest.md",
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
-      "docs/generated/rule-traceability.md",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md"
+      "docs/refactor-backlog.md",
+      "runtime/channel-gateway/tests/windows-credential-manager-access.test.js",
+      "runtime/channel-gateway/tests/windows-credential-manager-provider.test.js",
+      "scripts/tests/test_channel_gateway_core.py"
     ],
     "required_paths": [
-      ".agents/rules/prompt-preflight.md",
-      ".claude/rules/auditor-protocol.md",
-      ".claude/rules/auditor-selftest.md",
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
-      "docs/generated/rule-traceability.md",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md"
+      "docs/refactor-backlog.md",
+      "runtime/channel-gateway/tests/windows-credential-manager-access.test.js",
+      "runtime/channel-gateway/tests/windows-credential-manager-provider.test.js",
+      "scripts/tests/test_channel_gateway_core.py"
     ],
     "max_plan_revisions": 3,
     "revision_count": 0,
@@ -34,16 +32,15 @@
   },
   "actual": {
     "changed_paths": [
-      ".agents/rules/prompt-preflight.md",
-      ".claude/rules/auditor-protocol.md",
-      ".claude/rules/auditor-selftest.md",
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
-      "docs/generated/rule-traceability.md",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md"
+      "docs/refactor-backlog.md",
+      "runtime/channel-gateway/tests/windows-credential-manager-access.test.js",
+      "runtime/channel-gateway/tests/windows-credential-manager-provider.test.js",
+      "scripts/tests/test_channel_gateway_core.py"
     ]
   },
   "evidence": [

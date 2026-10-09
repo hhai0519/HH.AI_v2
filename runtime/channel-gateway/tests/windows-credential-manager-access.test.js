@@ -28,6 +28,7 @@ const {
 const {
   WindowsCredentialManagerAccess,
   MAX_BLOB_SIZE,
+  DEFAULT_TIMEOUT_MS,
 } = require('../core/windows-credential-manager-access');
 
 const { SecretRef } = require('../core/secret-provider');
@@ -36,7 +37,26 @@ const {
 } = require('../core/windows-credential-manager-provider');
 
 const NATIVE_TEST_TIMEOUT_MS = 240000;
-const FIXTURE_WAIT_MS = 5000;
+// Timing budgets for native PowerShell processes (B-107, runtime/channel-gateway/AGENTS.md F2-A):
+// every direct bridge run goes through runNativeBridge, whose effective spawnSync timeout is locked
+// to the production DEFAULT_TIMEOUT_MS and cannot be overridden by callers; fixture waits use one
+// shared budget. The guard test below and scripts/tests/test_channel_gateway_core.py enforce this.
+const NATIVE_SPAWN_TIMEOUT_MS = DEFAULT_TIMEOUT_MS;
+const FIXTURE_WAIT_MS = 30000;
+
+function nativeSpawnOptions(extra) {
+  return Object.assign({}, extra, { timeout: NATIVE_SPAWN_TIMEOUT_MS, windowsHide: true });
+}
+
+function runNativeBridge(file, args, extra) {
+  return child_process.spawnSync(file, args, nativeSpawnOptions(extra));
+}
+
+// Exit diagnostics for native bridge runs: distinguishes a timeout or launch failure from an exit code.
+function exitDetail(res) {
+  const errorCode = res && res.error ? String(res.error.code || res.error.name || 'error') : 'none';
+  return 'status=' + String(res && res.status) + ' signal=' + String(res && res.signal) + ' error=' + errorCode;
+}
 const LIVE_FIXTURES = new Set();
 
 // ---------------------------------------------------------------------------
@@ -1005,7 +1025,7 @@ function spawnFixtureProcess({ scriptPath, powershellPath, operation, targetName
     closeResult = { code, signal };
   });
 
-  const waitForClose = (timeoutMs = 5000) => {
+  const waitForClose = (timeoutMs = FIXTURE_WAIT_MS) => {
     if (closed) {
       return Promise.resolve(closeResult);
     }
@@ -1051,7 +1071,7 @@ function spawnFixtureProcess({ scriptPath, powershellPath, operation, targetName
     });
   };
 
-  const waitForSignal = (expectedSignal, timeoutMs = 5000) => {
+  const waitForSignal = (expectedSignal, timeoutMs = FIXTURE_WAIT_MS) => {
     return new Promise((resolve, reject) => {
       if (streamError) {
         return reject(new Error('FIXTURE_STREAM_ERROR'));
@@ -1117,7 +1137,7 @@ function spawnFixtureProcess({ scriptPath, powershellPath, operation, targetName
     });
   };
 
-  const cleanup = async (timeoutMs = 5000) => {
+  const cleanup = async (timeoutMs = FIXTURE_WAIT_MS) => {
     if (closed) {
       return closeResult;
     }
@@ -1205,9 +1225,9 @@ test('WindowsCredManAccess - Native bridge mutex busy counterexample exits 5', {
   });
 
   try {
-    await holder.waitForSignal('HELD', 5000);
+    await holder.waitForSignal('HELD', FIXTURE_WAIT_MS);
 
-    const runRes = child_process.spawnSync(
+    const runRes = runNativeBridge(
       powershellPath,
       [
         '-NoLogo',
@@ -1223,10 +1243,10 @@ test('WindowsCredManAccess - Native bridge mutex busy counterexample exits 5', {
         testTarget,
         '-TraceCleanup',
       ],
-      { timeout: 5000, windowsHide: true }
+      {}
     );
 
-    assert.strictEqual(runRes.status, 5, 'Bridge must exit 5 when mutex is busy');
+    assert.strictEqual(runRes.status, 5, 'Bridge must exit 5 when mutex is busy; ' + exitDetail(runRes));
     const trace = parseCleanupTrace(runRes.stderr);
     assert.strictEqual(trace.acquired, 0);
     assert.strictEqual(trace.mutexRelease, 0);
@@ -1236,7 +1256,7 @@ test('WindowsCredManAccess - Native bridge mutex busy counterexample exits 5', {
     assert.strictEqual(trace.deleteCalls, 0);
     assert.strictEqual(trace.cleanupFailed, 0);
   } finally {
-    await holder.cleanup(5000);
+    await holder.cleanup(FIXTURE_WAIT_MS);
   }
 });
 
@@ -1275,7 +1295,7 @@ test('WindowsCredManAccess - Native bridge abandoned mutex maps to exit 1 / PROV
   });
 
   try {
-    await keeper1.waitForSignal('KEEPER_READY', 5000);
+    await keeper1.waitForSignal('KEEPER_READY', FIXTURE_WAIT_MS);
 
     const holder1 = spawnFixtureProcess({
       scriptPath,
@@ -1286,13 +1306,13 @@ test('WindowsCredManAccess - Native bridge abandoned mutex maps to exit 1 / PROV
     });
 
     try {
-      await holder1.waitForSignal('HELD', 5000);
+      await holder1.waitForSignal('HELD', FIXTURE_WAIT_MS);
       const killRes1 = holder1.proc.kill();
       assert.strictEqual(killRes1, true, 'holder1 process kill must return true');
-      const closeRes1 = await holder1.waitForClose(5000);
+      const closeRes1 = await holder1.waitForClose(FIXTURE_WAIT_MS);
       assert.ok(closeRes1 !== null, 'holder1 process close result must be proven');
 
-      const bridgeRes = child_process.spawnSync(
+      const bridgeRes = runNativeBridge(
         powershellPath,
         [
           '-NoLogo',
@@ -1308,10 +1328,10 @@ test('WindowsCredManAccess - Native bridge abandoned mutex maps to exit 1 / PROV
           testTarget1,
           '-TraceCleanup',
         ],
-        { timeout: 5000, windowsHide: true }
+        {}
       );
 
-      assert.strictEqual(bridgeRes.status, 1, 'Bridge must exit 1 on abandoned mutex');
+      assert.strictEqual(bridgeRes.status, 1, 'Bridge must exit 1 on abandoned mutex; ' + exitDetail(bridgeRes));
       const trace = parseCleanupTrace(bridgeRes.stderr);
       assert.strictEqual(trace.acquired, 1, 'Abandoned mutex acquisition must record acquired=1');
       assert.strictEqual(trace.mutexRelease, 1, 'Abandoned mutex must be released in finally');
@@ -1321,10 +1341,10 @@ test('WindowsCredManAccess - Native bridge abandoned mutex maps to exit 1 / PROV
       assert.strictEqual(trace.deleteCalls, 0);
       assert.strictEqual(trace.cleanupFailed, 0);
     } finally {
-      await holder1.cleanup(5000);
+      await holder1.cleanup(FIXTURE_WAIT_MS);
     }
   } finally {
-    await keeper1.cleanup(5000);
+    await keeper1.cleanup(FIXTURE_WAIT_MS);
   }
 
   // Part B: Actual WindowsCredentialManagerAccess wrapper with second independent randomUUID
@@ -1346,7 +1366,7 @@ test('WindowsCredManAccess - Native bridge abandoned mutex maps to exit 1 / PROV
   const originalCopy = Buffer.from(borrowedBlob);
 
   try {
-    await keeper2.waitForSignal('KEEPER_READY', 5000);
+    await keeper2.waitForSignal('KEEPER_READY', FIXTURE_WAIT_MS);
 
     const holder2 = spawnFixtureProcess({
       scriptPath,
@@ -1357,10 +1377,10 @@ test('WindowsCredManAccess - Native bridge abandoned mutex maps to exit 1 / PROV
     });
 
     try {
-      await holder2.waitForSignal('HELD', 5000);
+      await holder2.waitForSignal('HELD', FIXTURE_WAIT_MS);
       const killRes2 = holder2.proc.kill();
       assert.strictEqual(killRes2, true, 'holder2 process kill must return true');
-      const closeRes2 = await holder2.waitForClose(5000);
+      const closeRes2 = await holder2.waitForClose(FIXTURE_WAIT_MS);
       assert.ok(closeRes2 !== null, 'holder2 process close result must be proven');
 
       const access = new WindowsCredentialManagerAccess();
@@ -1378,12 +1398,12 @@ test('WindowsCredManAccess - Native bridge abandoned mutex maps to exit 1 / PROV
         'Borrowed buffer must not be modified by createNew'
       );
     } finally {
-      await holder2.cleanup(5000);
+      await holder2.cleanup(FIXTURE_WAIT_MS);
     }
   } finally {
     borrowedBlob.fill(0);
     originalCopy.fill(0);
-    await keeper2.cleanup(5000);
+    await keeper2.cleanup(FIXTURE_WAIT_MS);
   }
 });
 
@@ -1419,7 +1439,7 @@ test('WindowsCredManAccess - Native bridge fault injection stages and cleanup co
     assert.strictEqual(access.createNew(readRef, setupBlob), true);
     assert.strictEqual(access.isPresent(readRef), true);
 
-    const resRead = child_process.spawnSync(
+    const resRead = runNativeBridge(
       powershellPath,
       [
         '-NoLogo',
@@ -1437,9 +1457,9 @@ test('WindowsCredManAccess - Native bridge fault injection stages and cleanup co
         'acquired-read',
         '-TraceCleanup',
       ],
-      { timeout: 5000, windowsHide: true }
+      {}
     );
-    assert.strictEqual(resRead.status, 1);
+    assert.strictEqual(resRead.status, 1, exitDetail(resRead));
     const traceRead = parseCleanupTrace(resRead.stderr);
     assert.strictEqual(traceRead.acquired, 0);
     assert.strictEqual(traceRead.readCalls, 1);
@@ -1466,7 +1486,7 @@ test('WindowsCredManAccess - Native bridge fault injection stages and cleanup co
   const validBlob1 = Buffer.from('test-secret-1', 'utf16le');
   try {
     assert.strictEqual(access.isPresent(absentRef1), false);
-    const res1 = child_process.spawnSync(
+    const res1 = runNativeBridge(
       powershellPath,
       [
         '-NoLogo',
@@ -1484,9 +1504,9 @@ test('WindowsCredManAccess - Native bridge fault injection stages and cleanup co
         'after-read-check',
         '-TraceCleanup',
       ],
-      { input: validBlob1, timeout: 5000, windowsHide: true }
+      { input: validBlob1 }
     );
-    assert.strictEqual(res1.status, 1);
+    assert.strictEqual(res1.status, 1, exitDetail(res1));
     const trace1 = parseCleanupTrace(res1.stderr);
     assert.strictEqual(trace1.acquired, 1);
     assert.strictEqual(trace1.readCalls, 1);
@@ -1512,7 +1532,7 @@ test('WindowsCredManAccess - Native bridge fault injection stages and cleanup co
   const validBlob2 = Buffer.from('test-secret-2', 'utf16le');
   try {
     assert.strictEqual(access.isPresent(absentRef2), false);
-    const res2 = child_process.spawnSync(
+    const res2 = runNativeBridge(
       powershellPath,
       [
         '-NoLogo',
@@ -1530,9 +1550,9 @@ test('WindowsCredManAccess - Native bridge fault injection stages and cleanup co
         'after-blob-alloc',
         '-TraceCleanup',
       ],
-      { input: validBlob2, timeout: 5000, windowsHide: true }
+      { input: validBlob2 }
     );
-    assert.strictEqual(res2.status, 1);
+    assert.strictEqual(res2.status, 1, exitDetail(res2));
     const trace2 = parseCleanupTrace(res2.stderr);
     assert.strictEqual(trace2.acquired, 1);
     assert.strictEqual(trace2.readCalls, 1);
@@ -1558,7 +1578,7 @@ test('WindowsCredManAccess - Native bridge fault injection stages and cleanup co
   const validBlob3 = Buffer.from('test-secret-3', 'utf16le');
   try {
     assert.strictEqual(access.isPresent(absentRef3), false);
-    const res3 = child_process.spawnSync(
+    const res3 = runNativeBridge(
       powershellPath,
       [
         '-NoLogo',
@@ -1576,9 +1596,9 @@ test('WindowsCredManAccess - Native bridge fault injection stages and cleanup co
         'before-stdout',
         '-TraceCleanup',
       ],
-      { input: validBlob3, timeout: 5000, windowsHide: true }
+      { input: validBlob3 }
     );
-    assert.strictEqual(res3.status, 1);
+    assert.strictEqual(res3.status, 1, exitDetail(res3));
     assert.ok(Buffer.isBuffer(res3.stdout) && res3.stdout.length === 0, 'No success token on failure');
     const trace3 = parseCleanupTrace(res3.stderr);
     assert.strictEqual(trace3.acquired, 1);
@@ -1614,7 +1634,7 @@ test('WindowsCredManAccess - Native bridge fault injection stages and cleanup co
   const validBlob4 = Buffer.from('test-secret-4', 'utf16le');
   try {
     assert.strictEqual(access.isPresent(absentRef4), false);
-    const res4 = child_process.spawnSync(
+    const res4 = runNativeBridge(
       powershellPath,
       [
         '-NoLogo',
@@ -1632,9 +1652,9 @@ test('WindowsCredManAccess - Native bridge fault injection stages and cleanup co
         'clear-fail-after-write',
         '-TraceCleanup',
       ],
-      { input: validBlob4, timeout: 5000, windowsHide: true }
+      { input: validBlob4 }
     );
-    assert.strictEqual(res4.status, 1);
+    assert.strictEqual(res4.status, 1, exitDetail(res4));
     assert.ok(Buffer.isBuffer(res4.stdout) && res4.stdout.length === 0, 'No success token when cleanup fails');
     const trace4 = parseCleanupTrace(res4.stderr);
     assert.strictEqual(trace4.acquired, 1);
@@ -1659,4 +1679,32 @@ test('WindowsCredManAccess - Native bridge fault injection stages and cleanup co
     }
     assert.strictEqual(access.isPresent(absentRef4), false);
   }
+});
+
+test('Native bridge runs are locked to the production timeout (B-107, F2-A)', () => {
+  // F2-A: the production bridge default and upper bound are both 60000 ms.
+  assert.strictEqual(DEFAULT_TIMEOUT_MS, 60000);
+  assert.strictEqual(NATIVE_SPAWN_TIMEOUT_MS, DEFAULT_TIMEOUT_MS);
+  assert.strictEqual(FIXTURE_WAIT_MS, 30000);
+  // Effective options reaching spawnSync: a caller-supplied budget or visibility must not survive.
+  const calls = [];
+  const originalSpawnSync = child_process.spawnSync;
+  child_process.spawnSync = (file, args, options) => {
+    calls.push({ file, args, options });
+    return { status: 0, signal: null };
+  };
+  try {
+    runNativeBridge('probe.exe', ['-a'], JSON.parse('{"input":"probe","timeout":1,"windowsHide":false}'));
+    runNativeBridge('probe.exe', ['-b']);
+  } finally {
+    child_process.spawnSync = originalSpawnSync;
+  }
+  assert.deepStrictEqual(calls, [
+    { file: 'probe.exe', args: ['-a'], options: { input: 'probe', timeout: NATIVE_SPAWN_TIMEOUT_MS, windowsHide: true } },
+    { file: 'probe.exe', args: ['-b'], options: { timeout: NATIVE_SPAWN_TIMEOUT_MS, windowsHide: true } },
+  ]);
+  // Exit diagnostics distinguish a timed-out run from an ordinary exit code.
+  const timedOut = { status: null, signal: 'SIGTERM', error: { code: 'ETIMEDOUT' } };
+  assert.strictEqual(exitDetail(timedOut), 'status=null signal=SIGTERM error=ETIMEDOUT');
+  assert.strictEqual(exitDetail({ status: 1, signal: null }), 'status=1 signal=null error=none');
 });

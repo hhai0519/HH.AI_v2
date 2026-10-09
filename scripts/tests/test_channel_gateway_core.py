@@ -1133,3 +1133,146 @@ def test_liveness_probe_query_failure_is_not_death():
         return types.SimpleNamespace(returncode=0, stdout=b'"python.exe","43210","Console","1","9 K"\r\n',
                                      timed_out=False, launch_error=None)
     assert tasklist_alive(4321, runner=other_pid) is False
+
+
+# ==========================================
+# M. Native PowerShell timing budgets (B-107; runtime/channel-gateway/AGENTS.md F2-A)
+# ==========================================
+
+NATIVE_TEST_FILES = (
+    "windows-credential-manager-access.test.js",
+    "windows-credential-manager-provider.test.js",
+)
+FIXTURE_TEST_FILE = "windows-credential-manager-access.test.js"
+# Closed world: the only lines in NATIVE_TEST_FILES that may reference child_process.
+ALLOWED_CHILD_PROCESS_LINES = frozenset({
+    "const child_process = require('node:child_process');",
+    "return child_process.spawnSync(file, args, nativeSpawnOptions(extra));",
+    "const proc = child_process.spawn(powershellPath, args, {",
+    "const originalSpawnSync = child_process.spawnSync;",
+    "child_process.spawnSync = (file, args, options) => {",
+    "child_process.spawnSync = originalSpawnSync;",
+})
+# Exact lines that must appear once in every NATIVE_TEST_FILES entry (helper + runtime guard).
+REQUIRED_NATIVE_LINES = (
+    "const NATIVE_SPAWN_TIMEOUT_MS = DEFAULT_TIMEOUT_MS;",
+    "function nativeSpawnOptions(extra) {",
+    "return Object.assign({}, extra, { timeout: NATIVE_SPAWN_TIMEOUT_MS, windowsHide: true });",
+    "function runNativeBridge(file, args, extra) {",
+    "return child_process.spawnSync(file, args, nativeSpawnOptions(extra));",
+    "assert.strictEqual(DEFAULT_TIMEOUT_MS, 60000);",
+    "assert.strictEqual(NATIVE_SPAWN_TIMEOUT_MS, DEFAULT_TIMEOUT_MS);",
+    "child_process.spawnSync = originalSpawnSync;",
+)
+ALLOWED_TIMEOUT_VALUES = frozenset({"NATIVE_SPAWN_TIMEOUT_MS", "NATIVE_TEST_TIMEOUT_MS"})
+ALLOWED_WAIT_CALLS = frozenset({
+    "cleanup()", "cleanup(FIXTURE_WAIT_MS)", "waitForClose(FIXTURE_WAIT_MS)", "waitForClose(timeoutMs)",
+})
+REQUIRE_CALL_RE = re.compile(r"\brequire\s*\(")
+LITERAL_REQUIRE_RE = re.compile(r"\brequire\(\s*(['\"])([^'\"\n]+)\1\s*\)")
+DYNAMIC_CODE_RE = re.compile(r"\bimport\s*\(|\beval\s*\(|\bnew\s+Function\b|\bprocess\s*\.\s*binding\b")
+TIMEOUT_KEY_RE = re.compile(r"\btimeout\s*:\s*([^,}\n]*)")
+TIMEOUT_OTHER_RE = re.compile(r"\.\s*timeout\s*=(?!=)|\[\s*['\"`]timeout['\"`]\s*\]")
+WAIT_CALL_RE = re.compile(r"\b(waitForSignal|waitForClose|cleanup)\s*\(")
+FIXTURE_TOKEN_RE = re.compile(r"\b(?:waitForSignal|waitForClose|FIXTURE_WAIT_MS)\b")
+WAIT_ALLOWED_RE = re.compile(r"waitForSignal\('[A-Z_]+', FIXTURE_WAIT_MS\)|waitForSignal\(expectedSignal, timeoutMs\)"
+                             r"|(?:cleanup|waitForClose)\((?:FIXTURE_WAIT_MS|timeoutMs)?\)")
+WAIT_DEFAULT_RE = re.compile(r"\btimeoutMs\s*=(?!=)\s*([^,)\n;]*)")
+
+
+def _line_no(source: str, pos: int) -> int:
+    return source.count("\n", 0, pos) + 1
+
+
+def find_native_budget_violations(source: str, name: str) -> list[str]:
+    """Return 'line N: reason' for every F2-A budget violation in one gateway test source (B-107).
+
+    Text-level lint; the effective spawnSync options are checked at runtime by the guard tests in the
+    native test files. Fail-closed: comments or strings that look like a budget are also reported.
+    """
+    hits = []
+    literal_requires = list(LITERAL_REQUIRE_RE.finditer(source))
+    if len(literal_requires) != len(REQUIRE_CALL_RE.findall(source)):
+        hits.append("line 0: non-literal require()")
+    for m in DYNAMIC_CODE_RE.finditer(source):
+        hits.append(f"line {_line_no(source, m.start())}: dynamic code loading {m.group(0)!r}")
+    for m in literal_requires:
+        if m.group(2) in ("child_process", "node:child_process") and name not in NATIVE_TEST_FILES:
+            hits.append(f"line {_line_no(source, m.start())}: child_process outside {NATIVE_TEST_FILES}")
+        if m.group(2).startswith("./"):
+            hits.append(f"line {_line_no(source, m.start())}: test-local helper module {m.group(2)!r}")
+    if name not in NATIVE_TEST_FILES:
+        return hits
+    lines = source.split("\n")
+    for idx, line in enumerate(lines, 1):
+        if re.search(r"\bchild_process\b", line) and line.strip() not in ALLOWED_CHILD_PROCESS_LINES:
+            hits.append(f"line {idx}: unapproved child_process use {line.strip()!r}")
+    stripped = [ln.strip() for ln in lines]
+    for required in REQUIRED_NATIVE_LINES:
+        if stripped.count(required) != 1:
+            hits.append(f"line 0: expected exactly one {required!r}, found {stripped.count(required)}")
+    for m in TIMEOUT_KEY_RE.finditer(source):
+        if m.group(1).strip() not in ALLOWED_TIMEOUT_VALUES:
+            hits.append(f"line {_line_no(source, m.start())}: timeout: {m.group(1).strip()}")
+    for m in TIMEOUT_OTHER_RE.finditer(source):
+        hits.append(f"line {_line_no(source, m.start())}: indirect timeout {m.group(0)!r}")
+    if name != FIXTURE_TEST_FILE:
+        for m in FIXTURE_TOKEN_RE.finditer(source):
+            hits.append(f"line {_line_no(source, m.start())}: fixture outside {FIXTURE_TEST_FILE}")
+    for m in WAIT_CALL_RE.finditer(source if name == FIXTURE_TEST_FILE else ""):
+        if not WAIT_ALLOWED_RE.match(source, m.start()):
+            hits.append(f"line {_line_no(source, m.start())}: fixture wait {source[m.start():source.find(chr(10), m.start())].strip()!r}")
+    for m in WAIT_DEFAULT_RE.finditer(source):
+        if m.group(1).strip() != "FIXTURE_WAIT_MS":
+            hits.append(f"line {_line_no(source, m.start())}: fixture wait default {m.group(1).strip()!r}")
+    if name == FIXTURE_TEST_FILE and stripped.count("const FIXTURE_WAIT_MS = 30000;") != 1:
+        hits.append("line 0: expected exactly one 'const FIXTURE_WAIT_MS = 30000;'")
+    return hits
+
+
+def test_native_powershell_budgets_match_production():
+    """F2-A: Windows live credential tests run PowerShell only through the locked production budget."""
+    files = discover_gateway_test_files()
+    names = [os.path.basename(p) for p in files]
+    for required in NATIVE_TEST_FILES:
+        assert required in names, f"native test file missing: {required}"
+    for path in files:
+        with open(path, "r", encoding="utf-8") as f:
+            hits = find_native_budget_violations(f.read(), os.path.basename(path))
+        assert hits == [], f"{os.path.basename(path)} violates the native budget rule: {hits}"
+
+    access = os.path.join(TESTS_DIR, FIXTURE_TEST_FILE)
+    with open(access, "r", encoding="utf-8") as f:
+        clean = f.read()
+    helper = "return child_process.spawnSync(file, args, nativeSpawnOptions(extra));"
+    options = "return Object.assign({}, extra, { timeout: NATIVE_SPAWN_TIMEOUT_MS, windowsHide: true });"
+    mutations = {
+        "arithmetic on the shared budget": (options, options.replace("NATIVE_SPAWN_TIMEOUT_MS", "NATIVE_SPAWN_TIMEOUT_MS / 12")),
+        "caller override allowed": (options, "return Object.assign({ timeout: NATIVE_SPAWN_TIMEOUT_MS, windowsHide: true }, extra);"),
+        "helper bypassed": (helper, "return child_process.spawnSync(file, args, extra);"),
+        "second direct spawn": (helper, helper + "\n  child_process.spawnSync(file, args, { windowsHide: true });"),
+        "aliased module": (helper, helper + "\n  const cp = child_process;"),
+        "dynamic require": (helper, helper + "\n  require('child_' + 'process').spawnSync(file, args);"),
+        "dynamic import": (helper, helper + "\n  import('node:child_process');"),
+        "literal budget": ("{ input: validBlob4 }", "{ input: validBlob4, timeout: 5000 }"),
+        "spaced literal budget": ("{ input: validBlob4 }", "{ input: validBlob4, timeout : 5000 }"),
+        "separated literal budget": ("{ input: validBlob4 }", "{ input: validBlob4, timeout: 60_000 }"),
+        "over the upper bound": ("{ input: validBlob4 }", "{ input: validBlob4, timeout: 120000 }"),
+        "variable budget": ("{ input: validBlob4 }", "{ input: validBlob4, timeout: budget }"),
+        "assigned budget": ("{ input: validBlob4 }", "Object.assign({ input: validBlob4 }, { ['timeout']: 5 })"),
+        "fixture wait arithmetic": ("waitForSignal('HELD', FIXTURE_WAIT_MS)", "waitForSignal('HELD', FIXTURE_WAIT_MS / 6)"),
+        "fixture wait literal": ("cleanup(FIXTURE_WAIT_MS)", "cleanup(5000)"),
+        "fixture wait nested call": ("waitForClose(FIXTURE_WAIT_MS)", "waitForClose(Math.min(FIXTURE_WAIT_MS, 5000))"),
+        "fixture default": ("timeoutMs = FIXTURE_WAIT_MS", "timeoutMs = 5000"),
+        "fixture budget lowered": ("const FIXTURE_WAIT_MS = 30000;", "const FIXTURE_WAIT_MS = 5000;"),
+        "runtime guard removed": ("assert.strictEqual(DEFAULT_TIMEOUT_MS, 60000);", ""),
+    }
+    for label, (old, new) in mutations.items():
+        assert old in clean, f"mutation anchor missing: {label}"
+        mutated = clean.replace(old, new, 1)
+        assert find_native_budget_violations(mutated, FIXTURE_TEST_FILE), f"guard missed mutation: {label}"
+    other = "const child_process = require('node:child_process');\n"
+    assert find_native_budget_violations(other, "other.test.js"), "child_process outside native files must fail"
+    assert find_native_budget_violations("const h = require('./helper');\n", "other.test.js")
+    assert find_native_budget_violations("const m = require(name);\n", "other.test.js")
+    assert find_native_budget_violations("// timeout: 5000\n", "other.test.js") == []

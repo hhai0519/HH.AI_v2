@@ -18,7 +18,22 @@ const { SecretRef, SecretProviderError } = require('../core/secret-provider');
 const {
   WindowsCredentialManagerSecretProvider,
   decodeCredentialBlobUtf16le,
+  DEFAULT_TIMEOUT_MS,
 } = require('../core/windows-credential-manager-provider');
+
+// Native PowerShell runs (B-107, runtime/channel-gateway/AGENTS.md F2-A): every direct run goes through
+// runNativeBridge, whose effective spawnSync timeout is locked to the production DEFAULT_TIMEOUT_MS and
+// cannot be overridden by callers. The guard test below and scripts/tests/test_channel_gateway_core.py
+// enforce this.
+const NATIVE_SPAWN_TIMEOUT_MS = DEFAULT_TIMEOUT_MS;
+
+function nativeSpawnOptions(extra) {
+  return Object.assign({}, extra, { timeout: NATIVE_SPAWN_TIMEOUT_MS, windowsHide: true });
+}
+
+function runNativeBridge(file, args, extra) {
+  return child_process.spawnSync(file, args, nativeSpawnOptions(extra));
+}
 
 test('WindowsCredManProvider - A. non-win32 fails UNSUPPORTED_PLATFORM without OS lookup', () => {
   assert.throws(
@@ -280,13 +295,13 @@ test('WindowsCredManProvider - J. Windows live synthetic CredMan integration', (
     const b64 = Buffer.from(script, 'utf16le').toString('base64');
     const systemRoot = process.env.SystemRoot || 'C:\\Windows';
     const powershellPath = path.join(systemRoot, 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe');
-    return child_process.spawnSync(powershellPath, [
+    return runNativeBridge(powershellPath, [
       '-NoLogo',
       '-NoProfile',
       '-NonInteractive',
       '-ExecutionPolicy', 'Bypass',
       '-EncodedCommand', b64
-    ], { stdio: ['ignore', 'pipe', 'pipe'], encoding: 'utf8', windowsHide: true, timeout: 60000 });
+    ], { stdio: ['ignore', 'pipe', 'pipe'], encoding: 'utf8' });
   };
 
   const writeScript = `
@@ -579,13 +594,13 @@ test('WindowsCredManProvider - P. post-acquire stdout failure counterexample avo
     const b64 = Buffer.from(script, 'utf16le').toString('base64');
     const systemRoot = process.env.SystemRoot || 'C:\\Windows';
     const powershellPath = path.join(systemRoot, 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe');
-    return child_process.spawnSync(powershellPath, [
+    return runNativeBridge(powershellPath, [
       '-NoLogo',
       '-NoProfile',
       '-NonInteractive',
       '-ExecutionPolicy', 'Bypass',
       '-EncodedCommand', b64
-    ], { stdio: ['ignore', 'pipe', 'pipe'], encoding: 'utf8', windowsHide: true, timeout: 60000 });
+    ], { stdio: ['ignore', 'pipe', 'pipe'], encoding: 'utf8' });
   };
 
   const writeScript = `
@@ -661,7 +676,7 @@ if ($ok) { exit 0 } else { exit 1 }
     const systemRoot = process.env.SystemRoot || 'C:\\Windows';
     const powershellPath = path.join(systemRoot, 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe');
     const scriptPath = path.resolve(__dirname, '..', 'bin', 'windows-credential-manager-read.ps1');
-    const faultRes = child_process.spawnSync(powershellPath, [
+    const faultRes = runNativeBridge(powershellPath, [
       '-NoLogo',
       '-NoProfile',
       '-NonInteractive',
@@ -671,8 +686,6 @@ if ($ok) { exit 0 } else { exit 1 }
       '-TestFaultStage', 'stdout',
     ], {
       stdio: ['ignore', 'pipe', 'pipe'],
-      windowsHide: true,
-      timeout: 60000,
     });
 
     // 3. Assert fail-closed exit code 1
@@ -787,7 +800,7 @@ ${assertScript}
   const systemRoot = process.env.SystemRoot || 'C:\\Windows';
   const powershellPath = path.join(systemRoot, 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe');
 
-  const res = child_process.spawnSync(powershellPath, [
+  const res = runNativeBridge(powershellPath, [
     '-NoLogo',
     '-NoProfile',
     '-NonInteractive',
@@ -796,8 +809,6 @@ ${assertScript}
   ], {
     stdio: ['ignore', 'pipe', 'pipe'],
     encoding: 'utf8',
-    windowsHide: true,
-    timeout: 30000
   });
 
   assert.strictEqual(res.status, 0, `Type-load smoke failed with status ${res.status}: ${res.stderr}`);
@@ -1082,4 +1093,25 @@ test('WindowsCredManProvider - W. INC-1-F3 transcoding temporary buffer is zeroi
     restoreSpy();
     partialSurrogatePayload.fill(0);
   }
+});
+
+test('WindowsCredManProvider - native runs are locked to the production timeout (B-107, F2-A)', () => {
+  // F2-A: the production bridge default and upper bound are both 60000 ms.
+  assert.strictEqual(DEFAULT_TIMEOUT_MS, 60000);
+  assert.strictEqual(NATIVE_SPAWN_TIMEOUT_MS, DEFAULT_TIMEOUT_MS);
+  // Effective options reaching spawnSync: a caller-supplied budget or visibility must not survive.
+  const calls = [];
+  const originalSpawnSync = child_process.spawnSync;
+  child_process.spawnSync = (file, args, options) => {
+    calls.push({ file, args, options });
+    return { status: 0, signal: null };
+  };
+  try {
+    runNativeBridge('probe.exe', ['-a'], JSON.parse('{"encoding":"utf8","timeout":1,"windowsHide":false}'));
+  } finally {
+    child_process.spawnSync = originalSpawnSync;
+  }
+  assert.deepStrictEqual(calls, [
+    { file: 'probe.exe', args: ['-a'], options: { encoding: 'utf8', timeout: NATIVE_SPAWN_TIMEOUT_MS, windowsHide: true } },
+  ]);
 });
