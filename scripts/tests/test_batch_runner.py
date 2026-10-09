@@ -11,6 +11,7 @@ prints CRLF warnings on stderr, and bounded execution that terminates a whole pr
 import hashlib
 import json
 import os
+import re
 import subprocess
 import sys
 import time
@@ -254,3 +255,336 @@ def test_bounded_run_timeout_terminates_whole_tree(tmp_path):
     while _alive(grandchild) and time.monotonic() < deadline:
         time.sleep(0.2)
     assert not _alive(grandchild), "grandchild must be terminated with the tree"
+
+
+# --- B-107 runner update path: (2) fixed-vocabulary failure detail ------------------------------
+
+def test_child_env_pins_utf8_like_verify_all():
+    env = br.child_env()
+    assert env["PYTHONIOENCODING"] == "utf-8"
+    assert env["PYTHONUTF8"] == "1"
+
+
+DETAIL_SHAPE = re.compile(r"exit=-?\d+ class=[A-Z_]+")
+SECRET_SAMPLES = [
+    "password=hunter2",                                                   # short value
+    "Authorization: Bearer " + "abcdefghijklmnopqrstuvwxyz",              # letters only
+    "token=" + "abc.def.ghi" + "123456.tail",                             # separators
+    "ghp_" + "Q7" * 18,                                                   # long signature
+    "plain unknown failure text",
+]
+
+
+@pytest.mark.parametrize("sample", SECRET_SAMPLES)
+def test_classify_failure_never_echoes_output(sample):
+    for stderr, stdout in ((sample.encode(), b""), (b"", sample.encode()), (b"\xff\xfe" + sample.encode(), b"")):
+        detail = br.classify_failure(2, stderr, stdout)
+        assert DETAIL_SHAPE.fullmatch(detail), detail
+        assert detail == "exit=2 class=DETAIL_UNAVAILABLE"
+        for part in re.split(r"[\s=.:]+", sample):
+            if len(part) >= 4:
+                assert part not in detail
+
+
+@pytest.mark.parametrize("text,cls", [
+    ("[SECRET_SCAN BLOCK] x:1 detector=GENERIC", "SECRET_SCAN_BLOCK"),
+    ("fatal: Unable to create '/r/.git/index.lock': File exists.", "GIT_INDEX_LOCKED"),
+    (" ! [rejected]        main -> main (non-fast-forward)", "GIT_REMOTE_REJECTED"),
+    ("fatal: Authentication failed for 'https://example.invalid/'", "GIT_AUTH_FAILED"),
+    ("fatal: unable to access: Could not resolve host: example.invalid", "NETWORK_UNAVAILABLE"),
+    ("The process cannot access the file because it is being used by another process.", "FILE_IN_USE"),
+    ("error: open(\"x\"): Permission denied", "ACCESS_DENIED"),
+    ("[SECRET_SCAN BLOCK] and index.lock", "SECRET_SCAN_BLOCK"),
+])
+def test_classify_failure_known_classes_first_match_wins(text, cls):
+    assert br.classify_failure(1, text.encode(), b"") == "exit=1 class=" + cls
+    assert br.classify_failure(1, b"", text.encode()) == "exit=1 class=" + cls  # stdout-only output is classified too
+
+
+def test_classify_failure_random_text_stays_in_fixed_vocabulary():
+    import random
+    rng = random.Random(261009)
+    alphabet = "abcXYZ0129_-+/=.:;[]() \t\u4e2d\u6587"
+    for _ in range(300):
+        text = "".join(rng.choice(alphabet) for _ in range(rng.randint(0, 80)))
+        detail = br.classify_failure(rng.randint(-5, 300), text.encode("utf-8"), b"")
+        assert DETAIL_SHAPE.fullmatch(detail), detail
+
+
+def test_run_failure_keeps_fixed_code_and_fixed_detail(tmp_path):
+    secret = "password=hunter2"
+    script = "import sys; sys.stderr.write('boom " + secret + "\\n'); sys.exit(2)"
+    with pytest.raises(br.Halt) as exc:
+        br.run([sys.executable, "-c", script], "UNIT_FAILED", str(tmp_path))
+    assert str(exc.value) == "UNIT_FAILED"
+    assert exc.value.detail == "exit=2 class=DETAIL_UNAVAILABLE"
+    lock = "import sys; sys.stderr.write(\"fatal: Unable to create 'x/.git/index.lock': File exists.\\n\"); sys.exit(128)"
+    with pytest.raises(br.Halt) as locked:
+        br.run([sys.executable, "-c", lock], "STAGE_FAILED", str(tmp_path))
+    assert locked.value.detail == "exit=128 class=GIT_INDEX_LOCKED"
+
+
+def test_report_halt_prints_detail_only_when_present(capsys):
+    br.report_halt(br.Halt("STAGE_FAILED", "exit=128 class=GIT_INDEX_LOCKED"), "stage")
+    br.report_halt(br.Halt("SETUP_DIRTY"), "setup")
+    assert capsys.readouterr().out.splitlines() == [
+        "S1 STAGE_FAILED | step stage", "S1_DETAIL exit=128 class=GIT_INDEX_LOCKED", "S1 SETUP_DIRTY | step setup"]
+
+
+@pytest.mark.parametrize("line,shown", [
+    ("GATE_RUNNER FAIL stage=PRECOMMIT", True),
+    ("112 passed in 12.68s", True),
+    ("=========== 3 failed, 740 passed, 1 skipped in 121.60s (0:02:01) ===========", True),
+    ("leak password=hunter2", False),
+    ("password=hunter2 1 passed in 1s", False),
+    ("GATE_RUNNER FAIL stage=PRECOMMIT " + "secret", False),
+])
+def test_bounded_summary_prints_only_fixed_shapes(line, shown):
+    assert br.bounded_summary(["earlier", line]) == (line if shown else "(summary withheld)")
+    assert br.bounded_summary([]) == "(no output)"
+
+
+def test_bounded_prints_withheld_summary_for_unknown_output(tmp_path, monkeypatch, capsys):
+    secret = "password=hunter2"
+    batch = br.Batch.__new__(br.Batch)
+    batch.root, batch.task_id = str(tmp_path), TASK
+    monkeypatch.setattr(batch, "artifact", lambda suffix: "bounded.txt")
+    with pytest.raises(br.Halt) as exc:
+        batch.bounded("FOCUSED", ["-c", "print('leak " + secret + "'); raise SystemExit(1)"], 60)
+    assert str(exc.value) == "FOCUSED_NONZERO"
+    out = capsys.readouterr().out
+    assert "BOUNDED_EXIT FOCUSED code=1 | (summary withheld)" in out and "hunter2" not in out
+
+
+# --- (3) author hashes at stage and commit -----------------------------------------------
+
+def _repo_with(tmp_path, files):
+    repo = str(tmp_path)
+    _git(repo, "init", "-q")
+    for name, data in files.items():
+        p = tmp_path / name
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_bytes(data)
+    _git(repo, "add", *files)
+    _git(repo, "commit", "-q", "-m", "base")
+    return repo, _git(repo, "rev-parse", "HEAD").stdout.decode().strip()
+
+
+def test_verify_blob_hashes_checks_index_and_commit_with_lf_normalization(tmp_path):
+    repo, _ = _repo_with(tmp_path, {"docs/a.md": b"one\n"})
+    assert br.verify_blob_hashes(repo, {"docs/a.md": sha("one\n")}, "HEAD", "COMMITTED_AUTHOR_MISMATCH") is None
+    (tmp_path / "docs/a.md").write_bytes(b"two\n")
+    _git(repo, "add", "docs/a.md")
+    assert br.verify_blob_hashes(repo, {"docs/a.md": sha("two\n")}, "", "STAGED_AUTHOR_MISMATCH") is None
+    assert halt_code(br.verify_blob_hashes, repo, {"docs/a.md": sha("one\n")}, "", "STAGED_AUTHOR_MISMATCH") == "STAGED_AUTHOR_MISMATCH"
+    assert halt_code(br.verify_blob_hashes, repo, {"docs/a.md": sha("two\n")}, "HEAD", "COMMITTED_AUTHOR_MISMATCH") == "COMMITTED_AUTHOR_MISMATCH"
+    crlf_repo = tmp_path / "crlf"
+    crlf_repo.mkdir()
+    r2, _ = _repo_with(crlf_repo, {"c.txt": b"x\r\ny\r\n"})
+    assert br.verify_blob_hashes(r2, {"c.txt": sha("x\ny\n")}, "HEAD", "L") is None
+
+
+def test_verify_blob_hashes_fails_closed_when_blob_unreadable(tmp_path):
+    # Fault injection: a missing blob is a failure, never a pass.
+    repo, _ = _repo_with(tmp_path, {"docs/a.md": b"one\n"})
+    assert halt_code(br.verify_blob_hashes, repo, {"docs/missing.md": sha("one\n")}, "HEAD", "L") == "GIT_READ_FAILED"
+
+
+class _Recorder:
+    def __init__(self):
+        self.calls = []
+
+
+def _stage_batch(monkeypatch, rec, fail=None):
+    spec = production_spec()
+    batch = br.Batch.__new__(br.Batch)
+    batch.root, batch.task_id, batch.spec = "/nonexistent", TASK, spec
+    paths = br.allowed_paths(spec)
+
+    def verify_hashes(root, table, label):
+        rec.calls.append(("worktree", label))
+        if fail == label:
+            raise br.Halt(label)
+
+    def verify_blob_hashes(root, table, rev, label):
+        rec.calls.append(("blob", rev, label))
+        if fail == label:
+            raise br.Halt(label)
+
+    monkeypatch.setattr(br, "expect_scope", lambda *a, **k: rec.calls.append(("scope",)))
+    monkeypatch.setattr(br, "verify_hashes", verify_hashes)
+    monkeypatch.setattr(br, "verify_blob_hashes", verify_blob_hashes)
+    monkeypatch.setattr(br, "run", lambda args, label, root, timeout=600: rec.calls.append(("run", args[1])) or "")
+    monkeypatch.setattr(br, "staged_paths", lambda root: paths)
+    monkeypatch.setattr(br, "status_lines", lambda root: ["M  " + p for p in paths])
+    monkeypatch.setattr(batch, "gate", lambda stage: rec.calls.append(("gate", stage)))
+    return batch
+
+
+def test_stage_verifies_author_hashes_before_add_and_in_index_around_gate(monkeypatch):
+    rec = _Recorder()
+    _stage_batch(monkeypatch, rec).step_stage()
+    assert rec.calls == [("scope",), ("worktree", "STAGE_AUTHOR_DRIFT"), ("run", "add"),
+                         ("blob", "", "STAGED_AUTHOR_MISMATCH"), ("gate", "STAGED"), ("blob", "", "STAGED_AUTHOR_DRIFT")]
+
+
+@pytest.mark.parametrize("label", ["STAGE_AUTHOR_DRIFT", "STAGED_AUTHOR_MISMATCH", "STAGED_AUTHOR_DRIFT"])
+def test_stage_stops_on_each_author_hash_failure(monkeypatch, label):
+    rec = _Recorder()
+    batch = _stage_batch(monkeypatch, rec, fail=label)
+    assert halt_code(batch.step_stage) == label
+    if label == "STAGE_AUTHOR_DRIFT":
+        assert ("run", "add") not in rec.calls, "nothing is staged after a working-tree drift"
+    if label == "STAGED_AUTHOR_MISMATCH":
+        assert ("gate", "STAGED") not in rec.calls
+
+
+def test_commit_verifies_committed_author_blobs(monkeypatch):
+    rec = _Recorder()
+    spec = production_spec()
+    batch = br.Batch.__new__(br.Batch)
+    batch.root, batch.task_id, batch.spec = "/nonexistent", TASK, spec
+    answers = {("rev-parse", "HEAD"): BASE, ("branch", "--show-current"): spec["branch"], ("rev-parse", "HEAD~1"): BASE}
+    monkeypatch.setattr(br, "git", lambda root, *args, **k: answers[args])
+    monkeypatch.setattr(br, "run", lambda args, label, root, timeout=600: rec.calls.append(("run", args[1])) or "")
+    monkeypatch.setattr(br, "status_lines", lambda root: [])
+    monkeypatch.setattr(br, "git_paths", lambda root, *args: br.allowed_paths(spec))
+    monkeypatch.setattr(br, "staged_paths", lambda root: br.allowed_paths(spec))
+
+    def verify_blob_hashes(root, table, rev, label):
+        rec.calls.append(("blob", rev, label))
+        if rev == "HEAD":
+            raise br.Halt(label)
+
+    monkeypatch.setattr(br, "verify_blob_hashes", verify_blob_hashes)
+    assert halt_code(batch.step_commit) == "COMMITTED_AUTHOR_MISMATCH"
+    assert rec.calls == [("blob", "", "COMMIT_INDEX_DRIFT"), ("run", "commit"), ("blob", "HEAD", "COMMITTED_AUTHOR_MISMATCH")]
+
+
+def test_commit_refuses_drifted_index_and_leaves_head_unchanged(tmp_path):
+    # Real git: the index is changed after staging; nothing may be committed.
+    files = {"docs/a.md": b"old\n", GEN[0]: b"{}\n", GEN[1]: b"{}\n"}
+    repo, base = _repo_with(tmp_path, files)
+    spec = production_spec(base_oid=base)
+    spec["authors"] = {"docs/a.md": {"source": {"kind": "base"}, "sha256": sha("new\n")}}
+    _git(repo, "switch", "-q", "-c", spec["branch"])
+    _git(repo, "config", "user.name", "t")  # the runner commits without -c overrides; CI hosts may lack an identity
+    _git(repo, "config", "user.email", "t@example.invalid")
+    _git(repo, "config", "commit.gpgsign", "false")
+    for path, data in ((GEN[0], b'{"g": 1}\n'), (GEN[1], b'{"g": 2}\n'), ("docs/a.md", b"new\n")):
+        (tmp_path / path).write_bytes(data)
+        _git(repo, "add", path)
+    batch = br.Batch.__new__(br.Batch)
+    batch.root, batch.task_id, batch.spec = repo, TASK, spec
+    blob = subprocess.run(["git", "hash-object", "-w", "--stdin"], cwd=repo, input=b"tampered\n",
+                          capture_output=True, check=True).stdout.decode().strip()
+    head = lambda: _git(repo, "rev-parse", "HEAD").stdout.decode().strip()  # noqa: E731
+    _git(repo, "update-index", "--cacheinfo", "100644," + blob + ",docs/a.md")
+    assert halt_code(batch.step_commit) == "COMMIT_INDEX_DRIFT" and head() == base  # author content drift
+    _git(repo, "add", "docs/a.md")
+    _git(repo, "update-index", "--force-remove", GEN[1])
+    assert halt_code(batch.step_commit) == "COMMIT_INDEX_DRIFT" and head() == base  # generated output unstaged
+    _git(repo, "add", GEN[1])
+    _git(repo, "update-index", "--cacheinfo", "100644," + blob + "," + GEN[0])
+    assert halt_code(batch.step_commit) == "COMMIT_INDEX_DRIFT" and head() == base  # index differs from worktree
+    _git(repo, "add", GEN[0])
+    (tmp_path / "extra.md").write_bytes(b"x\n")
+    _git(repo, "add", "extra.md")
+    assert halt_code(batch.step_commit) == "COMMIT_INDEX_DRIFT" and head() == base  # undeclared path staged
+    _git(repo, "rm", "-q", "--cached", "extra.md")
+    (tmp_path / "extra.md").unlink()
+    assert batch.step_commit() is None and head() != base  # positive control: consistent index is committed
+
+
+# --- (7) adopt a workspace that stopped before generate ------------------------------------
+
+def _adopt_spec():
+    spec = production_spec()
+    spec["authors"] = {"docs/a.md": {"source": {"kind": "keep"}, "sha256": sha("new\n")}}
+    spec["ops"] = []
+    spec["start"] = {"mode": "adopt", "start_branch": "batch/earlier-261008", "adopt_hashes": {"docs/a.md": sha("new\n")}}
+    return spec
+
+
+def test_adopt_scope_accepts_stop_before_or_after_generate(tmp_path):
+    repo, base = _repo_with(tmp_path, {"docs/a.md": b"old\n", GEN[0]: b"{}\n", GEN[1]: b"{}\n", "docs/other.md": b"o\n"})
+    spec = _adopt_spec()
+    spec["base_oid"] = base
+    (tmp_path / "docs/a.md").write_bytes(b"new\n")
+    assert br.expect_adopt_scope(repo, spec, "START") is None  # stopped before generate
+    (tmp_path / GEN[0]).write_bytes(b'{"x": 1}\n')
+    assert br.expect_adopt_scope(repo, spec, "START") is None  # stopped after generate
+
+
+def test_adopt_scope_rejects_outside_change_and_missing_adopted_file(tmp_path):
+    repo, base = _repo_with(tmp_path, {"docs/a.md": b"old\n", "docs/other.md": b"o\n"})
+    spec = _adopt_spec()
+    spec["base_oid"] = base
+    assert halt_code(br.expect_adopt_scope, repo, spec, "START") == "START_SCOPE_MISMATCH"
+    (tmp_path / "docs/a.md").write_bytes(b"new\n")
+    (tmp_path / "docs/other.md").write_bytes(b"changed\n")
+    assert halt_code(br.expect_adopt_scope, repo, spec, "START") == "START_SCOPE_DRIFT"
+    (tmp_path / "docs/other.md").write_bytes(b"o\n")
+    (tmp_path / "stray.txt").write_bytes(b"x\n")
+    assert halt_code(br.expect_adopt_scope, repo, spec, "START") == "START_SCOPE_DRIFT"
+
+
+# --- runner update: controlled succession ----------------------------------------------------
+
+def _runner_update_spec(new_runner_text, base):
+    spec = production_spec(base_oid=base, runner_update=True)
+    spec["authors"][br.RUNNER_REL] = {"source": {"kind": "block", "name": "RUNNER_PY"}, "sha256": sha(new_runner_text)}
+    return spec
+
+
+def test_runner_update_must_be_declared_both_ways():
+    spec = _runner_update_spec("new\n", BASE)
+    blocks = production_blocks(spec)
+    blocks["RUNNER_PY"] = "new"
+    assert br.load_spec(lines_of(prompt(blocks)), TASK)["runner_update"] is True
+    spec.pop("runner_update")
+    assert halt_code(br.load_spec, lines_of(prompt(production_blocks(spec))), TASK) == "SPEC_RUNNER_UPDATE_UNDECLARED"
+    plain = production_spec(runner_update=True)
+    assert halt_code(br.load_spec, lines_of(prompt(production_blocks(plain))), TASK) == "SPEC_RUNNER_UPDATE_UNDECLARED"
+    plain = production_spec(runner_update="yes")
+    assert halt_code(br.load_spec, lines_of(prompt(production_blocks(plain))), TASK) == "SPEC_RUNNER_UPDATE_INVALID"
+
+
+def _succession_case(tmp_path):
+    old, new = "old runner\n", "new runner\n"
+    repo, base = _repo_with(tmp_path, {br.RUNNER_REL: old.encode()})
+    spec = _runner_update_spec(new, base)
+    control = {"task_id": TASK, "prompt_sha256": "p", "runner_sha256": sha(old),
+               "done": ["preflight", "setup", "e24", "apply"], "halted": None}
+    return repo, spec, control, sha(old), sha(new)
+
+
+def test_successor_runner_is_accepted_only_after_apply_with_declared_hash(tmp_path):
+    repo, spec, control, old_sha, new_sha = _succession_case(tmp_path)
+    steps = br.PRODUCTION_STEPS
+    accepted = br.accepted_runner_sha(repo, spec, control, new_sha)
+    assert accepted == old_sha
+    assert br.check_control(control, TASK, "p", accepted, list(steps), "focused") == "OK"
+    assert br.accepted_runner_sha(repo, spec, control, old_sha) == old_sha
+
+
+@pytest.mark.parametrize("mutate", [
+    lambda spec, control: control.update(done=["preflight", "setup", "e24"]),             # before apply
+    lambda spec, control: spec["authors"][br.RUNNER_REL].update(sha256="1" * 64),        # not the declared file
+    lambda spec, control: control.update(runner_sha256="2" * 64),                        # bound value is not the Base runner
+    lambda spec, control: spec.update(runner_update=False),                              # undeclared
+    lambda spec, control: spec.update(kind="promotion"),                                 # never in promotion
+])
+def test_successor_runner_rejected_otherwise(tmp_path, mutate):
+    repo, spec, control, old_sha, new_sha = _succession_case(tmp_path)
+    mutate(spec, control)
+    accepted = br.accepted_runner_sha(repo, spec, control, new_sha)
+    assert accepted == new_sha
+    assert halt_code(br.check_control, control, TASK, "p", accepted, list(br.PRODUCTION_STEPS), "focused") == "CONTROL_BINDING_DRIFT"
+
+
+def test_successor_check_fails_closed_when_base_runner_unreadable(tmp_path):
+    # Fault injection: the Base blob probe failing is a stop, never an acceptance.
+    repo, spec, control, old_sha, new_sha = _succession_case(tmp_path)
+    spec["base_oid"] = "f" * 40
+    assert halt_code(br.accepted_runner_sha, repo, spec, control, new_sha) == "GIT_READ_FAILED"

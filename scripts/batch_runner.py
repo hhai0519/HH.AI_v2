@@ -35,6 +35,17 @@ Invariants (fail closed; a failing step prints one "S1 <CODE> | step <name>" lin
   single-use MAIN_EXACT_SHA authorization consumed by the repository pre-push hook.
 - Only task artifacts with the .git/<TASK_ID>- prefix, the declared author paths and the two
   canonical generator outputs are written. Nothing is deleted, reset, stashed or force-pushed.
+- Author content is re-verified at every step that can change it: working tree before staging,
+  index blobs after staging, after the STAGED gate and immediately before the commit, and committed
+  blobs after the commit.
+- A failing child command adds one "S1_DETAIL exit=<code> class=<CLASS>" line after the S1 line. The
+  class comes from a fixed vocabulary matched against the output; no output text is ever printed and
+  anything unrecognised is DETAIL_UNAVAILABLE. Bounded-step summaries print the last line only when it
+  has a fixed known shape (gate runner result, pytest totals); otherwise a fixed placeholder.
+- Runner update (spec "runner_update": true, scripts/batch_runner.py declared as an author): the
+  control record stays bound to the Base runner; after apply, a different runner file is accepted
+  only if the Base blob of the runner hashes to the bound value and the file hashes to the declared
+  author value. Every other runner change remains CONTROL_BINDING_DRIFT.
 """
 
 import argparse
@@ -59,6 +70,22 @@ TASK_RE = re.compile(r'^[A-Za-z0-9_-]+$')
 BRANCH_RE = re.compile(r'^batch/[a-z0-9][a-z0-9._-]*$')
 BLOCK_RE = re.compile(r'^[A-Z][A-Z0-9_]*$')
 PY = sys.executable
+# Failure classes: output text is matched but never printed. Order matters; the first match wins.
+FAILURE_CLASSES = (
+    ('SECRET_SCAN_BLOCK', re.compile(r'\[SECRET_SCAN BLOCK\]')),
+    ('GIT_INDEX_LOCKED', re.compile(r'index\.lock')),
+    ('GIT_REMOTE_REJECTED', re.compile(r'\[rejected\]|\[remote rejected\]|non-fast-forward|pre-receive hook declined')),
+    ('GIT_AUTH_FAILED', re.compile(r'Authentication failed|could not read Username|Permission denied \(publickey')),
+    ('NETWORK_UNAVAILABLE', re.compile(r'Could not resolve host|Failed to connect|Connection timed out|Connection refused')),
+    ('FILE_IN_USE', re.compile(r'being used by another process')),
+    ('ACCESS_DENIED', re.compile(r'Permission denied|Access is denied')),
+)
+# Bounded summaries are printed only when the last line has one of these fixed shapes.
+SUMMARY_SHAPES = (
+    re.compile(r'GATE_RUNNER (?:PASS|FAIL) stage=[A-Z]+'),
+    re.compile(r'=* ?(?:\d+ (?:passed|failed|skipped|errors?|xfailed|xpassed|deselected|warnings?)(?:, )?)+'
+               r' in \d+(?:\.\d+)?s(?: \(\d+:\d\d:\d\d\))? ?=*'),
+)
 PRODUCTION_STEPS = ('preflight', 'setup', 'e24', 'apply', 'focused', 'generate', 'precommit', 'stage', 'commit',
                     'postcommit', 'push')
 PROMOTION_STEPS = ('preflight', 'verify', 'promote', 'postmain')
@@ -66,7 +93,33 @@ GATE_LIMITS = {'PRECOMMIT': 2400, 'STAGED': 900, 'POSTCOMMIT': 2400}
 
 
 class Halt(Exception):
-    """A fail-closed stop; the message is a fixed code without file content."""
+    """A fail-closed stop; str() is a fixed code. detail is an optional fixed-vocabulary classification."""
+
+    def __init__(self, code, detail=None):
+        super().__init__(code)
+        self.detail = detail
+
+
+def classify_failure(code, stderr, stdout):
+    """Fixed one-line detail for a failed child command: exit code plus a class from FAILURE_CLASSES.
+
+    The output is only matched, never echoed; anything unrecognised is DETAIL_UNAVAILABLE.
+    """
+    text = (stderr + b'\n' + stdout).decode('utf-8', 'replace')
+    for name, pattern in FAILURE_CLASSES:
+        if pattern.search(text):
+            return 'exit=' + str(code) + ' class=' + name
+    return 'exit=' + str(code) + ' class=DETAIL_UNAVAILABLE'
+
+
+def bounded_summary(lines):
+    """Last output line only when it has a fixed known shape; otherwise a fixed placeholder."""
+    if not lines:
+        return '(no output)'
+    last = lines[-1].strip()
+    if any(shape.fullmatch(last) for shape in SUMMARY_SHAPES):
+        return last
+    return '(summary withheld)'
 
 
 # ---------------------------------------------------------------------------
@@ -76,6 +129,7 @@ class Halt(Exception):
 def child_env():
     env = dict(os.environ)
     env['PYTHONIOENCODING'] = 'utf-8'
+    env['PYTHONUTF8'] = '1'
     return env
 
 
@@ -88,7 +142,7 @@ def run(args, label, root, timeout=600):
     except OSError:
         raise Halt(label + '_LAUNCH_FAILED')
     if r.returncode != 0:
-        raise Halt(label)
+        raise Halt(label, classify_failure(r.returncode, r.stderr, r.stdout))
     return r.stdout.decode('utf-8', 'replace')
 
 
@@ -218,6 +272,11 @@ def load_spec(lines, task_id):
         for path, entry in authors.items():
             if entry['source']['kind'] == 'keep':
                 _require(adopt.get(path) == entry['sha256'], 'SPEC_START_INVALID')
+    runner_update = spec.get('runner_update', False)
+    _require(isinstance(runner_update, bool), 'SPEC_RUNNER_UPDATE_INVALID')
+    _require(runner_update == (RUNNER_REL in authors), 'SPEC_RUNNER_UPDATE_UNDECLARED')
+    if runner_update:
+        _require(authors[RUNNER_REL]['source']['kind'] != 'keep', 'SPEC_RUNNER_UPDATE_INVALID')
     allowed = sorted(set(authors) | set(GENERATED))
     plan = block_json(lines, 'PLAN_JSON')
     _require(isinstance(plan, dict) and plan.get('task_id') == task_id and plan.get('base_oid') == spec['base_oid'], 'PLAN_BINDING_INVALID')
@@ -299,6 +358,14 @@ def final_hashes(spec):
     return {path: entry['sha256'] for path, entry in spec['authors'].items()}
 
 
+def verify_blob_hashes(root, table, rev, label):
+    """Compare LF-normalized SHA-256 of each blob at rev ('' = index, 'HEAD' = commit) with table."""
+    for path in sorted(table):
+        data = git_bytes(root, 'cat-file', 'blob', rev + ':' + path)
+        if sha256_bytes(data.replace(b'\r\n', b'\n')) != table[path]:
+            raise Halt(label)
+
+
 # ---------------------------------------------------------------------------
 # Working tree state
 # ---------------------------------------------------------------------------
@@ -333,6 +400,19 @@ def expect_scope(root, spec, label, exact):
         raise Halt(label + '_SCOPE_MISMATCH')
     if not set(actual) <= set(allowed):
         raise Halt(label + '_SCOPE_DRIFT')
+
+
+def expect_adopt_scope(root, spec, label):
+    """Adopt start: changes stay inside the allowed set and include every adopted file.
+
+    A stop before generate leaves the generator outputs unchanged, a later stop leaves them changed;
+    both are accepted because generate rewrites them and then requires the exact allowed set.
+    """
+    actual = set(changed_paths(root, spec['base_oid']))
+    if not actual <= set(allowed_paths(spec)):
+        raise Halt(label + '_SCOPE_DRIFT')
+    if not set(spec['start']['adopt_hashes']) <= actual:
+        raise Halt(label + '_SCOPE_MISMATCH')
 
 
 # ---------------------------------------------------------------------------
@@ -404,7 +484,7 @@ class Batch:
         path.touch(exist_ok=False)
         code = bounded_run([PY] + args, self.root, path, limit)
         tail = [l for l in path.read_bytes().decode('utf-8', 'replace').splitlines() if l.strip()]
-        summary = tail[-1][:200] if tail else '(no output)'
+        summary = bounded_summary(tail)
         if code is None:
             print('BOUNDED_TIMEOUT ' + stage + ' limit=' + str(limit) + 's tree_terminated')
             raise Halt(stage + '_TIMEOUT')
@@ -457,8 +537,7 @@ class Batch:
                 raise Halt('START_BRANCH_MISMATCH')
             if staged_paths(root):
                 raise Halt('START_INDEX_NOT_EMPTY')
-            if changed_paths(root, base) != allowed_paths(spec):
-                raise Halt('START_SCOPE_MISMATCH')
+            expect_adopt_scope(root, spec, 'START')
             verify_hashes(root, start['adopt_hashes'], 'ADOPT_HASH_MISMATCH')
         if returncode(['git', 'ls-remote', '--exit-code', 'origin', 'refs/heads/' + branch], root) != 2:
             raise Halt('REMOTE_BRANCH_EXISTS_OR_UNKNOWN')
@@ -472,12 +551,14 @@ class Batch:
         else:
             if staged_paths(root):
                 raise Halt('INDEX_NOT_EMPTY')
-            expect_scope(root, spec, 'SETUP', exact=True)
+            expect_adopt_scope(root, spec, 'SETUP')
 
     def step_e24(self):
         spec = self.spec
-        expect_scope(self.root, spec, 'E24', exact=spec['start']['mode'] == 'adopt')
-        if spec['start']['mode'] == 'clean' and status_lines(self.root):
+        expect_scope(self.root, spec, 'E24', exact=False)
+        if spec['start']['mode'] == 'adopt':
+            expect_adopt_scope(self.root, spec, 'E24')
+        elif status_lines(self.root):
             raise Halt('E24_DIRTY')
         ev = self.write_new_artifact('e24-disposition.json', extract_block(self.lines, 'E24_EVIDENCE_JSON') + chr(10))
         sc = self.write_new_artifact('allowed-scope.json', extract_block(self.lines, 'ALLOWED_SCOPE_JSON') + chr(10))
@@ -486,7 +567,8 @@ class Batch:
     def step_apply(self):
         spec, root = self.spec, self.root
         if spec['start']['mode'] == 'adopt':
-            expect_scope(root, spec, 'APPLY', exact=True)
+            expect_scope(root, spec, 'APPLY', exact=False)
+            expect_adopt_scope(root, spec, 'APPLY')
             verify_hashes(root, spec['start']['adopt_hashes'], 'APPLY_START_HASH_MISMATCH')
         else:
             expect_head_clean(root, spec['base_oid'], 'APPLY')
@@ -531,20 +613,30 @@ class Batch:
     def step_stage(self):
         root, paths = self.root, allowed_paths(self.spec)
         expect_scope(root, self.spec, 'STAGE', exact=True)
+        verify_hashes(root, final_hashes(self.spec), 'STAGE_AUTHOR_DRIFT')
         run(['git', 'add', '--', *paths], 'STAGE_FAILED', root)
         if staged_paths(root) != paths:
             raise Halt('STAGED_SET_MISMATCH')
         for line in status_lines(root):
             if not (line.startswith('M  ') or line.startswith('A  ')):
                 raise Halt('UNSTAGED_OR_UNTRACKED_PRESENT')
+        verify_blob_hashes(root, final_hashes(self.spec), '', 'STAGED_AUTHOR_MISMATCH')
         self.gate('STAGED')
         if staged_paths(root) != paths:
             raise Halt('STAGED_SET_DRIFT')
+        verify_blob_hashes(root, final_hashes(self.spec), '', 'STAGED_AUTHOR_DRIFT')
 
     def step_commit(self):
         root, spec = self.root, self.spec
         if git(root, 'rev-parse', 'HEAD') != spec['base_oid'] or git(root, 'branch', '--show-current') != spec['branch']:
             raise Halt('COMMIT_HEAD_DRIFT')
+        # Nothing is committed unless the index still holds exactly the declared paths and author content.
+        if staged_paths(root) != allowed_paths(spec):
+            raise Halt('COMMIT_INDEX_DRIFT')
+        for line in status_lines(root):
+            if not (line.startswith('M  ') or line.startswith('A  ')):
+                raise Halt('COMMIT_INDEX_DRIFT')
+        verify_blob_hashes(root, final_hashes(spec), '', 'COMMIT_INDEX_DRIFT')
         run(['git', 'commit', '-m', spec['commit_message']], 'COMMIT_FAILED', root, 900)
         if git(root, 'rev-parse', 'HEAD~1') != spec['base_oid']:
             raise Halt('PARENT_DRIFT')
@@ -552,6 +644,7 @@ class Batch:
             raise Halt('DIRTY_AFTER_COMMIT')
         if sorted(set(git_paths(root, 'diff', '--name-only', '-z', spec['base_oid'], 'HEAD'))) != allowed_paths(spec):
             raise Halt('COMMITTED_SCOPE_MISMATCH')
+        verify_blob_hashes(root, final_hashes(spec), 'HEAD', 'COMMITTED_AUTHOR_MISMATCH')
 
     def step_postcommit(self):
         root, spec = self.root, self.spec
@@ -659,6 +752,27 @@ def save_control(batch, control):
     (Path(batch.root) / batch.control_rel).write_text(json.dumps(control, indent=2) + chr(10), encoding='utf-8')
 
 
+def accepted_runner_sha(root, spec, control, runner_sha):
+    """Runner hash to check against the control record.
+
+    Equal hashes pass unchanged. A different running file is accepted as the declared successor only
+    when the spec declares a runner update, apply has completed, the running file hashes to the declared
+    author value and the Base blob of the runner hashes to the bound value; then the bound value is
+    returned. Any other case returns runner_sha unchanged, so check_control reports the drift.
+    """
+    bound = control.get('runner_sha256')
+    if runner_sha == bound or spec.get('kind') != 'production' or not spec.get('runner_update'):
+        return runner_sha
+    if 'apply' not in (control.get('done') or []):
+        return runner_sha
+    if spec['authors'][RUNNER_REL]['sha256'] != runner_sha:
+        return runner_sha
+    base_blob = git_bytes(root, 'cat-file', 'blob', spec['base_oid'] + ':' + RUNNER_REL)
+    if sha256_bytes(base_blob) != bound:
+        return runner_sha
+    return bound
+
+
 def check_control(control, task_id, prompt_sha, runner_sha, steps, step):
     """Return 'OK' when step may run now, 'HALTED' when the task is locked; raise Halt otherwise."""
     if (control.get('task_id') != task_id or control.get('prompt_sha256') != prompt_sha
@@ -686,6 +800,13 @@ def timing(root, task_id):
     print('TIMING start=' + start.isoformat() + ' end=' + end.isoformat() + ' elapsed_sec=' + str(round(sec, 1))
           + ' elapsed_min=' + str(int(sec // 60)))
     print('STATE done=' + ','.join(c.get('done', [])) + ' halted=' + str(c.get('halted')))
+
+
+def report_halt(h, step):
+    """Print the fixed S1 line and, for a failed child command, one fixed-vocabulary S1_DETAIL line."""
+    print('S1 ' + str(h) + ' | step ' + step)
+    if h.detail:
+        print('S1_DETAIL ' + h.detail)
 
 
 def main(argv=None):
@@ -720,11 +841,12 @@ def main(argv=None):
                 raise Halt('CONTROL_MISSING')
             control = {'task_id': task_id, 'prompt_sha256': prompt_sha, 'runner_sha256': runner_sha, 'done': [], 'halted': None}
             batch.write_new_artifact('control.json', json.dumps(control, indent=2) + chr(10))
+        runner_sha = accepted_runner_sha(root, batch.spec, control, runner_sha)
         if check_control(control, task_id, prompt_sha, runner_sha, steps, step) == 'HALTED':
             print('S1 TASK_ALREADY_HALTED ' + str(control['halted']))
             return 1
     except Halt as h:
-        print('S1 ' + str(h) + ' | step ' + step)
+        report_halt(h, step)
         return 1
     except (OSError, UnicodeDecodeError):
         print('S1 PROMPT_UNREADABLE | step ' + step)
@@ -734,7 +856,7 @@ def main(argv=None):
     except Halt as h:
         control['halted'] = step + ':' + str(h)
         save_control(batch, control)
-        print('S1 ' + str(h) + ' | step ' + step)
+        report_halt(h, step)
         return 1
     except Exception as ex:  # noqa: BLE001 - any unexpected failure locks the task with a fixed code
         control['halted'] = step + ':UNEXPECTED_' + type(ex).__name__

@@ -1,26 +1,28 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "B107-STATE-SYNC-261009",
-  "base_oid": "dfe88d6df94494dfed9dfba82395a7dda16e94ac",
+  "task_id": "B107-RUNNER-UPDATE-S6-R1-261009",
+  "base_oid": "cc0fcae1505081caad0796ca2330101808974df3",
   "plan": {
     "allowed_paths": [
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
-      "docs/HANDOVER.md",
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md"
+      "docs/refactor-backlog.md",
+      "scripts/batch_runner.py",
+      "scripts/tests/test_batch_runner.py"
     ],
     "required_paths": [
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
-      "docs/HANDOVER.md",
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md"
+      "docs/refactor-backlog.md",
+      "scripts/batch_runner.py",
+      "scripts/tests/test_batch_runner.py"
     ],
     "max_plan_revisions": 3,
     "revision_count": 0,
@@ -30,11 +32,12 @@
     "changed_paths": [
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
-      "docs/HANDOVER.md",
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md"
+      "docs/refactor-backlog.md",
+      "scripts/batch_runner.py",
+      "scripts/tests/test_batch_runner.py"
     ]
   },
   "evidence": [
