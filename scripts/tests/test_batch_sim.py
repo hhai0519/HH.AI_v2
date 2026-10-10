@@ -41,13 +41,22 @@ def _block(name, body):
     return "<<<BEGIN " + name + ">>>\n" + body + "\n<<<END " + name + ">>>\n"
 
 
-def _prompt(tmp_path, task=TASK, kind="production", start=None, name=None):
+FULL_STEPS = ["preflight", "setup", "e24", "apply", "focused", "generate", "precommit", "stage", "commit", "postcommit"]
+LEAN_STEPS = [s for s in FULL_STEPS if s not in ("e24", "focused")]
+
+
+def _prompt(tmp_path, task=TASK, kind="production", start=None, name=None, e24=True, focused=True, authored=None,
+            runner_update=False):
     if kind == "production":
+        authored = AUTHORED if authored is None else authored
         spec = {"schema_version": 1, "task_id": task, "kind": "production", "base_oid": BASE,
-                "branch": "batch/sim-unit-261010", "start": start or {"mode": "clean"},
+                "branch": "batch/sim-unit-261010", "start": start or {"mode": "clean"}, "e24": e24,
+                "focused": {"pytest_args": ["-q"], "limit_sec": 60} if focused else None,
                 "authors": {p: {"source": {"kind": "base"}, "sha256": hashlib.sha256(b).hexdigest()}
-                            for p, b in AUTHORED.items()}, "ops": []}
-        plan = {"task_id": task, "base_oid": BASE, "allowed_paths": sorted(list(AUTHORED) + list(br.GENERATED))}
+                            for p, b in authored.items()}, "ops": []}
+        if runner_update:
+            spec["runner_update"] = True
+        plan = {"task_id": task, "base_oid": BASE, "allowed_paths": sorted(list(authored) + list(br.GENERATED))}
         text = "head\n" + _block("BATCH_SPEC_JSON", json.dumps(spec)) + _block("PLAN_JSON", json.dumps(plan))
     else:
         spec = {"schema_version": 1, "task_id": task, "kind": "promotion", "base_oid": BASE,
@@ -203,12 +212,12 @@ def test_production_runs_steps_in_order_and_ci_stand_in_only_for_push(tmp_path):
     fake = Fake(tmp_path)
     sim, lines = _sim(tmp_path, fake)
     sim.production(_prompt(tmp_path))
-    assert fake.runner_steps() == list(bs.PRODUCTION_STEPS) + ["push"]
+    assert fake.runner_steps() == FULL_STEPS + ["push"]
     assert fake.stub_seen["push"] is True
     assert not any(v for k, v in fake.stub_seen.items() if k != "push")
     vp = tmp_path / "wd" / "work" / "scripts" / "verification_primitives.py"
     assert vp.read_bytes() == b"REAL\n", "the stand-in is removed after push"
-    assert lines == ["BATCH_SIM STEP " + s + " rc=0" for s in list(bs.PRODUCTION_STEPS) + ["push"]]
+    assert lines == ["BATCH_SIM STEP " + s + " rc=0" for s in FULL_STEPS + ["push"]]
 
 
 def test_posix_locale_proxy_reaches_every_command(tmp_path):
@@ -253,8 +262,8 @@ def test_resume_rebuilds_the_stop_state_before_the_adopt_start(tmp_path):
     sim, _ = _sim(tmp_path, fake)
     sim.production(prompt, resume_prompt=stopped)
     tasks = [c[0][3] for c in fake.calls if c[0][1] == "scripts/batch_runner.py"]
-    assert tasks[:4] == ["STOPPED-261010"] * 4 and fake.runner_steps()[:4] == list(bs.RESUME_STEPS)
-    assert tasks[4:] == [TASK] * (len(bs.PRODUCTION_STEPS) + 1)
+    assert tasks[:4] == ["STOPPED-261010"] * 4 and fake.runner_steps()[:4] == FULL_STEPS[:4]
+    assert tasks[4:] == [TASK] * (len(FULL_STEPS) + 1)
 
 
 def test_resume_must_match_the_adopt_start(tmp_path):
@@ -273,7 +282,7 @@ def test_production_negative_passes_only_on_the_documented_stop(tmp_path):
     sim.production(_prompt(tmp_path), negative="runner")
     runner = tmp_path / "wd" / "work" / "scripts" / "batch_runner.py"
     assert runner.read_bytes().endswith(b"# injected by batch_sim\n")
-    assert fake_steps(ok) == list(bs.RESUME_STEPS) + ["focused"]
+    assert fake_steps(ok) == FULL_STEPS[:4] + ["focused"]
 
 
 def fake_steps(fake):
@@ -521,3 +530,235 @@ def test_default_run_timeout_terminates_descendants(tmp_path):
     while bp.process_alive(pid) and time.monotonic() < deadline:
         time.sleep(0.2)
     assert not bp.process_alive(pid), "the whole tree is terminated on timeout"
+
+
+# --- step list follows the runner (B115-SIM-S3) ------------------------------------------------------
+
+def test_step_list_is_the_runners_own_for_optional_steps(tmp_path):
+    # Counterexample from the G3 endpoint attempt: a state-sync batch (e24 false, focused null) was simulated with
+    # a fixed list and stopped with UNKNOWN_STEP at e24. The list now comes from batch_runner.derive_steps.
+    fake = Fake(tmp_path)
+    sim, _ = _sim(tmp_path, fake)
+    sim.production(_prompt(tmp_path, e24=False, focused=False))
+    assert fake.runner_steps() == LEAN_STEPS + ["push"]
+    only_e24 = Fake(tmp_path / "e")
+    sim2, _ = _sim(tmp_path / "e", only_e24)
+    sim2.production(_prompt(tmp_path, focused=False))
+    assert only_e24.runner_steps() == [s for s in FULL_STEPS if s != "focused"] + ["push"]
+
+
+@pytest.mark.parametrize("negative,step,code", [("author", "generate", "GENERATE_AUTHOR_DRIFT"),
+                                                ("runner", "generate", "CONTROL_BINDING_DRIFT")])
+def test_negative_stop_step_follows_the_step_list(tmp_path, negative, step, code):
+    fake = Fake(tmp_path, steps={(TASK, step): (1, "S1 " + code + " | step " + step)}, head=BASE)
+    sim, _ = _sim(tmp_path, fake)
+    sim.production(_prompt(tmp_path, e24=False, focused=False), negative=negative)
+    assert fake.runner_steps() == ["preflight", "setup", "apply", step]
+    wrong = Fake(tmp_path / "w", steps={(TASK, step): (1, "S1 FOCUSED_AUTHOR_DRIFT | step " + step)}, head=BASE)
+    sim2, _ = _sim(tmp_path / "w", wrong)
+    if code != "FOCUSED_AUTHOR_DRIFT":
+        assert _code(sim2.production, _prompt(tmp_path, e24=False, focused=False), negative=negative).startswith(
+            "NEGATIVE_NOT_STOPPED_")
+
+
+def test_resume_uses_the_stopped_batchs_own_steps(tmp_path):
+    adopt = {"mode": "adopt", "start_branch": "batch/sim-unit-261010", "adopt_hashes": {"docs/A.md": "0" * 64}}
+    stopped = _prompt(tmp_path, task="STOPPED-261010", e24=False, focused=False)
+    fake = Fake(tmp_path)
+    sim, _ = _sim(tmp_path, fake)
+    sim.production(_prompt(tmp_path, start=adopt), resume_prompt=stopped)
+    assert fake.runner_steps()[:3] == ["preflight", "setup", "apply"]
+
+
+def test_unexpected_runner_step_list_fails_closed(monkeypatch):
+    monkeypatch.setattr(br, "derive_steps", lambda spec: ["preflight", "apply", "push"])
+    with pytest.raises(bs.SimError) as exc:
+        bs.production_steps({"kind": "production"})
+    assert str(exc.value) == "STEP_LIST_UNEXPECTED"
+
+
+# --- independent expectations for every e24 x focused combination (second opinion on S3) ----------
+
+EXPECTED = {   # written out by hand: an independent baseline, not derived from batch_runner.derive_steps
+    (True, True): ["preflight", "setup", "e24", "apply", "focused", "generate", "precommit", "stage", "commit", "postcommit"],
+    (True, False): ["preflight", "setup", "e24", "apply", "generate", "precommit", "stage", "commit", "postcommit"],
+    (False, True): ["preflight", "setup", "apply", "focused", "generate", "precommit", "stage", "commit", "postcommit"],
+    (False, False): ["preflight", "setup", "apply", "generate", "precommit", "stage", "commit", "postcommit"],
+}
+FIRST_AFTER_APPLY = {(True, True): "focused", (True, False): "generate", (False, True): "focused", (False, False): "generate"}
+
+
+@pytest.mark.parametrize("e24,focused", sorted(EXPECTED))
+def test_every_step_combination_matches_the_written_expectation(tmp_path, e24, focused):
+    fake = Fake(tmp_path)
+    sim, _ = _sim(tmp_path, fake)
+    sim.production(_prompt(tmp_path, e24=e24, focused=focused))
+    assert fake.runner_steps() == EXPECTED[(e24, focused)] + ["push"]
+    spec = {"kind": "production", "e24": e24, "focused": {} if focused else None}
+    assert list(bs.production_steps(spec)) == EXPECTED[(e24, focused)]
+    assert list(bs.resume_steps(spec)) == EXPECTED[(e24, focused)][:EXPECTED[(e24, focused)].index("apply") + 1]
+
+
+@pytest.mark.parametrize("e24,focused", sorted(EXPECTED))
+@pytest.mark.parametrize("negative", ["runner", "author"])
+def test_negatives_stop_at_the_written_step_for_every_combination(tmp_path, e24, focused, negative):
+    step = FIRST_AFTER_APPLY[(e24, focused)]
+    code = "CONTROL_BINDING_DRIFT" if negative == "runner" else step.upper() + "_AUTHOR_DRIFT"
+    fake = Fake(tmp_path, steps={(TASK, step): (1, "S1 " + code + " | step " + step)}, head=BASE)
+    sim, _ = _sim(tmp_path, fake)
+    sim.production(_prompt(tmp_path, e24=e24, focused=focused), negative=negative)
+    upto = EXPECTED[(e24, focused)]
+    assert fake.runner_steps() == upto[:upto.index("apply") + 1] + [step]
+
+
+@pytest.mark.parametrize("e24,focused", sorted(EXPECTED))
+def test_adopt_negative_stops_at_setup_for_every_combination(tmp_path, e24, focused):
+    adopt = {"mode": "adopt", "start_branch": "batch/sim-unit-261010", "adopt_hashes": {"docs/A.md": "0" * 64}}
+    stopped = _prompt(tmp_path, task="STOPPED-261010", e24=e24, focused=focused)
+    fake = Fake(tmp_path, steps={(TASK, "setup"): (1, "S1 ADOPT_HASH_MISMATCH | step setup")}, head=BASE)
+    sim, _ = _sim(tmp_path, fake)
+    sim.production(_prompt(tmp_path, start=adopt, e24=e24, focused=focused), resume_prompt=stopped, negative="adopt")
+    resumed = EXPECTED[(e24, focused)][:EXPECTED[(e24, focused)].index("apply") + 1]
+    assert fake.runner_steps() == resumed + ["preflight", "setup"]
+
+
+def _builder_repo(tmp_path):
+    root = tmp_path / "repo"
+    (root / "docs").mkdir(parents=True)
+    _w(root / "docs" / "BOARD.md", "# Board\n**NEXT_SLICE**：old\n")
+    _git_real(str(root), "init", "-q", "-b", "main")
+    _git_real(str(root), "add", ".")
+    _git_real(str(root), "commit", "-q", "-m", "base")
+    return str(root), _git_real(str(root), "rev-parse", "HEAD")
+
+
+@pytest.mark.parametrize("e24,focused", sorted(EXPECTED))
+def test_real_runner_specs_built_by_prompt_builder_follow_the_written_steps(tmp_path, e24, focused):
+    # Fixture conformity: prompts produced by the canonical builder and accepted by the runner's own load_spec.
+    import prompt_builder as pb
+    root, base = _builder_repo(tmp_path)
+    d = tmp_path / "def"
+    d.mkdir()
+    _w(d / "head.txt", "{TASK_ID}\n")
+    _w(d / "tail.txt", "end\n")
+    _w(d / "e24.json", json.dumps({"schema_version": 1, "base_oid": base, "mode": "REQUIRED", "queries": [],
+                                   "results": [{"query_id": "q1", "matched_paths": ["docs/BOARD.md"]}]}))
+    defn = {"schema_version": 1, "task_id": TASK, "kind": "production", "base_oid": base,
+            "branch": "batch/sim-unit-261010", "commit_message": "Unit: sim", "e24": e24,
+            "focused": {"pytest_args": ["-q"], "limit_sec": 60} if focused else None,
+            "text_ops": [{"path": "docs/BOARD.md", "type": "replace_line", "prefix": "**NEXT_SLICE**：", "new": "**NEXT_SLICE**：new"}],
+            "prose_head": "head.txt", "prose_tail": "tail.txt"}
+    if e24:
+        defn["e24_evidence"] = "e24.json"
+    _w(d / "def.json", json.dumps(defn, ensure_ascii=False))
+    text = pb.build(root, str(d / "def.json"))[0]
+    spec = br.load_spec(br.prompt_lines(text.encode("utf-8")), TASK)
+    assert list(bs.production_steps(spec)) == EXPECTED[(e24, focused)]
+    assert br.derive_steps(spec)[-1] == "push"
+
+
+def test_source_working_tree_change_is_detected(tmp_path):
+    src = tmp_path / "src"
+    src.mkdir()
+    _git_real(str(src), "init", "-q", "-b", "main")
+    _w(src / "f.txt", b"x\n")
+    _git_real(str(src), "add", "f.txt")
+    _git_real(str(src), "commit", "-q", "-m", "base")
+    base = _git_real(str(src), "rev-parse", "HEAD")
+    sim = bs.Sim(str(src), str(tmp_path / "wd"), "utf8", out=lambda line: None)
+    sim.make_origin(base)
+    sim.check_source_unchanged()
+    _w(src / "f.txt", b"changed\n")
+    with pytest.raises(bs.SimError) as exc:
+        sim.check_source_unchanged()
+    assert str(exc.value) == "SOURCE_MODIFIED"
+    for change in (lambda: _w(src / "untracked.txt", b"u\n"), lambda: _w(src / ".git" / "info" / "extra", b"e\n")):
+        sim2 = bs.Sim(str(src), str(tmp_path / ("wd" + str(id(change)))), "utf8", out=lambda line: None)
+        sim2.make_origin(base)
+        change()
+        assert _code(sim2.check_source_unchanged) == "SOURCE_MODIFIED"
+
+
+# --- second opinion on S3-R1 ---------------------------------------------------------------------------
+
+def test_source_snapshot_starts_no_command_configured_in_the_source(tmp_path):
+    # Counterexample from the second opinion: "git status" in the source starts the source's own file-system
+    # monitor (and filter drivers). The snapshot now reads file metadata with Python only.
+    src = tmp_path / "src"
+    src.mkdir()
+    _git_real(str(src), "init", "-q", "-b", "main")
+    _w(src / "f.txt", b"x\n")
+    _git_real(str(src), "add", "f.txt")
+    _git_real(str(src), "commit", "-q", "-m", "base")
+    base = _git_real(str(src), "rev-parse", "HEAD")
+    marker = tmp_path / "marker"
+    hook = tmp_path / "hook.sh"
+    _w(hook, "#!/bin/sh\necho hit >> '" + marker.as_posix() + "'\ncat\n")
+    hook.chmod(0o755)
+    _git_real(str(src), "config", "core.fsmonitor", hook.as_posix())
+    _git_real(str(src), "config", "filter.x.clean", hook.as_posix())
+    _w(src / ".git" / "info" / "attributes", b"* filter=x\n")
+    _w(src / "f.txt", b"x\n")                      # same content, new stat data: a status would run the filter
+    if os.name == "posix":                          # control: the configured commands are live where sh exists
+        _git_real(str(src), "--no-optional-locks", "status", "--porcelain")
+        assert marker.exists()
+        marker.unlink()
+    sim = bs.Sim(str(src), str(tmp_path / "wd"), "utf8", out=lambda line: None)
+    sim.make_origin(base)
+    sim.check_source_unchanged()
+    assert not marker.exists()
+
+
+@pytest.mark.parametrize("broken", ["lstat", "scandir"])
+def test_unreadable_source_snapshot_is_a_failure(tmp_path, monkeypatch, broken):
+    src = tmp_path / "src"
+    _w(src / "d" / "f.txt", b"x\n")
+    sim = bs.Sim(str(src), str(tmp_path / "wd"), "utf8", run=Fake(tmp_path), out=lambda line: None)
+    real = getattr(os, broken)
+
+    def failing(path, *a, **k):
+        if Path(path).name in ("f.txt", "d"):
+            raise PermissionError(13, "denied")
+        return real(path, *a, **k)
+    monkeypatch.setattr(os, broken, failing)
+    assert _code(sim.source_refs) == "SOURCE_UNREADABLE"
+
+
+@pytest.mark.parametrize("line", ["S1 CONTROL_BINDING_DRIFT | step apply", "S1 TASK_ALREADY_HALTED apply", "S1 USAGE",
+                                  "S1 NONE", "S1 NONE unexpected_text"])
+def test_any_s1_line_fails_the_step_even_with_exit_zero(tmp_path, line):
+    fake = Fake(tmp_path, steps={(TASK, "apply"): (0, "STEP_PASS apply\n" + line)})
+    sim, _ = _sim(tmp_path, fake)
+    assert _code(sim.production, _prompt(tmp_path)).startswith("STEP_FAILED_APPLY_")
+    assert fake.runner_steps()[-1] == "apply"
+    ok = Fake(tmp_path / "ok", steps={(TASK, "apply"): (0, "STEP_PASS apply\nCOMMIT " + HEAD + " | CI PASS | S1 NONE")})
+    sim2, _ = _sim(tmp_path / "ok", ok)
+    sim2.production(_prompt(tmp_path))
+
+
+def test_negative_with_an_s1_line_before_the_stop_step_is_a_failure(tmp_path):
+    adopt = {"mode": "adopt", "start_branch": "batch/sim-unit-261010", "adopt_hashes": {"docs/A.md": "0" * 64}}
+    stopped = _prompt(tmp_path, task="STOPPED-261010")
+    fake = Fake(tmp_path, steps={(TASK, "preflight"): (0, "S1 CONTROL_BINDING_DRIFT | step preflight"),
+                                 (TASK, "setup"): (1, "S1 ADOPT_HASH_MISMATCH | step setup")}, head=BASE)
+    sim, _ = _sim(tmp_path, fake)
+    assert _code(sim.production, _prompt(tmp_path, start=adopt), resume_prompt=stopped,
+                 negative="adopt") == "NEGATIVE_STOPPED_EARLY_PREFLIGHT"
+
+
+def test_resume_of_a_runner_update_batch_is_refused(tmp_path):
+    adopt = {"mode": "adopt", "start_branch": "batch/sim-unit-261010", "adopt_hashes": {"docs/A.md": "0" * 64}}
+    authored = dict(AUTHORED, **{br.RUNNER_REL: b"# runner v2\n"})
+    stopped = _prompt(tmp_path, task="STOPPED-261010", authored=authored, runner_update=True)
+    fake = Fake(tmp_path)
+    sim, _ = _sim(tmp_path, fake)
+    assert _code(sim.production, _prompt(tmp_path, start=adopt), resume_prompt=stopped) == \
+        "RESUME_RUNNER_UPDATE_UNSUPPORTED"
+    assert fake.runner_steps() == []
+
+
+def test_author_negative_needs_an_author_other_than_the_runner(tmp_path):
+    fake = Fake(tmp_path, head=BASE)
+    sim, _ = _sim(tmp_path, fake)
+    prompt = _prompt(tmp_path, authored={br.RUNNER_REL: b"# runner v2\n"}, runner_update=True)
+    assert _code(sim.production, prompt, negative="author") == "NEGATIVE_AUTHOR_UNAVAILABLE"

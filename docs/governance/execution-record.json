@@ -1,33 +1,27 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "B115-SIM-S2-R1-261010",
-  "base_oid": "44c46c98d703b3121ca4770dc3e6cb52eac3a1e0",
+  "task_id": "B115-SIM-S3-R4-261010",
+  "base_oid": "a25d31d892f9cb19fe9f0ff676093c0804542fec",
   "plan": {
     "allowed_paths": [
-      ".claude/README.md",
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
-      "docs/HANDOVER.md",
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
       "docs/refactor-backlog.md",
       "scripts/batch_sim.py",
-      "scripts/sim_windows_emulation.py",
       "scripts/tests/test_batch_sim.py"
     ],
     "required_paths": [
-      ".claude/README.md",
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
-      "docs/HANDOVER.md",
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
       "docs/refactor-backlog.md",
       "scripts/batch_sim.py",
-      "scripts/sim_windows_emulation.py",
       "scripts/tests/test_batch_sim.py"
     ],
     "max_plan_revisions": 3,
@@ -36,16 +30,13 @@
   },
   "actual": {
     "changed_paths": [
-      ".claude/README.md",
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
-      "docs/HANDOVER.md",
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
       "docs/refactor-backlog.md",
       "scripts/batch_sim.py",
-      "scripts/sim_windows_emulation.py",
       "scripts/tests/test_batch_sim.py"
     ]
   },

@@ -18,7 +18,8 @@ Usage:
 
 Production: origin main = the prompt's base_oid; the work clone starts on batch/sim-start (or, with
 --resume-prompt, first runs preflight..apply of the stopped batch, rebuilding its stop state for an adopt start).
-Steps preflight..postcommit run in order; push runs with the GitHub CI query replaced by a fixed success stand-in
+The steps are exactly the runner's own list for the spec (batch_runner.derive_steps: e24 only when the spec says
+so, focused only when it is not null), run in order up to postcommit; push runs with the GitHub CI query replaced by a fixed success stand-in
 inside the work clone only (the simulation has no GitHub access). Result checks: parent = base, changed paths =
 PLAN_JSON allowed paths, every author file at HEAD has the declared SHA-256 (LF), origin branch = HEAD,
 check_consistency and execution_record verify exit 0, clean worktree.
@@ -30,10 +31,30 @@ Negatives inject one fault and require the documented S1 line at the documented 
 Isolation: the work directory must be new or empty and outside the source; every git command runs without any
 inherited GIT_* variable and with an empty global configuration (no system configuration), clones use an empty
 template; the work tree, git directory and both origin URLs are verified to be the simulation's own paths, and the
-source repository's refs must be unchanged at the end. Every command runs through bounded_process.run_bounded
+source must be unchanged at the end (refs and file metadata, see Trust boundary). Every command runs through bounded_process.run_bounded
 (own process group, output to temporary files, whole tree terminated on timeout). S1 codes are printed only when
 they belong to the runner's own constant vocabulary; anything else is printed as S1_UNLISTED.
 winemu runs pytest with scripts/sim_windows_emulation.py loaded (an emulation, never native Windows evidence).
+
+Trust boundary: a simulation runs the repository's own, reviewed code (runner, gates, tests) for a prompt the
+auditor wrote; it is not a sandbox for untrusted code. What it does guarantee: Git isolation (above) and a source
+integrity check: before and after, every ref (git for-each-ref) and the metadata (type, mode, size, modification
+and change time) of every path under the source directory, .git included, read with Python lstat calls only. No git
+command runs in the source's working tree, so the check starts no file-system monitor or filter driver configured in
+the source; the git commands that read the source are for-each-ref and the --no-local bare clone (the source's
+objects are never shared), and anything the source's own git configuration could start from those two is part of
+the trusted source. The check detects changes; it does not prevent them. What it does not provide (accepted residual risk for trusted code):
+environment isolation beyond GIT_* (other variables, including any credentials present in the auditor's
+environment, are inherited by the runner and the tests), network isolation (only the CI query is answered locally;
+any other network access by the code under test is not blocked), and file-system isolation outside the work
+directory.
+
+Limits (each fails closed): a step fails when it exits non-zero or prints any line that starts with "S1 ", the
+stop rule given to the Executor ("S1 NONE" at the start of a line included; a result line such as
+"COMMIT <sha> | CI PASS | S1 NONE" does not start with "S1 "). A negative shows that the documented step stops with the documented S1 code and nothing is committed; it does not
+show that no code under test ran before the detection point. Resuming a stopped runner-update batch is not
+supported (RESUME_RUNNER_UPDATE_UNSUPPORTED); the author negative needs an author file other than the runner
+(NEGATIVE_AUTHOR_UNAVAILABLE).
 
 Platform contract (B-115): the simulator and the tools it checks run on CPython 3.10+ on Linux (auditor) and Windows
 (USER); every authored file and fixture is UTF-8 with LF only and is written as bytes; "posix" locale runs the runner
@@ -62,9 +83,6 @@ try:
 finally:
     sys.path.pop(0)
 
-PRODUCTION_STEPS = ('preflight', 'setup', 'e24', 'apply', 'focused', 'generate', 'precommit', 'stage', 'commit',
-                    'postcommit')
-RESUME_STEPS = ('preflight', 'setup', 'e24', 'apply')
 PROMOTION_STEPS = ('preflight', 'verify', 'promote', 'postmain')
 STEP_TIMEOUT = 3600
 GIT_TIMEOUT = 600
@@ -74,12 +92,8 @@ LOCALES = {
     'utf8': {},
     'posix': {'LC_ALL': 'POSIX', 'LANG': 'POSIX', 'PYTHONCOERCECLOCALE': '0', 'PYTHONUTF8': '0'},
 }
-# Expected (step, S1 code) for each injected fault.
-PRODUCTION_NEGATIVES = {
-    'runner': ('focused', 'CONTROL_BINDING_DRIFT'),
-    'author': ('focused', 'FOCUSED_AUTHOR_DRIFT'),
-    'adopt': ('setup', 'ADOPT_HASH_MISMATCH'),
-}
+# Production negatives; the stop step and code depend on the batch's own step list (see production_negative).
+PRODUCTION_NEGATIVES = ('adopt', 'author', 'runner')
 PROMOTION_NEGATIVES = {
     'drift': ('verify', 'MAIN_DRIFT'),
     'dirty': ('verify', 'DIRTY_WORKTREE'),
@@ -121,6 +135,28 @@ def known_s1(code, known=None):
             return code
     return S1_UNLISTED
 PYTEST_TOTALS = re.compile(r'^\d+ [a-z]+(, \d+ [a-z]+)* in [0-9.]+s( \([0-9:]+\))?$')
+
+
+def production_steps(spec):
+    """The runner's own step list for this spec (e24 and focused are optional), without the final push."""
+    steps = batch_runner.derive_steps(spec)
+    _require(steps[:2] == ['preflight', 'setup'] and 'apply' in steps and steps[-1] == 'push', 'STEP_LIST_UNEXPECTED')
+    return tuple(steps[:-1])
+
+
+def resume_steps(spec):
+    """Steps of a stopped batch up to and including apply, as the runner derives them."""
+    steps = production_steps(spec)
+    return steps[:steps.index('apply') + 1]
+
+
+def production_negative(spec, negative):
+    """(stop step, expected S1 code) for a production fault; the first step after apply checks the injection."""
+    if negative == 'adopt':
+        return 'setup', 'ADOPT_HASH_MISMATCH'
+    steps = production_steps(spec)
+    after = steps[steps.index('apply') + 1]
+    return after, ('CONTROL_BINDING_DRIFT' if negative == 'runner' else after.upper() + '_AUTHOR_DRIFT')
 
 
 class SimError(Exception):
@@ -212,8 +248,25 @@ class Sim:
 
     # -- set-up -------------------------------------------------------------------------------------
     def source_refs(self):
-        return self.git('-C', self.source, 'for-each-ref', '--format=%(refname) %(objectname)', cwd=str(self.workdir),
+        """Snapshot of the source: every ref with its object, plus the metadata of every path under the source
+        directory (.git included) from Python lstat calls; no git command runs in the source's working tree."""
+        refs = self.git('-C', self.source, 'for-each-ref', '--format=%(refname) %(objectname)', cwd=str(self.workdir),
                         code='SOURCE_UNREADABLE')
+        entries = []
+
+        def unreadable(err):
+            raise SimError('SOURCE_UNREADABLE')
+        try:
+            for root, dirs, files in os.walk(self.source, onerror=unreadable):
+                dirs.sort()
+                for name in sorted(dirs) + sorted(files):
+                    path = os.path.join(root, name)
+                    st = os.lstat(path)
+                    entries.append(' '.join((os.path.relpath(path, self.source), oct(st.st_mode), str(st.st_size),
+                                             str(st.st_mtime_ns), str(st.st_ctime_ns))))
+        except OSError:
+            raise SimError('SOURCE_UNREADABLE')
+        return refs + '\n--\n' + '\n'.join(entries)
 
     def check_locations(self):
         """The work clone, its git directory and both origin URLs must be exactly the simulation's own paths."""
@@ -292,8 +345,8 @@ class Sim:
         self.out('BATCH_SIM STEP ' + name + ' rc=' + str(rc))
         s1 = None
         for line in out.decode('utf-8', 'replace').splitlines():
-            if line.startswith('S1 ') and not line.startswith('S1 NONE') and ' | ' in line:
-                s1 = known_s1(line.split(' | ')[0][3:].strip())
+            if line.startswith('S1 '):
+                s1 = known_s1((line.split(' | ')[0].split()[1:] or [''])[0])
                 self.out('BATCH_SIM S1 ' + s1)
                 break
         return rc, s1
@@ -301,7 +354,7 @@ class Sim:
     def run_steps(self, task, steps):
         for name in steps:
             rc, s1 = self.step(task, name)
-            if rc != 0:
+            if rc != 0 or s1 is not None:
                 raise SimError('STEP_FAILED_' + name.upper() + ('_' + s1 if s1 else ''))
 
     def expect_stop(self, task, steps, stop_step, code):
@@ -310,14 +363,15 @@ class Sim:
             if name == stop_step:
                 _require(rc != 0 and s1 == code, 'NEGATIVE_NOT_STOPPED_' + code)
                 return
-            _require(rc == 0, 'NEGATIVE_STOPPED_EARLY_' + name.upper())
+            _require(rc == 0 and s1 is None, 'NEGATIVE_STOPPED_EARLY_' + name.upper())
         raise SimError('NEGATIVE_STEP_NOT_REACHED')
 
     # -- production ---------------------------------------------------------------------------------
     def production(self, prompt, resume_prompt=None, negative=None):
         task, data, spec, plan = read_prompt(prompt)
         _require(spec.get('kind') == 'production', 'PROMPT_KIND_MISMATCH')
-        _require(negative in (None,) + tuple(PRODUCTION_NEGATIVES), 'NEGATIVE_INVALID')
+        _require(negative in (None,) + PRODUCTION_NEGATIVES, 'NEGATIVE_INVALID')
+        steps = production_steps(spec)
         adopt = spec['start']['mode'] == 'adopt'
         _require(adopt == (resume_prompt is not None), 'RESUME_MISMATCH')
         _require(negative != 'adopt' or adopt, 'NEGATIVE_NEEDS_ADOPT')
@@ -329,27 +383,31 @@ class Sim:
             r_task, r_data, r_spec, _ = read_prompt(resume_prompt)
             _require(r_spec.get('kind') == 'production' and r_spec['base_oid'] == base, 'RESUME_PROMPT_INVALID')
             _require(r_spec['branch'] == spec['start']['start_branch'], 'RESUME_BRANCH_MISMATCH')
+            _require(not r_spec.get('runner_update'), 'RESUME_RUNNER_UPDATE_UNSUPPORTED')
             self.intake(r_task, r_data)
-            self.run_steps(r_task, RESUME_STEPS)
+            self.run_steps(r_task, resume_steps(r_spec))
         if negative == 'adopt':
             path = sorted(spec['start']['adopt_hashes'])[0]
             with open(Path(self.work) / path, 'ab') as fh:
                 fh.write(b'\n')
         self.intake(task, data)
         if negative == 'adopt':
-            self.expect_stop(task, PRODUCTION_STEPS, *PRODUCTION_NEGATIVES['adopt'])
+            self.expect_stop(task, steps, *production_negative(spec, 'adopt'))
             return self.no_commit(base)
         if negative in ('runner', 'author'):
-            self.run_steps(task, RESUME_STEPS)
+            self.run_steps(task, resume_steps(spec))
             if negative == 'runner':
                 target = batch_runner.RUNNER_REL
             else:
-                target = sorted(p for p in spec['authors'] if p != batch_runner.RUNNER_REL)[0]
+                others = sorted(p for p in spec['authors'] if p != batch_runner.RUNNER_REL)
+                _require(others, 'NEGATIVE_AUTHOR_UNAVAILABLE')
+                target = others[0]
             with open(Path(self.work) / target, 'ab') as fh:
                 fh.write(b'\n# injected by batch_sim\n')
-            self.expect_stop(task, ('focused',), *PRODUCTION_NEGATIVES[negative])
+            stop_step, code = production_negative(spec, negative)
+            self.expect_stop(task, (stop_step,), stop_step, code)
             return self.no_commit(base)
-        self.run_steps(task, PRODUCTION_STEPS)
+        self.run_steps(task, steps)
         with self.ci_stand_in():
             self.run_steps(task, ('push',))
         self.verify_production(spec, plan)
@@ -431,7 +489,7 @@ def winemu(repo, pytest_args, run=default_run):
 def main(argv=None):
     parser = argparse.ArgumentParser(description='Auditor-side isolated batch simulation (B-115).')
     sub = parser.add_subparsers(dest='cmd', required=True)
-    for name, negatives in (('production', PRODUCTION_NEGATIVES), ('promotion', PROMOTION_NEGATIVES)):
+    for name, negatives in (('production', PRODUCTION_NEGATIVES), ('promotion', tuple(PROMOTION_NEGATIVES))):
         p = sub.add_parser(name)
         p.add_argument('--source', required=True)
         p.add_argument('--prompt', required=True)

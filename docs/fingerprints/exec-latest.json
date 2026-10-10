@@ -1,5 +1,5 @@
 {
-  "base_head": "44c46c9",
+  "base_head": "a25d31d",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -559,16 +559,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 304,
-      "sha256": "c019c2ec4df544c8bacf227ff5a165369964932f06e6e04f94a22ac82a9e868d"
+      "lines": 305,
+      "sha256": "17cea13d983153f89f80ab079e008ee5a79ab91c9343ea3e093d135c8d4cdb2e"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 271,
-      "sha256": "9a614ea86c30e033a3b1f55d955e222cc586d744265cf65456899043c61b7958"
+      "lines": 272,
+      "sha256": "daa3816a23f0e3d5f10e24740a99dfd95c04103108175c0acfa7aa27906e95ed"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -610,7 +610,7 @@
         "## 封存區"
       ],
       "lines": 374,
-      "sha256": "32be62b93dcea94f4da058204519d612a6984162b4e426ceace8d267df067215"
+      "sha256": "3e6061491a2aefd22b9ac86cf362b27de65d3ccd12e170dda7e01a59dc5c0d72"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1108,8 +1108,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6372,
-      "sha256": "6772dbca103fa7c54935bd2b72456a8562b700b162c3ed6a13c5c24b44b0fe87"
+      "lines": 6373,
+      "sha256": "592cc63cc376772ba0e7e6d8ea6a33789dc7653e5fa43a1e2c020cee4f9e57d5"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1149,10 +1149,10 @@
       "fences": 0,
       "headings": [
         "# -*- coding: utf-8 -*-",
-        "# Expected (step, S1 code) for each injected fault."
+        "# Production negatives; the stop step and code depend on the batch's own step list (see production_negative)."
       ],
-      "lines": 469,
-      "sha256": "80062b52bb5f09e1099a2480d08d3cab84221d36fdd27c38d3e0a88f1b7527ae"
+      "lines": 527,
+      "sha256": "ec88ef0cea580bc2020d85b70b8a5f31de0583ce9e91d49f0399cb383645dbf6"
     },
     "scripts/bounded_process.py": {
       "fences": 0,
@@ -1347,10 +1347,13 @@
         "# --- promotion ---------------------------------------------------------------------------------",
         "# --- command execution and CLI -------------------------------------------------------------------",
         "# --- Windows behaviour emulation -------------------------------------------------------------------",
-        "# --- second-opinion fixes (B115-SIM-S2 round 1) ------------------------------------------------------"
+        "# --- second-opinion fixes (B115-SIM-S2 round 1) ------------------------------------------------------",
+        "# --- step list follows the runner (B115-SIM-S3) ------------------------------------------------------",
+        "# --- independent expectations for every e24 x focused combination (second opinion on S3) ----------",
+        "# --- second opinion on S3-R1 ---------------------------------------------------------------------------"
       ],
-      "lines": 523,
-      "sha256": "c7f3eb7f986bd72a62b944f77eb19f217996153b70029d6900e12da57c0adacd"
+      "lines": 764,
+      "sha256": "9169920fd66495d6c24b4fa6c2d16185d64eb2f1006ff09daf37869066ac6339"
     },
     "scripts/tests/test_bounded_process.py": {
       "fences": 0,
@@ -1805,7 +1808,7 @@
       "sha256": "35bf7dbfa3c7d291b550c3c97a6ae398a22b1dc3624c1d2fc1e4db6963d6e115"
     }
   },
-  "generated_at": "2026-10-10T02:00:24Z",
+  "generated_at": "2026-10-10T04:54:13Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {
