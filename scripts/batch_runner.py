@@ -43,6 +43,21 @@ Invariants (fail closed; a failing step prints one "S1 <CODE> | step <name>" lin
   (AUTHOR_PATH_UNSAFE_TARGET; a resolution or access failure is the same stop; a missing parent is
   PARENT_DIRECTORY_MISSING). The check runs before the read child process starts and, in apply, for every
   target before the first write, so a rejected path leaves the work tree untouched.
+- Must-read closure (G4 slice 2): the rule files the Executor reads before any step are derived, not
+  chosen. derive_must_read lists, at the binding commit (production: base_oid; promotion: candidate_oid),
+  the kernel (AGENTS.md, PRINCIPLES.md and the always-read rules), the production rules, the path-bound
+  rules (skills/ rules when any allowed path is under skills/) and every directory-scoped AGENTS.md on the
+  way to an allowed path (root excluded), each with the LF SHA-256 of its blob. Every .md under .agents/rules/ at
+  the binding commit must belong to one of these lists (MUST_READ_RULE_UNMAPPED), so a new rule file cannot
+  be left out silently. The prompt carries the list as MUST_READ_JSON; preflight recomputes it and stops on
+  any difference in commit, files, order or hash (MUST_READ_MISMATCH; a missing or invalid block is
+  MUST_READ_BLOCK_INVALID). The numbered lines of the prompt's single formal must-read section (located by
+  validate_prompt_manifest.extract_must_read_section: outside code fences, comments and machine blocks) must
+  be exactly must_read_lines (the prompt file, then the derived files in order) and nothing else
+  (MUST_READ_SECTION_MISMATCH), so what the Executor is told to read is the derived list. Preflight also reads
+  every listed file in the work tree through author_target and requires its LF SHA-256 to equal the bound
+  value (MUST_READ_WORKTREE_DRIFT), so an adopt start or a local edit of a rule file stops before any
+  mutation. No rule is dropped from what earlier prompts listed.
 - generate verifies the author hashes before it runs the two generators (GENERATE_AUTHOR_DRIFT), so no
   generator runs on drifted author content, and verifies them again afterwards.
 - Bounded steps (focused and the three gates) run through scripts/bounded_process.py run_bounded, the
@@ -79,6 +94,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 try:
     from bounded_process import run_bounded  # noqa: E402 - shared bounded-execution primitive (B-107)
+    from validate_prompt_manifest import extract_must_read_section  # noqa: E402 - the validator's section rule
 finally:
     sys.path.pop(0)
 
@@ -113,6 +129,12 @@ PRODUCTION_STEPS = ('preflight', 'setup', 'e24', 'apply', 'focused', 'generate',
                     'postcommit', 'push')
 PROMOTION_STEPS = ('preflight', 'verify', 'promote', 'postmain')
 GATE_LIMITS = {'PRECOMMIT': 2400, 'STAGED': 900, 'POSTCOMMIT': 2400}
+# Must-read closure (G4 slice 2). Changing these lists is a runner change (E27).
+MUST_READ_KERNEL = ('AGENTS.md', 'PRINCIPLES.md', '.agents/rules/role-boundaries.md', '.agents/rules/git-and-reporting.md',
+                    '.agents/rules/governance-gate-integrity.md', '.agents/rules/powershell-encoding-protocol.md')
+MUST_READ_PRODUCTION = ('.agents/rules/prompt-preflight.md', '.agents/rules/secret-output-safety.md')
+MUST_READ_BY_PREFIX = (('skills/', ('.agents/rules/skills-architecture.md', '.agents/rules/skill-engineering-guardrails.md')),)
+RULES_DIR = '.agents/rules/'
 
 
 class Halt(Exception):
@@ -311,7 +333,7 @@ def load_spec(lines, task_id):
             _require(isinstance(src.get('oid'), str) and OID_RE.match(src['oid']), 'SPEC_SOURCE_INVALID')
         elif src.get('kind') == 'block':
             _require(isinstance(src.get('name'), str) and BLOCK_RE.match(src['name']) and src['name'] not in (
-                'BATCH_SPEC_JSON', 'PLAN_JSON', 'ALLOWED_SCOPE_JSON', 'E24_EVIDENCE_JSON'), 'SPEC_SOURCE_INVALID')
+                'BATCH_SPEC_JSON', 'PLAN_JSON', 'ALLOWED_SCOPE_JSON', 'E24_EVIDENCE_JSON', 'MUST_READ_JSON'), 'SPEC_SOURCE_INVALID')
         elif src.get('kind') == 'keep':
             _require(start['mode'] == 'adopt', 'SPEC_SOURCE_INVALID')
         else:
@@ -346,6 +368,88 @@ def load_spec(lines, task_id):
         evidence = block_json(lines, 'E24_EVIDENCE_JSON')
         _require(isinstance(evidence, dict) and evidence.get('base_oid') == spec['base_oid'], 'E24_BINDING_DRIFT')
     return spec
+
+
+def must_read_commit(spec):
+    return spec['candidate_oid'] if spec['kind'] == 'promotion' else spec['base_oid']
+
+
+def derive_must_read(root, spec):
+    """Ordered must-read list with blob hashes at the binding commit (see the module invariants)."""
+    commit = must_read_commit(spec)
+    tracked = set(git_paths(root, 'ls-tree', '-r', '-z', '--name-only', commit))
+    mapped = set(MUST_READ_KERNEL) | set(MUST_READ_PRODUCTION) | {r for _, rules in MUST_READ_BY_PREFIX for r in rules}
+    rules = {p for p in tracked if p.startswith(RULES_DIR) and p.endswith('.md')}
+    if not rules <= mapped:
+        raise Halt('MUST_READ_RULE_UNMAPPED')
+    paths = list(MUST_READ_KERNEL)
+    if spec['kind'] == 'production':
+        allowed = allowed_paths(spec)
+        paths += list(MUST_READ_PRODUCTION)
+        for prefix, extra in MUST_READ_BY_PREFIX:
+            if any(p.startswith(prefix) for p in allowed):
+                paths += list(extra)
+        scoped = set()
+        for p in allowed:
+            parts = p.split('/')[:-1]
+            for i in range(1, len(parts) + 1):
+                candidate = '/'.join(parts[:i]) + '/AGENTS.md'
+                if candidate in tracked:
+                    scoped.add(candidate)
+        paths += sorted(scoped)
+    files, seen = [], set()
+    for p in paths:
+        if p in seen:
+            continue
+        seen.add(p)
+        if p not in tracked:
+            raise Halt('MUST_READ_FILE_MISSING')
+        data = git_bytes(root, 'cat-file', 'blob', commit + ':' + p)
+        files.append({'path': p, 'sha256': sha256_bytes(data.replace(b'\r\n', b'\n'))})
+    return {'schema_version': 1, 'commit': commit, 'files': files}
+
+
+MUST_READ_ITEM_LINE = re.compile(r'^\s*\d+\.\s')
+
+
+def must_read_lines(task_id, closure):
+    """The exact numbered lines of the must-read section: the prompt file, then the derived files in order."""
+    lines = ['1. .git/' + task_id + '-prompt.txt（本提示詞；機器區塊由 runner 使用，確認存在即可）']
+    return lines + [str(i) + '. ' + f['path'] for i, f in enumerate(closure['files'], start=2)]
+
+
+def check_must_read(root, spec, lines):
+    """MUST_READ_JSON equals the derived closure, the formal section lists exactly it (see the module invariants)."""
+    try:
+        declared = json.loads(extract_block(lines, 'MUST_READ_JSON'))
+    except (ValueError, Halt):
+        raise Halt('MUST_READ_BLOCK_INVALID')
+    if not isinstance(declared, dict):
+        raise Halt('MUST_READ_BLOCK_INVALID')
+    derived = derive_must_read(root, spec)
+    if declared != derived:
+        raise Halt('MUST_READ_MISMATCH')
+    try:
+        ok, _, section = extract_must_read_section(chr(10).join(lines))
+    except Exception:
+        ok = False
+    if not ok:
+        raise Halt('MUST_READ_SECTION_MISMATCH')
+    items = [s for s in section.split(chr(10)) if MUST_READ_ITEM_LINE.match(s)]
+    if items != must_read_lines(spec['task_id'], derived):
+        raise Halt('MUST_READ_SECTION_MISMATCH')
+
+
+def check_must_read_worktree(root, closure):
+    """Every listed file in the work tree, read through author_target, has the bound LF SHA-256."""
+    for f in closure['files']:
+        try:
+            with open(author_target(root, f['path']), 'rb') as fh:
+                data = fh.read()
+        except OSError:
+            raise Halt('MUST_READ_WORKTREE_DRIFT')
+        if sha256_bytes(data.replace(b'\r\n', b'\n')) != f['sha256']:
+            raise Halt('MUST_READ_WORKTREE_DRIFT')
 
 
 def derive_steps(spec):
@@ -547,6 +651,8 @@ class Batch:
         run([PY, 'scripts/validate_prompt_manifest.py', '--file', self.prompt_rel, '--require-contract'], 'PROMPT_MANIFEST_FAILED', self.root)
         run([PY, 'scripts/governance_preflight.py', '--task-id', self.task_id, '--prompt-file', self.prompt_rel], 'GOVERNANCE_PREFLIGHT_FAILED', self.root)
         run([PY, 'scripts/install_git_hooks.py', '--check'], 'HOOKS_CHECK_FAILED', self.root)
+        check_must_read(self.root, self.spec, self.lines)
+        check_must_read_worktree(self.root, derive_must_read(self.root, self.spec))
 
     # -- production -----------------------------------------------------------
 

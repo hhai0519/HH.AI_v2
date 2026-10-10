@@ -626,6 +626,9 @@ def _builder_repo(tmp_path):
     root = tmp_path / "repo"
     (root / "docs").mkdir(parents=True)
     _w(root / "docs" / "BOARD.md", "# Board\n**NEXT_SLICE**：old\n")
+    for rel in br.MUST_READ_KERNEL + br.MUST_READ_PRODUCTION:   # the runner's must-read closure (G4 slice 2)
+        (root / rel).parent.mkdir(parents=True, exist_ok=True)
+        _w(root / rel, "# " + rel + "\n")
     _git_real(str(root), "init", "-q", "-b", "main")
     _git_real(str(root), "add", ".")
     _git_real(str(root), "commit", "-q", "-m", "base")
@@ -639,7 +642,7 @@ def test_real_runner_specs_built_by_prompt_builder_follow_the_written_steps(tmp_
     root, base = _builder_repo(tmp_path)
     d = tmp_path / "def"
     d.mkdir()
-    _w(d / "head.txt", "{TASK_ID}\n")
+    _w(d / "head.txt", "{TASK_ID}\n二、動手前必讀\n{MUST_READ}\n")
     _w(d / "tail.txt", "end\n")
     _w(d / "e24.json", json.dumps({"schema_version": 1, "base_oid": base, "mode": "REQUIRED", "queries": [],
                                    "results": [{"query_id": "q1", "matched_paths": ["docs/BOARD.md"]}]}))

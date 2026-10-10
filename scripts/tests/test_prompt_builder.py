@@ -3,7 +3,8 @@
 scripts/tests/test_prompt_builder.py
 
 Controls for scripts/prompt_builder.py (B-115): deterministic build accepted by the runner's own spec
-parser and op algorithm, fail-closed definition errors, start-up text, and the check wrapper.
+parser and op algorithm, fail-closed definition errors, start-up text, the check wrapper, and the generated
+must-read list with its MUST_READ_JSON block (G4 slice 2).
 """
 
 import hashlib
@@ -56,6 +57,14 @@ def _git(repo, *args):
                           check=True, capture_output=True)
 
 
+def _write_rules(root):
+    """The runner's must-read files (kernel, production and path-bound rules) as small synthetic texts."""
+    for rel in br.MUST_READ_KERNEL + br.MUST_READ_PRODUCTION + tuple(r for _, rules in br.MUST_READ_BY_PREFIX for r in rules):
+        target = Path(root) / rel
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(("# " + rel + "\n").encode("utf-8"))
+
+
 @pytest.fixture
 def repo(tmp_path):
     root = tmp_path / "repo"
@@ -63,6 +72,7 @@ def repo(tmp_path):
     (root / "docs").mkdir()
     (root / "scripts" / "tool.py").write_bytes(b"def a():\n    return 1\n\n\ndef b():\n    return 2\n")
     (root / "docs" / "BOARD.md").write_bytes("# Board\n**NEXT_SLICE**：old\n| X-1 | row |\n| X-2 | row |\n".encode("utf-8"))
+    _write_rules(root)
     _git(str(root), "init", "-q")
     _git(str(root), "add", ".")
     _git(str(root), "commit", "-q", "-m", "base")
@@ -74,7 +84,7 @@ def _definition(tmp_path, base, **over):
     d.mkdir(exist_ok=True)
     _w(d / "tool.py", "def a():\n    return 10\n\n\ndef b():\n    return 2\n")
     _w(d / "new.py", "print('new')\n")
-    _w(d / "head.txt", "{TASK_ID} on {BASE7} branch {BRANCH}\n二、動手前必讀\n1. x\n")
+    _w(d / "head.txt", "{TASK_ID} on {BASE7} branch {BRANCH}\n二、動手前必讀\n{MUST_READ}\n")
     _w(d / "tail.txt", "scope {ALLOWED}\nrecord {SO}\n")
     _w(d / "so.txt", "second opinion record\n")
     _w(d / "e24.json", json.dumps({"schema_version": 1, "base_oid": base, "mode": "REQUIRED", "queries": [],
@@ -202,15 +212,25 @@ def test_promotion_build(tmp_path, repo):
     root, base = repo
     d = tmp_path / "p"
     d.mkdir()
-    _w(d / "head.txt", "promote {TASK_ID} {BRANCH}\n")
+    _w(d / "head.txt", "promote {TASK_ID} {BRANCH}\n二、動手前必讀\n{MUST_READ}\n")
     _w(d / "tail.txt", "allowed {ALLOWED}\n")
-    defn = {"schema_version": 1, "task_id": TASK, "kind": "promotion", "base_oid": base, "candidate_oid": "c" * 40,
+    (Path(root) / "docs" / "BOARD.md").write_bytes(b"# Board\ncandidate\n")
+    _git(root, "commit", "-q", "-am", "candidate")
+    cand = _git(root, "rev-parse", "HEAD").stdout.decode().strip()
+    defn = {"schema_version": 1, "task_id": TASK, "kind": "promotion", "base_oid": base, "candidate_oid": cand,
             "candidate_branch": "batch/unit-build-261009", "prose_head": "head.txt", "prose_tail": "tail.txt"}
     _w(d / "def.json", json.dumps(defn))
     text, authors, authored = pb.build(root, str(d / "def.json"))
-    spec = br.load_spec(br.prompt_lines(text.encode()), TASK)
+    lines = br.prompt_lines(text.encode())
+    spec = br.load_spec(lines, TASK)
     assert spec["kind"] == "promotion" and authors == {} and "allowed NONE" in text
     assert "promote " + TASK + " batch/unit-build-261009" in text
+    must = json.loads(br.extract_block(lines, "MUST_READ_JSON"))
+    assert must["commit"] == cand and [f["path"] for f in must["files"]] == list(br.MUST_READ_KERNEL)
+    br.check_must_read(root, spec, lines)
+    defn["candidate_oid"] = "c" * 40               # a candidate the repository does not hold cannot be bound
+    _w(d / "def.json", json.dumps(defn))
+    assert _code(pb.build, root, str(d / "def.json")) == "MUST_READ_GIT_FAILED"
 
 
 # --- outputs, start-up text and check -----------------------------------------------------------
@@ -636,3 +656,85 @@ def test_fixtures_never_rely_on_default_newline_translation():
     banned = [".write" + "_text(", "open(" + "target, \"w\"", "mode=" + "\"w\""]
     assert not [b for b in banned if b in src]
     assert not re.search(r"open\([^)]*,\s*[\"'](w|a|x)t?[\"']", src)
+
+
+# --- must-read closure (G4 slice 2) -------------------------------------------------------------
+
+def test_build_generates_the_must_read_list_and_block_from_the_runner(tmp_path, repo):
+    root, base = repo
+    text = pb.build(root, _definition(tmp_path, base))[0]
+    lines = br.prompt_lines(text.encode("utf-8"))
+    spec = br.load_spec(lines, TASK)
+    closure = br.derive_must_read(root, spec)
+    assert json.loads(br.extract_block(lines, "MUST_READ_JSON")) == closure
+    i = lines.index("二、動手前必讀")
+    expected = ["1. .git/" + TASK + "-prompt.txt（本提示詞；機器區塊由 runner 使用，確認存在即可）"]
+    expected += [str(n) + ". " + f["path"] for n, f in enumerate(closure["files"], start=2)]
+    assert lines[i + 1:i + 1 + len(expected)] == expected
+    assert "{MUST_READ}" not in text
+
+
+@pytest.mark.parametrize("head", ["{TASK_ID}\n二、動手前必讀\n1. AGENTS.md\n", "{TASK_ID}\n{MUST_READ}\n{MUST_READ}\n"])
+def test_build_requires_exactly_one_must_read_token(tmp_path, repo, head):
+    root, base = repo
+    path = _definition(tmp_path, base)
+    _w(Path(path).parent / "head.txt", head)
+    assert _code(pb.build, root, path) == "MUST_READ_TOKEN_COUNT"
+
+
+def test_build_stops_when_a_rule_file_is_unmapped(tmp_path, repo):
+    root, _ = repo
+    (Path(root) / ".agents" / "rules" / "unlisted.md").write_bytes(b"# new\n")
+    _git(root, "add", ".")
+    _git(root, "commit", "-q", "-m", "new rule")
+    base = _git(root, "rev-parse", "HEAD").stdout.decode().strip()
+    assert _code(pb.build, root, _definition(tmp_path, base)) == "MUST_READ_RULE_UNMAPPED"
+
+
+def test_check_rejects_a_tampered_must_read_block_before_running_validators(tmp_path, repo):
+    root, base = repo
+    out = tmp_path / "out"
+    assert pb.main(["build", "--repo", root, "--definition", _definition(tmp_path, base), "--out-dir", str(out)]) == 0
+    prompt_path = out / (TASK + "-prompt.txt")
+    data = prompt_path.read_text(encoding="utf-8")
+    closure = json.loads(br.extract_block(br.prompt_lines(data.encode()), "MUST_READ_JSON"))
+    tampered = dict(closure, files=closure["files"][:-1])
+    old_block = "<<<BEGIN MUST_READ_JSON>>>\n" + json.dumps(closure, ensure_ascii=False, indent=1) + "\n<<<END MUST_READ_JSON>>>"
+    assert data.count(old_block) == 1
+    prompt_path.write_bytes(data.replace(old_block, "<<<BEGIN MUST_READ_JSON>>>\n" + json.dumps(tampered, indent=1)
+                                         + "\n<<<END MUST_READ_JSON>>>").encode("utf-8"))
+    calls = []
+    with pytest.raises(pb.BuildError) as exc:
+        pb.check(root, str(prompt_path), runner=lambda *a, **k: calls.append(a))
+    assert str(exc.value) == "CHECK_MUST_READ_MISMATCH" and calls == []
+
+
+
+@pytest.mark.parametrize("head", [
+    "{TASK_ID}\n二、動手前必讀\n說明\n三、其他\n{MUST_READ}\n",          # token outside the formal section
+    "{TASK_ID}\n二、動手前必讀\n{MUST_READ}\n4. 手寫之額外項目\n",          # an extra numbered line in the section
+    "{TASK_ID}\n說明\n{MUST_READ}\n",                                      # no formal section at all
+])
+def test_build_rejects_a_misplaced_or_padded_must_read_section(tmp_path, repo, head):
+    root, base = repo
+    path = _definition(tmp_path, base)
+    _w(Path(path).parent / "head.txt", head)
+    assert _code(pb.build, root, path) == "RUNNER_MUST_READ_SECTION_MISMATCH"
+
+
+def test_check_rejects_a_section_edited_after_build_with_the_block_intact(tmp_path, repo):
+    # Second-opinion counterexample: a correct MUST_READ_JSON with a shortened reading list must not pass.
+    root, base = repo
+    out = tmp_path / "out"
+    assert pb.main(["build", "--repo", root, "--definition", _definition(tmp_path, base), "--out-dir", str(out)]) == 0
+    prompt_path = out / (TASK + "-prompt.txt")
+    text = prompt_path.read_text(encoding="utf-8")
+    lines = br.prompt_lines(text.encode())
+    spec = br.load_spec(lines, TASK)
+    generated = "\n".join(br.must_read_lines(TASK, br.derive_must_read(root, spec)))
+    assert text.count(generated) == 1
+    prompt_path.write_bytes(text.replace(generated, "1. AGENTS.md").encode("utf-8"))
+    calls = []
+    with pytest.raises(pb.BuildError) as exc:
+        pb.check(root, str(prompt_path), runner=lambda *a, **k: calls.append(a))
+    assert str(exc.value) == "CHECK_MUST_READ_SECTION_MISMATCH" and calls == []

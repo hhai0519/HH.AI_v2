@@ -28,6 +28,10 @@ Definition (all paths relative to the definition file):
   promotion: candidate_oid, candidate_branch
   Placeholders {TASK_ID} {BASE_OID} {BASE7} {BRANCH} {ALLOWED} are expanded in prose and text_ops (never in
   code_files or new_files, which are carried verbatim).
+  {MUST_READ} must occur exactly once in the prose, inside its single formal must-read section: it becomes the
+  numbered list of the prompt file followed by the runner-derived must-read closure (batch_runner.must_read_lines
+  over batch_runner.derive_must_read), which is also carried as the MUST_READ_JSON block. That section may hold
+  no other numbered line; the prose never lists rule files by hand (batch_runner.check_must_read enforces both).
 
 Guarantees (fail closed with "PROMPT_BUILDER FAIL <CODE>" and exit 1):
 - Ops are applied with the runner's own algorithm (batch_runner.apply_ops) and the result must equal the
@@ -36,6 +40,8 @@ Guarantees (fail closed with "PROMPT_BUILDER FAIL <CODE>" and exit 1):
   occurs exactly once, no carriage return, no placeholder or substitution token is left.
 - Every E24 hit outside the allowed scope needs an explicit VERIFY_ONLY or HISTORICAL disposition.
 - The same inputs always produce the same bytes.
+- The must-read list and MUST_READ_JSON come from batch_runner.derive_must_read at the binding commit and are
+  re-checked with batch_runner.check_must_read on the assembled prompt (build) and on the delivered bytes (check).
 - After assembly the runner's own build_authors reconstructs every author file from the prompt; the result must
   equal the authored texts and hashes (RUNNER_REBUILD_MISMATCH otherwise).
 - Every path is a safe repository-relative POSIX path (no drive letter, colon, backslash, absolute, '.', '..',
@@ -65,7 +71,8 @@ finally:
     sys.path.pop(0)
 
 PLACEHOLDERS = ('{TASK_ID}', '{BASE_OID}', '{BASE7}', '{BRANCH}', '{ALLOWED}')
-RESERVED_BLOCKS = ('BATCH_SPEC_JSON', 'PLAN_JSON', 'ALLOWED_SCOPE_JSON', 'E24_EVIDENCE_JSON')
+RESERVED_BLOCKS = ('BATCH_SPEC_JSON', 'PLAN_JSON', 'ALLOWED_SCOPE_JSON', 'E24_EVIDENCE_JSON', 'MUST_READ_JSON')
+MUST_READ_TOKEN = '{MUST_READ}'
 CHECK_TIMEOUT = 300
 
 
@@ -306,9 +313,17 @@ def build(repo, definition_path):
         values['{ALLOWED}'] = 'NONE'
         spec = {'schema_version': 1, 'task_id': task, 'kind': 'promotion', 'base_oid': base,
                 'candidate_oid': d.get('candidate_oid'), 'candidate_branch': d.get('candidate_branch')}
+        _require(isinstance(spec['candidate_oid'], str) and batch_runner.OID_RE.match(spec['candidate_oid']),
+                 'CANDIDATE_OID_INVALID')
         machine = [block('BATCH_SPEC_JSON', json.dumps(spec, indent=1)), '\n']
     else:
         raise BuildError('KIND_INVALID')
+    try:
+        must_read = batch_runner.derive_must_read(repo, spec)
+    except batch_runner.Halt as h:
+        raise BuildError('MUST_READ_' + str(h).replace('MUST_READ_', '', 1))
+    machine += [block('MUST_READ_JSON', json.dumps(must_read, ensure_ascii=False, indent=1)), '\n']
+    must_read_lines = batch_runner.must_read_lines(task, must_read)
 
     head = expand(read_text(base_dir / d['prose_head'], 'PROSE'), values).rstrip('\n') + '\n'
     tail = expand(read_text(base_dir / d['prose_tail'], 'PROSE'), values)
@@ -317,19 +332,25 @@ def build(repo, definition_path):
         _require((head + tail).count(token) == 1, 'SUBSTITUTION_TOKEN_COUNT')
         value = read_text(base_dir / rel, 'SUBSTITUTION').strip()
         head, tail = head.replace(token, value), tail.replace(token, value)
+    _require((head + tail).count(MUST_READ_TOKEN) == 1, 'MUST_READ_TOKEN_COUNT')
+    head, tail = (s.replace(MUST_READ_TOKEN, '\n'.join(must_read_lines)) for s in (head, tail))
     # Only prose is expanded; new-file blocks are verbatim and may legitimately contain placeholder text.
     _require(not any(t in head + tail for t in PLACEHOLDERS), 'PLACEHOLDER_LEFT')
     text = head + '\n' + ''.join(machine) + tail
     _require('\r' not in text, 'PROMPT_CRLF')
     lines = batch_runner.prompt_lines(text.encode('utf-8'))
-    names = list(RESERVED_BLOCKS[:2]) + (list(RESERVED_BLOCKS[2:]) if spec.get('e24') else []) + [n for n, _ in extra_blocks]
-    for name in names if kind == 'production' else ['BATCH_SPEC_JSON']:
+    names = list(RESERVED_BLOCKS[:2]) + (list(RESERVED_BLOCKS[2:4]) if spec.get('e24') else []) + [n for n, _ in extra_blocks]
+    for name in (names if kind == 'production' else ['BATCH_SPEC_JSON']) + ['MUST_READ_JSON']:
         _require(lines.count('<<<BEGIN ' + name + '>>>') == 1 and lines.count('<<<END ' + name + '>>>') == 1,
                  'BLOCK_COUNT_INVALID')
     try:
         spec_loaded = batch_runner.load_spec(lines, task)
     except batch_runner.Halt as h:
         raise BuildError('RUNNER_SPEC_REJECTED_' + str(h))
+    try:
+        batch_runner.check_must_read(repo, spec_loaded, lines)
+    except batch_runner.Halt as h:
+        raise BuildError('RUNNER_' + str(h))
     if kind == 'production':
         # Reference reconstruction: the runner's own build_authors on the assembled prompt must give exactly
         # the authored texts and hashes (catches anything the per-op replay cannot see).
@@ -435,8 +456,14 @@ def still_owned(target, owned, data):
 
 
 def check(repo, prompt_path, runner=subprocess.run):
-    """Run the standalone validator and the bound governance preflight on the exact prompt bytes."""
+    """Recheck the must-read closure, then run the standalone validator and the bound governance preflight on the
+    exact prompt bytes."""
     task, data = prompt_task(prompt_path)
+    try:
+        lines = batch_runner.prompt_lines(data)
+        batch_runner.check_must_read(repo, batch_runner.load_spec(lines, task), lines)
+    except batch_runner.Halt as h:
+        raise BuildError('CHECK_' + str(h))
     target = Path(repo) / '.git' / (task + '-prompt.txt')
     owned, fd = None, None
     try:

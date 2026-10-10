@@ -7,7 +7,8 @@ Covers block parsing, batch spec validation, step derivation, the control state 
 unique-anchor application and the pre-write hash gate, stdout-only path parsing while git
 prints CRLF warnings on stderr, bounded execution that terminates a whole process tree, safe
 author paths (no drive letter, colon or unsafe segment; reads and writes stay inside the work tree)
-and the generate step checking authors before any generator runs.
+the generate step checking authors before any generator runs, and the must-read closure (derived list,
+blob hashes at the binding commit, unmapped rule files, and the preflight comparison with MUST_READ_JSON).
 """
 
 import hashlib
@@ -947,3 +948,266 @@ def test_generate_runs_no_generator_on_drifted_authors(monkeypatch):
     batch = _generate_batch(monkeypatch, rec, fail="GENERATE_AUTHOR_DRIFT")
     assert halt_code(batch.step_generate) == "GENERATE_AUTHOR_DRIFT"
     assert not any(c[0] == "run" for c in rec.calls)
+
+
+# --- G4 slice 2: must-read closure (B-107) ---------------------------------------------------
+
+ALL_RULES = br.MUST_READ_KERNEL + br.MUST_READ_PRODUCTION + tuple(r for _, rs in br.MUST_READ_BY_PREFIX for r in rs)
+
+
+def _rules_repo(tmp_path, extra=None):
+    files = {rel: ("# " + rel + "\n").encode() for rel in ALL_RULES}
+    files.update({"runtime/gw/AGENTS.md": b"# gw\n", "skills/AGENTS.md": b"# skills\n",
+                  "skills/execution/AGENTS.md": b"# exec\n", "docs/a.md": b"a\n", "skills/execution/x/SKILL.md": b"s\n"})
+    files.update(extra or {})
+    return _repo_with(tmp_path, files)
+
+
+def _paths(closure):
+    return [f["path"] for f in closure["files"]]
+
+
+def test_promotion_must_read_is_the_kernel_at_the_candidate(tmp_path):
+    repo, head = _rules_repo(tmp_path)
+    spec = {"kind": "promotion", "base_oid": "a" * 40, "candidate_oid": head}
+    closure = br.derive_must_read(repo, spec)
+    assert closure["commit"] == head and _paths(closure) == list(br.MUST_READ_KERNEL)
+
+
+def test_production_must_read_adds_production_rules_without_unrelated_scoped_files(tmp_path):
+    repo, head = _rules_repo(tmp_path)
+    spec = production_spec(base_oid=head)
+    assert _paths(br.derive_must_read(repo, spec)) == list(br.MUST_READ_KERNEL + br.MUST_READ_PRODUCTION)
+
+
+def test_skills_and_runtime_paths_add_path_rules_and_every_scoped_agents_on_the_way(tmp_path):
+    repo, head = _rules_repo(tmp_path)
+    spec = production_spec(base_oid=head)
+    spec["authors"] = {"skills/execution/x/SKILL.md": {}, "runtime/gw/src/a.js": {}}
+    expected = list(br.MUST_READ_KERNEL + br.MUST_READ_PRODUCTION + br.MUST_READ_BY_PREFIX[0][1]) + \
+        ["runtime/gw/AGENTS.md", "skills/AGENTS.md", "skills/execution/AGENTS.md"]
+    assert _paths(br.derive_must_read(repo, spec)) == expected
+
+
+def test_must_read_hashes_are_lf_blob_hashes_at_the_binding_commit(tmp_path):
+    repo, head = _rules_repo(tmp_path, {"AGENTS.md": b"# root\r\nline\r\n"})
+    (tmp_path / "AGENTS.md").write_bytes(b"changed in the work tree\n")   # the work tree is not the source
+    closure = br.derive_must_read(repo, production_spec(base_oid=head))
+    assert closure["files"][0] == {"path": "AGENTS.md", "sha256": sha("# root\nline\n")}
+
+
+@pytest.mark.parametrize("rel", [".agents/rules/new-rule.md", ".agents/rules/nested/deeper.md"])
+def test_unmapped_rule_file_stops(tmp_path, rel):
+    repo, head = _rules_repo(tmp_path, {rel: b"# new\n"})
+    assert halt_code(br.derive_must_read, repo, production_spec(base_oid=head)) == "MUST_READ_RULE_UNMAPPED"
+
+
+def test_missing_kernel_file_stops(tmp_path):
+    repo, _ = _rules_repo(tmp_path)
+    _git(repo, "rm", "-q", "PRINCIPLES.md")
+    _git(repo, "commit", "-q", "-m", "drop")
+    head = _git(repo, "rev-parse", "HEAD").stdout.decode().strip()
+    assert halt_code(br.derive_must_read, repo, production_spec(base_oid=head)) == "MUST_READ_FILE_MISSING"
+
+
+def test_unknown_binding_commit_stops(tmp_path):
+    # Fault injection: a binding commit the repository cannot read is a stop, never an empty closure.
+    repo, _ = _rules_repo(tmp_path)
+    assert halt_code(br.derive_must_read, repo, production_spec(base_oid="e" * 40)) == "GIT_FAILED"
+
+
+def _must_read_lines(spec, closure, section=None, body=None):
+    """A prompt with a formal must-read section (default: the exact generated lines) and the MUST_READ_JSON block."""
+    blocks = production_blocks(spec)
+    blocks["MUST_READ_JSON"] = closure
+    if section is None:
+        section = br.must_read_lines(TASK, closure)
+    head = body if body is not None else "二、動手前必讀\n" + "\n".join(section) + "\n每個檔案都必須讀到檔尾。\n三、固定命令\n"
+    return lines_of(head + prompt(blocks))
+
+
+def test_check_must_read_accepts_the_exact_closure(tmp_path):
+    repo, head = _rules_repo(tmp_path)
+    spec = production_spec(base_oid=head)
+    assert br.check_must_read(repo, spec, _must_read_lines(spec, br.derive_must_read(repo, spec))) is None
+
+
+@pytest.mark.parametrize("mutate", [
+    lambda c: c["files"].pop(),                                              # a rule left out
+    lambda c: c["files"].append({"path": "docs/a.md", "sha256": "0" * 64}),  # an extra file
+    lambda c: c["files"].reverse(),                                          # another order
+    lambda c: c["files"][0].update(sha256="0" * 64),                        # stale content
+    lambda c: c.update(commit="a" * 40),                                     # another commit
+    lambda c: c.update(schema_version=2),
+])
+def test_check_must_read_stops_on_any_difference(tmp_path, mutate):
+    repo, head = _rules_repo(tmp_path)
+    spec = production_spec(base_oid=head)
+    closure = br.derive_must_read(repo, spec)
+    mutate(closure)
+    assert halt_code(br.check_must_read, repo, spec, _must_read_lines(spec, closure)) == "MUST_READ_MISMATCH"
+
+
+@pytest.mark.parametrize("body", [None, "not json", "[]"])
+def test_check_must_read_stops_on_a_missing_or_invalid_block(tmp_path, body):
+    repo, head = _rules_repo(tmp_path)
+    spec = production_spec(base_oid=head)
+    blocks = production_blocks(spec)
+    if body is not None:
+        blocks["MUST_READ_JSON"] = body
+    assert halt_code(br.check_must_read, repo, spec, lines_of(prompt(blocks))) == "MUST_READ_BLOCK_INVALID"
+
+
+def test_must_read_block_name_cannot_be_an_author_source():
+    spec = production_spec()
+    blocks = production_blocks(spec)
+    spec["authors"]["docs/a.md"]["source"] = {"kind": "block", "name": "MUST_READ_JSON"}
+    assert halt_code(br.load_spec, lines_of(prompt(blocks)), TASK) == "SPEC_SOURCE_INVALID"
+
+
+def test_every_tracked_rule_file_is_mapped():
+    # Repository conformity: the real .agents/rules/ has no file outside the runner's lists.
+    out = subprocess.run(["git", "ls-files", "-z", ".agents/rules"], cwd=os.path.dirname(SCRIPTS_DIR),
+                         capture_output=True, check=True).stdout.decode().split("\0")
+    assert {p for p in out if p.endswith(".md")} <= set(ALL_RULES)
+
+
+def _preflight_batch(monkeypatch, calls, fail=None):
+    batch = br.Batch.__new__(br.Batch)
+    batch.root, batch.task_id, batch.spec, batch.lines = os.path.dirname(SCRIPTS_DIR), TASK, production_spec(), ["x"]
+    batch.prompt_rel = ".git/" + TASK + "-prompt.txt"
+    runner_blob = br.git_blob_sha1(open(br.__file__, "rb").read())
+    monkeypatch.setattr(br, "git", lambda root, *a, **k: runner_blob)
+    monkeypatch.setattr(br, "run", lambda args, label, root, timeout=600: calls.append(label) or "")
+
+    def check(root, spec, lines):
+        calls.append("MUST_READ")
+        if fail:
+            raise br.Halt(fail)
+    monkeypatch.setattr(br, "check_must_read", check)
+    return batch
+
+
+def test_preflight_checks_the_must_read_closure_then_the_work_tree(monkeypatch):
+    calls = []
+    batch = _preflight_batch(monkeypatch, calls)
+    monkeypatch.setattr(br, "derive_must_read", lambda root, spec: {"files": []})
+    monkeypatch.setattr(br, "check_must_read_worktree", lambda root, closure: calls.append("WORKTREE"))
+    batch.step_preflight()
+    assert calls[-2:] == ["MUST_READ", "WORKTREE"]
+
+
+def test_preflight_stops_when_the_work_tree_differs(monkeypatch):
+    calls = []
+    batch = _preflight_batch(monkeypatch, calls)
+    monkeypatch.setattr(br, "derive_must_read", lambda root, spec: {"files": []})
+
+    def drift(root, closure):
+        raise br.Halt("MUST_READ_WORKTREE_DRIFT")
+    monkeypatch.setattr(br, "check_must_read_worktree", drift)
+    assert halt_code(batch.step_preflight) == "MUST_READ_WORKTREE_DRIFT"
+
+
+def test_preflight_stops_when_the_must_read_closure_differs(monkeypatch):
+    calls = []
+    assert halt_code(_preflight_batch(monkeypatch, calls, fail="MUST_READ_MISMATCH").step_preflight) == "MUST_READ_MISMATCH"
+
+
+# Hand-written expectations from the decided specification (independent of the runner's constants).
+SPEC_KERNEL = ["AGENTS.md", "PRINCIPLES.md", ".agents/rules/role-boundaries.md", ".agents/rules/git-and-reporting.md",
+               ".agents/rules/governance-gate-integrity.md", ".agents/rules/powershell-encoding-protocol.md"]
+SPEC_PRODUCTION = SPEC_KERNEL + [".agents/rules/prompt-preflight.md", ".agents/rules/secret-output-safety.md"]
+SPEC_SKILLS = [".agents/rules/skills-architecture.md", ".agents/rules/skill-engineering-guardrails.md"]
+
+
+def test_written_specification_promotion_production_and_skills(tmp_path):
+    repo, head = _rules_repo(tmp_path)
+    promo = {"kind": "promotion", "base_oid": "a" * 40, "candidate_oid": head}
+    assert _paths(br.derive_must_read(repo, promo)) == SPEC_KERNEL
+    assert _paths(br.derive_must_read(repo, production_spec(base_oid=head))) == SPEC_PRODUCTION
+    skills = production_spec(base_oid=head)
+    skills["authors"] = {"skills/execution/x/SKILL.md": {}}
+    assert _paths(br.derive_must_read(repo, skills)) == SPEC_PRODUCTION + SPEC_SKILLS + ["skills/AGENTS.md", "skills/execution/AGENTS.md"]
+
+
+def _section_case(tmp_path):
+    repo, head = _rules_repo(tmp_path)
+    spec = production_spec(base_oid=head)
+    return repo, spec, br.derive_must_read(repo, spec)
+
+
+@pytest.mark.parametrize("edit", [
+    lambda s: s[:2],                                          # the section leaves rules out (JSON still complete)
+    lambda s: [s[0], s[2], s[1]] + s[3:],                     # another order
+    lambda s: ["1. AGENTS.md"],                               # a hand-written list only
+    lambda s: s + ["99. 本批允許修改之路徑無 scoped 規則檔"],      # any other numbered line in the section
+    lambda s: [line.replace("2. ", "3. ", 1) for line in s],  # wrong numbering
+])
+def test_check_must_read_stops_when_the_section_differs(tmp_path, edit):
+    repo, spec, closure = _section_case(tmp_path)
+    lines = _must_read_lines(spec, closure, section=edit(br.must_read_lines(TASK, closure)))
+    assert halt_code(br.check_must_read, repo, spec, lines) == "MUST_READ_SECTION_MISMATCH"
+
+
+def test_check_must_read_stops_when_the_list_sits_outside_the_formal_section(tmp_path):
+    repo, spec, closure = _section_case(tmp_path)
+    listed = "\n".join(br.must_read_lines(TASK, closure))
+    for body in ("二、其他說明\n" + listed + "\n三、固定命令\n",                                   # no formal section
+                 "二、動手前必讀\n三、固定命令\n" + listed + "\n",                               # list under another heading
+                 "二、動手前必讀\n```\n" + listed + "\n```\n三、固定命令\n",                    # list inside a code fence
+                 "二、動手前必讀\n" + listed + "\n# 動手前必讀\n" + listed + "\n"):           # two formal sections
+        lines = _must_read_lines(spec, closure, body=body)
+        assert halt_code(br.check_must_read, repo, spec, lines) == "MUST_READ_SECTION_MISMATCH", body
+
+
+def test_check_must_read_section_probe_failure_stops(tmp_path, monkeypatch):
+    # Fault injection: the section locator failing is a stop, never an acceptance.
+    repo, spec, closure = _section_case(tmp_path)
+    lines = _must_read_lines(spec, closure)
+
+    def broken(text):
+        raise ValueError("locator failed")
+    monkeypatch.setattr(br, "extract_must_read_section", broken)
+    assert halt_code(br.check_must_read, repo, spec, lines) == "MUST_READ_SECTION_MISMATCH"
+
+
+def test_runner_uses_the_validators_section_rule():
+    import validate_prompt_manifest as vpm
+    assert br.extract_must_read_section is vpm.extract_must_read_section
+
+
+def test_worktree_must_read_files_equal_to_the_binding_commit_pass(tmp_path):
+    repo, spec, closure = _section_case(tmp_path)
+    (tmp_path / "AGENTS.md").write_bytes(("# AGENTS.md\n").replace("\n", "\r\n").encode())   # CRLF checkout is fine
+    assert br.check_must_read_worktree(repo, closure) is None
+
+
+@pytest.mark.parametrize("change", [
+    lambda root: (root / ".agents/rules/role-boundaries.md").write_bytes(b"# locally edited\n"),   # adopt or local edit
+    lambda root: (root / "PRINCIPLES.md").unlink(),                                                # file missing
+])
+def test_worktree_must_read_drift_stops(tmp_path, change):
+    repo, spec, closure = _section_case(tmp_path)
+    change(tmp_path)
+    assert halt_code(br.check_must_read_worktree, repo, closure) == "MUST_READ_WORKTREE_DRIFT"
+
+
+def test_worktree_must_read_file_behind_a_link_stops(tmp_path):
+    repo, spec, closure = _section_case(tmp_path)
+    real = tmp_path / "elsewhere.md"
+    real.write_bytes((tmp_path / "AGENTS.md").read_bytes())
+    (tmp_path / "AGENTS.md").unlink()
+    _symlink_or_skip(str(real), str(tmp_path / "AGENTS.md"), False)
+    assert halt_code(br.check_must_read_worktree, repo, closure) == "AUTHOR_PATH_UNSAFE_TARGET"
+
+
+def test_adopt_start_with_an_edited_rule_file_stops_at_preflight(tmp_path):
+    # Second-opinion counterexample: adopt hashes cannot stand in for the must-read binding.
+    repo, head = _rules_repo(tmp_path)
+    (tmp_path / ".agents/rules/role-boundaries.md").write_bytes(b"# edited under adopt\n")
+    spec = production_spec(base_oid=head, start={"mode": "adopt", "start_branch": "batch/prev-261008",
+                                                 "adopt_hashes": {".agents/rules/role-boundaries.md": sha("# edited under adopt\n")}})
+    spec["authors"][".agents/rules/role-boundaries.md"] = {"source": {"kind": "keep"}, "sha256": sha("# edited under adopt\n")}
+    closure = br.derive_must_read(repo, spec)
+    assert br.check_must_read(repo, spec, _must_read_lines(spec, closure)) is None   # the prompt itself is consistent
+    assert halt_code(br.check_must_read_worktree, repo, closure) == "MUST_READ_WORKTREE_DRIFT"

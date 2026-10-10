@@ -1,5 +1,5 @@
 {
-  "base_head": "49a73d9",
+  "base_head": "5a67981",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -559,16 +559,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 307,
-      "sha256": "981a9ce453fae4557b3a9b23934f27475354f595a5ca4bc15bd2486ce6978053"
+      "lines": 308,
+      "sha256": "d8541d3a7ddbaf9539dcf3a130b3e5d2a63446db69ca6053381b240700cb6bfc"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 274,
-      "sha256": "afd01ad83443f47f2f30e50ead1b24598a02a8f2bc8ac33c66bbe328a01cd835"
+      "lines": 275,
+      "sha256": "88d627f94b756c11810ab251f8243c2d77c74ae03ff8de1eeccf7dafac250b05"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -610,7 +610,7 @@
         "## 封存區"
       ],
       "lines": 374,
-      "sha256": "7fc9d568242d0bd9145d66c7ad0a4f1ede35c08b43409644663d6252fb73f893"
+      "sha256": "34e31e2fdc9ba41633784f0f08f1d8c592ea9c547e5c9796d9fda54a2ba5031f"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1108,8 +1108,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6376,
-      "sha256": "4b322d79ee6b040787595f7fddf45ef12de4cf06424f06760351562000ca1a99"
+      "lines": 6377,
+      "sha256": "e8469ec30a95e120c5556ddb0fdeb781b8798a9e1709a00c889de859cb79b090"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1126,6 +1126,7 @@
         "# -*- coding: utf-8 -*-",
         "# Failure classes: output text is matched but never printed. Order matters; the first match wins.",
         "# Bounded summaries are printed only when the last line has one of these fixed shapes.",
+        "# Must-read closure (G4 slice 2). Changing these lists is a runner change (E27).",
         "# ---------------------------------------------------------------------------",
         "# Process helpers: stdout and stderr are always separate; only stdout is parsed.",
         "# ---------------------------------------------------------------------------",
@@ -1142,8 +1143,8 @@
         "# Control record and entry point",
         "# ---------------------------------------------------------------------------"
       ],
-      "lines": 904,
-      "sha256": "c4713058c0515baa51cc603f6e83c6bbbf1046f8234c725339d04d1625fc8b9d"
+      "lines": 1010,
+      "sha256": "17bbaa2856aaf45a11d58ea3221e0afe3794ae52acd9ad5c2e7ef3d52bb396a1"
     },
     "scripts/batch_sim.py": {
       "fences": 0,
@@ -1262,8 +1263,8 @@
       "headings": [
         "# -*- coding: utf-8 -*-"
       ],
-      "lines": 521,
-      "sha256": "c6a570a91fd697986720645fda7ee99f0adadd9bed4258ee612471fd0147bea4"
+      "lines": 548,
+      "sha256": "e244f0ffa0f8da777f1871a413f2ac505ab4f7c06f0ed2964798dff23e6a2132"
     },
     "scripts/prompt_intake.py": {
       "fences": 0,
@@ -1333,10 +1334,12 @@
         "# --- (3) author hashes at stage and commit -----------------------------------------------",
         "# --- (7) adopt a workspace that stopped before generate ------------------------------------",
         "# --- runner update: controlled succession ----------------------------------------------------",
-        "# --- G4 slice 1: safe author paths and generate order (B-107) --------------------------------"
+        "# --- G4 slice 1: safe author paths and generate order (B-107) --------------------------------",
+        "# --- G4 slice 2: must-read closure (B-107) ---------------------------------------------------",
+        "# Hand-written expectations from the decided specification (independent of the runner's constants)."
       ],
-      "lines": 949,
-      "sha256": "92762e31adf1fdc373228f9d9621fb3dc0af218962c8a0d98feb3c7ceaa5bbdc"
+      "lines": 1213,
+      "sha256": "5ab2b03796fb04dad192053ec858aa2bd2c4dd9e22d42540062179a0b7a39ca6"
     },
     "scripts/tests/test_batch_sim.py": {
       "fences": 0,
@@ -1353,8 +1356,8 @@
         "# --- independent expectations for every e24 x focused combination (second opinion on S3) ----------",
         "# --- second opinion on S3-R1 ---------------------------------------------------------------------------"
       ],
-      "lines": 764,
-      "sha256": "9169920fd66495d6c24b4fa6c2d16185d64eb2f1006ff09daf37869066ac6339"
+      "lines": 767,
+      "sha256": "bae84e68efcc36651a7c60b5770bd2c7a62194efe04cf0555b2d2a0707476f02"
     },
     "scripts/tests/test_bounded_process.py": {
       "fences": 0,
@@ -1564,10 +1567,11 @@
         "# -*- coding: utf-8 -*-",
         "# --- build -------------------------------------------------------------------------------------",
         "# --- outputs, start-up text and check -----------------------------------------------------------",
-        "# --- second-opinion fixes (R1–R4) ------------------------------------------------------------------"
+        "# --- second-opinion fixes (R1–R4) ------------------------------------------------------------------",
+        "# --- must-read closure (G4 slice 2) -------------------------------------------------------------"
       ],
-      "lines": 638,
-      "sha256": "1dede0257931da49a386aa119c74acfa20be70c0aca823a690657afcc8b316c7"
+      "lines": 740,
+      "sha256": "d2fcedb166e7936cb4f4d7a3587fbad26cc9415d43cc24c76ce00ba4e3debb0d"
     },
     "scripts/tests/test_prompt_intake.py": {
       "fences": 0,
@@ -1809,7 +1813,7 @@
       "sha256": "35bf7dbfa3c7d291b550c3c97a6ae398a22b1dc3624c1d2fc1e4db6963d6e115"
     }
   },
-  "generated_at": "2026-10-10T11:14:52Z",
+  "generated_at": "2026-10-10T13:00:14Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {
