@@ -1,5 +1,5 @@
 {
-  "base_head": "5a67981",
+  "base_head": "bc58090",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -559,16 +559,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 308,
-      "sha256": "d8541d3a7ddbaf9539dcf3a130b3e5d2a63446db69ca6053381b240700cb6bfc"
+      "lines": 309,
+      "sha256": "cb69e9a9cdc6258bc2382e26555882b9e0aab6d897a6f89d78a6bddb8e7ab640"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 275,
-      "sha256": "88d627f94b756c11810ab251f8243c2d77c74ae03ff8de1eeccf7dafac250b05"
+      "lines": 276,
+      "sha256": "6d82d5bc4dec7c9e9995c1a7693387f42ecd2914d4c94741e9893766e20a553f"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -587,8 +587,8 @@
         "### 10. 歸檔與歷史資料 (Archive & Historical Material)",
         "### 11. 規範驗證入口 (Canonical Verification)"
       ],
-      "lines": 69,
-      "sha256": "12053412655d73b163c67aee9666d9f38d2cd7250f1c611067af47452f752664"
+      "lines": 70,
+      "sha256": "c5fc18ca3f342519bb77653142c51624e98acd402d48d24ff1321a58f9cbe695"
     },
     "docs/TASKBOARD.md": {
       "fences": 0,
@@ -610,7 +610,7 @@
         "## 封存區"
       ],
       "lines": 374,
-      "sha256": "34e31e2fdc9ba41633784f0f08f1d8c592ea9c547e5c9796d9fda54a2ba5031f"
+      "sha256": "1657841e91000b1377a176fdd75bb3f5da369e7a46de948d8ddbb46ddfdd9237"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1108,8 +1108,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6377,
-      "sha256": "e8469ec30a95e120c5556ddb0fdeb781b8798a9e1709a00c889de859cb79b090"
+      "lines": 6378,
+      "sha256": "2a14042d3c5832dc9afc90ee9db70ccc02bfaa48ca63d3abe445b967d5a30021"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1119,6 +1119,14 @@
       ],
       "lines": 97,
       "sha256": "60f5ed235b015c9cedf6fb5e100f82a2f3d46e0e64ffb3561e092a6b098b82fc"
+    },
+    "scripts/audit_packet.py": {
+      "fences": 0,
+      "headings": [
+        "# -*- coding: utf-8 -*-"
+      ],
+      "lines": 591,
+      "sha256": "6952af8257b51b7a1cdff804124e9c2f0582e826600f6b01a96af3b260121b25"
     },
     "scripts/batch_runner.py": {
       "fences": 0,
@@ -1319,6 +1327,24 @@
       "headings": [],
       "lines": 65,
       "sha256": "ee8bb5eb421f95bf95d041f051539d52b13c999fa2fff12ce111d9055da61671"
+    },
+    "scripts/tests/test_audit_packet.py": {
+      "fences": 0,
+      "headings": [
+        "# -*- coding: utf-8 -*-",
+        "# -- complete packet ------------------------------------------------------------------------------------------",
+        "# -- repository facts -----------------------------------------------------------------------------------------",
+        "# -- remote facts ---------------------------------------------------------------------------------------------",
+        "# -- CI facts -------------------------------------------------------------------------------------------------",
+        "# -- local checks (fault injection) ---------------------------------------------------------------------------",
+        "# -- probe failures, isolation and read-only ------------------------------------------------------------------",
+        "# -- prompt input ---------------------------------------------------------------------------------------------",
+        "# -- pre-issue mode -------------------------------------------------------------------------------------------",
+        "# -- command line ---------------------------------------------------------------------------------------------",
+        "# -- second-opinion counterexamples (replacement objects, source-side settings, output path, slice naming) -------"
+      ],
+      "lines": 764,
+      "sha256": "7e7219bdd5b7a932f47914c5c0c8114fc992123c287067faa8e00a0f4d54a23f"
     },
     "scripts/tests/test_batch_runner.py": {
       "fences": 0,
@@ -1813,7 +1839,7 @@
       "sha256": "35bf7dbfa3c7d291b550c3c97a6ae398a22b1dc3624c1d2fc1e4db6963d6e115"
     }
   },
-  "generated_at": "2026-10-10T13:00:14Z",
+  "generated_at": "2026-10-10T16:21:11Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

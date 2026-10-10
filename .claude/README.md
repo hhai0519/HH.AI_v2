@@ -32,6 +32,7 @@ Macro Auditor Control Plane 與 Antigravity Control Plane 是分離、互補且�
 - [rules/auditor-protocol.md](rules/auditor-protocol.md) — 宏觀審計官作業協定本體（normative contract）：審計維度、Gatekeeping 查證紀律、A1 資格查證、提示詞產出標準與生命週期規範。
 - [../scripts/prompt_builder.py](../scripts/prompt_builder.py) — 審查官端提示詞產生工具（canonical runner 批次）：由批次定義產生提示詞、作者檔雜湊與啟動文字並檢查；屬工具而非規範本體，用法見檔頭說明。
 - [../scripts/batch_sim.py](../scripts/batch_sim.py) — 審查官端批次模擬工具：交付前隔離模擬 runner 批次與晉級批（含負例、停止狀態重建與 Windows 行為模擬）；屬工具而非規範本體，用法見檔頭說明。
+- [../scripts/audit_packet.py](../scripts/audit_packet.py) — 審查官端證據包工具：由交付提示詞與候選 SHA 機械產生審查事實包（只輸出資料、不是裁決，不取代 raw log 親讀），--preissue 於交付或重新定稿前核對審查官提供之遠端快照中無本批或同一切片之其他分支；屬工具而非規範本體，用法見檔頭說明。
 
 ### 3. 宏觀審計官可執行操作清單 (Executable Projection)
 - [rules/auditor-selftest.md](rules/auditor-selftest.md) — 宏觀審計官自檢清單（executable selftest / operational projection）：依該檔自身 Trigger Map 於對應時機執行。本清單為 `auditor-protocol.md` 之操作投影，非第二獨立治理權威。

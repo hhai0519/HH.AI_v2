@@ -22,6 +22,7 @@
 - **批次執行工具（canonical runner）**：[`scripts/batch_runner.py`](../scripts/batch_runner.py)（固定步驟批次執行）與 [`scripts/prompt_intake.py`](../scripts/prompt_intake.py)（提示詞接收與雜湊核對）；現行用法與限制見各工具檔頭說明及 [`docs/TASKBOARD.md`](./TASKBOARD.md) 相關任務列
 - **審查官端提示詞產生工具**：[`scripts/prompt_builder.py`](../scripts/prompt_builder.py)（由批次定義產生 canonical runner 提示詞、作者檔雜湊與啟動文字，並以提示詞驗證器與 governance preflight 檢查；只供審查官使用，Executor 不執行；用法見檔頭說明）
 - **審查官端批次模擬工具**：[`scripts/batch_sim.py`](../scripts/batch_sim.py)（交付前在隔離目錄以本機 bare remote 完整模擬 runner 批次與晉級批，含停止狀態重建、負例與 Windows 行為模擬；只供審查官使用，Executor 不執行；用法與平台契約見檔頭說明）
+- **審查官端證據包工具**：[`scripts/audit_packet.py`](../scripts/audit_packet.py)（由交付提示詞、候選 SHA 與審查官提供之遠端 ref 與 CI 資料機械產生審查事實包，逐項為 MATCH、CONFLICT 或 MISSING；--preissue 於交付或重新定稿前核對審查官提供之遠端快照中無本批或同一切片之其他分支；只輸出資料、不是裁決，不取代 raw log 親讀；只供審查官使用，Executor 不執行；用法見檔頭說明）
 
 ### 3. 執行者接手導引 (Executor / Antigravity Control Plane)
 - **全域執行者安全核心與路由**：[`AGENTS.md`](../AGENTS.md)

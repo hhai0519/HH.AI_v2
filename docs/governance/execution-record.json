@@ -1,34 +1,32 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "B107-G4-S2-MUST-READ-R1-261010",
-  "base_oid": "5a67981f99a0f2d43620c71ef0fd120e237c5639",
+  "task_id": "B115-EVIDENCE-PACKET-R1-261010",
+  "base_oid": "bc58090d2f41328b947bb5296c5518fb37a747c8",
   "plan": {
     "allowed_paths": [
+      ".claude/README.md",
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
+      "docs/HANDOVER.md",
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
       "docs/refactor-backlog.md",
-      "scripts/batch_runner.py",
-      "scripts/prompt_builder.py",
-      "scripts/tests/test_batch_runner.py",
-      "scripts/tests/test_batch_sim.py",
-      "scripts/tests/test_prompt_builder.py"
+      "scripts/audit_packet.py",
+      "scripts/tests/test_audit_packet.py"
     ],
     "required_paths": [
+      ".claude/README.md",
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
+      "docs/HANDOVER.md",
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
       "docs/refactor-backlog.md",
-      "scripts/batch_runner.py",
-      "scripts/prompt_builder.py",
-      "scripts/tests/test_batch_runner.py",
-      "scripts/tests/test_batch_sim.py",
-      "scripts/tests/test_prompt_builder.py"
+      "scripts/audit_packet.py",
+      "scripts/tests/test_audit_packet.py"
     ],
     "max_plan_revisions": 3,
     "revision_count": 0,
@@ -36,17 +34,16 @@
   },
   "actual": {
     "changed_paths": [
+      ".claude/README.md",
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
+      "docs/HANDOVER.md",
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
       "docs/refactor-backlog.md",
-      "scripts/batch_runner.py",
-      "scripts/prompt_builder.py",
-      "scripts/tests/test_batch_runner.py",
-      "scripts/tests/test_batch_sim.py",
-      "scripts/tests/test_prompt_builder.py"
+      "scripts/audit_packet.py",
+      "scripts/tests/test_audit_packet.py"
     ]
   },
   "evidence": [

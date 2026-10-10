@@ -2825,7 +2825,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 5.1 上一批狀態
 
-上次核對通過的 HEAD：5a67981f99a0f2d43620c71ef0fd120e237c5639
+上次核對通過的 HEAD：bc58090d2f41328b947bb5296c5518fb37a747c8
 
 - `23af193`（執行者前置檢查 ＋ 回滾程序 ＋ `AUDIT-LOG.md` ＋ 四缺口修正）
   已於 2026-09-02 由審計官核對通過：6 檔異動（含 2 個新檔）、零夾帶、
@@ -3081,6 +3081,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 - `1f6ddfa`（B-115 Slice 3 Simulator Step-List Fix & G3 Endpoint）：Target = `1f6ddfa5d4aa79bd5a178eaa3da325b7e130e04d`；Parent = `a25d31d892f9cb19fe9f0ff676093c0804542fec`；TASK_ID: B115-SIM-S3-R4-261010（前版 B115-SIM-S3-261010、B115-SIM-S3-R1-261010、B115-SIM-S3-R2-261010、B115-SIM-S3-R3-261010 因執行前第二意見依約作廢、未執行）；八個路徑（六個作者檔與兩個生成檔）；External Macro Auditor AUD-CLAUDE-261009（A1 = FULL_CLONE）獨立裁決 PASS；Candidate Run 38026342710 attempt 1 雙 job success；晉級批 PROMOTE-B115-SIM-S3-261010 依 USER 2026-10-09 常設晉級授權，以 native pinned full-SHA refspec 與單次 MAIN_EXACT_SHA 授權推送，遠端 main 為相同完整 SHA（自 `a25d31d` 快轉）；Post-main Run 38027194906 attempt 1 雙 job success；Macro 親讀 raw log；accepted checkpoint 推進至 `1f6ddfa5d4aa79bd5a178eaa3da325b7e130e04d`。
 - `49a73d9`（G3 Close State Sync）：Target = `49a73d98e4918ed99d64da7f91f174857b489da1`；Parent = `1f6ddfa5d4aa79bd5a178eaa3da325b7e130e04d`；TASK_ID: G3-CLOSE-STATE-SYNC-261010；六個路徑（四個狀態作者檔與兩個生成檔）；External Macro Auditor AUD-CLAUDE-261010（A1 = FULL_CLONE；USER 2026-10-10 任命，接替 AUD-CLAUDE-261009）獨立裁決 PASS；Candidate Run 38028914706 attempt 1 雙 job success；晉級批 PROMOTE-G3-CLOSE-STATE-SYNC-261010 依 USER 2026-10-09 常設晉級授權，以 native pinned full-SHA refspec 與單次 MAIN_EXACT_SHA 授權推送，遠端 main 為相同完整 SHA（自 `1f6ddfa` 快轉）；Post-main Run 38042104524 attempt 1 雙 job success；Macro 親讀 raw log；accepted checkpoint 推進至 `49a73d98e4918ed99d64da7f91f174857b489da1`。
 - `5a67981`（B-107 G4 Slice 1 Runner Hardening）：Target = `5a67981f99a0f2d43620c71ef0fd120e237c5639`；Parent = `49a73d98e4918ed99d64da7f91f174857b489da1`；TASK_ID: B107-G4-S1-RUNNER-HARDEN-R1-261010（前版 B107-G4-S1-RUNNER-HARDEN-261010 因執行前第二意見作廢、未執行）；八個路徑（六個作者檔與兩個生成檔）；External Macro Auditor AUD-CLAUDE-261010（A1 = FULL_CLONE）獨立裁決 PASS；Candidate Run 38048409194 attempt 1 雙 job success；晉級批 PROMOTE-B107-G4-S1-261010 依 USER 2026-10-09 常設晉級授權，以 native pinned full-SHA refspec 與單次 MAIN_EXACT_SHA 授權推送，遠端 main 為相同完整 SHA（自 `49a73d9` 快轉）；Post-main Run 38049075330 attempt 1 雙 job success；Macro 親讀 raw log；accepted checkpoint 推進至 `5a67981f99a0f2d43620c71ef0fd120e237c5639`。
+- `bc58090`（B-107 G4 Slice 2 Must-Read Closure）：Target = `bc58090d2f41328b947bb5296c5518fb37a747c8`；Parent = `5a67981f99a0f2d43620c71ef0fd120e237c5639`；TASK_ID: B107-G4-S2-MUST-READ-R1-261010（前版 B107-G4-S2-MUST-READ-261010 因執行前第二意見作廢、未執行；後版 B107-G4-S2-MUST-READ-R2-261010 為審查官重複定稿之作廢版，於 preflight 停止、無修改）；十一個路徑（九個作者檔與兩個生成檔）；External Macro Auditor AUD-CLAUDE-261010（A1 = FULL_CLONE）獨立裁決 PASS；Candidate Run 38054987247 attempt 1 之 gateway-windows 因既有 B-100 R-H 計時測試失敗，USER 依 D-R4 單次重跑，attempt 2 雙 job success；晉級批 PROMOTE-B107-G4-S2-261010 依 USER 2026-10-09 常設晉級授權，以 native pinned full-SHA refspec 與單次 MAIN_EXACT_SHA 授權推送，遠端 main 為相同完整 SHA（自 `5a67981` 快轉）；Post-main Run 38058258374 attempt 1 雙 job success；Macro 親讀 raw log；accepted checkpoint 推進至 `bc58090d2f41328b947bb5296c5518fb37a747c8`。
 
 ### 5.2 待辦
 
