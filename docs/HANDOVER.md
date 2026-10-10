@@ -21,6 +21,7 @@
 - **宏觀審計官自檢清單**：[`.claude/rules/auditor-selftest.md`](../.claude/rules/auditor-selftest.md)
 - **批次執行工具（canonical runner）**：[`scripts/batch_runner.py`](../scripts/batch_runner.py)（固定步驟批次執行）與 [`scripts/prompt_intake.py`](../scripts/prompt_intake.py)（提示詞接收與雜湊核對）；現行用法與限制見各工具檔頭說明及 [`docs/TASKBOARD.md`](./TASKBOARD.md) 相關任務列
 - **審查官端提示詞產生工具**：[`scripts/prompt_builder.py`](../scripts/prompt_builder.py)（由批次定義產生 canonical runner 提示詞、作者檔雜湊與啟動文字，並以提示詞驗證器與 governance preflight 檢查；只供審查官使用，Executor 不執行；用法見檔頭說明）
+- **審查官端批次模擬工具**：[`scripts/batch_sim.py`](../scripts/batch_sim.py)（交付前在隔離目錄以本機 bare remote 完整模擬 runner 批次與晉級批，含停止狀態重建、負例與 Windows 行為模擬；只供審查官使用，Executor 不執行；用法與平台契約見檔頭說明）
 
 ### 3. 執行者接手導引 (Executor / Antigravity Control Plane)
 - **全域執行者安全核心與路由**：[`AGENTS.md`](../AGENTS.md)

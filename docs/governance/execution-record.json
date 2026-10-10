@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "B115-PROMPT-BUILDER-S1-R3-261009",
-  "base_oid": "9c79f2d040d674bf4fd62e4348c9d0fd79c739b0",
+  "task_id": "B115-SIM-S2-R1-261010",
+  "base_oid": "44c46c98d703b3121ca4770dc3e6cb52eac3a1e0",
   "plan": {
     "allowed_paths": [
       ".claude/README.md",
@@ -13,8 +13,9 @@
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
       "docs/refactor-backlog.md",
-      "scripts/prompt_builder.py",
-      "scripts/tests/test_prompt_builder.py"
+      "scripts/batch_sim.py",
+      "scripts/sim_windows_emulation.py",
+      "scripts/tests/test_batch_sim.py"
     ],
     "required_paths": [
       ".claude/README.md",
@@ -25,8 +26,9 @@
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
       "docs/refactor-backlog.md",
-      "scripts/prompt_builder.py",
-      "scripts/tests/test_prompt_builder.py"
+      "scripts/batch_sim.py",
+      "scripts/sim_windows_emulation.py",
+      "scripts/tests/test_batch_sim.py"
     ],
     "max_plan_revisions": 3,
     "revision_count": 0,
@@ -42,8 +44,9 @@
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
       "docs/refactor-backlog.md",
-      "scripts/prompt_builder.py",
-      "scripts/tests/test_prompt_builder.py"
+      "scripts/batch_sim.py",
+      "scripts/sim_windows_emulation.py",
+      "scripts/tests/test_batch_sim.py"
     ]
   },
   "evidence": [
