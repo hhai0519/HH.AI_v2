@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "B115-SIM-S3-R4-261010",
-  "base_oid": "a25d31d892f9cb19fe9f0ff676093c0804542fec",
+  "task_id": "G3-CLOSE-STATE-SYNC-261010",
+  "base_oid": "1f6ddfa5d4aa79bd5a178eaa3da325b7e130e04d",
   "plan": {
     "allowed_paths": [
       "docs/AUDIT-LOG.md",
@@ -10,9 +10,7 @@
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md",
-      "scripts/batch_sim.py",
-      "scripts/tests/test_batch_sim.py"
+      "docs/refactor-backlog.md"
     ],
     "required_paths": [
       "docs/AUDIT-LOG.md",
@@ -20,9 +18,7 @@
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md",
-      "scripts/batch_sim.py",
-      "scripts/tests/test_batch_sim.py"
+      "docs/refactor-backlog.md"
     ],
     "max_plan_revisions": 3,
     "revision_count": 0,
@@ -35,9 +31,7 @@
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md",
-      "scripts/batch_sim.py",
-      "scripts/tests/test_batch_sim.py"
+      "docs/refactor-backlog.md"
     ]
   },
   "evidence": [
