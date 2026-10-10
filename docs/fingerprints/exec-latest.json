@@ -1,5 +1,5 @@
 {
-  "base_head": "1f6ddfa",
+  "base_head": "49a73d9",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -559,16 +559,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 306,
-      "sha256": "f3b44f023b28672feddc930b0194be15f6885313bfd8a434e6f23d5da3ccc8dd"
+      "lines": 307,
+      "sha256": "981a9ce453fae4557b3a9b23934f27475354f595a5ca4bc15bd2486ce6978053"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 273,
-      "sha256": "37fe4428633ee48c40cb77e545d449044536c65a4d757ec9512f0dfc2d6d5014"
+      "lines": 274,
+      "sha256": "afd01ad83443f47f2f30e50ead1b24598a02a8f2bc8ac33c66bbe328a01cd835"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -610,7 +610,7 @@
         "## 封存區"
       ],
       "lines": 374,
-      "sha256": "d34d69aaa2edbf5ce4893216673aa6d4cff8f14d477a26a2022116435eb46da1"
+      "sha256": "7fc9d568242d0bd9145d66c7ad0a4f1ede35c08b43409644663d6252fb73f893"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1108,8 +1108,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6375,
-      "sha256": "6427a64a7e9d3c0ce743158b3ed9707f3772ee8469601e1164b39af21b0ba197"
+      "lines": 6376,
+      "sha256": "4b322d79ee6b040787595f7fddf45ef12de4cf06424f06760351562000ca1a99"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1142,8 +1142,8 @@
         "# Control record and entry point",
         "# ---------------------------------------------------------------------------"
       ],
-      "lines": 849,
-      "sha256": "41facaaa7b30a72e6a0f3018ed31c8e8577a9bb230cc3c09da8c9c558e63aae6"
+      "lines": 904,
+      "sha256": "c4713058c0515baa51cc603f6e83c6bbbf1046f8234c725339d04d1625fc8b9d"
     },
     "scripts/batch_sim.py": {
       "fences": 0,
@@ -1332,10 +1332,11 @@
         "# --- B-107 runner update path: (2) fixed-vocabulary failure detail ------------------------------",
         "# --- (3) author hashes at stage and commit -----------------------------------------------",
         "# --- (7) adopt a workspace that stopped before generate ------------------------------------",
-        "# --- runner update: controlled succession ----------------------------------------------------"
+        "# --- runner update: controlled succession ----------------------------------------------------",
+        "# --- G4 slice 1: safe author paths and generate order (B-107) --------------------------------"
       ],
-      "lines": 665,
-      "sha256": "8c2356a4631624edffe865dc1bf9bda76dcb671471312be7b0eead65e2d94096"
+      "lines": 949,
+      "sha256": "92762e31adf1fdc373228f9d9621fb3dc0af218962c8a0d98feb3c7ceaa5bbdc"
     },
     "scripts/tests/test_batch_sim.py": {
       "fences": 0,
@@ -1808,7 +1809,7 @@
       "sha256": "35bf7dbfa3c7d291b550c3c97a6ae398a22b1dc3624c1d2fc1e4db6963d6e115"
     }
   },
-  "generated_at": "2026-10-10T05:40:01Z",
+  "generated_at": "2026-10-10T11:14:52Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

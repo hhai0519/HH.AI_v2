@@ -5,7 +5,9 @@ scripts/tests/test_batch_runner.py
 Negative and positive controls for scripts/batch_runner.py (B-107 canonical batch runner).
 Covers block parsing, batch spec validation, step derivation, the control state machine,
 unique-anchor application and the pre-write hash gate, stdout-only path parsing while git
-prints CRLF warnings on stderr, and bounded execution that terminates a whole process tree.
+prints CRLF warnings on stderr, bounded execution that terminates a whole process tree, safe
+author paths (no drive letter, colon or unsafe segment; reads and writes stay inside the work tree)
+and the generate step checking authors before any generator runs.
 """
 
 import hashlib
@@ -663,3 +665,285 @@ def test_successor_check_fails_closed_when_base_runner_unreadable(tmp_path):
     repo, spec, control, old_sha, new_sha = _succession_case(tmp_path)
     spec["base_oid"] = "f" * 40
     assert halt_code(br.accepted_runner_sha, repo, spec, control, new_sha) == "GIT_READ_FAILED"
+
+
+# --- G4 slice 1: safe author paths and generate order (B-107) --------------------------------
+
+UNSAFE_AUTHOR_PATHS = [
+    "C:/escape.py",            # drive-absolute on Windows
+    "c:escape.py",             # drive-relative on Windows
+    "D:",                      # bare drive
+    "docs/a:b.md",             # colon inside a segment
+    "docs/a.md:stream",        # NTFS alternate data stream
+    "docs//a.md",              # empty segment
+    "docs/./a.md",             # '.' segment
+    "docs/a.md/",              # trailing slash (empty last segment)
+    "docs/../a.md",            # '..' segment
+    "/abs/a.md",               # absolute POSIX
+    "docs\\a.md",              # backslash
+    "docs/a\tb.md",            # control character
+    "docs/a\x7fb.md",          # DEL
+    "",                        # empty
+    "docs./a.md",              # segment ending in '.' (Windows drops it)
+    "docs/a.md.",              # last segment ending in '.'
+    "docs/a.md ",              # last segment ending in a space
+    "sub/.git/config",         # nested .git segment
+    "sub/.GIT/config",         # .git segment in another letter case
+    "sub/.git.",               # Windows alias of sub/.git
+    "Docs/Fingerprints/Exec-Latest.json",   # generator output in another letter case
+    ".github/workflows/verify.yml",         # existing conservative rule: nothing starting with .git is authorable
+]
+
+
+@pytest.mark.parametrize("path", UNSAFE_AUTHOR_PATHS)
+def test_unsafe_author_path_is_rejected_by_load_spec(path):
+    spec = production_spec()
+    blocks = production_blocks(spec)
+    spec["authors"][path] = {"source": {"kind": "base"}, "sha256": "0" * 64}
+    assert br.safe_author_path(path) is False
+    assert halt_code(br.load_spec, lines_of(prompt(blocks)), TASK) == "SPEC_AUTHOR_PATH_INVALID"
+
+
+@pytest.mark.parametrize("path", ["docs/TASKBOARD.md", "scripts/tests/test_batch_runner.py", "scripts/batch_runner.py",
+                                  ".agents/rules/role-boundaries.md", "runtime/channel-gateway/src/a-b_c.v2.js",
+                                  "docs/中文檔名.md", "docs/.gitkeep-notes.md"])
+def test_ordinary_repository_paths_stay_accepted(path):
+    assert br.safe_author_path(path) is True
+
+
+def test_author_paths_equal_apart_from_letter_case_are_rejected():
+    spec = production_spec()
+    blocks = production_blocks(spec)
+    spec["authors"]["Docs/A.md"] = {"source": {"kind": "base"}, "sha256": "0" * 64}
+    assert br.safe_author_path("Docs/A.md") is True
+    assert halt_code(br.load_spec, lines_of(prompt(blocks)), TASK) == "SPEC_AUTHOR_PATH_INVALID"
+
+
+@pytest.mark.parametrize("path", ["C:/escape.py", "D:/escape.py", "d:escape.py", "docs/a.md:stream"])
+def test_rejected_drive_and_stream_paths_would_not_name_a_work_tree_file_on_windows(path):
+    # Why the colon rule exists: the former Path(root) / path join leaves a Windows work tree or addresses a stream.
+    import pathlib
+    ws = pathlib.PureWindowsPath("C:/ws")
+    joined = ws / path
+    assert not joined.is_relative_to(ws) or ":" in joined.name
+    assert br.safe_author_path(path) is False
+
+
+def _symlink_or_skip(src, dst, is_dir):
+    try:
+        os.symlink(src, dst, target_is_directory=is_dir)
+    except (OSError, NotImplementedError) as exc:
+        pytest.skip("capability gap: symbolic links cannot be created here (" + type(exc).__name__ + ")")
+
+
+def test_author_target_with_a_plain_parent_chain_is_returned(tmp_path):
+    (tmp_path / "docs" / "sub").mkdir(parents=True)
+    target = br.author_target(str(tmp_path), "docs/sub/a.md")
+    assert target == os.path.join(os.path.realpath(str(tmp_path)), "docs", "sub", "a.md")
+    assert br.author_target(str(tmp_path), "top.md") == os.path.join(os.path.realpath(str(tmp_path)), "top.md")
+
+
+def test_author_target_through_a_linked_directory_outside_stops(tmp_path):
+    work, outside = tmp_path / "work", tmp_path / "outside"
+    work.mkdir()
+    outside.mkdir()
+    _symlink_or_skip(str(outside), str(work / "docs"), True)
+    assert halt_code(br.author_target, str(work), "docs/a.md") == "AUTHOR_PATH_UNSAFE_TARGET"
+
+
+def test_author_target_through_a_link_to_git_metadata_inside_stops(tmp_path):
+    # Second-opinion counterexample: meta -> .git stays inside the work tree but must never be reachable.
+    (tmp_path / ".git").mkdir()
+    _symlink_or_skip(str(tmp_path / ".git"), str(tmp_path / "meta"), True)
+    assert halt_code(br.author_target, str(tmp_path), "meta/synthetic.dat") == "AUTHOR_PATH_UNSAFE_TARGET"
+
+
+def test_author_target_through_a_link_to_a_generator_directory_inside_stops(tmp_path):
+    (tmp_path / "docs" / "fingerprints").mkdir(parents=True)
+    _symlink_or_skip(str(tmp_path / "docs" / "fingerprints"), str(tmp_path / "alias"), True)
+    assert halt_code(br.author_target, str(tmp_path), "alias/exec-latest.json") == "AUTHOR_PATH_UNSAFE_TARGET"
+
+
+def test_author_target_that_is_itself_a_link_stops(tmp_path):
+    (tmp_path / "docs").mkdir()
+    (tmp_path / "docs" / "real.md").write_bytes(b"x\n")
+    _symlink_or_skip(str(tmp_path / "docs" / "real.md"), str(tmp_path / "docs" / "a.md"), False)
+    assert halt_code(br.author_target, str(tmp_path), "docs/a.md") == "AUTHOR_PATH_UNSAFE_TARGET"
+
+
+def test_author_target_through_a_link_loop_stops(tmp_path):
+    _symlink_or_skip(str(tmp_path / "loop"), str(tmp_path / "loop"), True)
+    assert halt_code(br.author_target, str(tmp_path), "loop/a.md") == "AUTHOR_PATH_UNSAFE_TARGET"
+
+
+def test_author_target_missing_parent_or_file_parent_is_parent_directory_missing(tmp_path):
+    (tmp_path / "docs").mkdir()
+    (tmp_path / "docs" / "file.md").write_bytes(b"x\n")
+    assert halt_code(br.author_target, str(tmp_path), "nodir/a.md") == "PARENT_DIRECTORY_MISSING"
+    assert halt_code(br.author_target, str(tmp_path), "docs/file.md/a.md") == "PARENT_DIRECTORY_MISSING"
+
+
+@pytest.mark.parametrize("error", [PermissionError, OSError, ValueError, RuntimeError])
+def test_author_target_resolution_failure_stops(tmp_path, monkeypatch, error):
+    # Fault injection: when strict resolution itself fails, the result is a stop, never a path.
+    (tmp_path / "docs").mkdir()
+    def broken(path, strict=False):
+        raise error("resolution failed")
+    monkeypatch.setattr(br.os.path, "realpath", broken)
+    assert halt_code(br.author_target, str(tmp_path), "docs/a.md") == "AUTHOR_PATH_UNSAFE_TARGET"
+
+
+def test_author_target_probe_failure_after_resolution_stops(tmp_path, monkeypatch):
+    (tmp_path / "docs").mkdir()
+    def broken(path):
+        raise OSError("probe failed")
+    monkeypatch.setattr(br.os.path, "islink", broken)
+    assert halt_code(br.author_target, str(tmp_path), "docs/a.md") == "AUTHOR_PATH_UNSAFE_TARGET"
+
+
+def test_worktree_hash_check_rejects_before_any_read_process(tmp_path, monkeypatch):
+    # Second-opinion counterexample: no hash child process may read a file behind a link.
+    # docs/a.md sorts first and is safe; zlink/ leads outside: no path may be read before all are checked.
+    work, outside = tmp_path / "work", tmp_path / "outside"
+    (work / "docs").mkdir(parents=True)
+    outside.mkdir()
+    (outside / "a.md").write_bytes(b"synthetic outside text\n")
+    _symlink_or_skip(str(outside), str(work / "zlink"), True)
+    calls = []
+    monkeypatch.setattr(br, "run", lambda args, label, root, timeout=600: calls.append(args) or "")
+    table = {"docs/a.md": "0" * 64, "zlink/a.md": "1" * 64}
+    assert halt_code(br.verify_hashes, str(work), table, "ADOPT_HASH_MISMATCH") == "AUTHOR_PATH_UNSAFE_TARGET"
+    assert calls == []
+
+
+def test_worktree_hash_check_reads_through_the_primitive_when_paths_are_safe(tmp_path, monkeypatch):
+    (tmp_path / "docs").mkdir()
+    calls = []
+    monkeypatch.setattr(br, "run", lambda args, label, root, timeout=600: calls.append((args[4], args[6], label)) or "")
+    br.verify_hashes(str(tmp_path), {"docs/a.md": "0" * 64}, "FOCUSED_AUTHOR_DRIFT")
+    assert calls == [("docs/a.md", "0" * 64, "FOCUSED_AUTHOR_DRIFT")]
+
+
+def test_only_verify_hashes_starts_the_worktree_hash_primitive():
+    src = open(br.__file__, encoding="utf-8").read()
+    assert src.count("'scripts/verification_primitives.py', 'sha256'") == 1
+
+
+def _adopt_apply_batch(work, monkeypatch, calls):
+    spec = production_spec(start={"mode": "adopt", "start_branch": "batch/prev-261008",
+                                  "adopt_hashes": {"docs/a.md": "0" * 64}})
+    spec["authors"]["docs/a.md"] = {"source": {"kind": "keep"}, "sha256": "0" * 64}
+    spec["ops"] = []
+    batch = br.Batch.__new__(br.Batch)
+    batch.root, batch.task_id, batch.spec = str(work), TASK, spec
+    batch.lines = lines_of(prompt(production_blocks(spec)))
+    monkeypatch.setattr(br, "expect_scope", lambda *a, **k: None)
+    monkeypatch.setattr(br, "expect_adopt_scope", lambda *a, **k: None)
+    monkeypatch.setattr(br, "run", lambda args, label, root, timeout=600: calls.append(args) or "")
+    monkeypatch.setattr(batch, "write_new_artifact", lambda suffix, text: ".git/" + TASK + "-" + suffix)
+    return batch
+
+
+def test_adopt_apply_stops_before_reading_a_linked_start_file(tmp_path, monkeypatch):
+    work, outside = tmp_path / "work", tmp_path / "outside"
+    work.mkdir()
+    outside.mkdir()
+    (outside / "a.md").write_bytes(b"synthetic outside text\n")
+    _symlink_or_skip(str(outside), str(work / "docs"), True)
+    calls = []
+    batch = _adopt_apply_batch(work, monkeypatch, calls)
+    assert halt_code(batch.step_apply) == "AUTHOR_PATH_UNSAFE_TARGET"
+    assert calls == [], "the start-hash read process never started"
+
+
+def test_apply_writes_nothing_when_an_author_path_leads_outside(tmp_path, monkeypatch):
+    # docs/a.md sorts first and is inside; scripts/ leads outside. Nothing may be written anywhere.
+    work, outside = tmp_path / "work", tmp_path / "outside"
+    (work / "docs").mkdir(parents=True)
+    outside.mkdir()
+    _symlink_or_skip(str(outside), str(work / "scripts"), True)
+    spec = production_spec()
+    batch = br.Batch.__new__(br.Batch)
+    batch.root, batch.task_id, batch.spec = str(work), TASK, spec
+    batch.lines = lines_of(prompt(production_blocks(spec)))
+    monkeypatch.setattr(br, "expect_head_clean", lambda *a: None)
+    monkeypatch.setattr(br, "git", lambda root, *a: spec["branch"])
+    monkeypatch.setattr(br, "build_authors", lambda root, s, lines: {"docs/a.md": "y\n", "scripts/new_tool.py": "print(1)\n"})
+    monkeypatch.setattr(batch, "write_new_artifact", lambda suffix, text: ".git/" + TASK + "-" + suffix)
+    assert halt_code(batch.step_apply) == "AUTHOR_PATH_UNSAFE_TARGET"
+    assert os.listdir(str(outside)) == []
+    assert not (work / "docs" / "a.md").exists()
+
+
+def test_apply_writes_nothing_into_git_metadata_through_an_inside_link(tmp_path, monkeypatch):
+    (tmp_path / ".git").mkdir()
+    (tmp_path / "docs").mkdir()
+    _symlink_or_skip(str(tmp_path / ".git"), str(tmp_path / "meta"), True)
+    spec = production_spec()
+    spec["authors"]["meta/synthetic.dat"] = {"source": {"kind": "block", "name": "NEW_TOOL_PY"}, "sha256": sha("print(1)\n")}
+    batch = br.Batch.__new__(br.Batch)
+    batch.root, batch.task_id, batch.spec = str(tmp_path), TASK, spec
+    batch.lines = lines_of(prompt(production_blocks(spec)))
+    monkeypatch.setattr(br, "expect_head_clean", lambda *a: None)
+    monkeypatch.setattr(br, "git", lambda root, *a: spec["branch"])
+    monkeypatch.setattr(br, "build_authors", lambda root, s, lines: {"docs/a.md": "y\n", "meta/synthetic.dat": "print(1)\n",
+                                                                       "scripts/new_tool.py": "print(1)\n"})
+    monkeypatch.setattr(batch, "write_new_artifact", lambda suffix, text: ".git/" + TASK + "-" + suffix)
+    assert halt_code(batch.step_apply) == "AUTHOR_PATH_UNSAFE_TARGET"
+    assert os.listdir(str(tmp_path / ".git")) == []
+    assert not (tmp_path / "docs" / "a.md").exists()
+
+
+def test_apply_writes_nothing_when_a_later_parent_directory_is_missing(tmp_path, monkeypatch):
+    (tmp_path / "docs").mkdir()
+    spec = production_spec()
+    batch = br.Batch.__new__(br.Batch)
+    batch.root, batch.task_id, batch.spec = str(tmp_path), TASK, spec
+    batch.lines = lines_of(prompt(production_blocks(spec)))
+    monkeypatch.setattr(br, "expect_head_clean", lambda *a: None)
+    monkeypatch.setattr(br, "git", lambda root, *a: spec["branch"])
+    monkeypatch.setattr(br, "build_authors", lambda root, s, lines: {"docs/a.md": "y\n", "scripts/new_tool.py": "print(1)\n"})
+    monkeypatch.setattr(batch, "write_new_artifact", lambda suffix, text: ".git/" + TASK + "-" + suffix)
+    assert halt_code(batch.step_apply) == "PARENT_DIRECTORY_MISSING"
+    assert not (tmp_path / "docs" / "a.md").exists()
+
+
+def test_adopt_keep_source_is_read_only_through_a_plain_parent_chain(tmp_path):
+    work, outside = tmp_path / "work", tmp_path / "outside"
+    work.mkdir()
+    outside.mkdir()
+    (outside / "a.md").write_bytes(b"synthetic outside text\n")
+    _symlink_or_skip(str(outside), str(work / "docs"), True)
+    spec = production_spec(start={"mode": "adopt"})
+    spec["authors"]["docs/a.md"]["source"] = {"kind": "keep"}
+    assert halt_code(br.source_text, str(work), spec, [], "docs/a.md") == "AUTHOR_PATH_UNSAFE_TARGET"
+
+
+def _generate_batch(monkeypatch, rec, fail=None):
+    spec = production_spec()
+    batch = br.Batch.__new__(br.Batch)
+    batch.root, batch.task_id, batch.spec = "/nonexistent", TASK, spec
+
+    def verify_hashes(root, table, label):
+        rec.calls.append(("worktree", label))
+        if fail == label and sum(1 for c in rec.calls if c == ("worktree", label)) == 1:
+            raise br.Halt(label)
+
+    monkeypatch.setattr(br, "expect_scope", lambda root, s, label, exact: rec.calls.append(("scope", exact)))
+    monkeypatch.setattr(br, "verify_hashes", verify_hashes)
+    monkeypatch.setattr(br, "run", lambda args, label, root, timeout=600: rec.calls.append(("run", os.path.basename(args[1]))) or "")
+    return batch
+
+
+def test_generate_checks_authors_before_any_generator_and_again_after(monkeypatch):
+    rec = _Recorder()
+    _generate_batch(monkeypatch, rec).step_generate()
+    assert rec.calls == [("scope", False), ("worktree", "GENERATE_AUTHOR_DRIFT"), ("run", "fingerprint.py"),
+                         ("run", "execution_record.py"), ("scope", True), ("worktree", "GENERATE_AUTHOR_DRIFT")]
+
+
+def test_generate_runs_no_generator_on_drifted_authors(monkeypatch):
+    rec = _Recorder()
+    batch = _generate_batch(monkeypatch, rec, fail="GENERATE_AUTHOR_DRIFT")
+    assert halt_code(batch.step_generate) == "GENERATE_AUTHOR_DRIFT"
+    assert not any(c[0] == "run" for c in rec.calls)

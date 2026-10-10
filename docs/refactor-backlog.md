@@ -2825,7 +2825,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 5.1 上一批狀態
 
-上次核對通過的 HEAD：1f6ddfa5d4aa79bd5a178eaa3da325b7e130e04d
+上次核對通過的 HEAD：49a73d98e4918ed99d64da7f91f174857b489da1
 
 - `23af193`（執行者前置檢查 ＋ 回滾程序 ＋ `AUDIT-LOG.md` ＋ 四缺口修正）
   已於 2026-09-02 由審計官核對通過：6 檔異動（含 2 個新檔）、零夾帶、
@@ -3079,6 +3079,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 - `44c46c9`（B-115 Slice 1 Auditor Prompt Builder）：Target = `44c46c98d703b3121ca4770dc3e6cb52eac3a1e0`；Parent = `9c79f2d040d674bf4fd62e4348c9d0fd79c739b0`；TASK_ID: B115-PROMPT-BUILDER-S1-R3-261009（S1 與 R2 因執行前第二意見作廢、未執行；R1 於 focused 停止、未提交；R3 以 adopt 自 R1 停止之工作樹續作）；十個路徑（八個作者檔與兩個生成檔）；External Macro Auditor AUD-CLAUDE-261009（A1 = FULL_CLONE）獨立裁決 PASS；Candidate Run 37978860995 attempt 1 雙 job success；晉級批 PROMOTE-B115-PROMPT-BUILDER-S1-261009 依 USER 2026-10-09 常設晉級授權，以 native pinned full-SHA refspec 與單次 MAIN_EXACT_SHA 授權推送，遠端 main 為相同完整 SHA（自 `9c79f2d` 快轉）；Post-main Run 37979750229 attempt 1 雙 job success；Macro 親讀 raw log；accepted checkpoint 推進至 `44c46c98d703b3121ca4770dc3e6cb52eac3a1e0`。
 - `a25d31d`（B-115 Slice 2 Auditor Batch Simulator）：Target = `a25d31d892f9cb19fe9f0ff676093c0804542fec`；Parent = `44c46c98d703b3121ca4770dc3e6cb52eac3a1e0`；TASK_ID: B115-SIM-S2-R1-261010（前版 B115-SIM-S2-261010 因執行前第二意見作廢、未執行）；十一個路徑（九個作者檔與兩個生成檔）；External Macro Auditor AUD-CLAUDE-261009（A1 = FULL_CLONE）獨立裁決 PASS；Candidate Run 38016188497 attempt 1 雙 job success；晉級批 PROMOTE-B115-SIM-S2-261010 依 USER 2026-10-09 常設晉級授權，以 native pinned full-SHA refspec 與單次 MAIN_EXACT_SHA 授權推送，遠端 main 為相同完整 SHA（自 `44c46c9` 快轉）；Post-main Run 38016691399 attempt 1 雙 job success；Macro 親讀 raw log；accepted checkpoint 推進至 `a25d31d892f9cb19fe9f0ff676093c0804542fec`。
 - `1f6ddfa`（B-115 Slice 3 Simulator Step-List Fix & G3 Endpoint）：Target = `1f6ddfa5d4aa79bd5a178eaa3da325b7e130e04d`；Parent = `a25d31d892f9cb19fe9f0ff676093c0804542fec`；TASK_ID: B115-SIM-S3-R4-261010（前版 B115-SIM-S3-261010、B115-SIM-S3-R1-261010、B115-SIM-S3-R2-261010、B115-SIM-S3-R3-261010 因執行前第二意見依約作廢、未執行）；八個路徑（六個作者檔與兩個生成檔）；External Macro Auditor AUD-CLAUDE-261009（A1 = FULL_CLONE）獨立裁決 PASS；Candidate Run 38026342710 attempt 1 雙 job success；晉級批 PROMOTE-B115-SIM-S3-261010 依 USER 2026-10-09 常設晉級授權，以 native pinned full-SHA refspec 與單次 MAIN_EXACT_SHA 授權推送，遠端 main 為相同完整 SHA（自 `a25d31d` 快轉）；Post-main Run 38027194906 attempt 1 雙 job success；Macro 親讀 raw log；accepted checkpoint 推進至 `1f6ddfa5d4aa79bd5a178eaa3da325b7e130e04d`。
+- `49a73d9`（G3 Close State Sync）：Target = `49a73d98e4918ed99d64da7f91f174857b489da1`；Parent = `1f6ddfa5d4aa79bd5a178eaa3da325b7e130e04d`；TASK_ID: G3-CLOSE-STATE-SYNC-261010；六個路徑（四個狀態作者檔與兩個生成檔）；External Macro Auditor AUD-CLAUDE-261010（A1 = FULL_CLONE；USER 2026-10-10 任命，接替 AUD-CLAUDE-261009）獨立裁決 PASS；Candidate Run 38028914706 attempt 1 雙 job success；晉級批 PROMOTE-G3-CLOSE-STATE-SYNC-261010 依 USER 2026-10-09 常設晉級授權，以 native pinned full-SHA refspec 與單次 MAIN_EXACT_SHA 授權推送，遠端 main 為相同完整 SHA（自 `1f6ddfa` 快轉）；Post-main Run 38042104524 attempt 1 雙 job success；Macro 親讀 raw log；accepted checkpoint 推進至 `49a73d98e4918ed99d64da7f91f174857b489da1`。
 
 ### 5.2 待辦
 

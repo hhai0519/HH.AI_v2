@@ -30,6 +30,21 @@ Invariants (fail closed; a failing step prints one "S1 <CODE> | step <name>" lin
 - Author files are rebuilt only from declared sources (base blob, pinned blob, prompt block, or the
   verified current file in adopt mode) plus unique-anchor replacements, and must match the declared
   LF SHA-256 before anything is written.
+- Author paths (which also bound the text operations and adopt hashes) are safe repository-relative
+  POSIX paths: no drive letter or any other colon (also rejecting NTFS alternate data streams), no
+  backslash, no leading '/', no empty, '.' or '..' segment, no segment ending in '.' or a space (Windows
+  would alias it), no '.git' segment in any letter case, no control character, not starting with .git, not
+  a generator output in any letter case, and no two author paths equal apart from letter case
+  (SPEC_AUTHOR_PATH_INVALID).
+- Every author file is read (adopt sources and every worktree hash check) and written only through
+  author_target: the work tree and the file's parent directory are resolved strictly, the resolved parent
+  must equal the literal parent (no link or junction anywhere on the way, so neither a place outside the
+  work tree nor .git or a generator output inside it can be reached), and the file must not be a link
+  (AUTHOR_PATH_UNSAFE_TARGET; a resolution or access failure is the same stop; a missing parent is
+  PARENT_DIRECTORY_MISSING). The check runs before the read child process starts and, in apply, for every
+  target before the first write, so a rejected path leaves the work tree untouched.
+- generate verifies the author hashes before it runs the two generators (GENERATE_AUTHOR_DRIFT), so no
+  generator runs on drifted author content, and verifies them again afterwards.
 - Bounded steps (focused and the three gates) run through scripts/bounded_process.py run_bounded, the
   same primitive the gate runner uses: output goes to temporary files (never pipes), the whole process
   tree is terminated on timeout, and the tree-kill status is reported in a fixed vocabulary. The
@@ -222,6 +237,42 @@ def _require(cond, code):
         raise Halt(code)
 
 
+def safe_author_path(path):
+    """True for a safe repository-relative POSIX author path (see the module invariants)."""
+    if not isinstance(path, str) or not path or path.startswith('/') or ':' in path or '\\' in path:
+        return False
+    if any(ord(c) < 32 or ord(c) == 127 for c in path):
+        return False
+    for seg in path.split('/'):
+        if seg in ('', '.', '..') or seg.endswith(('.', ' ')) or seg.lower() == '.git':
+            return False
+    return path.lower() not in {g.lower() for g in GENERATED} and not path.startswith('.git')
+
+
+def author_target(root, path):
+    """Path of an author file whose parent chain contains no link; stops otherwise (see the module invariants)."""
+    parts = path.split('/')
+    try:
+        base = os.path.realpath(root, strict=True)
+        literal_parent = os.path.join(base, *parts[:-1])
+        resolved_parent = os.path.realpath(literal_parent, strict=True)
+    except (FileNotFoundError, NotADirectoryError):
+        raise Halt('PARENT_DIRECTORY_MISSING')
+    except (OSError, ValueError, RuntimeError):
+        raise Halt('AUTHOR_PATH_UNSAFE_TARGET')
+    target = os.path.join(literal_parent, parts[-1])
+    try:
+        unsafe = os.path.normcase(resolved_parent) != os.path.normcase(literal_parent) or os.path.islink(target)
+        is_dir = os.path.isdir(resolved_parent)
+    except (OSError, ValueError):
+        unsafe, is_dir = True, False
+    if unsafe:
+        raise Halt('AUTHOR_PATH_UNSAFE_TARGET')
+    if not is_dir:
+        raise Halt('PARENT_DIRECTORY_MISSING')
+    return target
+
+
 def load_spec(lines, task_id):
     """Parse and validate BATCH_SPEC_JSON together with its paired blocks."""
     spec = block_json(lines, 'BATCH_SPEC_JSON')
@@ -249,8 +300,8 @@ def load_spec(lines, task_id):
     authors = spec.get('authors')
     _require(isinstance(authors, dict) and authors, 'SPEC_AUTHORS_INVALID')
     for path, entry in authors.items():
-        _require(isinstance(path, str) and path and not path.startswith('/') and '..' not in path.split('/')
-                 and '\\' not in path and path not in GENERATED and not path.startswith('.git'), 'SPEC_AUTHOR_PATH_INVALID')
+        _require(safe_author_path(path), 'SPEC_AUTHOR_PATH_INVALID')
+        _require(sum(1 for p in authors if p.lower() == path.lower()) == 1, 'SPEC_AUTHOR_PATH_INVALID')
         _require(isinstance(entry, dict) and isinstance(entry.get('sha256'), str) and SHA256_RE.match(entry['sha256']), 'SPEC_AUTHOR_HASH_INVALID')
         src = entry.get('source')
         _require(isinstance(src, dict), 'SPEC_SOURCE_INVALID')
@@ -337,7 +388,8 @@ def source_text(root, spec, lines, path):
     elif kind == 'block':
         return extract_block(lines, src['name']) + chr(10)
     else:
-        data = (Path(root) / path).read_bytes()
+        with open(author_target(root, path), 'rb') as f:
+            data = f.read()
     try:
         text = data.decode('utf-8')
     except UnicodeDecodeError:
@@ -358,6 +410,9 @@ def build_authors(root, spec, lines):
 
 def verify_hashes(root, table, label):
     # Canonical LF-normalized comparison (CRLF -> LF) by the repository verification primitive.
+    # Every path passes author_target before any child process reads it.
+    for path in sorted(table):
+        author_target(root, path)
     for path in sorted(table):
         run([PY, 'scripts/verification_primitives.py', 'sha256', '--file', path, '--expect-lf', table[path]], label, root)
 
@@ -552,12 +607,10 @@ class Batch:
                 raise Halt('APPLY_HEAD_DRIFT')
         texts = build_authors(root, spec, self.lines)
         self.write_new_artifact('plan.json', extract_block(self.lines, 'PLAN_JSON') + chr(10))
-        for path in sorted(texts):
-            if spec['authors'][path]['source']['kind'] == 'keep':
-                continue
-            target = Path(root) / path
-            if not target.parent.is_dir():
-                raise Halt('PARENT_DIRECTORY_MISSING')
+        # Every target is checked before the first write, so a bad path leaves the work tree untouched.
+        targets = {path: author_target(root, path) for path in sorted(texts)
+                   if spec['authors'][path]['source']['kind'] != 'keep'}
+        for path, target in targets.items():
             with open(target, 'wb') as f:
                 f.write(texts[path].encode('utf-8'))
         verify_hashes(root, final_hashes(spec), 'AUTHOR_HASH_MISMATCH')
@@ -574,6 +627,8 @@ class Batch:
     def step_generate(self):
         spec = self.spec
         expect_scope(self.root, spec, 'GENERATE', exact=False)
+        # Authors are checked before any generator runs: no generator ever reads drifted author content.
+        verify_hashes(self.root, final_hashes(spec), 'GENERATE_AUTHOR_DRIFT')
         run([PY, 'scripts/fingerprint.py', '--write'], 'FINGERPRINT_WRITE_FAILED', self.root)
         run([PY, 'scripts/execution_record.py', 'write', '--plan-file', '.git/' + self.task_id + '-plan.json'],
             'EXECUTION_RECORD_WRITE_FAILED', self.root)
