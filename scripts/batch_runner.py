@@ -34,15 +34,29 @@ Invariants (fail closed; a failing step prints one "S1 <CODE> | step <name>" lin
   POSIX paths: no drive letter or any other colon (also rejecting NTFS alternate data streams), no
   backslash, no leading '/', no empty, '.' or '..' segment, no segment ending in '.' or a space (Windows
   would alias it), no '.git' segment in any letter case, no control character, not starting with .git, not
-  a generator output in any letter case, and no two author paths equal apart from letter case
+  a generator output in any letter case, no Windows device-name segment (windows_device_segment: the part
+  before the first '.', trailing spaces removed, equal in any letter case to CON, PRN, AUX, NUL, COM1-9,
+  LPT1-9, or COM/LPT followed by a superscript one, two or three (U+00B9, U+00B2, U+00B3) as Microsoft
+  lists them, or to COM0, LPT0, CONIN$ or CONOUT$ by project policy; so NUL.txt and aux.tar.gz are
+  rejected too), and no two author paths equal apart from letter case
   (SPEC_AUTHOR_PATH_INVALID).
 - Every author file is read (adopt sources and every worktree hash check) and written only through
   author_target: the work tree and the file's parent directory are resolved strictly, the resolved parent
   must equal the literal parent (no link or junction anywhere on the way, so neither a place outside the
   work tree nor .git or a generator output inside it can be reached), and the file must not be a link
   (AUTHOR_PATH_UNSAFE_TARGET; a resolution or access failure is the same stop; a missing parent is
-  PARENT_DIRECTORY_MISSING). The check runs before the read child process starts and, in apply, for every
-  target before the first write, so a rejected path leaves the work tree untouched.
+  PARENT_DIRECTORY_MISSING). An existing file must also be a regular file with exactly one hard link
+  (lstat st_nlink == 1): a hard-linked file shares its content with another name, possibly outside the work
+  tree, which an in-place write would change too; a directory or other non-regular entry, a link count
+  other than 1 (0 means it cannot be determined) and an lstat failure are the same stop. A missing file is
+  a new author file. The check runs before the read child process starts and, in apply, for every target
+  before the first write, so a rejected path leaves the work tree untouched. The writes themselves are not
+  atomic as a set: a write that fails after the checks (for example an access error on a later target) can
+  leave earlier author files already written; the step then stops and the task stays locked.
+- Single-writer assumption: these checks hold for a work tree that nothing else changes while the batch
+  runs (the Executor runs only the fixed commands). They are not concurrency isolation: another process
+  could still replace a checked path before it is opened. Later steps re-verify the author hashes and the
+  scope, which detects changed content but cannot prove who wrote it.
 - Must-read closure (G4 slice 2): the rule files the Executor reads before any step are derived, not
   chosen. derive_must_read lists, at the binding commit (production: base_oid; promotion: candidate_oid),
   the kernel (AGENTS.md, PRINCIPLES.md and the always-read rules), the production rules, the path-bound
@@ -86,6 +100,7 @@ import hashlib
 import json
 import os
 import re
+import stat
 import subprocess
 import sys
 from datetime import datetime
@@ -108,6 +123,11 @@ SHA256_RE = re.compile(r'^[0-9a-f]{64}$')
 TASK_RE = re.compile(r'^[A-Za-z0-9_-]+$')
 BRANCH_RE = re.compile(r'^batch/[a-z0-9][a-z0-9._-]*$')
 BLOCK_RE = re.compile(r'^[A-Z][A-Z0-9_]*$')
+# Windows device names: Microsoft "Naming Files, Paths, and Namespaces" lists CON, PRN, AUX, NUL, COM1-9,
+# LPT1-9, and COM/LPT followed by superscript digit 1, 2 or 3 (also followed by an extension);
+# COM0, LPT0, CONIN$ and CONOUT$ are added by project policy.
+WINDOWS_DEVICE_NAMES = frozenset(['CON', 'PRN', 'AUX', 'NUL', 'CONIN$', 'CONOUT$']
+                                 + [p + d for p in ('COM', 'LPT') for d in '0123456789\u00b9\u00b2\u00b3'])
 PY = sys.executable
 # Failure classes: output text is matched but never printed. Order matters; the first match wins.
 FAILURE_CLASSES = (
@@ -259,6 +279,11 @@ def _require(cond, code):
         raise Halt(code)
 
 
+def windows_device_segment(seg):
+    """True when Windows may treat the path segment as a device (see WINDOWS_DEVICE_NAMES)."""
+    return seg.split('.', 1)[0].rstrip(' ').upper() in WINDOWS_DEVICE_NAMES
+
+
 def safe_author_path(path):
     """True for a safe repository-relative POSIX author path (see the module invariants)."""
     if not isinstance(path, str) or not path or path.startswith('/') or ':' in path or '\\' in path:
@@ -266,13 +291,14 @@ def safe_author_path(path):
     if any(ord(c) < 32 or ord(c) == 127 for c in path):
         return False
     for seg in path.split('/'):
-        if seg in ('', '.', '..') or seg.endswith(('.', ' ')) or seg.lower() == '.git':
+        if seg in ('', '.', '..') or seg.endswith(('.', ' ')) or seg.lower() == '.git' or windows_device_segment(seg):
             return False
     return path.lower() not in {g.lower() for g in GENERATED} and not path.startswith('.git')
 
 
 def author_target(root, path):
-    """Path of an author file whose parent chain contains no link; stops otherwise (see the module invariants)."""
+    """Path of an author file whose parent chain contains no link and which, if it exists, is a regular file with
+    exactly one hard link; stops otherwise (see the module invariants)."""
     parts = path.split('/')
     try:
         base = os.path.realpath(root, strict=True)
@@ -292,6 +318,14 @@ def author_target(root, path):
         raise Halt('AUTHOR_PATH_UNSAFE_TARGET')
     if not is_dir:
         raise Halt('PARENT_DIRECTORY_MISSING')
+    try:
+        st = os.lstat(target)
+    except FileNotFoundError:
+        return target
+    except (OSError, ValueError):
+        raise Halt('AUTHOR_PATH_UNSAFE_TARGET')
+    if not stat.S_ISREG(st.st_mode) or st.st_nlink != 1:
+        raise Halt('AUTHOR_PATH_UNSAFE_TARGET')
     return target
 
 

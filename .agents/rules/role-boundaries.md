@@ -105,6 +105,9 @@
   - 不得手工重打規格描述的任何內容，不得把規格套用與人工編輯混在同一個檔案上。
 - **逐位元守衛**：CHECK 17 從 parent commit 取出檔案重放規格並比對，任何 byte 差異即 FAIL。
 
+### 6.3 runner 批次與被追蹤檔案寫入
+以 `scripts/batch_runner.py` 逐步執行之批次與狀態檔之寫入方式，依 `.agents/rules/governance-gate-integrity.md` 第 5 節之三層寫入規則（重疊時以前層為準）。
+
 ---
 
 ## 7. 什麼時候該停下來回報，什麼時候該自己處理

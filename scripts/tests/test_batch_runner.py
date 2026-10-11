@@ -15,6 +15,7 @@ import hashlib
 import json
 import os
 import re
+import stat
 import subprocess
 import sys
 import time
@@ -1211,3 +1212,247 @@ def test_adopt_start_with_an_edited_rule_file_stops_at_preflight(tmp_path):
     closure = br.derive_must_read(repo, spec)
     assert br.check_must_read(repo, spec, _must_read_lines(spec, closure)) is None   # the prompt itself is consistent
     assert halt_code(br.check_must_read_worktree, repo, closure) == "MUST_READ_WORKTREE_DRIFT"
+
+
+# --- G4 slice 3a: Windows device names and hard links (B-107) -------------------------------
+
+# Hand-written expectations. Official: Microsoft "Naming Files, Paths, and Namespaces" (reserved device names,
+# also followed by an extension; superscript digits one to three count as digits). Policy: project additions.
+OFFICIAL_DEVICE_SEGMENTS = (["CON", "PRN", "AUX", "NUL"] + ["COM%d" % i for i in range(1, 10)]
+                            + ["LPT%d" % i for i in range(1, 10)]
+                            + ["COM¹", "COM²", "COM³", "LPT¹", "LPT²", "LPT³"])
+POLICY_DEVICE_SEGMENTS = ["COM0", "LPT0", "CONIN$", "CONOUT$"]
+
+
+@pytest.mark.parametrize("name", OFFICIAL_DEVICE_SEGMENTS + POLICY_DEVICE_SEGMENTS)
+def test_windows_device_name_is_rejected_in_any_case_with_any_extension_in_any_segment(name):
+    for seg in (name, name.lower(), name.title(), name + ".txt", name.lower() + ".tar.gz", name.title() + ".md",
+                name + " .md"):
+        for path in (seg, "docs/" + seg, seg + "/a.md", "docs/" + seg + "/a.md"):
+            assert br.windows_device_segment(seg) is True, seg
+            assert br.safe_author_path(path) is False, path
+
+
+@pytest.mark.parametrize("path", ["docs/nul.txt", "AUX/a.md", "docs/Com¹.md", "docs/conout$", "docs/lpt0.md"])
+def test_device_name_author_path_stops_load_spec(path):
+    spec = production_spec()
+    blocks = production_blocks(spec)
+    spec["authors"][path] = {"source": {"kind": "base"}, "sha256": "0" * 64}
+    assert halt_code(br.load_spec, lines_of(prompt(blocks)), TASK) == "SPEC_AUTHOR_PATH_INVALID"
+
+
+@pytest.mark.parametrize("path", ["docs/console.md", "docs/CONNECT.md", "docs/com10.md", "docs/LPT10.txt", "docs/com.md",
+                                  "docs/lpt", "docs/auxiliary/a.md", "docs/nul_notes.md", "docs/prn-guide.md",
+                                  "docs/xcon.md", "docs/CONIN.md", "docs/COM⁴.md", "docs/.con", "docs/a.nul"])
+def test_names_that_only_resemble_device_names_stay_accepted(path):
+    assert br.safe_author_path(path) is True
+
+
+def test_device_name_rule_keeps_the_trailing_dot_and_space_rules():
+    for path in ("docs/a.md.", "docs/a.md ", "docs/CON.", "docs/nul "):
+        assert br.safe_author_path(path) is False
+
+
+def _hardlink_or_skip(src, dst):
+    try:
+        os.link(src, dst)
+    except (OSError, NotImplementedError, AttributeError) as exc:
+        pytest.skip("capability gap: hard links cannot be created here (" + type(exc).__name__ + ")")
+
+
+def test_author_target_hard_linked_to_a_file_outside_stops_and_the_outside_file_is_unchanged(tmp_path):
+    work, outside = tmp_path / "work", tmp_path / "outside"
+    (work / "docs").mkdir(parents=True)
+    outside.mkdir()
+    (outside / "a.md").write_bytes(b"synthetic outside text\n")
+    _hardlink_or_skip(str(outside / "a.md"), str(work / "docs" / "a.md"))
+    assert halt_code(br.author_target, str(work), "docs/a.md") == "AUTHOR_PATH_UNSAFE_TARGET"
+    assert (outside / "a.md").read_bytes() == b"synthetic outside text\n"
+
+
+def test_author_target_hard_linked_inside_the_work_tree_stops_for_both_names(tmp_path):
+    (tmp_path / "docs").mkdir()
+    (tmp_path / "docs" / "a.md").write_bytes(b"x\n")
+    _hardlink_or_skip(str(tmp_path / "docs" / "a.md"), str(tmp_path / "docs" / "b.md"))
+    assert halt_code(br.author_target, str(tmp_path), "docs/a.md") == "AUTHOR_PATH_UNSAFE_TARGET"
+    assert halt_code(br.author_target, str(tmp_path), "docs/b.md") == "AUTHOR_PATH_UNSAFE_TARGET"
+
+
+def test_author_target_single_link_file_and_missing_file_are_returned(tmp_path):
+    (tmp_path / "docs").mkdir()
+    (tmp_path / "docs" / "a.md").write_bytes(b"x\n")
+    base = os.path.realpath(str(tmp_path))
+    assert br.author_target(str(tmp_path), "docs/a.md") == os.path.join(base, "docs", "a.md")
+    assert br.author_target(str(tmp_path), "docs/new.md") == os.path.join(base, "docs", "new.md")
+
+
+def test_author_target_directory_in_place_of_the_file_stops(tmp_path):
+    (tmp_path / "docs" / "a.md").mkdir(parents=True)
+    assert halt_code(br.author_target, str(tmp_path), "docs/a.md") == "AUTHOR_PATH_UNSAFE_TARGET"
+
+
+def _fake_target_lstat(monkeypatch, target, result):
+    real = os.lstat
+    def fake(path, *a, **k):
+        if os.fspath(path) == target:
+            if isinstance(result, BaseException):
+                raise result
+            return result
+        return real(path, *a, **k)
+    monkeypatch.setattr(br.os, "lstat", fake)
+
+
+@pytest.mark.parametrize("nlink", [0, 2, 3])
+def test_author_target_link_count_other_than_one_stops(tmp_path, monkeypatch, nlink):
+    # Fault injection: 0 stands for a link count that cannot be determined.
+    (tmp_path / "docs").mkdir()
+    (tmp_path / "docs" / "a.md").write_bytes(b"x\n")
+    target = os.path.join(os.path.realpath(str(tmp_path)), "docs", "a.md")
+    st = os.lstat(target)
+    fake = os.stat_result((st.st_mode, st.st_ino, st.st_dev, nlink, st.st_uid, st.st_gid, st.st_size,
+                           int(st.st_atime), int(st.st_mtime), int(st.st_ctime)))
+    _fake_target_lstat(monkeypatch, target, fake)
+    assert halt_code(br.author_target, str(tmp_path), "docs/a.md") == "AUTHOR_PATH_UNSAFE_TARGET"
+
+
+@pytest.mark.parametrize("error", [PermissionError("denied"), OSError("probe failed"), ValueError("bad path")])
+def test_author_target_link_count_probe_failure_stops(tmp_path, monkeypatch, error):
+    (tmp_path / "docs").mkdir()
+    (tmp_path / "docs" / "a.md").write_bytes(b"x\n")
+    target = os.path.join(os.path.realpath(str(tmp_path)), "docs", "a.md")
+    _fake_target_lstat(monkeypatch, target, error)
+    assert halt_code(br.author_target, str(tmp_path), "docs/a.md") == "AUTHOR_PATH_UNSAFE_TARGET"
+
+
+def _apply_batch(work, monkeypatch, texts):
+    spec = production_spec()
+    batch = br.Batch.__new__(br.Batch)
+    batch.root, batch.task_id, batch.spec = str(work), TASK, spec
+    batch.lines = lines_of(prompt(production_blocks(spec)))
+    monkeypatch.setattr(br, "expect_head_clean", lambda *a: None)
+    monkeypatch.setattr(br, "git", lambda root, *a: spec["branch"])
+    monkeypatch.setattr(br, "build_authors", lambda root, s, lines: dict(texts))
+    monkeypatch.setattr(batch, "write_new_artifact", lambda suffix, text: ".git/" + TASK + "-" + suffix)
+    return batch
+
+
+def test_apply_writes_nothing_when_a_later_target_is_hard_linked_outside(tmp_path, monkeypatch):
+    # docs/a.md sorts first and is a plain file; scripts/new_tool.py is a hard link to a file outside.
+    work, outside = tmp_path / "work", tmp_path / "outside"
+    (work / "docs").mkdir(parents=True)
+    (work / "scripts").mkdir()
+    outside.mkdir()
+    (work / "docs" / "a.md").write_bytes(b"original\n")
+    (outside / "tool.py").write_bytes(b"synthetic outside program\n")
+    _hardlink_or_skip(str(outside / "tool.py"), str(work / "scripts" / "new_tool.py"))
+    batch = _apply_batch(work, monkeypatch, {"docs/a.md": "y\n", "scripts/new_tool.py": "print(1)\n"})
+    assert halt_code(batch.step_apply) == "AUTHOR_PATH_UNSAFE_TARGET"
+    assert (work / "docs" / "a.md").read_bytes() == b"original\n"
+    assert (outside / "tool.py").read_bytes() == b"synthetic outside program\n"
+
+
+def test_apply_writes_nothing_when_a_later_target_is_a_directory(tmp_path, monkeypatch):
+    (tmp_path / "docs").mkdir()
+    (tmp_path / "scripts" / "new_tool.py").mkdir(parents=True)
+    (tmp_path / "docs" / "a.md").write_bytes(b"original\n")
+    batch = _apply_batch(tmp_path, monkeypatch, {"docs/a.md": "y\n", "scripts/new_tool.py": "print(1)\n"})
+    assert halt_code(batch.step_apply) == "AUTHOR_PATH_UNSAFE_TARGET"
+    assert (tmp_path / "docs" / "a.md").read_bytes() == b"original\n"
+
+
+def test_worktree_hash_check_stops_on_a_hard_link_before_any_read_process(tmp_path, monkeypatch):
+    work, outside = tmp_path / "work", tmp_path / "outside"
+    (work / "docs").mkdir(parents=True)
+    outside.mkdir()
+    (outside / "z.md").write_bytes(b"synthetic outside text\n")
+    _hardlink_or_skip(str(outside / "z.md"), str(work / "docs" / "z.md"))
+    calls = []
+    monkeypatch.setattr(br, "run", lambda args, label, root, timeout=600: calls.append(args) or "")
+    table = {"docs/a.md": "0" * 64, "docs/z.md": "1" * 64}
+    assert halt_code(br.verify_hashes, str(work), table, "FOCUSED_AUTHOR_DRIFT") == "AUTHOR_PATH_UNSAFE_TARGET"
+    assert calls == []
+
+
+def test_adopt_keep_source_that_is_hard_linked_stops_before_reading(tmp_path):
+    work, outside = tmp_path / "work", tmp_path / "outside"
+    (work / "docs").mkdir(parents=True)
+    outside.mkdir()
+    (outside / "a.md").write_bytes(b"synthetic outside text\n")
+    _hardlink_or_skip(str(outside / "a.md"), str(work / "docs" / "a.md"))
+    spec = production_spec(start={"mode": "adopt"})
+    spec["authors"]["docs/a.md"]["source"] = {"kind": "keep"}
+    assert halt_code(br.source_text, str(work), spec, [], "docs/a.md") == "AUTHOR_PATH_UNSAFE_TARGET"
+
+
+def test_worktree_must_read_file_that_is_hard_linked_stops(tmp_path):
+    repo, spec, closure = _section_case(tmp_path)
+    _hardlink_or_skip(str(tmp_path / "AGENTS.md"), str(tmp_path.parent / (tmp_path.name + "-agents-copy.md")))
+    assert halt_code(br.check_must_read_worktree, repo, closure) == "AUTHOR_PATH_UNSAFE_TARGET"
+
+
+def test_author_target_non_regular_entry_with_one_link_stops(tmp_path, monkeypatch):
+    # Fault injection: on Windows a directory reports one link, so the regular-file rule must stop it by itself.
+    (tmp_path / "docs").mkdir()
+    (tmp_path / "docs" / "a.md").write_bytes(b"x\n")
+    target = os.path.join(os.path.realpath(str(tmp_path)), "docs", "a.md")
+    st = os.lstat(target)
+    fake = os.stat_result((stat.S_IFDIR | 0o755, st.st_ino, st.st_dev, 1, st.st_uid, st.st_gid, st.st_size,
+                           int(st.st_atime), int(st.st_mtime), int(st.st_ctime)))
+    _fake_target_lstat(monkeypatch, target, fake)
+    assert halt_code(br.author_target, str(tmp_path), "docs/a.md") == "AUTHOR_PATH_UNSAFE_TARGET"
+
+
+def test_author_target_named_pipe_stops(tmp_path):
+    (tmp_path / "docs").mkdir()
+    if not hasattr(os, "mkfifo"):
+        pytest.skip("capability gap: named pipes cannot be created here (no os.mkfifo)")
+    os.mkfifo(str(tmp_path / "docs" / "a.md"))
+    assert os.lstat(str(tmp_path / "docs" / "a.md")).st_nlink == 1
+    assert halt_code(br.author_target, str(tmp_path), "docs/a.md") == "AUTHOR_PATH_UNSAFE_TARGET"
+
+
+def test_apply_write_failure_after_the_checks_is_not_atomic(tmp_path, monkeypatch):
+    # Documented limitation (second opinion N1): the checks precede every write, but the writes are not one
+    # transaction. An access error on the second target leaves the first target written and stops the step.
+    (tmp_path / "docs").mkdir()
+    (tmp_path / "scripts").mkdir()
+    (tmp_path / "docs" / "a.md").write_bytes(b"original\n")
+    batch = _apply_batch(tmp_path, monkeypatch, {"docs/a.md": "y\n", "scripts/new_tool.py": "print(1)\n"})
+    real_open = open
+    failing = os.path.join(os.path.realpath(str(tmp_path)), "scripts", "new_tool.py")
+    def fake_open(file, mode="r", *a, **k):
+        if os.fspath(file) == failing and "w" in mode:
+            raise PermissionError("synthetic access error")
+        return real_open(file, mode, *a, **k)
+    monkeypatch.setattr("builtins.open", fake_open)
+    with pytest.raises(PermissionError):
+        batch.step_apply()
+    monkeypatch.setattr("builtins.open", real_open)
+    assert (tmp_path / "docs" / "a.md").read_bytes() == b"y\n"
+    assert not (tmp_path / "scripts" / "new_tool.py").exists()
+
+
+def test_main_locks_the_task_when_a_step_raises_unexpectedly(monkeypatch, capsys):
+    # The stop after a non-atomic write failure: main records UNEXPECTED_<type> and the task stays locked.
+    from pathlib import Path as _P
+    monkeypatch.chdir(str(_P(br.__file__).resolve().parent.parent))
+    saved = {}
+
+    class FakeBatch:
+        def __init__(self, root, task_id):
+            self.root, self.task_id = root, task_id
+            self.spec = {"kind": "production", "e24": True, "focused": None}
+            self.prompt_bytes = b"synthetic prompt"
+
+        def step_apply(self):
+            raise PermissionError("synthetic access error")
+
+    monkeypatch.setattr(br, "Batch", FakeBatch)
+    monkeypatch.setattr(br, "load_control", lambda b: {"task_id": TASK, "prompt_sha256": br.sha256_bytes(b"synthetic prompt"),
+                                                       "runner_sha256": "R", "done": ["preflight", "setup", "e24"],
+                                                       "halted": None})
+    monkeypatch.setattr(br, "accepted_runner_sha", lambda root, spec, control, runner_sha: "R")
+    monkeypatch.setattr(br, "save_control", lambda b, c: saved.update(c))
+    assert br.main(["--task-id", TASK, "apply"]) == 1
+    assert saved["halted"] == "apply:UNEXPECTED_PermissionError"
+    assert "S1 UNEXPECTED_PermissionError | step apply" in capsys.readouterr().out

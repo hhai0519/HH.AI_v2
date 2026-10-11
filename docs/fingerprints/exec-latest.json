@@ -1,5 +1,5 @@
 {
-  "base_head": "af35bdf",
+  "base_head": "5be3475",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -27,10 +27,11 @@
         "### 嚴禁紅燈修改裁判 (No Red-Driven Referee Mutation)",
         "## 2. 必要閘門失敗與拒絕語意 (Required Gate Failure Semantics)",
         "## 3. 閘門變更確定性負向控制 (Deterministic Negative Controls)",
-        "## 4. 變更重放與證據完整性守衛 (Diff Replay & Evidence Integrity Guard — B-109 M2 / CHECK 26)"
+        "## 4. 變更重放與證據完整性守衛 (Diff Replay & Evidence Integrity Guard — B-109 M2 / CHECK 26)",
+        "## 5. 被追蹤檔案寫入三層規則 (Tracked-File Write Layers — B-107 G4)"
       ],
-      "lines": 77,
-      "sha256": "1e62fd3a75e143b4edf5dff4c5d160ec6bd6a3a41b1f6306145ca38bf65c97ef"
+      "lines": 92,
+      "sha256": "692a10033d197fc8f8ab7c03ec3eb3a5c5282be40f15b542c3d1c47bfdf3fd36"
     },
     ".agents/rules/powershell-encoding-protocol.md": {
       "fences": 6,
@@ -90,6 +91,7 @@
         "## 6. 依批次規格修改時，只能走指定的套用路徑",
         "### 6.1 GOAL_SPEC（正常重構與功能實作預設）",
         "### 6.2 EXACT_SPEC（精確替換／規範契約重構）",
+        "### 6.3 runner 批次與被追蹤檔案寫入",
         "## 7. 什麼時候該停下來回報，什麼時候該自己處理",
         "## 8. 個人工作資料與日誌邊界（Personal Work Data Boundary — D-U2）",
         "## 9. 上下文遺失恢復、任務產物紀律與證據分工權威 (CONTEXT_LOSS_RECOVERY_RULE)",
@@ -99,8 +101,8 @@
         "### 9.4 守衛能力邊界與安全錯誤分類 (Guard Capability Boundary & Safe Diagnostics)",
         "### 9.5 遠端 Actions 證據分工權威 (Remote Actions Log Provenance Division)"
       ],
-      "lines": 244,
-      "sha256": "1bea2d5b0d1ad93e9dc61bcac96331b2329caa9db90c508cd1f79cf9429cd9b7"
+      "lines": 247,
+      "sha256": "ef1d73b2899778e2273404144f7b3843866321f91cd1e8b0bd440a71788856cf"
     },
     ".agents/rules/secret-output-safety.md": {
       "fences": 6,
@@ -559,16 +561,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 310,
-      "sha256": "d333448ad910cb400ad04cfbae45de75fe01b68ad99f555d4f518cc6ebd0150d"
+      "lines": 311,
+      "sha256": "25a88080679c4f536a3bfda6e047b36ef3708acc497e3418f9bc75b2ca9615ff"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 277,
-      "sha256": "925a9b7374778ae6992cd588c09de00fbce8e9ae028ca8f6917f708943c04a6b"
+      "lines": 278,
+      "sha256": "9cf437c9248ca5c2590a2891a9135707a11ec00b135eb16237242fde45f0dcd5"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -610,7 +612,7 @@
         "## 封存區"
       ],
       "lines": 374,
-      "sha256": "1a4d7495d4b8a6bdea9e1f88f5c9ba1d234b701016dbe291ac370daad2a27ac9"
+      "sha256": "a3dcae690047ce2b8f5d07a2b3ab530b29b8025641bb42bd53d287f05d3fc3ca"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1108,8 +1110,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6379,
-      "sha256": "c5110f475490822540c69de0aac5ef0387da0d2ebbc2889e4be091cedbc9b8aa"
+      "lines": 6380,
+      "sha256": "d1a52eeb0883deb9e4a2a0d49ca20fd8ff7e6793634017cf13344ae01c158241"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1132,6 +1134,9 @@
       "fences": 0,
       "headings": [
         "# -*- coding: utf-8 -*-",
+        "# Windows device names: Microsoft \"Naming Files, Paths, and Namespaces\" lists CON, PRN, AUX, NUL, COM1-9,",
+        "# LPT1-9, and COM/LPT followed by superscript digit 1, 2 or 3 (also followed by an extension);",
+        "# COM0, LPT0, CONIN$ and CONOUT$ are added by project policy.",
         "# Failure classes: output text is matched but never printed. Order matters; the first match wins.",
         "# Bounded summaries are printed only when the last line has one of these fixed shapes.",
         "# Must-read closure (G4 slice 2). Changing these lists is a runner change (E27).",
@@ -1151,8 +1156,8 @@
         "# Control record and entry point",
         "# ---------------------------------------------------------------------------"
       ],
-      "lines": 1010,
-      "sha256": "17bbaa2856aaf45a11d58ea3221e0afe3794ae52acd9ad5c2e7ef3d52bb396a1"
+      "lines": 1044,
+      "sha256": "4a8fd4822a73f4de8c2fad825aa6965ed804cbdca573117ce636799eee47b98a"
     },
     "scripts/batch_sim.py": {
       "fences": 0,
@@ -1362,10 +1367,13 @@
         "# --- runner update: controlled succession ----------------------------------------------------",
         "# --- G4 slice 1: safe author paths and generate order (B-107) --------------------------------",
         "# --- G4 slice 2: must-read closure (B-107) ---------------------------------------------------",
-        "# Hand-written expectations from the decided specification (independent of the runner's constants)."
+        "# Hand-written expectations from the decided specification (independent of the runner's constants).",
+        "# --- G4 slice 3a: Windows device names and hard links (B-107) -------------------------------",
+        "# Hand-written expectations. Official: Microsoft \"Naming Files, Paths, and Namespaces\" (reserved device names,",
+        "# also followed by an extension; superscript digits one to three count as digits). Policy: project additions."
       ],
-      "lines": 1213,
-      "sha256": "5ab2b03796fb04dad192053ec858aa2bd2c4dd9e22d42540062179a0b7a39ca6"
+      "lines": 1458,
+      "sha256": "d16ad23a94839631485bdfc2f4f3f0df0c1312df4b9a6bb5aff9c9979776671c"
     },
     "scripts/tests/test_batch_sim.py": {
       "fences": 0,
@@ -1839,7 +1847,7 @@
       "sha256": "35bf7dbfa3c7d291b550c3c97a6ae398a22b1dc3624c1d2fc1e4db6963d6e115"
     }
   },
-  "generated_at": "2026-10-11T02:46:23Z",
+  "generated_at": "2026-10-11T05:55:10Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

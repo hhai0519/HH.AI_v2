@@ -75,3 +75,18 @@
    - `VERIFIED` 狀態受限於 source-kind 機械可驗證性：在現行 execution-record schema v1 / CHECK 26 子系統中，`source_kind == EXTERNAL_ARTIFACT` 嚴禁標記為 `verification_status == VERIFIED`，必為 `UNVERIFIED` 或 `PENDING_EXTERNAL` 等非已驗狀態。
    - `EXTERNAL_ARTIFACT` 必須具備 `external_artifact` 區塊且其 `task_id`、repo-relative safe `.git/<task_id>-*` 路徑及 canonical 64-hex SHA-256 嚴格機器綁定；本地存在時即時驗證雜湊與正規檔案性，CI/無本地環境時真偽保持外部相依，絕不得將 absence 冒充為已驗通過。
 
+
+## 5. 被追蹤檔案寫入三層規則 (Tracked-File Write Layers — B-107 G4)
+
+三層依序適用；同一檔案同時落入多層時，以較前一層為準。
+
+1. **第一層：runner 批次**——提示詞以機器區塊（`BATCH_SPEC_JSON` 等）宣告本批全部內容並指定以 `scripts/batch_runner.py` 逐步執行之批次，作者檔內容與文字操作由宏觀審計官逐字定稿。執行者只依提示詞執行固定命令，**禁止自行編輯任何被追蹤檔案**（不論以 IDE 編輯工具、腳本或命令）；被追蹤檔案由 runner 及其明定呼叫之 canonical generator（`scripts/fingerprint.py`、`scripts/execution_record.py`）完成寫入。
+   - **機械能力之界線**：runner 於各步驟核對作者檔雜湊與變更範圍，可偵測內容漂移與範圍外變更；這不等於作業系統層級禁止其他程序寫入，也不能證明寫入者身分。runner 之路徑、連結、硬連結與 Windows 裝置名稱檢查，以批次執行期間沒有其他寫入者為前提（單一寫入者假設），不是併發隔離。
+2. **第二層：狀態檔**——下列四個路徑為唯一登錄之狀態檔清單，不分批次模式一律只以 canonical 工具寫入；清單以本節為準，執行者不自行判斷其他檔案是否屬於狀態檔：
+   - `docs/TASKBOARD.md`
+   - `docs/refactor-backlog.md`
+   - `docs/AUDIT-LOG.md`
+   - `docs/EXEC-LOG.md`
+
+   **暫行規則（自 B-107 G4 切片 3a 晉級起，至切片 3b 之狀態檔 canonical 工具經外部驗收並晉級、本節改為正式規則止）**：目前之 canonical 工具只有 runner（第一層）與 EXACT_SPEC 之唯一套用路徑（`.agents/rules/role-boundaries.md` 第 6.2 節），兩者之內容皆由宏觀審計官定稿。GOAL_SPEC 與 B-96 使用者模式之批次不得以 IDE 編輯工具、自寫腳本或命令變更狀態檔；若工作需要變更狀態檔，停止並回報 `S1 STATE_FILE_REQUIRES_CANONICAL_TOOL`，由宏觀審計官另以 runner 批次處理。暫行期間，本層優先於其他規則中「由執行者自行寫入狀態檔」之一般要求（例如 EXEC-LOG 回報列，於 runner 批次中由宏觀審計官逐字提供）；暫行期間不交付需要執行者自行變更狀態檔之 GOAL_SPEC 或 B-96 批次。
+3. **第三層：GOAL_SPEC 與 B-96 之程式實作**——第一層與第二層以外之被追蹤檔案，執行者可依 `.agents/rules/role-boundaries.md` 第 6.1 節與 B-96（`docs/refactor-backlog.md` 第 63 項）使用 IDE 編輯工具或結構化工具實作，正確性由驗收測試、`scripts/verify_all.py` 與 CI 守護；本規則不推翻 B-96 之使用者裁決。

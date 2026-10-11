@@ -1,28 +1,34 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "B115-PACKET-FIX-R1-261011",
-  "base_oid": "af35bdfa3234a550c23fcbc3e59b53b221cba0ca",
+  "task_id": "B107-G4-S3A-WRITE-RULES-R1-261011",
+  "base_oid": "5be3475aa254cc72a782020dc6d32ba20e728760",
   "plan": {
     "allowed_paths": [
+      ".agents/rules/governance-gate-integrity.md",
+      ".agents/rules/role-boundaries.md",
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
+      "docs/generated/rule-traceability.md",
       "docs/governance/execution-record.json",
       "docs/refactor-backlog.md",
-      "scripts/audit_packet.py",
-      "scripts/tests/test_audit_packet.py"
+      "scripts/batch_runner.py",
+      "scripts/tests/test_batch_runner.py"
     ],
     "required_paths": [
+      ".agents/rules/governance-gate-integrity.md",
+      ".agents/rules/role-boundaries.md",
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
+      "docs/generated/rule-traceability.md",
       "docs/governance/execution-record.json",
       "docs/refactor-backlog.md",
-      "scripts/audit_packet.py",
-      "scripts/tests/test_audit_packet.py"
+      "scripts/batch_runner.py",
+      "scripts/tests/test_batch_runner.py"
     ],
     "max_plan_revisions": 3,
     "revision_count": 0,
@@ -30,14 +36,17 @@
   },
   "actual": {
     "changed_paths": [
+      ".agents/rules/governance-gate-integrity.md",
+      ".agents/rules/role-boundaries.md",
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
+      "docs/generated/rule-traceability.md",
       "docs/governance/execution-record.json",
       "docs/refactor-backlog.md",
-      "scripts/audit_packet.py",
-      "scripts/tests/test_audit_packet.py"
+      "scripts/batch_runner.py",
+      "scripts/tests/test_batch_runner.py"
     ]
   },
   "evidence": [

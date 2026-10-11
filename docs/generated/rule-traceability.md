@@ -79,6 +79,24 @@
 | .agents/rules/governance-gate-integrity.md | 62 | ## 4. 變更重放與證據完整性守衛 (Diff Replay & Evidence Integrity Guard — B-109 M2 / CHECK 26) | FILE | `docs/governance/execution-record.json` | docs/governance/execution-record.json | RESOLVED |
 | .agents/rules/governance-gate-integrity.md | 66 | ## 4. 變更重放與證據完整性守衛 (Diff Replay & Evidence Integrity Guard — B-109 M2 / CHECK 26) | CHECK | CHECK 26 | scripts/check_consistency.py | RESOLVED |
 | .agents/rules/governance-gate-integrity.md | 75 | ## 4. 變更重放與證據完整性守衛 (Diff Replay & Evidence Integrity Guard — B-109 M2 / CHECK 26) | CHECK | CHECK 26 | scripts/check_consistency.py | RESOLVED |
+| .agents/rules/governance-gate-integrity.md | 79 | ## 5. 被追蹤檔案寫入三層規則 (Tracked-File Write Layers — B-107 G4) | TASK | B-107 | docs/TASKBOARD.md | RESOLVED |
+| .agents/rules/governance-gate-integrity.md | 83 | ## 5. 被追蹤檔案寫入三層規則 (Tracked-File Write Layers — B-107 G4) | FILE | `scripts/batch_runner.py` | scripts/batch_runner.py | RESOLVED |
+| .agents/rules/governance-gate-integrity.md | 83 | ## 5. 被追蹤檔案寫入三層規則 (Tracked-File Write Layers — B-107 G4) | FILE | `scripts/execution_record.py` | scripts/execution_record.py | RESOLVED |
+| .agents/rules/governance-gate-integrity.md | 83 | ## 5. 被追蹤檔案寫入三層規則 (Tracked-File Write Layers — B-107 G4) | FILE | `scripts/fingerprint.py` | scripts/fingerprint.py | RESOLVED |
+| .agents/rules/governance-gate-integrity.md | 86 | ## 5. 被追蹤檔案寫入三層規則 (Tracked-File Write Layers — B-107 G4) | FILE | `docs/TASKBOARD.md` | docs/TASKBOARD.md | RESOLVED |
+| .agents/rules/governance-gate-integrity.md | 87 | ## 5. 被追蹤檔案寫入三層規則 (Tracked-File Write Layers — B-107 G4) | FILE | `docs/refactor-backlog.md` | docs/refactor-backlog.md | RESOLVED |
+| .agents/rules/governance-gate-integrity.md | 88 | ## 5. 被追蹤檔案寫入三層規則 (Tracked-File Write Layers — B-107 G4) | FILE | `docs/AUDIT-LOG.md` | docs/AUDIT-LOG.md | RESOLVED |
+| .agents/rules/governance-gate-integrity.md | 89 | ## 5. 被追蹤檔案寫入三層規則 (Tracked-File Write Layers — B-107 G4) | FILE | `docs/EXEC-LOG.md` | docs/EXEC-LOG.md | RESOLVED |
+| .agents/rules/governance-gate-integrity.md | 91 | ## 5. 被追蹤檔案寫入三層規則 (Tracked-File Write Layers — B-107 G4) | FILE | `.agents/rules/role-boundaries.md` | .agents/rules/role-boundaries.md | RESOLVED |
+| .agents/rules/governance-gate-integrity.md | 91 | ## 5. 被追蹤檔案寫入三層規則 (Tracked-File Write Layers — B-107 G4) | TASK | B-107 | docs/TASKBOARD.md | RESOLVED |
+| .agents/rules/governance-gate-integrity.md | 91 | ## 5. 被追蹤檔案寫入三層規則 (Tracked-File Write Layers — B-107 G4) | TASK | B-96 | docs/TASKBOARD.md | RESOLVED |
+| .agents/rules/governance-gate-integrity.md | 91 | ## 5. 被追蹤檔案寫入三層規則 (Tracked-File Write Layers — B-107 G4) | TASK | B-96 | docs/TASKBOARD.md | RESOLVED |
+| .agents/rules/governance-gate-integrity.md | 92 | ## 5. 被追蹤檔案寫入三層規則 (Tracked-File Write Layers — B-107 G4) | FILE | `.agents/rules/role-boundaries.md` | .agents/rules/role-boundaries.md | RESOLVED |
+| .agents/rules/governance-gate-integrity.md | 92 | ## 5. 被追蹤檔案寫入三層規則 (Tracked-File Write Layers — B-107 G4) | FILE | `docs/refactor-backlog.md` | docs/refactor-backlog.md | RESOLVED |
+| .agents/rules/governance-gate-integrity.md | 92 | ## 5. 被追蹤檔案寫入三層規則 (Tracked-File Write Layers — B-107 G4) | FILE | `scripts/verify_all.py` | scripts/verify_all.py | RESOLVED |
+| .agents/rules/governance-gate-integrity.md | 92 | ## 5. 被追蹤檔案寫入三層規則 (Tracked-File Write Layers — B-107 G4) | TASK | B-96 | docs/TASKBOARD.md | RESOLVED |
+| .agents/rules/governance-gate-integrity.md | 92 | ## 5. 被追蹤檔案寫入三層規則 (Tracked-File Write Layers — B-107 G4) | TASK | B-96 | docs/TASKBOARD.md | RESOLVED |
+| .agents/rules/governance-gate-integrity.md | 92 | ## 5. 被追蹤檔案寫入三層規則 (Tracked-File Write Layers — B-107 G4) | TASK | B-96 | docs/TASKBOARD.md | RESOLVED |
 | .agents/rules/powershell-encoding-protocol.md | 48 | ## 3. PowerShell 強制 UTF-8 宣告 (PowerShell UTF-8 Lock) | FILE | `.agents/rules/git-and-reporting.md` | .agents/rules/git-and-reporting.md | RESOLVED |
 | .agents/rules/powershell-encoding-protocol.md | 61 | ## 5. 命令列參數與多行文字傳遞協定 (Parameter Passing & Payload Protocol) | ADR | ADR-0010 | docs/adr/0010-powershell-parameter-passing-pitfalls.md | RESOLVED |
 | .agents/rules/prompt-preflight.md | 9 | ## 1. 目的 | ADR | docs/adr/0007-macro-auditor-role.md | docs/adr/0007-macro-auditor-role.md | RESOLVED |
@@ -141,19 +159,21 @@
 | .agents/rules/role-boundaries.md | 98 | ### 6.1 GOAL_SPEC（正常重構與功能實作預設） | FILE | `scripts/verify_all.py` | scripts/verify_all.py | RESOLVED |
 | .agents/rules/role-boundaries.md | 103 | ### 6.2 EXACT_SPEC（精確替換／規範契約重構） | FILE | `scripts/build_prompt_evidence.py` | scripts/build_prompt_evidence.py | RESOLVED |
 | .agents/rules/role-boundaries.md | 106 | ### 6.2 EXACT_SPEC（精確替換／規範契約重構） | CHECK | CHECK 17 | scripts/check_consistency.py | RESOLVED |
-| .agents/rules/role-boundaries.md | 114 | ## 7. 什麼時候該停下來回報，什麼時候該自己處理 | FILE | `scripts/build_prompt_evidence.py` | scripts/build_prompt_evidence.py | RESOLVED |
-| .agents/rules/role-boundaries.md | 117 | ## 7. 什麼時候該停下來回報，什麼時候該自己處理 | FILE | `docs/EXEC-LOG.md` | docs/EXEC-LOG.md | RESOLVED |
-| .agents/rules/role-boundaries.md | 133 | ## 7. 什麼時候該停下來回報，什麼時候該自己處理 | FILE | `.agents/rules/git-and-reporting.md` | .agents/rules/git-and-reporting.md | RESOLVED |
-| .agents/rules/role-boundaries.md | 133 | ## 7. 什麼時候該停下來回報，什麼時候該自己處理 | SECTION | §10 | AGENTS.md#§10 | RESOLVED |
-| .agents/rules/role-boundaries.md | 133 | ## 7. 什麼時候該停下來回報，什麼時候該自己處理 | SECTION | §2.5 | .agents/rules/git-and-reporting.md#§2.5 | RESOLVED |
-| .agents/rules/role-boundaries.md | 134 | ## 7. 什麼時候該停下來回報，什麼時候該自己處理 | FILE | `docs/EXEC-LOG.md` | docs/EXEC-LOG.md | RESOLVED |
-| .agents/rules/role-boundaries.md | 137 | ## 7. 什麼時候該停下來回報，什麼時候該自己處理 | SECTION | §3 | .agents/rules/role-boundaries.md#§3 | RESOLVED |
-| .agents/rules/role-boundaries.md | 156 | ## 7. 什麼時候該停下來回報，什麼時候該自己處理 | CHECK | CHECK 17 | scripts/check_consistency.py | RESOLVED |
-| .agents/rules/role-boundaries.md | 174 | ## 7. 什麼時候該停下來回報，什麼時候該自己處理 | FILE | `docs/TASKBOARD.md` | docs/TASKBOARD.md | RESOLVED |
-| .agents/rules/role-boundaries.md | 174 | ## 7. 什麼時候該停下來回報，什麼時候該自己處理 | TASK | B-91 | docs/TASKBOARD.md | RESOLVED |
-| .agents/rules/role-boundaries.md | 178 | ## 7. 什麼時候該停下來回報，什麼時候該自己處理 | CHECK | CHECK 17 | scripts/check_consistency.py | RESOLVED |
-| .agents/rules/role-boundaries.md | 196 | ## 8. 個人工作資料與日誌邊界（Personal Work Data Boundary — D-U2） | TASK | C-08 | docs/TASKBOARD.md | RESOLVED |
-| .agents/rules/role-boundaries.md | 196 | ## 8. 個人工作資料與日誌邊界（Personal Work Data Boundary — D-U2） | TASK | E-05 | docs/TASKBOARD.md | RESOLVED |
+| .agents/rules/role-boundaries.md | 109 | ### 6.3 runner 批次與被追蹤檔案寫入 | FILE | `.agents/rules/governance-gate-integrity.md` | .agents/rules/governance-gate-integrity.md | RESOLVED |
+| .agents/rules/role-boundaries.md | 109 | ### 6.3 runner 批次與被追蹤檔案寫入 | FILE | `scripts/batch_runner.py` | scripts/batch_runner.py | RESOLVED |
+| .agents/rules/role-boundaries.md | 117 | ## 7. 什麼時候該停下來回報，什麼時候該自己處理 | FILE | `scripts/build_prompt_evidence.py` | scripts/build_prompt_evidence.py | RESOLVED |
+| .agents/rules/role-boundaries.md | 120 | ## 7. 什麼時候該停下來回報，什麼時候該自己處理 | FILE | `docs/EXEC-LOG.md` | docs/EXEC-LOG.md | RESOLVED |
+| .agents/rules/role-boundaries.md | 136 | ## 7. 什麼時候該停下來回報，什麼時候該自己處理 | FILE | `.agents/rules/git-and-reporting.md` | .agents/rules/git-and-reporting.md | RESOLVED |
+| .agents/rules/role-boundaries.md | 136 | ## 7. 什麼時候該停下來回報，什麼時候該自己處理 | SECTION | §10 | AGENTS.md#§10 | RESOLVED |
+| .agents/rules/role-boundaries.md | 136 | ## 7. 什麼時候該停下來回報，什麼時候該自己處理 | SECTION | §2.5 | .agents/rules/git-and-reporting.md#§2.5 | RESOLVED |
+| .agents/rules/role-boundaries.md | 137 | ## 7. 什麼時候該停下來回報，什麼時候該自己處理 | FILE | `docs/EXEC-LOG.md` | docs/EXEC-LOG.md | RESOLVED |
+| .agents/rules/role-boundaries.md | 140 | ## 7. 什麼時候該停下來回報，什麼時候該自己處理 | SECTION | §3 | .agents/rules/role-boundaries.md#§3 | RESOLVED |
+| .agents/rules/role-boundaries.md | 159 | ## 7. 什麼時候該停下來回報，什麼時候該自己處理 | CHECK | CHECK 17 | scripts/check_consistency.py | RESOLVED |
+| .agents/rules/role-boundaries.md | 177 | ## 7. 什麼時候該停下來回報，什麼時候該自己處理 | FILE | `docs/TASKBOARD.md` | docs/TASKBOARD.md | RESOLVED |
+| .agents/rules/role-boundaries.md | 177 | ## 7. 什麼時候該停下來回報，什麼時候該自己處理 | TASK | B-91 | docs/TASKBOARD.md | RESOLVED |
+| .agents/rules/role-boundaries.md | 181 | ## 7. 什麼時候該停下來回報，什麼時候該自己處理 | CHECK | CHECK 17 | scripts/check_consistency.py | RESOLVED |
+| .agents/rules/role-boundaries.md | 199 | ## 8. 個人工作資料與日誌邊界（Personal Work Data Boundary — D-U2） | TASK | C-08 | docs/TASKBOARD.md | RESOLVED |
+| .agents/rules/role-boundaries.md | 199 | ## 8. 個人工作資料與日誌邊界（Personal Work Data Boundary — D-U2） | TASK | E-05 | docs/TASKBOARD.md | RESOLVED |
 | .agents/rules/secret-output-safety.md | 6 | # 機敏資訊與輸出安全守衛規則 (Secret Output Safety Guardrails) | ADR | docs/adr/0016-credential-leak-defense-gap.md | docs/adr/0016-credential-leak-defense-gap.md | RESOLVED |
 | .agents/rules/secret-output-safety.md | 6 | # 機敏資訊與輸出安全守衛規則 (Secret Output Safety Guardrails) | TASK | B-98 | docs/TASKBOARD.md | RESOLVED |
 | .agents/rules/secret-output-safety.md | 52 | ## SECRET-3 — 禁止輸出之表面 (Forbidden Output Surfaces) | FILE | `docs/EXEC-LOG.md` | docs/EXEC-LOG.md | RESOLVED |
