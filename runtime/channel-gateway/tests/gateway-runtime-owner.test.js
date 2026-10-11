@@ -127,6 +127,104 @@ class FakeArchiveWorker {
   }
 }
 
+// B-100 R-H: the shutdown counterexamples below assert the order of observable events, not elapsed
+// wall-clock time. RH_LIVENESS_BOUND_MS is only a bounded-failure guard for an awaited event that never
+// happens (for example a deadlocked stop); it is not a performance budget. Elapsed times are printed as
+// diagnostics only and are never asserted.
+const RH_LIVENESS_BOUND_MS = 30000;
+
+function rhDeferred() {
+  let resolve;
+  const promise = new Promise((r) => {
+    resolve = r;
+  });
+  return { promise, resolve };
+}
+
+async function rhSettleWithinLivenessBound(promise, boundMs = RH_LIVENESS_BOUND_MS) {
+  let timer;
+  const expired = new Promise((resolve) => {
+    timer = setTimeout(() => resolve({ settled: false }), boundMs);
+  });
+  try {
+    return await Promise.race([promise.then((value) => ({ settled: true, value })), expired]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function rhAwaitWithinLivenessBound(promise, label, boundMs = RH_LIVENESS_BOUND_MS) {
+  const outcome = await rhSettleWithinLivenessBound(promise, boundMs);
+  if (!outcome.settled) {
+    throw new Error(`${label} did not happen within the liveness bound (${boundMs}ms)`);
+  }
+  return outcome.value;
+}
+
+// Resolves only after every microtask queued so far (and any microtask those queue) has run:
+// setImmediate callbacks run after the microtask queue is drained.
+function rhDrainMicrotasks() {
+  return new Promise((resolve) => setImmediate(resolve));
+}
+
+function rhElapsedMs(startMs) {
+  return Math.round(performance.now() - startMs);
+}
+
+function rhSpyArchiveMutations(repo) {
+  const calls = [];
+  for (const name of ['markArchiveCoordinationCompleted', 'markArchiveCoordinationFailed']) {
+    const original = repo[name].bind(repo);
+    repo[name] = (...args) => {
+      calls.push(name);
+      return original(...args);
+    };
+  }
+  return calls;
+}
+
+test('R-H liveness guard: an awaited event that never happens fails instead of passing', async () => {
+  const never = new Promise(() => {});
+  assert.deepStrictEqual(await rhSettleWithinLivenessBound(never, 20), { settled: false });
+  await assert.rejects(
+    rhAwaitWithinLivenessBound(never, 'never-event', 20),
+    /^Error: never-event did not happen within the liveness bound \(20ms\)$/
+  );
+});
+
+test('R-H liveness guard: a settled event returns its value and a rejected event fails', async () => {
+  assert.deepStrictEqual(await rhSettleWithinLivenessBound(Promise.resolve(7), 20), { settled: true, value: 7 });
+  assert.strictEqual(await rhAwaitWithinLivenessBound(Promise.resolve('ok'), 'ok-event', 20), 'ok');
+  await assert.rejects(rhAwaitWithinLivenessBound(Promise.reject(new Error('boom')), 'boom-event', 20), /boom/);
+});
+
+test('R-H microtask drain: continuations queued before the drain have all run when it resolves', async () => {
+  const order = [];
+  Promise.resolve()
+    .then(() => order.push('a'))
+    .then(() => order.push('b'))
+    .then(() => order.push('c'));
+  await rhDrainMicrotasks();
+  assert.deepStrictEqual(order, ['a', 'b', 'c']);
+});
+
+test('R-H archive mutation spy records every coordination mutation call', () => {
+  const seen = [];
+  const fakeRepo = {
+    markArchiveCoordinationCompleted(args) {
+      seen.push(['completed', args.archiveId]);
+    },
+    markArchiveCoordinationFailed(args) {
+      seen.push(['failed', args.archiveId]);
+    },
+  };
+  const calls = rhSpyArchiveMutations(fakeRepo);
+  fakeRepo.markArchiveCoordinationCompleted({ archiveId: 1 });
+  fakeRepo.markArchiveCoordinationFailed({ archiveId: 2 });
+  assert.deepStrictEqual(calls, ['markArchiveCoordinationCompleted', 'markArchiveCoordinationFailed']);
+  assert.deepStrictEqual(seen, [['completed', 1], ['failed', 2]]);
+});
+
 test('safe to require bin/gateway.js with zero side effects', () => {
   const mod = require('../bin/gateway');
   assert.strictEqual(typeof mod.runGateway, 'function');
@@ -1240,6 +1338,7 @@ test('J2-counterexample: normal stop coordinates OutboxWorker and TelegramOutbou
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hhai-gw-j2-normal-'));
   const repo = new SqliteStateRepository(dir);
   let signalAborted = false;
+  const events = [];
   let bodyReadStartedResolve;
   const bodyReadStartedPromise = new Promise((resolve) => {
     bodyReadStartedResolve = resolve;
@@ -1250,9 +1349,11 @@ test('J2-counterexample: normal stop coordinates OutboxWorker and TelegramOutbou
       status: 200,
       text: () =>
         new Promise((resolve, reject) => {
+          events.push('body-read-started');
           bodyReadStartedResolve();
           if (options.signal && options.signal.aborted) {
             signalAborted = true;
+            events.push('abort');
             const err = new Error('The operation was aborted');
             err.name = 'AbortError';
             return reject(err);
@@ -1262,6 +1363,7 @@ test('J2-counterexample: normal stop coordinates OutboxWorker and TelegramOutbou
               'abort',
               () => {
                 signalAborted = true;
+                events.push('abort');
                 const err = new Error('The operation was aborted');
                 err.name = 'AbortError';
                 reject(err);
@@ -1357,27 +1459,26 @@ test('J2-counterexample: normal stop coordinates OutboxWorker and TelegramOutbou
     await owner.start();
 
     // Wait until delivery has started and response.text() is stalled pending abort signal
-    await bodyReadStartedPromise;
+    await rhAwaitWithinLivenessBound(bodyReadStartedPromise, 'J2-normal-stop: delivery body read start');
 
-    // Initiate stop
-    let stopped = false;
+    // Initiate stop. Acceptance is ordering, not elapsed time: the owner itself must abort the stalled
+    // body read and then finish stopping, without any test-driven abort.
+    const stopStartMs = performance.now();
     const stopPromise = owner.stop().then(() => {
-      stopped = true;
+      events.push('stop-resolved');
     });
 
-    // Bounded race: check if owner.stop completes within 250ms
-    await new Promise((resolve) => setTimeout(resolve, 250));
-
-    if (!stopped) {
-      // Under old R2 ordering: stopped is false (deadlock)!
+    const stopOutcome = await rhSettleWithinLivenessBound(stopPromise);
+    if (!stopOutcome.settled) {
+      // Under old R2 ordering owner.stop() never settles (deadlock).
       // Perform §16 test-controlled cleanup: manually call adapter.stop() to abort signal
       await outboundAdapter.stop();
       await stopPromise;
       assert.fail('J2-normal-stop: owner.stop() deadlocked because OutboxWorker.stop() blocked TelegramOutboundAdapter.stop()');
     }
+    console.log(`R_H_J2_NORMAL_STOP_ELAPSED_MS=${rhElapsedMs(stopStartMs)}`);
 
-    await stopPromise;
-    assert.strictEqual(stopped, true);
+    assert.deepStrictEqual(events, ['body-read-started', 'abort', 'stop-resolved']);
     assert.strictEqual(signalAborted, true);
     assert.strictEqual(owner.status, OWNER_STATUS.STOPPED);
 
@@ -1400,6 +1501,7 @@ test('J2-counterexample: startup rollback coordinates OutboxWorker and TelegramO
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hhai-gw-j2-rollback-'));
   const repo = new SqliteStateRepository(dir);
   let signalAborted = false;
+  const events = [];
   let bodyReadStartedResolve;
   const bodyReadStartedPromise = new Promise((resolve) => {
     bodyReadStartedResolve = resolve;
@@ -1410,9 +1512,11 @@ test('J2-counterexample: startup rollback coordinates OutboxWorker and TelegramO
       status: 200,
       text: () =>
         new Promise((resolve, reject) => {
+          events.push('body-read-started');
           bodyReadStartedResolve();
           if (options.signal && options.signal.aborted) {
             signalAborted = true;
+            events.push('abort');
             const err = new Error('The operation was aborted');
             err.name = 'AbortError';
             return reject(err);
@@ -1422,6 +1526,7 @@ test('J2-counterexample: startup rollback coordinates OutboxWorker and TelegramO
               'abort',
               () => {
                 signalAborted = true;
+                events.push('abort');
                 const err = new Error('The operation was aborted');
                 err.name = 'AbortError';
                 reject(err);
@@ -1522,24 +1627,26 @@ test('J2-counterexample: startup rollback coordinates OutboxWorker and TelegramO
       secretBuffer: Buffer.alloc(32),
     });
 
-    let rollbackCompleted = false;
+    // Acceptance is ordering, not elapsed time: the rollback itself must abort the stalled body read and
+    // then settle the failed start, without any test-driven abort.
+    const startStartMs = performance.now();
     const startPromise = owner.start().catch((err) => {
-      rollbackCompleted = true;
+      events.push('rollback-resolved');
       return err;
     });
 
-    // Bounded race: check if rollback completes within 250ms
-    await new Promise((resolve) => setTimeout(resolve, 250));
-
-    if (!rollbackCompleted) {
-      // Under old R2 ordering: rollback is stuck waiting for OutboxWorker!
+    const rollbackOutcome = await rhSettleWithinLivenessBound(startPromise);
+    if (!rollbackOutcome.settled) {
+      // Under old R2 ordering the rollback never settles (stuck waiting for OutboxWorker).
       // Cleanup: abort outboundAdapter so delivery settles and rollback finishes
       await outboundAdapter.stop();
       await startPromise;
       assert.fail('J2-startup-rollback: rollback deadlocked because OutboxWorker.stop() blocked TelegramOutboundAdapter.stop()');
     }
+    console.log(`R_H_J2_ROLLBACK_ELAPSED_MS=${rhElapsedMs(startStartMs)}`);
 
-    const err = await startPromise;
+    assert.deepStrictEqual(events, ['body-read-started', 'abort', 'rollback-resolved']);
+    const err = rollbackOutcome.value;
     assert.match(err.message, /Injected inbound adapter startup failure/);
     assert.strictEqual(owner.status, OWNER_STATUS.STOPPED);
     assert.strictEqual(signalAborted, true);
@@ -1598,16 +1705,21 @@ test('Section 21 counterexample: hung archive write does not block owner.stop(),
       writeHangResolve = resolve;
     });
 
-    let writeStarted = false;
+    const writeEntered = rhDeferred();
+    const writeReturned = rhDeferred();
+    let writeHasReturned = false;
     const hungArchiveFileWriter = {
       archiveRoot: archiveDir,
       publishArchiveRecord: async () => {
-        writeStarted = true;
+        writeEntered.resolve();
         // Hangs until release is triggered
         await writeHangingPromise;
+        writeHasReturned = true;
+        writeReturned.resolve();
         return { status: 'COMPLETED', relativePath: 'TG_acc_hung/Q001_hung/001_hung_20260928-120000.md' };
       },
     };
+    const archiveMutationCalls = rhSpyArchiveMutations(repo);
 
     // Use a short shutdownTimeoutMs (50ms) to avoid real 10s wait in tests
     const archiveWorker = new ArchiveWorker({
@@ -1640,28 +1752,31 @@ test('Section 21 counterexample: hung archive write does not block owner.stop(),
       secretBuffer: Buffer.alloc(32),
     });
 
+    const ownerStartMs = performance.now();
     await owner.start();
 
     // Wait until the archive worker picks up the item and enters publishArchiveRecord
-    for (let i = 0; i < 50 && !writeStarted; i++) {
-      await new Promise((r) => setTimeout(r, 10));
-    }
-    assert.strictEqual(writeStarted, true, 'Hung archive write should have started');
+    await rhAwaitWithinLivenessBound(writeEntered.promise, 'Section 21: hung archive write entering publishArchiveRecord');
+    console.log(`R_H_SECTION21_WRITE_ENTERED_MS=${rhElapsedMs(ownerStartMs)}`);
 
-    const startTime = Date.now();
-    await owner.stop();
-    const elapsed = Date.now() - startTime;
-
-    // Stop must complete within bounded test equivalent (< 1000ms)
-    assert.ok(elapsed < 1000, `owner.stop took ${elapsed}ms; must complete within bounded test timeout`);
+    // Ordering, not elapsed time: owner.stop() completes while the hung write has not returned.
+    const stopStartMs = performance.now();
+    await rhAwaitWithinLivenessBound(owner.stop(), 'Section 21: owner.stop() while the archive write is hung');
+    console.log(`R_H_SECTION21_STOP_ELAPSED_MS=${rhElapsedMs(stopStartMs)}`);
+    assert.strictEqual(writeHasReturned, false, 'owner.stop() must complete before the hung archive write returns');
     assert.strictEqual(owner.status, OWNER_STATUS.STOPPED);
 
     // Repository must be closed
     assert.strictEqual(repo.isOpen, false);
 
-    // Now release the hung write
+    // Now release the hung write and wait until the delayed write has actually returned,
+    // then drain microtasks so the worker continuation after publishArchiveRecord has run.
+    const releaseMs = performance.now();
     writeHangResolve();
-    await new Promise((r) => setTimeout(r, 50));
+    await rhAwaitWithinLivenessBound(writeReturned.promise, 'Section 21: delayed archive write returning after release');
+    await rhDrainMicrotasks();
+    console.log(`R_H_SECTION21_RELEASE_TO_RETURN_MS=${rhElapsedMs(releaseMs)}`);
+    assert.deepStrictEqual(archiveMutationCalls, [], 'No archive coordination mutation may be attempted after stop');
 
     // Verify no delayed callback mutated DB: inspect raw database to check coordination status
     const verifyDb = new (require('node:sqlite').DatabaseSync)(repo.databasePath);
@@ -1953,24 +2068,46 @@ async function runHangClosedGuardScenario({ testPrefix, hangType }) {
   });
   let hangStarted = false;
   let hangSettled = false;
+  const hangEntered = rhDeferred();
 
   let workerRef = null;
   const trackedFs = createTrackedFsFacade(() => workerRef, {
     onLink: hangType === 'link' ? async () => {
       hangStarted = true;
+      hangEntered.resolve();
       await hangPromise;
     } : null,
     onWriteFile: hangType === 'writefile' ? async () => {
       hangStarted = true;
+      hangEntered.resolve();
       await hangPromise;
     } : null,
     onSync: hangType === 'sync' ? async () => {
       hangStarted = true;
+      hangEntered.resolve();
       await hangPromise;
     } : null,
   });
 
+  // Observe the real writer's publication promise so the test can wait for the delayed
+  // publication to actually settle instead of sleeping. Restored in finally.
+  const { ArchiveFileWriter } = require('../core/archive-file-writer');
+  const originalPublishArchiveRecord = ArchiveFileWriter.prototype.publishArchiveRecord;
+  const publishCalls = [];
+
   try {
+    ArchiveFileWriter.prototype.publishArchiveRecord = function spiedPublishArchiveRecord(...args) {
+      const call = { settled: false, result: undefined };
+      call.promise = originalPublishArchiveRecord.apply(this, args).then((result) => {
+        call.settled = true;
+        call.result = result;
+        return result;
+      });
+      publishCalls.push(call);
+      return call.promise;
+    };
+    const archiveMutationCalls = rhSpyArchiveMutations(repo);
+
     const reg = new AccountRegistry('telegram');
     reg.register({ id: 'tg_acc_hang', label: 'tg_acc_hang', enabled: true });
     reg.setActive('tg_acc_hang');
@@ -2034,16 +2171,19 @@ async function runHangClosedGuardScenario({ testPrefix, hangType }) {
     }
 
     // Wait until real writer enters hung step
-    for (let i = 0; i < 100 && !hangStarted; i++) {
-      await new Promise((r) => setTimeout(r, 10));
-    }
+    const insertedMs = performance.now();
+    await rhAwaitWithinLivenessBound(hangEntered.promise, `R2-F7 ${hangType}: real writer entering the hung step`);
     assert.strictEqual(hangStarted, true, `Hung ${hangType} step must have been invoked`);
+    const upperPrefix = testPrefix.toUpperCase();
+    console.log(`R2_F7_${upperPrefix}_HANG_ENTERED_MS=${rhElapsedMs(insertedMs)}`);
 
-    // Stop owner: worker times out at 50ms, sets closed guard, and stop completes bounded
-    const startTime = Date.now();
-    await owner.stop();
-    const elapsed = Date.now() - startTime;
-    assert.ok(elapsed < 1000, `owner.stop took ${elapsed}ms; must complete within bounded test timeout`);
+    // Stop owner: worker times out at 50ms and sets closed guard. Acceptance is ordering, not elapsed
+    // time: stop completes while the hung publication has not settled.
+    const stopStartMs = performance.now();
+    await rhAwaitWithinLivenessBound(owner.stop(), `R2-F7 ${hangType}: owner.stop() while the publication is hung`);
+    console.log(`R2_F7_${upperPrefix}_STOP_ELAPSED_MS=${rhElapsedMs(stopStartMs)}`);
+    assert.strictEqual(publishCalls.length, 1, 'Exactly one publication must have started');
+    assert.strictEqual(publishCalls[0].settled, false, 'owner.stop() must complete before the hung publication settles');
     assert.strictEqual(owner.status, OWNER_STATUS.STOPPED);
     assert.strictEqual(repo.isOpen, false);
     assert.ok(workerRef, 'workerRef must be present');
@@ -2058,10 +2198,19 @@ async function runHangClosedGuardScenario({ testPrefix, hangType }) {
       assert.strictEqual(row.content_snapshot, 'Hung Question Text');
       const beforeVersion = verifyDb.prepare('PRAGMA data_version;').get().data_version;
 
-      // Release the hung promise
+      // Release the hung promise, wait until the delayed publication has actually settled, then drain
+      // microtasks so the worker continuation after publishArchiveRecord has run.
+      const releaseMs = performance.now();
       hangResolve();
       hangSettled = true;
-      await new Promise((r) => setTimeout(r, 50));
+      const lateResult = await rhAwaitWithinLivenessBound(
+        publishCalls[0].promise,
+        `R2-F7 ${hangType}: delayed publication settling after release`
+      );
+      await rhDrainMicrotasks();
+      console.log(`R2_F7_${upperPrefix}_RELEASE_TO_SETTLED_MS=${rhElapsedMs(releaseMs)}`);
+      assert.strictEqual(lateResult.status, 'CANCELLED_CLOSED', 'Delayed publication must end cancelled by the closed guard');
+      assert.deepStrictEqual(archiveMutationCalls, [], 'No archive coordination mutation may be attempted after stop');
 
       const afterRow = verifyDb.prepare('SELECT * FROM archive_coordination WHERE archive_id = ?;').get(archiveId);
       assert.strictEqual(afterRow.status, 'PENDING', 'Row must remain PENDING after late fs resolution');
@@ -2082,11 +2231,12 @@ async function runHangClosedGuardScenario({ testPrefix, hangType }) {
     assert.strictEqual(postCloseDbMutations, 0, `POST_CLOSE_DB_MUTATIONS must be 0 (got ${postCloseDbMutations})`);
 
     // Diagnostics emission
-    const upperPrefix = testPrefix.toUpperCase();
     console.log(`R2_F7_${upperPrefix}_PRE_CLOSE_FS_CALLS=${preClose}`);
     console.log(`R2_F7_${upperPrefix}_POST_CLOSE_FS_CALLS=${postClose}`);
     console.log(`R2_F7_${upperPrefix}_POST_CLOSE_DB_MUTATIONS=${postCloseDbMutations}`);
   } finally {
+    ArchiveFileWriter.prototype.publishArchiveRecord = originalPublishArchiveRecord;
+
     // B1 Teardown ordering:
     // 3. Ensure hung Promise has been released / settled
     if (!hangSettled) {

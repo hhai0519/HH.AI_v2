@@ -1,32 +1,26 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "B107-G4-S3B-STATE-EDIT-R1-261011",
-  "base_oid": "722b8a5fb33bde960323f1e7425ef4597dd88587",
+  "task_id": "B100-RH-ORDERING-R1-261011",
+  "base_oid": "def55a206883c3e7355c50b97c342b28148d5055",
   "plan": {
     "allowed_paths": [
-      ".agents/rules/governance-gate-integrity.md",
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
-      "docs/generated/rule-traceability.md",
       "docs/governance/execution-record.json",
       "docs/refactor-backlog.md",
-      "scripts/state_edit.py",
-      "scripts/tests/test_state_edit.py"
+      "runtime/channel-gateway/tests/gateway-runtime-owner.test.js"
     ],
     "required_paths": [
-      ".agents/rules/governance-gate-integrity.md",
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
-      "docs/generated/rule-traceability.md",
       "docs/governance/execution-record.json",
       "docs/refactor-backlog.md",
-      "scripts/state_edit.py",
-      "scripts/tests/test_state_edit.py"
+      "runtime/channel-gateway/tests/gateway-runtime-owner.test.js"
     ],
     "max_plan_revisions": 3,
     "revision_count": 0,
@@ -34,16 +28,13 @@
   },
   "actual": {
     "changed_paths": [
-      ".agents/rules/governance-gate-integrity.md",
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
-      "docs/generated/rule-traceability.md",
       "docs/governance/execution-record.json",
       "docs/refactor-backlog.md",
-      "scripts/state_edit.py",
-      "scripts/tests/test_state_edit.py"
+      "runtime/channel-gateway/tests/gateway-runtime-owner.test.js"
     ]
   },
   "evidence": [
