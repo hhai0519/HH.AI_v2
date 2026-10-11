@@ -1,14 +1,12 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "B115-EVIDENCE-PACKET-R1-261010",
-  "base_oid": "bc58090d2f41328b947bb5296c5518fb37a747c8",
+  "task_id": "B115-PACKET-FIX-R1-261011",
+  "base_oid": "af35bdfa3234a550c23fcbc3e59b53b221cba0ca",
   "plan": {
     "allowed_paths": [
-      ".claude/README.md",
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
-      "docs/HANDOVER.md",
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
@@ -17,10 +15,8 @@
       "scripts/tests/test_audit_packet.py"
     ],
     "required_paths": [
-      ".claude/README.md",
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
-      "docs/HANDOVER.md",
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
@@ -34,10 +30,8 @@
   },
   "actual": {
     "changed_paths": [
-      ".claude/README.md",
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
-      "docs/HANDOVER.md",
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",

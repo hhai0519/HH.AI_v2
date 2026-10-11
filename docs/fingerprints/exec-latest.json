@@ -1,5 +1,5 @@
 {
-  "base_head": "bc58090",
+  "base_head": "af35bdf",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -559,16 +559,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 309,
-      "sha256": "cb69e9a9cdc6258bc2382e26555882b9e0aab6d897a6f89d78a6bddb8e7ab640"
+      "lines": 310,
+      "sha256": "d333448ad910cb400ad04cfbae45de75fe01b68ad99f555d4f518cc6ebd0150d"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 276,
-      "sha256": "6d82d5bc4dec7c9e9995c1a7693387f42ecd2914d4c94741e9893766e20a553f"
+      "lines": 277,
+      "sha256": "925a9b7374778ae6992cd588c09de00fbce8e9ae028ca8f6917f708943c04a6b"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -610,7 +610,7 @@
         "## 封存區"
       ],
       "lines": 374,
-      "sha256": "1657841e91000b1377a176fdd75bb3f5da369e7a46de948d8ddbb46ddfdd9237"
+      "sha256": "1a4d7495d4b8a6bdea9e1f88f5c9ba1d234b701016dbe291ac370daad2a27ac9"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1108,8 +1108,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6378,
-      "sha256": "2a14042d3c5832dc9afc90ee9db70ccc02bfaa48ca63d3abe445b967d5a30021"
+      "lines": 6379,
+      "sha256": "c5110f475490822540c69de0aac5ef0387da0d2ebbc2889e4be091cedbc9b8aa"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1125,8 +1125,8 @@
       "headings": [
         "# -*- coding: utf-8 -*-"
       ],
-      "lines": 591,
-      "sha256": "6952af8257b51b7a1cdff804124e9c2f0582e826600f6b01a96af3b260121b25"
+      "lines": 599,
+      "sha256": "3e17e9e0ae592d0c2fd061f91ea43f2cb530138a53f39344c458689b77f5f538"
     },
     "scripts/batch_runner.py": {
       "fences": 0,
@@ -1343,8 +1343,8 @@
         "# -- command line ---------------------------------------------------------------------------------------------",
         "# -- second-opinion counterexamples (replacement objects, source-side settings, output path, slice naming) -------"
       ],
-      "lines": 764,
-      "sha256": "7e7219bdd5b7a932f47914c5c0c8114fc992123c287067faa8e00a0f4d54a23f"
+      "lines": 803,
+      "sha256": "de8aa8a0c0c9dd8f03ae0f6236a8e4d9c8909ecf1953c312ed5fe01bf508af18"
     },
     "scripts/tests/test_batch_runner.py": {
       "fences": 0,
@@ -1839,7 +1839,7 @@
       "sha256": "35bf7dbfa3c7d291b550c3c97a6ae398a22b1dc3624c1d2fc1e4db6963d6e115"
     }
   },
-  "generated_at": "2026-10-10T16:21:11Z",
+  "generated_at": "2026-10-11T02:46:23Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

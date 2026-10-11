@@ -47,6 +47,10 @@ Facts (each MATCH, CONFLICT or MISSING; nothing is inferred):
   CI facts are AUDITOR_PROVIDED input: the tool checks their shape and their binding to the candidate, never their
   truth, and raw-log markers stay the auditor's own reading.
 
+The base and the candidate must be reachable from some ref of the repository (any namespace, remote-tracking refs
+included); an unreachable object is not copied into the mirror and the tool fails (BASE_NOT_IN_REPO or
+CANDIDATE_NOT_IN_REPO).
+
 Fail-closed rules: any check that cannot decide (probe failure, timeout, unreadable or malformed input) is a
 CONFLICT or makes the tool fail, never a MATCH. Git runs without inherited GIT_* variables, without global or system
 configuration and with replacement objects disabled (GIT_NO_REPLACE_OBJECTS and --no-replace-objects). Against the
@@ -436,6 +440,10 @@ class Packet:
             for fid in ids:
                 self.fact(fid, MISSING, skipped='CONTENT_NOT_VERIFIED')
             return
+        # The mirror keeps every source ref (remote-tracking ones included) but a clone of it only takes branches,
+        # so the base and the candidate get branches of their own in the private mirror before it is cloned.
+        for name, oid in (('audit-packet-base', self.base), ('audit-packet-candidate', self.candidate)):
+            self.git('update-ref', 'refs/heads/' + name, oid, cwd=self.mirror, code='CHECK_REF_FAILED')
         clone = str(self.workdir / 'clone')
         self.git('clone', '-q', '--no-local', '--template=', self.mirror, clone, cwd=str(self.workdir),
                  code='CHECK_CLONE_FAILED')

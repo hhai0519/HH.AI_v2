@@ -431,6 +431,45 @@ def test_checks_never_run_unverified_candidate_content(fx, tmp_path):
     assert _status(res)["K_FOCUSED"] == ap.MISSING
 
 
+def test_candidate_reached_only_by_a_remote_tracking_ref_is_checked(fx, tmp_path):
+    cand = fx.candidate(name="tracked")
+    fx.git("update-ref", "refs/remotes/origin/batch/unit-slice-r1-261010", cand)
+    fx.git("branch", "-D", "tracked")
+    assert fx.git("for-each-ref", "--contains", cand, "refs/heads") == ""
+    res = _packet(fx, fx.prompt(), cand, remote_refs=fx.refs(cand), ci=fx.ci(cand), workdir=str(tmp_path / "wd"))
+    assert _status(res) == {f: ap.MATCH for f in ALL_FACTS}
+
+
+def test_same_named_branch_in_the_source_is_overridden_only_in_the_private_mirror(fx, tmp_path):
+    cand = fx.candidate(name="tracked")
+    other = fx.candidate(files={"docs/A.md": b"other\n", "scripts/tool.py": FINAL["scripts/tool.py"]}, name="other")
+    fx.git("branch", "audit-packet-candidate", other)
+    fx.git("branch", "audit-packet-base", other)
+    before = fx.git("for-each-ref", "--format=%(refname) %(objectname)")
+    res = _packet(fx, fx.prompt(), cand, workdir=str(tmp_path / "wd"))
+    assert all(_status(res)[f] == ap.MATCH for f in ALL_FACTS if f[0] in "CK")
+    assert fx.git("for-each-ref", "--format=%(refname) %(objectname)") == before
+
+
+def test_ref_name_conflict_in_the_private_mirror_stops_before_any_candidate_program(fx, tmp_path):
+    marker = tmp_path / "candidate-program-ran"
+    files = dict(FINAL)
+    files["scripts/check_consistency.py"] = _marker_stub(marker)
+    cand = fx.candidate(files=files)
+    fx.git("branch", "audit-packet-candidate/child", fx.base)
+    before = fx.git("for-each-ref", "--format=%(refname) %(objectname)")
+    wd = tmp_path / "wd"
+    assert _code(_packet, fx, fx.prompt(authors=files), cand, workdir=str(wd)) == "CHECK_REF_FAILED"
+    assert not marker.exists() and list(wd.iterdir()) == []
+    assert fx.git("for-each-ref", "--format=%(refname) %(objectname)") == before
+
+
+def test_unreachable_candidate_makes_the_tool_fail(fx, tmp_path):
+    cand = fx.candidate(name="loose")
+    fx.git("branch", "-D", "loose")
+    assert _code(_packet, fx, fx.prompt(), cand, workdir=str(tmp_path / "wd")) == "CANDIDATE_NOT_IN_REPO"
+
+
 def test_check_timeout_is_a_conflict(fx, tmp_path):
     files = dict(FINAL)
     files["scripts/check_consistency.py"] = b"import time\ntime.sleep(60)\n"
