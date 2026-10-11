@@ -88,8 +88,8 @@
 | .agents/rules/governance-gate-integrity.md | 88 | ## 5. 被追蹤檔案寫入三層規則 (Tracked-File Write Layers — B-107 G4) | FILE | `docs/AUDIT-LOG.md` | docs/AUDIT-LOG.md | RESOLVED |
 | .agents/rules/governance-gate-integrity.md | 89 | ## 5. 被追蹤檔案寫入三層規則 (Tracked-File Write Layers — B-107 G4) | FILE | `docs/EXEC-LOG.md` | docs/EXEC-LOG.md | RESOLVED |
 | .agents/rules/governance-gate-integrity.md | 91 | ## 5. 被追蹤檔案寫入三層規則 (Tracked-File Write Layers — B-107 G4) | FILE | `.agents/rules/role-boundaries.md` | .agents/rules/role-boundaries.md | RESOLVED |
-| .agents/rules/governance-gate-integrity.md | 91 | ## 5. 被追蹤檔案寫入三層規則 (Tracked-File Write Layers — B-107 G4) | TASK | B-107 | docs/TASKBOARD.md | RESOLVED |
-| .agents/rules/governance-gate-integrity.md | 91 | ## 5. 被追蹤檔案寫入三層規則 (Tracked-File Write Layers — B-107 G4) | TASK | B-96 | docs/TASKBOARD.md | RESOLVED |
+| .agents/rules/governance-gate-integrity.md | 91 | ## 5. 被追蹤檔案寫入三層規則 (Tracked-File Write Layers — B-107 G4) | FILE | `scripts/state_edit.py` | scripts/state_edit.py | RESOLVED |
+| .agents/rules/governance-gate-integrity.md | 91 | ## 5. 被追蹤檔案寫入三層規則 (Tracked-File Write Layers — B-107 G4) | FILE | `scripts/state_edit.py` | scripts/state_edit.py | RESOLVED |
 | .agents/rules/governance-gate-integrity.md | 91 | ## 5. 被追蹤檔案寫入三層規則 (Tracked-File Write Layers — B-107 G4) | TASK | B-96 | docs/TASKBOARD.md | RESOLVED |
 | .agents/rules/governance-gate-integrity.md | 92 | ## 5. 被追蹤檔案寫入三層規則 (Tracked-File Write Layers — B-107 G4) | FILE | `.agents/rules/role-boundaries.md` | .agents/rules/role-boundaries.md | RESOLVED |
 | .agents/rules/governance-gate-integrity.md | 92 | ## 5. 被追蹤檔案寫入三層規則 (Tracked-File Write Layers — B-107 G4) | FILE | `docs/refactor-backlog.md` | docs/refactor-backlog.md | RESOLVED |

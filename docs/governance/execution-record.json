@@ -1,12 +1,11 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "B107-G4-S3A-WRITE-RULES-R1-261011",
-  "base_oid": "5be3475aa254cc72a782020dc6d32ba20e728760",
+  "task_id": "B107-G4-S3B-STATE-EDIT-R1-261011",
+  "base_oid": "722b8a5fb33bde960323f1e7425ef4597dd88587",
   "plan": {
     "allowed_paths": [
       ".agents/rules/governance-gate-integrity.md",
-      ".agents/rules/role-boundaries.md",
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
@@ -14,12 +13,11 @@
       "docs/generated/rule-traceability.md",
       "docs/governance/execution-record.json",
       "docs/refactor-backlog.md",
-      "scripts/batch_runner.py",
-      "scripts/tests/test_batch_runner.py"
+      "scripts/state_edit.py",
+      "scripts/tests/test_state_edit.py"
     ],
     "required_paths": [
       ".agents/rules/governance-gate-integrity.md",
-      ".agents/rules/role-boundaries.md",
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
@@ -27,8 +25,8 @@
       "docs/generated/rule-traceability.md",
       "docs/governance/execution-record.json",
       "docs/refactor-backlog.md",
-      "scripts/batch_runner.py",
-      "scripts/tests/test_batch_runner.py"
+      "scripts/state_edit.py",
+      "scripts/tests/test_state_edit.py"
     ],
     "max_plan_revisions": 3,
     "revision_count": 0,
@@ -37,7 +35,6 @@
   "actual": {
     "changed_paths": [
       ".agents/rules/governance-gate-integrity.md",
-      ".agents/rules/role-boundaries.md",
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
@@ -45,8 +42,8 @@
       "docs/generated/rule-traceability.md",
       "docs/governance/execution-record.json",
       "docs/refactor-backlog.md",
-      "scripts/batch_runner.py",
-      "scripts/tests/test_batch_runner.py"
+      "scripts/state_edit.py",
+      "scripts/tests/test_state_edit.py"
     ]
   },
   "evidence": [

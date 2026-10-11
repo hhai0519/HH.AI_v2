@@ -1,5 +1,5 @@
 {
-  "base_head": "5be3475",
+  "base_head": "722b8a5",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -31,7 +31,7 @@
         "## 5. 被追蹤檔案寫入三層規則 (Tracked-File Write Layers — B-107 G4)"
       ],
       "lines": 92,
-      "sha256": "692a10033d197fc8f8ab7c03ec3eb3a5c5282be40f15b542c3d1c47bfdf3fd36"
+      "sha256": "3624997a9e26af9a73f4e3680941af1a994788bf62395362ffa3cce644cc7473"
     },
     ".agents/rules/powershell-encoding-protocol.md": {
       "fences": 6,
@@ -561,16 +561,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 311,
-      "sha256": "25a88080679c4f536a3bfda6e047b36ef3708acc497e3418f9bc75b2ca9615ff"
+      "lines": 312,
+      "sha256": "e67c360e777e0e82ca219501715fcf16240ea0a33e464062686333f40e21c392"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 278,
-      "sha256": "9cf437c9248ca5c2590a2891a9135707a11ec00b135eb16237242fde45f0dcd5"
+      "lines": 279,
+      "sha256": "edb99c8f5054efcd7f1ffc050cb761ae52dd5dbda199fb46a12bd83ff393daa1"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -612,7 +612,7 @@
         "## 封存區"
       ],
       "lines": 374,
-      "sha256": "a3dcae690047ce2b8f5d07a2b3ab530b29b8025641bb42bd53d287f05d3fc3ca"
+      "sha256": "a6100f5ad635a0da0d56ed84898d31134c8de4845063cb1d78cf54a8143819c5"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1110,8 +1110,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6380,
-      "sha256": "d1a52eeb0883deb9e4a2a0d49ca20fd8ff7e6793634017cf13344ae01c158241"
+      "lines": 6381,
+      "sha256": "ce94fc5e778073099294f1eced6ac2efad1e52fed9552046fc80502f0aca44ff"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1326,6 +1326,14 @@
       ],
       "lines": 67,
       "sha256": "24d4a8c5686addedeec338209949cfe7dacc6d7be3dfd57b226ffde1eddba510"
+    },
+    "scripts/state_edit.py": {
+      "fences": 0,
+      "headings": [
+        "# -*- coding: utf-8 -*-"
+      ],
+      "lines": 395,
+      "sha256": "7078ff0a889867db580bcb95b9ac5136cd404fefe1671beb8f8a2d63a9622480"
     },
     "scripts/tests/test_anchor.py": {
       "fences": 0,
@@ -1735,6 +1743,18 @@
       "lines": 240,
       "sha256": "55dc584f206434606b2f0d1d12e94c37c7fac15292c349b6c749df0db861f0d6"
     },
+    "scripts/tests/test_state_edit.py": {
+      "fences": 0,
+      "headings": [
+        "# -*- coding: utf-8 -*-",
+        "# --- seal ---------------------------------------------------------------------------------------",
+        "# --- apply --------------------------------------------------------------------------------------",
+        "# --- command line -------------------------------------------------------------------------------",
+        "# --- second-opinion counterexamples: the plan and the prompt are bound to values given from outside ----------"
+      ],
+      "lines": 583,
+      "sha256": "ddec4d1047fadc8fa544473f68df6b6f2552a3b09aa29194cb9b51e0d497f5eb"
+    },
     "scripts/tests/test_validate_skills.py": {
       "fences": 0,
       "headings": [
@@ -1847,7 +1867,7 @@
       "sha256": "35bf7dbfa3c7d291b550c3c97a6ae398a22b1dc3624c1d2fc1e4db6963d6e115"
     }
   },
-  "generated_at": "2026-10-11T05:55:10Z",
+  "generated_at": "2026-10-11T10:22:23Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {
