@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "B100-RH-ORDERING-R1-261011",
-  "base_oid": "def55a206883c3e7355c50b97c342b28148d5055",
+  "task_id": "AUD-GPT-261013-STATE-SYNC-R1",
+  "base_oid": "22bc0d7d3cda1b67a912c7f78f38dbc824237519",
   "plan": {
     "allowed_paths": [
       "docs/AUDIT-LOG.md",
@@ -10,8 +10,7 @@
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md",
-      "runtime/channel-gateway/tests/gateway-runtime-owner.test.js"
+      "docs/refactor-backlog.md"
     ],
     "required_paths": [
       "docs/AUDIT-LOG.md",
@@ -19,8 +18,7 @@
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md",
-      "runtime/channel-gateway/tests/gateway-runtime-owner.test.js"
+      "docs/refactor-backlog.md"
     ],
     "max_plan_revisions": 3,
     "revision_count": 0,
@@ -33,8 +31,7 @@
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md",
-      "runtime/channel-gateway/tests/gateway-runtime-owner.test.js"
+      "docs/refactor-backlog.md"
     ]
   },
   "evidence": [
