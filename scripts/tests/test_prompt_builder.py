@@ -849,3 +849,144 @@ def test_f1_promotion_check_and_startup_reject_bad_candidate_branch_without_side
     assert _code(pb.startup_lines, str(prompt), 'C:\\D', 'C:\\W') == 'BRANCH_UNCLASSIFIABLE'
     assert calls == []
     assert not (Path(root) / '.git' / (TASK + '-prompt.txt')).exists()
+
+# B-115 (9) slice 1: candidate-derived promotion prose must not inherit prior claims.
+def _auto_promotion_fixture(tmp_path, repo):
+    import promotion_template
+    root, base = repo
+    _git(root, 'update-ref', 'refs/remotes/origin/main', base)
+    branch = 'batch/b115-auto-promotion-r1-261013'
+    _git(root, 'switch', '-q', '-c', branch)
+    _w(Path(root) / 'docs' / 'BOARD.md', '# Board\ncandidate\n')
+    _git(root, 'add', 'docs/BOARD.md')
+    _git(root, 'commit', '-qm', 'candidate')
+    candidate = _git(root, 'rev-parse', 'HEAD').stdout.decode().strip()
+    _git(root, 'update-ref', 'refs/remotes/origin/' + branch, candidate)
+    return promotion_template, root, base, branch, candidate
+
+
+def test_b115_auto_promotion_deterministic_and_runner_accepted(tmp_path, repo):
+    pm, root, base, branch, candidate = _auto_promotion_fixture(tmp_path, repo)
+    a = pm.auto_promotion(root, candidate, branch, tmp_path / 'a')
+    b = pm.auto_promotion(root, candidate, branch, tmp_path / 'b')
+    assert a.read_bytes() == b.read_bytes()
+    text = a.read_text('utf-8')
+    assert candidate in text and base in text
+    assert '- docs/BOARD.md' in text
+    assert '候選修改 runner: NO' in text
+    assert '草稿' not in text and '不得視為晉級授權' not in text
+    assert 'USER 同一 SHA 晉級常設授權' in text and candidate in text
+    assert '已啟動或背景執行中不算完成' in text
+    assert 'post-main PENDING 不得當作 PASS' in text
+    assert '每個命令只執行一次' in text
+    assert 'scripts/batch_runner.py 已更新' not in text
+    spec = br.load_spec(br.prompt_lines(a.read_bytes()), a.name.removesuffix('-prompt.txt'))
+    assert spec['candidate_oid'] == candidate and spec['base_oid'] == base
+
+
+@pytest.mark.parametrize('mode,expected', [
+    ('wrong_oid', 'PROMOTION_PARENT_MISMATCH'),
+    ('wrong_ref', 'PROMOTION_BRANCH_MISMATCH'),
+    ('bad_name', 'BRANCH_UNCLASSIFIABLE'),
+    ('non_full_oid', 'CANDIDATE_OID_INVALID'),
+    ('changed_main', 'PROMOTION_PARENT_MISMATCH'),
+    ('unreachable', 'PROMOTION_GIT_UNAVAILABLE'),
+    ('local_only_ref', 'PROMOTION_BRANCH_MISMATCH'),
+])
+def test_b115_auto_promotion_fail_closed(tmp_path, repo, mode, expected):
+    pm, root, base, branch, candidate = _auto_promotion_fixture(tmp_path, repo)
+    oid = candidate
+    if mode == 'wrong_oid':
+        oid = base
+    elif mode == 'wrong_ref':
+        branch = 'batch/b115-missing-261013'
+    elif mode == 'bad_name':
+        branch = 'batch/b115-no-date'
+    elif mode == 'non_full_oid':
+        oid = '1234'
+    elif mode == 'changed_main':
+        _git(root, 'update-ref', 'refs/remotes/origin/main', candidate)
+    elif mode == 'local_only_ref':
+        _git(root, 'update-ref', '-d', 'refs/remotes/origin/' + branch)
+    else:
+        oid = 'e' * 40
+        expected = 'PROMOTION_GIT_UNAVAILABLE'
+    with pytest.raises(pb.BuildError) as e:
+        pm.auto_promotion(root, oid, branch, tmp_path / 'out')
+    assert str(e.value) == expected
+    assert not (tmp_path / 'out').exists()
+
+
+def test_b115_auto_promotion_rejects_existing_prompt(tmp_path, repo):
+    pm, root, _, branch, oid = _auto_promotion_fixture(tmp_path, repo)
+    out = tmp_path / 'out'
+    first = pm.auto_promotion(root, oid, branch, out)
+    existing = first.read_bytes()
+    with pytest.raises(pb.BuildError, match='PROMOTION_OUTPUT_EXISTS'):
+        pm.auto_promotion(root, oid, branch, out)
+    assert first.read_bytes() == existing
+
+
+def test_b115_auto_promotion_rejects_output_in_repo(tmp_path, repo):
+    pm, root, _, branch, oid = _auto_promotion_fixture(tmp_path, repo)
+    with pytest.raises(pb.BuildError, match='PROMOTION_OUT_DIR_INVALID'):
+        pm.auto_promotion(root, oid, branch, Path(root) / '.git' / 'out')
+
+
+def test_b115_auto_promotion_accepts_canonical_generated_diff_paths(tmp_path, repo):
+    pm, root, base, branch, oid = _auto_promotion_fixture(tmp_path, repo)
+    from pathlib import Path
+    for path in br.GENERATED:
+        target = Path(root) / path
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(b'{}\n')
+    _git(root, 'add', '--', *br.GENERATED)
+    _git(root, 'commit', '-qm', 'generated metadata')
+    # The new candidate is a two-commit range and must be rejected for its parent.
+    new_oid = _git(root, 'rev-parse', 'HEAD').stdout.decode().strip()
+    with pytest.raises(pb.BuildError, match='PROMOTION_PARENT_MISMATCH'):
+        pm.auto_promotion(root, new_oid, branch, tmp_path / 'wrong')
+    # A single candidate including both generated paths is legal; reset only this disposable synthetic tree.
+    _git(root, 'reset', '--soft', base)
+    _git(root, 'commit', '-qm', 'single synthetic candidate')
+    new_oid = _git(root, 'rev-parse', 'HEAD').stdout.decode().strip()
+    _git(root, 'update-ref', 'refs/remotes/origin/' + branch, new_oid)
+    path = pm.auto_promotion(root, new_oid, branch, tmp_path / 'right')
+    text = path.read_text('utf-8')
+    for item in br.GENERATED:
+        assert '- ' + item in text
+
+
+def test_b115_auto_promotion_detects_runner_modified(tmp_path, repo):
+    pm, root, base, branch, _ = _auto_promotion_fixture(tmp_path, repo)
+    # Single commit, same Base; keep the remote tracking ref exact.
+    _w(Path(root) / 'scripts/batch_runner.py', '# synthetic runner update\n')
+    _git(root, 'add', 'scripts/batch_runner.py')
+    _git(root, 'reset', '--soft', base)
+    _git(root, 'commit', '-qam', 'single candidate including runner')
+    changed = _git(root, 'rev-parse', 'HEAD').stdout.decode().strip()
+    _git(root, 'update-ref', 'refs/remotes/origin/' + branch, changed)
+    path = pm.auto_promotion(root, changed, branch, tmp_path / 'out')
+    assert '候選修改 runner: YES' in path.read_text('utf-8')
+
+
+def test_b115_auto_promotion_rejects_shallow_source(tmp_path, repo):
+    pm, root, base, branch, oid = _auto_promotion_fixture(tmp_path, repo)
+    git_dir = Path(_git(root, 'rev-parse', '--absolute-git-dir').stdout.decode().strip())
+    (git_dir / 'shallow').write_bytes((base + '\n').encode('ascii'))
+    assert _git(root, 'rev-parse', '--is-shallow-repository').stdout.strip() == b'true'
+    with pytest.raises(pb.BuildError, match='PROMOTION_SHALLOW'):
+        pm.auto_promotion(root, oid, branch, tmp_path / 'out')
+    assert not (tmp_path / 'out').exists()
+
+
+def test_b115_auto_promotion_rejects_authors_json_overwrite(tmp_path, repo):
+    pm, root, _, branch, oid = _auto_promotion_fixture(tmp_path, repo)
+    out = tmp_path / 'out'
+    out.mkdir()
+    before = b'PRESERVE EXTERNAL EVIDENCE\n'
+    (out / 'authors.json').write_bytes(before)
+    with pytest.raises(pb.BuildError, match='PROMOTION_OUTPUT_EXISTS'):
+        pm.auto_promotion(root, oid, branch, out)
+    assert (out / 'authors.json').read_bytes() == before
+    assert list(out.iterdir()) == [out / 'authors.json']

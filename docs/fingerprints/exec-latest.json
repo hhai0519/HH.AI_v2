@@ -1,5 +1,5 @@
 {
-  "base_head": "a10b1b9",
+  "base_head": "8795c62",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -561,16 +561,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 313,
-      "sha256": "3994b88f99542aa10406fdaceade6d63242ff08f93715cc98088b476fc029a15"
+      "lines": 314,
+      "sha256": "6daad99473aa87d7b5e7a8bb1dd72f227ceaa2db2395dd5bf9e4b174ac245c2b"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 304,
-      "sha256": "e49d7822c8ce3024c1d174a4d7b3e8935aa277b5c638ac4dc86c222a4edfc682"
+      "lines": 305,
+      "sha256": "a186640fe7d622c044a45a92b6bc3419c65cbfba1539d55a3fbc5737b6239a0f"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -611,8 +611,8 @@
         "## G. 舊 repo 未盤點區塊（2026-09-02 新發現）",
         "## 封存區"
       ],
-      "lines": 377,
-      "sha256": "1bde685857f9f236ca20579ce4218c329c5e146c7fa5b35cc7b587798e2e00a7"
+      "lines": 379,
+      "sha256": "7e387560e778761d718a7add53d08dae01d732b0cae5c32f6aa356efaa3e233c"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1110,8 +1110,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6385,
-      "sha256": "984d1576f8c5c3a848d79d09aec9cc3c19cd9a31d83f553d739cf12b7f562afb"
+      "lines": 6386,
+      "sha256": "8bd5ab793c6a32868fe12d44af5e07ffe17db0a0f0feb79e3318c6f36dd1b4c2"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1271,13 +1271,21 @@
       "lines": 141,
       "sha256": "18781171876a0540640da4572101dad23561976de5908f08e880f4d034ec3ada"
     },
+    "scripts/promotion_template.py": {
+      "fences": 0,
+      "headings": [
+        "# -*- coding: utf-8 -*-"
+      ],
+      "lines": 168,
+      "sha256": "ffd9ee0aaf73073ca5c1ed247e64dfff99c97dd524e2f9f4d544c06d4556cdfd"
+    },
     "scripts/prompt_builder.py": {
       "fences": 0,
       "headings": [
         "# -*- coding: utf-8 -*-"
       ],
-      "lines": 568,
-      "sha256": "82f144c2e3ffd666ea90a888a8c7205a9d3bd425fc2ebae381b0cb5a1b6fe791"
+      "lines": 580,
+      "sha256": "417d7ce5b36d2cd05d599a4470288c31e7ecc246fd181af6aa23e23776e9ea42"
     },
     "scripts/prompt_intake.py": {
       "fences": 0,
@@ -1611,10 +1619,11 @@
         "# --- outputs, start-up text and check -----------------------------------------------------------",
         "# --- second-opinion fixes (R1–R4) ------------------------------------------------------------------",
         "# --- must-read closure (G4 slice 2) -------------------------------------------------------------",
-        "# --- B-116 F1: reject branch names the audit packet cannot classify -----------------------------"
+        "# --- B-116 F1: reject branch names the audit packet cannot classify -----------------------------",
+        "# B-115 (9) slice 1: candidate-derived promotion prose must not inherit prior claims."
       ],
-      "lines": 851,
-      "sha256": "99e12aac4fee4dfcd3357b79a134b9ecc5d7041227bf9ef7e7a515d7dac26a0b"
+      "lines": 992,
+      "sha256": "f0300b38f42117c39c218bf27b0aaa964a7dc0401f04dfa14411781a325d0ee9"
     },
     "scripts/tests/test_prompt_intake.py": {
       "fences": 0,
@@ -1868,7 +1877,7 @@
       "sha256": "35bf7dbfa3c7d291b550c3c97a6ae398a22b1dc3624c1d2fc1e4db6963d6e115"
     }
   },
-  "generated_at": "2026-10-13T10:14:29Z",
+  "generated_at": "2026-10-13T14:25:39Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

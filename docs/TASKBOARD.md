@@ -12,9 +12,9 @@
 
 **ACTIVE_MACRO_AUDITOR**：AUD-GPT-261013（USER 2026-10-13 明確任命，確認前任停止；A1 FULL_CLONE、冷啟、自檢與 Macro 獨立審查成立；過渡期權威依 USER 通用版第二節 E；本列為首次 repo 登錄，第二意見依需求啟用）
 
-**NEXT_WORK**：B-116
+**NEXT_WORK**：B-115
 
-**NEXT_SLICE**：B-116 Slice 1 F1 Prompt Builder Branch Classification Guard（CANDIDATE / AWAITING EXTERNAL MACRO AUDIT；B-116 其餘 repo 角色契約補正仍 OPEN，B-117／118 NOT IMPLEMENTED）
+**NEXT_SLICE**：B-115 (9) Slice 1 Repo-Owned Auto Promotion Prose (CANDIDATE / AWAITING MACRO AUDIT；E27 第二意見已收訖且由審查官逐項處置；後續 production prose、B-116 CHECK16、B-117／118 仍 OPEN)
 
 > [!IMPORTANT]
 > **環境恢復觸發（Environment Recovery Trigger）**：
@@ -22,6 +22,8 @@
 > 在開始任何 production work 之前，必須先閱讀 [docs/ops/antigravity-environment-baseline.md](ops/antigravity-environment-baseline.md) 並完整完成 Environment Baseline Checklist 與重啟核對。
 
 **最後更新**：2026-10-13；活動狀態請參照 NEXT_WORK 與 NEXT_SLICE。
+
+USER 常設決定（2026-10-13）：交付以 ZIP 為主要檔案、TXT 為備援，下載至 Downloads 後須自動比對 SHA 並在相符時才印 PROMPT_READY；審查官僅在必要 SHA 未在完整 clone 時通知附 bundle，production 交付前於隔離 clone 驗證提交後 MINI。上述流程落實情況依各實作批次證據，不因本段紀錄而宣稱工具已實作。
 
 ---
 

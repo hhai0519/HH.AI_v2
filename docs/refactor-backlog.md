@@ -2825,8 +2825,9 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 5.1 上一批狀態
 
-上次核對通過的 HEAD：db595a62ff3694fce1f6e2d2e7647a0bc8cb6e9c
+上次核對通過的 HEAD：8795c6264b5586b1055e1e5ec63286a8011f7dd6
 - `db595a62ff3694fce1f6e2d2e7647a0bc8cb6e9c` 已於 2026-10-13 獨立確認 same-SHA 晉級及 post-main Run 38330014052 attempt 1 雙必要 job success；Executor 實測 346.6 秒（5 分鐘），前次新任狀態同步 candidate db595a62 已 ACCEPTED／PROMOTED。F1 留存為 B-116 第 1 切片待審；B-116 其餘契約與 B-117／118 未實作。
+- `8795c6264b5586b1055e1e5ec63286a8011f7dd6`（DOC-TABLE-REPAIR-R2-261013）由 AUD-GPT-261013 獨立審查 PASS／ACCEPT ALL，same-SHA main 晉級已完成，Post-main Run 38388683058 attempt 1 verify／gateway-windows 雙 job 成功，verify raw ALL 5 GATES PASSED（1343 passed、1 skipped），gateway-windows 57 passed；Executor 晉級 420.7 秒（約 7 分鐘）；R1 S1／CHECK16 事故以 R2 前向紀錄處理，保留 R1 本地失敗物件與歷史證據。本次僅記錄已完成事實，不預判 B-115 候選審查。
 
 - `23af193`（執行者前置檢查 ＋ 回滾程序 ＋ `AUDIT-LOG.md` ＋ 四缺口修正）
   已於 2026-09-02 由審計官核對通過：6 檔異動（含 2 個新檔）、零夾帶、

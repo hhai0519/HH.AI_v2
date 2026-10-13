@@ -1,22 +1,30 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "DOC-TABLE-REPAIR-R2-261013",
-  "base_oid": "a10b1b905f30dc0f1c0e100185ba9f9513ed009b",
+  "task_id": "B115-AUTO-PROMOTION-S1-R2-261013",
+  "base_oid": "8795c6264b5586b1055e1e5ec63286a8011f7dd6",
   "plan": {
     "allowed_paths": [
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
-      "docs/governance/execution-record.json"
+      "docs/governance/execution-record.json",
+      "docs/refactor-backlog.md",
+      "scripts/promotion_template.py",
+      "scripts/prompt_builder.py",
+      "scripts/tests/test_prompt_builder.py"
     ],
     "required_paths": [
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
-      "docs/governance/execution-record.json"
+      "docs/governance/execution-record.json",
+      "docs/refactor-backlog.md",
+      "scripts/promotion_template.py",
+      "scripts/prompt_builder.py",
+      "scripts/tests/test_prompt_builder.py"
     ],
     "max_plan_revisions": 3,
     "revision_count": 0,
@@ -28,7 +36,11 @@
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
-      "docs/governance/execution-record.json"
+      "docs/governance/execution-record.json",
+      "docs/refactor-backlog.md",
+      "scripts/promotion_template.py",
+      "scripts/prompt_builder.py",
+      "scripts/tests/test_prompt_builder.py"
     ]
   },
   "evidence": [

@@ -543,9 +543,21 @@ def main(argv=None):
     s.add_argument('--prompt', required=True)
     s.add_argument('--download-dir', required=True)
     s.add_argument('--workspace', required=True)
+    a = sub.add_parser('auto-promotion', help='Derive canonical promotion prose from exact candidate SHA and branch.')
+    a.add_argument('--repo', required=True)
+    a.add_argument('--candidate-oid', required=True)
+    a.add_argument('--candidate-branch', required=True)
+    a.add_argument('--out-dir', required=True)
     args = parser.parse_args(argv)
     try:
-        if args.cmd == 'build':
+        if args.cmd == 'auto-promotion':
+            import promotion_template
+            path = promotion_template.auto_promotion(args.repo, args.candidate_oid,
+                                                     args.candidate_branch, args.out_dir)
+            data = path.read_bytes()
+            print('PROMPT_BUILDER BUILT ' + str(path) + ' sha256=' + hashlib.sha256(data).hexdigest())
+            print('PROMOTION_DRAFT_ONLY: Requires independent Macro PASS and Auditor delivery before Executor use.')
+        elif args.cmd == 'build':
             text, authors, authored = build(args.repo, args.definition)
             task = json.loads(batch_runner.extract_block(batch_runner.prompt_lines(text.encode('utf-8')),
                                                          'BATCH_SPEC_JSON'))['task_id']
