@@ -14,14 +14,16 @@
 
 **NEXT_WORK**：B-115
 
-**NEXT_SLICE**：B-115 (9) Slice 1 Repo-Owned Auto Promotion Prose (CANDIDATE / AWAITING MACRO AUDIT；E27 第二意見已收訖且由審查官逐項處置；後續 production prose、B-116 CHECK16、B-117／118 仍 OPEN)
+**NEXT_SLICE**：B-115 (9) Slice 2 Repo-Owned Auto Production Prose (CANDIDATE / AWAITING MACRO AUDIT；Slice 1 e29d9f2 same-SHA ACCEPTED／post-main CI VERIFIED；本 Slice 2 E27 PRE-EXEC REVIEW REQUIRED，尚未執行或裁決；B-116 CHECK16／B-117＋118 仍 OPEN)
 
 > [!IMPORTANT]
 > **環境恢復觸發（Environment Recovery Trigger）**：
 > 若發生以下任一事件：**換電腦**、**重新安裝 Antigravity**、**IDE 版本更新**，
 > 在開始任何 production work 之前，必須先閱讀 [docs/ops/antigravity-environment-baseline.md](ops/antigravity-environment-baseline.md) 並完整完成 Environment Baseline Checklist 與重啟核對。
 
-**最後更新**：2026-10-13；活動狀態請參照 NEXT_WORK 與 NEXT_SLICE。
+**最後更新**：2026-10-14；活動狀態請參照 NEXT_WORK 與 NEXT_SLICE。
+
+B-115 (9) Slice 1 已完成：e29d9f2e9dd9cb8a3934f0b58176c9aa50b43e61 經獨立 Macro PASS／ACCEPT ALL、same-SHA 晉級，post-main Run 38420907025 attempt 1 verify／gateway-windows 雙綠（verify 1357 passed、1 skipped；Windows 57 passed）；Executor 晉級實測 315.1 秒（5 分鐘）。本批 Slice 2 只增加 production prose 產生器，不宣稱其他 B-115 殘項完成。
 
 USER 常設決定（2026-10-13）：交付以 ZIP 為主要檔案、TXT 為備援，下載至 Downloads 後須自動比對 SHA 並在相符時才印 PROMPT_READY；審查官僅在必要 SHA 未在完整 clone 時通知附 bundle，production 交付前於隔離 clone 驗證提交後 MINI。上述流程落實情況依各實作批次證據，不因本段紀錄而宣稱工具已實作。
 

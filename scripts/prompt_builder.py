@@ -548,9 +548,21 @@ def main(argv=None):
     a.add_argument('--candidate-oid', required=True)
     a.add_argument('--candidate-branch', required=True)
     a.add_argument('--out-dir', required=True)
+    ap = sub.add_parser('auto-production', help='Build repo-owned production prose from a structured definition.')
+    ap.add_argument('--repo', required=True)
+    ap.add_argument('--definition', required=True)
+    ap.add_argument('--out-dir', required=True)
     args = parser.parse_args(argv)
     try:
-        if args.cmd == 'auto-promotion':
+        if args.cmd == 'auto-production':
+            sys.modules.setdefault('prompt_builder', sys.modules[__name__])
+            import production_template
+            path = production_template.auto_production(args.repo, args.definition, args.out_dir)
+            data = path.read_bytes()
+            print('PROMPT_BUILDER BUILT ' + str(path) + ' sha256=' + hashlib.sha256(data).hexdigest())
+            print('PRODUCTION_DRAFT_ONLY: Requires Macro acceptance and Auditor delivery before Executor use.')
+        elif args.cmd == 'auto-promotion':
+            sys.modules.setdefault('prompt_builder', sys.modules[__name__])
             import promotion_template
             path = promotion_template.auto_promotion(args.repo, args.candidate_oid,
                                                      args.candidate_branch, args.out_dir)

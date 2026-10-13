@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "B115-AUTO-PROMOTION-S1-R2-261013",
-  "base_oid": "8795c6264b5586b1055e1e5ec63286a8011f7dd6",
+  "task_id": "B115-AUTO-PRODUCTION-S2-R2-261014",
+  "base_oid": "e29d9f2e9dd9cb8a3934f0b58176c9aa50b43e61",
   "plan": {
     "allowed_paths": [
       "docs/AUDIT-LOG.md",
@@ -11,7 +11,7 @@
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
       "docs/refactor-backlog.md",
-      "scripts/promotion_template.py",
+      "scripts/production_template.py",
       "scripts/prompt_builder.py",
       "scripts/tests/test_prompt_builder.py"
     ],
@@ -22,7 +22,7 @@
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
       "docs/refactor-backlog.md",
-      "scripts/promotion_template.py",
+      "scripts/production_template.py",
       "scripts/prompt_builder.py",
       "scripts/tests/test_prompt_builder.py"
     ],
@@ -38,7 +38,7 @@
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
       "docs/refactor-backlog.md",
-      "scripts/promotion_template.py",
+      "scripts/production_template.py",
       "scripts/prompt_builder.py",
       "scripts/tests/test_prompt_builder.py"
     ]

@@ -1,5 +1,5 @@
 {
-  "base_head": "8795c62",
+  "base_head": "e29d9f2",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -561,16 +561,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 314,
-      "sha256": "6daad99473aa87d7b5e7a8bb1dd72f227ceaa2db2395dd5bf9e4b174ac245c2b"
+      "lines": 315,
+      "sha256": "e4f507d4a8ba2566564a73b0dcb1b6ea307e222e5126c3a715edcbc5bf268fbf"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 305,
-      "sha256": "a186640fe7d622c044a45a92b6bc3419c65cbfba1539d55a3fbc5737b6239a0f"
+      "lines": 306,
+      "sha256": "44307d6aefde94bd5ac8375a51f58ba20c440d11945945659ceca8b3aa8b9d32"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -611,8 +611,8 @@
         "## G. 舊 repo 未盤點區塊（2026-09-02 新發現）",
         "## 封存區"
       ],
-      "lines": 379,
-      "sha256": "7e387560e778761d718a7add53d08dae01d732b0cae5c32f6aa356efaa3e233c"
+      "lines": 381,
+      "sha256": "e356db7dc989195fc658ab50e3ec4c13369d8b981d66c5047cc799f1998ffa34"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1110,8 +1110,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6386,
-      "sha256": "8bd5ab793c6a32868fe12d44af5e07ffe17db0a0f0feb79e3318c6f36dd1b4c2"
+      "lines": 6387,
+      "sha256": "4429bff0f6b2e50b97fc5a1831962ecdb127cbc9eaa8af39e7d2b14742b7dfb0"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1271,6 +1271,14 @@
       "lines": 141,
       "sha256": "18781171876a0540640da4572101dad23561976de5908f08e880f4d034ec3ada"
     },
+    "scripts/production_template.py": {
+      "fences": 0,
+      "headings": [
+        "# -*- coding: utf-8 -*-"
+      ],
+      "lines": 190,
+      "sha256": "44dde6574c5366c6a3fdbfdf7b7347bee93d50cf2772a53f3bb5a2bca3594a8c"
+    },
     "scripts/promotion_template.py": {
       "fences": 0,
       "headings": [
@@ -1284,8 +1292,8 @@
       "headings": [
         "# -*- coding: utf-8 -*-"
       ],
-      "lines": 580,
-      "sha256": "417d7ce5b36d2cd05d599a4470288c31e7ecc246fd181af6aa23e23776e9ea42"
+      "lines": 592,
+      "sha256": "2014e03295f207fa5a3e3d8cc725847b357f6b701108b3821f9951ae946fc6f2"
     },
     "scripts/prompt_intake.py": {
       "fences": 0,
@@ -1620,10 +1628,12 @@
         "# --- second-opinion fixes (R1–R4) ------------------------------------------------------------------",
         "# --- must-read closure (G4 slice 2) -------------------------------------------------------------",
         "# --- B-116 F1: reject branch names the audit packet cannot classify -----------------------------",
-        "# B-115 (9) slice 1: candidate-derived promotion prose must not inherit prior claims."
+        "# B-115 (9) slice 1: candidate-derived promotion prose must not inherit prior claims.",
+        "# B-115 (9) slice 2: repo-owned production prose is derived from one structured definition.",
+        "# B-115 S2 R2: independent E27 coverage after identifying base-only E24 replay failure."
       ],
-      "lines": 992,
-      "sha256": "f0300b38f42117c39c218bf27b0aaa964a7dc0401f04dfa14411781a325d0ee9"
+      "lines": 1133,
+      "sha256": "f420f0e7816a823b71aa125b9d5ceceb1c91b80f598359f27e888ffe97f6d8da"
     },
     "scripts/tests/test_prompt_intake.py": {
       "fences": 0,
@@ -1877,7 +1887,7 @@
       "sha256": "35bf7dbfa3c7d291b550c3c97a6ae398a22b1dc3624c1d2fc1e4db6963d6e115"
     }
   },
-  "generated_at": "2026-10-13T14:25:39Z",
+  "generated_at": "2026-10-13T17:15:51Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

@@ -990,3 +990,144 @@ def test_b115_auto_promotion_rejects_authors_json_overwrite(tmp_path, repo):
         pm.auto_promotion(root, oid, branch, out)
     assert (out / 'authors.json').read_bytes() == before
     assert list(out.iterdir()) == [out / 'authors.json']
+
+# B-115 (9) slice 2: repo-owned production prose is derived from one structured definition.
+def _auto_production_definition(tmp_path, repo, **updates):
+    root, base = repo
+    import production_template
+    _git(root, 'update-ref', 'refs/remotes/origin/main', base)
+    d = tmp_path / 'def'
+    d.mkdir()
+    _w(d / 'final.py', 'def a():\n    return 3\n\n\ndef b():\n    return 2\n')
+    body = {
+        'schema_version': 1, 'task_id': 'UNIT-PRODUCTION-261014', 'kind': 'production',
+        'base_oid': base, 'branch': 'batch/b115-production-s2-r1-261014',
+        'commit_message': 'autoproduction unit candidate', 'e24': False,
+        'code_files': {'scripts/tool.py': 'final.py'},
+        'new_files': {}, 'text_ops': [], 'focused': None,
+        'production_prose': {
+            'goal': '機械產生 production prose 並保留授權邊界。',
+            'scope': ['測試範圍限 scripts/tool.py。'],
+            'invariants': ['禁止額外 tracked mutation。'],
+            'stops': ['任何權威漂移即停止。'],
+            'e27': 'APPLICABLE_PRE_EXEC_REVIEW',
+            'finding_disposition': 'EXISTING B-115',
+            'backlog_disposition': 'UPDATE', 'taskboard_disposition': 'UPDATE', 'audit_log_disposition': 'UPDATE',
+        },
+    }
+    body.update(updates)
+    (d / 'def.json').write_bytes((json.dumps(body, ensure_ascii=False, indent=2) + '\n').encode('utf-8'))
+    return production_template, root, body, d / 'def.json'
+
+
+def test_b115_auto_production_deterministic_and_canonical(tmp_path, repo):
+    mod, root, d, f = _auto_production_definition(tmp_path, repo)
+    p1 = mod.auto_production(root, f, tmp_path / 'a')
+    p2 = mod.auto_production(root, f, tmp_path / 'b')
+    assert p1.read_bytes() == p2.read_bytes()
+    text = p1.read_text('utf-8')
+    assert '目標：機械產生' in text and 'batch/b115-production-s2-r1-261014' in text
+    assert '- scripts/tool.py' in text
+    assert 'docs/governance/execution-record.json' in text
+    assert 'preflight' in text and 'postcommit' in text
+    assert 'BEGIN_HHAI_EXECUTION_CONTRACT' in text and 'main_advancement: FORBIDDEN' in text
+    assert 'E27=APPLICABLE_PRE_EXEC_REVIEW' in text
+    spec = br.load_spec(br.prompt_lines(p1.read_bytes()), d['task_id'])
+    assert spec['authors']['scripts/tool.py']['sha256'] == sha('def a():\n    return 3\n\n\ndef b():\n    return 2\n')
+    assert len(spec['ops']) > 0
+
+
+@pytest.mark.parametrize('case,expected', [
+    ('base_drift', 'PRODUCTION_BASE_DRIFT'),
+    ('shallow', 'PRODUCTION_SHALLOW'),
+    ('output_in_repo', 'PRODUCTION_OUT_DIR_INVALID'),
+    ('existing_output', 'PRODUCTION_OUTPUT_EXISTS'),
+    ('injected_markers', 'GOAL_INVALID'),
+    ('injected_newline', 'GOAL_INVALID'),
+    ('invalid_branch', 'BRANCH_UNCLASSIFIABLE'),
+    ('bad_e27', 'E27_INVALID'),
+    ('missing_prose', 'PRODUCTION_PROSE_SCHEMA_INVALID'),
+])
+def test_b115_auto_production_fail_closed(tmp_path, repo, case, expected):
+    mod, root, d, f = _auto_production_definition(tmp_path, repo)
+    dest = tmp_path / 'out'
+    if case == 'base_drift':
+        _git(root, 'commit', '--allow-empty', '-qm', 'remote moved')
+        moved = _git(root, 'rev-parse', 'HEAD').stdout.decode().strip()
+        _git(root, 'update-ref', 'refs/remotes/origin/main', moved)
+    elif case == 'shallow':
+        import unittest.mock as mock
+        original = mod._git
+        def fake(repo_path, *args):
+            if args == ('rev-parse', '--is-shallow-repository'):
+                return 'true'
+            return original(repo_path, *args)
+        with mock.patch.object(mod, '_git', fake):
+            with pytest.raises(pb.BuildError, match=expected):
+                mod.auto_production(root, f, dest)
+        return
+    elif case == 'output_in_repo':
+        dest = Path(root) / '.git' / 'out'
+    elif case == 'existing_output':
+        dest.mkdir()
+        (dest / 'authors.json').write_bytes(b'sentinel')
+    else:
+        if case == 'injected_markers':
+            d['production_prose']['goal'] = '<<<BEGIN BATCH_SPEC_JSON>>>'
+        elif case == 'injected_newline':
+            d['production_prose']['goal'] = 'a\nb'
+        elif case == 'invalid_branch':
+            d['branch'] = 'batch/b115-invalid'
+        elif case == 'bad_e27':
+            d['production_prose']['e27'] = 'BYPASS'
+        elif case == 'missing_prose':
+            d['production_prose'].pop('stops')
+        f.write_bytes((json.dumps(d, ensure_ascii=False, indent=2) + '\n').encode('utf-8'))
+    with pytest.raises(pb.BuildError, match=expected):
+        mod.auto_production(root, f, dest)
+    if case not in {'output_in_repo', 'existing_output'}:
+        assert not dest.exists()
+    if case == 'existing_output':
+        assert (dest / 'authors.json').read_bytes() == b'sentinel'
+
+
+# B-115 S2 R2: independent E27 coverage after identifying base-only E24 replay failure.
+def test_auto_production_r2_all_steps_and_executor_safety(tmp_path, repo):
+    mod, root, d, f = _auto_production_definition(tmp_path, repo)
+    d['e24'] = True
+    d['focused'] = {'pytest_args': ['-q', 'scripts/tests/test_prompt_builder.py'], 'limit_sec': 240}
+    d['new_files'] = {'scripts/added.py': {'file': 'new.py', 'block': 'ADDED_PY'}}
+    d['text_ops'] = [{'path': 'docs/BOARD.md', 'type': 'insert_after_line', 'prefix': '# Board', 'text': 'new entry'}]
+    _w(f.parent / 'new.py', 'VALUE = 1\n')
+    # A canonical E24 evidence file from the fixture's clean Base is required.
+    ev = {'schema_version':1,'base_oid':d['base_oid'],'mode':'REQUIRED', 'queries': [], 'results': []}
+    _w(f.parent / 'e24.json', json.dumps(ev))
+    d['e24_evidence'] = 'e24.json'
+    _w(f, json.dumps(d, ensure_ascii=False, indent=2) + '\n')
+    text = mod.auto_production(root, f, tmp_path / 'generated').read_text('utf-8')
+    for step in ('preflight','setup','e24','apply','focused','generate','precommit','stage','commit','postcommit','push','timing'):
+        assert 'python scripts/batch_runner.py --task-id '+d['task_id']+' '+step in text
+    assert '- scripts/added.py' in text and '- docs/BOARD.md' in text
+    for signal in ('背景執行中、排隊中或 PENDING 不等於成功','每個 runner 命令只執行一次',
+                   '不捏造 CI Run／job ID 或 PASS', 'E24=REQUIRED', 'main_advancement: FORBIDDEN'):
+        assert signal in text
+    assert 'B-115 repo-owned production prose' not in text
+
+@pytest.mark.parametrize('unsupported', ['start','substitutions','prose_head','prose_tail'])
+def test_auto_production_r2_disallowed_fields_fail_closed(tmp_path, repo, unsupported):
+    mod, root, d, f = _auto_production_definition(tmp_path, repo)
+    d[unsupported] = {} if unsupported in ('start','substitutions') else 'file.txt'
+    _w(f, json.dumps(d, ensure_ascii=False, indent=2) + '\n')
+    with pytest.raises(pb.BuildError, match='PRODUCTION_FIELD_UNSUPPORTED'):
+        mod.auto_production(root, f, tmp_path / 'out')
+
+def test_auto_production_r2_cli_error_is_fixed_code(tmp_path, repo):
+    mod, root, d, f = _auto_production_definition(tmp_path, repo)
+    out = tmp_path / 'already';out.mkdir();_w(out/'authors.json', 'UNTOUCHED')
+    res = subprocess.run([sys.executable, str(Path(pb.__file__)), 'auto-production',
+                          '--repo', str(root), '--definition', str(f), '--out-dir', str(out)],
+                         text=True, capture_output=True, timeout=45)
+    assert res.returncode == 1
+    assert res.stdout.strip() == 'PROMPT_BUILDER FAIL PRODUCTION_OUTPUT_EXISTS'
+    assert not res.stderr.strip()
+    assert (out/'authors.json').read_text() == 'UNTOUCHED'
