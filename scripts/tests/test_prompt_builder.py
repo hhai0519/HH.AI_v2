@@ -738,3 +738,114 @@ def test_check_rejects_a_section_edited_after_build_with_the_block_intact(tmp_pa
     with pytest.raises(pb.BuildError) as exc:
         pb.check(root, str(prompt_path), runner=lambda *a, **k: calls.append(a))
     assert str(exc.value) == "CHECK_MUST_READ_SECTION_MISMATCH" and calls == []
+
+
+# --- B-116 F1: reject branch names the audit packet cannot classify -----------------------------
+
+@pytest.mark.parametrize("bad", [
+    "batch/aud-gpt-261013-state-sync-r1",  # observed F1, revision after date
+    "batch/unit-build-r1",                  # date omitted
+    "batch/unit-build-20261013",            # eight-digit date suffix
+    "batch/unit-build",                     # no date
+])
+def test_f1_build_refuses_unclassifiable_branch_before_outputs(tmp_path, repo, bad):
+    root, base = repo
+    out = tmp_path / "out"
+    definition = _definition(tmp_path, base, branch=bad)
+    assert pb.main(["build", "--repo", root, "--definition", definition, "--out-dir", str(out)]) == 1
+    assert not out.exists(), "build must not create an output directory for an invalid branch"
+
+
+def test_f1_build_accepts_valid_revision_and_no_revision(tmp_path, repo):
+    root, base = repo
+    for branch in ("batch/unit-build-r1-261013", "batch/unit-build-261013"):
+        text, _, _ = pb.build(root, _definition(tmp_path, base, branch=branch))
+        assert br.load_spec(br.prompt_lines(text.encode()), TASK)["branch"] == branch
+
+
+def test_f1_check_fails_before_owning_any_temporary_copy(tmp_path, repo):
+    root, prompt = _built_prompt(tmp_path, repo)
+    data = prompt.read_bytes().replace(b"batch/unit-build-261009", b"batch/aud-gpt-261013-state-sync-r1")
+    prompt.write_bytes(data)
+
+    def must_not_run(*a, **kw):
+        raise AssertionError("validator and preflight must not run after branch rejection")
+
+    assert _code(pb.check, root, str(prompt), must_not_run) == "BRANCH_UNCLASSIFIABLE"
+    assert not (Path(root) / ".git" / (TASK + "-prompt.txt")).exists()
+    assert _code(pb.startup_lines, str(prompt), "C:\\D", "C:\\W") == "BRANCH_UNCLASSIFIABLE"
+
+
+def test_f1_classifier_unknown_must_fail_closed(tmp_path, repo, monkeypatch):
+    root, base = repo
+    monkeypatch.setattr(pb.audit_packet, "branch_classified", lambda _branch: None)
+    assert _code(pb.build, root, _definition(tmp_path, base)) == "BRANCH_UNCLASSIFIABLE"
+
+
+def test_f1_promotion_build_rejects_unclassifiable_candidate_branch(tmp_path, repo):
+    root, base = repo
+    d = tmp_path / "promo"
+    d.mkdir()
+    _w(d / "head.txt", "promotion {BRANCH}\n二、動手前必讀\n{MUST_READ}\n")
+    _w(d / "tail.txt", "ready\n")
+    definition = {"schema_version": 1, "task_id": TASK, "kind": "promotion", "base_oid": base,
+                  "candidate_oid": "c" * 40, "candidate_branch": "batch/aud-gpt-261013-state-sync-r1",
+                  "prose_head": "head.txt", "prose_tail": "tail.txt"}
+    _w(d / "def.json", json.dumps(definition))
+    assert _code(pb.build, root, str(d / "def.json")) == "BRANCH_UNCLASSIFIABLE"
+
+@pytest.mark.parametrize('bad', [
+    'batch/UNIT-build-r1-261013',
+    'batch/unit-build-R1-261013',
+])
+def test_f1_build_rejects_noncanonical_branch_chars_before_outputs(tmp_path, repo, bad):
+    root, base = repo
+    out = tmp_path / 'out'
+    definition = _definition(tmp_path, base, branch=bad)
+    assert _code(pb.build, root, definition) == 'BRANCH_UNCLASSIFIABLE'
+    assert not out.exists()
+
+
+def _f1_promotion_prompt(tmp_path, repo, branch):
+    root, base = repo
+    _git(root, 'commit', '-q', '--allow-empty', '-m', 'candidate')
+    candidate_oid = _git(root, 'rev-parse', 'HEAD').stdout.decode().strip()
+    d = tmp_path / 'promotion'
+    d.mkdir()
+    _w(d / 'head.txt', '{TASK_ID} promotion {BRANCH}\n二、動手前必讀\n{MUST_READ}\n')
+    _w(d / 'tail.txt', 'ready\n')
+    definition = {'schema_version': 1, 'task_id': TASK, 'kind': 'promotion',
+                  'base_oid': base, 'candidate_oid': candidate_oid,
+                  'candidate_branch': branch, 'prose_head': 'head.txt', 'prose_tail': 'tail.txt'}
+    _w(d / 'def.json', json.dumps(definition))
+    text, _, _ = pb.build(root, str(d / 'def.json'))
+    prompt = tmp_path / (TASK + '-prompt.txt')
+    prompt.write_bytes(text.encode('utf-8'))
+    return root, prompt
+
+
+def test_f1_promotion_check_and_startup_accept_valid_candidate_branch(tmp_path, repo):
+    root, prompt = _f1_promotion_prompt(tmp_path, repo, 'batch/unit-promotion-r2-261013')
+    seen = []
+
+    def fake(*a, **k):
+        seen.append(a[0][1])
+        return _Result(0)
+
+    assert pb.check(root, str(prompt), runner=fake) == TASK
+    assert seen == ['scripts/validate_prompt_manifest.py', 'scripts/governance_preflight.py']
+    lines = pb.startup_lines(str(prompt), 'C:\\D', 'C:\\W')
+    assert any(line.startswith('SHA256_UPPER=') for line in lines)
+    assert any('prompt_intake.py' in line for line in lines)
+    assert not (Path(root) / '.git' / (TASK + '-prompt.txt')).exists()
+
+
+def test_f1_promotion_check_and_startup_reject_bad_candidate_branch_without_side_effect(tmp_path, repo):
+    root, prompt = _f1_promotion_prompt(tmp_path, repo, 'batch/unit-promotion-r2-261013')
+    prompt.write_bytes(prompt.read_bytes().replace(b'batch/unit-promotion-r2-261013',
+                                                   b'batch/aud-gpt-261013-state-sync-r1'))
+    calls = []
+    assert _code(pb.check, root, str(prompt), lambda *a, **k: calls.append(a)) == 'BRANCH_UNCLASSIFIABLE'
+    assert _code(pb.startup_lines, str(prompt), 'C:\\D', 'C:\\W') == 'BRANCH_UNCLASSIFIABLE'
+    assert calls == []
+    assert not (Path(root) / '.git' / (TASK + '-prompt.txt')).exists()

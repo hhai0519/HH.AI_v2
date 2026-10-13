@@ -67,6 +67,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 try:
     import batch_runner  # noqa: E402 - the runner's own parser and op algorithm are the reference
+    import audit_packet  # noqa: E402 - share the exact sibling classification contract
 finally:
     sys.path.pop(0)
 
@@ -83,6 +84,16 @@ class BuildError(Exception):
 def _require(cond, code):
     if not cond:
         raise BuildError(code)
+
+
+def require_classifiable_branch(branch):
+    """Reject batch branches that audit_packet cannot classify for sibling detection.
+
+    Run this at build, check and startup, before any output or temporary check copy.
+    It deliberately shares the canonical classifier instead of duplicating a date regex.
+    """
+    _require(isinstance(branch, str) and batch_runner.BRANCH_RE.fullmatch(branch) is not None
+             and audit_packet.branch_classified(branch) is True, 'BRANCH_UNCLASSIFIABLE')
 
 
 def sha256_text(text):
@@ -240,7 +251,9 @@ def build(repo, definition_path):
     task, kind, base = d.get('task_id'), d.get('kind'), d.get('base_oid')
     _require(isinstance(task, str) and batch_runner.TASK_RE.match(task), 'TASK_ID_INVALID')
     _require(isinstance(base, str) and batch_runner.OID_RE.match(base), 'BASE_OID_INVALID')
-    branch = d.get('branch') if kind == 'production' else d.get('candidate_branch')
+    _require(kind in ('production', 'promotion'), 'KIND_INVALID')
+    branch = d['branch'] if kind == 'production' else d['candidate_branch']
+    require_classifiable_branch(branch)
     values = {'{TASK_ID}': task, '{BASE_OID}': base, '{BASE7}': base[:7], '{BRANCH}': str(branch)}
 
     authors, authored, ops, extra_blocks = {}, {}, [], []
@@ -407,6 +420,11 @@ def ps_literal(text):
 
 def startup_lines(prompt_path, download_dir, workspace):
     task, data = prompt_task(prompt_path)
+    try:
+        spec = batch_runner.load_spec(batch_runner.prompt_lines(data), task)
+    except batch_runner.Halt as h:
+        raise BuildError('STARTUP_' + str(h))
+    require_classifiable_branch(spec['branch'] if spec['kind'] == 'production' else spec['candidate_branch'])
     sha = hashlib.sha256(data).hexdigest()
     source = windows_dir(download_dir, 'DOWNLOAD_DIR_INVALID') + '\\' + Path(prompt_path).name
     workspace = windows_dir(workspace, 'WORKSPACE_INVALID')
@@ -461,7 +479,9 @@ def check(repo, prompt_path, runner=subprocess.run):
     task, data = prompt_task(prompt_path)
     try:
         lines = batch_runner.prompt_lines(data)
-        batch_runner.check_must_read(repo, batch_runner.load_spec(lines, task), lines)
+        spec = batch_runner.load_spec(lines, task)
+        require_classifiable_branch(spec['branch'] if spec['kind'] == 'production' else spec['candidate_branch'])
+        batch_runner.check_must_read(repo, spec, lines)
     except batch_runner.Halt as h:
         raise BuildError('CHECK_' + str(h))
     target = Path(repo) / '.git' / (task + '-prompt.txt')
