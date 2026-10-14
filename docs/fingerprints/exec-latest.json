@@ -1,5 +1,5 @@
 {
-  "base_head": "e29d9f2",
+  "base_head": "7788f88",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -561,16 +561,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 315,
-      "sha256": "e4f507d4a8ba2566564a73b0dcb1b6ea307e222e5126c3a715edcbc5bf268fbf"
+      "lines": 316,
+      "sha256": "b3e5ecd39907acde6bfbf0119c62134522fdf069cabd53be7df943dc72292f55"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 306,
-      "sha256": "44307d6aefde94bd5ac8375a51f58ba20c440d11945945659ceca8b3aa8b9d32"
+      "lines": 307,
+      "sha256": "39e93b799f832167d481d428d2f1daa468cab5b38d5a1dee3cd1aa5661ebb81e"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -612,7 +612,7 @@
         "## 封存區"
       ],
       "lines": 381,
-      "sha256": "e356db7dc989195fc658ab50e3ec4c13369d8b981d66c5047cc799f1998ffa34"
+      "sha256": "03c2bf9dba6fbe946192ca5482c3cf5d309f6be5731c74d60c268cffd15249a3"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1110,8 +1110,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6387,
-      "sha256": "4429bff0f6b2e50b97fc5a1831962ecdb127cbc9eaa8af39e7d2b14742b7dfb0"
+      "lines": 6388,
+      "sha256": "618a247af030afc158bc24c8e01900b3e975ddc0bd61bf1ddc3017d3ff94cd53"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1193,6 +1193,14 @@
       "lines": 684,
       "sha256": "157e4d81260b37e3a29a3a0bed2bb7ed3019a1a0909d26d13bab09e2e8445e51"
     },
+    "scripts/check16_preflight.py": {
+      "fences": 0,
+      "headings": [
+        "# -*- coding: utf-8 -*-"
+      ],
+      "lines": 47,
+      "sha256": "1bb8adc3fb0e16c6b962539827153dc3451bb9a45f03b9cc5a909bc39a291117"
+    },
     "scripts/check_consistency.py": {
       "fences": 0,
       "headings": [
@@ -1209,8 +1217,8 @@
         "# owner 須為未完成之看板任務）。任何輸入缺失、畸形或讀取失敗一律判定失敗。",
         "# ---------------------------------------------------------------------------"
       ],
-      "lines": 3550,
-      "sha256": "5e8dc4d3a98a10e0bf7391c9c805fbdaa2e4342a4ecaf664b62891e65bf08e26"
+      "lines": 3557,
+      "sha256": "f26774ea4d22c04b841dc59813f1cd655eb929d4588f67d435bf50dcef98f731"
     },
     "scripts/execution_record.py": {
       "fences": 0,
@@ -1292,8 +1300,8 @@
       "headings": [
         "# -*- coding: utf-8 -*-"
       ],
-      "lines": 592,
-      "sha256": "2014e03295f207fa5a3e3d8cc725847b357f6b701108b3821f9951ae946fc6f2"
+      "lines": 605,
+      "sha256": "d7f78930bae7a31f4aa0abd9ad7d1226026f3b4a977a65c85c36b0a70e1e266f"
     },
     "scripts/prompt_intake.py": {
       "fences": 0,
@@ -1414,8 +1422,8 @@
         "# --- independent expectations for every e24 x focused combination (second opinion on S3) ----------",
         "# --- second opinion on S3-R1 ---------------------------------------------------------------------------"
       ],
-      "lines": 767,
-      "sha256": "bae84e68efcc36651a7c60b5770bd2c7a62194efe04cf0555b2d2a0707476f02"
+      "lines": 769,
+      "sha256": "237f08811eda2968213fb8d006258c9e3eb09eef3cfa163e2b5e4be8c86ba98e"
     },
     "scripts/tests/test_bounded_process.py": {
       "fences": 0,
@@ -1531,8 +1539,8 @@
         "# CHECK 26 Tests: M2 Plan-vs-Actual / Evidence Integrity Replay Guard",
         "# ---------------------------------------------------------------------------"
       ],
-      "lines": 2374,
-      "sha256": "5b66258d32bf4b9fae2b956040155628126e38b24e4b6ecd52ac1830827f22f8"
+      "lines": 2401,
+      "sha256": "0a687d93e68f7a4947a47897ea66da5f66e4a1c5020822dda058259282454926"
     },
     "scripts/tests/test_execution_record.py": {
       "fences": 0,
@@ -1632,8 +1640,8 @@
         "# B-115 (9) slice 2: repo-owned production prose is derived from one structured definition.",
         "# B-115 S2 R2: independent E27 coverage after identifying base-only E24 replay failure."
       ],
-      "lines": 1133,
-      "sha256": "f420f0e7816a823b71aa125b9d5ceceb1c91b80f598359f27e888ffe97f6d8da"
+      "lines": 1191,
+      "sha256": "2ea8456ec3e916416b1fa7e0843ca128645cb03c9482f397a7145984fa3e3adf"
     },
     "scripts/tests/test_prompt_intake.py": {
       "fences": 0,
@@ -1887,7 +1895,7 @@
       "sha256": "35bf7dbfa3c7d291b550c3c97a6ae398a22b1dc3624c1d2fc1e4db6963d6e115"
     }
   },
-  "generated_at": "2026-10-13T17:15:51Z",
+  "generated_at": "2026-10-14T02:31:47Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

@@ -1725,7 +1725,8 @@ def check_15_context_conflict(root_dir=None):
 
     return fails, infos
 
-def check_16_exec_log_cadence(root_dir=None, git_count=None, git_is_ancestor=None):
+def check_16_exec_log_cadence(root_dir=None, git_count=None, git_is_ancestor=None, *,
+                              planned_log_text=None, future_commits=0):
     """CHECK 16 — 執行者檢查紀錄（EXEC-LOG）證據生命週期與落後偵測。
 
     規格：讀 docs/EXEC-LOG.md 最後一列的 commit 欄位。
@@ -1742,13 +1743,18 @@ def check_16_exec_log_cadence(root_dir=None, git_count=None, git_is_ancestor=Non
     if root_dir is None: root_dir = repo_root
     fails = []
     infos = []
+    if future_commits not in (0, 1) or (planned_log_text is not None and not isinstance(planned_log_text, str)):
+        return ['CHECK16 prospective arguments invalid'], infos
     el_path = os.path.join(root_dir, "docs", "EXEC-LOG.md")
     if not os.path.exists(el_path):
         fails.append("docs/EXEC-LOG.md:0  檔案不存在")
         return fails, infos
     try:
-        with open(el_path, "r", encoding="utf-8") as f:
-            content = f.read()
+        if planned_log_text is None:
+            with open(el_path, "r", encoding="utf-8") as f:
+                content = f.read()
+        else:
+            content = planned_log_text
     except Exception as e:
         fails.append(f"docs/EXEC-LOG.md:0  讀取失敗: {e}")
         return fails, infos
@@ -1816,6 +1822,7 @@ def check_16_exec_log_cadence(root_dir=None, git_count=None, git_is_ancestor=Non
             fails.append(f"docs/EXEC-LOG.md: 無法執行 git 指令以驗證檢查紀錄生命週期 (hash={latest_hash}): {e}")
             return fails, infos
 
+    lag += future_commits
     if lag > 1:
         fails.append(f"docs/EXEC-LOG.md: 最新檢查紀錄 ({latest_hash}) 落後 HEAD {lag} 個 commit（允許落後 1 批，因本批尚未核對）")
     else:

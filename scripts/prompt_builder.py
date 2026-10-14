@@ -68,6 +68,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 try:
     import batch_runner  # noqa: E402 - the runner's own parser and op algorithm are the reference
     import audit_packet  # noqa: E402 - share the exact sibling classification contract
+    import check16_preflight  # noqa: E402 - reuse CHECK 16 on a disposable prospective commit
 finally:
     sys.path.pop(0)
 
@@ -301,6 +302,12 @@ def build(repo, definition_path):
             authors[path] = {'source': {'kind': 'block', 'name': name}, 'sha256': sha256_text(text)}
             authored[path] = text
             extra_blocks.append((name, text[:-1]))
+        # Prospective CHECK 16 must pass after ONE child commit, before any delivery.
+        # Never parse the EXEC-LOG table or implement lag arithmetic a second time.
+        try:
+            check16_preflight.prospective_check16(repo, base, authored.get('docs/EXEC-LOG.md'))
+        except check16_preflight.ProspectiveError as exc:
+            raise BuildError(str(exc)) from None
         allowed = sorted(set(authors) | set(batch_runner.GENERATED))
         _require(allowed == allowed_preview, 'ALLOWED_SCOPE_DRIFT')
         spec = {'schema_version': 1, 'task_id': task, 'kind': 'production', 'base_oid': base, 'branch': branch,
@@ -482,6 +489,12 @@ def check(repo, prompt_path, runner=subprocess.run):
         spec = batch_runner.load_spec(lines, task)
         require_classifiable_branch(spec['branch'] if spec['kind'] == 'production' else spec['candidate_branch'])
         batch_runner.check_must_read(repo, spec, lines)
+        if spec['kind'] == 'production':
+            authored = batch_runner.build_authors(repo, spec, lines)
+            try:
+                check16_preflight.prospective_check16(repo, spec['base_oid'], authored.get('docs/EXEC-LOG.md'))
+            except check16_preflight.ProspectiveError as exc:
+                raise BuildError(str(exc)) from None
     except batch_runner.Halt as h:
         raise BuildError('CHECK_' + str(h))
     target = Path(repo) / '.git' / (task + '-prompt.txt')

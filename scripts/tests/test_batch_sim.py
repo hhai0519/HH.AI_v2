@@ -626,6 +626,8 @@ def _builder_repo(tmp_path):
     root = tmp_path / "repo"
     (root / "docs").mkdir(parents=True)
     _w(root / "docs" / "BOARD.md", "# Board\n**NEXT_SLICE**：old\n")
+    # The prospective CHECK16 guard expects the same tracked EXEC-LOG baseline as production.
+    _w(root / "docs" / "EXEC-LOG.md", "| commit | status |\n|---|---|\n| BOOTSTRAP | ok |\n")
     for rel in br.MUST_READ_KERNEL + br.MUST_READ_PRODUCTION:   # the runner's must-read closure (G4 slice 2)
         (root / rel).parent.mkdir(parents=True, exist_ok=True)
         _w(root / rel, "# " + rel + "\n")

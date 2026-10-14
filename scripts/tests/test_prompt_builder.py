@@ -71,6 +71,7 @@ def repo(tmp_path):
     (root / "scripts").mkdir(parents=True)
     (root / "docs").mkdir()
     (root / "scripts" / "tool.py").write_bytes(b"def a():\n    return 1\n\n\ndef b():\n    return 2\n")
+    (root / "docs" / "EXEC-LOG.md").write_bytes(b"| batch commit | date | result |\n|---|---|---|\n| BOOTSTRAP | 2026-09-01 | ok |\n")
     (root / "docs" / "BOARD.md").write_bytes("# Board\n**NEXT_SLICE**：old\n| X-1 | row |\n| X-2 | row |\n".encode("utf-8"))
     _write_rules(root)
     _git(str(root), "init", "-q")
@@ -1131,3 +1132,60 @@ def test_auto_production_r2_cli_error_is_fixed_code(tmp_path, repo):
     assert res.stdout.strip() == 'PROMPT_BUILDER FAIL PRODUCTION_OUTPUT_EXISTS'
     assert not res.stderr.strip()
     assert (out/'authors.json').read_text() == 'UNTOUCHED'
+
+
+def test_check16_prospective_rejects_stale_log_and_accepts_fresh_row(repo, tmp_path):
+    import check16_preflight as cp
+    root, initial = repo
+    log = Path(root) / 'docs' / 'EXEC-LOG.md'
+    _w(log, '| batch commit | date | result |\n|---|---|---|\n'
+            + f'| {initial} | 2026-10-14 | ok |\n')
+    _git(root, 'add', 'docs/EXEC-LOG.md')
+    _git(root, 'commit', '-q', '-m', 'advance')
+    base = _git(root, 'rev-parse', 'HEAD').stdout.decode().strip()
+    with pytest.raises(cp.ProspectiveError, match='CHECK16_PROSPECTIVE_FAIL'):
+        cp.prospective_check16(root, base)
+    fresh = log.read_bytes().decode('utf-8') + f'| {base} | 2026-10-14 | ok |\n'
+    assert cp.prospective_check16(root, base, fresh)
+    _w(log, fresh)  # dirty, not committed: no false success on Base-only evidence
+    with pytest.raises(cp.ProspectiveError, match='CHECK16_PROSPECTIVE_FAIL'):
+        cp.prospective_check16(root, base)
+    _w(log, fresh.rsplit(f'| {base} |',1)[0])
+    with pytest.raises(cp.ProspectiveError, match='CHECK16_PROSPECTIVE_FAIL'):
+        cp.prospective_check16(root, base, fresh.replace(base, 'f'*40))
+    with pytest.raises(cp.ProspectiveError, match='CHECK16_PROSPECTIVE_FAIL'):
+        cp.prospective_check16(root, base, fresh + '| BAD | x | x |\n')
+    with pytest.raises(cp.ProspectiveError, match='CHECK16_BASE_DRIFT'):
+        cp.prospective_check16(root, initial, fresh)
+    # No new current-repo file or commit, even on a negative path.
+    assert _git(root, 'rev-parse', 'HEAD').stdout.decode().strip() == base
+    assert log.read_bytes().decode('utf-8').count(base) == 0
+    assert _git(root, 'status', '--porcelain').stdout == b''
+
+
+def test_check16_prospective_builder_build_and_check_bind_final_authors(repo, tmp_path):
+    import check16_preflight as cp
+    root, initial = repo
+    log = Path(root) / 'docs' / 'EXEC-LOG.md'
+    _w(log, f'| commit | info |\n|---|---|\n| {initial} | ok |\n')
+    _git(root, 'add', 'docs/EXEC-LOG.md')
+    _git(root, 'commit', '-q', '-m', 'move')
+    head = _git(root, 'rev-parse', 'HEAD').stdout.decode().strip()
+    d = _definition(tmp_path, head)
+    assert _code(pb.build, root, d) == 'CHECK16_PROSPECTIVE_FAIL'
+    raw = json.loads(Path(d).read_bytes().decode('utf-8'))
+    raw['text_ops'].append({'path': 'docs/EXEC-LOG.md', 'type': 'insert_after_line',
+                            'prefix': f'| {initial} |', 'text': f'| {head} | ok |'})
+    _w(d, json.dumps(raw, ensure_ascii=False))
+    text, _, authored = pb.build(root, d)
+    assert f'| {head} | ok |' in authored['docs/EXEC-LOG.md']
+    built = tmp_path / (TASK+'-prompt.txt')
+    built.write_bytes(text.encode('utf-8'))
+    # Use exact same final bytes in both checks. check() also invokes external
+    # manifest/preflight, which synthetic fixture does not carry; inject success
+    # for only those two external tools.
+    def _ok(*args, **kwargs):
+        return subprocess.CompletedProcess(args, 0, '', '')
+    assert pb.check(root, str(built), runner=_ok) == TASK
+    _w(log, log.read_bytes().decode('utf-8') + '| corrupt | ok |\n')
+    assert pb.check(root, str(built), runner=_ok) == TASK  # final prompt authors outrank dirty worktree

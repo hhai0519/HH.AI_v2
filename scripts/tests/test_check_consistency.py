@@ -2372,3 +2372,30 @@ def test_check_26_external_artifact_verified_counterexample_fails(tmp_path):
     assert len(fails) >= 1, "CHECK 26 must FAIL on malicious record claiming VERIFIED for EXTERNAL_ARTIFACT"
     assert any("EXTERNAL_ARTIFACT cannot have verification_status VERIFIED" in f for f in fails)
 
+
+
+def test_check16_future_commit_matches_current_authoritative_logic(tmp_path):
+    d = tmp_path / 'docs'
+    d.mkdir()
+    log = d / 'EXEC-LOG.md'
+    log.write_bytes(b'| commit | status |\n|---|---|\n| a1b2c3d | ok |\n')
+    old, _ = check_16_exec_log_cadence(str(tmp_path), git_count=1, git_is_ancestor=True)
+    new, _ = check_16_exec_log_cadence(str(tmp_path), git_count=1, git_is_ancestor=True,
+                                      future_commits=0)
+    assert old == new == []
+    future, _ = check_16_exec_log_cadence(str(tmp_path), git_count=1, git_is_ancestor=True,
+                                         future_commits=1)
+    assert len(future) == 1 and '落後 HEAD 2' in future[0]
+    corrected, _ = check_16_exec_log_cadence(str(tmp_path), git_count=0, git_is_ancestor=True,
+                                            future_commits=1)
+    assert corrected == []
+    invalid, _ = check_16_exec_log_cadence(str(tmp_path), git_count=0, git_is_ancestor=True,
+                                          planned_log_text='| latest |\n| GARBAGE |\n', future_commits=1)
+    assert invalid
+    ghost, _ = check_16_exec_log_cadence(str(tmp_path), git_count=0, git_is_ancestor=False,
+                                        future_commits=1)
+    assert ghost
+    skip, _ = check_16_exec_log_cadence(str(tmp_path), git_count=400, git_is_ancestor=True,
+                                       planned_log_text='| commit | status |\n|---|---|\n| BOOTSTRAP | ok |\n',
+                                       future_commits=1)
+    assert skip == []  # Identical to CHECK16's existing BOOTSTRAP semantics.
