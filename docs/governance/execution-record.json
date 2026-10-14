@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "B116-CHECK16-PREGUARD-R1-261014",
-  "base_oid": "7788f8821dba3f3e6b30f62fe478f4a237dc4ffd",
+  "task_id": "B116-POSTMAIN-STATE-SYNC-R1-261014",
+  "base_oid": "682fe86d757bf4aaf774f339bd77a17750f37491",
   "plan": {
     "allowed_paths": [
       "docs/AUDIT-LOG.md",
@@ -10,13 +10,7 @@
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md",
-      "scripts/check16_preflight.py",
-      "scripts/check_consistency.py",
-      "scripts/prompt_builder.py",
-      "scripts/tests/test_batch_sim.py",
-      "scripts/tests/test_check_consistency.py",
-      "scripts/tests/test_prompt_builder.py"
+      "docs/refactor-backlog.md"
     ],
     "required_paths": [
       "docs/AUDIT-LOG.md",
@@ -24,13 +18,7 @@
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md",
-      "scripts/check16_preflight.py",
-      "scripts/check_consistency.py",
-      "scripts/prompt_builder.py",
-      "scripts/tests/test_batch_sim.py",
-      "scripts/tests/test_check_consistency.py",
-      "scripts/tests/test_prompt_builder.py"
+      "docs/refactor-backlog.md"
     ],
     "max_plan_revisions": 3,
     "revision_count": 0,
@@ -43,13 +31,7 @@
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md",
-      "scripts/check16_preflight.py",
-      "scripts/check_consistency.py",
-      "scripts/prompt_builder.py",
-      "scripts/tests/test_batch_sim.py",
-      "scripts/tests/test_check_consistency.py",
-      "scripts/tests/test_prompt_builder.py"
+      "docs/refactor-backlog.md"
     ]
   },
   "evidence": [
