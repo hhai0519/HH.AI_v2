@@ -2825,7 +2825,8 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 5.1 上一批狀態
 
-上次核對通過的 HEAD：d1888a93fd946e20bdcc5547c95141b22210d201
+上次核對通過的 HEAD：c12d3b18669973f4d1d0c8c9bdbc314a3a41eafa
+- `c12d3b18669973f4d1d0c8c9bdbc314a3a41eafa`（B118-AUTO-BUNDLE-FIRST-R1-261014）：AUD-GPT-261014 獨立 Macro PASS／ACCEPT ALL；candidate Run 38534874479 attempt 1 雙 job success，same-SHA 晉級 main，post-main Run 38537663445 attempt 1 verify 1385 passed／1 skipped＋13 passed、ALL 5 GATES PASSED，gateway-windows 57 passed；Executor 晉級 332.9 秒（5 分鐘）。本批僅收編 bundle 能力，原版 bundle_output=false 尚未實際啟用。後續先完成 F1/F2/F4，再以受控 Windows production 獨立驗收 bundle；F3 NOT TESTED；B-117 完整 Windows 隔離預演仍 OPEN。
 - `d1888a93fd946e20bdcc5547c95141b22210d201`（B116-POSTMAIN-STATE-SYNC-R1-261014）：Macro PASS／ACCEPT ALL、same-SHA main 晉級與 post-main Run 38515430245 attempt 1 verify 1376 passed／1 skipped＋13 passed／ALL 5 GATES PASSED、gateway-windows 57 passed；本任 AUD-GPT-261014 獨立核實，Executor 同 SHA 晉級實測 377.0 秒（6 分鐘）。本後續 B-118 FIRST 以 USER 常設決定（2026-10-14）分開 B-117／118；B-117 保留未實作，B-118 runner 新 after-push bundle 尚待候選 E27 與 Macro 驗收，未預判 future CI。
 - `682fe86d757bf4aaf774f339bd77a17750f37491`（B116-CHECK16-PREGUARD-R1-261014）：本任 AUD-GPT-261014 於 2026-10-14 獨立 Macro PASS／ACCEPT ALL，候選 Run 38503734527 attempt 1 verify 1376 passed／1 skipped＋13 passed／ALL 5 GATES PASSED、gateway-windows 57 passed；same-SHA main 已獨立查證，post-main Run 38508841150 attempt 1 verify／gateway-windows 雙 job SUCCESS，同一 exact SHA，Executor 晉級 309.5 秒（5 分鐘）。B-116 CHECK16 R1 切片結案，B-116 其餘契約 OPEN；N1–N3 與執行前 E27 流程偏差已在 TASKBOARD 與 AUDIT-LOG 前向登錄；NEXT_WORK B-117／118，未實作項目不得預支。
 - `db595a62ff3694fce1f6e2d2e7647a0bc8cb6e9c` 已於 2026-10-13 獨立確認 same-SHA 晉級及 post-main Run 38330014052 attempt 1 雙必要 job success；Executor 實測 346.6 秒（5 分鐘），前次新任狀態同步 candidate db595a62 已 ACCEPTED／PROMOTED。F1 留存為 B-116 第 1 切片待審；B-116 其餘契約與 B-117／118 未實作。
@@ -3578,7 +3579,7 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
     - **當前生命週期狀態**：
       - 本批為 CURRENT E-03 bounded repair，工作區無任何外部副作用（no live bot / network / port / credential work / persistence / transport / listener / OS startup）。
       - Gateway live 整合尚未開始（NOT STARTED），E-03 維持進行中，NEXT_WORK 保持 E-03。
-  
+
 77. **E-03 Channel Gateway Wave 2A Final Macro PASS & Wave 2B Pure Account Switch Orchestration Candidate**（2026-09-16）
     - **背景與外部審查結論**：前一施工候選與邊界修復（`f522148` .. `7d379f6`，共 2 commits：`278d142` 與 `7d379f6`）經 External Macro Reviewer（GPT 代理審查官（使用者授權））全面審查。A1 qualification 採 A1 = EQUIVALENT（GitHub API + Executor clone cross-check）成立；exact-SHA Actions Verify Run `35101712841` completed/success（20 checks PASS，315 unit PASS，13 webapp PASS，5 Gates PASS）。
     - **外部審查裁決**：`MACRO AUDIT = PASS`，`ACCEPT STATUS = ACCEPT ALL`，`FINDING_DISPOSITION = NONE`；278d142 F1/F2 於審查範圍內完全解決；`Wave 2A = ACCEPTED`；checkpoint 推進至 `7d379f6`；正式授權開展 Wave 2B 純帳號切換調度（Wave 2B Pure Account Switch Orchestration = AUTHORIZED）。

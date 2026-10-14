@@ -57,6 +57,9 @@ def auto_production(repo, definition, out_dir):
         raise pb.BuildError('PRODUCTION_DEFINITION_JSON_INVALID') from None
     pb._require(isinstance(d, dict) and d.get('kind') == 'production' and d.get('schema_version') == 1,
                 'PRODUCTION_DEFINITION_INVALID')
+    # B-118 first activation: no silent false when the auditor forgets this field.
+    pb._require('bundle_output' in d, 'PRODUCTION_BUNDLE_OUTPUT_REQUIRED')
+    pb._require(type(d['bundle_output']) is bool, 'PRODUCTION_BUNDLE_OUTPUT_INVALID')
     pb._require(not any(k in d for k in ('start', 'substitutions', 'prose_head', 'prose_tail')),
                 'PRODUCTION_FIELD_UNSUPPORTED')
     base = d.get('base_oid')
@@ -122,7 +125,7 @@ E24={'REQUIRED' if d.get('e24') is True else 'NONE'}；E27={prose['e27']}。E27 
 {cmds}
 
 六、Executor 固定回覆
-成功僅逐字複製 runner COMMIT、TIMING、STATE 三行；S1 僅複製實際存在的 S1、S1_DETAIL、TIMING、STATE 行，不捏造 CI Run／job ID 或 PASS。TIMING 由 runner 提供開始、結束與秒數除以 60 向下取整之分鐘。回覆最後一行逐字為「以上是 Antigravity IDE Agent 的回覆。」
+成功僅逐字複製 runner COMMIT、TIMING、STATE 三行；bundle_output=true 時，還必須逐字複製實際輸出的 BUNDLE_FILE=、ORIGIN_MAIN=，或 BUNDLE FAILED <CODE> 行，不能略過、捏造成功或把 bundle 失敗誤當 CI 失敗。S1 僅複製實際存在的 S1、S1_DETAIL、TIMING、STATE 行，不捏造 CI Run／job ID 或 PASS。TIMING 由 runner 提供開始、結束與秒數除以 60 向下取整之分鐘。回覆最後一行逐字為「以上是 Antigravity IDE Agent 的回覆。」
 
 七、machine blocks（全部由 canonical builder 產生，不可修改）
 '''

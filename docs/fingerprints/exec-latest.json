@@ -1,5 +1,5 @@
 {
-  "base_head": "d1888a9",
+  "base_head": "c12d3b1",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -561,16 +561,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 319,
-      "sha256": "8f1736294af75ab86e9a70f1af3d99b3360a775a351fc4b8665fee6fa1d8d404"
+      "lines": 321,
+      "sha256": "1f51f96c6883de51f7050b91b1638e9845511e432637077e59c77ddb896fd2e3"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 309,
-      "sha256": "95af7ff3dd740b8606f3f11f962a21df2cbab219909eb547ad9c8617d32a5238"
+      "lines": 310,
+      "sha256": "4b2dff5ea7973fd4c49779bfc32e427606bed1d577793a98599edf499cfe4516"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -612,7 +612,7 @@
         "## 封存區"
       ],
       "lines": 381,
-      "sha256": "6b3a7eb36ba5fc826cd348dd3f42a3b13386037fcd4a0b02d764ad72ff55394d"
+      "sha256": "638b7d8e441e4b7370aa46b623575a7a3d405c146c24b91e2ff343f9d6e4e3da"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1110,8 +1110,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6390,
-      "sha256": "2afe486c2cff46e9f8043742ec7f408e2fe01d802e7dc174662e36696872a8dd"
+      "lines": 6391,
+      "sha256": "75eaa2af3526212dbdcb559d4e7a0e9a037d4aa1d93e9f8195ddb6432e72fae9"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1292,8 +1292,8 @@
       "headings": [
         "# -*- coding: utf-8 -*-"
       ],
-      "lines": 191,
-      "sha256": "a86215dc393d2132f26fceaa393621e0a1e89868defde8d78eaaf12f7e717c94"
+      "lines": 194,
+      "sha256": "2349d181ccb16c7bc079863603e5f854681af8ba0a0b5cecc9dedec9578aa430"
     },
     "scripts/promotion_template.py": {
       "fences": 0,
@@ -1458,10 +1458,11 @@
     "scripts/tests/test_bundle_after_push.py": {
       "fences": 0,
       "headings": [
-        "# -*- coding: utf-8 -*-"
+        "# -*- coding: utf-8 -*-",
+        "# B-118 first-activation runner and ref fail-closed regression coverage."
       ],
-      "lines": 137,
-      "sha256": "cbc4c6d14f91e8a6a8cf175cf60974a383dec901453c440710cd2779f81f79d9"
+      "lines": 245,
+      "sha256": "ef24c1d0f67f405f96d9f9aef9493044764084129b8508caae4d36d6e3f658b5"
     },
     "scripts/tests/test_channel_gateway_core.py": {
       "fences": 0,
@@ -1654,10 +1655,11 @@
         "# --- B-116 F1: reject branch names the audit packet cannot classify -----------------------------",
         "# B-115 (9) slice 1: candidate-derived promotion prose must not inherit prior claims.",
         "# B-115 (9) slice 2: repo-owned production prose is derived from one structured definition.",
-        "# B-115 S2 R2: independent E27 coverage after identifying base-only E24 replay failure."
+        "# B-115 S2 R2: independent E27 coverage after identifying base-only E24 replay failure.",
+        "# B-118 first-activation negative tests: new auto-production must explicitly decide output."
       ],
-      "lines": 1191,
-      "sha256": "2ea8456ec3e916416b1fa7e0843ca128645cb03c9482f397a7145984fa3e3adf"
+      "lines": 1259,
+      "sha256": "1b4e7db300fd7f446b9a24e733a5737d4bccfe2c41ea44c38bca7162055683df"
     },
     "scripts/tests/test_prompt_intake.py": {
       "fences": 0,
@@ -1911,7 +1913,7 @@
       "sha256": "35bf7dbfa3c7d291b550c3c97a6ae398a22b1dc3624c1d2fc1e4db6963d6e115"
     }
   },
-  "generated_at": "2026-10-14T07:57:39Z",
+  "generated_at": "2026-10-14T13:09:44Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

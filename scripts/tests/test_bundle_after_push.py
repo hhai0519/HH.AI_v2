@@ -135,3 +135,111 @@ def test_git_command_nonzero_never_leaks_raw_output(monkeypatch, small_repo):
     monkeypatch.setattr(bund.subprocess, 'run', lambda *args, **kwargs: R())
     with pytest.raises(bund.BundleFailure, match='GIT_NONZERO'):
         bund.git(str(root), 'for-each-ref', 'refs/remotes/origin')
+
+
+# B-118 first-activation runner and ref fail-closed regression coverage.
+@pytest.mark.parametrize('remote_ref,reason', [
+    ('refs/heads/main', 'MAIN_DRIFT'),
+    ('refs/heads/batch/b118-test', 'REMOTE_SHA_DRIFT'),
+])
+def test_first_bundle_step_remote_drift_fails_without_retry(small_repo, monkeypatch, capsys, remote_ref, reason):
+    root, dl, base, head = small_repo
+    b = br.Batch.__new__(br.Batch)
+    b.root = str(root)
+    b.task_id = 'B118-TEST'
+    b.spec = {'kind': 'production', 'base_oid': base, 'branch': 'batch/b118-test'}
+    monkeypatch.setattr(br, 'status_lines', lambda *_: [])
+    def remote(ref):
+        if ref == remote_ref:
+            return 'f' * 40
+        return base if ref.endswith('/main') else head
+    monkeypatch.setattr(b, 'remote_sha', remote)
+    monkeypatch.setattr(br, 'create_bundle', lambda *args, **kw: (_ for _ in ()).throw(AssertionError('bundle must not run')) )
+    assert b.step_bundle() == 'FAILED_' + reason
+    assert 'BUNDLE FAILED ' + reason in capsys.readouterr().out
+
+
+def test_first_bundle_step_rejects_unlisted_tracking_ref(small_repo):
+    root, dl, base, head = small_repo
+    g(root, 'update-ref', 'refs/remotes/origin/UpperCase', head)
+    with pytest.raises(bund.BundleFailure, match='REF_NOT_WHITELISTED'):
+        bund.allowed_refs(str(root), 'batch/b118-test', base, head)
+
+
+def test_first_bundle_step_rejects_extra_bundle_ref(small_repo, monkeypatch):
+    root, dl, base, head = small_repo
+    real = bund.git
+    def modified(r, *args, **kwargs):
+        text = real(r, *args, **kwargs)
+        if args[:2] == ('bundle','list-heads'):
+            return text + '\n' + head + ' refs/stash'
+        return text
+    monkeypatch.setattr(bund, 'git', modified)
+    with pytest.raises(bund.BundleFailure, match='BUNDLE_REFS_MISMATCH'):
+        bund.create_bundle(root, 'batch/b118-test', base, head, dl, task_id='B118-TEST')
+
+
+def test_first_activation_candidate_tracking_sha_drift_is_fatal(small_repo):
+    root, dl, base, head = small_repo
+    g(root, 'update-ref', 'refs/remotes/origin/batch/b118-test', base)
+    with pytest.raises(bund.BundleFailure, match='TRACKING_CANDIDATE_DRIFT'):
+        bund.allowed_refs(str(root), 'batch/b118-test', base, head)
+
+
+def test_first_activation_copy_verify_mismatch_is_fatal(small_repo, monkeypatch):
+    root, dl, base, head = small_repo
+    real = bund.git
+    counts = {'list_heads': 0}
+    def corrupt(r, *args, **kwargs):
+        val = real(r, *args, **kwargs)
+        if args[:2] == ('bundle', 'list-heads'):
+            counts['list_heads'] += 1
+            if counts['list_heads'] == 2:
+                return val + '\nCORRUPTED COPY'
+        return val
+    monkeypatch.setattr(bund, 'git', corrupt)
+    with pytest.raises(bund.BundleFailure, match='COPY_VERIFY_FAILED'):
+        bund.create_bundle(root, 'batch/b118-test', base, head, dl, task_id='B118-COPY')
+    assert counts['list_heads'] == 2
+
+
+def test_first_activation_git_env_isolation_passed_to_child(small_repo, monkeypatch):
+    root, dl, base, head = small_repo
+    seen = {}
+    class Result:
+        returncode = 0
+        stdout = b'visible\n'
+        stderr = b''
+    def fake(cmd, **kw):
+        seen.update(kw['env'])
+        assert cmd[0] == 'git'
+        return Result()
+    monkeypatch.setattr(bund.subprocess, 'run', fake)
+    monkeypatch.setenv('GIT_CONFIG_GLOBAL', '/tmp/unsafe')
+    monkeypatch.setenv('GIT_ASKPASS', '/tmp/unsafe-askpass')
+    assert bund.git(str(root), 'status') == 'visible'
+    assert seen['GIT_CONFIG_NOSYSTEM'] == '1'
+    assert seen['GIT_CONFIG_GLOBAL'] == os.devnull
+    assert seen['GIT_TERMINAL_PROMPT'] == '0'
+    assert seen['GCM_INTERACTIVE'] == 'Never'
+    assert 'GIT_ASKPASS' not in seen
+
+
+def test_first_activation_real_bundle_positive_has_no_extra_refs(small_repo):
+    root, dl, base, head = small_repo
+    g(root, 'update-ref', 'refs/stash', head)
+    dst = bund.create_bundle(root, 'batch/b118-test', base, head, dl, task_id='B118-REAL')
+    listed = g(root, 'bundle', 'list-heads', dst)
+    expected = bund.allowed_refs(str(root), 'batch/b118-test', base, head)
+    observed = {parts[1]: parts[0] for x in listed.splitlines() if (parts:=x.split())}
+    assert observed == expected
+    assert 'refs/stash' not in observed
+
+
+def test_first_activation_state_bundle_outcome_recorded_when_failed():
+    # Make the state outcome an explicit required machine field for an enabled spec.
+    assert 'bundle' in br.PRODUCTION_STEPS
+    enabled = {'kind': 'production', 'e24': False, 'focused': None, 'bundle_output': True}
+    assert br.derive_steps(enabled)[-1] == 'bundle'
+    assert br.derive_steps(dict(enabled, bundle_output=False))[-1] == 'push'
+    assert br.derive_steps({'kind': 'promotion'}) == ['preflight', 'verify', 'promote', 'postmain']

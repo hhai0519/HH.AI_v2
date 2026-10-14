@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "B118-AUTO-BUNDLE-FIRST-R1-261014",
-  "base_oid": "d1888a93fd946e20bdcc5547c95141b22210d201",
+  "task_id": "B118-FIRST-ACTIVATION-F1F2F4-R1-261014",
+  "base_oid": "c12d3b18669973f4d1d0c8c9bdbc314a3a41eafa",
   "plan": {
     "allowed_paths": [
       "docs/AUDIT-LOG.md",
@@ -11,12 +11,9 @@
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
       "docs/refactor-backlog.md",
-      "scripts/batch_runner.py",
-      "scripts/bundle_after_push.py",
       "scripts/production_template.py",
-      "scripts/prompt_builder.py",
       "scripts/tests/test_bundle_after_push.py",
-      "scripts/validate_prompt_manifest.py"
+      "scripts/tests/test_prompt_builder.py"
     ],
     "required_paths": [
       "docs/AUDIT-LOG.md",
@@ -25,12 +22,9 @@
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
       "docs/refactor-backlog.md",
-      "scripts/batch_runner.py",
-      "scripts/bundle_after_push.py",
       "scripts/production_template.py",
-      "scripts/prompt_builder.py",
       "scripts/tests/test_bundle_after_push.py",
-      "scripts/validate_prompt_manifest.py"
+      "scripts/tests/test_prompt_builder.py"
     ],
     "max_plan_revisions": 3,
     "revision_count": 0,
@@ -44,12 +38,9 @@
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
       "docs/refactor-backlog.md",
-      "scripts/batch_runner.py",
-      "scripts/bundle_after_push.py",
       "scripts/production_template.py",
-      "scripts/prompt_builder.py",
       "scripts/tests/test_bundle_after_push.py",
-      "scripts/validate_prompt_manifest.py"
+      "scripts/tests/test_prompt_builder.py"
     ]
   },
   "evidence": [

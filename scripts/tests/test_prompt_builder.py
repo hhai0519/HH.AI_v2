@@ -1003,7 +1003,7 @@ def _auto_production_definition(tmp_path, repo, **updates):
     body = {
         'schema_version': 1, 'task_id': 'UNIT-PRODUCTION-261014', 'kind': 'production',
         'base_oid': base, 'branch': 'batch/b115-production-s2-r1-261014',
-        'commit_message': 'autoproduction unit candidate', 'e24': False,
+        'commit_message': 'autoproduction unit candidate', 'e24': False, 'bundle_output': False,
         'code_files': {'scripts/tool.py': 'final.py'},
         'new_files': {}, 'text_ops': [], 'focused': None,
         'production_prose': {
@@ -1189,3 +1189,71 @@ def test_check16_prospective_builder_build_and_check_bind_final_authors(repo, tm
     assert pb.check(root, str(built), runner=_ok) == TASK
     _w(log, log.read_bytes().decode('utf-8') + '| corrupt | ok |\n')
     assert pb.check(root, str(built), runner=_ok) == TASK  # final prompt authors outrank dirty worktree
+
+
+# B-118 first-activation negative tests: new auto-production must explicitly decide output.
+def test_b118_auto_production_bundle_field_missing_rejected(tmp_path, repo):
+    mod, root, d, path = _auto_production_definition(tmp_path, repo)
+    d.pop('bundle_output')
+    _w(path, json.dumps(d, ensure_ascii=False) + '\n')
+    with pytest.raises(pb.BuildError, match='PRODUCTION_BUNDLE_OUTPUT_REQUIRED'):
+        mod.auto_production(root, path, tmp_path / 'out')
+    assert not (tmp_path / 'out').exists()
+
+
+@pytest.mark.parametrize('bad', [None, 'true', 1, 0, [], {}])
+def test_b118_auto_production_bundle_field_invalid_rejected(tmp_path, repo, bad):
+    mod, root, d, path = _auto_production_definition(tmp_path, repo)
+    d['bundle_output'] = bad
+    _w(path, json.dumps(d, ensure_ascii=False) + '\n')
+    with pytest.raises(pb.BuildError, match='PRODUCTION_BUNDLE_OUTPUT_INVALID'):
+        mod.auto_production(root, path, tmp_path / 'out')
+    assert not (tmp_path / 'out').exists()
+
+
+def test_b118_auto_production_bundle_enabled_contract_steps_and_reply(tmp_path, repo):
+    mod, root, d, path = _auto_production_definition(tmp_path, repo, bundle_output=True)
+    text = mod.auto_production(root, path, tmp_path / 'out').read_text('utf-8')
+    spec = br.load_spec(br.prompt_lines(text.encode()), d['task_id'])
+    assert spec['bundle_output'] is True
+    assert br.derive_steps(spec)[-1] == 'bundle'
+    assert 'external_artifact_write: DOWNLOADS_BUNDLE_AFTER_PUSH' in text
+    assert 'python scripts/batch_runner.py --task-id ' + d['task_id'] + ' bundle' in text
+    assert 'BUNDLE_FILE=、ORIGIN_MAIN=' in text and 'BUNDLE FAILED <CODE>' in text
+
+
+def test_b118_auto_production_bundle_disabled_legacy_route_explicit(tmp_path, repo):
+    mod, root, d, path = _auto_production_definition(tmp_path, repo, bundle_output=False)
+    text = mod.auto_production(root, path, tmp_path / 'out').read_text('utf-8')
+    spec = br.load_spec(br.prompt_lines(text.encode()), d['task_id'])
+    assert not spec.get('bundle_output', False)
+    assert br.derive_steps(spec)[-1] == 'push'
+    assert 'external_artifact_write: FORBIDDEN' in text
+
+
+def test_b118_enabled_contract_unknown_enum_rejected_by_validator(tmp_path, repo):
+    import validate_prompt_manifest as validator
+    mod, root, d, path = _auto_production_definition(tmp_path, repo, bundle_output=True)
+    valid = mod.auto_production(root, path, tmp_path / 'out').read_text('utf-8')
+    ok, _, parsed = validator.parse_execution_contract_block(valid)
+    assert ok and parsed['external_artifact_write'] == 'DOWNLOADS_BUNDLE_AFTER_PUSH'
+    tampered = valid.replace('external_artifact_write: DOWNLOADS_BUNDLE_AFTER_PUSH',
+                             'external_artifact_write: ALL_FILES_UNRESTRICTED')
+    ok, _, parsed = validator.parse_execution_contract_block(tampered)
+    assert ok
+    ok, error, _ = validator.validate_execution_contract(parsed)
+    assert not ok and 'external_artifact_write invalid' in error
+
+
+def test_b118_enabled_contract_wrong_but_valid_enum_detected_by_builder(tmp_path, repo, monkeypatch):
+    import validate_prompt_manifest as validator
+    mod, root, d, path = _auto_production_definition(tmp_path, repo, bundle_output=True)
+    actual = validator.parse_execution_contract_block
+    def corrupted_contract(prompt_text):
+        ok, error, parsed = actual(prompt_text)
+        if ok:
+            parsed['external_artifact_write'] = 'FORBIDDEN'
+        return ok, error, parsed
+    monkeypatch.setattr(validator, 'parse_execution_contract_block', corrupted_contract)
+    with pytest.raises(pb.BuildError, match='BUNDLE_CONTRACT_MISMATCH'):
+        mod.auto_production(root, path, tmp_path / 'out')
