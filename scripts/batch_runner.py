@@ -110,6 +110,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 try:
     from bounded_process import run_bounded  # noqa: E402 - shared bounded-execution primitive (B-107)
     from validate_prompt_manifest import extract_must_read_section  # noqa: E402 - the validator's section rule
+    from bundle_after_push import create_bundle, BundleFailure  # noqa: E402
 finally:
     sys.path.pop(0)
 
@@ -146,7 +147,7 @@ SUMMARY_SHAPES = (
                r' in \d+(?:\.\d+)?s(?: \(\d+:\d\d:\d\d\))? ?=*'),
 )
 PRODUCTION_STEPS = ('preflight', 'setup', 'e24', 'apply', 'focused', 'generate', 'precommit', 'stage', 'commit',
-                    'postcommit', 'push')
+                    'postcommit', 'push', 'bundle')
 PROMOTION_STEPS = ('preflight', 'verify', 'promote', 'postmain')
 GATE_LIMITS = {'PRECOMMIT': 2400, 'STAGED': 900, 'POSTCOMMIT': 2400}
 # Must-read closure (G4 slice 2). Changing these lists is a runner change (E27).
@@ -387,6 +388,8 @@ def load_spec(lines, task_id):
         for path, entry in authors.items():
             if entry['source']['kind'] == 'keep':
                 _require(adopt.get(path) == entry['sha256'], 'SPEC_START_INVALID')
+    bundle_output = spec.get('bundle_output', False)
+    _require(isinstance(bundle_output, bool), 'SPEC_BUNDLE_OUTPUT_INVALID')
     runner_update = spec.get('runner_update', False)
     _require(isinstance(runner_update, bool), 'SPEC_RUNNER_UPDATE_INVALID')
     _require(runner_update == (RUNNER_REL in authors), 'SPEC_RUNNER_UPDATE_UNDECLARED')
@@ -494,6 +497,8 @@ def derive_steps(spec):
         steps.remove('e24')
     if spec.get('focused') is None:
         steps.remove('focused')
+    if not spec.get('bundle_output', False):
+        steps.remove('bundle')
     return steps
 
 
@@ -845,6 +850,35 @@ class Batch:
             raise Halt('CANDIDATE_CI_NOT_PASS')
         print('COMMIT ' + head + ' | CI PASS | S1 NONE')
 
+    def step_bundle(self):
+        """Optional, post-push convenience: never reattempt push or falsify CI."""
+        root, spec = self.root, self.spec
+        head = git(root, 'rev-parse', 'HEAD')
+        try:
+            if head == spec['base_oid'] or git(root, 'rev-parse', 'HEAD~1') != spec['base_oid']:
+                raise BundleFailure('COMMIT_DRIFT')
+            if git(root, 'branch', '--show-current') != spec['branch'] or status_lines(root):
+                raise BundleFailure('LOCAL_STATE_DRIFT')
+            if git(root, 'rev-parse', '--is-shallow-repository') != 'false':
+                raise BundleFailure('SHALLOW_REPO')
+            if self.remote_sha('refs/heads/main') != spec['base_oid']:
+                raise BundleFailure('MAIN_DRIFT')
+            if self.remote_sha('refs/heads/' + spec['branch']) != head:
+                raise BundleFailure('REMOTE_SHA_DRIFT')
+            result = create_bundle(root, spec['branch'], spec['base_oid'], head, task_id=self.task_id)
+            print('BUNDLE_FILE=' + result)
+            print('ORIGIN_MAIN=' + spec['base_oid'])
+            return 'READY'
+        except BundleFailure as exc:
+            print('BUNDLE FAILED ' + exc.code)
+            return 'FAILED_' + exc.code
+        except Halt:
+            print('BUNDLE FAILED GIT_PROBE')
+            return 'FAILED_GIT_PROBE'
+        except Exception:
+            print('BUNDLE FAILED UNEXPECTED')
+            return 'FAILED_UNEXPECTED'
+
     # -- promotion -------------------------------------------------------------
 
     def step_verify(self):
@@ -970,7 +1004,8 @@ def timing(root, task_id):
             c = {}
     print('TIMING start=' + start.isoformat() + ' end=' + end.isoformat() + ' elapsed_sec=' + str(round(sec, 1))
           + ' elapsed_min=' + str(int(sec // 60)))
-    print('STATE done=' + ','.join(c.get('done', [])) + ' halted=' + str(c.get('halted')))
+    print('STATE done=' + ','.join(c.get('done', [])) + ' halted=' + str(c.get('halted'))
+          + (' bundle=' + str(c['bundle_outcome']) if 'bundle_outcome' in c else ''))
 
 
 def report_halt(h, step):
@@ -1023,7 +1058,9 @@ def main(argv=None):
         print('S1 PROMPT_UNREADABLE | step ' + step)
         return 1
     try:
-        getattr(batch, 'step_' + step)()
+        outcome = getattr(batch, 'step_' + step)()
+        if step == 'bundle':
+            control['bundle_outcome'] = outcome
     except Halt as h:
         control['halted'] = step + ':' + str(h)
         save_control(batch, control)

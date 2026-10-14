@@ -2825,7 +2825,8 @@ Jules（Google 雲端 AI 代理）於 2026-08-26 對 HH.AI_v2 產出 12 個修�
 
 ### 5.1 上一批狀態
 
-上次核對通過的 HEAD：682fe86d757bf4aaf774f339bd77a17750f37491
+上次核對通過的 HEAD：d1888a93fd946e20bdcc5547c95141b22210d201
+- `d1888a93fd946e20bdcc5547c95141b22210d201`（B116-POSTMAIN-STATE-SYNC-R1-261014）：Macro PASS／ACCEPT ALL、same-SHA main 晉級與 post-main Run 38515430245 attempt 1 verify 1376 passed／1 skipped＋13 passed／ALL 5 GATES PASSED、gateway-windows 57 passed；本任 AUD-GPT-261014 獨立核實，Executor 同 SHA 晉級實測 377.0 秒（6 分鐘）。本後續 B-118 FIRST 以 USER 常設決定（2026-10-14）分開 B-117／118；B-117 保留未實作，B-118 runner 新 after-push bundle 尚待候選 E27 與 Macro 驗收，未預判 future CI。
 - `682fe86d757bf4aaf774f339bd77a17750f37491`（B116-CHECK16-PREGUARD-R1-261014）：本任 AUD-GPT-261014 於 2026-10-14 獨立 Macro PASS／ACCEPT ALL，候選 Run 38503734527 attempt 1 verify 1376 passed／1 skipped＋13 passed／ALL 5 GATES PASSED、gateway-windows 57 passed；same-SHA main 已獨立查證，post-main Run 38508841150 attempt 1 verify／gateway-windows 雙 job SUCCESS，同一 exact SHA，Executor 晉級 309.5 秒（5 分鐘）。B-116 CHECK16 R1 切片結案，B-116 其餘契約 OPEN；N1–N3 與執行前 E27 流程偏差已在 TASKBOARD 與 AUDIT-LOG 前向登錄；NEXT_WORK B-117／118，未實作項目不得預支。
 - `db595a62ff3694fce1f6e2d2e7647a0bc8cb6e9c` 已於 2026-10-13 獨立確認 same-SHA 晉級及 post-main Run 38330014052 attempt 1 雙必要 job success；Executor 實測 346.6 秒（5 分鐘），前次新任狀態同步 candidate db595a62 已 ACCEPTED／PROMOTED。F1 留存為 B-116 第 1 切片待審；B-116 其餘契約與 B-117／118 未實作。
 - `e29d9f2e9dd9cb8a3934f0b58176c9aa50b43e61`（B115-AUTO-PROMOTION-S1-R2-261013）已由 AUD-GPT-261013 獨立裁決 PASS／ACCEPT ALL、same-SHA 晉級 main；候選 Run 38416796327 attempt 1 verify 1357 passed、1 skipped／gateway-windows 57 passed；post-main Run 38420907025 attempt 1 雙 job success、ALL 5 GATES PASSED；Executor promotion 實測 315.1 秒（5 分鐘）。B-115 (9) Slice 1 已完成；Slice 2 production prose 於 7788f882 已獨立 Macro PASS／SAME-SHA ACCEPTED／post-main VERIFIED，B-115 其他殘項仍 OPEN。

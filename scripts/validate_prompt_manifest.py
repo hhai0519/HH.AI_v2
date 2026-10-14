@@ -63,6 +63,7 @@ CONTRACT_V2_EXTRA_KEYS = [
     "execution_record_required",
 ]
 
+CONTRACT_V2_OPTIONAL_KEYS = ['external_artifact_write']
 CONTRACT_REQUIRED_KEYS_V2 = CONTRACT_REQUIRED_KEYS_V1 + CONTRACT_V2_EXTRA_KEYS
 CONTRACT_REQUIRED_KEYS = CONTRACT_REQUIRED_KEYS_V1
 
@@ -386,7 +387,7 @@ def parse_execution_contract_block(prompt_text: str) -> tuple[bool, str, dict]:
 
     contract = {}
     for key, val in raw_pairs:
-        if key not in expected_keys:
+        if key not in expected_keys + (CONTRACT_V2_OPTIONAL_KEYS if contract_version == '2' else []):
             return False, f"Unexpected/unsupported key in contract (version {contract_version}): {key!r}", {}
         contract[key] = val
 
@@ -550,6 +551,10 @@ def validate_execution_contract(
 
     # 8. Contract v2 specific fields validation
     if c_ver == "2":
+        ext = contract.get('external_artifact_write', 'FORBIDDEN')
+        if ext not in ('FORBIDDEN', 'DOWNLOADS_BUNDLE_AFTER_PUSH'):
+            return False, 'Contract v2 external_artifact_write invalid', {}
+        contract['external_artifact_write'] = ext
         # max_plan_revisions
         max_rev = contract.get("max_plan_revisions", "").strip()
         if max_rev != "3":

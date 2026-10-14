@@ -89,7 +89,7 @@ def auto_production(repo, definition, out_dir):
     pb._require(all(x in changed for x in pb.batch_runner.GENERATED), 'GENERATED_MISSING')
     # Use the runner's own step derivation; do not maintain a second e24/focused decision.
     steps = pb.batch_runner.derive_steps({'kind': 'production', 'e24': d.get('e24') is True,
-                                          'focused': d.get('focused')}) + ['timing']
+                                          'focused': d.get('focused'), 'bundle_output': d.get('bundle_output', False)}) + ['timing']
     cmds = '\n'.join(f'python scripts/batch_runner.py --task-id {{TASK_ID}} {s}' for s in steps)
     # Both the prose and all machine data are built from one definition: never copy facts from old prompts.
     head = f'''{{TASK_ID}} — repo-owned production prose (GOAL_SPEC)
@@ -107,7 +107,7 @@ TASK_ID={{TASK_ID}}；Base={{BASE_OID}}；branch={{BRANCH}}；batch_mode=GOAL_SP
 二、確定性機器事實與權限
 本批變更路徑由單一 definition 的作者檔來源自動推導，含固定 canonical 生成檔，恰為：
 ''' + '\n'.join('- ' + x for x in changed) + f'''
-Allowed and required tracked mutation paths 均為 {{ALLOWED}}。本批不授權 main advancement、遠端 ref 刪除、破壞性 Git、憑證讀取、GitHub API 寫入、跨 session 存取、其他 task artifact 讀取、repo 外資料列舉、額外未核准寫檔。
+Allowed and required tracked mutation paths 均為 {{ALLOWED}}。本批不授權 main advancement、遠端 ref 刪除、破壞性 Git、憑證讀取、GitHub API 寫入、跨 session 存取、其他 task artifact 讀取、repo 外資料列舉、額外未核准寫檔。bundle_output={'true' if d.get('bundle_output') else 'false'}；僅 bundle_output=true 時，於 push 後新 bundle 階段核准在 Downloads 新增一份符合命名規範之 bundle，其餘 repo 外寫入仍禁止。
 E24={'REQUIRED' if d.get('e24') is True else 'NONE'}；E27={prose['e27']}。E27 結論不取代 Macro 最終提示詞授權；不得擅自引用任何第二意見 PASS。
 
 三、失敗停止與開始前就緒
@@ -165,6 +165,7 @@ allowed_mutation_paths: {{ALLOWED}}
 required_mutation_paths: {{ALLOWED}}
 max_plan_revisions: 3
 execution_record_required: true
+external_artifact_write: {'DOWNLOADS_BUNDLE_AFTER_PUSH' if d.get('bundle_output') else 'FORBIDDEN'}
 {'END_HHAI_' + 'EXECUTION_CONTRACT'}
 '''
     # Both authored prose files are temporary and outside tracked repo. Never modify caller's definition.

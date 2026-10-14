@@ -314,6 +314,8 @@ def build(repo, definition_path):
                 'commit_message': d.get('commit_message'), 'e24': d.get('e24')}
         if d.get('runner_update'):
             spec['runner_update'] = True
+        if d.get('bundle_output'):
+            spec['bundle_output'] = True
         spec.update({'focused': d.get('focused'), 'start': start_spec(d.get('start'), set(authors)),
                      'authors': dict(sorted(authors.items())), 'ops': ops})
         machine = [block('BATCH_SPEC_JSON', json.dumps(spec, ensure_ascii=False, indent=1)), '\n',
@@ -363,6 +365,12 @@ def build(repo, definition_path):
     for name in (names if kind == 'production' else ['BATCH_SPEC_JSON']) + ['MUST_READ_JSON']:
         _require(lines.count('<<<BEGIN ' + name + '>>>') == 1 and lines.count('<<<END ' + name + '>>>') == 1,
                  'BLOCK_COUNT_INVALID')
+    if kind == 'production' and ('BEGIN_HHAI_EXECUTION_CONTRACT' in text or spec.get('bundle_output')):
+        from validate_prompt_manifest import parse_execution_contract_block
+        ok, _, contract = parse_execution_contract_block(text)
+        _require(ok, 'CONTRACT_PARSE_FAILED')
+        expected = 'DOWNLOADS_BUNDLE_AFTER_PUSH' if spec.get('bundle_output') else 'FORBIDDEN'
+        _require(contract.get('external_artifact_write', 'FORBIDDEN') == expected, 'BUNDLE_CONTRACT_MISMATCH')
     try:
         spec_loaded = batch_runner.load_spec(lines, task)
     except batch_runner.Halt as h:
