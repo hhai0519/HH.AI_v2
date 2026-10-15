@@ -236,10 +236,79 @@ def test_first_activation_real_bundle_positive_has_no_extra_refs(small_repo):
     assert 'refs/stash' not in observed
 
 
-def test_first_activation_state_bundle_outcome_recorded_when_failed():
-    # Make the state outcome an explicit required machine field for an enabled spec.
-    assert 'bundle' in br.PRODUCTION_STEPS
-    enabled = {'kind': 'production', 'e24': False, 'focused': None, 'bundle_output': True}
-    assert br.derive_steps(enabled)[-1] == 'bundle'
-    assert br.derive_steps(dict(enabled, bundle_output=False))[-1] == 'push'
-    assert br.derive_steps({'kind': 'promotion'}) == ['preflight', 'verify', 'promote', 'postmain']
+@pytest.mark.parametrize('outcome', ['FAILED_BUNDLE_EXISTS', 'READY'])
+def test_bundle_result_is_persisted_and_printed_by_real_runner_entrypoint(
+        tmp_path, monkeypatch, capsys, outcome):
+    """F4: exercise actual main -> save_control -> timing/STATE; not just step ordering.
+
+    A FAILED_* after push must never be serialized as READY or dropped from STATE.
+    The READY control proves the positive case exercises the same real code path.
+    """
+    root = tmp_path / 'repo'
+    scripts = root / 'scripts'
+    scripts.mkdir(parents=True)
+    git_dir = root / '.git'
+    git_dir.mkdir()
+    task = 'B118-F4-STATE-TEST-261014'
+    fake_runner = scripts / 'batch_runner.py'
+    fake_runner.write_bytes(b'runner for F4 deterministic test\n')
+    (git_dir / (task + '-prompt.txt')).write_bytes(b'F4 test prompt\n')
+    spec = {'kind': 'production', 'e24': False, 'focused': None,
+            'bundle_output': True}
+    steps = br.derive_steps(spec)
+    assert steps[-2:] == ['push', 'bundle']
+    control_path = git_dir / (task + '-control.json')
+    control_path.write_text(__import__('json').dumps({
+        'task_id': task,
+        'prompt_sha256': br.sha256_bytes(b'F4 test prompt\n'),
+        'runner_sha256': br.sha256_bytes(fake_runner.read_bytes()),
+        'done': steps[:-1],
+        'halted': None,
+    }) + '\n', encoding='utf-8')
+
+    class FakeBatch:
+        def __init__(self, cwd, task_id):
+            self.root, self.task_id = cwd, task_id
+            self.spec = spec
+            self.prompt_bytes = b'F4 test prompt\n'
+            self.control_rel = '.git/' + task_id + '-control.json'
+
+        def artifact(self, suffix):
+            return '.git/' + task + '-' + suffix
+
+        def step_bundle(self):
+            # Post-push side effect is mocked; state handling is NOT mocked.
+            return outcome
+
+    monkeypatch.setattr(br, 'Batch', FakeBatch)
+    monkeypatch.setattr(br, '__file__', str(fake_runner))
+    monkeypatch.chdir(root)
+    assert br.main(['--task-id', task, 'bundle']) == 0
+    post = __import__('json').loads(control_path.read_text(encoding='utf-8'))
+    assert post['bundle_outcome'] == outcome
+    assert post['done'] == steps
+    assert post['halted'] is None
+    assert br.main(['--task-id', task, 'timing']) == 0
+    stdout = capsys.readouterr().out
+    assert 'STATE done=' in stdout
+    assert ' bundle=' + outcome in stdout
+    assert (' bundle=READY' in stdout) is (outcome == 'READY')
+
+
+def test_bundle_outcome_is_absent_when_disabled(tmp_path, monkeypatch, capsys):
+    # The default false production must not fabricate an optional bundle result.
+    task = 'B118-F4-FALSE-TEST-261014'
+    root = tmp_path / 'repo'
+    (root / '.git').mkdir(parents=True)
+    prompt = root / '.git' / (task + '-prompt.txt')
+    prompt.write_bytes(b'false prompt\n')
+    control = root / '.git' / (task + '-control.json')
+    control.write_text(__import__('json').dumps({
+        'done': br.derive_steps({'kind': 'production', 'e24': False,
+                                 'focused': None, 'bundle_output': False}),
+        'halted': None,
+    }), encoding='utf-8')
+    br.timing(str(root), task)
+    line = capsys.readouterr().out.splitlines()[-1]
+    assert line.startswith('STATE done=')
+    assert ' bundle=' not in line
