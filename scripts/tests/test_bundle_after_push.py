@@ -312,3 +312,55 @@ def test_bundle_outcome_is_absent_when_disabled(tmp_path, monkeypatch, capsys):
     line = capsys.readouterr().out.splitlines()[-1]
     assert line.startswith('STATE done=')
     assert ' bundle=' not in line
+
+
+def test_copy_normal_hash_and_actual_bare_fetch(small_repo, tmp_path):
+    """Real bytes, not just bundle header, must import into a fresh empty repo."""
+    root, dl, base, head = small_repo
+    output = bund.create_bundle(root, 'batch/b118-test', base, head, dl, task_id='F3-COPY-GOOD')
+    temp = root / '.git/F3-COPY-GOOD-bundle.tmp'
+    assert bund.file_sha256(temp) == bund.file_sha256(Path(output))
+    imported = tmp_path / 'import.git'
+    g(tmp_path, 'init', '-q', '--bare', str(imported))
+    fetched = subprocess.run(['git', '-C', str(imported), 'fetch', output,
+                              'refs/remotes/origin/*:refs/remotes/origin/*'], capture_output=True)
+    assert fetched.returncode == 0
+    assert g(imported, 'rev-parse', 'refs/remotes/origin/main') == base
+    assert g(imported, 'rev-parse', 'refs/remotes/origin/batch/b118-test') == head
+
+
+def test_equal_length_pack_corruption_is_failed_not_ready(small_repo, monkeypatch, capsys):
+    """Post-copy bit flip must not result in READY or another push."""
+    root, dl, base, head = small_repo
+    original = bund.shutil.copyfileobj
+
+    def flip_trailer(src, dst, length):
+        blob = bytearray(src.read())
+        assert len(blob) > 50
+        blob[-1] ^= 1
+        dst.write(blob)
+
+    monkeypatch.setattr(bund.shutil, 'copyfileobj', flip_trailer)
+    with pytest.raises(bund.BundleFailure, match='COPY_HASH_MISMATCH'):
+        bund.create_bundle(root, 'batch/b118-test', base, head, dl, task_id='F3-CORRUPTED')
+    assert (root / '.git/F3-CORRUPTED-bundle.tmp').stat().st_size == next(dl.glob('*.bundle')).stat().st_size
+    damaged = next(dl.glob('*.bundle'))
+    assert bund.file_sha256(root / '.git/F3-CORRUPTED-bundle.tmp') != bund.file_sha256(damaged)
+    # The header-only verify can still succeed; an actual object import must fail.
+    assert subprocess.run(['git', '-C', str(root), 'bundle', 'verify', str(damaged)], capture_output=True).returncode == 0
+    imported = root.parent / 'corrupted-import.git'
+    g(root.parent, 'init', '-q', '--bare', str(imported))
+    assert subprocess.run(['git', '-C', str(imported), 'fetch', str(damaged),
+                           'refs/remotes/origin/*:refs/remotes/origin/*'], capture_output=True).returncode != 0
+    # Separate isolated repo so this failure path also exercises runner.step_bundle.
+    other = br.Batch.__new__(br.Batch)
+    other.root, other.task_id = str(root), 'F3-CORRUPTED-AGAIN'
+    other.spec = {'kind': 'production', 'base_oid': base, 'branch': 'batch/b118-test'}
+    other.remote_sha = lambda ref: base if ref == 'refs/heads/main' else head
+    monkeypatch.setattr(br, 'status_lines', lambda *_: [])
+    monkeypatch.setattr(br, 'create_bundle', lambda *args, **kwargs: (_ for _ in ()).throw(bund.BundleFailure('COPY_HASH_MISMATCH')))
+    other.step_push = lambda: (_ for _ in ()).throw(AssertionError('must never push again'))
+    assert other.step_bundle() == 'FAILED_COPY_HASH_MISMATCH'
+    out = capsys.readouterr().out
+    assert 'BUNDLE FAILED COPY_HASH_MISMATCH' in out
+    assert 'READY' not in out

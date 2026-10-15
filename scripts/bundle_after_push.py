@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """B-118: bounded, post-push only, locally constructed ref-whitelist bundle."""
+import hashlib
 import os
 import re
 import shutil
@@ -73,6 +74,15 @@ def allowed_refs(root, branch, base, head):
     return dict(sorted(found.items()))
 
 
+def file_sha256(path):
+    """Full-byte comparison in bounded memory; never log bundle bytes."""
+    digest = hashlib.sha256()
+    with path.open('rb') as fh:
+        for chunk in iter(lambda: fh.read(1024 * 1024), b''):
+            digest.update(chunk)
+    return digest.digest()
+
+
 def create_bundle(root, branch, base, head, downloads=None, now=None, task_id=None):
     if not BRANCH.fullmatch(branch) or not OID.fullmatch(base) or not OID.fullmatch(head) or base == head:
         raise BundleFailure('ARGUMENT_INVALID')
@@ -111,6 +121,10 @@ def create_bundle(root, branch, base, head, downloads=None, now=None, task_id=No
             shutil.copyfileobj(src, dst, 1024 * 1024)
         if not target.is_file() or target.stat().st_size != temp.stat().st_size:
             raise BundleFailure('COPY_MISMATCH')
+        # An equal-length corrupted pack can pass list-heads and bundle verify.
+        # Verify the entire copy before allowing the caller to report READY.
+        if file_sha256(temp) != file_sha256(target):
+            raise BundleFailure('COPY_HASH_MISMATCH')
         # Verify actual new file rather than trusting temporary artifact.
         real_heads = git(root, 'bundle', 'list-heads', str(target), timeout=300)
         if real_heads != heads:

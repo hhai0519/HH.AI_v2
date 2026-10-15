@@ -47,7 +47,8 @@ the trusted source. The check detects changes; it does not prevent them. What it
 environment isolation beyond GIT_* (other variables, including any credentials present in the auditor's
 environment, are inherited by the runner and the tests), network isolation (only the CI query is answered locally;
 any other network access by the code under test is not blocked), and file-system isolation outside the work
-directory.
+directory. For bundle_output=true, validates the runner's optional post-push step shape but does not run bundle; it prints
+BATCH_SIM POST_PUSH_BUNDLE NOT_TESTED. Native Windows post-push artifact verification remains separate.
 
 Limits (each fails closed): a step fails when it exits non-zero or prints any line that starts with "S1 ", the
 stop rule given to the Executor ("S1 NONE" at the start of a line included; a result line such as
@@ -138,10 +139,18 @@ PYTEST_TOTALS = re.compile(r'^\d+ [a-z]+(, \d+ [a-z]+)* in [0-9.]+s( \([0-9:]+\)
 
 
 def production_steps(spec):
-    """The runner's own step list for this spec (e24 and focused are optional), without the final push."""
+    """Runner's pre-push steps, excluding push and optional post-push bundle.
+
+    A true batch may be rehearsed through its commit/CI stand-in without creating
+    an artifact in the real Downloads directory. That post-push step is NOT TESTED.
+    """
     steps = batch_runner.derive_steps(spec)
-    _require(steps[:2] == ['preflight', 'setup'] and 'apply' in steps and steps[-1] == 'push', 'STEP_LIST_UNEXPECTED')
-    return tuple(steps[:-1])
+    tail = ['push', 'bundle'] if spec.get('bundle_output') is True else ['push']
+    _require(steps[:2] == ['preflight', 'setup'] and 'apply' in steps
+             and steps[-len(tail):] == tail and steps.count('push') == 1
+             and steps.count('bundle') == (1 if spec.get('bundle_output') is True else 0),
+             'STEP_LIST_UNEXPECTED')
+    return tuple(steps[:-len(tail)])
 
 
 def resume_steps(spec):
@@ -410,6 +419,10 @@ class Sim:
         self.run_steps(task, steps)
         with self.ci_stand_in():
             self.run_steps(task, ('push',))
+        if spec.get('bundle_output') is True:
+            # Simulates only the pre-push/post-commit pipeline and local CI stand-in.
+            # Never run the real bundle helper against host Downloads during rehearsal.
+            self.out('BATCH_SIM POST_PUSH_BUNDLE NOT_TESTED')
         self.verify_production(spec, plan)
         self.check_source_unchanged()
 

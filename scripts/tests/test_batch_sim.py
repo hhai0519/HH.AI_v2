@@ -767,3 +767,29 @@ def test_author_negative_needs_an_author_other_than_the_runner(tmp_path):
     sim, _ = _sim(tmp_path, fake)
     prompt = _prompt(tmp_path, authored={br.RUNNER_REL: b"# runner v2\n"}, runner_update=True)
     assert _code(sim.production, prompt, negative="author") == "NEGATIVE_AUTHOR_UNAVAILABLE"
+
+
+def test_true_bundle_runner_step_model_and_no_bundle_execution(tmp_path):
+    """True works at canonical model, but deliberately does not claim post-push bundle proof."""
+    p = _prompt(tmp_path)
+    blob = Path(p).read_text(encoding='utf-8')
+    import json as _json
+    # Replace just the embedded spec block in this synthetic prompt.
+    block = blob.split('<<<BEGIN BATCH_SPEC_JSON>>>\n', 1)[1].split('\n<<<END BATCH_SPEC_JSON>>>', 1)[0]
+    obj = _json.loads(block)
+    obj['bundle_output'] = True
+    Path(p).write_bytes(blob.replace(block, _json.dumps(obj)).encode('utf-8'))
+    fake = Fake(tmp_path)
+    sim, lines = _sim(tmp_path, fake)
+    sim.production(p)
+    assert list(bs.production_steps(obj)) == FULL_STEPS
+    assert fake.runner_steps() == FULL_STEPS + ['push']
+    assert lines[-1] == 'BATCH_SIM POST_PUSH_BUNDLE NOT_TESTED'
+    assert fake.stub_seen['push'] is True
+
+
+def test_invalid_production_step_tail_fails_closed(monkeypatch):
+    monkeypatch.setattr(br, 'derive_steps', lambda spec: ['preflight', 'setup', 'apply', 'push', 'bundle', 'bundle'])
+    assert _code(bs.production_steps, {'kind': 'production', 'bundle_output': True}) == 'STEP_LIST_UNEXPECTED'
+    monkeypatch.setattr(br, 'derive_steps', lambda spec: ['preflight', 'setup', 'apply', 'bundle', 'push'])
+    assert _code(bs.production_steps, {'kind': 'production', 'bundle_output': True}) == 'STEP_LIST_UNEXPECTED'

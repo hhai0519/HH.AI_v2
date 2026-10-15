@@ -303,6 +303,8 @@ CHECK 12 應跳過該值——建立本檔的那一批沒有「前一個 commit�
 | c12d3b18669973f4d1d0c8c9bdbc314a3a41eafa | 2026-10-14 | §4.1-1、§4.1-3、E27 | **核對通過（B-118 R1 c12d3b1 same-SHA main 晉級與 post-main VERIFIED）**：candidate Run 38534874479 attempt 1 雙綠，post-main Run 38537663445 attempt 1 verify 1385 passed／1 skipped＋13 passed、ALL 5 GATES PASSED、Windows 57 passed；Executor 晉級 332.9 秒（5 分鐘）。首次啟用 F1/F2/F4 留待本後續候選修正與 E27 複核，F3 Windows 原生 NOT TESTED，沒有提前授權 bundle_output=true。 | 下載失敗為交付風險，依 USER 意見同位元組重附並納入既有 Q1，不重做作者檔。 |
 | dd7c4824ce88a80d02d3eb48a5ed01b21966f076 | 2026-10-14 | §4.1-1、§4.1-3、E27 | **核對通過（F1/F2/F4 R1 same-SHA main 晉級）**：candidate Run 38573455846 attempt 1 verify 1405 passed／1 skipped＋13 passed、gateway-windows 57 passed；post-main Run 38577292089 attempt 1 verify 1405 passed／1 skipped＋13 passed、ALL 5 GATES PASSED、gateway-windows 57 passed。F1/F2 收編；F4 M1/M2 測試突變存活（各 196 passed）、仍 OPEN。 | 後續 F4 M1/M2 以真實入口測試殺傷；首次 bundle_output=true 與 F3 Windows 原生驗收仍 NOT TESTED；B-117 獨立 OPEN；審查官本批未執行 remote mutation。 |
 
+| fd0595150d8cda9106b072bec945fba4f57fe795 | 2026-10-15 | §4.1-1、§4.1-3、E27 | **核對通過（B-118 F4 M1／M2 same-SHA main 晉級）**：candidate Run 38664094885 attempt 1 verify 1407 passed／1 skipped＋13 passed，gateway-windows 57 passed；post-main Run 38701257903 attempt 1 verify 1407 passed／1 skipped＋13 passed、ALL 5 GATES PASSED、gateway-windows 57 passed；main=fd0595150d8cda9106b072bec945fba4f57fe795。下一批 F3 首次 bundle_output=true 實證仍 PENDING，不能以 CI 綠燈代替。 | B-117 獨立 OPEN；F5/F6、Q1–Q3 OPEN；B-118 F3 R1 首航 E27-01/02 正式 HOLD（壞 pack READY、simulator true STEP_LIST_UNEXPECTED）；本批 R2 專修此二缺口，需 E27 重驗，尚不啟用 true。F3 Windows bundle／SHA／STATE／失敗路由仍待核實。 |
+
 ---
 
 ## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)
