@@ -23,13 +23,13 @@ def small_repo(tmp_path):
     g(repo, 'init', '-q')
     g(repo, 'config', 'user.email', 'test@example.invalid')
     g(repo, 'config', 'user.name', 'Tester')
-    (repo / 'a').write_text('a\n')
+    (repo / 'a').write_bytes(b'a\n')
     g(repo, 'add', 'a')
     g(repo, 'commit', '-q', '-m', 'base')
     base = g(repo, 'rev-parse', 'HEAD')
     g(repo, 'update-ref', 'refs/remotes/origin/main', base)
     g(repo, 'switch', '-q', '-c', 'batch/b118-test')
-    (repo / 'a').write_text('b\n')
+    (repo / 'a').write_bytes(b'b\n')
     g(repo, 'commit', '-qam', 'candidate')
     head = g(repo, 'rev-parse', 'HEAD')
     g(repo, 'update-ref', 'refs/remotes/origin/batch/b118-test', head)
@@ -159,11 +159,109 @@ def test_first_bundle_step_remote_drift_fails_without_retry(small_repo, monkeypa
     assert 'BUNDLE FAILED ' + reason in capsys.readouterr().out
 
 
-def test_first_bundle_step_rejects_unlisted_tracking_ref(small_repo):
+def test_first_bundle_step_accepts_uppercase_tracking_and_real_jules_branch(small_repo, tmp_path):
     root, dl, base, head = small_repo
+    real_jules = 'wip-jules-2026-09-17T13-14-22-429Z'
     g(root, 'update-ref', 'refs/remotes/origin/UpperCase', head)
-    with pytest.raises(bund.BundleFailure, match='REF_NOT_WHITELISTED'):
-        bund.allowed_refs(str(root), 'batch/b118-test', base, head)
+    g(root, 'update-ref', 'refs/remotes/origin/' + real_jules, head)
+    refs = bund.allowed_refs(str(root), 'batch/b118-test', base, head)
+    assert refs['refs/remotes/origin/UpperCase'] == head
+    assert refs['refs/remotes/origin/' + real_jules] == head
+    output = bund.create_bundle(root, 'batch/b118-test', base, head, dl, task_id='F5-UPPERCASE-REAL')
+    imported = tmp_path / 'uppercase-import.git'
+    g(tmp_path, 'init', '--bare', '-q', str(imported))
+    fetched = subprocess.run(['git', '-C', str(imported), 'fetch', output,
+                              'refs/remotes/origin/*:refs/remotes/origin/*'], capture_output=True)
+    assert fetched.returncode == 0
+    assert g(imported, 'rev-parse', 'refs/remotes/origin/' + real_jules) == head
+
+
+@pytest.mark.parametrize('ref', [
+    'refs/remotes/origin/-invalid',
+    'refs/remotes/origin/path/-invalid',
+    'refs/remotes/origin/two..dots',
+    'refs/remotes/origin/space here',
+    'refs/remotes/origin/bad\x01control',
+    'refs/remotes/origin/bad.lock',
+    'refs/remotes/origin/bad.LOCK',
+    'refs/remotes/origin/.hidden',
+    'refs/remotes/origin/a//b',
+    'refs/remotes/origin/trailing.',
+])
+def test_f5_unsafe_tracking_ref_rejected(ref):
+    assert bund.tracking_name_allowed(ref) is False
+
+
+def test_f5_readonly_preflight_uses_live_remote_refs(small_repo, tmp_path):
+    root, dl, base, head = small_repo
+    # No mutation of refs/remotes/origin or the worktree by this scan.
+    origin = tmp_path / 'upstream.git'
+    g(tmp_path, 'init', '--bare', '-q', str(origin))
+    g(root, 'remote', 'add', 'origin', str(origin))
+    assert subprocess.run(['git', '-C', str(root), 'push', 'origin',
+                           base + ':refs/heads/main',
+                           head + ':refs/heads/wip-jules-2026-09-17T13-14-22-429Z'],
+                          capture_output=True).returncode == 0
+    old = g(root, 'for-each-ref', '--format=%(refname) %(objectname)', 'refs/remotes/origin')
+    assert bund.preflight_remote_refs(root) is True
+    assert g(root, 'for-each-ref', '--format=%(refname) %(objectname)', 'refs/remotes/origin') == old
+    # Deliberately malformed ref output must be stopped even if locally not yet fetched.
+    real_git = bund.git
+    def invalid_remote(root_, *args, **kwargs):
+        if args[:2] == ('ls-remote', '--refs'):
+            return base + ' refs/heads/-invalid'
+        return real_git(root_, *args, **kwargs)
+    from unittest.mock import patch
+    with patch.object(bund, 'git', side_effect=invalid_remote):
+        with pytest.raises(bund.BundleFailure, match='REF_NOT_WHITELISTED'):
+            bund.preflight_remote_refs(root)
+
+
+def test_f5_runner_preflight_true_fails_before_mutation(small_repo, monkeypatch):
+    root, dl, base, head = small_repo
+    from unittest.mock import Mock
+    b = br.Batch.__new__(br.Batch)
+    b.root = str(root)
+    b.spec = {'kind': 'production', 'bundle_output': True}
+    b.task_id, b.prompt_rel, b.lines = 'F5-TEST', '.git/F5-TEST-prompt.txt', []
+    monkeypatch.setattr(br, 'RUNNER_REL', 'a')
+    monkeypatch.setattr(br, 'git', lambda *a, **k: g(root, 'rev-parse', 'HEAD:a'))
+    monkeypatch.setattr(br, 'run', Mock())
+    monkeypatch.setattr(br, 'check_must_read', lambda *a: None)
+    monkeypatch.setattr(br, 'derive_must_read', lambda *a: {})
+    monkeypatch.setattr(br, 'check_must_read_worktree', lambda *a: None)
+    seen = []
+    def fail(root_):
+        seen.append('preflight_check')
+        raise bund.BundleFailure('REF_NOT_WHITELISTED')
+    monkeypatch.setattr(br, 'preflight_remote_refs', fail)
+    with pytest.raises(br.Halt, match='BUNDLE_REF_PREFLIGHT_REF_NOT_WHITELISTED'):
+        b.step_preflight()
+    assert seen == ['preflight_check']
+    b.spec['bundle_output'] = False
+    b.step_preflight()
+    assert seen == ['preflight_check']
+
+
+def test_f5_runner_preflight_actual_runner_modification_stops(small_repo, monkeypatch):
+    root, dl, base, head = small_repo
+    from unittest.mock import Mock
+    b = br.Batch.__new__(br.Batch)
+    b.root = str(root)
+    b.spec = {'kind': 'production', 'bundle_output': True}
+    b.task_id, b.prompt_rel, b.lines = 'F5-R4-TEST', '.git/F5-R4-TEST-prompt.txt', []
+    monkeypatch.setattr(br, 'RUNNER_REL', 'a')
+    monkeypatch.setattr(br, 'git', lambda *a, **k: g(root, 'rev-parse', 'HEAD:a'))
+    monkeypatch.setattr(br, 'run', Mock())
+    monkeypatch.setattr(br, 'check_must_read', lambda *a: None)
+    monkeypatch.setattr(br, 'derive_must_read', lambda *a: {})
+    monkeypatch.setattr(br, 'check_must_read_worktree', lambda *a: None)
+    calls = []
+    monkeypatch.setattr(br, 'preflight_remote_refs', lambda *_: calls.append('remote'))
+    (root / 'a').write_bytes(b'changed-runner\n')
+    with pytest.raises(br.Halt, match='RUNNER_MODIFIED'):
+        b.step_preflight()
+    assert calls == []
 
 
 def test_first_bundle_step_rejects_extra_bundle_ref(small_repo, monkeypatch):

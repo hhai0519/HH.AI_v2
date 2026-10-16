@@ -110,7 +110,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 try:
     from bounded_process import run_bounded  # noqa: E402 - shared bounded-execution primitive (B-107)
     from validate_prompt_manifest import extract_must_read_section  # noqa: E402 - the validator's section rule
-    from bundle_after_push import create_bundle, BundleFailure  # noqa: E402
+    from bundle_after_push import create_bundle, BundleFailure, preflight_remote_refs  # noqa: E402
 finally:
     sys.path.pop(0)
 
@@ -692,6 +692,13 @@ class Batch:
         run([PY, 'scripts/install_git_hooks.py', '--check'], 'HOOKS_CHECK_FAILED', self.root)
         check_must_read(self.root, self.spec, self.lines)
         check_must_read_worktree(self.root, derive_must_read(self.root, self.spec))
+        # F5: reject incompatible remote branch names before setup/apply/commit.
+        # This is read-only; post-push bundle revalidates the actual ref set.
+        if self.spec['kind'] == 'production' and self.spec.get('bundle_output') is True:
+            try:
+                preflight_remote_refs(self.root)
+            except BundleFailure as exc:
+                raise Halt('BUNDLE_REF_PREFLIGHT_' + exc.code) from None
 
     # -- production -----------------------------------------------------------
 

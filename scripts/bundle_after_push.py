@@ -13,7 +13,7 @@ TAIPEI = timezone(timedelta(hours=8))
 
 OID = re.compile(r'^[0-9a-f]{40}$')
 BRANCH = re.compile(r'^batch/[a-z0-9][a-z0-9._-]*$')
-TRACKING = re.compile(r'^refs/remotes/origin/(?:batch/[a-z0-9][a-z0-9._-]*|main|[a-z0-9][a-z0-9._/-]*)$')
+TRACKING = re.compile(r'^refs/remotes/origin/[A-Za-z0-9][A-Za-z0-9._/-]*$')
 
 class BundleFailure(Exception):
     def __init__(self, code):
@@ -48,6 +48,49 @@ def safe_directory(path):
             raise BundleFailure('DOWNLOADS_UNSAFE')
 
 
+
+def tracking_name_allowed(ref):
+    """Safe ASCII subset of Git branch names; uppercase is valid, ref traversal is not.
+
+    Keep production candidate BRANCH stricter; this predicate is for arbitrary
+    existing remote-tracking branches, including historical Jules branches.
+    """
+    if not TRACKING.fullmatch(ref):
+        return False
+    suffix = ref[len('refs/remotes/origin/'):]
+    if '..' in suffix or '@{' in suffix or suffix.endswith('.'):
+        return False
+    return all(part and part[0] in 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789' and part not in ('.', '..') and not part.startswith('.')
+               and not part.endswith('.') and not part.lower().endswith('.lock')
+               for part in suffix.split('/'))
+
+
+def preflight_remote_refs(root):
+    """Read-only local/remote branch-name screening before any tracked edits.
+
+    No fetch, update-ref, checkout, push or filesystem writes. A later bundle
+    pass still checks the actual post-push ref set, closing time-of-check drift.
+    """
+    local = git(root, 'for-each-ref', '--format=%(refname) %(objectname)', 'refs/remotes/origin')
+    for line in local.splitlines():
+        if line.startswith('refs/remotes/origin/HEAD '):
+            continue  # symbolic convenience pointer, never exported
+        parts = line.split()
+        if len(parts) != 2 or not tracking_name_allowed(parts[0]) or not OID.fullmatch(parts[1]):
+            raise BundleFailure('REF_NOT_WHITELISTED')
+    remote = git(root, 'ls-remote', '--refs', 'origin', 'refs/heads/*', timeout=120)
+    if not remote:
+        raise BundleFailure('REMOTE_REFS_EMPTY')
+    for line in remote.splitlines():
+        parts = line.split()
+        if len(parts) != 2 or not parts[1].startswith('refs/heads/') or not OID.fullmatch(parts[0]):
+            raise BundleFailure('REMOTE_REFS_INVALID')
+        tracking = 'refs/remotes/origin/' + parts[1][len('refs/heads/'):]
+        if not tracking_name_allowed(tracking):
+            raise BundleFailure('REF_NOT_WHITELISTED')
+    return True
+
+
 def allowed_refs(root, branch, base, head):
     text = git(root, 'for-each-ref', '--format=%(refname) %(objectname)', 'refs/remotes/origin')
     found = {}
@@ -56,7 +99,7 @@ def allowed_refs(root, branch, base, head):
         if line.startswith('refs/remotes/origin/HEAD '):
             continue
         parts = line.split()
-        if len(parts) != 2 or not TRACKING.fullmatch(parts[0]) or not OID.fullmatch(parts[1]):
+        if len(parts) != 2 or not tracking_name_allowed(parts[0]) or not OID.fullmatch(parts[1]):
             raise BundleFailure('REF_NOT_WHITELISTED')
         if parts[0] in found:
             raise BundleFailure('REF_DUPLICATE')
