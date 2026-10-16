@@ -1,5 +1,5 @@
 {
-  "base_head": "ff6d2d7",
+  "base_head": "7f7878d",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -30,8 +30,8 @@
         "## 4. 變更重放與證據完整性守衛 (Diff Replay & Evidence Integrity Guard — B-109 M2 / CHECK 26)",
         "## 5. 被追蹤檔案寫入三層規則 (Tracked-File Write Layers — B-107 G4)"
       ],
-      "lines": 92,
-      "sha256": "3624997a9e26af9a73f4e3680941af1a994788bf62395362ffa3cce644cc7473"
+      "lines": 93,
+      "sha256": "c364538f75d012ae4c8886e0e4d4176c0944c28c004dbf2b0a88a7528f8238de"
     },
     ".agents/rules/powershell-encoding-protocol.md": {
       "fences": 6,
@@ -561,16 +561,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 326,
-      "sha256": "4883b74b8896eadab72635f2206d77fbd95c32b4c29b8d95db2c01f48401baee"
+      "lines": 328,
+      "sha256": "7d0f7b518c365ec0241a25cb99f1f3110ac271d8d88f2ce4846c297c4ba81418"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 313,
-      "sha256": "f36589ac472e51d70baf8661f1e33637c08d1ade02cc79ab6687d9575e85582b"
+      "lines": 314,
+      "sha256": "0d0e182edab3d4095b6804d4f5cbb569a3fc2f025604f532d486e811208c8dcc"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -612,7 +612,7 @@
         "## 封存區"
       ],
       "lines": 381,
-      "sha256": "edf58b873638158277eeb42125bda03224699d0d9ba8c70b2808c2ed3e455d09"
+      "sha256": "1efff1c3cbe2a599c379986a8ee50a1c7f973362529a0e366d8c4bb6337ab4db"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1110,8 +1110,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6395,
-      "sha256": "15c2e2f0690df2d5992750a2f0126cd23c4cef310264880297d9ad6a13b6e4db"
+      "lines": 6396,
+      "sha256": "a207eb7f1f8d53d0a139feb4e472ee88670bbb3fee968badf92eb76bfc742af7"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1216,6 +1216,8 @@
         "# Backward compatibility alias",
         "# 已知指向錯誤的歷史 tag。本清單只能縮短、不得加長。",
         "# 修復批次完成後必須清空；清單中的 tag 若已修復卻未移除，CHECK 18 會 FAIL。",
+        "# B-116: historical append-only exception is bound to one UTF-8 row, not line number.",
+        "# Do not modify that row: CHECK 16 protects its committed bytes.",
         "# ---------------------------------------------------------------------------",
         "# CHECK 27 — 受管金鑰持久存放指引守衛 (Managed Secret Storage Guidance Guard)",
         "# SEC-01 INC-3：攔截有效技能文字與 docs/mcp-environment-guide.md 中，",
@@ -1225,8 +1227,8 @@
         "# owner 須為未完成之看板任務）。任何輸入缺失、畸形或讀取失敗一律判定失敗。",
         "# ---------------------------------------------------------------------------"
       ],
-      "lines": 3557,
-      "sha256": "f26774ea4d22c04b841dc59813f1cd655eb929d4588f67d435bf50dcef98f731"
+      "lines": 3763,
+      "sha256": "826c8e22a7379e278806f0b1f260996452c0375c8f4879a4f2f8a6a3f1f6b106"
     },
     "scripts/execution_record.py": {
       "fences": 0,
@@ -1540,6 +1542,7 @@
         "# ---------------------------------------------------------------------------",
         "# CHECK 20 Tests: Markdown Table Continuity (B-88)",
         "# ---------------------------------------------------------------------------",
+        "# B-116: CHECK 20 column counts, exact pinned historical exception, CHECK 26 task IDs.",
         "# ---------------------------------------------------------------------------",
         "# CHECK 22 — CI 供應鏈可重現性守衛測試 (Canaries 1-9)",
         "# ---------------------------------------------------------------------------",
@@ -1556,8 +1559,8 @@
         "# CHECK 26 Tests: M2 Plan-vs-Actual / Evidence Integrity Replay Guard",
         "# ---------------------------------------------------------------------------"
       ],
-      "lines": 2401,
-      "sha256": "0a687d93e68f7a4947a47897ea66da5f66e4a1c5020822dda058259282454926"
+      "lines": 2550,
+      "sha256": "26c81b4b8a0f037299164749a324683c02cbfedcc956104b5c933f967ba2f3ce"
     },
     "scripts/tests/test_execution_record.py": {
       "fences": 0,
@@ -1913,7 +1916,7 @@
       "sha256": "35bf7dbfa3c7d291b550c3c97a6ae398a22b1dc3624c1d2fc1e4db6963d6e115"
     }
   },
-  "generated_at": "2026-10-16T02:22:57Z",
+  "generated_at": "2026-10-16T05:40:37Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

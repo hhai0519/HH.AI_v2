@@ -1,30 +1,32 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "B118-F5-REF-PREFLIGHT-R5-261016",
-  "base_oid": "ff6d2d7edc316fcb9511da0811971634431f6274",
+  "task_id": "B116-CHECK20-RECORD-ID-R3-261016",
+  "base_oid": "7f7878d5c9300e523af26eb051fc9e23d6bff3d2",
   "plan": {
     "allowed_paths": [
+      ".agents/rules/governance-gate-integrity.md",
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
+      "docs/generated/rule-traceability.md",
       "docs/governance/execution-record.json",
       "docs/refactor-backlog.md",
-      "scripts/batch_runner.py",
-      "scripts/bundle_after_push.py",
-      "scripts/tests/test_bundle_after_push.py"
+      "scripts/check_consistency.py",
+      "scripts/tests/test_check_consistency.py"
     ],
     "required_paths": [
+      ".agents/rules/governance-gate-integrity.md",
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
+      "docs/generated/rule-traceability.md",
       "docs/governance/execution-record.json",
       "docs/refactor-backlog.md",
-      "scripts/batch_runner.py",
-      "scripts/bundle_after_push.py",
-      "scripts/tests/test_bundle_after_push.py"
+      "scripts/check_consistency.py",
+      "scripts/tests/test_check_consistency.py"
     ],
     "max_plan_revisions": 3,
     "revision_count": 0,
@@ -32,15 +34,16 @@
   },
   "actual": {
     "changed_paths": [
+      ".agents/rules/governance-gate-integrity.md",
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
+      "docs/generated/rule-traceability.md",
       "docs/governance/execution-record.json",
       "docs/refactor-backlog.md",
-      "scripts/batch_runner.py",
-      "scripts/bundle_after_push.py",
-      "scripts/tests/test_bundle_after_push.py"
+      "scripts/check_consistency.py",
+      "scripts/tests/test_check_consistency.py"
     ]
   },
   "evidence": [

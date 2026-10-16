@@ -78,25 +78,28 @@
 | .agents/rules/governance-gate-integrity.md | 61 | ## 4. 變更重放與證據完整性守衛 (Diff Replay & Evidence Integrity Guard — B-109 M2 / CHECK 26) | CHECK | CHECK 26 | scripts/check_consistency.py | RESOLVED |
 | .agents/rules/governance-gate-integrity.md | 62 | ## 4. 變更重放與證據完整性守衛 (Diff Replay & Evidence Integrity Guard — B-109 M2 / CHECK 26) | FILE | `docs/governance/execution-record.json` | docs/governance/execution-record.json | RESOLVED |
 | .agents/rules/governance-gate-integrity.md | 66 | ## 4. 變更重放與證據完整性守衛 (Diff Replay & Evidence Integrity Guard — B-109 M2 / CHECK 26) | CHECK | CHECK 26 | scripts/check_consistency.py | RESOLVED |
-| .agents/rules/governance-gate-integrity.md | 75 | ## 4. 變更重放與證據完整性守衛 (Diff Replay & Evidence Integrity Guard — B-109 M2 / CHECK 26) | CHECK | CHECK 26 | scripts/check_consistency.py | RESOLVED |
-| .agents/rules/governance-gate-integrity.md | 79 | ## 5. 被追蹤檔案寫入三層規則 (Tracked-File Write Layers — B-107 G4) | TASK | B-107 | docs/TASKBOARD.md | RESOLVED |
-| .agents/rules/governance-gate-integrity.md | 83 | ## 5. 被追蹤檔案寫入三層規則 (Tracked-File Write Layers — B-107 G4) | FILE | `scripts/batch_runner.py` | scripts/batch_runner.py | RESOLVED |
-| .agents/rules/governance-gate-integrity.md | 83 | ## 5. 被追蹤檔案寫入三層規則 (Tracked-File Write Layers — B-107 G4) | FILE | `scripts/execution_record.py` | scripts/execution_record.py | RESOLVED |
-| .agents/rules/governance-gate-integrity.md | 83 | ## 5. 被追蹤檔案寫入三層規則 (Tracked-File Write Layers — B-107 G4) | FILE | `scripts/fingerprint.py` | scripts/fingerprint.py | RESOLVED |
-| .agents/rules/governance-gate-integrity.md | 86 | ## 5. 被追蹤檔案寫入三層規則 (Tracked-File Write Layers — B-107 G4) | FILE | `docs/TASKBOARD.md` | docs/TASKBOARD.md | RESOLVED |
-| .agents/rules/governance-gate-integrity.md | 87 | ## 5. 被追蹤檔案寫入三層規則 (Tracked-File Write Layers — B-107 G4) | FILE | `docs/refactor-backlog.md` | docs/refactor-backlog.md | RESOLVED |
-| .agents/rules/governance-gate-integrity.md | 88 | ## 5. 被追蹤檔案寫入三層規則 (Tracked-File Write Layers — B-107 G4) | FILE | `docs/AUDIT-LOG.md` | docs/AUDIT-LOG.md | RESOLVED |
-| .agents/rules/governance-gate-integrity.md | 89 | ## 5. 被追蹤檔案寫入三層規則 (Tracked-File Write Layers — B-107 G4) | FILE | `docs/EXEC-LOG.md` | docs/EXEC-LOG.md | RESOLVED |
-| .agents/rules/governance-gate-integrity.md | 91 | ## 5. 被追蹤檔案寫入三層規則 (Tracked-File Write Layers — B-107 G4) | FILE | `.agents/rules/role-boundaries.md` | .agents/rules/role-boundaries.md | RESOLVED |
-| .agents/rules/governance-gate-integrity.md | 91 | ## 5. 被追蹤檔案寫入三層規則 (Tracked-File Write Layers — B-107 G4) | FILE | `scripts/state_edit.py` | scripts/state_edit.py | RESOLVED |
-| .agents/rules/governance-gate-integrity.md | 91 | ## 5. 被追蹤檔案寫入三層規則 (Tracked-File Write Layers — B-107 G4) | FILE | `scripts/state_edit.py` | scripts/state_edit.py | RESOLVED |
-| .agents/rules/governance-gate-integrity.md | 91 | ## 5. 被追蹤檔案寫入三層規則 (Tracked-File Write Layers — B-107 G4) | TASK | B-96 | docs/TASKBOARD.md | RESOLVED |
+| .agents/rules/governance-gate-integrity.md | 67 | ## 4. 變更重放與證據完整性守衛 (Diff Replay & Evidence Integrity Guard — B-109 M2 / CHECK 26) | FILE | `docs/EXEC-LOG.md` | docs/EXEC-LOG.md | RESOLVED |
+| .agents/rules/governance-gate-integrity.md | 67 | ## 4. 變更重放與證據完整性守衛 (Diff Replay & Evidence Integrity Guard — B-109 M2 / CHECK 26) | FILE | `docs/governance/execution-record.json` | docs/governance/execution-record.json | RESOLVED |
+| .agents/rules/governance-gate-integrity.md | 67 | ## 4. 變更重放與證據完整性守衛 (Diff Replay & Evidence Integrity Guard — B-109 M2 / CHECK 26) | TASK | B-116 | docs/TASKBOARD.md | RESOLVED |
+| .agents/rules/governance-gate-integrity.md | 76 | ## 4. 變更重放與證據完整性守衛 (Diff Replay & Evidence Integrity Guard — B-109 M2 / CHECK 26) | CHECK | CHECK 26 | scripts/check_consistency.py | RESOLVED |
+| .agents/rules/governance-gate-integrity.md | 80 | ## 5. 被追蹤檔案寫入三層規則 (Tracked-File Write Layers — B-107 G4) | TASK | B-107 | docs/TASKBOARD.md | RESOLVED |
+| .agents/rules/governance-gate-integrity.md | 84 | ## 5. 被追蹤檔案寫入三層規則 (Tracked-File Write Layers — B-107 G4) | FILE | `scripts/batch_runner.py` | scripts/batch_runner.py | RESOLVED |
+| .agents/rules/governance-gate-integrity.md | 84 | ## 5. 被追蹤檔案寫入三層規則 (Tracked-File Write Layers — B-107 G4) | FILE | `scripts/execution_record.py` | scripts/execution_record.py | RESOLVED |
+| .agents/rules/governance-gate-integrity.md | 84 | ## 5. 被追蹤檔案寫入三層規則 (Tracked-File Write Layers — B-107 G4) | FILE | `scripts/fingerprint.py` | scripts/fingerprint.py | RESOLVED |
+| .agents/rules/governance-gate-integrity.md | 87 | ## 5. 被追蹤檔案寫入三層規則 (Tracked-File Write Layers — B-107 G4) | FILE | `docs/TASKBOARD.md` | docs/TASKBOARD.md | RESOLVED |
+| .agents/rules/governance-gate-integrity.md | 88 | ## 5. 被追蹤檔案寫入三層規則 (Tracked-File Write Layers — B-107 G4) | FILE | `docs/refactor-backlog.md` | docs/refactor-backlog.md | RESOLVED |
+| .agents/rules/governance-gate-integrity.md | 89 | ## 5. 被追蹤檔案寫入三層規則 (Tracked-File Write Layers — B-107 G4) | FILE | `docs/AUDIT-LOG.md` | docs/AUDIT-LOG.md | RESOLVED |
+| .agents/rules/governance-gate-integrity.md | 90 | ## 5. 被追蹤檔案寫入三層規則 (Tracked-File Write Layers — B-107 G4) | FILE | `docs/EXEC-LOG.md` | docs/EXEC-LOG.md | RESOLVED |
 | .agents/rules/governance-gate-integrity.md | 92 | ## 5. 被追蹤檔案寫入三層規則 (Tracked-File Write Layers — B-107 G4) | FILE | `.agents/rules/role-boundaries.md` | .agents/rules/role-boundaries.md | RESOLVED |
-| .agents/rules/governance-gate-integrity.md | 92 | ## 5. 被追蹤檔案寫入三層規則 (Tracked-File Write Layers — B-107 G4) | FILE | `docs/refactor-backlog.md` | docs/refactor-backlog.md | RESOLVED |
-| .agents/rules/governance-gate-integrity.md | 92 | ## 5. 被追蹤檔案寫入三層規則 (Tracked-File Write Layers — B-107 G4) | FILE | `scripts/verify_all.py` | scripts/verify_all.py | RESOLVED |
+| .agents/rules/governance-gate-integrity.md | 92 | ## 5. 被追蹤檔案寫入三層規則 (Tracked-File Write Layers — B-107 G4) | FILE | `scripts/state_edit.py` | scripts/state_edit.py | RESOLVED |
+| .agents/rules/governance-gate-integrity.md | 92 | ## 5. 被追蹤檔案寫入三層規則 (Tracked-File Write Layers — B-107 G4) | FILE | `scripts/state_edit.py` | scripts/state_edit.py | RESOLVED |
 | .agents/rules/governance-gate-integrity.md | 92 | ## 5. 被追蹤檔案寫入三層規則 (Tracked-File Write Layers — B-107 G4) | TASK | B-96 | docs/TASKBOARD.md | RESOLVED |
-| .agents/rules/governance-gate-integrity.md | 92 | ## 5. 被追蹤檔案寫入三層規則 (Tracked-File Write Layers — B-107 G4) | TASK | B-96 | docs/TASKBOARD.md | RESOLVED |
-| .agents/rules/governance-gate-integrity.md | 92 | ## 5. 被追蹤檔案寫入三層規則 (Tracked-File Write Layers — B-107 G4) | TASK | B-96 | docs/TASKBOARD.md | RESOLVED |
+| .agents/rules/governance-gate-integrity.md | 93 | ## 5. 被追蹤檔案寫入三層規則 (Tracked-File Write Layers — B-107 G4) | FILE | `.agents/rules/role-boundaries.md` | .agents/rules/role-boundaries.md | RESOLVED |
+| .agents/rules/governance-gate-integrity.md | 93 | ## 5. 被追蹤檔案寫入三層規則 (Tracked-File Write Layers — B-107 G4) | FILE | `docs/refactor-backlog.md` | docs/refactor-backlog.md | RESOLVED |
+| .agents/rules/governance-gate-integrity.md | 93 | ## 5. 被追蹤檔案寫入三層規則 (Tracked-File Write Layers — B-107 G4) | FILE | `scripts/verify_all.py` | scripts/verify_all.py | RESOLVED |
+| .agents/rules/governance-gate-integrity.md | 93 | ## 5. 被追蹤檔案寫入三層規則 (Tracked-File Write Layers — B-107 G4) | TASK | B-96 | docs/TASKBOARD.md | RESOLVED |
+| .agents/rules/governance-gate-integrity.md | 93 | ## 5. 被追蹤檔案寫入三層規則 (Tracked-File Write Layers — B-107 G4) | TASK | B-96 | docs/TASKBOARD.md | RESOLVED |
+| .agents/rules/governance-gate-integrity.md | 93 | ## 5. 被追蹤檔案寫入三層規則 (Tracked-File Write Layers — B-107 G4) | TASK | B-96 | docs/TASKBOARD.md | RESOLVED |
 | .agents/rules/powershell-encoding-protocol.md | 48 | ## 3. PowerShell 強制 UTF-8 宣告 (PowerShell UTF-8 Lock) | FILE | `.agents/rules/git-and-reporting.md` | .agents/rules/git-and-reporting.md | RESOLVED |
 | .agents/rules/powershell-encoding-protocol.md | 61 | ## 5. 命令列參數與多行文字傳遞協定 (Parameter Passing & Payload Protocol) | ADR | ADR-0010 | docs/adr/0010-powershell-parameter-passing-pitfalls.md | RESOLVED |
 | .agents/rules/prompt-preflight.md | 9 | ## 1. 目的 | ADR | docs/adr/0007-macro-auditor-role.md | docs/adr/0007-macro-auditor-role.md | RESOLVED |

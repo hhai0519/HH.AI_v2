@@ -21,7 +21,7 @@
   CHECK 17 — Batch Spec 重放一致性
   CHECK 18 — audited-* tag 名實一致
   CHECK 19 — ADR-0013 §2C UTF-8 BOM 污染偵測
-  CHECK 20 — 跨檔案規則追溯矩陣守衛 (Rule Traceability Matrix Guard)
+  CHECK 20 — Markdown 表格連續性與 GFM 欄數守衛
   CHECK 21 — 機密防護與輸出安全守衛 (Secret Leak Guard)
   CHECK 22 — CI 供應鏈可重現性守衛 (CI Supply-Chain Reproducibility Guard)
   CHECK 23 — 傳輸能力與合約一致性守衛 (Transport Capability / Contract Exclusivity Guard)
@@ -2352,6 +2352,154 @@ def _is_table_separator_row(line):
     return True
 
 
+# B-116: historical append-only exception is bound to one UTF-8 row, not line number.
+# Do not modify that row: CHECK 16 protects its committed bytes.
+C20_HISTORICAL_EXCEPTION_PATH = "docs/EXEC-LOG.md"
+C20_HISTORICAL_EXCEPTION_SHA256 = "5e86e91676a39c0f0598fce4d978ae940aa2f87213907a5420ef40c6bfc7a081"
+
+
+def _c20_table_cells(line):
+    """Parse pipe-framed GFM cells: a pipe preceded by a backslash is escaped.
+
+    Backtick code spans do NOT protect unescaped | from GFM table splitting.
+    This guard explicitly scopes itself to pipe-framed tables.
+    """
+    s = line.strip()
+    if not (s.startswith("|") and s.endswith("|")):
+        return None
+    result, token = [], []
+    for i in range(1, len(s) - 1):
+        c = s[i]
+        if c == "|":
+            n = 0
+            j = i - 1
+            while j >= 0 and s[j] == "\\":
+                n += 1
+                j -= 1
+            if n == 0:
+                result.append("".join(token).strip())
+                token = []
+                continue
+        token.append(c)
+    result.append("".join(token).strip())
+    return result
+
+
+def _c20_is_separator(cells):
+    return bool(cells) and all(re.fullmatch(r":?-{3,}:?", c) for c in cells)
+
+
+def _c20_is_fence(line):
+    match = re.match(r"^ {0,3}(`{3,}|~{3,})", line)
+    return (match.group(1)[0], len(match.group(1))) if match else None
+
+
+def _c20_column_failures(root_dir):
+    """Scan Markdown including docs/archive; no unreadable files may be skipped."""
+    import hashlib
+    fails, infos = [], []
+    pinned_hits = 0
+    scanned = 0
+    # Full repo vs synthetic isolated fixture: only the full governance tree has the
+    # historical exception requirement. The exception MUST be present once in production.
+    require_pin = (os.path.isfile(os.path.join(root_dir, "AGENTS.md")) and
+                   os.path.isfile(os.path.join(root_dir, "docs/governance/execution-record.json")))
+    if require_pin and not os.path.isfile(os.path.join(root_dir, C20_HISTORICAL_EXCEPTION_PATH)):
+        fails.append(f"{C20_HISTORICAL_EXCEPTION_PATH}:0  歷史例外來源遺失")
+
+    # Git index inventory is the source of authority (newly staged Markdown included).
+    # Untracked .md files (e.g. .pytest_cache/README.md) must never perturb CI.
+    # Non-repository scratch fixtures retain a bounded fallback for unit tests only.
+    is_repo = _in_git_repo(root_dir)
+    if is_repo:
+        import subprocess
+        try:
+            listing = subprocess.run(
+                ["git", "-C", root_dir, "ls-files", "--cached", "-z", "--", "*.md"],
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=30,
+            )
+            if listing.returncode != 0:
+                raise OSError("git ls-files returned nonzero")
+            tracked = sorted({p.decode("utf-8") for p in listing.stdout.split(b"\x00") if p})
+        except (OSError, UnicodeError, subprocess.TimeoutExpired) as exc:
+            fails.append(f"Markdown 欄數掃描 Git 枚舉失敗: {type(exc).__name__}")
+            tracked = []
+    elif require_pin or os.path.exists(os.path.join(root_dir, ".git")):
+        # A governance-shaped tree that cannot enumerate Git is NOT an optional fixture.
+        fails.append("Markdown 欄數掃描 Git repository 缺失或無法讀取")
+        tracked = []
+    else:
+        tracked = []
+        for current, dirs, files in os.walk(root_dir):
+            dirs[:] = sorted(d for d in dirs if d not in
+                             (".git", "node_modules", "__pycache__", ".venv", "_archive"))
+            tracked.extend(os.path.relpath(os.path.join(current, f), root_dir)
+                           .replace(os.sep, "/") for f in files if f.endswith(".md"))
+        tracked.sort()
+    for rel in tracked:
+        if not rel.endswith(".md"):
+            continue
+        abs_path = os.path.join(root_dir, rel)
+        if not os.path.isfile(abs_path):
+            fails.append(f"{rel}:0  Git tracked Markdown 檔案遺失／不可讀")
+            continue
+        try:
+            with open(abs_path, "rb") as fh:
+                raw = fh.read()
+            lines = raw.decode("utf-8").splitlines()
+        except (OSError, UnicodeError) as exc:
+            fails.append(f"{rel}:0  Markdown 欄數掃描讀取／解碼失敗: {type(exc).__name__}")
+            continue
+        scanned += 1
+        fence = None
+        i = 0
+        while i < len(lines):
+            line = lines[i]
+            mark = _c20_is_fence(line)
+            if mark:
+                if fence is None:
+                    fence = mark
+                elif mark[0] == fence[0] and mark[1] >= fence[1]:
+                    fence = None
+                i += 1
+                continue
+            if fence is not None:
+                i += 1
+                continue
+            header = _c20_table_cells(line)
+            if header is None or i + 1 >= len(lines):
+                i += 1
+                continue
+            sep = _c20_table_cells(lines[i + 1])
+            if sep is None or not _c20_is_separator(sep):
+                i += 1
+                continue
+            if len(header) != len(sep):
+                fails.append(f"{rel}:{i+2}  表頭 {len(header)} 欄、分隔列 {len(sep)} 欄不符")
+            j = i + 2
+            while j < len(lines):
+                if _c20_is_fence(lines[j]):
+                    break
+                row = _c20_table_cells(lines[j])
+                if row is None or _c20_is_separator(row):
+                    break
+                if len(row) != len(header):
+                    row_sha = hashlib.sha256(lines[j].encode("utf-8")).hexdigest()
+                    if (rel == C20_HISTORICAL_EXCEPTION_PATH and
+                        row_sha == C20_HISTORICAL_EXCEPTION_SHA256 and
+                        len(row) == 6 and len(header) == 5):
+                        pinned_hits += 1
+                    else:
+                        fails.append(f"{rel}:{j+1}  Markdown 表格欄數不符: "
+                                     f"data={len(row)}, header={len(header)}")
+                j += 1
+            i = j
+    if require_pin and pinned_hits != 1:
+        fails.append(f"{C20_HISTORICAL_EXCEPTION_PATH}:0  歷史列例外必須恰好 1 次，實際 {pinned_hits}")
+    infos.append(f"CHECK20_COLUMN_SCAN Markdown={scanned} NON_PINNED={len(fails)} PINNED={pinned_hits}")
+    return fails, infos
+
+
 def check_20_markdown_table_continuity(root_dir=None):
     """CHECK 20 — Markdown 表格連續性（偵測被空白行切斷之表格）。"""
     if root_dir is None:
@@ -2408,6 +2556,9 @@ def check_20_markdown_table_continuity(root_dir=None):
                     scanned += 1
                 except Exception as e:
                     fails.append(f"{rel_fp}:0  檔案讀取失敗: {e}")
+    column_fails, column_infos = _c20_column_failures(root_dir)
+    fails.extend(column_fails)
+    infos.extend(column_infos)
     infos.append(f"掃描 Markdown 檔案共 {scanned} 個")
     return fails, infos
 
@@ -3233,6 +3384,44 @@ def check_25_mechanical_governance(root_dir=None):
 check_25_mechanical_governance_v1_guard = check_25_mechanical_governance
 
 
+def _c26_latest_exec_task_id(root_dir):
+    """Find latest data row of the canonical EXEC-LOG table, use third column up to '：'."""
+    path = os.path.join(root_dir, "docs", "EXEC-LOG.md")
+    try:
+        with open(path, "rb") as fh:
+            lines = fh.read().decode("utf-8").splitlines()
+    except (OSError, UnicodeError) as exc:
+        return None, f"docs/EXEC-LOG.md:0  最新 TASK_ID 來源無法讀取: {type(exc).__name__}"
+    matches = []
+    for idx, line in enumerate(lines[:-1]):
+        hdr = _c20_table_cells(line)
+        sep = _c20_table_cells(lines[idx+1])
+        if not hdr or not sep or not _c20_is_separator(sep):
+            continue
+        if not hdr[0].startswith("批次 commit") or len(hdr) < 3:
+            continue
+        j = idx + 2
+        last = None
+        while j < len(lines):
+            row = _c20_table_cells(lines[j])
+            if row is None or _c20_is_separator(row):
+                break
+            last = (j + 1, row)
+            j += 1
+        if last is not None:
+            matches.append(last)
+    if not matches:
+        return None, "docs/EXEC-LOG.md:0  找不到完整任務紀錄表"
+    # The log has historical table schema revisions. The latest table is authoritative.
+    line_no, cols = matches[-1]
+    if len(cols) != 5:
+        return None, f"docs/EXEC-LOG.md:{line_no}  最新列欄數不等於 5"
+    m = re.fullmatch(r"([A-Z][A-Z0-9]*(?:-[A-Z0-9]+)+)：.*", cols[2])
+    if not m:
+        return None, f"docs/EXEC-LOG.md:{line_no}  最新列第三欄沒有合法完整 TASK_ID＋全形冒號"
+    return m.group(1), None
+
+
 def check_26_plan_actual_evidence_integrity(root_dir=None, as_if_committed=False):
     """
     CHECK 26 — M2 計畫與執行重放暨證據完整性守衛 (M2 Plan-vs-Actual / Evidence Integrity Replay Guard).
@@ -3257,6 +3446,23 @@ def check_26_plan_actual_evidence_integrity(root_dir=None, as_if_committed=False
     except ImportError:
         import execution_record
         verify_execution_record_file = execution_record.verify_execution_record_file
+
+    try:
+        with open(rec_abs, "rb") as fh:
+            record_task_id = json.loads(fh.read().decode("utf-8"))["task_id"]
+        if not isinstance(record_task_id, str) or not record_task_id:
+            raise ValueError("task_id")
+    except (OSError, UnicodeError, ValueError, KeyError, TypeError) as exc:
+        fails.append(f"{rec_rel}:0  task_id 不合法或無法讀取: {type(exc).__name__}")
+        return fails, infos
+    latest_task_id, id_error = _c26_latest_exec_task_id(root_dir)
+    if id_error:
+        fails.append(id_error)
+    elif latest_task_id != record_task_id:
+        fails.append(f"docs/EXEC-LOG.md:0  最新完整 TASK_ID={latest_task_id} "
+                     f"不等於 execution-record.json task_id={record_task_id}")
+    else:
+        infos.append(f"EXEC-LOG 最新 TASK_ID 與 execution-record.json 一致：{latest_task_id}")
 
     ok, msg = verify_execution_record_file(rec_rel, repo_root=root_dir, as_if_committed=as_if_committed)
     if not ok:

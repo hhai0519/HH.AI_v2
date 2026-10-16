@@ -1358,6 +1358,155 @@ def test_check_20_markdown_table_continuity_archive_ignored(tmp_path):
     assert len(fails) == 0
 
 
+# B-116: CHECK 20 column counts, exact pinned historical exception, CHECK 26 task IDs.
+
+def test_b116_c20_extra_and_missing_columns_fail_closed(tmp_path):
+    doc = tmp_path / "columns.md"
+    doc.write_text("| A | B |\n|---|---|\n| one | two | extra |\n| alone |\n", encoding="utf-8")
+    fails, _ = check_20_markdown_table_continuity(str(tmp_path))
+    assert len(fails) == 2
+    assert all("欄數不符" in f for f in fails)
+
+
+def test_b116_c20_escaped_pipe_inline_code_and_fences_pass(tmp_path):
+    doc = tmp_path / "code.md"
+    doc.write_text(
+        "| A | B |\n|---|---|\n| a\\|b | `x\\|y` |\n"
+        "```md\n| A | B |\n|---|---|\n| bad | too | extra |\n```\n"
+        "~~~md\n| A | B |\n|---|---|\n| bad | too | extra |\n~~~\n",
+        encoding="utf-8",
+    )
+    fails, _ = check_20_markdown_table_continuity(str(tmp_path))
+    assert fails == []
+    # GFM recognizes only escaped pipes, even inside inline backtick code spans.
+    doc.write_text("| A | B |\n|---|---|\n| a\\|b | `x|y` |\n", encoding="utf-8")
+    fails, _ = check_20_markdown_table_continuity(str(tmp_path))
+    assert any("欄數不符" in x for x in fails)
+    doc.write_text("| A | B |\n|---|---|\n| a\\|b | `x\\|y` |\n", encoding="utf-8")
+    fails, _ = check_20_markdown_table_continuity(str(tmp_path))
+    assert fails == []
+    # GitHub cmark-gfm: even two backslashes immediately before a pipe escape it.
+    # Python literal below yields exactly two literal backslashes, then '|'.
+    doc.write_text("| A | B |\n|---|---|\n| a\\\\|b | c |\n", encoding="utf-8")
+    fails, _ = check_20_markdown_table_continuity(str(tmp_path))
+    assert fails == []
+    # Three adjacent backslashes also protect that pipe in cmark-gfm.
+    doc.write_text("| A | B |\n|---|---|\n| a\\\\\\|b | c |\n", encoding="utf-8")
+    fails, _ = check_20_markdown_table_continuity(str(tmp_path))
+    assert fails == []
+
+
+def test_b116_c20_archive_tables_scanned(tmp_path):
+    archive = tmp_path / "docs" / "archive"
+    archive.mkdir(parents=True)
+    (archive / "legacy.md").write_text("| A | B |\n|---|---|\n| one | two | extra |\n", encoding="utf-8")
+    fails, _ = check_20_markdown_table_continuity(str(tmp_path))
+    assert len(fails) == 1 and "docs/archive" in fails[0]
+
+
+def test_b116_c20_decode_failure_is_not_skipped(tmp_path):
+    (tmp_path / "broken.md").write_bytes(b"\xff\xfe\x00")
+    fails, _ = check_20_markdown_table_continuity(str(tmp_path))
+    assert len(fails) >= 1 and any("解碼失敗" in f for f in fails)
+
+
+def test_b116_c20_historical_exact_sha_pinned_and_mutation_killing(tmp_path):
+    import check_consistency as cc
+    from pathlib import Path
+    base = Path(__file__).resolve().parents[2]
+    source = (base / "docs" / "EXEC-LOG.md").read_text(encoding="utf-8").splitlines()[306]
+    import hashlib
+    assert hashlib.sha256(source.encode()).hexdigest() == cc.C20_HISTORICAL_EXCEPTION_SHA256
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "governance").mkdir()
+    (docs / "governance" / "execution-record.json").write_text("{}", encoding="utf-8")
+    (tmp_path / "AGENTS.md").write_text("# test\n", encoding="utf-8")
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+    logfile = docs / "EXEC-LOG.md"
+    def write(row):
+        logfile.write_text("| 批次 commit | 日期 | 檢查範圍 | 結果 | 攔截紀錄 |\n"
+                           "|---|---|---|---|---|\n" + row + "\n", encoding="utf-8")
+    write(source)
+    subprocess.run(["git", "-C", str(tmp_path), "add", "--", "docs/EXEC-LOG.md"], check=True)
+    fails, infos = cc.check_20_markdown_table_continuity(str(tmp_path))
+    assert fails == [] and any("PINNED=1" in v for v in infos)
+    write(source.replace("未預先宣稱", "已預先宣稱"))
+    fails, _ = cc.check_20_markdown_table_continuity(str(tmp_path))
+    assert any("例外必須恰好 1" in x for x in fails)
+    write(source + "\n| another | 2026-10-16 | foo | pass | extra | bad |")
+    fails, _ = cc.check_20_markdown_table_continuity(str(tmp_path))
+    assert any("欄數不符" in x for x in fails)
+
+
+def test_b116_c20_git_tracked_markdown_missing_fails_closed(tmp_path):
+    """M6: removing the missing-file detection must make this test fail."""
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+    doc = tmp_path / "tracked.md"
+    doc.write_text("| A | B |\n|---|---|\n| one | two |\n", encoding="utf-8")
+    subprocess.run(["git", "-C", str(tmp_path), "add", "--", "tracked.md"], check=True)
+    doc.unlink()
+    fails, _ = check_20_markdown_table_continuity(str(tmp_path))
+    assert any("tracked.md" in x and "遺失" in x for x in fails)
+
+
+def test_b116_c20_git_inventory_ignores_untracked_and_includes_index(tmp_path):
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+    tracked = tmp_path / "tracked.md"
+    tracked.write_text("| A | B |\n|---|---|\n| ok | yes |\n", encoding="utf-8")
+    subprocess.run(["git", "-C", str(tmp_path), "add", "--", "tracked.md"], check=True)
+    (tmp_path / "untracked.md").write_text("| A | B |\n|---|---|\n| bad | col | extra |\n", encoding="utf-8")
+    fails, _ = check_20_markdown_table_continuity(str(tmp_path))
+    assert fails == []
+    staged = tmp_path / "staged.md"
+    staged.write_text("| A | B |\n|---|---|\n| bad | col | extra |\n", encoding="utf-8")
+    subprocess.run(["git", "-C", str(tmp_path), "add", "--", "staged.md"], check=True)
+    fails, _ = check_20_markdown_table_continuity(str(tmp_path))
+    assert any("staged.md" in x for x in fails)
+
+
+def test_b116_c26_uses_latest_schema_and_full_id(tmp_path):
+    import check_consistency as cc
+    d = tmp_path / "docs"
+    d.mkdir()
+    (d / "EXEC-LOG.md").write_text(
+        "| 批次 commit | 日期 | 執行者 | 範圍 | 證據 | 結果 |\n"
+        "|---|---|---|---|---|---|\n"
+        "| old | 2026 | worker | legacy | yes | PASS |\n\n"
+        "| 批次 commit | 日期 | 檢查範圍 | 結果 | 攔截紀錄 |\n"
+        "|---|---|---|---|---|\n"
+        "| 本批 | 2026 | B116-CHECK20-RECORD-ID-R1-261016：test | 通過 | no |\n",
+        encoding="utf-8",
+    )
+    task, err = cc._c26_latest_exec_task_id(str(tmp_path))
+    assert err is None and task == "B116-CHECK20-RECORD-ID-R1-261016"
+    content = (d / "EXEC-LOG.md").read_text(encoding="utf-8")
+    (d / "EXEC-LOG.md").write_text(content.replace("R1-261016：test", "R1-261016 test"), encoding="utf-8")
+    task, err = cc._c26_latest_exec_task_id(str(tmp_path))
+    assert task is None and "TASK_ID" in err
+
+
+def test_b116_c26_record_mismatch_guards_against_r2_d3(tmp_path, monkeypatch):
+    import check_consistency as cc
+    from scripts import execution_record
+    d = tmp_path / "docs"
+    (d / "governance").mkdir(parents=True)
+    (d / "EXEC-LOG.md").write_text(
+        "| 批次 commit | 日期 | 檢查範圍 | 結果 | 攔截紀錄 |\n"
+        "|---|---|---|---|---|\n"
+        "| 本批 | 2026 | B118-F5-REF-PREFLIGHT-R1-261016：wrong old R1 | 通過 | no |\n",
+        encoding="utf-8",
+    )
+    rec = d / "governance" / "execution-record.json"
+    rec.write_text(json.dumps({"task_id": "B118-F5-REF-PREFLIGHT-R2-261016"}), encoding="utf-8")
+    monkeypatch.setattr(execution_record, "verify_execution_record_file", lambda *args, **kwargs: (True, "OK"))
+    fails, _ = cc.check_26_plan_actual_evidence_integrity(str(tmp_path))
+    assert any("不等於 execution-record" in f for f in fails)
+    rec.write_text(json.dumps({"task_id": "B118-F5-REF-PREFLIGHT-R1-261016"}), encoding="utf-8")
+    fails, _ = cc.check_26_plan_actual_evidence_integrity(str(tmp_path))
+    assert fails == []
+
+
 def test_integration_run_checks_includes_19_and_20():
     import check_consistency
     import inspect
@@ -1498,7 +1647,7 @@ def test_full_checker_inventory_negative_controls():
     assert "Duplicate CHECK 20" in err_b
 
     # C: Docstring inventory omits active ID (e.g. remove CHECK 20)
-    tampered_c = valid_content.replace('CHECK 20 — 跨檔案規則追溯矩陣守衛 (Rule Traceability Matrix Guard)', '')
+    tampered_c = valid_content.replace('CHECK 20 — Markdown 表格連續性與 GFM 欄數守衛', '')
     ok_c, err_c, _ = verify_check_consistency_inventory(tampered_c)
     assert ok_c is False
     assert "Docstring inventory mismatch" in err_c

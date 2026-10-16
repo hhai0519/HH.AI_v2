@@ -64,6 +64,7 @@
      - 實際異動檔案清單完全等於 `execution-record.json` 中的 `actual_changed_paths`。
      - 實際異動檔案清單嚴格落於 `allowed_mutation_paths` 白名單，且包含全部 `required_mutation_paths`。
    - 任何路徑漂移、未宣告異動、多改或漏改，CHECK 26 立即 Fail-Closed 判定失敗。
+   - **B-116 最新 TASK_ID 跨紀錄一致性**：僅以 `docs/EXEC-LOG.md` 最後一張正式批次紀錄表之最新資料列第三欄開頭、截至第一個全形冒號 `：` 的完整 TASK_ID 為權威，必須與 `docs/governance/execution-record.json` 的 `task_id` 完全相同；缺失、格式錯誤、分隔列異常或不一致皆 Fail-Closed。PROMOTE 未新增 EXEC-LOG 列、未變動 execution-record 時按既存相同 TASK_ID 驗證，禁止臆造當前 PROMOTE ID 來強迫不一致。
 
 2. **證據完整性三項標準（REG-11～13 Integrity Standards）**：
    - **REG-11（PATH-EXISTENCE）**：所有宣告為 `REPO_PATH` 類型之證據來源，其路徑必須於版本庫中實際存在且有效。
