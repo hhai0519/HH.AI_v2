@@ -309,6 +309,8 @@ CHECK 12 應跳過該值——建立本檔的那一批沒有「前一個 commit�
 
 | 7f7878d5c9300e523af26eb051fc9e23d6bff3d2 | 2026-10-16 | §4.1-1、§4.1-3、E27 | **核對通過（B118-F5-REF-PREFLIGHT-R5-261016 same-SHA 晉級與 post-main）**：candidate Run 38842786765 attempt 1 verify ALL 5 GATES PASSED、gateway-windows 57 passed；post-main Run 38844734419 attempt 1 verify 1424 passed／1 skipped＋13 passed、ALL 5 GATES PASSED，gateway-windows 57 passed；Executor 晉級實測 287.8 秒。 | 下一批 B116-CHECK20-RECORD-ID-R3-261016 為獨立的 CHECK 20／CHECK 26 verifier 守衛，B116-CHECK20-RECORD-ID-R1-261016 E27 BLOCKING 2／NON_BLOCKING 4、HOLD 未執行；B116-CHECK20-RECORD-ID-R2-261016 E27 BLOCKING 1／NON_BLOCKING 2、HOLD 未執行；B116-CHECK20-RECORD-ID-R3-261016 修改作者位元組需重新 E27，尚未獲授權。歷史 EXEC-LOG.md:307 有被 Markdown 隱藏的末格「未預先宣稱 candidate PASS 或 main advancement」；只能前向更正與精確釘選例外，不能覆寫 CHECK16 不可變歷史列。§5.3 #21 USER 已改採乙案。 |
 
+| 7049048ffd7bb529e61afb6bc9f2bac7270673a5 | 2026-10-16 | §4.1-1、§4.1-3、E24／E27 N/A | **核對通過（B116-CHECK20-RECORD-ID-R3-261016 POST-MAIN VERIFIED）**：main=7049048ffd7bb529e61afb6bc9f2bac7270673a5，parent=7f7878d5；post-main Run 38860872631 attempt1 verify 1433 passed／1 skipped＋13 passed／ALL 5 GATES PASSED、gateway-windows 57 passed；CHECK20 NON_PINNED=0 PINNED=1、CHECK26 一致、CHECK 27/27。 | **B118-F3-TRUE-CANARY-R1-261016 獨立新 true 首航待實測**：只將 checkpoint 與進度前向同步；bundle_output=true 的正式 Windows Downloads 生成、白名單與兩 Jules refs 的空 bare repo import、候選 CI 尚未建立，絕不可預判 READY／Macro PASS。E27 NOT_APPLICABLE：只改四份狀態作者檔，沒有新增或修改 runner/helper/驗收器語意；USER 排序 B-118→Q2 草稿模式→封存→B-117；刪除 refs 不屬本批。 |
+
 ---
 
 ## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)
