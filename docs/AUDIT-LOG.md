@@ -311,6 +311,8 @@ CHECK 12 應跳過該值——建立本檔的那一批沒有「前一個 commit�
 
 | 7049048ffd7bb529e61afb6bc9f2bac7270673a5 | 2026-10-16 | §4.1-1、§4.1-3、E24／E27 N/A | **核對通過（B116-CHECK20-RECORD-ID-R3-261016 POST-MAIN VERIFIED）**：main=7049048ffd7bb529e61afb6bc9f2bac7270673a5，parent=7f7878d5；post-main Run 38860872631 attempt1 verify 1433 passed／1 skipped＋13 passed／ALL 5 GATES PASSED、gateway-windows 57 passed；CHECK20 NON_PINNED=0 PINNED=1、CHECK26 一致、CHECK 27/27。 | **B118-F3-TRUE-CANARY-R1-261016 獨立新 true 首航待實測**：只將 checkpoint 與進度前向同步；bundle_output=true 的正式 Windows Downloads 生成、白名單與兩 Jules refs 的空 bare repo import、候選 CI 尚未建立，絕不可預判 READY／Macro PASS。E27 NOT_APPLICABLE：只改四份狀態作者檔，沒有新增或修改 runner/helper/驗收器語意；USER 排序 B-118→Q2 草稿模式→封存→B-117；刪除 refs 不屬本批。 |
 
+| bddcefc87b0dc0b75f513b0f2503a8256fb69b93 | 2026-10-16 | §4.1-1、§4.1-3、USER 常設決定（2026-10-16） | **核對通過（B118-F3-TRUE-CANARY-R1-261016 POST-MAIN VERIFIED）**：main=bddcefc87b0dc0b75f513b0f2503a8256fb69b93，parent=7049048f；candidate Run 38869447625、post-main Run 38871942361 attempt1 verify 1433 passed／1 skipped＋13 passed、ALL 5 GATES PASSED，gateway-windows 57 passed，CHECK27 27/27。真實 bundle 經獨立空 bare repo 匯入 134 refs、Jules exact SHA 比對成功；F1–F5／F3 CLOSED，F6 移交 B-119。 | B118-RETENTION-STATE-SYNC-R1-261016 僅同步 USER 既定 retention 路線及下輪指標，不能預先宣稱本批 candidate 已過、tmp 已刪或 Jules 已刪；S2/S3 當次重新核對且需顧問複核、單次授權。 |
+
 ---
 
 ## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)

@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "B118-F3-TRUE-CANARY-R1-261016",
-  "base_oid": "7049048ffd7bb529e61afb6bc9f2bac7270673a5",
+  "task_id": "B118-RETENTION-STATE-SYNC-R1-261016",
+  "base_oid": "bddcefc87b0dc0b75f513b0f2503a8256fb69b93",
   "plan": {
     "allowed_paths": [
       "docs/AUDIT-LOG.md",
