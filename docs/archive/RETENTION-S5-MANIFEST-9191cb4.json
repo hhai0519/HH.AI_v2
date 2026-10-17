@@ -1,0 +1,67 @@
+{
+  "schema_version": 1,
+  "transaction": "B122-S5-STATIC-ARCHIVE-R3-261017",
+  "base_oid": "c9e2436a7c67dc9a70ba3bf4706355dd8c01ce83",
+  "retention_consensus_r2_sha256": "37d842155406d7ffb9e3b43f04fbf8aeb357de3defe25552d50d22c036458b4c",
+  "snapshot": [
+    {
+      "source": "docs/ops/q2-draft-precheck.md",
+      "archive": "docs/archive/RETENTION-S5-Q2-DRAFT-PRE-9191cb4.md",
+      "bytes": 3683,
+      "sha256": "233fc184268f7202c229c04c90d1b279184935ecfcbaff41384d39c208663a4f",
+      "git_blob_oid": "14884f63bb974907f80a85541d349866bc25f610",
+      "state": "EXACT_COPIED_NO_SOURCE_REMOVAL",
+      "source_commit_oid": "9191cb4d072ec9b05d10d9a5204982ad329de0c0"
+    }
+  ],
+  "keep_external_only": [
+    {
+      "name": "S2_RECEIPT_POST_DELETE",
+      "sha256": "c6b5816a446385575a21b9f9b86e957c3951e099c83d8cef16a3ad511f2f2387",
+      "bytes": null,
+      "state": "KEEP_USER_LOCAL_UNCOPIED"
+    },
+    {
+      "name": "S2_RECEIPT_PRE_DELETE_HASH",
+      "sha256": "cf3bd533457c1884d078f04fc4995006f98843d1b84ad662a40acda29c6165ac",
+      "bytes": null,
+      "state": "KEEP_USER_LOCAL_UNCOPIED"
+    },
+    {
+      "name": "S3_RECEIPT",
+      "sha256": "ff0f8078d21447c83598fa3932ebca03bfb1561231ecdafeed7994c4b717b4ff",
+      "bytes": null,
+      "state": "KEEP_USER_LOCAL_UNCOPIED"
+    },
+    {
+      "name": "JULES_BACKUP_BUNDLE",
+      "sha256": "83639e9a71388ceba3715519ec1e487d653c77e506b5cf7b9b7a49d84af7453e",
+      "bytes": 1824940,
+      "state": "KEEP_USER_LOCAL_UNCOPIED"
+    },
+    {
+      "name": "USER_DENY_RESTORED_SCREENSHOT",
+      "sha256": "d4369e90fb6a6ac87c3f3538aa63ab4dfa18e715c1946a8f57c1dab143cc87ea",
+      "bytes": null,
+      "state": "KEEP_USER_LOCAL_UNCOPIED"
+    }
+  ],
+  "protected_types": [
+    "prompt",
+    "control",
+    "state-plan",
+    "receipt",
+    "manifest",
+    "archive",
+    "authorization",
+    "journal"
+  ],
+  "forbidden_actions": [
+    "DELETE",
+    "QUARANTINE_MOVE",
+    "USER_DOWNLOADS_WRITE",
+    "GIT_OBJECT_CLEANUP",
+    "REMOTE_REF_DELETE"
+  ],
+  "contract_status": "REPO_SNAPSHOT_ONLY__EXTERNAL_BYTES_NOT_ARCHIVED__NO_DELETE_ELIGIBILITY"
+}

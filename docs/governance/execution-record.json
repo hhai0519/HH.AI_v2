@@ -1,22 +1,30 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "AUD-TAKEOVER-Q2-STATE-R1-261017",
-  "base_oid": "9191cb4d072ec9b05d10d9a5204982ad329de0c0",
+  "task_id": "B122-S5-STATIC-ARCHIVE-R3-261017",
+  "base_oid": "c9e2436a7c67dc9a70ba3bf4706355dd8c01ce83",
   "plan": {
     "allowed_paths": [
+      "docs/ARCHIVE-INDEX.md",
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
+      "docs/archive/RETENTION-S5-MANIFEST-9191cb4.json",
+      "docs/archive/RETENTION-S5-Q2-DRAFT-PRE-9191cb4.md",
+      "docs/archive/RETENTION-S5-README.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
       "docs/ops/q2-draft-precheck.md",
       "docs/refactor-backlog.md"
     ],
     "required_paths": [
+      "docs/ARCHIVE-INDEX.md",
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
+      "docs/archive/RETENTION-S5-MANIFEST-9191cb4.json",
+      "docs/archive/RETENTION-S5-Q2-DRAFT-PRE-9191cb4.md",
+      "docs/archive/RETENTION-S5-README.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
       "docs/ops/q2-draft-precheck.md",
@@ -28,9 +36,13 @@
   },
   "actual": {
     "changed_paths": [
+      "docs/ARCHIVE-INDEX.md",
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
+      "docs/archive/RETENTION-S5-MANIFEST-9191cb4.json",
+      "docs/archive/RETENTION-S5-Q2-DRAFT-PRE-9191cb4.md",
+      "docs/archive/RETENTION-S5-README.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
       "docs/ops/q2-draft-precheck.md",
