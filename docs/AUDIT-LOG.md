@@ -313,6 +313,8 @@ CHECK 12 應跳過該值——建立本檔的那一批沒有「前一個 commit�
 
 | bddcefc87b0dc0b75f513b0f2503a8256fb69b93 | 2026-10-16 | §4.1-1、§4.1-3、USER 常設決定（2026-10-16） | **核對通過（B118-F3-TRUE-CANARY-R1-261016 POST-MAIN VERIFIED）**：main=bddcefc87b0dc0b75f513b0f2503a8256fb69b93，parent=7049048f；candidate Run 38869447625、post-main Run 38871942361 attempt1 verify 1433 passed／1 skipped＋13 passed、ALL 5 GATES PASSED，gateway-windows 57 passed，CHECK27 27/27。真實 bundle 經獨立空 bare repo 匯入 134 refs、Jules exact SHA 比對成功；F1–F5／F3 CLOSED，F6 移交 B-119。 | B118-RETENTION-STATE-SYNC-R1-261016 僅同步 USER 既定 retention 路線及下輪指標，不能預先宣稱本批 candidate 已過、tmp 已刪或 Jules 已刪；S2/S3 當次重新核對且需顧問複核、單次授權。 |
 
+| d7a523c8d24d816929582b1bf0008c0198a042ff | 2026-10-17 | §4.1-1、§4.1-3、USER 常設決定（2026-10-16） | **核對通過（B118-RETENTION-STATE-SYNC-R1-261016 POST-MAIN VERIFIED）**：main=d7a523c8d24d816929582b1bf0008c0198a042ff，post-main Run 38915714105 attempt1 verify/gateway-windows success，27/27、CHECK20 0/1、CHECK26 一致。**S2 USER_PROVIDED**：TMP_DELETED；receipt before SHA256=CF3BD533457C1884D078F04FC4995006F98843D1B84AD662A40ACDA29C6165AC、after SHA256=C6B5816A446385575A21B9F9B86E957C3951E099C83D8CEF16A3AD511F2F2387。**S3 AUDITOR_REMOTE_VERIFIED**：兩條 exact Jules refs 各 HTTP 404，main 未漂移；Executor 回報 receipt SHA256=FF0F8078D21447C83598FA3932EBCA03BFB1561231ECDAFEED7994C4B717B4FF、授權檔已消耗、原子推送 rc0；USER 提供恢復 `--delete` Deny 截圖 SHA256=d4369e90fb6a6ac87c3f3538aa63ab4dfa18e715c1946a8f57c1dab143cc87ea，兩份 receipt 持續保留。 | **本批 B115-Q2-DRAFT-MODE-R3-261017 僅為 Q2 草稿模式候選**：工具／驗證器與狀態作者變更，E24/E27 REQUIRED；Jules 獨立備份正確 SHA256=83639e9a71388ceba3715519ec1e487d653c77e506b5cf7b9b7a49d84af7453e（64 hex）；Q2 五步預查／fingerprint-safe resume／E24 衍生規則依賴／SHA lint 的實作與 E27 均待正式審查，不得預判 candidate CI／Macro PASS。 |
+
 ---
 
 ## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)

@@ -200,19 +200,31 @@ def run_discovery(repo_root: str, queries: list[dict]) -> dict:
         matched_paths = []
         matches = []
 
+        # Q2: a changed active rule deterministically changes the generated
+        # rule-traceability source set, even when no file literally mentions it.
+        # This is opt-in for exact path queries, not a change to literal matching.
+        rule_source = (qkind == "path" and qval.startswith(".agents/rules/") and
+                       qval in tracked_files and "*" not in qval)
+        derived = "docs/generated/rule-traceability.md"
         for rel_path in tracked_files:
             abs_path = os.path.join(repo_root, rel_path)
-            # 只掃描 regular file（若為目錄或符號連結則跳過）
+            # Never claim derived output from an untracked/missing generator file.
             if os.path.islink(abs_path) or not os.path.isfile(abs_path):
+                if rel_path in (qval, derived) and rule_source:
+                    raise ImpactScanError("Tracked active-rule or derived artifact unreadable")
                 continue
 
             line_nos = scan_file_for_query(abs_path, q_bytes)
+            if rule_source and rel_path in (qval, derived):
+                line_nos = [0]  # deterministic derived edge; not a literal line match
             if line_nos:
                 matched_paths.append(rel_path)
                 matches.append({
                     "path": rel_path,
                     "lines": line_nos
                 })
+        if rule_source and derived not in tracked_files:
+            raise ImpactScanError("Derived rule-traceability artifact missing from Git inventory")
 
         results.append({
             "query_id": qid,

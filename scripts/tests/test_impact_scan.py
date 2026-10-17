@@ -798,3 +798,32 @@ def test_f3_allowed_scope_with_extra_state_paths_passes(tmp_path):
     is_pass, errors = run_check_replay(repo, evidence, allowed_scope=scope)
     assert is_pass
     assert len(errors) == 0
+
+# Q2 active-rule -> generated rule traceability is a semantic, machine-derived edge.
+def test_active_rule_path_query_includes_derived_traceability(tmp_path):
+    repo=str(tmp_path)
+    init_git_repo(repo)
+    commit_files(repo, {
+        '.agents/rules/one.md': '# rule\n',
+        'docs/generated/rule-traceability.md': '# generated\n',
+    })
+    q=[{'id':'active','kind':'path','value':'.agents/rules/one.md'}]
+    actual=run_discovery(repo,q)
+    assert actual['results'][0]['matched_paths']==['.agents/rules/one.md','docs/generated/rule-traceability.md']
+    good=actual.copy()
+    good['results']=[dict(actual['results'][0], dispositions={
+        '.agents/rules/one.md':'UPDATE','docs/generated/rule-traceability.md':'UPDATE'})]
+    assert run_check_replay(repo,good,allowed_scope=set(good['results'][0]['matched_paths']))[0]
+    bad=actual.copy()
+    bad['results']=[dict(actual['results'][0], dispositions={'.agents/rules/one.md':'UPDATE'},
+                         matched_paths=['.agents/rules/one.md'])]
+    ok,issues=run_check_replay(repo,bad,allowed_scope=set(good['results'][0]['matched_paths']))
+    assert not ok and any('rule-traceability.md' in msg for msg in issues)
+
+
+def test_active_rule_derived_missing_fails_closed(tmp_path):
+    repo=str(tmp_path)
+    init_git_repo(repo)
+    commit_files(repo,{'.agents/rules/one.md':'# rule\n'})
+    with pytest.raises(ImpactScanError,match='Derived rule-traceability'):
+        run_discovery(repo,[{'id':'active','kind':'path','value':'.agents/rules/one.md'}])

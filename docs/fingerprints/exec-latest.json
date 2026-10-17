@@ -1,5 +1,5 @@
 {
-  "base_head": "bddcefc",
+  "base_head": "d7a523c",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -561,16 +561,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 332,
-      "sha256": "bbb1dcf09516c4354885f97d6584334033841bfb2d3d569ca384a9c741ab4faf"
+      "lines": 334,
+      "sha256": "32a65be94073f3e5b6c23e39ea54110b3ca8e3629528e92e3998098b6d42dca5"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 316,
-      "sha256": "18b4b4490cb88daa00c8c725845021bedcdc66510321fdd7367413e1d1dea035"
+      "lines": 317,
+      "sha256": "c0decd69af64360e0265e579472c81875324e5613a24ce0a5314179e3ac1f76e"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -612,7 +612,7 @@
         "## 封存區"
       ],
       "lines": 384,
-      "sha256": "efc692f55f4dc4cf70b6db3012d79a90c9a1a9f6e663d0f560718e3c24138e67"
+      "sha256": "717c4c0d95926d69166997eec0114ef37eb3e8df768a475ae2d5583cefbc84a6"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1110,8 +1110,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6401,
-      "sha256": "e8a8d4911b87ef38739e0d8e4f695d96d495dc812460fd19a18b8bd8cfa9ecfc"
+      "lines": 6402,
+      "sha256": "2068f23c1928ea513a028b1f9d8807939f95faaac678289b888c2376836fe2c2"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1230,6 +1230,15 @@
       "lines": 3763,
       "sha256": "826c8e22a7379e278806f0b1f260996452c0375c8f4879a4f2f8a6a3f1f6b106"
     },
+    "scripts/draft_precheck.py": {
+      "fences": 0,
+      "headings": [
+        "# -*- coding: utf-8 -*-",
+        "# Canonical tree-bounded runner; a timeout never leaves live pytest descendants by design."
+      ],
+      "lines": 323,
+      "sha256": "d302a6ab944cf992821fa197100c5db3a96e5c5f2a483fc6e1d05958877af4eb"
+    },
     "scripts/execution_record.py": {
       "fences": 0,
       "headings": [
@@ -1278,8 +1287,8 @@
       "headings": [
         "# -*- coding: utf-8 -*-"
       ],
-      "lines": 585,
-      "sha256": "1020ab1918c9e8d8005a602eb9d7aee58a0484a978868b1a0f7d19cfe85f1297"
+      "lines": 597,
+      "sha256": "accd3060adbd34b9dffecd48a0f8eca0e1ba3fd2a79fd558670871da7e9065a3"
     },
     "scripts/install_git_hooks.py": {
       "fences": 0,
@@ -1562,6 +1571,15 @@
       "lines": 2550,
       "sha256": "26c81b4b8a0f037299164749a324683c02cbfedcc956104b5c933f967ba2f3ce"
     },
+    "scripts/tests/test_draft_precheck.py": {
+      "fences": 0,
+      "headings": [
+        "# -*- coding: utf-8 -*-",
+        "# 2026-10-17 E27 B1-B4 / N1 focused negative controls."
+      ],
+      "lines": 356,
+      "sha256": "c114a8e31454f214a5da9dcb6262201b0a6afd4ddcbd697d0706f62483b923da"
+    },
     "scripts/tests/test_execution_record.py": {
       "fences": 0,
       "headings": [
@@ -1634,10 +1652,11 @@
         "# ==============================================================================",
         "# ==============================================================================",
         "# F3: Allowed Scope Machine Pairing Tests",
-        "# =============================================================================="
+        "# ==============================================================================",
+        "# Q2 active-rule -> generated rule traceability is a semantic, machine-derived edge."
       ],
-      "lines": 800,
-      "sha256": "06ac6718617d0ff74603edf9fcb930d9505ba6a3e30fefbf8ea0f4203fa516db"
+      "lines": 829,
+      "sha256": "c6f35ec65a70964b4dac5fb56c71cfdf4510b1c551a5afe06e1d5f4097bf4579"
     },
     "scripts/tests/test_playwright_automation.py": {
       "fences": 0,
@@ -1916,7 +1935,7 @@
       "sha256": "35bf7dbfa3c7d291b550c3c97a6ae398a22b1dc3624c1d2fc1e4db6963d6e115"
     }
   },
-  "generated_at": "2026-10-16T13:40:49Z",
+  "generated_at": "2026-10-17T02:48:31Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {
