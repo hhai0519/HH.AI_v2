@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "B115-Q2-DRAFT-MODE-R3-261017",
-  "base_oid": "d7a523c8d24d816929582b1bf0008c0198a042ff",
+  "task_id": "AUD-TAKEOVER-Q2-STATE-R1-261017",
+  "base_oid": "9191cb4d072ec9b05d10d9a5204982ad329de0c0",
   "plan": {
     "allowed_paths": [
       "docs/AUDIT-LOG.md",
@@ -11,11 +11,7 @@
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
       "docs/ops/q2-draft-precheck.md",
-      "docs/refactor-backlog.md",
-      "scripts/draft_precheck.py",
-      "scripts/impact_scan.py",
-      "scripts/tests/test_draft_precheck.py",
-      "scripts/tests/test_impact_scan.py"
+      "docs/refactor-backlog.md"
     ],
     "required_paths": [
       "docs/AUDIT-LOG.md",
@@ -24,11 +20,7 @@
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
       "docs/ops/q2-draft-precheck.md",
-      "docs/refactor-backlog.md",
-      "scripts/draft_precheck.py",
-      "scripts/impact_scan.py",
-      "scripts/tests/test_draft_precheck.py",
-      "scripts/tests/test_impact_scan.py"
+      "docs/refactor-backlog.md"
     ],
     "max_plan_revisions": 3,
     "revision_count": 0,
@@ -42,11 +34,7 @@
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
       "docs/ops/q2-draft-precheck.md",
-      "docs/refactor-backlog.md",
-      "scripts/draft_precheck.py",
-      "scripts/impact_scan.py",
-      "scripts/tests/test_draft_precheck.py",
-      "scripts/tests/test_impact_scan.py"
+      "docs/refactor-backlog.md"
     ]
   },
   "evidence": [

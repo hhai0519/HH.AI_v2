@@ -1,6 +1,6 @@
-# Q2 審查官草稿預查（待 E27 驗收）
+# Q2 審查官草稿預查（R3 已完成 exact-SHA 驗收）
 
-> 本工具僅供 Auditor 使用。作者版本為待 E27 複核的候選，不得以此替代 Windows 原生驗證、GitHub CI、Macro verdict 或 canonical runner 的 MINISIM。
+> 本工具僅供 Auditor 使用。Q2 R3 已於 2026-10-17 通過 exact-SHA Macro 審查；本工具不得以此替代 Windows 原生驗證、GitHub CI、Macro verdict 或 canonical runner 的 MINISIM。
 
 ```text
 python scripts/draft_precheck.py --source <exact-clean-full-base-clone> --patch <reviewed-author.patch> --plan <exact-plan.json> --workdir <new-empty-disposable-directory>
