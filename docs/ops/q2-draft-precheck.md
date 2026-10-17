@@ -1,6 +1,6 @@
 # Q2 審查官草稿預查（R3 已完成 exact-SHA 驗收）
 
-> 本工具僅供 Auditor 使用。Q2 R3 已於 2026-10-17 通過 exact-SHA Macro 審查；本工具不得以此替代 Windows 原生驗證、GitHub CI、Macro verdict 或 canonical runner 的 MINISIM。
+> 本工具僅供 Auditor 使用。Q2 R3 已於 2026-10-17 通過 exact-SHA Macro 審查；原始 `9191cb4` 文件逐位元組快照見 `docs/archive/RETENTION-S5-Q2-DRAFT-PRE-9191cb4.md`；本工具不得以此替代 Windows 原生驗證、GitHub CI、Macro verdict 或 canonical runner 的 MINISIM。
 
 ```text
 python scripts/draft_precheck.py --source <exact-clean-full-base-clone> --patch <reviewed-author.patch> --plan <exact-plan.json> --workdir <new-empty-disposable-directory>
