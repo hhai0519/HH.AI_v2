@@ -1,5 +1,5 @@
 {
-  "base_head": "79141b6",
+  "base_head": "9dfdba9",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -7,6 +7,7 @@
         "# 規則：Git 操作與回報紀律",
         "## 1. Git 操作",
         "## 2. 回報紀律",
+        "### 2.0 B-119 CI_RUN 定位行",
         "### 2.0 歷史教訓與已退役之舊回報機制（Historical Rationale / Retired Reporting Mechanism）",
         "## 2.1 撰寫測試時，依規格而非依實作",
         "## 2.2 提示詞指定的寫入內容，逐字照抄",
@@ -16,8 +17,8 @@
         "## 2.5 遠端健康查證與 GitHub Actions 閉環規範 (Remote Health Verification)",
         "## 3. 查證紀律"
       ],
-      "lines": 221,
-      "sha256": "93fe3551048a750e06ecccc2eb76ddfc4580668d5edfe578bc46c707cf2d62ae"
+      "lines": 225,
+      "sha256": "79accc83935a778745ebdd1eb2ea7802ec74899fd6f1b941550bb3ebdfd981d7"
     },
     ".agents/rules/governance-gate-integrity.md": {
       "fences": 0,
@@ -205,8 +206,8 @@
         "### 12.1 風險分級宏觀審計核心原則 (D-U6)",
         "### 12.2 Tier-M 微修復分類規範 (Tier-M Micro Repair)"
       ],
-      "lines": 533,
-      "sha256": "81af59e27c220cd1bc501066e51b2789e68eb5bbe3dc15edf635289de6569693"
+      "lines": 534,
+      "sha256": "ebd8fa420d0b9cb95efe809d76acd0730152e61ed7efa9192b9b858278426d57"
     },
     ".claude/rules/auditor-selftest.md": {
       "fences": 0,
@@ -221,7 +222,7 @@
         "## F. 額度（每一輪回覆的開頭與結尾）"
       ],
       "lines": 140,
-      "sha256": "c594951fd17cc754690a5da162bb937db972e657030d2ac294b68d0efd50ec80"
+      "sha256": "f491913b6f56fbd258e0f2b7b660ce7ad795e895077f93e7b70b80ac25b39576"
     },
     ".github/workflows/verify.yml": {
       "fences": 0,
@@ -561,16 +562,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 339,
-      "sha256": "22385514d88ad8a0e134e5fc5dd1b7ef12dba975f206556ad04c3f06f55d8120"
+      "lines": 341,
+      "sha256": "3eb2e707fa818189296944b41662b551e006da4c2ea018531c0e3c5ce3edea93"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 321,
-      "sha256": "cfc205d5c4484ab67998e3ffea6970855fc30ebfa710e2f403d28f86a95c1c46"
+      "lines": 322,
+      "sha256": "3bd3cd2f5eceb01cc86df8efaef5e8b2019f54fc97164b0d9c5d784a49de709e"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -612,7 +613,7 @@
         "## 封存區"
       ],
       "lines": 385,
-      "sha256": "2c5d7d777ab1c6fbace02139399d31161bb9934e370058b9a04849debbe52abe"
+      "sha256": "1f917285b557c98a46491dfa1ab1eeba466e4753653b6dad8cb29f189928e349"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1110,8 +1111,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6406,
-      "sha256": "41910e96b3e26160e442174a214c8bdea45933f6f3e83cf86caef01b238e23f8"
+      "lines": 6407,
+      "sha256": "c9c59cd564bbf8bfc0342c32e21b5c6ebe902ec3fd7981ec03a23ba18c31cb65"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1156,8 +1157,8 @@
         "# Control record and entry point",
         "# ---------------------------------------------------------------------------"
       ],
-      "lines": 1088,
-      "sha256": "d1468a16d696626d8b715cecde23f7192e4f8fab3e3823f95c8ae2f92c363430"
+      "lines": 1145,
+      "sha256": "319106d6843343e2c9e8aa17aae287aa05eb2733d1988b075254f693733420b5"
     },
     "scripts/batch_sim.py": {
       "fences": 0,
@@ -1165,8 +1166,8 @@
         "# -*- coding: utf-8 -*-",
         "# Production negatives; the stop step and code depend on the batch's own step list (see production_negative)."
       ],
-      "lines": 540,
-      "sha256": "ac5e51dbeb2099849c5dedd6b388fcdbf5ebe112c85423ef80cfb90705d2bdc4"
+      "lines": 550,
+      "sha256": "090d7b485c7df476ff96239b5d13c6f8538d96f3b7a270343e6e602b1a6424b6"
     },
     "scripts/bounded_process.py": {
       "fences": 0,
@@ -1304,7 +1305,7 @@
         "# -*- coding: utf-8 -*-"
       ],
       "lines": 194,
-      "sha256": "2349d181ccb16c7bc079863603e5f854681af8ba0a0b5cecc9dedec9578aa430"
+      "sha256": "3c634bdde5a33509e521bf3d2cd979cc70845de7524bdb832d5e62fa6b9c1317"
     },
     "scripts/promotion_template.py": {
       "fences": 0,
@@ -1312,7 +1313,7 @@
         "# -*- coding: utf-8 -*-"
       ],
       "lines": 168,
-      "sha256": "ffd9ee0aaf73073ca5c1ed247e64dfff99c97dd524e2f9f4d544c06d4556cdfd"
+      "sha256": "d0e0ebbf76d478f67b9daef7e6aa31992abb998b1c37de71e98bb337028f9070"
     },
     "scripts/prompt_builder.py": {
       "fences": 0,
@@ -1401,6 +1402,12 @@
       ],
       "lines": 803,
       "sha256": "de8aa8a0c0c9dd8f03ae0f6236a8e4d9c8909ecf1953c312ed5fe01bf508af18"
+    },
+    "scripts/tests/test_b119_ci_run.py": {
+      "fences": 0,
+      "headings": [],
+      "lines": 133,
+      "sha256": "5f37bad6530ca087f238d2e3a294d07f67700f1c31da7bf6716baabc34ff46f1"
     },
     "scripts/tests/test_batch_runner.py": {
       "fences": 0,
@@ -1680,8 +1687,8 @@
         "# B-115 S2 R2: independent E27 coverage after identifying base-only E24 replay failure.",
         "# B-118 first-activation negative tests: new auto-production must explicitly decide output."
       ],
-      "lines": 1259,
-      "sha256": "1b4e7db300fd7f446b9a24e733a5737d4bccfe2c41ea44c38bca7162055683df"
+      "lines": 1266,
+      "sha256": "a41799c9cde07744277b9521ef93b71427d74ffe4c3d7bd5985828b776405f0c"
     },
     "scripts/tests/test_prompt_intake.py": {
       "fences": 0,
@@ -1935,7 +1942,7 @@
       "sha256": "35bf7dbfa3c7d291b550c3c97a6ae398a22b1dc3624c1d2fc1e4db6963d6e115"
     }
   },
-  "generated_at": "2026-10-18T00:18:31Z",
+  "generated_at": "2026-10-18T03:19:02Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

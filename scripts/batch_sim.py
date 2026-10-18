@@ -101,10 +101,20 @@ PROMOTION_NEGATIVES = {
     'runner': ('preflight', 'RUNNER_MODIFIED'),
     'prompt': ('verify', 'CONTROL_BINDING_DRIFT'),
 }
-CI_STUB = ('import runpy, sys\n'
+CI_STUB = ('import json, runpy, sys\n'
            'if sys.argv[1:2] == ["ci-status"]:\n'
-           '    sys.exit(0)  # SIMULATION ONLY: no GitHub access in the isolated clone\n'
+           '    def arg(key): return sys.argv[sys.argv.index(key)+1]\n'
+           '    sha, branch, event = arg("--head-sha"), arg("--branch"), arg("--event")\n'
+           '    jobs = {name: {"status": "completed", "conclusion": "success"} for name in ("verify", "gateway-windows")}\n'
+           '    print(json.dumps({"attempts_used": 1, "branch": branch, "command": "ci-status",\n'
+           '         "event": event, "head_sha": sha, "jobs": jobs, "repo": arg("--repo"),\n'
+           '         "required_jobs": ["verify", "gateway-windows"], "run_attempt": 1,\n'
+           '         "run_conclusion": "success", "run_id": 999001 if branch != "main" else 999002,\n'
+           '         "run_status": "completed", "status": "PASS", "tool": "verification_primitives",\n'
+           '         "version": 1, "workflow_name": arg("--workflow-name")}, sort_keys=True))\n'
+           '    sys.exit(0)  # SIMULATION ONLY: synthetic run_id, no GitHub access\n'
            'runpy.run_path(".git/batch-sim-vp-real.py", run_name="__main__")\n')
+
 AUTH_FILE = '.git/hhai-sensitive-push-auth.json'
 S1_UNLISTED = 'S1_UNLISTED'
 

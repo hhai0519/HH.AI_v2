@@ -43,7 +43,7 @@ python scripts/batch_runner.py --task-id {TASK_ID} postmain
 python scripts/batch_runner.py --task-id {TASK_ID} timing
 
 五、Executor 最小回覆
-成功只逐字複製 runner 的 MAIN、TIMING、STATE 三行；S1 時只逐字複製已有的 S1、S1_DETAIL、TIMING、STATE 行，禁止捏造 CI Run／job ID。最後一行逐字為「以上是 Antigravity IDE Agent 的回覆。」
+成功時，逐字轉交 runner 真正印出的 CI_RUN phase=candidate 及 CI_RUN phase=postmain 各一行，另逐字轉交 MAIN、TIMING、STATE 三行；兩種 CI_RUN 都須有而且彼此不可替代，不得自行猜測、合成或改寫 Run／job ID。S1 時僅逐字轉交 runner 已印出的 CI_RUN（若有）、S1、S1_DETAIL、TIMING、STATE 行，不得捏造或把候選 Run 當成 post-main Run。最後一行逐字為「以上是 Antigravity IDE Agent 的回覆。」
 
 六、機器區塊（repo prompt_builder 產出，不得人工修改）
 '''

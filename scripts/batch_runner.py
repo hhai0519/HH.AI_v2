@@ -675,11 +675,68 @@ class Batch:
         out = git(self.root, 'ls-remote', 'origin', ref).split()
         return out[0] if out else ''
 
-    def ci_status(self, sha, branch, attempts, interval):
-        return returncode([PY, 'scripts/verification_primitives.py', 'ci-status', '--repo', REPO, '--head-sha', sha,
-                           '--branch', branch, '--require-job', 'verify', '--require-job', 'gateway-windows',
-                           '--event', 'push', '--workflow-name', 'Verify', '--max-attempts', str(attempts),
-                           '--interval-seconds', str(interval)], self.root, timeout=attempts * (interval + 60) + 120)
+    def ci_status(self, sha, branch, attempts, interval, phase):
+        """Return (exit code, validated PASS payload); all ambiguous success evidence fails closed.
+
+        A run-id printed here is only a locator for independent GitHub verification, never a Macro PASS.
+        In particular the same contract applies to promotion verify, candidate push and postmain.
+        """
+        if phase not in ('candidate', 'postmain'):
+            raise Halt('CI_PHASE_INVALID')
+        args = [PY, 'scripts/verification_primitives.py', 'ci-status', '--repo', REPO,
+                '--head-sha', sha, '--branch', branch, '--require-job', 'verify',
+                '--require-job', 'gateway-windows', '--event', 'push', '--workflow-name', 'Verify',
+                '--max-attempts', str(attempts), '--interval-seconds', str(interval)]
+        try:
+            cp = subprocess.run(args, cwd=self.root, stdin=subprocess.DEVNULL,
+                                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                timeout=attempts * (interval + 60) + 120, env=child_env())
+        except subprocess.TimeoutExpired:
+            raise Halt('CI_STATUS_TIMEOUT')
+        except OSError:
+            raise Halt('CI_STATUS_LAUNCH_FAILED')
+        if cp.returncode not in (0, 1, 2) or not cp.stdout or len(cp.stdout) > 65536:
+            raise Halt('CI_STATUS_UNTRUSTED')
+        def reject_duplicate_keys(pairs):
+            obj = {}
+            for key, value in pairs:
+                if key in obj:
+                    raise ValueError('CI_STATUS_DUPLICATE_JSON_KEY')
+                obj[key] = value
+            return obj
+        try:
+            payload = json.loads(cp.stdout.decode('utf-8', errors='strict'),
+                                 object_pairs_hook=reject_duplicate_keys)
+        except (UnicodeDecodeError, ValueError):
+            raise Halt('CI_STATUS_JSON_INVALID') from None
+        if not isinstance(payload, dict) or payload.get('tool') != 'verification_primitives' or payload.get('command') != 'ci-status':
+            raise Halt('CI_STATUS_SCHEMA_INVALID')
+        if payload.get('head_sha') != sha or payload.get('branch') != branch or payload.get('event') != 'push' or payload.get('repo') != REPO or payload.get('workflow_name') != 'Verify':
+            raise Halt('CI_STATUS_IDENTITY_DRIFT')
+        if payload.get('required_jobs') != ['verify', 'gateway-windows']:
+            raise Halt('CI_STATUS_JOBS_INVALID')
+        if cp.returncode != 0:
+            # PENDING/UNABLE (2) must never be elevated to PASS; invalid success content (1) cannot pass.
+            if payload.get('status') == 'PASS':
+                raise Halt('CI_STATUS_CONTRADICTION')
+            return cp.returncode, None
+        if payload.get('status') != 'PASS' or payload.get('run_status') != 'completed' or payload.get('run_conclusion') != 'success':
+            raise Halt('CI_STATUS_NOT_PASS')
+        run_id, attempt = payload.get('run_id'), payload.get('run_attempt')
+        if type(run_id) is not int or run_id <= 0 or type(attempt) is not int or attempt <= 0:
+            raise Halt('CI_STATUS_RUN_ID_INVALID')
+        jobs = payload.get('jobs')
+        if not isinstance(jobs, dict) or set(jobs) != {'verify', 'gateway-windows'}:
+            raise Halt('CI_STATUS_JOBS_INVALID')
+        if any(not isinstance(v, dict) or v.get('status') != 'completed' or v.get('conclusion') != 'success'
+               for v in jobs.values()):
+            raise Halt('CI_STATUS_JOBS_NOT_PASS')
+        # Task-local evidence is never tracked or replayed across tasks.
+        self.write_new_artifact(phase + '-ci.json', json.dumps(payload, sort_keys=True, ensure_ascii=True) + '\n')
+        print('CI_RUN phase=' + phase + ' run_id=' + str(run_id) + ' attempt=' + str(attempt)
+              + ' event=push branch=' + branch + ' head_sha=' + sha
+              + ' verify=success gateway-windows=success')
+        return 0, payload
 
     # -- shared -------------------------------------------------------------
 
@@ -849,7 +906,7 @@ class Batch:
         run(['git', 'push', 'origin', head + ':refs/heads/' + spec['branch']], 'PUSH_FAILED', root, 600)
         if self.remote_sha('refs/heads/' + spec['branch']) != head:
             raise Halt('PUSH_SHA_DRIFT')
-        code = self.ci_status(head, spec['branch'], 60, 30)
+        code, _ = self.ci_status(head, spec['branch'], 60, 30, 'candidate')
         if code == 2:
             print('COMMIT ' + head + ' | CI PENDING | S1 NONE')
             return
@@ -908,7 +965,7 @@ class Batch:
             raise Halt('NOT_FAST_FORWARD')
         if os.path.lexists(Path(root) / AUTH_REL):
             raise Halt('STALE_AUTH_PRESENT')
-        if self.ci_status(cand, branch, 3, 10) != 0:
+        if self.ci_status(cand, branch, 3, 10, 'candidate')[0] != 0:
             raise Halt('CANDIDATE_CI_NOT_PROVEN')
 
     def step_promote(self):
@@ -935,7 +992,7 @@ class Batch:
         cand = self.spec['candidate_oid']
         if self.remote_sha('refs/heads/main') != cand:
             raise Halt('MAIN_SHA_MISMATCH')
-        code = self.ci_status(cand, 'main', 60, 30)
+        code, _ = self.ci_status(cand, 'main', 60, 30, 'postmain')
         if code == 2:
             print('MAIN ' + cand + ' | POST-MAIN CI PENDING | S1 NONE')
             return

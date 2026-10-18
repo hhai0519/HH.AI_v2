@@ -879,6 +879,13 @@ def test_b115_auto_promotion_deterministic_and_runner_accepted(tmp_path, repo):
     assert 'USER 同一 SHA 晉級常設授權' in text and candidate in text
     assert '已啟動或背景執行中不算完成' in text
     assert 'post-main PENDING 不得當作 PASS' in text
+    # B-119: promotion generator must hand off both actual CI_RUN locators.
+    assert 'CI_RUN phase=candidate' in text
+    assert 'CI_RUN phase=postmain' in text
+    assert 'MAIN、TIMING、STATE' in text
+    assert '成功只逐字複製 runner 的 MAIN、TIMING、STATE 三行' not in text
+    assert text.count('CI_RUN phase=candidate') == 1
+    assert text.count('CI_RUN phase=postmain') == 1
     assert '每個命令只執行一次' in text
     assert 'scripts/batch_runner.py 已更新' not in text
     spec = br.load_spec(br.prompt_lines(a.read_bytes()), a.name.removesuffix('-prompt.txt'))

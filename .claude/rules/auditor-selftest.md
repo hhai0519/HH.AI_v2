@@ -100,7 +100,7 @@
 - [ ] E4 提示詞要求 Machine Gates 實際執行且必須等待命令完全結束並取得 exit code 0，嚴禁以 launched / backgrounded / started 當作通過證據，亦不得以 remote CI 綠燈事後反證未完工之 local staging/commit；完整結果進 repo evidence，conversation 不要求 full output？（§6.1-4）
 - [ ] E5 `git add` 一律明確路徑，且明寫禁止 `-A` 與 `.`？GOAL_SPEC 實際路徑由執行者自 diff 產生逐檔 explicit git add，不要求 Auditor 預測實作檔案；EXACT_SPEC 依規格 targets？（§6.1-5）
 - [ ] E6 結尾固定要求純文字回覆與署名行？（§6.1-6）
-- [ ] E7 Reporting Channel 契約——正常成功對話回覆僅需 COMMIT <sha> | CI PASS | S1 NONE 加上固定署名行，未預設要求 full diff / full file / terminal dump？（§6.1-7）
+- [ ] E7 Reporting Channel 契約——正常成功對話回覆保留 COMMIT <sha> | CI PASS | S1 NONE 與固定署名，另逐字轉交 runner 已實際輸出的 CI_RUN 定位行（promotion verify 的 candidate 與 postmain 分別獨立核對，不手造 Run ID），未預設要求 full diff / full file / terminal dump？（§6.1-7）
 - [ ] E8 **提示詞明確聲明交接區、`docs/TASKBOARD.md` 與 `docs/AUDIT-LOG.md` 三項狀態領域之處置（manifest 宣告須與 prose 一致；UPDATE 或明確標記 NO CHANGE 及原因；無新審計結論時 AUDIT-LOG 宣告 NO CHANGE，禁止逼迫執行者自造審計結論）？**（§6.1-8）
 - [ ] E9 **確認執行者基準同步與 Main 晉級約束**——常態批次有要求執行者先確認基準與 `origin/main` 一致；若為使用者正式授權之 K5-A one-time T1 bootstrap / promotion，是否符合狹義例外規範（明列 candidate 與 origin/main、驗證無 drift 且為 ancestor、取得 exact-SHA CI、禁 rebase/force 等破壞性操作且僅限 T1 生命週期）？若涉及 main 晉級，是否完整規範 batch/** exact candidate SHA required checks 綠燈、origin/main 未 drift 且為 ancestor、遵循 K1-A transport-neutral exact-SHA 合約（可選 adapter 如 update_ref 或 native pinned-SHA，禁排他鎖定與 silent fallback）、查驗 post-main run head_sha 完全相同、無 bypass actor、且嚴禁 force push / rebase / squash / cherry-pick？（§6.1-9）
 - [ ] E10 零命中類的條件，我檢查過自己的指令會不會產生該字串？（§6.2）

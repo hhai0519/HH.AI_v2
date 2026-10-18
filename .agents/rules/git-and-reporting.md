@@ -87,6 +87,10 @@
 - **面對不確定性（uncertainty）先經 `.agents/rules/role-boundaries.md` §7 錯誤路由**：能由機器重新推導（M1）、環境暫態重試/回退（M2）、或 Allowed Scope 內自主修復（M3）的，一律自主閉環處理，不得隨意要求宏觀審計官或使用者確認。
 - **只有真正遇到未授權之 S1 阻擋事項時才停機回報**：格式嚴格採用 `S1 <簡短分類> | evidence location / blocker`。
 
+### 2.0 B-119 CI_RUN 定位行
+
+runner 對 candidate／promotion verify／postmain 各以真實 ci-status JSON 輸出 CI_RUN 與 task-local artifact，PENDING 或證據不符不得輸出 success。舊 COMMIT／MAIN 不變，Executor 逐字轉抄；Macro 另查 GitHub exact-SHA／event／job 原始證據。
+
 ### 2.0 歷史教訓與已退役之舊回報機制（Historical Rationale / Retired Reporting Mechanism）
 
 > **退役說明**：早期過渡手段（口頭貼全文、行號、總行數、raw diff、指令輸出等）已由 B-36（Repo Evidence Channel ＋ Actions 遠端健康權威）全面取代並退役為歷史留痕，不得作為現行對話回報要求。版本庫客觀證據鏈由 `docs/EXEC-LOG.md`、Git commit 與 Actions 自動化接管。
