@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "B119-GOVERNANCE-STATE-SYNC-R1-261017",
-  "base_oid": "e1e6824e87c1be1bba18f39fc37579cb8aa69faa",
+  "task_id": "AUD-TAKEOVER-B119-STATE-R1-261017",
+  "base_oid": "79141b6478ae336b3f588084bf172788b80ea384",
   "plan": {
     "allowed_paths": [
       "docs/AUDIT-LOG.md",
