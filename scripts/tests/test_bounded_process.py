@@ -204,26 +204,70 @@ def test_posix_reused_pid_is_not_signalled(tmp_path):
             proc.wait(timeout=15)
 
 
-def test_g11_durable_output_while_child_is_running(tmp_path):
+def _assert_g11_live_fsync_barrier(tmp_path, monkeypatch, spawn_delay, disable_sync=False):
+    """A real fsync of a capture fd must be observed while the child lives.
+
+    Signal release only after that event. Replacing the production os.fsync call
+    with a no-op cannot satisfy this test because our callback is never invoked.
+    """
     import threading
     capture = tmp_path / 'durable.raw'
+    release = tmp_path / 'release.signal'
+    fsynced_while_live = threading.Event()
+    child_pid = []
     result = []
+    original_spawn = bp.subprocess.Popen
+    original_fsync = bp.os.fsync
+
+    def monitored_spawn(*args, **kwargs):
+        if spawn_delay:
+            time.sleep(spawn_delay)
+        proc = original_spawn(*args, **kwargs)
+        child_pid.append(proc.pid)
+        return proc
+
+    def observed_fsync(fd):
+        if disable_sync:
+            return  # deliberate negative mutant: never performs a real fsync
+        original_fsync(fd)
+        if (child_pid and bp.process_alive(child_pid[0]) and capture.exists()
+                and b'DURABLE_EARLY' in capture.read_bytes()):
+            fsynced_while_live.set()
+
+    monkeypatch.setattr(bp.subprocess, 'Popen', monitored_spawn)
+    monkeypatch.setattr(bp.os, 'fsync', observed_fsync)
+    child = ("import pathlib,time; print('DURABLE_EARLY',flush=True); "
+             "p=pathlib.Path(" + repr(str(release)) + "); "
+             "exec('while not p.exists(): time.sleep(0.02)'); "
+             "print('DURABLE_LATE',flush=True)")
+
     def work():
-        result.append(bp.run_bounded([PY, '-c',
-            "import time; print('DURABLE_EARLY', flush=True); time.sleep(2); print('DURABLE_LATE',flush=True)"],
-            cwd=str(tmp_path), timeout=10, merge_stderr=True, capture_path=str(capture), flush_interval=0.1))
+        result.append(bp.run_bounded([PY, '-c', child], cwd=str(tmp_path), timeout=12,
+                                     merge_stderr=True, capture_path=str(capture), flush_interval=0.1))
     thread = threading.Thread(target=work)
     thread.start()
     try:
-        deadline = time.monotonic() + 1.5
-        while time.monotonic() < deadline and (not capture.exists() or b'DURABLE_EARLY' not in capture.read_bytes()):
-            time.sleep(0.05)
-        assert thread.is_alive() and b'DURABLE_EARLY' in capture.read_bytes()
+        deadline = time.monotonic() + (7 if disable_sync else 10)
+        while not fsynced_while_live.is_set():
+            assert thread.is_alive(), 'child finished before live fsync evidence'
+            assert time.monotonic() < deadline, 'live fsync of capture fd not observed'
+            time.sleep(0.02)
+        assert child_pid and bp.process_alive(child_pid[0])
     finally:
+        release.touch(exist_ok=True)
         thread.join(timeout=5)
-    assert not thread.is_alive() and result[0].returncode == 0
-    assert b'DURABLE_LATE' in capture.read_bytes()
+    assert not thread.is_alive() and len(result) == 1 and result[0].returncode == 0
+    assert b'DURABLE_EARLY' in capture.read_bytes() and b'DURABLE_LATE' in capture.read_bytes()
 
+
+@pytest.mark.parametrize('spawn_delay', [0, 1.7])
+def test_g11_durable_output_while_child_is_running(tmp_path, monkeypatch, spawn_delay):
+    _assert_g11_live_fsync_barrier(tmp_path, monkeypatch, spawn_delay)
+
+
+def test_g11_durable_output_no_fsync_mutant_is_rejected(tmp_path, monkeypatch):
+    with pytest.raises(AssertionError, match='live fsync of capture fd not observed'):
+        _assert_g11_live_fsync_barrier(tmp_path, monkeypatch, 0, disable_sync=True)
 
 def test_g11_raw_capture_timeout_remains_nonzero(tmp_path):
     capture = tmp_path / 'time.raw'

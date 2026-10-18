@@ -594,6 +594,7 @@
 | skills/AGENTS.md | 200 | ## 7. README 同步規則 | FILE | `skills/README.md` | skills/README.md | RESOLVED |
 | skills/AGENTS.md | 205 | ## 7. README 同步規則 | FILE | `docs/refactor-backlog.md` | docs/refactor-backlog.md | RESOLVED |
 | skills/AGENTS.md | 220 | ## 8. 遷移舊技能時的規則 | ADR | docs/adr/0018-vendored-external-assets.md | docs/adr/0018-vendored-external-assets.md | RESOLVED |
+| skills/AGENTS.md | 232 | ## 9. 驗證 | FILE | `scripts/gate_runner.py` | scripts/gate_runner.py | RESOLVED |
 | skills/AGENTS.md | 233 | ## 9. 驗證 | FILE | `scripts/validate_skills.py` | scripts/validate_skills.py | RESOLVED |
 | skills/AGENTS.md | 234 | ## 9. 驗證 | FILE | `scripts/check_consistency.py` | scripts/check_consistency.py | RESOLVED |
 | skills/AGENTS.md | 244 | ## 9. 驗證 | FILE | `scripts/tests/test_channel_gateway_core.py` | scripts/tests/test_channel_gateway_core.py | RESOLVED |
@@ -601,3 +602,4 @@
 | skills/AGENTS.md | 247 | ## 9. 驗證 | FILE | `scripts/verify_all.py` | scripts/verify_all.py | RESOLVED |
 | skills/AGENTS.md | 253 | ## 10. Remote Project Health Authority（遠端健康權威） | ADR | docs/adr/0020-github-actions-remote-health-authority.md | docs/adr/0020-github-actions-remote-health-authority.md | RESOLVED |
 | skills/AGENTS.md | 255 | ## 10. Remote Project Health Authority（遠端健康權威） | FILE | `scripts/verify_all.py` | scripts/verify_all.py | RESOLVED |
+| skills/AGENTS.md | 256 | ## 10. Remote Project Health Authority（遠端健康權威） | FILE | `scripts/gate_runner.py` | scripts/gate_runner.py | RESOLVED |

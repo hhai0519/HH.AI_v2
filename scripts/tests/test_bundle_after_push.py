@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """B-118: ref whitelist, no-overwrite, failure truth, and runner ordering controls."""
 import os
+import json
 import subprocess
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
@@ -462,3 +463,96 @@ def test_equal_length_pack_corruption_is_failed_not_ready(small_repo, monkeypatc
     out = capsys.readouterr().out
     assert 'BUNDLE FAILED COPY_HASH_MISMATCH' in out
     assert 'READY' not in out
+
+
+def test_q1a_handoff_card_is_task_bound_and_never_claims_postmain(monkeypatch, small_repo, tmp_path, capsys):
+    root, dl, base, head = small_repo
+    batch = br.Batch.__new__(br.Batch)
+    batch.root, batch.task_id = str(root), 'B119-Q1A-TEST'
+    batch.spec = {'kind': 'production', 'base_oid': base, 'branch': 'batch/b118-test'}
+    monkeypatch.setattr(br, 'status_lines', lambda *_: [])
+    monkeypatch.setattr(batch, 'remote_sha', lambda ref: base if ref.endswith('/main') else head)
+    bundle = tmp_path / 'valid.bundle'
+    bundle.write_bytes(b'bundle-output-placeholder')
+    monkeypatch.setattr(br, 'create_bundle', lambda *a, **k: str(bundle))
+    monkeypatch.setattr(batch, 'artifact', lambda suffix: '.git/' + batch.task_id + '-' + suffix)
+    ci_path = root / '.git' / (batch.task_id + '-candidate-ci.json')
+    proof = {'tool': 'verification_primitives', 'command': 'ci-status', 'repo': br.REPO,
+             'workflow_name': 'Verify', 'required_jobs': ['verify', 'gateway-windows'],
+             'status': 'PASS', 'run_status': 'completed', 'run_conclusion': 'success',
+             'event': 'push', 'head_sha': head, 'branch': 'batch/b118-test',
+             'run_id': 1234, 'run_attempt': 1,
+             'jobs': {k: {'status': 'completed', 'conclusion': 'success'}
+                      for k in ('verify', 'gateway-windows')}}
+    ci_path.write_text(json.dumps(proof), encoding='utf8')
+    assert batch.step_bundle() == 'READY'
+    handoff = json.loads((root / '.git' / (batch.task_id + '-handoff.json')).read_text())
+    assert handoff['base_oid'] == base and handoff['candidate_oid'] == head
+    assert handoff['postmain'] == 'NOT_RUN' and handoff['candidate_ci']['run_id'] == 1234
+    assert handoff['bundle_file'] == str(bundle)
+    assert handoff['next_step'] == 'USER_FORWARD_BUNDLE_AND_HANDOFF_CARD_TO_ACTIVE_AUDITOR_FOR_INDEPENDENT_REVIEW'
+    output = capsys.readouterr().out
+    assert 'HANDOFF_TO_AUDITOR=.git/' + batch.task_id + '-handoff.json' in output
+    import hashlib
+    # End-to-end consumer view: the external auditor receives only the relayed
+    # machine lines, never the author's local .git task artifact.
+    relayed = dict(line.split('=', 1) for line in output.splitlines() if line.startswith('HANDOFF_CARD_'))
+    portable = relayed['HANDOFF_CARD_JSON']
+    assert hashlib.sha256(portable.encode('ascii')).hexdigest() == relayed['HANDOFF_CARD_SHA256']
+    assert json.loads(portable) == handoff
+    assert json.loads(portable)['candidate_ci']['status'] == 'PASS'
+    assert json.loads(portable)['postmain'] == 'NOT_RUN'
+    # Exclusive task-local write: no overwrite even with repeated invocation.
+    assert batch.step_bundle() == 'FAILED_GIT_PROBE'
+
+
+@pytest.mark.parametrize('ci_proof', ['missing', 'wrong_sha', 'spoofed_success', 'malformed_jobs',
+                                     'duplicate_head_sha', 'duplicate_status', 'duplicate_job_status'])
+def test_q1a_handoff_fail_closed_evidence(monkeypatch, small_repo, tmp_path, ci_proof, capsys):
+    root, dl, base, head = small_repo
+    batch = br.Batch.__new__(br.Batch)
+    batch.root, batch.task_id = str(root), 'B119-Q1A-NEG'
+    batch.spec = {'kind': 'production', 'base_oid': base, 'branch': 'batch/b118-test'}
+    monkeypatch.setattr(br, 'status_lines', lambda *_: [])
+    monkeypatch.setattr(batch, 'remote_sha', lambda ref: base if ref.endswith('/main') else head)
+    bundle = tmp_path / 'valid.bundle'
+    bundle.write_bytes(b'valid')
+    monkeypatch.setattr(br, 'create_bundle', lambda *a, **k: str(bundle))
+    monkeypatch.setattr(batch, 'artifact', lambda suffix: '.git/' + batch.task_id + '-' + suffix)
+    ci_path = root / '.git' / (batch.task_id + '-candidate-ci.json')
+    proof = {'tool': 'verification_primitives', 'command': 'ci-status', 'repo': br.REPO,
+             'workflow_name': 'Verify', 'required_jobs': ['verify', 'gateway-windows'],
+             'status': 'PASS', 'run_status': 'completed', 'run_conclusion': 'success',
+             'event': 'push', 'head_sha': head, 'branch': 'batch/b118-test',
+             'run_id': 1, 'run_attempt': 1,
+             'jobs': {k: {'status': 'completed', 'conclusion': 'success'}
+                      for k in ('verify', 'gateway-windows')}}
+    if ci_proof != 'missing':
+        if ci_proof == 'wrong_sha': proof['head_sha'] = '0' * 40
+        if ci_proof == 'spoofed_success': proof['jobs']['gateway-windows']['conclusion'] = 'failure'
+        if ci_proof == 'malformed_jobs': proof['jobs']['gateway-windows'] = ['completed', 'success']
+        payload = json.dumps(proof)
+        if ci_proof == 'duplicate_head_sha':
+            assert '"head_sha":' in payload
+            payload = payload.replace('"head_sha":', '"head_sha": "' + '0' * 40 + '", "head_sha":', 1)
+        if ci_proof == 'duplicate_status':
+            payload = payload.replace('"status": "PASS"', '"status": "FAIL", "status": "PASS"', 1)
+        if ci_proof == 'duplicate_job_status':
+            payload = payload.replace('"verify": {"status": "completed"',
+                                      '"verify": {"status": "failure", "status": "completed"', 1)
+        ci_path.write_text(payload, encoding='utf8')
+    result = batch.step_bundle()
+    if ci_proof == 'missing':
+        assert result == 'READY'
+        card = json.loads((root / '.git' / (batch.task_id + '-handoff.json')).read_text())
+        assert card['candidate_ci']['status'] == 'PENDING'
+        output = capsys.readouterr().out
+        assert 'HANDOFF_CARD_JSON=' in output and 'HANDOFF_CARD_SHA256=' in output
+    else:
+        assert result == ('FAILED_CI_EVIDENCE_INVALID' if ci_proof.startswith('duplicate_')
+                          else 'FAILED_CI_EVIDENCE_MISMATCH')
+        assert not (root / '.git' / (batch.task_id + '-handoff.json')).exists()
+        output = capsys.readouterr().out
+        assert 'HANDOFF_TO_AUDITOR=' not in output
+        assert 'HANDOFF_CARD_JSON=' not in output
+        assert 'HANDOFF_CARD_SHA256=' not in output

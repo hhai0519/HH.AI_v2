@@ -327,6 +327,7 @@ CHECK 12 應跳過該值——建立本檔的那一批沒有「前一個 commit�
 
 
 | a8afa9f743ab65ecda210b65ada38beb0bd70efe | 2026-10-18 | §4.1-1、§4.1-3、B-119 G11／B-100 R-M | **核對通過（R3 same-SHA Macro PASS／POST-MAIN VERIFIED；本批 B119-G11-POSTCOMMIT-DURABLE-R1-261018 待實作）**：R3 same-SHA main a8afa9f743ab65ecda210b65ada38beb0bd70efe，candidate Run 39127405487、post-main Run 39129666841，push attempt 1、verify 與 gateway-windows 雙 job success，verify 1503 passed／1 skipped＋13 passed、ALL 5 GATES PASSED，Windows 57 passed；歷史 R1 S1 本地 1ad66992... 保留不刪。USER 常設決定（2026-10-18）G11：PRECOMMIT full verify_all、遠端 required CI 保留；POSTCOMMIT 擬定四 gate，須 E24/E27；三層 bounded raw 證據於執行中 fsync，canonical 只有完整 exit/complete 才 PASS；本批 candidate/CI/PROMOTE 皆 PENDING，G11 OPEN。 |
+| 3aa8504ff6b0e7d7218eb5bc72e56975f55cfda6 | 2026-10-19 | §4.1-1、§4.1-3、B-119 G11 | **核對通過（AUD-GPT-261019 獨立 Macro PASS／ACCEPT ALL；G11 功能與 same-SHA post-main）**：candidate Run 39135446300、post-main Run 39137425245，兩者 exact-SHA attempt 1 verify 與 gateway-windows success；post-main raw ALL 5 GATES PASSED、Windows 57 passed，本機 27/27、272 個受影響測試 PASS。發現 B1 新增定時測試有 1.5 秒 fixed-wall-clock 假紅燈（CURRENT B-119，下批改握手，不宣稱已修復）；N1 五閘門／四閘門描述不符（EXISTING G4，下批前向修正文字，不改歷史）。原 S1 不刪；本筆為新任自行裁決，不繼承前任或第二意見 PASS。 | 非阻擋但必要修正 B1／N1 已指定 owner 和有界下一批，提交前不得冒稱修正通過。 |
 ## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)
 
 依據 `docs/adr/0020-github-actions-remote-health-authority.md` 與 `SOP/SOP_14_Rigorous_Verification_and_Audit_Protocol.md` §8，本專案將 GitHub Actions 歷史 Verify 失敗 runs 進行機器證據分析、根本原因分類與預防控制歸檔，作為 closed CI incidents 的權威留痕。

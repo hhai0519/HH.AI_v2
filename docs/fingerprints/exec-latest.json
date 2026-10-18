@@ -1,5 +1,5 @@
 {
-  "base_head": "a8afa9f",
+  "base_head": "3aa8504",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -562,16 +562,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 344,
-      "sha256": "dde084db1b791c987572e640527800a46c37bd3bbde2f9dde62a5ddf1566e5ed"
+      "lines": 345,
+      "sha256": "d786405a0214df63b684a2844cd22c5c02b3066e3349e75175727684e437b74d"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 324,
-      "sha256": "70b17d21e4287b17a7b166eb6cbeaa640cde29b2f0926123d7e82eace3f2ce7c"
+      "lines": 325,
+      "sha256": "180edf80de6693645c05fbaf1c1df8939f46056dfdbdd853e4cf989f60d1162a"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -614,7 +614,7 @@
         "## 封存區"
       ],
       "lines": 410,
-      "sha256": "671ca6c4f4f5ee04a050f539f21ed829daa15a97ed7cc109d4e9062e92dbef00"
+      "sha256": "dda39e6c55d158b1683734523015bf7d2484f66cf557a0dfa6bf8504cf4c0a27"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1112,8 +1112,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6409,
-      "sha256": "ab015d60e0946a69205c468a1db37c5ea29096c6c97e10b4205714b61158c2be"
+      "lines": 6411,
+      "sha256": "2bf8498774c72e3e9958e674731bd4b3e6ab72da86847ff405f9bd114cdf5a65"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1158,8 +1158,8 @@
         "# Control record and entry point",
         "# ---------------------------------------------------------------------------"
       ],
-      "lines": 1145,
-      "sha256": "8169b126177533daffd13f5491d73fc5fd4adffc8b0424ee035f7542cc92df67"
+      "lines": 1197,
+      "sha256": "3f7ab51fe9210100f6a365a9f4ec7e6dd4fe147942e462ee698fbd3462d0e22b"
     },
     "scripts/batch_sim.py": {
       "fences": 0,
@@ -1306,7 +1306,7 @@
         "# -*- coding: utf-8 -*-"
       ],
       "lines": 194,
-      "sha256": "3c634bdde5a33509e521bf3d2cd979cc70845de7524bdb832d5e62fa6b9c1317"
+      "sha256": "c22d229adee94575eb5200d5e35a80c8e5f082d1611f715d373ba968e39868eb"
     },
     "scripts/promotion_template.py": {
       "fences": 0,
@@ -1460,8 +1460,8 @@
         "# A child that runs a long-lived worker through a nested run_bounded call (its own group or session),",
         "# as gate_runner -> verify_all -> pytest -> gateway referee does; the worker records its PID."
       ],
-      "lines": 233,
-      "sha256": "547a8717c7d987750338cd44d3484667438fc316269f7fdab246670a3dba1bb7"
+      "lines": 277,
+      "sha256": "838ba799cab545918e3b228dbc4ff255651640d72f6b2faf9c08c663ea8f35c7"
     },
     "scripts/tests/test_build_prompt_evidence.py": {
       "fences": 0,
@@ -1480,8 +1480,8 @@
         "# -*- coding: utf-8 -*-",
         "# B-118 first-activation runner and ref fail-closed regression coverage."
       ],
-      "lines": 464,
-      "sha256": "d20dbd098a9411c7eddfd00a4ac3ceac94470b758d6877ec8dfb61562e6c5261"
+      "lines": 558,
+      "sha256": "1c9458c33e4bc06069ac55f74345ba1de5d107eb3324c46c5ee05558469c3a4f"
     },
     "scripts/tests/test_channel_gateway_core.py": {
       "fences": 0,
@@ -1940,10 +1940,10 @@
         "# -*- coding: utf-8 -*-"
       ],
       "lines": 92,
-      "sha256": "35bf7dbfa3c7d291b550c3c97a6ae398a22b1dc3624c1d2fc1e4db6963d6e115"
+      "sha256": "62c3142973a5c228efacc01ddcbd44a76e5f87e24d7bed15d90e2ce45a494982"
     }
   },
-  "generated_at": "2026-10-18T14:06:20Z",
+  "generated_at": "2026-10-18T18:25:58Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

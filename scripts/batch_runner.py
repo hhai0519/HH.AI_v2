@@ -250,6 +250,19 @@ def git_blob_sha1(data):
     return hashlib.sha1(b'blob ' + str(len(data)).encode() + bytes([0]) + data).hexdigest()
 
 
+def reject_duplicate_json_keys(pairs):
+    """Fail closed for contradictory JSON records, including nested job objects.
+
+    Share the same decoder policy between ci_status and the Q1-a candidate card.
+    """
+    obj = {}
+    for key, value in pairs:
+        if key in obj:
+            raise ValueError('CI_STATUS_DUPLICATE_JSON_KEY')
+        obj[key] = value
+    return obj
+
+
 # ---------------------------------------------------------------------------
 # Prompt blocks and batch specification
 # ---------------------------------------------------------------------------
@@ -697,16 +710,9 @@ class Batch:
             raise Halt('CI_STATUS_LAUNCH_FAILED')
         if cp.returncode not in (0, 1, 2) or not cp.stdout or len(cp.stdout) > 65536:
             raise Halt('CI_STATUS_UNTRUSTED')
-        def reject_duplicate_keys(pairs):
-            obj = {}
-            for key, value in pairs:
-                if key in obj:
-                    raise ValueError('CI_STATUS_DUPLICATE_JSON_KEY')
-                obj[key] = value
-            return obj
         try:
             payload = json.loads(cp.stdout.decode('utf-8', errors='strict'),
-                                 object_pairs_hook=reject_duplicate_keys)
+                                 object_pairs_hook=reject_duplicate_json_keys)
         except (UnicodeDecodeError, ValueError):
             raise Halt('CI_STATUS_JSON_INVALID') from None
         if not isinstance(payload, dict) or payload.get('tool') != 'verification_primitives' or payload.get('command') != 'ci-status':
@@ -930,8 +936,54 @@ class Batch:
             if self.remote_sha('refs/heads/' + spec['branch']) != head:
                 raise BundleFailure('REMOTE_SHA_DRIFT')
             result = create_bundle(root, spec['branch'], spec['base_oid'], head, task_id=self.task_id)
+            # Q1-a first slice: a task-local, immutable candidate-phase handoff card.
+            # A candidate CI marker is emitted only from a previously validated task-local
+            # ci_status record; a missing record remains PENDING, never synthesized PASS.
+            ci_rel = self.artifact('candidate-ci.json')
+            ci_path = Path(root) / ci_rel
+            candidate_ci = {'status': 'PENDING'}
+            if ci_path.exists():
+                try:
+                    record = json.loads(ci_path.read_text(encoding='utf-8'),
+                                        object_pairs_hook=reject_duplicate_json_keys)
+                except (OSError, ValueError, UnicodeError):
+                    raise BundleFailure('CI_EVIDENCE_INVALID') from None
+                if (not isinstance(record, dict) or record.get('tool') != 'verification_primitives'
+                    or record.get('command') != 'ci-status' or record.get('repo') != REPO
+                    or record.get('workflow_name') != 'Verify'
+                    or record.get('required_jobs') != ['verify', 'gateway-windows']
+                    or record.get('status') != 'PASS'
+                    or record.get('head_sha') != head or record.get('branch') != spec['branch']
+                    or record.get('event') != 'push' or record.get('run_status') != 'completed'
+                    or record.get('run_conclusion') != 'success'
+                    or type(record.get('run_id')) is not int or record['run_id'] <= 0
+                    or type(record.get('run_attempt')) is not int or record['run_attempt'] <= 0
+                    or not isinstance(record.get('jobs'), dict) or set(record['jobs']) != {'verify', 'gateway-windows'}
+                    or any(not isinstance(record['jobs'][k], dict)
+                           or record['jobs'][k].get('status') != 'completed'
+                           or record['jobs'][k].get('conclusion') != 'success'
+                           for k in ('verify', 'gateway-windows'))):
+                    raise BundleFailure('CI_EVIDENCE_MISMATCH')
+                candidate_ci = {'status': 'PASS', 'run_id': record['run_id'],
+                                'attempt': record['run_attempt'], 'head_sha': head}
+            # No post-main claim can exist in a production candidate card.
+            handoff = {'schema_version': 1, 'phase': 'candidate', 'task_id': self.task_id,
+                       'base_oid': spec['base_oid'], 'candidate_oid': head,
+                       'branch': spec['branch'], 'candidate_ci': candidate_ci,
+                       'postmain': 'NOT_RUN', 'bundle_status': 'READY',
+                       'bundle_file': result,
+                       'next_step': 'USER_FORWARD_BUNDLE_AND_HANDOFF_CARD_TO_ACTIVE_AUDITOR_FOR_INDEPENDENT_REVIEW'}
+            # Canonical transport: ASCII-safe, single-line JSON + full SHA256, printed
+            # in the runner's stdout and therefore relayable without access to .git.
+            # A .git artifact remains task-local; it is NOT inside a Git bundle.
+            portable = json.dumps(handoff, sort_keys=True, ensure_ascii=True, separators=(',', ':'))
+            card_sha = sha256_bytes(portable.encode('ascii'))
+            handoff_rel = self.write_new_artifact('handoff.json', portable + '\n')
             print('BUNDLE_FILE=' + result)
             print('ORIGIN_MAIN=' + spec['base_oid'])
+            print('HANDOFF_TO_AUDITOR=' + handoff_rel)
+            print('HANDOFF_CARD_SHA256=' + card_sha)
+            print('HANDOFF_CARD_JSON=' + portable)
             return 'READY'
         except BundleFailure as exc:
             print('BUNDLE FAILED ' + exc.code)

@@ -229,7 +229,7 @@ SKILL.md 本體只放：
 python3 scripts/verify_all.py
 ```
 
-此腳本為 Local、Prospective Commit、Post-commit 與 CI 的統一閘門權威，依序執行全專案 5 大 Correctness Gates：
+此腳本是一般 Local、Prospective Commit／PRECOMMIT 與 CI 的完整五閘門權威；POSTCOMMIT 改由 `scripts/gate_runner.py` 執行四項非 as-if 的輕量守衛（execution_record verify、check_consistency、fingerprint --verify、git diff --check），不宣稱與完整五閘門集合相同：
 1. 技能架構與 frontmatter 結構檢查（`scripts/validate_skills.py`）
 2. 全庫一致性與規格重放檢查（`scripts/check_consistency.py`）
 3. 指紋檔完整性驗證（`scripts/fingerprint.py --verify`）
@@ -253,7 +253,7 @@ python3 scripts/verify_all.py
 本專案實施雙層權威分工機制（Dual Authority Separation，架構決策見 `docs/adr/0020-github-actions-remote-health-authority.md`）：
 
 - **本地正確性權威 (Local Correctness Authority)**：`scripts/verify_all.py`
-  涵蓋全專案 5 大 Correctness Gates，為本地修改、Prospective Commit 與 Post-commit 的唯一標準驗證入口。
+  涵蓋全專案 5 大 Correctness Gates，為一般本地驗證、Prospective Commit／PRECOMMIT 的標準完整入口；POSTCOMMIT 以 `scripts/gate_runner.py` 四項守衛驗證，不取代 CI 完整五閘門。
 - **遠端專案健康權威 (Remote Project Health Authority)**：GitHub Actions 對 exact `origin/main` HEAD 的 Verify workflow。
   為全專案唯一的遠端健康單一事實來源。
 

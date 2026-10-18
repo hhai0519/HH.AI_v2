@@ -10,11 +10,11 @@
 `待裁決`（需使用者決定）／`已完成`（仍可能被引用）／
 `可封存`（不影響後續工作，待使用者確認後移入封存區）
 
-**ACTIVE_MACRO_AUDITOR**：AUD-GPT-261017-B（USER 2026-10-17 明確接任前任 AUD-GPT-261017；A1 FULL_CLONE（bundle 與 GitHub exact-SHA verified）、session 獨立與 cold-start 自檢成立；依通用版第二節 E 過渡期權威前向登錄；後續以本欄為 repo 指派紀錄。）
+**ACTIVE_MACRO_AUDITOR**：AUD-GPT-261019（USER 2026-10-19 明確終止 AUD-GPT-261017-B 並任命；新任 A1 FULL_CLONE（bundle 與 GitHub exact-SHA verified）、獨立 cold-start／selftest 與過渡期權威成立；本批前向登錄，非執行者自行任命。）
 
 **NEXT_WORK**：B-119
 
-**NEXT_SLICE**：G11-POSTCOMMIT-DURABLE-R1（USER 常設決定（2026-10-18）；R3 已在 main a8afa9f743ab65ecda210b65ada38beb0bd70efe same-SHA POST-MAIN VERIFIED；本批 B119-G11-POSTCOMMIT-DURABLE-R1-261018 實作 G11 POSTCOMMIT 四 gate 與 B-100 R-M 即時 durable raw evidence；須 E24/E27 與正式 Windows CI，未結案前 G11 OPEN；成功後先 G1 Q1-a；不得取消原 R1 S1 保留與 G8 刪除限制。）
+**NEXT_SLICE**：G1-Q1A-HANDOFF-CARD-R2（G11 候選／main=3aa8504ff6b0e7d7218eb5bc72e56975f55cfda6，candidate Run 39135446300、post-main Run 39137425245 attempt1 雙 job PASS；AUD-GPT-261019 Macro PASS／ACCEPT ALL，B1／N1 仍須修正；本批 B119-G1-Q1A-HANDOFF-R2-261019 有界落實 Q1-a 候選結構化交接卡、B1 可決定性握手、N1 前向文字契約修正，其他 Q1-a 子項仍 OPEN；原 S1 1ad66992e2e75b58c70f1f78336ccc3ca0403d58 證據保存，G8 遠端／tmp 刪除限制不變。）
 
 > [!IMPORTANT]
 > **環境恢復觸發（Environment Recovery Trigger）**：
@@ -35,8 +35,8 @@ USER 常設決定（2026-10-13）：交付以 ZIP 為主要檔案、TXT 為備�
 
 | 工作流 | 狀態 | owner | 工作及完成條件（需機械驗證） |
 |---|---|---|---|
-| G11 | OPEN／本批實作候選，尚未 post-main 驗收 | B-119＋B-100 R-M | 唯讀列出所有依賴 HEAD/commit 狀態之檢查、納入 E24；正式 E27 後 POSTCOMMIT 只保留 `execution_record verify`、`check_consistency`（非 as-if）、`fingerprint --verify`、`git diff --check`；bounded 紀錄隨執行即寫；CHECK16 lag／record 不符之提交後反例須 FAIL，precommit 非零必須零 commit，追蹤同類 Executor TIMING。INCIDENT-CI-04「本地 postcommit 必須完整 verify_all」僅准前向修訂；現行完整 Gate 在新批晉級前維持。 |
-| G1 | OPEN | B-119 | Q1-a 交接卡、F-06 自動 bundle、C9 安全回 Base（含本地未推送 S1）、S1_EVIDENCE_FILE 與 SHA256SUMS `SHA + 兩個空白 + 檔名`、U4/Q1、U-04 START_STATE_MISMATCH；使用者不需手動找 Run ID／打包，回 Base pwsh 負例 FAIL。 |
+| G11 | CLOSED／POST-MAIN VERIFIED（B1 測試弱點在 G1 修補） | B-119＋B-100 R-M | 唯讀列出所有依賴 HEAD/commit 狀態之檢查、納入 E24；正式 E27 後 POSTCOMMIT 只保留 `execution_record verify`、`check_consistency`（非 as-if）、`fingerprint --verify`、`git diff --check`；bounded 紀錄隨執行即寫；CHECK16 lag／record 不符之提交後反例須 FAIL，precommit 非零必須零 commit，追蹤同類 Executor TIMING。INCIDENT-CI-04「本地 postcommit 必須完整 verify_all」僅准前向修訂；現行完整 Gate 在新批晉級前維持。 |
+| G1 | OPEN／首個結構化交接卡作者待 E27 | B-119 | Q1-a 交接卡、F-06 自動 bundle、C9 安全回 Base（含本地未推送 S1）、S1_EVIDENCE_FILE 與 SHA256SUMS `SHA + 兩個空白 + 檔名`、U4/Q1、U-04 START_STATE_MISMATCH；使用者不需手動找 Run ID／打包，回 Base pwsh 負例 FAIL。 |
 | G2 | OPEN／retention 前置 | B-116 C1＋B-115 C2 | 歷史只能新增零刪改、§5.1 兩種 ledger 格式 placeholder 原文保留；錨點唯一替換及變更帳；歷史 R1 帳本與 INCIDENT-CI-01 R3 真實負例 FAIL，最近五個已晉級 commit PASS。 |
 | G4（驗證器） | OPEN | B-116 | CHECK14 全簡繁／台灣異體白名單、C7 狀態 lint、N1、自檢含過渡權威；「须」等負例 FAIL；B-54 三處 SOP 規範矛盾小修併 G4 文字部分。 |
 | G7 | OPEN | B-100 R-N＋B-59 | 18 列「可封存」逐字封存、拆分 B-100/B-115 長列、列長 CHECK 與 ARCHIVE-INDEX 雙向可達；原文 hash 不變；超長與不可達負例 FAIL；未經明示授權不得刪除。 |

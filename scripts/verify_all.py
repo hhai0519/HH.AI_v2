@@ -11,7 +11,7 @@ Canonical Verification Entrypoint (單一驗證權威入口)
   4. unit_tests        (pytest scripts/tests/ -q)
   5. webapp_tests      (pytest skills/execution/webapp-testing/tests/ -q)
 
-保證 Local、Prospective Commit、Post-commit 與 CI 執行完全一致的閘門集合。
+本工具是 PRECOMMIT（Prospective Commit）及 CI 的完整五閘門入口；POSTCOMMIT 由 scripts/gate_runner.py 的四項輕量守衛執行，並非同一集合。
 任一閘門失敗即以非零 exit code 退出。
 """
 

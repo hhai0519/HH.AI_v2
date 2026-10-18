@@ -125,7 +125,7 @@ E24={'REQUIRED' if d.get('e24') is True else 'NONE'}；E27={prose['e27']}。E27 
 {cmds}
 
 六、Executor 固定回覆
-成功須逐字複製 runner 已輸出的 CI_RUN candidate 定位行、COMMIT、TIMING、STATE；CI_RUN 只能來自 runner，不能自行填入或將候選 Run 誤寫成 postmain。bundle_output=true 時，還必須逐字複製實際輸出的 BUNDLE_FILE=、ORIGIN_MAIN=，或 BUNDLE FAILED <CODE> 行，不能略過、捏造成功或把 bundle 失敗誤當 CI 失敗。S1 僅複製實際存在的 S1、S1_DETAIL、TIMING、STATE 行，不捏造 CI Run／job ID 或 PASS。TIMING 由 runner 提供開始、結束與秒數除以 60 向下取整之分鐘。回覆最後一行逐字為「以上是 Antigravity IDE Agent 的回覆。」
+成功須逐字複製 runner 已輸出的 CI_RUN candidate 定位行、COMMIT、TIMING、STATE；CI_RUN 只能來自 runner，不能自行填入或將候選 Run 誤寫成 postmain。bundle_output=true 時，還必須逐字複製實際輸出的 BUNDLE_FILE=、ORIGIN_MAIN=、HANDOFF_TO_AUDITOR=、HANDOFF_CARD_SHA256=、HANDOFF_CARD_JSON=（只有實際產生時才複製完整單行，且不得以 .git 相對路徑代替卡片內容），或 BUNDLE FAILED <CODE> 行，不能略過、捏造成功或把 bundle 失敗誤當 CI 失敗。S1 僅複製實際存在的 S1、S1_DETAIL、TIMING、STATE 行，不捏造 CI Run／job ID 或 PASS。TIMING 由 runner 提供開始、結束與秒數除以 60 向下取整之分鐘。回覆最後一行逐字為「以上是 Antigravity IDE Agent 的回覆。」
 
 七、machine blocks（全部由 canonical builder 產生，不可修改）
 '''
