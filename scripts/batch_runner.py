@@ -651,10 +651,10 @@ class Batch:
         path = Path(self.root) / rel
         if os.path.lexists(path):
             raise Halt(stage + '_ALREADY_RUN')
-        path.touch(exist_ok=False)
-        res = run_bounded([PY] + args, cwd=self.root, timeout=limit, env=child_env(), merge_stderr=True)
-        with open(path, 'ab') as log:
-            log.write(res.stdout)
+        # run_bounded atomically creates the task-local file before spawn and
+        # fsyncs the child's raw output during execution, including S1 crashes.
+        res = run_bounded([PY] + args, cwd=self.root, timeout=limit, env=child_env(),
+                          merge_stderr=True, capture_path=str(path))
         if res.launch_error is not None:
             raise Halt(stage + '_LAUNCH_FAILED')
         if res.timed_out:

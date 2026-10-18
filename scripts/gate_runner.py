@@ -58,7 +58,8 @@ STAGES = {
     ],
     "POSTCOMMIT": [
         [PY, "scripts/execution_record.py", "verify"],
-        [PY, "scripts/verify_all.py"],
+        [PY, "scripts/check_consistency.py"],
+        [PY, "scripts/fingerprint.py", "--verify"],
         ["git", "diff", "--check"],
     ],
 }
@@ -124,7 +125,12 @@ def run_stage(root, stage, gates, log_path, timeout=GATE_TIMEOUT_SECONDS):
     env["PYTHONIOENCODING"] = "utf-8"
     for idx, cmd in enumerate(gates, 1):
         append_lines(log_path, [gate_header(stage, run_no, idx, cmd)])
-        res = run_bounded(resolve_command(cmd), cwd=root, timeout=timeout, env=env, merge_stderr=True)
+        # The raw sidecar persists *during* execution and survives abnormal exit.
+        # Only the canonical EXIT_CODE and COMPLETE markers grant gate success.
+        raw_path = log_path + f".{stage.lower()}-run{run_no}-gate{idx}.raw"
+        append_lines(log_path, ["RAW_EVIDENCE_FILE: " + os.path.basename(raw_path)])
+        res = run_bounded(resolve_command(cmd), cwd=root, timeout=timeout, env=env,
+                          merge_stderr=True, capture_path=raw_path)
         output = res.stdout.decode("utf-8", errors="replace")
         trailer = []
         if res.launch_error is not None:

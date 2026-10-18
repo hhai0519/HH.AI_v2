@@ -1,5 +1,5 @@
 {
-  "base_head": "fdd5948",
+  "base_head": "a8afa9f",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -562,16 +562,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 342,
-      "sha256": "81ed3d07f7abd7692e2a9878e061fe9ade89445d4baa9d5e16cc5a9da650fc8f"
+      "lines": 344,
+      "sha256": "dde084db1b791c987572e640527800a46c37bd3bbde2f9dde62a5ddf1566e5ed"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 323,
-      "sha256": "82d66c8dc90dc22b062e997faba60d3eb5ddacfaf87ab29ca361857360082800"
+      "lines": 324,
+      "sha256": "70b17d21e4287b17a7b166eb6cbeaa640cde29b2f0926123d7e82eace3f2ce7c"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -614,7 +614,7 @@
         "## 封存區"
       ],
       "lines": 410,
-      "sha256": "83c634fe676286b6bc49fbb7bbfddc614b37b39c60090b299c2020ccfc7b2f76"
+      "sha256": "671ca6c4f4f5ee04a050f539f21ed829daa15a97ed7cc109d4e9062e92dbef00"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1112,8 +1112,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6408,
-      "sha256": "32e4acb6c6f81843608c75e766a7ca4552a350327f19ec2e60cb4a2dc2b5f870"
+      "lines": 6409,
+      "sha256": "ab015d60e0946a69205c468a1db37c5ea29096c6c97e10b4205714b61158c2be"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1159,7 +1159,7 @@
         "# ---------------------------------------------------------------------------"
       ],
       "lines": 1145,
-      "sha256": "319106d6843343e2c9e8aa17aae287aa05eb2733d1988b075254f693733420b5"
+      "sha256": "8169b126177533daffd13f5491d73fc5fd4adffc8b0424ee035f7542cc92df67"
     },
     "scripts/batch_sim.py": {
       "fences": 0,
@@ -1184,8 +1184,8 @@
         "# Liveness probe for tests and evidence",
         "# ---------------------------------------------------------------------------"
       ],
-      "lines": 302,
-      "sha256": "4117c205cc1721350b79a288fa4e1d878bf19f030610bbbb67e931daed56334c"
+      "lines": 322,
+      "sha256": "ed39cbd3fc081af3223430a6130e9be4036cb4f3ca519f45d90766a681ef0d27"
     },
     "scripts/build_prompt_evidence.py": {
       "fences": 0,
@@ -1263,8 +1263,8 @@
       "headings": [
         "# -*- coding: utf-8 -*-"
       ],
-      "lines": 226,
-      "sha256": "7822c658e7c639dc95ddbb2e66ec4d61966416e5a573bff3c1ea96afa67eaa4b"
+      "lines": 232,
+      "sha256": "a9e5b5614033cefb1588c71f1f1a54e9c29a0172d3fa4c8a7735d48f473de3db"
     },
     "scripts/generate_rule_traceability.py": {
       "fences": 0,
@@ -1431,8 +1431,8 @@
         "# Hand-written expectations. Official: Microsoft \"Naming Files, Paths, and Namespaces\" (reserved device names,",
         "# also followed by an extension; superscript digits one to three count as digits). Policy: project additions."
       ],
-      "lines": 1458,
-      "sha256": "d16ad23a94839631485bdfc2f4f3f0df0c1312df4b9a6bb5aff9c9979776671c"
+      "lines": 1465,
+      "sha256": "8bcefe895092a1f11510ea257873eaa96d19d90b4e27029740cb511f20ac228a"
     },
     "scripts/tests/test_batch_sim.py": {
       "fences": 0,
@@ -1460,8 +1460,8 @@
         "# A child that runs a long-lived worker through a nested run_bounded call (its own group or session),",
         "# as gate_runner -> verify_all -> pytest -> gateway referee does; the worker records its PID."
       ],
-      "lines": 204,
-      "sha256": "89b8b6148a4dbd5d2320020cfff12f6407f0d792cb4470be9b96eb4b7205e3de"
+      "lines": 233,
+      "sha256": "547a8717c7d987750338cd44d3484667438fc316269f7fdab246670a3dba1bb7"
     },
     "scripts/tests/test_build_prompt_evidence.py": {
       "fences": 0,
@@ -1622,8 +1622,8 @@
       "headings": [
         "# -*- coding: utf-8 -*-"
       ],
-      "lines": 180,
-      "sha256": "4b71eb22f0ded62c9a88c6e599e0a3e3f72f674f11618f0d914e7feefbe7f29b"
+      "lines": 201,
+      "sha256": "74a4142503dd8feb39952fa7837f99e4bffb3caa42f9fab60aa2a723b5bec0b7"
     },
     "scripts/tests/test_governance_preflight.py": {
       "fences": 0,
@@ -1943,7 +1943,7 @@
       "sha256": "35bf7dbfa3c7d291b550c3c97a6ae398a22b1dc3624c1d2fc1e4db6963d6e115"
     }
   },
-  "generated_at": "2026-10-18T12:03:45Z",
+  "generated_at": "2026-10-18T14:06:20Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

@@ -5,7 +5,7 @@ scripts/bounded_process.py
 
 Bounded child-process execution for gates and test referees (B-107 canonical tooling, slice 2).
 
-  run_bounded(cmd, cwd, timeout, env=None, merge_stderr=False) -> BoundedResult
+  run_bounded(cmd, cwd, timeout, env=None, merge_stderr=False, capture_path=None) -> BoundedResult
   process_alive(pid) -> bool
 
 Contract:
@@ -231,8 +231,12 @@ def _read_all(handle):
     return handle.read()
 
 
-def run_bounded(cmd, cwd, timeout, env=None, merge_stderr=False, grace=KILL_GRACE_SECONDS, killer=kill_tree):
-    out = tempfile.TemporaryFile()
+def run_bounded(cmd, cwd, timeout, env=None, merge_stderr=False, grace=KILL_GRACE_SECONDS, killer=kill_tree,
+                capture_path=None, flush_interval=0.5):
+    # G11 / B-100 R-M: caller-owned, task-local durable raw output. An interrupted
+    # invocation retains partial evidence, but NEVER a gate completion marker.
+    # The OS descriptor is opened exclusively before launch; no pipe is used.
+    out = open(capture_path, "x+b", buffering=0) if capture_path is not None else tempfile.TemporaryFile()
     err = out if merge_stderr else tempfile.TemporaryFile()
     try:
         try:
@@ -241,22 +245,38 @@ def run_bounded(cmd, cwd, timeout, env=None, merge_stderr=False, grace=KILL_GRAC
             )
         except OSError as exc:
             return BoundedResult(None, False, type(exc).__name__, b"", b"", KILL_NOT_NEEDED)
-        try:
-            code = proc.wait(timeout=timeout)
-            timed_out = False
-            kill_status = KILL_NOT_NEEDED
-        except subprocess.TimeoutExpired:
-            timed_out = True
-            kill_status = KILL_TREE_SIGNALLED if killer(proc, grace) else KILL_TREE_FAILED
+        # Wait in bounded increments and fsync the child's raw output while it
+        # is running. No seek/read occurs while the child holds the write handle.
+        # This preserves Windows file-offset semantics and the original tree kill.
+        deadline = time.monotonic() + timeout
+        timed_out = False
+        kill_status = KILL_NOT_NEEDED
+        while True:
+            remaining = deadline - time.monotonic()
             try:
-                proc.kill()
-            except OSError:
-                pass
-            try:
-                proc.wait(timeout=grace)
+                if remaining <= 0:
+                    raise subprocess.TimeoutExpired(cmd, timeout)
+                code = proc.wait(timeout=min(flush_interval, remaining))
+                break
             except subprocess.TimeoutExpired:
-                pass
-            code = None
+                if capture_path is not None:
+                    os.fsync(out.fileno())
+                if time.monotonic() < deadline:
+                    continue
+                timed_out = True
+                kill_status = KILL_TREE_SIGNALLED if killer(proc, grace) else KILL_TREE_FAILED
+                try:
+                    proc.kill()
+                except OSError:
+                    pass
+                try:
+                    proc.wait(timeout=grace)
+                except subprocess.TimeoutExpired:
+                    pass
+                code = None
+                break
+        if capture_path is not None:
+            os.fsync(out.fileno())
         stdout = _read_all(out)
         stderr = b"" if merge_stderr else _read_all(err)
         return BoundedResult(code, timed_out, None, stdout, stderr, kill_status)

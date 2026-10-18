@@ -14,7 +14,7 @@
 
 **NEXT_WORK**：B-119
 
-**NEXT_SLICE**：G11-POSTCOMMIT-DEPENDENCY-DISCOVERY（USER 常設決定（2026-10-18）；本批 R3 若經 Macro ACCEPT／same-SHA promotion／post-main VERIFIED 後，優先由 B-119＋B-100 R-M 進行唯讀 commit/HEAD 依賴發現；完成 E24／E27 前不得改動 POSTCOMMIT。其後依下方治理完成線順序；G8 retention 最後。若 R3 STOP，保持 S1 調查／修復優先，不得跳至 G11 production。）
+**NEXT_SLICE**：G11-POSTCOMMIT-DURABLE-R1（USER 常設決定（2026-10-18）；R3 已在 main a8afa9f743ab65ecda210b65ada38beb0bd70efe same-SHA POST-MAIN VERIFIED；本批 B119-G11-POSTCOMMIT-DURABLE-R1-261018 實作 G11 POSTCOMMIT 四 gate 與 B-100 R-M 即時 durable raw evidence；須 E24/E27 與正式 Windows CI，未結案前 G11 OPEN；成功後先 G1 Q1-a；不得取消原 R1 S1 保留與 G8 刪除限制。）
 
 > [!IMPORTANT]
 > **環境恢復觸發（Environment Recovery Trigger）**：
@@ -35,7 +35,7 @@ USER 常設決定（2026-10-13）：交付以 ZIP 為主要檔案、TXT 為備�
 
 | 工作流 | 狀態 | owner | 工作及完成條件（需機械驗證） |
 |---|---|---|---|
-| G11 | OPEN／第一優先 | B-119＋B-100 R-M | 唯讀列出所有依賴 HEAD/commit 狀態之檢查、納入 E24；正式 E27 後 POSTCOMMIT 只保留 `execution_record verify`、`check_consistency`（非 as-if）、`fingerprint --verify`、`git diff --check`；bounded 紀錄隨執行即寫；CHECK16 lag／record 不符之提交後反例須 FAIL，precommit 非零必須零 commit，追蹤同類 Executor TIMING。INCIDENT-CI-04「本地 postcommit 必須完整 verify_all」僅准前向修訂；現行完整 Gate 在新批晉級前維持。 |
+| G11 | OPEN／本批實作候選，尚未 post-main 驗收 | B-119＋B-100 R-M | 唯讀列出所有依賴 HEAD/commit 狀態之檢查、納入 E24；正式 E27 後 POSTCOMMIT 只保留 `execution_record verify`、`check_consistency`（非 as-if）、`fingerprint --verify`、`git diff --check`；bounded 紀錄隨執行即寫；CHECK16 lag／record 不符之提交後反例須 FAIL，precommit 非零必須零 commit，追蹤同類 Executor TIMING。INCIDENT-CI-04「本地 postcommit 必須完整 verify_all」僅准前向修訂；現行完整 Gate 在新批晉級前維持。 |
 | G1 | OPEN | B-119 | Q1-a 交接卡、F-06 自動 bundle、C9 安全回 Base（含本地未推送 S1）、S1_EVIDENCE_FILE 與 SHA256SUMS `SHA + 兩個空白 + 檔名`、U4/Q1、U-04 START_STATE_MISMATCH；使用者不需手動找 Run ID／打包，回 Base pwsh 負例 FAIL。 |
 | G2 | OPEN／retention 前置 | B-116 C1＋B-115 C2 | 歷史只能新增零刪改、§5.1 兩種 ledger 格式 placeholder 原文保留；錨點唯一替換及變更帳；歷史 R1 帳本與 INCIDENT-CI-01 R3 真實負例 FAIL，最近五個已晉級 commit PASS。 |
 | G4（驗證器） | OPEN | B-116 | CHECK14 全簡繁／台灣異體白名單、C7 狀態 lint、N1、自檢含過渡權威；「须」等負例 FAIL；B-54 三處 SOP 規範矛盾小修併 G4 文字部分。 |

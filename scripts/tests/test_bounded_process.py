@@ -202,3 +202,32 @@ def test_posix_reused_pid_is_not_signalled(tmp_path):
         if proc.poll() is None:
             proc.kill()
             proc.wait(timeout=15)
+
+
+def test_g11_durable_output_while_child_is_running(tmp_path):
+    import threading
+    capture = tmp_path / 'durable.raw'
+    result = []
+    def work():
+        result.append(bp.run_bounded([PY, '-c',
+            "import time; print('DURABLE_EARLY', flush=True); time.sleep(2); print('DURABLE_LATE',flush=True)"],
+            cwd=str(tmp_path), timeout=10, merge_stderr=True, capture_path=str(capture), flush_interval=0.1))
+    thread = threading.Thread(target=work)
+    thread.start()
+    try:
+        deadline = time.monotonic() + 1.5
+        while time.monotonic() < deadline and (not capture.exists() or b'DURABLE_EARLY' not in capture.read_bytes()):
+            time.sleep(0.05)
+        assert thread.is_alive() and b'DURABLE_EARLY' in capture.read_bytes()
+    finally:
+        thread.join(timeout=5)
+    assert not thread.is_alive() and result[0].returncode == 0
+    assert b'DURABLE_LATE' in capture.read_bytes()
+
+
+def test_g11_raw_capture_timeout_remains_nonzero(tmp_path):
+    capture = tmp_path / 'time.raw'
+    res = bp.run_bounded([PY, '-c', "import time; print('ALIVE',flush=True); time.sleep(12)"],
+                         cwd=str(tmp_path), timeout=1, merge_stderr=True, capture_path=str(capture))
+    assert res.timed_out and res.returncode is None
+    assert b'ALIVE' in capture.read_bytes()

@@ -158,7 +158,8 @@ def test_stage_presets_are_canonical():
     assert [gate_runner.display(c) for c in gate_runner.STAGES["STAGED"]] == ["python scripts/secret_scan.py --staged"]
     assert [gate_runner.display(c) for c in gate_runner.STAGES["POSTCOMMIT"]] == [
         "python scripts/execution_record.py verify",
-        "python scripts/verify_all.py",
+        "python scripts/check_consistency.py",
+        "python scripts/fingerprint.py --verify",
         "git diff --check",
     ]
 
@@ -178,3 +179,23 @@ def test_cli_rejects_without_valid_task_prompt(tmp_path):
 @pytest.mark.parametrize("argv", [["run", "--task-id", "X-1", "--stage", "BOGUS"], ["explode", "--task-id", "X-1", "--stage", "STAGED"], ["run", "--task-id", "bad id", "--stage", "STAGED"]])
 def test_cli_usage_errors(argv):
     assert gate_runner.main(argv) == 2
+
+
+def test_g11_raw_sidecar_preserves_partial_evidence_but_never_completes(tmp_path):
+    log = tmp_path / "gates.txt"
+    gates = [[PY, "-c", "import time; print('BEFORE_INTERRUPT',flush=True); time.sleep(10)"]]
+    # Child times out; partial output is durable while the canonical log fails closed.
+    assert gate_runner.run_stage(str(tmp_path), "STAGED", gates, str(log), timeout=1) == 1
+    sidecar = tmp_path / "gates.txt.staged-run1-gate1.raw"
+    assert sidecar.is_file() and b"BEFORE_INTERRUPT" in sidecar.read_bytes()
+    assert not gate_runner.verify_stage(read(log), "STAGED", gates)[0]
+
+
+def test_g11_gate_log_spoofed_completion_in_raw_sidecar_fails(tmp_path):
+    log = tmp_path / "gates.txt"
+    spoof = "print('EXIT_CODE: 0'); print('=== POSTCOMMIT RUN 1 COMPLETE ==='); import sys; sys.exit(4)"
+    gates = [[PY, '-c', spoof]]
+    assert gate_runner.run_stage(str(tmp_path), 'POSTCOMMIT', gates, str(log)) == 4
+    raw = tmp_path / 'gates.txt.postcommit-run1-gate1.raw'
+    assert b'EXIT_CODE: 0' in raw.read_bytes()
+    assert not gate_runner.verify_stage(read(log), 'POSTCOMMIT', gates)[0]

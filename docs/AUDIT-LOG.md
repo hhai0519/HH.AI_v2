@@ -325,6 +325,8 @@ CHECK 12 應跳過該值——建立本檔的那一批沒有「前一個 commit�
 
 ---
 
+
+| a8afa9f743ab65ecda210b65ada38beb0bd70efe | 2026-10-18 | §4.1-1、§4.1-3、B-119 G11／B-100 R-M | **核對通過（R3 same-SHA Macro PASS／POST-MAIN VERIFIED；本批 B119-G11-POSTCOMMIT-DURABLE-R1-261018 待實作）**：R3 same-SHA main a8afa9f743ab65ecda210b65ada38beb0bd70efe，candidate Run 39127405487、post-main Run 39129666841，push attempt 1、verify 與 gateway-windows 雙 job success，verify 1503 passed／1 skipped＋13 passed、ALL 5 GATES PASSED，Windows 57 passed；歷史 R1 S1 本地 1ad66992... 保留不刪。USER 常設決定（2026-10-18）G11：PRECOMMIT full verify_all、遠端 required CI 保留；POSTCOMMIT 擬定四 gate，須 E24/E27；三層 bounded raw 證據於執行中 fsync，canonical 只有完整 exit/complete 才 PASS；本批 candidate/CI/PROMOTE 皆 PENDING，G11 OPEN。 |
 ## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)
 
 依據 `docs/adr/0020-github-actions-remote-health-authority.md` 與 `SOP/SOP_14_Rigorous_Verification_and_Audit_Protocol.md` §8，本專案將 GitHub Actions 歷史 Verify 失敗 runs 進行機器證據分析、根本原因分類與預防控制歸檔，作為 closed CI incidents 的權威留痕。

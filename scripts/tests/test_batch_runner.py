@@ -278,7 +278,12 @@ def test_bounded_passes_runner_environment_and_merges_output(tmp_path, monkeypat
 def test_bounded_failure_paths_stop(tmp_path, monkeypatch, capsys, result, code, printed):
     # Fault injection: launch failure and timeouts (including a failed tree kill) are stops, never passes.
     import bounded_process
-    monkeypatch.setattr(br, "run_bounded", lambda *a, **k: bounded_process.BoundedResult(*result))
+    def synthetic_bounded(*a, **k):
+        # New durable primitive creates and writes the task-local file itself.
+        from pathlib import Path
+        Path(k['capture_path']).write_bytes(result[3])
+        return bounded_process.BoundedResult(*result)
+    monkeypatch.setattr(br, "run_bounded", synthetic_bounded)
     batch = _bounded_batch(tmp_path, monkeypatch)
     assert halt_code(batch.bounded, "FOCUSED", ["-c", "pass"], 60) == code
     out = capsys.readouterr().out
@@ -290,9 +295,11 @@ def test_bounded_failure_paths_stop(tmp_path, monkeypatch, capsys, result, code,
 
 
 def test_bounded_capture_failure_stops_and_leaves_only_the_empty_record(tmp_path, monkeypatch):
-    # Documented limitation: the record is written after run_bounded returns, so a failure inside the shared
-    # primitive leaves an empty record; the step still stops (main reports UNEXPECTED_<type>), never passes.
+    # Durable primitive can fail after opening an empty raw record, but may
+    # never invent success or run the next stage.
     def broken(*a, **k):
+        from pathlib import Path
+        Path(k['capture_path']).touch(exist_ok=False)
         raise OSError("injected capture failure")
 
     monkeypatch.setattr(br, "run_bounded", broken)
