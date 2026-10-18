@@ -41,42 +41,54 @@ function createTestServer(options = {}) {
   return { server, replayCache, dispatcher };
 }
 
-// Low-level helper to send raw HTTP and resolve as soon as complete response is received
-function sendRawHttp(socket, rawRequest) {
-  return new Promise((resolve) => {
-    let responseData = '';
+const LATE_ERROR_SINK = Symbol('lateErrorSink');
 
-    function checkComplete() {
-      const headerEnd = responseData.indexOf('\r\n\r\n');
-      if (headerEnd !== -1) {
-        const headersPart = responseData.slice(0, headerEnd);
-        const matchCl = headersPart.match(/content-length:\s*([0-9]+)/i);
-        if (matchCl) {
-          const cl = parseInt(matchCl[1], 10);
-          const bodyPart = responseData.slice(headerEnd + 4);
-          if (Buffer.byteLength(bodyPart, 'utf-8') >= cl) {
-            socket.removeListener('data', onData);
-            resolve(responseData);
-          }
-        }
+// Low-level helper to send raw HTTP and resolve as soon as complete response is received
+function sendRawHttp(socket, rawRequest, { allowAbortWithoutResponse = false } = {}) {
+  return new Promise((resolve, reject) => {
+    let responseData = '';
+    let finished = false;
+    function cleanup() {
+      socket.removeListener('data', onData);
+      socket.removeListener('end', onEnd);
+      socket.removeListener('close', onClose);
+      socket.removeListener('error', onError);
+      // A late transport error (EPIPE/ECONNRESET after the response was already read, e.g. the
+      // peer closing while an eager upload is still in flight) must not become an uncaught
+      // exception; it is recorded on the socket for diagnostics instead.
+      if (!socket[LATE_ERROR_SINK]) {
+        socket[LATE_ERROR_SINK] = true;
+        socket.on('error', (lateErr) => { socket.lateErrorCode = lateErr && lateErr.code ? lateErr.code : 'UNKNOWN'; });
       }
     }
-
-    function onData(chunk) {
-      responseData += chunk.toString('utf-8');
-      checkComplete();
+    function finish(reason, err) {
+      if (finished) return;
+      finished = true;
+      cleanup();
+      const hasStatus = /^HTTP\/1\.1 [0-9]{3}/.test(responseData);
+      if (!hasStatus && !allowAbortWithoutResponse) {
+        const code = err && err.code ? err.code : 'NONE';
+        reject(new Error(`RAW_HTTP_NO_STATUS reason=${reason} socket_error=${code} received_bytes=${Buffer.byteLength(responseData)}`));
+        return;
+      }
+      resolve(responseData);
     }
-
+    function checkComplete() {
+      const headerEnd = responseData.indexOf('\r\n\r\n');
+      if (headerEnd < 0) return;
+      const matchCl = responseData.slice(0, headerEnd).match(/content-length:\s*([0-9]+)/i);
+      if (matchCl && Buffer.byteLength(responseData.slice(headerEnd + 4), 'utf-8') >= Number(matchCl[1])) {
+        finish('complete');
+      }
+    }
+    function onData(chunk) { responseData += chunk.toString('utf8'); checkComplete(); }
+    function onEnd() { finish('end'); }
+    function onClose() { finish('close'); }
+    function onError(err) { finish('error', err); }
     socket.on('data', onData);
-    socket.once('end', () => {
-      resolve(responseData);
-    });
-    socket.once('close', () => {
-      resolve(responseData);
-    });
-    socket.once('error', () => {
-      resolve(responseData);
-    });
+    socket.once('end', onEnd);
+    socket.once('close', onClose);
+    socket.once('error', onError);
     socket.write(rawRequest);
   });
 }
@@ -159,9 +171,50 @@ test('server: rejects oversize entity body (> 65536 bytes) (T12)', { timeout: 50
 
     const reqOversize = `POST /v1/status HTTP/1.1\r\nHost: 127.0.0.1:${port}\r\nX-HHAI-Version: 1\r\nX-HHAI-Timestamp: ${timestamp}\r\nX-HHAI-Nonce: 00000000000000000000000000000002\r\nX-HHAI-Session-Id: ${sessionId}\r\nX-HHAI-Signature: ${sig}\r\nContent-Type: application/json\r\nContent-Length: ${bodyBuf.length}\r\n\r\n`;
 
-    const fullPayload = Buffer.concat([Buffer.from(reqOversize, 'utf-8'), bodyBuf]);
-    const res = await sendRawHttp(socket, fullPayload);
+    // Header-level Content-Length rejection occurs before the server reads the body.
+    // Do not race a full oversized upload against the intentional Connection: close:
+    // the peer may abort the in-flight write before the 413 reaches this client.
+    const res = await sendRawHttp(socket, reqOversize);
     assert.match(res, /^HTTP\/1\.1 413/);
+  } finally {
+    await server.stop();
+  }
+});
+
+// Full-body negative probe: HTTP/1.1 is allowed to abort an eager oversized upload.
+// Unlike the header-only 413 assertion above, this verifies server-side rejection
+// and no business dispatch even if TCP close races the response bytes.
+test('server: eager oversized body never reaches dispatcher (T12 transport)', { timeout: 5000 }, async () => {
+  let dispatched = 0;
+  const { server } = createTestServer({
+    dispatcher: {
+      dispatch() { dispatched++; return { status: 200, body: { ok: true } }; },
+    },
+  });
+  const statuses = [];
+  const originalFailClosed = server._failClosed.bind(server);
+  server._failClosed = (req, res, statusCode, closeConnection) => {
+    statuses.push(statusCode);
+    return originalFailClosed(req, res, statusCode, closeConnection);
+  };
+  const { port } = await server.start();
+  try {
+    const socket = net.connect({ port, host: '127.0.0.1' });
+    const nonce = '000000000000000000000000000000a1';
+    const { sessionId, timestamp } = await performHello(socket, port, nonce);
+    const body = Buffer.from(JSON.stringify({ channel_id: 'tg:test', pad: 'a'.repeat(66000) }));
+    const requestNonce = '000000000000000000000000000000a2';
+    const canonical = buildCanonicalSessionRequest({
+      method: 'POST', path: '/v1/status', timestamp,
+      nonce: requestNonce, sessionId, bodySha256: computeSha256(body),
+    });
+    const sig = computeHmac(FAKE_SECRET, canonical);
+    const headers = `POST /v1/status HTTP/1.1\r\nHost: 127.0.0.1:${port}\r\nX-HHAI-Version: 1\r\nX-HHAI-Timestamp: ${timestamp}\r\nX-HHAI-Nonce: ${requestNonce}\r\nX-HHAI-Session-Id: ${sessionId}\r\nX-HHAI-Signature: ${sig}\r\nContent-Type: application/json\r\nContent-Length: ${body.length}\r\n\r\n`;
+    const response = await sendRawHttp(socket, Buffer.concat([Buffer.from(headers), body]), { allowAbortWithoutResponse: true });
+    assert.deepEqual(statuses, [413], 'Server must explicitly reject oversized body');
+    assert.equal(dispatched, 0, 'Business dispatcher must never observe rejected body');
+    assert.ok(response === '' || /^HTTP\/1\.1 413/.test(response), `Unexpected response: ${response.slice(0, 80)}`);
+    socket.destroy();
   } finally {
     await server.stop();
   }

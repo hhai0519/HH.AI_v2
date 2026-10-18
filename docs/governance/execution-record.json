@@ -1,44 +1,26 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "B119-N7N8-CIRUN-R3-261018",
-  "base_oid": "9dfdba9693f486bf7567d84a2f7e19d0ff642ee4",
+  "task_id": "B119-POSTMAIN-STATE-R3-T12-261018",
+  "base_oid": "fdd59488a0632d0654fc6a1251bba004502cef51",
   "plan": {
     "allowed_paths": [
-      ".agents/rules/git-and-reporting.md",
-      ".claude/rules/auditor-protocol.md",
-      ".claude/rules/auditor-selftest.md",
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
-      "docs/generated/rule-traceability.md",
       "docs/governance/execution-record.json",
       "docs/refactor-backlog.md",
-      "scripts/batch_runner.py",
-      "scripts/batch_sim.py",
-      "scripts/production_template.py",
-      "scripts/promotion_template.py",
-      "scripts/tests/test_b119_ci_run.py",
-      "scripts/tests/test_prompt_builder.py"
+      "runtime/channel-gateway/tests/local-api-server.test.js"
     ],
     "required_paths": [
-      ".agents/rules/git-and-reporting.md",
-      ".claude/rules/auditor-protocol.md",
-      ".claude/rules/auditor-selftest.md",
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
-      "docs/generated/rule-traceability.md",
       "docs/governance/execution-record.json",
       "docs/refactor-backlog.md",
-      "scripts/batch_runner.py",
-      "scripts/batch_sim.py",
-      "scripts/production_template.py",
-      "scripts/promotion_template.py",
-      "scripts/tests/test_b119_ci_run.py",
-      "scripts/tests/test_prompt_builder.py"
+      "runtime/channel-gateway/tests/local-api-server.test.js"
     ],
     "max_plan_revisions": 3,
     "revision_count": 0,
@@ -46,22 +28,13 @@
   },
   "actual": {
     "changed_paths": [
-      ".agents/rules/git-and-reporting.md",
-      ".claude/rules/auditor-protocol.md",
-      ".claude/rules/auditor-selftest.md",
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
-      "docs/generated/rule-traceability.md",
       "docs/governance/execution-record.json",
       "docs/refactor-backlog.md",
-      "scripts/batch_runner.py",
-      "scripts/batch_sim.py",
-      "scripts/production_template.py",
-      "scripts/promotion_template.py",
-      "scripts/tests/test_b119_ci_run.py",
-      "scripts/tests/test_prompt_builder.py"
+      "runtime/channel-gateway/tests/local-api-server.test.js"
     ]
   },
   "evidence": [

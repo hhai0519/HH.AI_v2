@@ -1,5 +1,5 @@
 {
-  "base_head": "9dfdba9",
+  "base_head": "fdd5948",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -562,16 +562,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 341,
-      "sha256": "3eb2e707fa818189296944b41662b551e006da4c2ea018531c0e3c5ce3edea93"
+      "lines": 342,
+      "sha256": "81ed3d07f7abd7692e2a9878e061fe9ade89445d4baa9d5e16cc5a9da650fc8f"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 322,
-      "sha256": "3bd3cd2f5eceb01cc86df8efaef5e8b2019f54fc97164b0d9c5d784a49de709e"
+      "lines": 323,
+      "sha256": "82d66c8dc90dc22b062e997faba60d3eb5ddacfaf87ab29ca361857360082800"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -597,6 +597,7 @@
       "fences": 0,
       "headings": [
         "# HH.AI_v2 重構任務看板",
+        "## 治理完成線（USER 常設決定（2026-10-18），依優先順序；本節是待辦登錄，不代表已實作）",
         "## A. 額度控管與交接機制（2026-09-02 使用者提出的十一項）",
         "## B. 重構主線",
         "## C. 待使用者裁決",
@@ -612,8 +613,8 @@
         "## G. 舊 repo 未盤點區塊（2026-09-02 新發現）",
         "## 封存區"
       ],
-      "lines": 385,
-      "sha256": "1f917285b557c98a46491dfa1ab1eeba466e4753653b6dad8cb29f189928e349"
+      "lines": 410,
+      "sha256": "83c634fe676286b6bc49fbb7bbfddc614b37b39c60090b299c2020ccfc7b2f76"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1111,8 +1112,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6407,
-      "sha256": "c9c59cd564bbf8bfc0342c32e21b5c6ebe902ec3fd7981ec03a23ba18c31cb65"
+      "lines": 6408,
+      "sha256": "32e4acb6c6f81843608c75e766a7ca4552a350327f19ec2e60cb4a2dc2b5f870"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1942,7 +1943,7 @@
       "sha256": "35bf7dbfa3c7d291b550c3c97a6ae398a22b1dc3624c1d2fc1e4db6963d6e115"
     }
   },
-  "generated_at": "2026-10-18T03:19:02Z",
+  "generated_at": "2026-10-18T12:03:45Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {
