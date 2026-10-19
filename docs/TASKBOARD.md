@@ -10,18 +10,18 @@
 `待裁決`（需使用者決定）／`已完成`（仍可能被引用）／
 `可封存`（不影響後續工作，待使用者確認後移入封存區）
 
-**ACTIVE_MACRO_AUDITOR**：AUD-GPT-261019（USER 2026-10-19 明確終止 AUD-GPT-261017-B 並任命；新任 A1 FULL_CLONE（bundle 與 GitHub exact-SHA verified）、獨立 cold-start／selftest 與過渡期權威成立；本批前向登錄，非執行者自行任命。）
+**ACTIVE_MACRO_AUDITOR**：AUD-GPT-261019-B（USER 2026-10-19 本對話正式任命；前任停止，A1 FULL_CLONE 非 shallow，GitHub API exact-SHA 與 selftest 獨立完成；依使用者通用版第二節 E 過渡期權威；本批前向登錄，非 Executor 自行任命。）
 
 **NEXT_WORK**：B-119
 
-**NEXT_SLICE**：G1-S1-FULLCAPTURE-R3（B119-G1-S1-EVIDENCE-SHA256SUMS-R2-261019 已 same-SHA main=6c12c19f20559735b5fd3e651fd72cb55a23b3dd、candidate Run 39206861553／post-main Run 39221060284 attempt1 雙必要 job success；本批只實作新發生 S1 的完整可攜蒐證，缺未推送 commit、gate 或輸出精確回讀時 INCOMPLETE／UNAVAILABLE；原 S1 永久保留。G1／B-119 其他待辦、C9 與任何刪除權限均不改。）
+**NEXT_SLICE**：B119-U04-STARTSTATE-R1-261020（B119-G1-S1-FULLCAPTURE-R3-261019 已 same-SHA main=6ef783cc2f42e22f4b7f2234766cd76b37b9e2e8、candidate Run 39248592838／post-main Run 39251214244 attempt1 雙必要 job success；AUD-GPT-261019-B 獨立 Macro ACCEPT。U-04 本批僅新增 production preflight 前起始守衛、驗收負例與前向接任／checkpoint；本批 commit／CI／晉級 PENDING。C9 未觸發為 NOT_NEEDED、仍 OPEN；原 S1、G1／B-119 其他事項與所有刪除限制不變。）
 
 > [!IMPORTANT]
 > **環境恢復觸發（Environment Recovery Trigger）**：
 > 若發生以下任一事件：**換電腦**、**重新安裝 Antigravity**、**IDE 版本更新**，
 > 在開始任何 production work 之前，必須先閱讀 [docs/ops/antigravity-environment-baseline.md](ops/antigravity-environment-baseline.md) 並完整完成 Environment Baseline Checklist 與重啟核對。
 
-**最後更新**：2026-10-19；活動狀態請參照 NEXT_WORK 與 NEXT_SLICE。
+**最後更新**：2026-10-20；活動狀態請參照 NEXT_WORK 與 NEXT_SLICE。
 
 B-115 (9) Slice 1 已完成：e29d9f2e9dd9cb8a3934f0b58176c9aa50b43e61 經獨立 Macro PASS／ACCEPT ALL、same-SHA 晉級，post-main Run 38420907025 attempt 1 verify／gateway-windows 雙綠（verify 1357 passed、1 skipped；Windows 57 passed）；Executor 晉級實測 315.1 秒（5 分鐘）。本批 Slice 2 只增加 production prose 產生器，不宣稱其他 B-115 殘項完成。
 

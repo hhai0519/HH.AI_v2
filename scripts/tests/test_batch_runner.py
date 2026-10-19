@@ -1463,3 +1463,108 @@ def test_main_locks_the_task_when_a_step_raises_unexpectedly(monkeypatch, capsys
     assert br.main(["--task-id", TASK, "apply"]) == 1
     assert saved["halted"] == "apply:UNEXPECTED_PermissionError"
     assert "S1 UNEXPECTED_PermissionError | step apply" in capsys.readouterr().out
+
+
+# --- B-119 / U-04: before-control production admission ------------------------
+
+def _u04_batch(mode='clean'):
+    b=br.Batch.__new__(br.Batch)
+    b.root='isolated-root'
+    b.spec={'kind':'production','base_oid':BASE,
+            'start': {'mode': mode, 'start_branch':'batch/adopt-261020',
+                      'adopt_hashes': {'docs/a.md': '1'*64}} if mode=='adopt' else {'mode':'clean'},
+            'branch':'batch/u04-261020'}
+    return b
+
+
+def _u04_git(monkeypatch, *, head=BASE, branch='', remote=BASE, shallow=False):
+    calls=[]
+    def fake(root,*args,**kwargs):
+        calls.append(args)
+        if args==('rev-parse','--is-shallow-repository'):
+            return 'true' if shallow else 'false'
+        if args==('rev-parse','HEAD'):
+            return head
+        if args==('branch','--show-current'):
+            return branch
+        if args==('ls-remote','origin','refs/heads/main'):
+            if remote == 'RAISE':
+                raise br.Halt('START_REMOTE_QUERY_FAILED')
+            return remote+'\trefs/heads/main' if remote else ''
+        raise AssertionError(args)
+    monkeypatch.setattr(br,'git',fake)
+    monkeypatch.setattr(br,'status_lines',lambda root: [])
+    return calls
+
+
+@pytest.mark.parametrize('branch', ['', 'main', 'batch/old-261019'])
+def test_u04_clean_correct_head_accepts_detached_and_old_branch(monkeypatch,branch):
+    calls=_u04_git(monkeypatch,branch=branch)
+    br.precontrol_start_guard(_u04_batch())
+    assert ('ls-remote','origin','refs/heads/main') in calls
+    assert not any(args and args[0] in ('fetch','switch','commit') for args in calls)
+
+
+@pytest.mark.parametrize('case', ['wrong_head','dirty','remote_drift','remote_missing',
+                                   'remote_bad_sha','query_error','shallow'])
+def test_u04_rejects_without_fetch_or_branch_mutation(monkeypatch,case):
+    head='b'*40 if case=='wrong_head' else BASE
+    remote=('b'*40 if case=='remote_drift' else '' if case=='remote_missing' else
+            'bad' if case=='remote_bad_sha' else 'RAISE' if case=='query_error' else BASE)
+    calls=_u04_git(monkeypatch,head=head,remote=remote,shallow=case=='shallow')
+    if case=='dirty':
+        monkeypatch.setattr(br,'status_lines',lambda root:['?? illegal.tmp'])
+    expected=('START_STATE_MISMATCH' if case in ('wrong_head','dirty') else
+              'ORIGIN_MAIN_DRIFT' if case=='remote_drift' else
+              'START_REMOTE_QUERY_INVALID' if case in ('remote_missing','remote_bad_sha') else
+              'START_REMOTE_QUERY_FAILED' if case=='query_error' else 'SHALLOW_CLONE')
+    assert halt_code(br.precontrol_start_guard,_u04_batch())==expected
+    assert not any(args and args[0] in ('fetch','switch','commit') for args in calls)
+
+
+def test_u04_adopt_accepts_valid_existing_scope_and_hashes(monkeypatch):
+    calls=_u04_git(monkeypatch,branch='batch/adopt-261020')
+    monkeypatch.setattr(br,'staged_paths',lambda root:[])
+    monkeypatch.setattr(br,'expect_adopt_scope',lambda *args: None)
+    monkeypatch.setattr(br,'verify_hashes',lambda *args: None)
+    br.precontrol_start_guard(_u04_batch('adopt'))
+    assert ('ls-remote','origin','refs/heads/main') in calls
+
+
+@pytest.mark.parametrize('problem', ['branch','index','scope','hash'])
+def test_u04_adopt_rejects_invalid_start(monkeypatch,problem):
+    calls=_u04_git(monkeypatch,branch='wrong' if problem=='branch' else 'batch/adopt-261020')
+    monkeypatch.setattr(br,'staged_paths',lambda root:['docs/a.md'] if problem=='index' else [])
+    def scope(*args):
+        if problem=='scope':
+            raise br.Halt('PRECONTROL_SCOPE_MISMATCH')
+    def hashes(*args):
+        if problem=='hash':
+            raise br.Halt('PRECONTROL_ADOPT_HASH_MISMATCH')
+    monkeypatch.setattr(br,'expect_adopt_scope',scope)
+    monkeypatch.setattr(br,'verify_hashes',hashes)
+    assert halt_code(br.precontrol_start_guard,_u04_batch('adopt'))=='START_STATE_MISMATCH'
+    assert ('ls-remote','origin','refs/heads/main') not in calls
+
+
+def test_u04_first_preflight_checks_guard_before_new_control(monkeypatch,tmp_path):
+    class Stub:
+        def __init__(self,*args):
+            self.spec={'kind':'production','base_oid':BASE,'start':{'mode':'clean'}}
+            self.root=str(tmp_path)
+            self.prompt_bytes=b'canonical bytes'
+            self.prompt_rel='.git/UNIT-BATCH-261008-prompt.txt'
+            self.lines=[]
+            self.control_rel='.git/UNIT-BATCH-261008-control.json'
+            self.task_id=TASK
+        def write_new_artifact(self,*args):
+            raise AssertionError('control must not be written on invalid HEAD')
+    monkeypatch.setattr(br,'Batch',Stub)
+    monkeypatch.setattr(br,'derive_steps',lambda spec:['preflight','setup'])
+    monkeypatch.setattr(br,'load_control',lambda batch:None)
+    monkeypatch.setattr(br,'precontrol_start_guard',lambda batch: (_ for _ in ()).throw(br.Halt('START_STATE_MISMATCH')))
+    monkeypatch.setattr(br.Path,'cwd',lambda:tmp_path)
+    monkeypatch.setattr(br,'__file__',str(tmp_path/'scripts'/'batch_runner.py'))
+    # main uses the repo root derived from its source file; this is a synthetic
+    # admission test and does not need a GitHub remote or a working control file.
+    assert br.main(['--task-id', TASK, 'preflight'])==1

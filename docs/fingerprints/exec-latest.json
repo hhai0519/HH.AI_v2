@@ -1,5 +1,5 @@
 {
-  "base_head": "6c12c19",
+  "base_head": "6ef783c",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -562,16 +562,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 349,
-      "sha256": "363b4e1c94bec48d0bbae46bc8787801c52512dc70bac170821bcc6a047f47b1"
+      "lines": 351,
+      "sha256": "aa4177edbc2ad06d7783277b4ced9b9988a17ab405dd94deae56d2d4e33a618e"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 328,
-      "sha256": "f581c5f47aafe120d2b56752f3f00cc6178979826a65759c1270f4db31fbe301"
+      "lines": 329,
+      "sha256": "62e28bc06112c20f75d9a74b46db77cef2273c462a022b2b6ae0fb22c18389eb"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -614,7 +614,7 @@
         "## 封存區"
       ],
       "lines": 410,
-      "sha256": "7ebf26d231d3f4cc60a7a204066230c23b7c77b738958a73b577706fc5b71421"
+      "sha256": "4c069a203861472b88f45d139a180364d24b373a3db0da378081e3003e21fd3b"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1112,8 +1112,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6414,
-      "sha256": "6d2be2854399e6e9ced52cab3945f1b4127f6624813703d45c5fab3598ceb366"
+      "lines": 6415,
+      "sha256": "1751ca1fd3818387cee9c3e48fd8e577099123bb9bc8be09bf551bf20db1c7ae"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1158,8 +1158,8 @@
         "# Control record and entry point",
         "# ---------------------------------------------------------------------------"
       ],
-      "lines": 1236,
-      "sha256": "ca0155880031de68003883b4d463aa0e092aaf19af767f9d116a22200c09e809"
+      "lines": 1278,
+      "sha256": "35485e7dfd20cce1ac26fa7a84099a5524d96f53713a53dfdf5e21ebc5fdcd4f"
     },
     "scripts/batch_sim.py": {
       "fences": 0,
@@ -1445,10 +1445,11 @@
         "# Hand-written expectations from the decided specification (independent of the runner's constants).",
         "# --- G4 slice 3a: Windows device names and hard links (B-107) -------------------------------",
         "# Hand-written expectations. Official: Microsoft \"Naming Files, Paths, and Namespaces\" (reserved device names,",
-        "# also followed by an extension; superscript digits one to three count as digits). Policy: project additions."
+        "# also followed by an extension; superscript digits one to three count as digits). Policy: project additions.",
+        "# --- B-119 / U-04: before-control production admission ------------------------"
       ],
-      "lines": 1465,
-      "sha256": "8bcefe895092a1f11510ea257873eaa96d19d90b4e27029740cb511f20ac228a"
+      "lines": 1570,
+      "sha256": "e355e78e5a90075b12d0ba07a365fcb916f20b371da2b29800a69507b9d99d50"
     },
     "scripts/tests/test_batch_sim.py": {
       "fences": 0,
@@ -1975,7 +1976,7 @@
       "sha256": "62c3142973a5c228efacc01ddcbd44a76e5f87e24d7bed15d90e2ce45a494982"
     }
   },
-  "generated_at": "2026-10-19T11:42:40Z",
+  "generated_at": "2026-10-19T17:39:13Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

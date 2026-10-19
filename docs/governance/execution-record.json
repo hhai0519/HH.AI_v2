@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "B119-G1-S1-FULLCAPTURE-R3-261019",
-  "base_oid": "6c12c19f20559735b5fd3e651fd72cb55a23b3dd",
+  "task_id": "B119-U04-STARTSTATE-R1-261020",
+  "base_oid": "6ef783cc2f42e22f4b7f2234766cd76b37b9e2e8",
   "plan": {
     "allowed_paths": [
       "docs/AUDIT-LOG.md",
@@ -12,9 +12,7 @@
       "docs/governance/execution-record.json",
       "docs/refactor-backlog.md",
       "scripts/batch_runner.py",
-      "scripts/production_template.py",
-      "scripts/s1_full_capture.py",
-      "scripts/tests/test_s1_full_capture.py"
+      "scripts/tests/test_batch_runner.py"
     ],
     "required_paths": [
       "docs/AUDIT-LOG.md",
@@ -24,9 +22,7 @@
       "docs/governance/execution-record.json",
       "docs/refactor-backlog.md",
       "scripts/batch_runner.py",
-      "scripts/production_template.py",
-      "scripts/s1_full_capture.py",
-      "scripts/tests/test_s1_full_capture.py"
+      "scripts/tests/test_batch_runner.py"
     ],
     "max_plan_revisions": 3,
     "revision_count": 0,
@@ -41,9 +37,7 @@
       "docs/governance/execution-record.json",
       "docs/refactor-backlog.md",
       "scripts/batch_runner.py",
-      "scripts/production_template.py",
-      "scripts/s1_full_capture.py",
-      "scripts/tests/test_s1_full_capture.py"
+      "scripts/tests/test_batch_runner.py"
     ]
   },
   "evidence": [

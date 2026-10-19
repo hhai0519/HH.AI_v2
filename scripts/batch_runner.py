@@ -1055,6 +1055,47 @@ class Batch:
         print('MAIN ' + cand + ' | POST-MAIN CI PASS | S1 NONE')
 
 
+def precontrol_start_guard(batch):
+    """Read-only production admission, before first control artifact or fetch.
+
+    The later setup check remains authoritative after fetch (TOCTOU protection).
+    A pre-control rejection deliberately leaves no new control/S1 capture artifacts.
+    """
+    spec, root = batch.spec, batch.root
+    if spec['kind'] != 'production':
+        return
+    if git(root, 'rev-parse', '--is-shallow-repository') != 'false':
+        raise Halt('SHALLOW_CLONE')
+    if git(root, 'rev-parse', 'HEAD') != spec['base_oid']:
+        raise Halt('START_STATE_MISMATCH')
+    start = spec['start']
+    if start['mode'] == 'clean':
+        if status_lines(root):
+            raise Halt('START_STATE_MISMATCH')
+    else:
+        if git(root, 'branch', '--show-current') != start['start_branch'] or staged_paths(root):
+            raise Halt('START_STATE_MISMATCH')
+        try:
+            expect_adopt_scope(root, spec, 'PRECONTROL')
+            verify_hashes(root, start['adopt_hashes'], 'PRECONTROL_ADOPT_HASH_MISMATCH')
+        except Halt as exc:
+            if str(exc) in ('PRECONTROL_SCOPE_DRIFT', 'PRECONTROL_SCOPE_MISMATCH',
+                            'PRECONTROL_ADOPT_HASH_MISMATCH'):
+                raise Halt('START_STATE_MISMATCH') from None
+            raise
+    # ls-remote is read-only. No fetch, ref update, checkout, branch, or control
+    # file is permitted on an ambiguous, malformed, or stale remote main.
+    stdout = git(root, 'ls-remote', 'origin', 'refs/heads/main',
+                 label='START_REMOTE_QUERY_FAILED', timeout=60)
+    fields = stdout.splitlines()
+    if len(fields) != 1:
+        raise Halt('START_REMOTE_QUERY_INVALID')
+    parts = fields[0].split('\t')
+    if len(parts) != 2 or not OID_RE.fullmatch(parts[0]) or parts[1] != 'refs/heads/main':
+        raise Halt('START_REMOTE_QUERY_INVALID')
+    if parts[0] != spec['base_oid']:
+        raise Halt('ORIGIN_MAIN_DRIFT')
+
 # ---------------------------------------------------------------------------
 # Control record and entry point
 # ---------------------------------------------------------------------------
@@ -1196,6 +1237,7 @@ def main(argv=None):
         if control is None:
             if step != 'preflight':
                 raise Halt('CONTROL_MISSING')
+            precontrol_start_guard(batch)
             control = {'task_id': task_id, 'prompt_sha256': prompt_sha, 'runner_sha256': runner_sha, 'done': [], 'halted': None}
             batch.write_new_artifact('control.json', json.dumps(control, indent=2) + chr(10))
         runner_sha = accepted_runner_sha(root, batch.spec, control, runner_sha)
