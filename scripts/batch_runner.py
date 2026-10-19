@@ -111,6 +111,7 @@ try:
     from bounded_process import run_bounded  # noqa: E402 - shared bounded-execution primitive (B-107)
     from validate_prompt_manifest import extract_must_read_section  # noqa: E402 - the validator's section rule
     from bundle_after_push import create_bundle, BundleFailure, preflight_remote_refs  # noqa: E402
+    from s1_evidence import create_metadata, EvidenceError  # noqa: E402
 finally:
     sys.path.pop(0)
 
@@ -1131,6 +1132,22 @@ def report_halt(h, step):
         print('S1_DETAIL ' + h.detail)
 
 
+def report_s1_metadata(batch, step, h):
+    """Best-effort metadata after persisted halted control; never overrides original S1."""
+    if batch is None:
+        return
+    try:
+        prefix = '.git/' + batch.task_id + '-'
+        def validate_current_artifact(rel):
+            if not rel.startswith(prefix) or batch.artifact(rel[len(prefix):]) != rel:
+                raise EvidenceError('S1_EVIDENCE_ARTIFACT_BINDING_MISMATCH')
+        for line in create_metadata(batch.root, batch.task_id, step, str(h),
+                                    validate_artifact=validate_current_artifact):
+            print(line)
+    except (Halt, EvidenceError, OSError, ValueError, UnicodeError):
+        print('S1_EVIDENCE_STATUS=UNAVAILABLE')
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description='Canonical fixed-step batch runner (B-107).')
     parser.add_argument('--task-id', required=True)
@@ -1181,11 +1198,13 @@ def main(argv=None):
         control['halted'] = step + ':' + str(h)
         save_control(batch, control)
         report_halt(h, step)
+        report_s1_metadata(batch, step, h)
         return 1
     except Exception as ex:  # noqa: BLE001 - any unexpected failure locks the task with a fixed code
         control['halted'] = step + ':UNEXPECTED_' + type(ex).__name__
         save_control(batch, control)
         print('S1 UNEXPECTED_' + type(ex).__name__ + ' | step ' + step)
+        report_s1_metadata(batch, step, Halt('UNEXPECTED_' + type(ex).__name__))
         return 1
     control['done'].append(step)
     save_control(batch, control)

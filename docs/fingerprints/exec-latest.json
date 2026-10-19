@@ -1,5 +1,5 @@
 {
-  "base_head": "8f5375e",
+  "base_head": "e89f530",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -562,16 +562,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 346,
-      "sha256": "bcf043b33619bf99165404701bf6348135a5fa4f6b893a34c661c5d42fd7d7af"
+      "lines": 347,
+      "sha256": "f0a044d1c2d2877a6bb52701e8241b055d5ce4dd02ce7f3eb43e0871381b213d"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 326,
-      "sha256": "80da9cbb60b75d068b8657f26a3b4c616a7f0d0fb3456dff0120a15c867fe412"
+      "lines": 327,
+      "sha256": "bc375fe5dbddd2127139e41b385394faaf1535694e3549a43cf55e375cd22a9e"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -614,7 +614,7 @@
         "## 封存區"
       ],
       "lines": 410,
-      "sha256": "7e46de82a9dfe97cc0d14308f1a46f4b3f844b6280dfda22673fdfaeba0e6bbc"
+      "sha256": "3f2d924694664fd01072d60ac1bc0f9da98530b2c92885dd0adf25a1ddbd31f3"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1112,8 +1112,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6412,
-      "sha256": "c982b3a80495d99d06f30269ea3ddb321227c13da96f30e5cc9a97222de3a43b"
+      "lines": 6413,
+      "sha256": "1945f20f6b06e13672a24128052ba45866d058dfc4a33c8f9d252fed11990f06"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1158,8 +1158,8 @@
         "# Control record and entry point",
         "# ---------------------------------------------------------------------------"
       ],
-      "lines": 1197,
-      "sha256": "3f7ab51fe9210100f6a365a9f4ec7e6dd4fe147942e462ee698fbd3462d0e22b"
+      "lines": 1216,
+      "sha256": "d796eb3443ed59a3564f5cb149da47de48df6055971080473316eb0112ce61e3"
     },
     "scripts/batch_sim.py": {
       "fences": 0,
@@ -1306,7 +1306,7 @@
         "# -*- coding: utf-8 -*-"
       ],
       "lines": 194,
-      "sha256": "c22d229adee94575eb5200d5e35a80c8e5f082d1611f715d373ba968e39868eb"
+      "sha256": "23f29f5f559192f9f1cacbbb00c86866c7bad15e313d23611630acc94ffdaa9d"
     },
     "scripts/promotion_template.py": {
       "fences": 0,
@@ -1331,6 +1331,14 @@
       ],
       "lines": 184,
       "sha256": "862ea4ecef25e8b2118967c1bd055adb7e06156f50eae30a8ecd30f0cfbc420d"
+    },
+    "scripts/s1_evidence.py": {
+      "fences": 0,
+      "headings": [
+        "# -*- coding: utf-8 -*-"
+      ],
+      "lines": 136,
+      "sha256": "34cf0fb5ed87f5de61ffc4edd6d83296f718c7bcefb492fa74cba43be1fa19ab"
     },
     "scripts/secret_presence.py": {
       "fences": 0,
@@ -1736,6 +1744,14 @@
       "lines": 309,
       "sha256": "6bd14ebf5d71fb20ca470a656045792dd4e8f852371146cf71a08c2f8c9d946c"
     },
+    "scripts/tests/test_s1_evidence.py": {
+      "fences": 0,
+      "headings": [
+        "# -*- coding: utf-8 -*-"
+      ],
+      "lines": 266,
+      "sha256": "fb3641fda57c02f64123a1e7f834ebbe421120d9a189546f9361ef950542ace5"
+    },
     "scripts/tests/test_secret_detection_matrix.py": {
       "fences": 0,
       "headings": [
@@ -1943,7 +1959,7 @@
       "sha256": "62c3142973a5c228efacc01ddcbd44a76e5f87e24d7bed15d90e2ce45a494982"
     }
   },
-  "generated_at": "2026-10-19T01:51:24Z",
+  "generated_at": "2026-10-19T05:39:29Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

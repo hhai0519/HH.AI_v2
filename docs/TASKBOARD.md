@@ -14,7 +14,7 @@
 
 **NEXT_WORK**：B-119
 
-**NEXT_SLICE**：G1-Q1A-BUNDLE-NAME-R1（前批 B119-G1-Q1A-HANDOFF-R2-261019 已獨立 Macro ACCEPT、同 SHA main 晉級與 candidate Run 39155124633／post-main Run 39181019682 attempt1 verify＋gateway-windows 雙 job success，main=8f5375ef751ed57f4bbb4f179ddb0d9914afa58b；本批 B119-G1-Q1A-BUNDLENAME-R1-261019 只修正 bundle Filename 為 Base＋Candidate 短 SHA、保留候選機器交接卡與既有 ref／copy 及 fail-closed 契約；C9、receipt／tmp 刪除、S1_EVIDENCE_FILE、其他 G1 均維持 OPEN，原 S1 證據保留。）
+**NEXT_SLICE**：G1-S1-METADATA-SHA256SUMS-R2（B119-G1-Q1A-BUNDLENAME-R1-261019 已由 AUD-GPT-261019 獨立核對，main=e89f530b7d3005f6e5332faeb0420b3840abbde1；candidate Run 39188744380／post-main Run 39190052052 attempt1 雙 job success，raw verify ALL 5 GATES PASSED／Windows 57 passed。本批僅新發生之 S1 metadata-only 證據與 SHA256SUMS，未推送 commit bundle、gate 全文、Git 快照、C9、receipt/tmp 清理等仍 OPEN。舊 S1 未推送分支與全部事故證據只保留、不讀取／改寫／刪除。）
 
 > [!IMPORTANT]
 > **環境恢復觸發（Environment Recovery Trigger）**：
@@ -36,7 +36,7 @@ USER 常設決定（2026-10-13）：交付以 ZIP 為主要檔案、TXT 為備�
 | 工作流 | 狀態 | owner | 工作及完成條件（需機械驗證） |
 |---|---|---|---|
 | G11 | CLOSED／POST-MAIN VERIFIED（B1 測試弱點在 G1 修補） | B-119＋B-100 R-M | 唯讀列出所有依賴 HEAD/commit 狀態之檢查、納入 E24；正式 E27 後 POSTCOMMIT 只保留 `execution_record verify`、`check_consistency`（非 as-if）、`fingerprint --verify`、`git diff --check`；bounded 紀錄隨執行即寫；CHECK16 lag／record 不符之提交後反例須 FAIL，precommit 非零必須零 commit，追蹤同類 Executor TIMING。INCIDENT-CI-04「本地 postcommit 必須完整 verify_all」僅准前向修訂；現行完整 Gate 在新批晉級前維持。 |
-| G1 | OPEN／結構化候選交接卡 R2 已 post-main verified；雙 SHA bundle 檔名待 E27 | B-119 | Q1-a 交接卡、F-06 自動 bundle、C9 安全回 Base（含本地未推送 S1）、S1_EVIDENCE_FILE 與 SHA256SUMS `SHA + 兩個空白 + 檔名`、U4/Q1、U-04 START_STATE_MISMATCH；使用者不需手動找 Run ID／打包，回 Base pwsh 負例 FAIL。 |
+| G1 | OPEN／交接卡 R2 與雙 SHA bundle 命名 R1 均已 post-main verified；S1 metadata-only 子切片待適用 E24/E27，完整事故蒐證與刪除限制仍 OPEN | B-119 | Q1-a 交接卡、F-06 自動 bundle、C9 安全回 Base（含本地未推送 S1）、S1_EVIDENCE_FILE 與 SHA256SUMS `SHA + 兩個空白 + 檔名`、U4/Q1、U-04 START_STATE_MISMATCH；使用者不需手動找 Run ID／打包，回 Base pwsh 負例 FAIL。 |
 | G2 | OPEN／retention 前置 | B-116 C1＋B-115 C2 | 歷史只能新增零刪改、§5.1 兩種 ledger 格式 placeholder 原文保留；錨點唯一替換及變更帳；歷史 R1 帳本與 INCIDENT-CI-01 R3 真實負例 FAIL，最近五個已晉級 commit PASS。 |
 | G4（驗證器） | OPEN | B-116 | CHECK14 全簡繁／台灣異體白名單、C7 狀態 lint、N1、自檢含過渡權威；「须」等負例 FAIL；B-54 三處 SOP 規範矛盾小修併 G4 文字部分。 |
 | G7 | OPEN | B-100 R-N＋B-59 | 18 列「可封存」逐字封存、拆分 B-100/B-115 長列、列長 CHECK 與 ARCHIVE-INDEX 雙向可達；原文 hash 不變；超長與不可達負例 FAIL；未經明示授權不得刪除。 |
