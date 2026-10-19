@@ -133,7 +133,9 @@ def create_bundle(root, branch, base, head, downloads=None, now=None, task_id=No
     downloads = Path(downloads) if downloads is not None else Path.home() / 'Downloads'
     safe_directory(downloads)
     timestamp = (now or datetime.now(TAIPEI)).astimezone(TAIPEI)
-    name = 'HH.AI_v2-' + timestamp.strftime('%Y%m%d-%H%M%S') + '-' + base[:7] + '.bundle'
+    # User-visible filename binds both the verified origin/main and candidate.
+    name = ('HH.AI_v2-' + timestamp.strftime('%Y%m%d-%H%M%S') + '-'
+            + base[:7] + '-' + head[:7] + '.bundle')
     if not name.isascii():
         raise BundleFailure('NAME_INVALID')
     target = downloads / name

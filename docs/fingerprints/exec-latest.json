@@ -1,5 +1,5 @@
 {
-  "base_head": "3aa8504",
+  "base_head": "8f5375e",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -562,16 +562,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 345,
-      "sha256": "d786405a0214df63b684a2844cd22c5c02b3066e3349e75175727684e437b74d"
+      "lines": 346,
+      "sha256": "bcf043b33619bf99165404701bf6348135a5fa4f6b893a34c661c5d42fd7d7af"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 325,
-      "sha256": "180edf80de6693645c05fbaf1c1df8939f46056dfdbdd853e4cf989f60d1162a"
+      "lines": 326,
+      "sha256": "80da9cbb60b75d068b8657f26a3b4c616a7f0d0fb3456dff0120a15c867fe412"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -614,7 +614,7 @@
         "## 封存區"
       ],
       "lines": 410,
-      "sha256": "dda39e6c55d158b1683734523015bf7d2484f66cf557a0dfa6bf8504cf4c0a27"
+      "sha256": "7e46de82a9dfe97cc0d14308f1a46f4b3f844b6280dfda22673fdfaeba0e6bbc"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1112,8 +1112,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6411,
-      "sha256": "2bf8498774c72e3e9958e674731bd4b3e6ab72da86847ff405f9bd114cdf5a65"
+      "lines": 6412,
+      "sha256": "c982b3a80495d99d06f30269ea3ddb321227c13da96f30e5cc9a97222de3a43b"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1200,8 +1200,8 @@
       "headings": [
         "# -*- coding: utf-8 -*-"
       ],
-      "lines": 179,
-      "sha256": "55740d212493b3e4c36c7a305eba1d3cbe15e86687779a639f8a8ce53998087c"
+      "lines": 181,
+      "sha256": "69f9b5f4e26e1f51329723f182f1e458e7b38c823388c6504aa427e80915c0c0"
     },
     "scripts/check16_preflight.py": {
       "fences": 0,
@@ -1480,8 +1480,8 @@
         "# -*- coding: utf-8 -*-",
         "# B-118 first-activation runner and ref fail-closed regression coverage."
       ],
-      "lines": 558,
-      "sha256": "1c9458c33e4bc06069ac55f74345ba1de5d107eb3324c46c5ee05558469c3a4f"
+      "lines": 583,
+      "sha256": "f776b85a3c175bfade96c5b4c47c575d4f4d1ec369d1ce5cf4dccea2350545be"
     },
     "scripts/tests/test_channel_gateway_core.py": {
       "fences": 0,
@@ -1943,7 +1943,7 @@
       "sha256": "62c3142973a5c228efacc01ddcbd44a76e5f87e24d7bed15d90e2ce45a494982"
     }
   },
-  "generated_at": "2026-10-18T18:25:58Z",
+  "generated_at": "2026-10-19T01:51:24Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

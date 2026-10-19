@@ -1,38 +1,28 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "B119-G1-Q1A-HANDOFF-R2-261019",
-  "base_oid": "3aa8504ff6b0e7d7218eb5bc72e56975f55cfda6",
+  "task_id": "B119-G1-Q1A-BUNDLENAME-R1-261019",
+  "base_oid": "8f5375ef751ed57f4bbb4f179ddb0d9914afa58b",
   "plan": {
     "allowed_paths": [
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
-      "docs/generated/rule-traceability.md",
       "docs/governance/execution-record.json",
       "docs/refactor-backlog.md",
-      "scripts/batch_runner.py",
-      "scripts/production_template.py",
-      "scripts/tests/test_bounded_process.py",
-      "scripts/tests/test_bundle_after_push.py",
-      "scripts/verify_all.py",
-      "skills/AGENTS.md"
+      "scripts/bundle_after_push.py",
+      "scripts/tests/test_bundle_after_push.py"
     ],
     "required_paths": [
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
-      "docs/generated/rule-traceability.md",
       "docs/governance/execution-record.json",
       "docs/refactor-backlog.md",
-      "scripts/batch_runner.py",
-      "scripts/production_template.py",
-      "scripts/tests/test_bounded_process.py",
-      "scripts/tests/test_bundle_after_push.py",
-      "scripts/verify_all.py",
-      "skills/AGENTS.md"
+      "scripts/bundle_after_push.py",
+      "scripts/tests/test_bundle_after_push.py"
     ],
     "max_plan_revisions": 3,
     "revision_count": 0,
@@ -44,15 +34,10 @@
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
-      "docs/generated/rule-traceability.md",
       "docs/governance/execution-record.json",
       "docs/refactor-backlog.md",
-      "scripts/batch_runner.py",
-      "scripts/production_template.py",
-      "scripts/tests/test_bounded_process.py",
-      "scripts/tests/test_bundle_after_push.py",
-      "scripts/verify_all.py",
-      "skills/AGENTS.md"
+      "scripts/bundle_after_push.py",
+      "scripts/tests/test_bundle_after_push.py"
     ]
   },
   "evidence": [

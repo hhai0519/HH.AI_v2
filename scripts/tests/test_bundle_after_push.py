@@ -44,7 +44,7 @@ def test_bundle_exact_refs_non_stash_and_timezone(small_repo):
     g(root, 'update-ref', 'refs/stash', head)
     clock = datetime(2026, 10, 14, 15, 35, 9, tzinfo=timezone(timedelta(hours=8)))
     target = bund.create_bundle(root, 'batch/b118-test', base, head, dl, clock, 'B118-TEST')
-    assert Path(target).name == 'HH.AI_v2-20261014-153509-' + base[:7] + '.bundle'
+    assert Path(target).name == 'HH.AI_v2-20261014-153509-' + base[:7] + '-' + head[:7] + '.bundle'
     assert 'complete history' in g(root, 'bundle', 'verify', target)
     heads = g(root, 'bundle', 'list-heads', target)
     assert base + ' refs/remotes/origin/main' in heads
@@ -53,10 +53,35 @@ def test_bundle_exact_refs_non_stash_and_timezone(small_repo):
     assert (root / '.git/B118-TEST-bundle.tmp').is_file()
 
 
+def test_bundle_same_clock_different_candidate_names_do_not_collide(small_repo):
+    root, dl, base, head = small_repo
+    clock = datetime(2026, 10, 14, 15, 35, 9, tzinfo=timezone(timedelta(hours=8)))
+    first = Path(bund.create_bundle(root, 'batch/b118-test', base, head, dl, clock, 'B118-NAME-A'))
+    # A second candidate under the same Base and timestamp is a distinct artifact;
+    # this test changes only the isolated fixture and does not overwrite the first.
+    g(root, 'commit', '--allow-empty', '-qm', 'next candidate')
+    second_head = g(root, 'rev-parse', 'HEAD')
+    g(root, 'update-ref', 'refs/remotes/origin/batch/b118-test', second_head)
+    second = Path(bund.create_bundle(root, 'batch/b118-test', base, second_head, dl, clock, 'B118-NAME-B'))
+    assert first != second and first.is_file() and second.is_file()
+    assert first.name.endswith('-' + base[:7] + '-' + head[:7] + '.bundle')
+    assert second.name.endswith('-' + base[:7] + '-' + second_head[:7] + '.bundle')
+    assert head + ' refs/remotes/origin/batch/b118-test' in g(root, 'bundle', 'list-heads', str(first))
+    assert second_head + ' refs/remotes/origin/batch/b118-test' in g(root, 'bundle', 'list-heads', str(second))
+
+
+def test_bundle_candidate_ref_drift_stops_before_new_file(small_repo):
+    root, dl, base, head = small_repo
+    wrong = '0' * 40
+    with pytest.raises(bund.BundleFailure, match='TRACKING_CANDIDATE_DRIFT'):
+        bund.create_bundle(root, 'batch/b118-test', base, wrong, dl, task_id='B118-DRIFT')
+    assert list(dl.glob('*.bundle')) == []
+
+
 def test_bundle_collision_is_non_destructive(small_repo):
     root, dl, base, head = small_repo
     clock = datetime(2026, 10, 14, 15, 0, tzinfo=timezone.utc)
-    name = 'HH.AI_v2-20261014-230000-' + base[:7] + '.bundle'
+    name = 'HH.AI_v2-20261014-230000-' + base[:7] + '-' + head[:7] + '.bundle'
     (dl / name).write_bytes(b'preserve')
     with pytest.raises(bund.BundleFailure, match='BUNDLE_EXISTS'):
         bund.create_bundle(root, 'batch/b118-test', base, head, dl, clock, 'B118-TEST')
