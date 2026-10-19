@@ -112,6 +112,7 @@ try:
     from validate_prompt_manifest import extract_must_read_section  # noqa: E402 - the validator's section rule
     from bundle_after_push import create_bundle, BundleFailure, preflight_remote_refs  # noqa: E402
     from s1_evidence import create_metadata, EvidenceError  # noqa: E402
+    from s1_full_capture import create_full_capture, FullCaptureError  # noqa: E402
 finally:
     sys.path.pop(0)
 
@@ -1148,6 +1149,23 @@ def report_s1_metadata(batch, step, h):
         print('S1_EVIDENCE_STATUS=UNAVAILABLE')
 
 
+
+def report_s1_full_capture(batch, step, h):
+    """Best-effort portable capture after original S1; failure never overrides S1."""
+    if batch is None:
+        return
+    try:
+        prefix = '.git/' + batch.task_id + '-'
+        def validate_current_artifact(rel):
+            if not rel.startswith(prefix) or batch.artifact(rel[len(prefix):]) != rel:
+                raise FullCaptureError('S1_CAPTURE_ARTIFACT_BINDING_MISMATCH')
+        for line in create_full_capture(batch.root, batch.task_id, batch.spec['base_oid'],
+                                        batch.spec['branch'], step, str(h), validate_artifact=validate_current_artifact):
+            print(line)
+    except Exception:  # noqa: BLE001 - original S1 already persisted and printed
+        print('S1_FULL_CAPTURE_STATUS=UNAVAILABLE')
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description='Canonical fixed-step batch runner (B-107).')
     parser.add_argument('--task-id', required=True)
@@ -1199,12 +1217,14 @@ def main(argv=None):
         save_control(batch, control)
         report_halt(h, step)
         report_s1_metadata(batch, step, h)
+        report_s1_full_capture(batch, step, h)
         return 1
     except Exception as ex:  # noqa: BLE001 - any unexpected failure locks the task with a fixed code
         control['halted'] = step + ':UNEXPECTED_' + type(ex).__name__
         save_control(batch, control)
         print('S1 UNEXPECTED_' + type(ex).__name__ + ' | step ' + step)
         report_s1_metadata(batch, step, Halt('UNEXPECTED_' + type(ex).__name__))
+        report_s1_full_capture(batch, step, Halt('UNEXPECTED_' + type(ex).__name__))
         return 1
     control['done'].append(step)
     save_control(batch, control)

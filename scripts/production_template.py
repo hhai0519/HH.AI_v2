@@ -110,7 +110,7 @@ TASK_ID={{TASK_ID}}；Base={{BASE_OID}}；branch={{BRANCH}}；batch_mode=GOAL_SP
 二、確定性機器事實與權限
 本批變更路徑由單一 definition 的作者檔來源自動推導，含固定 canonical 生成檔，恰為：
 ''' + '\n'.join('- ' + x for x in changed) + f'''
-Allowed and required tracked mutation paths 均為 {{ALLOWED}}。本批不授權 main advancement、遠端 ref 刪除、破壞性 Git、憑證讀取、GitHub API 寫入、跨 session 存取、其他 task artifact 讀取、repo 外資料列舉、額外未核准寫檔。bundle_output={'true' if d.get('bundle_output') else 'false'}；僅 bundle_output=true 時，於 push 後新 bundle 階段核准在 Downloads 新增一份符合命名規範之 bundle，其餘 repo 外寫入仍禁止。
+Allowed and required tracked mutation paths 均為 {{ALLOWED}}。本批不授權 main advancement、遠端 ref 刪除、破壞性 Git、憑證讀取、GitHub API 寫入、跨 session 存取、其他 task artifact 讀取、repo 外資料列舉、額外未核准寫檔。bundle_output={'true' if d.get('bundle_output') else 'false'}；僅 bundle_output=true 時，於 push 後新 bundle 階段核准在 Downloads 新增一份符合命名規範之 bundle，除本批新 S1 蒐證工具在本 repo .git 下自建唯一受限 scratch 且僅清除自己新建 scratch 外，其餘 repo 外寫入／清理仍禁止。
 E24={'REQUIRED' if d.get('e24') is True else 'NONE'}；E27={prose['e27']}。E27 結論不取代 Macro 最終提示詞授權；不得擅自引用任何第二意見 PASS。
 
 三、失敗停止與開始前就緒
@@ -125,7 +125,7 @@ E24={'REQUIRED' if d.get('e24') is True else 'NONE'}；E27={prose['e27']}。E27 
 {cmds}
 
 六、Executor 固定回覆
-成功須逐字複製 runner 已輸出的 CI_RUN candidate 定位行、COMMIT、TIMING、STATE；CI_RUN 只能來自 runner，不能自行填入或將候選 Run 誤寫成 postmain。bundle_output=true 時，還必須逐字複製實際輸出的 BUNDLE_FILE=、ORIGIN_MAIN=、HANDOFF_TO_AUDITOR=、HANDOFF_CARD_SHA256=、HANDOFF_CARD_JSON=（只有實際產生時才複製完整單行，且不得以 .git 相對路徑代替卡片內容），或 BUNDLE FAILED <CODE> 行，不能略過、捏造成功或把 bundle 失敗誤當 CI 失敗。S1 僅複製實際存在的 S1、S1_DETAIL、S1_EVIDENCE_FILE=、S1_SHA256SUMS_FILE=、S1_EVIDENCE_JSON=（完整單行）或 S1_EVIDENCE_STATUS=UNAVAILABLE、TIMING、STATE 行，不捏造 CI Run／job ID 或 PASS。當 S1 metadata READY 時僅能稱 METADATA_ONLY，不得宣稱已提供未推送 commit bundle、gate 全文或 Git 快照。TIMING 由 runner 提供開始、結束與秒數除以 60 向下取整之分鐘。回覆最後一行逐字為「以上是 Antigravity IDE Agent 的回覆。」
+成功須逐字複製 runner 已輸出的 CI_RUN candidate 定位行、COMMIT、TIMING、STATE；CI_RUN 只能來自 runner，不能自行填入或將候選 Run 誤寫成 postmain。bundle_output=true 時，還必須逐字複製實際輸出的 BUNDLE_FILE=、ORIGIN_MAIN=、HANDOFF_TO_AUDITOR=、HANDOFF_CARD_SHA256=、HANDOFF_CARD_JSON=（只有實際產生時才複製完整單行，且不得以 .git 相對路徑代替卡片內容），或 BUNDLE FAILED <CODE> 行，不能略過、捏造成功或把 bundle 失敗誤當 CI 失敗。S1 僅複製實際存在的 S1、S1_DETAIL、S1_EVIDENCE_FILE=、S1_SHA256SUMS_FILE=、S1_EVIDENCE_JSON=（完整單行）或 S1_EVIDENCE_STATUS=UNAVAILABLE、TIMING、STATE 行，不捏造 CI Run／job ID 或 PASS。當 S1 metadata READY 時僅能稱 METADATA_ONLY，不得宣稱已提供未推送 commit bundle、gate 全文或 Git 快照。 S1 FULL_CAPTURE 亦必須逐字複製實際輸出的 S1_FULL_CAPTURE_FILE=、S1_FULL_CAPTURE_CARD=、S1_FULL_CAPTURE_JSON=、S1_FULL_CAPTURE_STATUS=（包含 INCOMPLETE_GATE_EVIDENCE／INCOMPLETE_UNTRACKED_FILES／INCOMPLETE_NO_UNPUBLISHED_COMMIT／UNAVAILABLE 等完整實際單行）；只有完整 archive 回讀及原生 bundle 身分驗證成功才可稱 FULL_CAPTURE，metadata-only 仍保持原分類。TIMING 由 runner 提供開始、結束與秒數除以 60 向下取整之分鐘。回覆最後一行逐字為「以上是 Antigravity IDE Agent 的回覆。」
 
 七、machine blocks（全部由 canonical builder 產生，不可修改）
 '''
