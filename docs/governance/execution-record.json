@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "B119-G1-C9-OFFHEAD-PRESERVE-R1-261020",
-  "base_oid": "eedc84d910716e300c7758c6470ee6197d8ef967",
+  "task_id": "B119-G1-C9-S1-CREDENTIAL-GUARD-R1-261021",
+  "base_oid": "303d8fad3b752dd55b92fe9be0c58ca0580f624f",
   "plan": {
     "allowed_paths": [
       "docs/AUDIT-LOG.md",
@@ -11,8 +11,8 @@
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
       "docs/refactor-backlog.md",
-      "scripts/c9_local_history_guard.py",
-      "scripts/tests/test_c9_local_history_guard.py"
+      "scripts/c9_s1_capture_guard.py",
+      "scripts/tests/test_c9_s1_capture_guard.py"
     ],
     "required_paths": [
       "docs/AUDIT-LOG.md",
@@ -21,8 +21,8 @@
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
       "docs/refactor-backlog.md",
-      "scripts/c9_local_history_guard.py",
-      "scripts/tests/test_c9_local_history_guard.py"
+      "scripts/c9_s1_capture_guard.py",
+      "scripts/tests/test_c9_s1_capture_guard.py"
     ],
     "max_plan_revisions": 3,
     "revision_count": 0,
@@ -36,8 +36,8 @@
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
       "docs/refactor-backlog.md",
-      "scripts/c9_local_history_guard.py",
-      "scripts/tests/test_c9_local_history_guard.py"
+      "scripts/c9_s1_capture_guard.py",
+      "scripts/tests/test_c9_s1_capture_guard.py"
     ]
   },
   "evidence": [

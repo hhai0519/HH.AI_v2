@@ -1,5 +1,5 @@
 {
-  "base_head": "eedc84d",
+  "base_head": "303d8fa",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -562,16 +562,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 359,
-      "sha256": "6cbb1474d9f89110b7633f0459c719f12955d048d4aa0c15d12714c77368c5c7"
+      "lines": 360,
+      "sha256": "57eb6bac1aab08a520b98205c087bae1364b09d60bf8b5cae806ee22d8d9743a"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 334,
-      "sha256": "5bd3e55b3b6eef20ba7c298e84ded6db4af2924b11431dbbbe766cb6e98315c0"
+      "lines": 335,
+      "sha256": "d0be273edb40d50d57703045bb051e18e4c895c1f8e940d431ce762112da5180"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -613,8 +613,8 @@
         "## G. 舊 repo 未盤點區塊（2026-09-02 新發現）",
         "## 封存區"
       ],
-      "lines": 416,
-      "sha256": "9378f4175e74f712f05962a928a7d2291817a9d698991805bc0c0cc9dcb66202"
+      "lines": 418,
+      "sha256": "0ab639f26620f6d6d41ea66228737b0775758d52af82a5e6bb6d844790f71763"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1113,7 +1113,7 @@
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
       "lines": 6419,
-      "sha256": "b7d4892c14fbfc82fffb8bcd4a281579e1cebeb37eb82a353d0c87d7a25d9f87"
+      "sha256": "0ea538f8eeecba8844140640fbc4978b51f7426fa230153f642e30d8837cf9a6"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1218,6 +1218,14 @@
       ],
       "lines": 70,
       "sha256": "b05fe745d935e64e471febbcf18d4a1a7a1a270c841e304413b6a09f7a835446"
+    },
+    "scripts/c9_s1_capture_guard.py": {
+      "fences": 0,
+      "headings": [
+        "# -*- coding: utf-8 -*-"
+      ],
+      "lines": 238,
+      "sha256": "beccd18a4633bf1e27781f934fe7eb82bebc105f69263a5ea80ed808344a1def"
     },
     "scripts/check16_preflight.py": {
       "fences": 0,
@@ -1536,6 +1544,14 @@
       ],
       "lines": 117,
       "sha256": "3ff3266a7ce078d2bf9b4f9dd3e571f0015da475da375df40cddbfe8f0a6a18c"
+    },
+    "scripts/tests/test_c9_s1_capture_guard.py": {
+      "fences": 0,
+      "headings": [
+        "# -*- coding: utf-8 -*-"
+      ],
+      "lines": 254,
+      "sha256": "fccc1265686f7253631bc828be8b36c4cc911ca25aca34e4e6e5177909fe32b5"
     },
     "scripts/tests/test_channel_gateway_core.py": {
       "fences": 0,
@@ -2013,7 +2029,7 @@
       "sha256": "62c3142973a5c228efacc01ddcbd44a76e5f87e24d7bed15d90e2ce45a494982"
     }
   },
-  "generated_at": "2026-10-20T16:10:06Z",
+  "generated_at": "2026-10-20T23:38:03Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {
