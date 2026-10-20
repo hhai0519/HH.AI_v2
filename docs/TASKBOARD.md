@@ -14,7 +14,7 @@
 
 **NEXT_WORK**：B-119
 
-**NEXT_SLICE**：B119-G1-C9-PREBASE-GUARD-R1-261020（Receipt R5 main=f5e1bb17c1f29fa06a522bd958bbf3148578a0b0 POST-MAIN VERIFIED；candidate Run 39419052140／post-main Run 39421631332 push attempt1 verify／gateway-windows success。C9 R1 只新增唯讀保全守衛，不自動 checkout/reset/clean；C9 其餘與 U4/Q1 仍 OPEN。）
+**NEXT_SLICE**：B119-G1-C9-OFFHEAD-PRESERVE-R1-261020（C9 R1 main=eedc84d910716e300c7758c6470ee6197d8ef967 POST-MAIN VERIFIED；candidate Run 39431380648／post-main Run 39449224510 attempt1 push，verify／gateway-windows success。本批只新增離線本地 branch-tips 巡檢，發現 off-HEAD 未被 Base 涵蓋之提交即 HOLD，不建立憑證、不中止歷史、不執行回 Base；C9 其餘與 U4/Q1 OPEN。）
 
 > [!IMPORTANT]
 > **環境恢復觸發（Environment Recovery Trigger）**：
@@ -36,7 +36,7 @@ USER 常設決定（2026-10-13）：交付以 ZIP 為主要檔案、TXT 為備�
 | 工作流 | 狀態 | owner | 工作及完成條件（需機械驗證） |
 |---|---|---|---|
 | G11 | CLOSED／POST-MAIN VERIFIED（B1 測試弱點在 G1 修補） | B-119＋B-100 R-M | 唯讀列出所有依賴 HEAD/commit 狀態之檢查、納入 E24；正式 E27 後 POSTCOMMIT 只保留 `execution_record verify`、`check_consistency`（非 as-if）、`fingerprint --verify`、`git diff --check`；bounded 紀錄隨執行即寫；CHECK16 lag／record 不符之提交後反例須 FAIL，precommit 非零必須零 commit，追蹤同類 Executor TIMING。INCIDENT-CI-04「本地 postcommit 必須完整 verify_all」僅准前向修訂；現行完整 Gate 在新批晉級前維持。 |
-| G1 | OPEN／Receipt R5 子切片 CLOSED／POST-MAIN VERIFIED main=f5e1bb17c1f29fa06a522bd958bbf3148578a0b0；C9 read-only pre-Base guard R1 為本批 AUTHORING／非已部署，C9 local-unpushed-S1 完整安全恢復及 U4/Q1 仍 OPEN | B-119 | 已完成 handoff 卡、bundle Base/Candidate 命名、S1 metadata/full capture、U-04 START_STATE_MISMATCH、R5 receipt/temp Windows protected handle；本批新增 C9 唯讀判定（HEAD==Base 且 CLEAN 回報 NO_SWITCH_NEEDED，dirty／本地未推送 S1／main drift／detached ahead 停止並保留證據）。後續仍須具保全憑證之安全回 Base、U4/Q1 跨批復原與原生負例；S1／Downloads／remote refs 不得清理；B-119／G1 umbrella OPEN。 |
+| G1 | OPEN／Receipt R5 CLOSED／POST-MAIN VERIFIED；C9 R1 read-only pre-Base guard CLOSED／POST-MAIN VERIFIED main=eedc84d910716e300c7758c6470ee6197d8ef967；C9 R2 off-HEAD history inventory 本批 AUTHORING／未部署；真正 S1 保全恢復及 U4/Q1 仍 OPEN | B-119 | 已完成 handoff 卡、bundle 命名、S1 capture、U-04、Receipt R5 及 C9 R1 HEAD/dirty/remote readonly guard；新增對其他 local refs/heads 的 bounded Git object scan，若任一 off-HEAD tip 含 Base 未涵蓋提交即 HOLD 並保留，不清理、不切換、不斷言完整 S1 憑證；runner 自行維持原 precontrol 守衛。 |
 | G2 | OPEN／retention 前置 | B-116 C1＋B-115 C2 | 歷史只能新增零刪改、§5.1 兩種 ledger 格式 placeholder 原文保留；錨點唯一替換及變更帳；歷史 R1 帳本與 INCIDENT-CI-01 R3 真實負例 FAIL，最近五個已晉級 commit PASS。 |
 | G4（驗證器） | OPEN | B-116 | CHECK14 全簡繁／台灣異體白名單、C7 狀態 lint、N1、自檢含過渡權威；「须」等負例 FAIL；B-54 三處 SOP 規範矛盾小修併 G4 文字部分。 |
 | G7 | OPEN | B-100 R-N＋B-59 | 18 列「可封存」逐字封存、拆分 B-100/B-115 長列、列長 CHECK 與 ARCHIVE-INDEX 雙向可達；原文 hash 不變；超長與不可達負例 FAIL；未經明示授權不得刪除。 |
@@ -49,6 +49,8 @@ USER 常設決定（2026-10-13）：交付以 ZIP 為主要檔案、TXT 為備�
 **G1 S1 前向紀錄（R4 作者候選／非既成修復）**：`B119-G1-R3-WIN-NATIVE-PROBE-261020` 4 PASS／1 symlink privilege skip；`B119-G1-R3-REPARSE-FALLBACK-PROBE-261020` Junction `mklink` 引號解析 STOP；R2 probe 錯綁 patch 檔名 STOP；R3 probe selected 53/1/2 STOP；R4 probe 亦尚無已簽收之 Windows 原生完成證據。F01 `OSError` 過度轉 skip、F02 full-native 計數容許漏測、N01 STOP 交接不完整，歸 B-119/G1、B-117/G5 既有 owner，需 fail-closed 回歸與原生補證。舊 probe、隔離 TEMP/S1 證據原樣保留；本作者 patch 及所有 R5 驗證提示詞均不構成已執行 production。
 
 **G1 S1 後續及 R6 Windows 補證（R5 作者候選，非 production 已完成）**：R5 probe `B119-G1-R4-REPARSE-NATIVE-PROBE-R5-261020` 在 collect 56 項時 `TEST_INVENTORY_DRIFT` S1 STOP；F03 根因：對整個 pytest node ID 路徑正規化，誤改 `bad\x01control` 參數。R6 `B119-G1-R4-REPARSE-NATIVE-PROBE-R6-261020` 以真正 pytest collect 56 項 SHA 精確核對，Windows 4 passed／1 skipped／51 deselected，selected 53 passed／1 skipped／2 deselected、原生 symlink winerror=1314，exit0、模式 JUNCTION_AND_METADATA_FALLBACK；不得聲稱原生 file 或 directory symlink 兩項 PASS。R6 完整 JSON 原件未直接回讀；N02 selected 階段原始輸出誤標 NATIVE 歸 B-117/G5 後續維護。R1–R5 S1 原始證據／TEMP 保留、零 commit／push；前述狀態均不授權 production 刪除。F01／F02／N01／F03 防回歸及精確 56-ID inventory 屬 B-119/G1、B-117/G5 既有 owner；所有內容僅於本候選正式晉級後才成為 main 的前向紀錄。
+
+**C9 R1 晉級後前向結轉及 R2 作者定義（B119-G1-C9-OFFHEAD-PRESERVE-R1-261020，非本批既成完成）**：`B119-G1-C9-PREBASE-GUARD-R1-261020` 已由 AUD-GPT-261019-B 驗收 same-SHA main `eedc84d910716e300c7758c6470ee6197d8ef967`；candidate Run 39431380648、post-main Run 39449224510，push attempt1 雙 job SUCCESS，post-main verify 1592 passed／6 skipped＋13 passed、ALL 5 GATES PASSED，Channel Gateway Windows 57 passed；C9 R1 正式 CLOSED／POST-MAIN VERIFIED。本 R2 僅新增唯讀 off-HEAD local branch history inventory（如有另一 local head 包含未被 Base 涵蓋提交，HOLD 保留）；合成 Git 及 Git failure 負例，不建立/刪除 ref、不做任何回 Base，不聲稱已備份 S1 commit 或解決跨批 U4/Q1；E24／E27／Windows CI 與候選晉級仍 PENDING。原 S1／TEMP／Downloads／遠端 refs 全部保留；C9／G1／B-119、U4/Q1 仍 OPEN。
 
 **排程**：R3 修復＋登錄 → G11 → G1 → G2＋G4 驗證器 → G7 → G4 文字／B-54 → G3 → G6 → G5 → G10 → G8。前批 post-main 結案原則上與下一實作批狀態作者同批登錄，例外僅 USER 指示或下一批暫無法定稿；此為排程原則、非取消每批必備治理紀錄。G2/C1/C2 必須早於任何新增 retention 寫入／刪除。
 
