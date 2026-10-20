@@ -14,7 +14,7 @@
 
 **NEXT_WORK**：B-119
 
-**NEXT_SLICE**：B119-G1-RECEIPT-R5-261020（B119-U04-STARTSTATE-R1-261020 已 same-SHA main=0658ff0fc99dc3d6a1d4f78677e6341bf0555e6a；candidate Run 39297911668／post-main Run 39348186800 attempt1 verify 與 gateway-windows 雙 job success；AUD-GPT-261019-B Macro ACCEPT／POST-MAIN VERIFIED。G1 receipt/tmp R4 僅允許當批已回讀驗證之單一 .git task-local temp 清除；其他批、歷史 S1、Downloads、C9、U4/Q1 不清理。當前批 commit／CI PENDING，B-119／G1 OPEN。）
+**NEXT_SLICE**：B119-G1-C9-PREBASE-GUARD-R1-261020（Receipt R5 main=f5e1bb17c1f29fa06a522bd958bbf3148578a0b0 POST-MAIN VERIFIED；candidate Run 39419052140／post-main Run 39421631332 push attempt1 verify／gateway-windows success。C9 R1 只新增唯讀保全守衛，不自動 checkout/reset/clean；C9 其餘與 U4/Q1 仍 OPEN。）
 
 > [!IMPORTANT]
 > **環境恢復觸發（Environment Recovery Trigger）**：
@@ -36,7 +36,7 @@ USER 常設決定（2026-10-13）：交付以 ZIP 為主要檔案、TXT 為備�
 | 工作流 | 狀態 | owner | 工作及完成條件（需機械驗證） |
 |---|---|---|---|
 | G11 | CLOSED／POST-MAIN VERIFIED（B1 測試弱點在 G1 修補） | B-119＋B-100 R-M | 唯讀列出所有依賴 HEAD/commit 狀態之檢查、納入 E24；正式 E27 後 POSTCOMMIT 只保留 `execution_record verify`、`check_consistency`（非 as-if）、`fingerprint --verify`、`git diff --check`；bounded 紀錄隨執行即寫；CHECK16 lag／record 不符之提交後反例須 FAIL，precommit 非零必須零 commit，追蹤同類 Executor TIMING。INCIDENT-CI-04「本地 postcommit 必須完整 verify_all」僅准前向修訂；現行完整 Gate 在新批晉級前維持。 |
-| G1 | OPEN／U-04 0658ff0 POST-MAIN VERIFIED；receipt/tmp R4 AUTHORING（非已完成），其他殘項保持 OPEN。原狀態：交接卡 R2 與雙 SHA bundle 命名 R1 均已 post-main verified；S1 metadata-only R2 已於 6c12c19f20559735b5fd3e651fd72cb55a23b3dd POST-MAIN VERIFIED；完整 S1 蒐證本批作者未授權，C9、U4/Q1、U-04、tmp/receipt 與刪除限制仍 OPEN | B-119 | Q1-a 交接卡、F-06 自動 bundle、C9 安全回 Base（含本地未推送 S1）、S1_EVIDENCE_FILE 與 SHA256SUMS `SHA + 兩個空白 + 檔名`、U4/Q1、U-04 START_STATE_MISMATCH；使用者不需手動找 Run ID／打包，回 Base pwsh 負例 FAIL。 |
+| G1 | OPEN／Receipt R5 子切片 CLOSED／POST-MAIN VERIFIED main=f5e1bb17c1f29fa06a522bd958bbf3148578a0b0；C9 read-only pre-Base guard R1 為本批 AUTHORING／非已部署，C9 local-unpushed-S1 完整安全恢復及 U4/Q1 仍 OPEN | B-119 | 已完成 handoff 卡、bundle Base/Candidate 命名、S1 metadata/full capture、U-04 START_STATE_MISMATCH、R5 receipt/temp Windows protected handle；本批新增 C9 唯讀判定（HEAD==Base 且 CLEAN 回報 NO_SWITCH_NEEDED，dirty／本地未推送 S1／main drift／detached ahead 停止並保留證據）。後續仍須具保全憑證之安全回 Base、U4/Q1 跨批復原與原生負例；S1／Downloads／remote refs 不得清理；B-119／G1 umbrella OPEN。 |
 | G2 | OPEN／retention 前置 | B-116 C1＋B-115 C2 | 歷史只能新增零刪改、§5.1 兩種 ledger 格式 placeholder 原文保留；錨點唯一替換及變更帳；歷史 R1 帳本與 INCIDENT-CI-01 R3 真實負例 FAIL，最近五個已晉級 commit PASS。 |
 | G4（驗證器） | OPEN | B-116 | CHECK14 全簡繁／台灣異體白名單、C7 狀態 lint、N1、自檢含過渡權威；「须」等負例 FAIL；B-54 三處 SOP 規範矛盾小修併 G4 文字部分。 |
 | G7 | OPEN | B-100 R-N＋B-59 | 18 列「可封存」逐字封存、拆分 B-100/B-115 長列、列長 CHECK 與 ARCHIVE-INDEX 雙向可達；原文 hash 不變；超長與不可達負例 FAIL；未經明示授權不得刪除。 |

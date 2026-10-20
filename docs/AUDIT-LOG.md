@@ -339,6 +339,7 @@ CHECK 12 應跳過該值——建立本檔的那一批沒有「前一個 commit�
 | 0658ff0fc99dc3d6a1d4f78677e6341bf0555e6a | 2026-10-20 | §4.1-1、§4.1-3、B-119 G1 receipt | **R4 AUTHOR HOLD／待 Windows 原生與 E27**：R2 誤刪競態 B01 已被合成負例證實；R3 首次 native 4/1，reparse probe 另有 Junction 建立、patch 名稱綁定、selected 53/1/2 停止。第二意見 F01/F02 BLOCKING 與 N01 NON_BLOCKING 已納入新 R4 作者測試及 R5 隔離驗證器草稿；所有 STOP 原位元組保留。 | 本批 `B119-G1-RECEIPT-R4-261020` 尚未執行正式 production／Win32 native 完整覆蓋，尚無 commit、push、CI 或刪除授權；E24、E27、五步預查、MINISIM 待確認。 |
 
 | 0658ff0fc99dc3d6a1d4f78677e6341bf0555e6a | 2026-10-20 | §4.1-1、§4.1-3、B-119 G1 receipt R6 | **Windows 替代補證收到／非 production PASS**：R6 probe 真 collect 56 項與 pinned SHA 相同，Windows native 4/1/51、selected 53/1/2，symlink winerror=1314，exit0；模式 JUNCTION_AND_METADATA_FALLBACK；不等於 symlink 原生全綠；N02 階段標籤列後續維護。 | R5 作者 B119-G1-RECEIPT-R5-261020 候選 E24/E27／五步／production sim／Windows precommit/CI PENDING；R6 JSON 原件未直接回讀，所有 R1–R5 STOP 保留，production／刪除權限不自動成立。 |
+| f5e1bb17c1f29fa06a522bd958bbf3148578a0b0 | 2026-10-20 | §4.1-1、§4.1-3、B-119 G1 C9 | **核對通過（AUD-GPT-261019-B Macro PASS／Receipt R5 POST-MAIN VERIFIED）／本批 C9 R1 AUTHORING**：candidate Run 39419052140、post-main Run 39421631332 push attempt1、兩 job success；R5 之 Windows gateway-windows 57 passed 不等於原生 symlink 全 PASS，R6 只 JUNCTION_AND_METADATA_FALLBACK。C9 R1 為不寫資料、不切換 HEAD 之安全回 Base 判定器，合成 S1/local commit、dirty、drift 須 fail-closed。 | 本批 B119-G1-C9-PREBASE-GUARD-R1-261020 之 production E24/E27、Windows precommit、CI 尚待；C9 全面安全恢復與 U4/Q1 OPEN，歷史 S1／Downloads／遠端 refs 必須保留。 |
 
 ## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)
 
