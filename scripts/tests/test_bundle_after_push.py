@@ -13,6 +13,28 @@ import bundle_after_push as bund
 import batch_runner as br
 
 
+# These general business-flow fixtures simulate the protected handle only on
+# non-Windows CI. They are NOT evidence for Win32 sharing/delete semantics;
+# dedicated win_native_* tests below MUST execute on real Windows.
+@pytest.fixture(autouse=True)
+def _non_windows_business_flow_stub(monkeypatch):
+    if os.name == 'nt':
+        return
+    class StubLease:
+        def __init__(self, path):
+            self.path = Path(path)
+            self.size = self.path.stat().st_size
+        def __enter__(self):
+            return self
+        def __exit__(self, *args):
+            return None
+        def sha256(self):
+            return bund.file_sha256(self.path).hex()
+        def delete(self):
+            self.path.unlink()
+    monkeypatch.setattr(bund, '_open_protected_temp', StubLease)
+
+
 def g(root, *args):
     return subprocess.check_output(['git', '-C', str(root), *args], stderr=subprocess.DEVNULL).decode().strip()
 
@@ -50,7 +72,13 @@ def test_bundle_exact_refs_non_stash_and_timezone(small_repo):
     assert base + ' refs/remotes/origin/main' in heads
     assert head + ' refs/remotes/origin/batch/b118-test' in heads
     assert 'refs/stash' not in heads
-    assert (root / '.git/B118-TEST-bundle.tmp').is_file()
+    assert not (root / '.git/B118-TEST-bundle.tmp').exists()
+    receipt = json.loads((root / '.git/B118-TEST-bundle-receipt.json').read_text())
+    assert receipt['schema_version'] == 1
+    assert receipt['bundle_sha256'] == bund.file_sha256(Path(target)).hex()
+    assert receipt['bundle_name'] == Path(target).name
+    assert receipt['temp_name'] == 'B118-TEST-bundle.tmp'
+    assert receipt['base_oid'] == base and receipt['candidate_oid'] == head
 
 
 def test_bundle_same_clock_different_candidate_names_do_not_collide(small_repo):
@@ -88,13 +116,30 @@ def test_bundle_collision_is_non_destructive(small_repo):
     assert (dl / name).read_bytes() == b'preserve'
 
 
+def _symlink_or_explicit_capability_skip(link, target, *, directory, label):
+    """Only Win32 ERROR_PRIVILEGE_NOT_HELD is a known capability skip.
+
+    E.g. FileNotFoundError(errno=2), access denied without winerror=1314,
+    stale paths, and other I/O exceptions MUST remain test failures.
+    The native result is preserved in the skip reason for audit.
+    """
+    try:
+        link.symlink_to(target, target_is_directory=directory)
+    except OSError as exc:
+        winerror = getattr(exc, 'winerror', None)
+        if os.name == 'nt' and winerror == 1314:
+            pytest.skip(f'{label}: errno={exc.errno} winerror={winerror}')
+        raise
+    except NotImplementedError as exc:
+        if os.name == 'nt':
+            pytest.skip(f'{label}: NotImplementedError={type(exc).__name__}')
+        raise
+
+
 def test_untrusted_path_fails_closed(small_repo, tmp_path):
     root, dl, base, head = small_repo
     link = tmp_path / 'link'
-    try:
-        link.symlink_to(dl, target_is_directory=True)
-    except (OSError, NotImplementedError):
-        pytest.skip('symlink creation unavailable')
+    _symlink_or_explicit_capability_skip(link, dl, directory=True, label='directory symlink capability unavailable')
     with pytest.raises(bund.BundleFailure, match='DOWNLOADS_UNSAFE'):
         bund.create_bundle(root, 'batch/b118-test', base, head, link, task_id='B118-TEST')
 
@@ -443,7 +488,9 @@ def test_copy_normal_hash_and_actual_bare_fetch(small_repo, tmp_path):
     root, dl, base, head = small_repo
     output = bund.create_bundle(root, 'batch/b118-test', base, head, dl, task_id='F3-COPY-GOOD')
     temp = root / '.git/F3-COPY-GOOD-bundle.tmp'
-    assert bund.file_sha256(temp) == bund.file_sha256(Path(output))
+    assert not temp.exists()
+    receipt = json.loads((root / '.git/F3-COPY-GOOD-bundle-receipt.json').read_text())
+    assert receipt['bundle_sha256'] == bund.file_sha256(Path(output)).hex()
     imported = tmp_path / 'import.git'
     g(tmp_path, 'init', '-q', '--bare', str(imported))
     fetched = subprocess.run(['git', '-C', str(imported), 'fetch', output,
@@ -581,3 +628,162 @@ def test_q1a_handoff_fail_closed_evidence(monkeypatch, small_repo, tmp_path, ci_
         assert 'HANDOFF_TO_AUDITOR=' not in output
         assert 'HANDOFF_CARD_JSON=' not in output
         assert 'HANDOFF_CARD_SHA256=' not in output
+
+
+# G1 receipt-first exact-task cleanup: these are *failure* tests, not
+# permission for generic Downloads, previous-task or historical S1 deletion.
+def test_g1_receipt_readback_mismatch_keeps_temp_and_download(small_repo, monkeypatch):
+    root, dl, base, head = small_repo
+    monkeypatch.setattr(bund, '_receipt_bytes', lambda path: b'CORRUPT')
+    with pytest.raises(bund.BundleFailure, match='RECEIPT_READBACK_MISMATCH'):
+        bund.create_bundle(root, 'batch/b118-test', base, head, dl, task_id='G1-READBACK')
+    assert (root / '.git/G1-READBACK-bundle.tmp').is_file()
+    assert (root / '.git/G1-READBACK-bundle-receipt.json').is_file()
+    assert len(list(dl.glob('*.bundle'))) == 1
+
+
+def test_g1_prior_receipt_not_overwritten_or_deleted(small_repo):
+    root, dl, base, head = small_repo
+    prior = root / '.git/G1-COLLISION-bundle-receipt.json'
+    prior.write_bytes(b'existing receipt must remain untouched')
+    with pytest.raises(bund.BundleFailure, match='RECEIPT_EXISTS'):
+        bund.create_bundle(root, 'batch/b118-test', base, head, dl, task_id='G1-COLLISION')
+    assert prior.read_bytes() == b'existing receipt must remain untouched'
+    assert not (root / '.git/G1-COLLISION-bundle.tmp').exists()
+    assert list(dl.glob('*.bundle')) == []
+
+
+def test_g1_cleanup_error_never_reports_ready_and_keeps_receipt(small_repo, monkeypatch):
+    root, dl, base, head = small_repo
+    original = Path.unlink
+    def fail_temp(self, *args, **kwargs):
+        if self.name == 'G1-CLEANUP-bundle.tmp':
+            raise PermissionError('locked by Windows')
+        return original(self, *args, **kwargs)
+    if os.name == 'nt':
+        def deny_delete(self):
+            raise bund.BundleFailure('TEMP_CLEANUP_FAILED')
+        monkeypatch.setattr(bund._WindowsProtectedTemp, 'delete', deny_delete)
+    else:
+        monkeypatch.setattr(Path, 'unlink', fail_temp)
+    with pytest.raises(bund.BundleFailure, match='TEMP_CLEANUP_FAILED'):
+        bund.create_bundle(root, 'batch/b118-test', base, head, dl, task_id='G1-CLEANUP')
+    assert (root / '.git/G1-CLEANUP-bundle.tmp').is_file()
+    assert (root / '.git/G1-CLEANUP-bundle-receipt.json').is_file()
+    assert len(list(dl.glob('*.bundle'))) == 1
+
+
+def test_g1_cleanup_exact_temp_preserves_other_tasks_and_s1(small_repo):
+    root, dl, base, head = small_repo
+    history = root / '.git/OLD-S1-full-capture.zip'
+    other = root / '.git/ANOTHER-bundle.tmp'
+    history.write_bytes(b's1 forensic retention')
+    other.write_bytes(b'old partial temp')
+    target = bund.create_bundle(root, 'batch/b118-test', base, head, dl, task_id='G1-EXACT')
+    assert Path(target).is_file()
+    assert history.read_bytes() == b's1 forensic retention'
+    assert other.read_bytes() == b'old partial temp'
+    assert not (root / '.git/G1-EXACT-bundle.tmp').exists()
+
+
+def test_g1_target_fsync_fails_closed_before_receipt_or_delete(small_repo, monkeypatch):
+    root, dl, base, head = small_repo
+    original = bund.os.fsync
+    calls = []
+    def fail_first(fd):
+        calls.append(fd)
+        if len(calls) == 1:
+            raise OSError('simulated durable-copy failure')
+        return original(fd)
+    monkeypatch.setattr(bund.os, 'fsync', fail_first)
+    with pytest.raises(bund.BundleFailure, match='BUNDLE_IO_FAILED'):
+        bund.create_bundle(root, 'batch/b118-test', base, head, dl, task_id='G1-FSYNCFAIL')
+    assert (root / '.git/G1-FSYNCFAIL-bundle.tmp').is_file()
+    assert not (root / '.git/G1-FSYNCFAIL-bundle-receipt.json').exists()
+    assert len(calls) == 1
+
+
+@pytest.mark.skipif(os.name != 'nt', reason='requires real Windows kernel handle semantics')
+def test_win_native_b01_interleaving_refuses_history_replacement(small_repo, monkeypatch):
+    root, dl, base, head = small_repo
+    original = bund.file_sha256
+    temp = root / '.git/G1-WIN-RACE-bundle.tmp'
+    old = root / '.git/OLD-S1-evidence.zip'
+    old.write_bytes(b'OLD-S1-CANARY-DO-NOT-DELETE')
+    saved = root / '.git/VALID-BUNDLE-SAVED.bin'
+    count = []
+    outcome = []
+    def attempt_at_last_target_sha(path):
+        digest = original(path)
+        if Path(path).parent == dl:
+            count.append(1)
+            if len(count) == 3:
+                try:
+                    temp.rename(saved)
+                    old.rename(temp)
+                    outcome.append('UNEXPECTED_REPLACE')
+                except OSError:
+                    outcome.append('REPLACE_BLOCKED')
+        return digest
+    monkeypatch.setattr(bund, 'file_sha256', attempt_at_last_target_sha)
+    path = bund.create_bundle(root, 'batch/b118-test', base, head, dl, task_id='G1-WIN-RACE')
+    assert Path(path).is_file() and outcome == ['REPLACE_BLOCKED']
+    assert old.read_bytes() == b'OLD-S1-CANARY-DO-NOT-DELETE'
+    assert not saved.exists() and not temp.exists()
+
+
+@pytest.mark.skipif(os.name != 'nt', reason='requires real Windows kernel handle semantics')
+def test_win_native_locked_handle_blocks_replace_and_deletes_same_object(tmp_path):
+    temp = tmp_path / 'G1-WIN-LOCK-bundle.tmp'
+    old = tmp_path / 'OLD-S1-evidence.zip'
+    temp.write_bytes(b'synthetic-test-only')
+    old.write_bytes(b'preserve-S1')
+    with bund._WindowsProtectedTemp(temp) as lease:
+        assert lease.sha256() == bund.hashlib.sha256(b'synthetic-test-only').hexdigest()
+        with pytest.raises(OSError):
+            old.replace(temp)
+        lease.delete()
+    assert not temp.exists() and old.read_bytes() == b'preserve-S1'
+
+
+@pytest.mark.skipif(os.name != 'nt', reason='requires real Windows kernel handle semantics')
+def test_win_native_hardlink_is_rejected(tmp_path):
+    temp = tmp_path / 'G1-WIN-HARDLINK-bundle.tmp'
+    alias = tmp_path / 'OLD-S1-evidence.zip'
+    temp.write_bytes(b'synthetic-only')
+    os.link(temp, alias)
+    with pytest.raises(bund.BundleFailure, match='TEMP_UNSAFE'):
+        bund._WindowsProtectedTemp(temp)
+    assert alias.read_bytes() == temp.read_bytes()
+
+
+@pytest.mark.skipif(os.name != 'nt', reason='requires real Windows kernel handle semantics')
+def test_win_native_reparse_is_rejected(tmp_path):
+    old = tmp_path / 'OLD-S1-evidence.zip'
+    link = tmp_path / 'G1-WIN-LINK-bundle.tmp'
+    old.write_bytes(b'synthetic-only')
+    _symlink_or_explicit_capability_skip(link, old, directory=False, label='file symlink capability unavailable')
+    with pytest.raises(bund.BundleFailure, match='TEMP_UNSAFE'):
+        bund._WindowsProtectedTemp(link)
+    assert old.read_bytes() == b'synthetic-only'
+
+
+@pytest.mark.skipif(os.name != 'nt', reason='requires real Windows kernel handle semantics')
+def test_win_native_disposition_error_preserves_temp(tmp_path):
+    temp = tmp_path / 'G1-WIN-ERR-bundle.tmp'
+    temp.write_bytes(b'synthetic-only')
+    with bund._WindowsProtectedTemp(temp) as lease:
+        lease.k.SetFileInformationByHandle = lambda *args: 0
+        with pytest.raises(bund.BundleFailure, match='TEMP_CLEANUP_FAILED'):
+            lease.delete()
+    assert temp.read_bytes() == b'synthetic-only'
+
+
+def test_nonwindows_actual_production_cleanup_fails_closed(tmp_path):
+    if os.name == 'nt':
+        pytest.skip('Windows native path tested separately')
+    temp = tmp_path / 'G1-UNSUPPORTED-bundle.tmp'
+    temp.write_bytes(b'synthetic-only')
+    with pytest.raises(bund.BundleFailure, match='TEMP_CLEANUP_PLATFORM_UNSUPPORTED'):
+        bund._WindowsProtectedTemp(temp)
+    assert temp.read_bytes() == b'synthetic-only'

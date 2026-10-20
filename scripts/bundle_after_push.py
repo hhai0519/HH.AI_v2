@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 """B-118: bounded, post-push only, locally constructed ref-whitelist bundle."""
 import hashlib
+import json
 import os
 import re
 import shutil
@@ -126,6 +127,202 @@ def file_sha256(path):
     return digest.digest()
 
 
+def _regular_task_artifact(path):
+    """Reject links, reparse points and multiply-linked files before touching a task artifact."""
+    try:
+        st = path.lstat()
+    except OSError:
+        raise BundleFailure('RECEIPT_IO_FAILED') from None
+    if (not stat.S_ISREG(st.st_mode) or st.st_nlink != 1
+            or getattr(st, 'st_file_attributes', 0) & 0x400):
+        raise BundleFailure('RECEIPT_UNSAFE')
+    return st
+
+
+def _receipt_bytes(path):
+    """A separate read-back, not the in-memory data used to write the receipt."""
+    _regular_task_artifact(path)
+    try:
+        return path.read_bytes()
+    except OSError:
+        raise BundleFailure('RECEIPT_IO_FAILED') from None
+
+
+class _WindowsProtectedTemp:
+    """A single Windows file object is verified and dispositioned under one handle.
+
+    Share READ only: a concurrent writer, rename, replacement or unlink needs
+    WRITE/DELETE sharing and is rejected for the lifetime of this handle.
+    This is deliberately unavailable on POSIX: a path unlink there cannot be
+    made identity-bound by repeating lstat/hash or by advisory flock.
+    """
+
+    def __init__(self, path):
+        if os.name != 'nt':
+            raise BundleFailure('TEMP_CLEANUP_PLATFORM_UNSUPPORTED')
+        import ctypes
+        from ctypes import wintypes
+        self.k = ctypes.WinDLL('kernel32', use_last_error=True)
+        self.c = ctypes
+        self.w = wintypes
+        self.handle = None
+        # Explicit prototypes are essential on 64-bit Windows: HANDLE must not
+        # be truncated to ctypes' default int return value.
+        self.k.CreateFileW.argtypes = (wintypes.LPCWSTR, wintypes.DWORD,
+                                      wintypes.DWORD, ctypes.c_void_p,
+                                      wintypes.DWORD, wintypes.DWORD, wintypes.HANDLE)
+        self.k.CreateFileW.restype = wintypes.HANDLE
+        self.k.CloseHandle.argtypes = (wintypes.HANDLE,)
+        self.k.CloseHandle.restype = wintypes.BOOL
+        self.k.GetFileType.argtypes = (wintypes.HANDLE,)
+        self.k.GetFileType.restype = wintypes.DWORD
+        self.k.SetFilePointerEx.argtypes = (wintypes.HANDLE, ctypes.c_longlong,
+                                             ctypes.c_void_p, wintypes.DWORD)
+        self.k.SetFilePointerEx.restype = wintypes.BOOL
+        self.k.ReadFile.argtypes = (wintypes.HANDLE, ctypes.c_void_p,
+                                    wintypes.DWORD, ctypes.POINTER(wintypes.DWORD), ctypes.c_void_p)
+        self.k.ReadFile.restype = wintypes.BOOL
+        self.k.SetFileInformationByHandle.argtypes = (wintypes.HANDLE, ctypes.c_int,
+                                                       ctypes.c_void_p, wintypes.DWORD)
+        self.k.SetFileInformationByHandle.restype = wintypes.BOOL
+        class ByHandleFileInfo(ctypes.Structure):
+            _fields_ = [('dwFileAttributes', wintypes.DWORD),
+                        ('ftCreationTime', wintypes.FILETIME),
+                        ('ftLastAccessTime', wintypes.FILETIME),
+                        ('ftLastWriteTime', wintypes.FILETIME),
+                        ('dwVolumeSerialNumber', wintypes.DWORD),
+                        ('nFileSizeHigh', wintypes.DWORD),
+                        ('nFileSizeLow', wintypes.DWORD),
+                        ('nNumberOfLinks', wintypes.DWORD),
+                        ('nFileIndexHigh', wintypes.DWORD),
+                        ('nFileIndexLow', wintypes.DWORD)]
+        self.ByHandleFileInfo = ByHandleFileInfo
+        self.k.GetFileInformationByHandle.argtypes = (wintypes.HANDLE, ctypes.POINTER(ByHandleFileInfo))
+        self.k.GetFileInformationByHandle.restype = wintypes.BOOL
+        h = self.k.CreateFileW(str(path), 0x80000000 | 0x00010000,
+                               0x00000001, None, 3, 0x00200000, None)
+        if h in (None, ctypes.c_void_p(-1).value):
+            raise BundleFailure('TEMP_LOCK_FAILED')
+        self.handle = h
+        try:
+            info = ByHandleFileInfo()
+            if not self.k.GetFileInformationByHandle(h, ctypes.byref(info)):
+                raise BundleFailure('TEMP_IDENTITY_FAILED')
+            if (self.k.GetFileType(h) != 1 or info.nNumberOfLinks != 1
+                    or info.dwFileAttributes & (0x10 | 0x400)):
+                raise BundleFailure('TEMP_UNSAFE')
+            self.size = (info.nFileSizeHigh << 32) | info.nFileSizeLow
+            if self.size <= 0:
+                raise BundleFailure('TEMP_UNSAFE')
+        except BaseException:
+            self.close()
+            raise
+
+    def sha256(self):
+        if not self.k.SetFilePointerEx(self.handle, 0, None, 0):
+            raise BundleFailure('TEMP_READ_FAILED')
+        digest = hashlib.sha256()
+        buf = self.c.create_string_buffer(1024 * 1024)
+        done = self.w.DWORD(0)
+        total = 0
+        while True:
+            if not self.k.ReadFile(self.handle, buf, len(buf), self.c.byref(done), None):
+                raise BundleFailure('TEMP_READ_FAILED')
+            if done.value == 0:
+                break
+            digest.update(buf.raw[:done.value])
+            total += done.value
+        if total != self.size:
+            raise BundleFailure('TEMP_SOURCE_DRIFT')
+        return digest.hexdigest()
+
+    def delete(self):
+        # FileDispositionInfo applies to this open file *object*, never a
+        # second path lookup. Failure retains the temp and forbids READY.
+        disposition = self.w.BOOL(1)
+        if not self.k.SetFileInformationByHandle(self.handle, 4,
+                                                   self.c.byref(disposition),
+                                                   self.c.sizeof(disposition)):
+            raise BundleFailure('TEMP_CLEANUP_FAILED')
+
+    def close(self):
+        if self.handle is not None:
+            h, self.handle = self.handle, None
+            if not self.k.CloseHandle(h):
+                raise BundleFailure('TEMP_CLOSE_FAILED')
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, _type, _value, _tb):
+        self.close()
+
+
+def _open_protected_temp(path):
+    return _WindowsProtectedTemp(path)
+
+
+def verified_receipt_and_cleanup(root, task_id, temp, target, branch, base, head, refs):
+    """Only remove the task's own temp after durable exact-byte receipt read-back.
+
+    No other stale temp, prior batch, historical S1 or Downloads file is eligible.
+    Failure at any step leaves the temp in place for a separate maintenance decision;
+    in particular, failure NEVER uses a best-effort fallback deletion.
+    """
+    receipt = Path(root) / '.git' / (task_id + '-bundle-receipt.json')
+    if os.path.lexists(receipt):
+        raise BundleFailure('RECEIPT_EXISTS')
+    # The copy and Git ref contents were validated by the caller. Bind the
+    # receipt to the two exact files and the complete exported ref snapshot.
+    _regular_task_artifact(temp)
+    _regular_task_artifact(target)
+    # Acquire the protecting handle BEFORE receipt creation and retain it
+    # without interruption through both verifications and disposition.
+    # There is no path-based delete fallback on any platform.
+    try:
+        with _open_protected_temp(temp) as protected:
+            try:
+                tmp_size = protected.size
+                out_size = target.stat().st_size
+                tmp_sha = protected.sha256()
+                out_sha = file_sha256(target).hex()
+            except OSError:
+                raise BundleFailure('RECEIPT_IO_FAILED') from None
+            if tmp_size <= 0 or tmp_size != out_size or tmp_sha != out_sha:
+                raise BundleFailure('RECEIPT_SOURCE_DRIFT')
+            record = {
+                'schema_version': 1,
+                'task_id': task_id, 'base_oid': base, 'candidate_oid': head,
+                'branch': branch, 'bundle_name': target.name,
+                'bundle_sha256': out_sha, 'bundle_size': out_size,
+                'temp_name': temp.name, 'refs': dict(sorted(refs.items())),
+                'temporary_cleanup_policy': 'READBACK_EXACT_SAME_TASK_ONLY',
+            }
+            data = (json.dumps(record, ensure_ascii=True, sort_keys=True, separators=(',', ':')) + '\n').encode('ascii')
+            try:
+                with receipt.open('xb') as fh:
+                    fh.write(data)
+                    fh.flush()
+                    os.fsync(fh.fileno())
+            except FileExistsError:
+                raise BundleFailure('RECEIPT_EXISTS') from None
+            except OSError:
+                raise BundleFailure('RECEIPT_IO_FAILED') from None
+            if _receipt_bytes(receipt) != data:
+                raise BundleFailure('RECEIPT_READBACK_MISMATCH')
+            _regular_task_artifact(target)
+            try:
+                if (target.stat().st_size != out_size or protected.sha256() != tmp_sha
+                        or file_sha256(target).hex() != out_sha):
+                    raise BundleFailure('RECEIPT_SOURCE_DRIFT')
+            except OSError:
+                raise BundleFailure('RECEIPT_IO_FAILED') from None
+            protected.delete()
+    except OSError:
+        raise BundleFailure('TEMP_CLEANUP_FAILED') from None
+    return receipt
+
+
 def create_bundle(root, branch, base, head, downloads=None, now=None, task_id=None):
     if not BRANCH.fullmatch(branch) or not OID.fullmatch(base) or not OID.fullmatch(head) or base == head:
         raise BundleFailure('ARGUMENT_INVALID')
@@ -145,9 +342,13 @@ def create_bundle(root, branch, base, head, downloads=None, now=None, task_id=No
     if not task_id or not re.fullmatch(r'[A-Za-z0-9_-]+', task_id):
         raise BundleFailure('TASK_ID_INVALID')
     temp = Path(root) / '.git' / (task_id + '-bundle.tmp')
+    receipt = Path(root) / '.git' / (task_id + '-bundle-receipt.json')
+    if os.path.lexists(receipt):
+        raise BundleFailure('RECEIPT_EXISTS')
     if os.path.lexists(temp):
         raise BundleFailure('TEMP_EXISTS')
-    # Task-local .git output is retained for forensic examination. No delete or overwrite.
+    # The only permitted deletion is this task's newly produced temp AFTER a
+    # durable receipt is written/read back; all failure paths preserve temp.
     try:
         git(root, 'bundle', 'create', str(temp), *refs, timeout=300)
         verify = git(root, 'bundle', 'verify', str(temp), timeout=300)
@@ -164,6 +365,10 @@ def create_bundle(root, branch, base, head, downloads=None, now=None, task_id=No
             raise BundleFailure('BUNDLE_REFS_MISMATCH')
         with temp.open('rb') as src, target.open('xb') as dst:
             shutil.copyfileobj(src, dst, 1024 * 1024)
+            # Persist the sole accepted output before any receipt or unlink.
+            # A read-back from the OS page cache alone cannot prove durability.
+            dst.flush()
+            os.fsync(dst.fileno())
         if not target.is_file() or target.stat().st_size != temp.stat().st_size:
             raise BundleFailure('COPY_MISMATCH')
         # An equal-length corrupted pack can pass list-heads and bundle verify.
@@ -174,6 +379,7 @@ def create_bundle(root, branch, base, head, downloads=None, now=None, task_id=No
         real_heads = git(root, 'bundle', 'list-heads', str(target), timeout=300)
         if real_heads != heads:
             raise BundleFailure('COPY_VERIFY_FAILED')
+        verified_receipt_and_cleanup(root, task_id, temp, target, branch, base, head, refs)
         return str(target)
     except FileExistsError:
         raise BundleFailure('BUNDLE_EXISTS') from None

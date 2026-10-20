@@ -1,5 +1,5 @@
 {
-  "base_head": "6ef783c",
+  "base_head": "0658ff0",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -562,16 +562,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 351,
-      "sha256": "aa4177edbc2ad06d7783277b4ced9b9988a17ab405dd94deae56d2d4e33a618e"
+      "lines": 357,
+      "sha256": "de374484e93dbd031d8b1d7233568e0c33e0b0e1f2c9c9d1608098ea93e575ef"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 329,
-      "sha256": "62e28bc06112c20f75d9a74b46db77cef2273c462a022b2b6ae0fb22c18389eb"
+      "lines": 332,
+      "sha256": "c6483117adf66b17f8bde857fefb2e879356bc8201f85bf37cc5c365d7ea3be5"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -613,8 +613,8 @@
         "## G. 舊 repo 未盤點區塊（2026-09-02 新發現）",
         "## 封存區"
       ],
-      "lines": 410,
-      "sha256": "4c069a203861472b88f45d139a180364d24b373a3db0da378081e3003e21fd3b"
+      "lines": 414,
+      "sha256": "b6123b66839572daff5719c37817400a92fb473d97e807cd4e3cb86d221c9145"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1112,8 +1112,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6415,
-      "sha256": "1751ca1fd3818387cee9c3e48fd8e577099123bb9bc8be09bf551bf20db1c7ae"
+      "lines": 6417,
+      "sha256": "1a6e4c5a3a5f67e0301f6ff7a1fb8e967b4cf15107e46e83d7c36e3ffc4a7fbb"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1200,8 +1200,8 @@
       "headings": [
         "# -*- coding: utf-8 -*-"
       ],
-      "lines": 181,
-      "sha256": "69f9b5f4e26e1f51329723f182f1e458e7b38c823388c6504aa427e80915c0c0"
+      "lines": 387,
+      "sha256": "6e3c306dddad9a720e1e93956fa67a4d47dd36a972e61ae93c3df50864e875c9"
     },
     "scripts/check16_preflight.py": {
       "fences": 0,
@@ -1495,10 +1495,15 @@
       "fences": 0,
       "headings": [
         "# -*- coding: utf-8 -*-",
-        "# B-118 first-activation runner and ref fail-closed regression coverage."
+        "# These general business-flow fixtures simulate the protected handle only on",
+        "# non-Windows CI. They are NOT evidence for Win32 sharing/delete semantics;",
+        "# dedicated win_native_* tests below MUST execute on real Windows.",
+        "# B-118 first-activation runner and ref fail-closed regression coverage.",
+        "# G1 receipt-first exact-task cleanup: these are *failure* tests, not",
+        "# permission for generic Downloads, previous-task or historical S1 deletion."
       ],
-      "lines": 583,
-      "sha256": "f776b85a3c175bfade96c5b4c47c575d4f4d1ec369d1ce5cf4dccea2350545be"
+      "lines": 789,
+      "sha256": "6db475b60c10947fcf9d1a9076cd6595fcc84a7700a31d3125a3c14517964958"
     },
     "scripts/tests/test_channel_gateway_core.py": {
       "fences": 0,
@@ -1976,7 +1981,7 @@
       "sha256": "62c3142973a5c228efacc01ddcbd44a76e5f87e24d7bed15d90e2ce45a494982"
     }
   },
-  "generated_at": "2026-10-19T17:39:13Z",
+  "generated_at": "2026-10-20T11:42:01Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

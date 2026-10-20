@@ -14,7 +14,7 @@
 
 **NEXT_WORK**：B-119
 
-**NEXT_SLICE**：B119-U04-STARTSTATE-R1-261020（B119-G1-S1-FULLCAPTURE-R3-261019 已 same-SHA main=6ef783cc2f42e22f4b7f2234766cd76b37b9e2e8、candidate Run 39248592838／post-main Run 39251214244 attempt1 雙必要 job success；AUD-GPT-261019-B 獨立 Macro ACCEPT。U-04 本批僅新增 production preflight 前起始守衛、驗收負例與前向接任／checkpoint；本批 commit／CI／晉級 PENDING。C9 未觸發為 NOT_NEEDED、仍 OPEN；原 S1、G1／B-119 其他事項與所有刪除限制不變。）
+**NEXT_SLICE**：B119-G1-RECEIPT-R5-261020（B119-U04-STARTSTATE-R1-261020 已 same-SHA main=0658ff0fc99dc3d6a1d4f78677e6341bf0555e6a；candidate Run 39297911668／post-main Run 39348186800 attempt1 verify 與 gateway-windows 雙 job success；AUD-GPT-261019-B Macro ACCEPT／POST-MAIN VERIFIED。G1 receipt/tmp R4 僅允許當批已回讀驗證之單一 .git task-local temp 清除；其他批、歷史 S1、Downloads、C9、U4/Q1 不清理。當前批 commit／CI PENDING，B-119／G1 OPEN。）
 
 > [!IMPORTANT]
 > **環境恢復觸發（Environment Recovery Trigger）**：
@@ -36,7 +36,7 @@ USER 常設決定（2026-10-13）：交付以 ZIP 為主要檔案、TXT 為備�
 | 工作流 | 狀態 | owner | 工作及完成條件（需機械驗證） |
 |---|---|---|---|
 | G11 | CLOSED／POST-MAIN VERIFIED（B1 測試弱點在 G1 修補） | B-119＋B-100 R-M | 唯讀列出所有依賴 HEAD/commit 狀態之檢查、納入 E24；正式 E27 後 POSTCOMMIT 只保留 `execution_record verify`、`check_consistency`（非 as-if）、`fingerprint --verify`、`git diff --check`；bounded 紀錄隨執行即寫；CHECK16 lag／record 不符之提交後反例須 FAIL，precommit 非零必須零 commit，追蹤同類 Executor TIMING。INCIDENT-CI-04「本地 postcommit 必須完整 verify_all」僅准前向修訂；現行完整 Gate 在新批晉級前維持。 |
-| G1 | OPEN／交接卡 R2 與雙 SHA bundle 命名 R1 均已 post-main verified；S1 metadata-only R2 已於 6c12c19f20559735b5fd3e651fd72cb55a23b3dd POST-MAIN VERIFIED；完整 S1 蒐證本批作者未授權，C9、U4/Q1、U-04、tmp/receipt 與刪除限制仍 OPEN | B-119 | Q1-a 交接卡、F-06 自動 bundle、C9 安全回 Base（含本地未推送 S1）、S1_EVIDENCE_FILE 與 SHA256SUMS `SHA + 兩個空白 + 檔名`、U4/Q1、U-04 START_STATE_MISMATCH；使用者不需手動找 Run ID／打包，回 Base pwsh 負例 FAIL。 |
+| G1 | OPEN／U-04 0658ff0 POST-MAIN VERIFIED；receipt/tmp R4 AUTHORING（非已完成），其他殘項保持 OPEN。原狀態：交接卡 R2 與雙 SHA bundle 命名 R1 均已 post-main verified；S1 metadata-only R2 已於 6c12c19f20559735b5fd3e651fd72cb55a23b3dd POST-MAIN VERIFIED；完整 S1 蒐證本批作者未授權，C9、U4/Q1、U-04、tmp/receipt 與刪除限制仍 OPEN | B-119 | Q1-a 交接卡、F-06 自動 bundle、C9 安全回 Base（含本地未推送 S1）、S1_EVIDENCE_FILE 與 SHA256SUMS `SHA + 兩個空白 + 檔名`、U4/Q1、U-04 START_STATE_MISMATCH；使用者不需手動找 Run ID／打包，回 Base pwsh 負例 FAIL。 |
 | G2 | OPEN／retention 前置 | B-116 C1＋B-115 C2 | 歷史只能新增零刪改、§5.1 兩種 ledger 格式 placeholder 原文保留；錨點唯一替換及變更帳；歷史 R1 帳本與 INCIDENT-CI-01 R3 真實負例 FAIL，最近五個已晉級 commit PASS。 |
 | G4（驗證器） | OPEN | B-116 | CHECK14 全簡繁／台灣異體白名單、C7 狀態 lint、N1、自檢含過渡權威；「须」等負例 FAIL；B-54 三處 SOP 規範矛盾小修併 G4 文字部分。 |
 | G7 | OPEN | B-100 R-N＋B-59 | 18 列「可封存」逐字封存、拆分 B-100/B-115 長列、列長 CHECK 與 ARCHIVE-INDEX 雙向可達；原文 hash 不變；超長與不可達負例 FAIL；未經明示授權不得刪除。 |
@@ -45,6 +45,10 @@ USER 常設決定（2026-10-13）：交付以 ZIP 為主要檔案、TXT 為備�
 | G5 | OPEN | B-117＋B-112 | 第一個 tracked mutation 前 Windows 原生完整預演；intake 重貼安全判定；預演失敗需零 mutation，Windows 特有負例 FAIL。 |
 | G10 | OPEN／純研究 | B-28＋B-29 | 產出架構差異清單與逐項 owner／不採用理由，明確零全面改寫、零產品實作。 |
 | G8 | OPEN／最後 | B-120＋B-121 | Retention 封存隔離及第二階段常設刪除政策；須 USER 補供 B-121 條文、逐條滿足既定 R2 §5.4(a)–(j) 並 E27；無條文或授權時不得刪除。 |
+
+**G1 S1 前向紀錄（R4 作者候選／非既成修復）**：`B119-G1-R3-WIN-NATIVE-PROBE-261020` 4 PASS／1 symlink privilege skip；`B119-G1-R3-REPARSE-FALLBACK-PROBE-261020` Junction `mklink` 引號解析 STOP；R2 probe 錯綁 patch 檔名 STOP；R3 probe selected 53/1/2 STOP；R4 probe 亦尚無已簽收之 Windows 原生完成證據。F01 `OSError` 過度轉 skip、F02 full-native 計數容許漏測、N01 STOP 交接不完整，歸 B-119/G1、B-117/G5 既有 owner，需 fail-closed 回歸與原生補證。舊 probe、隔離 TEMP/S1 證據原樣保留；本作者 patch 及所有 R5 驗證提示詞均不構成已執行 production。
+
+**G1 S1 後續及 R6 Windows 補證（R5 作者候選，非 production 已完成）**：R5 probe `B119-G1-R4-REPARSE-NATIVE-PROBE-R5-261020` 在 collect 56 項時 `TEST_INVENTORY_DRIFT` S1 STOP；F03 根因：對整個 pytest node ID 路徑正規化，誤改 `bad\x01control` 參數。R6 `B119-G1-R4-REPARSE-NATIVE-PROBE-R6-261020` 以真正 pytest collect 56 項 SHA 精確核對，Windows 4 passed／1 skipped／51 deselected，selected 53 passed／1 skipped／2 deselected、原生 symlink winerror=1314，exit0、模式 JUNCTION_AND_METADATA_FALLBACK；不得聲稱原生 file 或 directory symlink 兩項 PASS。R6 完整 JSON 原件未直接回讀；N02 selected 階段原始輸出誤標 NATIVE 歸 B-117/G5 後續維護。R1–R5 S1 原始證據／TEMP 保留、零 commit／push；前述狀態均不授權 production 刪除。F01／F02／N01／F03 防回歸及精確 56-ID inventory 屬 B-119/G1、B-117/G5 既有 owner；所有內容僅於本候選正式晉級後才成為 main 的前向紀錄。
 
 **排程**：R3 修復＋登錄 → G11 → G1 → G2＋G4 驗證器 → G7 → G4 文字／B-54 → G3 → G6 → G5 → G10 → G8。前批 post-main 結案原則上與下一實作批狀態作者同批登錄，例外僅 USER 指示或下一批暫無法定稿；此為排程原則、非取消每批必備治理紀錄。G2/C1/C2 必須早於任何新增 retention 寫入／刪除。
 

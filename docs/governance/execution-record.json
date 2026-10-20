@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "B119-U04-STARTSTATE-R1-261020",
-  "base_oid": "6ef783cc2f42e22f4b7f2234766cd76b37b9e2e8",
+  "task_id": "B119-G1-RECEIPT-R5-261020",
+  "base_oid": "0658ff0fc99dc3d6a1d4f78677e6341bf0555e6a",
   "plan": {
     "allowed_paths": [
       "docs/AUDIT-LOG.md",
@@ -11,8 +11,8 @@
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
       "docs/refactor-backlog.md",
-      "scripts/batch_runner.py",
-      "scripts/tests/test_batch_runner.py"
+      "scripts/bundle_after_push.py",
+      "scripts/tests/test_bundle_after_push.py"
     ],
     "required_paths": [
       "docs/AUDIT-LOG.md",
@@ -21,8 +21,8 @@
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
       "docs/refactor-backlog.md",
-      "scripts/batch_runner.py",
-      "scripts/tests/test_batch_runner.py"
+      "scripts/bundle_after_push.py",
+      "scripts/tests/test_bundle_after_push.py"
     ],
     "max_plan_revisions": 3,
     "revision_count": 0,
@@ -36,8 +36,8 @@
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
       "docs/refactor-backlog.md",
-      "scripts/batch_runner.py",
-      "scripts/tests/test_batch_runner.py"
+      "scripts/bundle_after_push.py",
+      "scripts/tests/test_bundle_after_push.py"
     ]
   },
   "evidence": [
