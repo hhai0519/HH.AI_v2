@@ -1568,3 +1568,43 @@ def test_u04_first_preflight_checks_guard_before_new_control(monkeypatch,tmp_pat
     # main uses the repo root derived from its source file; this is a synthetic
     # admission test and does not need a GitHub remote or a working control file.
     assert br.main(['--task-id', TASK, 'preflight'])==1
+
+# B-115/B-119: readonly is a non-executable delivery kind, not a disguised production batch.
+def test_readonly_spec_fixed_probe_only_no_mutations():
+    spec = {'schema_version':1, 'task_id':TASK, 'kind':'readonly', 'base_oid':BASE,
+            'probe_id':'C9_RECOVERY_PREFLIGHT_V1',
+            's1_task_id':'B119-N7N8-POSTMAIN-STATE-R1-261018',
+            's1_base_oid':'fdd59488a0632d0654fc6a1251bba004502cef51',
+            'allowed_mutation_paths':'NONE', 'required_mutation_paths':'NONE',
+            'execution_record_required':False, 'external_artifact_write':'FORBIDDEN'}
+    parsed = br.load_spec(lines_of(prompt({'BATCH_SPEC_JSON': spec})), TASK)
+    assert parsed == spec and br.derive_steps(parsed) == []
+    for key, val in [('probe_id', 'COMMAND'), ('s1_task_id','UNBOUNDED'),
+                     ('s1_base_oid','f'*40)]:
+        altered = dict(spec, **{key:val})
+        assert halt_code(br.load_spec, lines_of(prompt({'BATCH_SPEC_JSON': altered})), TASK) == 'READONLY_PROBE_NOT_REGISTERED'
+    for key, val in [('allowed_mutation_paths','docs/TASKBOARD.md'),
+                     ('required_mutation_paths','docs/TASKBOARD.md'),
+                     ('execution_record_required',True),
+                     ('external_artifact_write','DOWNLOADS_BUNDLE_AFTER_PUSH')]:
+        altered = dict(spec, **{key:val})
+        assert halt_code(br.load_spec, lines_of(prompt({'BATCH_SPEC_JSON': altered})), TASK) == 'READONLY_MUTATION_FORBIDDEN'
+    for key in ('script_sha256','readonly_script','branch','authors','ops','commit_message','e24','bundle_output'):
+        altered = dict(spec, **{key:'unsafe'})
+        assert halt_code(br.load_spec, lines_of(prompt({'BATCH_SPEC_JSON': altered})), TASK) == 'READONLY_SPEC_FIELDS'
+    assert halt_code(br.load_spec, lines_of(prompt({'BATCH_SPEC_JSON': spec,
+        'READONLY_SCRIPT': 'git push origin main'})), TASK) == 'READONLY_ARBITRARY_SCRIPT_FORBIDDEN'
+
+
+def test_readonly_runner_rejects_all_steps_before_control_creation(monkeypatch,tmp_path):
+    class Stub:
+        def __init__(self,*args):
+            self.spec={'kind':'readonly'}
+            self.prompt_bytes=b'bound'
+            self.root=str(tmp_path)
+    monkeypatch.setattr(br,'Batch',Stub)
+    monkeypatch.setattr(br.Path,'cwd',lambda:tmp_path)
+    monkeypatch.setattr(br,'__file__',str(tmp_path/'scripts'/'batch_runner.py'))
+    monkeypatch.setattr(br,'load_control',lambda _: (_ for _ in ()).throw(AssertionError('must not load control')))
+    for step in ('preflight', 'setup', 'apply', 'stage', 'commit', 'push', 'verify', 'promote', 'postmain'):
+        assert br.main(['--task-id', TASK, step]) == 1

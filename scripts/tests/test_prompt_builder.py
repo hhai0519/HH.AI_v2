@@ -74,6 +74,14 @@ def repo(tmp_path):
     (root / "docs" / "EXEC-LOG.md").write_bytes(b"| batch commit | date | result |\n|---|---|---|\n| BOOTSTRAP | 2026-09-01 | ok |\n")
     (root / "docs" / "BOARD.md").write_bytes("# Board\n**NEXT_SLICE**：old\n| X-1 | row |\n| X-2 | row |\n".encode("utf-8"))
     _write_rules(root)
+    # Fixed C9 probe/guard identity files included in readonly must-read closure.
+    for rel in ('scripts/readonly_probe.py', 'scripts/prompt_builder.py',
+                'scripts/batch_runner.py', 'scripts/c9_base_guard.py',
+                'scripts/c9_local_history_guard.py', 'scripts/c9_s1_capture_guard.py',
+                'scripts/s1_evidence.py', 'scripts/s1_full_capture.py'):
+        target = root / rel
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(('# fixture ' + rel + '\n').encode('utf-8'))
     _git(str(root), "init", "-q")
     _git(str(root), "add", ".")
     _git(str(root), "commit", "-q", "-m", "base")
@@ -1264,3 +1272,61 @@ def test_b118_enabled_contract_wrong_but_valid_enum_detected_by_builder(tmp_path
     monkeypatch.setattr(validator, 'parse_execution_contract_block', corrupted_contract)
     with pytest.raises(pb.BuildError, match='BUNDLE_CONTRACT_MISMATCH'):
         mod.auto_production(root, path, tmp_path / 'out')
+
+# The canonical builder/checker recognises READONLY without granting canonical production-runner rights.
+def test_readonly_builder_accepts_only_registered_probe_and_fixed_contract(tmp_path, repo):
+    root, base = repo
+    d = tmp_path / 'ro'; d.mkdir()
+    definition = {'schema_version': 1, 'task_id': TASK, 'kind': 'readonly', 'base_oid': base,
+                  'probe_id': 'C9_RECOVERY_PREFLIGHT_V1',
+                  's1_task_id': 'B119-N7N8-POSTMAIN-STATE-R1-261018',
+                  's1_base_oid': 'fdd59488a0632d0654fc6a1251bba004502cef51'}
+    _w(d / 'def.json', json.dumps(definition))
+    result, authors, authored = pb.build(root, str(d / 'def.json'))
+    assert authors == authored == {}
+    spec = br.load_spec(br.prompt_lines(result.encode()), TASK)
+    assert spec['kind'] == 'readonly' and br.derive_steps(spec) == []
+    assert 'READONLY_SCRIPT' not in result and 'git push origin main' not in result
+    assert 'allowed_mutation_paths: NONE' in result
+    assert 'branch_creation: FORBIDDEN' in result
+    assert 'python scripts/readonly_probe.py --task-id ' + TASK in result
+    assert pb.build(root, str(d / 'def.json'))[0] == result
+    for key, value in [('readonly_script', 'unsafe.ps1'), ('prose_tail', 'unsafe.txt'),
+                       ('command', 'git push origin main'), ('path', '../bad')]:
+        altered = dict(definition, **{key:value})
+        _w(d / 'def.json', json.dumps(altered))
+        assert _code(pb.build, root, str(d / 'def.json')) == 'READONLY_DEFINITION_FIELDS'
+    for key, value in [('probe_id', 'ARBITRARY'), ('s1_task_id', 'OTHER-TASK'),
+                       ('s1_base_oid', 'a'*40)]:
+        altered = dict(definition, **{key:value})
+        _w(d / 'def.json', json.dumps(altered))
+        assert _code(pb.build, root, str(d / 'def.json')) == 'READONLY_PROBE_NOT_REGISTERED'
+    for old, new in [('allowed_mutation_paths: NONE', 'allowed_mutation_paths: docs/TASKBOARD.md'),
+                     ('required_mutation_paths: NONE', 'required_mutation_paths: docs/TASKBOARD.md'),
+                     ('execution_record_required: false', 'execution_record_required: true'),
+                     ('external_artifact_write: FORBIDDEN', 'external_artifact_write: DOWNLOADS_BUNDLE_AFTER_PUSH'),
+                     ('branch_creation: FORBIDDEN', 'branch_creation: GIT_SWITCH_C')]:
+        with pytest.raises(pb.BuildError, match='READONLY_CONTRACT_DRIFT'):
+            pb.validate_readonly_contract(result.replace(old, new), spec)
+
+def test_readonly_checker_rejects_injected_prose_even_with_new_sha(tmp_path, repo):
+    root, base = repo
+    folder=tmp_path/'readonly';folder.mkdir()
+    definition={'schema_version':1,'task_id':TASK,'kind':'readonly','base_oid':base,
+                'probe_id':'C9_RECOVERY_PREFLIGHT_V1',
+                's1_task_id':'B119-N7N8-POSTMAIN-STATE-R1-261018',
+                's1_base_oid':'fdd59488a0632d0654fc6a1251bba004502cef51'}
+    path=folder/'definition.json';_w(path,json.dumps(definition))
+    good=pb.build(root,str(path))[0]
+    canonical=folder/(TASK+'-prompt.txt')
+    canonical.write_bytes(good.encode())
+    def success(*args, **kwargs):
+        return subprocess.CompletedProcess(args, 0, b'', b'')
+    assert pb.check(root,str(canonical),runner=success)==TASK
+    for attack in ('git push origin main', 'Set-Content -LiteralPath probe.txt -Value synthetic',
+                   "& ('g'+'it') push origin main", "Write-Output 'OBSERVED_HOLD'"):
+        changed=good.replace('五、回覆：',attack+'\n五、回覆：')
+        canonical.write_bytes(changed.encode())
+        assert _code(pb.check,root,str(canonical),success)=='READONLY_PROMPT_CANONICAL_DRIFT'
+    canonical.write_bytes(good.replace('四、唯一固定唯讀探針命令','四、固定可信命令').encode())
+    assert _code(pb.check,root,str(canonical),success)=='READONLY_PROMPT_CANONICAL_DRIFT'

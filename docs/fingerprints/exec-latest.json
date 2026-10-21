@@ -1,5 +1,5 @@
 {
-  "base_head": "7947661",
+  "base_head": "b86ff4c",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -562,16 +562,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 361,
-      "sha256": "b4071697dbb6df73c815ff0e04f64cca097ca72ed2c3f497cd2799aab77c4a94"
+      "lines": 363,
+      "sha256": "c244bf807b81e399afc9759c32928929fb3260565046cebbace77290db5cf8db"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 336,
-      "sha256": "04d0194fcbd8bdc69cfa82c523270c5a1f682d60dde583a46078eb550fafa009"
+      "lines": 338,
+      "sha256": "7ad15b67f4260ea6bad72c746030070df8eeaaa506da5a907e046d3ee2e90864"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -613,8 +613,8 @@
         "## G. 舊 repo 未盤點區塊（2026-09-02 新發現）",
         "## 封存區"
       ],
-      "lines": 419,
-      "sha256": "f1c58ab64f6d16ea4e5d8eab29ca1fe37ca057307e2049877de6e018872252bc"
+      "lines": 423,
+      "sha256": "17ae5c57d235f06a61117017ec5fc6a4a18a34fda465bef0e94040a7d0802db5"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1112,8 +1112,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6420,
-      "sha256": "d6e52cbc55e92daab0aaf159fa385266b1c89bcba57ce2a7fab4423b6622e91a"
+      "lines": 6422,
+      "sha256": "e85fdd80dad3f979de68164a413c3df4d1c51502e1d784da9e26ad44d50530d8"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1158,8 +1158,8 @@
         "# Control record and entry point",
         "# ---------------------------------------------------------------------------"
       ],
-      "lines": 1278,
-      "sha256": "35485e7dfd20cce1ac26fa7a84099a5524d96f53713a53dfdf5e21ebc5fdcd4f"
+      "lines": 1304,
+      "sha256": "362c6e71b4e53164e106848333c57c6444d3c91b2cd8382528e2890855ecacde"
     },
     "scripts/batch_sim.py": {
       "fences": 0,
@@ -1345,8 +1345,8 @@
       "headings": [
         "# -*- coding: utf-8 -*-"
       ],
-      "lines": 613,
-      "sha256": "9e98d34bd9a6427ecab821b0ae380a1fb32b3f1f9f456818d1231a3887e0fb85"
+      "lines": 741,
+      "sha256": "fd648eed33152bdd7bba8d9d7fa3b4077c5b1ffeee70b5249c38c9c241fd309a"
     },
     "scripts/prompt_intake.py": {
       "fences": 0,
@@ -1355,6 +1355,14 @@
       ],
       "lines": 184,
       "sha256": "862ea4ecef25e8b2118967c1bd055adb7e06156f50eae30a8ecd30f0cfbc420d"
+    },
+    "scripts/readonly_probe.py": {
+      "fences": 0,
+      "headings": [
+        "# -*- coding: utf-8 -*-"
+      ],
+      "lines": 141,
+      "sha256": "64479d12b3852b8a69193d0ab618e92c05f6740845778210b5d43db88868910f"
     },
     "scripts/s1_evidence.py": {
       "fences": 0,
@@ -1470,10 +1478,11 @@
         "# --- G4 slice 3a: Windows device names and hard links (B-107) -------------------------------",
         "# Hand-written expectations. Official: Microsoft \"Naming Files, Paths, and Namespaces\" (reserved device names,",
         "# also followed by an extension; superscript digits one to three count as digits). Policy: project additions.",
-        "# --- B-119 / U-04: before-control production admission ------------------------"
+        "# --- B-119 / U-04: before-control production admission ------------------------",
+        "# B-115/B-119: readonly is a non-executable delivery kind, not a disguised production batch."
       ],
-      "lines": 1570,
-      "sha256": "e355e78e5a90075b12d0ba07a365fcb916f20b371da2b29800a69507b9d99d50"
+      "lines": 1610,
+      "sha256": "72edc6abe7a5e0d12f12369809119a02fc739fdeb0b8bac351d56e1cdfeced85"
     },
     "scripts/tests/test_batch_sim.py": {
       "fences": 0,
@@ -1756,10 +1765,11 @@
         "# B-115 (9) slice 1: candidate-derived promotion prose must not inherit prior claims.",
         "# B-115 (9) slice 2: repo-owned production prose is derived from one structured definition.",
         "# B-115 S2 R2: independent E27 coverage after identifying base-only E24 replay failure.",
-        "# B-118 first-activation negative tests: new auto-production must explicitly decide output."
+        "# B-118 first-activation negative tests: new auto-production must explicitly decide output.",
+        "# The canonical builder/checker recognises READONLY without granting canonical production-runner rights."
       ],
-      "lines": 1266,
-      "sha256": "a41799c9cde07744277b9521ef93b71427d74ffe4c3d7bd5985828b776405f0c"
+      "lines": 1332,
+      "sha256": "5a461dd43054cfe03ac8a02303c1915d5677b8ec327c42e0ba6d6dc05ac42451"
     },
     "scripts/tests/test_prompt_intake.py": {
       "fences": 0,
@@ -1784,6 +1794,14 @@
       ],
       "lines": 882,
       "sha256": "86f4dbed78c5d265b562b6f3bdc96c39d712921d98d52ab7af26c35ff6ee95f2"
+    },
+    "scripts/tests/test_readonly_probe.py": {
+      "fences": 0,
+      "headings": [
+        "# -*- coding: utf-8 -*-"
+      ],
+      "lines": 148,
+      "sha256": "cdec3398c33138ce08fe794429ad4668dcb3c8acaa654141cee625e6053e94f1"
     },
     "scripts/tests/test_rule_loadability.py": {
       "fences": 0,
@@ -2002,8 +2020,8 @@
         "# (root AGENTS.md excluded) must be listed in the prompt's single \"動手前必讀\" section, as the leading path",
         "# list of a numbered item (\"4. runtime/channel-gateway/AGENTS.md（說明）\")."
       ],
-      "lines": 813,
-      "sha256": "9595c0b93c6389e25e7069de8977479d27008e2008e972d9401dd69fa9f80faf"
+      "lines": 818,
+      "sha256": "d7eea9ed8a112eee32a0ff2c533dc2d7cd20f4f7b6fa65ebc606a9cf6240de96"
     },
     "scripts/validate_skills.py": {
       "fences": 0,
@@ -2029,7 +2047,7 @@
       "sha256": "62c3142973a5c228efacc01ddcbd44a76e5f87e24d7bed15d90e2ce45a494982"
     }
   },
-  "generated_at": "2026-10-21T03:02:40Z",
+  "generated_at": "2026-10-21T13:58:19Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

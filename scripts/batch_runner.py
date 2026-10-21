@@ -352,6 +352,25 @@ def load_spec(lines, task_id):
     _require(spec.get('task_id') == task_id and TASK_RE.match(task_id), 'SPEC_TASK_MISMATCH')
     _require(isinstance(spec.get('base_oid'), str) and OID_RE.match(spec['base_oid']), 'SPEC_BASE_INVALID')
     kind = spec.get('kind')
+    if kind == 'readonly':
+        # Declarative fixed probe only. No free-form shell or scripts.
+        _require(set(spec) == {'schema_version', 'task_id', 'kind', 'base_oid',
+                               'probe_id', 's1_task_id', 's1_base_oid',
+                               'allowed_mutation_paths', 'required_mutation_paths',
+                               'execution_record_required', 'external_artifact_write'},
+                 'READONLY_SPEC_FIELDS')
+        _require(spec['allowed_mutation_paths'] == 'NONE'
+                 and spec['required_mutation_paths'] == 'NONE'
+                 and spec['external_artifact_write'] == 'FORBIDDEN'
+                 and spec['execution_record_required'] is False, 'READONLY_MUTATION_FORBIDDEN')
+        _require(spec['probe_id'] == 'C9_RECOVERY_PREFLIGHT_V1'
+                 and spec['s1_task_id'] == 'B119-N7N8-POSTMAIN-STATE-R1-261018'
+                 and spec['s1_base_oid'] == 'fdd59488a0632d0654fc6a1251bba004502cef51',
+                 'READONLY_PROBE_NOT_REGISTERED')
+        _require(not any('<<<BEGIN READONLY_SCRIPT>>>' in x or
+                         '<<<BEGIN READONLY_COMMAND>>>' in x for x in lines),
+                 'READONLY_ARBITRARY_SCRIPT_FORBIDDEN')
+        return spec
     if kind == 'promotion':
         _require(isinstance(spec.get('candidate_oid'), str) and OID_RE.match(spec['candidate_oid']), 'SPEC_CANDIDATE_INVALID')
         _require(spec['candidate_oid'] != spec['base_oid'], 'SPEC_CANDIDATE_INVALID')
@@ -435,6 +454,11 @@ def derive_must_read(root, spec):
     if not rules <= mapped:
         raise Halt('MUST_READ_RULE_UNMAPPED')
     paths = list(MUST_READ_KERNEL)
+    if spec['kind'] == 'readonly':
+        paths += ['scripts/readonly_probe.py', 'scripts/prompt_builder.py',
+                  'scripts/batch_runner.py', 'scripts/c9_base_guard.py',
+                  'scripts/c9_local_history_guard.py', 'scripts/c9_s1_capture_guard.py',
+                  'scripts/s1_evidence.py', 'scripts/s1_full_capture.py']
     if spec['kind'] == 'production':
         allowed = allowed_paths(spec)
         paths += list(MUST_READ_PRODUCTION)
@@ -505,6 +529,8 @@ def check_must_read_worktree(root, closure):
 
 
 def derive_steps(spec):
+    if spec['kind'] == 'readonly':
+        return []  # No runner steps, no control artifact: explicit fail-closed non-executable kind.
     if spec['kind'] == 'promotion':
         return list(PROMOTION_STEPS)
     steps = list(PRODUCTION_STEPS)

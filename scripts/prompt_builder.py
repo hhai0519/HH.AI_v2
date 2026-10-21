@@ -15,7 +15,7 @@ Usage:
   python scripts/prompt_builder.py startup --prompt <file> --download-dir <dir> --workspace <dir>
 
 Definition (all paths relative to the definition file):
-  task_id, kind ("production" | "promotion"), base_oid, prose_head, prose_tail,
+  task_id, kind ("production" | "promotion" | "readonly"), base_oid, (prose_head and prose_tail for production/promotion),
   substitutions {TOKEN: file}           optional; each TOKEN must occur in the prose exactly once
   production: branch, commit_message, e24 (bool), runner_update (bool, optional), focused (object|null),
     start (optional) {mode: "adopt", start_branch, adopt_hashes {repo_path: sha256}} resumes from the verified
@@ -241,6 +241,56 @@ def start_spec(start, author_paths):
     return {'mode': 'adopt', 'start_branch': start['start_branch'], 'adopt_hashes': dict(sorted(adopt.items()))}
 
 
+def readonly_fixed_prose(task, base):
+    """Only trusted hard-coded text; no externally provided prose."""
+    # Trusted fixed template. No free-format text from definition is used.
+    head = (f'{task} — canonical READ_ONLY fixed C9 probe (NO MUTATIONS)\n\n'
+            '你是 Antigravity IDE Agent，僅在授權 Windows 工作區執行有界唯讀取證。'
+            '禁止恢復、刪除、切換分支、憑證讀取、任意命令／路徑或其他 TASK。\n\n'
+            '一、任務與安全邊界\n'
+            f'TASK_ID={task}；現在 Base={base}；固定探針=C9_RECOVERY_PREFLIGHT_V1；'
+            '歷史 S1 task=B119-N7N8-POSTMAIN-STATE-R1-261018，'
+            '原始 Base=fdd59488a0632d0654fc6a1251bba004502cef51。\n'
+            '退出碼 1 含 SNAPSHOT_VERIFIED_ONLY 和 HOLD，必須記錄原始結構化 status/reason/authorization；'
+            '無論哪一種，都不是恢復許可。未知或矛盾結果 S1 STOP，絕不重試。\n\n'
+            '二、唯一受核准工作區\n'
+            'C:\\Users\\HH.AI_260806\\Desktop\\HH.AI_v2；'
+            '請先確認 IDE 原生作用中工作區一致。\n\n'
+            '三、動手前必讀（IDE 原生工具逐檔讀至最後一行）\n'
+            '{MUST_READ}\n\n'
+            '四、唯一固定唯讀探針命令\n'
+            f'python scripts/readonly_probe.py --task-id {task} '
+            f'--prompt-file .git/{task}-prompt.txt\n'
+            '只執行一次，必須等進程退出；保留 C9_READONLY_JSON 原始單行、實際 exit code。'
+            '不准人工拼接其他命令，不准修改任何檔案。\n\n'
+            '五、回覆：TASK_ID、固定原始 JSON、exit code、是否 S1 HOLD；'
+            '最後一行為「以上是 Antigravity IDE Agent 的回覆。」\n\n'
+            '六、機械規格（builder 固定產生）\n')
+    tail = (f'\n七、固定法定契約（READ_ONLY，no mutation）\n'
+            'BEGIN_HHAI_PROMPT_MANIFEST\n'
+            'schema_version: 1\nbatch_mode: GOAL_SPEC\n'
+            f'base_oid: {base}\n'
+            'finding_disposition: NONE\nbacklog_disposition: NO_CHANGE\n'
+            'taskboard_disposition: NO_CHANGE\naudit_log_disposition: NO_CHANGE\n'
+            'rules_reread_required: true\nfixed_signature_required: true\n'
+            'destructive_git_allowed: false\nEND_HHAI_PROMPT_MANIFEST\n\n'
+            'BEGIN_HHAI_EXECUTION_CONTRACT\ncontract_version: 2\n'
+            f'task_id: {task}\nbase_oid: {base}\n'
+            'main_advancement: FORBIDDEN\nauthorized_main_sha: NONE\n'
+            'remote_ref_deletion: FORBIDDEN\nauthorized_delete_refs: NONE\n'
+            'local_destructive_git: FORBIDDEN\ncredential_access: FORBIDDEN\n'
+            'environment_enumeration: FORBIDDEN\ncross_session_access: FORBIDDEN\n'
+            'browser_github_mutation: FORBIDDEN\n'
+            'raw_actions_log_access: EXTERNAL_MACRO_ONLY\nbranch_creation: FORBIDDEN\n'
+            'hook_bypass: FORBIDDEN\ngoal_pressure_policy: SAFETY_BOUNDARY_WINS\n'
+            'ide_ephemeral_guards_required: false\n'
+            'allowed_mutation_paths: NONE\nrequired_mutation_paths: NONE\n'
+            'max_plan_revisions: 3\nexecution_record_required: false\n'
+            'external_artifact_write: FORBIDDEN\n'
+            'END_HHAI_EXECUTION_CONTRACT\n')
+    return head, tail
+
+
 def build(repo, definition_path):
     """Return (prompt_text, authors {path: sha256}, authored {path: text})."""
     base_dir = Path(definition_path).resolve().parent
@@ -252,9 +302,10 @@ def build(repo, definition_path):
     task, kind, base = d.get('task_id'), d.get('kind'), d.get('base_oid')
     _require(isinstance(task, str) and batch_runner.TASK_RE.match(task), 'TASK_ID_INVALID')
     _require(isinstance(base, str) and batch_runner.OID_RE.match(base), 'BASE_OID_INVALID')
-    _require(kind in ('production', 'promotion'), 'KIND_INVALID')
-    branch = d['branch'] if kind == 'production' else d['candidate_branch']
-    require_classifiable_branch(branch)
+    _require(kind in ('production', 'promotion', 'readonly'), 'KIND_INVALID')
+    branch = d['branch'] if kind == 'production' else (d['candidate_branch'] if kind == 'promotion' else 'NONE')
+    if kind != 'readonly':
+        require_classifiable_branch(branch)
     values = {'{TASK_ID}': task, '{BASE_OID}': base, '{BASE7}': base[:7], '{BRANCH}': str(branch)}
 
     authors, authored, ops, extra_blocks = {}, {}, [], []
@@ -331,6 +382,24 @@ def build(repo, definition_path):
                         '\n', block('E24_EVIDENCE_JSON', json.dumps(ev, ensure_ascii=False, indent=1)), '\n']
         for name, body in extra_blocks:
             machine += [block(name, body), '\n']
+    elif kind == 'readonly':
+        # R4: No caller-provided PowerShell, command, script, prose or path.
+        # The single registered C9 probe generates both the instruction and the
+        # machine spec. Explicit parameters are exact and checked on execution.
+        _require(set(d) == {'schema_version', 'task_id', 'kind', 'base_oid',
+                            'probe_id', 's1_task_id', 's1_base_oid'},
+                 'READONLY_DEFINITION_FIELDS')
+        _require(d['probe_id'] == 'C9_RECOVERY_PREFLIGHT_V1'
+                 and d['s1_task_id'] == 'B119-N7N8-POSTMAIN-STATE-R1-261018'
+                 and d['s1_base_oid'] == 'fdd59488a0632d0654fc6a1251bba004502cef51',
+                 'READONLY_PROBE_NOT_REGISTERED')
+        values['{ALLOWED}'] = 'NONE'
+        spec = {'schema_version': 1, 'task_id': task, 'kind': 'readonly', 'base_oid': base,
+                'probe_id': d['probe_id'], 's1_task_id': d['s1_task_id'],
+                's1_base_oid': d['s1_base_oid'],
+                'allowed_mutation_paths': 'NONE', 'required_mutation_paths': 'NONE',
+                'execution_record_required': False, 'external_artifact_write': 'FORBIDDEN'}
+        machine = [block('BATCH_SPEC_JSON', json.dumps(spec, ensure_ascii=False, indent=1)), '\n']
     elif kind == 'promotion':
         values['{ALLOWED}'] = 'NONE'
         spec = {'schema_version': 1, 'task_id': task, 'kind': 'promotion', 'base_oid': base,
@@ -347,8 +416,11 @@ def build(repo, definition_path):
     machine += [block('MUST_READ_JSON', json.dumps(must_read, ensure_ascii=False, indent=1)), '\n']
     must_read_lines = batch_runner.must_read_lines(task, must_read)
 
-    head = expand(read_text(base_dir / d['prose_head'], 'PROSE'), values).rstrip('\n') + '\n'
-    tail = expand(read_text(base_dir / d['prose_tail'], 'PROSE'), values)
+    if kind == 'readonly':
+        head, tail = readonly_fixed_prose(task, base)
+    else:
+        head = expand(read_text(base_dir / d['prose_head'], 'PROSE'), values).rstrip('\n') + '\n'
+        tail = expand(read_text(base_dir / d['prose_tail'], 'PROSE'), values)
     for token, rel in sorted((d.get('substitutions') or {}).items()):
         _require(token.startswith('{') and token.endswith('}') and token not in PLACEHOLDERS, 'SUBSTITUTION_TOKEN_INVALID')
         _require((head + tail).count(token) == 1, 'SUBSTITUTION_TOKEN_COUNT')
@@ -362,7 +434,7 @@ def build(repo, definition_path):
     _require('\r' not in text, 'PROMPT_CRLF')
     lines = batch_runner.prompt_lines(text.encode('utf-8'))
     names = list(RESERVED_BLOCKS[:2]) + (list(RESERVED_BLOCKS[2:4]) if spec.get('e24') else []) + [n for n, _ in extra_blocks]
-    for name in (names if kind == 'production' else ['BATCH_SPEC_JSON']) + ['MUST_READ_JSON']:
+    for name in (names if kind == 'production' else (['BATCH_SPEC_JSON'] if kind == 'readonly' else ['BATCH_SPEC_JSON'])) + ['MUST_READ_JSON']:
         _require(lines.count('<<<BEGIN ' + name + '>>>') == 1 and lines.count('<<<END ' + name + '>>>') == 1,
                  'BLOCK_COUNT_INVALID')
     if kind == 'production' and ('BEGIN_HHAI_EXECUTION_CONTRACT' in text or spec.get('bundle_output')):
@@ -379,6 +451,9 @@ def build(repo, definition_path):
         batch_runner.check_must_read(repo, spec_loaded, lines)
     except batch_runner.Halt as h:
         raise BuildError('RUNNER_' + str(h))
+    if kind == 'readonly':
+        validate_readonly_contract(text, spec_loaded)
+        _require(text == canonical_readonly_prompt(repo, spec_loaded), 'READONLY_PROMPT_CANONICAL_DRIFT')
     if kind == 'production':
         # Reference reconstruction: the runner's own build_authors on the assembled prompt must give exactly
         # the authored texts and hashes (catches anything the per-op replay cannot see).
@@ -388,6 +463,54 @@ def build(repo, definition_path):
             raise BuildError('RUNNER_REBUILD_FAILED_' + str(h))
         _require(rebuilt == authored, 'RUNNER_REBUILD_MISMATCH')   # author hashes are derived from authored
     return text, {p: e['sha256'] for p, e in sorted(authors.items())}, authored
+
+
+def canonical_readonly_prompt(repo, spec):
+    """Re-render the *entire* prompt; reject injected executable prose, not only blocks."""
+    task, base = spec['task_id'], spec['base_oid']
+    closure = batch_runner.derive_must_read(repo, spec)
+    head, tail = readonly_fixed_prose(task, base)
+    head = head.replace(MUST_READ_TOKEN, '\n'.join(batch_runner.must_read_lines(task, closure)))
+    return (head + '\n' +
+            block('BATCH_SPEC_JSON', json.dumps(spec, ensure_ascii=False, indent=1)) + '\n' +
+            block('MUST_READ_JSON', json.dumps(closure, ensure_ascii=False, indent=1)) + '\n' +
+            tail)
+
+
+def validate_readonly_contract(prompt_text, spec):
+    """Reject prose/machine privilege contradictions, including re-built ones."""
+    from validate_prompt_manifest import (parse_execution_contract_block,
+                                          validate_execution_contract,
+                                          validate_prompt_manifest)
+    ok, _, manifest = validate_prompt_manifest(prompt_text)
+    _require(ok, 'READONLY_MANIFEST_INVALID')
+    _require(manifest['base_oid'] == spec['base_oid'] and
+             manifest['backlog_disposition'] == 'NO_CHANGE' and
+             manifest['taskboard_disposition'] == 'NO_CHANGE' and
+             manifest['audit_log_disposition'] == 'NO_CHANGE',
+             'READONLY_MANIFEST_DRIFT')
+    ok, _, contract = parse_execution_contract_block(prompt_text)
+    _require(ok, 'READONLY_CONTRACT_INVALID')
+    # Exact expected allow/deny terms: not only the four B02 fields.
+    expected = {'contract_version': '2', 'task_id': spec['task_id'],
+                'base_oid': spec['base_oid'], 'main_advancement': 'FORBIDDEN',
+                'authorized_main_sha': 'NONE', 'remote_ref_deletion': 'FORBIDDEN',
+                'authorized_delete_refs': 'NONE', 'local_destructive_git': 'FORBIDDEN',
+                'credential_access': 'FORBIDDEN', 'environment_enumeration': 'FORBIDDEN',
+                'cross_session_access': 'FORBIDDEN', 'browser_github_mutation': 'FORBIDDEN',
+                'raw_actions_log_access': 'EXTERNAL_MACRO_ONLY',
+                'branch_creation': 'FORBIDDEN', 'hook_bypass': 'FORBIDDEN',
+                'goal_pressure_policy': 'SAFETY_BOUNDARY_WINS',
+                'ide_ephemeral_guards_required': 'false',
+                'allowed_mutation_paths': 'NONE', 'required_mutation_paths': 'NONE',
+                'max_plan_revisions': '3', 'execution_record_required': 'false',
+                'external_artifact_write': 'FORBIDDEN'}
+    _require(contract == expected and spec['allowed_mutation_paths'] == 'NONE' and
+             spec['required_mutation_paths'] == 'NONE' and
+             spec['external_artifact_write'] == 'FORBIDDEN' and
+             spec['execution_record_required'] is False, 'READONLY_CONTRACT_DRIFT')
+    # Rebuild canonical prompt from the sole declaration? Must be done in caller,
+    # while the spec/contract cross-check protects the runtime path.
 
 
 def write_outputs(out_dir, task, text, authors, authored):
@@ -439,7 +562,8 @@ def startup_lines(prompt_path, download_dir, workspace):
         spec = batch_runner.load_spec(batch_runner.prompt_lines(data), task)
     except batch_runner.Halt as h:
         raise BuildError('STARTUP_' + str(h))
-    require_classifiable_branch(spec['branch'] if spec['kind'] == 'production' else spec['candidate_branch'])
+    if spec['kind'] != 'readonly':
+        require_classifiable_branch(spec['branch'] if spec['kind'] == 'production' else spec['candidate_branch'])
     sha = hashlib.sha256(data).hexdigest()
     source = windows_dir(download_dir, 'DOWNLOAD_DIR_INVALID') + '\\' + Path(prompt_path).name
     workspace = windows_dir(workspace, 'WORKSPACE_INVALID')
@@ -495,7 +619,8 @@ def check(repo, prompt_path, runner=subprocess.run):
     try:
         lines = batch_runner.prompt_lines(data)
         spec = batch_runner.load_spec(lines, task)
-        require_classifiable_branch(spec['branch'] if spec['kind'] == 'production' else spec['candidate_branch'])
+        if spec['kind'] != 'readonly':
+            require_classifiable_branch(spec['branch'] if spec['kind'] == 'production' else spec['candidate_branch'])
         batch_runner.check_must_read(repo, spec, lines)
         if spec['kind'] == 'production':
             authored = batch_runner.build_authors(repo, spec, lines)
@@ -505,6 +630,9 @@ def check(repo, prompt_path, runner=subprocess.run):
                 raise BuildError(str(exc)) from None
     except batch_runner.Halt as h:
         raise BuildError('CHECK_' + str(h))
+    if spec['kind'] == 'readonly':
+        validate_readonly_contract(data.decode('utf-8'), spec)
+        _require(data == canonical_readonly_prompt(repo, spec).encode('utf-8'), 'READONLY_PROMPT_CANONICAL_DRIFT')
     target = Path(repo) / '.git' / (task + '-prompt.txt')
     owned, fd = None, None
     try:

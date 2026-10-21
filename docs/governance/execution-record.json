@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "B119-G1-C9-E27-FORWARD-SYNC-R1-261021",
-  "base_oid": "79476611ce9e813b63d1ee3c29620afe20bc2467",
+  "task_id": "B115-B119-READONLY-CONTRACT-R8-261021",
+  "base_oid": "b86ff4c5a651ffd5938dc5d65ea5f3c198b3d9d1",
   "plan": {
     "allowed_paths": [
       "docs/AUDIT-LOG.md",
@@ -10,7 +10,14 @@
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md"
+      "docs/refactor-backlog.md",
+      "scripts/batch_runner.py",
+      "scripts/prompt_builder.py",
+      "scripts/readonly_probe.py",
+      "scripts/tests/test_batch_runner.py",
+      "scripts/tests/test_prompt_builder.py",
+      "scripts/tests/test_readonly_probe.py",
+      "scripts/validate_prompt_manifest.py"
     ],
     "required_paths": [
       "docs/AUDIT-LOG.md",
@@ -18,7 +25,14 @@
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md"
+      "docs/refactor-backlog.md",
+      "scripts/batch_runner.py",
+      "scripts/prompt_builder.py",
+      "scripts/readonly_probe.py",
+      "scripts/tests/test_batch_runner.py",
+      "scripts/tests/test_prompt_builder.py",
+      "scripts/tests/test_readonly_probe.py",
+      "scripts/validate_prompt_manifest.py"
     ],
     "max_plan_revisions": 3,
     "revision_count": 0,
@@ -31,7 +45,14 @@
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md"
+      "docs/refactor-backlog.md",
+      "scripts/batch_runner.py",
+      "scripts/prompt_builder.py",
+      "scripts/readonly_probe.py",
+      "scripts/tests/test_batch_runner.py",
+      "scripts/tests/test_prompt_builder.py",
+      "scripts/tests/test_readonly_probe.py",
+      "scripts/validate_prompt_manifest.py"
     ]
   },
   "evidence": [

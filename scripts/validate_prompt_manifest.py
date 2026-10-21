@@ -537,8 +537,13 @@ def validate_execution_contract(
     if contract["raw_actions_log_access"] != "EXTERNAL_MACRO_ONLY":
         return False, f"raw_actions_log_access must be 'EXTERNAL_MACRO_ONLY' (got {contract['raw_actions_log_access']!r})", {}
 
-    if contract["branch_creation"] != "GIT_SWITCH_C":
-        return False, f"branch_creation must be 'GIT_SWITCH_C' (got {contract['branch_creation']!r})", {}
+    if contract["branch_creation"] == "FORBIDDEN":
+        # READ_ONLY is a zero-branch, zero-mutation kind. Full kind, spec and
+        # contract identity are checked again by canonical builder/dispatcher.
+        if prompt_text is None or '"kind": "readonly"' not in prompt_text:
+            return False, 'branch_creation FORBIDDEN only for readonly kind', {}
+    elif contract["branch_creation"] != "GIT_SWITCH_C":
+        return False, f"branch_creation unsupported: {contract['branch_creation']!r}", {}
 
     if contract["hook_bypass"] != "FORBIDDEN":
         return False, f"hook_bypass must be 'FORBIDDEN' (got {contract['hook_bypass']!r})", {}
