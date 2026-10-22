@@ -1,5 +1,5 @@
 {
-  "base_head": "e9a9e02",
+  "base_head": "cdde0c6",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -562,16 +562,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 364,
-      "sha256": "ba4a02dc44da364d171346b435c6bde2880b3c4d84a745286918d62914bfe13e"
+      "lines": 365,
+      "sha256": "fe1adf5dc32c8b39a2a5c960df14491a8e173bcdc16af58ae596690ec56a2d6e"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 339,
-      "sha256": "b8b2a04cff3a8d61d1d0cec8f691a805127a2ce086f96a3536ae6429bf09779d"
+      "lines": 340,
+      "sha256": "bf9ef88519c555601ec7a8e1202f6200aacb4d7ab4008f86616cf83fef755eac"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -613,8 +613,8 @@
         "## G. 舊 repo 未盤點區塊（2026-09-02 新發現）",
         "## 封存區"
       ],
-      "lines": 426,
-      "sha256": "257d013b6363ad8dd7fb55cc9d9fa033d5c7b30a32510af6ccf9dea56844eabe"
+      "lines": 428,
+      "sha256": "d908449404e2bcce651a0e39b774ffcbc220384a0c03d865d3821b255f1e4cf7"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1112,8 +1112,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6423,
-      "sha256": "0352971a65aa155f6ae2499ec67787cb0299bdbb523c51314f229a15a1b6b45b"
+      "lines": 6424,
+      "sha256": "c19b680dd8213f995c03e9e869bdc3ab0667d7271ad575c5ec3de27635318676"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1305,8 +1305,8 @@
         "# -*- coding: utf-8 -*-",
         "# Import shared execution contract parser"
       ],
-      "lines": 961,
-      "sha256": "3f4cdec559695e1cb57980c0d142dd598b09b0305337ba64d3f56540bffbadf0"
+      "lines": 972,
+      "sha256": "62a63df3ce47414a74607005c1f550ddd2993708c3326634fbf872443b7ea7f7"
     },
     "scripts/impact_scan.py": {
       "fences": 0,
@@ -1725,10 +1725,14 @@
         "# ---------------------------------------------------------------------------",
         "# ---------------------------------------------------------------------------",
         "# Integration Deterministic Controls (Tests R & S)",
+        "# ---------------------------------------------------------------------------",
+        "# ---------------------------------------------------------------------------",
+        "# B-119 GOV012: readonly kind and GOV-M1-012 (in-memory only; no files are written, so no",
+        "# platform newline translation can change the inputs)",
         "# ---------------------------------------------------------------------------"
       ],
-      "lines": 1528,
-      "sha256": "afa5d92fee796174e12b4bdcc234ee085cb100336f9b485e155337c5b4c9e202"
+      "lines": 1630,
+      "sha256": "ecb1713ae21d11fe2f1024078cdef65ee10eba8a812ed099f5b5913cd91eeeef"
     },
     "scripts/tests/test_impact_scan.py": {
       "fences": 0,
@@ -2020,8 +2024,8 @@
         "# (root AGENTS.md excluded) must be listed in the prompt's single \"動手前必讀\" section, as the leading path",
         "# list of a numbered item (\"4. runtime/channel-gateway/AGENTS.md（說明）\")."
       ],
-      "lines": 818,
-      "sha256": "d7eea9ed8a112eee32a0ff2c533dc2d7cd20f4f7b6fa65ebc606a9cf6240de96"
+      "lines": 857,
+      "sha256": "3d35490840cfaa9abbeaa3cf7d574dbee1c45ea0d8a824ef027d6b528c0a10bd"
     },
     "scripts/validate_skills.py": {
       "fences": 0,
@@ -2047,7 +2051,7 @@
       "sha256": "62c3142973a5c228efacc01ddcbd44a76e5f87e24d7bed15d90e2ce45a494982"
     }
   },
-  "generated_at": "2026-10-22T12:29:33Z",
+  "generated_at": "2026-10-22T20:19:13Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

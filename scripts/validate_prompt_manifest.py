@@ -16,6 +16,7 @@ import os
 import re
 import stat
 import argparse
+import json
 
 REQUIRED_KEYS = [
     "schema_version",
@@ -398,6 +399,44 @@ def parse_execution_contract_block(prompt_text: str) -> tuple[bool, str, dict]:
     return True, "", contract
 
 
+BATCH_SPEC_BEGIN_LINE = "<<<BEGIN BATCH_SPEC_JSON>>>"
+BATCH_SPEC_END_LINE = "<<<END BATCH_SPEC_JSON>>>"
+
+
+def readonly_kind_declared(prompt_text) -> bool:
+    """True only when the prompt carries exactly one line-delimited BATCH_SPEC_JSON block whose
+    strictly parsed JSON object declares kind == 'readonly'.
+
+    B-119 GOV012: replaces a substring test, so prose that merely mentions the readonly kind, a second
+    spec block, malformed JSON, non-standard constants (NaN, Infinity) or duplicate keys can never unlock
+    branch_creation FORBIDDEN.
+    """
+    if not isinstance(prompt_text, str) or "\r" in prompt_text:
+        return False
+    lines = prompt_text.split("\n")
+    if lines.count(BATCH_SPEC_BEGIN_LINE) != 1 or lines.count(BATCH_SPEC_END_LINE) != 1:
+        return False
+    start, end = lines.index(BATCH_SPEC_BEGIN_LINE), lines.index(BATCH_SPEC_END_LINE)
+    if end <= start + 1:
+        return False
+
+    def _reject_duplicate_keys(pairs):
+        keys = [k for k, _ in pairs]
+        if len(keys) != len(set(keys)):
+            raise ValueError("duplicate key")
+        return dict(pairs)
+
+    def _reject_constant(name):
+        raise ValueError("non-standard JSON constant " + name)
+
+    try:
+        spec = json.loads("\n".join(lines[start + 1:end]), object_pairs_hook=_reject_duplicate_keys,
+                          parse_constant=_reject_constant)
+    except ValueError:
+        return False
+    return isinstance(spec, dict) and spec.get("kind") == "readonly"
+
+
 def validate_execution_contract(
     prompt_text_or_contract: str | dict,
     manifest: dict | None = None,
@@ -540,7 +579,7 @@ def validate_execution_contract(
     if contract["branch_creation"] == "FORBIDDEN":
         # READ_ONLY is a zero-branch, zero-mutation kind. Full kind, spec and
         # contract identity are checked again by canonical builder/dispatcher.
-        if prompt_text is None or '"kind": "readonly"' not in prompt_text:
+        if prompt_text is None or not readonly_kind_declared(prompt_text):
             return False, 'branch_creation FORBIDDEN only for readonly kind', {}
     elif contract["branch_creation"] != "GIT_SWITCH_C":
         return False, f"branch_creation unsupported: {contract['branch_creation']!r}", {}

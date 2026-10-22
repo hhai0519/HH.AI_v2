@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "B119-AUD-TAKEOVER-STATE-R1-261022",
-  "base_oid": "e9a9e029cea3b0fc90fa7c925cad26a95fcf4cdc",
+  "task_id": "B119-G1-C9-GOV012-REPAIR-R4-261023",
+  "base_oid": "cdde0c663cb9b801262e2c8fe904419ac011422c",
   "plan": {
     "allowed_paths": [
       "docs/AUDIT-LOG.md",
@@ -10,7 +10,10 @@
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md"
+      "docs/refactor-backlog.md",
+      "scripts/governance_preflight.py",
+      "scripts/tests/test_governance_preflight.py",
+      "scripts/validate_prompt_manifest.py"
     ],
     "required_paths": [
       "docs/AUDIT-LOG.md",
@@ -18,7 +21,10 @@
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md"
+      "docs/refactor-backlog.md",
+      "scripts/governance_preflight.py",
+      "scripts/tests/test_governance_preflight.py",
+      "scripts/validate_prompt_manifest.py"
     ],
     "max_plan_revisions": 3,
     "revision_count": 0,
@@ -31,7 +37,10 @@
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md"
+      "docs/refactor-backlog.md",
+      "scripts/governance_preflight.py",
+      "scripts/tests/test_governance_preflight.py",
+      "scripts/validate_prompt_manifest.py"
     ]
   },
   "evidence": [

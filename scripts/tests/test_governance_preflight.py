@@ -1526,3 +1526,105 @@ def test_integration_s_canonical_governance_preflight_true_duplicate_block_fails
     )
     assert res.returncode != 0, f"Expected preflight FAIL on duplicate block, got rc={res.returncode}"
     assert "S1 CONTEXT_LOSS: Manifest validation failed" in res.stderr
+
+
+# ---------------------------------------------------------------------------
+# B-119 GOV012: readonly kind and GOV-M1-012 (in-memory only; no files are written, so no
+# platform newline translation can change the inputs)
+# ---------------------------------------------------------------------------
+
+import prompt_builder as _gov012_pb
+
+_GOV012_TASK = "B119-G1-C9-GOV012-UNIT-261022"
+_GOV012_BASE = "e" * 40
+_GOV012_SPEC = {"schema_version": 1, "task_id": _GOV012_TASK, "kind": "readonly", "base_oid": _GOV012_BASE,
+                "probe_id": "C9_RECOVERY_PREFLIGHT_V1", "s1_task_id": "B119-N7N8-POSTMAIN-STATE-R1-261018",
+                "s1_base_oid": "fdd59488a0632d0654fc6a1251bba004502cef51",
+                "allowed_mutation_paths": "NONE", "required_mutation_paths": "NONE",
+                "execution_record_required": False, "external_artifact_write": "FORBIDDEN"}
+
+
+def _gov012_spec_block(spec):
+    return "<<<BEGIN BATCH_SPEC_JSON>>>\n" + json.dumps(spec, ensure_ascii=False, indent=1) + "\n<<<END BATCH_SPEC_JSON>>>\n"
+
+
+def _gov012_readonly_prompt(spec=None):
+    """The canonical builder's own fixed readonly prose and contract, assembled like canonical_readonly_prompt."""
+    head, tail = _gov012_pb.readonly_fixed_prose(_GOV012_TASK, _GOV012_BASE)
+    head = head.replace(_gov012_pb.MUST_READ_TOKEN, "1. .git/" + _GOV012_TASK + "-prompt.txt")
+    return head + "\n" + _gov012_spec_block(spec or _GOV012_SPEC) + "\n" + tail
+
+
+def _gov012_rule(text, rid="GOV-M1-012"):
+    ok, lines = governance_preflight.check_governance_rules(text, REPO_ROOT)
+    hit = [line for line in lines if line.startswith(rid + " ")]
+    assert len(hit) == 1, lines
+    return ok, hit[0]
+
+
+def test_gov012_builder_readonly_prompt_passes_all_rules():
+    ok, line = _gov012_rule(_gov012_readonly_prompt())
+    assert line.startswith("GOV-M1-012 PASS | Readonly kind creates no branch")
+    assert ok is True
+
+
+def test_gov012_production_contract_still_requires_git_switch_c():
+    ok, line = _gov012_rule(VALID_FULL_PROMPT_M4)
+    assert line.startswith("GOV-M1-012 PASS | Branch creation convention enforces git switch -c")
+    forbidden = VALID_FULL_PROMPT_M4.replace("branch_creation: GIT_SWITCH_C", "branch_creation: FORBIDDEN")
+    assert forbidden != VALID_FULL_PROMPT_M4
+    ok, line = _gov012_rule(forbidden)
+    assert ok is False and line.startswith("GOV-M1-012 FAIL")
+
+
+def test_gov012_prose_mention_of_readonly_kind_does_not_unlock_forbidden():
+    # The R8 substring test accepted this shape; the structured check must not.
+    text = VALID_FULL_PROMPT_M4.replace("branch_creation: GIT_SWITCH_C", "branch_creation: FORBIDDEN")
+    text = 'note: "kind": "readonly"\n' + text
+    assert validate_prompt_manifest.readonly_kind_declared(text) is False
+    ok, err, _ = validate_prompt_manifest.validate_execution_contract(text)
+    assert ok is False and "readonly" in err
+    ok, line = _gov012_rule(text)
+    assert ok is False and line.startswith("GOV-M1-012 FAIL")
+
+
+@pytest.mark.parametrize("mutate", [
+    lambda t: t.replace("<<<END BATCH_SPEC_JSON>>>\n", "<<<END BATCH_SPEC_JSON>>>\n" + _gov012_spec_block(_GOV012_SPEC), 1),
+    lambda t: t.replace('"kind": "readonly"', '"kind": "production"'),
+    lambda t: t.replace('"kind": "readonly",', '"kind": "readonly",\n "kind": "readonly",'),
+    lambda t: t.replace('"kind": "readonly",', '"kind": "readonly"'),
+    lambda t: t.replace("<<<END BATCH_SPEC_JSON>>>", "<<<END BATCH_SPEC_JSON>>> "),
+    lambda t: t.replace('"kind": "readonly",', '"extra": NaN,\n "kind": "readonly",'),
+    lambda t: t.replace('"kind": "readonly",', '"extra": Infinity,\n "kind": "readonly",'),
+    lambda t: t.replace('"kind": "readonly",', '"extra": -Infinity,\n "kind": "readonly",'),
+])
+def test_gov012_readonly_spec_block_must_be_single_strict_json(mutate):
+    text = mutate(_gov012_readonly_prompt())
+    assert text != _gov012_readonly_prompt()
+    assert validate_prompt_manifest.readonly_kind_declared(text) is False
+    ok, line = _gov012_rule(text)
+    assert ok is False and line.startswith("GOV-M1-012 FAIL")
+
+
+@pytest.mark.parametrize("old,new", [
+    ("main_advancement: FORBIDDEN\nauthorized_main_sha: NONE",
+     "main_advancement: EXACT_SHA\nauthorized_main_sha: " + "a" * 40),
+    ("external_artifact_write: FORBIDDEN", "external_artifact_write: DOWNLOADS_BUNDLE_AFTER_PUSH"),
+    ("remote_ref_deletion: FORBIDDEN\nauthorized_delete_refs: NONE",
+     "remote_ref_deletion: EXACT_SET\nauthorized_delete_refs: refs/heads/test@" + "a" * 40),
+    ("allowed_mutation_paths: NONE\nrequired_mutation_paths: NONE\nmax_plan_revisions: 3\nexecution_record_required: false",
+     "allowed_mutation_paths: docs/TASKBOARD.md\nrequired_mutation_paths: docs/TASKBOARD.md\nmax_plan_revisions: 3\nexecution_record_required: true"),
+])
+def test_gov012_readonly_exception_requires_zero_mutation_contract(old, new):
+    base = _gov012_readonly_prompt()
+    assert base.count(old) == 1
+    ok, line = _gov012_rule(base.replace(old, new))
+    assert ok is False and line.startswith("GOV-M1-012 FAIL")
+
+
+def test_gov012_readonly_kind_declared_rejects_non_text_and_carriage_return():
+    good = _gov012_readonly_prompt()
+    assert validate_prompt_manifest.readonly_kind_declared(good) is True
+    assert validate_prompt_manifest.readonly_kind_declared(None) is False
+    assert validate_prompt_manifest.readonly_kind_declared(good.encode("utf-8")) is False
+    assert validate_prompt_manifest.readonly_kind_declared(good.replace("\n", "\r\n")) is False

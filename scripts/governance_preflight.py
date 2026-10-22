@@ -30,6 +30,7 @@ from scripts.validate_prompt_manifest import (
     validate_prompt_manifest,
     validate_execution_contract,
     parse_execution_contract_block,
+    readonly_kind_declared,
     CONTRACT_BEGIN_MARKER,
     CONTRACT_END_MARKER,
 )
@@ -503,9 +504,19 @@ def check_governance_rules(prompt_text: str, root_dir: str) -> tuple[bool, list[
                 results.append(f"{rid} FAIL | hook_bypass is {val} (expected FORBIDDEN)")
 
         elif rid == "GOV-M1-012":
-            # BRANCH_CREATION_GIT_SWITCH_C
+            # BRANCH_CREATION_GIT_SWITCH_C (B-119 GOV012: a readonly kind creates no branch at all)
             if contract_ok and contract.get("branch_creation") == "GIT_SWITCH_C":
                 results.append(f"{rid} PASS | Branch creation convention enforces git switch -c")
+            elif (contract_ok and contract.get("branch_creation") == "FORBIDDEN"
+                  and readonly_kind_declared(prompt_text)
+                  and contract.get("main_advancement") == "FORBIDDEN"
+                  and contract.get("remote_ref_deletion") == "FORBIDDEN"
+                  and contract.get("authorized_delete_refs") == "NONE"
+                  and contract.get("allowed_mutation_paths") == "NONE"
+                  and contract.get("required_mutation_paths") == "NONE"
+                  and contract.get("execution_record_required") == "false"
+                  and contract.get("external_artifact_write") == "FORBIDDEN"):
+                results.append(f"{rid} PASS | Readonly kind creates no branch (branch_creation FORBIDDEN, zero mutation)")
             else:
                 overall_pass = False
                 val = contract.get("branch_creation") if contract_ok else "MISSING"
