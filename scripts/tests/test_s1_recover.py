@@ -421,3 +421,49 @@ def test_n01_completed_restore_stays_idempotent_after_publication(ws, capsys):
     git(work, 'push', '-q', 'origin', 'refs/heads/' + BRANCH + ':refs/heads/' + BRANCH)
     code, text, _ = run(capsys, *_restore_args(sha, kv))
     assert code == 0 and text.splitlines()[-1] == 'WORKSPACE_AT_BASE_READY', text
+
+
+# ---- C9 state matrix: off-contract detached start and an independent local main ----
+
+def _detach_with_s1(work, kind):
+    if kind == 'COMMITTED':
+        (work / 'docs/A.md').write_bytes(b'committed S1\n'); git(work, 'commit', '-qam', 'S1 local commit')
+    else:
+        dirty_uncommitted(work)
+    git(work, 'switch', '-q', '--detach')                    # keeps HEAD, index and worktree; leaves the branch
+
+
+@pytest.mark.parametrize('kind', ['UNCOMMITTED', 'COMMITTED'])
+def test_c9_detached_start_with_s1_changes_stops_without_any_write(ws, capsys, kind):
+    """S-h: the runner never leaves S1 changes on a detached HEAD, so they cannot be bound to a prompt."""
+    work, base, sha = ws
+    _detach_with_s1(work, kind)
+    before = snapshot(work)
+    rcode, text, _ = run(capsys, 'preserve', '--task-id', TASK, '--prompt-sha256', sha)
+    assert rcode == 1 and 'S1_RECOVER STOP BRANCH_MISMATCH' in text
+    assert snapshot(work) == before
+    assert subprocess.run(['git', '-C', str(work), 'rev-parse', '-q', '--verify', rc.REF_PREFIX + TASK],
+                          capture_output=True).returncode != 0
+
+
+@pytest.mark.parametrize('main_state', ['AHEAD', 'ABSENT'])
+def test_c9_result_does_not_depend_on_local_main(ws, capsys, main_state):
+    """Base comes from the bound prompt only: a moved or missing local main changes nothing and is kept as is."""
+    work, base, sha = ws
+    if main_state == 'AHEAD':
+        tree = git(work, 'rev-parse', base + '^{tree}')
+        ahead = git(work, 'commit-tree', tree, '-p', base, '-m', 'local main moved')
+        git(work, 'branch', '-f', 'main', ahead)
+    else:
+        git(work, 'branch', '-D', 'main')
+    heads_before = git(work, 'for-each-ref', '--format=%(refname) %(objectname)', 'refs/heads')
+    dirty_uncommitted(work)
+    kv = preserve(capsys, sha)
+    code, text, _ = run(capsys, 'restore', '--task-id', TASK, '--prompt-sha256', sha,
+                        '--preserved-oid', kv['S1_PRESERVED_OID'], '--plan-sha256', kv['S1_RECOVER_PLAN_SHA256'])
+    assert code == 0 and text.splitlines()[-1] == 'WORKSPACE_AT_BASE_READY', text
+    assert git(work, 'rev-parse', 'HEAD') == base
+    assert subprocess.run(['git', '-C', str(work), 'symbolic-ref', '-q', 'HEAD'], capture_output=True).returncode == 1
+    assert git(work, 'for-each-ref', '--format=%(refname) %(objectname)', 'refs/heads') == heads_before
+    code, text, _ = run(capsys, 'verify', '--task-id', TASK, '--prompt-sha256', sha, '--preserved-oid', kv['S1_PRESERVED_OID'])
+    assert code == 0 and 'S1_RECOVER VERIFIED' in text

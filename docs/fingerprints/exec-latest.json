@@ -1,5 +1,5 @@
 {
-  "base_head": "b51d6cb",
+  "base_head": "8320b0d",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -562,16 +562,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 367,
-      "sha256": "1654a3c72d02e5add5aa4020151f74a39ac47b41b4736d20bdbd9f83329fe7f1"
+      "lines": 368,
+      "sha256": "a8396a2b44f6cfc9841de7f2d80f25f734bc9da02168c2ead51547277a36793b"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 342,
-      "sha256": "8f83fff3da8596f52dd54c7f1a382b82723bc0b1dc5048ac9ea6a22496c76556"
+      "lines": 343,
+      "sha256": "83ae67419dc076e3df70b4871d1a1ba088a4fdf89b6f5fc2d1887d5fae8e97a1"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -613,8 +613,8 @@
         "## G. 舊 repo 未盤點區塊（2026-09-02 新發現）",
         "## 封存區"
       ],
-      "lines": 432,
-      "sha256": "018d0db4df64416efb09b771e63ead26d17851f3836f078462c53eb9a0f9a5b2"
+      "lines": 434,
+      "sha256": "ff2ff11a5d21c9d128ed3705708df9a023a6a85a72aad22b746da10b2bf57e93"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1112,8 +1112,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6426,
-      "sha256": "8a5a4ec421b80df5e68e16919ecc31a644d8c0be5e845d92a4904599881c8a9a"
+      "lines": 6427,
+      "sha256": "7101028f70c96659822943c9076eddea8d52a39893596eb2c87d795673073bc3"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1257,6 +1257,17 @@
       ],
       "lines": 3763,
       "sha256": "826c8e22a7379e278806f0b1f260996452c0375c8f4879a4f2f8a6a3f1f6b106"
+    },
+    "scripts/delivery_pack.py": {
+      "fences": 0,
+      "headings": [
+        "# -*- coding: utf-8 -*-",
+        "# -- block 1 and its token allowlist --------------------------------------------------------------------",
+        "# -- assembly (shared by build and verify-reply) ---------------------------------------------------------",
+        "# -- verify-reply ---------------------------------------------------------------------------------------"
+      ],
+      "lines": 356,
+      "sha256": "74b2c92b5ea21f451cc18e961ba453517e17087604fe477ece9285474f062704"
     },
     "scripts/draft_precheck.py": {
       "fences": 0,
@@ -1674,6 +1685,18 @@
       "lines": 2550,
       "sha256": "26c81b4b8a0f037299164749a324683c02cbfedcc956104b5c933f967ba2f3ce"
     },
+    "scripts/tests/test_delivery_pack.py": {
+      "fences": 0,
+      "headings": [
+        "# -*- coding: utf-8 -*-",
+        "# ---- build -------------------------------------------------------------------------------------------------",
+        "# ---- block 1 token allowlist (Q1 $LASTEXITCODE: block 1 runs no native command) ----------------------------",
+        "# ---- verify-reply ------------------------------------------------------------------------------------------",
+        "# ---- block 1 in a real PowerShell (Windows PowerShell 5.1 on Windows) ----------------------------------------"
+      ],
+      "lines": 365,
+      "sha256": "9c93a552159ca2ae5a14cefb154a31894cd6912ea9affe0bd038b7980e2574ef"
+    },
     "scripts/tests/test_draft_precheck.py": {
       "fences": 0,
       "headings": [
@@ -1864,10 +1887,11 @@
       "fences": 0,
       "headings": [
         "# -*- coding: utf-8 -*-",
-        "# ---- R2 regressions: second-opinion counterexamples B01, B02, B03, N01 must now be handled ----"
+        "# ---- R2 regressions: second-opinion counterexamples B01, B02, B03, N01 must now be handled ----",
+        "# ---- C9 state matrix: off-contract detached start and an independent local main ----"
       ],
-      "lines": 423,
-      "sha256": "7d86b1b31bc36d11ec75cf6cb9784b2180395520bfbee423da03314e2e2a95bf"
+      "lines": 469,
+      "sha256": "c45099dcde423947d9d082cb1783462b9467c47619ea47a0927c223dbda187dd"
     },
     "scripts/tests/test_secret_detection_matrix.py": {
       "fences": 0,
@@ -2076,7 +2100,7 @@
       "sha256": "62c3142973a5c228efacc01ddcbd44a76e5f87e24d7bed15d90e2ce45a494982"
     }
   },
-  "generated_at": "2026-10-24T09:00:10Z",
+  "generated_at": "2026-10-24T15:15:37Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {
