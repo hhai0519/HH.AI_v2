@@ -1,5 +1,5 @@
 {
-  "base_head": "cdde0c6",
+  "base_head": "f3e3e68",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -562,16 +562,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 365,
-      "sha256": "fe1adf5dc32c8b39a2a5c960df14491a8e173bcdc16af58ae596690ec56a2d6e"
+      "lines": 366,
+      "sha256": "a28634f847e47747812bd5467b8953aa0f37f9a97876cbc46eb5554116071b90"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 340,
-      "sha256": "bf9ef88519c555601ec7a8e1202f6200aacb4d7ab4008f86616cf83fef755eac"
+      "lines": 341,
+      "sha256": "93eb4be7375a529940e65eb22a4ac7e2727f58e06fb371120ea25f16a920e2f7"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -613,8 +613,8 @@
         "## G. 舊 repo 未盤點區塊（2026-09-02 新發現）",
         "## 封存區"
       ],
-      "lines": 428,
-      "sha256": "d908449404e2bcce651a0e39b774ffcbc220384a0c03d865d3821b255f1e4cf7"
+      "lines": 430,
+      "sha256": "888abfb171709909c2c8375b59ac65286c93a0af59cf38dc8534cb75ed5c770f"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1112,8 +1112,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6424,
-      "sha256": "c19b680dd8213f995c03e9e869bdc3ab0667d7271ad575c5ec3de27635318676"
+      "lines": 6425,
+      "sha256": "d3a079a000c0e09966da8083cca1355a501da066386ace0cf737d40baf34db5a"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1214,18 +1214,20 @@
     "scripts/c9_local_history_guard.py": {
       "fences": 0,
       "headings": [
-        "# -*- coding: utf-8 -*-"
+        "# -*- coding: utf-8 -*-",
+        "# B-119 G1 capacity: a bound on work, not on preservation. Every distinct tip is still checked",
+        "# with the same rule; only an empty or over-limit set holds as LOCAL_HEAD_SET_UNBOUNDED."
       ],
-      "lines": 70,
-      "sha256": "b05fe745d935e64e471febbcf18d4a1a7a1a270c841e304413b6a09f7a835446"
+      "lines": 73,
+      "sha256": "60471ee5193b8f94fa0f7a026421c1cd07c8f6e46c4162e67e3dda6e0910e507"
     },
     "scripts/c9_s1_capture_guard.py": {
       "fences": 0,
       "headings": [
         "# -*- coding: utf-8 -*-"
       ],
-      "lines": 238,
-      "sha256": "beccd18a4633bf1e27781f934fe7eb82bebc105f69263a5ea80ed808344a1def"
+      "lines": 241,
+      "sha256": "8f2d44cc84c69975fc3c1fbae1e3e6c61e3d342215743e85619180d037e5508f"
     },
     "scripts/check16_preflight.py": {
       "fences": 0,
@@ -1549,18 +1551,20 @@
     "scripts/tests/test_c9_local_history_guard.py": {
       "fences": 0,
       "headings": [
-        "# -*- coding: utf-8 -*-"
+        "# -*- coding: utf-8 -*-",
+        "# B-119 G1 capacity (no file writes beyond the shared fixture; refs only via update-ref)."
       ],
-      "lines": 117,
-      "sha256": "3ff3266a7ce078d2bf9b4f9dd3e571f0015da475da375df40cddbfe8f0a6a18c"
+      "lines": 201,
+      "sha256": "d21ee0df0297080b98d43b84236ceff13a3349b3256f63632667980094c6b507"
     },
     "scripts/tests/test_c9_s1_capture_guard.py": {
       "fences": 0,
       "headings": [
-        "# -*- coding: utf-8 -*-"
+        "# -*- coding: utf-8 -*-",
+        "# B-119 G1: a stat failure other than absence is reported distinctly and still holds."
       ],
-      "lines": 254,
-      "sha256": "fccc1265686f7253631bc828be8b36c4cc911ca25aca34e4e6e5177909fe32b5"
+      "lines": 280,
+      "sha256": "cc14c3fa73c4ae955f1836302d582496a298a660ac7fd6bea323670e81599a4e"
     },
     "scripts/tests/test_channel_gateway_core.py": {
       "fences": 0,
@@ -2051,7 +2055,7 @@
       "sha256": "62c3142973a5c228efacc01ddcbd44a76e5f87e24d7bed15d90e2ce45a494982"
     }
   },
-  "generated_at": "2026-10-22T20:19:13Z",
+  "generated_at": "2026-10-24T02:40:27Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

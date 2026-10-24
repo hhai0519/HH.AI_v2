@@ -38,8 +38,11 @@ def _regular_file(dirpath, name, limit):
     file = dirpath / name
     try:
         meta = file.lstat()
-    except OSError:
+    except FileNotFoundError:
         raise CaptureGuardError('CAPTURE_MISSING') from None
+    except OSError:
+        # B-119 G1: permission or I/O failure is not evidence of absence; both stop.
+        raise CaptureGuardError('CAPTURE_STAT_FAILED') from None
     if (not stat.S_ISREG(meta.st_mode) or meta.st_nlink != 1 or meta.st_size > limit
             or (getattr(meta, 'st_file_attributes', 0) & 0x400)):
         raise CaptureGuardError('CAPTURE_UNSAFE')

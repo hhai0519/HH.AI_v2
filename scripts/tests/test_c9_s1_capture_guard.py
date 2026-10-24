@@ -252,3 +252,29 @@ def test_real_s1_full_capture_producer_crosscompatible(tmp_path):
     assert checked['restoration_authorized'] is False
     assert checked['deletion_authorized'] is False
     assert checked['member_count'] >= 10
+
+
+# B-119 G1: a stat failure other than absence is reported distinctly and still holds.
+@pytest.mark.parametrize('error', [PermissionError(13, 'synthetic denied'), OSError(5, 'synthetic I/O')])
+def test_capture_stat_error_is_not_reported_as_missing(tmp_path, monkeypatch, error):
+    origin, work, base = fixture(tmp_path)
+    install(work, base)
+    real = Path.lstat
+    def failing(self, *args, **kwargs):
+        if self.name == TASK + '-s1-full-capture.json':
+            raise error
+        return real(self, *args, **kwargs)
+    monkeypatch.setattr(Path, 'lstat', failing)
+    before = snapshot(work, origin)
+    with pytest.raises(c9.CaptureGuardError) as exc:
+        c9.validate_capture(work, TASK, base)
+    assert str(exc.value) == 'CAPTURE_STAT_FAILED'
+    assert snapshot(work, origin) == before
+
+
+def test_truly_absent_capture_is_still_missing(tmp_path):
+    _, work, base = fixture(tmp_path)
+    assert not (work/'.git'/(TASK + '-s1-full-capture.json')).exists()
+    with pytest.raises(c9.CaptureGuardError) as exc:
+        c9.validate_capture(work, TASK, base)
+    assert str(exc.value) == 'CAPTURE_MISSING'

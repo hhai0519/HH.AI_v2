@@ -14,7 +14,9 @@ import sys
 from c9_base_guard import OID, classify, _git
 
 COUNT = re.compile(r'^(0|[1-9][0-9]{0,9})$')
-MAX_LOCAL_HEADS = 64
+# B-119 G1 capacity: a bound on work, not on preservation. Every distinct tip is still checked
+# with the same rule; only an empty or over-limit set holds as LOCAL_HEAD_SET_UNBOUNDED.
+MAX_LOCAL_HEADS = 1024
 
 
 def inventory(repo, base):
@@ -33,7 +35,8 @@ def inventory(repo, base):
 
     # A branch ahead of or divergent from Base must be preserved. This is
     # conservative: even a previously pushed, unmerged branch will HOLD.
-    for tip in tips:
+    # Branches sharing one tip have one answer, so each distinct tip is counted once.
+    for tip in sorted(set(tips)):
         if tip == base:
             continue
         n = _git(repo, 'rev-list', '--count', base + '..' + tip)
