@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "B119-G1-Q1-DELIVERY-PACK-R2-261024",
-  "base_oid": "8320b0d4dc385c5ea1ffe367eea8ce0e46428ceb",
+  "task_id": "B119-G1-Q1-REPLY-CHECK-R2-261025",
+  "base_oid": "1d9f22e041df181e9f4805223b8838ab65952af5",
   "plan": {
     "allowed_paths": [
       "docs/AUDIT-LOG.md",
@@ -11,9 +11,8 @@
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
       "docs/refactor-backlog.md",
-      "scripts/delivery_pack.py",
-      "scripts/tests/test_delivery_pack.py",
-      "scripts/tests/test_s1_recover.py"
+      "scripts/reply_check.py",
+      "scripts/tests/test_reply_check.py"
     ],
     "required_paths": [
       "docs/AUDIT-LOG.md",
@@ -22,9 +21,8 @@
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
       "docs/refactor-backlog.md",
-      "scripts/delivery_pack.py",
-      "scripts/tests/test_delivery_pack.py",
-      "scripts/tests/test_s1_recover.py"
+      "scripts/reply_check.py",
+      "scripts/tests/test_reply_check.py"
     ],
     "max_plan_revisions": 3,
     "revision_count": 0,
@@ -38,9 +36,8 @@
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
       "docs/refactor-backlog.md",
-      "scripts/delivery_pack.py",
-      "scripts/tests/test_delivery_pack.py",
-      "scripts/tests/test_s1_recover.py"
+      "scripts/reply_check.py",
+      "scripts/tests/test_reply_check.py"
     ]
   },
   "evidence": [
