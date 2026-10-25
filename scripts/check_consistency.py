@@ -29,6 +29,7 @@
   CHECK 25 — 機械治理 v1 完整性守衛 (Mechanical Governance v1 Integrity Guard)
   CHECK 26 — M2 計畫與執行重放暨證據完整性守衛 (M2 Plan-vs-Actual / Evidence Integrity Replay Guard)
   CHECK 27 — 受管金鑰持久存放指引守衛 (Managed Secret Storage Guidance Guard)
+  CHECK 28 — 受保護歷史與 §5.1 帳本錨定守衛 (Protected History / Ledger Anchor Guard)
 
 本腳本的檢查項來自 2026-08-29 的一次全庫實測掃描，每一項都曾實際命中過真實缺陷，不是憑空設計。
 新增檢查項時，必須先確認該檢查在當前 repo 的誤報率，誤報多的檢查會讓人習慣忽略輸出。
@@ -56,7 +57,7 @@ def run_checks(argv=None):
     as_if_committed = "--as-if-committed" in argv
     if as_if_committed:
         print("[MODE] 啟用 --as-if-committed 本地 commit 拓撲預演模式")
-    total_checks = 27
+    total_checks = 28
     passed = 0
     failed = 0
     
@@ -528,6 +529,22 @@ def run_checks(argv=None):
     else:
         print(f"  [FAIL] {len(c27_fails)} 命中")
         for fail in c27_fails:
+            print(f"    {fail}")
+        failed += 1
+
+    # ---------------------------------------------------------
+    # CHECK 28: 受保護歷史與 §5.1 帳本錨定守衛
+    # ---------------------------------------------------------
+    print("\nCHECK 28: 受保護歷史與 §5.1 帳本錨定守衛")
+    c28_fails, c28_infos = check_28_history_anchor_guard(repo_root, as_if_committed=as_if_committed)
+    for info in c28_infos:
+        print(f"  [INFO] {info}")
+    if len(c28_fails) == 0:
+        print("  [PASS] 0 命中")
+        passed += 1
+    else:
+        print(f"  [FAIL] {len(c28_fails)} 命中")
+        for fail in c28_fails:
             print(f"    {fail}")
         failed += 1
 
@@ -1933,6 +1950,19 @@ def _validate_exec_log_transition(root_dir, parent_oid, head_rev="HEAD"):
         fails.append(f"docs/EXEC-LOG.md:0  內容不是合法 UTF-8: {e}")
         return fails, infos
 
+    return _exec_log_transition_text(
+        p_text, c_text,
+        lambda c_hash: _resolve_commit(root_dir, c_hash) == parent_oid,
+        parent_oid[:7])
+
+
+def _exec_log_transition_text(p_text, c_text, is_parent_identity, parent_short):
+    """
+    _validate_exec_log_transition 的純文字規則（規則同上）。
+    is_parent_identity(c_hash) 判定回填之 commit identity 是否解析為 parent commit。
+    CHECK 28（scripts/history_guard.py）在異動 spec 的批次以同一函式判定尚未 commit 的候選。
+    """
+    fails, infos = [], []
     p_lines = p_text.splitlines()
     c_lines = c_text.splitlines()
 
@@ -1988,9 +2018,8 @@ def _validate_exec_log_transition(root_dir, parent_oid, head_rev="HEAD"):
             fails.append("docs/EXEC-LOG.md:0  回填列欄位數與原列不符")
         else:
             c_hash = c_replaced_cols[0]
-            resolved = _resolve_commit(root_dir, c_hash)
-            if resolved is None or resolved != parent_oid:
-                fails.append(f"docs/EXEC-LOG.md:0  上一批『本批』回填之 commit identity ({c_hash}) 無法解析或不等於 parent commit ({parent_oid[:7]})")
+            if not is_parent_identity(c_hash):
+                fails.append(f"docs/EXEC-LOG.md:0  上一批『本批』回填之 commit identity ({c_hash}) 無法解析或不等於 parent commit ({parent_short})")
             if c_replaced_cols[1:] != p_last_cols[1:]:
                 fails.append("docs/EXEC-LOG.md:0  回填列除第一欄 commit identity 外之其餘內容遭修改")
         c_new_cols = _split_cols(c_rows[len(p_rows)])
@@ -3696,9 +3725,34 @@ def check_27_secret_guidance_guard(root_dir=None):
     return fails, infos
 
 
+def check_28_history_anchor_guard(root_dir=None, as_if_committed=False):
+    """
+    CHECK 28 — 受保護歷史與 §5.1 帳本錨定守衛（B-116 C1）。
+
+    以目標 execution-record 的 base_oid 為 Base，委由 scripts/history_guard.py 判定：
+    AUDIT-LOG、ARCHIVE-INDEX、EXEC-LOG 只准新增；§5.1 上一批 placeholder 轉成
+    Base SHA 錨定列且原文不變、其他既有行不變。異動 spec.txt 時 EXEC-LOG 改用
+    CHECK 17 的同一個狀態流轉函式（_exec_log_transition_text）判定 Base→目標，
+    提交前後都由本 CHECK 判定。目標判定方式與 CHECK 26 相同。
+    """
+    if root_dir is None:
+        root_dir = repo_root
+    try:
+        from scripts.history_guard import check_repo
+    except ImportError:
+        import history_guard
+        check_repo = history_guard.check_repo
+
+    def exec_log_rule(p_text, c_text, base_oid):
+        return _exec_log_transition_text(
+            p_text, c_text, lambda c_hash: _resolve_commit(root_dir, c_hash) == base_oid, base_oid[:7])[0]
+
+    return check_repo(root_dir, as_if_committed=as_if_committed, exec_log_rule=exec_log_rule)
+
+
 def verify_check_consistency_inventory(file_content: str) -> tuple[bool, str, dict]:
     """
-    Validates complete, consistent, and duplicate-free inventory (1..27)
+    Validates complete, consistent, and duplicate-free inventory (1..28)
     across docstring and run_checks(). Supports both 'CHECK N -' and 'CHECK N:' punctuations.
     """
     # 1. Parse docstring inventory
@@ -3737,9 +3791,9 @@ def verify_check_consistency_inventory(file_content: str) -> tuple[bool, str, di
         seen_rc_ids.add(cid)
         run_checks_ids.append(cid)
 
-    expected_ids = list(range(1, 28))
-    if total_checks != 27:
-        return False, f"total_checks must be 27 (got {total_checks})", {}
+    expected_ids = list(range(1, 29))
+    if total_checks != 28:
+        return False, f"total_checks must be 28 (got {total_checks})", {}
 
     if docstring_ids != expected_ids:
         missing = set(expected_ids) - set(docstring_ids)

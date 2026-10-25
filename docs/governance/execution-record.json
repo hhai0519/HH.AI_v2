@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "B119-G1-Q1-REPLY-CHECK-R2-261025",
-  "base_oid": "1d9f22e041df181e9f4805223b8838ab65952af5",
+  "task_id": "B116-B115-T1-HISTORY-ANCHOR-GUARD-R2-261025",
+  "base_oid": "411f1b11c50862d17a8baa9dbe4a470858533275",
   "plan": {
     "allowed_paths": [
       "docs/AUDIT-LOG.md",
@@ -10,9 +10,14 @@
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
+      "docs/ops/q2-draft-precheck.md",
       "docs/refactor-backlog.md",
-      "scripts/reply_check.py",
-      "scripts/tests/test_reply_check.py"
+      "scripts/check_consistency.py",
+      "scripts/draft_precheck.py",
+      "scripts/history_guard.py",
+      "scripts/tests/test_check_consistency.py",
+      "scripts/tests/test_history_guard.py",
+      "scripts/tests/test_verifier_fail_closed.py"
     ],
     "required_paths": [
       "docs/AUDIT-LOG.md",
@@ -20,9 +25,14 @@
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
+      "docs/ops/q2-draft-precheck.md",
       "docs/refactor-backlog.md",
-      "scripts/reply_check.py",
-      "scripts/tests/test_reply_check.py"
+      "scripts/check_consistency.py",
+      "scripts/draft_precheck.py",
+      "scripts/history_guard.py",
+      "scripts/tests/test_check_consistency.py",
+      "scripts/tests/test_history_guard.py",
+      "scripts/tests/test_verifier_fail_closed.py"
     ],
     "max_plan_revisions": 3,
     "revision_count": 0,
@@ -35,9 +45,14 @@
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
+      "docs/ops/q2-draft-precheck.md",
       "docs/refactor-backlog.md",
-      "scripts/reply_check.py",
-      "scripts/tests/test_reply_check.py"
+      "scripts/check_consistency.py",
+      "scripts/draft_precheck.py",
+      "scripts/history_guard.py",
+      "scripts/tests/test_check_consistency.py",
+      "scripts/tests/test_history_guard.py",
+      "scripts/tests/test_verifier_fail_closed.py"
     ]
   },
   "evidence": [

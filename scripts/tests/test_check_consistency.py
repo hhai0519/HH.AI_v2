@@ -1519,7 +1519,7 @@ def test_integration_run_checks_includes_19_and_20():
 
 def verify_check_consistency_inventory(file_content: str) -> tuple[bool, str, dict]:
     """
-    Validates complete, consistent, and duplicate-free inventory (1..27)
+    Validates complete, consistent, and duplicate-free inventory (1..28)
     across docstring and run_checks(). Supports both 'CHECK N -' and 'CHECK N:' punctuations.
     """
     # 1. Parse docstring inventory
@@ -1558,9 +1558,9 @@ def verify_check_consistency_inventory(file_content: str) -> tuple[bool, str, di
         seen_rc_ids.add(cid)
         run_checks_ids.append(cid)
 
-    expected_ids = list(range(1, 28))
-    if total_checks != 27:
-        return False, f"total_checks must be 27 (got {total_checks})", {}
+    expected_ids = list(range(1, 29))
+    if total_checks != 28:
+        return False, f"total_checks must be 28 (got {total_checks})", {}
 
     if docstring_ids != expected_ids:
         missing = set(expected_ids) - set(docstring_ids)
@@ -1579,12 +1579,12 @@ def verify_check_consistency_inventory(file_content: str) -> tuple[bool, str, di
     }
 
 
-def test_integration_run_checks_includes_27_and_total_checks_is_27():
-    """Verify run_checks includes up to CHECK 27 and total_checks is 27."""
+def test_integration_run_checks_includes_28_and_total_checks_is_28():
+    """Verify run_checks includes up to CHECK 28 and total_checks is 28."""
     import check_consistency
     import inspect
     source = inspect.getsource(check_consistency.run_checks)
-    assert "total_checks = 27" in source
+    assert "total_checks = 28" in source
     assert "check_21_secret_leak_guard" in source
     assert "CHECK 21: 機密防護與輸出安全守衛" in source
     assert "check_22_ci_supply_chain" in source
@@ -1599,19 +1599,21 @@ def test_integration_run_checks_includes_27_and_total_checks_is_27():
     assert "CHECK 26: M2 計畫與執行重放暨證據完整性守衛" in source
     assert "check_27_secret_guidance_guard" in source
     assert "CHECK 27: 受管金鑰持久存放指引守衛" in source
+    assert "check_28_history_anchor_guard" in source
+    assert "CHECK 28: 受保護歷史與 §5.1 帳本錨定守衛" in source
 
 
-def test_full_checker_inventory_consistency_1_to_27():
-    """Full checker inventory consistency: docstring, run_checks, and active representation match 1..27."""
+def test_full_checker_inventory_consistency_1_to_28():
+    """Full checker inventory consistency: docstring, run_checks, and active representation match 1..28."""
     cc_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "check_consistency.py"))
     with open(cc_path, "r", encoding="utf-8") as f:
         content = f.read()
 
     ok, err, metadata = verify_check_consistency_inventory(content)
     assert ok is True, f"Full checker inventory verification failed: {err}"
-    assert metadata["total_checks"] == 27
-    assert metadata["docstring_ids"] == list(range(1, 28))
-    assert metadata["run_checks_ids"] == list(range(1, 28))
+    assert metadata["total_checks"] == 28
+    assert metadata["docstring_ids"] == list(range(1, 29))
+    assert metadata["run_checks_ids"] == list(range(1, 29))
 
 
 def test_full_checker_inventory_negative_controls():

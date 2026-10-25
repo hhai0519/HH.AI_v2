@@ -7,7 +7,7 @@ python scripts/draft_precheck.py --source <exact-clean-full-base-clone> --patch 
 python scripts/draft_precheck.py --source <same-base> --patch <same-patch> --plan <same-plan> --workdir <same-disposable-directory> --resume
 ```
 
-本命令五步依序為 canonical fingerprint／execution-record generate、as-if CHECK27＋record verify、完整 Base 和候選 verify_all 同環境比對、rule traceability --check、重用 CHECK20 欄數邏輯（含唯一歷史列例外）。任何階段結束才將結果、日誌雜湊與 candidate diff SHA 儲存於 workdir，必要輸出 `draft-result.json` 及獨立的 SHA256 欄位；失敗時不會跳過當前失敗階段。完成本命令後仍需另外使用 canonical `batch_sim.py production` 或 runner MINISIM 驗證 stage／commit／postcommit；兩者不互相替代。
+本命令五步依序為 canonical fingerprint／execution-record generate、as-if check_consistency（現行 28 項 CHECK，含 CHECK 28 受保護歷史守衛）＋record verify、完整 Base 和候選 verify_all 同環境比對、rule traceability --check、重用 CHECK20 欄數邏輯（含唯一歷史列例外）。任何階段結束才將結果、日誌雜湊與 candidate diff SHA 儲存於 workdir，必要輸出 `draft-result.json` 及獨立的 SHA256 欄位；失敗時不會跳過當前失敗階段。完成本命令後仍需另外使用 canonical `batch_sim.py production` 或 runner MINISIM 驗證 stage／commit／postcommit；兩者不互相替代。
 
 續跑重用條件：Base 完整 Git commit、原作者 patch SHA256、plan SHA256、工具組 SHA256、OS／Python／Git／Node／路徑長度／UID 指紋、候選 Git diff、生成檔 SHA、已完成階段日誌 SHA **全部相同**。任一不同，立即 `RESUME_*` STOP，不沿用舊結果；使用新空工作目錄重跑。未完成階段從頭執行，不偽稱已完成。
 

@@ -100,7 +100,8 @@ def fail_ids(log_bytes):
 
 def fingerprint(source, patch, plan, scripts_dir, workspace):
     tools = [scripts_dir / name for name in ('draft_precheck.py','check_consistency.py',
-             'execution_record.py','fingerprint.py','verify_all.py','generate_rule_traceability.py','impact_scan.py')]
+             'execution_record.py','fingerprint.py','verify_all.py','generate_rule_traceability.py','impact_scan.py',
+             'history_guard.py')]
     tool_h=sha(json.dumps({p.name:sha_file(p) for p in tools},sort_keys=True).encode('utf8'))
     env_data={'os':platform.platform(),'python':sys.version, 'python_executable':sys.executable,
               'uid':getattr(os,'getuid',lambda:None)(), 'cwd_path_bytes':len(str(workspace).encode()),
