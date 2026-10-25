@@ -138,6 +138,31 @@ def test_conversion_must_stay_in_place():
                                         "- `" + P + "`（T0）：前批。"), B, "T1") == []
 
 
+@pytest.mark.parametrize("rows,code", [
+    ([], "HISTORY_OWN_PLACEHOLDER_MISSING"),
+    ([f"- {PH('T2')}：新批。", f"- {PH('T2')}：又一列。"], "HISTORY_OWN_PLACEHOLDER_DUPLICATED"),
+    ([f"- {PH('T2')}：新批。{PH('T2')}"], "HISTORY_OWN_PLACEHOLDER_DUPLICATED"),
+    ([f"- {PH('T3')}：別的 task。"], "HISTORY_OWN_PLACEHOLDER_MISSING"),
+])
+def test_c1c_own_placeholder_must_appear_exactly_once(rows, code):
+    target = ledger(*rows, f"- `{B}`（T1）：本文 A。", "- `" + P + "`（T0）：前批。")
+    findings = hg.evaluate({hg.LEDGER_FILE: ROWSTART_BASE}, {hg.LEDGER_FILE: target}, B, "T1", None, "T2")
+    assert codes(findings) == [code]
+    outside = ledger(f"- `{B}`（T1）：本文 A。", "- `" + P + "`（T0）：前批。") + f"- {PH('T2')}：在 §5.1 之外。\n"
+    assert codes(hg.evaluate({hg.LEDGER_FILE: ROWSTART_BASE}, {hg.LEDGER_FILE: outside}, B, "T1", None, "T2")) == \
+        ["HISTORY_OWN_PLACEHOLDER_MISSING"]
+    ok = ledger(f"- {PH('T2')}：新批。", f"- `{B}`（T1）：本文 A。", "- `" + P + "`（T0）：前批。")
+    assert hg.evaluate({hg.LEDGER_FILE: ROWSTART_BASE}, {hg.LEDGER_FILE: ok}, B, "T1", None, "T2") == []
+
+
+def test_c1c_applies_before_and_after_commit(repo):
+    repo.next_batch()
+    _write(repo.root, hg.LEDGER_FILE, ledger(f"- `{repo.base}`（T0）：初始。", head="上次核對通過的 HEAD：" + repo.base))
+    assert [f.split()[0] for f in hg.check_repo(repo.root, as_if_committed=True)[0]] == ["HISTORY_OWN_PLACEHOLDER_MISSING"]
+    repo.commit("c1")
+    assert [f.split()[0] for f in hg.check_repo(repo.root)[0]] == ["HISTORY_OWN_PLACEHOLDER_MISSING"]
+
+
 def test_conversion_outside_section_does_not_count():
     target = ledger(f"- {PH('T2')}：新批。", "- `" + P + "`（T0）：前批。") + f"- `{B}`（T1）：本文 A。\n"
     assert codes(hg.check_ledger(ROWSTART_BASE, target, B, "T1")) == ["HISTORY_PLACEHOLDER_CONVERSION_MISSING"]
@@ -242,7 +267,7 @@ def test_real_promoted_commits_pass(base, target):
     ("3aa8504ff6b0e7d7218eb5bc72e56975f55cfda6", "8f5375ef751ed57f4bbb4f179ddb0d9914afa58b",
      ["HISTORY_PLACEHOLDER_CONVERSION_MISSING"]),
     ("f5e1bb17c1f29fa06a522bd958bbf3148578a0b0", "eedc84d910716e300c7758c6470ee6197d8ef967",
-     ["HISTORY_PLACEHOLDER_CONVERSION_MISSING", "HISTORY_PLACEHOLDER_NOT_CONVERTED"]),
+     ["HISTORY_OWN_PLACEHOLDER_MISSING", "HISTORY_PLACEHOLDER_CONVERSION_MISSING", "HISTORY_PLACEHOLDER_NOT_CONVERTED"]),
 ])
 def test_real_main_history_ledger_negatives_fail(base, target, expected):
     findings, _ = hg.guard(REPO_ROOT, base, target)
@@ -472,6 +497,7 @@ def test_missing_previous_placeholder_is_reported(repo):
     repo.commit("no placeholder")
     base = _run(repo.root, "git", "rev-parse", "HEAD")
     _write(repo.root, hg.RECORD_FILE, _record("T1", base))
+    _write(repo.root, hg.LEDGER_FILE, ledger(f"- {PH('T1')}：新批。", "- `" + P + "`（T0）：初始。"))
     fails, infos = hg.check_repo(repo.root, as_if_committed=True)
     assert fails == [] and any("C1b 轉換不適用" in i for i in infos)
 
@@ -617,7 +643,10 @@ def _spec_batch(repo, extra_mods=()):
     _write(repo.root, "docs/T.md", "A\nZ\nC\n")
     _write(repo.root, hg.RECORD_FILE, new_record)
     _write(repo.root, "docs/EXEC-LOG.md", _legal_backfill(base))
-    mods = [("docs/T.md", "B", "Z"), (hg.RECORD_FILE, old_record.strip(), new_record.strip()), *extra_mods]
+    old_row, own_row = "- `" + P + "`（T0）：初始。", f"- {PH('T1')}：新批。"   # C1c：本批自己的 placeholder
+    _write(repo.root, hg.LEDGER_FILE, ledger(own_row, old_row))
+    mods = [("docs/T.md", "B", "Z"), (hg.RECORD_FILE, old_record.strip(), new_record.strip()),
+            (hg.LEDGER_FILE, old_row, own_row + "\n" + old_row), *extra_mods]
     _write(repo.root, f"docs/batches/{base[:7]}-x.spec.txt", _spec(base, mods))
     return base
 

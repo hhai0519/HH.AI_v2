@@ -1,5 +1,5 @@
 {
-  "base_head": "411f1b1",
+  "base_head": "8bfbe95",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -562,16 +562,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 370,
-      "sha256": "68f0c223a39477fdafc9dfe9253862b5427d61f5a3c99b3ced61ba7f2edeb6bd"
+      "lines": 371,
+      "sha256": "dd977c138cace0f96aa450f63fa7c57bfc0ae905725b10e7c0e001f894cbce35"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 345,
-      "sha256": "b2852c09797a2d9cea3d0b528e055eb71ba5e544ff38ad1f7a5866d8e32cb56c"
+      "lines": 346,
+      "sha256": "8777027abde7821d3b91df087f60b253709c316d73c6c5d84abfd2ef261d6027"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -613,8 +613,8 @@
         "## G. 舊 repo 未盤點區塊（2026-09-02 新發現）",
         "## 封存區"
       ],
-      "lines": 438,
-      "sha256": "538c863a020744c262db38f7db9fa529c2ab0307845be3d95f2e0ef2f92ef73e"
+      "lines": 440,
+      "sha256": "11f541598c71791eb1d717780422a084a9c6af812c2a34a531f57798adeb0963"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1112,8 +1112,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6429,
-      "sha256": "89e9bc1d68874fc01027b5623bd823bacf7dfab51a2cc6012e64b7fb31f05a82"
+      "lines": 6430,
+      "sha256": "18b57da9e894d180919e1b97d5345f8c83d1889b68361719864dc4000e73949b"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1229,6 +1229,14 @@
       "lines": 241,
       "sha256": "8f2d44cc84c69975fc3c1fbae1e3e6c61e3d342215743e85619180d037e5508f"
     },
+    "scripts/candidate_check.py": {
+      "fences": 0,
+      "headings": [
+        "# -*- coding: utf-8 -*-"
+      ],
+      "lines": 194,
+      "sha256": "b1daf7344480180c3eff6084ed49589ef4164492f6e8e0966166b2507ed3fa95"
+    },
     "scripts/check16_preflight.py": {
       "fences": 0,
       "headings": [
@@ -1331,8 +1339,8 @@
         "# git 層",
         "# ---------------------------------------------------------------------------"
       ],
-      "lines": 474,
-      "sha256": "a6660300d2550cfc106fc792deaa16662867c20d2f59be629d9d90fb4076f25c"
+      "lines": 497,
+      "sha256": "239c6b89016bac1d74883b142a6955d1faa1ea046c9cde462d1124990266e20a"
     },
     "scripts/impact_scan.py": {
       "fences": 0,
@@ -1369,10 +1377,12 @@
     "scripts/prompt_builder.py": {
       "fences": 0,
       "headings": [
-        "# -*- coding: utf-8 -*-"
+        "# -*- coding: utf-8 -*-",
+        "# State files take only declared text_ops (STATE_FILE_REQUIRES_TEXT_OPS); the ops in BATCH_SPEC_JSON are then the",
+        "# change ledger that scripts/candidate_check.py replays from Base against the candidate commit."
       ],
-      "lines": 741,
-      "sha256": "fd648eed33152bdd7bba8d9d7fa3b4077c5b1ffeee70b5249c38c9c241fd309a"
+      "lines": 747,
+      "sha256": "274a4144ca666438450b0d1d035863d6546e96aa1736740220036776e12699b2"
     },
     "scripts/prompt_intake.py": {
       "fences": 0,
@@ -1615,6 +1625,16 @@
       "lines": 280,
       "sha256": "cc14c3fa73c4ae955f1836302d582496a298a660ac7fd6bea323670e81599a4e"
     },
+    "scripts/tests/test_candidate_check.py": {
+      "fences": 0,
+      "headings": [
+        "# ---------------------------------------------------------------------------",
+        "# 預設 GENERATED：以本 repo 的真實 commit 執行候選自己的判定器",
+        "# ---------------------------------------------------------------------------"
+      ],
+      "lines": 386,
+      "sha256": "468011f3cbc00556d88cd5d58481b3347aa97e0ad3459aea21eb1ef7f046990a"
+    },
     "scripts/tests/test_channel_gateway_core.py": {
       "fences": 0,
       "headings": [
@@ -1822,8 +1842,8 @@
         "# 接線與命令列",
         "# ---------------------------------------------------------------------------"
       ],
-      "lines": 755,
-      "sha256": "7c139ae561d3c4a1c6795e512495a08f3564517a7f48b2d268fcc4b1c52b2fdf"
+      "lines": 784,
+      "sha256": "2b4272b9567e61b9fbf5c84625ed6b266ca04160d3e38e5f46481a67af42c8a6"
     },
     "scripts/tests/test_impact_scan.py": {
       "fences": 0,
@@ -1863,8 +1883,8 @@
         "# B-118 first-activation negative tests: new auto-production must explicitly decide output.",
         "# The canonical builder/checker recognises READONLY without granting canonical production-runner rights."
       ],
-      "lines": 1332,
-      "sha256": "5a461dd43054cfe03ac8a02303c1915d5677b8ec327c42e0ba6d6dc05ac42451"
+      "lines": 1353,
+      "sha256": "5ef3ce42b2f88505d11ad3575b074fdef472e525fb1b6a15272544fa44f6985a"
     },
     "scripts/tests/test_prompt_intake.py": {
       "fences": 0,
@@ -2166,7 +2186,7 @@
       "sha256": "62c3142973a5c228efacc01ddcbd44a76e5f87e24d7bed15d90e2ce45a494982"
     }
   },
-  "generated_at": "2026-10-25T02:34:30Z",
+  "generated_at": "2026-10-25T10:48:26Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

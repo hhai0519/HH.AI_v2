@@ -20,7 +20,9 @@ Definition (all paths relative to the definition file):
   production: branch, commit_message, e24 (bool), runner_update (bool, optional), focused (object|null),
     start (optional) {mode: "adopt", start_branch, adopt_hashes {repo_path: sha256}} resumes from the verified
                                          worktree of a stopped batch; omitted means a clean start
-    code_files {repo_path: file}        full final text; ops are derived against the Base blob
+    code_files {repo_path: file}        full final text; ops are derived against the Base blob. Not allowed for
+                                         the four state files (STATE_FILES): those change only through text_ops,
+                                         the declared change ledger (B-115 C2, USER 2026-10-25 D-C2-1)
     new_files {repo_path: {file, block}} file content carried in a prompt block
     text_ops [{path, type, ...}]         type replace {old,new} | replace_line {prefix,new} |
                                          insert_after_line {prefix,text}; prefixes must match one line
@@ -73,6 +75,9 @@ finally:
     sys.path.pop(0)
 
 PLACEHOLDERS = ('{TASK_ID}', '{BASE_OID}', '{BASE7}', '{BRANCH}', '{ALLOWED}')
+# State files take only declared text_ops (STATE_FILE_REQUIRES_TEXT_OPS); the ops in BATCH_SPEC_JSON are then the
+# change ledger that scripts/candidate_check.py replays from Base against the candidate commit.
+STATE_FILES = ('docs/AUDIT-LOG.md', 'docs/EXEC-LOG.md', 'docs/TASKBOARD.md', 'docs/refactor-backlog.md')
 RESERVED_BLOCKS = ('BATCH_SPEC_JSON', 'PLAN_JSON', 'ALLOWED_SCOPE_JSON', 'E24_EVIDENCE_JSON', 'MUST_READ_JSON')
 MUST_READ_TOKEN = '{MUST_READ}'
 CHECK_TIMEOUT = 300
@@ -317,6 +322,7 @@ def build(repo, definition_path):
         # One source category per path: overlapping categories would make the declared final text ambiguous.
         _require(not (set(code_files) & set(new_files)) and not (set(code_files) & op_paths)
                  and not (set(new_files) & op_paths), 'SOURCE_CATEGORY_OVERLAP')
+        _require(not ((set(code_files) | set(new_files)) & set(STATE_FILES)), 'STATE_FILE_REQUIRES_TEXT_OPS')
         texts = {}
         for path, rel in sorted(code_files.items()):
             target = read_text(base_dir / rel, 'CODE_FILE')

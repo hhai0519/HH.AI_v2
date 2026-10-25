@@ -15,6 +15,8 @@
          或 `` `Base 完整 SHA`（TASK；附註） ``（USER 認定的兩種 ledger 格式），
          該行 placeholder 前後的文字逐字不變；placeholder 位於行首
          （`- 本批…：`）或嵌在上一列冒號之後都適用；
+       - 目標（目標 execution-record 的 task_id）自己的 `本批（尚未 commit）（TASK）`
+         必須在目標 §5.1 恰好出現一處（C1c，USER 2026-10-25 D-C2-3），下一批才有可轉換的列；
        - 轉換列留在原 placeholder 列的相對位置；§5.1 其他既有行（「上次核對通過的
          HEAD：」checkpoint 行除外）依原順序逐字保留，其他批次的 placeholder 也不得改動。
 
@@ -200,10 +202,28 @@ def check_exec_log_transition(base_text, target_text, base_oid, exec_log_rule):
     return [Finding("HISTORY_EXEC_LOG_TRANSITION_INVALID", f) for f in exec_log_rule(base_text, target_text, base_oid)]
 
 
-def evaluate(base_files, target_files, base_oid, base_task, exec_log_rule=None):
+def check_own_placeholder(target_text, target_task):
+    """C1c：目標 §5.1 必須恰好有一處目標自己的 placeholder。"""
+    if target_text is None:
+        return []                                    # 缺檔已由 check_ledger 判定
+    lines = split_lines(target_text)
+    section = ledger_section(lines)
+    if section is None:
+        return []                                    # 缺 §5.1 已由 check_ledger 判定
+    ph = placeholder(target_task)
+    count = sum(line.count(ph) for line in lines[section[0]:section[1]])
+    if count == 0:
+        return [Finding("HISTORY_OWN_PLACEHOLDER_MISSING", f"目標 §5.1 沒有 {ph}")]
+    if count > 1:
+        return [Finding("HISTORY_OWN_PLACEHOLDER_DUPLICATED", f"目標 §5.1 有 {count} 處 {ph}")]
+    return []
+
+
+def evaluate(base_files, target_files, base_oid, base_task, exec_log_rule=None, target_task=None):
     """
     base_files／target_files：路徑 → 文字（目標缺檔為 None）。
     exec_log_rule 不為 None（spec 批次）時，EXEC-LOG 改用該規則判定。
+    target_task 不為 None 時檢查 C1c（目標自己的 placeholder）。
     """
     findings = []
     for path in PROTECTED_FILES:
@@ -218,6 +238,8 @@ def evaluate(base_files, target_files, base_oid, base_task, exec_log_rule=None):
     else:
         findings.extend(check_ledger(base_files[LEDGER_FILE], target_files.get(LEDGER_FILE),
                                      base_oid, base_task))
+    if target_task is not None:
+        findings.extend(check_own_placeholder(target_files.get(LEDGER_FILE), target_task))
     return findings
 
 
@@ -402,10 +424,11 @@ def guard(root, base_rev, target_rev, exec_log_rule=None):
 
     base_files = {p: read_blob(root, base_oid, p) for p in paths}
     target_files = {p: read_target(p) for p in paths}
-    findings = evaluate(base_files, target_files, base_oid, base_task, spec_rule)
+    target_task, _ = record_fields(read_target(RECORD_FILE), f"目標 {RECORD_FILE}")
+    findings = evaluate(base_files, target_files, base_oid, base_task, spec_rule, target_task)
     if base_files.get(LEDGER_FILE) is not None and placeholder(base_task) not in base_files[LEDGER_FILE]:
         infos.append(f"Base 沒有上一批 {placeholder(base_task)}：C1b 轉換不適用，§5.1 其他既有行仍受保護")
-    infos.append(f"Base {base_oid[:12]}（上一批 {base_task}）→ "
+    infos.append(f"Base {base_oid[:12]}（上一批 {base_task}）→ 本批 {target_task} "
                  f"{'工作區' if target_oid is None else target_oid[:12]}")
     return findings, infos
 

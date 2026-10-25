@@ -125,6 +125,27 @@ def _code(fn, *args):
 
 # --- build -------------------------------------------------------------------------------------
 
+STATE_PATHS = ["docs/AUDIT-LOG.md", "docs/EXEC-LOG.md", "docs/TASKBOARD.md", "docs/refactor-backlog.md"]
+
+
+@pytest.mark.parametrize("path", STATE_PATHS)
+@pytest.mark.parametrize("where", ["code_files", "new_files"])
+def test_state_files_take_only_declared_text_ops(tmp_path, repo, where, path):
+    """B-115 C2（USER 2026-10-25 D-C2-1）：狀態檔只能以 text_ops（事前宣告的授權帳）修改。"""
+    root, base = repo
+    if where == "code_files":
+        over = {"code_files": {"scripts/tool.py": "tool.py", path: "tool.py"}}
+    else:
+        over = {"new_files": {"scripts/new_tool.py": {"file": "new.py", "block": "NEW_TOOL_PY"},
+                              path: {"file": "new.py", "block": "NEW_STATE_MD"}}}
+    assert _code(pb.build, root, _definition(tmp_path, base, **over)) == "STATE_FILE_REQUIRES_TEXT_OPS"
+
+
+def test_state_file_list_matches_the_precheck_status_files():
+    import draft_precheck
+    assert sorted(pb.STATE_FILES) == STATE_PATHS == sorted(draft_precheck.STATUS)
+
+
 def test_build_is_accepted_by_runner_and_reproduces_authored_files(tmp_path, repo):
     root, base = repo
     text, authors, authored = pb.build(root, _definition(tmp_path, base))
