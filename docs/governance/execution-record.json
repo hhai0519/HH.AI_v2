@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "B116-G4-CHECK14-U987B-R5-261026",
-  "base_oid": "93672d77dd3189fd61baa9f1fcae396ec51cea4b",
+  "task_id": "B116-G4-C7-STATE-LINT-R2-261026",
+  "base_oid": "07ffba2a8dd7b03658d2a27106dc536fe620c03b",
   "plan": {
     "allowed_paths": [
       "docs/AUDIT-LOG.md",
@@ -11,8 +11,8 @@
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
       "docs/refactor-backlog.md",
-      "scripts/check_consistency.py",
-      "scripts/tests/test_check_consistency.py"
+      "scripts/history_guard.py",
+      "scripts/tests/test_history_guard.py"
     ],
     "required_paths": [
       "docs/AUDIT-LOG.md",
@@ -21,8 +21,8 @@
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
       "docs/refactor-backlog.md",
-      "scripts/check_consistency.py",
-      "scripts/tests/test_check_consistency.py"
+      "scripts/history_guard.py",
+      "scripts/tests/test_history_guard.py"
     ],
     "max_plan_revisions": 3,
     "revision_count": 0,
@@ -36,8 +36,8 @@
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
       "docs/refactor-backlog.md",
-      "scripts/check_consistency.py",
-      "scripts/tests/test_check_consistency.py"
+      "scripts/history_guard.py",
+      "scripts/tests/test_history_guard.py"
     ]
   },
   "evidence": [

@@ -778,3 +778,91 @@ def test_cli_reports_fixed_lines_and_exit_codes(repo):
     nested = subprocess.run([sys.executable, script, "--repo", os.path.join(repo.root, "docs"), "--base", base,
                              "--target", head], capture_output=True, text=True, encoding="utf-8")
     assert nested.returncode == 1 and "FAIL HISTORY_ROOT_NOT_TOPLEVEL" in nested.stdout
+
+# G4 C7: real prior-incident shapes must be rejected by the production detector,
+# not by a test-only assertion. Old history before activation remains valid.
+def _c7_fixture():
+    previous = "B116-G4-CHECK14-U987B-R5-261026"
+    current = "B116-G4-C7-R1-261026"
+    top = "**最後更新**：2026-10-26；NEXT_WORK 與 NEXT_SLICE，舊批測試。\n"
+    prevrec = (f"**G4 CHECK14（2026-10-26；本批 {previous}）**：歷史原件。\n")
+    newrec = (f"**G4 C7（2026-10-26；本批 {current}）**：獨立驗收。\n")
+    marker = f"G4 marker {hg.C7_MARKER}\n"
+    base_tb = marker + top + "\n" + prevrec
+    cand_tb = marker + "**最後更新**：2026-10-26；NEXT_WORK 與 NEXT_SLICE，新增 C7。\n\n" + newrec + "\n" + prevrec
+    old_audit = "| SHA | date | item | status | note |\n|---|---|---|---|---|\n| 7936 | date | before | ok | note |\n"
+    new_audit = old_audit + "| 93672 | date | new | ok | note |\n"
+    before = {"docs/TASKBOARD.md":base_tb, "docs/AUDIT-LOG.md":old_audit,
+              "docs/EXEC-LOG.md":"| baseline |\n", "docs/refactor-backlog.md":"### 5.1 上一批狀態\n"}
+    after = {"docs/TASKBOARD.md":cand_tb, "docs/AUDIT-LOG.md":new_audit,
+             "docs/EXEC-LOG.md":"| baseline |\n| new |\n", "docs/refactor-backlog.md":"### 5.1 上一批狀態\n- 本批（尚未 commit）（"+current+"）：永久事實\n"}
+    return before, after, previous, current
+
+
+def _c7_codes(base, candidate, previous, current):
+    return [f.code for f in hg.check_c7_state_lint(base, candidate, previous, current)]
+
+
+def test_c7_good_forward_batch_and_historical_inactive():
+    a,b,p,c = _c7_fixture()
+    assert _c7_codes(a,b,p,c) == []
+    no_flag_a = {k:v.replace(hg.C7_MARKER,'') for k,v in a.items()}
+    no_flag_b = {k:v.replace(hg.C7_MARKER,'') for k,v in b.items()}
+    assert _c7_codes(no_flag_a,no_flag_b,p,c) == []
+
+
+def test_c7_real_last_update_stale_and_wrong_date_rejected():
+    a,b,p,c = _c7_fixture()
+    b['docs/TASKBOARD.md'] = b['docs/TASKBOARD.md'].replace(
+        '**最後更新**：2026-10-26；NEXT_WORK 與 NEXT_SLICE，新增 C7。',
+        '**最後更新**：2026-10-26；NEXT_WORK 與 NEXT_SLICE，舊批測試。')
+    # Still changed record position alone does not count as a LAST_UPDATE change.
+    assert 'C7_LAST_UPDATE_STALE' in _c7_codes(a,b,p,c)
+    a,b,p,c = _c7_fixture()
+    b['docs/TASKBOARD.md'] = b['docs/TASKBOARD.md'].replace('**最後更新**：2026-10-26','**最後更新**：2026-10-25')
+    assert 'C7_LAST_UPDATE_DATE' in _c7_codes(a,b,p,c)
+
+
+def test_c7_real_transient_and_record_position_rejected():
+    a,b,p,c = _c7_fixture()
+    b['docs/EXEC-LOG.md'] += '| E27 尚須對最終作者包成立；尚待執行 |\n'
+    assert 'C7_TRANSIENT_TEXT' in _c7_codes(a,b,p,c)
+    a,b,p,c = _c7_fixture()
+    b['docs/refactor-backlog.md'] += '本批 E27 執行前第二意見仍為待完成\n'
+    assert 'C7_TRANSIENT_TEXT' in _c7_codes(a,b,p,c)
+    a,b,p,c = _c7_fixture()
+    n = f'**G4 C7（2026-10-26；本批 {c}）**：獨立驗收。\n'
+    b['docs/TASKBOARD.md'] = b['docs/TASKBOARD.md'].replace(n, '').replace(hg.C7_MARKER, hg.C7_MARKER + '\n'+n)
+    assert 'C7_RECORD_ORDER' in _c7_codes(a,b,p,c) or 'C7_RECORD_ADJACENCY' in _c7_codes(a,b,p,c)
+
+
+def test_c7_audit_table_escape_and_disable_guard_rejected():
+    a,b,p,c = _c7_fixture()
+    b['docs/AUDIT-LOG.md'] += '\n| stray | date | new | ok | note |\n'
+    assert 'C7_AUDIT_TABLE_ESCAPE' in _c7_codes(a,b,p,c)
+    a,b,p,c = _c7_fixture()
+    b['docs/TASKBOARD.md'] = b['docs/TASKBOARD.md'].replace(hg.C7_MARKER, '')
+    assert 'C7_GUARD_DISABLED' in _c7_codes(a,b,p,c)
+
+
+def test_c7_date_only_last_update_is_stale():
+    a,b,p,c = _c7_fixture()
+    a['docs/TASKBOARD.md'] = a['docs/TASKBOARD.md'].replace('**最後更新**：2026-10-26', '**最後更新**：2026-10-25')
+    b['docs/TASKBOARD.md'] = b['docs/TASKBOARD.md'].replace('新增 C7。', '舊批測試。')
+    assert 'C7_LAST_UPDATE_STALE' in _c7_codes(a,b,p,c)
+
+
+def test_c7_transient_variants_rejected():
+    for text in ('未經 Executor 執行前不代表已寫入 main', '待 E27 完成後再交 Executor',
+                 'E27　尚未完成', '`E27` 仍待複核', 'G4 C7 本批僅作者提案'):
+        a,b,p,c = _c7_fixture()
+        b['docs/AUDIT-LOG.md'] += '| x | d | i | ' + text + ' | n |\n'
+        assert 'C7_TRANSIENT_TEXT' in _c7_codes(a,b,p,c), text
+
+
+def test_c7_new_table_header_not_escape_and_stray_row_detected():
+    a,b,p,c = _c7_fixture()
+    b['docs/AUDIT-LOG.md'] += '\n## New table\n\n| Name | Value |\n|---|---|\n| A | B |\n'
+    assert 'C7_AUDIT_TABLE_ESCAPE' not in _c7_codes(a,b,p,c)
+    b['docs/AUDIT-LOG.md'] += '\n|stray|record|\n'
+    assert 'C7_AUDIT_TABLE_ESCAPE' in _c7_codes(a,b,p,c)

@@ -1,5 +1,5 @@
 {
-  "base_head": "93672d7",
+  "base_head": "07ffba2",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -562,16 +562,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 373,
-      "sha256": "d46e7abe510b36b3ef570e6479004e5781e77ecc4d3560975b35c66eaf32e782"
+      "lines": 374,
+      "sha256": "cbcad7c1c80c7f2ceb3adb09e6e787a773e9204b11ad32c36625221c275376b3"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 348,
-      "sha256": "9f5828bec3f7a925c869c705e71bf45080eb4f7c41212ce2c4e16e550e5ba051"
+      "lines": 349,
+      "sha256": "92ac708f32651cc8cdfdea55ab898b7a8e7b337d41fcedb70276da716c8046b9"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -613,8 +613,8 @@
         "## G. 舊 repo 未盤點區塊（2026-09-02 新發現）",
         "## 封存區"
       ],
-      "lines": 442,
-      "sha256": "41f14f29d67a81634e41606785cfe710280162be4dc9a01f59e63b1c9525600d"
+      "lines": 446,
+      "sha256": "2956bbe7fea78ca24aa2d122b959e5833a962db9bcb8654b6fcf8f8920e3e4df"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1112,8 +1112,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6432,
-      "sha256": "2e185372cd8e3e60d1cb7b9c59258a9f6b9f4c5d802807f92b40a5003566e0ff"
+      "lines": 6433,
+      "sha256": "adb7001af18c6af6e7b4e28c45324a9b3ea3b07178e025173fe49e2ebef7f1ee"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1335,12 +1335,15 @@
         "# ---------------------------------------------------------------------------",
         "# 純文字規則",
         "# ---------------------------------------------------------------------------",
+        "# G4 C7 forward-only lint. The marker is introduced by the first C7 batch; prior",
+        "# historical commits remain covered by C1/CHECK28 but are not retroactively linted.",
+        "# Expanded synonyms and word-order variants of known pre-execution claims.",
         "# ---------------------------------------------------------------------------",
         "# git 層",
         "# ---------------------------------------------------------------------------"
       ],
-      "lines": 497,
-      "sha256": "239c6b89016bac1d74883b142a6955d1faa1ea046c9cde462d1124990266e20a"
+      "lines": 602,
+      "sha256": "af1b1e8a4412d81a921ac6f258c41bde7e09b2066d0a7fc54af126aa6bc46022"
     },
     "scripts/impact_scan.py": {
       "fences": 0,
@@ -1840,10 +1843,12 @@
         "# ---------------------------------------------------------------------------",
         "# ---------------------------------------------------------------------------",
         "# 接線與命令列",
-        "# ---------------------------------------------------------------------------"
+        "# ---------------------------------------------------------------------------",
+        "# G4 C7: real prior-incident shapes must be rejected by the production detector,",
+        "# not by a test-only assertion. Old history before activation remains valid."
       ],
-      "lines": 784,
-      "sha256": "2b4272b9567e61b9fbf5c84625ed6b266ca04160d3e38e5f46481a67af42c8a6"
+      "lines": 872,
+      "sha256": "3f4e8f17f88a894b2f4d75bc718e75d752818f7817be21907d7cf544e087f7eb"
     },
     "scripts/tests/test_impact_scan.py": {
       "fences": 0,
@@ -2186,7 +2191,7 @@
       "sha256": "62c3142973a5c228efacc01ddcbd44a76e5f87e24d7bed15d90e2ce45a494982"
     }
   },
-  "generated_at": "2026-10-26T01:19:22Z",
+  "generated_at": "2026-10-26T09:06:15Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

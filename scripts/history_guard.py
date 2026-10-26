@@ -42,6 +42,8 @@ execution-record、目標檔或 §5.1 取不到，一律 FAIL。
 """
 
 import argparse
+import datetime
+import difflib
 import json
 import os
 import re
@@ -217,6 +219,108 @@ def check_own_placeholder(target_text, target_task):
     if count > 1:
         return [Finding("HISTORY_OWN_PLACEHOLDER_DUPLICATED", f"目標 §5.1 有 {count} 處 {ph}")]
     return []
+
+
+# G4 C7 forward-only lint. The marker is introduced by the first C7 batch; prior
+# historical commits remain covered by C1/CHECK28 but are not retroactively linted.
+C7_MARKER = "C7_STATUS_LINT_ACTIVE"
+C7_RECORD = re.compile(r"^\*\*.+[（(]\d{4}-\d{2}-\d{2}；本批 ([A-Za-z0-9_-]+)[）)]\*\*[：:]")
+C7_DATE = re.compile(r"(?<!\d)(20\d{2}-\d{2}-\d{2})(?!\d)")
+C7_TRANSIENT = (
+    "未經本批 Executor 執行前", "E27 尚須", "E27仍為待完成",
+    "E27 仍為待完成", "本批 E27 執行前第二意見仍為待完成",
+    "須先完成 E27 再進 Executor", "尚須對最終作者包成立",
+)
+
+
+# Expanded synonyms and word-order variants of known pre-execution claims.
+C7_TRANSIENT_RE = (
+    re.compile(r"未經.{0,6}Executor.{0,6}執行前"),
+    re.compile(r"(?:尚待|仍待|待)E27"),
+    re.compile(r"E27(?:尚待|仍待|尚未|未完成)"),
+    re.compile(r"本批僅作者提案"),
+)
+C7_NOISE = re.compile(r"[\s`*]")
+
+
+def c7_last_update(text):
+    lines = [line for line in split_lines(text) if line.startswith("**最後更新**：")]
+    return lines[0] if len(lines) == 1 else None
+
+
+def c7_added_lines(before, after):
+    # Only inspect added/replaced prospective text, never rewrite historical rows.
+    a, b = split_lines(before), split_lines(after)
+    matcher = difflib.SequenceMatcher(a=a, b=b, autojunk=False)
+    for kind, _, _, j1, j2 in matcher.get_opcodes():
+        if kind in ("insert", "replace"):
+            yield from b[j1:j2]
+
+
+def c7_unattached_audit_rows(text):
+    lines = split_lines(text)
+    count = 0
+    for i, line in enumerate(lines):
+        if not line.startswith("|"):
+            continue
+        # A newly introduced table header immediately followed by a Markdown
+        # separator is not an unattached record, even at a section boundary.
+        next_line = lines[i + 1] if i + 1 < len(lines) else ""
+        if re.fullmatch(r"\|(?:\s*:?-{3,}:?\s*\|)+\s*", next_line):
+            continue
+        previous = lines[i-1] if i else ""
+        if not previous.startswith("|") and not previous.lstrip().startswith("|-"):
+            count += 1
+    return count
+
+
+def check_c7_state_lint(base_files, target_files, base_task, target_task):
+    before = base_files.get("docs/TASKBOARD.md") or ""
+    after = target_files.get("docs/TASKBOARD.md") or ""
+    armed_before = C7_MARKER in before
+    armed_after = C7_MARKER in after
+    if not (armed_before or armed_after):
+        return []  # No backdated failures on archived commits before activation.
+    bad = []
+    if not armed_after:
+        bad.append(Finding("C7_GUARD_DISABLED", C7_MARKER))
+    if base_task == target_task:
+        return bad  # A same-task observation is not a new production batch.
+    old_updated = c7_last_update(before)
+    new_updated = c7_last_update(after)
+    if (old_updated is None or new_updated is None or old_updated == new_updated
+            or C7_DATE.sub("", old_updated) == C7_DATE.sub("", new_updated)):
+        bad.append(Finding("C7_LAST_UPDATE_STALE", "TASKBOARD 最後更新必須與 Base 不同且唯一"))
+    else:
+        dm = re.search(r"(?<!\d)(\d{2})(\d{2})(\d{2})$", target_task)
+        expected = f"20{dm[1]}-{dm[2]}-{dm[3]}" if dm else None
+        dates = C7_DATE.findall(new_updated)
+        if expected is None or dates != [expected]:
+            bad.append(Finding("C7_LAST_UPDATE_DATE", "TASKBOARD 最後更新日期必須等於本批 TASK_ID 日期"))
+    for path in ("docs/TASKBOARD.md", "docs/AUDIT-LOG.md", "docs/EXEC-LOG.md", LEDGER_FILE):
+        for line in c7_added_lines(base_files.get(path) or "", target_files.get(path) or ""):
+            normalized = C7_NOISE.sub("", line)
+            if (any(C7_NOISE.sub("", needle) in normalized for needle in C7_TRANSIENT)
+                    or any(rx.search(normalized) for rx in C7_TRANSIENT_RE)):
+                bad.append(Finding("C7_TRANSIENT_TEXT", path))
+                break
+    # Taskboard new batch record must occur immediately before the prior first record;
+    # a header or top-of-board inserted batch record is not accepted.
+    old_recs = [(i, m.group(1)) for i, line in enumerate(split_lines(before))
+                if (m := C7_RECORD.match(line))]
+    new_recs = [(i, m.group(1)) for i, line in enumerate(split_lines(after))
+                if (m := C7_RECORD.match(line))]
+    if old_recs:
+        if not new_recs or new_recs[0][1] != target_task or len(new_recs) < 2 or new_recs[1][1] != old_recs[0][1]:
+            bad.append(Finding("C7_RECORD_ORDER", "TASKBOARD 新批次須為批次紀錄區第一筆，緊接舊首筆之前"))
+        else:
+            lines = split_lines(after)
+            if any(lines[i].strip() for i in range(new_recs[0][0]+1, new_recs[1][0])):
+                bad.append(Finding("C7_RECORD_ADJACENCY", "新舊紀錄之間只允許空白行"))
+    b_aud, t_aud = base_files.get("docs/AUDIT-LOG.md") or "", target_files.get("docs/AUDIT-LOG.md") or ""
+    if c7_unattached_audit_rows(t_aud) > c7_unattached_audit_rows(b_aud):
+        bad.append(Finding("C7_AUDIT_TABLE_ESCAPE", "AUDIT-LOG 表格外列數不得增加"))
+    return bad
 
 
 def evaluate(base_files, target_files, base_oid, base_task, exec_log_rule=None, target_task=None):
@@ -426,6 +530,7 @@ def guard(root, base_rev, target_rev, exec_log_rule=None):
     target_files = {p: read_target(p) for p in paths}
     target_task, _ = record_fields(read_target(RECORD_FILE), f"目標 {RECORD_FILE}")
     findings = evaluate(base_files, target_files, base_oid, base_task, spec_rule, target_task)
+    findings.extend(check_c7_state_lint(base_files, target_files, base_task, target_task))
     if base_files.get(LEDGER_FILE) is not None and placeholder(base_task) not in base_files[LEDGER_FILE]:
         infos.append(f"Base 沒有上一批 {placeholder(base_task)}：C1b 轉換不適用，§5.1 其他既有行仍受保護")
     infos.append(f"Base {base_oid[:12]}（上一批 {base_task}）→ 本批 {target_task} "
