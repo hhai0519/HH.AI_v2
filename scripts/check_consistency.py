@@ -1615,7 +1615,7 @@ def check_14_simplified_chinese(root_dir=None):
     if root_dir is None: root_dir = repo_root
     fails = []
     infos = []
-    simplified_chars = set("换爲这个们时说说过还没来实现应该产严术样价专车书长门间乐习买卖举属于")
+    simplified_chars = set("换爲这个们时说说过还没来实现应该产严术样价专车书长门间乐习买卖举属于须")
     # Japanese kana: Hiragana (U+3040-U+309F), Katakana (U+30A0-U+30FF), Half-width Katakana (U+FF65-U+FF9F)
     jp_kana_re = re.compile(r'[\u3040-\u309f\u30a0-\u30ff\uff65-\uff9f]')
     # Reviewed Japanese Shinjitai denylist (distinct from Traditional Chinese)

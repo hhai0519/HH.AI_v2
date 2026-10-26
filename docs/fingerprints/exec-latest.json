@@ -1,5 +1,5 @@
 {
-  "base_head": "7936e0b",
+  "base_head": "93672d7",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -562,16 +562,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 372,
-      "sha256": "26dbf07647c26c64c587c483d8eff67189b9511f4cfbd4f3cfacfd9993b51613"
+      "lines": 373,
+      "sha256": "d46e7abe510b36b3ef570e6479004e5781e77ecc4d3560975b35c66eaf32e782"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 347,
-      "sha256": "7fad9990dbf91824a4f078c28b9bd74e126f570d307f924846e6310f750032d4"
+      "lines": 348,
+      "sha256": "9f5828bec3f7a925c869c705e71bf45080eb4f7c41212ce2c4e16e550e5ba051"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -613,8 +613,8 @@
         "## G. 舊 repo 未盤點區塊（2026-09-02 新發現）",
         "## 封存區"
       ],
-      "lines": 441,
-      "sha256": "7f816db96f7da32790f414449817d486076bed44d6a0c919a76aad4d722d387c"
+      "lines": 442,
+      "sha256": "41f14f29d67a81634e41606785cfe710280162be4dc9a01f59e63b1c9525600d"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1112,8 +1112,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6431,
-      "sha256": "256d0d06447b1c47577bb79d8a32a8b71ffa47890ef5f09ee9b629514e7c2f8f"
+      "lines": 6432,
+      "sha256": "2e185372cd8e3e60d1cb7b9c59258a9f6b9f4c5d802807f92b40a5003566e0ff"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1264,7 +1264,7 @@
         "# ---------------------------------------------------------------------------"
       ],
       "lines": 3817,
-      "sha256": "55cc240bb739d2f2c35d02107d2521a7c022f193175f7fec6c040a7c5ba7d5a1"
+      "sha256": "f3c91d60ffbd3e12ca0618e714325e1c0728ac4e0ac4dd24458fc594f663686f"
     },
     "scripts/delivery_pack.py": {
       "fences": 0,
@@ -1728,8 +1728,8 @@
         "# CHECK 26 Tests: M2 Plan-vs-Actual / Evidence Integrity Replay Guard",
         "# ---------------------------------------------------------------------------"
       ],
-      "lines": 2552,
-      "sha256": "cd41cf631e1c84c179fd0640bb9ce4c322947b2ac4643b063d969154637db067"
+      "lines": 2578,
+      "sha256": "b7c84b4e6139e2bb8a7df4651961ce2f369a6f94ae929db7757d9280e62ea4c7"
     },
     "scripts/tests/test_delivery_pack.py": {
       "fences": 0,
@@ -2186,7 +2186,7 @@
       "sha256": "62c3142973a5c228efacc01ddcbd44a76e5f87e24d7bed15d90e2ce45a494982"
     }
   },
-  "generated_at": "2026-10-25T13:06:41Z",
+  "generated_at": "2026-10-26T01:19:22Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

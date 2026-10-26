@@ -800,6 +800,32 @@ def test_check_14_simplified_chinese_fail(tmp_path):
     assert "包含簡體字" in fails[0]
 
 
+def test_check_14_u987b_actual_reported_variants_fail(tmp_path):
+    # Regression: G4 user-reported leak was a single simplified glyph U+987B.
+    for i, sample in enumerate(("须", "请须检查", "简体：请须检查", "請须檢查。")):
+        f = tmp_path / f"sample{i}.md"
+        f.write_text(sample + "\n", encoding="utf-8")
+        failures, _ = check_14_simplified_chinese(str(tmp_path))
+        assert any("须" in item for item in failures), sample
+        f.unlink()
+
+
+def test_check_14_traditional_equivalent_remains_allowed(tmp_path):
+    f = tmp_path / "sample.md"
+    f.write_text("請須檢查。\n", encoding="utf-8")
+    failures, _ = check_14_simplified_chinese(str(tmp_path))
+    assert failures == []
+
+
+def test_check_14_u987b_backlog_plain_text_fails(tmp_path):
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "refactor-backlog.md").write_text("一般正文须辦理\n", encoding="utf-8")
+    failures, _ = check_14_simplified_chinese(str(tmp_path))
+    assert len(failures) == 1
+    assert "须" in failures[0]
+
+
 def test_check_14_simplified_chinese_allowed_exception(tmp_path):
     docs = tmp_path / "docs"
     docs.mkdir()

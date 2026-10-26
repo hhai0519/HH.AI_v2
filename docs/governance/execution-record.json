@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "B116-G2-CLOSE-G4-SCOPE-R1-261025",
-  "base_oid": "7936e0b67324e7558b69864b24868b0ba3d4ef3b",
+  "task_id": "B116-G4-CHECK14-U987B-R5-261026",
+  "base_oid": "93672d77dd3189fd61baa9f1fcae396ec51cea4b",
   "plan": {
     "allowed_paths": [
       "docs/AUDIT-LOG.md",
@@ -10,7 +10,9 @@
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md"
+      "docs/refactor-backlog.md",
+      "scripts/check_consistency.py",
+      "scripts/tests/test_check_consistency.py"
     ],
     "required_paths": [
       "docs/AUDIT-LOG.md",
@@ -18,7 +20,9 @@
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md"
+      "docs/refactor-backlog.md",
+      "scripts/check_consistency.py",
+      "scripts/tests/test_check_consistency.py"
     ],
     "max_plan_revisions": 3,
     "revision_count": 0,
@@ -31,7 +35,9 @@
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md"
+      "docs/refactor-backlog.md",
+      "scripts/check_consistency.py",
+      "scripts/tests/test_check_consistency.py"
     ]
   },
   "evidence": [
