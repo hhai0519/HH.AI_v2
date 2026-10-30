@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "B116-G4-C7-STATE-LINT-R2-261026",
-  "base_oid": "07ffba2a8dd7b03658d2a27106dc536fe620c03b",
+  "task_id": "B116-AUD-TAKEOVER-STATE-R2-261030",
+  "base_oid": "176aa0cac5b28b5fabc6733355e16ab9874ef158",
   "plan": {
     "allowed_paths": [
       "docs/AUDIT-LOG.md",
@@ -10,9 +10,7 @@
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md",
-      "scripts/history_guard.py",
-      "scripts/tests/test_history_guard.py"
+      "docs/refactor-backlog.md"
     ],
     "required_paths": [
       "docs/AUDIT-LOG.md",
@@ -20,9 +18,7 @@
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md",
-      "scripts/history_guard.py",
-      "scripts/tests/test_history_guard.py"
+      "docs/refactor-backlog.md"
     ],
     "max_plan_revisions": 3,
     "revision_count": 0,
@@ -35,9 +31,7 @@
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md",
-      "scripts/history_guard.py",
-      "scripts/tests/test_history_guard.py"
+      "docs/refactor-backlog.md"
     ]
   },
   "evidence": [
