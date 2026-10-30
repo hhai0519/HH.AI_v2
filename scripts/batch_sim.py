@@ -11,10 +11,11 @@ step by step, and checks the result mechanically. It never executes a batch for 
 Usage:
   python scripts/batch_sim.py production --source <repo> --prompt <file> --workdir <empty dir>
                               [--locale utf8|posix] [--resume-prompt <stopped batch prompt>]
-                              [--negative runner|author|adopt]
+                              [--negative runner|author|adopt] [--git-profile isolated|windows]
   python scripts/batch_sim.py promotion  --source <repo> --prompt <file> --workdir <empty dir>
                               [--locale utf8|posix] [--negative drift|dirty|runner|prompt]
-  python scripts/batch_sim.py winemu     --repo <repo> -- <pytest arguments>
+                              [--git-profile isolated|windows]
+  python scripts/batch_sim.py winemu     --repo <repo> [--git-profile windows|isolated] -- <pytest arguments>
 
 Production: origin main = the prompt's base_oid; the work clone starts on batch/sim-start (or, with
 --resume-prompt, first runs preflight..apply of the stopped batch, rebuilding its stop state for an adopt start).
@@ -30,11 +31,32 @@ Negatives inject one fault and require the documented S1 line at the documented 
 
 Isolation: the work directory must be new or empty and outside the source; every git command runs without any
 inherited GIT_* variable and with an empty global configuration (no system configuration), clones use an empty
-template; the work tree, git directory and both origin URLs are verified to be the simulation's own paths, and the
+template; HOME and XDG_CONFIG_HOME point at the simulation's own empty directories, so a tool or test that drops
+GIT_CONFIG_GLOBAL still finds no host ~/.gitconfig or $XDG_CONFIG_HOME/git/config (B-123a); the work tree, git directory and both origin URLs are verified to be the simulation's own paths, and the
 source must be unchanged at the end (refs and file metadata, see Trust boundary). Every command runs through bounded_process.run_bounded
 (own process group, output to temporary files, whole tree terminated on timeout). S1 codes are printed only when
 they belong to the runner's own constant vocabulary; anything else is printed as S1_UNLISTED.
-winemu runs pytest with scripts/sim_windows_emulation.py loaded (an emulation, never native Windows evidence).
+winemu runs pytest with scripts/sim_windows_emulation.py loaded (an emulation, never native Windows evidence), in
+the same environment isolation (own temporary HOME/XDG_CONFIG_HOME, no inherited GIT_* variable).
+
+Git profiles (B-123a): "isolated" (production/promotion default) is the behaviour above: GIT_CONFIG_NOSYSTEM=1.
+"windows" (winemu default) reproduces the configuration sources of the USER's Git for Windows: a simulation-owned
+system file (GIT_CONFIG_SYSTEM, never the host's) with the installer defaults core.autocrlf=true and
+core.symlinks=false, the empty isolated global file, and core.symlinks=false in the local config of the work clone
+(what a Windows clone writes on a file system without symlink support). Before any step the effective values are
+checked, with positive and negative expectations, for three kinds of Git subprocess:
+  ambient   the simulation environment unchanged (runner, gates, tests that do not isolate) in the work clone,
+            and for winemu in the --repo the tests actually run in (identity checked; its own local values and any
+            include/includeIf must not change the profile or bring in a non-simulation file);
+  isolated  a tool that sets GIT_CONFIG_NOSYSTEM=1 and GIT_CONFIG_GLOBAL=os.devnull (bundle_after_push,
+            s1_full_capture, c9_s1_capture_guard): the system file must NOT apply, only the local config;
+  fresh     a new repository created under the ambient environment (test fixtures, git init in a temporary dir).
+Every configuration origin visible to the ambient and fresh kinds, including with GIT_CONFIG_GLOBAL removed, must be
+a simulation-owned file or the repository's own .git/config (GIT_PROFILE_HOST_LEAK otherwise). The profile changes
+configuration only: native Git behaviour (symlink capability probes, case-insensitive paths, file locking) is not
+emulated, and a passing run is not native Windows evidence. Only HOME and XDG_CONFIG_HOME move: on a Windows host
+USERPROFILE stays as it is (Git for Windows reads HOME), and the interpreter must not depend on a per-user
+site-packages directory under the real home (use a virtual environment).
 
 Trust boundary: a simulation runs the repository's own, reviewed code (runner, gates, tests) for a prompt the
 auditor wrote; it is not a sandbox for untrusted code. What it does guarantee: Git isolation (above) and a source
@@ -75,6 +97,7 @@ import json
 import os
 import re
 import sys
+import tempfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -116,6 +139,9 @@ CI_STUB = ('import json, runpy, sys\n'
            'runpy.run_path(".git/batch-sim-vp-real.py", run_name="__main__")\n')
 
 AUTH_FILE = '.git/hhai-sensitive-push-auth.json'
+GIT_PROFILES = ('isolated', 'windows')
+# Git for Windows installer defaults at system scope on the USER machine (B-123a; see the TASKBOARD B-123 row).
+WINDOWS_SYSTEM_CONFIG = b'[core]\n\tautocrlf = true\n\tsymlinks = false\n'
 S1_UNLISTED = 'S1_UNLISTED'
 
 
@@ -232,23 +258,127 @@ def check_workdir(workdir, source):
     return w
 
 
+def isolated_env(root, extra=None, profile='isolated'):
+    """Environment for every simulated command: no inherited GIT_* variable (GIT_DIR, GIT_WORK_TREE,
+    GIT_CONFIG_*, ...), HOME and XDG_CONFIG_HOME in <root>/home (empty), the empty <root>/isolated-gitconfig as the
+    only global configuration, and either no system configuration (isolated) or the simulation-owned Windows
+    system file <root>/git-system-windows (windows). Host url rewrites, push URLs, hooksPath and templates never apply.
+    """
+    _require(profile in GIT_PROFILES, 'GIT_PROFILE_INVALID')
+    root = Path(root)
+    env = {k: v for k, v in os.environ.items() if not k.upper().startswith('GIT_')}
+    env.update(extra or {})
+    home = root / 'home'
+    xdg = home / '.config'
+    xdg.mkdir(parents=True, exist_ok=True)
+    gitconfig = root / 'isolated-gitconfig'
+    gitconfig.write_bytes(b'')
+    env.update({'HOME': str(home), 'XDG_CONFIG_HOME': str(xdg), 'GIT_CONFIG_GLOBAL': str(gitconfig),
+                'GIT_TERMINAL_PROMPT': '0'})
+    if profile == 'windows':
+        system = root / 'git-system-windows'
+        system.write_bytes(WINDOWS_SYSTEM_CONFIG)
+        env['GIT_CONFIG_SYSTEM'] = str(system)
+    else:
+        env['GIT_CONFIG_NOSYSTEM'] = '1'
+    return env
+
+
+def _effective(run, env, cwd, key):
+    """(scope, value) of one key as Git resolves it for this environment, or None when unset."""
+    rc, out = run(['git', 'config', '--show-scope', '--get', key], cwd, env, GIT_TIMEOUT, False)
+    text = out.decode('utf-8', 'replace').strip()
+    if rc == 1 or (rc == 0 and not text):
+        return None
+    parts = text.split('\t')
+    _require(rc == 0 and len(parts) == 2, 'GIT_PROFILE_UNREADABLE')
+    return parts[0], parts[1]
+
+
+def _origin_key(origin):
+    """Comparable form of a --show-origin value: the repository's own relative .git/config stays as is, any other
+    file is resolved and case-normalised (Git for Windows prints forward slashes)."""
+    if not origin.startswith('file:') or origin == 'file:.git/config':
+        return origin
+    return 'file:' + os.path.normcase(os.path.realpath(origin[len('file:'):]))
+
+
+def _origins(run, env, cwd):
+    rc, out = run(['git', 'config', '--show-origin', '--list'], cwd, env, GIT_TIMEOUT, False)
+    _require(rc == 0, 'GIT_PROFILE_UNREADABLE')
+    return {_origin_key(line.split('\t', 1)[0]) for line in out.decode('utf-8', 'replace').splitlines()
+            if line.strip()}
+
+
+def _same_path(a, b):
+    return os.path.normcase(os.path.realpath(a)) == os.path.normcase(os.path.realpath(b))
+
+
+def _check_repo_identity(run, env, repo):
+    """The existing repository under test must be a top-level work tree whose git directory is its own .git."""
+    for args, want in ((['rev-parse', '--show-toplevel'], repo), (['rev-parse', '--absolute-git-dir'],
+                                                                   os.path.join(repo, '.git'))):
+        rc, out = run(['git', *args], repo, env, GIT_TIMEOUT, False)
+        _require(rc == 0 and _same_path(out.decode('utf-8', 'replace').strip(), want), 'GIT_PROFILE_REPO_IDENTITY')
+
+
+def check_git_profile(run, env, root, profile, work=None, repo=None):
+    """Positive and negative checks of the effective Git configuration for the three kinds of Git subprocess.
+
+    work: the simulation's own work clone (production/promotion), which must also carry the local
+          core.symlinks=false of a Windows clone; repo: an existing repository the tests run in (winemu --repo),
+          checked read-only (identity, effective values, configuration origins) but never required to carry any
+          particular local value. Neither: only the fresh probe. Every check runs before any step or test.
+    """
+    root = Path(root)
+    root.mkdir(parents=True, exist_ok=True)
+    fresh = root / 'probe-fresh'
+    rc, _ = run(['git', 'init', '-q', str(fresh)], str(root), env, GIT_TIMEOUT, False)
+    _require(rc == 0, 'GIT_PROFILE_UNREADABLE')
+    tool_env = dict(env, GIT_CONFIG_NOSYSTEM='1', GIT_CONFIG_GLOBAL=os.devnull)
+    no_global = {k: v for k, v in env.items() if k != 'GIT_CONFIG_GLOBAL'}
+    windows = profile == 'windows'
+    want_crlf = ('system', 'true') if windows else None
+    if repo is not None:
+        repo = str(Path(repo).resolve())
+        _check_repo_identity(run, env, repo)
+    places = ([('FRESH', str(fresh))] + ([('AMBIENT', work)] if work else [])
+              + ([('REPO', repo)] if repo is not None else []))
+    for kind, cwd in places:
+        _require(_effective(run, env, cwd, 'core.autocrlf') == want_crlf, 'GIT_PROFILE_' + kind + '_MISMATCH')
+        symlinks = _effective(run, env, cwd, 'core.symlinks')
+        if windows:
+            _require(symlinks is not None and symlinks[1] == 'false', 'GIT_PROFILE_' + kind + '_MISMATCH')
+        else:
+            _require(symlinks is None or symlinks[0] == 'local', 'GIT_PROFILE_' + kind + '_MISMATCH')
+        # The isolated kind must never see the system file, whatever the profile (NOSYSTEM keeps precedence).
+        _require(_effective(run, tool_env, cwd, 'core.autocrlf') is None, 'GIT_PROFILE_ISOLATED_MISMATCH')
+        tool_symlinks = _effective(run, tool_env, cwd, 'core.symlinks')
+        _require(tool_symlinks is None or tool_symlinks[0] == 'local', 'GIT_PROFILE_ISOLATED_MISMATCH')
+        allowed = {'file:.git/config', _origin_key('file:' + env['GIT_CONFIG_GLOBAL'])}
+        if windows:
+            allowed.add(_origin_key('file:' + env['GIT_CONFIG_SYSTEM']))
+        for e in (env, no_global):
+            _require(_origins(run, e, cwd) <= allowed, 'GIT_PROFILE_HOST_LEAK')
+    if work and windows:
+        _require(_effective(run, env, work, 'core.symlinks') == ('local', 'false'), 'GIT_PROFILE_AMBIENT_MISMATCH')
+        _require(_effective(run, tool_env, work, 'core.symlinks') == ('local', 'false'),
+                 'GIT_PROFILE_ISOLATED_MISMATCH')
+
+
 class Sim:
-    def __init__(self, source, workdir, locale='utf8', run=default_run, out=print):
+    def __init__(self, source, workdir, locale='utf8', run=default_run, out=print, git_profile='isolated'):
         _require(locale in LOCALES, 'LOCALE_INVALID')
+        _require(git_profile in GIT_PROFILES, 'GIT_PROFILE_INVALID')
         self.source = str(Path(source).resolve())
         self.workdir = check_workdir(workdir, source)
         self.bare = str(self.workdir / 'origin.git')
         self.work = str(self.workdir / 'work')
         self.downloads = self.workdir / 'downloads'
-        # Git isolation: no inherited GIT_* variable (GIT_DIR, GIT_WORK_TREE, GIT_CONFIG_*, ...) and no global or
-        # system configuration (url rewrites, push URLs, hooksPath, templates); the simulation's own empty file
-        # is the only global configuration.
-        self.env = {k: v for k, v in os.environ.items() if not k.upper().startswith('GIT_')}
-        self.env.update(LOCALES[locale])
+        self.git_profile = git_profile
+        # Git and home isolation; see isolated_env and the module documentation (Isolation, Git profiles).
+        self.env = isolated_env(self.workdir, LOCALES[locale], git_profile)
         self.gitconfig = self.workdir / 'isolated-gitconfig'
-        self.gitconfig.write_bytes(b'')
-        self.env.update({'GIT_CONFIG_GLOBAL': str(self.gitconfig), 'GIT_CONFIG_NOSYSTEM': '1',
-                         'GIT_TERMINAL_PROMPT': '0'})
         self.stubbed = False
         self.run_cmd = run
         self.out = out
@@ -314,7 +444,10 @@ class Sim:
         self.git('config', 'user.name', 'HH.AI')
         self.git('config', 'user.email', 'sim@example.invalid')
         self.git('config', 'commit.gpgsign', 'false')
+        if self.git_profile == 'windows':
+            self.git('config', 'core.symlinks', 'false')      # what a Windows clone writes without symlink support
         self.check_locations()
+        check_git_profile(self.run_cmd, self.env, self.workdir, self.git_profile, self.work)
 
     def check_source_unchanged(self):
         _require(self.source_refs() == self.source_before, 'SOURCE_MODIFIED')
@@ -496,12 +629,16 @@ class Sim:
         self.check_source_unchanged()
 
 
-def winemu(repo, pytest_args, run=default_run):
-    env = dict(os.environ)
-    scripts = str(Path(repo).resolve() / 'scripts')
-    env['PYTHONPATH'] = scripts + (os.pathsep + env['PYTHONPATH'] if env.get('PYTHONPATH') else '')
-    rc, out = run([sys.executable, '-m', 'pytest', '-p', 'sim_windows_emulation', '-p', 'no:cacheprovider',
-                   *pytest_args], repo, env, STEP_TIMEOUT, True)
+def winemu(repo, pytest_args, run=default_run, git_profile='windows', probe_run=default_run):
+    """pytest with the Windows emulation plugin, in a temporary isolated HOME/XDG_CONFIG_HOME and Git profile;
+    the profile is checked with probe_run (real git) before the tests run."""
+    with tempfile.TemporaryDirectory(prefix='batch-sim-winemu-') as root:
+        env = isolated_env(root, None, git_profile)
+        check_git_profile(probe_run, env, root, git_profile, repo=repo)
+        scripts = str(Path(repo).resolve() / 'scripts')
+        env['PYTHONPATH'] = scripts + (os.pathsep + env['PYTHONPATH'] if env.get('PYTHONPATH') else '')
+        rc, out = run([sys.executable, '-m', 'pytest', '-p', 'sim_windows_emulation', '-p', 'no:cacheprovider',
+                       *pytest_args], repo, env, STEP_TIMEOUT, True)
     text = out.decode('utf-8', 'replace')
     tail = [l.strip('= ') for l in text.splitlines() if l.strip()][-1:]
     summary = tail[0] if tail and PYTEST_TOTALS.match(tail[0]) else '(summary withheld)'
@@ -519,23 +656,26 @@ def main(argv=None):
         p.add_argument('--workdir', required=True)
         p.add_argument('--locale', default='utf8', choices=sorted(LOCALES))
         p.add_argument('--negative', choices=sorted(negatives))
+        p.add_argument('--git-profile', default='isolated', choices=GIT_PROFILES)
         if name == 'production':
             p.add_argument('--resume-prompt')
     w = sub.add_parser('winemu')
     w.add_argument('--repo', required=True)
+    w.add_argument('--git-profile', default='windows', choices=GIT_PROFILES)
     w.add_argument('pytest_args', nargs=argparse.REMAINDER)
     args = parser.parse_args(argv)
     try:
         if args.cmd == 'winemu':
-            winemu(args.repo, [a for a in args.pytest_args if a != '--'])
-            mode = 'winemu'
+            winemu(args.repo, [a for a in args.pytest_args if a != '--'], git_profile=args.git_profile)
+            mode = 'winemu git_profile=' + args.git_profile
         else:
-            sim = Sim(args.source, args.workdir, args.locale)
+            sim = Sim(args.source, args.workdir, args.locale, git_profile=args.git_profile)
             if args.cmd == 'production':
                 sim.production(args.prompt, args.resume_prompt, args.negative)
             else:
                 sim.promotion(args.prompt, args.negative)
-            mode = args.cmd + (' negative=' + args.negative if args.negative else '') + ' locale=' + args.locale
+            mode = (args.cmd + (' negative=' + args.negative if args.negative else '') + ' locale=' + args.locale
+                    + (' git_profile=windows' if args.git_profile == 'windows' else ''))
         print('BATCH_SIM PASS ' + mode)
     except SimError as e:
         print('BATCH_SIM FAIL ' + str(e))

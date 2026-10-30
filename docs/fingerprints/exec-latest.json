@@ -1,5 +1,5 @@
 {
-  "base_head": "dabfcf8",
+  "base_head": "4a2f695",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -562,16 +562,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 376,
-      "sha256": "b8f3b2750730083d61cb858b70451a43ba4481ad4f59217fc6781e08d8b62e5e"
+      "lines": 377,
+      "sha256": "2caa385fcdfabfae0253bc4710d2ca42b0f953840e914686b895f2e64078f243"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 351,
-      "sha256": "5f898de49386ac7256f7d038d10a475a2fcbf1d32044a4ed04404ec80781cd32"
+      "lines": 352,
+      "sha256": "992f7f01d1a33ca241dd6b56061d1ad3f7cd2518d675d4de93fe701172b4f763"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -613,8 +613,8 @@
         "## G. 舊 repo 未盤點區塊（2026-09-02 新發現）",
         "## 封存區"
       ],
-      "lines": 454,
-      "sha256": "89eb10f4e84e65688b9b2551afe63c5d2a1def97e37ef1eddc5143e8acd13572"
+      "lines": 456,
+      "sha256": "67eae463a8734c66ee642213e2ede4c2a50aa4409768b4e6b7b58d9dede46dbd"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1112,8 +1112,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6435,
-      "sha256": "bcdefe45bc66843b9550d3a03357d5fa5eb021f842db668883f6d59776434e65"
+      "lines": 6436,
+      "sha256": "6feaa179d88aa71dafc403060fb22c567fc853a4a3dce71172aa7329e7f29d44"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1165,10 +1165,11 @@
       "fences": 0,
       "headings": [
         "# -*- coding: utf-8 -*-",
-        "# Production negatives; the stop step and code depend on the batch's own step list (see production_negative)."
+        "# Production negatives; the stop step and code depend on the batch's own step list (see production_negative).",
+        "# Git for Windows installer defaults at system scope on the USER machine (B-123a; see the TASKBOARD B-123 row)."
       ],
-      "lines": 550,
-      "sha256": "090d7b485c7df476ff96239b5d13c6f8538d96f3b7a270343e6e602b1a6424b6"
+      "lines": 690,
+      "sha256": "71b03961308fe1201da5814ffd3640fbb10aca8442abdd622fdf4f1e5d6c9fd4"
     },
     "scripts/bounded_process.py": {
       "fences": 0,
@@ -1483,8 +1484,8 @@
       "headings": [
         "# -*- coding: utf-8 -*-"
       ],
-      "lines": 67,
-      "sha256": "24d4a8c5686addedeec338209949cfe7dacc6d7be3dfd57b226ffde1eddba510"
+      "lines": 70,
+      "sha256": "4f8eff669c70347fc34c87f3dbc9e929cedd0e3ca8e3d1ff4bb87485167f5edf"
     },
     "scripts/state_edit.py": {
       "fences": 0,
@@ -1563,10 +1564,12 @@
         "# --- second-opinion fixes (B115-SIM-S2 round 1) ------------------------------------------------------",
         "# --- step list follows the runner (B115-SIM-S3) ------------------------------------------------------",
         "# --- independent expectations for every e24 x focused combination (second opinion on S3) ----------",
-        "# --- second opinion on S3-R1 ---------------------------------------------------------------------------"
+        "# --- second opinion on S3-R1 ---------------------------------------------------------------------------",
+        "# --- B-123a: HOME/XDG isolation and Git profiles (three kinds of Git subprocess) ---------------------------",
+        "# --- second-opinion B01 (B123A R1): winemu must check the repository the tests actually run in --------------"
       ],
-      "lines": 795,
-      "sha256": "2687619d4a744b984753f407992602d306c6ef56b5282590e9bb8d492bf025cb"
+      "lines": 1044,
+      "sha256": "74bdfb805d485cf91fec959847eb2fecab02c9481913ae0a84a538ed9b5ef7a3"
     },
     "scripts/tests/test_bounded_process.py": {
       "fences": 0,
@@ -2200,7 +2203,7 @@
       "sha256": "62c3142973a5c228efacc01ddcbd44a76e5f87e24d7bed15d90e2ce45a494982"
     }
   },
-  "generated_at": "2026-10-30T03:48:18Z",
+  "generated_at": "2026-10-30T09:51:09Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {
