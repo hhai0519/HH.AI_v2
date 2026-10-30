@@ -5,7 +5,9 @@
  * (TG-MVP-10 / ADR-0022 / ADR-0024 / ADR-0026 / Bounded Repair R3).
  *
  * Requirements (R3 Section 24):
- * - Explicit per-test timeout ({ timeout: 5000 }) on EVERY top-level test.
+ * - Explicit per-test timeout ({ timeout: TEST_TIMEOUT_MS }) on EVERY top-level test and hook. The value is a
+ *   hang guard, not a performance budget: 5000 ms timed out on the GitHub Windows runner on 2026-10-30 (Active
+ *   Account Hot-Switch took 5813 ms there, about 110 ms locally), so it is 30000 ms (B-123 / G6 wall-clock class).
  * - Module-level resource registries tracking all adapters, harnesses, and test-created timers.
  * - afterEach best-effort cleanup stops adapters, clears timers, closes repos, and cleans harnesses.
  * - after fallback cleanup restores global fetch and drains registries.
@@ -26,6 +28,9 @@ const os = require('node:os');
 const { DatabaseSync } = require('node:sqlite');
 const { SqliteStateRepository } = require('../core/sqlite-state-repository');
 const { AccountRegistry } = require('../core/account-registry');
+
+// Hang guard for every top-level test and hook (see the header); not a performance budget.
+const TEST_TIMEOUT_MS = 30000;
 const {
   TelegramInboundAdapter,
   TELEGRAM_CHANNEL_ID,
@@ -77,7 +82,7 @@ function untrackTimer(timer) {
 // Section 24C & 24D: afterEach & after Cleanup Hooks
 // ============================================================================
 
-test.afterEach({ timeout: 5000 }, async () => {
+test.afterEach({ timeout: TEST_TIMEOUT_MS }, async () => {
   // 1. Stop every registered adapter and await quiescence
   for (const adapter of Array.from(trackedAdapters)) {
     try {
@@ -111,7 +116,7 @@ globalThis.fetch = () => {
   throw new Error('REAL_NETWORK_FORBIDDEN_TEST');
 };
 
-test.after({ timeout: 5000 }, async () => {
+test.after({ timeout: TEST_TIMEOUT_MS }, async () => {
   // Final fallback drain
   for (const adapter of Array.from(trackedAdapters)) {
     try {
@@ -141,7 +146,7 @@ test.after({ timeout: 5000 }, async () => {
 // Section 31: Zero Real Network Trap
 // ============================================================================
 
-test('Section 31: Zero-real-network trap throws REAL_NETWORK_FORBIDDEN_TEST on global fetch', { timeout: 5000 }, () => {
+test('Section 31: Zero-real-network trap throws REAL_NETWORK_FORBIDDEN_TEST on global fetch', { timeout: TEST_TIMEOUT_MS }, () => {
   assert.throws(
     () => globalThis.fetch('https://api.telegram.org'),
     /REAL_NETWORK_FORBIDDEN_TEST/
@@ -205,7 +210,7 @@ class FakeSecretProvider {
 // Constructor Allowlist Tests (F5, Section 21, Section 30 items 1-5)
 // ============================================================================
 
-test('Constructor Allowlist: rejects unknown keys and external overrides', { timeout: 5000 }, () => {
+test('Constructor Allowlist: rejects unknown keys and external overrides', { timeout: TEST_TIMEOUT_MS }, () => {
   const harness = createTempHarness();
   try {
     const registry = new AccountRegistry();
@@ -277,7 +282,7 @@ test('Constructor Allowlist: rejects unknown keys and external overrides', { tim
 // Token Grammar & Diagnostics Tests (F6, Section 23, Section 30 items 6-19)
 // ============================================================================
 
-test('Token Grammar: rejects malformed structural syntax without disclosing token material', { timeout: 5000 }, () => {
+test('Token Grammar: rejects malformed structural syntax without disclosing token material', { timeout: TEST_TIMEOUT_MS }, () => {
   // Valid token passes
   assert.doesNotThrow(() => validateTelegramTokenBuffer(Buffer.from('123456:AAABBBCCC-123_xyz', 'utf8')));
 
@@ -320,7 +325,7 @@ test('Token Grammar: rejects malformed structural syntax without disclosing toke
 // Secret Provider Buffer Ownership & Zeroization (F1, Section 13, 14, items 20-26)
 // ============================================================================
 
-test('Secret Buffer Lifecycle: caller adopts provider Buffer directly and zeroizes on all exit paths', { timeout: 5000 }, async () => {
+test('Secret Buffer Lifecycle: caller adopts provider Buffer directly and zeroizes on all exit paths', { timeout: TEST_TIMEOUT_MS }, async () => {
   const harness = createTempHarness();
   try {
     const registry = AccountRegistry.fromMetadata('telegram', [
@@ -454,7 +459,7 @@ test('Secret Buffer Lifecycle: caller adopts provider Buffer directly and zeroiz
 // Lifecycle & Concurrency (F8, items 27-32)
 // ============================================================================
 
-test('Lifecycle & Concurrency: double start rejected, stop idempotent, aborts fetch and body parse, quiesces', { timeout: 5000 }, async () => {
+test('Lifecycle & Concurrency: double start rejected, stop idempotent, aborts fetch and body parse, quiesces', { timeout: TEST_TIMEOUT_MS }, async () => {
   const harness = createTempHarness();
   try {
     const registry = AccountRegistry.fromMetadata('telegram', [
@@ -538,7 +543,7 @@ test('Lifecycle & Concurrency: double start rejected, stop idempotent, aborts fe
 // Active Account Hot-Switch Guards (F2, Section 13, 14, 15, 16, 17)
 // ============================================================================
 
-test('Active Account Hot-Switch: pre-request and post-response rechecks discard in-flight updates and zeroize token', { timeout: 5000 }, async () => {
+test('Active Account Hot-Switch: pre-request and post-response rechecks discard in-flight updates and zeroize token', { timeout: TEST_TIMEOUT_MS }, async () => {
   const harness = createTempHarness();
   try {
     const registry = AccountRegistry.fromMetadata('telegram', [
@@ -648,7 +653,7 @@ test('Active Account Hot-Switch: pre-request and post-response rechecks discard 
 // R3 Section 16: Pre-request Guard Negative Control (SM7A Canary)
 // ============================================================================
 
-test('Active Account: pre-request guard negative control proves account switch during backoff terminates without second fetch', { timeout: 5000 }, async () => {
+test('Active Account: pre-request guard negative control proves account switch during backoff terminates without second fetch', { timeout: TEST_TIMEOUT_MS }, async () => {
   const harness = createTempHarness();
   try {
     const registry = AccountRegistry.fromMetadata('telegram', [
@@ -741,7 +746,7 @@ test('Active Account: pre-request guard negative control proves account switch d
 // R3 Section 17: In-Flight Account Switch Canaries (Cases A, B, C, D)
 // ============================================================================
 
-test('Active Account: Case A in-flight switch with 429 response terminates without scheduling retry_after', { timeout: 5000 }, async () => {
+test('Active Account: Case A in-flight switch with 429 response terminates without scheduling retry_after', { timeout: TEST_TIMEOUT_MS }, async () => {
   const harness = createTempHarness();
   try {
     const registry = AccountRegistry.fromMetadata('telegram', [
@@ -813,7 +818,7 @@ test('Active Account: Case A in-flight switch with 429 response terminates witho
   }
 });
 
-test('Active Account: Case B in-flight switch with 503 response terminates without scheduling backoff', { timeout: 5000 }, async () => {
+test('Active Account: Case B in-flight switch with 503 response terminates without scheduling backoff', { timeout: TEST_TIMEOUT_MS }, async () => {
   const harness = createTempHarness();
   try {
     const registry = AccountRegistry.fromMetadata('telegram', [
@@ -878,7 +883,7 @@ test('Active Account: Case B in-flight switch with 503 response terminates witho
   }
 });
 
-test('Active Account: Case C in-flight switch with transport rejection terminates without scheduling retry', { timeout: 5000 }, async () => {
+test('Active Account: Case C in-flight switch with transport rejection terminates without scheduling retry', { timeout: TEST_TIMEOUT_MS }, async () => {
   const harness = createTempHarness();
   try {
     const registry = AccountRegistry.fromMetadata('telegram', [
@@ -938,7 +943,7 @@ test('Active Account: Case C in-flight switch with transport rejection terminate
   }
 });
 
-test('Active Account: Case D switch during response body parse terminates before ingest without DB mutation', { timeout: 5000 }, async () => {
+test('Active Account: Case D switch during response body parse terminates before ingest without DB mutation', { timeout: TEST_TIMEOUT_MS }, async () => {
   const harness = createTempHarness();
   try {
     const registry = AccountRegistry.fromMetadata('telegram', [
@@ -1008,7 +1013,7 @@ test('Active Account: Case D switch during response body parse terminates before
 // R3 Section 18 & 19: Real Client-Timeout Path & Mutations (SM12 & SM13 Canaries)
 // ============================================================================
 
-test('Client Timeout: mechanical execution of 40000ms timer callback proves abort signal and retry classification without wall-clock wait', { timeout: 5000 }, async () => {
+test('Client Timeout: mechanical execution of 40000ms timer callback proves abort signal and retry classification without wall-clock wait', { timeout: TEST_TIMEOUT_MS }, async () => {
   const harness = createTempHarness();
   try {
     const registry = AccountRegistry.fromMetadata('telegram', [
@@ -1096,7 +1101,7 @@ test('Client Timeout: mechanical execution of 40000ms timer callback proves abor
 // Strict Retry Allowlist & Repository Failures (F4, items 36-53)
 // ============================================================================
 
-test('Retry & Error Matrix: strict retry allowlist vs terminal fail-closed', { timeout: 5000 }, async () => {
+test('Retry & Error Matrix: strict retry allowlist vs terminal fail-closed', { timeout: TEST_TIMEOUT_MS }, async () => {
   const harness = createTempHarness();
   try {
     const registry = AccountRegistry.fromMetadata('telegram', [
@@ -1282,7 +1287,7 @@ test('Retry & Error Matrix: strict retry allowlist vs terminal fail-closed', { t
 // R3 Section 20 & 21: Repository Terminal Matrix & SM11 Canary
 // ============================================================================
 
-test('Repository Terminal Matrix: proves bounded requests, zero retry scheduling, and clean termination for CURSOR_REGRESSION, EVENT_IDENTITY_CONFLICT, and generic SQLite errors', { timeout: 5000 }, async () => {
+test('Repository Terminal Matrix: proves bounded requests, zero retry scheduling, and clean termination for CURSOR_REGRESSION, EVENT_IDENTITY_CONFLICT, and generic SQLite errors', { timeout: TEST_TIMEOUT_MS }, async () => {
   const cases = [
     {
       name: 'CURSOR_REGRESSION',
@@ -1382,7 +1387,7 @@ test('Repository Terminal Matrix: proves bounded requests, zero retry scheduling
 // Cursor Semantics & Week Rebase Matrix (R3 Section 22, F7, ADR-0024)
 // ============================================================================
 
-test('Week Rebase Exact Matrix: independent canaries for 604799999ms, 604800000ms, and 604800001ms', { timeout: 5000 }, async () => {
+test('Week Rebase Exact Matrix: independent canaries for 604799999ms, 604800000ms, and 604800001ms', { timeout: TEST_TIMEOUT_MS }, async () => {
   const harness = createTempHarness();
   try {
     const fixedNow = 1727180000000;
@@ -1587,7 +1592,7 @@ test('Week Rebase Exact Matrix: independent canaries for 604799999ms, 604800000m
 // Malformed Updates & Poison Loop Prevention (F9, items 60-61)
 // ============================================================================
 
-test('Update Classification & Poison Loop Prevention: valid update_id malformed payload -> IGNORED + cursor, invalid update_id -> zero mutation', { timeout: 5000 }, async () => {
+test('Update Classification & Poison Loop Prevention: valid update_id malformed payload -> IGNORED + cursor, invalid update_id -> zero mutation', { timeout: TEST_TIMEOUT_MS }, async () => {
   const harness = createTempHarness();
   try {
     const registry = AccountRegistry.fromMetadata('telegram', [
@@ -1680,7 +1685,7 @@ test('Update Classification & Poison Loop Prevention: valid update_id malformed 
 // Section 35: Synthetic Polling Macrotask Fairness
 // ============================================================================
 
-test('Section 35: Continuous synthetic polling yields to macrotasks and stops cleanly', { timeout: 5000 }, async () => {
+test('Section 35: Continuous synthetic polling yields to macrotasks and stops cleanly', { timeout: TEST_TIMEOUT_MS }, async () => {
   const harness = createTempHarness();
   try {
     const registry = AccountRegistry.fromMetadata('telegram', [

@@ -18,6 +18,9 @@ Not emulated (a passing run says nothing about these): file locking and "cannot 
 file identity (st_ino/st_dev) semantics, case-insensitive paths, drive letters, path length and reserved names,
 os.name / sys.platform and other platform checks, text writes through APIs not hooked here (io.open, os.fdopen,
 codecs, tempfile text mode, subprocess pipes), console encodings, and native processes such as node or git.
+Git configuration sources (system core.autocrlf=true and core.symlinks=false, isolated HOME/XDG_CONFIG_HOME) are
+reproduced by the environment that scripts/batch_sim.py winemu sets up (--git-profile windows, B-123a), not by this
+plugin; native Git behaviour is still not emulated.
 
 This is an emulation, not native evidence: it can show that a test depends on Linux behaviour, it cannot show that
 a test passes on Windows. Native Windows evidence is the USER's local Windows run (PRECOMMIT and POSTCOMMIT run the

@@ -371,6 +371,8 @@ def test_cli_prints_only_fixed_result_lines(tmp_path, capsys):
 
 
 def test_winemu_prints_only_a_totals_line(tmp_path, capsys):
+    _git_real(str(tmp_path), "init", "-q")                 # B-123a: --repo must be a real top-level repository
+
     def fake(args, cwd, env, timeout, merge):
         assert "sim_windows_emulation" in args and env["PYTHONPATH"].split(os.pathsep)[0].endswith("scripts")
         return 1, b"FAILED t.py::x - AssertionError: private text\n== 1 failed, 2 passed in 0.10s ==\n"
@@ -793,3 +795,250 @@ def test_invalid_production_step_tail_fails_closed(monkeypatch):
     assert _code(bs.production_steps, {'kind': 'production', 'bundle_output': True}) == 'STEP_LIST_UNEXPECTED'
     monkeypatch.setattr(br, 'derive_steps', lambda spec: ['preflight', 'setup', 'apply', 'bundle', 'push'])
     assert _code(bs.production_steps, {'kind': 'production', 'bundle_output': True}) == 'STEP_LIST_UNEXPECTED'
+
+
+# --- B-123a: HOME/XDG isolation and Git profiles (three kinds of Git subprocess) ---------------------------
+
+def _real_source(tmp_path):
+    src = tmp_path / "src"
+    src.mkdir()
+    _git_real(str(src), "init", "-q", "-b", "main")
+    _w(src / "f.txt", b"x\n")
+    _git_real(str(src), "add", "f.txt")
+    _git_real(str(src), "commit", "-q", "-m", "base")
+    return src, _git_real(str(src), "rev-parse", "HEAD")
+
+
+@pytest.mark.parametrize("profile", bs.GIT_PROFILES)
+def test_isolated_env_points_home_and_xdg_at_simulation_dirs(tmp_path, monkeypatch, profile):
+    monkeypatch.setenv("GIT_DIR", str(tmp_path / "elsewhere"))
+    monkeypatch.setenv("HOME", str(tmp_path / "host-home"))
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "host-xdg"))
+    env = bs.isolated_env(tmp_path / "root", {"LC_ALL": "POSIX"}, profile)
+    root = (tmp_path / "root").resolve()
+    assert Path(env["HOME"]).resolve() == root / "home" and Path(env["XDG_CONFIG_HOME"]).resolve() == root / "home" / ".config"
+    assert sorted((root / "home").rglob("*")) == [root / "home" / ".config"] and env["LC_ALL"] == "POSIX"
+    assert (root / "isolated-gitconfig").read_bytes() == b"" and env["GIT_CONFIG_GLOBAL"].endswith("isolated-gitconfig")
+    assert "GIT_DIR" not in env
+    if profile == "windows":
+        assert "GIT_CONFIG_NOSYSTEM" not in env
+        assert Path(env["GIT_CONFIG_SYSTEM"]).read_bytes() == bs.WINDOWS_SYSTEM_CONFIG
+    else:
+        assert env["GIT_CONFIG_NOSYSTEM"] == "1" and "GIT_CONFIG_SYSTEM" not in env
+    assert _code(bs.isolated_env, tmp_path / "r2", None, "linux") == "GIT_PROFILE_INVALID"
+
+
+def test_windows_profile_effective_values_for_the_three_kinds(tmp_path):
+    src, base = _real_source(tmp_path)
+    sim = bs.Sim(str(src), str(tmp_path / "wd"), "utf8", out=lambda line: None, git_profile="windows")
+    sim.make_origin(base)                                  # runs check_git_profile on the real clone
+    run, env = bs.default_run, sim.env
+    tool = dict(env, GIT_CONFIG_NOSYSTEM="1", GIT_CONFIG_GLOBAL=os.devnull)
+    fresh = str(sim.workdir / "probe-fresh")
+    # ambient: system file + local clone config
+    assert bs._effective(run, env, sim.work, "core.autocrlf") == ("system", "true")
+    assert bs._effective(run, env, sim.work, "core.symlinks") == ("local", "false")
+    # isolated tool: NOSYSTEM keeps precedence over the simulated system file; only the local config applies
+    assert bs._effective(run, tool, sim.work, "core.autocrlf") is None
+    assert bs._effective(run, tool, sim.work, "core.symlinks") == ("local", "false")
+    # fresh repository under the ambient environment
+    assert bs._effective(run, env, fresh, "core.autocrlf") == ("system", "true")
+    assert bs._effective(run, env, fresh, "core.symlinks")[1] == "false"
+
+
+def test_isolated_profile_keeps_nosystem_and_has_no_windows_values(tmp_path):
+    src, base = _real_source(tmp_path)
+    sim = bs.Sim(str(src), str(tmp_path / "wd"), "utf8", out=lambda line: None)
+    sim.make_origin(base)
+    assert sim.env["GIT_CONFIG_NOSYSTEM"] == "1"
+    for cwd in (sim.work, str(sim.workdir / "probe-fresh")):
+        assert bs._effective(bs.default_run, sim.env, cwd, "core.autocrlf") is None
+
+
+def test_host_home_and_xdg_git_config_never_reach_the_simulation(tmp_path, monkeypatch):
+    host = tmp_path / "host-home"
+    _w(host / ".gitconfig", b"[core]\n\tautocrlf = input\n")
+    _w(tmp_path / "host-xdg" / "git" / "config", b"[core]\n\tsymlinks = true\n")
+    monkeypatch.setenv("HOME", str(host))
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "host-xdg"))
+    src, base = _real_source(tmp_path)
+    for profile in bs.GIT_PROFILES:
+        sim = bs.Sim(str(src), str(tmp_path / ("wd-" + profile)), "utf8", out=lambda line: None, git_profile=profile)
+        sim.make_origin(base)
+        no_global = {k: v for k, v in sim.env.items() if k != "GIT_CONFIG_GLOBAL"}
+        assert bs._effective(bs.default_run, no_global, sim.work, "core.autocrlf") != ("global", "input")
+        # Negative: pointing HOME back at the host home (a tool that drops GIT_CONFIG_GLOBAL) is detected.
+        leaked = dict(sim.env, HOME=str(host))
+        leaked.pop("XDG_CONFIG_HOME")
+        assert _code(bs.check_git_profile, bs.default_run, leaked, tmp_path / ("leak-" + profile), profile,
+                     sim.work) == "GIT_PROFILE_HOST_LEAK"
+
+
+def test_profile_checks_fail_closed_on_each_wrong_source(tmp_path):
+    # windows profile whose system file lost the installer defaults
+    env = bs.isolated_env(tmp_path / "a", None, "windows")
+    Path(env["GIT_CONFIG_SYSTEM"]).write_bytes(b"")
+    assert _code(bs.check_git_profile, bs.default_run, env, tmp_path / "a", "windows") == "GIT_PROFILE_FRESH_MISMATCH"
+    # isolated profile into which a system file leaks (NOSYSTEM dropped)
+    env = bs.isolated_env(tmp_path / "b", None, "isolated")
+    system = tmp_path / "b" / "leaked-system"
+    _w(system, bs.WINDOWS_SYSTEM_CONFIG)
+    env.pop("GIT_CONFIG_NOSYSTEM")
+    env["GIT_CONFIG_SYSTEM"] = str(system)
+    assert _code(bs.check_git_profile, bs.default_run, env, tmp_path / "b", "isolated") == "GIT_PROFILE_FRESH_MISMATCH"
+    # a Git whose tool isolation would let the system file through (NOSYSTEM ignored) is detected
+    def nosystem_ignored(args, cwd, e, timeout, merge=True):
+        if e.get("GIT_CONFIG_GLOBAL") == os.devnull:
+            e = {k: v for k, v in e.items() if k != "GIT_CONFIG_NOSYSTEM"}
+        return bs.default_run(args, cwd, e, timeout, merge)
+    env = bs.isolated_env(tmp_path / "c", None, "windows")
+    assert _code(bs.check_git_profile, nosystem_ignored, env, tmp_path / "c", "windows") == "GIT_PROFILE_ISOLATED_MISMATCH"
+    # the work clone of a windows simulation must carry the local core.symlinks=false
+    src, base = _real_source(tmp_path)
+    sim = bs.Sim(str(src), str(tmp_path / "wd"), "utf8", out=lambda line: None, git_profile="windows")
+    sim.make_origin(base)
+    _git_real(sim.work, "config", "--unset", "core.symlinks")
+    assert _code(bs.check_git_profile, bs.default_run, sim.env, tmp_path / "d", "windows",
+                 sim.work) == "GIT_PROFILE_AMBIENT_MISMATCH"
+
+
+@pytest.mark.parametrize("profile", bs.GIT_PROFILES)
+def test_winemu_runs_tests_in_isolated_home_with_the_profile(tmp_path, monkeypatch, profile):
+    _git_real(str(tmp_path), "init", "-q")
+    monkeypatch.setenv("GIT_DIR", str(tmp_path / "elsewhere"))
+    seen = {}
+
+    def fake(args, cwd, env, timeout, merge):
+        seen.update(env)
+        return 0, b"1 passed in 0.01s\n"
+    bs.winemu(str(tmp_path), ["t.py"], run=fake, git_profile=profile)
+    assert "GIT_DIR" not in seen and "batch-sim-winemu-" in seen["HOME"]
+    assert seen["XDG_CONFIG_HOME"].startswith(seen["HOME"])
+    assert ("GIT_CONFIG_SYSTEM" in seen) == (profile == "windows")
+    assert (seen.get("GIT_CONFIG_NOSYSTEM") == "1") == (profile == "isolated")
+    assert not Path(seen["HOME"]).exists()                # temporary home removed afterwards
+
+
+def test_winemu_default_profile_is_windows_and_simulations_default_to_isolated():
+    import inspect
+    assert inspect.signature(bs.winemu).parameters["git_profile"].default == "windows"
+    assert inspect.signature(bs.Sim).parameters["git_profile"].default == "isolated"
+
+
+def _winemu_repo(tmp_path):
+    """A plain top-level repository holding the emulation plugin, as a project clone does (no CI checkout config)."""
+    repo = tmp_path / "winemu-repo"
+    _git_real(str(tmp_path), "init", "-q", str(repo))
+    _w(repo / "scripts" / "sim_windows_emulation.py", Path(SCRIPTS_DIR, "sim_windows_emulation.py").read_bytes())
+    return repo
+
+
+CHANGE_LEDGER_R2_SHAPE = (
+    "import subprocess\n"
+    "def _g(cwd, *a):\n"
+    "    subprocess.run(['git', '-c', 'user.name=t', '-c', 'user.email=t@t', *a], cwd=cwd, check=True,\n"
+    "                   capture_output=True)\n"
+    "def test_cr_edit_reaches_the_candidate(tmp_path):\n"
+    "    # B116-B115-T1-CHANGE-LEDGER-R2-261025 fixture shape: worktree write + git add + git commit.\n"
+    "    _g(tmp_path, 'init', '-q')\n"
+    "    (tmp_path / 'BOARD.md').write_bytes(b'| X-1 | row |\\n')\n"
+    "    _g(tmp_path, 'add', 'BOARD.md')\n"
+    "    _g(tmp_path, 'commit', '-q', '-m', 'base')\n"
+    "    (tmp_path / 'BOARD.md').write_bytes(b'| X-1 | row |\\r\\n')\n"
+    "    _g(tmp_path, 'add', 'BOARD.md')\n"
+    "    _g(tmp_path, 'commit', '-q', '--allow-empty', '-m', 'candidate')\n"
+    "    blob = subprocess.run(['git', 'show', 'HEAD:BOARD.md'], cwd=tmp_path, check=True, capture_output=True).stdout\n"
+    "    assert blob == b'| X-1 | row |\\r\\n'\n"
+)
+
+
+def test_change_ledger_r2_fixture_shape_fails_only_under_the_windows_profile(tmp_path, capsys):
+    # The R2 Windows S1 (core.autocrlf=true normalised the CR case away) must be reproduced by the simulation.
+    repo = _winemu_repo(tmp_path)
+    _w(repo / "test_r2_shape.py", CHANGE_LEDGER_R2_SHAPE)
+    bs.winemu(str(repo), ["-q", "test_r2_shape.py"], git_profile="isolated")
+    assert _code(bs.winemu, str(repo), ["-q", "test_r2_shape.py"], git_profile="windows") == "WINEMU_TESTS_FAILED"
+    capsys.readouterr()
+
+
+def test_make_origin_and_winemu_run_the_profile_check_before_anything_else(tmp_path):
+    src, base = _real_source(tmp_path)
+    sim = bs.Sim(str(src), str(tmp_path / "wd"), "utf8", out=lambda line: None, git_profile="windows")
+    Path(sim.env["GIT_CONFIG_SYSTEM"]).write_bytes(b"")          # installer defaults lost
+    assert _code(sim.make_origin, base) in ("GIT_PROFILE_FRESH_MISMATCH", "GIT_PROFILE_AMBIENT_MISMATCH")
+
+    # The probe replaces the simulated system file with an empty one of its own. It never removes the variable:
+    # without GIT_CONFIG_SYSTEM Git would read the host's system file, which on Git for Windows itself carries
+    # core.autocrlf=true (B123A R2 Windows S1: the result then depended on the host).
+    empty_system = tmp_path / "empty-system"
+    _w(empty_system, b"")
+
+    def system_emptied(args, cwd, env, timeout, merge=True):
+        return bs.default_run(args, cwd, dict(env, GIT_CONFIG_SYSTEM=str(empty_system)), timeout, merge)
+    ran = []
+    assert _code(bs.winemu, str(_winemu_repo(tmp_path)), ["t.py"], lambda *a: ran.append(a) or (0, b""), "windows",
+                 system_emptied) == "GIT_PROFILE_FRESH_MISMATCH"
+    assert ran == []                                             # pytest never started
+
+
+# --- second-opinion B01 (B123A R1): winemu must check the repository the tests actually run in --------------
+
+def _never_runs(calls):
+    def run(*a):
+        calls.append(a)
+        return 0, b"1 passed in 0.01s\n"
+    return run
+
+
+def _config_bytes(repo):
+    return (repo / ".git" / "config").read_bytes()
+
+
+@pytest.mark.parametrize("profile", bs.GIT_PROFILES)
+def test_winemu_rejects_a_local_override_in_the_actual_repo_before_pytest(tmp_path, profile):
+    repo = _winemu_repo(tmp_path)
+    _git_real(str(repo), "config", "core.autocrlf", "input")
+    before, calls = _config_bytes(repo), []
+    assert _code(bs.winemu, str(repo), ["t.py"], _never_runs(calls), profile) == "GIT_PROFILE_REPO_MISMATCH"
+    assert calls == [] and _config_bytes(repo) == before
+
+
+@pytest.mark.parametrize("key", ["include.path", "includeIf.gitdir:winemu-repo/.path"])
+def test_winemu_rejects_external_include_files_even_when_values_are_harmless(tmp_path, key):
+    repo = _winemu_repo(tmp_path)
+    outside = tmp_path / "outside.config"
+    _w(outside, b"[advisor]\n\tmarker = benign\n")
+    _git_real(str(repo), "config", key, str(outside).replace("\\", "/"))
+    before, calls = _config_bytes(repo), []
+    assert _code(bs.winemu, str(repo), ["t.py"], _never_runs(calls), "windows") == "GIT_PROFILE_HOST_LEAK"
+    assert calls == [] and _config_bytes(repo) == before
+
+
+def test_winemu_accepts_a_repo_with_only_its_own_harmless_local_config(tmp_path):
+    repo = _winemu_repo(tmp_path)
+    _git_real(str(repo), "config", "core.hooksPath", ".githooks")
+    _git_real(str(repo), "config", "core.symlinks", "false")      # what a Windows clone (W2) carries locally
+    before, calls = _config_bytes(repo), []
+    bs.winemu(str(repo), ["t.py"], _never_runs(calls), "windows")
+    assert len(calls) == 1 and _config_bytes(repo) == before
+
+
+@pytest.mark.parametrize("where", ["not-a-repo", "subdirectory"])
+def test_winemu_requires_the_repo_to_be_a_top_level_work_tree(tmp_path, where):
+    if where == "not-a-repo":
+        repo = tmp_path / "plain"
+        repo.mkdir()
+    else:
+        repo = _winemu_repo(tmp_path) / "scripts"
+    calls = []
+    assert _code(bs.winemu, str(repo), ["t.py"], _never_runs(calls), "windows") == "GIT_PROFILE_REPO_IDENTITY"
+    assert calls == []
+
+
+def test_git_profile_tests_never_fall_back_to_the_host_system_config():
+    # B123A R2 Windows S1 regression guard: an env without GIT_CONFIG_SYSTEM and without GIT_CONFIG_NOSYSTEM makes
+    # Git read the host system file (/etc/gitconfig, or Git for Windows' etc/gitconfig with core.autocrlf=true).
+    src = Path(__file__).read_bytes().decode("utf-8")
+    name = '"GIT_CONFIG_' + 'SYSTEM"'                   # split so this guard does not match itself
+    for pattern in ("!= " + name, ".pop(" + name, "delenv(" + name):
+        assert pattern not in src, pattern
