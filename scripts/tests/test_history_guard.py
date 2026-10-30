@@ -866,3 +866,111 @@ def test_c7_new_table_header_not_escape_and_stray_row_detected():
     assert 'C7_AUDIT_TABLE_ESCAPE' not in _c7_codes(a,b,p,c)
     b['docs/AUDIT-LOG.md'] += '\n|stray|record|\n'
     assert 'C7_AUDIT_TABLE_ESCAPE' in _c7_codes(a,b,p,c)
+
+
+# ---------------------------------------------------------------------------
+# B-116 G4 F-C7-01／02：C7 必須經正式入口（guard、CHECK 28、命令列）生效。
+# 這些測試只經正式入口驗證；把 TASKBOARD 移出 guard() 讀取集合，或刪除 guard() 內呼叫
+# check_c7_state_lint 的一行，本段的負例都必須 FAIL（審查官以接線突變實測）。
+# ---------------------------------------------------------------------------
+
+C7_OLD_REC = "**舊批（2026-10-29；本批 T0）**：舊紀錄。\n"
+C7_NEW_REC = "**新批（2026-10-30；本批 T1-261030）**：新紀錄。\n"
+
+
+def _c7_board(updated, *records):
+    return (f"**{hg.C7_MARKER}**：啟用標記。\n\n**最後更新**：{updated}\n\n"
+            + "\n".join(records))
+
+
+@pytest.fixture
+def c7repo():
+    with tempfile.TemporaryDirectory() as d:
+        r = Repo(d)
+        _write(d, "docs/TASKBOARD.md", _c7_board("2026-10-29；舊。", C7_OLD_REC))
+        r.base = r.commit("c0-taskboard")
+        yield r
+
+
+def _c7_next(repo, board):
+    base = repo.next_batch(task="T1-261030")
+    _write(repo.root, "docs/TASKBOARD.md", board)
+    return base
+
+
+def _fail_codes(fails):
+    return [f.split()[0] for f in fails]
+
+
+C7_GOOD = _c7_board("2026-10-30；新。", C7_NEW_REC, C7_OLD_REC)
+C7_STALE = _c7_board("2026-10-29；舊。", C7_NEW_REC, C7_OLD_REC)
+
+
+def test_c7_read_set_is_separate_from_append_only_set():
+    assert hg.C7_READ_FILES == ("docs/TASKBOARD.md",)
+    assert not set(hg.C7_READ_FILES) & set(hg.PROTECTED_FILES)
+    assert hg.LEDGER_FILE not in hg.C7_READ_FILES
+
+
+def test_c7_formal_entries_pass_compliant_batch(c7repo):
+    base = _c7_next(c7repo, C7_GOOD)
+    assert hg.check_repo(c7repo.root, as_if_committed=True)[0] == []
+    assert cc.check_28_history_anchor_guard(c7repo.root)[0] == []
+    head = c7repo.commit("c1")
+    assert hg.check_repo(c7repo.root)[0] == []
+    script = os.path.join(REPO_ROOT, "scripts", "history_guard.py")
+    ok = subprocess.run([sys.executable, script, "--repo", c7repo.root, "--base", base, "--target", head],
+                        capture_output=True, text=True, encoding="utf-8")
+    assert ok.returncode == 0 and ok.stdout.splitlines()[-1] == "HISTORY_GUARD PASS"
+
+
+def test_c7_formal_entries_reject_stale_taskboard_before_and_after_commit(c7repo):
+    base = _c7_next(c7repo, C7_STALE)
+    assert _fail_codes(hg.check_repo(c7repo.root, as_if_committed=True)[0]) == ["C7_LAST_UPDATE_STALE"]
+    assert _fail_codes(cc.check_28_history_anchor_guard(c7repo.root)[0]) == ["C7_LAST_UPDATE_STALE"]
+    worktree = subprocess.run([sys.executable, os.path.join(REPO_ROOT, "scripts", "history_guard.py"),
+                               "--repo", c7repo.root, "--base", base, "--target", "WORKTREE"],
+                              capture_output=True, text=True, encoding="utf-8")
+    assert worktree.returncode == 1 and "FAIL C7_LAST_UPDATE_STALE" in worktree.stdout
+    head = c7repo.commit("c1")
+    assert _fail_codes(hg.check_repo(c7repo.root)[0]) == ["C7_LAST_UPDATE_STALE"]
+    committed = subprocess.run([sys.executable, os.path.join(REPO_ROOT, "scripts", "history_guard.py"),
+                                "--repo", c7repo.root, "--base", base, "--target", head],
+                               capture_output=True, text=True, encoding="utf-8")
+    assert committed.returncode == 1 and committed.stdout.splitlines()[-1] == "HISTORY_GUARD FAIL"
+    assert "FAIL C7_LAST_UPDATE_STALE" in committed.stdout
+
+
+@pytest.mark.parametrize("board,code", [
+    (_c7_board("2026-10-30；新。", C7_NEW_REC, C7_OLD_REC).replace(hg.C7_MARKER, "REMOVED"), "C7_GUARD_DISABLED"),
+    (_c7_board("2026-10-31；新。", C7_NEW_REC, C7_OLD_REC), "C7_LAST_UPDATE_DATE"),
+    (_c7_board("2026-10-30；新。", C7_OLD_REC, C7_NEW_REC), "C7_RECORD_ORDER"),
+    (_c7_board("2026-10-30；新。E27 尚須對最終作者包成立。", C7_NEW_REC, C7_OLD_REC), "C7_TRANSIENT_TEXT"),
+])
+def test_c7_formal_entry_rejects_each_taskboard_rule(c7repo, board, code):
+    _c7_next(c7repo, board)
+    assert code in _fail_codes(hg.check_repo(c7repo.root, as_if_committed=True)[0])
+
+
+def test_c7_taskboard_is_not_append_only(c7repo):
+    # 改寫 TASKBOARD 既有列不是 C1a 違規；C7 只看新增或替換文字中的規則。
+    board = C7_GOOD.replace("**舊批（2026-10-29；本批 T0）**：舊紀錄。", "**舊批（2026-10-29；本批 T0）**：舊紀錄已更正。")
+    _c7_next(c7repo, board)
+    assert hg.check_repo(c7repo.root, as_if_committed=True)[0] == []
+
+
+def test_c7_taskboard_filter_attribute_is_refused_without_running_the_filter(c7repo):
+    marker = os.path.join(c7repo.root, "filter-ran")
+    _run(c7repo.root, "git", "config", "filter.probe.clean",
+         f"{sys.executable} -c \"open(r'{marker}', 'w').close(); import sys; sys.stdout.write(sys.stdin.read())\"")
+    _c7_next(c7repo, C7_GOOD)
+    _write(c7repo.root, ".gitattributes", "* text=auto eol=lf\ndocs/TASKBOARD.md filter=probe\n")
+    fails = hg.check_repo(c7repo.root, as_if_committed=True)[0]
+    assert _fail_codes(fails) == ["HISTORY_ATTRIBUTES_UNSUPPORTED"] and "docs/TASKBOARD.md" in fails[0]
+    assert not os.path.exists(marker)
+
+
+def test_c7_inactive_without_marker_through_formal_entry(repo):
+    # 未啟用標記的歷史狀態（Repo 夾具沒有 TASKBOARD）不被回溯判定。
+    repo.next_batch()
+    assert hg.check_repo(repo.root, as_if_committed=True)[0] == []

@@ -35,6 +35,11 @@ diff 或 hash 之前直接 FAIL，本守衛不為核對而執行 filter。
 fail-closed：不在任何 git repository（路徑上沒有 .git）才算不適用；有 .git 但 git 無法回答、路徑位於某個 repo 之內卻不是其頂層，或有 repo 但 Base、Base 的
 execution-record、目標檔或 §5.1 取不到，一律 FAIL。
 
+  C7   G4 前向狀態 lint（check_c7_state_lint）：TASKBOARD 標記 C7_STATUS_LINT_ACTIVE 後，
+       檢查 TASKBOARD 最後更新、批次紀錄位置、新增文字中的暫時性用語與 AUDIT-LOG 表格外列。
+       guard() 另讀 C7_READ_FILES（TASKBOARD），與 C1a 只准新增集合分開；CHECK 28 與命令列
+       都經 guard() 執行，因此本 lint 在正式入口生效（B-116 G4 F-C7-01／02）。
+
 命令列（審查官用；唯讀）：
   python scripts/history_guard.py --base <rev> --target <rev>
   python scripts/history_guard.py --base <rev> --target WORKTREE
@@ -51,6 +56,9 @@ import subprocess
 import sys
 
 PROTECTED_FILES = ("docs/AUDIT-LOG.md", "docs/ARCHIVE-INDEX.md", "docs/EXEC-LOG.md")
+# B-116 G4 F-C7-01: read-only inputs of the C7 state lint. Kept separate from PROTECTED_FILES so
+# TASKBOARD is read (with the same filter refusal and commit-equivalence proof) but never append-only.
+C7_READ_FILES = ("docs/TASKBOARD.md",)
 LEDGER_FILE = "docs/refactor-backlog.md"
 RECORD_FILE = "docs/governance/execution-record.json"
 SPEC_DIR = "docs/batches"
@@ -510,7 +518,7 @@ def guard(root, base_rev, target_rev, exec_log_rule=None):
         raise GuardFailure("HISTORY_BASE_NOT_ANCESTOR", f"{base_oid[:12]} 不是 {anchor[:12]} 的祖先")
 
     base_task, _ = record_fields(read_blob(root, base_oid, RECORD_FILE), f"Base {RECORD_FILE}")
-    paths = PROTECTED_FILES + (LEDGER_FILE,)
+    paths = PROTECTED_FILES + (LEDGER_FILE,) + C7_READ_FILES
     if target_oid is None:
         for p in paths:                     # 在任何工作區 diff 或 hash 之前先拒絕 filter
             refuse_filter(root, p)

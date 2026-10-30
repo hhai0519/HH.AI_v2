@@ -2576,3 +2576,76 @@ def test_check16_future_commit_matches_current_authoritative_logic(tmp_path):
                                        planned_log_text='| commit | status |\n|---|---|\n| BOOTSTRAP | ok |\n',
                                        future_commits=1)
     assert skip == []  # Identical to CHECK16's existing BOOTSTRAP semantics.
+
+
+# B-116 G4 F-C20-01: GFM rows may omit the trailing pipe; CHECK 20 must still count their cells
+# and must not stop scanning the rest of the table at such a row.
+
+def test_b116_c20_row_without_trailing_pipe_is_counted(tmp_path):
+    doc = tmp_path / "trail.md"
+    doc.write_text("| A | B | C |\n|---|---|---|\n| one | two | three\n| x | y | z |\n", encoding="utf-8", newline="\n")
+    fails, _ = check_20_markdown_table_continuity(str(tmp_path))
+    assert fails == []
+    # Real F-C20-01 shape: an extra unescaped pipe inside the last cell of a row without a trailing pipe.
+    doc.write_text("| A | B | C |\n|---|---|---|\n| one | two | three。 | **extra**\n", encoding="utf-8", newline="\n")
+    fails, _ = check_20_markdown_table_continuity(str(tmp_path))
+    assert len(fails) == 1 and "data=4, header=3" in fails[0]
+
+
+def test_b116_c20_rows_after_trailing_pipe_less_row_are_still_scanned(tmp_path):
+    doc = tmp_path / "after.md"
+    doc.write_text("| A | B |\n|---|---|\n| one | two\n| bad | col | extra |\n", encoding="utf-8", newline="\n")
+    fails, _ = check_20_markdown_table_continuity(str(tmp_path))
+    assert len(fails) == 1 and "after.md:4" in fails[0]
+
+
+def test_b116_c20_trailing_pipe_less_header_and_separator(tmp_path):
+    doc = tmp_path / "hdr.md"
+    doc.write_text("| A | B\n|---|---\n| one | two |\n| x | y | z |\n", encoding="utf-8", newline="\n")
+    fails, _ = check_20_markdown_table_continuity(str(tmp_path))
+    assert len(fails) == 1 and "hdr.md:4" in fails[0]
+
+
+def test_b116_c20_escaped_trailing_pipe_is_cell_content(tmp_path):
+    doc = tmp_path / "esc.md"
+    # The final pipe is escaped, so it is content of cell B, not the frame: still two cells.
+    doc.write_text("| A | B |\n|---|---|\n| one | two \\|\n", encoding="utf-8", newline="\n")
+    fails, _ = check_20_markdown_table_continuity(str(tmp_path))
+    assert fails == []
+    doc.write_text("| A | B |\n|---|---|\n| one | two \\| three |\n", encoding="utf-8", newline="\n")
+    fails, _ = check_20_markdown_table_continuity(str(tmp_path))
+    assert fails == []
+
+
+def test_b116_c20_continuity_counts_trailing_pipe_less_row_after_blank(tmp_path):
+    doc = tmp_path / "cut.md"
+    doc.write_text("| header |\n|---|\n| row1 |\n\n| row2\n", encoding="utf-8", newline="\n")
+    fails, _ = check_20_markdown_table_continuity(str(tmp_path))
+    assert any("表格被空白行切斷" in f and "row2" in f for f in fails)
+
+
+def test_b116_c20_single_pipe_line_is_not_a_row_for_check20_and_check26(tmp_path):
+    # Second-opinion B01 (2026-10-30): a lone "|" after a table is a paragraph in cmark-gfm.
+    import check_consistency as cc
+    assert cc._c20_table_cells("|") is None and cc._is_table_row("|") is False
+    assert cc._c20_table_cells("||") == [""] and cc._c20_table_cells("| |") == [""]
+    d = tmp_path / "docs"
+    d.mkdir()
+    (d / "EXEC-LOG.md").write_text(
+        "| 批次 commit | 日期 | 檢查範圍 | 結果 | 攔截紀錄 |\n"
+        "|---|---|---|---|---|\n"
+        "| abc | d | T1-261030：done | ok | none |\n"
+        "|\n"
+        "ordinary paragraph\n",
+        encoding="utf-8", newline="\n")
+    fails, _ = check_20_markdown_table_continuity(str(tmp_path))
+    assert fails == []
+    assert cc._c26_latest_exec_task_id(str(tmp_path)) == ("T1-261030", None)
+    # Mutation guard: a trailing-pipe-less real row after the last row is still the latest record.
+    (d / "EXEC-LOG.md").write_text(
+        "| 批次 commit | 日期 | 檢查範圍 | 結果 | 攔截紀錄 |\n"
+        "|---|---|---|---|---|\n"
+        "| abc | d | T1-261030：done | ok | none |\n"
+        "| def | d | T2-261030：next | ok | none\n",
+        encoding="utf-8", newline="\n")
+    assert cc._c26_latest_exec_task_id(str(tmp_path)) == ("T2-261030", None)

@@ -1,5 +1,5 @@
 {
-  "base_head": "176aa0c",
+  "base_head": "dabfcf8",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -562,16 +562,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 375,
-      "sha256": "ef64dd9a04b26411c0e1e2a18312cd86a27055e0c173e7afbc6730f027be5232"
+      "lines": 376,
+      "sha256": "b8f3b2750730083d61cb858b70451a43ba4481ad4f59217fc6781e08d8b62e5e"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 350,
-      "sha256": "7f34b6c4495fd130decbb4de19e46de9d7264bd2dc905777e9255d412279f79b"
+      "lines": 351,
+      "sha256": "5f898de49386ac7256f7d038d10a475a2fcbf1d32044a4ed04404ec80781cd32"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -613,8 +613,8 @@
         "## G. 舊 repo 未盤點區塊（2026-09-02 新發現）",
         "## 封存區"
       ],
-      "lines": 452,
-      "sha256": "b90d5920c7089724fc3bdb00f2638861a24b35e738cfc04e0ef4ff73de1cfbac"
+      "lines": 454,
+      "sha256": "89eb10f4e84e65688b9b2551afe63c5d2a1def97e37ef1eddc5143e8acd13572"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1112,8 +1112,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6434,
-      "sha256": "0dac115fc0689458420e4a74e9fd01c62c673f2ee91987dd7d3cab389225d3fd"
+      "lines": 6435,
+      "sha256": "bcdefe45bc66843b9550d3a03357d5fa5eb021f842db668883f6d59776434e65"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1263,8 +1263,8 @@
         "# owner 須為未完成之看板任務）。任何輸入缺失、畸形或讀取失敗一律判定失敗。",
         "# ---------------------------------------------------------------------------"
       ],
-      "lines": 3817,
-      "sha256": "f3c91d60ffbd3e12ca0618e714325e1c0728ac4e0ac4dd24458fc594f663686f"
+      "lines": 3824,
+      "sha256": "f5bb2ae4b5fb08fa258e750b91787fbe92faff4e9bbc9bab00ad36aaa28ce783"
     },
     "scripts/delivery_pack.py": {
       "fences": 0,
@@ -1332,6 +1332,8 @@
     "scripts/history_guard.py": {
       "fences": 0,
       "headings": [
+        "# B-116 G4 F-C7-01: read-only inputs of the C7 state lint. Kept separate from PROTECTED_FILES so",
+        "# TASKBOARD is read (with the same filter refusal and commit-equivalence proof) but never append-only.",
         "# ---------------------------------------------------------------------------",
         "# 純文字規則",
         "# ---------------------------------------------------------------------------",
@@ -1342,8 +1344,8 @@
         "# git 層",
         "# ---------------------------------------------------------------------------"
       ],
-      "lines": 602,
-      "sha256": "af1b1e8a4412d81a921ac6f258c41bde7e09b2066d0a7fc54af126aa6bc46022"
+      "lines": 610,
+      "sha256": "f40cfbe48d523617e52b468ee2c9c44d0f039851fb349cbb4cbbfa1684250d1d"
     },
     "scripts/impact_scan.py": {
       "fences": 0,
@@ -1729,10 +1731,12 @@
         "# ---------------------------------------------------------------------------",
         "# ---------------------------------------------------------------------------",
         "# CHECK 26 Tests: M2 Plan-vs-Actual / Evidence Integrity Replay Guard",
-        "# ---------------------------------------------------------------------------"
+        "# ---------------------------------------------------------------------------",
+        "# B-116 G4 F-C20-01: GFM rows may omit the trailing pipe; CHECK 20 must still count their cells",
+        "# and must not stop scanning the rest of the table at such a row."
       ],
-      "lines": 2578,
-      "sha256": "b7c84b4e6139e2bb8a7df4651961ce2f369a6f94ae929db7757d9280e62ea4c7"
+      "lines": 2651,
+      "sha256": "c1f52eb5c123c312ff7ec1aa4dd74ffe1b9b2d56dad04b73fadefebef7fae0f1"
     },
     "scripts/tests/test_delivery_pack.py": {
       "fences": 0,
@@ -1845,10 +1849,15 @@
         "# 接線與命令列",
         "# ---------------------------------------------------------------------------",
         "# G4 C7: real prior-incident shapes must be rejected by the production detector,",
-        "# not by a test-only assertion. Old history before activation remains valid."
+        "# not by a test-only assertion. Old history before activation remains valid.",
+        "# ---------------------------------------------------------------------------",
+        "# B-116 G4 F-C7-01／02：C7 必須經正式入口（guard、CHECK 28、命令列）生效。",
+        "# 這些測試只經正式入口驗證；把 TASKBOARD 移出 guard() 讀取集合，或刪除 guard() 內呼叫",
+        "# check_c7_state_lint 的一行，本段的負例都必須 FAIL（審查官以接線突變實測）。",
+        "# ---------------------------------------------------------------------------"
       ],
-      "lines": 872,
-      "sha256": "3f4e8f17f88a894b2f4d75bc718e75d752818f7817be21907d7cf544e087f7eb"
+      "lines": 980,
+      "sha256": "3f233098bc5139d311935c701122702d7c382588d70b0f846848e974f85d0c70"
     },
     "scripts/tests/test_impact_scan.py": {
       "fences": 0,
@@ -2191,7 +2200,7 @@
       "sha256": "62c3142973a5c228efacc01ddcbd44a76e5f87e24d7bed15d90e2ce45a494982"
     }
   },
-  "generated_at": "2026-10-30T01:04:10Z",
+  "generated_at": "2026-10-30T03:48:18Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

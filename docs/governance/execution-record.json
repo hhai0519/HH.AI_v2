@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "B116-AUD-TAKEOVER-STATE-R2-261030",
-  "base_oid": "176aa0cac5b28b5fabc6733355e16ab9874ef158",
+  "task_id": "B116-G4-C7-ENTRY-CHECK20-R2-261030",
+  "base_oid": "dabfcf8cd811e48c7dff56aec87858d5f9c4c7be",
   "plan": {
     "allowed_paths": [
       "docs/AUDIT-LOG.md",
@@ -10,7 +10,11 @@
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md"
+      "docs/refactor-backlog.md",
+      "scripts/check_consistency.py",
+      "scripts/history_guard.py",
+      "scripts/tests/test_check_consistency.py",
+      "scripts/tests/test_history_guard.py"
     ],
     "required_paths": [
       "docs/AUDIT-LOG.md",
@@ -18,7 +22,11 @@
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md"
+      "docs/refactor-backlog.md",
+      "scripts/check_consistency.py",
+      "scripts/history_guard.py",
+      "scripts/tests/test_check_consistency.py",
+      "scripts/tests/test_history_guard.py"
     ],
     "max_plan_revisions": 3,
     "revision_count": 0,
@@ -31,7 +39,11 @@
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md"
+      "docs/refactor-backlog.md",
+      "scripts/check_consistency.py",
+      "scripts/history_guard.py",
+      "scripts/tests/test_check_consistency.py",
+      "scripts/tests/test_history_guard.py"
     ]
   },
   "evidence": [

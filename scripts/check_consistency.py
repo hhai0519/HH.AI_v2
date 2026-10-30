@@ -60,7 +60,7 @@ def run_checks(argv=None):
     total_checks = 28
     passed = 0
     failed = 0
-    
+
     # ---------------------------------------------------------
     # CHECK 1: 控制字元
     # ---------------------------------------------------------
@@ -113,7 +113,7 @@ def run_checks(argv=None):
     c4_fails = []
     skills_dir = os.path.join(repo_root, "skills")
     skills = []
-    
+
     for bucket in os.listdir(skills_dir):
         bucket_path = os.path.join(skills_dir, bucket)
         if os.path.isdir(bucket_path):
@@ -121,27 +121,27 @@ def run_checks(argv=None):
                 skill_path = os.path.join(bucket_path, name)
                 if os.path.isdir(skill_path) and os.path.exists(os.path.join(skill_path, "SKILL.md")):
                     skills.append((bucket, name))
-                    
+
     root_readme_path = os.path.join(repo_root, "README.md")
     skills_readme_path = os.path.join(skills_dir, "README.md")
-    
+
     root_readme = ""
     if os.path.exists(root_readme_path):
         with open(root_readme_path, "r", encoding="utf-8") as f:
             root_readme = f.read()
-            
+
     skills_readme = ""
     if os.path.exists(skills_readme_path):
         with open(skills_readme_path, "r", encoding="utf-8") as f:
             skills_readme = f.read()
-            
+
     for bucket, name in skills:
         bucket_readme_path = os.path.join(skills_dir, bucket, "README.md")
         bucket_readme = ""
         if os.path.exists(bucket_readme_path):
             with open(bucket_readme_path, "r", encoding="utf-8") as f:
                 bucket_readme = f.read()
-                
+
         if f"/{bucket}/{name}/" not in root_readme:
             c4_fails.append(f"README.md:0  未收錄技能 {bucket}/{name}")
         if f"./{bucket}/{name}/" not in skills_readme:
@@ -195,16 +195,16 @@ def run_checks(argv=None):
     # ---------------------------------------------------------
     print("\nCHECK 7 - 技能數與索引條目數一致")
     c7_fails = []
-    
+
     index_count = 0
     if os.path.exists(skills_readme_path):
         with open(skills_readme_path, "r", encoding="utf-8") as f:
             for line in f:
                 if line.startswith("| **["):
                     index_count += 1
-                    
+
     skill_count = len(skills)
-    
+
     if index_count == skill_count:
         print("  [PASS] 命中 0 差異")
         passed += 1
@@ -553,7 +553,7 @@ def run_checks(argv=None):
     print(f"\n========================================")
     print(f"總結: 通過 {passed} 項, 失敗 {failed} 項")
     print(f"========================================")
-    
+
     if failed > 0:
         sys.exit(1)
     else:
@@ -2363,20 +2363,17 @@ def check_19_utf8_bom(root_dir=None):
 
 
 def _is_table_row(line):
+    # B-116 G4 F-C20-01: a GFM row may omit the trailing pipe; a leading pipe is still required here.
     s = line.strip()
-    return s.startswith("|") and s.endswith("|") and len(s) >= 2
+    return s.startswith("|") and len(s) >= 2
 
 
 def _is_table_separator_row(line):
-    s = line.strip()
-    if not (s.startswith("|") and s.endswith("|")):
-        return False
-    cells = s[1:-1].split("|")
+    cells = _c20_table_cells(line)
     if not cells:
         return False
     for c in cells:
-        c_str = c.strip()
-        if not c_str or not re.match(r"^:?-+:?$", c_str):
+        if not c or not re.match(r"^:?-+:?$", c):
             return False
     return True
 
@@ -2387,17 +2384,28 @@ C20_HISTORICAL_EXCEPTION_PATH = "docs/EXEC-LOG.md"
 C20_HISTORICAL_EXCEPTION_SHA256 = "5e86e91676a39c0f0598fce4d978ae940aa2f87213907a5420ef40c6bfc7a081"
 
 
+def _c20_unescaped_pipe(s, i):
+    """True when s[i] is a pipe with no backslash immediately before it (cmark-gfm escape rule)."""
+    return s[i] == "|" and (i == 0 or s[i - 1] != "\\")
+
+
 def _c20_table_cells(line):
-    """Parse pipe-framed GFM cells: a pipe preceded by a backslash is escaped.
+    """Parse leading-pipe GFM cells: a pipe preceded by a backslash is escaped.
 
     Backtick code spans do NOT protect unescaped | from GFM table splitting.
-    This guard explicitly scopes itself to pipe-framed tables.
+    B-116 G4 F-C20-01: the trailing pipe is optional in GFM, so a row such as
+    "| a | b" is two cells instead of an unrecognised line that silently ends
+    the table scan. A trailing pipe counts as the frame only when unescaped.
+    Rows without a leading pipe remain out of this guard's scope. A line that is only
+    a single "|" is not a row (cmark-gfm ends the table there), matching _is_table_row;
+    "||" and "| |" remain one-empty-cell rows.
     """
     s = line.strip()
-    if not (s.startswith("|") and s.endswith("|")):
+    if not s.startswith("|") or len(s) < 2:
         return None
+    end = len(s) - 1 if len(s) >= 2 and _c20_unescaped_pipe(s, len(s) - 1) else len(s)
     result, token = [], []
-    for i in range(1, len(s) - 1):
+    for i in range(1, end):
         c = s[i]
         if c == "|":
             n = 0
@@ -3814,4 +3822,3 @@ def verify_check_consistency_inventory(file_content: str) -> tuple[bool, str, di
 
 if __name__ == "__main__":
     run_checks()
-
