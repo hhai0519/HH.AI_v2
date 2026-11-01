@@ -33,8 +33,8 @@ Invariants (fail closed; a failing step prints one "S1 <CODE> | step <name>" lin
 - Author paths (which also bound the text operations and adopt hashes) are safe repository-relative
   POSIX paths: no drive letter or any other colon (also rejecting NTFS alternate data streams), no
   backslash, no leading '/', no empty, '.' or '..' segment, no segment ending in '.' or a space (Windows
-  would alias it), no '.git' segment in any letter case, no control character, not starting with .git, not
-  a generator output in any letter case, no Windows device-name segment (windows_device_segment: the part
+  would alias it), no '.git' segment in any letter case, no control character, but .github and .gitignore
+  are valid ordinary tracked paths; no generator output in any letter case, no Windows device-name segment (windows_device_segment: the part
   before the first '.', trailing spaces removed, equal in any letter case to CON, PRN, AUX, NUL, COM1-9,
   LPT1-9, or COM/LPT followed by a superscript one, two or three (U+00B9, U+00B2, U+00B3) as Microsoft
   lists them, or to COM0, LPT0, CONIN$ or CONOUT$ by project policy; so NUL.txt and aux.tar.gz are
@@ -325,7 +325,7 @@ def safe_author_path(path):
     for seg in path.split('/'):
         if seg in ('', '.', '..') or seg.endswith(('.', ' ')) or seg.lower() == '.git' or windows_device_segment(seg):
             return False
-    return path.lower() not in {g.lower() for g in GENERATED} and not path.startswith('.git')
+    return path.lower() not in {g.lower() for g in GENERATED}
 
 
 def author_target(root, path):

@@ -700,7 +700,6 @@ UNSAFE_AUTHOR_PATHS = [
     "sub/.GIT/config",         # .git segment in another letter case
     "sub/.git.",               # Windows alias of sub/.git
     "Docs/Fingerprints/Exec-Latest.json",   # generator output in another letter case
-    ".github/workflows/verify.yml",         # existing conservative rule: nothing starting with .git is authorable
 ]
 
 
@@ -715,9 +714,65 @@ def test_unsafe_author_path_is_rejected_by_load_spec(path):
 
 @pytest.mark.parametrize("path", ["docs/TASKBOARD.md", "scripts/tests/test_batch_runner.py", "scripts/batch_runner.py",
                                   ".agents/rules/role-boundaries.md", "runtime/channel-gateway/src/a-b_c.v2.js",
-                                  "docs/中文檔名.md", "docs/.gitkeep-notes.md"])
+                                  "docs/中文檔名.md", "docs/.gitkeep-notes.md", ".github/workflows/verify.yml",
+                                  ".gitignore", ".gitattributes", ".gitmodules"])
 def test_ordinary_repository_paths_stay_accepted(path):
     assert br.safe_author_path(path) is True
+
+
+
+# G5 author-path policy: reject .git metadata components, not valid tracked dotfiles/.github.
+@pytest.mark.parametrize("path", [
+    ".git", ".GIT", "docs/.git", "docs/.GIT/config", ".git/config", ".GIT/config",
+    "docs/.git/config", ".github/../.git/config", ".github//x.yml",
+    ".github/./workflows/a.yml", ".github/workflows/x.yml.",
+    ".github/workflows/x.yml ", ".github/CON", ".github/aux.txt",
+    ".github/COM1.ini", ".github/CONIN$", ".github/a:b.yml",
+    ".github\\workflows\\verify.yml", "x/.git", "x/.GiT/HEAD", "a:b",
+])
+def test_git_metadata_or_alias_path_stays_rejected(path):
+    assert br.safe_author_path(path) is False
+    spec = production_spec()
+    blocks = production_blocks(spec)
+    spec["authors"][path] = {"source": {"kind": "base"}, "sha256": "0" * 64}
+    assert halt_code(br.load_spec, lines_of(prompt(blocks)), TASK) == "SPEC_AUTHOR_PATH_INVALID"
+
+
+@pytest.mark.parametrize("path", [
+    ".github/workflows/verify.yml", ".gitignore", ".gitattributes", ".gitmodules",
+    "docs/.gitkeep-notes.md", ".github/policies/rule.yml",
+])
+def test_dotfile_author_path_accepted_by_runner_load_spec(path):
+    assert br.safe_author_path(path) is True
+    spec = production_spec()
+    spec["authors"][path] = {"source": {"kind": "base"}, "sha256": "0" * 64}
+    assert br.load_spec(lines_of(prompt(production_blocks(spec))), TASK)["authors"][path]
+
+
+def test_github_workflow_plain_target_is_accessible(tmp_path):
+    parent = tmp_path / ".github" / "workflows"
+    parent.mkdir(parents=True)
+    target = parent / "verify.yml"
+    target.write_text("name: verify\n", encoding="utf-8")
+    assert br.safe_author_path(".github/workflows/verify.yml") is True
+    assert br.author_target(str(tmp_path), ".github/workflows/verify.yml") == str(target)
+
+
+def test_github_workflow_linked_parent_forbidden(tmp_path):
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (outside / "workflows").mkdir()
+    _symlink_or_skip(str(outside), str(tmp_path / ".github"), True)
+    assert halt_code(br.author_target, str(tmp_path), ".github/workflows/verify.yml") == "AUTHOR_PATH_UNSAFE_TARGET"
+
+
+def test_github_workflow_linked_file_forbidden(tmp_path):
+    parent = tmp_path / ".github" / "workflows"
+    parent.mkdir(parents=True)
+    target = parent / "real.yml"
+    target.write_text("name: real\n", encoding="utf-8")
+    _symlink_or_skip(str(target), str(parent / "verify.yml"), False)
+    assert halt_code(br.author_target, str(tmp_path), ".github/workflows/verify.yml") == "AUTHOR_PATH_UNSAFE_TARGET"
 
 
 def test_author_paths_equal_apart_from_letter_case_are_rejected():

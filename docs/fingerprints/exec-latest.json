@@ -1,5 +1,5 @@
 {
-  "base_head": "c3443b4",
+  "base_head": "0a66895",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -562,16 +562,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 379,
-      "sha256": "c1440cea72394c70d729e721e50185e3e3aeebefa8d94c08c67921c0402b99e2"
+      "lines": 380,
+      "sha256": "a733dae62f9f21cdc4d48e6e5553b931e2f2c0308e39a5ea23ff62c3cb994e11"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 354,
-      "sha256": "dd067468c7ef745482aae9fee05e445c0d786fa6987b7e1a3ebfec509c2a9148"
+      "lines": 355,
+      "sha256": "97986664289c1d38cedbb403e1c379740eed2a52aa54f38d841bfeb64f5bc2e2"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -613,8 +613,8 @@
         "## G. 舊 repo 未盤點區塊（2026-09-02 新發現）",
         "## 封存區"
       ],
-      "lines": 460,
-      "sha256": "14f123e2597d9bf1ba8d673452366b0585d56ad3ddb88500a9aa74a2270ae43a"
+      "lines": 462,
+      "sha256": "be88f50e9b28afcc0aedefaac677d4a46ed7cf1101ea2dce283a08f7aa0202d0"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1112,8 +1112,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6438,
-      "sha256": "6862186003541a7b498572602dccc84be87ae219929ab97c7d3c6a76b38ccb60"
+      "lines": 6439,
+      "sha256": "e62f077afc114f108848192fc0a728ede3f92bfbb485798394d0bdb1fa33f1d6"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1159,7 +1159,7 @@
         "# ---------------------------------------------------------------------------"
       ],
       "lines": 1331,
-      "sha256": "3d3e7b50166100343938329264ee6bdf063361f70bda778db6e575ce7362c3b8"
+      "sha256": "56d7d6fda8684e4e76920c19dfd611fcc25770fac4fbf240bd98d54feb443c07"
     },
     "scripts/batch_sim.py": {
       "fences": 0,
@@ -1548,6 +1548,7 @@
         "# --- (7) adopt a workspace that stopped before generate ------------------------------------",
         "# --- runner update: controlled succession ----------------------------------------------------",
         "# --- G4 slice 1: safe author paths and generate order (B-107) --------------------------------",
+        "# G5 author-path policy: reject .git metadata components, not valid tracked dotfiles/.github.",
         "# --- G4 slice 2: must-read closure (B-107) ---------------------------------------------------",
         "# Hand-written expectations from the decided specification (independent of the runner's constants).",
         "# --- G4 slice 3a: Windows device names and hard links (B-107) -------------------------------",
@@ -1556,8 +1557,8 @@
         "# --- B-119 / U-04: before-control production admission ------------------------",
         "# B-115/B-119: readonly is a non-executable delivery kind, not a disguised production batch."
       ],
-      "lines": 1659,
-      "sha256": "9c9942d9bae56e2c4ae93453cfcbc6ca5c644b29670b7f34c9e149f49e057d1c"
+      "lines": 1714,
+      "sha256": "0ec3ef202419d4d69b4f91827ca007da36481ef811c08690473e7ca2591504fd"
     },
     "scripts/tests/test_batch_sim.py": {
       "fences": 0,
@@ -2219,7 +2220,7 @@
       "sha256": "62c3142973a5c228efacc01ddcbd44a76e5f87e24d7bed15d90e2ce45a494982"
     }
   },
-  "generated_at": "2026-11-01T07:33:39Z",
+  "generated_at": "2026-11-01T10:40:33Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {
