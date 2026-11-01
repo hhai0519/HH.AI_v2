@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "B123A-SIM-GIT-PROFILE-R4-261030",
-  "base_oid": "4a2f6951973ca57cf67ca696b8a23c11bb513f66",
+  "task_id": "B116-AUD-GPT6-POSTMAIN-STATE-R3-261101",
+  "base_oid": "194804522a66168186697a2a845bfc8cd09e0d98",
   "plan": {
     "allowed_paths": [
       "docs/AUDIT-LOG.md",
@@ -10,11 +10,7 @@
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md",
-      "runtime/channel-gateway/tests/telegram-inbound-adapter.test.js",
-      "scripts/batch_sim.py",
-      "scripts/sim_windows_emulation.py",
-      "scripts/tests/test_batch_sim.py"
+      "docs/refactor-backlog.md"
     ],
     "required_paths": [
       "docs/AUDIT-LOG.md",
@@ -22,11 +18,7 @@
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md",
-      "runtime/channel-gateway/tests/telegram-inbound-adapter.test.js",
-      "scripts/batch_sim.py",
-      "scripts/sim_windows_emulation.py",
-      "scripts/tests/test_batch_sim.py"
+      "docs/refactor-backlog.md"
     ],
     "max_plan_revisions": 3,
     "revision_count": 0,
@@ -39,11 +31,7 @@
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md",
-      "runtime/channel-gateway/tests/telegram-inbound-adapter.test.js",
-      "scripts/batch_sim.py",
-      "scripts/sim_windows_emulation.py",
-      "scripts/tests/test_batch_sim.py"
+      "docs/refactor-backlog.md"
     ]
   },
   "evidence": [
