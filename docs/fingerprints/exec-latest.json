@@ -1,5 +1,5 @@
 {
-  "base_head": "1948045",
+  "base_head": "c3443b4",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -562,16 +562,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 378,
-      "sha256": "49e85bb3f53e3cc55ad82162d8a4d31bbeca3d930b7fb237f80c494439ec0323"
+      "lines": 379,
+      "sha256": "c1440cea72394c70d729e721e50185e3e3aeebefa8d94c08c67921c0402b99e2"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 353,
-      "sha256": "c2bb12d320501d1c408f7ad57a26b2da4bd728df023d2b1659a5eb16dcb4a749"
+      "lines": 354,
+      "sha256": "dd067468c7ef745482aae9fee05e445c0d786fa6987b7e1a3ebfec509c2a9148"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -613,8 +613,8 @@
         "## G. 舊 repo 未盤點區塊（2026-09-02 新發現）",
         "## 封存區"
       ],
-      "lines": 458,
-      "sha256": "0a6c0fc16d588bd9adf61a0a5b00f55f31eb15b546c654991ce0ac8c2349e947"
+      "lines": 460,
+      "sha256": "14f123e2597d9bf1ba8d673452366b0585d56ad3ddb88500a9aa74a2270ae43a"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1112,8 +1112,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6437,
-      "sha256": "313e846eb3c10130fae35a83105d60de35dcedc0388efece14b754af75674c95"
+      "lines": 6438,
+      "sha256": "6862186003541a7b498572602dccc84be87ae219929ab97c7d3c6a76b38ccb60"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1158,8 +1158,8 @@
         "# Control record and entry point",
         "# ---------------------------------------------------------------------------"
       ],
-      "lines": 1304,
-      "sha256": "362c6e71b4e53164e106848333c57c6444d3c91b2cd8382528e2890855ecacde"
+      "lines": 1331,
+      "sha256": "3d3e7b50166100343938329264ee6bdf063361f70bda778db6e575ce7362c3b8"
     },
     "scripts/batch_sim.py": {
       "fences": 0,
@@ -1419,6 +1419,14 @@
       "lines": 495,
       "sha256": "38584517d51e482e608bbdd16a7b7aa6438391fbfe3c8550125516ab2246d70b"
     },
+    "scripts/runtime_readiness.py": {
+      "fences": 0,
+      "headings": [
+        "# -*- coding: utf-8 -*-"
+      ],
+      "lines": 140,
+      "sha256": "64603944954ee1b1a342350540c02d47c8254666f33409c46e817185882a9f81"
+    },
     "scripts/s1_evidence.py": {
       "fences": 0,
       "headings": [
@@ -1548,8 +1556,8 @@
         "# --- B-119 / U-04: before-control production admission ------------------------",
         "# B-115/B-119: readonly is a non-executable delivery kind, not a disguised production batch."
       ],
-      "lines": 1610,
-      "sha256": "72edc6abe7a5e0d12f12369809119a02fc739fdeb0b8bac351d56e1cdfeced85"
+      "lines": 1659,
+      "sha256": "9c9942d9bae56e2c4ae93453cfcbc6ca5c644b29670b7f34c9e149f49e057d1c"
     },
     "scripts/tests/test_batch_sim.py": {
       "fences": 0,
@@ -1970,6 +1978,14 @@
       "lines": 309,
       "sha256": "6bd14ebf5d71fb20ca470a656045792dd4e8f852371146cf71a08c2f8c9d946c"
     },
+    "scripts/tests/test_runtime_readiness.py": {
+      "fences": 0,
+      "headings": [
+        "# -*- coding: utf-8 -*-"
+      ],
+      "lines": 184,
+      "sha256": "d9534acd8880dc52ef4e4e70bc00e2e497199fbdb7d0ff15fd839e5445e6fd25"
+    },
     "scripts/tests/test_s1_evidence.py": {
       "fences": 0,
       "headings": [
@@ -2203,7 +2219,7 @@
       "sha256": "62c3142973a5c228efacc01ddcbd44a76e5f87e24d7bed15d90e2ce45a494982"
     }
   },
-  "generated_at": "2026-11-01T03:48:47Z",
+  "generated_at": "2026-11-01T07:33:39Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

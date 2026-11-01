@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "B116-AUD-GPT6-POSTMAIN-STATE-R3-261101",
-  "base_oid": "194804522a66168186697a2a845bfc8cd09e0d98",
+  "task_id": "B117-G5-RUNTIME-ADMISSION-R3-261101",
+  "base_oid": "c3443b4dbea425c586151ea544c51a0d898c2c1e",
   "plan": {
     "allowed_paths": [
       "docs/AUDIT-LOG.md",
@@ -10,7 +10,11 @@
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md"
+      "docs/refactor-backlog.md",
+      "scripts/batch_runner.py",
+      "scripts/runtime_readiness.py",
+      "scripts/tests/test_batch_runner.py",
+      "scripts/tests/test_runtime_readiness.py"
     ],
     "required_paths": [
       "docs/AUDIT-LOG.md",
@@ -18,7 +22,11 @@
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md"
+      "docs/refactor-backlog.md",
+      "scripts/batch_runner.py",
+      "scripts/runtime_readiness.py",
+      "scripts/tests/test_batch_runner.py",
+      "scripts/tests/test_runtime_readiness.py"
     ],
     "max_plan_revisions": 3,
     "revision_count": 0,
@@ -31,7 +39,11 @@
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md"
+      "docs/refactor-backlog.md",
+      "scripts/batch_runner.py",
+      "scripts/runtime_readiness.py",
+      "scripts/tests/test_batch_runner.py",
+      "scripts/tests/test_runtime_readiness.py"
     ]
   },
   "evidence": [

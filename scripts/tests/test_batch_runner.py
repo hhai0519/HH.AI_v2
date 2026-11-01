@@ -1494,6 +1494,7 @@ def _u04_git(monkeypatch, *, head=BASE, branch='', remote=BASE, shallow=False):
         raise AssertionError(args)
     monkeypatch.setattr(br,'git',fake)
     monkeypatch.setattr(br,'status_lines',lambda root: [])
+    monkeypatch.setattr(br,'runtime_readiness_check',lambda root: None)
     return calls
 
 
@@ -1608,3 +1609,51 @@ def test_readonly_runner_rejects_all_steps_before_control_creation(monkeypatch,t
     monkeypatch.setattr(br,'load_control',lambda _: (_ for _ in ()).throw(AssertionError('must not load control')))
     for step in ('preflight', 'setup', 'apply', 'stage', 'commit', 'push', 'verify', 'promote', 'postmain'):
         assert br.main(['--task-id', TASK, step]) == 1
+
+
+@pytest.mark.parametrize('reason', [
+    'PYTEST_UNAVAILABLE', 'PYTEST_MISMATCH', 'NODE_MISSING',
+    'NODE_RANGE_MISMATCH', 'ENGINES_UNSUPPORTED', 'PYTHON_ALIAS_FORBIDDEN',
+])
+def test_g5_runtime_reason_classified_without_raw_leak(reason):
+    output=('RUNTIME_MISMATCH '+reason+'\n').encode('ascii')
+    assert br.classify_failure(1,b'',output)=='exit=1 class='+reason
+    assert br.classify_failure(1,b'',b'RUNTIME_MISMATCH PRIVATE_PATH=/user/private')=='exit=1 class=DETAIL_UNAVAILABLE'
+
+def test_g5_runtime_outer_timeout_allows_two_probe_budgets(monkeypatch):
+    observed=[]
+    def fake_run(args,label,root,timeout=600):
+        observed.append((list(args),label,timeout))
+        return 'RUNTIME_READY'
+    monkeypatch.setattr(br,'run',fake_run)
+    br.runtime_readiness_check('/synthetic')
+    assert observed==[([br.PY,'scripts/runtime_readiness.py'],'RUNTIME_MISMATCH',50)]
+
+
+G5_RUNTIME_W01_CLASSES = (
+    'PYTEST_MISMATCH', 'PYTEST_UNAVAILABLE', 'NODE_MISSING',
+    'NODE_RANGE_MISMATCH', 'ENGINES_UNSUPPORTED', 'PYTHON_ALIAS_FORBIDDEN',
+    'NODE_ALIAS_FORBIDDEN', 'PROCESS_NONZERO', 'PROCESS_UNAVAILABLE',
+    'SOURCE_INVALID', 'SOURCE_UNREADABLE', 'PYTEST_PIN_INVALID',
+    'NVMRC_INVALID', 'ENGINES_INVALID', 'NODE_VERSION_INVALID',
+    'PROCESS_OUTPUT_INVALID',
+)
+
+
+@pytest.mark.parametrize('reason', G5_RUNTIME_W01_CLASSES)
+@pytest.mark.parametrize('newline', [b'\n', b'\r\n'])
+@pytest.mark.parametrize('channel', ['stdout', 'stderr'])
+def test_g5_w01_runtime_crlf_exact_both_channels(reason, newline, channel):
+    payload = b'RUNTIME_MISMATCH ' + reason.encode('ascii') + newline
+    stderr, stdout = (payload, b'') if channel == 'stderr' else (b'', payload)
+    assert br.classify_failure(1, stderr, stdout) == 'exit=1 class=' + reason
+
+
+@pytest.mark.parametrize('newline', [b'\n', b'\r\n'])
+def test_g5_w01_rejects_nonanchored_or_invalid_runtime_lines(newline):
+    for prefix, suffix in [(b'x', b''), (b'', b' suffix'), (b'', b'\r\r')]:
+        payload = prefix + b'RUNTIME_MISMATCH NODE_MISSING' + suffix + newline
+        # `\r\r\n` must not be accepted as a valid single CRLF suffix.
+        assert br.classify_failure(1, b'', payload) == 'exit=1 class=DETAIL_UNAVAILABLE'
+    payload = b'RUNTIME_MISMATCH PRIVATE_DETAIL=token\r\n'
+    assert br.classify_failure(1, b'', payload) == 'exit=1 class=DETAIL_UNAVAILABLE'

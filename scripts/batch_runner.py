@@ -134,6 +134,22 @@ WINDOWS_DEVICE_NAMES = frozenset(['CON', 'PRN', 'AUX', 'NUL', 'CONIN$', 'CONOUT$
 PY = sys.executable
 # Failure classes: output text is matched but never printed. Order matters; the first match wins.
 FAILURE_CLASSES = (
+    ('PYTEST_MISMATCH', re.compile(r'(?m)^RUNTIME_MISMATCH PYTEST_MISMATCH\r?$')),
+    ('PYTEST_UNAVAILABLE', re.compile(r'(?m)^RUNTIME_MISMATCH PYTEST_UNAVAILABLE\r?$')),
+    ('NODE_MISSING', re.compile(r'(?m)^RUNTIME_MISMATCH NODE_MISSING\r?$')),
+    ('NODE_RANGE_MISMATCH', re.compile(r'(?m)^RUNTIME_MISMATCH NODE_RANGE_MISMATCH\r?$')),
+    ('ENGINES_UNSUPPORTED', re.compile(r'(?m)^RUNTIME_MISMATCH ENGINES_UNSUPPORTED\r?$')),
+    ('PYTHON_ALIAS_FORBIDDEN', re.compile(r'(?m)^RUNTIME_MISMATCH PYTHON_ALIAS_FORBIDDEN\r?$')),
+    ('NODE_ALIAS_FORBIDDEN', re.compile(r'(?m)^RUNTIME_MISMATCH NODE_ALIAS_FORBIDDEN\r?$')),
+    ('PROCESS_NONZERO', re.compile(r'(?m)^RUNTIME_MISMATCH PROCESS_NONZERO\r?$')),
+    ('PROCESS_UNAVAILABLE', re.compile(r'(?m)^RUNTIME_MISMATCH PROCESS_UNAVAILABLE\r?$')),
+    ('SOURCE_INVALID', re.compile(r'(?m)^RUNTIME_MISMATCH SOURCE_INVALID\r?$')),
+    ('SOURCE_UNREADABLE', re.compile(r'(?m)^RUNTIME_MISMATCH SOURCE_UNREADABLE\r?$')),
+    ('PYTEST_PIN_INVALID', re.compile(r'(?m)^RUNTIME_MISMATCH PYTEST_PIN_INVALID\r?$')),
+    ('NVMRC_INVALID', re.compile(r'(?m)^RUNTIME_MISMATCH NVMRC_INVALID\r?$')),
+    ('ENGINES_INVALID', re.compile(r'(?m)^RUNTIME_MISMATCH ENGINES_INVALID\r?$')),
+    ('NODE_VERSION_INVALID', re.compile(r'(?m)^RUNTIME_MISMATCH NODE_VERSION_INVALID\r?$')),
+    ('PROCESS_OUTPUT_INVALID', re.compile(r'(?m)^RUNTIME_MISMATCH PROCESS_OUTPUT_INVALID\r?$')),
     ('SECRET_SCAN_BLOCK', re.compile(r'\[SECRET_SCAN BLOCK\]')),
     ('GIT_INDEX_LOCKED', re.compile(r'index\.lock')),
     ('GIT_REMOTE_REJECTED', re.compile(r'\[rejected\]|\[remote rejected\]|non-fast-forward|pre-receive hook declined')),
@@ -1121,6 +1137,17 @@ def precontrol_start_guard(batch):
         raise Halt('START_REMOTE_QUERY_INVALID')
     if parts[0] != spec['base_oid']:
         raise Halt('ORIGIN_MAIN_DRIFT')
+    # G5: production-only admission before creating the task control, fetching,
+    # switching branches, generating author files, or touching tracked paths.
+    # The running Python itself must have the locked pytest; Node is PATH-selected
+    # and must satisfy the repo's .nvmrc baseline plus gateway engines range.
+    runtime_readiness_check(root)
+
+def runtime_readiness_check(root):
+    # Use the interpreter which is actually running this runner, not a reselected
+    # `python` command. Fixed child and bounded execution; failure is fail-closed.
+    run([PY, 'scripts/runtime_readiness.py'], 'RUNTIME_MISMATCH', root, timeout=50)
+
 
 # ---------------------------------------------------------------------------
 # Control record and entry point
