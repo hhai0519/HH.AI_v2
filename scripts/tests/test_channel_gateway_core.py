@@ -445,25 +445,150 @@ def test_channel_gateway_test_policy_schema():
     assert isinstance(policy.get("approvedSkips"), list)
 
 
-def test_channel_gateway_nvmrc_and_engines_consistency():
-    """Requirement D: Verify .nvmrc exists and is exact 24.21.0, and package.json engines / test script."""
+def _g12_semver(text: str) -> tuple[int, int, int]:
+    """Strict three-component stable semver; do not pin a particular major."""
+    match = re.fullmatch(r"(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)", text)
+    assert match is not None, f"Invalid stable Node semver: {text!r}"
+    return tuple(int(part) for part in match.groups())
+
+
+def _g12_engine_floor(text: str) -> tuple[int, int, int]:
+    """Single lower bound, open upper bound; reject unreviewed range syntax."""
+    match = re.fullmatch(r">=([0-9]+\.[0-9]+\.[0-9]+)", text)
+    assert match is not None, f"Node engines must have open upper bound: {text!r}"
+    return _g12_semver(match.group(1))
+
+
+def _g12_load_node_policy() -> tuple[tuple[int, int, int], tuple[int, int, int]]:
     assert os.path.isfile(NVMRC_PATH), f".nvmrc missing at {NVMRC_PATH}"
-    with open(NVMRC_PATH, "r", encoding="utf-8") as f:
-        nvmrc_content = f.read().strip()
-    assert nvmrc_content == "24.21.0", f".nvmrc must be exact 24.21.0, got: {nvmrc_content!r}"
-
-    with open(PACKAGE_JSON_PATH, "r", encoding="utf-8") as f:
+    with open(NVMRC_PATH, 'r', encoding='utf-8') as f:
+        baseline = _g12_semver(f.read().strip())
+    with open(PACKAGE_JSON_PATH, 'r', encoding='utf-8') as f:
         pkg = json.load(f)
+    floor = _g12_engine_floor(pkg.get('engines', {}).get('node', ''))
+    assert baseline >= floor, f".nvmrc baseline {baseline} is below engines floor {floor}"
+    return baseline, floor
 
-    engines = pkg.get("engines", {})
-    assert engines.get("node") == ">=24.15.0 <25", f"package.json engines.node must be '>=24.15.0 <25', got {engines}"
 
-    test_script = pkg.get("scripts", {}).get("test", "")
+def test_channel_gateway_nvmrc_and_engines_consistency():
+    """Requirement D: .nvmrc is validated source; engines is open-ended lower bound."""
+    _g12_load_node_policy()
+    with open(PACKAGE_JSON_PATH, 'r', encoding='utf-8') as f:
+        pkg = json.load(f)
+    with open(PACKAGE_LOCK_PATH, 'r', encoding='utf-8') as f:
+        lock = json.load(f)
+    engine = pkg['engines']['node']
+    assert lock.get('packages', {}).get('', {}).get('engines', {}).get('node') == engine, (
+        'package-lock root engines must equal package.json engines')
+    # Scoped policy is executable-facing authority; prevent future drift back to Node 24-only.
+    with open(os.path.join(GATEWAY_DIR, 'AGENTS.md'), 'r', encoding='utf-8') as f:
+        scoped = f.read()
+    assert '## 9. Node.js' in scoped
+    node_section = scoped.split('## 9. Node.js', 1)[1].split('## 10.', 1)[0]
+    assert engine in node_section
+    assert '>=24.15.0 <25' not in node_section
+    assert '.node-lts-version' in node_section
+    assert '`verify`' in node_section and '`gateway-windows`' in node_section
+    test_script = pkg.get('scripts', {}).get('test', '')
     assert test_script == 'node --test --test-reporter=tap "tests/*.test.js"', (
-        f"package.json scripts.test must be automatic quoted glob, got: {test_script!r}"
+        f"package.json scripts.test must be automatic quoted glob, got: {test_script!r}")
+    assert 'channel-control.test.js' not in test_script
+    assert 'durable-state-store.test.js' not in test_script
+
+
+def test_g12_node_range_semver_canaries():
+    """Version tests must fail closed independent of a hard-coded Node major."""
+    baseline, floor = _g12_load_node_policy()
+    assert baseline >= floor
+    assert _g12_semver('.'.join(map(str, floor))) == floor
+    newer = (floor[0] + 2, 0, 0)
+    assert newer >= floor  # Open upper bound admits newer majors (feature smoke still required).
+    for bad in ('24', 'v24.21.0', '24.21.0-alpha', '024.21.0', '24.x.0', ''):
+        with pytest.raises(AssertionError):
+            _g12_semver(bad)
+    for bad in ('^24.15.0', '>=24.15.0 <25', '>=24.15.0 || >=26', '', '24.15.0'):
+        with pytest.raises(AssertionError):
+            _g12_engine_floor(bad)
+
+
+def test_g12_runtime_admission_uses_live_repo_sources(monkeypatch):
+    """A1 guard: use real repo .nvmrc/engines, mock only external version probes.
+
+    This is a parser canary, NOT a real Windows/Node26 runtime or CI test.
+    """
+    from scripts import runtime_readiness as rr
+
+    pytest_pin, baseline, clauses = rr._pins(REPO_ROOT)
+    assert baseline == _g12_load_node_policy()[0]
+    assert pytest_pin
+    assert clauses
+    node_bin = 'C:/G12-Synthetic/node.exe'
+    monkeypatch.setattr(rr.shutil, 'which', lambda name: node_bin if name == 'node' else None)
+
+    def read_admission(version):
+        def fake_invoke(argv, *, pytest_probe=False):
+            if list(argv) == [sys.executable, '-m', 'pytest', '--version']:
+                assert pytest_probe
+                return f'pytest {pytest_pin}'
+            assert list(argv) == [node_bin, '--version']
+            assert not pytest_probe
+            return version
+        monkeypatch.setattr(rr, '_invoke', fake_invoke)
+        return rr.check(REPO_ROOT)
+
+    pinned = os.path.join(REPO_ROOT, '.node-lts-version')
+    pinned_release = _g12_semver(open(pinned, encoding='utf-8').read().strip())
+    assert pinned_release[0] > baseline[0]
+    for candidate in ('v' + '.'.join(map(str, baseline)), 'v26.12.1', 'v' + '.'.join(map(str, pinned_release))):
+        assert read_admission(candidate)['node'] == candidate
+    with pytest.raises(rr.RuntimeMismatch, match='^NODE_RANGE_MISMATCH$'):
+        read_admission('v24.20.9')
+
+
+def test_g12_lts_version_file_is_a_reviewed_source():
+    with open(os.path.join(REPO_ROOT, '.node-lts-version'), encoding='utf-8') as f:
+        target = _g12_semver(f.read().strip())
+    baseline, floor = _g12_load_node_policy()
+    assert target > baseline and target >= floor
+    assert (baseline[0], target[0]) == (24, 26), (
+        'G12/B-126 reviewed Node majors are exactly baseline 24 and target 26; '
+        'any future LTS upgrade (including 27) requires new G12/B-126 acceptance'
     )
-    assert "channel-control.test.js" not in test_script
-    assert "durable-state-store.test.js" not in test_script
+
+
+def test_g12_required_ci_jobs_cover_baseline_and_pinned_node26():
+    """Baseline and pinned Node26 must stay inside existing fail-closed required jobs."""
+    workflow = os.path.join(REPO_ROOT, '.github', 'workflows', 'verify.yml')
+    with open(workflow, 'r', encoding='utf-8') as f:
+        body = f.read()
+    assert body.count('\n  verify:\n') == 1
+    assert body.count('\n  gateway-windows:\n') == 1
+    first, second = body.split('\n  gateway-windows:\n')
+    for segment, test_command in ((first, 'python3 scripts/verify_all.py'),
+                                  (second, 'python -m pytest scripts/tests/test_channel_gateway_core.py -v -rfEP')):
+        baseline = segment.index('node-version-file: ".nvmrc"')
+        linux = test_command.startswith('python3 ')
+        expected_guard = ('test "$actual" = "v$expected"' if linux else
+                          'if ($actual -cne "v$expected") { throw "NODE_VERSION_MISMATCH" }')
+        expected_read_baseline = ('< .nvmrc)' if linux else "Get-Content -LiteralPath '.nvmrc' -Raw")
+        expected_read_target = ('< .node-lts-version)' if linux else
+                                "Get-Content -LiteralPath '.node-lts-version' -Raw")
+        first_read = segment.index(expected_read_baseline, baseline)
+        first_guard = segment.index(expected_guard, first_read)
+        first_test = segment.index(test_command, first_guard)
+        pinned_node26 = segment.index('node-version-file: ".node-lts-version"', first_test)
+        second_read = segment.index(expected_read_target, pinned_node26)
+        second_guard = segment.index(expected_guard, second_read)
+        second_test = segment.index(test_command, second_guard)
+        assert baseline < first_read < first_guard < first_test < pinned_node26 < second_read < second_guard < second_test
+        assert segment.count(expected_guard) == 2, 'Both node versions must be checked fail-closed'
+        assert segment.count('NODE_VERSION_ACTUAL') == 2, 'Both actual Node versions must be logged'
+        assert segment.count('NODE_VERSION_EXPECTED') == 2, 'Both expected Node versions must be logged'
+        assert segment.count(test_command) == 2
+        assert segment.count('node-version-file: ".nvmrc"') == 1
+        assert segment.count('node-version-file: ".node-lts-version"') == 1
+        assert 'continue-on-error: true' not in segment
+        assert 'if: always()' not in segment
 
 
 def test_channel_gateway_discovery_contract():
@@ -529,28 +654,32 @@ def test_channel_gateway_combined_node_test_runner():
 
 
 def test_channel_gateway_node_sqlite_smoke():
-    """Requirement G: Verify Node.js semver major=24 (>=24.15.0 <25), node:sqlite load, and zero ExperimentalWarning."""
-    ver_res = run_bounded_text(["node", "--version"], SHORT_COMMAND_TIMEOUT_SEC)
+    """Requirement G: current Node satisfies engine floor; SQLite read/write/close without ExperimentalWarning."""
+    _, floor = _g12_load_node_policy()
+    ver_res = run_bounded_text(['node', '--version'], SHORT_COMMAND_TIMEOUT_SEC)
     assert ver_res.returncode == 0, f"node --version failed: {ver_res.stderr}"
-    raw_ver = ver_res.stdout.strip().lstrip("v")
-    parts = [int(p) for p in raw_ver.split(".")]
-    assert parts[0] == 24, f"Node major version must be 24, got: {parts[0]}"
-    assert tuple(parts[:3]) >= (24, 15, 0), f"Node version must be >= 24.15.0, got: {raw_ver}"
-    assert tuple(parts[:3]) < (25, 0, 0), f"Node version must be < 25.0.0, got: {raw_ver}"
+    raw_ver = ver_res.stdout.strip()
+    assert raw_ver.startswith('v'), f"Node --version output invalid: {raw_ver!r}"
+    actual = _g12_semver(raw_ver[1:])
+    assert actual >= floor, f"Node {actual} is below supported engines floor {floor}"
 
     smoke_script = (
         "const { DatabaseSync } = require('node:sqlite');\n"
         "if (!DatabaseSync) { throw new Error('DatabaseSync missing'); }\n"
         "const db = new DatabaseSync(':memory:');\n"
-        "const row = db.prepare('SELECT sqlite_version() AS v').get();\n"
-        "if (!row || !row.v) { throw new Error('Query failed'); }\n"
-        "db.close();\n"
+        "try {\n"
+        "  db.exec('CREATE TABLE g12_probe (id INTEGER PRIMARY KEY, value TEXT NOT NULL)');\n"
+        "  const result = db.prepare('INSERT INTO g12_probe (value) VALUES (?)').run('roundtrip');\n"
+        "  if (result.changes !== 1) { throw new Error('Insert failed'); }\n"
+        "  const row = db.prepare('SELECT value FROM g12_probe WHERE id = ?').get(result.lastInsertRowid);\n"
+        "  if (!row || row.value !== 'roundtrip') { throw new Error('Readback failed'); }\n"
+        "} finally { db.close(); }\n"
     )
-    smoke_res = run_bounded_text(["node", "-e", smoke_script], SHORT_COMMAND_TIMEOUT_SEC)
-    assert smoke_res.returncode == 0, f"node:sqlite smoke failed: {smoke_res.stderr}\nstdout: {smoke_res.stdout}"
-    assert "ExperimentalWarning" not in smoke_res.stderr, (
-        f"node:sqlite emitted ExperimentalWarning: {smoke_res.stderr}"
-    )
+    smoke_res = run_bounded_text(['node', '-e', smoke_script], SHORT_COMMAND_TIMEOUT_SEC)
+    assert smoke_res.returncode == 0, (
+        f"node:sqlite CRUD smoke failed: {smoke_res.stderr}\nstdout: {smoke_res.stdout}")
+    assert 'ExperimentalWarning' not in smoke_res.stderr, (
+        f"node:sqlite emitted ExperimentalWarning: {smoke_res.stderr}")
 
 
 def test_canary_a_registered_windows_skip_passes():

@@ -1,28 +1,36 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "B117-G5-AUTHOR-PATH-POLICY-R1-261101",
-  "base_oid": "0a6689579aa356341199ab444ccf230b6ceb555a",
+  "task_id": "B126-G12-NODE-RANGE-CI-R7-261102",
+  "base_oid": "de9c3af59704fbbf18d9e7c2c10f51bf9ef33bf0",
   "plan": {
     "allowed_paths": [
+      ".github/workflows/verify.yml",
+      ".node-lts-version",
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
       "docs/refactor-backlog.md",
-      "scripts/batch_runner.py",
-      "scripts/tests/test_batch_runner.py"
+      "runtime/channel-gateway/AGENTS.md",
+      "runtime/channel-gateway/package-lock.json",
+      "runtime/channel-gateway/package.json",
+      "scripts/tests/test_channel_gateway_core.py"
     ],
     "required_paths": [
+      ".github/workflows/verify.yml",
+      ".node-lts-version",
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
       "docs/refactor-backlog.md",
-      "scripts/batch_runner.py",
-      "scripts/tests/test_batch_runner.py"
+      "runtime/channel-gateway/AGENTS.md",
+      "runtime/channel-gateway/package-lock.json",
+      "runtime/channel-gateway/package.json",
+      "scripts/tests/test_channel_gateway_core.py"
     ],
     "max_plan_revisions": 3,
     "revision_count": 0,
@@ -30,14 +38,18 @@
   },
   "actual": {
     "changed_paths": [
+      ".github/workflows/verify.yml",
+      ".node-lts-version",
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
       "docs/refactor-backlog.md",
-      "scripts/batch_runner.py",
-      "scripts/tests/test_batch_runner.py"
+      "runtime/channel-gateway/AGENTS.md",
+      "runtime/channel-gateway/package-lock.json",
+      "runtime/channel-gateway/package.json",
+      "scripts/tests/test_channel_gateway_core.py"
     ]
   },
   "evidence": [

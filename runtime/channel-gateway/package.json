@@ -5,7 +5,7 @@
   "description": "Channel Gateway pure control core foundation",
   "main": "core/channel-control.js",
   "engines": {
-    "node": ">=24.15.0 <25"
+    "node": ">=24.15.0"
   },
   "scripts": {
     "test": "node --test --test-reporter=tap \"tests/*.test.js\""

@@ -90,8 +90,8 @@ T6 階段正式採用 `busy_timeout = 5000`（5000ms），其基礎為 T1 Window
 
 ## 9. Node.js 版本與測試治理契約 (Node Prerequisite & Test Governance)
 
-- `.nvmrc`（`24.21.0`）為版本庫測試與 CI 釘選之 Canonical Node 版本；`package.json` engines（`>=24.15.0 <25`）為本機相容性下限。
-- Ubuntu Canonical Verify 與 Windows Gateway CI 均必須透過 `.nvmrc` 釘選 Node 24 執行。
+- `.nvmrc`（`24.21.0`）為相容性基線與 CI 最低驗證版本之唯一版本來源；`package.json` 和 `package-lock.json` 的 engines.node 必須一致，使用 `>=24.15.0` 作相容下限並保持上限開放。新 Node 主版本須經完整受影響功能測試，不能僅因滿足 engines 而宣稱安全或遷移完成。本機 production admission 實際版本下限為 max(.nvmrc, engines)＝24.21.0；開放上限不表示所有未驗證主版本均已核准。
+- Ubuntu Canonical Verify 與 Windows Gateway CI 兩個既有必需 job（`verify`、`gateway-windows`）均先使用 `.nvmrc` 基線，再使用 repo 根目錄 `.node-lts-version` 精確釘選的 Node LTS 執行各自完整驗證（該檔是第二驗證版本唯一來源，升版必須由 G12／B-126 重新驗收）；任一版本失敗則原必需 job 失敗，嚴禁以允許失敗或 job 分離弱化保護。Windows Node 26 原生驗證與雙版本退場期限由 G12／B-126 管理；釘選版本的同主版本安全修補（例如 Node 26 patch 升版）以及 `.nvmrc` 的 Node 24 在 2028-04 EOL 前之升版／退場均屬該 owner 的可驗證工作，必須以新作者批重新驗收並更新兩個來源檔，不自動漂移。本節不宣稱已完成。
 - **Windows PowerShell 本機 npm 指令規則**：當 Windows PowerShell ExecutionPolicy 阻擋 `npm.ps1` 腳本執行時，本機命令一律改用 `npm.cmd`（例如 `npm.cmd --prefix runtime/channel-gateway test`）。**嚴禁** 透過 `Set-ExecutionPolicy` 削弱作業系統安全原則僅為執行測試；CI 與工作流行為維持不變。
 - Gateway Node 測試一律由 `tests/*.test.js` 自動探索（Automatic Discovery），嚴禁回到手工登錄測試檔名。
 - 測試跳過政策採 **零未註冊跳過（Zero Unregistered Skips）**：

@@ -1,5 +1,5 @@
 {
-  "base_head": "0a66895",
+  "base_head": "de9c3af",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -226,9 +226,12 @@
     },
     ".github/workflows/verify.yml": {
       "fences": 0,
-      "headings": [],
-      "lines": 65,
-      "sha256": "5ec01ff310285e5c24b36d207c4cbdb5ff6de50fed440d97da58eb27d5df9f43"
+      "headings": [
+        "# Required job identities remain verify / gateway-windows. Both installations and",
+        "# both test executions are in the SAME required job, fail-closed on either red."
+      ],
+      "lines": 114,
+      "sha256": "0a90d3462e3afc2bcb6a6c1c9103836ef38c65a90f430bd88127b01c41d92ca5"
     },
     "AGENTS.md": {
       "fences": 2,
@@ -562,16 +565,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 380,
-      "sha256": "a733dae62f9f21cdc4d48e6e5553b931e2f2c0308e39a5ea23ff62c3cb994e11"
+      "lines": 381,
+      "sha256": "4eee88c856d4879d3ad2a7c7007142fc72aa10138ffdba979d8d0541080c87b8"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 355,
-      "sha256": "97986664289c1d38cedbb403e1c379740eed2a52aa54f38d841bfeb64f5bc2e2"
+      "lines": 356,
+      "sha256": "78cac1ad0bce4ce5fe7cb4ab2d901d90ac162fa456a76a22a22606f5b7ed6ade"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -613,8 +616,8 @@
         "## G. 舊 repo 未盤點區塊（2026-09-02 新發現）",
         "## 封存區"
       ],
-      "lines": 462,
-      "sha256": "be88f50e9b28afcc0aedefaac677d4a46ed7cf1101ea2dce283a08f7aa0202d0"
+      "lines": 464,
+      "sha256": "8509e58d932ed8d3ddc3fd7b4eaa8c7f04a3d51319e02cc1fe3188ace3731240"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1112,8 +1115,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6439,
-      "sha256": "e62f077afc114f108848192fc0a728ede3f92bfbb485798394d0bdb1fa33f1d6"
+      "lines": 6440,
+      "sha256": "11f14717b5b2397eae1837d0ca69c4f2c398e8fddadfc06bdb433990abcdea34"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1674,8 +1677,8 @@
         "# Closed world: the only lines in NATIVE_TEST_FILES that may reference child_process.",
         "# Exact lines that must appear once in every NATIVE_TEST_FILES entry (helper + runtime guard)."
       ],
-      "lines": 1278,
-      "sha256": "99ed0ef2a457a455e44e8ddad5acdfc918b2cac7c8a8030aa88946d62da55c4e"
+      "lines": 1407,
+      "sha256": "1522a2ff2a635604200e3b90c7a1bf0255380394c78f7cb60d019f3d0815411c"
     },
     "scripts/tests/test_check_17_18.py": {
       "fences": 0,
@@ -2220,7 +2223,7 @@
       "sha256": "62c3142973a5c228efacc01ddcbd44a76e5f87e24d7bed15d90e2ce45a494982"
     }
   },
-  "generated_at": "2026-11-01T10:40:33Z",
+  "generated_at": "2026-11-02T03:29:39Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {
