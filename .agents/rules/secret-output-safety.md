@@ -110,15 +110,15 @@
 任何 `git commit` 操作前，執行者必須確保：
 1. 本地 pre-commit hook 處於啟用狀態：
    ```bash
-   python scripts/install_git_hooks.py --check
+   〈PY〉 scripts/install_git_hooks.py --check
    ```
    若未啟用，必須先執行：
    ```bash
-   python scripts/install_git_hooks.py --install
+   〈PY〉 scripts/install_git_hooks.py --install
    ```
 2. 暫存區機敏資訊掃描必須強制通過：
    ```bash
-   python scripts/secret_scan.py --staged
+   〈PY〉 scripts/secret_scan.py --staged
    ```
 3. 嚴禁使用 `git commit --no-verify`。
 4. 嚴禁透過環境變數或暫時修改 hook 腳本繞過檢查。

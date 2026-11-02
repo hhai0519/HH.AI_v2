@@ -36,11 +36,11 @@ Allowed tracked mutation paths = NONE，Required tracked mutation paths = NONE�
 無法讀取即 S1 NATIVE_VIEW_UNAVAILABLE，不得改用 shell 取代原生檢視。
 
 四、唯一 runner 執行順序（各一次，不可自行增加命令）
-python scripts/batch_runner.py --task-id {TASK_ID} preflight
-python scripts/batch_runner.py --task-id {TASK_ID} verify
-python scripts/batch_runner.py --task-id {TASK_ID} promote
-python scripts/batch_runner.py --task-id {TASK_ID} postmain
-python scripts/batch_runner.py --task-id {TASK_ID} timing
+uv run --offline --no-sync --no-python-downloads --python .venv\\Scripts\\python.exe python scripts/batch_runner.py --task-id {TASK_ID} preflight
+uv run --offline --no-sync --no-python-downloads --python .venv\\Scripts\\python.exe python scripts/batch_runner.py --task-id {TASK_ID} verify
+uv run --offline --no-sync --no-python-downloads --python .venv\\Scripts\\python.exe python scripts/batch_runner.py --task-id {TASK_ID} promote
+uv run --offline --no-sync --no-python-downloads --python .venv\\Scripts\\python.exe python scripts/batch_runner.py --task-id {TASK_ID} postmain
+uv run --offline --no-sync --no-python-downloads --python .venv\\Scripts\\python.exe python scripts/batch_runner.py --task-id {TASK_ID} timing
 
 五、Executor 最小回覆
 成功時，逐字轉交 runner 真正印出的 CI_RUN phase=candidate 及 CI_RUN phase=postmain 各一行，另逐字轉交 MAIN、TIMING、STATE 三行；兩種 CI_RUN 都須有而且彼此不可替代，不得自行猜測、合成或改寫 Run／job ID。S1 時僅逐字轉交 runner 已印出的 CI_RUN（若有）、S1、S1_DETAIL、TIMING、STATE 行，不得捏造或把候選 Run 當成 post-main Run。最後一行逐字為「以上是 Antigravity IDE Agent 的回覆。」

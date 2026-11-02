@@ -1042,3 +1042,51 @@ def test_git_profile_tests_never_fall_back_to_the_host_system_config():
     name = '"GIT_CONFIG_' + 'SYSTEM"'                   # split so this guard does not match itself
     for pattern in ("!= " + name, ".pop(" + name, "delenv(" + name):
         assert pattern not in src, pattern
+
+
+def test_uv_simulator_uses_local_offline_sync_only(tmp_path, monkeypatch):
+    sim = bs.Sim(str(tmp_path/'source'),str(tmp_path/'wd'),out=lambda line: None)
+    work = Path(sim.work)
+    # B6: the simulator uses the platform venv layout (Windows: Scripts/python.exe; POSIX: bin/python)
+    bin_dir = work/'.venv'/('Scripts' if os.name == 'nt' else 'bin')
+    bin_dir.mkdir(parents=True)
+    (bin_dir/('python.exe' if os.name == 'nt' else 'python')).write_bytes(b'test')
+    (work/'.python-version').write_bytes(b'3.14\n')
+    calls = []
+    monkeypatch.setattr(bs.shutil, 'which', lambda name: '/test/uv' if name == 'uv' else None)
+    def fake_run(args, cwd, env, timeout, merge=True):
+        calls.append((args,env))
+        return 0,b''
+    sim.run_cmd=fake_run
+    sim.prepare_uv_simulation()
+    assert '--offline' in calls[0][0] and '--no-python-downloads' in calls[0][0]
+    assert '--no-config' in calls[0][0]
+    assert calls[0][0][-2:] == ['--python', '3.14']  # B5: pin is explicit under --no-config
+    assert calls[0][1]['UV_OFFLINE']=='1'
+    assert sim.runner_python.startswith(str(work/'.venv'))
+    assert sim.env['PATH'].startswith(str(bin_dir))
+
+
+def test_uv_simulator_rejects_missing_cache_and_sync_failure(tmp_path, monkeypatch):
+    sim=bs.Sim(str(tmp_path/'source'),str(tmp_path/'wd'),out=lambda line:None)
+    monkeypatch.setattr(bs.shutil,'which',lambda name:'/test/uv')
+    Path(sim.work).mkdir(parents=True, exist_ok=True)
+    (Path(sim.work)/'.python-version').write_bytes(b'3.14\n')
+    monkeypatch.setattr(sim,'run_cmd',lambda *a,**kw:(2,b'ignored'))
+    with pytest.raises(bs.SimError,match='UV_SIM_SYNC_FAILED'):
+        sim.prepare_uv_simulation()
+
+
+@pytest.mark.parametrize('pin', [None, '', '3', '3.14.7', '>=3.14', 'cpython-3.14'])
+def test_uv_simulator_requires_exact_python_pin_before_sync(tmp_path, monkeypatch, pin):
+    # B5: without a valid major.minor pin the sync would silently use the first PATH interpreter.
+    sim = bs.Sim(str(tmp_path/'source'), str(tmp_path/'wd'), out=lambda line: None)
+    Path(sim.work).mkdir(parents=True, exist_ok=True)
+    if pin is not None:
+        (Path(sim.work)/'.python-version').write_bytes((pin + '\n').encode('ascii'))
+    monkeypatch.setattr(bs.shutil, 'which', lambda name: '/test/uv')
+    calls = []
+    monkeypatch.setattr(sim, 'run_cmd', lambda *a, **kw: calls.append(a) or (0, b''))
+    with pytest.raises(bs.SimError, match='UV_SIM_PYTHON_PIN_INVALID'):
+        sim.prepare_uv_simulation()
+    assert calls == []

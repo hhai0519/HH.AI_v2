@@ -18,7 +18,7 @@
 
 任何 repo mutation 前必須執行：
 1. 取得完整 incoming prompt 原文。
-2. 執行 `python scripts/validate_prompt_manifest.py --require-contract` 語法檢驗，並依當前任務 prompt 執行 bound 治理預檢；完整 CLI 見 [`.agents/rules/role-boundaries.md §9`](./role-boundaries.md)。
+2. 執行 `〈PY〉 scripts/validate_prompt_manifest.py --require-contract` 語法與 bound 治理預檢；完整 CLI 見 [`.agents/rules/role-boundaries.md §9`](./role-boundaries.md)。
 3. **邊界、預檢與完成屏障**：
    - 邊界：Manifest/Contract 為 fenced code 外 standalone logical line；prose/fenced example 不計入；duplicate/missing/reversed/nested fail-closed。
    - 預檢：交付 bytes 交付前必經 validator+preflight 雙重 PASS；改動須重驗；未通過只能 `NOT_PASTEABLE`。
@@ -41,7 +41,7 @@
 
 宣告 E24 = PASS 且依賴模式 `mode = REQUIRED` 時，mutation 前須重放比對：
 1. 依賴證據與 Allowed Scope 寫入 scratch JSON。
-2. 執行 `python scripts/impact_scan.py check --evidence-file <evidence.json> --allowed-scope-file <allowed_scope.json>`。
+2. 執行 `〈PY〉 scripts/impact_scan.py check --evidence-file <evidence.json> --allowed-scope-file <allowed_scope.json>`。
 3. 若 exit != 0 禁 mutation：缺證據/格式錯為 `PROMPT STRUCTURE ERROR`；依賴不符為 `S1 DEPENDENCY_DRIFT`；UPDATE 漏列為 `S1 DEPENDENCY_SCOPE_MISSING`。
 4. 實作後 `VERIFY_ONLY` 須改時禁擅改，升級 `S1 DEPENDENCY_SCOPE_EXPANSION`。僅驗證證據配對，不重複語意審查。
 
@@ -104,7 +104,7 @@ GOAL_SPEC 模式不得要求 E-1～E-4，其正確性由測試與 Gate 守護。
 | Allowed Scope | 涉及檔案 | 目標檔案全數列入 Allowed Scope 白名單 |
 | git diff --name-only | Allowed Scope | 實際變更清單完全落在 Allowed Scope 內 |
 | git add <path> | 實際變更 | 逐檔明確加入，禁 `git add -A` 或 `.` |
-| Required Machine Gates | Canonical 標準 | 必須包含 `python scripts/verify_all.py` |
+| Required Machine Gates | Canonical 標準 | 必須包含 `〈PY〉 scripts/verify_all.py` |
 
 ### B. EXACT_SPEC 覆蓋鏈
 

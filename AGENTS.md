@@ -95,7 +95,7 @@
 
 全專案唯一標準驗證入口為：
 ```bash
-python scripts/verify_all.py
+〈PY〉 scripts/verify_all.py
 ```
 涵蓋 5 大 Correctness Gates（validate_skills、check_consistency、fingerprint verify、scripts unit tests、webapp tests）。詳細規範見 [`skills/AGENTS.md §9`](./skills/AGENTS.md#9-驗證)。
 
@@ -112,3 +112,11 @@ python scripts/verify_all.py
 ### 10.2 禁止文字摘要辯論 (Anti-Debate Policy)
 
 嚴禁以文字比對或口頭宣告取代 Actions 機器證據；失敗時直接引用 run ID、failed job 與 failed step。詳細規範見 [`.agents/rules/git-and-reporting.md`「遠端健康查證與 GitHub Actions 閉環規範」](./.agents/rules/git-and-reporting.md#25-遠端健康查證與-github-actions-閉環規範-remote-health-verification)。
+
+## 11. uv Python 正式入口（前向過渡與變更閘門）
+
+- `〈PY〉` 代表 `uv run --offline --no-sync --no-python-downloads --python .venv\Scripts\python.exe python`；正式提示詞由工具展開。
+- 本 uv 遷移批按 A6 使用 launcher；post-main、USER 準備及 Windows 驗證後啟用。
+- 新批驗 `.venv`、lock、requirements、pytest、PATH；異常先於 control／mutation 停止。
+- production 禁止 `uv sync`、下載或補裝；準備另須 USER 授權。
+- 舊 `python scripts/` 只供歷史辨識，晉級後新批禁用。

@@ -97,6 +97,7 @@ import json
 import os
 import re
 import sys
+import shutil
 import tempfile
 from pathlib import Path
 
@@ -378,8 +379,10 @@ class Sim:
         self.git_profile = git_profile
         # Git and home isolation; see isolated_env and the module documentation (Isolation, Git profiles).
         self.env = isolated_env(self.workdir, LOCALES[locale], git_profile)
+        self.env.pop('HHAI_SIM_UV_CACHE_DIR', None)  # only explicit --uv-cache-dir is authoritative
         self.gitconfig = self.workdir / 'isolated-gitconfig'
         self.stubbed = False
+        self.runner_python = sys.executable
         self.run_cmd = run
         self.out = out
 
@@ -393,7 +396,7 @@ class Sim:
         return out.decode('utf-8', 'replace').strip()
 
     def py(self, *args, timeout=GIT_TIMEOUT):
-        return self.sh([sys.executable, *args], timeout=timeout)
+        return self.sh([self.runner_python, *args], timeout=timeout)
 
     # -- set-up -------------------------------------------------------------------------------------
     def source_refs(self):
@@ -448,6 +451,43 @@ class Sim:
             self.git('config', 'core.symlinks', 'false')      # what a Windows clone writes without symlink support
         self.check_locations()
         check_git_profile(self.run_cmd, self.env, self.workdir, self.git_profile, self.work)
+        if (Path(self.work) / 'uv.lock').is_file():
+            self.prepare_uv_simulation()
+
+    def prepare_uv_simulation(self):
+        """Set up ONLY the disposable simulator clone; never prepare a user's repo.
+
+        Use a local reviewed package cache, no network or Python downloads. If uv
+        cannot satisfy the exact lock, the simulation is not a PASS. Preserve
+        the simulator's source snapshot and git isolation.
+        """
+        uv = shutil.which('uv')
+        _require(uv is not None, 'UV_SIM_UNAVAILABLE')
+        env = {k: v for k, v in self.env.items() if not k.startswith('UV_')
+               and k not in ('VIRTUAL_ENV', 'PYTHONHOME')}
+        env['UV_OFFLINE'] = '1'
+        env['UV_PYTHON_DOWNLOADS'] = 'never'
+        env['UV_NO_PROGRESS'] = '1'
+        cache = self.env.get('HHAI_SIM_UV_CACHE_DIR')
+        if cache:
+            env['UV_CACHE_DIR'] = cache
+        # B5: `--no-config` also stops uv from reading .python-version, so pass the reviewed pin explicitly;
+        # otherwise uv picks the first PATH interpreter that satisfies requires-python (e.g. 3.15 on a 3.14 pin).
+        try:
+            pinned = (Path(self.work) / '.python-version').read_text(encoding='utf-8').strip()
+        except (OSError, UnicodeDecodeError):
+            pinned = ''
+        _require(re.fullmatch(r'\d+\.\d+', pinned) is not None, 'UV_SIM_PYTHON_PIN_INVALID')
+        command = [uv, '--no-config', 'sync', '--locked', '--offline', '--no-python-downloads', '--python', pinned]
+        rc, _ = self.run_cmd(command, self.work, env, STEP_TIMEOUT, True)
+        _require(rc == 0, 'UV_SIM_SYNC_FAILED')
+        bin_dir = Path(self.work) / '.venv' / ('Scripts' if os.name == 'nt' else 'bin')
+        python = bin_dir / ('python.exe' if os.name == 'nt' else 'python')
+        _require(python.is_file(), 'UV_SIM_PYTHON_MISSING')
+        self.runner_python = str(python)
+        self.env['PATH'] = str(bin_dir) + os.pathsep + self.env.get('PATH', '')
+        self.env.pop('VIRTUAL_ENV', None)
+        self.env['HHAI_SIM_UV_CACHE_DIR'] = env.get('UV_CACHE_DIR', '')
 
     def check_source_unchanged(self):
         _require(self.source_refs() == self.source_before, 'SOURCE_MODIFIED')
@@ -657,6 +697,7 @@ def main(argv=None):
         p.add_argument('--locale', default='utf8', choices=sorted(LOCALES))
         p.add_argument('--negative', choices=sorted(negatives))
         p.add_argument('--git-profile', default='isolated', choices=GIT_PROFILES)
+        p.add_argument('--uv-cache-dir', help='Explicit approved offline uv cache for disposable simulation only')
         if name == 'production':
             p.add_argument('--resume-prompt')
     w = sub.add_parser('winemu')
@@ -670,6 +711,9 @@ def main(argv=None):
             mode = 'winemu git_profile=' + args.git_profile
         else:
             sim = Sim(args.source, args.workdir, args.locale, git_profile=args.git_profile)
+            if args.uv_cache_dir:
+                _require(Path(args.uv_cache_dir).is_dir(), 'UV_SIM_CACHE_UNAVAILABLE')
+                sim.env['HHAI_SIM_UV_CACHE_DIR'] = str(Path(args.uv_cache_dir).resolve())
             if args.cmd == 'production':
                 sim.production(args.prompt, args.resume_prompt, args.negative)
             else:

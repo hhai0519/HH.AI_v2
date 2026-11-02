@@ -264,7 +264,7 @@ def readonly_fixed_prose(task, base):
             '三、動手前必讀（IDE 原生工具逐檔讀至最後一行）\n'
             '{MUST_READ}\n\n'
             '四、唯一固定唯讀探針命令\n'
-            f'python scripts/readonly_probe.py --task-id {task} '
+            f'uv run --offline --no-sync --no-python-downloads --python .venv\\Scripts\\python.exe python scripts/readonly_probe.py --task-id {task} '
             f'--prompt-file .git/{task}-prompt.txt\n'
             '只執行一次，必須等進程退出；保留 C9_READONLY_JSON 原始單行、實際 exit code。'
             '不准人工拼接其他命令，不准修改任何檔案。\n\n'
@@ -577,7 +577,7 @@ def startup_lines(prompt_path, download_dir, workspace):
         'SHA256_UPPER=' + sha.upper(),
         '---STARTUP---',
         '請執行 HH.AI_v2 批次 ' + task + '。作用中工作區須為 ' + workspace + '；在該 repo 根目錄只執行下列一行命令一次，一字不改：',
-        'python scripts/prompt_intake.py --task-id ' + task + ' --source ' + source + ' --sha256 ' + sha,
+        'uv run --offline --no-sync --no-python-downloads --python .venv\\Scripts\\python.exe python scripts/prompt_intake.py --task-id ' + task + ' --source ' + source + ' --sha256 ' + sha,
         '命令成功後，以 IDE 原生檢視工具從第一行讀到最後一行 .git/' + task + '-prompt.txt，並完全依其指示執行；'
         '命令失敗則停止並原樣回報輸出，不得重試或修改命令。',
         '---HASHCMD---',

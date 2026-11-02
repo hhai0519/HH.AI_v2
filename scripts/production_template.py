@@ -93,7 +93,7 @@ def auto_production(repo, definition, out_dir):
     # Use the runner's own step derivation; do not maintain a second e24/focused decision.
     steps = pb.batch_runner.derive_steps({'kind': 'production', 'e24': d.get('e24') is True,
                                           'focused': d.get('focused'), 'bundle_output': d.get('bundle_output', False)}) + ['timing']
-    cmds = '\n'.join(f'python scripts/batch_runner.py --task-id {{TASK_ID}} {s}' for s in steps)
+    cmds = '\n'.join(f'uv run --offline --no-sync --no-python-downloads --python .venv\\Scripts\\python.exe python scripts/batch_runner.py --task-id {{TASK_ID}} {s}' for s in steps)
     # Both the prose and all machine data are built from one definition: never copy facts from old prompts.
     head = f'''{{TASK_ID}} — repo-owned production prose (GOAL_SPEC)
 

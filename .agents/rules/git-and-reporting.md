@@ -16,7 +16,7 @@
   原因：完整的歷史紀錄是回溯問題發生在哪一步的唯一依據。
 - **commit 前先跑 `git status`**：確認 staged 清單只包含本次任務實際要
   修改的檔案。
-- **建立 prospective commit 前確認交接區 HEAD**：若該批次包含交接區元資料更新，確認 `docs/refactor-backlog.md` §5.1 的「上次核對通過的 HEAD」等於 `docs/AUDIT-LOG.md` 中最新且屬當前歷史之 Macro PASS checkpoint。它可以是 HEAD 的較早 ancestor；存在多個 pending repair commits 本身不構成錯誤，不得以 ancestry distance 判定 audit state 過期。候選 commit 自身若未經 Macro Auditor 裁決 PASS，絕對不得自稱為 checkpoint。可使用 `python scripts/check_consistency.py --as-if-committed` 於 commit 前預演驗證，消除本地與 CI 差 1 的可預測中間紅燈（B-51）。
+- **建立 prospective commit 前確認交接區 HEAD**：若該批次包含交接區元資料更新，確認 `docs/refactor-backlog.md` §5.1 的「上次核對通過的 HEAD」等於 `docs/AUDIT-LOG.md` 中最新且屬當前歷史之 Macro PASS checkpoint。它可以是 HEAD 的較早 ancestor；存在多個 pending repair commits 本身不構成錯誤，不得以 ancestry distance 判定 audit state 過期。候選 commit 自身若未經 Macro Auditor 裁決 PASS，絕對不得自稱為 checkpoint。可使用 `〈PY〉 scripts/check_consistency.py --as-if-committed` 於 commit 前預演驗證，消除本地與 CI 差 1 的可預測中間紅燈（B-51）。
 - **commit message 內若含 `$$` 字元，訊息要用單引號包住**，避免被 shell
   展開成進程 ID。
 - **分支建立與切換操作慣例（Branch Operation Convention — B-109 M1）**：
@@ -141,12 +141,12 @@ runner 對 candidate／promotion verify／postmain 各以真實 ci-status JSON �
 1. **禁止繞過 Hook 驗證**：嚴禁使用 `git commit --no-verify`，嚴禁暫時移除或繞過 Hook，嚴禁因掃描報錯而擅自弱化偵測器。
 2. **Hook 安裝狀態查驗**：提交前必須確保本地 Git hook 處於啟用狀態：
    ```bash
-   python scripts/install_git_hooks.py --check
+   〈PY〉 scripts/install_git_hooks.py --check
    ```
-   若未啟用，必須先執行 `python scripts/install_git_hooks.py --install`。
+   若未啟用，必須先執行 `〈PY〉 scripts/install_git_hooks.py --install`。
 3. **暫存區機密掃描 (Mandatory Staged Scan)**：提交前必須執行全暫存區掃描：
    ```bash
-   python scripts/secret_scan.py --staged
+   〈PY〉 scripts/secret_scan.py --staged
    ```
    若掃描發現任何機敏特徵（Fail-Closed），必須立即停止提交並排查。
 4. **掃描輸出安全紀律**：

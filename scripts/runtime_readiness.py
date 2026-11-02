@@ -14,6 +14,8 @@ import re
 import shutil
 import subprocess
 import sys
+import stat
+import tomllib
 from pathlib import Path
 
 
@@ -96,7 +98,151 @@ def _invoke(argv, *, pytest_probe=False):
         raise RuntimeMismatch('PROCESS_OUTPUT_INVALID') from None
 
 
+# F-UV-A1: production admission must run before the runner creates any control
+# artifact.  Never use `uv run` as an admission probe: it can create `.venv` or
+# synchronize it even with --offline, --locked, and --no-sync combinations.
+_PIN_LINE = re.compile(r'^([A-Za-z0-9][A-Za-z0-9._-]*)==([A-Za-z0-9][A-Za-z0-9._+!-]*)$')
+# Real `uv --version` output carries a parenthesised build/target suffix,
+# e.g. 'uv 0.11.32 (3010295ae 2026-07-23 x86_64-pc-windows-msvc)' on Windows and
+# 'uv 0.11.32 (x86_64-unknown-linux-gnu)' on Linux; accept exactly one such group.
+_UV_VER = re.compile(r'^uv (\d+\.\d+\.\d+)(?:\+[^\s]+)?(?: \([^()\r\n]{1,80}\))?$')
+
+
+def _pin_set(text):
+    result = set()
+    for raw in text.splitlines():
+        line = raw.strip()
+        if not line or line.startswith('#'):
+            continue
+        parts = re.split(r'\s*;\s*', line, maxsplit=1)
+        m = _PIN_LINE.fullmatch(parts[0].strip())
+        if not m or len(parts) > 2:
+            raise RuntimeMismatch('UV_EXPORT_PIN_INVALID')
+        package = re.sub(r'[-_.]+', '-', m.group(1).lower())
+        value = package + '==' + m.group(2)
+        if len(parts) == 2:
+            marker = re.sub(r'\s+', ' ', parts[1].replace('"', "'").strip())
+            if marker != "sys_platform == 'win32'":
+                raise RuntimeMismatch('UV_EXPORT_MARKER_UNSUPPORTED')
+            value += ';' + marker
+        if any(x.startswith(package + '==') for x in result):
+            raise RuntimeMismatch('UV_EXPORT_DUPLICATE_PIN')
+        result.add(value)
+    if not result:
+        raise RuntimeMismatch('UV_EXPORT_EMPTY')
+    return result
+
+
+def _uv_call(uv, args, root, *, output_limit=8192):
+    # Admission must remain read-only even if the caller supplies a simulation
+    # cache override. Simulation cache belongs to batch_sim setup, never to
+    # production runtime admission. uv's own cache is disabled altogether.
+    env = {k: v for k, v in os.environ.items() if not k.startswith('UV_')
+           and k not in ('VIRTUAL_ENV', 'PYTHONHOME', 'HHAI_SIM_UV_CACHE_DIR')}
+    env['UV_NO_CACHE'] = '1'
+    env['UV_OFFLINE'] = '1'
+    env['UV_NO_PROGRESS'] = '1'
+    env['UV_PYTHON_DOWNLOADS'] = 'never'
+    env['PYTHONDONTWRITEBYTECODE'] = '1'
+    try:
+        result = subprocess.run([uv, '--no-config', *args], cwd=str(root), stdin=subprocess.DEVNULL,
+                                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                check=False, env=env, timeout=30)
+    except (OSError, subprocess.TimeoutExpired):
+        raise RuntimeMismatch('UV_UNAVAILABLE') from None
+    if result.returncode != 0:
+        raise RuntimeMismatch('UV_COMMAND_NONZERO')
+    if len(result.stdout) > output_limit or len(result.stderr) > 4096:
+        raise RuntimeMismatch('UV_OUTPUT_TOO_LARGE')
+    try:
+        return result.stdout.decode('utf-8').strip()
+    except UnicodeDecodeError:
+        raise RuntimeMismatch('UV_OUTPUT_INVALID') from None
+
+
+def _no_reparse(path):
+    """Reject all link/junction components (including the executable) before accepting uv.
+
+    On Windows lstat returns FILE_ATTRIBUTE_REPARSE_POINT for junctions/reparse
+    points even when Path.is_symlink() misses them. Avoid chasing anything before
+    checking the user-controlled .venv path.
+    """
+    try:
+        info = os.lstat(path)
+    except OSError:
+        raise RuntimeMismatch('VENV_MISSING') from None
+    if stat.S_ISLNK(info.st_mode) or (getattr(info, 'st_file_attributes', 0) & 0x400):
+        raise RuntimeMismatch('VENV_REPARSE_FORBIDDEN')
+    return info
+
+
+def uv_admission(root):
+    root = Path(root).absolute()
+    lock = root / 'uv.lock'
+    if lock.is_symlink() or not lock.is_file():
+        raise RuntimeMismatch('UV_LOCK_INVALID')
+    envdir = root / '.venv'
+    pyrel = Path('Scripts/python.exe' if os.name == 'nt' else 'bin/python')
+    desired = envdir / pyrel
+    if not envdir.is_dir() or not desired.is_file():
+        raise RuntimeMismatch('VENV_MISSING')
+    # Validate the venv container without following any junction/reparse.
+    # POSIX uv-managed venvs commonly symlink bin/python -> the base Python,
+    # and CPython exposes sys.executable as bin/python3. Both are legitimate.
+    for path in (root, envdir, envdir / pyrel.parent):
+        _no_reparse(path)
+    if os.name == 'nt':
+        _no_reparse(desired)   # Windows executable reparse is never allowed
+    actual_prefix = os.path.normcase(os.path.realpath(sys.prefix))
+    wanted_prefix = os.path.normcase(os.path.realpath(str(envdir)))
+    if (actual_prefix != wanted_prefix or
+            os.path.normcase(os.path.realpath(sys.prefix)) ==
+            os.path.normcase(os.path.realpath(sys.base_prefix))):
+        raise RuntimeMismatch('VENV_PYTHON_MISMATCH')
+    actual = Path(sys.executable).absolute() if sys.executable else None
+    if (actual is None or
+            os.path.normcase(os.path.abspath(str(actual.parent))) !=
+            os.path.normcase(os.path.abspath(str(envdir / pyrel.parent)))):
+        raise RuntimeMismatch('VENV_PYTHON_MISMATCH')
+    selected = shutil.which('python')
+    if (not selected or os.path.normcase(os.path.abspath(os.path.dirname(selected))) !=
+            os.path.normcase(os.path.abspath(str(envdir / pyrel.parent)))):
+        raise RuntimeMismatch('PATH_PYTHON_MISMATCH')
+    try:
+        pyproject = tomllib.loads(_read(root, 'pyproject.toml'))
+        uv_required = pyproject['tool']['uv']['required-version']
+    except (KeyError, TypeError, ValueError, tomllib.TOMLDecodeError):
+        raise RuntimeMismatch('UV_PROJECT_INVALID') from None
+    if not isinstance(uv_required, str) or not re.fullmatch(r'==\d+\.\d+\.\d+', uv_required):
+        raise RuntimeMismatch('UV_VERSION_SOURCE_INVALID')
+    uv = shutil.which('uv')
+    if not uv or 'windowsapps' in uv.replace('\\', '/').lower().split('/'):
+        raise RuntimeMismatch('UV_UNAVAILABLE')
+    version = _uv_call(uv, ['--version'], root, output_limit=150)
+    match = _UV_VER.fullmatch(version)
+    if match is None or '==' + match.group(1) != uv_required:
+        raise RuntimeMismatch('UV_VERSION_MISMATCH')
+    # Both commands are offline, read-only with respect to project source, and
+    # do not run `uv run` or `uv sync`. Never permit a stale lock or altered pip pin.
+    _uv_call(uv, ['lock', '--check', '--offline', '--no-python-downloads'], root)
+    export = _uv_call(uv, ['export', '--locked', '--offline', '--no-python-downloads',
+                           '--no-hashes', '--no-header', '--no-annotate',
+                           '--no-emit-project'], root)
+    if _pin_set(_read(root, 'requirements.txt')) != _pin_set(export):
+        raise RuntimeMismatch('UV_EXPORT_REQUIREMENTS_MISMATCH')
+    pinned_py = _read(root, '.python-version').strip()
+    if not re.fullmatch(r'\d+\.\d+', pinned_py):
+        raise RuntimeMismatch('UV_PYTHON_VERSION_INVALID')
+    if '.'.join(map(str, sys.version_info[:2])) != pinned_py:
+        raise RuntimeMismatch('UV_PYTHON_VERSION_MISMATCH')
+
+
 def check(root):
+    # No uv sources in old synthetic fixtures or pre-migration main: legacy G5 tests stay valid.
+    # After the uv cutover all production tasks must arrive via the managed .venv.
+    if any((Path(root) / name).exists() or (Path(root) / name).is_symlink()
+           for name in ('pyproject.toml', 'uv.lock', '.python-version')):
+        uv_admission(root)
     pytest_pin, baseline, clauses = _pins(root)
     python = sys.executable
     if not python or 'windowsapps' in python.replace('\\', '/').lower().split('/'):

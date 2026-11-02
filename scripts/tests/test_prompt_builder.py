@@ -298,7 +298,8 @@ def test_startup_lines_bind_exact_bytes_and_paths(tmp_path, repo):
     lines = pb.startup_lines(str(prompt), "C:\\Users\\U\\Downloads\\", "C:\\Users\\U\\Desktop\\HH.AI_v2")
     assert lines[0] == "SHA256_UPPER=" + digest.upper()
     src = "C:\\Users\\U\\Downloads\\" + TASK + "-prompt.txt"
-    assert lines[3] == "python scripts/prompt_intake.py --task-id " + TASK + " --source " + src + " --sha256 " + digest
+    assert lines[3] == ("uv run --offline --no-sync --no-python-downloads --python .venv\\Scripts\\python.exe "
+                         "python scripts/prompt_intake.py --task-id " + TASK + " --source " + src + " --sha256 " + digest)
     assert "C:\\Users\\U\\Desktop\\HH.AI_v2" in lines[2]
     assert lines[-1] == "Get-FileHash -Algorithm SHA256 -LiteralPath '" + src + "'"
 

@@ -206,20 +206,20 @@ CI 紅燈只有兩條合法出路：修到它綠，或由審計官開新批次�
 1. **單一授權恢復來源**：執行者若發生對話中斷、上下文遺失或記憶壓縮（Compaction），**唯一合法之授權恢復來源為當前任務 prompt 原文檔案**（本機 exact 路徑 `.git/<task-id>-prompt.txt`）。
 2. **禁止隱含或跨 session 假想恢復**：嚴禁依賴任何 IDE transcript、brain/session logs、歷史交談隱藏產物、前批交接記憶或口頭宣稱進行上下文恢復。若 `.git/<task-id>-prompt.txt` 缺失、不可讀或與合約不符，執行者必須立即停止並報告 `S1 CONTEXT_LOSS`。
 3. **版本庫與 Git 狀態角色**：版本庫追蹤檔案與 Git 客觀狀態僅供查證客觀事實，不得替代 incoming prompt 的動態合約授權。
-4. **恢復後前置重檢**：完成上下文恢復後，執行者在進行下一次 tracked mutation 前，必須重新執行 bound governance preflight（`python scripts/governance_preflight.py --task-id <task-id> --prompt-file .git/<task-id>-prompt.txt`）並自 local disk 重讀 active rules。
+4. **恢復後前置重檢**：完成上下文恢復後，執行者在進行下一次 tracked mutation 前，必須重新執行 bound governance preflight（`〈PY〉 scripts/governance_preflight.py --task-id <task-id> --prompt-file .git/<task-id>-prompt.txt`）並自 local disk 重讀 active rules。
 
 ### 9.2 任務輔助產物路徑紀律 (Task Artifact Discipline)
 1. **命名與位置唯一約束**：執行者自建之查詢腳本、CI polling 腳本、執行計畫（plan）、證據檔及臨時輔助檔，**僅得存放於當前任務之 `.git/<task-id>-<suffix>`**（其中 suffix 不得為空，且不得包含目錄分隔符或 traversal 符號）。
 2. **禁止範本跨批次讀取**：嚴禁讀取、複製、執行前批任務遺留之 `.git/` 產物作為工作範本或恢復來源。
 3. **原始輸入路徑檢查先行**：在任何 `abspath` 或 `normpath` 折疊之前，必須先檢查原始輸入路徑字串之原生路徑片段（native segments），嚴格拒絕包含任何 `'..'` traversal 符號、巢狀目錄、非法字元或無效形態；不能只檢查正規化後之 basename 或 suffix。
 4. **解析基準與安全 Location 判定**：相對路徑（relative input）一律以版本庫根目錄（`repo_root`）為唯一確定解析基準，嚴格禁止依據「當前工作目錄是否存在該檔」動態切換解析基準；絕對路徑僅接受指向同一安全 canonical task location。產物與 prompt 共用一致的安全 location 判定，在讀取 prompt 或檢查產物前，必須同時檢查 `.git` anchor 與目標 leaf 之 regular/directory 屬性、symlink/junction/reparse 標記與 resolved containment，嚴禁 `.git` 自身連結成外部位置。
-5. **產物檢查預檢**：在讀取、寫入或執行自建任務輔助產物前，必須先調用 `python scripts/governance_preflight.py --task-id <task-id> --check-task-artifact <path>` 進行路徑與 prompt 授權守衛驗證；若非零退出即刻終止。
+5. **產物檢查預檢**：在讀取、寫入或執行自建任務輔助產物前，必須先調用 `〈PY〉 scripts/governance_preflight.py --task-id <task-id> --check-task-artifact <path>` 進行路徑與 prompt 授權守衛驗證；若非零退出即刻終止。
 6. **Pre-write Check 語意**：`--check-task-artifact` 支援寫入前預檢（destination 尚不存在時驗證 parent containment 與檔名規範，且不建立該檔案）。已有檔案必須為合法 regular file，嚴禁目錄、symlink、Windows directory junction 或 reparse point。
 
 ### 9.3 治理預檢 CLI 與模式邊界 (Governance Preflight CLI)
 1. **Current Prompt Binding 模式**：
    ```bash
-   python scripts/governance_preflight.py --task-id <task-id> --prompt-file .git/<task-id>-prompt.txt
+   〈PY〉 scripts/governance_preflight.py --task-id <task-id> --prompt-file .git/<task-id>-prompt.txt
    ```
    - 僅接受安全 ASCII task-id（無路徑分隔符、磁碟機代號、空白或 traversal）。
    - 僅讀取 repo 內部之 `.git/<task-id>-prompt.txt`；禁止讀取任意外部路徑。
@@ -228,7 +228,7 @@ CI 紅燈只有兩條合法出路：修到它綠，或由審計官開新批次�
    - Macro/Claude 產出草案時，得先將草案保存至其 local clone 的 `.git/<task-id>-prompt.txt`，再以本 CLI 預檢結構與邊界（若已有同名產物先確認屬本批，禁覆寫他批；預檢不給予執行授權）。
 2. **Task Artifact Guard 模式**：
    ```bash
-   python scripts/governance_preflight.py --task-id <task-id> --check-task-artifact <artifact-path>
+   〈PY〉 scripts/governance_preflight.py --task-id <task-id> --check-task-artifact <artifact-path>
    ```
    - 先驗證當前任務 prompt 授權（若失效報告 `S1 CONTEXT_LOSS`），再驗證產物路徑合規性（若不合規報告 `S1 TASK_ARTIFACT_SCOPE`）。
 3. **Push 驗證與敏感操作授權模式**：

@@ -53,3 +53,6 @@ id_ed25519
 *.sqlite3
 *.sqlite3-wal
 *.sqlite3-shm
+
+# uv project environment (must never be tracked or scanned as authors)
+/.venv/

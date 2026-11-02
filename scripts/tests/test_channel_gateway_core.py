@@ -518,6 +518,9 @@ def test_g12_runtime_admission_uses_live_repo_sources(monkeypatch):
     """
     from scripts import runtime_readiness as rr
 
+    # This is a Node range parser canary, not a production uv/Python admission test.
+    # The latter has separate fail-closed tests and must never be bypassed in the CLI.
+    monkeypatch.setattr(rr, 'uv_admission', lambda root: None)
     pytest_pin, baseline, clauses = rr._pins(REPO_ROOT)
     assert baseline == _g12_load_node_policy()[0]
     assert pytest_pin

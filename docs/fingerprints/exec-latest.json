@@ -1,5 +1,5 @@
 {
-  "base_head": "de9c3af",
+  "base_head": "c53ee9d",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -18,7 +18,7 @@
         "## 3. 查證紀律"
       ],
       "lines": 225,
-      "sha256": "79accc83935a778745ebdd1eb2ea7802ec74899fd6f1b941550bb3ebdfd981d7"
+      "sha256": "ebb5330439d247f503a389177e6026eb6204cbf23c3aeaf53779f5222ec0dc46"
     },
     ".agents/rules/governance-gate-integrity.md": {
       "fences": 0,
@@ -78,7 +78,7 @@
         "## 6. 這條規則保護的是誰"
       ],
       "lines": 244,
-      "sha256": "4e201fce5388a7832e4197030fde1e790e3dca5082c29a937f58c42663c51152"
+      "sha256": "ef8cff3eebf54abff0b4a35d01393e8fc37597dc73e07acfc03dda46eafa1d86"
     },
     ".agents/rules/role-boundaries.md": {
       "fences": 4,
@@ -103,7 +103,7 @@
         "### 9.5 遠端 Actions 證據分工權威 (Remote Actions Log Provenance Division)"
       ],
       "lines": 247,
-      "sha256": "ef1d73b2899778e2273404144f7b3843866321f91cd1e8b0bd440a71788856cf"
+      "sha256": "82e9cc59a87f48e48bf921ed1998e5e71601248b0346cbacf35b567ceced7aa3"
     },
     ".agents/rules/secret-output-safety.md": {
       "fences": 6,
@@ -121,7 +121,7 @@
         "## SECRET-9 — 遠端中繼資料查詢安全紀律 (Remote Metadata Safety & No-Credential Fallback — B-109 M2)"
       ],
       "lines": 144,
-      "sha256": "11e949908ceec26644740a17dbd3354964d5178f534cf5ca7cdf00aafddacc40"
+      "sha256": "c148ade86bbe90a54b1259eb5b77c624f60dacf2bf1f20c6d6df6e30f7eef08b"
     },
     ".agents/rules/skill-engineering-guardrails.md": {
       "fences": 0,
@@ -252,10 +252,11 @@
         "## 9. 驗證",
         "## 10. Remote Project Health Authority（遠端健康權威）",
         "### 10.1 遠端健康查證與回報規範",
-        "### 10.2 禁止文字摘要辯論 (Anti-Debate Policy)"
+        "### 10.2 禁止文字摘要辯論 (Anti-Debate Policy)",
+        "## 11. uv Python 正式入口（前向過渡與變更閘門）"
       ],
-      "lines": 114,
-      "sha256": "17902cc4cc7339a0a23a92ea3a34e5195cf605bf40f25d6a721e1504e0ec0158"
+      "lines": 122,
+      "sha256": "793afcf6ef1d5820631d325d7b945b51c7997ffa51676677c249082f5abbcf07"
     },
     "MISSION.md": {
       "fences": 0,
@@ -565,16 +566,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 381,
-      "sha256": "4eee88c856d4879d3ad2a7c7007142fc72aa10138ffdba979d8d0541080c87b8"
+      "lines": 382,
+      "sha256": "707be50b8fb5248a4db7a4758116a262608f99d3dde27c2328f88246b77aaeb8"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 356,
-      "sha256": "78cac1ad0bce4ce5fe7cb4ab2d901d90ac162fa456a76a22a22606f5b7ed6ade"
+      "lines": 357,
+      "sha256": "b3887b2767e40985ebf50c46867e1986a60625ca6047e367f9e1ac70e9f63088"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -616,8 +617,8 @@
         "## G. 舊 repo 未盤點區塊（2026-09-02 新發現）",
         "## 封存區"
       ],
-      "lines": 464,
-      "sha256": "8509e58d932ed8d3ddc3fd7b4eaa8c7f04a3d51319e02cc1fe3188ace3731240"
+      "lines": 465,
+      "sha256": "d5ed17e2787568dca2d25d38e113bdd43a8cf39b398ea1fffe83a0b2432f1ff8"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1115,8 +1116,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6440,
-      "sha256": "11f14717b5b2397eae1837d0ca69c4f2c398e8fddadfc06bdb433990abcdea34"
+      "lines": 6441,
+      "sha256": "253df5435643e0a4cab0b03ae332ebe2fd6c1d92693d8455ff95570444e9a3ae"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1171,8 +1172,8 @@
         "# Production negatives; the stop step and code depend on the batch's own step list (see production_negative).",
         "# Git for Windows installer defaults at system scope on the USER machine (B-123a; see the TASKBOARD B-123 row)."
       ],
-      "lines": 690,
-      "sha256": "71b03961308fe1201da5814ffd3640fbb10aca8442abdd622fdf4f1e5d6c9fd4"
+      "lines": 734,
+      "sha256": "8892176f5891eebdc15b0410808473f99de1e4c1968d7f88ccb35328d460a865"
     },
     "scripts/bounded_process.py": {
       "fences": 0,
@@ -1373,7 +1374,7 @@
         "# -*- coding: utf-8 -*-"
       ],
       "lines": 194,
-      "sha256": "d0b02a74b60205aa14e79211c7f143ce657603400224b9f3322ed20604c4805a"
+      "sha256": "fa84080acaf9539b9c901160a6f7f850cc0aa180665fece931e58730336cdfa9"
     },
     "scripts/promotion_template.py": {
       "fences": 0,
@@ -1381,7 +1382,7 @@
         "# -*- coding: utf-8 -*-"
       ],
       "lines": 168,
-      "sha256": "d0e0ebbf76d478f67b9daef7e6aa31992abb998b1c37de71e98bb337028f9070"
+      "sha256": "4029e9ee625b95e320ef55288e76ab13933e406472d95052b18661b353ac9dc4"
     },
     "scripts/prompt_builder.py": {
       "fences": 0,
@@ -1391,7 +1392,7 @@
         "# change ledger that scripts/candidate_check.py replays from Base against the candidate commit."
       ],
       "lines": 747,
-      "sha256": "274a4144ca666438450b0d1d035863d6546e96aa1736740220036776e12699b2"
+      "sha256": "3c56d22b63b4291bc8a773588cb76c0e84e9f30d3f300bcc7f0a13f237566c8e"
     },
     "scripts/prompt_intake.py": {
       "fences": 0,
@@ -1425,10 +1426,16 @@
     "scripts/runtime_readiness.py": {
       "fences": 0,
       "headings": [
-        "# -*- coding: utf-8 -*-"
+        "# -*- coding: utf-8 -*-",
+        "# F-UV-A1: production admission must run before the runner creates any control",
+        "# artifact.  Never use `uv run` as an admission probe: it can create `.venv` or",
+        "# synchronize it even with --offline, --locked, and --no-sync combinations.",
+        "# Real `uv --version` output carries a parenthesised build/target suffix,",
+        "# e.g. 'uv 0.11.32 (3010295ae 2026-07-23 x86_64-pc-windows-msvc)' on Windows and",
+        "# 'uv 0.11.32 (x86_64-unknown-linux-gnu)' on Linux; accept exactly one such group."
       ],
-      "lines": 140,
-      "sha256": "64603944954ee1b1a342350540c02d47c8254666f33409c46e817185882a9f81"
+      "lines": 286,
+      "sha256": "cd5021c86c6779a3cdc3d24e055e2e9469e74f9085394750ac80c2f1ce55d6b4"
     },
     "scripts/s1_evidence.py": {
       "fences": 0,
@@ -1580,8 +1587,8 @@
         "# --- B-123a: HOME/XDG isolation and Git profiles (three kinds of Git subprocess) ---------------------------",
         "# --- second-opinion B01 (B123A R1): winemu must check the repository the tests actually run in --------------"
       ],
-      "lines": 1044,
-      "sha256": "74bdfb805d485cf91fec959847eb2fecab02c9481913ae0a84a538ed9b5ef7a3"
+      "lines": 1092,
+      "sha256": "5936955e4ca6332367eafc96de6be081e8d841da103ff5485ce79de613dfab77"
     },
     "scripts/tests/test_bounded_process.py": {
       "fences": 0,
@@ -1677,8 +1684,8 @@
         "# Closed world: the only lines in NATIVE_TEST_FILES that may reference child_process.",
         "# Exact lines that must appear once in every NATIVE_TEST_FILES entry (helper + runtime guard)."
       ],
-      "lines": 1407,
-      "sha256": "1522a2ff2a635604200e3b90c7a1bf0255380394c78f7cb60d019f3d0815411c"
+      "lines": 1410,
+      "sha256": "793172fbf5067305138bed5ecc14433593c6913931b33eca8115a5c69a486a06"
     },
     "scripts/tests/test_check_17_18.py": {
       "fences": 0,
@@ -1912,8 +1919,8 @@
         "# B-118 first-activation negative tests: new auto-production must explicitly decide output.",
         "# The canonical builder/checker recognises READONLY without granting canonical production-runner rights."
       ],
-      "lines": 1353,
-      "sha256": "5ef3ce42b2f88505d11ad3575b074fdef472e525fb1b6a15272544fa44f6985a"
+      "lines": 1354,
+      "sha256": "69a6ed77fbdabb5e02ec11cc9efc3f83ba1b2765bf14073aaa5a257b32d43269"
     },
     "scripts/tests/test_prompt_intake.py": {
       "fences": 0,
@@ -2111,6 +2118,14 @@
       "lines": 583,
       "sha256": "ddec4d1047fadc8fa544473f68df6b6f2552a3b09aa29194cb9b51e0d497f5eb"
     },
+    "scripts/tests/test_uv_admission.py": {
+      "fences": 0,
+      "headings": [
+        "# -*- coding: utf-8 -*-"
+      ],
+      "lines": 285,
+      "sha256": "0bedc0e0bf45566b670e439e2792e78d8e8992b2cde3259e450699933bd45bee"
+    },
     "scripts/tests/test_validate_skills.py": {
       "fences": 0,
       "headings": [
@@ -2223,7 +2238,7 @@
       "sha256": "62c3142973a5c228efacc01ddcbd44a76e5f87e24d7bed15d90e2ce45a494982"
     }
   },
-  "generated_at": "2026-11-02T03:29:39Z",
+  "generated_at": "2026-11-02T16:04:25Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {
