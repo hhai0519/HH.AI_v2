@@ -1,5 +1,7 @@
 # MCP 環境設定與重建指南
 
+> **CURRENT STATUS／2026-11-03（B-127 J1）**：下列 2026-08-29 Jules 安裝、金鑰與六個 MCP server 的資訊屬歷史快照，**不得據此重裝、啟用或調用 `google-jules`**；Jules 已依 USER 2026-11-01 決定退役，見 [ADR-0028](adr/0028-jules-retirement.md)。Jules 相關的 2026 年舊環境說明僅供查證，不代表目前仍有任何金鑰、CLI、MCP 或 GitHub App 授權。非 Jules 受管憑證之 SEC-04 政策與 CHECK 27 例外仍按原 owner 處理，本批不實作其遷移。
+
 > 建立日期：2026-08-26
 > 用途：記錄 Antigravity IDE 的 MCP 設定結構，供環境重建時還原。若需開發新 MCP 伺服器或排錯，請參閱 [`skills/execution/mcp-engineer`](../skills/execution/mcp-engineer/SKILL.md) 技能。
 > 背景：2026-07-26 曾發生系統崩潰需重建 OS 使用者帳號，當時 MCP 設定

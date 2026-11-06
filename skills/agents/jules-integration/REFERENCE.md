@@ -1,3 +1,7 @@
+# RETIRED｜歷史參考，不得執行
+
+本檔案保留舊工作流說明以供歷史稽核；所有配額、Bridge、Dashboard、授權工具及候選委派步驟均已停用，**不得依照下方歷史流程發起 Jules session**。現行裁決見 [ADR-0028](../../../docs/adr/0028-jules-retirement.md)。
+
 # jules-integration — 參考細節
 
 ## 額度查詢

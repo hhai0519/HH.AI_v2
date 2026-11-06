@@ -1,10 +1,16 @@
 ---
 name: jules-integration
-description: 將耗時長、Token 消耗大的重構或修復任務委派給雲端 Google Jules 代理人執行，並保持與本地 git 分支同步。當使用者提到「委派給 Jules」、「雲端重構」、「交給 Jules 處理」，或本地任務預估修改檔案數超過 5 個、預期耗時超過 10 分鐘時使用。
+description: RETIRED，僅供歷史審計查閱；Google Jules 不再作為 HH.AI_v2 的可執行或可委派技能，任何觸發均應拒絕。
 disable-model-invocation: true
-authorized_mcp_tools: ["antigravity-jules-bridge.sendToJules"]
+authorized_mcp_tools: []
 semantic_firewall: true
 ---
+
+# RETIRED｜2026-11-03 文件退役決策
+
+**停止使用**：本技能只為保留原歷史說明，不具任何當前執行效力；不可因使用者提及 Jules 就觸發下方流程、MCP、CLI、雲端 session、分支或憑證。既有遠端歷史 refs 仍保留。新權威為 [ADR-0028](../../../docs/adr/0028-jules-retirement.md)；J2 程式／憑證拒絕另批處理。
+
+以下均為**已廢止的歷史描述，不是有效操作指令**：
 
 # Jules 雲端委派
 

@@ -243,7 +243,7 @@ python3 scripts/verify_all.py
 但此類 service-local tests 絕非全庫驗證的替代品（non-replacement），
 而必須透過專案標準測試橋接（canonical bridge，如 `scripts/tests/test_channel_gateway_core.py`）納入全庫閘門，
 統一由 `scripts/verify_all.py` 執行。
-雲端代理（如 Google Jules）在獨立 VM 執行時只能依賴本節判斷如何驗證，
+外部隔離式雲端代理若獲 USER 另行授權並在獨立 VM 執行時，仍須依本節判斷如何驗證（Jules 已 RETIRED，不得以本句作為重新啟用授權），
 新增測試套件或變更測試方式時，應維護 `scripts/verify_all.py` 中的閘門定義。
 
 ---

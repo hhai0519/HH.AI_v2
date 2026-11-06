@@ -1,24 +1,48 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "B116-AUD-GPT6-TAKEOVER-STATE-R2-261103",
-  "base_oid": "33bebdacb1649963a9fb5a1c2beac28764e1ecd6",
+  "task_id": "B127-J1-JULES-RETIRE-DOCS-R4-261106",
+  "base_oid": "348f0c7f3d986e9c9b7689fbd440f6a5a5d3b757",
   "plan": {
     "allowed_paths": [
+      "PRINCIPLES.md",
+      "README.md",
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
+      "docs/adr/0028-jules-retirement.md",
       "docs/fingerprints/exec-latest.json",
+      "docs/generated/rule-traceability.md",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md"
+      "docs/mcp-environment-guide.md",
+      "docs/refactor-backlog.md",
+      "skills/AGENTS.md",
+      "skills/README.md",
+      "skills/agents/AGENTS.md",
+      "skills/agents/README.md",
+      "skills/agents/jules-integration/REFERENCE.md",
+      "skills/agents/jules-integration/SKILL.md",
+      "skills/execution/mcp-engineer/SKILL.md"
     ],
     "required_paths": [
+      "PRINCIPLES.md",
+      "README.md",
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
+      "docs/adr/0028-jules-retirement.md",
       "docs/fingerprints/exec-latest.json",
+      "docs/generated/rule-traceability.md",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md"
+      "docs/mcp-environment-guide.md",
+      "docs/refactor-backlog.md",
+      "skills/AGENTS.md",
+      "skills/README.md",
+      "skills/agents/AGENTS.md",
+      "skills/agents/README.md",
+      "skills/agents/jules-integration/REFERENCE.md",
+      "skills/agents/jules-integration/SKILL.md",
+      "skills/execution/mcp-engineer/SKILL.md"
     ],
     "max_plan_revisions": 3,
     "revision_count": 0,
@@ -26,12 +50,24 @@
   },
   "actual": {
     "changed_paths": [
+      "PRINCIPLES.md",
+      "README.md",
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
+      "docs/adr/0028-jules-retirement.md",
       "docs/fingerprints/exec-latest.json",
+      "docs/generated/rule-traceability.md",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md"
+      "docs/mcp-environment-guide.md",
+      "docs/refactor-backlog.md",
+      "skills/AGENTS.md",
+      "skills/README.md",
+      "skills/agents/AGENTS.md",
+      "skills/agents/README.md",
+      "skills/agents/jules-integration/REFERENCE.md",
+      "skills/agents/jules-integration/SKILL.md",
+      "skills/execution/mcp-engineer/SKILL.md"
     ]
   },
   "evidence": [

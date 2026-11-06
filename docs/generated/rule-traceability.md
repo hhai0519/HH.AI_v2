@@ -497,78 +497,79 @@
 | PRINCIPLES.md | 4 | # HH.AI v2 — 決策與協作原則 | FILE | `MISSION.md` | MISSION.md | RESOLVED |
 | PRINCIPLES.md | 5 | # HH.AI v2 — 決策與協作原則 | FILE | `MISSION.md` | MISSION.md | RESOLVED |
 | PRINCIPLES.md | 16 | ## 0. 角色分工（本文件其他所有原則的前提） | FILE | `docs/TASKBOARD.md` | docs/TASKBOARD.md | RESOLVED |
-| PRINCIPLES.md | 27 | ### 0.1 身分不可切換與資格認定制 (Qualification-Based Macro Role) | ADR | docs/adr/0007-macro-auditor-role.md | docs/adr/0007-macro-auditor-role.md | RESOLVED |
-| PRINCIPLES.md | 27 | ### 0.1 身分不可切換與資格認定制 (Qualification-Based Macro Role) | ADR | docs/adr/0021-qualification-based-macro-auditor-role.md | docs/adr/0021-qualification-based-macro-auditor-role.md | RESOLVED |
-| PRINCIPLES.md | 28 | ### 0.1 身分不可切換與資格認定制 (Qualification-Based Macro Role) | SECTION | §2.5 | PRINCIPLES.md#§2.5 | RESOLVED |
-| PRINCIPLES.md | 29 | ### 0.1 身分不可切換與資格認定制 (Qualification-Based Macro Role) | SECTION | §4 | PRINCIPLES.md#§4 | RESOLVED |
-| PRINCIPLES.md | 31 | ### 0.1 身分不可切換與資格認定制 (Qualification-Based Macro Role) | ADR | ADR-0021 | docs/adr/0021-qualification-based-macro-auditor-role.md | RESOLVED |
-| PRINCIPLES.md | 32 | ### 0.1 身分不可切換與資格認定制 (Qualification-Based Macro Role) | FILE | `docs/TASKBOARD.md` | docs/TASKBOARD.md | RESOLVED |
-| PRINCIPLES.md | 39 | ### 0.2 本文件其他原則都預設這個分工 | SECTION | §2.2 | PRINCIPLES.md#§2.2 | RESOLVED |
-| PRINCIPLES.md | 39 | ### 0.2 本文件其他原則都預設這個分工 | SECTION | §2.5 | PRINCIPLES.md#§2.5 | RESOLVED |
-| PRINCIPLES.md | 40 | ### 0.2 本文件其他原則都預設這個分工 | SECTION | §4 | PRINCIPLES.md#§4 | RESOLVED |
-| PRINCIPLES.md | 44 | ### 0.2 本文件其他原則都預設這個分工 | ADR | ADR-0007 | docs/adr/0007-macro-auditor-role.md | RESOLVED |
-| PRINCIPLES.md | 44 | ### 0.2 本文件其他原則都預設這個分工 | SECTION | §1 | PRINCIPLES.md#§1 | RESOLVED |
-| PRINCIPLES.md | 51 | ### 0.3 「審計」一詞有四種意思，不可混用 | FILE | `SOP/SOP_14_Rigorous_Verification_and_Audit_Protocol.md` | SOP/SOP_14_Rigorous_Verification_and_Audit_Protocol.md | RESOLVED |
-| PRINCIPLES.md | 51 | ### 0.3 「審計」一詞有四種意思，不可混用 | SECTION | §1 | SOP/SOP_14_Rigorous_Verification_and_Audit_Protocol.md#§1 | RESOLVED |
-| PRINCIPLES.md | 51 | ### 0.3 「審計」一詞有四種意思，不可混用 | SECTION | §5 | SOP/SOP_14_Rigorous_Verification_and_Audit_Protocol.md#§5 | RESOLVED |
-| PRINCIPLES.md | 63 | ### 0.4 各層的分工 | FILE | `.agents/rules/role-boundaries.md` | .agents/rules/role-boundaries.md | RESOLVED |
-| PRINCIPLES.md | 64 | ### 0.4 各層的分工 | FILE | `.claude/rules/auditor-protocol.md` | .claude/rules/auditor-protocol.md | RESOLVED |
-| PRINCIPLES.md | 65 | ### 0.4 各層的分工 | ADR | docs/adr/0007-macro-auditor-role.md | docs/adr/0007-macro-auditor-role.md | RESOLVED |
-| PRINCIPLES.md | 76 | ### 0.5 代理人運作目標 (Agent Operating Objectives) | SECTION | §5.1 | docs/refactor-backlog.md#§5.1 | RESOLVED |
-| PRINCIPLES.md | 76 | ### 0.5 代理人運作目標 (Agent Operating Objectives) | SECTION | §5.4 | docs/refactor-backlog.md#§5.4 | RESOLVED |
-| PRINCIPLES.md | 83 | ### 0.5 代理人運作目標 (Agent Operating Objectives) | FILE | `MISSION.md` | MISSION.md | RESOLVED |
-| PRINCIPLES.md | 91 | ## 1. 治理文件的層級 | FILE | `MISSION.md` | MISSION.md | RESOLVED |
-| PRINCIPLES.md | 92 | ## 1. 治理文件的層級 | FILE | `PRINCIPLES.md` | PRINCIPLES.md | RESOLVED |
-| PRINCIPLES.md | 93 | ## 1. 治理文件的層級 | FILE | `AGENTS.md` | AGENTS.md | RESOLVED |
-| PRINCIPLES.md | 94 | ## 1. 治理文件的層級 | FILE | `skills/AGENTS.md` | skills/AGENTS.md | RESOLVED |
-| PRINCIPLES.md | 107 | ### R. Router（非權威導覽層） | FILE | `AGENTS.md` | AGENTS.md | RESOLVED |
-| PRINCIPLES.md | 107 | ### R. Router（非權威導覽層） | FILE | `MISSION.md` | MISSION.md | RESOLVED |
-| PRINCIPLES.md | 107 | ### R. Router（非權威導覽層） | FILE | `PRINCIPLES.md` | PRINCIPLES.md | RESOLVED |
-| PRINCIPLES.md | 110 | ### R. Router（非權威導覽層） | FILE | `README.md` | README.md | RESOLVED |
-| PRINCIPLES.md | 110 | ### R. Router（非權威導覽層） | FILE | `skills/README.md` | skills/README.md | RESOLVED |
+| PRINCIPLES.md | 21 | ## 0. 角色分工（本文件其他所有原則的前提） | ADR | docs/adr/0028-jules-retirement.md | docs/adr/0028-jules-retirement.md | RESOLVED |
+| PRINCIPLES.md | 28 | ### 0.1 身分不可切換與資格認定制 (Qualification-Based Macro Role) | ADR | docs/adr/0007-macro-auditor-role.md | docs/adr/0007-macro-auditor-role.md | RESOLVED |
+| PRINCIPLES.md | 28 | ### 0.1 身分不可切換與資格認定制 (Qualification-Based Macro Role) | ADR | docs/adr/0021-qualification-based-macro-auditor-role.md | docs/adr/0021-qualification-based-macro-auditor-role.md | RESOLVED |
+| PRINCIPLES.md | 29 | ### 0.1 身分不可切換與資格認定制 (Qualification-Based Macro Role) | SECTION | §2.5 | PRINCIPLES.md#§2.5 | RESOLVED |
+| PRINCIPLES.md | 30 | ### 0.1 身分不可切換與資格認定制 (Qualification-Based Macro Role) | SECTION | §4 | PRINCIPLES.md#§4 | RESOLVED |
+| PRINCIPLES.md | 32 | ### 0.1 身分不可切換與資格認定制 (Qualification-Based Macro Role) | ADR | ADR-0021 | docs/adr/0021-qualification-based-macro-auditor-role.md | RESOLVED |
+| PRINCIPLES.md | 33 | ### 0.1 身分不可切換與資格認定制 (Qualification-Based Macro Role) | FILE | `docs/TASKBOARD.md` | docs/TASKBOARD.md | RESOLVED |
+| PRINCIPLES.md | 40 | ### 0.2 本文件其他原則都預設這個分工 | SECTION | §2.2 | PRINCIPLES.md#§2.2 | RESOLVED |
+| PRINCIPLES.md | 40 | ### 0.2 本文件其他原則都預設這個分工 | SECTION | §2.5 | PRINCIPLES.md#§2.5 | RESOLVED |
+| PRINCIPLES.md | 41 | ### 0.2 本文件其他原則都預設這個分工 | SECTION | §4 | PRINCIPLES.md#§4 | RESOLVED |
+| PRINCIPLES.md | 45 | ### 0.2 本文件其他原則都預設這個分工 | ADR | ADR-0007 | docs/adr/0007-macro-auditor-role.md | RESOLVED |
+| PRINCIPLES.md | 45 | ### 0.2 本文件其他原則都預設這個分工 | SECTION | §1 | PRINCIPLES.md#§1 | RESOLVED |
+| PRINCIPLES.md | 52 | ### 0.3 「審計」一詞有四種意思，不可混用 | FILE | `SOP/SOP_14_Rigorous_Verification_and_Audit_Protocol.md` | SOP/SOP_14_Rigorous_Verification_and_Audit_Protocol.md | RESOLVED |
+| PRINCIPLES.md | 52 | ### 0.3 「審計」一詞有四種意思，不可混用 | SECTION | §1 | SOP/SOP_14_Rigorous_Verification_and_Audit_Protocol.md#§1 | RESOLVED |
+| PRINCIPLES.md | 52 | ### 0.3 「審計」一詞有四種意思，不可混用 | SECTION | §5 | SOP/SOP_14_Rigorous_Verification_and_Audit_Protocol.md#§5 | RESOLVED |
+| PRINCIPLES.md | 64 | ### 0.4 各層的分工 | FILE | `.agents/rules/role-boundaries.md` | .agents/rules/role-boundaries.md | RESOLVED |
+| PRINCIPLES.md | 65 | ### 0.4 各層的分工 | FILE | `.claude/rules/auditor-protocol.md` | .claude/rules/auditor-protocol.md | RESOLVED |
+| PRINCIPLES.md | 66 | ### 0.4 各層的分工 | ADR | docs/adr/0007-macro-auditor-role.md | docs/adr/0007-macro-auditor-role.md | RESOLVED |
+| PRINCIPLES.md | 77 | ### 0.5 代理人運作目標 (Agent Operating Objectives) | SECTION | §5.1 | docs/refactor-backlog.md#§5.1 | RESOLVED |
+| PRINCIPLES.md | 77 | ### 0.5 代理人運作目標 (Agent Operating Objectives) | SECTION | §5.4 | docs/refactor-backlog.md#§5.4 | RESOLVED |
+| PRINCIPLES.md | 84 | ### 0.5 代理人運作目標 (Agent Operating Objectives) | FILE | `MISSION.md` | MISSION.md | RESOLVED |
+| PRINCIPLES.md | 92 | ## 1. 治理文件的層級 | FILE | `MISSION.md` | MISSION.md | RESOLVED |
+| PRINCIPLES.md | 93 | ## 1. 治理文件的層級 | FILE | `PRINCIPLES.md` | PRINCIPLES.md | RESOLVED |
+| PRINCIPLES.md | 94 | ## 1. 治理文件的層級 | FILE | `AGENTS.md` | AGENTS.md | RESOLVED |
+| PRINCIPLES.md | 95 | ## 1. 治理文件的層級 | FILE | `skills/AGENTS.md` | skills/AGENTS.md | RESOLVED |
+| PRINCIPLES.md | 108 | ### R. Router（非權威導覽層） | FILE | `AGENTS.md` | AGENTS.md | RESOLVED |
+| PRINCIPLES.md | 108 | ### R. Router（非權威導覽層） | FILE | `MISSION.md` | MISSION.md | RESOLVED |
+| PRINCIPLES.md | 108 | ### R. Router（非權威導覽層） | FILE | `PRINCIPLES.md` | PRINCIPLES.md | RESOLVED |
 | PRINCIPLES.md | 111 | ### R. Router（非權威導覽層） | FILE | `README.md` | README.md | RESOLVED |
-| PRINCIPLES.md | 119 | ### 內容該放哪一層：五個判別問句 | FILE | `PRINCIPLES.md` | PRINCIPLES.md | RESOLVED |
-| PRINCIPLES.md | 121 | ### 內容該放哪一層：五個判別問句 | FILE | `AGENTS.md` | AGENTS.md | RESOLVED |
-| PRINCIPLES.md | 122 | ### 內容該放哪一層：五個判別問句 | FILE | `skills/AGENTS.md` | skills/AGENTS.md | RESOLVED |
-| PRINCIPLES.md | 127 | ### 內容該放哪一層：五個判別問句 | FILE | `README.md` | README.md | RESOLVED |
-| PRINCIPLES.md | 142 | ### 2.1 品質優先於速度 | FILE | `MISSION.md` | MISSION.md | RESOLVED |
-| PRINCIPLES.md | 166 | ### 2.4 發現錯誤時：不預先否決、先問為什麼、親自驗證、從根本剷除 | FILE | `SOP/SOP_14_Rigorous_Verification_and_Audit_Protocol.md` | SOP/SOP_14_Rigorous_Verification_and_Audit_Protocol.md | RESOLVED |
-| PRINCIPLES.md | 166 | ### 2.4 發現錯誤時：不預先否決、先問為什麼、親自驗證、從根本剷除 | SECTION | §6 | SOP/SOP_14_Rigorous_Verification_and_Audit_Protocol.md#§6 | RESOLVED |
-| PRINCIPLES.md | 168 | ### 2.4 發現錯誤時：不預先否決、先問為什麼、親自驗證、從根本剷除 | FILE | `skills/README.md` | skills/README.md | RESOLVED |
-| PRINCIPLES.md | 173 | ### 2.5 獨立驗證優於口頭回報 | ADR | docs/adr/0007-macro-auditor-role.md | docs/adr/0007-macro-auditor-role.md | RESOLVED |
-| PRINCIPLES.md | 197 | ### 2.7 數字或事實出現分歧時，必須收斂為單一答案 | FILE | `docs/HANDOVER.md` | docs/HANDOVER.md | RESOLVED |
-| PRINCIPLES.md | 202 | ### 2.7 數字或事實出現分歧時，必須收斂為單一答案 | FILE | `docs/HANDOVER.md` | docs/HANDOVER.md | RESOLVED |
-| PRINCIPLES.md | 220 | ### 2.8 可機械檢查的規則，就必須機械檢查 | FILE | `scripts/check_consistency.py` | scripts/check_consistency.py | RESOLVED |
-| PRINCIPLES.md | 220 | ### 2.8 可機械檢查的規則，就必須機械檢查 | FILE | `scripts/validate_skills.py` | scripts/validate_skills.py | RESOLVED |
-| PRINCIPLES.md | 224 | ### 2.8 可機械檢查的規則，就必須機械檢查 | SECTION | §6.1 | .claude/rules/auditor-protocol.md#§6.1 | RESOLVED |
-| PRINCIPLES.md | 248 | ### 2.9 移除任何本體之前，必須獨立複查 | FILE | `.agents/rules/git-and-reporting.md` | .agents/rules/git-and-reporting.md | RESOLVED |
-| PRINCIPLES.md | 251 | ### 2.9 移除任何本體之前，必須獨立複查 | SECTION | §2.8 | PRINCIPLES.md#§2.8 | RESOLVED |
-| PRINCIPLES.md | 255 | ### 2.9 移除任何本體之前，必須獨立複查 | CHECK | CHECK 10 | scripts/check_consistency.py | RESOLVED |
-| PRINCIPLES.md | 256 | ### 2.9 移除任何本體之前，必須獨立複查 | CHECK | CHECK 20 | scripts/check_consistency.py | RESOLVED |
-| PRINCIPLES.md | 258 | ### 2.9 移除任何本體之前，必須獨立複查 | FILE | `docs/ARCHIVE-INDEX.md` | docs/ARCHIVE-INDEX.md | RESOLVED |
-| PRINCIPLES.md | 282 | ### 2.10 每一個數字都必須有它的產生者 | SECTION | §2.8 | PRINCIPLES.md#§2.8 | RESOLVED |
-| PRINCIPLES.md | 284 | ### 2.10 每一個數字都必須有它的產生者 | FILE | `scripts/build_prompt_evidence.py` | scripts/build_prompt_evidence.py | RESOLVED |
-| PRINCIPLES.md | 288 | ### 2.10 每一個數字都必須有它的產生者 | FILE | `.agents/rules/prompt-preflight.md` | .agents/rules/prompt-preflight.md | RESOLVED |
-| PRINCIPLES.md | 288 | ### 2.10 每一個數字都必須有它的產生者 | SECTION | §3.6 | .agents/rules/prompt-preflight.md#§3.6 | RESOLVED |
-| PRINCIPLES.md | 310 | ### 3.2 記錄要能被追溯，不能只存在對話裡 | SECTION | §1 | PRINCIPLES.md#§1 | RESOLVED |
-| PRINCIPLES.md | 315 | ### 3.3 記錄原文不改寫 | ADR | docs/adr/0019-jules-official-cli-and-mcp.md | docs/adr/0019-jules-official-cli-and-mcp.md | RESOLVED |
-| PRINCIPLES.md | 323 | ## 4. 自我審查檢查點 | SECTION | §3.1 | PRINCIPLES.md#§3.1 | RESOLVED |
-| PRINCIPLES.md | 327 | ## 4. 自我審查檢查點 | ADR | docs/adr/0016-credential-leak-defense-gap.md | docs/adr/0016-credential-leak-defense-gap.md | RESOLVED |
-| PRINCIPLES.md | 335 | ### 4.1 觸發時機（到點就做，不需要理由） | FILE | `docs/HANDOVER.md` | docs/HANDOVER.md | RESOLVED |
-| PRINCIPLES.md | 342 | ### 4.2 檢查項目 | SECTION | §3.1 | PRINCIPLES.md#§3.1 | RESOLVED |
-| PRINCIPLES.md | 371 | ## 5. 更新紀錄 | FILE | `docs/refactor-backlog.md` | docs/refactor-backlog.md | RESOLVED |
-| PRINCIPLES.md | 372 | ## 5. 更新紀錄 | SECTION | §1 | PRINCIPLES.md#§1 | RESOLVED |
-| PRINCIPLES.md | 373 | ## 5. 更新紀錄 | SECTION | §4 | PRINCIPLES.md#§4 | RESOLVED |
-| PRINCIPLES.md | 374 | ## 5. 更新紀錄 | SECTION | §3.1 | PRINCIPLES.md#§3.1 | RESOLVED |
-| PRINCIPLES.md | 375 | ## 5. 更新紀錄 | SECTION | §4 | PRINCIPLES.md#§4 | RESOLVED |
-| PRINCIPLES.md | 376 | ## 5. 更新紀錄 | FILE | `docs/refactor-backlog.md` | docs/refactor-backlog.md | RESOLVED |
-| PRINCIPLES.md | 378 | ## 5. 更新紀錄 | SECTION | §4.2 | PRINCIPLES.md#§4.2 | RESOLVED |
-| PRINCIPLES.md | 379 | ## 5. 更新紀錄 | SECTION | §0 | PRINCIPLES.md#§0 | RESOLVED |
-| PRINCIPLES.md | 380 | ## 5. 更新紀錄 | ADR | ADR-0007 | docs/adr/0007-macro-auditor-role.md | RESOLVED |
-| PRINCIPLES.md | 381 | ## 5. 更新紀錄 | SECTION | §2.5 | PRINCIPLES.md#§2.5 | RESOLVED |
-| PRINCIPLES.md | 381 | ## 5. 更新紀錄 | SECTION | §4 | PRINCIPLES.md#§4 | RESOLVED |
+| PRINCIPLES.md | 111 | ### R. Router（非權威導覽層） | FILE | `skills/README.md` | skills/README.md | RESOLVED |
+| PRINCIPLES.md | 112 | ### R. Router（非權威導覽層） | FILE | `README.md` | README.md | RESOLVED |
+| PRINCIPLES.md | 120 | ### 內容該放哪一層：五個判別問句 | FILE | `PRINCIPLES.md` | PRINCIPLES.md | RESOLVED |
+| PRINCIPLES.md | 122 | ### 內容該放哪一層：五個判別問句 | FILE | `AGENTS.md` | AGENTS.md | RESOLVED |
+| PRINCIPLES.md | 123 | ### 內容該放哪一層：五個判別問句 | FILE | `skills/AGENTS.md` | skills/AGENTS.md | RESOLVED |
+| PRINCIPLES.md | 128 | ### 內容該放哪一層：五個判別問句 | FILE | `README.md` | README.md | RESOLVED |
+| PRINCIPLES.md | 143 | ### 2.1 品質優先於速度 | FILE | `MISSION.md` | MISSION.md | RESOLVED |
+| PRINCIPLES.md | 167 | ### 2.4 發現錯誤時：不預先否決、先問為什麼、親自驗證、從根本剷除 | FILE | `SOP/SOP_14_Rigorous_Verification_and_Audit_Protocol.md` | SOP/SOP_14_Rigorous_Verification_and_Audit_Protocol.md | RESOLVED |
+| PRINCIPLES.md | 167 | ### 2.4 發現錯誤時：不預先否決、先問為什麼、親自驗證、從根本剷除 | SECTION | §6 | SOP/SOP_14_Rigorous_Verification_and_Audit_Protocol.md#§6 | RESOLVED |
+| PRINCIPLES.md | 169 | ### 2.4 發現錯誤時：不預先否決、先問為什麼、親自驗證、從根本剷除 | FILE | `skills/README.md` | skills/README.md | RESOLVED |
+| PRINCIPLES.md | 174 | ### 2.5 獨立驗證優於口頭回報 | ADR | docs/adr/0007-macro-auditor-role.md | docs/adr/0007-macro-auditor-role.md | RESOLVED |
+| PRINCIPLES.md | 198 | ### 2.7 數字或事實出現分歧時，必須收斂為單一答案 | FILE | `docs/HANDOVER.md` | docs/HANDOVER.md | RESOLVED |
+| PRINCIPLES.md | 203 | ### 2.7 數字或事實出現分歧時，必須收斂為單一答案 | FILE | `docs/HANDOVER.md` | docs/HANDOVER.md | RESOLVED |
+| PRINCIPLES.md | 221 | ### 2.8 可機械檢查的規則，就必須機械檢查 | FILE | `scripts/check_consistency.py` | scripts/check_consistency.py | RESOLVED |
+| PRINCIPLES.md | 221 | ### 2.8 可機械檢查的規則，就必須機械檢查 | FILE | `scripts/validate_skills.py` | scripts/validate_skills.py | RESOLVED |
+| PRINCIPLES.md | 225 | ### 2.8 可機械檢查的規則，就必須機械檢查 | SECTION | §6.1 | .claude/rules/auditor-protocol.md#§6.1 | RESOLVED |
+| PRINCIPLES.md | 249 | ### 2.9 移除任何本體之前，必須獨立複查 | FILE | `.agents/rules/git-and-reporting.md` | .agents/rules/git-and-reporting.md | RESOLVED |
+| PRINCIPLES.md | 252 | ### 2.9 移除任何本體之前，必須獨立複查 | SECTION | §2.8 | PRINCIPLES.md#§2.8 | RESOLVED |
+| PRINCIPLES.md | 256 | ### 2.9 移除任何本體之前，必須獨立複查 | CHECK | CHECK 10 | scripts/check_consistency.py | RESOLVED |
+| PRINCIPLES.md | 257 | ### 2.9 移除任何本體之前，必須獨立複查 | CHECK | CHECK 20 | scripts/check_consistency.py | RESOLVED |
+| PRINCIPLES.md | 259 | ### 2.9 移除任何本體之前，必須獨立複查 | FILE | `docs/ARCHIVE-INDEX.md` | docs/ARCHIVE-INDEX.md | RESOLVED |
+| PRINCIPLES.md | 283 | ### 2.10 每一個數字都必須有它的產生者 | SECTION | §2.8 | PRINCIPLES.md#§2.8 | RESOLVED |
+| PRINCIPLES.md | 285 | ### 2.10 每一個數字都必須有它的產生者 | FILE | `scripts/build_prompt_evidence.py` | scripts/build_prompt_evidence.py | RESOLVED |
+| PRINCIPLES.md | 289 | ### 2.10 每一個數字都必須有它的產生者 | FILE | `.agents/rules/prompt-preflight.md` | .agents/rules/prompt-preflight.md | RESOLVED |
+| PRINCIPLES.md | 289 | ### 2.10 每一個數字都必須有它的產生者 | SECTION | §3.6 | .agents/rules/prompt-preflight.md#§3.6 | RESOLVED |
+| PRINCIPLES.md | 311 | ### 3.2 記錄要能被追溯，不能只存在對話裡 | SECTION | §1 | PRINCIPLES.md#§1 | RESOLVED |
+| PRINCIPLES.md | 316 | ### 3.3 記錄原文不改寫 | ADR | docs/adr/0019-jules-official-cli-and-mcp.md | docs/adr/0019-jules-official-cli-and-mcp.md | RESOLVED |
+| PRINCIPLES.md | 324 | ## 4. 自我審查檢查點 | SECTION | §3.1 | PRINCIPLES.md#§3.1 | RESOLVED |
+| PRINCIPLES.md | 328 | ## 4. 自我審查檢查點 | ADR | docs/adr/0016-credential-leak-defense-gap.md | docs/adr/0016-credential-leak-defense-gap.md | RESOLVED |
+| PRINCIPLES.md | 336 | ### 4.1 觸發時機（到點就做，不需要理由） | FILE | `docs/HANDOVER.md` | docs/HANDOVER.md | RESOLVED |
+| PRINCIPLES.md | 343 | ### 4.2 檢查項目 | SECTION | §3.1 | PRINCIPLES.md#§3.1 | RESOLVED |
+| PRINCIPLES.md | 372 | ## 5. 更新紀錄 | FILE | `docs/refactor-backlog.md` | docs/refactor-backlog.md | RESOLVED |
+| PRINCIPLES.md | 373 | ## 5. 更新紀錄 | SECTION | §1 | PRINCIPLES.md#§1 | RESOLVED |
+| PRINCIPLES.md | 374 | ## 5. 更新紀錄 | SECTION | §4 | PRINCIPLES.md#§4 | RESOLVED |
+| PRINCIPLES.md | 375 | ## 5. 更新紀錄 | SECTION | §3.1 | PRINCIPLES.md#§3.1 | RESOLVED |
+| PRINCIPLES.md | 376 | ## 5. 更新紀錄 | SECTION | §4 | PRINCIPLES.md#§4 | RESOLVED |
+| PRINCIPLES.md | 377 | ## 5. 更新紀錄 | FILE | `docs/refactor-backlog.md` | docs/refactor-backlog.md | RESOLVED |
+| PRINCIPLES.md | 379 | ## 5. 更新紀錄 | SECTION | §4.2 | PRINCIPLES.md#§4.2 | RESOLVED |
+| PRINCIPLES.md | 380 | ## 5. 更新紀錄 | SECTION | §0 | PRINCIPLES.md#§0 | RESOLVED |
+| PRINCIPLES.md | 381 | ## 5. 更新紀錄 | ADR | ADR-0007 | docs/adr/0007-macro-auditor-role.md | RESOLVED |
 | PRINCIPLES.md | 382 | ## 5. 更新紀錄 | SECTION | §2.5 | PRINCIPLES.md#§2.5 | RESOLVED |
-| PRINCIPLES.md | 384 | ## 5. 更新紀錄 | FILE | `.agents/rules/role-boundaries.md` | .agents/rules/role-boundaries.md | RESOLVED |
+| PRINCIPLES.md | 382 | ## 5. 更新紀錄 | SECTION | §4 | PRINCIPLES.md#§4 | RESOLVED |
+| PRINCIPLES.md | 383 | ## 5. 更新紀錄 | SECTION | §2.5 | PRINCIPLES.md#§2.5 | RESOLVED |
+| PRINCIPLES.md | 385 | ## 5. 更新紀錄 | FILE | `.agents/rules/role-boundaries.md` | .agents/rules/role-boundaries.md | RESOLVED |
 | skills/AGENTS.md | 6 | # HH.AI 專案技能架構規範 (Skills Architecture Authority) | FILE | `AGENTS.md` | AGENTS.md | RESOLVED |
 | skills/AGENTS.md | 6 | # HH.AI 專案技能架構規範 (Skills Architecture Authority) | FILE | `[`AGENTS.md`](../AGENTS.md)` | AGENTS.md | RESOLVED |
 | skills/AGENTS.md | 7 | # HH.AI 專案技能架構規範 (Skills Architecture Authority) | FILE | `MISSION.md` | MISSION.md | RESOLVED |

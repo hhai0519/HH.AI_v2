@@ -32,7 +32,6 @@ python scripts/verify_all.py
 - **[skill-name](./skills/<bucket>/skill-name/SKILL.md)** (`<bucket>`) — 一行描述
 -->
 
-- **[jules-integration](./skills/agents/jules-integration/SKILL.md)** (`agents`) — 將耗時長的重構/修復任務委派給雲端 Google Jules 代理人，每日額度 100 次，user-invoked。
 - **[d3js-visualization](./skills/execution/d3js-visualization/SKILL.md)** (`execution`) — 使用 d3.js 建立互動式資料視覺化。適用於客製化圖表、網路圖、地理視覺化，或任何需要對視覺元素、過渡或互動進行精細控制的複雜 SVG 資料視覺化。
 - **[webapp-testing](./skills/execution/webapp-testing/SKILL.md)** (`execution`) — 使用 Playwright 互動和測試本地 Web 應用程式的工具包。支援驗證前端功能、偵錯 UI 行為、擷取瀏覽器螢幕截圖以及查看瀏覽器日誌。
 - **[mcp-engineer](./skills/execution/mcp-engineer/SKILL.md)** (`execution`) — MCP 開發與環境配置完整生命週期工程師。整合 mcp-builder（建立高品質 MCP 伺服器的標準流程）與 mcp-setup（本地環境設定與排錯）為單一職責技能。觸發關鍵字：建立MCP、MCP伺服器、MCP配置、MCP環境、mcp-builder、mcp-setup。
@@ -88,3 +87,7 @@ python scripts/verify_all.py
 - **[image-enhancer](./skills/execution/image-enhancer/SKILL.md)** (`execution`) — 提升影像（特別是截圖）的解析度、銳利度與清晰度。當使用者要求『圖片增強』、『截圖變清晰』、『圖片放大』、『去除雜訊』，或需要為簡報、文件、社群貼文準備圖像時使用。
 - **[theme-factory](./skills/execution/theme-factory/SKILL.md)** (`execution`) — 為成品套用主題風格，適用於投影片、文件、報告、HTML 登陸頁面。內含 10 組預設主題色彩與字體，也可即時生成新主題。當使用者要求『套用主題』、『配色方案』、『設計 Token』、『統一視覺風格』時使用。
 - **[playwright-automation](./skills/execution/playwright-automation/SKILL.md)** (`execution`) — 使用 Playwright 建立完整的瀏覽器自動化測試框架。自動偵測開發伺服器、撰寫測試腳本、驗證響應式設計、填寫表單、測試登入流程、檢查連結並產出測試報告。當使用者要求『寫 E2E 測試』、『Playwright 測試腳本』、『跨瀏覽器測試』、『響應式設計測試』時使用。若只需快速截圖或查看瀏覽器日誌而不必建立測試套件，改用 webapp-testing。
+
+## RETIRED 技能（僅歷史查閱，非現行技能索引）
+
+- `jules-integration` 保留於 [歷史技能檔](./skills/agents/jules-integration/SKILL.md)，禁止任何委派／API 呼叫；取代裁決見 [ADR-0028](./docs/adr/0028-jules-retirement.md)。

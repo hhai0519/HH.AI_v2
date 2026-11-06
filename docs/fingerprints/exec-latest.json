@@ -1,5 +1,5 @@
 {
-  "base_head": "33bebda",
+  "base_head": "348f0c7",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -304,8 +304,8 @@
         "### 4.4 責任歸屬",
         "## 5. 更新紀錄"
       ],
-      "lines": 384,
-      "sha256": "0835bf575a0d6142a845850f2df7cf875e0bf350250d317b0ef81cd407fe39d7"
+      "lines": 385,
+      "sha256": "493c686ebf6b5f62e02daaa195b4d4eac3a38485e90a6d83320fc39c283ce731"
     },
     "SOP/README.md": {
       "fences": 0,
@@ -566,16 +566,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 383,
-      "sha256": "1ad9eb63cb2347f87af99f0111ce2f42ae1ee3e3cf39cd46f25d7b2da69732d6"
+      "lines": 384,
+      "sha256": "8808ac91cc5a8a67300df27e92692a38bff94d2f43ae1a080746fa43f4d781ad"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 358,
-      "sha256": "900d4320fc46d10ee154e061ab58176e00a003117a074395a81b71f9aa83345a"
+      "lines": 359,
+      "sha256": "0b284611b695e53638b00655ca5815f6f0c9e4743b2f5daeda2ca3b8b66c2874"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -617,8 +617,8 @@
         "## G. 舊 repo 未盤點區塊（2026-09-02 新發現）",
         "## 封存區"
       ],
-      "lines": 466,
-      "sha256": "c8547d9fdbc1a5da1ca0b813df5d8d2bac218cfe31d38b532d62da65ee6aec68"
+      "lines": 467,
+      "sha256": "adcd49ba63e35ab8e5611a80c07f989ffc9106be7a6a52277a0e3ceda696996f"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1050,6 +1050,17 @@
       "lines": 118,
       "sha256": "c9fe7372fb66c155636d60981ed64e331514e7920b5140523932614866b8c919"
     },
+    "docs/adr/0028-jules-retirement.md": {
+      "fences": 0,
+      "headings": [
+        "# ADR-0028：Google Jules 退役與歷史保全（J1）",
+        "## Context／正式來源",
+        "## Decision（對現行指引有約束力）",
+        "## Consequences／驗收"
+      ],
+      "lines": 27,
+      "sha256": "cf16af91df277bae4410103144bc47664b485b6d9743be5a416aafe4887bc3c4"
+    },
     "docs/mcp-environment-guide.md": {
       "fences": 0,
       "headings": [
@@ -1065,8 +1076,8 @@
         "### 3. Gateway 動態載入的 server 無紀錄（中風險）",
         "## 環境重建檢查清單"
       ],
-      "lines": 171,
-      "sha256": "17e48d98b5628d593394c0af1290eab94fe2a4024275b331df994985c2bceacf"
+      "lines": 173,
+      "sha256": "7cf975c5e9d85978fd40c4f4f8315d6642f2f6babda58baa468ad900f62e2fe6"
     },
     "docs/migration-kickoff-prompt.md": {
       "fences": 12,
@@ -1116,8 +1127,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6442,
-      "sha256": "f374fc9086dac8c689eeb526d4c613649d622f0d86b5b64cc5ca5e9f9e45590b"
+      "lines": 6443,
+      "sha256": "39eec00b874ee0467506b30d1a5bc1de0d30136b0505e4014c0e7fdc3b79bb32"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -2238,7 +2249,7 @@
       "sha256": "62c3142973a5c228efacc01ddcbd44a76e5f87e24d7bed15d90e2ce45a494982"
     }
   },
-  "generated_at": "2026-11-03T09:52:54Z",
+  "generated_at": "2026-11-06T10:19:15Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

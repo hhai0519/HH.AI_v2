@@ -14,6 +14,7 @@ RARV 執行型 agent：會實際呼叫工具、寫檔案、發送訊息、觸發
 
 - 每個技能的 frontmatter **必須**包含 `authorized_mcp_tools` 白名單，列出這個
   技能被允許呼叫的工具，不能省略（見根目錄 AGENTS.md 第 2 節自訂欄位）。
+- **退役技能唯一例外**：已由正式 ADR 標記 `RETIRED／HISTORICAL ONLY`、且 `disable-model-invocation: true` 的保留原路徑技能，`authorized_mcp_tools` **必須明確為空列表 `[]`**；不得留下舊工具授權、不得執行。此空列表只表示無權限，不得用於任何活動技能。
 - 這類技能預設應該是 user-invoked（`disable-model-invocation: true`），除非你
   很確定讓模型自主呼叫不會有風險——判斷標準見根目錄 AGENTS.md 第 5 節。
 - 新增技能前，先確認同樣的執行邏輯有沒有已經存在的技能可以呼叫，不要重複造輪子
@@ -21,5 +22,5 @@ RARV 執行型 agent：會實際呼叫工具、寫檔案、發送訊息、觸發
 
 ### 常見錯誤
 
-- 把 `authorized_mcp_tools` 留空或寫成萬用字元——這個欄位存在的目的就是限制
+- 活動技能把 `authorized_mcp_tools` 留空或寫成萬用字元——這個欄位存在的目的就是限制
   範圍，寫成允許所有工具等於沒有這個機制。

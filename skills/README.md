@@ -26,7 +26,6 @@
 |---------------------|-------------|--------------------|
 | **[bot-account-switcher](./agents/bot-account-switcher/)** | LINE 與 Telegram 官方帳號的雙平台切換工具 | 透過 $$Line帳號$$ 與 $$TG帳號$$ 觸發，會覆寫 .env 並重啟 PM2，需明確要求才會執行 |
 | **[investment-aggregator](./agents/investment-aggregator/)** | Loki Swarm 決策統整專家。彙整 twse-data-analyst (量化) 與 market-researcher (質化) 的數據，產出最終投資報告與風險評估。 | - |
-| **[jules-integration](./agents/jules-integration/)** | 將耗時長、Token 消耗大的重構/修復任務委派給雲端 Google Jules 代理人。每日額度 100 次，需明確要求才會觸發。 | 需明確要求才會觸發 |
 | **[line-interaction-manager](./agents/line-interaction-manager/)** | Loki Swarm: 第一線溝通總管。專門處理 LINE Bot 介面互動，確保回覆符合品牌語氣，並保護底層金融邏輯不外洩。 | - |
 | **[market-researcher](./agents/market-researcher/)** | Loki Swarm 基本面研究員。專職閱讀財報、解析 PDF、收集市場新聞情緒，取代舊版脆弱的自動爬蟲腳本。 | - |
 | **[twse-data-analyst](./agents/twse-data-analyst/)** | Loki Swarm 量化運算專家。專責處理 TWSE 歷史資料、技術指標與量化運算，嚴格受限於財務資料庫環境。 | - |
@@ -113,7 +112,7 @@ _(尚無技能)_
 
 ### 如何呼叫與使用 Skill？
 
-1. **User-invoked (使用者觸發)**：部分 Skill 需要使用者明確輸入特定的關鍵字或要求才會啟動（例如 `jules-integration`、`bot-account-switcher`）。你可以直接在對話中提及這些關鍵字來呼叫。
+1. **User-invoked (使用者觸發)**：部分 Skill 需要使用者明確輸入特定的關鍵字或要求才會啟動（例如 `bot-account-switcher`；已退役的 `jules-integration` 不可觸發）。你可以直接在對話中提及這些關鍵字來呼叫。
 2. **Model-invoked (模型自主觸發)**：大部分的 Skill 由系統（Model）根據當下對話的意圖與需求自主判斷並觸發（例如 `active-inference`、各類分析與執行工具）。
 3. **組合使用**：你可以描述一個複雜的任務，總管代理人（如 `agency-orchestrator` 或 `stock-orchestrator`）會自動拆解任務並路由至對應的子 Skill 進行處理。
 
@@ -128,3 +127,11 @@ _(尚無技能)_
 - 技能若需要 MCP 工具或憑證，相關環境變數存放於 Windows User 層級環境變數，
   不寫入專案內的設定檔。設定方式見 `docs/mcp-environment-guide.md`。
 
+
+### RETIRED 技能清冊（不屬於現行可調用索引）
+
+此表僅供 CHECK 4／CHECK 7 的追蹤檔完整性對帳，**不是啟用清單**。不得將表內連結當成可執行技能。
+
+| 已保留技能 | 狀態 | 行為限制 |
+|---|---|---|
+| **[jules-integration](./agents/jules-integration/)** | RETIRED / HISTORICAL ONLY | 不得啟動、委派、取得憑證或接入 Jules MCP；見 ADR-0028 |

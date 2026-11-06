@@ -16,8 +16,9 @@
 | **宏觀審計官／規劃者** | 依資格認定（見 0.1），當前指派見 `docs/TASKBOARD.md` 的 `**ACTIVE_MACRO_AUDITOR**` | 決定該做什麼、產出可執行的提示詞、獨立查證執行結果 |
 | **執行者** | Antigravity IDE Agent | 執行被明確指定的動作、如實回報 |
 
-Google Jules 是非同步雲端編碼代理，由執行者透過 MCP 觸發，
-其產出一律經審計官審查後才決定是否合併，不構成第三個角色。
+Google Jules 已依 USER 2026-11-01 退役決策停止作為現行執行或委派路線（J1 文件退役；J2 程式與受管憑證待後續驗收）。
+Jules 的歷史產出仍須遵守原本的獨立審查與證據保留要求，不構成第三個 production 角色；現行新增委派不得觸發 Jules。
+退役裁決見 `docs/adr/0028-jules-retirement.md`。
 
 ### 0.1 身分不可切換與資格認定制 (Qualification-Based Macro Role)
 
