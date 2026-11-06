@@ -63,7 +63,7 @@ const LIVE_FIXTURES = new Set();
 // 1. Target Resolver Unit Tests
 // ---------------------------------------------------------------------------
 
-test('TargetResolver - resolves all 6 approved inventory items to canonical targets', () => {
+test('TargetResolver - resolves all 5 active inventory items to canonical targets', () => {
   // 1. gateway-telegram-bot-token
   const tgTarget = resolveManagedTarget({
     inventoryId: 'gateway-telegram-bot-token',
@@ -103,16 +103,7 @@ test('TargetResolver - resolves all 6 approved inventory items to canonical targ
     'HH.AI_v2/channel-gateway/v1/local-api/hmac'
   );
 
-  // 5. mcp-jules-api-key (fixed)
-  const julesTarget = resolveManagedTarget({
-    inventoryId: 'mcp-jules-api-key',
-  });
-  assert.strictEqual(
-    julesTarget,
-    'HH.AI_v2/mcp-launcher/v1/jules/api-key'
-  );
-
-  // 6. mcp-notion-api-token (fixed)
+  // 5. mcp-notion-api-token (fixed): Jules credential is retired and not a valid target.
   const notionTarget = resolveManagedTarget({
     inventoryId: 'mcp-notion-api-token',
   });
@@ -131,6 +122,7 @@ test('TargetResolver - rejects excluded categories, unknown items, and caller ov
     'antigravity-secret-storage',
     'mcp-notion-openapi-headers',
     'unknown-custom-secret',
+    'mcp-jules-api-key', // J2: must reject retired Jules even with no accountId.
     '',
   ];
 
@@ -163,6 +155,16 @@ test('TargetResolver - rejects excluded categories, unknown items, and caller ov
     }),
     { code: 'INVALID_SECRET_REFERENCE' }
   );
+
+  // Retired Jules references must fail closed, regardless of accountId.
+  for (const ref of [
+    { inventoryId: 'mcp-jules-api-key' },
+    { inventoryId: 'mcp-jules-api-key', accountId: null },
+    { inventoryId: 'mcp-jules-api-key', accountId: undefined },
+    { inventoryId: 'mcp-jules-api-key', accountId: 'anything' },
+  ]) {
+    assert.throws(() => resolveManagedTarget(ref), { code: 'INVALID_SECRET_REFERENCE' });
+  }
 
   // Fixed items with accountId must fail
   assert.throws(
@@ -817,6 +819,36 @@ test('WindowsCredManAccess - wire protocol token parsing and non-zero exit code 
   testScrubOnFail(() => ({ error: { code: 'ETIMEDOUT' }, status: null, stdout: Buffer.from(''), stderr: Buffer.from('') }));
   testScrubOnFail(() => ({ signal: 'SIGTERM', status: null, stdout: Buffer.from(''), stderr: Buffer.from('') }));
   testScrubOnFail(() => { throw new Error('spawn failure'); });
+});
+
+
+// J2-D9: native Windows rejection contract. This executes powershell.exe on windows-latest,
+// but every target is invalid and must exit before any credential API call (no real access).
+test('J2-WIN-JULES-RETIRED - native PowerShell rejects Jules target before any credential access', { timeout: NATIVE_TEST_TIMEOUT_MS }, () => {
+  if (process.platform !== 'win32') {
+    return;
+  }
+  const scriptPath = path.resolve(__dirname, '..', 'bin', 'windows-credential-manager-access.ps1');
+  const powershellPath = path.join(
+    process.env.SystemRoot || 'C:\\Windows', 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe'
+  );
+  const retiredTargets = [
+    'HH.AI_v2/mcp-launcher/v1/jules/api-key',
+    'hh.ai_v2/MCP-LAUNCHER/V1/JULES/API-KEY',
+    'HH.AI_v2/mcp-launcher/v1/jules/api-key/',
+  ];
+  for (const operation of ['presence', 'create', 'delete']) {
+    for (const targetName of retiredTargets) {
+      const res = runNativeBridge(powershellPath, [
+        '-NoLogo', '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass',
+        '-File', scriptPath, '-Operation', operation, '-TargetName', targetName,
+      ], {});
+      assert.strictEqual(res.status, 1, 'J2 Jules native rejection must exit 1: ' + exitDetail(res));
+      assert.strictEqual(res.error, undefined, 'J2 native process must launch and return normally');
+      assert.strictEqual(res.stdout.length, 0, 'J2 native rejection stdout must remain empty');
+      assert.strictEqual(res.stderr.length, 0, 'J2 native rejection stderr must remain empty');
+    }
+  }
 });
 
 // ---------------------------------------------------------------------------

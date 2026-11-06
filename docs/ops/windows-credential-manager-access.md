@@ -23,9 +23,9 @@ ref 只有 `inventoryId` 與選用的 `accountId`；不接受呼叫端指定的 
 | gateway-line-channel-access-token | ADR-0026 的 LINE access-token SecretRef |
 | gateway-line-channel-secret | ADR-0026 的 LINE secret SecretRef |
 | gateway-local-api-hmac | ADR-0026 的固定 HMAC TargetName |
-| mcp-jules-api-key | HH.AI_v2/mcp-launcher/v1/jules/api-key |
 | mcp-notion-api-token | HH.AI_v2/mcp-launcher/v1/notion/api-token |
 
+Jules `mcp-jules-api-key` 已由 B-127 J2 正式退役：歷史 TargetName 只保留於 inventory／ADR 留痕；JS resolver 與 native PowerShell 對任何 Jules target 一律 fail-closed 拒絕，不查詢、不建立、不刪除真實憑證。
 未定 TargetName 的 Gemini、GitHub 委派、衍生標頭、GCM 與 IDE SecretStorage 一律拒絕。支援命名不代表 LINE 或 MCP consumer 已實作或遷移。原 Gateway reader／provider 與消費端介面保持原契約。
 
 ## 新建與既有項目

@@ -5,7 +5,7 @@
  *
  * Invariants:
  * - Deterministic, closed target resolution for managed inventory IDs.
- * - Only 6 approved targets: 4 Channel Gateway targets and 2 MCP Generic targets.
+ * - Only 5 approved active targets: 4 Channel Gateway targets and the Notion MCP target; Jules is retired and must fail closed.
  * - Non-secret reference input; unknown properties, extra fields, caller TargetName overrides rejected fail-closed.
  * - Fixed targets strictly reject accountId; account-scoped targets require non-empty accountId.
  * - Strict character, surrogate, wildcard, and length checks.
@@ -84,13 +84,11 @@ const MANAGED_INVENTORY_ITEMS = Object.freeze({
   GATEWAY_LINE_CHANNEL_ACCESS_TOKEN: 'gateway-line-channel-access-token',
   GATEWAY_LINE_CHANNEL_SECRET: 'gateway-line-channel-secret',
   GATEWAY_LOCAL_API_HMAC: 'gateway-local-api-hmac',
-  MCP_JULES_API_KEY: 'mcp-jules-api-key',
   MCP_NOTION_API_TOKEN: 'mcp-notion-api-token',
 });
 
 const MCP_TARGET_MAP = Object.freeze(
   Object.assign(Object.create(null), {
-    [MANAGED_INVENTORY_ITEMS.MCP_JULES_API_KEY]: 'HH.AI_v2/mcp-launcher/v1/jules/api-key',
     [MANAGED_INVENTORY_ITEMS.MCP_NOTION_API_TOKEN]: 'HH.AI_v2/mcp-launcher/v1/notion/api-token',
   })
 );

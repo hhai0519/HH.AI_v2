@@ -59,8 +59,9 @@ if ($TargetName.Contains('*') -or $TargetName.Contains('?')) {
     exit 1
 }
 
+# J2 retirement: Jules TargetName is not part of this allowlist; reject before any Win32 credential operation.
 # Canonical TargetName grammar assertion
-$targetPattern = '^(?:HH\.AI_v2/channel-gateway/v1/(?:telegram/([^/]+)/bot-token|line/([^/]+)/(?:channel-access-token|channel-secret)|local-api/hmac)|HH\.AI_v2/mcp-launcher/v1/(?:jules/api-key|notion/api-token))$'
+$targetPattern = '^(?:HH\.AI_v2/channel-gateway/v1/(?:telegram/([^/]+)/bot-token|line/([^/]+)/(?:channel-access-token|channel-secret)|local-api/hmac)|HH\.AI_v2/mcp-launcher/v1/notion/api-token)$'
 $targetRegex = [System.Text.RegularExpressions.Regex]::new($targetPattern)
 $match = $targetRegex.Match($TargetName)
 if (-not $match.Success) {
