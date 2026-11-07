@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "B117-G5-SAVECONTROL-ATOMIC-R3-261107",
-  "base_oid": "9843d7f2b9d6a9d9452c7c01282b197232a18b39",
+  "task_id": "B116-AUD-GPT6-TAKEOVER-STATE-R2-261107",
+  "base_oid": "56d40e3e6d82731cbb75280ce78a8b404a6283a3",
   "plan": {
     "allowed_paths": [
       "docs/AUDIT-LOG.md",
@@ -10,19 +10,7 @@
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md",
-      "scripts/batch_runner.py",
-      "scripts/gate_runner.py",
-      "scripts/governance_preflight.py",
-      "scripts/reply_check.py",
-      "scripts/s1_full_capture.py",
-      "scripts/tests/test_batch_runner.py",
-      "scripts/tests/test_gate_runner.py",
-      "scripts/tests/test_governance_preflight.py",
-      "scripts/tests/test_reply_check.py",
-      "scripts/tests/test_s1_full_capture.py",
-      "scripts/tests/test_verify_all.py",
-      "scripts/verify_all.py"
+      "docs/refactor-backlog.md"
     ],
     "required_paths": [
       "docs/AUDIT-LOG.md",
@@ -30,19 +18,7 @@
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md",
-      "scripts/batch_runner.py",
-      "scripts/gate_runner.py",
-      "scripts/governance_preflight.py",
-      "scripts/reply_check.py",
-      "scripts/s1_full_capture.py",
-      "scripts/tests/test_batch_runner.py",
-      "scripts/tests/test_gate_runner.py",
-      "scripts/tests/test_governance_preflight.py",
-      "scripts/tests/test_reply_check.py",
-      "scripts/tests/test_s1_full_capture.py",
-      "scripts/tests/test_verify_all.py",
-      "scripts/verify_all.py"
+      "docs/refactor-backlog.md"
     ],
     "max_plan_revisions": 3,
     "revision_count": 0,
@@ -55,19 +31,7 @@
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md",
-      "scripts/batch_runner.py",
-      "scripts/gate_runner.py",
-      "scripts/governance_preflight.py",
-      "scripts/reply_check.py",
-      "scripts/s1_full_capture.py",
-      "scripts/tests/test_batch_runner.py",
-      "scripts/tests/test_gate_runner.py",
-      "scripts/tests/test_governance_preflight.py",
-      "scripts/tests/test_reply_check.py",
-      "scripts/tests/test_s1_full_capture.py",
-      "scripts/tests/test_verify_all.py",
-      "scripts/verify_all.py"
+      "docs/refactor-backlog.md"
     ]
   },
   "evidence": [
