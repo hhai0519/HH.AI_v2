@@ -517,10 +517,14 @@ class MockGitHubHandler(http.server.BaseHTTPRequestHandler):
             "headers": {k.lower(): v for k, v in self.headers.items()},
         })
 
-        status_override = server_state.get("status_code_override")
+        status_sequence = server_state.get("status_sequence")
+        status_override = (status_sequence.pop(0) if status_sequence
+                           else server_state.get("status_code_override"))
         if status_override is not None:
             self.send_response(status_override)
             self.send_header("Content-Type", "application/json")
+            for name, value in server_state.get("status_headers", {}).items():
+                self.send_header(name, value)
             self.end_headers()
             self.wfile.write(b'{"message": "error"}')
             return
@@ -577,6 +581,8 @@ class MockGitHubServer:
             "runs_queue": [],
             "jobs_map": {},
             "status_code_override": None,
+            "status_sequence": [],
+            "status_headers": {},
             "raw_response_override": None,
         }
         self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
@@ -1094,6 +1100,88 @@ def test_t16_ci_status_unable() -> None:
         assert data8["reason"] == "INVALID_HEAD_SHA"
 
 
+
+
+def test_t16_ci_status_bounded_transport_retry_fail_closed() -> None:
+    head_sha = "d" * 40
+    branch = "batch/test-ci-resilience"
+    with mock_github_server() as srv:
+        srv.state["default_runs"] = {
+            "total_count": 1,
+            "workflow_runs": [{
+                "id": 9023, "name": "Verify", "head_sha": head_sha,
+                "head_branch": branch, "event": "push", "status": "completed",
+                "conclusion": "success", "run_attempt": 1,
+            }],
+        }
+        srv.state["jobs_map"][9023] = {
+            "total_count": 2,
+            "jobs": [
+                {"id": 1, "name": "verify", "status": "completed", "conclusion": "success"},
+                {"id": 2, "name": "gateway-windows", "status": "completed", "conclusion": "success"},
+            ],
+        }
+
+        def query() -> tuple[int, dict]:
+            p = run_tool(
+                "ci-status", "--repo", "hhai0519/HH.AI_v2",
+                "--head-sha", head_sha, "--branch", branch,
+                "--require-job", "verify", "--require-job", "gateway-windows",
+                "--api-base", srv.url, "--max-attempts", "1", "--interval-seconds", "0",
+            )
+            return p.returncode, json.loads(p.stdout.decode("ascii"))
+
+        # Transient runs and jobs API failures resolve only after a *real*
+        # matching run and two completed required jobs have been received.
+        srv.state["status_sequence"] = [503, None, 502, None]
+        rc, good = query()
+        assert (rc, good["status"], good["attempts_used"]) == (0, "PASS", 1)
+        assert good["run_id"] == 9023
+        assert len(srv.state["recorded_requests"]) == 4
+        assert all("authorization" not in req["headers"] for req in srv.state["recorded_requests"])
+
+        # Persistent 5xx must end in UNKNOWN, never green, within three GETs.
+        srv.state["recorded_requests"].clear()
+        srv.state["status_code_override"] = 503
+        rc, unknown = query()
+        assert rc == 2 and unknown["reason"] == "HTTP_ERROR"
+        assert len(srv.state["recorded_requests"]) == 3
+        srv.state["status_code_override"] = None
+
+        # Rate-limit retry is allowed only for a short explicit Retry-After.
+        srv.state["recorded_requests"].clear()
+        srv.state["status_headers"] = {"Retry-After": "0"}
+        srv.state["status_sequence"] = [429, None, None]
+        rc, limited_then_good = query()
+        assert rc == 0 and limited_then_good["run_id"] == 9023
+        assert len(srv.state["recorded_requests"]) == 3
+
+        # A long server-specified rate limit must not sleep, bypass or PASS.
+        srv.state["recorded_requests"].clear()
+        srv.state["status_code_override"] = 429
+        srv.state["status_headers"] = {"Retry-After": "3600"}
+        rc, unknown = query()
+        assert rc == 2 and unknown["reason"] == "HTTP_ERROR"
+        assert len(srv.state["recorded_requests"]) == 1
+        srv.state["status_code_override"] = None
+        srv.state["status_headers"] = {}
+
+        # Unauthorized 403 remains immediately fail-closed: no token fallback.
+        srv.state["recorded_requests"].clear()
+        srv.state["status_code_override"] = 403
+        rc, unknown = query()
+        assert rc == 2 and unknown["reason"] == "HTTP_ERROR"
+        assert len(srv.state["recorded_requests"]) == 1
+        srv.state["status_code_override"] = None
+
+        # A malformed 200 is never retried or transformed into a PASS.
+        srv.state["recorded_requests"].clear()
+        srv.state["raw_response_override"] = b"not json"
+        rc, unknown = query()
+        assert rc == 2 and unknown["reason"] == "INVALID_RESPONSE"
+        assert len(srv.state["recorded_requests"]) == 1
+
+
 def test_t17_ci_status_reject_trailing_newline() -> None:
     with mock_github_server() as srv:
         head_sha = "c" * 40
@@ -1153,3 +1241,103 @@ def test_t17_ci_status_reject_trailing_newline() -> None:
         assert data_repo["reason"] == "INVALID_ARGUMENT"
         assert len(srv.state["recorded_requests"]) == 0
 
+
+def test_t16_ci_status_retry_network_and_limits_direct(monkeypatch, capsys) -> None:
+    """Test the real production function with deterministic GET/clock behavior."""
+    import argparse
+    import importlib.util
+    import urllib.error
+    from types import SimpleNamespace
+
+    spec = importlib.util.spec_from_file_location('vp_g3_r2_test', TOOL_PATH)
+    assert spec and spec.loader
+    vp = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(vp)
+    sha = 'd' * 40
+    branch = 'batch/test-ci-resilience'
+    args = argparse.Namespace(
+        api_base='https://api.github.com', repo='hhai0519/HH.AI_v2',
+        head_sha=sha, branch=branch, require_job=['verify', 'gateway-windows'],
+        max_attempts=1, interval_seconds=0, event='push', workflow_name='Verify',
+    )
+    runs = {'workflow_runs': [{
+        'id': 9023, 'name': 'Verify', 'head_sha': sha,
+        'head_branch': branch, 'event': 'push', 'status': 'completed',
+        'conclusion': 'success', 'run_attempt': 1,
+    }]}
+    jobs = {'total_count': 2, 'jobs': [
+        {'id': 1, 'name': 'verify', 'status': 'completed', 'conclusion': 'success'},
+        {'id': 2, 'name': 'gateway-windows', 'status': 'completed', 'conclusion': 'success'},
+    ]}
+
+    class FakeClock:
+        now = 0.0
+        sleeps = None
+        def __init__(self):
+            self.now, self.sleeps = 0.0, []
+        def monotonic(self):
+            return self.now
+        def sleep(self, seconds):
+            assert seconds >= 0
+            self.sleeps.append(seconds)
+            self.now += seconds
+
+    class FakeResponse:
+        def __init__(self, body):
+            self.body = body
+        def __enter__(self):
+            return self
+        def __exit__(self, *exc):
+            return False
+        def read(self):
+            return json.dumps(self.body).encode('utf-8')
+
+    def scenario(sequence, *, expected_rc, expected_gets, expected_status,
+                 expected_sleeps=None, late=None):
+        """Each step can be a success, an exception, or time advancement."""
+        clock = FakeClock()
+        invocations = []
+        work = list(sequence)
+        def fake_urlopen(request, timeout):
+            assert 0 < timeout <= 28.0
+            invocations.append((request, timeout))
+            result = work.pop(0)
+            if late is not None:
+                clock.now += late
+            if isinstance(result, BaseException):
+                raise result
+            return FakeResponse(result)
+        monkeypatch.setattr(vp.urllib.request, 'urlopen', fake_urlopen)
+        monkeypatch.setattr(vp, 'time', SimpleNamespace(monotonic=clock.monotonic, sleep=clock.sleep))
+        with pytest.raises(SystemExit) as caught:
+            vp.cmd_ci_status(args)
+        payload = json.loads(capsys.readouterr().out.strip())
+        assert caught.value.code == expected_rc
+        assert payload['status'] == expected_status
+        assert len(invocations) == expected_gets
+        assert all('authorization' not in {k.lower() for k, _ in req.header_items()} for req, _ in invocations)
+        if expected_sleeps is not None:
+            assert clock.sleeps == expected_sleeps
+        return clock, invocations, payload
+
+    temporary = urllib.error.URLError('temporary')
+    scenario([temporary, temporary, runs, jobs], expected_rc=0, expected_gets=4,
+             expected_status='PASS', expected_sleeps=[0.1, 0.2])
+    scenario([urllib.error.URLError('still down')] * 3, expected_rc=2, expected_gets=3,
+             expected_status='VERIFICATION_TOOL_UNABLE_TO_COMPLETE', expected_sleeps=[0.1, 0.2])
+    http = lambda code, headers: urllib.error.HTTPError('https://api.github.com', code, 'error', headers, None)
+    scenario([http(429, {}), runs], expected_rc=2, expected_gets=1,
+             expected_status='VERIFICATION_TOOL_UNABLE_TO_COMPLETE', expected_sleeps=[])
+    scenario([http(403, {'Retry-After': '1', 'X-RateLimit-Remaining': '9'}), runs],
+             expected_rc=2, expected_gets=1,
+             expected_status='VERIFICATION_TOOL_UNABLE_TO_COMPLETE', expected_sleeps=[])
+    scenario([http(503, {}), runs, jobs], expected_rc=0, expected_gets=3,
+             expected_status='PASS', expected_sleeps=[0.1])
+    scenario([http(503, {})] * 3, expected_rc=2, expected_gets=3,
+             expected_status='VERIFICATION_TOOL_UNABLE_TO_COMPLETE', expected_sleeps=[0.1, 0.2])
+    # A single urlopen that consumes a whole budget must never be retried or PASS.
+    scenario([urllib.error.URLError('slow'), runs], expected_rc=2, expected_gets=1,
+             expected_status='VERIFICATION_TOOL_UNABLE_TO_COMPLETE', expected_sleeps=[], late=28.0)
+    # A late-successful HTTP read must not become a green CI result.
+    scenario([runs, jobs], expected_rc=2, expected_gets=1,
+             expected_status='VERIFICATION_TOOL_UNABLE_TO_COMPLETE', expected_sleeps=[], late=29.0)

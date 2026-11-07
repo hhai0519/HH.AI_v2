@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "B116-AUD-GPT6-TAKEOVER-STATE-R2-261107",
-  "base_oid": "56d40e3e6d82731cbb75280ce78a8b404a6283a3",
+  "task_id": "B115-G3-CI-QUERY-RESILIENCE-R2-261107",
+  "base_oid": "cc33c3f371937b715e3251c4ad79d1c947a74a77",
   "plan": {
     "allowed_paths": [
       "docs/AUDIT-LOG.md",
@@ -10,7 +10,9 @@
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md"
+      "docs/refactor-backlog.md",
+      "scripts/tests/test_verification_primitives.py",
+      "scripts/verification_primitives.py"
     ],
     "required_paths": [
       "docs/AUDIT-LOG.md",
@@ -18,7 +20,9 @@
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md"
+      "docs/refactor-backlog.md",
+      "scripts/tests/test_verification_primitives.py",
+      "scripts/verification_primitives.py"
     ],
     "max_plan_revisions": 3,
     "revision_count": 0,
@@ -31,7 +35,9 @@
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md"
+      "docs/refactor-backlog.md",
+      "scripts/tests/test_verification_primitives.py",
+      "scripts/verification_primitives.py"
     ]
   },
   "evidence": [

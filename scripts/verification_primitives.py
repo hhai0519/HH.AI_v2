@@ -401,46 +401,52 @@ def cmd_ci_status(args: argparse.Namespace) -> None:
             },
             method="GET",
         )
-        try:
-            with urllib.request.urlopen(req, timeout=30) as resp:
-                body = resp.read()
-        except urllib.error.HTTPError:
-            emit_result(
-                status="VERIFICATION_TOOL_UNABLE_TO_COMPLETE",
-                exit_code=2,
-                attempts_used=current_attempts,
-                run_id=current_run_id,
-                run_attempt=None,
-                run_status=None,
-                run_conclusion=None,
-                jobs=None,
-                reason="HTTP_ERROR",
-            )
-        except urllib.error.URLError:
-            emit_result(
-                status="VERIFICATION_TOOL_UNABLE_TO_COMPLETE",
-                exit_code=2,
-                attempts_used=current_attempts,
-                run_id=current_run_id,
-                run_attempt=None,
-                run_status=None,
-                run_conclusion=None,
-                jobs=None,
-                reason="HTTP_ERROR",
-            )
-        except TimeoutError:
-            emit_result(
-                status="VERIFICATION_TOOL_UNABLE_TO_COMPLETE",
-                exit_code=2,
-                attempts_used=current_attempts,
-                run_id=current_run_id,
-                run_attempt=None,
-                run_status=None,
-                run_conclusion=None,
-                jobs=None,
-                reason="HTTP_ERROR",
-            )
-        except Exception:
+        # Only transport-layer uncertainty may be retried, and only inside a
+        # fixed three-request envelope. Run/job identity and JSON validation
+        # still take place *after* the last successful response. A retry can
+        # never turn an unknown, contradictory or failed CI result into PASS.
+        # Two API calls (runs + jobs) share the runner's 60-second allowance
+        # per outer poll attempt. Bound EACH call, including transport retries,
+        # to 28 seconds; preserve 4 seconds for parsing/process overhead.
+        deadline = time.monotonic() + 28.0
+        body = None
+        for request_index in range(3):
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                break
+            retry_delay = None
+            try:
+                with urllib.request.urlopen(req, timeout=remaining) as resp:
+                    candidate_body = resp.read()
+                # A late success is no evidence of a bounded completion.
+                if time.monotonic() >= deadline:
+                    break
+                body = candidate_body
+                break
+            except urllib.error.HTTPError as exc:
+                headers = exc.headers
+                retry_after = headers.get("Retry-After") if headers else None
+                remaining = headers.get("X-RateLimit-Remaining") if headers else None
+                # Do not hammer primary/secondary GitHub rate limits. A server
+                # requested delay is honoured only when bounded (<=2 seconds);
+                # larger/invalid delays defer to Macro with exit=2.
+                if retry_after is not None:
+                    if not retry_after.isascii() or not retry_after.isdigit() or int(retry_after) > 2:
+                        break
+                transient = exc.code in (500, 502, 503, 504)
+                limited = (exc.code == 429 or (exc.code == 403 and remaining == "0"))
+                if transient or (limited and retry_after is not None):
+                    retry_delay = float(retry_after) if retry_after is not None else 0.1 * (request_index + 1)
+            except (urllib.error.URLError, TimeoutError, OSError):
+                retry_delay = 0.1 * (request_index + 1)
+            except Exception:
+                break
+            if retry_delay is None or request_index == 2:
+                break
+            if deadline - time.monotonic() <= retry_delay:
+                break
+            time.sleep(retry_delay)
+        if body is None:
             emit_result(
                 status="VERIFICATION_TOOL_UNABLE_TO_COMPLETE",
                 exit_code=2,

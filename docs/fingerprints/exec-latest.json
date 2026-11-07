@@ -1,5 +1,5 @@
 {
-  "base_head": "56d40e3",
+  "base_head": "cc33c3f",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -566,16 +566,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 387,
-      "sha256": "d87e32b4ff270500bb76c81baefb78fb0f608e6d2006a95edae74b89b8389220"
+      "lines": 388,
+      "sha256": "3c6c86b1ebce31b1ea98f0ef91ee064834fac712b9b234fda64ef7256ead7926"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 362,
-      "sha256": "7c419090f2fa090f2bf300e93741a279b4a64ea4011b5485c964b3af875818d1"
+      "lines": 363,
+      "sha256": "52e530b8cd3a3a0d9a066ebfa07d83b4303c6adc98066391bd6f4c7da4ce40d7"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -617,8 +617,8 @@
         "## G. 舊 repo 未盤點區塊（2026-09-02 新發現）",
         "## 封存區"
       ],
-      "lines": 472,
-      "sha256": "aa7b213efc8157e11b2b18199f296bc4d99b4febbbc57c6ca7caeca80d8329af"
+      "lines": 473,
+      "sha256": "a00760e1b557cfe4e5f9697a8ce4df3093ec929f1e65e25fc430962dca0c171e"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1127,8 +1127,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6447,
-      "sha256": "ad214780aa299ce33b1892b73d31c029b4f85f9d277fda169b741f8cdbc631e4"
+      "lines": 6448,
+      "sha256": "41beb3e676b433292b646ca634c73d28776992725f6db9b7b2df9899b40b0a3a"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -2182,8 +2182,8 @@
     "scripts/tests/test_verification_primitives.py": {
       "fences": 0,
       "headings": [],
-      "lines": 1155,
-      "sha256": "6cfc0af604ef7dc58d89f66819945c61fed5aa20b510bda7d20fbb9961fdbcc1"
+      "lines": 1343,
+      "sha256": "96973a488c1f1018e5233feb25eb95059e44d89069e10bb16dbeff543b7057fa"
     },
     "scripts/tests/test_verifier_fail_closed.py": {
       "fences": 0,
@@ -2249,8 +2249,8 @@
     "scripts/verification_primitives.py": {
       "fences": 0,
       "headings": [],
-      "lines": 711,
-      "sha256": "881b20449bdb6ed218112b2ca5b4d25b36f2b7817b6b8354972d8498f183e3c8"
+      "lines": 717,
+      "sha256": "acc13c80e1383d3c29d2b542376b5285249aace83fd34d888b658f0efd300036"
     },
     "scripts/verify_all.py": {
       "fences": 0,
@@ -2261,7 +2261,7 @@
       "sha256": "6bfd57c05a09df3cde679ae53ac6ddd67bfb64cda4246584617d3cc67fb3b81c"
     }
   },
-  "generated_at": "2026-11-07T10:20:47Z",
+  "generated_at": "2026-11-07T13:26:17Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {
