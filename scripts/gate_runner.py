@@ -23,7 +23,7 @@ run:    validates the current task prompt and the .git/<T>-local-gates.txt artif
 verify: re-reads the log and passes only if the latest run of the stage contains every
         gate header in order, each followed by EXIT_CODE: 0, and the COMPLETE marker.
 
-Exit codes: run returns 0 on success, the failing gate's exit code (or 1) otherwise;
+Exit codes: run returns 0 on success, 86 on verified gate timeout, a failing gate exit (or 1) otherwise;
 verify returns 0 or 1; usage errors return 2. Apart from the log, only anonymous
 temporary files that the operating system removes on close are created; nothing is
 deleted.
@@ -32,12 +32,13 @@ deleted.
 import argparse
 import os
 import sys
+import time
 
 repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if repo_root not in sys.path:
     sys.path.insert(0, repo_root)
 
-from scripts.bounded_process import run_bounded  # noqa: E402
+from scripts.bounded_process import run_bounded, KILL_GRACE_SECONDS  # noqa: E402
 from scripts.governance_preflight import (  # noqa: E402
     is_safe_task_id,
     verify_current_task_prompt,
@@ -63,8 +64,24 @@ STAGES = {
         ["git", "diff", "--check"],
     ],
 }
-GATE_TIMEOUT_SECONDS = 1800
+# Positional budgets match the fixed STAGES gate sequences. A longer budget is
+# reserved for Windows verify_all; no gate is skipped or downgraded.
+GATE_TIMEOUTS = {
+    "PRECOMMIT": (300, 300, 300, 3600, 300),
+    "STAGED": (300,),
+    "POSTCOMMIT": (300, 300, 300, 300),
+}
+GATE_TIMEOUT_EXIT_CODE = 86  # private gate-runner protocol: timeout only
+GATE_BUDGET_WARN_PCT = 70
 OUTPUT_PREFIX = "> "
+
+
+def stage_timeouts(stage):
+    values = GATE_TIMEOUTS[stage]
+    if len(values) != len(STAGES[stage]) or any(type(v) is not int or v <= 0 for v in values):
+        raise ValueError("INVALID_GATE_BUDGET")
+    return values
+
 
 
 def display(cmd):
@@ -117,36 +134,62 @@ def resolve_command(cmd):
     return list(cmd)
 
 
-def run_stage(root, stage, gates, log_path, timeout=GATE_TIMEOUT_SECONDS):
+def run_stage(root, stage, gates, log_path, timeout=None):
+    # timeout is an explicit test override; production always uses each gate's
+    # positional budget. Keep the canonical local-gates.txt grammar unchanged.
+    budgets = stage_timeouts(stage)
+    if timeout is not None:
+        if type(timeout) is not int or timeout <= 0:
+            raise ValueError("INVALID_TEST_GATE_TIMEOUT")
+        budgets = (timeout,) * len(gates)
+    elif len(gates) != len(budgets):
+        # Unit tests exercise synthetic gate lists; they use a bounded
+        # conservative fallback, never the 3600s verify_all entitlement.
+        budgets = (300,) * len(gates)
     lines = read_log_lines(log_path)
     run_no = next_run_number(lines, stage)
     append_lines(log_path, [run_header(stage, run_no)])
     env = dict(os.environ)
     env["PYTHONIOENCODING"] = "utf-8"
+    env["PYTHONUNBUFFERED"] = "1"
     for idx, cmd in enumerate(gates, 1):
         append_lines(log_path, [gate_header(stage, run_no, idx, cmd)])
         # The raw sidecar persists *during* execution and survives abnormal exit.
         # Only the canonical EXIT_CODE and COMPLETE markers grant gate success.
         raw_path = log_path + f".{stage.lower()}-run{run_no}-gate{idx}.raw"
         append_lines(log_path, ["RAW_EVIDENCE_FILE: " + os.path.basename(raw_path)])
-        res = run_bounded(resolve_command(cmd), cwd=root, timeout=timeout, env=env,
+        limit = budgets[idx - 1]
+        start = time.monotonic()
+        res = run_bounded(resolve_command(cmd), cwd=root, timeout=limit, env=env,
                           merge_stderr=True, capture_path=raw_path)
+        elapsed = max(0.0, time.monotonic() - start)
         output = res.stdout.decode("utf-8", errors="replace")
         trailer = []
         if res.launch_error is not None:
             code = 1
             code_text = "LAUNCH_FAILED"
         elif res.timed_out:
-            code = 1
+            code = GATE_TIMEOUT_EXIT_CODE
             code_text = "TIMEOUT"
             trailer = [f"TREE_KILL: {res.kill_status}"]
         else:
             code = res.returncode
-            code_text = str(code)
+            # A child exiting with the reserved code is an ordinary failure,
+            # never proof that the bounded runner actually timed out.
+            if code == GATE_TIMEOUT_EXIT_CODE:
+                code = 1
+            code_text = str(res.returncode)
         body = [OUTPUT_PREFIX + l for l in output.replace("\r\n", "\n").rstrip("\n").split("\n")] if output else []
         append_lines(log_path, body + trailer + [f"EXIT_CODE: {code_text}"])
         suffix = f" TREE_KILL {res.kill_status}" if trailer else ""
-        print(f"{stage} RUN {run_no} GATE {idx}: EXIT_CODE {code_text}{suffix}")
+        print(f"{stage} RUN {run_no} GATE {idx}: EXIT_CODE {code_text}{suffix} ELAPSED_SEC {elapsed:.3f}", flush=True)
+        # Diagnostics live in stdout and bounded sidecar ONLY. Never alter the
+        # local-gates transcript parsed by verify_stage / s1_full_capture.
+        pct = 100.0 * elapsed / limit
+        if code == 0:
+            print(f"GATE_BUDGET stage={stage} gate={idx} elapsed={elapsed:.3f} limit={limit} pct={pct:.1f}", flush=True)
+            if pct >= GATE_BUDGET_WARN_PCT:
+                print(f"GATE_BUDGET_WARN stage={stage} gate={idx} pct={pct:.1f}", flush=True)
         if code != 0:
             append_lines(log_path, [failed_marker(stage, run_no, idx)])
             return code if code > 0 else 1

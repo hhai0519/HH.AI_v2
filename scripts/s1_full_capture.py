@@ -329,6 +329,11 @@ def create_full_capture(root, task, base, branch, step, code, *, validate_artifa
     metadata_manifest = ''.join(ent['sha256']+'  '+ent['file']+'\n' for ent in entries).encode('ascii')
     if metadata_manifest != files[task+'-s1-SHA256SUMS.txt']:
         raise FullCaptureError('S1_CAPTURE_METADATA_MANIFEST_DRIFT')
+    gate_failure_codes = frozenset(
+        (s + '_' + suffix) for s in ('PRECOMMIT', 'STAGED', 'POSTCOMMIT')
+        for suffix in ('NONZERO', 'TIMEOUT', 'GATE_TIMEOUT', 'COMPLETION_UNPROVEN'))
+    if code in gate_failure_codes and task + '-local-gates.txt' not in files:
+        return ['S1_FULL_CAPTURE_STATUS=INCOMPLETE_GATE_LOG']
     try:
         _validate_gate_log(task, files, step, code)
     except FullCaptureError as err:
@@ -340,9 +345,9 @@ def create_full_capture(root, task, base, branch, step, code, *, validate_artifa
         return ['S1_FULL_CAPTURE_STATUS=INCOMPLETE_UNTRACKED_FILES']
     if not snap['unpublished_commit_available']:
         return ['S1_FULL_CAPTURE_STATUS=INCOMPLETE_NO_UNPUBLISHED_COMMIT']
-    if (code in ('PRECOMMIT_NONZERO', 'PRECOMMIT_TIMEOUT', 'PRECOMMIT_COMPLETION_UNPROVEN',
-                 'STAGED_NONZERO', 'STAGED_TIMEOUT', 'STAGED_COMPLETION_UNPROVEN',
-                 'POSTCOMMIT_NONZERO', 'POSTCOMMIT_TIMEOUT', 'POSTCOMMIT_COMPLETION_UNPROVEN')
+    if (code in ('PRECOMMIT_NONZERO', 'PRECOMMIT_TIMEOUT', 'PRECOMMIT_GATE_TIMEOUT', 'PRECOMMIT_COMPLETION_UNPROVEN',
+                 'STAGED_NONZERO', 'STAGED_TIMEOUT', 'STAGED_GATE_TIMEOUT', 'STAGED_COMPLETION_UNPROVEN',
+                 'POSTCOMMIT_NONZERO', 'POSTCOMMIT_TIMEOUT', 'POSTCOMMIT_GATE_TIMEOUT', 'POSTCOMMIT_COMPLETION_UNPROVEN')
             and task + '-local-gates.txt' not in files):
         return ['S1_FULL_CAPTURE_STATUS=INCOMPLETE_GATE_LOG']
     bundle_name, bundle_raw = _produce_bundle(root, task, snap['head_oid'], git_dir, validate_artifact)

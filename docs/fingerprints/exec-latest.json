@@ -1,5 +1,5 @@
 {
-  "base_head": "5828b0a",
+  "base_head": "9843d7f",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -566,16 +566,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 385,
-      "sha256": "d7922844f6a179c9df98fa3d0db606bbf3e4675b3e7d6a6bf4e75e8b677a3710"
+      "lines": 386,
+      "sha256": "39c262281c4ccd2ff986da140d987f2d513a3dc2fc89764e9e0a41af23f62f1e"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 360,
-      "sha256": "68527238834a43d5ebe7e19b92313b6c3f6558e87dadc31ac5f4d33acabd1974"
+      "lines": 361,
+      "sha256": "55517275b7ca1e0cfabb25880e47c03dc436dfb330faa9b09aac7c77224965d7"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -617,8 +617,8 @@
         "## G. 舊 repo 未盤點區塊（2026-09-02 新發現）",
         "## 封存區"
       ],
-      "lines": 468,
-      "sha256": "df131dc5e2cddcba455c46b4447dcebc84959e95c5e08610eef024dc74c00501"
+      "lines": 469,
+      "sha256": "682daf89bef52c53e26fb64fd246d0a5e5861515731b7f23f222afe9811a648d"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1127,8 +1127,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6444,
-      "sha256": "2a5cc4ad5a6b4163095a2b927e9461bb4408973d93e218f3be39cd4c87455799"
+      "lines": 6446,
+      "sha256": "e063f832abda03b5d5d174e546636787cf246cf52b3cf03f9556d09d31d6a954"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1156,6 +1156,8 @@
         "# COM0, LPT0, CONIN$ and CONOUT$ are added by project policy.",
         "# Failure classes: output text is matched but never printed. Order matters; the first match wins.",
         "# Bounded summaries are printed only when the last line has one of these fixed shapes.",
+        "# The outer bounded envelope must dominate every inner gate, including each",
+        "# process-tree kill + reap grace. Pure derivation prevents silent drift.",
         "# Must-read closure (G4 slice 2). Changing these lists is a runner change (E27).",
         "# ---------------------------------------------------------------------------",
         "# Process helpers: stdout and stderr are always separate; only stdout is parsed.",
@@ -1171,10 +1173,12 @@
         "# ---------------------------------------------------------------------------",
         "# ---------------------------------------------------------------------------",
         "# Control record and entry point",
-        "# ---------------------------------------------------------------------------"
+        "# ---------------------------------------------------------------------------",
+        "# Windows: os.replace needs DELETE access on both files; antivirus/indexer handles can deny it briefly.",
+        "# Retry only that PermissionError, bounded (about 1.55 s total); any other failure is not retried."
       ],
-      "lines": 1331,
-      "sha256": "56d7d6fda8684e4e76920c19dfd611fcc25770fac4fbf240bd98d54feb443c07"
+      "lines": 1417,
+      "sha256": "15966519577e879ec572e90955fddc5ea1abc29c9fb1b44676e490bf931d28fa"
     },
     "scripts/batch_sim.py": {
       "fences": 0,
@@ -1322,10 +1326,12 @@
     "scripts/gate_runner.py": {
       "fences": 0,
       "headings": [
-        "# -*- coding: utf-8 -*-"
+        "# -*- coding: utf-8 -*-",
+        "# Positional budgets match the fixed STAGES gate sequences. A longer budget is",
+        "# reserved for Windows verify_all; no gate is skipped or downgraded."
       ],
-      "lines": 232,
-      "sha256": "a9e5b5614033cefb1588c71f1f1a54e9c29a0172d3fa4c8a7735d48f473de3db"
+      "lines": 275,
+      "sha256": "8561e60284e04af916d3371174e6e6cfd14c0a6774b778ae9e28d0c402e9f663"
     },
     "scripts/generate_rule_traceability.py": {
       "fences": 0,
@@ -1342,8 +1348,8 @@
         "# -*- coding: utf-8 -*-",
         "# Import shared execution contract parser"
       ],
-      "lines": 972,
-      "sha256": "62a63df3ce47414a74607005c1f550ddd2993708c3326634fbf872443b7ea7f7"
+      "lines": 974,
+      "sha256": "7da565655df071ddd0ae575a1676204e1505b54ffd198fe0e09fe08e22d36a93"
     },
     "scripts/history_guard.py": {
       "fences": 0,
@@ -1432,7 +1438,7 @@
         "# name -> (prefix, exact format, positions of commit SHAs, positions of file SHA-256)"
       ],
       "lines": 495,
-      "sha256": "38584517d51e482e608bbdd16a7b7aa6438391fbfe3c8550125516ab2246d70b"
+      "sha256": "d172e334427197d6912ad3d9fd5556d10122487bac7e9f42d014bb037d8500da"
     },
     "scripts/runtime_readiness.py": {
       "fences": 0,
@@ -1461,8 +1467,8 @@
       "headings": [
         "# -*- coding: utf-8 -*-"
       ],
-      "lines": 405,
-      "sha256": "b3be8b8b1dc59002cdc04103642254f3bc71d954425672f4ca10b3f492e148f7"
+      "lines": 410,
+      "sha256": "14e708b208b61322353fe7ddf2ec5d04a9c95839d490ad4b407ac860801448aa"
     },
     "scripts/s1_recover.py": {
       "fences": 0,
@@ -1576,10 +1582,12 @@
         "# Hand-written expectations. Official: Microsoft \"Naming Files, Paths, and Namespaces\" (reserved device names,",
         "# also followed by an extension; superscript digits one to three count as digits). Policy: project additions.",
         "# --- B-119 / U-04: before-control production admission ------------------------",
-        "# B-115/B-119: readonly is a non-executable delivery kind, not a disguised production batch."
+        "# B-115/B-119: readonly is a non-executable delivery kind, not a disguised production batch.",
+        "# B-117/G5 D-2: control atomicity and bounded failure injection; synthetic .git only.",
+        "# B117 R3 — per-stage envelope and gate-only timeout mapping."
       ],
-      "lines": 1714,
-      "sha256": "0ec3ef202419d4d69b4f91827ca007da36481ef811c08690473e7ca2591504fd"
+      "lines": 1925,
+      "sha256": "d6b89a9136837ff461de7cbfebfb5a6b8f5d817e720205ae64b1647ebab81f50"
     },
     "scripts/tests/test_batch_sim.py": {
       "fences": 0,
@@ -1824,10 +1832,11 @@
     "scripts/tests/test_gate_runner.py": {
       "fences": 0,
       "headings": [
-        "# -*- coding: utf-8 -*-"
+        "# -*- coding: utf-8 -*-",
+        "# B117 R3 — byte-stable local gate transcript, bounded budgets and exit protocol."
       ],
-      "lines": 201,
-      "sha256": "74a4142503dd8feb39952fa7837f99e4bffb3caa42f9fab60aa2a723b5bec0b7"
+      "lines": 253,
+      "sha256": "7444dbc5556b09827ddedad4263aeb52a02a050a2082ed8f1e32035a89b77cbc"
     },
     "scripts/tests/test_governance_preflight.py": {
       "fences": 0,
@@ -1854,10 +1863,11 @@
         "# ---------------------------------------------------------------------------",
         "# B-119 GOV012: readonly kind and GOV-M1-012 (in-memory only; no files are written, so no",
         "# platform newline translation can change the inputs)",
-        "# ---------------------------------------------------------------------------"
+        "# ---------------------------------------------------------------------------",
+        "# B-117/G5 D-2: Windows NTFS hardlink is a genuine native security negative."
       ],
-      "lines": 1630,
-      "sha256": "ecb1713ae21d11fe2f1024078cdef65ee10eba8a812ed099f5b5913cd91eeeef"
+      "lines": 1679,
+      "sha256": "6099f42006a7c297968d261ffee4bf5da4eb617e942907e2e22936672838af7d"
     },
     "scripts/tests/test_history_guard.py": {
       "fences": 0,
@@ -1976,8 +1986,8 @@
         "# ---- S1 replies (synthetic, in the exact runner formats of s1_evidence and s1_full_capture) -------------------",
         "# ---- CLI with a real built prompt -----------------------------------------------------------------------------"
       ],
-      "lines": 544,
-      "sha256": "8bbfd98e4be4d72e5db78e7b08fec52926e7c50d50c9d123fdaf1b73ea7efd5f"
+      "lines": 558,
+      "sha256": "0f3a47eb54c6de163315b6b9ad35e49d9c0b4704f883eb2adc90b7029bd06a49"
     },
     "scripts/tests/test_rule_loadability.py": {
       "fences": 0,
@@ -2021,8 +2031,8 @@
       "headings": [
         "# -*- coding: utf-8 -*-"
       ],
-      "lines": 351,
-      "sha256": "5b684c75b80b3db1b65f1c3df561fd8c408a8073b6aa4bd47c94e9ba5c29f067"
+      "lines": 385,
+      "sha256": "b64cc79383668e6b6d96d9bab39e17cd65b728d89eca69869ba5db31be63a9be"
     },
     "scripts/tests/test_s1_recover.py": {
       "fences": 0,
@@ -2211,9 +2221,11 @@
     },
     "scripts/tests/test_verify_all.py": {
       "fences": 0,
-      "headings": [],
-      "lines": 56,
-      "sha256": "5ac66ffefe5baaf117d95d00c370e5a0bb8f0554b76f59c99f63e8aa47f2efda"
+      "headings": [
+        "# B117 R3 — stdout visibility and slow-test diagnostics for Windows."
+      ],
+      "lines": 75,
+      "sha256": "f4136fc4c7e77640207155158c0f05ae21768036ca35aafbf2dcfd9fc0966c5c"
     },
     "scripts/validate_prompt_manifest.py": {
       "fences": 0,
@@ -2245,11 +2257,11 @@
       "headings": [
         "# -*- coding: utf-8 -*-"
       ],
-      "lines": 92,
-      "sha256": "62c3142973a5c228efacc01ddcbd44a76e5f87e24d7bed15d90e2ce45a494982"
+      "lines": 93,
+      "sha256": "6bfd57c05a09df3cde679ae53ac6ddd67bfb64cda4246584617d3cc67fb3b81c"
     }
   },
-  "generated_at": "2026-11-06T13:58:28Z",
+  "generated_at": "2026-11-07T07:10:38Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

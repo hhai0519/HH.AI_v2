@@ -1628,3 +1628,52 @@ def test_gov012_readonly_kind_declared_rejects_non_text_and_carriage_return():
     assert validate_prompt_manifest.readonly_kind_declared(None) is False
     assert validate_prompt_manifest.readonly_kind_declared(good.encode("utf-8")) is False
     assert validate_prompt_manifest.readonly_kind_declared(good.replace("\n", "\r\n")) is False
+
+
+# B-117/G5 D-2: Windows NTFS hardlink is a genuine native security negative.
+def test_d2_task_artifact_existing_hardlink_outside_denied(tmp_path):
+    task = 'B117-G5-UNIT'
+    root = tmp_path / 'work'
+    (root / '.git').mkdir(parents=True)
+    outside = tmp_path / 'outside-synthetic.json'
+    outside.write_bytes(b'{"outside":true}\n')
+    target = root / '.git' / (task + '-control.json')
+    try:
+        os.link(outside, target)
+    except OSError as exc:
+        pytest.fail('D-2 native hardlink capability unavailable: ' + type(exc).__name__)
+    old = outside.read_bytes()
+    ok, reason = governance_preflight.verify_task_artifact_path(str(root), task, '.git/' + target.name)
+    assert ok is False and 'S1 TASK_ARTIFACT_SCOPE' in reason
+    assert outside.read_bytes() == old and target.read_bytes() == old
+
+
+@pytest.mark.parametrize('nlink', [0, 2, 5])
+def test_d2_task_artifact_link_count_probe_untrusted_stops(tmp_path, monkeypatch, nlink):
+    task = 'B117-G5-UNIT'
+    root = tmp_path / 'work'
+    (root / '.git').mkdir(parents=True)
+    target = root / '.git' / (task + '-control.json')
+    target.write_bytes(b'{}\n')
+    real_lstat = governance_preflight.os.lstat
+    def fake(path, *a, **kw):
+        stat_ = real_lstat(path, *a, **kw)
+        if os.fspath(path) == str(target):
+            v = list(stat_)
+            v[3] = nlink
+            return os.stat_result(v)
+        return stat_
+    monkeypatch.setattr(governance_preflight.os, 'lstat', fake)
+    ok, reason = governance_preflight.verify_task_artifact_path(str(root), task, '.git/' + target.name)
+    assert ok is False and 'S1 TASK_ARTIFACT_SCOPE' in reason
+
+
+def test_d2_artifact_single_link_and_nonexistent_prewrite_valid(tmp_path):
+    task = 'B117-G5-UNIT'
+    root = tmp_path / 'work'
+    (root / '.git').mkdir(parents=True)
+    target = root / '.git' / (task + '-control.json')
+    for exists in [False, True]:
+        if exists: target.write_bytes(b'{}\n')
+        ok, msg = governance_preflight.verify_task_artifact_path(str(root), task, '.git/' + target.name)
+        assert ok and not msg

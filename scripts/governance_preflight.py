@@ -298,6 +298,8 @@ def verify_task_artifact_path(
                 return False, "S1 TASK_ARTIFACT_SCOPE: Existing artifact is a reparse point"
             if not stat.S_ISREG(st_art.st_mode):
                 return False, "S1 TASK_ARTIFACT_SCOPE: Existing artifact is not a regular file"
+            if st_art.st_nlink != 1:
+                return False, "S1 TASK_ARTIFACT_SCOPE: Existing artifact hard-link count is unsafe"
         except Exception:
             return False, "S1 TASK_ARTIFACT_SCOPE: Failed to inspect existing artifact"
 

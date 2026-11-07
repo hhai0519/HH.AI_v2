@@ -40,7 +40,7 @@ GATES = [
     },
     {
         "name": "unit_tests",
-        "cmd": [sys.executable, "-m", "pytest", os.path.join(REPO_ROOT, "scripts", "tests"), "-q"],
+        "cmd": [sys.executable, "-m", "pytest", os.path.join(REPO_ROOT, "scripts", "tests"), "-q", "--durations=25"],
         "desc": "Scripts 單元測試套件",
     },
     {
@@ -52,7 +52,7 @@ GATES = [
 
 
 def run_gate(gate, env, cwd):
-    print(f"\n[GATE] Running {gate['name']}: {gate['desc']}")
+    print(f"\n[GATE] Running {gate['name']}: {gate['desc']}", flush=True)
     proc = subprocess.run(gate["cmd"], env=env, cwd=cwd)
     return proc.returncode
 
@@ -65,17 +65,18 @@ def main(argv=None):
     env = dict(os.environ)
     env["PYTHONUTF8"] = "1"
     env["PYTHONIOENCODING"] = "utf-8"
+    env["PYTHONUNBUFFERED"] = "1"
 
     failed = []
     for gate in GATES:
         rc = run_gate(gate, env, REPO_ROOT)
         if rc != 0:
-            print(f"[FAIL] Gate {gate['name']} exited with code {rc}")
+            print(f"[FAIL] Gate {gate['name']} exited with code {rc}", flush=True)
             failed.append(gate["name"])
             if args.fail_fast:
                 break
         else:
-            print(f"[PASS] Gate {gate['name']}")
+            print(f"[PASS] Gate {gate['name']}", flush=True)
 
     print("\n" + "=" * 50)
     print("VERIFICATION SUMMARY")

@@ -54,3 +54,22 @@ def test_ci_workflow_uses_canonical_entrypoint():
     assert "tee" not in text
     # 不得再有個別分散的測試指令列表
     assert "skills/execution/webapp-testing/tests/" not in text
+
+
+# B117 R3 — stdout visibility and slow-test diagnostics for Windows.
+def test_r3_unit_test_durations_and_stdout_flush(monkeypatch, capsys):
+    gate = next(g for g in verify_all.GATES if g['name'] == 'unit_tests')
+    assert gate['cmd'][-1] == '--durations=25'
+    seen = {}
+    def child(g, env, cwd):
+        seen.update(env=env)
+        return 0
+    original = verify_all.run_gate
+    monkeypatch.setattr(verify_all, 'run_gate', child)
+    assert verify_all.main([]) == 0
+    assert seen['env']['PYTHONUNBUFFERED'] == '1'
+    assert '[PASS] Gate' in capsys.readouterr().out
+    from types import SimpleNamespace
+    monkeypatch.setattr(verify_all.subprocess, 'run', lambda *a, **kw: SimpleNamespace(returncode=0))
+    assert original(gate, {}, verify_all.REPO_ROOT) == 0
+    assert '[GATE] Running unit_tests:' in capsys.readouterr().out

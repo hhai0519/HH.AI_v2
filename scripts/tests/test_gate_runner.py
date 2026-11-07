@@ -111,7 +111,7 @@ def test_empty_log_fails_verify(tmp_path):
 def test_timeout_is_failure(tmp_path):
     log = tmp_path / "gates.txt"
     gates = [[PY, "-c", "import time; time.sleep(5)"]]
-    assert gate_runner.run_stage(str(tmp_path), "STAGED", gates, str(log), timeout=1) == 1
+    assert gate_runner.run_stage(str(tmp_path), "STAGED", gates, str(log), timeout=1) == gate_runner.GATE_TIMEOUT_EXIT_CODE
     text = log.read_text(encoding="utf-8")
     assert "EXIT_CODE: TIMEOUT" in text and "TREE_KILL: TREE_SIGNALLED" in text
     assert not gate_runner.verify_stage(read(log), "STAGED", gates)[0]
@@ -130,7 +130,7 @@ def test_timeout_terminates_gate_tree_that_holds_output(tmp_path):
     )
     gates = [[PY, "-c", child], [PY, "-c", "print('must not run')"]]
     started = time.monotonic()
-    assert gate_runner.run_stage(str(tmp_path), "STAGED", gates, str(log), timeout=10) == 1
+    assert gate_runner.run_stage(str(tmp_path), "STAGED", gates, str(log), timeout=10) == gate_runner.GATE_TIMEOUT_EXIT_CODE
     assert time.monotonic() - started < 90
     text = log.read_text(encoding="utf-8")
     assert "> started" in text and "must not run" not in text
@@ -185,7 +185,7 @@ def test_g11_raw_sidecar_preserves_partial_evidence_but_never_completes(tmp_path
     log = tmp_path / "gates.txt"
     gates = [[PY, "-c", "import time; print('BEFORE_INTERRUPT',flush=True); time.sleep(10)"]]
     # Child times out; partial output is durable while the canonical log fails closed.
-    assert gate_runner.run_stage(str(tmp_path), "STAGED", gates, str(log), timeout=1) == 1
+    assert gate_runner.run_stage(str(tmp_path), "STAGED", gates, str(log), timeout=1) == gate_runner.GATE_TIMEOUT_EXIT_CODE
     sidecar = tmp_path / "gates.txt.staged-run1-gate1.raw"
     assert sidecar.is_file() and b"BEFORE_INTERRUPT" in sidecar.read_bytes()
     assert not gate_runner.verify_stage(read(log), "STAGED", gates)[0]
@@ -199,3 +199,55 @@ def test_g11_gate_log_spoofed_completion_in_raw_sidecar_fails(tmp_path):
     raw = tmp_path / 'gates.txt.postcommit-run1-gate1.raw'
     assert b'EXIT_CODE: 0' in raw.read_bytes()
     assert not gate_runner.verify_stage(read(log), 'POSTCOMMIT', gates)[0]
+
+
+# B117 R3 — byte-stable local gate transcript, bounded budgets and exit protocol.
+def test_r3_gate_budgets_match_stage_and_are_specific():
+    for stage, commands in gate_runner.STAGES.items():
+        assert len(gate_runner.stage_timeouts(stage)) == len(commands)
+        assert all(x > 0 for x in gate_runner.stage_timeouts(stage))
+    assert gate_runner.stage_timeouts("PRECOMMIT")[3] == 3600
+    assert all(v == 300 for i, v in enumerate(gate_runner.stage_timeouts("PRECOMMIT")) if i != 3)
+
+
+def test_r3_timeout_exit_is_reserved_and_local_log_grammar_unchanged(tmp_path):
+    gates = [[PY, "-c", "import time; time.sleep(3)"]]
+    log = tmp_path / "gates.txt"
+    assert gate_runner.run_stage(str(tmp_path), "PRECOMMIT", gates, str(log), timeout=1) == gate_runner.GATE_TIMEOUT_EXIT_CODE
+    raw = log.read_text()
+    assert "EXIT_CODE: TIMEOUT" in raw and "FAILED AT GATE 1" in raw
+    assert "ELAPSED_SEC" not in raw and "GATE_BUDGET" not in raw
+    assert not gate_runner.verify_stage(read(log), "PRECOMMIT", gates)[0]
+
+
+def test_r3_child_reserved_exit_cannot_masquerade_as_timeout(tmp_path):
+    log = tmp_path / "gates.txt"
+    gates = [[PY, "-c", f"raise SystemExit({gate_runner.GATE_TIMEOUT_EXIT_CODE})"]]
+    assert gate_runner.run_stage(str(tmp_path), "STAGED", gates, str(log), timeout=3) == 1
+    assert "EXIT_CODE: 86" in log.read_text()
+    assert not gate_runner.verify_stage(read(log), "STAGED", gates)[0]
+
+
+def test_r3_budget_diagnostics_are_stdout_only_and_warn_at_70pct(tmp_path, monkeypatch, capsys):
+    import bounded_process
+    durations = iter((6.99, 7.0))
+    clock = {'now': 0.0}
+    def now():
+        clock['now'] += next(durations)
+        return clock['now']
+    def fake(*args, **kwargs):
+        p = kwargs['capture_path']
+        open(p, 'wb').write(b'pass\n')
+        return bounded_process.BoundedResult(0, False, None, b'pass\n', b'', 'NOT_NEEDED')
+    monkeypatch.setattr(gate_runner, 'run_bounded', fake)
+    monkeypatch.setattr(gate_runner.time, 'monotonic', now)
+    log = tmp_path / 'gates.txt'
+    # Each gate takes 7 seconds, i.e. exactly 70% of its 10s budget.
+    gates = [[PY, '-c', 'print(1)']]
+    assert gate_runner.run_stage(str(tmp_path), 'STAGED', gates, str(log), timeout=10) == 0
+    out = capsys.readouterr().out
+    assert 'ELAPSED_SEC 7.000' in out
+    assert 'GATE_BUDGET stage=STAGED gate=1' in out
+    assert 'GATE_BUDGET_WARN stage=STAGED gate=1 pct=70.0' in out
+    assert 'GATE_BUDGET' not in log.read_text()
+    assert gate_runner.verify_stage(read(log), 'STAGED', gates)[0]

@@ -19,6 +19,7 @@ import stat
 import subprocess
 import sys
 import time
+from pathlib import Path
 
 import pytest
 
@@ -1712,3 +1713,213 @@ def test_g5_w01_rejects_nonanchored_or_invalid_runtime_lines(newline):
         assert br.classify_failure(1, b'', payload) == 'exit=1 class=DETAIL_UNAVAILABLE'
     payload = b'RUNTIME_MISMATCH PRIVATE_DETAIL=token\r\n'
     assert br.classify_failure(1, b'', payload) == 'exit=1 class=DETAIL_UNAVAILABLE'
+
+
+# B-117/G5 D-2: control atomicity and bounded failure injection; synthetic .git only.
+class _D2ControlBatch:
+    def __init__(self, root):
+        self.root = str(root)
+        self.task_id = TASK
+        self.control_rel = '.git/' + TASK + '-control.json'
+
+    def artifact(self, suffix):
+        rel = '.git/' + self.task_id + '-' + suffix
+        import governance_preflight as gp
+        ok, reason = gp.verify_task_artifact_path(self.root, self.task_id, rel)
+        if not ok:
+            raise br.Halt('ARTIFACT_PATH_GUARD_FAILED')
+        return rel
+
+
+def _d2_control(tmp_path):
+    (tmp_path / '.git').mkdir()
+    batch = _D2ControlBatch(tmp_path)
+    path = tmp_path / batch.control_rel
+    path.write_bytes(b'{"prior":true}\n')
+    return batch, path
+
+
+def test_d2_save_control_replaces_same_directory_fsyncs_and_keeps_json(tmp_path, monkeypatch):
+    batch, path = _d2_control(tmp_path)
+    old = path.stat().st_ino
+    original_fsync = br.os.fsync
+    original_replace = br.os.replace
+    calls = []
+    def track_fsync(fd):
+        calls.append('fsync')
+        return original_fsync(fd)
+    def track_replace(src, dst):
+        assert Path(src).parent == path.parent
+        assert Path(dst) == path
+        assert 'fsync' in calls
+        calls.append('replace')
+        return original_replace(src, dst)
+    monkeypatch.setattr(br.os, 'fsync', track_fsync)
+    monkeypatch.setattr(br.os, 'replace', track_replace)
+    br.save_control(batch, {'done':['apply'], 'halted':None})
+    assert json.loads(path.read_text()) == {'done':['apply'], 'halted':None}
+    assert path.stat().st_ino != old
+    assert calls == ['fsync','replace']
+    br.save_control(batch, {'done':['apply','focused'], 'halted':None})
+    assert json.loads(path.read_text())['done'] == ['apply','focused']
+    assert list(path.parent.glob(TASK + '-control-tmp-*')) == []
+
+
+@pytest.mark.parametrize('fault', ['write', 'fsync', 'replace'])
+def test_d2_control_save_fault_preserves_old_bytes_and_cleans_temp(tmp_path, monkeypatch, fault):
+    batch, path = _d2_control(tmp_path)
+    original = path.read_bytes()
+    if fault == 'write':
+        original_fdopen = br.os.fdopen
+        class FailStream:
+            def __init__(self, stream): self.stream = stream
+            def __enter__(self): self.stream.__enter__(); return self
+            def __exit__(self, *args): return self.stream.__exit__(*args)
+            def write(self, data): raise OSError('synthetic write failure')
+            def flush(self): self.stream.flush()
+            def fileno(self): return self.stream.fileno()
+        monkeypatch.setattr(br.os, 'fdopen', lambda fd,mode: FailStream(original_fdopen(fd,mode)))
+    elif fault == 'fsync':
+        monkeypatch.setattr(br.os, 'fsync', lambda *args: (_ for _ in ()).throw(OSError('synthetic fsync failure')))
+    else:
+        monkeypatch.setattr(br.os, 'replace', lambda *args: (_ for _ in ()).throw(PermissionError('synthetic locked target')))
+    assert halt_code(br.save_control, batch, {'done':['preflight']}) == 'CONTROL_SAVE_FAILED'
+    assert path.read_bytes() == original
+    assert list(path.parent.glob(TASK + '-control-tmp-*')) == []
+
+
+def test_d2_replace_transient_permission_error_is_retried_bounded_then_saved(tmp_path, monkeypatch):
+    batch, path = _d2_control(tmp_path)
+    real_replace = br.os.replace
+    calls, sleeps = [], []
+    def flaky(src, dst):
+        calls.append(1)
+        if len(calls) <= 3:
+            raise PermissionError('synthetic transient lock')
+        return real_replace(src, dst)
+    monkeypatch.setattr(br.os, 'replace', flaky)
+    monkeypatch.setattr(br.time, 'sleep', lambda s: sleeps.append(s))
+    br.save_control(batch, {'done':['apply'], 'halted':None})
+    assert json.loads(path.read_text()) == {'done':['apply'], 'halted':None}
+    assert len(calls) == 4 and sleeps == [0.05, 0.1, 0.2]
+    assert list(path.parent.glob(TASK + '-control-tmp-*')) == []
+
+
+def test_d2_replace_persistent_permission_error_stops_after_bounded_attempts(tmp_path, monkeypatch):
+    batch, path = _d2_control(tmp_path)
+    original = path.read_bytes()
+    calls, sleeps = [], []
+    def locked(src, dst):
+        calls.append(1)
+        raise PermissionError('synthetic persistent lock')
+    monkeypatch.setattr(br.os, 'replace', locked)
+    monkeypatch.setattr(br.time, 'sleep', lambda s: sleeps.append(s))
+    assert halt_code(br.save_control, batch, {'done':['preflight']}) == 'CONTROL_SAVE_FAILED'
+    assert len(calls) == len(br.CONTROL_REPLACE_RETRY_DELAYS) + 1
+    assert sleeps == list(br.CONTROL_REPLACE_RETRY_DELAYS) and sum(sleeps) <= 2.0
+    assert path.read_bytes() == original
+    assert list(path.parent.glob(TASK + '-control-tmp-*')) == []
+
+
+@pytest.mark.parametrize('exc', [OSError('synthetic io'), FileNotFoundError('synthetic missing')])
+def test_d2_replace_non_permission_error_is_not_retried(tmp_path, monkeypatch, exc):
+    batch, path = _d2_control(tmp_path)
+    original = path.read_bytes()
+    calls, sleeps = [], []
+    def broken(src, dst):
+        calls.append(1)
+        raise exc
+    monkeypatch.setattr(br.os, 'replace', broken)
+    monkeypatch.setattr(br.time, 'sleep', lambda s: sleeps.append(s))
+    assert halt_code(br.save_control, batch, {'done':['preflight']}) == 'CONTROL_SAVE_FAILED'
+    assert len(calls) == 1 and sleeps == []
+    assert path.read_bytes() == original
+
+
+def test_d2_existing_control_hardlink_to_outside_rejected_without_mutation(tmp_path):
+    batch, path = _d2_control(tmp_path)
+    outside = tmp_path / 'outside-control.json'
+    try:
+        os.link(path, outside)
+    except OSError as exc:
+        pytest.fail('D-2 hardlink capability missing: ' + type(exc).__name__)
+    old = path.read_bytes()
+    assert halt_code(br.save_control, batch, {'done':['preflight']}) == 'ARTIFACT_PATH_GUARD_FAILED'
+    assert path.read_bytes() == old and outside.read_bytes() == old
+    assert list(path.parent.glob(TASK + '-control-tmp-*')) == []
+
+
+def test_d2_main_emits_s1_and_no_step_pass_when_atomic_control_replace_fails(tmp_path, monkeypatch, capsys):
+    # Exercise the caller, not only the save helper: no successful step line is allowed.
+    class Stub:
+        def __init__(self,*args):
+            self.root = str(tmp_path)
+            self.task_id = TASK
+            self.control_rel = '.git/' + TASK + '-control.json'
+            self.prompt_bytes = b'synthetic prompt'
+            self.spec = {'kind':'promotion'}
+            self.lines = []
+        def step_preflight(self): return None
+        def artifact(self, suffix): return '.git/' + TASK + '-' + suffix
+        def write_new_artifact(self, *args): raise AssertionError('unexpected new control')
+    (tmp_path / '.git').mkdir()
+    (tmp_path / 'scripts').mkdir()
+    (tmp_path / 'scripts' / 'batch_runner.py').write_text('synthetic runner\n')
+    (tmp_path / '.git' / (TASK + '-control.json')).write_text('{}')
+    monkeypatch.setattr(br, 'Batch', Stub)
+    monkeypatch.setattr(br, 'derive_steps', lambda _: ['preflight'])
+    monkeypatch.setattr(br, 'load_control', lambda _: {'task_id':TASK,
+        'prompt_sha256':br.sha256_bytes(b'synthetic prompt'), 'runner_sha256':'fixed', 'done':[], 'halted':None})
+    monkeypatch.setattr(br, 'save_control', lambda *args: (_ for _ in ()).throw(br.Halt('CONTROL_SAVE_FAILED')))
+    monkeypatch.setattr(br, 'accepted_runner_sha', lambda *a:'fixed')
+    monkeypatch.setattr(br.Path, 'cwd', lambda:tmp_path)
+    monkeypatch.setattr(br, '__file__', str(tmp_path / 'scripts' / 'batch_runner.py'))
+    assert br.main(['--task-id', TASK, 'preflight']) == 1
+    out = capsys.readouterr().out
+    assert 'S1 CONTROL_SAVE_FAILED | step preflight' in out
+    assert 'STEP_PASS' not in out
+
+
+# B117 R3 — per-stage envelope and gate-only timeout mapping.
+def test_r3_gate_envelope_covers_nested_kill_and_margin():
+    for stage, limit in br.GATE_LIMITS.items():
+        expected = sum(br.stage_timeouts(stage)) + len(br.CANONICAL_GATES[stage]) * 2 * br.KILL_GRACE_SECONDS + br.GATE_MARGIN_SECONDS
+        assert limit >= expected
+        assert br.validate_gate_limits()
+        reduced = dict(br.GATE_LIMITS)
+        reduced[stage] = expected - 1
+        assert not br.validate_gate_limits(reduced)
+
+
+def test_r3_gate_timeout_code_only_for_gate_step(tmp_path, monkeypatch):
+    import bounded_process
+    result = bounded_process.BoundedResult(br.GATE_TIMEOUT_EXIT_CODE, False, None, b'', b'', 'NOT_NEEDED')
+    def fake(*args, **kw):
+        Path(kw['capture_path']).write_bytes(b'')
+        return result
+    monkeypatch.setattr(br, 'run_bounded', fake)
+    b1 = _bounded_batch(tmp_path/'gate', monkeypatch)
+    (tmp_path/'gate').mkdir()
+    with pytest.raises(br.Halt, match='PRECOMMIT_GATE_TIMEOUT'):
+        b1.bounded('PRECOMMIT', ['-c','pass'], 20, gate_timeout=True)
+    b2 = _bounded_batch(tmp_path/'focused', monkeypatch)
+    (tmp_path/'focused').mkdir()
+    assert halt_code(b2.bounded, 'FOCUSED', ['-c','pass'], 20) == 'FOCUSED_NONZERO'
+
+
+def test_r3_gate_nonzero_stays_nonzero_and_external_timeout_stays_timeout(tmp_path, monkeypatch):
+    import bounded_process
+    for status, expected in [
+        (bounded_process.BoundedResult(3, False, None, b'', b'', 'NOT_NEEDED'), 'POSTCOMMIT_NONZERO'),
+        (bounded_process.BoundedResult(None, True, None, b'', b'', 'TREE_SIGNALLED'), 'POSTCOMMIT_TIMEOUT'),
+        (bounded_process.BoundedResult(None, False, 'launch', b'', b'', 'NOT_NEEDED'), 'POSTCOMMIT_LAUNCH_FAILED'),
+    ]:
+        folder = tmp_path/expected; folder.mkdir()
+        def fake(*args, **kw):
+            Path(kw['capture_path']).write_bytes(b'')
+            return status
+        monkeypatch.setattr(br, 'run_bounded', fake)
+        b = _bounded_batch(folder, monkeypatch)
+        with pytest.raises(br.Halt) as exc:
+            b.bounded('POSTCOMMIT', ['-c','pass'], 10, gate_timeout=True)
+        assert str(exc.value) == expected

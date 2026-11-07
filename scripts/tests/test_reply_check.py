@@ -542,3 +542,17 @@ def test_cli_binds_the_prompt_and_reports_fixed_lines_and_exit_codes(tmp_path, r
     assert rc.main(['--prompt', str(prompt), '--reply', str(reply)]) == 2
     assert capsys.readouterr().out.splitlines()[2:] == ['REPLY_CHECK EVIDENCE=NOT_VERIFIED REASON=S1_METADATA_ABSENT',
                                                         'REPLY_CHECK RESULT=NOT_VERIFIED']
+
+
+@pytest.mark.parametrize('step,code', [
+    ('precommit','PRECOMMIT_GATE_TIMEOUT'),
+    ('stage','STAGED_GATE_TIMEOUT'),
+    ('postcommit','POSTCOMMIT_GATE_TIMEOUT'),
+])
+def test_r3_gate_timeout_code_accepted_only_at_corresponding_step(step, code):
+    reply, _ = s1_reply(step, code)
+    assert rc.check_spec(PROD_TASK, PROD_SPEC, reply)[2] == 'S1 '+step+':'+code
+    assert code in rc.STAGES[step][2]
+    for wrong in ('precommit','stage','postcommit'):
+        if wrong != step:
+            assert code not in rc.STAGES[wrong][2]

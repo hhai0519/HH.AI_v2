@@ -101,14 +101,17 @@ import json
 import os
 import re
 import stat
+import tempfile
 import subprocess
 import sys
+import time
 from datetime import datetime
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 try:
-    from bounded_process import run_bounded  # noqa: E402 - shared bounded-execution primitive (B-107)
+    from bounded_process import run_bounded, KILL_GRACE_SECONDS  # noqa: E402 - shared bounded primitive
+    from gate_runner import GATE_TIMEOUT_EXIT_CODE, STAGES as CANONICAL_GATES, stage_timeouts  # noqa: E402
     from validate_prompt_manifest import extract_must_read_section  # noqa: E402 - the validator's section rule
     from bundle_after_push import create_bundle, BundleFailure, preflight_remote_refs  # noqa: E402
     from s1_evidence import create_metadata, EvidenceError  # noqa: E402
@@ -167,7 +170,27 @@ SUMMARY_SHAPES = (
 PRODUCTION_STEPS = ('preflight', 'setup', 'e24', 'apply', 'focused', 'generate', 'precommit', 'stage', 'commit',
                     'postcommit', 'push', 'bundle')
 PROMOTION_STEPS = ('preflight', 'verify', 'promote', 'postmain')
-GATE_LIMITS = {'PRECOMMIT': 2400, 'STAGED': 900, 'POSTCOMMIT': 2400}
+# The outer bounded envelope must dominate every inner gate, including each
+# process-tree kill + reap grace. Pure derivation prevents silent drift.
+GATE_MARGIN_SECONDS = 120
+
+
+def expected_gate_limit(stage):
+    budgets = stage_timeouts(stage)
+    if len(budgets) != len(CANONICAL_GATES[stage]):
+        raise ValueError('GATE_BUDGET_SHAPE_MISMATCH')
+    return sum(budgets) + len(budgets) * 2 * KILL_GRACE_SECONDS + GATE_MARGIN_SECONDS
+
+
+GATE_LIMITS = {stage: expected_gate_limit(stage) for stage in CANONICAL_GATES}
+
+
+def validate_gate_limits(limits=GATE_LIMITS):
+    if set(limits) != set(CANONICAL_GATES):
+        return False
+    return all(type(limits[stage]) is int and limits[stage] >= expected_gate_limit(stage)
+               for stage in CANONICAL_GATES)
+
 # Must-read closure (G4 slice 2). Changing these lists is a runner change (E27).
 MUST_READ_KERNEL = ('AGENTS.md', 'PRINCIPLES.md', '.agents/rules/role-boundaries.md', '.agents/rules/git-and-reporting.md',
                     '.agents/rules/governance-gate-integrity.md', '.agents/rules/powershell-encoding-protocol.md')
@@ -703,7 +726,7 @@ class Batch:
             raise Halt('ARTIFACT_ALREADY_EXISTS')
         return rel
 
-    def bounded(self, stage, args, limit):
+    def bounded(self, stage, args, limit, *, gate_timeout=False):
         rel = self.artifact('bounded-' + stage.lower() + '.txt')
         path = Path(self.root) / rel
         if os.path.lexists(path):
@@ -721,10 +744,15 @@ class Batch:
         tail = [l for l in res.stdout.decode('utf-8', 'replace').splitlines() if l.strip()]
         print('BOUNDED_EXIT ' + stage + ' code=' + str(code) + ' | ' + bounded_summary(tail))
         if code != 0:
+            if gate_timeout and code == GATE_TIMEOUT_EXIT_CODE:
+                raise Halt(stage + '_GATE_TIMEOUT')
             raise Halt(stage + '_NONZERO')
 
     def gate(self, stage):
-        self.bounded(stage, ['scripts/gate_runner.py', 'run', '--task-id', self.task_id, '--stage', stage], GATE_LIMITS[stage])
+        if not validate_gate_limits():
+            raise Halt(stage + '_GATE_BUDGET_INVALID')
+        self.bounded(stage, ['scripts/gate_runner.py', 'run', '--task-id', self.task_id, '--stage', stage],
+                     GATE_LIMITS[stage], gate_timeout=True)
         run([PY, 'scripts/gate_runner.py', 'verify', '--task-id', self.task_id, '--stage', stage],
             stage + '_COMPLETION_UNPROVEN', self.root)
 
@@ -1164,9 +1192,64 @@ def load_control(batch):
         raise Halt('CONTROL_INVALID')
 
 
+# Windows: os.replace needs DELETE access on both files; antivirus/indexer handles can deny it briefly.
+# Retry only that PermissionError, bounded (about 1.55 s total); any other failure is not retried.
+CONTROL_REPLACE_RETRY_DELAYS = (0.05, 0.1, 0.2, 0.4, 0.8)
+
+
 def save_control(batch, control):
-    batch.artifact('control.json')
-    (Path(batch.root) / batch.control_rel).write_text(json.dumps(control, indent=2) + chr(10), encoding='utf-8')
+    """Replace a task's control atomically; a failed write must not truncate the previous record.
+
+    Only one runner may own a worktree. An unlinked, task-prefixed temp is created in
+    the same .git directory; no cross-volume rename is permitted. Only os.replace
+    PermissionError gets bounded retries; a failure
+    may prevent persistence of the halted state, so the caller must emit S1 and stop.
+    """
+    rel = batch.artifact('control.json')
+    target = Path(batch.root) / rel
+    temp = None
+    try:
+        encoded = (json.dumps(control, indent=2) + chr(10)).encode('utf-8')
+        fd, temp = tempfile.mkstemp(prefix=batch.task_id + '-control-tmp-',
+                                    suffix='.json', dir=str(target.parent))
+        with os.fdopen(fd, 'wb') as stream:
+            stream.write(encoded)
+            stream.flush()
+            os.fsync(stream.fileno())
+        # Repeat the exact task-artifact guard just before replacing a target.
+        # This catches pre-existing hard links, symlinks and type violations;
+        # the single-writer assumption excludes adversarial concurrent swaps.
+        batch.artifact('control.json')
+        for delay in CONTROL_REPLACE_RETRY_DELAYS + (None,):
+            try:
+                os.replace(temp, target)
+                break
+            except PermissionError:
+                if delay is None:
+                    raise
+                time.sleep(delay)
+        temp = None
+    except (OSError, ValueError, TypeError) as exc:
+        raise Halt('CONTROL_SAVE_FAILED') from None
+    finally:
+        if temp is not None:
+            try:
+                os.unlink(temp)
+            except FileNotFoundError:
+                pass
+            except OSError:
+                # Keep the original S1, never turn cleanup failure into success.
+                raise Halt('CONTROL_TEMP_CLEANUP_FAILED') from None
+
+
+def save_control_or_s1(batch, control, step):
+    """Emit a bounded S1 when the control write cannot be persisted."""
+    try:
+        save_control(batch, control)
+        return True
+    except Halt as exc:
+        report_halt(exc, step)
+        return False
 
 
 def accepted_runner_sha(root, spec, control, runner_sha):
@@ -1309,20 +1392,23 @@ def main(argv=None):
             control['bundle_outcome'] = outcome
     except Halt as h:
         control['halted'] = step + ':' + str(h)
-        save_control(batch, control)
+        if not save_control_or_s1(batch, control, step):
+            return 1
         report_halt(h, step)
         report_s1_metadata(batch, step, h)
         report_s1_full_capture(batch, step, h)
         return 1
     except Exception as ex:  # noqa: BLE001 - any unexpected failure locks the task with a fixed code
         control['halted'] = step + ':UNEXPECTED_' + type(ex).__name__
-        save_control(batch, control)
+        if not save_control_or_s1(batch, control, step):
+            return 1
         print('S1 UNEXPECTED_' + type(ex).__name__ + ' | step ' + step)
         report_s1_metadata(batch, step, Halt('UNEXPECTED_' + type(ex).__name__))
         report_s1_full_capture(batch, step, Halt('UNEXPECTED_' + type(ex).__name__))
         return 1
     control['done'].append(step)
-    save_control(batch, control)
+    if not save_control_or_s1(batch, control, step):
+        return 1
     print('STEP_PASS ' + step)
     return 0
 

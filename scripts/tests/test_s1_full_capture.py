@@ -118,7 +118,7 @@ def test_no_unpublished_commit_must_not_claim_complete(tmp_path):
 def test_missing_gate_log_never_full_ready(tmp_path):
     root=tmp_path/'repo';base=fixture(root);d=root/'.git'
     (d/(TASK+'-local-gates.txt')).unlink()
-    assert capture(root,base)==['S1_FULL_CAPTURE_STATUS=INCOMPLETE_GATE_EVIDENCE']
+    assert capture(root,base)==['S1_FULL_CAPTURE_STATUS=INCOMPLETE_GATE_LOG']
     assert not (d/(TASK+'-s1-full-capture.zip')).exists()
 
 
@@ -349,3 +349,37 @@ def test_push_missing_real_prior_bounded_is_incomplete(tmp_path):
         (root/'.git'/name).unlink()
     create_metadata(root,TASK,'push','PUSH_FAILED',validate_artifact=lambda _:None)
     assert create_full_capture(root,TASK,base,'batch/unit-s1-capture','push','PUSH_FAILED',validate_artifact=lambda _:None)==['S1_FULL_CAPTURE_STATUS=INCOMPLETE_GATE_EVIDENCE']
+
+
+@pytest.mark.parametrize('stage,code', [
+    ('precommit','PRECOMMIT_GATE_TIMEOUT'),
+    ('staged','STAGED_GATE_TIMEOUT'),
+    ('postcommit','POSTCOMMIT_GATE_TIMEOUT'),
+])
+def test_r3_timeout_without_native_gate_log_is_explicitly_incomplete(tmp_path,stage,code):
+    root=tmp_path/'repo';base=fixture(root);d=root/'.git'
+    # The original receipt must be recomputed, never fabricated, after changing
+    # the halted stage/code. All fixtures are disposable scratch repositories.
+    (d/(TASK+'-control.json')).write_text(json.dumps({'task_id':TASK,'halted':stage+':'+code,'done':['preflight']}))
+    (d/(TASK+'-bounded-'+stage+'.txt')).write_bytes(b'GATE_RUNNER FAIL stage='+stage.upper().encode()+b'\n')
+    for nm in (TASK+'-s1-evidence.json',TASK+'-s1-SHA256SUMS.txt',TASK+'-local-gates.txt'):
+        (d/nm).unlink(missing_ok=True)
+    create_metadata(root,TASK,stage,code,validate_artifact=lambda rel:None)
+    assert create_full_capture(root,TASK,base,'batch/unit-s1-capture',stage,code,validate_artifact=lambda rel:None)==['S1_FULL_CAPTURE_STATUS=INCOMPLETE_GATE_LOG']
+
+
+def test_r3_real_timeout_log_keeps_s1_gate_grammar(tmp_path):
+    import s1_full_capture as mod
+    root=tmp_path/'repo';base=fixture(root);d=root/'.git'
+    gates=[[sys.executable,'-c',"import time;time.sleep(3)"]]
+    gate_path=d/(TASK+'-local-gates.txt')
+    gate_path.unlink()
+    (d/(TASK+'-local-gates.txt.postcommit-run1-gate1.raw')).unlink()
+    assert gate_runner.run_stage(str(root),'POSTCOMMIT',gates,str(gate_path),timeout=1)==gate_runner.GATE_TIMEOUT_EXIT_CODE
+    name=TASK+'-local-gates.txt.postcommit-run1-gate1.raw'
+    files={TASK+'-local-gates.txt':gate_path.read_bytes(),name:(d/name).read_bytes(),TASK+'-bounded-postcommit.txt':b'GATE_RUNNER FAIL stage=POSTCOMMIT\n'}
+    mod._validate_gate_log(TASK,files,'postcommit','POSTCOMMIT_GATE_TIMEOUT')
+    assert b'ELAPSED_SEC' not in files[TASK+'-local-gates.txt']
+    # Corrupted extension to the canonical grammar fails closed.
+    files[TASK+'-local-gates.txt']=files[TASK+'-local-gates.txt'].replace(b'EXIT_CODE: TIMEOUT',b'ELAPSED_SEC: 1.0\nEXIT_CODE: TIMEOUT')
+    with pytest.raises(FullCaptureError):mod._validate_gate_log(TASK,files,'postcommit','POSTCOMMIT_GATE_TIMEOUT')
