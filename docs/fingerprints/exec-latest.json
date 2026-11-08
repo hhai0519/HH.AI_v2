@@ -1,5 +1,5 @@
 {
-  "base_head": "2474d5d",
+  "base_head": "7c4852f",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -566,16 +566,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 390,
-      "sha256": "10c633b3b38c6cadb2d286d95feac7936277d803fb6443fbadb80bcd0bccecb4"
+      "lines": 391,
+      "sha256": "02494eb0de042a1e7c2d4402bd888ebd51f576dbb9702d5575a3129bb5c34d9c"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 365,
-      "sha256": "322bea568560c83000fd1968e7a8aef9907a1dd235f160f4be01abb0725c2dad"
+      "lines": 366,
+      "sha256": "08cd7f7ef4c1bc0b05f4713b5aff0b0281ad3d67199f1455fa3d8e8303d53b2f"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -617,8 +617,8 @@
         "## G. 舊 repo 未盤點區塊（2026-09-02 新發現）",
         "## 封存區"
       ],
-      "lines": 475,
-      "sha256": "8e7ce0673a855e3d1d5b26dde8f28ceedaaeaa55cd2868c672eedda5384b621a"
+      "lines": 478,
+      "sha256": "4abcca7de1091849db7c2357e51be5f94187bfb983bf7a70db22b9b06a39b877"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1127,8 +1127,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6450,
-      "sha256": "0b349c77cae6c20dd8dfa943af374c733a84e3e9589a5417d75e0401c039469e"
+      "lines": 6452,
+      "sha256": "326923141434b3e86ff326617908418cc7131a6bb62115aec5fdb534a7bfe9e0"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1177,8 +1177,8 @@
         "# Windows: os.replace needs DELETE access on both files; antivirus/indexer handles can deny it briefly.",
         "# Retry only that PermissionError, bounded (about 1.55 s total); any other failure is not retried."
       ],
-      "lines": 1429,
-      "sha256": "c6d39fdfac18be235f1b49c2aa9fe100740dc34f9adb53f6d5d7f743933a1e2b"
+      "lines": 1659,
+      "sha256": "6d3412afa2433735ecb49bd6c8c408945f1940ceab4a01bbe3e824ffd2a2f953"
     },
     "scripts/batch_sim.py": {
       "fences": 0,
@@ -1390,16 +1390,16 @@
       "headings": [
         "# -*- coding: utf-8 -*-"
       ],
-      "lines": 194,
-      "sha256": "0679da3fefe0606d803701b4b3ef0d1aafd2f999f344905614ff917f6599b13d"
+      "lines": 197,
+      "sha256": "d14eb8086ce58b95307a7cd99a128279fcf9cfb0ee91117f8956adc5e58613f0"
     },
     "scripts/promotion_template.py": {
       "fences": 0,
       "headings": [
         "# -*- coding: utf-8 -*-"
       ],
-      "lines": 168,
-      "sha256": "f50dbfe4e230e4d1bc46e66038c46a26362bcaac6eb82d7c16139c383555fcf3"
+      "lines": 170,
+      "sha256": "387dde2f4a9d7e9da6369d0c1fc3d6c7536a0d4a3c7a87629b0fca19a057de88"
     },
     "scripts/prompt_builder.py": {
       "fences": 0,
@@ -1437,8 +1437,8 @@
         "# Halts reported before the step body runs (control not written, or not updated): STATE keeps halted=None.",
         "# name -> (prefix, exact format, positions of commit SHAs, positions of file SHA-256)"
       ],
-      "lines": 526,
-      "sha256": "aeb03023f8cfa2c55cd9743257eee1fe0194d123c2252d46bb41f9fd58162b62"
+      "lines": 544,
+      "sha256": "47d19db21078f2ea65772754424864fb402586e0951bcb1afee85b36aebf71d4"
     },
     "scripts/runtime_readiness.py": {
       "fences": 0,
@@ -1586,10 +1586,13 @@
         "# B-117/G5 D-2: control atomicity and bounded failure injection; synthetic .git only.",
         "# B117 R3 — per-stage envelope and gate-only timeout mapping.",
         "# G3: Original S1 is authoritative even when a second failure hits cleanup/diagnostics.",
-        "# G3 next slice: a failed control save after a step S1 must not erase the first S1."
+        "# G3 next slice: a failed control save after a step S1 must not erase the first S1.",
+        "# B115 G3 CI-PENDING-REPLY R1: task-local, single-writer step output and timing.",
+        "# SO F-1: RESULT=PASS of a well-formed S1 reply (evidence N/A) must never surface as CLASS=PASS.",
+        "# SO: D5 negatives that the author suite did not kill under mutation."
       ],
-      "lines": 2010,
-      "sha256": "ab05ed7da764e30a2e7b6c891ba43509c519189b376597ba0c9ced58be026a30"
+      "lines": 2233,
+      "sha256": "6f60ad2fdf0b2307a40581aeb441e4b0eb71ca408f2ba6a5db3f66d034c52ad5"
     },
     "scripts/tests/test_batch_sim.py": {
       "fences": 0,
@@ -1940,10 +1943,11 @@
         "# B-115 (9) slice 2: repo-owned production prose is derived from one structured definition.",
         "# B-115 S2 R2: independent E27 coverage after identifying base-only E24 replay failure.",
         "# B-118 first-activation negative tests: new auto-production must explicitly decide output.",
-        "# The canonical builder/checker recognises READONLY without granting canonical production-runner rights."
+        "# The canonical builder/checker recognises READONLY without granting canonical production-runner rights.",
+        "# B115/G3 CI-PENDING-REPLY: positive terminal handoff; no checker command for Executor."
       ],
-      "lines": 1354,
-      "sha256": "69a6ed77fbdabb5e02ec11cc9efc3f83ba1b2765bf14073aaa5a257b32d43269"
+      "lines": 1375,
+      "sha256": "eb6e95b9e2ec816f6b08a2f0d2f5db8f6cc6f27958e81a04cd8eef1b1c0befb0"
     },
     "scripts/tests/test_prompt_intake.py": {
       "fences": 0,
@@ -1990,10 +1994,12 @@
         "# G3: the secondary control-save failure is never interpreted as the primary S1",
         "# or a successful persisted halt. Fail closed on missing/mismatched binding.",
         "# SO NB-1: runner lines printed before the dual fault (passed gates, the failed step's own",
-        "# bounded child, promotion CI_RUN/MAIN_PROMOTED) stay legal and remain bound."
+        "# bounded child, promotion CI_RUN/MAIN_PROMOTED) stay legal and remain bound.",
+        "# G3 CI_PENDING reply is format-valid but never proof of CI PASS.",
+        "# SO: the CLI result line is the self-check contract; PENDING must never print PASS or exit 0."
       ],
-      "lines": 666,
-      "sha256": "ef2d7fb53cb4131f5c4e23719e98ded1c933444387529d8aea77d75b66ee96f5"
+      "lines": 720,
+      "sha256": "cc96355259865520ba08623ff72c27c394f90fa6e3a627c7616008e3ec1f3687"
     },
     "scripts/tests/test_rule_loadability.py": {
       "fences": 0,
@@ -2267,7 +2273,7 @@
       "sha256": "6bfd57c05a09df3cde679ae53ac6ddd67bfb64cda4246584617d3cc67fb3b81c"
     }
   },
-  "generated_at": "2026-11-08T05:00:48Z",
+  "generated_at": "2026-11-08T12:41:48Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

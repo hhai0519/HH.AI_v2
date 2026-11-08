@@ -114,7 +114,7 @@ Allowed and required tracked mutation paths 均為 {{ALLOWED}}。本批不授權
 E24={'REQUIRED' if d.get('e24') is True else 'NONE'}；E27={prose['e27']}。E27 結論不取代 Macro 最終提示詞授權；不得擅自引用任何第二意見 PASS。
 
 三、失敗停止與開始前就緒
-每個 runner 命令只執行一次、按順序，必須觀察真正結束且 exit 0 才能前進；背景執行中、排隊中或 PENDING 不等於成功。任何非零、超時、歧義、來源或工作區不符立即 S1 STOP，不自行重跑、提高 timeout、修改 gate、修改提示詞、reset、rebase、amend、stash、force push、hook bypass、刪除檔案或自行修補。原 Executor 對話必須已停止且無 Queued 指令；IDE 作用中工作區必須為使用者指定的正式 workspace。Mutation 之前 fresh reread 所有規則與本批作者程式，驗證 Base、clean worktree、branch、scope、操作步驟及所有機械契約；發現規格衝突或缺件先停止。特別停止條件：
+每個 runner 命令只執行一次、按順序，必須觀察真正結束且 exit 0 才能前進；背景執行中、排隊中或 PENDING 不等於成功。任何非零、超時、歧義、來源或工作區不符立即 S1 STOP，不自行重跑、提高 timeout、修改 gate、修改提示詞、reset、rebase、amend、stash、force push、hook bypass、刪除檔案或自行修補。S1 STOP 只停止後續 production 步驟：S1 之後唯一允許、且必須執行的命令，是第五節最後一行的 timing（一次）；接著依第六節轉交並立即結束，不得閱讀任何檔案或執行其他命令。原 Executor 對話必須已停止且無 Queued 指令；IDE 作用中工作區必須為使用者指定的正式 workspace。Mutation 之前 fresh reread 所有規則與本批作者程式，驗證 Base、clean worktree、branch、scope、操作步驟及所有機械契約；發現規格衝突或缺件先停止。特別停止條件：
 {stops}
 
 四、動手前必讀（使用 IDE 原生檢視逐檔讀到最後一行）
@@ -124,8 +124,11 @@ E24={'REQUIRED' if d.get('e24') is True else 'NONE'}；E27={prose['e27']}。E27 
 五、唯一 canonical runner 操作順序（各命令一次）
 {cmds}
 
-六、Executor 固定回覆
-成功須逐字複製 runner 已輸出的 CI_RUN candidate 定位行、COMMIT、TIMING、STATE；CI_RUN 只能來自 runner，不能自行填入或將候選 Run 誤寫成 postmain。bundle_output=true 時，還必須逐字複製實際輸出的 BUNDLE_FILE=、ORIGIN_MAIN=、HANDOFF_TO_AUDITOR=、HANDOFF_CARD_SHA256=、HANDOFF_CARD_JSON=（只有實際產生時才複製完整單行，且不得以 .git 相對路徑代替卡片內容），或 BUNDLE FAILED <CODE> 行，不能略過、捏造成功或把 bundle 失敗誤當 CI 失敗。S1 僅複製實際存在的 S1、S1_PRIMARY（如有雙重故障）、S1_DETAIL、S1_EVIDENCE_FILE=、S1_SHA256SUMS_FILE=、S1_EVIDENCE_JSON=（完整單行）或 S1_EVIDENCE_STATUS=UNAVAILABLE、TIMING、STATE 行，不捏造 CI Run／job ID 或 PASS。當 S1 metadata READY 時僅能稱 METADATA_ONLY，不得宣稱已提供未推送 commit bundle、gate 全文或 Git 快照。 S1 FULL_CAPTURE 亦必須逐字複製實際輸出的 S1_FULL_CAPTURE_FILE=、S1_FULL_CAPTURE_CARD=、S1_FULL_CAPTURE_JSON=、S1_FULL_CAPTURE_STATUS=（包含 INCOMPLETE_GATE_EVIDENCE／INCOMPLETE_UNTRACKED_FILES／INCOMPLETE_NO_UNPUBLISHED_COMMIT／UNAVAILABLE 等完整實際單行）；只有完整 archive 回讀及原生 bundle 身分驗證成功才可稱 FULL_CAPTURE，metadata-only 仍保持原分類。TIMING 由 runner 提供開始、結束與秒數除以 60 向下取整之分鐘。回覆最後一行逐字為「以上是 Antigravity IDE Agent 的回覆。」
+六、Executor 固定回覆與唯一終點
+完成 timing 後，若 runner 印出 EXECUTOR_REPLY_BEGIN／EXECUTOR_REPLY_END 且 REPLY_SELF_CHECK=PASS，僅逐字複製兩個 marker 之間的行，並立即結束本次執行；不得額外執行任何工具、讀檔、自我驗證或寫檔。格式通過只證明可轉交，不代表 CI PASS；CI PENDING 僅可稱未查證，不得合成或更改 CI_RUN。
+若 runner 印出 EXECUTOR_REPLY_UNAVAILABLE，或舊 runner 在 apply 前就發生 S1、沒有產生此區塊，則回退到本節下列原有人工逐字轉交規則，不得為補回覆再執行額外命令；僅回報原始 runner 已輸出的內容與不可用代碼。
+原有回覆規則：成功時逐字轉交已有的 CI_RUN candidate、COMMIT、TIMING、STATE；若有 bundle，還須逐字轉交 BUNDLE_FILE=、ORIGIN_MAIN=、HANDOFF_TO_AUDITOR=、HANDOFF_CARD_SHA256=、HANDOFF_CARD_JSON= 或 BUNDLE FAILED <CODE>。若 CI 是 PENDING，不得自行宣稱 PASS。S1 時只逐字轉交已出現的 S1、S1_PRIMARY、S1_DETAIL、S1_EVIDENCE、S1_FULL_CAPTURE、BOUNDED、TIMING、STATE 相關行，不能補造不存在的證據，不捏造 CI Run／job ID 或 PASS。
+回覆最後一行逐字為「以上是 Antigravity IDE Agent 的回覆。」
 
 七、machine blocks（全部由 canonical builder 產生，不可修改）
 '''

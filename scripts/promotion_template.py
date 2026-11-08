@@ -28,7 +28,7 @@ TASK_ID = {TASK_ID}；batch_mode: GOAL_SPEC；Base = {BASE_OID}；candidate = {C
 {CHANGED_PATHS}
 
 二、權限與失敗停止
-每個命令只執行一次；非零、逾時、歧義立即 S1 STOP，不自行重跑或修補。已啟動或背景執行中不算完成；必須觀察 runner 命令真正結束且 exit 0 後才能進下一步。post-main PENDING 不得當作 PASS。
+每個命令只執行一次；非零、逾時、歧義立即 S1 STOP，不自行重跑或修補。S1 STOP 只停止後續晉級步驟：S1 之後唯一允許、且必須執行的命令，是第四節最後一行的 timing（一次）；接著依第五節轉交並立即結束，不得閱讀任何檔案或執行其他命令。已啟動或背景執行中不算完成；必須觀察 runner 命令真正結束且 exit 0 後才能進下一步。post-main PENDING 不得當作 PASS。
 Allowed tracked mutation paths = NONE，Required tracked mutation paths = NONE。只能由 runner 依所綁定 SHA 完成同一 SHA 快轉；origin/main、candidate branch、parent 或 CI 不符合時須 S1 STOP。禁止手動 git/gh/API 查證補資料、push 或另建 commit；禁止 force、reset、amend、stash、delete、hook bypass、讀取其他對話／其他 task artifact 或憑證。前一 Executor 已停止且無 Queued 指令，工作區必須為 IDE 原生作用中工作區。禁止未授權 repo 外存取。
 
 三、動手前必讀（IDE 原生檢視工具讀至結尾）
@@ -42,8 +42,10 @@ uv run --offline --no-sync --no-python-downloads --python .venv\\Scripts\\python
 uv run --offline --no-sync --no-python-downloads --python .venv\\Scripts\\python.exe python scripts/batch_runner.py --task-id {TASK_ID} postmain
 uv run --offline --no-sync --no-python-downloads --python .venv\\Scripts\\python.exe python scripts/batch_runner.py --task-id {TASK_ID} timing
 
-五、Executor 最小回覆
-成功時，逐字轉交 runner 真正印出的 CI_RUN phase=candidate 及 CI_RUN phase=postmain 各一行，另逐字轉交 MAIN、TIMING、STATE 三行；兩種 CI_RUN 都須有而且彼此不可替代，不得自行猜測、合成或改寫 Run／job ID。S1 時僅逐字轉交 runner 已印出的 CI_RUN（若有）、S1、S1_PRIMARY（如有雙重故障）、S1_DETAIL、TIMING、STATE 行，不得捏造或把候選 Run 當成 post-main Run。最後一行逐字為「以上是 Antigravity IDE Agent 的回覆。」
+五、Executor 最小回覆與唯一終點
+完成 timing 後，若 runner 印出 EXECUTOR_REPLY_BEGIN／EXECUTOR_REPLY_END 且 REPLY_SELF_CHECK=PASS，僅逐字複製兩個 marker 之間的行，隨即結束，不得繼續查閱程式、執行任何工具、自我驗證或新增刪改檔案。CI PENDING 即使格式符合，也不是 CI PASS。
+若沒有這個區塊或印出 EXECUTOR_REPLY_UNAVAILABLE，則回退到以下原有逐字轉交規則：成功時逐字轉交真正印出的 CI_RUN phase=candidate 及 CI_RUN phase=postmain（如有）、MAIN、TIMING、STATE；S1 時逐字轉交真正已有的 CI_RUN（如有）、S1、S1_PRIMARY、S1_DETAIL、TIMING、STATE；任何 PENDING 不得補造 PASS。不得為了補全回覆再執行命令或讀取檔案。
+最後一行逐字為「以上是 Antigravity IDE Agent 的回覆。」
 
 六、機器區塊（repo prompt_builder 產出，不得人工修改）
 '''

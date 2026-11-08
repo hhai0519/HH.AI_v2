@@ -1495,6 +1495,21 @@ def test_apply_write_failure_after_the_checks_is_not_atomic(tmp_path, monkeypatc
     assert not (tmp_path / "scripts" / "new_tool.py").exists()
 
 
+
+
+class _SyntheticStepRecord:
+    """Test-only stdout sink for fake Batch objects without a .git task-artifact guard."""
+    def __init__(self, *_args):
+        self.stdout = sys.stdout
+    def write(self, value):
+        return self.stdout.write(value)
+    def flush(self):
+        self.stdout.flush()
+    def finish(self, result):
+        return True
+    def abort(self):
+        pass
+
 def test_main_locks_the_task_when_a_step_raises_unexpectedly(monkeypatch, capsys):
     # The stop after a non-atomic write failure: main records UNEXPECTED_<type> and the task stays locked.
     from pathlib import Path as _P
@@ -1516,6 +1531,7 @@ def test_main_locks_the_task_when_a_step_raises_unexpectedly(monkeypatch, capsys
                                                        "halted": None})
     monkeypatch.setattr(br, "accepted_runner_sha", lambda root, spec, control, runner_sha: "R")
     monkeypatch.setattr(br, "save_control", lambda b, c: saved.update(c))
+    monkeypatch.setattr(br, '_StepRecord', _SyntheticStepRecord)
     assert br.main(["--task-id", TASK, "apply"]) == 1
     assert saved["halted"] == "apply:UNEXPECTED_PermissionError"
     assert "S1 UNEXPECTED_PermissionError | step apply" in capsys.readouterr().out
@@ -1874,6 +1890,7 @@ def test_d2_main_emits_s1_and_no_step_pass_when_atomic_control_replace_fails(tmp
     monkeypatch.setattr(br, 'accepted_runner_sha', lambda *a:'fixed')
     monkeypatch.setattr(br.Path, 'cwd', lambda:tmp_path)
     monkeypatch.setattr(br, '__file__', str(tmp_path / 'scripts' / 'batch_runner.py'))
+    monkeypatch.setattr(br, '_StepRecord', _SyntheticStepRecord)
     assert br.main(['--task-id', TASK, 'preflight']) == 1
     out = capsys.readouterr().out
     assert 'S1 CONTROL_SAVE_FAILED | step preflight' in out
@@ -2003,8 +2020,214 @@ def test_g3_halted_step_control_save_failure_preserves_primary_code(tmp_path, mo
     monkeypatch.setattr(br, 'accepted_runner_sha', lambda *args: 'fixed')
     monkeypatch.setattr(br.Path, 'cwd', lambda: tmp_path)
     monkeypatch.setattr(br, '__file__', str(tmp_path / 'scripts' / 'batch_runner.py'))
+    monkeypatch.setattr(br, '_StepRecord', _SyntheticStepRecord)
     assert br.main(['--task-id', TASK, 'preflight']) == 1
     assert capsys.readouterr().out.splitlines() == [
         'S1 CONTROL_SAVE_FAILED | step preflight',
         'S1_PRIMARY ' + original + ' | step preflight',
     ]
+
+# B115 G3 CI-PENDING-REPLY R1: task-local, single-writer step output and timing.
+
+def _lf(path, text):
+    """Byte-exact LF fixture: Path.write_text translates newlines on Windows (B-123 class)."""
+    path.write_bytes(text.encode('utf-8'))
+
+
+def _g3_output_stub(root, spec=None, task=TASK):
+    class Stub:
+        def __init__(self):
+            self.root = str(root)
+            self.task_id = task
+            self.spec = spec or {'kind': 'promotion'}
+            self.prompt_rel = '.git/' + task + '-prompt.txt'
+            self.prompt_bytes = b'prompt'
+        def artifact(self, name):
+            return '.git/' + self.task_id + '-' + name
+        def write_new_artifact(self, name, text):
+            rel = self.artifact(name)
+            with open(Path(self.root) / rel, 'x', encoding='utf-8', newline='') as f:
+                f.write(text)
+            return rel
+    return Stub()
+
+
+def test_g3_step_record_complete_once_and_preserves_stdout(tmp_path, capsys):
+    (tmp_path / '.git').mkdir()
+    b = _g3_output_stub(tmp_path)
+    record = br._StepRecord(b, 'preflight')
+    record.write('STEP_PASS preflight\n')
+    assert record.finish(0) is True
+    assert capsys.readouterr().out == 'STEP_PASS preflight\n'
+    out = tmp_path / '.git' / (TASK + '-step-preflight.out')
+    assert out.read_bytes() == b'STEP_PASS preflight\nSTEP_OUTPUT_COMPLETE step=preflight result=0\n'
+    assert halt_code(br._StepRecord, b, 'preflight') == 'STEP_OUTPUT_ALREADY_EXISTS'
+
+
+def test_g3_step_record_secondary_io_failure_never_masks_stdout(tmp_path, monkeypatch, capsys):
+    (tmp_path / '.git').mkdir()
+    b = _g3_output_stub(tmp_path)
+    rec = br._StepRecord(b, 'precommit')
+    monkeypatch.setattr(br.os, 'fsync', lambda fd: (_ for _ in ()).throw(OSError('synthetic fsync')))
+    rec.write('S1 PRECOMMIT_NONZERO | step precommit\n')
+    assert rec.finish(1) is False
+    assert capsys.readouterr().out == 'S1 PRECOMMIT_NONZERO | step precommit\n'
+    raw = (tmp_path / '.git' / (TASK + '-step-precommit.out')).read_text()
+    assert 'STEP_OUTPUT_COMPLETE' not in raw
+
+
+def test_g3_step_output_complete_and_truncation_fail_closed(tmp_path):
+    (tmp_path / '.git').mkdir()
+    b = _g3_output_stub(tmp_path)
+    st = ['preflight', 'verify']
+    control = {'done': st, 'halted': None}
+    for step in st:
+        _lf((tmp_path / '.git' / (TASK + '-step-' + step + '.out')),
+            'STEP_PASS ' + step + '\nSTEP_OUTPUT_COMPLETE step=' + step + ' result=0\n')
+    assert br._step_output_lines(b, st, control) == ['STEP_PASS preflight', 'STEP_PASS verify']
+    p = tmp_path / '.git' / (TASK + '-step-verify.out')
+    _lf(p, 'STEP_PASS verify\n')
+    assert halt_code(br._step_output_lines, b, st, control) == 'REPLY_STEP_OUTPUT_TRUNCATED'
+    _lf(p, 'STEP_PASS verify\nSTEP_OUTPUT_COMPLETE step=verify result=0\n')
+    assert halt_code(br._step_output_lines, b, st, {'done': ['verify'], 'halted': None}) == 'REPLY_CONTROL_INVALID'
+
+
+def test_g3_legacy_runner_preapply_without_step_records_is_bound(tmp_path, monkeypatch):
+    (tmp_path / '.git').mkdir()
+    (tmp_path / 'scripts').mkdir()
+    _lf((tmp_path / 'scripts' / 'batch_runner.py'), 'new runner\n')
+    base = b'old runner\n'
+    steps = ['preflight', 'setup', 'e24', 'apply', 'generate']
+    spec = {'kind': 'production', 'runner_update': True, 'base_oid': BASE,
+            'authors': {br.RUNNER_REL: {'sha256': br.sha256_bytes(b'new runner\n')}}}
+    b = _g3_output_stub(tmp_path, spec)
+    control = {'done': steps, 'halted': None, 'runner_sha256': br.sha256_bytes(base)}
+    monkeypatch.setattr(br, 'git_bytes', lambda root, *args: base)
+    _lf((tmp_path / '.git' / (TASK + '-step-generate.out')),
+        'STEP_PASS generate\nSTEP_OUTPUT_COMPLETE step=generate result=0\n')
+    assert br._step_output_lines(b, steps, control) == ['STEP_PASS ' + s for s in steps]
+    assert halt_code(br._step_output_lines, b, steps, {**control, 'done': steps[:3], 'halted': 'apply:APPLY_FAILED'}) \
+           == 'REPLY_STEP_OUTPUT_MISSING'
+    assert br._legacy_preapply_record_allowed(b, control, 'generate', steps) is False
+    assert br._legacy_preapply_record_allowed(b, control, 'apply', steps) is True
+
+
+def test_g3_timing_emits_single_bound_reply_and_self_check_after_end(tmp_path, monkeypatch, capsys):
+    (tmp_path / '.git').mkdir()
+    b = _g3_output_stub(tmp_path)
+    st = ['preflight', 'verify']
+    for step in st:
+        _lf((tmp_path / '.git' / (TASK + '-step-' + step + '.out')),
+            'STEP_PASS ' + step + '\nSTEP_OUTPUT_COMPLETE step=' + step + ' result=0\n')
+    control = {'task_id': TASK, 'done': st, 'halted': None, 'prompt_sha256': br.sha256_bytes(b'prompt')}
+    t = 'TIMING start=2026-11-08T00:00:00+08:00 end=2026-11-08T00:00:02+08:00 elapsed_sec=2.0 elapsed_min=0'
+    s = 'STATE done=preflight,verify halted=None'
+    monkeypatch.setattr(br, '_timing_lines', lambda root, task: (t, s, control))
+    monkeypatch.setattr(br, 'Batch', lambda root, task: b)
+    monkeypatch.setattr(br, 'derive_steps', lambda spec: st)
+    observed = []
+    monkeypatch.setattr(br, '_self_check_reply', lambda batch, reply: observed.append(reply) or 'PASS')
+    assert br.timing(str(tmp_path), TASK) == 0
+    output = capsys.readouterr().out
+    assert output.index('EXECUTOR_REPLY_BEGIN') < output.index('EXECUTOR_REPLY_END') < output.index('REPLY_SELF_CHECK=PASS')
+    assert observed[0] == '\n'.join(['STEP_PASS preflight', 'STEP_PASS verify', t, s]) + '\n'
+
+
+def test_g3_selfcheck_cli_pending_is_not_pass(tmp_path, monkeypatch):
+    (tmp_path / '.git').mkdir()
+    b = _g3_output_stub(tmp_path)
+    from types import SimpleNamespace
+    p = SimpleNamespace(returncode=2,
+                        stdout=('REPLY_CHECK TASK=' + TASK + ' KIND=production OUTCOME=COMMIT=x\n'
+                                'REPLY_CHECK FIELDS=PASS\nREPLY_CHECK RESULT=CI_PENDING\n').encode(), stderr=b'')
+    monkeypatch.setattr(br.subprocess, 'run', lambda *a, **kw: p)
+    assert br._self_check_reply(b, 'COMMIT x | CI PENDING | S1 NONE\n') == 'CI_PENDING'
+    p.returncode = 0
+    (tmp_path / 'second' / '.git').mkdir(parents=True)
+    assert halt_code(br._self_check_reply, _g3_output_stub(tmp_path / 'second'), 'x') == 'REPLY_SELF_CHECK_CONTRADICTION'
+
+
+# SO F-1: RESULT=PASS of a well-formed S1 reply (evidence N/A) must never surface as CLASS=PASS.
+@pytest.mark.parametrize('rc_, result, outcome, expected', [
+    (0, 'PASS', 'S1=commit:COMMIT_FAILED', 'S1'),
+    (2, 'NOT_VERIFIED', 'S1=precommit:PRECOMMIT_NONZERO', 'S1'),
+    (0, 'PASS', 'COMMIT=x', 'PASS'),
+])
+def test_g3_selfcheck_class_never_reports_s1_as_pass(tmp_path, monkeypatch, rc_, result, outcome, expected):
+    (tmp_path / '.git').mkdir()
+    from types import SimpleNamespace
+    p = SimpleNamespace(returncode=rc_, stderr=b'', stdout=(
+        'REPLY_CHECK TASK=' + TASK + ' KIND=production OUTCOME=' + outcome + '\n'
+        'REPLY_CHECK FIELDS=PASS\nREPLY_CHECK RESULT=' + result + '\n').encode())
+    monkeypatch.setattr(br.subprocess, 'run', lambda *a, **kw: p)
+    assert br._self_check_reply(_g3_output_stub(tmp_path), 'x\n') == expected
+
+
+@pytest.mark.parametrize('stdout', [
+    'REPLY_CHECK FIELDS=PASS\nREPLY_CHECK RESULT=PASS\n',
+    'REPLY_CHECK TASK=OTHER-TASK-261108 KIND=production OUTCOME=COMMIT=x\nREPLY_CHECK FIELDS=PASS\nREPLY_CHECK RESULT=PASS\n',
+])
+def test_g3_selfcheck_requires_single_task_bound_outcome(tmp_path, monkeypatch, stdout):
+    (tmp_path / '.git').mkdir()
+    from types import SimpleNamespace
+    p = SimpleNamespace(returncode=0, stderr=b'', stdout=stdout.encode())
+    monkeypatch.setattr(br.subprocess, 'run', lambda *a, **kw: p)
+    assert halt_code(br._self_check_reply, _g3_output_stub(tmp_path), 'x\n') == 'REPLY_SELF_CHECK_INVALID'
+
+
+# SO: D5 negatives that the author suite did not kill under mutation.
+def test_g3_interrupted_step_leaves_no_completion_marker(tmp_path, monkeypatch):
+    class Stub:
+        def __init__(self, *_args):
+            self.root = str(tmp_path)
+            self.task_id = TASK
+            self.prompt_bytes = b'synthetic prompt'
+            self.spec = {'kind': 'promotion'}
+        def artifact(self, name):
+            return '.git/' + TASK + '-' + name
+        def step_preflight(self):
+            print('BEFORE_INTERRUPT')
+            raise KeyboardInterrupt
+    (tmp_path / '.git').mkdir()
+    (tmp_path / 'scripts').mkdir()
+    _lf((tmp_path / 'scripts' / 'batch_runner.py'), 'synthetic runner\n')
+    monkeypatch.setattr(br, 'Batch', Stub)
+    monkeypatch.setattr(br, 'derive_steps', lambda _: ['preflight'])
+    monkeypatch.setattr(br, 'load_control', lambda _: {
+        'task_id': TASK, 'prompt_sha256': br.sha256_bytes(b'synthetic prompt'),
+        'runner_sha256': 'fixed', 'done': [], 'halted': None})
+    monkeypatch.setattr(br, 'accepted_runner_sha', lambda *a: 'fixed')
+    monkeypatch.setattr(br.Path, 'cwd', lambda: tmp_path)
+    monkeypatch.setattr(br, '__file__', str(tmp_path / 'scripts' / 'batch_runner.py'))
+    with pytest.raises(KeyboardInterrupt):
+        br.main(['--task-id', TASK, 'preflight'])
+    raw = (tmp_path / '.git' / (TASK + '-step-preflight.out')).read_text()
+    assert 'BEFORE_INTERRUPT' in raw and 'STEP_OUTPUT_COMPLETE' not in raw
+
+
+@pytest.mark.parametrize('body', [
+    'STEP_PASS verify\nSTEP_PASS verify\nSTEP_OUTPUT_COMPLETE step=verify result=0\n',
+    'STEP_OUTPUT_COMPLETE step=verify result=0\nSTEP_PASS verify\nSTEP_OUTPUT_COMPLETE step=verify result=0\n',
+    'S1 X | step verify\nSTEP_OUTPUT_COMPLETE step=verify result=0\n',
+])
+def test_g3_step_output_duplicate_or_missing_pass_or_marker_fail_closed(tmp_path, body):
+    (tmp_path / '.git').mkdir()
+    b = _g3_output_stub(tmp_path)
+    st = ['preflight', 'verify']
+    _lf((tmp_path / '.git' / (TASK + '-step-preflight.out')),
+        'STEP_PASS preflight\nSTEP_OUTPUT_COMPLETE step=preflight result=0\n')
+    _lf((tmp_path / '.git' / (TASK + '-step-verify.out')), body)
+    assert halt_code(br._step_output_lines, b, st, {'done': st, 'halted': None}) == 'REPLY_STEP_OUTPUT_INVALID'
+
+
+def test_g3_timing_rejects_prompt_binding_drift(tmp_path, monkeypatch, capsys):
+    (tmp_path / '.git').mkdir()
+    b = _g3_output_stub(tmp_path)
+    control = {'task_id': TASK, 'done': ['preflight'], 'halted': None, 'prompt_sha256': br.sha256_bytes(b'other')}
+    monkeypatch.setattr(br, '_timing_lines', lambda root, task: ('TIMING x', 'STATE y', control))
+    monkeypatch.setattr(br, 'Batch', lambda root, task: b)
+    monkeypatch.setattr(br, 'derive_steps', lambda spec: ['preflight'])
+    monkeypatch.setattr(br, '_self_check_reply', lambda batch, reply: 'PASS')
+    br.timing(str(tmp_path), TASK)
+    out = capsys.readouterr().out
+    assert 'EXECUTOR_REPLY_UNAVAILABLE REPLY_CONTROL_BINDING_DRIFT' in out and 'EXECUTOR_REPLY_BEGIN' not in out

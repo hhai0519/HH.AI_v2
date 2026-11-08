@@ -1352,3 +1352,24 @@ def test_readonly_checker_rejects_injected_prose_even_with_new_sha(tmp_path, rep
         assert _code(pb.check,root,str(canonical),success)=='READONLY_PROMPT_CANONICAL_DRIFT'
     canonical.write_bytes(good.replace('四、唯一固定唯讀探針命令','四、固定可信命令').encode())
     assert _code(pb.check,root,str(canonical),success)=='READONLY_PROMPT_CANONICAL_DRIFT'
+
+# B115/G3 CI-PENDING-REPLY: positive terminal handoff; no checker command for Executor.
+def test_g3_auto_production_reply_terminal_contract(tmp_path, repo):
+    mod, root, definition, path = _auto_production_definition(tmp_path, repo)
+    text = mod.auto_production(root, path, tmp_path / 'reply_contract').read_text('utf-8')
+    assert 'EXECUTOR_REPLY_BEGIN' in text and 'EXECUTOR_REPLY_END' in text
+    assert 'REPLY_SELF_CHECK=PASS' in text and '立即結束' in text
+    assert 'CI PENDING' in text and '不捏造 CI Run／job ID 或 PASS' in text
+    assert 'reply_check.py --prompt' not in text
+    assert 'EXECUTOR_REPLY_UNAVAILABLE' in text  # self-hosting pre-apply fallback
+    assert 'S1 之後唯一允許、且必須執行的命令，是第五節最後一行的 timing（一次）' in text  # §9: timing is the listed post-S1 step
+
+
+def test_g3_auto_promotion_reply_terminal_contract(tmp_path, repo):
+    pm, root, _base, branch, candidate = _auto_promotion_fixture(tmp_path, repo)
+    text = pm.auto_promotion(root, candidate, branch, tmp_path / 'promote_reply').read_text('utf-8')
+    assert 'EXECUTOR_REPLY_BEGIN' in text and 'EXECUTOR_REPLY_END' in text
+    assert 'REPLY_SELF_CHECK=PASS' in text and '立即' in text
+    assert 'CI PENDING' in text and '不得補造 PASS' in text
+    assert 'S1 之後唯一允許、且必須執行的命令，是第四節最後一行的 timing（一次）' in text
+    assert 'reply_check.py --prompt' not in text

@@ -18,7 +18,9 @@ Steps
   production: preflight setup [e24] apply [focused] generate precommit stage commit postcommit push
               (e24 when spec "e24" is true; focused when spec "focused" is not null)
   promotion:  preflight verify promote postmain
-  timing:     prints TIMING and STATE lines; never changes state.
+  timing:     prints TIMING and STATE and, when complete task-local step evidence
+              exists, emits a one-time verified EXECUTOR_REPLY block. It never changes
+              tracked files or the control state.
 
 Invariants (fail closed; a failing step prints one "S1 <CODE> | step <name>" line and exits 1):
 - .git/<TASK_ID>-control.json enforces the exact step order, each step exactly once, and locks the
@@ -96,6 +98,7 @@ Invariants (fail closed; a failing step prints one "S1 <CODE> | step <name>" lin
 """
 
 import argparse
+import contextlib
 import hashlib
 import json
 import os
@@ -1292,7 +1295,66 @@ def check_control(control, task_id, prompt_sha, runner_sha, steps, step):
     return 'OK'
 
 
-def timing(root, task_id):
+class _StepRecord:
+    """Durable stdout tee for a single post-admission runner step (one task-local x file).
+
+    The real stdout is always primary. An I/O error in the audit copy is recorded,
+    never thrown in the middle of reporting an earlier S1. Timing rejects incomplete
+    or truncated records: only a normal return can write the completion marker.
+    """
+    def __init__(self, batch, step):
+        self.step = step
+        rel = batch.artifact('step-' + step + '.out')
+        try:
+            self.file = open(Path(batch.root) / rel, 'x', encoding='utf-8', newline='')
+        except FileExistsError:
+            raise Halt('STEP_OUTPUT_ALREADY_EXISTS') from None
+        except OSError:
+            raise Halt('STEP_OUTPUT_OPEN_FAILED') from None
+        self.primary_stdout = sys.stdout
+        self.failed = False
+
+    def write(self, value):
+        self.primary_stdout.write(value)
+        if not self.failed:
+            try:
+                self.file.write(value)
+                self.file.flush()
+                os.fsync(self.file.fileno())
+            except (OSError, ValueError):
+                self.failed = True
+        return len(value)
+
+    def flush(self):
+        self.primary_stdout.flush()
+        if not self.failed:
+            try:
+                self.file.flush()
+                os.fsync(self.file.fileno())
+            except (OSError, ValueError):
+                self.failed = True
+
+    def finish(self, result):
+        try:
+            if not self.failed:
+                self.file.write('STEP_OUTPUT_COMPLETE step=' + self.step + ' result=' + str(result) + '\n')
+                self.file.flush()
+                os.fsync(self.file.fileno())
+        except (OSError, ValueError):
+            self.failed = True
+        finally:
+            try:
+                self.file.close()
+            except OSError:
+                self.failed = True
+        return not self.failed
+
+    def abort(self):
+        # On KeyboardInterrupt or process termination there is no completion marker.
+        self.file.close()
+
+
+def _timing_lines(root, task_id):
     prompt = Path(root) / ('.git/' + task_id + '-prompt.txt')
     control = Path(root) / ('.git/' + task_id + '-control.json')
     start = datetime.fromtimestamp(os.path.getmtime(prompt)).astimezone()
@@ -1301,13 +1363,156 @@ def timing(root, task_id):
     c = {}
     if control.is_file():
         try:
-            c = json.loads(control.read_text(encoding='utf-8'))
-        except ValueError:
+            c = json.loads(control.read_text(encoding='utf-8'), object_pairs_hook=reject_duplicate_json_keys)
+        except (ValueError, OSError, UnicodeError):
             c = {}
-    print('TIMING start=' + start.isoformat() + ' end=' + end.isoformat() + ' elapsed_sec=' + str(round(sec, 1))
-          + ' elapsed_min=' + str(int(sec // 60)))
-    print('STATE done=' + ','.join(c.get('done', [])) + ' halted=' + str(c.get('halted'))
-          + (' bundle=' + str(c['bundle_outcome']) if 'bundle_outcome' in c else ''))
+    tim = ('TIMING start=' + start.isoformat() + ' end=' + end.isoformat() + ' elapsed_sec=' + str(round(sec, 1))
+           + ' elapsed_min=' + str(int(sec // 60)))
+    state = ('STATE done=' + ','.join(c.get('done', [])) + ' halted=' + str(c.get('halted'))
+             + (' bundle=' + str(c['bundle_outcome']) if 'bundle_outcome' in c else ''))
+    return tim, state, c
+
+
+def _legacy_preapply_record_allowed(batch, control, step, steps):
+    """The first runner-update production's old runner cannot record pre-apply steps.
+
+    A missing record can be substituted only for a completed pre-apply step if the
+    current runner is the exact authored successor and the bound runner equals the
+    Base blob. No S1 may be synthesized from a missing record.
+    """
+    spec = batch.spec
+    if (spec.get('kind') != 'production' or spec.get('runner_update') is not True or
+            'apply' not in control.get('done', []) or step not in steps[:steps.index('apply')+1]):
+        return False
+    try:
+        current = sha256_bytes((Path(batch.root) / RUNNER_REL).read_bytes())
+        base = sha256_bytes(git_bytes(batch.root, 'cat-file', 'blob', spec['base_oid'] + ':' + RUNNER_REL))
+    except (Halt, OSError):
+        return False
+    return (current == spec['authors'][RUNNER_REL]['sha256'] and
+            base == control.get('runner_sha256') and current != base)
+
+
+def _step_output_lines(batch, steps, control):
+    """Reconstruct only complete, single-execution task artifacts in step order."""
+    done = control.get('done')
+    halted = control.get('halted')
+    if not isinstance(done, list) or done != steps[:len(done)] or not isinstance(halted, (str, type(None))):
+        raise Halt('REPLY_CONTROL_INVALID')
+    if halted:
+        stopped = halted.split(':', 1)[0]
+        if len(done) >= len(steps) or stopped != steps[len(done)]:
+            raise Halt('REPLY_CONTROL_INVALID')
+        included = done + [stopped]
+    else:
+        if done == steps:
+            included = done
+        elif len(done) < len(steps):
+            # The halted-control write may itself fail. The previous control still
+            # has halted=None, but the next step's complete result=1 record can
+            # carry the secondary S1 plus the original S1_PRIMARY. No synthetic
+            # PASS is allowed for that attempted step. The checker binds both.
+            included = done + [steps[len(done)]]
+        else:
+            raise Halt('REPLY_CONTROL_INCOMPLETE')
+    collected = []
+    for step in included:
+        rel = batch.artifact('step-' + step + '.out')
+        path = Path(batch.root) / rel
+        if not path.is_file():
+            if step in done and _legacy_preapply_record_allowed(batch, control, step, steps):
+                collected.append('STEP_PASS ' + step)
+                continue
+            raise Halt('REPLY_STEP_OUTPUT_MISSING')
+        try:
+            raw = path.read_bytes()
+        except OSError:
+            raise Halt('REPLY_STEP_OUTPUT_UNREADABLE') from None
+        if not raw or len(raw) > 1048576 or b'\r' in raw or b'\x00' in raw:
+            raise Halt('REPLY_STEP_OUTPUT_INVALID')
+        try:
+            lines = raw.decode('utf-8', errors='strict').splitlines()
+        except UnicodeDecodeError:
+            raise Halt('REPLY_STEP_OUTPUT_INVALID') from None
+        ending = 'STEP_OUTPUT_COMPLETE step=' + step + ' result=' + ('0' if step in done else '1')
+        if not lines or lines[-1] != ending:
+            raise Halt('REPLY_STEP_OUTPUT_TRUNCATED')
+        if sum(x.startswith('STEP_OUTPUT_COMPLETE ') for x in lines) != 1:
+            raise Halt('REPLY_STEP_OUTPUT_INVALID')
+        lines = lines[:-1]
+        if (step in done and lines.count('STEP_PASS ' + step) != 1) or (step not in done and
+                any(x == 'STEP_PASS ' + step for x in lines)):
+            raise Halt('REPLY_STEP_OUTPUT_INVALID')
+        collected.extend(lines)
+    return collected
+
+
+def _self_check_reply(batch, reply_text):
+    """Invoke the checker through CLI: never import reply_check into batch_runner."""
+    rel = batch.write_new_artifact('executor-reply.txt', reply_text)
+    try:
+        cp = subprocess.run([PY, 'scripts/reply_check.py', '--prompt', batch.prompt_rel, '--reply', rel],
+                            cwd=batch.root, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE, timeout=90, env=child_env())
+    except (OSError, subprocess.TimeoutExpired):
+        raise Halt('REPLY_SELF_CHECK_UNAVAILABLE') from None
+    if cp.returncode not in (0, 2) or len(cp.stdout) > 16384:
+        raise Halt('REPLY_SELF_CHECK_FAILED')
+    try:
+        lines = cp.stdout.decode('utf-8', errors='strict').splitlines()
+    except UnicodeDecodeError:
+        raise Halt('REPLY_SELF_CHECK_INVALID') from None
+    if 'REPLY_CHECK FIELDS=PASS' not in lines:
+        raise Halt('REPLY_SELF_CHECK_FAILED')
+    # The checker's RESULT=PASS also covers a well-formed S1 whose evidence is N/A
+    # (e.g. a non-bounded step). CLASS must never present such a halt as PASS.
+    heads = [line for line in lines if line.startswith('REPLY_CHECK TASK=')]
+    if len(heads) != 1 or not heads[0].startswith('REPLY_CHECK TASK=' + batch.task_id + ' '):
+        raise Halt('REPLY_SELF_CHECK_INVALID')
+    halted_reply = ' OUTCOME=S1=' in heads[0]
+    result = [line.removeprefix('REPLY_CHECK RESULT=') for line in lines
+              if line.startswith('REPLY_CHECK RESULT=')]
+    if len(result) != 1 or result[0] not in ('PASS', 'CI_PENDING', 'NOT_VERIFIED'):
+        raise Halt('REPLY_SELF_CHECK_INVALID')
+    if cp.returncode != (0 if result[0] == 'PASS' else 2):
+        raise Halt('REPLY_SELF_CHECK_CONTRADICTION')
+    if halted_reply and result[0] == 'CI_PENDING':
+        raise Halt('REPLY_SELF_CHECK_CONTRADICTION')
+    return 'S1' if halted_reply else result[0]
+
+
+def timing(root, task_id):
+    """One-shot, task-bound response; missing old-runner evidence is never guessed."""
+    try:
+        tim, state, control = _timing_lines(root, task_id)
+    except (OSError, ValueError, KeyError, TypeError):
+        print('EXECUTOR_REPLY_UNAVAILABLE TIMING_UNAVAILABLE')
+        return 1
+    try:
+        if not control or not control.get('task_id') == task_id:
+            raise Halt('REPLY_CONTROL_MISSING')
+        batch = Batch(root, task_id)
+        steps = derive_steps(batch.spec)
+        if control.get('prompt_sha256') != sha256_bytes(batch.prompt_bytes):
+            raise Halt('REPLY_CONTROL_BINDING_DRIFT')
+        output = _step_output_lines(batch, steps, control)
+        reply_text = '\n'.join(output + [tim, state]) + '\n'
+        status = _self_check_reply(batch, reply_text)
+    except Exception as exc:  # noqa: BLE001 - any reply failure degrades to the manual fallback
+        code = str(exc) if isinstance(exc, Halt) else 'REPLY_UNAVAILABLE'
+        # Fallback keeps the legacy contract: TIMING and STATE remain the last two lines.
+        # timing stays a read-only reporter with rc 0; the fixed UNAVAILABLE line, not the
+        # exit code, selects the template's manual fallback.
+        print('EXECUTOR_REPLY_UNAVAILABLE ' + code)
+        print(tim)
+        print(state)
+        return 0
+    # Success: TIMING/STATE appear once, inside the block, so a whole-output copy cannot repeat them.
+    print('EXECUTOR_REPLY_BEGIN')
+    print(reply_text, end='')
+    print('EXECUTOR_REPLY_END')
+    print('REPLY_SELF_CHECK=PASS CLASS=' + status)
+    return 0
 
 
 def report_halt(h, step):
@@ -1368,8 +1573,7 @@ def main(argv=None):
         if Path.cwd().resolve() != Path(root):
             raise Halt('WORKING_DIRECTORY_MISMATCH')
         if step == 'timing':
-            timing(root, task_id)
-            return 0
+            return timing(root, task_id)
         batch = Batch(root, task_id)
         steps = derive_steps(batch.spec)
         if step not in steps:
@@ -1393,6 +1597,31 @@ def main(argv=None):
     except (OSError, UnicodeDecodeError):
         print('S1 PROMPT_UNREADABLE | step ' + step)
         return 1
+    try:
+        record = _StepRecord(batch, step)
+    except Halt as error:
+        # No step may run without its durable record. This is not a prior step S1.
+        control['halted'] = step + ':' + str(error)
+        if save_control_or_s1(batch, control, step):
+            report_halt(error, step)
+        return 1
+    try:
+        with contextlib.redirect_stdout(record):
+            result = _execute_step(batch, step, control)
+    except BaseException:
+        record.abort()  # no terminal marker after an interrupted or crashed step
+        raise
+    completed = record.finish(result)
+    if not completed:
+        if result == 0:
+            print('S1 STEP_OUTPUT_WRITE_FAILED | step ' + step)
+        else:
+            print('STEP_OUTPUT_STATUS=UNAVAILABLE')  # secondary error never overwrites S1
+        return 1
+    return result
+
+
+def _execute_step(batch, step, control):
     try:
         outcome = getattr(batch, 'step_' + step)()
         if step == 'bundle':
@@ -1423,6 +1652,7 @@ def main(argv=None):
         return 1
     print('STEP_PASS ' + step)
     return 0
+
 
 
 if __name__ == '__main__':

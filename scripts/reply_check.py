@@ -20,7 +20,8 @@ REPLY_LINE_NOT_EXPECTED; a missing or repeated line fails with REPLY_<LINE>_MISS
                       step, halted=None, bundle as reported; optional STEP_PASS and BOUNDED_EXIT ... code=0 lines.
   promotion success   CI_RUN candidate and postmain for the candidate, "MAIN <sha> | POST-MAIN CI PASS | S1 NONE",
                       optional MAIN_PROMOTED <candidate>, TIMING, STATE as above.
-  A "CI PENDING" COMMIT or MAIN line fails (REPLY_CI_PENDING): the reply does not prove a passing CI run.
+  A valid "CI PENDING" COMMIT or MAIN is reported as CI_PENDING (exit 2, never PASS).
+  It has no success CI_RUN for that phase and must carry the corresponding pending handoff card.
   S1 inside a step    (STATE halted = <step>:<code>, done = the steps before it) one S1 line, at most one S1_DETAIL,
                       exactly one metadata form (S1_EVIDENCE_FILE + S1_SHA256SUMS_FILE + S1_EVIDENCE_JSON bound to the
                       task, step and code, or S1_EVIDENCE_STATUS=UNAVAILABLE), exactly one capture form
@@ -241,7 +242,7 @@ def check_bounded_lines(found, steps, stopped=None):
             seen.add(stage)
 
 
-def check_bundle(found, task, spec, head):
+def check_bundle(found, task, spec, head, pending=False):
     base = spec['base_oid']
     if found['BUNDLE_FAILED']:
         return 'FAILED_' + one(found, 'BUNDLE_FAILED').group(1)
@@ -254,48 +255,63 @@ def check_bundle(found, task, spec, head):
     _require(hashlib.sha256(raw.encode('utf-8')).hexdigest() == one(found, 'HANDOFF_CARD_SHA256').group(1),
              'REPLY_HANDOFF_SHA_MISMATCH')
     card = _json(raw, 'REPLY_HANDOFF_JSON_INVALID')
-    ci = one(found, 'CI_RUN_CANDIDATE')
+    ci = one(found, 'CI_RUN_CANDIDATE') if not pending else None
+    ci_record = ({'status': 'PENDING'} if pending else
+                 {'status': 'PASS', 'run_id': int(ci.group(2)),
+                  'attempt': int(ci.group(3)), 'head_sha': head})
     expected = {'schema_version': 1, 'phase': 'candidate', 'task_id': task, 'base_oid': base, 'candidate_oid': head,
-                'branch': spec['branch'], 'candidate_ci': {'status': 'PASS', 'run_id': int(ci.group(2)),
-                                                           'attempt': int(ci.group(3)), 'head_sha': head},
+                'branch': spec['branch'], 'candidate_ci': ci_record,
                 'postmain': 'NOT_RUN', 'bundle_status': 'READY', 'bundle_file': bfile, 'next_step': NEXT_STEP}
     _require(card == expected, 'REPLY_HANDOFF_CARD_MISMATCH')
     return 'READY'
 
 
 def check_success(found, task, spec, steps):
-    ranges = {'TIMING': (1, 1), 'STATE': (1, 1), 'STEP_PASS': (0, len(steps)), 'CI_RUN_CANDIDATE': (1, 1)}
-    if spec['kind'] == 'production':
+    """Verify completed steps, distinguishing a well-formed PENDING from proven PASS.
+
+    A PENDING reply cannot contain a successful CI_RUN for its unproven phase.
+    The return status never authorizes promotion, even if STATE shows every step done.
+    """
+    is_production = spec['kind'] == 'production'
+    m = one(found, 'COMMIT') if is_production and found['COMMIT'] else (
+        one(found, 'MAIN') if not is_production and found['MAIN'] else None)
+    pending = m is not None and m.group(2) == 'PENDING'
+    if pending and ((is_production and found['CI_RUN_CANDIDATE']) or
+                    (not is_production and found['CI_RUN_POSTMAIN'])):
+        raise CheckError('REPLY_CI_PENDING')  # contradictory proof for the unproven phase
+    ranges = {'TIMING': (1, 1), 'STATE': (1, 1), 'STEP_PASS': (0, len(steps)),
+              'CI_RUN_CANDIDATE': (0 if is_production and pending else 1, 0 if is_production and pending else 1)}
+    if is_production:
         ranges.update({'COMMIT': (1, 1), 'BOUNDED_EXIT': (0, len(STAGES))})
         if 'bundle' in steps:
             ranges.update({'BUNDLE_FAILED': (1, 1)} if found['BUNDLE_FAILED'] else {n: (1, 1) for n in READY})
     else:
-        ranges.update({'MAIN': (1, 1), 'MAIN_PROMOTED': (0, 1), 'CI_RUN_POSTMAIN': (1, 1)})
+        ranges.update({'MAIN': (1, 1), 'MAIN_PROMOTED': (0, 1),
+                       'CI_RUN_POSTMAIN': (0 if pending else 1, 0 if pending else 1)})
     cardinality(found, ranges)
-    if spec['kind'] == 'production':
-        m = one(found, 'COMMIT')
+    if is_production:
         head = m.group(1)
-        check_ci(found, 'candidate', spec['branch'], head)
-        bundle = check_bundle(found, task, spec, head) if 'bundle' in steps else None
+        if not pending:
+            check_ci(found, 'candidate', spec['branch'], head)
+        bundle = check_bundle(found, task, spec, head, pending=pending) if 'bundle' in steps else None
         check_bounded_lines(found, steps)
         outcome = 'COMMIT'
     else:
         head = spec['candidate_oid']
-        m = one(found, 'MAIN')
         _require(m.group(1) == head, 'REPLY_MAIN_MISMATCH')
         for p in found['MAIN_PROMOTED']:
             _require(p.group(1) == head, 'REPLY_MAIN_MISMATCH')
         check_ci(found, 'candidate', spec['candidate_branch'], head)
-        check_ci(found, 'postmain', 'main', head)
+        if not pending:
+            check_ci(found, 'postmain', 'main', head)
         bundle = None
         outcome = 'MAIN'
-    _require(m.group(2) == 'PASS', 'REPLY_CI_PENDING')
     check_timing(found)
     done, halted, state_bundle = state(found)
     _require(done == steps and halted == 'None', 'REPLY_STATE_MISMATCH')
     _require(state_bundle == bundle, 'REPLY_STATE_BUNDLE_MISMATCH')
     check_step_pass(found, done)
-    return outcome + ' ' + head
+    return outcome + ' ' + head, pending
 
 
 def s1_line(found):
@@ -494,7 +510,8 @@ def check_spec(task, spec, reply_text, capture_path=None, prompt_sha=None):
         outcome, status, reason = check_s1(found, task, spec, steps, capture_path, prompt_sha)
     else:
         _require(capture_path is None, 'CAPTURE_NOT_EXPECTED')
-        outcome, status, reason = check_success(found, task, spec, steps), 'N/A', 'NO_S1'
+        outcome, pending = check_success(found, task, spec, steps)
+        status, reason = ('CI_PENDING', 'CI_PENDING') if pending else ('N/A', 'NO_S1')
     _require(status != 'INCOMPLETE', 'EVIDENCE_INCOMPLETE_' + reason)
     return task, spec['kind'], outcome, status, reason
 
@@ -517,7 +534,8 @@ def main(argv=None):
     print('REPLY_CHECK TASK=' + task + ' KIND=' + kind + ' OUTCOME=' + outcome.replace(' ', '='))
     print('REPLY_CHECK FIELDS=PASS')
     print('REPLY_CHECK EVIDENCE=' + status + ' REASON=' + reason)
-    result = 'PASS' if status in ('PASS', 'N/A') else 'NOT_VERIFIED'
+    result = ('PASS' if status in ('PASS', 'N/A') else
+              'CI_PENDING' if status == 'CI_PENDING' else 'NOT_VERIFIED')
     print('REPLY_CHECK RESULT=' + result)
     return 0 if result == 'PASS' else 2
 

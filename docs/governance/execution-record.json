@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "B115-G3-S1-STEP-HALT-DUALFAIL-R2-261108",
-  "base_oid": "2474d5db97ad766940b3b0fe0b0754cc232b2b08",
+  "task_id": "B115-G3-CI-PENDING-REPLY-R4-261108",
+  "base_oid": "7c4852f8b02ee08ea272e926a1d469b57041f02c",
   "plan": {
     "allowed_paths": [
       "docs/AUDIT-LOG.md",
@@ -16,6 +16,7 @@
       "scripts/promotion_template.py",
       "scripts/reply_check.py",
       "scripts/tests/test_batch_runner.py",
+      "scripts/tests/test_prompt_builder.py",
       "scripts/tests/test_reply_check.py"
     ],
     "required_paths": [
@@ -30,6 +31,7 @@
       "scripts/promotion_template.py",
       "scripts/reply_check.py",
       "scripts/tests/test_batch_runner.py",
+      "scripts/tests/test_prompt_builder.py",
       "scripts/tests/test_reply_check.py"
     ],
     "max_plan_revisions": 3,
@@ -49,6 +51,7 @@
       "scripts/promotion_template.py",
       "scripts/reply_check.py",
       "scripts/tests/test_batch_runner.py",
+      "scripts/tests/test_prompt_builder.py",
       "scripts/tests/test_reply_check.py"
     ]
   },

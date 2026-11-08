@@ -664,3 +664,57 @@ def test_g3_detail_not_accepted_for_control_save_failed():
     reply = _g3_step_double_fault_reply().replace(
         'S1 CONTROL_SAVE_FAILED | step preflight', 'S1 CONTROL_SAVE_FAILED | step preflight\nS1_DETAIL exit=2 class=X')
     assert _code(rc.check_spec, FIX_TASK, FIX_SPEC, reply).startswith('REPLY_')
+
+# G3 CI_PENDING reply is format-valid but never proof of CI PASS.
+def _g3_pending_production():
+    candidate = json.loads(CARD)
+    candidate['candidate_ci'] = {'status': 'PENDING'}
+    new = json.dumps(candidate, sort_keys=True, ensure_ascii=True, separators=(',', ':'))
+    response = PROD_REPLY.replace(CARD, new).replace(
+        hashlib.sha256(CARD.encode()).hexdigest(), hashlib.sha256(new.encode()).hexdigest())
+    return '\n'.join(line for line in response.splitlines() if not line.startswith('CI_RUN phase=candidate'))\
+        .replace(' | CI PASS | S1 NONE', ' | CI PENDING | S1 NONE')
+
+
+def _g3_pending_promotion():
+    return '\n'.join(line for line in PROMO_REPLY.splitlines() if not line.startswith('CI_RUN phase=postmain'))\
+        .replace('POST-MAIN CI PASS | S1 NONE', 'POST-MAIN CI PENDING | S1 NONE')
+
+
+def test_g3_production_pending_is_valid_but_not_pass():
+    assert rc.check_spec(PROD_TASK, PROD_SPEC, _g3_pending_production())[3:] == ('CI_PENDING', 'CI_PENDING')
+
+
+def test_g3_promotion_pending_is_valid_but_not_pass():
+    assert rc.check_spec(PROMO_TASK, PROMO_SPEC, _g3_pending_promotion())[3:] == ('CI_PENDING', 'CI_PENDING')
+
+
+@pytest.mark.parametrize('edit', [
+    lambda t: t.replace('CI PENDING', 'CI PASS'),
+    lambda t: t + '\nCI_RUN phase=candidate run_id=40107662314 attempt=1 event=push branch=' + BRANCH
+                    + ' head_sha=' + CAND + ' verify=success gateway-windows=success\n',
+    lambda t: t.replace('"status":"PENDING"', '"status":"PASS"'),
+    lambda t: t.replace('HANDOFF_CARD_SHA256=', 'HANDOFF_CARD_SHA256=00'),
+])
+def test_g3_pending_production_mutation_must_fail(edit):
+    assert _code(rc.check_spec, PROD_TASK, PROD_SPEC, edit(_g3_pending_production())).startswith('REPLY_')
+
+
+@pytest.mark.parametrize('edit', [
+    lambda t: t.replace('POST-MAIN CI PENDING', 'POST-MAIN CI PASS'),
+    lambda t: t + '\nCI_RUN phase=postmain run_id=40108505167 attempt=1 event=push branch=main head_sha=' + CAND
+                    + ' verify=success gateway-windows=success\n',
+    lambda t: t.replace('MAIN ' + CAND, 'MAIN ' + BASE),
+])
+def test_g3_pending_promotion_mutation_must_fail(edit):
+    assert _code(rc.check_spec, PROMO_TASK, PROMO_SPEC, edit(_g3_pending_promotion())).startswith('REPLY_')
+
+
+# SO: the CLI result line is the self-check contract; PENDING must never print PASS or exit 0.
+def test_g3_cli_pending_result_is_never_pass(tmp_path, monkeypatch, capsys):
+    reply = tmp_path / 'reply.txt'
+    reply.write_text('x\n', encoding='utf-8')
+    monkeypatch.setattr(rc, 'check_reply', lambda *a: ('T-261108', 'production', 'COMMIT ' + CAND, 'CI_PENDING', 'CI_PENDING'))
+    assert rc.main(['--prompt', 'p', '--reply', str(reply)]) == 2
+    out = capsys.readouterr().out.splitlines()
+    assert 'REPLY_CHECK RESULT=CI_PENDING' in out and 'REPLY_CHECK RESULT=PASS' not in out
