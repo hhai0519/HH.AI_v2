@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "B115-G3-CI-QUERY-RESILIENCE-R2-261107",
-  "base_oid": "cc33c3f371937b715e3251c4ad79d1c947a74a77",
+  "task_id": "B115-G3-S1-DOUBLEFAULT-R2-261108",
+  "base_oid": "ebd31085a487855de566d4c2d58d4a31014592c2",
   "plan": {
     "allowed_paths": [
       "docs/AUDIT-LOG.md",
@@ -11,8 +11,8 @@
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
       "docs/refactor-backlog.md",
-      "scripts/tests/test_verification_primitives.py",
-      "scripts/verification_primitives.py"
+      "scripts/batch_runner.py",
+      "scripts/tests/test_batch_runner.py"
     ],
     "required_paths": [
       "docs/AUDIT-LOG.md",
@@ -21,8 +21,8 @@
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
       "docs/refactor-backlog.md",
-      "scripts/tests/test_verification_primitives.py",
-      "scripts/verification_primitives.py"
+      "scripts/batch_runner.py",
+      "scripts/tests/test_batch_runner.py"
     ],
     "max_plan_revisions": 3,
     "revision_count": 0,
@@ -36,8 +36,8 @@
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
       "docs/refactor-backlog.md",
-      "scripts/tests/test_verification_primitives.py",
-      "scripts/verification_primitives.py"
+      "scripts/batch_runner.py",
+      "scripts/tests/test_batch_runner.py"
     ]
   },
   "evidence": [

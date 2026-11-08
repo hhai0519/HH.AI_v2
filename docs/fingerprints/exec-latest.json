@@ -1,5 +1,5 @@
 {
-  "base_head": "cc33c3f",
+  "base_head": "ebd3108",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -566,16 +566,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 388,
-      "sha256": "3c6c86b1ebce31b1ea98f0ef91ee064834fac712b9b234fda64ef7256ead7926"
+      "lines": 389,
+      "sha256": "bb83daf48bc1f414fc714b7e4cb5f8b87dcbab0fa12190d0adbdeccde8ef1a94"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 363,
-      "sha256": "52e530b8cd3a3a0d9a066ebfa07d83b4303c6adc98066391bd6f4c7da4ce40d7"
+      "lines": 364,
+      "sha256": "cbd938c179000952c3a49f96e6b0614904a3a856a5802733118dcfafff62db23"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -617,8 +617,8 @@
         "## G. 舊 repo 未盤點區塊（2026-09-02 新發現）",
         "## 封存區"
       ],
-      "lines": 473,
-      "sha256": "a00760e1b557cfe4e5f9697a8ce4df3093ec929f1e65e25fc430962dca0c171e"
+      "lines": 474,
+      "sha256": "7924b6e735f1946b2fb4fa8274ca01b08fa77dbbd70f51bfe78c414775e49de8"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1127,8 +1127,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6448,
-      "sha256": "41beb3e676b433292b646ca634c73d28776992725f6db9b7b2df9899b40b0a3a"
+      "lines": 6449,
+      "sha256": "8282e3b4db7c095cceb2fd0919227bb19bb5b0062322a9f977aa8562940a367b"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1177,8 +1177,8 @@
         "# Windows: os.replace needs DELETE access on both files; antivirus/indexer handles can deny it briefly.",
         "# Retry only that PermissionError, bounded (about 1.55 s total); any other failure is not retried."
       ],
-      "lines": 1417,
-      "sha256": "15966519577e879ec572e90955fddc5ea1abc29c9fb1b44676e490bf931d28fa"
+      "lines": 1424,
+      "sha256": "c8db9808f323ad884cc828be709843c35dc0d0f4510405891baa1da59dc01c3f"
     },
     "scripts/batch_sim.py": {
       "fences": 0,
@@ -1584,10 +1584,11 @@
         "# --- B-119 / U-04: before-control production admission ------------------------",
         "# B-115/B-119: readonly is a non-executable delivery kind, not a disguised production batch.",
         "# B-117/G5 D-2: control atomicity and bounded failure injection; synthetic .git only.",
-        "# B117 R3 — per-stage envelope and gate-only timeout mapping."
+        "# B117 R3 — per-stage envelope and gate-only timeout mapping.",
+        "# G3: Original S1 is authoritative even when a second failure hits cleanup/diagnostics."
       ],
-      "lines": 1925,
-      "sha256": "d6b89a9136837ff461de7cbfebfb5a6b8f5d817e720205ae64b1647ebab81f50"
+      "lines": 1976,
+      "sha256": "1cda9f30525706092d3c9d058896656d3ca2e88995775ee95c1faa49aaf6e874"
     },
     "scripts/tests/test_batch_sim.py": {
       "fences": 0,
@@ -2261,7 +2262,7 @@
       "sha256": "6bfd57c05a09df3cde679ae53ac6ddd67bfb64cda4246584617d3cc67fb3b81c"
     }
   },
-  "generated_at": "2026-11-07T13:26:17Z",
+  "generated_at": "2026-11-08T02:45:13Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

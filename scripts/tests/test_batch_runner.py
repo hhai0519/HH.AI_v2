@@ -1923,3 +1923,54 @@ def test_r3_gate_nonzero_stays_nonzero_and_external_timeout_stays_timeout(tmp_pa
         with pytest.raises(br.Halt) as exc:
             b.bounded('POSTCOMMIT', ['-c','pass'], 10, gate_timeout=True)
         assert str(exc.value) == expected
+
+# G3: Original S1 is authoritative even when a second failure hits cleanup/diagnostics.
+def test_g3_primary_control_write_s1_survives_secondary_temp_cleanup_failure(tmp_path, monkeypatch):
+    batch, path = _d2_control(tmp_path)
+    old = path.read_bytes()
+    monkeypatch.setattr(br.os, 'fsync', lambda *_: (_ for _ in ()).throw(OSError('first write failure')))
+    monkeypatch.setattr(br.os, 'unlink', lambda *_: (_ for _ in ()).throw(PermissionError('second cleanup failure')))
+    assert halt_code(br.save_control, batch, {'done':['preflight']}) == 'CONTROL_SAVE_FAILED'
+    assert path.read_bytes() == old
+    # Cleanup failed: retain the untouched task-local temporary artifact for diagnosis.
+    assert len(list(path.parent.glob(TASK + '-control-tmp-*'))) == 1
+
+
+def test_g3_primary_path_guard_s1_survives_secondary_temp_cleanup_failure(tmp_path, monkeypatch):
+    batch, path = _d2_control(tmp_path)
+    old = path.read_bytes()
+    original_artifact = batch.artifact
+    calls = []
+    def fail_second_artifact(name):
+        calls.append(name)
+        if len(calls) == 2:
+            raise br.Halt('ARTIFACT_PATH_GUARD_FAILED')
+        return original_artifact(name)
+    monkeypatch.setattr(batch, 'artifact', fail_second_artifact)
+    monkeypatch.setattr(br.os, 'unlink', lambda *_: (_ for _ in ()).throw(PermissionError('cleanup fails')))
+    assert halt_code(br.save_control, batch, {'halted':'precommit:PRECOMMIT_NONZERO'}) == 'ARTIFACT_PATH_GUARD_FAILED'
+    assert path.read_bytes() == old
+    assert len(list(path.parent.glob(TASK + '-control-tmp-*'))) == 1
+
+
+def test_g3_secondary_unexpected_metadata_error_does_not_mask_original_s1(tmp_path, monkeypatch, capsys):
+    class DiagnosticsBatch:
+        root = str(tmp_path)
+        task_id = TASK
+        def artifact(self, name): return '.git/' + TASK + '-' + name
+    def fail_metadata(*_args, **_kwargs):
+        raise RuntimeError('synthetic secondary metadata error; must not leak')
+    def fail_capture(*_args, **_kwargs):
+        raise RuntimeError('synthetic tertiary capture error; must not leak')
+    monkeypatch.setattr(br, 'create_metadata', fail_metadata)
+    monkeypatch.setattr(br, 'create_full_capture', fail_capture)
+    batch = DiagnosticsBatch()
+    reason = br.Halt('PRECOMMIT_NONZERO')
+    br.report_halt(reason, 'precommit')
+    br.report_s1_metadata(batch, 'precommit', reason)
+    br.report_s1_full_capture(batch, 'precommit', reason)
+    assert capsys.readouterr().out.splitlines() == [
+        'S1 PRECOMMIT_NONZERO | step precommit',
+        'S1_EVIDENCE_STATUS=UNAVAILABLE',
+        'S1_FULL_CAPTURE_STATUS=UNAVAILABLE',
+    ]

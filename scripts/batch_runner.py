@@ -1208,6 +1208,7 @@ def save_control(batch, control):
     rel = batch.artifact('control.json')
     target = Path(batch.root) / rel
     temp = None
+    primary_error = None
     try:
         encoded = (json.dumps(control, indent=2) + chr(10)).encode('utf-8')
         fd, temp = tempfile.mkstemp(prefix=batch.task_id + '-control-tmp-',
@@ -1229,8 +1230,11 @@ def save_control(batch, control):
                     raise
                 time.sleep(delay)
         temp = None
-    except (OSError, ValueError, TypeError) as exc:
-        raise Halt('CONTROL_SAVE_FAILED') from None
+    except (OSError, ValueError, TypeError):
+        primary_error = Halt('CONTROL_SAVE_FAILED')
+    except BaseException as exc:
+        # In the exceptional path, cleanup is secondary; retain the primary code.
+        primary_error = exc
     finally:
         if temp is not None:
             try:
@@ -1238,8 +1242,11 @@ def save_control(batch, control):
             except FileNotFoundError:
                 pass
             except OSError:
-                # Keep the original S1, never turn cleanup failure into success.
-                raise Halt('CONTROL_TEMP_CLEANUP_FAILED') from None
+                # A failed cleanup must never replace a prior write failure.
+                if primary_error is None:
+                    primary_error = Halt('CONTROL_TEMP_CLEANUP_FAILED')
+    if primary_error is not None:
+        raise primary_error from None
 
 
 def save_control_or_s1(batch, control, step):
@@ -1322,7 +1329,7 @@ def report_s1_metadata(batch, step, h):
         for line in create_metadata(batch.root, batch.task_id, step, str(h),
                                     validate_artifact=validate_current_artifact):
             print(line)
-    except (Halt, EvidenceError, OSError, ValueError, UnicodeError):
+    except Exception:  # noqa: BLE001 - S1 already persisted; diagnostics cannot override it
         print('S1_EVIDENCE_STATUS=UNAVAILABLE')
 
 
