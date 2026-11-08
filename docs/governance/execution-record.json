@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "B115-G3-S1-DOUBLEFAULT-R2-261108",
-  "base_oid": "ebd31085a487855de566d4c2d58d4a31014592c2",
+  "task_id": "B115-G3-S1-STEP-HALT-DUALFAIL-R2-261108",
+  "base_oid": "2474d5db97ad766940b3b0fe0b0754cc232b2b08",
   "plan": {
     "allowed_paths": [
       "docs/AUDIT-LOG.md",
@@ -12,7 +12,11 @@
       "docs/governance/execution-record.json",
       "docs/refactor-backlog.md",
       "scripts/batch_runner.py",
-      "scripts/tests/test_batch_runner.py"
+      "scripts/production_template.py",
+      "scripts/promotion_template.py",
+      "scripts/reply_check.py",
+      "scripts/tests/test_batch_runner.py",
+      "scripts/tests/test_reply_check.py"
     ],
     "required_paths": [
       "docs/AUDIT-LOG.md",
@@ -22,7 +26,11 @@
       "docs/governance/execution-record.json",
       "docs/refactor-backlog.md",
       "scripts/batch_runner.py",
-      "scripts/tests/test_batch_runner.py"
+      "scripts/production_template.py",
+      "scripts/promotion_template.py",
+      "scripts/reply_check.py",
+      "scripts/tests/test_batch_runner.py",
+      "scripts/tests/test_reply_check.py"
     ],
     "max_plan_revisions": 3,
     "revision_count": 0,
@@ -37,7 +45,11 @@
       "docs/governance/execution-record.json",
       "docs/refactor-backlog.md",
       "scripts/batch_runner.py",
-      "scripts/tests/test_batch_runner.py"
+      "scripts/production_template.py",
+      "scripts/promotion_template.py",
+      "scripts/reply_check.py",
+      "scripts/tests/test_batch_runner.py",
+      "scripts/tests/test_reply_check.py"
     ]
   },
   "evidence": [

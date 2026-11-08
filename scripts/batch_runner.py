@@ -1400,6 +1400,10 @@ def main(argv=None):
     except Halt as h:
         control['halted'] = step + ':' + str(h)
         if not save_control_or_s1(batch, control, step):
+            # The secondary control-save S1 has already been printed; retain
+            # the original step S1 as a separate, unambiguous bounded line.
+            # Do not attempt metadata/full capture without persisted control.
+            print('S1_PRIMARY ' + str(h) + ' | step ' + step)
             return 1
         report_halt(h, step)
         report_s1_metadata(batch, step, h)
@@ -1408,6 +1412,7 @@ def main(argv=None):
     except Exception as ex:  # noqa: BLE001 - any unexpected failure locks the task with a fixed code
         control['halted'] = step + ':UNEXPECTED_' + type(ex).__name__
         if not save_control_or_s1(batch, control, step):
+            print('S1_PRIMARY UNEXPECTED_' + type(ex).__name__ + ' | step ' + step)
             return 1
         print('S1 UNEXPECTED_' + type(ex).__name__ + ' | step ' + step)
         report_s1_metadata(batch, step, Halt('UNEXPECTED_' + type(ex).__name__))

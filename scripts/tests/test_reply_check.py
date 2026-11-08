@@ -556,3 +556,111 @@ def test_r3_gate_timeout_code_accepted_only_at_corresponding_step(step, code):
     for wrong in ('precommit','stage','postcommit'):
         if wrong != step:
             assert code not in rc.STAGES[wrong][2]
+
+
+# G3: the secondary control-save failure is never interpreted as the primary S1
+# or a successful persisted halt. Fail closed on missing/mismatched binding.
+def _g3_step_double_fault_reply():
+    return REAL_S1_PRECONTROL.replace(
+        'S1 START_STATE_MISMATCH | step preflight',
+        'S1 CONTROL_SAVE_FAILED | step preflight\nS1_PRIMARY PRECOMMIT_GATE_TIMEOUT | step preflight',
+    )
+
+
+def test_g3_reply_accepts_two_fault_lines_but_does_not_call_them_verified():
+    task, kind, outcome, status, reason = rc.check_spec(FIX_TASK, FIX_SPEC, _g3_step_double_fault_reply())
+    assert (task, kind) == (FIX_TASK, 'production')
+    assert (outcome, status, reason) == (
+        'S1 preflight:PRECOMMIT_GATE_TIMEOUT', 'NOT_VERIFIED', 'SECONDARY_CONTROL_SAVE_FAILURE'
+    )
+
+
+@pytest.mark.parametrize('edit', [
+    lambda s: s.replace('S1_PRIMARY PRECOMMIT_GATE_TIMEOUT | step preflight\n', ''),
+    lambda s: s.replace('S1_PRIMARY PRECOMMIT_GATE_TIMEOUT', 'S1_PRIMARY BAD-CODE'),
+    lambda s: s.replace('S1_PRIMARY PRECOMMIT_GATE_TIMEOUT | step preflight',
+                        'S1_PRIMARY PRECOMMIT_GATE_TIMEOUT | step apply'),
+    lambda s: s.replace('S1 CONTROL_SAVE_FAILED', 'S1 START_STATE_MISMATCH'),
+    lambda s: s + 'S1_PRIMARY PRECOMMIT_GATE_TIMEOUT | step preflight\n',
+    lambda s: s.replace('halted=None', 'halted=preflight:PRECOMMIT_GATE_TIMEOUT'),
+])
+def test_g3_reply_rejects_missing_unbound_or_duplicate_primary(edit):
+    assert _code(rc.check_spec, FIX_TASK, FIX_SPEC, edit(_g3_step_double_fault_reply())).startswith('REPLY_')
+
+
+# SO NB-1: runner lines printed before the dual fault (passed gates, the failed step's own
+# bounded child, promotion CI_RUN/MAIN_PROMOTED) stay legal and remain bound.
+def _g3_gate_double_fault_reply():
+    steps = rc.batch_runner.derive_steps(FIX_SPEC)
+    lines = []
+    for s in steps[:steps.index('precommit')]:
+        if s == 'focused':
+            lines.append('BOUNDED_EXIT FOCUSED code=0 | 12 passed in 1.00s')
+        lines.append('STEP_PASS ' + s)
+    return '\n'.join(lines + [
+        'BOUNDED_EXIT PRECOMMIT code=86 | (summary withheld)',
+        'S1 CONTROL_SAVE_FAILED | step precommit',
+        'S1_PRIMARY PRECOMMIT_GATE_TIMEOUT | step precommit',
+        'TIMING start=2026-11-08T12:00:00+08:00 end=2026-11-08T12:30:00+08:00 elapsed_sec=1800.0 elapsed_min=30',
+        'STATE done=' + ','.join(steps[:steps.index('precommit')]) + ' halted=None', ''])
+
+
+def _g3_postmain_double_fault_reply():
+    return '\n'.join([
+        'STEP_PASS preflight',
+        'CI_RUN phase=candidate run_id=40107662314 attempt=1 event=push branch=' + BRANCH + ' head_sha=' + CAND
+        + ' verify=success gateway-windows=success',
+        'STEP_PASS verify', 'MAIN_PROMOTED ' + CAND, 'STEP_PASS promote',
+        'S1 CONTROL_SAVE_FAILED | step postmain',
+        'S1_PRIMARY MAIN_SHA_MISMATCH | step postmain',
+        'TIMING start=2026-11-08T12:00:00+08:00 end=2026-11-08T12:08:00+08:00 elapsed_sec=480.0 elapsed_min=8',
+        'STATE done=preflight,verify,promote halted=None', ''])
+
+
+def test_g3_gate_step_double_fault_with_bounded_lines_is_not_verified():
+    assert rc.check_spec(FIX_TASK, FIX_SPEC, _g3_gate_double_fault_reply())[2:] == (
+        'S1 precommit:PRECOMMIT_GATE_TIMEOUT', 'NOT_VERIFIED', 'SECONDARY_CONTROL_SAVE_FAILURE')
+
+
+def test_g3_promotion_double_fault_after_ci_and_main_promoted_is_not_verified():
+    assert rc.check_spec(PROMO_TASK, PROMO_SPEC, _g3_postmain_double_fault_reply())[2:] == (
+        'S1 postmain:MAIN_SHA_MISMATCH', 'NOT_VERIFIED', 'SECONDARY_CONTROL_SAVE_FAILURE')
+
+
+@pytest.mark.parametrize('edit', [
+    lambda s: s.replace('BOUNDED_EXIT FOCUSED code=0', 'BOUNDED_EXIT FOCUSED code=1'),
+    lambda s: s.replace('STEP_PASS generate', 'BOUNDED_EXIT POSTCOMMIT code=0 | x\nSTEP_PASS generate'),
+    lambda s: s.replace('BOUNDED_EXIT PRECOMMIT code=86 | (summary withheld)',
+                        'BOUNDED_EXIT PRECOMMIT code=86 | (summary withheld)\nBOUNDED_EXIT PRECOMMIT code=0 | x'),
+])
+def test_g3_gate_double_fault_rejects_unbound_bounded_lines(edit):
+    assert _code(rc.check_spec, FIX_TASK, FIX_SPEC, edit(_g3_gate_double_fault_reply())).startswith('REPLY_')
+
+
+@pytest.mark.parametrize('edit', [
+    lambda s: s.replace('head_sha=' + CAND, 'head_sha=' + BASE),
+    lambda s: s.replace('MAIN_PROMOTED ' + CAND, 'MAIN_PROMOTED ' + BASE),
+    lambda s: s.replace('STEP_PASS promote', 'STEP_PASS promote\nMAIN_PROMOTED ' + CAND),
+])
+def test_g3_promotion_double_fault_rejects_tampered_ci_or_main(edit):
+    assert _code(rc.check_spec, PROMO_TASK, PROMO_SPEC, edit(_g3_postmain_double_fault_reply())).startswith('REPLY_')
+
+
+def test_g3_guard_secondary_with_detail_is_not_verified():
+    reply = _g3_step_double_fault_reply().replace(
+        'S1 CONTROL_SAVE_FAILED | step preflight',
+        'S1 ARTIFACT_PATH_GUARD_FAILED | step preflight\nS1_DETAIL exit=2 class=DETAIL_UNAVAILABLE')
+    assert rc.check_spec(FIX_TASK, FIX_SPEC, reply)[2:] == (
+        'S1 preflight:PRECOMMIT_GATE_TIMEOUT', 'NOT_VERIFIED', 'SECONDARY_CONTROL_SAVE_FAILURE')
+
+
+@pytest.mark.parametrize('secondary', ['ARTIFACT_PATH_GUARD_FAILED_TIMEOUT', 'ARTIFACT_PATH_GUARD_FAILED_LAUNCH_FAILED'])
+def test_g3_guard_child_timeout_or_launch_secondary_is_not_verified(secondary):
+    reply = _g3_step_double_fault_reply().replace('S1 CONTROL_SAVE_FAILED', 'S1 ' + secondary)
+    assert rc.check_spec(FIX_TASK, FIX_SPEC, reply)[3:] == ('NOT_VERIFIED', 'SECONDARY_CONTROL_SAVE_FAILURE')
+
+
+def test_g3_detail_not_accepted_for_control_save_failed():
+    reply = _g3_step_double_fault_reply().replace(
+        'S1 CONTROL_SAVE_FAILED | step preflight', 'S1 CONTROL_SAVE_FAILED | step preflight\nS1_DETAIL exit=2 class=X')
+    assert _code(rc.check_spec, FIX_TASK, FIX_SPEC, reply).startswith('REPLY_')

@@ -1974,3 +1974,37 @@ def test_g3_secondary_unexpected_metadata_error_does_not_mask_original_s1(tmp_pa
         'S1_EVIDENCE_STATUS=UNAVAILABLE',
         'S1_FULL_CAPTURE_STATUS=UNAVAILABLE',
     ]
+
+
+# G3 next slice: a failed control save after a step S1 must not erase the first S1.
+@pytest.mark.parametrize('exception,original', [
+    (br.Halt('PRECOMMIT_GATE_TIMEOUT'), 'PRECOMMIT_GATE_TIMEOUT'),
+    (RuntimeError('synthetic failure'), 'UNEXPECTED_RuntimeError'),
+])
+def test_g3_halted_step_control_save_failure_preserves_primary_code(tmp_path, monkeypatch, capsys, exception, original):
+    class Stub:
+        def __init__(self, *_args):
+            self.root = str(tmp_path)
+            self.task_id = TASK
+            self.prompt_bytes = b'synthetic prompt'
+            self.spec = {'kind': 'promotion'}
+        def step_preflight(self):
+            raise exception
+    (tmp_path / '.git').mkdir()
+    (tmp_path / 'scripts').mkdir()
+    (tmp_path / 'scripts' / 'batch_runner.py').write_text('synthetic runner\n')
+    monkeypatch.setattr(br, 'Batch', Stub)
+    monkeypatch.setattr(br, 'derive_steps', lambda _: ['preflight'])
+    monkeypatch.setattr(br, 'load_control', lambda _: {
+        'task_id': TASK, 'prompt_sha256': br.sha256_bytes(b'synthetic prompt'),
+        'runner_sha256': 'fixed', 'done': [], 'halted': None,
+    })
+    monkeypatch.setattr(br, 'save_control', lambda *args: (_ for _ in ()).throw(br.Halt('CONTROL_SAVE_FAILED')))
+    monkeypatch.setattr(br, 'accepted_runner_sha', lambda *args: 'fixed')
+    monkeypatch.setattr(br.Path, 'cwd', lambda: tmp_path)
+    monkeypatch.setattr(br, '__file__', str(tmp_path / 'scripts' / 'batch_runner.py'))
+    assert br.main(['--task-id', TASK, 'preflight']) == 1
+    assert capsys.readouterr().out.splitlines() == [
+        'S1 CONTROL_SAVE_FAILED | step preflight',
+        'S1_PRIMARY ' + original + ' | step preflight',
+    ]

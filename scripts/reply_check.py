@@ -117,6 +117,7 @@ FORMATS = [
     ('TIMING', 'TIMING ', r'^TIMING start=(\S+) end=(\S+) elapsed_sec=([0-9]+(?:\.[0-9])?) elapsed_min=([0-9]+)$', (), ()),
     ('STATE', 'STATE ', r'^STATE done=([a-z0-9,]*) halted=(\S+?)(?: bundle=([A-Z][A-Z0-9_]*))?$', (), ()),
     ('STEP_PASS', 'STEP_PASS ', r'^STEP_PASS ([a-z0-9]+)$', (), ()),
+    ('S1_PRIMARY', 'S1_PRIMARY ', r'^S1_PRIMARY (' + CODE + r') \| step ([a-z0-9]+)$', (), ()),
     ('S1_DETAIL', 'S1_DETAIL ', r'^S1_DETAIL (.+)$', (), ()),
     ('S1_EVIDENCE_FILE', 'S1_EVIDENCE_FILE=', r'^S1_EVIDENCE_FILE=(\S+) sha256=(\S+)$', (), (2,)),
     ('S1_SHA256SUMS_FILE', 'S1_SHA256SUMS_FILE=', r'^S1_SHA256SUMS_FILE=(\S+) sha256=(\S+)$', (), (2,)),
@@ -310,9 +311,39 @@ def check_s1(found, task, spec, steps, capture_path, prompt_sha):
     _require(len(found['S1']) == 1, 'REPLY_S1_MISSING' if not found['S1'] else 'REPLY_S1_REPEATED')
     step, code, already = s1_line(found)
     _require(len(found['STATE']) == 1, 'REPLY_STATE_MISSING' if not found['STATE'] else 'REPLY_STATE_REPEATED')
+    promo = {} if spec['kind'] == 'production' else {'CI_RUN_CANDIDATE': (0, 1), 'MAIN_PROMOTED': (0, 1)}
+    # A failed attempt to persist a *previous* step failure prints two S1
+    # lines with different roles. The original S1 is never mistaken for a
+    # persisted halt or a successful step. Diagnostics/capture are unavailable.
+    if found['S1_PRIMARY']:
+        _require(len(found['S1_PRIMARY']) == 1, 'REPLY_S1_PRIMARY_REPEATED')
+        original = one(found, 'S1_PRIMARY')
+        _require(not already and original.group(2) == step, 'REPLY_S1_PRIMARY_MISMATCH')
+        # Every Halt save_control can raise: its own codes and the batch.artifact() guard child
+        # (run(): nonzero -> code + S1_DETAIL, timeout -> _TIMEOUT, launch -> _LAUNCH_FAILED).
+        _require(code in {'CONTROL_SAVE_FAILED', 'CONTROL_TEMP_CLEANUP_FAILED', 'ARTIFACT_PATH_GUARD_FAILED',
+                          'ARTIFACT_PATH_GUARD_FAILED_TIMEOUT', 'ARTIFACT_PATH_GUARD_FAILED_LAUNCH_FAILED'},
+                 'REPLY_S1_SECONDARY_INVALID')
+        done, halted, _ = state(found)
+        _require(halted == 'None' and step in steps and done == steps[:steps.index(step)],
+                 'REPLY_STATE_MISMATCH')
+        # Lines printed by earlier steps (passed gates, CI_RUN, MAIN_PROMOTED) and by the
+        # failed step's own bounded child remain legal; each is bound exactly as on a persisted halt.
+        cardinality(found, dict({'S1': (1, 1), 'S1_PRIMARY': (1, 1), 'TIMING': (1, 1), 'STATE': (1, 1),
+                                 'S1_DETAIL': (0, 1 if code == 'ARTIFACT_PATH_GUARD_FAILED' else 0),
+                                 'STEP_PASS': (0, len(steps)), 'BOUNDED_EXIT': (0, len(STAGES)),
+                                 'BOUNDED_TIMEOUT': (0, 1)}, **promo))
+        check_bounded_lines(found, steps, step)
+        if found['CI_RUN_CANDIDATE']:
+            check_ci(found, 'candidate', spec['candidate_branch'], spec['candidate_oid'])
+        for p in found['MAIN_PROMOTED']:
+            _require(p.group(1) == spec['candidate_oid'], 'REPLY_MAIN_MISMATCH')
+        check_timing(found)
+        check_step_pass(found, done)
+        _require(capture_path is None, 'CAPTURE_NOT_EXPECTED')
+        return 'S1 ' + step + ':' + original.group(1), 'NOT_VERIFIED', 'SECONDARY_CONTROL_SAVE_FAILURE'
     done, halted, _ = state(found)
     _require(done == steps[:len(done)], 'REPLY_STATE_MISMATCH')
-    promo = {} if spec['kind'] == 'production' else {'CI_RUN_CANDIDATE': (0, 1), 'MAIN_PROMOTED': (0, 1)}
     base_ranges = dict({'S1': (1, 1), 'S1_DETAIL': (0, 1), 'TIMING': (1, 1), 'STATE': (1, 1),
                         'STEP_PASS': (0, len(steps))}, **promo)
     if halted == step + ':' + code:                                       # halt persisted inside the step
