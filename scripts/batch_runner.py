@@ -774,11 +774,12 @@ class Batch:
         args = [PY, 'scripts/verification_primitives.py', 'ci-status', '--repo', REPO,
                 '--head-sha', sha, '--branch', branch, '--require-job', 'verify',
                 '--require-job', 'gateway-windows', '--event', 'push', '--workflow-name', 'Verify',
-                '--max-attempts', str(attempts), '--interval-seconds', str(interval)]
+                '--max-attempts', str(attempts), '--interval-seconds', str(interval),
+                '--diagnostic-file', '.git/' + self.task_id + '-' + phase + '-ci-diagnostic.json']
         try:
             cp = subprocess.run(args, cwd=self.root, stdin=subprocess.DEVNULL,
                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                timeout=attempts * (interval + 60) + 120, env=child_env())
+                                timeout=min(attempts * (interval + 60) + 120, 1920), env=child_env())
         except subprocess.TimeoutExpired:
             raise Halt('CI_STATUS_TIMEOUT')
         except OSError:

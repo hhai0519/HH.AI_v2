@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "B123B-G6-WINEMU-LITE-R2-261109",
-  "base_oid": "e2a9ac4c7705bc25fd444ef3ef24c33623953ffa",
+  "task_id": "B115-G3-CI-POLL-RETRY-R2-261109",
+  "base_oid": "ffba63937d3f80c377d53e60196c483c8af78347",
   "plan": {
     "allowed_paths": [
       "docs/AUDIT-LOG.md",
@@ -12,13 +12,10 @@
       "docs/governance/execution-record.json",
       "docs/ops/q2-draft-precheck.md",
       "docs/refactor-backlog.md",
-      "scripts/batch_sim.py",
-      "scripts/draft_precheck.py",
-      "scripts/production_template.py",
-      "scripts/prompt_builder.py",
-      "scripts/tests/test_batch_sim.py",
-      "scripts/tests/test_draft_precheck.py",
-      "scripts/tests/test_prompt_builder.py"
+      "scripts/batch_runner.py",
+      "scripts/tests/test_b119_ci_run.py",
+      "scripts/tests/test_verification_primitives.py",
+      "scripts/verification_primitives.py"
     ],
     "required_paths": [
       "docs/AUDIT-LOG.md",
@@ -28,13 +25,10 @@
       "docs/governance/execution-record.json",
       "docs/ops/q2-draft-precheck.md",
       "docs/refactor-backlog.md",
-      "scripts/batch_sim.py",
-      "scripts/draft_precheck.py",
-      "scripts/production_template.py",
-      "scripts/prompt_builder.py",
-      "scripts/tests/test_batch_sim.py",
-      "scripts/tests/test_draft_precheck.py",
-      "scripts/tests/test_prompt_builder.py"
+      "scripts/batch_runner.py",
+      "scripts/tests/test_b119_ci_run.py",
+      "scripts/tests/test_verification_primitives.py",
+      "scripts/verification_primitives.py"
     ],
     "max_plan_revisions": 3,
     "revision_count": 0,
@@ -49,13 +43,10 @@
       "docs/governance/execution-record.json",
       "docs/ops/q2-draft-precheck.md",
       "docs/refactor-backlog.md",
-      "scripts/batch_sim.py",
-      "scripts/draft_precheck.py",
-      "scripts/production_template.py",
-      "scripts/prompt_builder.py",
-      "scripts/tests/test_batch_sim.py",
-      "scripts/tests/test_draft_precheck.py",
-      "scripts/tests/test_prompt_builder.py"
+      "scripts/batch_runner.py",
+      "scripts/tests/test_b119_ci_run.py",
+      "scripts/tests/test_verification_primitives.py",
+      "scripts/verification_primitives.py"
     ]
   },
   "evidence": [

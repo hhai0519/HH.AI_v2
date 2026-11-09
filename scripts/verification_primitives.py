@@ -28,10 +28,13 @@ Crucial Safety Rule:
 from __future__ import annotations
 
 import argparse
+import base64
 import hashlib
 import json
+import os
 import re
 import subprocess
+import tempfile
 import sys
 import time
 import urllib.error
@@ -324,6 +327,90 @@ def cmd_git_diff_digest(args: argparse.Namespace) -> None:
     sys.exit(exit_code)
 
 
+
+# G3: The parent, not urllib's per-socket timeout, enforces each GET wall clock.
+# A bounded child prevents indefinitely delayed DNS resolution or trickle bodies.
+CI_TRANSPORT_K = 3
+CI_GET_BUDGET = 28.0
+CI_TOTAL_BUDGET = 1800.0  # 30-minute wall-clock cap across all polls
+CI_MAX_BYTES = 1048576
+
+
+def _ci_http_worker(url: str) -> None:
+    """Anonymous, one-shot GET; stdout is a bounded protocol, never secrets."""
+    if not (re.match(r'^https://api\.github\.com/repos/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/actions/', url)
+            or re.match(r'^http://127\.0\.0\.1:[0-9]{1,5}/repos/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/actions/', url)):
+        print(json.dumps({'kind': 'INVALID'}))
+        return
+    req = urllib.request.Request(url, headers={
+        'Accept': 'application/vnd.github+json',
+        'User-Agent': 'hhai-verification-primitives',
+    }, method='GET')
+    try:
+        with urllib.request.urlopen(req, timeout=CI_GET_BUDGET - 1) as response:
+            body = response.read(CI_MAX_BYTES + 1)
+            if len(body) > CI_MAX_BYTES:
+                print(json.dumps({'kind': 'INVALID'}))
+                return
+        print(json.dumps({'kind': 'OK', 'body': base64.b64encode(body).decode('ascii')}))
+    except urllib.error.HTTPError as exc:
+        headers = exc.headers
+        print(json.dumps({'kind': 'HTTP', 'code': exc.code,
+                          'retry_after': headers.get('Retry-After') if headers else None,
+                          'remaining': headers.get('X-RateLimit-Remaining') if headers else None,
+                          'reset': headers.get('X-RateLimit-Reset') if headers else None}))
+    except (urllib.error.URLError, OSError, TimeoutError):
+        print(json.dumps({'kind': 'TRANSPORT'}))
+    except Exception:
+        print(json.dumps({'kind': 'INVALID'}))
+
+
+def _ci_bounded_get(url: str, remaining: float) -> dict:
+    """OS-enforced deadline, including name resolution, TLS and body read."""
+    try:
+        child = subprocess.run(
+            [sys.executable, os.path.abspath(__file__), '__ci_http_worker', url],
+            stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            timeout=min(CI_GET_BUDGET, remaining), check=False,
+        )
+        if child.returncode != 0 or len(child.stdout) > CI_MAX_BYTES * 2 or not child.stdout:
+            return {'kind': 'INVALID'}
+        reply = json.loads(child.stdout.decode('utf-8'))
+        return reply if isinstance(reply, dict) else {'kind': 'INVALID'}
+    except (subprocess.TimeoutExpired, OSError):
+        return {'kind': 'TRANSPORT'}
+    except (ValueError, UnicodeError):
+        return {'kind': 'INVALID'}
+
+
+def _ci_persist_diagnostic(relpath: str, payload: dict) -> bool:
+    """Single-writer, task-local atomic JSON; no auth data or arbitrary file path."""
+    if not re.fullmatch(r'\.git/[A-Za-z0-9_-]+-ci-diagnostic\.json', relpath):
+        return False
+    path = Path(relpath)
+    if not path.parent.is_dir():
+        return False
+    temp = None
+    try:
+        fd, temp = tempfile.mkstemp(prefix=path.stem + '-tmp-', suffix='.json', dir=str(path.parent))
+        with os.fdopen(fd, 'w', encoding='utf-8', newline='\n') as out:
+            json.dump(payload, out, ensure_ascii=True, sort_keys=True)
+            out.write('\n')
+            out.flush()
+            os.fsync(out.fileno())
+        os.replace(temp, path)
+        return True
+    except OSError:
+        return False
+    finally:
+        # Only our own newly created temporary diagnostic may be unlinked.
+        if temp and os.path.isfile(temp):
+            try:
+                os.unlink(temp)
+            except OSError:
+                pass
+
+
 def cmd_ci_status(args: argparse.Namespace) -> None:
     command = "ci-status"
 
@@ -357,6 +444,14 @@ def cmd_ci_status(args: argparse.Namespace) -> None:
 
     event = getattr(args, "event", "push")
     workflow_name = getattr(args, "workflow_name", "Verify")
+    diagnostic_file = getattr(args, 'diagnostic_file', None)
+    if diagnostic_file is not None and not re.fullmatch(r'\.git/[A-Za-z0-9_-]+-ci-diagnostic\.json', diagnostic_file):
+        emit_unable(command, 'INVALID_DIAGNOSTIC_PATH')
+    # Never outlive the caller's subprocess timeout (batch_runner: attempts*(interval+60)+120, cap 1920).
+    total_deadline = time.monotonic() + min(CI_TOTAL_BUDGET, max_attempts * (interval_seconds + 60))
+    transport_stats = {'failures': 0, 'retries': 0, 'rate_limit_waits': 0,
+                       'last_http_code': None, 'hard_deadline': True,
+                       'max_consecutive_failures': CI_TRANSPORT_K}
 
     def emit_result(
         status: str,
@@ -389,62 +484,82 @@ def cmd_ci_status(args: argparse.Namespace) -> None:
         }
         if reason is not None:
             payload["reason"] = reason
+        if diagnostic_file is not None:
+            diagnostic = {
+                'schema_version': 1, 'command': 'ci-status', 'head_sha': head_sha,
+                'branch': branch, 'phase_event': event, 'status': status,
+                'reason': reason, 'attempts_used': attempts_used,
+                'run_id': run_id, 'transport': dict(transport_stats),
+            }
+            if not _ci_persist_diagnostic(diagnostic_file, diagnostic):
+                payload['status'] = 'VERIFICATION_TOOL_UNABLE_TO_COMPLETE'
+                payload['reason'] = 'DIAGNOSTIC_WRITE_FAILED'
+                emit_json(payload)
+                sys.exit(2)
         emit_json(payload)
         sys.exit(exit_code)
 
     def do_get_json(url: str, current_attempts: int, current_run_id: int | None = None) -> dict:
-        req = urllib.request.Request(
-            url,
-            headers={
-                "Accept": "application/vnd.github+json",
-                "User-Agent": "hhai-verification-primitives",
-            },
-            method="GET",
-        )
-        # Only transport-layer uncertainty may be retried, and only inside a
-        # fixed three-request envelope. Run/job identity and JSON validation
-        # still take place *after* the last successful response. A retry can
-        # never turn an unknown, contradictory or failed CI result into PASS.
-        # Two API calls (runs + jobs) share the runner's 60-second allowance
-        # per outer poll attempt. Bound EACH call, including transport retries,
-        # to 28 seconds; preserve 4 seconds for parsing/process overhead.
-        deadline = time.monotonic() + 28.0
+        # Each individual HTTP child is bounded to 28 seconds. A verified
+        # GitHub rate-limit reset may exceed that per-GET envelope, but must
+        # still fit the shared 1800-second total wall-clock deadline.
+        # Identity and schema failures remain terminal regardless of K.
+        deadline = total_deadline
         body = None
-        for request_index in range(3):
-            remaining = deadline - time.monotonic()
-            if remaining <= 0:
+        failures = 0
+        for request_index in range(CI_TRANSPORT_K):
+            remaining_budget = min(CI_GET_BUDGET, deadline - time.monotonic())
+            if remaining_budget <= 0:
                 break
-            retry_delay = None
-            try:
-                with urllib.request.urlopen(req, timeout=remaining) as resp:
-                    candidate_body = resp.read()
-                # A late success is no evidence of a bounded completion.
-                if time.monotonic() >= deadline:
+            get_started = time.monotonic()
+            result = _ci_bounded_get(url, remaining_budget)
+            # Defend also against a broken child watchdog: a GET that exceeded
+            # its own 28-second envelope is not a valid late PASS.
+            if time.monotonic() - get_started >= remaining_budget or time.monotonic() >= deadline:
+                break
+            kind = result.get('kind')
+            if kind == 'OK':
+                try:
+                    candidate_body = base64.b64decode(result['body'], validate=True)
+                except (ValueError, KeyError):
+                    break
+                if len(candidate_body) > CI_MAX_BYTES:
                     break
                 body = candidate_body
+                failures = 0
                 break
-            except urllib.error.HTTPError as exc:
-                headers = exc.headers
-                retry_after = headers.get("Retry-After") if headers else None
-                remaining = headers.get("X-RateLimit-Remaining") if headers else None
-                # Do not hammer primary/secondary GitHub rate limits. A server
-                # requested delay is honoured only when bounded (<=2 seconds);
-                # larger/invalid delays defer to Macro with exit=2.
-                if retry_after is not None:
-                    if not retry_after.isascii() or not retry_after.isdigit() or int(retry_after) > 2:
+            if kind == 'INVALID':
+                break
+            retry_delay = 0.1 * (request_index + 1)
+            if kind == 'HTTP':
+                code = result.get('code')
+                transport_stats['last_http_code'] = code
+                limited = (code == 429 or (code == 403 and result.get('remaining') == '0'))
+                transient = code in (500, 502, 503, 504)
+                if not (transient or limited):
+                    break
+                if limited:
+                    retry_after = result.get('retry_after')
+                    reset = result.get('reset')
+                    if retry_after is not None:
+                        if not isinstance(retry_after, str) or not retry_after.isascii() or not retry_after.isdigit():
+                            break
+                        retry_delay = float(int(retry_after))
+                    elif isinstance(reset, str) and reset.isascii() and reset.isdigit():
+                        retry_delay = max(0.0, float(int(reset)) - time.time())
+                    else:
+                        # No server-supplied release time: stop, never hammer 429.
                         break
-                transient = exc.code in (500, 502, 503, 504)
-                limited = (exc.code == 429 or (exc.code == 403 and remaining == "0"))
-                if transient or (limited and retry_after is not None):
-                    retry_delay = float(retry_after) if retry_after is not None else 0.1 * (request_index + 1)
-            except (urllib.error.URLError, TimeoutError, OSError):
-                retry_delay = 0.1 * (request_index + 1)
-            except Exception:
+                    transport_stats['rate_limit_waits'] += 1
+            elif kind != 'TRANSPORT':
                 break
-            if retry_delay is None or request_index == 2:
+            failures += 1
+            transport_stats['failures'] += 1
+            if failures >= CI_TRANSPORT_K or request_index == CI_TRANSPORT_K - 1:
                 break
             if deadline - time.monotonic() <= retry_delay:
                 break
+            transport_stats['retries'] += 1
             time.sleep(retry_delay)
         if body is None:
             emit_result(
@@ -491,7 +606,7 @@ def cmd_ci_status(args: argparse.Namespace) -> None:
     attempts = 0
     selected_run = None
 
-    while attempts < max_attempts:
+    while attempts < max_attempts and time.monotonic() < total_deadline:
         attempts += 1
         query = urllib.parse.urlencode({
             "head_sha": head_sha,
@@ -545,6 +660,8 @@ def cmd_ci_status(args: argparse.Namespace) -> None:
             selected_run = None
 
         if attempts < max_attempts:
+            if time.monotonic() + interval_seconds >= total_deadline:
+                break
             if interval_seconds > 0:
                 time.sleep(interval_seconds)
 
@@ -707,6 +824,8 @@ def main() -> None:
     parser_ci.add_argument("--max-attempts", type=int, default=30, help="Maximum polling attempts (1-60, default: 30)")
     parser_ci.add_argument("--interval-seconds", type=int, default=20, help="Polling interval in seconds (0-60, default: 20)")
     parser_ci.add_argument("--api-base", default="https://api.github.com", help="API base URL (default: https://api.github.com)")
+    parser_ci.add_argument('--diagnostic-file', default=None,
+                           help='Optional task-local .git/<task>-ci-diagnostic.json output')
     parser_ci.set_defaults(func=cmd_ci_status)
 
     args = parser.parse_args()
@@ -714,4 +833,7 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    if len(sys.argv) == 3 and sys.argv[1] == '__ci_http_worker':
+        _ci_http_worker(sys.argv[2])
+    else:
+        main()

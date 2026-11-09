@@ -1,5 +1,5 @@
 {
-  "base_head": "e2a9ac4",
+  "base_head": "ffba639",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -566,16 +566,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 392,
-      "sha256": "fb3e272eeca5601f17316cd5c9af90adefe099c08d6f4a7f416c438a93d26e27"
+      "lines": 393,
+      "sha256": "0327583f71758488819699d7ce6e89504c59eaa38ec34a4a4000b92a5823122a"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 367,
-      "sha256": "d1109e8b7b7a3e1b64722ef1c7967fbfd7509338dec9d355ee134c54f9d3ec96"
+      "lines": 368,
+      "sha256": "eb9564112b56c77c8724d2956c9ff09758f9b7b5c5825b2cc71ba0ec2195325e"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -617,8 +617,8 @@
         "## G. 舊 repo 未盤點區塊（2026-09-02 新發現）",
         "## 封存區"
       ],
-      "lines": 480,
-      "sha256": "91cf54a446cd0607e476f3334f8d697d841950badbd40fcf0bfedcbeea39dfc6"
+      "lines": 493,
+      "sha256": "a8214a683dedba62714a9e45a9797702b4f59544560d5cf3ac117987ecd51379"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1127,8 +1127,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6453,
-      "sha256": "426dabbda8acfd207b5860de36e58ca2d8dfb36491efe128bf3c22a364760498"
+      "lines": 6454,
+      "sha256": "16c6d33010308bfd75499cfe12694fa4ef1783976ba158db64c22974edcf3737"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1177,8 +1177,8 @@
         "# Windows: os.replace needs DELETE access on both files; antivirus/indexer handles can deny it briefly.",
         "# Retry only that PermissionError, bounded (about 1.55 s total); any other failure is not retried."
       ],
-      "lines": 1659,
-      "sha256": "6d3412afa2433735ecb49bd6c8c408945f1940ceab4a01bbe3e824ffd2a2f953"
+      "lines": 1660,
+      "sha256": "df235df4249ec402931ded92222ac3b4ac7c0c8564e6af87e8e2bf79f2c8e731"
     },
     "scripts/batch_sim.py": {
       "fences": 0,
@@ -1557,8 +1557,8 @@
     "scripts/tests/test_b119_ci_run.py": {
       "fences": 0,
       "headings": [],
-      "lines": 133,
-      "sha256": "5f37bad6530ca087f238d2e3a294d07f67700f1c31da7bf6716baabc34ff46f1"
+      "lines": 152,
+      "sha256": "ef0611a26f27adf446b7f7d2d8942fd4756a7f33bf53f3ead15dddd75bd834af"
     },
     "scripts/tests/test_batch_runner.py": {
       "fences": 0,
@@ -2195,9 +2195,11 @@
     },
     "scripts/tests/test_verification_primitives.py": {
       "fences": 0,
-      "headings": [],
-      "lines": 1343,
-      "sha256": "96973a488c1f1018e5233feb25eb95059e44d89069e10bb16dbeff543b7057fa"
+      "headings": [
+        "# --- SO E27 reference tests: wall clock, fail-closed branches and diagnostic hygiene. ---"
+      ],
+      "lines": 1677,
+      "sha256": "5563ec03a6346c84f3c9f4cbc86030b30cf4f02a26c2e09c51be3473bcb335a2"
     },
     "scripts/tests/test_verifier_fail_closed.py": {
       "fences": 0,
@@ -2262,9 +2264,12 @@
     },
     "scripts/verification_primitives.py": {
       "fences": 0,
-      "headings": [],
-      "lines": 717,
-      "sha256": "acc13c80e1383d3c29d2b542376b5285249aace83fd34d888b658f0efd300036"
+      "headings": [
+        "# G3: The parent, not urllib's per-socket timeout, enforces each GET wall clock.",
+        "# A bounded child prevents indefinitely delayed DNS resolution or trickle bodies."
+      ],
+      "lines": 839,
+      "sha256": "b6c5c349eb44188b56da79289946e77a1ed9f247f5039c01da931bd7eb2693e7"
     },
     "scripts/verify_all.py": {
       "fences": 0,
@@ -2275,7 +2280,7 @@
       "sha256": "6bfd57c05a09df3cde679ae53ac6ddd67bfb64cda4246584617d3cc67fb3b81c"
     }
   },
-  "generated_at": "2026-11-09T02:26:01Z",
+  "generated_at": "2026-11-09T10:47:56Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

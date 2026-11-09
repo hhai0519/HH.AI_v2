@@ -1245,6 +1245,7 @@ def test_t17_ci_status_reject_trailing_newline() -> None:
 def test_t16_ci_status_retry_network_and_limits_direct(monkeypatch, capsys) -> None:
     """Test the real production function with deterministic GET/clock behavior."""
     import argparse
+    import base64
     import importlib.util
     import urllib.error
     from types import SimpleNamespace
@@ -1282,40 +1283,36 @@ def test_t16_ci_status_retry_network_and_limits_direct(monkeypatch, capsys) -> N
             self.sleeps.append(seconds)
             self.now += seconds
 
-    class FakeResponse:
-        def __init__(self, body):
-            self.body = body
-        def __enter__(self):
-            return self
-        def __exit__(self, *exc):
-            return False
-        def read(self):
-            return json.dumps(self.body).encode('utf-8')
-
     def scenario(sequence, *, expected_rc, expected_gets, expected_status,
                  expected_sleeps=None, late=None):
         """Each step can be a success, an exception, or time advancement."""
         clock = FakeClock()
         invocations = []
         work = list(sequence)
-        def fake_urlopen(request, timeout):
-            assert 0 < timeout <= 28.0
-            invocations.append((request, timeout))
+        def fake_fetch(url, remaining):
+            assert 0 < remaining <= 28.0
+            invocations.append((url, remaining))
             result = work.pop(0)
             if late is not None:
                 clock.now += late
+            if isinstance(result, urllib.error.HTTPError):
+                return {'kind': 'HTTP', 'code': result.code,
+                        'retry_after': result.headers.get('Retry-After'),
+                        'remaining': result.headers.get('X-RateLimit-Remaining'),
+                        'reset': result.headers.get('X-RateLimit-Reset')}
             if isinstance(result, BaseException):
-                raise result
-            return FakeResponse(result)
-        monkeypatch.setattr(vp.urllib.request, 'urlopen', fake_urlopen)
-        monkeypatch.setattr(vp, 'time', SimpleNamespace(monotonic=clock.monotonic, sleep=clock.sleep))
+                return {'kind': 'TRANSPORT'}
+            return {'kind': 'OK', 'body': base64.b64encode(json.dumps(result).encode()).decode()}
+        monkeypatch.setattr(vp, '_ci_bounded_get', fake_fetch)
+        monkeypatch.setattr(vp, 'time', SimpleNamespace(monotonic=clock.monotonic,
+                                                      sleep=clock.sleep, time=lambda: 100.0 + clock.now))
         with pytest.raises(SystemExit) as caught:
             vp.cmd_ci_status(args)
         payload = json.loads(capsys.readouterr().out.strip())
         assert caught.value.code == expected_rc
         assert payload['status'] == expected_status
         assert len(invocations) == expected_gets
-        assert all('authorization' not in {k.lower() for k, _ in req.header_items()} for req, _ in invocations)
+        assert all(url.startswith('https://api.github.com/') for url, _ in invocations)
         if expected_sleeps is not None:
             assert clock.sleeps == expected_sleeps
         return clock, invocations, payload
@@ -1341,3 +1338,340 @@ def test_t16_ci_status_retry_network_and_limits_direct(monkeypatch, capsys) -> N
     # A late-successful HTTP read must not become a green CI result.
     scenario([runs, jobs], expected_rc=2, expected_gets=1,
              expected_status='VERIFICATION_TOOL_UNABLE_TO_COMPLETE', expected_sleeps=[], late=29.0)
+
+
+def test_g3_ci_reset_wait_k_budget_and_diagnostic(tmp_path, monkeypatch, capsys):
+    """Fixed offline checks: consecutive K, reset waiting, atomic diagnostic, fail-closed."""
+    import argparse
+    import base64
+    import importlib.util
+    from types import SimpleNamespace
+    spec = importlib.util.spec_from_file_location('vp_g3_case', TOOL_PATH)
+    assert spec and spec.loader
+    vp = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(vp)
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / '.git').mkdir()
+    sha = 'b'*40
+    args = argparse.Namespace(api_base='https://api.github.com', repo='hhai0519/HH.AI_v2',
+       head_sha=sha, branch='batch/g3-tests', require_job=['verify', 'gateway-windows'],
+       max_attempts=1, interval_seconds=0, event='push', workflow_name='Verify',
+       diagnostic_file='.git/B115-G3-PROBE-candidate-ci-diagnostic.json')
+    runs = {'workflow_runs':[{'id':1234,'name':'Verify','head_sha':sha,'head_branch':args.branch,
+             'event':'push','status':'completed','conclusion':'success','run_attempt':1}]}
+    jobs = {'jobs':[{'name':job,'status':'completed','conclusion':'success'} for job in args.require_job]}
+    times=[]
+    clock=SimpleNamespace(now=0.0)
+    def get_time(): return clock.now
+    def sleep(d):
+        assert d>=0 and d<=28
+        times.append(d)
+        clock.now+=d
+    monkeypatch.setattr(vp,'time',SimpleNamespace(monotonic=get_time,sleep=sleep,time=lambda:100+clock.now))
+    responses=[{'kind':'HTTP','code':403,'retry_after':None,'remaining':'0','reset':'101'},
+               {'kind':'HTTP','code':503},
+               {'kind':'OK','body':base64.b64encode(json.dumps(runs).encode()).decode()},
+               {'kind':'OK','body':base64.b64encode(json.dumps(jobs).encode()).decode()}]
+    def fake_get(url,budget):
+        assert budget>0 and budget<=28
+        return responses.pop(0)
+    monkeypatch.setattr(vp,'_ci_bounded_get',fake_get)
+    with pytest.raises(SystemExit) as rc:
+        vp.cmd_ci_status(args)
+    out=json.loads(capsys.readouterr().out)
+    assert rc.value.code==0 and out['status']=='PASS'
+    assert len(times)==2 and times[0]==1.0 and times[1]==0.2
+    diagnostic=(tmp_path/args.diagnostic_file).read_bytes()
+    assert diagnostic.endswith(b'\n') and b'\r\n' not in diagnostic
+    d=json.loads(diagnostic)
+    assert d['transport']['rate_limit_waits']==1
+    assert d['transport']['retries']==2
+    assert d['transport']['max_consecutive_failures']==3
+    assert d['status']=='PASS' and not responses
+
+
+def test_g3_ci_diagnostic_write_failure_cannot_pass(tmp_path, monkeypatch, capsys):
+    import argparse
+    import base64
+    import importlib.util
+    spec=importlib.util.spec_from_file_location('vp_g3_diag_failure', TOOL_PATH)
+    vp=importlib.util.module_from_spec(spec);spec.loader.exec_module(vp)
+    monkeypatch.chdir(tmp_path)
+    sha='c'*40
+    args=argparse.Namespace(api_base='https://api.github.com',repo='hhai0519/HH.AI_v2',
+      head_sha=sha,branch='main',require_job=['verify'],max_attempts=1,interval_seconds=0,
+      event='push',workflow_name='Verify',diagnostic_file='.git/B115-G3-PROBE-candidate-ci-diagnostic.json')
+    runs={'workflow_runs':[{'id':1,'name':'Verify','head_sha':sha,'head_branch':'main',
+          'event':'push','status':'completed','conclusion':'success','run_attempt':1}]}
+    jobs={'jobs':[{'name':'verify','status':'completed','conclusion':'success'}]}
+    q=iter([runs,jobs])
+    monkeypatch.setattr(vp,'_ci_bounded_get',lambda *_:{'kind':'OK','body':base64.b64encode(json.dumps(next(q)).encode()).decode()})
+    with pytest.raises(SystemExit) as rc: vp.cmd_ci_status(args)
+    out=json.loads(capsys.readouterr().out)
+    assert rc.value.code==2 and out['reason']=='DIAGNOSTIC_WRITE_FAILED'
+    assert out['status']=='VERIFICATION_TOOL_UNABLE_TO_COMPLETE'
+
+
+def test_g3_ci_hard_timeout_no_get_pass(monkeypatch):
+    """OS watchdog rejects requests blocked by DNS or indefinitely trickling bytes."""
+    import importlib.util
+    spec=importlib.util.spec_from_file_location('vp_g3_deadline',TOOL_PATH)
+    vp=importlib.util.module_from_spec(spec);spec.loader.exec_module(vp)
+    def timeout(*a,**k):
+        assert k['timeout']<=28
+        raise subprocess.TimeoutExpired(a[0],k['timeout'])
+    monkeypatch.setattr(vp.subprocess,'run',timeout)
+    assert vp._ci_bounded_get('https://api.github.com/repos/a/b/actions/runs',28)['kind']=='TRANSPORT'
+
+
+
+def test_g3_ci_budget_and_rate_limit_reset_outside_budget(monkeypatch, capsys):
+    import argparse
+    import importlib.util
+    from types import SimpleNamespace
+    spec=importlib.util.spec_from_file_location('vp_g3_budget', TOOL_PATH)
+    vp=importlib.util.module_from_spec(spec);spec.loader.exec_module(vp)
+    vp.CI_TOTAL_BUDGET=5.0
+    args=argparse.Namespace(api_base='https://api.github.com',repo='hhai0519/HH.AI_v2',
+         head_sha='d'*40,branch='main',require_job=['verify'],max_attempts=60,
+         interval_seconds=0,event='push',workflow_name='Verify',diagnostic_file=None)
+    clock=SimpleNamespace(now=0.0,sleeps=[])
+    def sleep(t):
+        clock.sleeps.append(t)
+        clock.now+=t
+    monkeypatch.setattr(vp,'time',SimpleNamespace(monotonic=lambda:clock.now,
+      sleep=sleep,time=lambda:100+clock.now))
+    calls=[]
+    def fake_get(url,remaining):
+        calls.append(remaining)
+        return {'kind':'HTTP','code':403,'retry_after':None,'remaining':'0','reset':'111'}
+    monkeypatch.setattr(vp,'_ci_bounded_get',fake_get)
+    with pytest.raises(SystemExit) as rc: vp.cmd_ci_status(args)
+    out=json.loads(capsys.readouterr().out)
+    assert rc.value.code==2 and out['reason']=='HTTP_ERROR'
+    assert len(calls)==1 and calls[0]<=5 and not clock.sleeps
+
+
+def test_g3_ci_exact_K_bound_and_consistent_retry(monkeypatch,capsys):
+    import argparse
+    import base64
+    import importlib.util
+    from types import SimpleNamespace
+    spec=importlib.util.spec_from_file_location('vp_g3_k', TOOL_PATH)
+    vp=importlib.util.module_from_spec(spec);spec.loader.exec_module(vp)
+    assert vp.CI_TRANSPORT_K==3
+    args=argparse.Namespace(api_base='https://api.github.com',repo='hhai0519/HH.AI_v2',
+        head_sha='f'*40,branch='main',require_job=['verify'],max_attempts=1,interval_seconds=0,
+        event='push',workflow_name='Verify',diagnostic_file=None)
+    clock=SimpleNamespace(now=0.0,sleeps=[])
+    def sleep(t): clock.sleeps.append(t); clock.now+=t
+    monkeypatch.setattr(vp,'time',SimpleNamespace(monotonic=lambda:clock.now,sleep=sleep,time=lambda:100+clock.now))
+    replies=iter([{'kind':'TRANSPORT'}]*4)
+    counter=[]
+    def fail(*_): counter.append(1);return next(replies)
+    monkeypatch.setattr(vp,'_ci_bounded_get',fail)
+    with pytest.raises(SystemExit) as rc: vp.cmd_ci_status(args)
+    out=json.loads(capsys.readouterr().out)
+    assert rc.value.code==2 and out['reason']=='HTTP_ERROR'
+    assert len(counter)==3 and clock.sleeps==[0.1,0.2]
+
+
+def test_g3_ci_reset_waits_longer_than_single_get_but_within_total_budget(monkeypatch,capsys):
+    """A 41s GitHub reset must wait even though one GET is capped at 28s."""
+    import argparse
+    import base64
+    import importlib.util
+    from types import SimpleNamespace
+    spec=importlib.util.spec_from_file_location('vp_g3_long_reset', TOOL_PATH)
+    vp=importlib.util.module_from_spec(spec);spec.loader.exec_module(vp)
+    assert vp.CI_TOTAL_BUDGET==1800.0 and vp.CI_GET_BUDGET==28.0
+    sha='e'*40
+    args=argparse.Namespace(api_base='https://api.github.com',repo='hhai0519/HH.AI_v2',
+        head_sha=sha,branch='main',require_job=['verify'],max_attempts=1,
+        interval_seconds=0,event='push',workflow_name='Verify',diagnostic_file=None)
+    runs={'workflow_runs':[{'id':2001,'name':'Verify','head_sha':sha,'head_branch':'main',
+          'event':'push','status':'completed','conclusion':'success','run_attempt':1}]}
+    jobs={'jobs':[{'name':'verify','status':'completed','conclusion':'success'}]}
+    clock=SimpleNamespace(now=0.0,sleeps=[])
+    def sleep(t):
+        clock.sleeps.append(t)
+        clock.now+=t
+    monkeypatch.setattr(vp,'time',SimpleNamespace(monotonic=lambda:clock.now,sleep=sleep,
+                                                 time=lambda:100.0+clock.now))
+    responses=iter([{'kind':'HTTP','code':429,'remaining':'0','retry_after':None,'reset':'141'},
+                    {'kind':'OK','body':base64.b64encode(json.dumps(runs).encode()).decode()},
+                    {'kind':'OK','body':base64.b64encode(json.dumps(jobs).encode()).decode()}])
+    per_get=[]
+    def fake_get(url,remaining):
+        per_get.append(remaining)
+        assert remaining>0 and remaining<=28.0
+        return next(responses)
+    monkeypatch.setattr(vp,'_ci_bounded_get',fake_get)
+    with pytest.raises(SystemExit) as rc: vp.cmd_ci_status(args)
+    out=json.loads(capsys.readouterr().out)
+    assert rc.value.code==0 and out['status']=='PASS'
+    assert clock.sleeps==[41.0] and len(per_get)==3
+
+
+# --- SO E27 reference tests: wall clock, fail-closed branches and diagnostic hygiene. ---
+def _so_vp(name):
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(name, TOOL_PATH)
+    vp = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(vp)
+    return vp
+
+
+def _so_args(**over):
+    import argparse
+    base = dict(api_base='https://api.github.com', repo='hhai0519/HH.AI_v2', head_sha='c' * 40,
+                branch='batch/so-g3', require_job=['verify', 'gateway-windows'], max_attempts=1,
+                interval_seconds=0, event='push', workflow_name='Verify', diagnostic_file=None)
+    base.update(over)
+    return argparse.Namespace(**base)
+
+
+def _so_clock(monkeypatch, vp, get_cost=0.0, responses=None):
+    from types import SimpleNamespace
+    clock = SimpleNamespace(now=0.0, sleeps=[], gets=[])
+
+    def sleep(d):
+        assert d >= 0
+        clock.sleeps.append(d)
+        clock.now += d
+    monkeypatch.setattr(vp, 'time', SimpleNamespace(monotonic=lambda: clock.now, sleep=sleep,
+                                                    time=lambda: 100.0 + clock.now))
+
+    def fake_get(url, budget):
+        assert 0 < budget <= 28.0
+        clock.gets.append(url)
+        clock.now += get_cost
+        return responses(url) if callable(responses) else responses.pop(0)
+    monkeypatch.setattr(vp, '_ci_bounded_get', fake_get)
+    return clock
+
+
+def _so_run(vp, args, capsys):
+    with pytest.raises(SystemExit) as caught:
+        vp.cmd_ci_status(args)
+    return caught.value.code, json.loads(capsys.readouterr().out.strip())
+
+
+def _so_ok(obj):
+    import base64
+    return {'kind': 'OK', 'body': base64.b64encode(json.dumps(obj).encode()).decode()}
+
+
+def test_so_g3_outer_poll_loop_respects_1800s_wall_clock(monkeypatch, capsys):
+    vp = _so_vp('vp_so_wall')
+    clock = _so_clock(monkeypatch, vp, responses=lambda url: _so_ok({'workflow_runs': []}))
+    rc, payload = _so_run(vp, _so_args(max_attempts=60, interval_seconds=60), capsys)
+    assert rc == 2 and payload['reason'] == 'CI_PENDING_TIMEOUT'
+    # 60 x 60 s would be 3600 s; the shared deadline must stop sleeping before 1800 s.
+    assert sum(clock.sleeps) < vp.CI_TOTAL_BUDGET and clock.now < vp.CI_TOTAL_BUDGET
+    assert len(clock.gets) == 30 and clock.sleeps == [60] * 29
+
+
+@pytest.mark.parametrize('first', [{'kind': 'INVALID'}, {'kind': 'SURPRISE'}])
+def test_so_g3_invalid_child_reply_is_terminal_not_retried(monkeypatch, capsys, first):
+    vp = _so_vp('vp_so_invalid')
+    clock = _so_clock(monkeypatch, vp, responses=[first, _so_ok({'workflow_runs': []})])
+    rc, payload = _so_run(vp, _so_args(), capsys)
+    assert rc == 2 and payload['status'] == 'VERIFICATION_TOOL_UNABLE_TO_COMPLETE'
+    assert len(clock.gets) == 1 and clock.sleeps == []
+
+
+@pytest.mark.parametrize('retry_after', ['-5', 'abc', '1.5', ' 3'])
+def test_so_g3_malformed_retry_after_fails_closed_without_sleep(monkeypatch, capsys, retry_after):
+    vp = _so_vp('vp_so_retry_after')
+    clock = _so_clock(monkeypatch, vp, responses=[
+        {'kind': 'HTTP', 'code': 429, 'retry_after': retry_after, 'remaining': None, 'reset': None},
+        _so_ok({'workflow_runs': []})])
+    rc, payload = _so_run(vp, _so_args(), capsys)
+    assert rc == 2 and payload['status'] == 'VERIFICATION_TOOL_UNABLE_TO_COMPLETE'
+    assert len(clock.gets) == 1 and clock.sleeps == []
+
+
+def test_so_g3_oversized_body_is_not_accepted(monkeypatch, capsys):
+    import base64
+    vp = _so_vp('vp_so_size')
+    sha, branch = 'c' * 40, 'batch/so-g3'
+    runs = json.dumps({'workflow_runs': [{'id': 77, 'name': 'Verify', 'head_sha': sha, 'head_branch': branch,
+                       'event': 'push', 'status': 'completed', 'conclusion': 'success', 'run_attempt': 1}]})
+    padded = (runs[:-1] + ' ' * (vp.CI_MAX_BYTES + 1) + '}').encode()  # valid JSON, over the cap
+    jobs = {'jobs': [{'name': j, 'status': 'completed', 'conclusion': 'success'} for j in ('verify', 'gateway-windows')]}
+    clock = _so_clock(monkeypatch, vp, responses=[{'kind': 'OK', 'body': base64.b64encode(padded).decode()},
+                                                  _so_ok(jobs)])
+    rc, payload = _so_run(vp, _so_args(), capsys)
+    assert rc == 2 and payload['status'] == 'VERIFICATION_TOOL_UNABLE_TO_COMPLETE'
+    assert len(clock.gets) == 1
+
+
+def test_so_g3_child_nonzero_exit_is_invalid(monkeypatch):
+    vp = _so_vp('vp_so_child')
+    good = json.dumps({'kind': 'OK', 'body': ''}).encode()
+    monkeypatch.setattr(vp.subprocess, 'run',
+                        lambda *a, **k: subprocess.CompletedProcess(a, 1, good, b''))
+    assert vp._ci_bounded_get('https://api.github.com/repos/a/b/actions/runs', 28.0) == {'kind': 'INVALID'}
+
+
+def test_so_g3_worker_refuses_non_github_url_without_network(monkeypatch, capsys):
+    vp = _so_vp('vp_so_worker')
+    touched = []
+    def forbidden(*a, **k):
+        touched.append(a)
+        raise OSError('network must not be touched')
+    monkeypatch.setattr(vp.urllib.request, 'urlopen', forbidden)
+    for url in ('https://evil.example/repos/a/b/actions/runs',
+                'https://api.github.com.evil.example/repos/a/b/actions/runs',
+                'http://127.0.0.2:80/repos/a/b/actions/runs'):
+        vp._ci_http_worker(url)
+        assert json.loads(capsys.readouterr().out.strip()) == {'kind': 'INVALID'}
+    assert touched == []
+
+
+@pytest.mark.parametrize('bad', ['../x-ci-diagnostic.json', '.git/../x-ci-diagnostic.json',
+                                 '.git/a/b-ci-diagnostic.json', 'C:/x/.git/t-ci-diagnostic.json'])
+def test_so_g3_bad_diagnostic_path_rejected_before_any_get(monkeypatch, capsys, bad):
+    vp = _so_vp('vp_so_diagpath')
+    clock = _so_clock(monkeypatch, vp, responses=[_so_ok({'workflow_runs': []})])
+    rc, payload = _so_run(vp, _so_args(diagnostic_file=bad), capsys)
+    assert rc == 2 and payload['reason'] == 'INVALID_DIAGNOSTIC_PATH'
+    assert clock.gets == []
+
+
+def test_so_g3_failed_replace_leaves_no_temp_diagnostic(tmp_path, monkeypatch):
+    vp = _so_vp('vp_so_tmp')
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / '.git').mkdir()
+    def boom(*a, **k):
+        raise OSError('replace denied')
+    monkeypatch.setattr(vp.os, 'replace', boom)
+    assert vp._ci_persist_diagnostic('.git/T-candidate-ci-diagnostic.json', {'a': 1}) is False
+    assert list((tmp_path / '.git').iterdir()) == []
+
+
+def test_so_g3_total_budget_never_exceeds_runner_timeout(monkeypatch, capsys):
+    # Promotion verify calls ci-status with attempts=3, interval=10; batch_runner kills it at 330 s.
+    vp = _so_vp('vp_so_budget_align')
+    clock = _so_clock(monkeypatch, vp, responses=[
+        {'kind': 'HTTP', 'code': 429, 'retry_after': '400', 'remaining': None, 'reset': None}])
+    rc, payload = _so_run(vp, _so_args(max_attempts=3, interval_seconds=10), capsys)
+    assert rc == 2 and payload['status'] == 'VERIFICATION_TOOL_UNABLE_TO_COMPLETE'
+    assert clock.sleeps == [] and clock.now < 3 * (10 + 60) + 120
+
+
+@pytest.mark.parametrize('limit_fields', [
+    {'retry_after': '1801', 'reset': None},
+    {'retry_after': None, 'reset': '1902'},
+])
+def test_g3_rate_limit_retry_wait_cannot_cross_total_deadline(monkeypatch, capsys, limit_fields):
+    # G03: a mock clock makes the oversleep counterexample deterministic.
+    # Never rely on a real-time hanging test as the only guard.
+    vp = _so_vp('vp_g3_r2_presleep_absolute_limit')
+    reply = {'kind': 'HTTP', 'code': 429, 'remaining': None, **limit_fields}
+    clock = _so_clock(monkeypatch, vp, responses=[reply])
+    rc, payload = _so_run(vp, _so_args(max_attempts=60, interval_seconds=0), capsys)
+    assert rc == 2 and payload['status'] == 'VERIFICATION_TOOL_UNABLE_TO_COMPLETE'
+    assert len(clock.gets) == 1
+    assert clock.sleeps == [] and clock.now < vp.CI_TOTAL_BUDGET

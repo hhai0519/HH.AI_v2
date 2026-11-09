@@ -131,3 +131,22 @@ def test_duplicate_json_keys_fail_closed(monkeypatch, tmp_path, capsys, phase, j
         probe(monkeypatch, tmp_path, stdout=raw.encode('utf-8'), phase=phase)
     assert not list(tmp_path.glob('*-ci.json'))
     assert 'CI_RUN' not in capsys.readouterr().out
+
+
+def test_g3_ci_runner_diagnostic_path_and_total_budget(monkeypatch, tmp_path):
+    b = br.Batch.__new__(br.Batch)
+    b.root = str(tmp_path)
+    b.task_id = 'B115-G3-CI-POLL-RETRY-R1-261109'
+    b.write_new_artifact = lambda suffix, content: str(tmp_path / suffix)
+    observed = []
+    def runner(args, **kwargs):
+        observed.append((args, kwargs))
+        return subprocess.CompletedProcess(args, 0, json.dumps(ci_payload()).encode(), b'')
+    monkeypatch.setattr(br.subprocess, 'run', runner)
+    code, result = b.ci_status(SHA, BRANCH, 60, 30, 'candidate')
+    assert code == 0 and result['run_id'] == 39000000001
+    cmd, kws = observed[-1]
+    assert cmd[cmd.index('--diagnostic-file') + 1] == (
+        '.git/B115-G3-CI-POLL-RETRY-R1-261109-candidate-ci-diagnostic.json')
+    assert kws['timeout'] == 1920
+    assert '--require-job' in cmd and cmd.count('--require-job') == 2

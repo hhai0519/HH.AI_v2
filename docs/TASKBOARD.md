@@ -10,11 +10,11 @@
 `待裁決`（需使用者決定）／`已完成`（仍可能被引用）／
 `可封存`（不影響後續工作，待使用者確認後移入封存區）
 
-**ACTIVE_MACRO_AUDITOR**：AUD-GPT6-261108-B（USER 2026-11-08 明確任命，前任已 STOPPED；本環境 B 級、A1 FULL_CLONE 來源為已與 GitHub 核對之完整 bundle；審查官／Executor 不同 session；依通用版第二節 E 過渡期權威，於本批前向登錄。）
+**ACTIVE_MACRO_AUDITOR**：AUD-GPT6-261109（USER 2026-11-09 明確任命，前任已 STOPPED；B 級／A1 FULL_CLONE bundle SHA-256 be09f4c6689dce045a00e977942e4ff4bfa87f1ba503c99d29c00cdab77ad2d5；新任 GitHub exact-SHA／CI／自檢已完成；依通用版第二節 E 過渡期權威，於本批前向登錄。）
 
 **NEXT_WORK**：B-115
 
-**NEXT_SLICE**：B115-G3-CI-POLL-RETRY-R1-261108（USER 決定：在 B123B-G6-WINEMU-LITE-R2-261109 同 SHA 晉級／post-main 查證後執行；本批先落地 B-123b-lite／G6 第六步、換行 lint 與 focused 自動推導。G6 整體仍 OPEN、完整 Windows scripts/tests CI 與 winemu 擬真度另案。）
+**NEXT_SLICE**：B115-G3-POSTRUN-READONLY-R1-261109（治理完成線 G3 OPEN；本批先完成 CI-POLL-RETRY 的 K 次失敗、限流等待、1800 秒牆鐘與 task-local 診斷；下一切片由審查官依既有 OPEN C 項排序為 POSTRUN 唯讀稽核，非 USER 對本批之後順序的直接決策；branch/TASK_ID guard 留待相容性評估，B-123b/G6 整體及完整 Windows scripts/tests CI 保持 OPEN。）
 **B-115/B-119 READ_ONLY 交付契約補正（R8 AUTHORING、未部署）**：原 canonical builder 僅支援 production/promotion；R3 的 B01／B02 已由第二意見獨立確認；B03 全文漂移與後續 B04 E27 當批記載缺口為審查官自行驗出；本 R8 接續 R7 S1 修補採固定 C9 probe ID、結構化固定歷史 S1 參數、執行前工具位元組核對、不可任意 script 的 canonical checker 與 fail-closed 正負向測試。E24 REQUIRED；R8 當批 E27 適用、第二意見未啟用（USER_NOT_ACTIVATED，非外部 PASS）；R7 事故詳見本檔 S1 與 Option A 前向列，B01/B02 為 R3 非權威意見且由審查官獨立採認，B03/B04 為審查官自行處置；SO-R7-01 僅 winerror=1314 可以 skip，其他 OSError 必 FAIL 且類型拒絕必跑；Windows 結果、Candidate/Post-main 未成立；本作者說明不放行 C9 唯讀草稿，也不修改先前 S1 原件。
 
 > [!IMPORTANT]
@@ -22,7 +22,7 @@
 > 若發生以下任一事件：**換電腦**、**重新安裝 Antigravity**、**IDE 版本更新**，
 > 在開始任何 production work 之前，必須先閱讀 [docs/ops/antigravity-environment-baseline.md](ops/antigravity-environment-baseline.md) 並完整完成 Environment Baseline Checklist 與重啟核對。
 
-**最後更新**：2026-11-09；B123B-G6-WINEMU-LITE-R2-261109；前批 R4 same-SHA post-main 已核對，本批建置 Windows winemu 第六步、修改行換行 lint、focused 自動推導；NEXT_WORK 維持治理工作；NEXT_SLICE 指向 G3 CI-POLL-RETRY，G6 整體 OPEN。
+**最後更新**：2026-11-09；B115-G3-CI-POLL-RETRY-R2-261109；G3 CI 查詢有界重試與限流診斷、接任及前批結案前向同步；NEXT_WORK 與 NEXT_SLICE 指標詳看板頂部。
 
 B-115 (9) Slice 1 已完成：e29d9f2e9dd9cb8a3934f0b58176c9aa50b43e61 經獨立 Macro PASS／ACCEPT ALL、same-SHA 晉級，post-main Run 38420907025 attempt 1 verify／gateway-windows 雙綠（verify 1357 passed、1 skipped；Windows 57 passed）；Executor 晉級實測 315.1 秒（5 分鐘）。本批 Slice 2 只增加 production prose 產生器，不宣稱其他 B-115 殘項完成。
 
@@ -57,8 +57,21 @@ USER 常設決定（2026-10-13）：交付以 ZIP 為主要檔案、TXT 為備�
 **R7 S1 Option A 已授權且完成（2026-10-21；僅 11 個 exact 作者檔）**：USER 逐次選擇方案 A；R7 focused S1 原件及新建封存 `B115-B119-READONLY-CONTRACT-R7-261021-option-a-preserve-r1.zip` 已經 Windows 端回讀驗證，保全 SHA-256 `701c130d35458c45c2e7c481ee9e0651e6838b6ef563c9aca11a5ac9a1ff2021`；審查官交付的合成 PowerShell fixture Windows 原生 7 NEGTEST、1 POSITIVE、1 IDEMPOTENCE PASS，正式 USER PowerShell 回覆 `WORKSPACE_AT_BASE_READY`，已精確還原 9 tracked、移除 2 untracked，原 R7 `.git` S1 原件 `original_s1=PRESERVED`、HEAD=b86ff4c5a651ffd5938dc5d65ea5f3c198b3d9d1、detached CLEAN；R7 歷史 S1 仍為 STOP，未改寫為 PASS。此完成只解除工作區起跑阻擋，非 C9 恢復權限、非 R7 晉級，R8 Windows 原生 required gates/CI/post-main 仍待執行。Owner B-115、B-119/G1、B-117/G5。
 
 **B-115/G3 R2 S1 與 X-1c 前向事故登錄（2026-11-08，owner B-115／B-123b）**：`B115-G3-CI-PENDING-REPLY-R2-261108` Windows PRECOMMIT Gate4 S1，原 gate4 3 failed／2293 passed／40 skipped（原始輸出 USER_PROVIDED），新增測試 `write_text` 的 Windows CRLF 夾具與 runner LF 契約不一致；R2 未 commit／push、遠端無本批候選。USER 先保全 `refs/hhai/s1/B115-G3-CI-PENDING-REPLY-R2-261108`→`9a84dbe487c64f4cce42a80cfab259e439cb3bac`，完成 13／13 restore，最後 W2 唯讀證明 HEAD=7c4852f8、detached、CLEAN、PRESERVED_REF=VERIFIED（USER_PROVIDED，不冒稱 Macro 親讀 W2）。同類 S1 為 B-123 第五次；R4 最終 production 用 LF 位元組 fixture 與 runner／模板修正，機械前置 winemu Base／候選 EXTRA=0 為必備。X-1c：Executor S1 後額外讀取 EXEC-LOG、AUDIT-LOG、reply_check.py 且未執行 timing，違反 §9；兩份模板明列 S1 後只能且必須執行 timing 一次，之後立即結束，斷言交 test_prompt_builder。B-123b／G6 完成線續列：winemu Base／候選差集整合 draft_precheck、改動行換行 lint、Windows CI 納入 scripts/tests；完成之前每批 E27／交付附 winemu 差集。所有原事故、保全 ref、11 Jules refs、凍結工作區不得清理或修改。
+**B-115／G3 CI-POLL-RETRY 作者批（2026-11-09；本批 B115-G3-CI-POLL-RETRY-R2-261109）**：前批 B123B-G6-WINEMU-LITE-R2-261109 已由新任審查官獨立 Macro PASS／ACCEPT ALL／CLOSED／POST-MAIN VERIFIED；main=ffba63937d3f80c377d53e60196c483c8af78347，parent=e2a9ac4c7705bc25fd444ef3ef24c33623953ffa，candidate Run 42554980657／post-main Run 42558487267，push attempt1 verify／gateway-windows 皆 SUCCESS。本批修 ci-status transport K=3、reset／Retry-After 有界等待、30 分鐘 hard wall budget、子程序 DNS／trickle 截止、匿名 task-local JSON 診斷；runner_update=true，D2 prompt 須在 candidate checkout 自我託管。Windows 原生 focused USER_PROVIDED（W2 FILE_SHA256=76A2CD8EF08BABC0B1A51266BE675857E0C4D73D10CCBAD91B905ADD1B01320E 由 USER 輸出，審查官未獨立讀取原件），10 個摘要、共 24 skipped，813 passed／24 skipped／700.9s，已登錄，不代表 winemu 或 full Windows scripts/tests CI。本批 E24 REQUIRED／E27 APPLICABLE；未來 CI、候選 SHA 與晉級不預先宣稱 PASS。N-4 傳輸錯誤 reason=HTTP_ERROR、last_http_code=null 的診斷語義歸既有 G3 殘項，保留本批原分類，下一切片再評估（DEFER；非新 owner）；G3/G5/G6 其餘 OPEN；輪詢刷屏、machine-block 讀取語義與 B123b 其餘事項留既有 owner，不附加 runner side effects。
 
 **B-123b-lite／G6 六步防再犯作者批（2026-11-09；本批 B123B-G6-WINEMU-LITE-R2-261109）**：上一批 R4 main=e2a9ac4c7705bc25fd444ef3ef24c33623953ffa，post-main Run 42486999464 push attempt1，verify／gateway-windows 雙 SUCCESS；USER W2 HEAD 同 SHA、CLEAN。R4 promotion USER_PROVIDED_TEXT 經 reply_check RESULT=PASS，未取得 W2 原始 executor-reply.txt，timing 後不可見額外操作 X-1=UNKNOWN。本批只增加 draft_precheck 必經 winemu_base_diff（JUnit ID／EXTRA=0／W1-W9）、差異行換行 lint（L1-L6）、auto-production changed tests focused／-rs（F1-F2），候選 checker D2 自我套用；本批 E24／E27 僅依 final-SHA 原始機器證據驗收；R4 Windows focused 24 skipped 精確 ID／理由仍 PENDING，winemu 不等於 Windows native D-10。B-123b／G6 及 Windows scripts/tests CI 擴充仍 OPEN（N-4：os.fdopen／NamedTemporaryFile、os.symlink／os.mkfifo 擬真度仍待後續完整 B-123b）；下一切片 G3 CI-POLL-RETRY。
+**Windows focused -rs 清單（USER_PROVIDED；10 條摘要／24 skipped；路徑分隔符由原始 Windows \ 正規化為 /）**：
+W2 原始紀錄 FILE_SHA256（USER_PROVIDED，審查官未獨立取得檔案位元組）：76A2CD8EF08BABC0B1A51266BE675857E0C4D73D10CCBAD91B905ADD1B01320E
+- SKIPPED [1] scripts/tests/test_bundle_after_push.py:131: directory symlink capability unavailable: errno=22 winerror=1314
+- SKIPPED [1] scripts/tests/test_bundle_after_push.py:131: file symlink capability unavailable: errno=22 winerror=1314
+- SKIPPED [1] scripts/tests/test_bundle_after_push.py:784: Windows native path tested separately
+- SKIPPED [13] scripts/tests/test_batch_runner.py:801: capability gap: symbolic links cannot be created here (OSError)
+- SKIPPED [1] scripts/tests/test_batch_runner.py:1471: capability gap: named pipes cannot be created here (no os.mkfifo)
+- SKIPPED [3] scripts/tests/test_prompt_builder.py:47: symbolic links need a privilege this Windows account does not hold
+- SKIPPED [1] scripts/tests/test_prompt_builder.py:565: an open file cannot be unlinked on Windows
+- SKIPPED [1] scripts/tests/test_prompt_builder.py:587: Windows may lack the symlink privilege
+- SKIPPED [1] scripts/tests/test_prompt_builder.py:595: FIFOs exist only on POSIX
+- SKIPPED [1] scripts/tests/test_prompt_builder.py:624: FIFOs exist only on POSIX
 
 **B-115 G3 CI PENDING／正式回覆機械化（2026-11-08；本批 B115-G3-CI-PENDING-REPLY-R4-261108）**：前批 STEP-HALT-DUALFAIL-R2 same-SHA main=7c4852f8b02ee08ea272e926a1d469b57041f02c 已獨立 POST-MAIN VERIFIED（candidate Run 42450911662、post-main Run 42453898778，push attempt1 verify／gateway-windows 雙 SUCCESS；Node24/26 verify 各 2292 passed／16 skipped、Webapp 13、gateway 各 61 passed）；本批只改 batch_runner、reply_check、production/promotion 兩模板與 3 個測試，並用四狀態 text_ops、兩 canonical generated。提供 task-local step stdout 完整性、timing 一次性 executor-reply、子程序 reply_check 格式自檢，PENDING 僅 CI_PENDING 不得 PASS；舊 runner apply 前紀錄可依控制與 Base blob 受限合成 STEP_PASS，無紀錄之 S1 fail-closed。E24／E27 須綁 R4 最終位元組、E27 APPLICABLE，尚未正式 Executor／candidate／post-main，不得提前宣告完成。已確認 X-1 production timing 後新增／刪除 .git 測試回覆、X-1b promotion timing 後額外讀碼與查詢；有限範圍 USER_PROVIDED W2 唯讀證據只確定根與 .git 頂層無殘留，不能證明所有工具讀取。USER 2026-11-08 裁決：本 R4 完成晉級／post-main 後下一切片先 B-123b-lite／G6，完成 winemu 第六步、差異行換行 lint 與 focused 自動推導，再做 G3 CI-POLL-RETRY；CI 暫態連續失敗、rate limit、diagnostic JSON 與 DNS/trickle 牆鐘硬截止留 G3 後續獨立切片；POSTRUN 第四區塊及 branch/TASK_ID guard 另案相容性評估；G5／Jules refs／S1 保全／B-124 HOLD 不變。
 **B-115 G3 步驟層級 S1 原碼與回覆契約（2026-11-08；本批 B115-G3-S1-STEP-HALT-DUALFAIL-R2-261108）**：前批 ebd31085a487855de566d4c2d58d4a31014592c2→2474d5db97ad766940b3b0fe0b0754cc232b2b08 same-SHA post-main Run 42443747003（push attempt 1，verify／gateway-windows SUCCESS），AUD-GPT6-261107 已獨立核對；本批只將步驟 S1 + halted-control 保存失敗時的原始 S1 以固定 S1_PRIMARY 行保留，reply_check 分類 NOT_VERIFIED，production／promotion 模板需原樣轉交該行。CI PENDING 繼續輪詢、限流診斷 JSON 持久化與 timing 正式回覆區塊仍是 G3 未完成後續，尚未修復；真正 CI 查詢牆鐘硬截止及 S1 後讀檔亦保持 OPEN。E24 15 queries／25 distinct paths，D-SO E27 APPLICABLE；本候驗批尚無 commit、candidate CI 或 post-main，禁先行宣稱 CLOSED。
