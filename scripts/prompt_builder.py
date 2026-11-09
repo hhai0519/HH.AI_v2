@@ -629,6 +629,14 @@ def check(repo, prompt_path, runner=subprocess.run):
             require_classifiable_branch(spec['branch'] if spec['kind'] == 'production' else spec['candidate_branch'])
         batch_runner.check_must_read(repo, spec, lines)
         if spec['kind'] == 'production':
+            changed_tests = sorted(p for p in spec['authors']
+                                   if p.startswith('scripts/tests/') and p.endswith('.py'))
+            if changed_tests:
+                focused = spec.get('focused')
+                _require(isinstance(focused, dict), 'CHECK_FOCUSED_MISSING')
+                args = focused.get('pytest_args') or []
+                _require(('-rs' in args or '-ra' in args) and
+                         all(args.count(p) == 1 for p in changed_tests), 'CHECK_FOCUSED_INCOMPLETE')
             authored = batch_runner.build_authors(repo, spec, lines)
             try:
                 check16_preflight.prospective_check16(repo, spec['base_oid'], authored.get('docs/EXEC-LOG.md'))

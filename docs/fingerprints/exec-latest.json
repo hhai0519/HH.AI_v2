@@ -1,5 +1,5 @@
 {
-  "base_head": "7c4852f",
+  "base_head": "e2a9ac4",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -566,16 +566,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 391,
-      "sha256": "02494eb0de042a1e7c2d4402bd888ebd51f576dbb9702d5575a3129bb5c34d9c"
+      "lines": 392,
+      "sha256": "fb3e272eeca5601f17316cd5c9af90adefe099c08d6f4a7f416c438a93d26e27"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 366,
-      "sha256": "08cd7f7ef4c1bc0b05f4713b5aff0b0281ad3d67199f1455fa3d8e8303d53b2f"
+      "lines": 367,
+      "sha256": "d1109e8b7b7a3e1b64722ef1c7967fbfd7509338dec9d355ee134c54f9d3ec96"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -617,8 +617,8 @@
         "## G. 舊 repo 未盤點區塊（2026-09-02 新發現）",
         "## 封存區"
       ],
-      "lines": 478,
-      "sha256": "4abcca7de1091849db7c2357e51be5f94187bfb983bf7a70db22b9b06a39b877"
+      "lines": 480,
+      "sha256": "91cf54a446cd0607e476f3334f8d697d841950badbd40fcf0bfedcbeea39dfc6"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1127,8 +1127,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6452,
-      "sha256": "326923141434b3e86ff326617908418cc7131a6bb62115aec5fdb534a7bfe9e0"
+      "lines": 6453,
+      "sha256": "426dabbda8acfd207b5860de36e58ca2d8dfb36491efe128bf3c22a364760498"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1187,8 +1187,8 @@
         "# Production negatives; the stop step and code depend on the batch's own step list (see production_negative).",
         "# Git for Windows installer defaults at system scope on the USER machine (B-123a; see the TASKBOARD B-123 row)."
       ],
-      "lines": 734,
-      "sha256": "8892176f5891eebdc15b0410808473f99de1e4c1968d7f88ccb35328d460a865"
+      "lines": 757,
+      "sha256": "0315d0123cadd70653a0e2714049da91970d6d6b22e00a6506a0260cc9c092f5"
     },
     "scripts/bounded_process.py": {
       "fences": 0,
@@ -1303,8 +1303,8 @@
         "# -*- coding: utf-8 -*-",
         "# Canonical tree-bounded runner; a timeout never leaves live pytest descendants by design."
       ],
-      "lines": 324,
-      "sha256": "c5852862964ce5ce9979b561025ce917d7d1a40e9160b6ade06f74cd034e1721"
+      "lines": 554,
+      "sha256": "43297e2af8ab694bebcfdfbe86095c727e02dbeee2982010f2666cf41899614b"
     },
     "scripts/execution_record.py": {
       "fences": 0,
@@ -1390,8 +1390,8 @@
       "headings": [
         "# -*- coding: utf-8 -*-"
       ],
-      "lines": 197,
-      "sha256": "d14eb8086ce58b95307a7cd99a128279fcf9cfb0ee91117f8956adc5e58613f0"
+      "lines": 223,
+      "sha256": "dfd16bd94029a043508f66ff4b830681e7e44aa54adce202db1110080e63eed6"
     },
     "scripts/promotion_template.py": {
       "fences": 0,
@@ -1408,8 +1408,8 @@
         "# State files take only declared text_ops (STATE_FILE_REQUIRES_TEXT_OPS); the ops in BATCH_SPEC_JSON are then the",
         "# change ledger that scripts/candidate_check.py replays from Base against the candidate commit."
       ],
-      "lines": 747,
-      "sha256": "3c56d22b63b4291bc8a773588cb76c0e84e9f30d3f300bcc7f0a13f237566c8e"
+      "lines": 755,
+      "sha256": "10c4d93876824c72d31c78abe9f2c44a62946f39ec4e8f5901cca0952009d0ef"
     },
     "scripts/prompt_intake.py": {
       "fences": 0,
@@ -1611,8 +1611,8 @@
         "# --- B-123a: HOME/XDG isolation and Git profiles (three kinds of Git subprocess) ---------------------------",
         "# --- second-opinion B01 (B123A R1): winemu must check the repository the tests actually run in --------------"
       ],
-      "lines": 1092,
-      "sha256": "5936955e4ca6332367eafc96de6be081e8d841da103ff5485ce79de613dfab77"
+      "lines": 1107,
+      "sha256": "64e4d44fd049c8af4b671d12b5e5c953a43e9e0f4bd5c57ea160e325bde23855"
     },
     "scripts/tests/test_bounded_process.py": {
       "fences": 0,
@@ -1800,10 +1800,12 @@
       "fences": 0,
       "headings": [
         "# -*- coding: utf-8 -*-",
-        "# 2026-10-17 E27 B1-B4 / N1 focused negative controls."
+        "# 2026-10-17 E27 B1-B4 / N1 focused negative controls.",
+        "# B-123b-lite sixth-stage / changed-line regression contract, including C-1/C-2.",
+        "# --- SO E27 reference tests: sixth-stage decision logic must be regression-tested in-repo. ---"
       ],
-      "lines": 356,
-      "sha256": "c114a8e31454f214a5da9dcb6262201b0a6afd4ddcbd697d0706f62483b923da"
+      "lines": 630,
+      "sha256": "14ce5f7f205d8a868ffc9f85a4c5294784fbf036f3d942ee6b289bf87cc77b90"
     },
     "scripts/tests/test_execution_record.py": {
       "fences": 0,
@@ -1946,8 +1948,8 @@
         "# The canonical builder/checker recognises READONLY without granting canonical production-runner rights.",
         "# B115/G3 CI-PENDING-REPLY: positive terminal handoff; no checker command for Executor."
       ],
-      "lines": 1375,
-      "sha256": "eb6e95b9e2ec816f6b08a2f0d2f5db8f6cc6f27958e81a04cd8eef1b1c0befb0"
+      "lines": 1398,
+      "sha256": "48bffa155e54c3819a92e1858971015d851f8f03e7a3789003253f2ad9f22fa2"
     },
     "scripts/tests/test_prompt_intake.py": {
       "fences": 0,
@@ -2273,7 +2275,7 @@
       "sha256": "6bfd57c05a09df3cde679ae53ac6ddd67bfb64cda4246584617d3cc67fb3b81c"
     }
   },
-  "generated_at": "2026-11-08T12:41:48Z",
+  "generated_at": "2026-11-09T02:26:01Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

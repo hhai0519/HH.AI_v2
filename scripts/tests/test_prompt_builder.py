@@ -1373,3 +1373,26 @@ def test_g3_auto_promotion_reply_terminal_contract(tmp_path, repo):
     assert 'CI PENDING' in text and '不得補造 PASS' in text
     assert 'S1 之後唯一允許、且必須執行的命令，是第四節最後一行的 timing（一次）' in text
     assert 'reply_check.py --prompt' not in text
+
+
+def test_b123b_f1_f2_focus_adds_every_changed_test_and_preserves_explicit():
+    import production_template as pt
+    d={'code_files': {'scripts/tests/test_one.py':'one','scripts/tests/test_two.py':'two',
+                      'scripts/misc.py':'misc'}, 'new_files': {}}
+    assert pt.canonical_focused(d)['pytest_args']==['-q','-rs','scripts/tests/test_one.py','scripts/tests/test_two.py']
+    d['focused']={'pytest_args':['-q','scripts/tests/test_two.py','scripts/tests/test_manual.py'],
+                  'limit_sec': 1800}
+    focused=pt.canonical_focused(d)
+    assert focused['pytest_args'].count('scripts/tests/test_two.py')==1
+    assert 'scripts/tests/test_manual.py' in focused['pytest_args']
+    assert '-rs' in focused['pytest_args']
+
+
+def test_so_check_rejects_changed_test_without_canonical_focused(tmp_path, repo):
+    # A hand-built prompt (build, not auto-production) that changes a test file must still fail check.
+    root, base = repo
+    out = tmp_path / "out"
+    nf = {"scripts/new_tool.py": {"file": "new.py", "block": "NEW_TOOL_PY"},
+          "scripts/tests/test_new_x.py": {"file": "new.py", "block": "NEW_TEST_X_PY"}}
+    pb.main(["build", "--repo", root, "--definition", _definition(tmp_path, base, new_files=nf), "--out-dir", str(out)])
+    assert _code(pb.check, root, str(out / (TASK + "-prompt.txt")), lambda *a, **k: _Result(0)) == "CHECK_FOCUSED_MISSING"

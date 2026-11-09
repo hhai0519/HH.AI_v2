@@ -669,6 +669,29 @@ class Sim:
         self.check_source_unchanged()
 
 
+
+def winemu_collect(repo, pytest_args, junit_path, *, git_profile='windows', timeout=STEP_TIMEOUT,
+                   run=default_run, probe_run=default_run):
+    """Internal structured Windows emulation result for auditor comparisons.
+
+    Uses the SAME HOME/Git-profile preparation as winemu, without relaxing the
+    public winemu CLI's rc==0 contract. XML lives outside the test repository.
+    """
+    xml = Path(junit_path).resolve()
+    _require(xml.parent.is_dir() and not xml.exists(), 'WINEMU_JUNIT_TARGET_INVALID')
+    _require(not any(a == '--junitxml' or a.startswith('--junitxml=') or a == '--xml' for a in pytest_args),
+             'WINEMU_JUNIT_DUPLICATE')
+    _require(isinstance(timeout, int) and 1 <= timeout <= STEP_TIMEOUT, 'WINEMU_TIMEOUT_INVALID')
+    with tempfile.TemporaryDirectory(prefix='batch-sim-winemu-') as root:
+        env = isolated_env(root, None, git_profile)
+        check_git_profile(probe_run, env, root, git_profile, repo=repo)
+        scripts = str(Path(repo).resolve() / 'scripts')
+        env['PYTHONPATH'] = scripts + (os.pathsep + env['PYTHONPATH'] if env.get('PYTHONPATH') else '')
+        rc, out = run([sys.executable, '-m', 'pytest', '-p', 'sim_windows_emulation', '-p', 'no:cacheprovider',
+                       *pytest_args, '--junitxml=' + str(xml)], repo, env, timeout, True)
+    return rc, out
+
+
 def winemu(repo, pytest_args, run=default_run, git_profile='windows', probe_run=default_run):
     """pytest with the Windows emulation plugin, in a temporary isolated HOME/XDG_CONFIG_HOME and Git profile;
     the profile is checked with probe_run (real git) before the tests run."""

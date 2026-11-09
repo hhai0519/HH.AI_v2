@@ -121,7 +121,8 @@ def test_full_five_steps_end_to_end_and_cached_resume(tmp_path):
     assert q2.main(args)==0
     result=json.loads((work/'draft-result.json').read_bytes())
     assert [x['stage'] for x in result['completed']]==list(q2.STAGES)
-    assert result['overall']=='FIVE_STEPS_PASS'
+    assert result['overall']=='SIX_STEPS_PASS'
+    assert result['STAGE6']=='SYNTHETIC'
     assert len(result['HASHES']['AUTHOR_SHA256'])==64
     assert q2.main([*args,'--resume'])==0
     # A cached log is a signed input to a resumed run. Tampering can never be reused.
@@ -354,3 +355,276 @@ def test_b1_multiple_pytest_gates_without_partition_refused():
     same={'FAILED_GATES':['unit_tests','webapp_tests'], 'FAIL_IDS':['tests/test_a.py::test_bad']}
     with pytest.raises(q2.DraftError, match='VERIFY_NONZERO_WITHOUT_FAIL_IDS'):
         q2.classify_base_candidate(1,1,same,same)
+
+
+# B-123b-lite sixth-stage / changed-line regression contract, including C-1/C-2.
+def _junit_fixture(path, names, *, fails=(), skips=()):
+    import xml.etree.ElementTree as ET
+    root = ET.Element('testsuite', tests=str(len(names)), failures=str(len(fails)),
+                      errors='0', skipped=str(len(skips)))
+    for n in names:
+        case = ET.SubElement(root, 'testcase', classname='scripts.tests.test_draft_precheck', name=n)
+        if n in fails:
+            ET.SubElement(case, 'failure', message='fixture assertion')
+        if n in skips:
+            ET.SubElement(case, 'skipped', message='fixture')
+    path.write_bytes(ET.tostring(root, encoding='utf-8'))
+
+
+def test_b123b_w6_both_green_rc0_and_structured_ids(tmp_path):
+    xml=tmp_path/'r.xml';_junit_fixture(xml,['test_green'])
+    x=q2.parse_junit_xml(xml,0,['scripts/tests/test_draft_precheck.py'])
+    assert x['tests']==1 and x['fail_ids']==[] and x['rc']==0
+    with pytest.raises(q2.DraftError):
+        q2.parse_junit_xml(xml,1,['scripts/tests/test_draft_precheck.py'])
+
+
+def test_b123b_w7_new_only_empty_base_and_extra_is_rejected(tmp_path):
+    xml=tmp_path/'r.xml';_junit_fixture(xml,['test_new'])
+    passed=q2.parse_junit_xml(xml,0,['scripts/tests/test_draft_precheck.py'])
+    assert set(passed['fail_ids'])-set()==set()
+    _junit_fixture(xml,['test_new'],fails=['test_new'])
+    failed=q2.parse_junit_xml(xml,1,['scripts/tests/test_draft_precheck.py'])
+    assert failed['fail_ids']==['scripts/tests/test_draft_precheck.py::test_new']
+    assert set(failed['fail_ids'])-set()
+
+
+def test_b123b_w9_same_fail_count_different_ids_fails(tmp_path):
+    xml=tmp_path/'r.xml'
+    _junit_fixture(xml,['test_a','test_b'],fails=['test_a'])
+    before=q2.parse_junit_xml(xml,1,['scripts/tests/test_draft_precheck.py'])
+    _junit_fixture(xml,['test_a','test_b'],fails=['test_b'])
+    after=q2.parse_junit_xml(xml,1,['scripts/tests/test_draft_precheck.py'])
+    assert len(before['fail_ids'])==len(after['fail_ids'])==1
+    assert set(after['fail_ids'])-set(before['fail_ids'])
+    _junit_fixture(xml,['test_a'],skips=['test_a'])
+    with pytest.raises(q2.DraftError,match='WINEMU_ALL_SKIPPED'):
+        q2.parse_junit_xml(xml,0,['scripts/tests/test_draft_precheck.py'])
+
+
+@pytest.mark.parametrize('source,reason',[
+    ("from pathlib import Path\nPath('x').write_text('a')\n",'WRITE_TEXT_NEWLINE'),
+    ("open('x','w').write('a')\n",'TEXT_OPEN_NEWLINE'),
+    ("from pathlib import Path\np=Path('x');p.open('a').write('a')\n",'TEXT_OPEN_NEWLINE'),
+    ("mode='w'\nopen('x',mode).write('a')\n",'DYNAMIC_TEXT_MODE'),
+    ("from pathlib import Path\np=Path('x');p.write_text(\n    'a', encoding='utf-8'\n)\n",'WRITE_TEXT_NEWLINE')])
+def test_b123b_l1_l2_l6_bad_added_calls(tmp_path,source,reason):
+    base=tmp_path/'b';cand=tmp_path/'c';(base/'scripts').mkdir(parents=True);(cand/'scripts').mkdir(parents=True)
+    import subprocess
+    subprocess.run(['git','init','-q',str(base)],check=True)
+    (cand/'scripts'/'new.py').write_bytes(source.encode())
+    issues=q2.lint_python_newlines(base,cand,['scripts/new.py'])
+    assert any(x['kind']==reason for x in issues)
+
+
+@pytest.mark.parametrize('source',[
+    "from pathlib import Path\nPath('x').write_bytes(b'a')\n",
+    "from pathlib import Path\nPath('x').write_text('a',newline='')\n",
+    "open('x','w',newline='\\n').write('a')\n",
+    "open('x','wb').write(b'a')\n",
+    'v="open(\'x\',\'w\')"\n# Path.write_text("foo")\n',
+])
+def test_b123b_l3_l4_positive(tmp_path,source):
+    base=tmp_path/'b';cand=tmp_path/'c';(base/'scripts').mkdir(parents=True);(cand/'scripts').mkdir(parents=True)
+    import subprocess
+    subprocess.run(['git','init','-q',str(base)],check=True)
+    (cand/'scripts'/'new.py').write_bytes(source.encode())
+    assert q2.lint_python_newlines(base,cand,['scripts/new.py'])==[]
+
+
+def test_b123b_l5_unchanged_history_not_linted(tmp_path):
+    base=tmp_path/'b';cand=tmp_path/'c';(base/'scripts').mkdir(parents=True);(cand/'scripts').mkdir(parents=True)
+    import subprocess
+    subprocess.run(['git','init','-q',str(base)],check=True)
+    text="from pathlib import Path\nPath('x').write_text('old')\nx=1\n"
+    (base/'scripts'/'x.py').write_bytes(text.encode())
+    subprocess.run(['git','-C',str(base),'add','.'],check=True)
+    subprocess.run(['git','-C',str(base),'-c','user.name=Unit','-c','user.email=unit@example.test','commit','-qm','base'],check=True)
+    (cand/'scripts'/'x.py').write_bytes(text.replace('x=1','x=2').encode())
+    assert q2.lint_python_newlines(base,cand,['scripts/x.py'])==[]
+
+
+# --- SO E27 reference tests: sixth-stage decision logic must be regression-tested in-repo. ---
+_W_BASE = 'e2a9ac4c7705bc25fd444ef3ef24c33623953ffa'
+
+
+def _w_stage(tmp_path, monkeypatch, *, code_tests=(), new_tests=(), base_has=(), focused_old=None,
+             results=None, new_in_plan=True, spec_focused=None):
+    w = tmp_path / 'w'
+    for side in ('baseclone', 'candclone'):
+        (w / side / 'scripts' / 'tests').mkdir(parents=True)
+    for rel in base_has:
+        (w / 'baseclone' / rel).write_bytes(b'x')
+    for rel in [*code_tests, *new_tests, *[a for a in (focused_old or []) if a.startswith('scripts/')]]:
+        (w / 'candclone' / rel).write_bytes(b'x')
+    d = {'task_id': 'T', 'base_oid': _W_BASE, 'kind': 'production',
+         'code_files': {p: 'a' for p in code_tests},
+         'new_files': {p: {'file': 'f', 'block': 'B'} for p in new_tests},
+         'focused': ({'pytest_args': ['-q', *focused_old], 'limit_sec': 1800} if focused_old else None)}
+    allowed = sorted([*code_tests, *(new_tests if new_in_plan else [])])
+    (w / 'def.json').write_bytes(json.dumps(d).encode())
+    (w / 'plan.json').write_bytes(json.dumps({'task_id': 'T', 'allowed_paths': allowed,
+                                              'required_paths': allowed}).encode())
+    (w / 'prompt.txt').write_bytes(b'x')
+    import production_template
+    spec = {'kind': 'production', 'base_oid': _W_BASE, 'task_id': 'T',
+            'focused': spec_focused if spec_focused is not None else production_template.canonical_focused(d),
+            'authors': {**{p: {'source': {'kind': 'base'}} for p in code_tests},
+                        **{p: {'source': {'kind': 'block'}} for p in new_tests}}}
+    monkeypatch.setattr(q2.batch_runner, 'prompt_lines', lambda b: [])
+    monkeypatch.setattr(q2.batch_runner, 'load_spec', lambda lines, task: spec)
+    calls = []
+
+    def fake(repo, args, junit_path, timeout):
+        side = 'BASE' if repo.endswith('baseclone') else 'CANDIDATE'
+        calls.append(side)
+        rc, cases = results[side]
+        _junit_cases(Path(junit_path), cases)
+        return rc, b'log'
+    monkeypatch.setattr(q2.batch_sim, 'winemu_collect', fake)
+    return (lambda: q2.winemu_stage(w, w / 'def.json', w / 'prompt.txt', w / 'plan.json', _W_BASE, timeout=60)), calls
+
+
+def _junit_cases(path, cases):
+    import xml.etree.ElementTree as ET
+    root = ET.Element('testsuite', tests=str(len(cases)), errors='0',
+                      failures=str(sum(s == 'failure' for _, _, s in cases)),
+                      skipped=str(sum(s == 'skipped' for _, _, s in cases)))
+    for cls, name, status in cases:
+        tc = ET.SubElement(root, 'testcase', classname=cls, name=name)
+        if status != 'passed':
+            ET.SubElement(tc, status)
+    path.write_bytes(ET.tostring(root, encoding='utf-8'))
+
+
+_OLD = 'scripts/tests/test_old.py'
+_NEW = 'scripts/tests/test_new.py'
+
+
+def test_so_w4_extra_is_id_set_difference_not_count(tmp_path, monkeypatch):
+    run, _ = _w_stage(tmp_path, monkeypatch, code_tests=[_OLD], base_has=[_OLD], results={
+        'BASE': (1, [('scripts.tests.test_old', 'test_a', 'failure'), ('scripts.tests.test_old', 'test_b', 'passed')]),
+        'CANDIDATE': (1, [('scripts.tests.test_old', 'test_a', 'passed'), ('scripts.tests.test_old', 'test_b', 'failure')])})
+    with pytest.raises(q2.DraftError, match='WINEMU_EXTRA_FAILURE_IDS'):
+        run()
+
+
+def test_so_w3_same_preexisting_failure_is_excluded(tmp_path, monkeypatch):
+    same = [('scripts.tests.test_old', 'test_a', 'failure'), ('scripts.tests.test_old', 'test_b', 'passed')]
+    run, _ = _w_stage(tmp_path, monkeypatch, code_tests=[_OLD], base_has=[_OLD],
+                      results={'BASE': (1, same), 'CANDIDATE': (1, same)})
+    r = run()
+    assert r['STATUS'] == 'PASS' and r['EXTRA_FAIL_IDS'] == []
+
+
+@pytest.mark.parametrize('rc', [2, 3, 4, 5, 124])
+def test_so_w5_non_test_exit_codes_fail_closed(tmp_path, monkeypatch, rc):
+    run, _ = _w_stage(tmp_path, monkeypatch, code_tests=[_OLD], base_has=[_OLD], results={
+        'BASE': (rc, [('scripts.tests.test_old', 'test_a', 'passed')]),
+        'CANDIDATE': (0, [('scripts.tests.test_old', 'test_a', 'passed')])})
+    with pytest.raises(q2.DraftError, match='WINEMU_PYTEST_NONTEST_EXIT'):
+        run()
+
+
+def test_so_w7a_new_only_uses_authorized_empty_base(tmp_path, monkeypatch):
+    run, calls = _w_stage(tmp_path, monkeypatch, new_tests=[_NEW], results={
+        'CANDIDATE': (0, [('scripts.tests.test_new', 'test_a', 'passed')])})
+    r = run()
+    assert calls == ['CANDIDATE'] and r['BASE_SELECTION'] == 'AUTHORIZED_EMPTY_NEW_FILES_ONLY'
+    assert r['BASE_EXCLUDED_NEW_FILES'] == [_NEW]
+
+
+def test_so_w7b_new_file_failure_is_extra(tmp_path, monkeypatch):
+    run, _ = _w_stage(tmp_path, monkeypatch, new_tests=[_NEW], results={
+        'CANDIDATE': (1, [('scripts.tests.test_new', 'test_a', 'failure')])})
+    with pytest.raises(q2.DraftError, match='WINEMU_EXTRA_FAILURE_IDS'):
+        run()
+
+
+def test_so_c2_mixed_base_runs_only_existing_targets(tmp_path, monkeypatch):
+    run, calls = _w_stage(tmp_path, monkeypatch, code_tests=[_OLD], new_tests=[_NEW], base_has=[_OLD], results={
+        'BASE': (0, [('scripts.tests.test_old', 'test_a', 'passed')]),
+        'CANDIDATE': (0, [('scripts.tests.test_old', 'test_a', 'passed'), ('scripts.tests.test_new', 'test_a', 'passed')])})
+    r = run()
+    assert calls == ['BASE', 'CANDIDATE'] and r['BASE_EXCLUDED_NEW_FILES'] == [_NEW]
+    assert _NEW not in r['BASE_ARGS'] and _OLD in r['BASE_ARGS']
+
+
+@pytest.mark.parametrize('case', ['absent_explicit_target', 'new_file_not_in_plan'])
+def test_so_c2_unverified_base_absence_fails_closed(tmp_path, monkeypatch, case):
+    if case == 'absent_explicit_target':
+        run, calls = _w_stage(tmp_path, monkeypatch, code_tests=[_OLD], base_has=[_OLD],
+                              focused_old=['scripts/tests/test_manual.py'], results={})
+    else:
+        run, calls = _w_stage(tmp_path, monkeypatch, new_tests=[_NEW], new_in_plan=False, results={})
+    with pytest.raises(q2.DraftError, match='WINEMU_UNAUTHORIZED_NEW_PATH'):
+        run()
+    assert calls == []
+
+
+def test_so_n3_prompt_focused_must_equal_canonical_definition(tmp_path, monkeypatch):
+    run, calls = _w_stage(tmp_path, monkeypatch, code_tests=[_OLD], base_has=[_OLD], results={},
+                          spec_focused={'pytest_args': ['-q', '-rs', _OLD, 'scripts/tests/test_extra.py'],
+                                        'limit_sec': 1800})
+    with pytest.raises(q2.DraftError, match='WINEMU_FOCUSED_DRIFT'):
+        run()
+    assert calls == []
+
+
+def test_so_execute_lints_added_python_before_stages(tmp_path, capsys):
+    source, patch, plan = _build_simulated_source(tmp_path)
+    (source / 'scripts' / 'added.py').write_bytes(b"open('x', 'w').write('a')\n")
+    subprocess.run(['git', '-C', str(source), 'add', '-N', 'scripts/added.py'], check=True)
+    patch.write_bytes(subprocess.check_output(['git', '-C', str(source), 'diff', '--binary']) +
+                      patch.read_bytes())
+    subprocess.run(['git', '-C', str(source), 'reset', '-q', '--', 'scripts/added.py'], check=True)
+    (source / 'scripts' / 'added.py').unlink()
+    p = json.loads(plan.read_bytes())
+    p['allowed_paths'] = sorted([*p['allowed_paths'], 'scripts/added.py'])
+    plan.write_bytes(json.dumps(p, sort_keys=True).encode() + b'\n')
+    work = tmp_path / 'work'
+    assert q2.main(['--source', str(source), '--patch', str(patch), '--plan', str(plan), '--workdir', str(work)]) == 1
+    assert 'NEWLINE_DIFF_LINT_FAILED' in capsys.readouterr().out
+    assert not (work / 'draft-result.json').exists()
+
+
+def test_so_real_repo_source_requires_definition_and_prompt(tmp_path, capsys):
+    source, patch, plan = _build_simulated_source(tmp_path)
+    (source / 'scripts' / 'batch_sim.py').write_bytes(b'# marks a production source\n')
+    subprocess.run(['git', '-C', str(source), 'add', '.'], check=True)
+    subprocess.run(['git', '-C', str(source), 'commit', '-qm', 'real-source marker'], check=True)
+    p = json.loads(plan.read_bytes())
+    p['base_oid'] = subprocess.check_output(['git', '-C', str(source), 'rev-parse', 'HEAD'], text=True).strip()
+    plan.write_bytes(json.dumps(p, sort_keys=True).encode() + b'\n')
+    work = tmp_path / 'work'
+    assert q2.main(['--source', str(source), '--patch', str(patch), '--plan', str(plan), '--workdir', str(work)]) == 1
+    assert 'WINEMU_BINDING_REQUIRED' in capsys.readouterr().out
+
+
+@pytest.mark.parametrize('source,expected', [
+    ("import os\npath = 'x'\nfd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o644)\n", []),
+    ("import io\npath = 'x'\nf = io.open(path, 'rb')\n", []),
+    ("import io\npath = 'x'\nf = io.open(path, encoding='utf-8')\n", []),
+    ("import io\npath = 'x'\nf = io.open(path, 'w', encoding='utf-8', newline='')\n", []),
+    ("import io\npath = 'x'\nf = io.open(path, 'w', encoding='utf-8')\n", ['TEXT_OPEN_NEWLINE']),
+    ("from pathlib import Path\nPath('x').write_text('a', newline=None)\n", ['WRITE_TEXT_NEWLINE']),
+])
+def test_so_lint_fd_and_io_open_semantics(tmp_path, source, expected):
+    base = tmp_path / 'b'; cand = tmp_path / 'c'
+    (base / 'scripts').mkdir(parents=True); (cand / 'scripts').mkdir(parents=True)
+    subprocess.run(['git', 'init', '-q', str(base)], check=True)
+    (cand / 'scripts' / 'new.py').write_bytes(source.encode())
+    assert [x['kind'] for x in q2.lint_python_newlines(base, cand, ['scripts/new.py'])] == expected
+
+
+def test_r2_w9_each_changed_test_file_must_really_execute(tmp_path, monkeypatch):
+    other = 'scripts/tests/test_other.py'
+    run, calls = _w_stage(tmp_path, monkeypatch, code_tests=[_OLD, other],
+        base_has=[_OLD, other], results={
+        'BASE': (0, [('scripts.tests.test_old', 'test_a', 'passed'),
+                     ('scripts.tests.test_other', 'test_b', 'passed')]),
+        'CANDIDATE': (0, [('scripts.tests.test_old', 'test_a', 'passed'),
+                          ('scripts.tests.test_other', 'test_b', 'skipped')])})
+    with pytest.raises(q2.DraftError, match='WINEMU_CHANGED_FILE_NOT_EXECUTED'):
+        run()
+    assert calls == ['BASE', 'CANDIDATE']

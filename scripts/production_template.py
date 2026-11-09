@@ -43,6 +43,30 @@ def _git(repo, *args):
     return p.stdout.decode('ascii').strip()
 
 
+
+def canonical_focused(d):
+    """One deterministic focused selection for production and auditor-side winemu.
+
+    Code/new author test paths are the source of truth, even for focused=None.
+    Existing explicit test selection is preserved and -rs captures Windows skips.
+    """
+    changed = sorted(p for p in (set(d.get('code_files') or {}) | set(d.get('new_files') or {}))
+                     if p.startswith('scripts/tests/') and p.endswith('.py'))
+    old = d.get('focused')
+    if not changed:
+        return old
+    pb._require(old is None or (isinstance(old, dict) and isinstance(old.get('pytest_args'), list)
+                                and isinstance(old.get('limit_sec'), int)), 'FOCUSED_SOURCE_INVALID')
+    args = list(old['pytest_args']) if old else ['-q']
+    pb._require(all(isinstance(a, str) and a for a in args), 'FOCUSED_SOURCE_INVALID')
+    if '-rs' not in args and '-ra' not in args:
+        args.insert(1 if args and args[0] == '-q' else 0, '-rs')
+    for rel in changed:
+        if rel not in args:
+            args.append(rel)
+    return {'pytest_args': args, 'limit_sec': max(old['limit_sec'], 1800) if old else 1800}
+
+
 def auto_production(repo, definition, out_dir):
     """Create production prompt; all machine-derived statements use the SAME definition as builder."""
     repo, definition, out_dir = Path(repo).resolve(), Path(definition).resolve(), Path(out_dir).resolve()
@@ -90,6 +114,8 @@ def auto_production(repo, definition, out_dir):
         pb.check_repo_path(path)
     changed = sorted(set(authors) | set(pb.batch_runner.GENERATED))
     pb._require(all(x in changed for x in pb.batch_runner.GENERATED), 'GENERATED_MISSING')
+    # Derive the canonical focused list once, for prose and the actual runner machine block.
+    d['focused'] = canonical_focused(d)
     # Use the runner's own step derivation; do not maintain a second e24/focused decision.
     steps = pb.batch_runner.derive_steps({'kind': 'production', 'e24': d.get('e24') is True,
                                           'focused': d.get('focused'), 'bundle_output': d.get('bundle_output', False)}) + ['timing']

@@ -1090,3 +1090,18 @@ def test_uv_simulator_requires_exact_python_pin_before_sync(tmp_path, monkeypatc
     with pytest.raises(bs.SimError, match='UV_SIM_PYTHON_PIN_INVALID'):
         sim.prepare_uv_simulation()
     assert calls == []
+
+
+def test_b123b_w8_structured_winemu_returns_rc_without_weakening_public_cli(tmp_path):
+    repo = _winemu_repo(tmp_path)
+    xml = tmp_path / 'result.xml'
+    def fake(args, cwd, env, timeout, merge):
+        from pathlib import Path
+        assert any(x.startswith('--junitxml=') for x in args)
+        Path(args[-1].split('=', 1)[1]).write_bytes(
+            b'<testsuite tests="1" failures="1" errors="0" skipped="0">'
+            b'<testcase classname="test_r2_shape" name="test_red"><failure/></testcase></testsuite>')
+        return 1, b'fixture failed\n'
+    rc,_ = bs.winemu_collect(str(repo), ['-q', 'test_r2_shape.py'], str(xml), run=fake)
+    assert rc == 1 and xml.is_file()
+    assert _code(bs.winemu, str(repo), ['-q','test_r2_shape.py'], run=lambda *a:(1,b'1 failed in 0.01s\n')) == 'WINEMU_TESTS_FAILED'
