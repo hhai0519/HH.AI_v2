@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "B115-G3-C3-AUTHOR-TARGET-R2-261110",
-  "base_oid": "8933f6e0bb127fabcb48e737d6c23e24ca8eb47d",
+  "task_id": "B115-G3-F-S1-TIMING-GATE-WARN-R4-261110",
+  "base_oid": "907b1dfbeaebb7da8edd077e56de7c41636611ef",
   "plan": {
     "allowed_paths": [
       "docs/AUDIT-LOG.md",
@@ -11,8 +11,17 @@
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
       "docs/refactor-backlog.md",
-      "scripts/draft_precheck.py",
-      "scripts/tests/test_draft_precheck.py"
+      "scripts/batch_runner.py",
+      "scripts/gate_runner.py",
+      "scripts/production_template.py",
+      "scripts/promotion_template.py",
+      "scripts/reply_check.py",
+      "scripts/tests/test_batch_runner.py",
+      "scripts/tests/test_bundle_after_push.py",
+      "scripts/tests/test_channel_gateway_core.py",
+      "scripts/tests/test_gate_runner.py",
+      "scripts/tests/test_prompt_builder.py",
+      "scripts/tests/test_reply_check.py"
     ],
     "required_paths": [
       "docs/AUDIT-LOG.md",
@@ -21,8 +30,17 @@
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
       "docs/refactor-backlog.md",
-      "scripts/draft_precheck.py",
-      "scripts/tests/test_draft_precheck.py"
+      "scripts/batch_runner.py",
+      "scripts/gate_runner.py",
+      "scripts/production_template.py",
+      "scripts/promotion_template.py",
+      "scripts/reply_check.py",
+      "scripts/tests/test_batch_runner.py",
+      "scripts/tests/test_bundle_after_push.py",
+      "scripts/tests/test_channel_gateway_core.py",
+      "scripts/tests/test_gate_runner.py",
+      "scripts/tests/test_prompt_builder.py",
+      "scripts/tests/test_reply_check.py"
     ],
     "max_plan_revisions": 3,
     "revision_count": 0,
@@ -36,8 +54,17 @@
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
       "docs/refactor-backlog.md",
-      "scripts/draft_precheck.py",
-      "scripts/tests/test_draft_precheck.py"
+      "scripts/batch_runner.py",
+      "scripts/gate_runner.py",
+      "scripts/production_template.py",
+      "scripts/promotion_template.py",
+      "scripts/reply_check.py",
+      "scripts/tests/test_batch_runner.py",
+      "scripts/tests/test_bundle_after_push.py",
+      "scripts/tests/test_channel_gateway_core.py",
+      "scripts/tests/test_gate_runner.py",
+      "scripts/tests/test_prompt_builder.py",
+      "scripts/tests/test_reply_check.py"
     ]
   },
   "evidence": [

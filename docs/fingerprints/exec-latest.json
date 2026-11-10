@@ -1,5 +1,5 @@
 {
-  "base_head": "8933f6e",
+  "base_head": "907b1df",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -566,16 +566,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 394,
-      "sha256": "f8b4f870944e6b8a0f8cc2f8caa23afbcf370dcf8b17cefc24b53f722086c069"
+      "lines": 395,
+      "sha256": "9105e8ba298bb49784bf789d69c10a330c6576bc49630eeca2f922b6b612ccc7"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 369,
-      "sha256": "bd9c4f977c0af5f653165906c96afa11bde11b0ef743547a4a4d102d113e1424"
+      "lines": 370,
+      "sha256": "ca4e684aad67c814dffe56973641b0ca285143f57c01fa677ef6096b92a6cfb6"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -617,8 +617,8 @@
         "## G. 舊 repo 未盤點區塊（2026-09-02 新發現）",
         "## 封存區"
       ],
-      "lines": 496,
-      "sha256": "d15ffaae5d6658516f56f0f3134c53accea30a116ce2c003f0c98b1b2bcc6e83"
+      "lines": 497,
+      "sha256": "4a159397c9764623264a9932a2e198d0586534dd34515f4c780340242996e174"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1127,8 +1127,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6455,
-      "sha256": "1eec7e1b9b284de999ebf47268fc295e104add0b0aba6da6a46d8e79cbd52f70"
+      "lines": 6456,
+      "sha256": "db7288536499d8d431f8038a8b310b22589da6ab8b7d28e6bf9f64c7343a3c7f"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1177,8 +1177,8 @@
         "# Windows: os.replace needs DELETE access on both files; antivirus/indexer handles can deny it briefly.",
         "# Retry only that PermissionError, bounded (about 1.55 s total); any other failure is not retried."
       ],
-      "lines": 1660,
-      "sha256": "df235df4249ec402931ded92222ac3b4ac7c0c8564e6af87e8e2bf79f2c8e731"
+      "lines": 1717,
+      "sha256": "5f283625923f9a408117b4f3a84aaaaad4d02885e63c180811aa75ec873803de"
     },
     "scripts/batch_sim.py": {
       "fences": 0,
@@ -1330,8 +1330,8 @@
         "# Positional budgets match the fixed STAGES gate sequences. A longer budget is",
         "# reserved for Windows verify_all; no gate is skipped or downgraded."
       ],
-      "lines": 275,
-      "sha256": "8561e60284e04af916d3371174e6e6cfd14c0a6774b778ae9e28d0c402e9f663"
+      "lines": 277,
+      "sha256": "763f1a2556ec48fc7d5a7ffff4e669ad1b185f40c656939b903b90c00f01094a"
     },
     "scripts/generate_rule_traceability.py": {
       "fences": 0,
@@ -1391,7 +1391,7 @@
         "# -*- coding: utf-8 -*-"
       ],
       "lines": 223,
-      "sha256": "dfd16bd94029a043508f66ff4b830681e7e44aa54adce202db1110080e63eed6"
+      "sha256": "fe6cc65e52726016443105dc88abd3b8737aa39605c7bb9059d1bbef1f195f79"
     },
     "scripts/promotion_template.py": {
       "fences": 0,
@@ -1399,7 +1399,7 @@
         "# -*- coding: utf-8 -*-"
       ],
       "lines": 170,
-      "sha256": "387dde2f4a9d7e9da6369d0c1fc3d6c7536a0d4a3c7a87629b0fca19a057de88"
+      "sha256": "19d83899bbc62ee29638b65ce59c748bc8625220baccbff3cd896668f557f7fa"
     },
     "scripts/prompt_builder.py": {
       "fences": 0,
@@ -1437,8 +1437,8 @@
         "# Halts reported before the step body runs (control not written, or not updated): STATE keeps halted=None.",
         "# name -> (prefix, exact format, positions of commit SHAs, positions of file SHA-256)"
       ],
-      "lines": 544,
-      "sha256": "47d19db21078f2ea65772754424864fb402586e0951bcb1afee85b36aebf71d4"
+      "lines": 575,
+      "sha256": "c35d4322e42a60e02a203f76392ff46d57f48dc63e88b502987264ef93281055"
     },
     "scripts/runtime_readiness.py": {
       "fences": 0,
@@ -1589,10 +1589,13 @@
         "# G3 next slice: a failed control save after a step S1 must not erase the first S1.",
         "# B115 G3 CI-PENDING-REPLY R1: task-local, single-writer step output and timing.",
         "# SO F-1: RESULT=PASS of a well-formed S1 reply (evidence N/A) must never surface as CLASS=PASS.",
-        "# SO: D5 negatives that the author suite did not kill under mutation."
+        "# SO: D5 negatives that the author suite did not kill under mutation.",
+        "# G3 F — keep the original S1 as authority; auto timing is terminal, not a new tool action.",
+        "# G3 F (E27 second-opinion additions): each WARN guard and the pre-step S1 path",
+        "# has its own killing case; one guard cannot silently cover for another."
       ],
-      "lines": 2233,
-      "sha256": "6f60ad2fdf0b2307a40581aeb441e4b0eb71ca408f2ba6a5db3f66d034c52ad5"
+      "lines": 2358,
+      "sha256": "a253ec64a9c59eac4c2b22f9be5f8b58f582b276e05d6981ce95ba803e4888c2"
     },
     "scripts/tests/test_batch_sim.py": {
       "fences": 0,
@@ -1647,8 +1650,8 @@
         "# G1 receipt-first exact-task cleanup: these are *failure* tests, not",
         "# permission for generic Downloads, previous-task or historical S1 deletion."
       ],
-      "lines": 789,
-      "sha256": "6db475b60c10947fcf9d1a9076cd6595fcc84a7700a31d3125a3c14517964958"
+      "lines": 839,
+      "sha256": "b9cd353be7037f1c787459b5f0e09b054ab3db054d5278756db3d416ee293d0a"
     },
     "scripts/tests/test_c9_base_guard.py": {
       "fences": 0,
@@ -1708,8 +1711,8 @@
         "# Closed world: the only lines in NATIVE_TEST_FILES that may reference child_process.",
         "# Exact lines that must appear once in every NATIVE_TEST_FILES entry (helper + runtime guard)."
       ],
-      "lines": 1410,
-      "sha256": "793172fbf5067305138bed5ecc14433593c6913931b33eca8115a5c69a486a06"
+      "lines": 1412,
+      "sha256": "942482485b235800664a48ae3ccca2c5b447e6439b0a9a65da8cd877e9edc059"
     },
     "scripts/tests/test_check_17_18.py": {
       "fences": 0,
@@ -1841,10 +1844,11 @@
       "fences": 0,
       "headings": [
         "# -*- coding: utf-8 -*-",
-        "# B117 R3 — byte-stable local gate transcript, bounded budgets and exit protocol."
+        "# B117 R3 — byte-stable local gate transcript, bounded budgets and exit protocol.",
+        "# G3 F R3 — prevent recurrence of short Windows process-tree termination deadlines."
       ],
-      "lines": 253,
-      "sha256": "7444dbc5556b09827ddedad4263aeb52a02a050a2082ed8f1e32035a89b77cbc"
+      "lines": 363,
+      "sha256": "9819af6460ddb04fed012548eee7a496f98c5d02f0ef1a5d498c599070792b75"
     },
     "scripts/tests/test_governance_preflight.py": {
       "fences": 0,
@@ -1949,8 +1953,8 @@
         "# The canonical builder/checker recognises READONLY without granting canonical production-runner rights.",
         "# B115/G3 CI-PENDING-REPLY: positive terminal handoff; no checker command for Executor."
       ],
-      "lines": 1398,
-      "sha256": "48bffa155e54c3819a92e1858971015d851f8f03e7a3789003253f2ad9f22fa2"
+      "lines": 1401,
+      "sha256": "5297d124524ccd6a090404bde09d7ed34ca9bb3aaaf3587a7868c9a743b47667"
     },
     "scripts/tests/test_prompt_intake.py": {
       "fences": 0,
@@ -2001,8 +2005,8 @@
         "# G3 CI_PENDING reply is format-valid but never proof of CI PASS.",
         "# SO: the CLI result line is the self-check contract; PENDING must never print PASS or exit 0."
       ],
-      "lines": 720,
-      "sha256": "cc96355259865520ba08623ff72c27c394f90fa6e3a627c7616008e3ec1f3687"
+      "lines": 775,
+      "sha256": "eaf791746ef124f7fbd218d2a9103609e146db62aa3298e37767be9505e03190"
     },
     "scripts/tests/test_rule_loadability.py": {
       "fences": 0,
@@ -2281,7 +2285,7 @@
       "sha256": "6bfd57c05a09df3cde679ae53ac6ddd67bfb64cda4246584617d3cc67fb3b81c"
     }
   },
-  "generated_at": "2026-11-10T01:54:55Z",
+  "generated_at": "2026-11-10T11:43:22Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

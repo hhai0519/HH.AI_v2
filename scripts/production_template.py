@@ -140,7 +140,7 @@ Allowed and required tracked mutation paths 均為 {{ALLOWED}}。本批不授權
 E24={'REQUIRED' if d.get('e24') is True else 'NONE'}；E27={prose['e27']}。E27 結論不取代 Macro 最終提示詞授權；不得擅自引用任何第二意見 PASS。
 
 三、失敗停止與開始前就緒
-每個 runner 命令只執行一次、按順序，必須觀察真正結束且 exit 0 才能前進；背景執行中、排隊中或 PENDING 不等於成功。任何非零、超時、歧義、來源或工作區不符立即 S1 STOP，不自行重跑、提高 timeout、修改 gate、修改提示詞、reset、rebase、amend、stash、force push、hook bypass、刪除檔案或自行修補。S1 STOP 只停止後續 production 步驟：S1 之後唯一允許、且必須執行的命令，是第五節最後一行的 timing（一次）；接著依第六節轉交並立即結束，不得閱讀任何檔案或執行其他命令。原 Executor 對話必須已停止且無 Queued 指令；IDE 作用中工作區必須為使用者指定的正式 workspace。Mutation 之前 fresh reread 所有規則與本批作者程式，驗證 Base、clean worktree、branch、scope、操作步驟及所有機械契約；發現規格衝突或缺件先停止。特別停止條件：
+每個 runner 命令只執行一次、按順序，必須觀察真正結束且 exit 0 才能前進；背景執行中、排隊中或 PENDING 不等於成功。任何非零、超時、歧義、來源或工作區不符立即 S1 STOP，不自行重跑、提高 timeout、修改 gate、修改提示詞、reset、rebase、amend、stash、force push、hook bypass、刪除檔案或自行修補。S1 STOP 立即停止後續 production 步驟：新版 runner 在同一失敗命令內自動輸出 timing／回覆；若已出現 TIMING 或 EXECUTOR_REPLY_UNAVAILABLE，不得再執行 timing 或其他工具。首批 runner_update 的 apply 階段（含）以前仍可能由舊 runner 回報 S1 而無 timing，此過渡情況才准執行第五節 timing 一次；此後立即轉交並結束。成功路徑照第五節順序於最後執行 timing 一次。原 Executor 對話必須已停止且無 Queued 指令；IDE 作用中工作區必須為使用者指定的正式 workspace。Mutation 之前 fresh reread 所有規則與本批作者程式，驗證 Base、clean worktree、branch、scope、操作步驟及所有機械契約；發現規格衝突或缺件先停止。特別停止條件：
 {stops}
 
 四、動手前必讀（使用 IDE 原生檢視逐檔讀到最後一行）

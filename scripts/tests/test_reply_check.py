@@ -718,3 +718,58 @@ def test_g3_cli_pending_result_is_never_pass(tmp_path, monkeypatch, capsys):
     assert rc.main(['--prompt', 'p', '--reply', str(reply)]) == 2
     out = capsys.readouterr().out.splitlines()
     assert 'REPLY_CHECK RESULT=CI_PENDING' in out and 'REPLY_CHECK RESULT=PASS' not in out
+
+
+def test_g3_f_budget_warn_cannot_be_forged_into_success():
+    import reply_check as rc
+    legit='GATE_BUDGET_WARN stage=PRECOMMIT gate=4 elapsed=3155.690 limit=3600 pct=87.7'
+    parsed=rc.parse_lines(legit+'\nBOUNDED_EXIT PRECOMMIT code=0 | GATE_RUNNER PASS stage=PRECOMMIT\n')
+    rc.check_budget_warnings(parsed, ['precommit'])
+    for bogus in (
+        'GATE_BUDGET_WARN stage=PRECOMMIT gate=4 elapsed=3155.690 limit=3601 pct=87.7',
+        'GATE_BUDGET_WARN stage=PRECOMMIT gate=9 elapsed=3155.690 limit=3600 pct=87.7',
+        'GATE_BUDGET_WARN stage=PRECOMMIT gate=4 elapsed=100.000 limit=3600 pct=87.7',
+    ):
+        with pytest.raises(rc.CheckError):
+            rc.check_budget_warnings(rc.parse_lines(bogus+'\nBOUNDED_EXIT PRECOMMIT code=0 | GATE_RUNNER PASS stage=PRECOMMIT\n'), ['precommit'])
+    with pytest.raises(rc.CheckError):
+        rc.check_budget_warnings(rc.parse_lines(legit+'\n'), ['precommit'])
+    with pytest.raises(rc.CheckError):
+        rc.parse_lines('GATE_BUDGET_WARN attacker-controlled-data\n')
+
+
+def test_g3_f_warn_handoff_claim_exactly_matches_reply():
+    import reply_check as rc
+    warning = 'GATE_BUDGET_WARN stage=PRECOMMIT gate=4 elapsed=3155.690 limit=3600 pct=87.7'
+    card = json.loads(CARD)
+    card['gate_budget_warnings'] = [warning]
+    raw = json.dumps(card, sort_keys=True, ensure_ascii=True, separators=(',', ':'))
+    value = (PROD_REPLY.replace('34fa2f6da7dc942b538b24a0f0eda5ce96c6be14aed4349eac644727a02a6a7a',
+                                hashlib.sha256(raw.encode()).hexdigest())
+                       .replace(CARD, raw)
+                       .replace('TIMING start=', warning+'\nBOUNDED_EXIT PRECOMMIT code=0 | GATE_RUNNER PASS stage=PRECOMMIT\nTIMING start='))
+    assert rc.check_spec(PROD_TASK, PROD_SPEC, value)[2] == 'COMMIT ' + CAND
+    assert _code(rc.check_spec, PROD_TASK, PROD_SPEC, value.replace(warning+'\nBOUNDED_EXIT ', 'BOUNDED_EXIT ',1)) == 'REPLY_HANDOFF_CARD_MISMATCH'
+    assert _code(rc.check_spec, PROD_TASK, PROD_SPEC, value.replace(warning+'\nBOUNDED_EXIT ', warning.replace('elapsed=3155.690','elapsed=150.000')+'\nBOUNDED_EXIT ',1)) == 'REPLY_HANDOFF_CARD_MISMATCH'
+    assert _code(rc.check_spec, PROD_TASK, PROD_SPEC, value.replace(warning+'\n', warning+'\n'+warning+'\n',1)) == 'REPLY_HANDOFF_CARD_MISMATCH'
+
+
+def test_g3_f_reply_warn_threshold_and_duplicate_are_rejected():
+    import reply_check as rc
+    tail = '\nBOUNDED_EXIT PRECOMMIT code=0 | GATE_RUNNER PASS stage=PRECOMMIT\n'
+    legit = 'GATE_BUDGET_WARN stage=PRECOMMIT gate=4 elapsed=3155.690 limit=3600 pct=87.7'
+    low = 'GATE_BUDGET_WARN stage=PRECOMMIT gate=4 elapsed=2400.000 limit=3600 pct=66.7'
+    with pytest.raises(rc.CheckError):
+        rc.check_budget_warnings(rc.parse_lines(low + tail), ['precommit'])
+    with pytest.raises(rc.CheckError):
+        rc.check_budget_warnings(rc.parse_lines(legit + '\n' + legit + tail), ['precommit'])
+
+
+def test_g3_f_s1_reply_warn_is_validated_without_a_handoff():
+    bounded = 'BOUNDED_EXIT PRECOMMIT code=1 | GATE_RUNNER FAIL stage=PRECOMMIT'
+    text, _ = s1_reply('precommit', 'PRECOMMIT_NONZERO', bounded_line=bounded)
+    legit = 'GATE_BUDGET_WARN stage=PRECOMMIT gate=4 elapsed=3155.690 limit=3600 pct=87.7'
+    rc.check_spec(PROD_TASK, PROD_SPEC, text.replace(bounded, legit + '\n' + bounded, 1))
+    forged = 'GATE_BUDGET_WARN stage=PRECOMMIT gate=4 elapsed=100.000 limit=3600 pct=87.7'
+    assert _code(rc.check_spec, PROD_TASK, PROD_SPEC,
+                 text.replace(bounded, forged + '\n' + bounded, 1)) == 'REPLY_GATE_BUDGET_WARN_MISMATCH'

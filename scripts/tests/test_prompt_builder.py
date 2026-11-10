@@ -1362,7 +1362,9 @@ def test_g3_auto_production_reply_terminal_contract(tmp_path, repo):
     assert 'CI PENDING' in text and '不捏造 CI Run／job ID 或 PASS' in text
     assert 'reply_check.py --prompt' not in text
     assert 'EXECUTOR_REPLY_UNAVAILABLE' in text  # self-hosting pre-apply fallback
-    assert 'S1 之後唯一允許、且必須執行的命令，是第五節最後一行的 timing（一次）' in text  # §9: timing is the listed post-S1 step
+    assert '新版 runner 在同一失敗命令內自動輸出 timing' in text
+    assert '首批 runner_update 的 apply 階段（含）以前' in text
+    assert '成功路徑照第五節順序' in text
 
 
 def test_g3_auto_promotion_reply_terminal_contract(tmp_path, repo):
@@ -1371,7 +1373,8 @@ def test_g3_auto_promotion_reply_terminal_contract(tmp_path, repo):
     assert 'EXECUTOR_REPLY_BEGIN' in text and 'EXECUTOR_REPLY_END' in text
     assert 'REPLY_SELF_CHECK=PASS' in text and '立即' in text
     assert 'CI PENDING' in text and '不得補造 PASS' in text
-    assert 'S1 之後唯一允許、且必須執行的命令，是第四節最後一行的 timing（一次）' in text
+    assert '新版 runner 在同一失敗命令內自動輸出 timing' in text
+    assert '僅舊 runner 未輸出 timing' in text
     assert 'reply_check.py --prompt' not in text
 
 

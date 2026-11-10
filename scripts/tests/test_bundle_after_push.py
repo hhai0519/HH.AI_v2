@@ -537,6 +537,14 @@ def test_equal_length_pack_corruption_is_failed_not_ready(small_repo, monkeypatc
     assert 'READY' not in out
 
 
+def _write_gate_step_records(root, task_id, precommit_lines=()):
+    """G3 F: a READY handoff needs the runner's completed precommit/stage/postcommit records."""
+    for step in ('precommit', 'stage', 'postcommit'):
+        body = list(precommit_lines) if step == 'precommit' else []
+        text = ''.join(l + '\n' for l in body) + 'STEP_OUTPUT_COMPLETE step=' + step + ' result=0\n'
+        (Path(root) / '.git' / (task_id + '-step-' + step + '.out')).write_bytes(text.encode('utf-8'))
+
+
 def test_q1a_handoff_card_is_task_bound_and_never_claims_postmain(monkeypatch, small_repo, tmp_path, capsys):
     root, dl, base, head = small_repo
     batch = br.Batch.__new__(br.Batch)
@@ -557,8 +565,10 @@ def test_q1a_handoff_card_is_task_bound_and_never_claims_postmain(monkeypatch, s
              'jobs': {k: {'status': 'completed', 'conclusion': 'success'}
                       for k in ('verify', 'gateway-windows')}}
     ci_path.write_text(json.dumps(proof), encoding='utf8')
+    _write_gate_step_records(root, batch.task_id)
     assert batch.step_bundle() == 'READY'
     handoff = json.loads((root / '.git' / (batch.task_id + '-handoff.json')).read_text())
+    assert 'gate_budget_warnings' not in handoff
     assert handoff['base_oid'] == base and handoff['candidate_oid'] == head
     assert handoff['postmain'] == 'NOT_RUN' and handoff['candidate_ci']['run_id'] == 1234
     assert handoff['bundle_file'] == str(bundle)
@@ -613,6 +623,7 @@ def test_q1a_handoff_fail_closed_evidence(monkeypatch, small_repo, tmp_path, ci_
             payload = payload.replace('"verify": {"status": "completed"',
                                       '"verify": {"status": "failure", "status": "completed"', 1)
         ci_path.write_text(payload, encoding='utf8')
+    _write_gate_step_records(root, batch.task_id)
     result = batch.step_bundle()
     if ci_proof == 'missing':
         assert result == 'READY'
@@ -628,6 +639,45 @@ def test_q1a_handoff_fail_closed_evidence(monkeypatch, small_repo, tmp_path, ci_
         assert 'HANDOFF_TO_AUDITOR=' not in output
         assert 'HANDOFF_CARD_JSON=' not in output
         assert 'HANDOFF_CARD_SHA256=' not in output
+
+
+WARN_LINE = 'GATE_BUDGET_WARN stage=PRECOMMIT gate=4 elapsed=3155.690 limit=3600 pct=87.7'
+
+
+@pytest.mark.parametrize('case', ['ok', 'missing', 'truncated', 'no_marker', 'forged_limit', 'crlf'])
+def test_g3_f_handoff_gate_warn_evidence(monkeypatch, small_repo, tmp_path, case, capsys):
+    root, dl, base, head = small_repo
+    batch = br.Batch.__new__(br.Batch)
+    batch.root, batch.task_id = str(root), 'B119-G3F-' + case.upper().replace('_', '-')
+    batch.spec = {'kind': 'production', 'base_oid': base, 'branch': 'batch/b118-test'}
+    monkeypatch.setattr(br, 'status_lines', lambda *_: [])
+    monkeypatch.setattr(batch, 'remote_sha', lambda ref: base if ref.endswith('/main') else head)
+    bundle = tmp_path / 'valid.bundle'
+    bundle.write_bytes(b'valid')
+    monkeypatch.setattr(br, 'create_bundle', lambda *a, **k: str(bundle))
+    monkeypatch.setattr(batch, 'artifact', lambda suffix: '.git/' + batch.task_id + '-' + suffix)
+    if case != 'missing':
+        _write_gate_step_records(root, batch.task_id,
+                                 [WARN_LINE.replace('limit=3600', 'limit=3601')] if case == 'forged_limit' else [WARN_LINE])
+    rec = root / '.git' / (batch.task_id + '-step-postcommit.out')
+    if case == 'truncated':
+        rec.write_bytes(b'')
+    if case == 'no_marker':
+        rec.write_bytes(b'STEP_PASS postcommit\n')
+    if case == 'crlf':
+        rec.write_bytes(b'STEP_OUTPUT_COMPLETE step=postcommit result=0\r\n')
+    result = batch.step_bundle()
+    card_path = root / '.git' / (batch.task_id + '-handoff.json')
+    output = capsys.readouterr().out
+    if case == 'ok':
+        assert result == 'READY'
+        card = json.loads(card_path.read_text())
+        assert card['gate_budget_warnings'] == [WARN_LINE]
+        assert WARN_LINE in output
+    else:
+        assert result == 'FAILED_GATE_WARN_EVIDENCE_INVALID'
+        assert not card_path.exists()
+        assert 'HANDOFF_CARD_JSON=' not in output
 
 
 # G1 receipt-first exact-task cleanup: these are *failure* tests, not

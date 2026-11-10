@@ -165,6 +165,31 @@ FAILURE_CLASSES = (
     ('ACCESS_DENIED', re.compile(r'Permission denied|Access is denied')),
 )
 # Bounded summaries are printed only when the last line has one of these fixed shapes.
+BUDGET_WARN_RE = re.compile(
+    r'^GATE_BUDGET_WARN stage=(PRECOMMIT|STAGED|POSTCOMMIT) gate=([1-9][0-9]*) '
+    r'elapsed=([0-9]+\.[0-9]{3}) limit=([1-9][0-9]*) pct=([0-9]+\.[0-9])$')
+
+
+def checked_budget_warnings(output, expected_stage):
+    """Fixed vocabulary only, validated against stage limits (no raw child output leakage)."""
+    warnings = []
+    seen = set()
+    for line in output.splitlines():
+        if not line.startswith('GATE_BUDGET_WARN'):
+            continue
+        m = BUDGET_WARN_RE.fullmatch(line)
+        if not m or m.group(1) != expected_stage:
+            raise Halt('GATE_BUDGET_WARN_INVALID')
+        gate, elapsed, limit, pct = int(m.group(2)), float(m.group(3)), int(m.group(4)), float(m.group(5))
+        budgets = stage_timeouts(expected_stage)
+        if (gate in seen or gate > len(budgets) or limit != budgets[gate-1]
+                or elapsed / limit < 0.69995 or abs(pct - 100 * elapsed / limit) > 0.055):
+            raise Halt('GATE_BUDGET_WARN_INVALID')
+        seen.add(gate)
+        warnings.append(line)
+    return warnings
+
+
 SUMMARY_SHAPES = (
     re.compile(r'GATE_RUNNER (?:PASS|FAIL) stage=[A-Z]+'),
     re.compile(r'=* ?(?:\d+ (?:passed|failed|skipped|errors?|xfailed|xpassed|deselected|warnings?)(?:, )?)+'
@@ -745,6 +770,9 @@ class Batch:
             raise Halt(stage + '_TIMEOUT')
         code = res.returncode
         tail = [l for l in res.stdout.decode('utf-8', 'replace').splitlines() if l.strip()]
+        if gate_timeout:
+            for warning in checked_budget_warnings(res.stdout.decode('utf-8', 'replace'), stage):
+                print(warning)
         print('BOUNDED_EXIT ' + stage + ' code=' + str(code) + ' | ' + bounded_summary(tail))
         if code != 0:
             if gate_timeout and code == GATE_TIMEOUT_EXIT_CODE:
@@ -1042,6 +1070,23 @@ class Batch:
                     raise BundleFailure('CI_EVIDENCE_MISMATCH')
                 candidate_ci = {'status': 'PASS', 'run_id': record['run_id'],
                                 'attempt': record['run_attempt'], 'head_sha': head}
+            # The handoff carries only the exact bounded, known-shape budget
+            # lines already recorded by the precommit/staged/postcommit steps.
+            warning_lines = []
+            for step_name, stage_name in (('precommit', 'PRECOMMIT'), ('stage', 'STAGED'), ('postcommit', 'POSTCOMMIT')):
+                step_path = Path(root) / self.artifact('step-' + step_name + '.out')
+                try:
+                    raw = step_path.read_bytes()
+                    if not raw or len(raw) > 1048576 or b'\r' in raw or b'\x00' in raw:
+                        raise BundleFailure('GATE_WARN_EVIDENCE_INVALID')
+                    lines = raw.decode('utf-8').splitlines()
+                    if not lines or lines[-1] != 'STEP_OUTPUT_COMPLETE step=' + step_name + ' result=0':
+                        raise BundleFailure('GATE_WARN_EVIDENCE_INVALID')
+                    warning_lines += checked_budget_warnings('\n'.join(lines[:-1]), stage_name)
+                except (OSError, UnicodeDecodeError, Halt):
+                    # Missing/unreadable record or a malformed WARN line is evidence
+                    # failure, never GIT_PROBE/UNEXPECTED and never a READY card.
+                    raise BundleFailure('GATE_WARN_EVIDENCE_INVALID') from None
             # No post-main claim can exist in a production candidate card.
             handoff = {'schema_version': 1, 'phase': 'candidate', 'task_id': self.task_id,
                        'base_oid': spec['base_oid'], 'candidate_oid': head,
@@ -1049,6 +1094,8 @@ class Batch:
                        'postmain': 'NOT_RUN', 'bundle_status': 'READY',
                        'bundle_file': result,
                        'next_step': 'USER_FORWARD_BUNDLE_AND_HANDOFF_CARD_TO_ACTIVE_AUDITOR_FOR_INDEPENDENT_REVIEW'}
+            if warning_lines:
+                handoff['gate_budget_warnings'] = warning_lines
             # Canonical transport: ASCII-safe, single-line JSON + full SHA256, printed
             # in the runner's stdout and therefore relayable without access to .git.
             # A .git artifact remains task-local; it is NOT inside a Git bundle.
@@ -1556,6 +1603,16 @@ def report_s1_full_capture(batch, step, h):
         print('S1_FULL_CAPTURE_STATUS=UNAVAILABLE')
 
 
+def _halt_with_timing(root, task_id):
+    """S1 terminal reporter in this invocation; no duplicate/manual timing.
+
+    Incomplete precontrol evidence safely produces the existing
+    EXECUTOR_REPLY_UNAVAILABLE fallback; it never grants PASS.
+    """
+    timing(root, task_id)
+    return 1
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description='Canonical fixed-step batch runner (B-107).')
     parser.add_argument('--task-id', required=True)
@@ -1594,10 +1651,10 @@ def main(argv=None):
             return 1
     except Halt as h:
         report_halt(h, step)
-        return 1
+        return _halt_with_timing(root, task_id)
     except (OSError, UnicodeDecodeError):
         print('S1 PROMPT_UNREADABLE | step ' + step)
-        return 1
+        return _halt_with_timing(root, task_id)
     try:
         record = _StepRecord(batch, step)
     except Halt as error:
@@ -1605,7 +1662,7 @@ def main(argv=None):
         control['halted'] = step + ':' + str(error)
         if save_control_or_s1(batch, control, step):
             report_halt(error, step)
-        return 1
+        return _halt_with_timing(root, task_id)
     try:
         with contextlib.redirect_stdout(record):
             result = _execute_step(batch, step, control)
@@ -1618,8 +1675,8 @@ def main(argv=None):
             print('S1 STEP_OUTPUT_WRITE_FAILED | step ' + step)
         else:
             print('STEP_OUTPUT_STATUS=UNAVAILABLE')  # secondary error never overwrites S1
-        return 1
-    return result
+        return _halt_with_timing(root, task_id)
+    return _halt_with_timing(root, task_id) if result != 0 else 0
 
 
 def _execute_step(batch, step, control):

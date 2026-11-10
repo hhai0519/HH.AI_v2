@@ -188,8 +188,10 @@ def run_stage(root, stage, gates, log_path, timeout=None):
         pct = 100.0 * elapsed / limit
         if code == 0:
             print(f"GATE_BUDGET stage={stage} gate={idx} elapsed={elapsed:.3f} limit={limit} pct={pct:.1f}", flush=True)
-            if pct >= GATE_BUDGET_WARN_PCT:
-                print(f"GATE_BUDGET_WARN stage={stage} gate={idx} pct={pct:.1f}", flush=True)
+        # A failing/timeout gate can also exhaust its budget; it must not hide
+        # the warning. This is stdout-only, never a canonical gate PASS marker.
+        if pct >= GATE_BUDGET_WARN_PCT:
+            print(f"GATE_BUDGET_WARN stage={stage} gate={idx} elapsed={elapsed:.3f} limit={limit} pct={pct:.1f}", flush=True)
         if code != 0:
             append_lines(log_path, [failed_marker(stage, run_no, idx)])
             return code if code > 0 else 1

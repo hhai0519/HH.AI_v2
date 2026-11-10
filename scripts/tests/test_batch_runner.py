@@ -2025,6 +2025,7 @@ def test_g3_halted_step_control_save_failure_preserves_primary_code(tmp_path, mo
     assert capsys.readouterr().out.splitlines() == [
         'S1 CONTROL_SAVE_FAILED | step preflight',
         'S1_PRIMARY ' + original + ' | step preflight',
+        'EXECUTOR_REPLY_UNAVAILABLE TIMING_UNAVAILABLE',
     ]
 
 # B115 G3 CI-PENDING-REPLY R1: task-local, single-writer step output and timing.
@@ -2231,3 +2232,127 @@ def test_g3_timing_rejects_prompt_binding_drift(tmp_path, monkeypatch, capsys):
     br.timing(str(tmp_path), TASK)
     out = capsys.readouterr().out
     assert 'EXECUTOR_REPLY_UNAVAILABLE REPLY_CONTROL_BINDING_DRIFT' in out and 'EXECUTOR_REPLY_BEGIN' not in out
+
+
+# G3 F — keep the original S1 as authority; auto timing is terminal, not a new tool action.
+def test_g3_f_auto_s1_timing_same_invocation(tmp_path, monkeypatch, capsys):
+    (tmp_path / '.git').mkdir()
+    (tmp_path / 'scripts').mkdir()
+    (tmp_path / 'scripts' / 'batch_runner.py').write_bytes(b'fixture runner\n')
+    class Stub:
+        def __init__(self, *_args):
+            self.root = str(tmp_path)
+            self.task_id = TASK
+            self.prompt_bytes = b'prompt'
+            self.spec = {'kind': 'promotion'}
+        def step_preflight(self):
+            raise br.Halt('TEST_HALT')
+    monkeypatch.setattr(br, 'Batch', Stub)
+    monkeypatch.setattr(br, 'derive_steps', lambda _: ['preflight'])
+    monkeypatch.setattr(br, 'load_control', lambda _: {'task_id': TASK, 'done': [], 'halted': None,
+        'prompt_sha256': br.sha256_bytes(b'prompt'), 'runner_sha256': 'fixed'})
+    monkeypatch.setattr(br, 'accepted_runner_sha', lambda *args: 'fixed')
+    monkeypatch.setattr(br.Path, 'cwd', lambda: tmp_path)
+    monkeypatch.setattr(br, '__file__', str(tmp_path / 'scripts' / 'batch_runner.py'))
+    monkeypatch.setattr(br, '_StepRecord', _SyntheticStepRecord)
+    monkeypatch.setattr(br, 'save_control', lambda *args: None)
+    calls=[]
+    def reporter(root, task):
+        calls.append((root,task))
+        print('TIMING synthetic')
+        return 0
+    monkeypatch.setattr(br, 'timing', reporter)
+    assert br.main(['--task-id', TASK, 'preflight']) == 1
+    out=capsys.readouterr().out
+    assert 'S1 TEST_HALT | step preflight' in out
+    assert out.endswith('TIMING synthetic\n')
+    assert calls == [(str(tmp_path),TASK)]
+
+
+def test_g3_f_budget_warn_sanitized_and_forwarded_without_relaxing_summary(tmp_path, monkeypatch, capsys):
+    import bounded_process
+    folder=tmp_path/'warn';folder.mkdir()
+    b=_bounded_batch(folder, monkeypatch)
+    raw=b'GATE_BUDGET_WARN stage=PRECOMMIT gate=4 elapsed=3155.690 limit=3600 pct=87.7\nGATE_RUNNER PASS stage=PRECOMMIT\n'
+    def fake(*args, **kw):
+        Path(kw['capture_path']).write_bytes(raw)
+        return bounded_process.BoundedResult(0, False, None, raw, b'', 'NOT_NEEDED')
+    monkeypatch.setattr(br, 'run_bounded', fake)
+    b.bounded('PRECOMMIT', ['-c', 'pass'], 8000, gate_timeout=True)
+    out=capsys.readouterr().out
+    assert out.splitlines()==[
+        'GATE_BUDGET_WARN stage=PRECOMMIT gate=4 elapsed=3155.690 limit=3600 pct=87.7',
+        'BOUNDED_EXIT PRECOMMIT code=0 | GATE_RUNNER PASS stage=PRECOMMIT',
+    ]
+    assert br.bounded_summary(['arbitrary secret text'])=='(summary withheld)'
+    assert br.checked_budget_warnings('GATE_BUDGET_WARN stage=PRECOMMIT gate=4 elapsed=3155.690 limit=3600 pct=87.7', 'PRECOMMIT')
+    assert halt_code(br.checked_budget_warnings, 'GATE_BUDGET_WARN stage=PRECOMMIT gate=4 elapsed=3155.690 limit=3601 pct=87.7', 'PRECOMMIT')=='GATE_BUDGET_WARN_INVALID'
+    assert halt_code(br.checked_budget_warnings, 'GATE_BUDGET_WARN stage=PRECOMMIT gate=4 elapsed=3155.690 limit=3600 pct=87.7\nGATE_BUDGET_WARN stage=PRECOMMIT gate=4 elapsed=3155.690 limit=3600 pct=87.7', 'PRECOMMIT')=='GATE_BUDGET_WARN_INVALID'
+
+
+def test_g3_f_handoff_carries_only_verified_task_local_budget_warnings(tmp_path, monkeypatch, capsys):
+    # Exercise the real bundle helper's warning path without publishing a commit.
+    from types import MethodType
+    (tmp_path / '.git').mkdir()
+    base = 'a'*40
+    cand = 'b'*40
+    branch = 'batch/local-test'
+    b = br.Batch.__new__(br.Batch)
+    b.root, b.task_id = str(tmp_path), TASK
+    b.spec = {'kind': 'production', 'base_oid':base, 'branch':branch}
+    b.artifact = MethodType(lambda self, name:'.git/'+self.task_id+'-'+name,b)
+    def write_new(suffix, value):
+        path=tmp_path/b.artifact(suffix)
+        with path.open('x',encoding='utf-8',newline='') as f: f.write(value)
+        return b.artifact(suffix)
+    b.write_new_artifact=write_new
+    b.remote_sha=lambda ref:base if ref=='refs/heads/main' else cand
+    def fake_git(root,*args):
+        if args[:2]==('rev-parse','HEAD'):return cand
+        if args[:2]==('rev-parse','HEAD~1'):return base
+        if args[:2]==('rev-parse','--is-shallow-repository'):return 'false'
+        if args[:2]==('branch','--show-current'):return branch
+        raise AssertionError(args)
+    monkeypatch.setattr(br,'git',fake_git)
+    monkeypatch.setattr(br,'status_lines',lambda root:[])
+    monkeypatch.setattr(br,'create_bundle',lambda *a,**k: 'C:\\Downloads\\HH.AI_v2-20261110-110000-aaaaaaa-bbbbbbb.bundle')
+    warn='GATE_BUDGET_WARN stage=PRECOMMIT gate=4 elapsed=3155.690 limit=3600 pct=87.7'
+    for step in ('precommit','stage','postcommit'):
+        body=('STEP_PASS '+step+'\n'+ (warn+'\n' if step=='precommit' else '')+
+              'STEP_OUTPUT_COMPLETE step='+step+' result=0\n')
+        _lf(tmp_path/b.artifact('step-'+step+'.out'),body)
+    assert br.Batch.step_bundle(b)=='READY'
+    out=capsys.readouterr().out
+    card=json.loads(next(x.removeprefix('HANDOFF_CARD_JSON=') for x in out.splitlines()
+                         if x.startswith('HANDOFF_CARD_JSON=')))
+    assert card['gate_budget_warnings']==[warn]
+    assert 'HANDOFF_CARD_SHA256=' in out
+
+
+# G3 F (E27 second-opinion additions): each WARN guard and the pre-step S1 path
+# has its own killing case; one guard cannot silently cover for another.
+@pytest.mark.parametrize('line', [
+    'GATE_BUDGET_WARN stage=PRECOMMIT gate=4 elapsed=2400.000 limit=3600 pct=66.7',
+    'GATE_BUDGET_WARN stage=PRECOMMIT gate=4 elapsed=3155.690 limit=3600 pct=90.0',
+    'GATE_BUDGET_WARN stage=STAGED gate=1 elapsed=250.000 limit=300 pct=83.3',
+    'GATE_BUDGET_WARN stage=PRECOMMIT gate=4 elapsed=2520.700 limit=3601 pct=70.0',
+], ids=['below_threshold', 'pct_inconsistent', 'other_stage', 'self_consistent_wrong_limit'])
+def test_g3_f_checked_budget_warnings_each_guard_is_independent(line):
+    assert halt_code(br.checked_budget_warnings, line, 'PRECOMMIT') == 'GATE_BUDGET_WARN_INVALID'
+
+
+def test_g3_f_prestep_halt_also_reports_timing_in_same_invocation(tmp_path, monkeypatch, capsys):
+    (tmp_path / 'scripts').mkdir()
+    monkeypatch.setattr(br, '__file__', str(tmp_path / 'scripts' / 'batch_runner.py'))
+    monkeypatch.setattr(br.Path, 'cwd', lambda: tmp_path / 'not-the-repo')
+    calls = []
+    def reporter(root, task):
+        calls.append((root, task))
+        print('TIMING synthetic')
+        return 0
+    monkeypatch.setattr(br, 'timing', reporter)
+    assert br.main(['--task-id', TASK, 'preflight']) == 1
+    out = capsys.readouterr().out
+    assert out.startswith('S1 WORKING_DIRECTORY_MISMATCH | step preflight\n')
+    assert out.endswith('TIMING synthetic\n')
+    assert calls == [(str(tmp_path), TASK)]

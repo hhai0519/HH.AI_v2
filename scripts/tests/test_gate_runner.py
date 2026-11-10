@@ -5,7 +5,9 @@ scripts/tests/test_gate_runner.py
 Negative and positive controls for scripts/gate_runner.py (B-107 canonical tooling).
 """
 
+import ast
 import os
+from pathlib import Path
 import subprocess
 import sys
 import time
@@ -110,8 +112,11 @@ def test_empty_log_fails_verify(tmp_path):
 
 def test_timeout_is_failure(tmp_path):
     log = tmp_path / "gates.txt"
-    gates = [[PY, "-c", "import time; time.sleep(5)"]]
-    assert gate_runner.run_stage(str(tmp_path), "STAGED", gates, str(log), timeout=1) == gate_runner.GATE_TIMEOUT_EXIT_CODE
+    # Windows venv python.exe can launch a child interpreter. A 1s timeout can interrupt
+    # taskkill /T while the process tree is being established (R2 Windows Gate4 S1).
+    # Match the sibling process-tree tests' 10s allowance; preserve TREE_SIGNALLED and fail-closed assertions.
+    gates = [[PY, "-c", "import time; time.sleep(120)"]]
+    assert gate_runner.run_stage(str(tmp_path), "STAGED", gates, str(log), timeout=10) == gate_runner.GATE_TIMEOUT_EXIT_CODE
     text = log.read_text(encoding="utf-8")
     assert "EXIT_CODE: TIMEOUT" in text and "TREE_KILL: TREE_SIGNALLED" in text
     assert not gate_runner.verify_stage(read(log), "STAGED", gates)[0]
@@ -248,6 +253,111 @@ def test_r3_budget_diagnostics_are_stdout_only_and_warn_at_70pct(tmp_path, monke
     out = capsys.readouterr().out
     assert 'ELAPSED_SEC 7.000' in out
     assert 'GATE_BUDGET stage=STAGED gate=1' in out
-    assert 'GATE_BUDGET_WARN stage=STAGED gate=1 pct=70.0' in out
+    assert 'GATE_BUDGET_WARN stage=STAGED gate=1 elapsed=7.000 limit=10 pct=70.0' in out
     assert 'GATE_BUDGET' not in log.read_text()
     assert gate_runner.verify_stage(read(log), 'STAGED', gates)[0]
+
+
+def test_g3_f_warn_after_failed_gate_and_multiple_gates(tmp_path, monkeypatch, capsys):
+    import bounded_process
+    seconds = iter([0., 7., 10., 18.])
+    monkeypatch.setattr(gate_runner.time, 'monotonic', lambda:next(seconds))
+    outcomes=iter([0,3])
+    def fake(*args, **kw):
+        code=next(outcomes)
+        open(kw['capture_path'],'wb').write(b'fixed\n')
+        return bounded_process.BoundedResult(code,False,None,b'fixed\n',b'','NOT_NEEDED')
+    monkeypatch.setattr(gate_runner,'run_bounded',fake)
+    logfile=tmp_path/'gates.txt'
+    assert gate_runner.run_stage(str(tmp_path),'PRECOMMIT',gates_ok(),str(logfile),timeout=10)==3
+    out=capsys.readouterr().out
+    assert 'GATE_BUDGET_WARN stage=PRECOMMIT gate=1 elapsed=7.000 limit=10 pct=70.0' in out
+    assert 'GATE_BUDGET_WARN stage=PRECOMMIT gate=2 elapsed=8.000 limit=10 pct=80.0' in out
+    assert not gate_runner.verify_stage(read(logfile),'PRECOMMIT',gates_ok())[0]
+
+
+# G3 F R3 — prevent recurrence of short Windows process-tree termination deadlines.
+_TREE_LAUNCHERS = {'run_stage': 4, 'run_bounded': 2, 'run_bounded_text': 1}  # name -> positional index of timeout
+
+
+def _launcher_name(func):
+    return func.attr if isinstance(func, ast.Attribute) else func.id if isinstance(func, ast.Name) else None
+
+
+def _launcher_timeout(call):
+    keywords = [kw.value for kw in call.keywords if kw.arg == 'timeout']
+    if len(keywords) == 1:
+        return keywords[0]
+    position = _TREE_LAUNCHERS[_launcher_name(call.func)]
+    return call.args[position] if not keywords and len(call.args) > position else None
+
+
+def _tree_signal_timeout_violations(source, filename):
+    """Tests that start a real process tree and claim TREE_SIGNALLED need an explicit >=10 s deadline.
+
+    AST, not regex. A claim is any 'TREE_SIGNALLED' string in the test (assert, pytest.raises match,
+    variable) or KILL_TREE_SIGNALLED. Launchers: run_stage/run_bounded/run_bounded_text, timeout given
+    by keyword or position. Fail closed on launcher aliases and on any unregistered helper that
+    forwards its own timeout parameter to a launcher (it could hide a short deadline).
+    """
+    tree = ast.parse(source, filename=filename)
+    failures = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ImportFrom):
+            failures += [f'{filename}:{node.lineno}:launcher_alias:{a.asname}' for a in node.names
+                         if a.name in _TREE_LAUNCHERS and a.asname and a.asname != a.name]
+        if isinstance(node, ast.Assign) and isinstance(node.value, (ast.Name, ast.Attribute)) \
+                and _launcher_name(node.value) in _TREE_LAUNCHERS:
+            failures.append(f'{filename}:{node.lineno}:launcher_alias_assign')
+    for fn in ast.walk(tree):
+        if not isinstance(fn, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            continue
+        calls = [c for c in ast.walk(fn) if isinstance(c, ast.Call) and _launcher_name(c.func) in _TREE_LAUNCHERS]
+        if not fn.name.startswith('test_'):
+            params = {a.arg for a in fn.args.args + fn.args.kwonlyargs}
+            for call in calls:
+                value = _launcher_timeout(call)
+                if fn.name not in _TREE_LAUNCHERS and isinstance(value, ast.Name) and value.id in params:
+                    failures.append(f'{filename}:{call.lineno}:{fn.name}:unregistered_launcher_wrapper')
+            continue
+        claims = any((isinstance(n, ast.Constant) and isinstance(n.value, str) and 'TREE_SIGNALLED' in n.value)
+                     or (isinstance(n, ast.Attribute) and n.attr == 'KILL_TREE_SIGNALLED') for n in ast.walk(fn))
+        if not claims:
+            continue
+        for call in calls:
+            value = _launcher_timeout(call)
+            if not (isinstance(value, ast.Constant) and type(value.value) in (int, float) and value.value >= 10):
+                failures.append(f'{filename}:{call.lineno}:{fn.name}:timeout_lt_10_or_unproven')
+    return failures
+
+
+def test_g3_f_r3_tree_signal_deadline_guard():
+    test_root = Path(__file__).resolve().parent
+    violations = []
+    for script in sorted(test_root.glob('test_*.py')):
+        violations.extend(_tree_signal_timeout_violations(script.read_text(encoding='utf-8'), script.name))
+    assert not violations, 'TREE_SIGNALLED deadline guard: ' + '; '.join(violations)
+
+
+def test_g3_f_r3_tree_signal_deadline_guard_mutations():
+    specimen = ("def test_real(tmp_path):\n"
+                "    assert gate_runner.run_stage(str(tmp_path),'STAGED',[],str(tmp_path/'x'),timeout=10) == 86\n"
+                "    assert 'TREE_KILL: TREE_SIGNALLED' in 'x'\n")
+    assert _tree_signal_timeout_violations(specimen, 'positive.py') == []
+    short = specimen.replace('timeout=10', 'timeout=1')
+    assert len(_tree_signal_timeout_violations(short, 'short.py')) == 1
+    unknown = specimen.replace('timeout=10', 'timeout=dynamic')
+    assert len(_tree_signal_timeout_violations(unknown, 'unknown.py')) == 1
+    missing = specimen.replace(',timeout=10', '')
+    assert len(_tree_signal_timeout_violations(missing, 'missing.py')) == 1
+    positional = specimen.replace(',timeout=10', ',1')
+    assert len(_tree_signal_timeout_violations(positional, 'positional.py')) == 1
+    raises = ("def test_raises():\n"
+              "    with pytest.raises(AssertionError, match='exceeded 2s; process tree TREE_SIGNALLED'):\n"
+              "        run_bounded_text([sys.executable, '-c', 'x'], 2)\n")
+    assert len(_tree_signal_timeout_violations(raises, 'raises.py')) == 1
+    assert _tree_signal_timeout_violations(raises.replace('2s', '10s').replace('], 2)', '], 10)'), 'ok.py') == []
+    alias = "from bounded_process import run_bounded as rb\n" + specimen
+    assert any(':launcher_alias:rb' in v for v in _tree_signal_timeout_violations(alias, 'alias.py'))
+    wrapper = "def _go(t):\n    return gate_runner.run_stage(1, 2, 3, 4, timeout=t)\n" + specimen
+    assert any('unregistered_launcher_wrapper' in v for v in _tree_signal_timeout_violations(wrapper, 'wrap.py'))

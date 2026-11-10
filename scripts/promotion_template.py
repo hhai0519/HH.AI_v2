@@ -28,7 +28,7 @@ TASK_ID = {TASK_ID}；batch_mode: GOAL_SPEC；Base = {BASE_OID}；candidate = {C
 {CHANGED_PATHS}
 
 二、權限與失敗停止
-每個命令只執行一次；非零、逾時、歧義立即 S1 STOP，不自行重跑或修補。S1 STOP 只停止後續晉級步驟：S1 之後唯一允許、且必須執行的命令，是第四節最後一行的 timing（一次）；接著依第五節轉交並立即結束，不得閱讀任何檔案或執行其他命令。已啟動或背景執行中不算完成；必須觀察 runner 命令真正結束且 exit 0 後才能進下一步。post-main PENDING 不得當作 PASS。
+每個命令只執行一次；非零、逾時、歧義立即 S1 STOP，不自行重跑或修補。S1 STOP 立即停止後續晉級步驟：新版 runner 在同一失敗命令內自動輸出 timing／回覆；出現 TIMING 或 EXECUTOR_REPLY_UNAVAILABLE 即禁止任何後續工具動作。僅舊 runner 未輸出 timing 的過渡情形，才可執行第四節 timing 一次後結束；成功路徑仍按順序在最後執行 timing 一次。已啟動或背景執行中不算完成；必須觀察 runner 命令真正結束且 exit 0 後才能進下一步。post-main PENDING 不得當作 PASS。
 Allowed tracked mutation paths = NONE，Required tracked mutation paths = NONE。只能由 runner 依所綁定 SHA 完成同一 SHA 快轉；origin/main、candidate branch、parent 或 CI 不符合時須 S1 STOP。禁止手動 git/gh/API 查證補資料、push 或另建 commit；禁止 force、reset、amend、stash、delete、hook bypass、讀取其他對話／其他 task artifact 或憑證。前一 Executor 已停止且無 Queued 指令，工作區必須為 IDE 原生作用中工作區。禁止未授權 repo 外存取。
 
 三、動手前必讀（IDE 原生檢視工具讀至結尾）

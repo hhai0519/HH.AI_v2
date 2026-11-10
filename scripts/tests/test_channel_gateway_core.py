@@ -1191,8 +1191,10 @@ exit 0
 
 def test_bounded_child_timeout_fails_closed():
     """A child that outlives its limit must fail the referee instead of hanging it."""
-    with pytest.raises(AssertionError, match="exceeded 2s; process tree TREE_SIGNALLED"):
-        run_bounded_text([sys.executable, "-c", "import time; time.sleep(60)"], 2)
+    # G3 F R4: Windows launcher process trees need the same >=10 s start-up allowance as the
+    # sibling tree tests before TREE_SIGNALLED can be asserted deterministically (R2 Gate4 S1 class).
+    with pytest.raises(AssertionError, match="exceeded 10s; process tree TREE_SIGNALLED"):
+        run_bounded_text([sys.executable, "-c", "import time; time.sleep(120)"], 10)
 
 
 def test_referee_child_processes_are_bounded():

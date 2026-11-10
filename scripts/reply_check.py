@@ -129,6 +129,9 @@ FORMATS = [
     ('S1_FULL_CAPTURE_JSON', 'S1_FULL_CAPTURE_JSON=', r'^S1_FULL_CAPTURE_JSON=(\{.*\})$', (), ()),
     ('S1_FULL_CAPTURE_STATUS', 'S1_FULL_CAPTURE_STATUS=', r'^S1_FULL_CAPTURE_STATUS=([A-Z][A-Z_]*)$', (), ()),
     ('S1', 'S1 ', r'^S1 (' + CODE + r')(?: \| step ([a-z0-9]+)| ([a-z0-9]+):(' + CODE + r'))?$', (), ()),
+    ('GATE_BUDGET_WARN', 'GATE_BUDGET_WARN ',
+     r'^GATE_BUDGET_WARN stage=(PRECOMMIT|STAGED|POSTCOMMIT) gate=([1-9][0-9]*) '
+     r'elapsed=([0-9]+\.[0-9]{3}) limit=([1-9][0-9]*) pct=([0-9]+\.[0-9])$', (), ()),
     ('BOUNDED_EXIT', 'BOUNDED_EXIT ', r'^BOUNDED_EXIT ([A-Z]+) code=(-?[0-9]+) \| .*$', (), ()),
     ('BOUNDED_TIMEOUT', 'BOUNDED_TIMEOUT ', r'^BOUNDED_TIMEOUT ([A-Z]+) limit=[0-9]+s kill=\S+$', (), ()),
 ]
@@ -242,6 +245,27 @@ def check_bounded_lines(found, steps, stopped=None):
             seen.add(stage)
 
 
+def check_budget_warnings(found, steps, stopped=None):
+    """WARN is allowed only for a real matching bounded stage, with a fixed budget.
+
+    These checks do not treat a warning as a gate failure or PASS. They ensure
+    reply/handoff cannot invent an unrelated stage/gate/percentage.
+    """
+    available = {m.group(1) for m in found['BOUNDED_EXIT']}
+    by_stage = set()
+    for m in found['GATE_BUDGET_WARN']:
+        stage, gate, elapsed, limit, pct = m.groups()
+        key = (stage, int(gate))
+        budgets = batch_runner.stage_timeouts(stage)
+        _require(stage in available and key not in by_stage and int(gate) <= len(budgets)
+                 and int(limit) == budgets[int(gate)-1], 'REPLY_GATE_BUDGET_WARN_MISMATCH')
+        by_stage.add(key)
+        e, percent = float(elapsed), float(pct)
+        _require(e >= 0 and e/int(limit) >= 0.69995
+                 and abs(percent - 100*e/int(limit)) <= 0.055,
+                 'REPLY_GATE_BUDGET_WARN_MISMATCH')
+
+
 def check_bundle(found, task, spec, head, pending=False):
     base = spec['base_oid']
     if found['BUNDLE_FAILED']:
@@ -262,6 +286,8 @@ def check_bundle(found, task, spec, head, pending=False):
     expected = {'schema_version': 1, 'phase': 'candidate', 'task_id': task, 'base_oid': base, 'candidate_oid': head,
                 'branch': spec['branch'], 'candidate_ci': ci_record,
                 'postmain': 'NOT_RUN', 'bundle_status': 'READY', 'bundle_file': bfile, 'next_step': NEXT_STEP}
+    if found['GATE_BUDGET_WARN']:
+        expected['gate_budget_warnings'] = [m.group(0) for m in found['GATE_BUDGET_WARN']]
     _require(card == expected, 'REPLY_HANDOFF_CARD_MISMATCH')
     return 'READY'
 
@@ -282,7 +308,8 @@ def check_success(found, task, spec, steps):
     ranges = {'TIMING': (1, 1), 'STATE': (1, 1), 'STEP_PASS': (0, len(steps)),
               'CI_RUN_CANDIDATE': (0 if is_production and pending else 1, 0 if is_production and pending else 1)}
     if is_production:
-        ranges.update({'COMMIT': (1, 1), 'BOUNDED_EXIT': (0, len(STAGES))})
+        ranges.update({'COMMIT': (1, 1), 'BOUNDED_EXIT': (0, len(STAGES)),
+                       'GATE_BUDGET_WARN': (0, sum(len(batch_runner.stage_timeouts(s)) for s in ('PRECOMMIT', 'STAGED', 'POSTCOMMIT')))})
         if 'bundle' in steps:
             ranges.update({'BUNDLE_FAILED': (1, 1)} if found['BUNDLE_FAILED'] else {n: (1, 1) for n in READY})
     else:
@@ -295,6 +322,7 @@ def check_success(found, task, spec, steps):
             check_ci(found, 'candidate', spec['branch'], head)
         bundle = check_bundle(found, task, spec, head, pending=pending) if 'bundle' in steps else None
         check_bounded_lines(found, steps)
+        check_budget_warnings(found, steps)
         outcome = 'COMMIT'
     else:
         head = spec['candidate_oid']
@@ -348,8 +376,9 @@ def check_s1(found, task, spec, steps, capture_path, prompt_sha):
         cardinality(found, dict({'S1': (1, 1), 'S1_PRIMARY': (1, 1), 'TIMING': (1, 1), 'STATE': (1, 1),
                                  'S1_DETAIL': (0, 1 if code == 'ARTIFACT_PATH_GUARD_FAILED' else 0),
                                  'STEP_PASS': (0, len(steps)), 'BOUNDED_EXIT': (0, len(STAGES)),
-                                 'BOUNDED_TIMEOUT': (0, 1)}, **promo))
+                                 'BOUNDED_TIMEOUT': (0, 1), 'GATE_BUDGET_WARN': (0, 10)}, **promo))
         check_bounded_lines(found, steps, step)
+        check_budget_warnings(found, steps, step)
         if found['CI_RUN_CANDIDATE']:
             check_ci(found, 'candidate', spec['candidate_branch'], spec['candidate_oid'])
         for p in found['MAIN_PROMOTED']:
@@ -364,7 +393,8 @@ def check_s1(found, task, spec, steps, capture_path, prompt_sha):
                         'STEP_PASS': (0, len(steps))}, **promo)
     if halted == step + ':' + code:                                       # halt persisted inside the step
         _require(step in steps and done == steps[:steps.index(step)], 'REPLY_STATE_MISMATCH')
-        ranges = dict(base_ranges, BOUNDED_EXIT=(0, len(STAGES)), BOUNDED_TIMEOUT=(0, 1))
+        ranges = dict(base_ranges, BOUNDED_EXIT=(0, len(STAGES)), BOUNDED_TIMEOUT=(0, 1),
+                      GATE_BUDGET_WARN=(0, 10))
         ranges.update({n: (1, 1) for n in METADATA} if not found['S1_EVIDENCE_STATUS'] else {'S1_EVIDENCE_STATUS': (1, 1)})
         ranges.update({n: (1, 1) for n in CAPTURE} if not found['S1_FULL_CAPTURE_STATUS'] else
                       {'S1_FULL_CAPTURE_STATUS': (1, 1)})
@@ -372,6 +402,7 @@ def check_s1(found, task, spec, steps, capture_path, prompt_sha):
             ranges = dict(base_ranges)
         cardinality(found, ranges)
         check_bounded_lines(found, steps, step)
+        check_budget_warnings(found, steps, step)
         persisted = True
     else:                                                                # stopped before the step body ran
         _require(halted == 'None' and not already, 'REPLY_STATE_MISMATCH')
