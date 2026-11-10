@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "B115-G3-F-S1-TIMING-GATE-WARN-R4-261110",
-  "base_oid": "907b1dfbeaebb7da8edd077e56de7c41636611ef",
+  "task_id": "B116-AUD-GPT6-F-R4-STATE-SYNC-R2-261110",
+  "base_oid": "239c9093b73bc4a666dd207790fb7135413c8a62",
   "plan": {
     "allowed_paths": [
       "docs/AUDIT-LOG.md",
@@ -10,18 +10,7 @@
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md",
-      "scripts/batch_runner.py",
-      "scripts/gate_runner.py",
-      "scripts/production_template.py",
-      "scripts/promotion_template.py",
-      "scripts/reply_check.py",
-      "scripts/tests/test_batch_runner.py",
-      "scripts/tests/test_bundle_after_push.py",
-      "scripts/tests/test_channel_gateway_core.py",
-      "scripts/tests/test_gate_runner.py",
-      "scripts/tests/test_prompt_builder.py",
-      "scripts/tests/test_reply_check.py"
+      "docs/refactor-backlog.md"
     ],
     "required_paths": [
       "docs/AUDIT-LOG.md",
@@ -29,18 +18,7 @@
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md",
-      "scripts/batch_runner.py",
-      "scripts/gate_runner.py",
-      "scripts/production_template.py",
-      "scripts/promotion_template.py",
-      "scripts/reply_check.py",
-      "scripts/tests/test_batch_runner.py",
-      "scripts/tests/test_bundle_after_push.py",
-      "scripts/tests/test_channel_gateway_core.py",
-      "scripts/tests/test_gate_runner.py",
-      "scripts/tests/test_prompt_builder.py",
-      "scripts/tests/test_reply_check.py"
+      "docs/refactor-backlog.md"
     ],
     "max_plan_revisions": 3,
     "revision_count": 0,
@@ -53,18 +31,7 @@
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md",
-      "scripts/batch_runner.py",
-      "scripts/gate_runner.py",
-      "scripts/production_template.py",
-      "scripts/promotion_template.py",
-      "scripts/reply_check.py",
-      "scripts/tests/test_batch_runner.py",
-      "scripts/tests/test_bundle_after_push.py",
-      "scripts/tests/test_channel_gateway_core.py",
-      "scripts/tests/test_gate_runner.py",
-      "scripts/tests/test_prompt_builder.py",
-      "scripts/tests/test_reply_check.py"
+      "docs/refactor-backlog.md"
     ]
   },
   "evidence": [
