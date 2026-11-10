@@ -628,3 +628,156 @@ def test_r2_w9_each_changed_test_file_must_really_execute(tmp_path, monkeypatch)
     with pytest.raises(q2.DraftError, match='WINEMU_CHANGED_FILE_NOT_EXECUTED'):
         run()
     assert calls == ['BASE', 'CANDIDATE']
+
+# B-115/G3 C3: runner-equivalent author target guards before git apply or generate.
+
+def _c3_plan(*authors):
+    return {'task_id':'B115-G3-C3-TEST','base_oid':'a'*40,
+            'allowed_paths':[*authors,*q2.GENERATED],
+            'required_paths':[*authors,*q2.GENERATED]}
+
+
+def test_c3_plain_existing_and_missing_leaf_paths_accepted(tmp_path):
+    (tmp_path/'docs').mkdir()
+    (tmp_path/'docs'/'existing.md').write_bytes(b'ok\n')
+    plan=_c3_plan('docs/existing.md','docs/new.md')
+    assert q2.validate_author_targets(tmp_path,plan,synthetic=True)==['docs/existing.md','docs/new.md']
+
+
+@pytest.mark.parametrize('target,error',[
+    ('missing/added.md','AUTHOR_TARGET_PARENT_DIRECTORY_MISSING'),
+    ('docs/a.md/child.txt','AUTHOR_TARGET_PARENT_DIRECTORY_MISSING'),
+    ('docs/directory.md','AUTHOR_TARGET_AUTHOR_PATH_UNSAFE_TARGET'),
+    ('docs/symlink.md','AUTHOR_TARGET_AUTHOR_PATH_UNSAFE_TARGET'),
+    ('link/added.md','AUTHOR_TARGET_AUTHOR_PATH_UNSAFE_TARGET'),
+])
+def test_c3_matches_runner_on_parent_and_leaf_failures(tmp_path,target,error):
+    (tmp_path/'docs').mkdir()
+    (tmp_path/'docs'/'a.md').write_bytes(b'file')
+    (tmp_path/'docs'/'directory.md').mkdir()
+    outside=tmp_path/'outside';outside.mkdir()
+    try:
+        (tmp_path/'docs'/'symlink.md').symlink_to(tmp_path/'docs'/'a.md')
+        (tmp_path/'link').symlink_to(outside, target_is_directory=True)
+    except (NotImplementedError,OSError) as exc:
+        pytest.skip('symlinks unavailable: '+type(exc).__name__)
+    plan=_c3_plan(target)
+    with pytest.raises(q2.DraftError,match=error):
+        q2.validate_author_targets(tmp_path,plan,synthetic=True)
+
+
+def test_c3_hardlink_target_fails_runner_equivalence(tmp_path):
+    (tmp_path/'docs').mkdir()
+    primary=tmp_path/'docs'/'a.md';primary.write_bytes(b'alpha')
+    os.link(primary,tmp_path/'docs'/'hard.md')
+    with pytest.raises(q2.DraftError,match='AUTHOR_TARGET_AUTHOR_PATH_UNSAFE_TARGET'):
+        q2.validate_author_targets(tmp_path,_c3_plan('docs/hard.md'),synthetic=True)
+    assert primary.read_bytes()==b'alpha'
+
+
+@pytest.mark.parametrize('bad',('.git/evil','docs/../evil','docs/CON.txt','docs/a\\b.txt',
+                               'docs/a.','docs/a ','docs/','docs/a:ads'))
+def test_c3_unsafe_author_paths_never_pass(tmp_path,bad):
+    (tmp_path/'docs').mkdir()
+    with pytest.raises(q2.DraftError,match='AUTHOR_TARGET_UNSAFE_PATH'):
+        q2.validate_author_targets(tmp_path,_c3_plan(bad),synthetic=True)
+
+
+def test_c3_case_mismatched_parent_matches_runner_on_case_sensitive_fs(tmp_path):
+    (tmp_path/'Docs').mkdir()
+    wrong='docs/a.md'
+    # On Windows a casefolded lookup may refer to the same parent: the runner is the authority.
+    try:
+        import batch_runner as runner
+        runner.author_target(str(tmp_path),wrong)
+    except runner.Halt as exc:
+        with pytest.raises(q2.DraftError,match='AUTHOR_TARGET_'+str(exc)):
+            q2.validate_author_targets(tmp_path,_c3_plan(wrong),synthetic=True)
+    else:
+        assert q2.validate_author_targets(tmp_path,_c3_plan(wrong),synthetic=True)==[wrong]
+
+
+def test_c3_prompt_author_binding_including_keep(tmp_path,monkeypatch):
+    (tmp_path/'docs').mkdir()
+    prompt=tmp_path/'prompt.txt';prompt.write_bytes(b'synthetic test prompt\n')
+    authors={'docs/target.md': {'source':{'kind':'block'}},
+             'docs/kept.md': {'source':{'kind':'keep'}}}
+    spec={'kind':'production','base_oid':'a'*40,'authors':authors}
+    monkeypatch.setattr(q2.batch_runner,'load_spec',lambda lines,task_id:spec)
+    plan=_c3_plan(*authors)
+    assert q2.validate_author_targets(tmp_path,plan,prompt=prompt)==['docs/kept.md','docs/target.md']
+    spec['authors']={'docs/other.md':{'source':{'kind':'block'}}}
+    with pytest.raises(q2.DraftError,match='AUTHOR_TARGET_SCOPE_MISMATCH'):
+        q2.validate_author_targets(tmp_path,plan,prompt=prompt)
+
+
+def test_c3_draft_rejects_git_apply_acceptable_missing_parent_before_mutation(tmp_path,capsys):
+    source,patch,plan=_build_simulated_source(tmp_path)
+    # A new file in a new folder can be accepted by git apply, while the production
+    # runner's author_target rejects the missing parent before its first write.
+    leaf=source/'new-parent'/'x.md';leaf.parent.mkdir();leaf.write_bytes(b'added\n')
+    subprocess.run(['git','-C',str(source),'add','-N','new-parent/x.md'],check=True)
+    patch.write_bytes(subprocess.check_output(['git','-C',str(source),'diff','--binary','--','new-parent/x.md']))
+    subprocess.run(['git','-C',str(source),'reset','-q'],check=True)
+    leaf.unlink();leaf.parent.rmdir()
+    p=json.loads(plan.read_bytes());p['allowed_paths']=['new-parent/x.md',*q2.GENERATED]
+    p['required_paths']=p['allowed_paths']
+    plan.write_bytes((json.dumps(p,sort_keys=True)+'\n').encode('utf-8'))
+    check=subprocess.run(['git','-C',str(source),'apply','--check',str(patch)],capture_output=True)
+    assert check.returncode==0
+    work=tmp_path/'w'
+    args=['--source',str(source),'--patch',str(patch),'--plan',str(plan),'--workdir',str(work)]
+    assert q2.main(args)==1
+    assert 'AUTHOR_TARGET_PARENT_DIRECTORY_MISSING' in capsys.readouterr().out
+    assert not (work/'candclone'/'new-parent').exists()
+    assert not (work/'draft-state.json').exists()
+    assert not (work/'generate-generate.log').exists()
+    assert not subprocess.check_output(['git','-C',str(source),'status','--porcelain']).strip()
+
+
+def test_c3_git_apply_introduced_symlink_rejected_before_generate(tmp_path,capsys,monkeypatch):
+    # Hermetic Git config: ambient Git for Windows defaults (core.symlinks=false) would make
+    # git apply write a regular file, so this case would no longer contain a symlink.
+    for key in [k for k in os.environ if k.upper().startswith('GIT_')]:
+        monkeypatch.delenv(key)
+    monkeypatch.setenv('GIT_CONFIG_NOSYSTEM','1')
+    monkeypatch.setenv('GIT_CONFIG_GLOBAL',os.devnull)
+    source,patch,plan=_build_simulated_source(tmp_path)
+    link=source/'docs'/'linked.md'
+    try:
+        link.symlink_to('TASKBOARD.md')
+    except (NotImplementedError,OSError) as exc:
+        pytest.skip('symlinks unavailable: '+type(exc).__name__)
+    subprocess.run(['git','-C',str(source),'add','-N','docs/linked.md'],check=True)
+    patch.write_bytes(subprocess.check_output(['git','-C',str(source),'diff','--binary','--','docs/linked.md']))
+    subprocess.run(['git','-C',str(source),'reset','-q'],check=True)
+    link.unlink()
+    p=json.loads(plan.read_bytes())
+    p['allowed_paths']=['docs/linked.md',*q2.GENERATED]
+    p['required_paths']=p['allowed_paths']
+    plan.write_bytes((json.dumps(p,sort_keys=True)+'\n').encode('utf-8'))
+    assert subprocess.run(['git','-C',str(source),'apply','--check',str(patch)],capture_output=True).returncode==0
+    work=tmp_path/'w'
+    args=['--source',str(source),'--patch',str(patch),'--plan',str(plan),'--workdir',str(work)]
+    assert q2.main(args)==1
+    assert 'AUTHOR_TARGET_AUTHOR_PATH_UNSAFE_TARGET' in capsys.readouterr().out
+    assert (work/'candclone'/'docs'/'linked.md').is_symlink()
+    assert not (work/'draft-state.json').exists()
+    assert not (work/'generate-generate.log').exists()
+
+
+def test_c3_keep_target_symlink_rejected_same_as_runner(tmp_path,monkeypatch):
+    (tmp_path/'docs').mkdir()
+    (tmp_path/'docs'/'real.md').write_bytes(b'original')
+    try:
+        (tmp_path/'docs'/'keep.md').symlink_to('real.md')
+    except (OSError, NotImplementedError) as exc:
+        pytest.skip('symlinks unavailable: '+type(exc).__name__)
+    spec={'kind':'production','base_oid':'a'*40,
+          'authors':{'docs/keep.md':{'source':{'kind':'keep'}},
+                     'docs/real.md':{'source':{'kind':'block'}}}}
+    prompt=tmp_path/'prompt.txt';prompt.write_bytes(b'synthetic prompt\n')
+    monkeypatch.setattr(q2.batch_runner,'load_spec',lambda lines,task_id:spec)
+    with pytest.raises(q2.DraftError,match='AUTHOR_TARGET_AUTHOR_PATH_UNSAFE_TARGET'):
+        q2.validate_author_targets(tmp_path,_c3_plan(*spec['authors']),prompt=prompt)
+    assert (tmp_path/'docs'/'real.md').read_bytes()==b'original'

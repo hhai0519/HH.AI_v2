@@ -1,5 +1,5 @@
 {
-  "base_head": "ffba639",
+  "base_head": "8933f6e",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -566,16 +566,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 393,
-      "sha256": "0327583f71758488819699d7ce6e89504c59eaa38ec34a4a4000b92a5823122a"
+      "lines": 394,
+      "sha256": "f8b4f870944e6b8a0f8cc2f8caa23afbcf370dcf8b17cefc24b53f722086c069"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 368,
-      "sha256": "eb9564112b56c77c8724d2956c9ff09758f9b7b5c5825b2cc71ba0ec2195325e"
+      "lines": 369,
+      "sha256": "bd9c4f977c0af5f653165906c96afa11bde11b0ef743547a4a4d102d113e1424"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -617,8 +617,8 @@
         "## G. 舊 repo 未盤點區塊（2026-09-02 新發現）",
         "## 封存區"
       ],
-      "lines": 493,
-      "sha256": "a8214a683dedba62714a9e45a9797702b4f59544560d5cf3ac117987ecd51379"
+      "lines": 496,
+      "sha256": "d15ffaae5d6658516f56f0f3134c53accea30a116ce2c003f0c98b1b2bcc6e83"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1127,8 +1127,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6454,
-      "sha256": "16c6d33010308bfd75499cfe12694fa4ef1783976ba158db64c22974edcf3737"
+      "lines": 6455,
+      "sha256": "1eec7e1b9b284de999ebf47268fc295e104add0b0aba6da6a46d8e79cbd52f70"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1303,8 +1303,8 @@
         "# -*- coding: utf-8 -*-",
         "# Canonical tree-bounded runner; a timeout never leaves live pytest descendants by design."
       ],
-      "lines": 554,
-      "sha256": "43297e2af8ab694bebcfdfbe86095c727e02dbeee2982010f2666cf41899614b"
+      "lines": 591,
+      "sha256": "a9c0561fd61cc63fbca7e7b290a0a491422d854f567badeadd586dee8239f3db"
     },
     "scripts/execution_record.py": {
       "fences": 0,
@@ -1802,10 +1802,11 @@
         "# -*- coding: utf-8 -*-",
         "# 2026-10-17 E27 B1-B4 / N1 focused negative controls.",
         "# B-123b-lite sixth-stage / changed-line regression contract, including C-1/C-2.",
-        "# --- SO E27 reference tests: sixth-stage decision logic must be regression-tested in-repo. ---"
+        "# --- SO E27 reference tests: sixth-stage decision logic must be regression-tested in-repo. ---",
+        "# B-115/G3 C3: runner-equivalent author target guards before git apply or generate."
       ],
-      "lines": 630,
-      "sha256": "14ce5f7f205d8a868ffc9f85a4c5294784fbf036f3d942ee6b289bf87cc77b90"
+      "lines": 783,
+      "sha256": "8ad8139f22fe6f0009843028273f92f6d8d6140eee7ee868a5abfa22f0b57eb4"
     },
     "scripts/tests/test_execution_record.py": {
       "fences": 0,
@@ -2280,7 +2281,7 @@
       "sha256": "6bfd57c05a09df3cde679ae53ac6ddd67bfb64cda4246584617d3cc67fb3b81c"
     }
   },
-  "generated_at": "2026-11-09T10:47:56Z",
+  "generated_at": "2026-11-10T01:54:55Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

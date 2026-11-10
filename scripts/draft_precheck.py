@@ -83,6 +83,38 @@ def validate_plan(data, base):
     require(set(GENERATED).issubset(allowed), 'PLAN_MISSING_GENERATED')
     return set(allowed)
 
+def validate_author_targets(root, plan, *, prompt=None, synthetic=False):
+    """C3: before applying any patch, use the production runner's exact target guard.
+
+    PLAN required paths must be exactly the prompt's author keys plus the two
+    generated files. Never substitute a Git-apply success for this guard.
+    Synthetic unit fixtures can omit a production prompt; they still use the
+    same runner target guard on their plan's author paths.
+    """
+    required = set(plan['required_paths']) - set(GENERATED)
+    require(bool(required), 'AUTHOR_TARGET_SCOPE_MISMATCH')
+    if synthetic:
+        targets = sorted(required)
+    else:
+        require(prompt is not None and prompt.is_file(), 'AUTHOR_TARGET_PROMPT_MISSING')
+        try:
+            lines = prompt.read_text(encoding='utf-8').splitlines()
+            spec = batch_runner.load_spec(lines, plan['task_id'])
+        except (batch_runner.Halt, UnicodeError, ValueError):
+            raise DraftError('AUTHOR_TARGET_PROMPT_INVALID') from None
+        require(spec.get('kind') == 'production' and spec['base_oid'] == plan['base_oid'],
+                'AUTHOR_TARGET_SPEC_DRIFT')
+        require(set(spec['authors']) == required, 'AUTHOR_TARGET_SCOPE_MISMATCH')
+        targets = sorted(spec['authors'])  # Keep authors are read via runner.author_target too.
+    for path in targets:
+        require(batch_runner.safe_author_path(path), 'AUTHOR_TARGET_UNSAFE_PATH')
+        try:
+            batch_runner.author_target(str(root), path)
+        except batch_runner.Halt as exc:
+            raise DraftError('AUTHOR_TARGET_' + str(exc)) from None
+    return targets
+
+
 def lint_added_sha_labels(diff, paths=STATUS):
     """Check new state-document lines only, not immutable historical rows or negative fixtures.
     `SHA256=...` => 64 hex; `main=...`/`BASE_OID=...` => 40 hex.
@@ -474,10 +506,15 @@ def execute(ns):
             require(git(work/name,'rev-parse','HEAD')==base,'CLONE_HEAD_DRIFT')
         (work/'plan.json').write_bytes(plan.read_bytes())
         assert_baseclone(work/'baseclone', base)
+        # C3: the runner's path guard precedes git apply and every generator.
+        validate_author_targets(work/'candclone', pj, prompt=prompt, synthetic=synthetic)
         rc,_=cmd(['git','-C',str(work/'candclone'),'apply','--check',str(patch)],work)
         require(rc==0,'PATCH_INVALID')
         rc,_=cmd(['git','-C',str(work/'candclone'),'apply',str(patch)],work)
         require(rc==0,'PATCH_NONZERO')
+        # A patch can introduce a link even when the pre-apply target was safe.
+        # Recheck the exact runner targets before generators read the result.
+        validate_author_targets(work/'candclone', pj, prompt=prompt, synthetic=synthetic)
         bad=lint_added_sha_labels(patch.read_bytes())
         require(not bad,'SHA_FORMAT_LINT_FAILED')
         changes=set(git(work/'candclone','diff','--name-only').splitlines())

@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "B115-G3-CI-POLL-RETRY-R2-261109",
-  "base_oid": "ffba63937d3f80c377d53e60196c483c8af78347",
+  "task_id": "B115-G3-C3-AUTHOR-TARGET-R2-261110",
+  "base_oid": "8933f6e0bb127fabcb48e737d6c23e24ca8eb47d",
   "plan": {
     "allowed_paths": [
       "docs/AUDIT-LOG.md",
@@ -10,12 +10,9 @@
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/ops/q2-draft-precheck.md",
       "docs/refactor-backlog.md",
-      "scripts/batch_runner.py",
-      "scripts/tests/test_b119_ci_run.py",
-      "scripts/tests/test_verification_primitives.py",
-      "scripts/verification_primitives.py"
+      "scripts/draft_precheck.py",
+      "scripts/tests/test_draft_precheck.py"
     ],
     "required_paths": [
       "docs/AUDIT-LOG.md",
@@ -23,12 +20,9 @@
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/ops/q2-draft-precheck.md",
       "docs/refactor-backlog.md",
-      "scripts/batch_runner.py",
-      "scripts/tests/test_b119_ci_run.py",
-      "scripts/tests/test_verification_primitives.py",
-      "scripts/verification_primitives.py"
+      "scripts/draft_precheck.py",
+      "scripts/tests/test_draft_precheck.py"
     ],
     "max_plan_revisions": 3,
     "revision_count": 0,
@@ -41,12 +35,9 @@
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/ops/q2-draft-precheck.md",
       "docs/refactor-backlog.md",
-      "scripts/batch_runner.py",
-      "scripts/tests/test_b119_ci_run.py",
-      "scripts/tests/test_verification_primitives.py",
-      "scripts/verification_primitives.py"
+      "scripts/draft_precheck.py",
+      "scripts/tests/test_draft_precheck.py"
     ]
   },
   "evidence": [
