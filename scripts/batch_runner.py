@@ -98,6 +98,7 @@ Invariants (fail closed; a failing step prints one "S1 <CODE> | step <name>" lin
 """
 
 import argparse
+import ast
 import contextlib
 import hashlib
 import json
@@ -111,6 +112,7 @@ import time
 from datetime import datetime
 from pathlib import Path
 
+sys.dont_write_bytecode = True
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 try:
     from bounded_process import run_bounded, KILL_GRACE_SECONDS  # noqa: E402 - shared bounded primitive
@@ -195,7 +197,7 @@ SUMMARY_SHAPES = (
     re.compile(r'=* ?(?:\d+ (?:passed|failed|skipped|errors?|xfailed|xpassed|deselected|warnings?)(?:, )?)+'
                r' in \d+(?:\.\d+)?s(?: \(\d+:\d\d:\d\d\))? ?=*'),
 )
-PRODUCTION_STEPS = ('preflight', 'setup', 'e24', 'apply', 'focused', 'generate', 'precommit', 'stage', 'commit',
+PRODUCTION_STEPS = ('preflight', 'native_preview', 'setup', 'e24', 'apply', 'focused', 'generate', 'precommit', 'stage', 'commit',
                     'postcommit', 'push', 'bundle')
 PROMOTION_STEPS = ('preflight', 'verify', 'promote', 'postmain')
 # The outer bounded envelope must dominate every inner gate, including each
@@ -225,6 +227,20 @@ MUST_READ_KERNEL = ('AGENTS.md', 'PRINCIPLES.md', '.agents/rules/role-boundaries
 MUST_READ_PRODUCTION = ('.agents/rules/prompt-preflight.md', '.agents/rules/secret-output-safety.md')
 MUST_READ_BY_PREFIX = (('skills/', ('.agents/rules/skills-architecture.md', '.agents/rules/skill-engineering-guardrails.md')),)
 RULES_DIR = '.agents/rules/'
+
+
+PREVIEW_STOP_CODES = frozenset({
+    'BASE_NOT_IN_SOURCE', 'NATIVE_PREVIEW_LAUNCH_FAILED',
+    'NATIVE_PREVIEW_LOG_INVALID', 'NATIVE_PREVIEW_NONZERO', 'NATIVE_PREVIEW_SIM_IDENTITY',
+    'NATIVE_PREVIEW_SOURCE_MODIFIED', 'NATIVE_PREVIEW_SOURCE_UNREADABLE',
+    'NATIVE_PREVIEW_TEMP_OVERLAP', 'NATIVE_PREVIEW_TIMEOUT', 'NATIVE_PREVIEW_UV_CACHE_INCOMPLETE',
+    'NATIVE_PREVIEW_UV_CACHE_INVALID', 'NATIVE_PREVIEW_WINDOWS_REQUIRED',
+})
+
+
+def preview_stop_code(exc):
+    code = str(exc)
+    return code if code in PREVIEW_STOP_CODES else 'NATIVE_PREVIEW_UNAVAILABLE'
 
 
 class Halt(Exception):
@@ -265,6 +281,7 @@ def child_env():
     env = dict(os.environ)
     env['PYTHONIOENCODING'] = 'utf-8'
     env['PYTHONUTF8'] = '1'
+    env['PYTHONDONTWRITEBYTECODE'] = '1'
     return env
 
 
@@ -469,7 +486,7 @@ def load_spec(lines, task_id):
             _require(isinstance(src.get('oid'), str) and OID_RE.match(src['oid']), 'SPEC_SOURCE_INVALID')
         elif src.get('kind') == 'block':
             _require(isinstance(src.get('name'), str) and BLOCK_RE.match(src['name']) and src['name'] not in (
-                'BATCH_SPEC_JSON', 'PLAN_JSON', 'ALLOWED_SCOPE_JSON', 'E24_EVIDENCE_JSON', 'MUST_READ_JSON'), 'SPEC_SOURCE_INVALID')
+                'BATCH_SPEC_JSON', 'PLAN_JSON', 'ALLOWED_SCOPE_JSON', 'E24_EVIDENCE_JSON', 'MUST_READ_JSON', 'AUDITOR_SELFCHECK_JSON'), 'SPEC_SOURCE_INVALID')
         elif src.get('kind') == 'keep':
             _require(start['mode'] == 'adopt', 'SPEC_SOURCE_INVALID')
         else:
@@ -500,6 +517,8 @@ def load_spec(lines, task_id):
     plan = block_json(lines, 'PLAN_JSON')
     _require(isinstance(plan, dict) and plan.get('task_id') == task_id and plan.get('base_oid') == spec['base_oid'], 'PLAN_BINDING_INVALID')
     _require(sorted(plan.get('allowed_paths') or []) == allowed and sorted(plan.get('required_paths') or []) == allowed, 'PLAN_SCOPE_MISMATCH')
+    preview = spec.get('native_preview', False)
+    _require(type(preview) is bool and (not preview or native_preview_required(allowed)), 'NATIVE_PREVIEW_SPEC_INVALID')
     if spec['e24']:
         scope = block_json(lines, 'ALLOWED_SCOPE_JSON')
         _require(isinstance(scope, dict) and sorted(scope.get('allowed_scope') or []) == allowed, 'E24_SCOPE_MISMATCH')
@@ -595,12 +614,47 @@ def check_must_read_worktree(root, closure):
             raise Halt('MUST_READ_WORKTREE_DRIFT')
 
 
+# Only these reviewed prose-only surfaces may omit native rehearsal. Files outside
+# this allowlist (including unknown docs directories and generated lookalikes) require it.
+NATIVE_PREVIEW_DOCS = frozenset(('docs/TASKBOARD.md', 'docs/refactor-backlog.md', 'docs/AUDIT-LOG.md',
+                                 'docs/EXEC-LOG.md', 'README.md', 'docs/ARCHIVE-INDEX.md'))
+
+
+def native_preview_required(plan_paths):
+    return bool(set(plan_paths) - set(GENERATED) - NATIVE_PREVIEW_DOCS)
+
+
+def base_supports_native_preview(root, base_oid):
+    return runner_declares_native_preview(git_bytes(root, 'cat-file', 'blob', base_oid + ':' + RUNNER_REL))
+
+
+def runner_declares_native_preview(blob):
+    try:
+        for node in ast.parse(blob).body:
+            if (isinstance(node, ast.Assign) and len(node.targets) == 1
+                    and isinstance(node.targets[0], ast.Name) and node.targets[0].id == 'PRODUCTION_STEPS'):
+                steps = ast.literal_eval(node.value)
+                if isinstance(steps, tuple) and all(isinstance(step, str) for step in steps):
+                    return 'native_preview' in steps
+    except (SyntaxError, ValueError):
+        pass
+    raise Halt('NATIVE_PREVIEW_BASE_STEPS_INVALID')
+
+
+def verify_preview_binding(root, spec):
+    required = (native_preview_required(allowed_paths(spec))
+                and base_supports_native_preview(root, spec['base_oid']))
+    _require(spec.get('native_preview', False) == required, 'NATIVE_PREVIEW_SPEC_MISMATCH')
+
+
 def derive_steps(spec):
     if spec['kind'] == 'readonly':
         return []  # No runner steps, no control artifact: explicit fail-closed non-executable kind.
     if spec['kind'] == 'promotion':
         return list(PROMOTION_STEPS)
     steps = list(PRODUCTION_STEPS)
+    if not spec.get('native_preview', False):
+        steps.remove('native_preview')
     if not spec['e24']:
         steps.remove('e24')
     if spec.get('focused') is None:
@@ -695,7 +749,7 @@ def staged_paths(root):
 
 
 def status_lines(root):
-    return [x for x in git(root, 'status', '--porcelain=v1', '--untracked-files=all').split(chr(10)) if x.strip()]
+    return [x for x in git(root, '--no-optional-locks', 'status', '--porcelain=v1', '--untracked-files=all').split(chr(10)) if x.strip()]
 
 
 def expect_head_clean(root, head, label):
@@ -738,6 +792,8 @@ class Batch:
         self.prompt_bytes = (Path(root) / self.prompt_rel).read_bytes()
         self.lines = prompt_lines(self.prompt_bytes)
         self.spec = load_spec(self.lines, task_id)
+        if self.spec['kind'] == 'production':
+            verify_preview_binding(root, self.spec)
 
     def artifact(self, suffix):
         rel = '.git/' + self.task_id + '-' + suffix
@@ -866,12 +922,43 @@ class Batch:
                 preflight_remote_refs(self.root)
             except BundleFailure as exc:
                 raise Halt('BUNDLE_REF_PREFLIGHT_' + exc.code) from None
+        self.check_native_preview_cache()
+
+    def check_native_preview_cache(self):
+        """A native_preview batch needs the approved offline uv cache; stop here, not mid-rehearsal."""
+        if self.spec['kind'] != 'production' or self.spec.get('native_preview') is not True:
+            return
+        import native_preview
+        try:
+            if not native_preview.simulated_worktree(self.root, self.spec['base_oid']):
+                native_preview.require_uv_cache(self.root, self.spec['base_oid'])
+        except native_preview.PreviewError as exc:
+            raise Halt(preview_stop_code(exc)) from None
 
     # -- production -----------------------------------------------------------
+
+    def step_native_preview(self):
+        import native_preview
+        from validate_prompt_manifest import parse_execution_contract_block
+        ok, _, contract = parse_execution_contract_block(self.prompt_bytes.decode('utf-8'))
+        _require(ok and contract.get('native_preview_external_write') == 'TEMP_ISOLATED_NATIVE_PREVIEW',
+                 'NATIVE_PREVIEW_CONTRACT_MISMATCH')
+        try:
+            native_preview.run(self)
+        except native_preview.PreviewError as exc:
+            area = getattr(self, 'native_preview_evidence_dir', None)
+            detail = 'NATIVE_PREVIEW_EVIDENCE_DIR=' + area if area is not None else None
+            raise Halt(preview_stop_code(exc), detail) from None
 
     def step_setup(self):
         spec, root = self.spec, self.root
         base, branch = spec['base_oid'], spec['branch']
+        if spec.get('native_preview'):
+            import native_preview
+            try:
+                native_preview.require_receipt(self)
+            except native_preview.PreviewError:
+                raise Halt('NATIVE_PREVIEW_RECEIPT_INVALID') from None
         run(['git', 'fetch', 'origin', 'main'], 'FETCH_FAILED', root, 300)
         if git(root, 'rev-parse', '--is-shallow-repository') != 'false':
             raise Halt('SHALLOW_CLONE')
@@ -1434,7 +1521,10 @@ def _legacy_preapply_record_allowed(batch, control, step, steps):
         return False
     try:
         current = sha256_bytes((Path(batch.root) / RUNNER_REL).read_bytes())
-        base = sha256_bytes(git_bytes(batch.root, 'cat-file', 'blob', spec['base_oid'] + ':' + RUNNER_REL))
+        base_blob = git_bytes(batch.root, 'cat-file', 'blob', spec['base_oid'] + ':' + RUNNER_REL)
+        if runner_declares_native_preview(base_blob):
+            return False
+        base = sha256_bytes(base_blob)
     except (Halt, OSError):
         return False
     return (current == spec['authors'][RUNNER_REL]['sha256'] and
@@ -1694,7 +1784,10 @@ def _execute_step(batch, step, control):
             return 1
         report_halt(h, step)
         report_s1_metadata(batch, step, h)
-        report_s1_full_capture(batch, step, h)
+        if step == 'native_preview':
+            print('S1_FULL_CAPTURE_STATUS=INCOMPLETE_NO_UNPUBLISHED_COMMIT')
+        else:
+            report_s1_full_capture(batch, step, h)
         return 1
     except Exception as ex:  # noqa: BLE001 - any unexpected failure locks the task with a fixed code
         control['halted'] = step + ':UNEXPECTED_' + type(ex).__name__
@@ -1702,8 +1795,12 @@ def _execute_step(batch, step, control):
             print('S1_PRIMARY UNEXPECTED_' + type(ex).__name__ + ' | step ' + step)
             return 1
         print('S1 UNEXPECTED_' + type(ex).__name__ + ' | step ' + step)
-        report_s1_metadata(batch, step, Halt('UNEXPECTED_' + type(ex).__name__))
-        report_s1_full_capture(batch, step, Halt('UNEXPECTED_' + type(ex).__name__))
+        failure = Halt('UNEXPECTED_' + type(ex).__name__)
+        report_s1_metadata(batch, step, failure)
+        if step == 'native_preview':
+            print('S1_FULL_CAPTURE_STATUS=INCOMPLETE_NO_UNPUBLISHED_COMMIT')
+        else:
+            report_s1_full_capture(batch, step, failure)
         return 1
     control['done'].append(step)
     if not save_control_or_s1(batch, control, step):

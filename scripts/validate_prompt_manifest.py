@@ -64,7 +64,7 @@ CONTRACT_V2_EXTRA_KEYS = [
     "execution_record_required",
 ]
 
-CONTRACT_V2_OPTIONAL_KEYS = ['external_artifact_write']
+CONTRACT_V2_OPTIONAL_KEYS = ['external_artifact_write', 'native_preview_external_write']
 CONTRACT_REQUIRED_KEYS_V2 = CONTRACT_REQUIRED_KEYS_V1 + CONTRACT_V2_EXTRA_KEYS
 CONTRACT_REQUIRED_KEYS = CONTRACT_REQUIRED_KEYS_V1
 
@@ -599,6 +599,9 @@ def validate_execution_contract(
         if ext not in ('FORBIDDEN', 'DOWNLOADS_BUNDLE_AFTER_PUSH'):
             return False, 'Contract v2 external_artifact_write invalid', {}
         contract['external_artifact_write'] = ext
+        if ('native_preview_external_write' in contract
+                and contract['native_preview_external_write'] != 'TEMP_ISOLATED_NATIVE_PREVIEW'):
+            return False, 'Contract v2 native_preview_external_write invalid', {}
         # max_plan_revisions
         max_rev = contract.get("max_plan_revisions", "").strip()
         if max_rev != "3":

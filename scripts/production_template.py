@@ -117,9 +117,23 @@ def auto_production(repo, definition, out_dir):
     # Derive the canonical focused list once, for prose and the actual runner machine block.
     d['focused'] = canonical_focused(d)
     # Use the runner's own step derivation; do not maintain a second e24/focused decision.
+    preview = (pb.batch_runner.native_preview_required(changed)
+               and pb.batch_runner.base_supports_native_preview(repo, base))
     steps = pb.batch_runner.derive_steps({'kind': 'production', 'e24': d.get('e24') is True,
+                                          'native_preview': preview,
                                           'focused': d.get('focused'), 'bundle_output': d.get('bundle_output', False)}) + ['timing']
-    cmds = '\n'.join(f'uv run --offline --no-sync --no-python-downloads --python .venv\\Scripts\\python.exe python scripts/batch_runner.py --task-id {{TASK_ID}} {s}' for s in steps)
+    cmds = '\n'.join(pb.production_runner_commands('{TASK_ID}', steps, preview))
+    preview_scope = (
+        ' 本批 native_preview 核准 runner 在 %TEMP% 自建隔離模擬、寫入並保留本批證據。'
+        ' BASE_NOT_IN_SOURCE 時立即 S1，轉交既有輸出，禁止在 W2 fetch 或自行重跑。'
+        if preview else '')
+    preview_contract = '\nnative_preview_external_write: TEMP_ISOLATED_NATIVE_PREVIEW' if preview else ''
+    selfcheck = d.get('auditor_selfcheck')
+    declaration = ''
+    if selfcheck is not None:
+        pb.validate_auditor_selfcheck(selfcheck)
+        declaration = ('\n審計官自檢聲明\n' +
+                       pb.block('AUDITOR_SELFCHECK_JSON', json.dumps(selfcheck, ensure_ascii=False, indent=1)))
     # Both the prose and all machine data are built from one definition: never copy facts from old prompts.
     head = f'''{{TASK_ID}} — repo-owned production prose (GOAL_SPEC)
 
@@ -136,7 +150,7 @@ TASK_ID={{TASK_ID}}；Base={{BASE_OID}}；branch={{BRANCH}}；batch_mode=GOAL_SP
 二、確定性機器事實與權限
 本批變更路徑由單一 definition 的作者檔來源自動推導，含固定 canonical 生成檔，恰為：
 ''' + '\n'.join('- ' + x for x in changed) + f'''
-Allowed and required tracked mutation paths 均為 {{ALLOWED}}。本批不授權 main advancement、遠端 ref 刪除、破壞性 Git、憑證讀取、GitHub API 寫入、跨 session 存取、其他 task artifact 讀取、repo 外資料列舉、額外未核准寫檔。bundle_output={'true' if d.get('bundle_output') else 'false'}；僅 bundle_output=true 時，於 push 後新 bundle 階段核准在 Downloads 新增一份符合命名規範之 bundle，除本批新 S1 蒐證工具在本 repo .git 下自建唯一受限 scratch 且僅清除自己新建 scratch 外，其餘 repo 外寫入／清理仍禁止。
+Allowed and required tracked mutation paths 均為 {{ALLOWED}}。本批不授權 main advancement、遠端 ref 刪除、破壞性 Git、憑證讀取、GitHub API 寫入、跨 session 存取、其他 task artifact 讀取、repo 外資料列舉、額外未核准寫檔。bundle_output={'true' if d.get('bundle_output') else 'false'}；僅 bundle_output=true 時，於 push 後新 bundle 階段核准在 Downloads 新增一份符合命名規範之 bundle，除本批新 S1 蒐證工具在本 repo .git 下自建唯一受限 scratch 且僅清除自己新建 scratch 外，其餘 repo 外寫入／清理仍禁止。{preview_scope}
 E24={'REQUIRED' if d.get('e24') is True else 'NONE'}；E27={prose['e27']}。E27 結論不取代 Macro 最終提示詞授權；不得擅自引用任何第二意見 PASS。
 
 三、失敗停止與開始前就緒
@@ -160,6 +174,7 @@ E24={'REQUIRED' if d.get('e24') is True else 'NONE'}；E27={prose['e27']}。E27 
 '''
     tail = f'''
 八、執行契約與審查處置（此段由 repo template 生成）
+{declaration}
 USER 常設決定（2026-10-13）：確定性作業機械化，不以放寬驗收換速度。本批 findings={fd}；E27={prose['e27']}；未核實之未來 candidate 或 post-main CI 不預先宣稱 PASS。Execution record、fingerprint 僅以 canonical generate 階段生成，不能由 Executor 仿造。
 
 {'BEGIN_HHAI_' + 'PROMPT_MANIFEST'}
@@ -197,7 +212,7 @@ allowed_mutation_paths: {{ALLOWED}}
 required_mutation_paths: {{ALLOWED}}
 max_plan_revisions: 3
 execution_record_required: true
-external_artifact_write: {'DOWNLOADS_BUNDLE_AFTER_PUSH' if d.get('bundle_output') else 'FORBIDDEN'}
+external_artifact_write: {'DOWNLOADS_BUNDLE_AFTER_PUSH' if d.get('bundle_output') else 'FORBIDDEN'}{preview_contract}
 {'END_HHAI_' + 'EXECUTION_CONTRACT'}
 '''
     # Both authored prose files are temporary and outside tracked repo. Never modify caller's definition.

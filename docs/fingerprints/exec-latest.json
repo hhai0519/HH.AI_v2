@@ -1,5 +1,5 @@
 {
-  "base_head": "239c909",
+  "base_head": "b3e6a01",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -566,16 +566,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 396,
-      "sha256": "7da841e52bb54173e32c2d91a1a63d439c1f0838fb4fd678e8e2a208304ca0d5"
+      "lines": 397,
+      "sha256": "c2ce6cd919c28b52583168820ff80f5dfc6f11afb80d8c10b6c9a4651617ee2f"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 371,
-      "sha256": "f46ce6488f23cacf38eaed6ff964f9a362e1bac6837d5c8559985920f2e6d180"
+      "lines": 372,
+      "sha256": "5155150c1f5ac14652f06db607a9e611108e5e17226c882e3b3e8fa7c106df94"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -617,8 +617,8 @@
         "## G. 舊 repo 未盤點區塊（2026-09-02 新發現）",
         "## 封存區"
       ],
-      "lines": 509,
-      "sha256": "e20f06e07c3c1d73b4bf481cbfed74b0e1328c101df40b204246d96a7aef4955"
+      "lines": 510,
+      "sha256": "0cb21dd00c6249df750179fd59b44ea22699fd3b847244b31d1e60459d13072d"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1127,8 +1127,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6457,
-      "sha256": "8e140b41e5b4180ac30b8f031f0d479d59e3478937fe811900d3892be38f21d5"
+      "lines": 6458,
+      "sha256": "8fede2d52084d6f8288d0383d7ec7031fc742b6e9e2e09406bae97cd9e5a7764"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1165,6 +1165,8 @@
         "# ---------------------------------------------------------------------------",
         "# Prompt blocks and batch specification",
         "# ---------------------------------------------------------------------------",
+        "# Only these reviewed prose-only surfaces may omit native rehearsal. Files outside",
+        "# this allowlist (including unknown docs directories and generated lookalikes) require it.",
         "# ---------------------------------------------------------------------------",
         "# Author content",
         "# ---------------------------------------------------------------------------",
@@ -1177,8 +1179,8 @@
         "# Windows: os.replace needs DELETE access on both files; antivirus/indexer handles can deny it briefly.",
         "# Retry only that PermissionError, bounded (about 1.55 s total); any other failure is not retried."
       ],
-      "lines": 1717,
-      "sha256": "5f283625923f9a408117b4f3a84aaaaad4d02885e63c180811aa75ec873803de"
+      "lines": 1814,
+      "sha256": "9efc11a3afe2dfe4f641da5a4f9ba53a830ee7574f71e2f1268b832778613ac9"
     },
     "scripts/batch_sim.py": {
       "fences": 0,
@@ -1187,8 +1189,8 @@
         "# Production negatives; the stop step and code depend on the batch's own step list (see production_negative).",
         "# Git for Windows installer defaults at system scope on the USER machine (B-123a; see the TASKBOARD B-123 row)."
       ],
-      "lines": 757,
-      "sha256": "0315d0123cadd70653a0e2714049da91970d6d6b22e00a6506a0260cc9c092f5"
+      "lines": 857,
+      "sha256": "2ca1a0baa1a628ad93328ff17088a0e66be3458b0798068b2ffd7c5c4f07e22c"
     },
     "scripts/bounded_process.py": {
       "fences": 0,
@@ -1385,13 +1387,34 @@
       "lines": 141,
       "sha256": "18781171876a0540640da4572101dad23561976de5908f08e880f4d034ec3ada"
     },
+    "scripts/native_preview.py": {
+      "fences": 0,
+      "headings": [
+        "# The approved offline uv package cache for the disposable simulation: the one place the repo records it (USER",
+        "# S4 `--cache-dir`, see TASKBOARD). Neither the host's default uv cache nor an environment variable is a",
+        "# source: Antigravity is not started through a launcher that could set one, and the default cache may lack a",
+        "# locked wheel, which makes offline uv fail. A different machine needs a reviewed batch that changes this line.",
+        "# Per-stage limits inside batch_sim still apply. This also bounds the entire tree.",
+        "# `uv sync --dry-run` only reads the cache; it still bounds an unexpectedly slow uv.",
+        "# The simulator next to this module: W2's own copy for the runner; the authored copy for the",
+        "# one-time activation bootstrap, whose W2 still holds a Base simulator without these options."
+      ],
+      "lines": 218,
+      "sha256": "47f971857e3a9039f3b5733e9d3aaa8c8ebb3475924f123ef7e75cff15a4e9ec"
+    },
+    "scripts/native_preview_bootstrap.py": {
+      "fences": 0,
+      "headings": [],
+      "lines": 265,
+      "sha256": "a638b0393a980836a61a5dd2a074041983abfa5ba26121ef44155f03ba01e6e2"
+    },
     "scripts/production_template.py": {
       "fences": 0,
       "headings": [
         "# -*- coding: utf-8 -*-"
       ],
-      "lines": 223,
-      "sha256": "fe6cc65e52726016443105dc88abd3b8737aa39605c7bb9059d1bbef1f195f79"
+      "lines": 238,
+      "sha256": "2a5fbab1d32e532e871fa02a9db1a212913367c59e83de533fa8a150bfc24e2f"
     },
     "scripts/promotion_template.py": {
       "fences": 0,
@@ -1408,8 +1431,8 @@
         "# State files take only declared text_ops (STATE_FILE_REQUIRES_TEXT_OPS); the ops in BATCH_SPEC_JSON are then the",
         "# change ledger that scripts/candidate_check.py replays from Base against the candidate commit."
       ],
-      "lines": 755,
-      "sha256": "10c4d93876824c72d31c78abe9f2c44a62946f39ec4e8f5901cca0952009d0ef"
+      "lines": 801,
+      "sha256": "6f16ef5f3b731308f2368d0f7382c74ee635bea7dd987d39068eb703497f03d6"
     },
     "scripts/prompt_intake.py": {
       "fences": 0,
@@ -1437,8 +1460,8 @@
         "# Halts reported before the step body runs (control not written, or not updated): STATE keeps halted=None.",
         "# name -> (prefix, exact format, positions of commit SHAs, positions of file SHA-256)"
       ],
-      "lines": 575,
-      "sha256": "c35d4322e42a60e02a203f76392ff46d57f48dc63e88b502987264ef93281055"
+      "lines": 576,
+      "sha256": "786d2182af8bf65fba211318289310970b3e9cee254edfb536b9284c875f97a7"
     },
     "scripts/runtime_readiness.py": {
       "fences": 0,
@@ -1595,7 +1618,7 @@
         "# has its own killing case; one guard cannot silently cover for another."
       ],
       "lines": 2358,
-      "sha256": "a253ec64a9c59eac4c2b22f9be5f8b58f582b276e05d6981ce95ba803e4888c2"
+      "sha256": "2117934da10c271e867c0e7fda064b47b86e022174a355ecbc473e6f028547f3"
     },
     "scripts/tests/test_batch_sim.py": {
       "fences": 0,
@@ -1614,8 +1637,8 @@
         "# --- B-123a: HOME/XDG isolation and Git profiles (three kinds of Git subprocess) ---------------------------",
         "# --- second-opinion B01 (B123A R1): winemu must check the repository the tests actually run in --------------"
       ],
-      "lines": 1107,
-      "sha256": "64e4d44fd049c8af4b671d12b5e5c953a43e9e0f4bd5c57ea160e325bde23855"
+      "lines": 1110,
+      "sha256": "b496363c455b58f5b5cb71219808d59c770808e8d5018e32c35ffee9d5dac821"
     },
     "scripts/tests/test_bounded_process.py": {
       "fences": 0,
@@ -1929,6 +1952,12 @@
       "lines": 829,
       "sha256": "c6f35ec65a70964b4dac5fb56c71cfdf4510b1c551a5afe06e1d5f4097bf4579"
     },
+    "scripts/tests/test_native_preview.py": {
+      "fences": 0,
+      "headings": [],
+      "lines": 677,
+      "sha256": "3e361ddaf32ff9bc5a6b22ee3a6daadbf1a0a93c218e79d386666abae64eb3af"
+    },
     "scripts/tests/test_playwright_automation.py": {
       "fences": 0,
       "headings": [
@@ -1953,8 +1982,8 @@
         "# The canonical builder/checker recognises READONLY without granting canonical production-runner rights.",
         "# B115/G3 CI-PENDING-REPLY: positive terminal handoff; no checker command for Executor."
       ],
-      "lines": 1401,
-      "sha256": "5297d124524ccd6a090404bde09d7ed34ca9bb3aaaf3587a7868c9a743b47667"
+      "lines": 1402,
+      "sha256": "b742d167b2b4177a4b57b9ecbc842307c99aee9e71a4d68ec02493272139abcc"
     },
     "scripts/tests/test_prompt_intake.py": {
       "fences": 0,
@@ -2163,8 +2192,8 @@
       "headings": [
         "# -*- coding: utf-8 -*-"
       ],
-      "lines": 285,
-      "sha256": "0bedc0e0bf45566b670e439e2792e78d8e8992b2cde3259e450699933bd45bee"
+      "lines": 290,
+      "sha256": "367ae18da0180529d37a6a4c94be36342551cf3ced078e8b038a6e4758183338"
     },
     "scripts/tests/test_validate_skills.py": {
       "fences": 0,
@@ -2255,8 +2284,8 @@
         "# (root AGENTS.md excluded) must be listed in the prompt's single \"動手前必讀\" section, as the leading path",
         "# list of a numbered item (\"4. runtime/channel-gateway/AGENTS.md（說明）\")."
       ],
-      "lines": 857,
-      "sha256": "3d35490840cfaa9abbeaa3cf7d574dbee1c45ea0d8a824ef027d6b528c0a10bd"
+      "lines": 860,
+      "sha256": "ab08e9a1d039dfb6e104c230b7e731952620a432b9f4ae3e6ac6add5c9a73a6b"
     },
     "scripts/validate_skills.py": {
       "fences": 0,
@@ -2285,7 +2314,7 @@
       "sha256": "6bfd57c05a09df3cde679ae53ac6ddd67bfb64cda4246584617d3cc67fb3b81c"
     }
   },
-  "generated_at": "2026-11-10T15:09:02Z",
+  "generated_at": "2026-11-11T11:36:12Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

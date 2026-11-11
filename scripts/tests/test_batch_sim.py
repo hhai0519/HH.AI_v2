@@ -111,6 +111,8 @@ class Fake:
     def git(self, a, cwd):
         s = self.state
         wd = Path(cwd).parent if Path(cwd).name == "work" else Path(cwd)
+        if a[0] == "--no-optional-locks":
+            a = a[1:]
         if a[0] == "-C" and a[2] == "for-each-ref" and Path(a[1]).name == "src":
             refs = s["source_refs"]
             self.source_reads += 1
@@ -633,6 +635,7 @@ def _builder_repo(tmp_path):
     for rel in br.MUST_READ_KERNEL + br.MUST_READ_PRODUCTION:   # the runner's must-read closure (G4 slice 2)
         (root / rel).parent.mkdir(parents=True, exist_ok=True)
         _w(root / rel, "# " + rel + "\n")
+    _w(root / "scripts" / "batch_runner.py", b"PRODUCTION_STEPS = ('preflight', 'setup', 'apply')\n")
     _git_real(str(root), "init", "-q", "-b", "main")
     _git_real(str(root), "add", ".")
     _git_real(str(root), "commit", "-q", "-m", "base")

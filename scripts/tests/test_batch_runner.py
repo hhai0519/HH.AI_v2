@@ -648,7 +648,7 @@ def _succession_case(tmp_path):
 
 def test_successor_runner_is_accepted_only_after_apply_with_declared_hash(tmp_path):
     repo, spec, control, old_sha, new_sha = _succession_case(tmp_path)
-    steps = br.PRODUCTION_STEPS
+    steps = br.derive_steps(dict(spec, focused={}))
     accepted = br.accepted_runner_sha(repo, spec, control, new_sha)
     assert accepted == old_sha
     assert br.check_control(control, TASK, "p", accepted, list(steps), "focused") == "OK"
@@ -2097,7 +2097,7 @@ def test_g3_legacy_runner_preapply_without_step_records_is_bound(tmp_path, monke
     (tmp_path / '.git').mkdir()
     (tmp_path / 'scripts').mkdir()
     _lf((tmp_path / 'scripts' / 'batch_runner.py'), 'new runner\n')
-    base = b'old runner\n'
+    base = b"PRODUCTION_STEPS = ('preflight', 'setup', 'e24', 'apply', 'generate')\n"
     steps = ['preflight', 'setup', 'e24', 'apply', 'generate']
     spec = {'kind': 'production', 'runner_update': True, 'base_oid': BASE,
             'authors': {br.RUNNER_REL: {'sha256': br.sha256_bytes(b'new runner\n')}}}

@@ -98,9 +98,11 @@ import os
 import re
 import sys
 import shutil
+import stat
 import tempfile
 from pathlib import Path
 
+sys.dont_write_bytecode = True
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 try:
     import batch_runner  # noqa: E402 - the runner's own prompt parser is the reference
@@ -153,7 +155,7 @@ def runner_codes(path=None):
     consts = {n.value for n in ast.walk(tree) if isinstance(n, ast.Constant) and isinstance(n.value, str)
               and re.match(r'^_?[A-Z][A-Z0-9_]{1,63}$', n.value)}
     steps = {n.value.upper() for n in ast.walk(tree) if isinstance(n, ast.Constant) and isinstance(n.value, str)
-             and re.match(r'^[a-z][a-z0-9]{1,15}$', n.value) and n.value in batch_runner.PRODUCTION_STEPS
+             and re.fullmatch(r'[a-z][a-z0-9_]{1,15}', n.value) and n.value in batch_runner.PRODUCTION_STEPS
              + batch_runner.PROMOTION_STEPS}
     return frozenset(consts | steps)
 
@@ -183,7 +185,8 @@ def production_steps(spec):
     """
     steps = batch_runner.derive_steps(spec)
     tail = ['push', 'bundle'] if spec.get('bundle_output') is True else ['push']
-    _require(steps[:2] == ['preflight', 'setup'] and 'apply' in steps
+    expected_start = ['preflight', 'native_preview', 'setup'] if spec.get('native_preview') else ['preflight', 'setup']
+    _require(steps[:len(expected_start)] == expected_start and 'apply' in steps
              and steps[-len(tail):] == tail and steps.count('push') == 1
              and steps.count('bundle') == (1 if spec.get('bundle_output') is True else 0),
              'STEP_LIST_UNEXPECTED')
@@ -367,8 +370,28 @@ def check_git_profile(run, env, root, profile, work=None, repo=None):
                  'GIT_PROFILE_ISOLATED_MISMATCH')
 
 
+def _link_or_reparse(st):
+    return stat.S_ISLNK(st.st_mode) or bool(getattr(st, 'st_file_attributes', 0)
+                                          & stat.FILE_ATTRIBUTE_REPARSE_POINT)
+
+
+def _source_paths(root):
+    def unreadable(err):
+        raise err
+    if not root.is_dir():
+        return
+    for parent, dirs, files in os.walk(root, onerror=unreadable):
+        for name in sorted(dirs + files):
+            path = Path(parent) / name
+            if name in dirs and _link_or_reparse(path.lstat()):
+                dirs.remove(name)
+            yield path
+        dirs.sort()
+
+
 class Sim:
-    def __init__(self, source, workdir, locale='utf8', run=default_run, out=print, git_profile='isolated'):
+    def __init__(self, source, workdir, locale='utf8', run=default_run, out=print, git_profile='isolated',
+                 verify_source_bytes=False):
         _require(locale in LOCALES, 'LOCALE_INVALID')
         _require(git_profile in GIT_PROFILES, 'GIT_PROFILE_INVALID')
         self.source = str(Path(source).resolve())
@@ -377,8 +400,11 @@ class Sim:
         self.work = str(self.workdir / 'work')
         self.downloads = self.workdir / 'downloads'
         self.git_profile = git_profile
+        self.verify_source_bytes = verify_source_bytes
         # Git and home isolation; see isolated_env and the module documentation (Isolation, Git profiles).
         self.env = isolated_env(self.workdir, LOCALES[locale], git_profile)
+        self.env['HHAI_BATCH_SIM_ROOT'] = str(self.workdir)
+        self.env['PYTHONDONTWRITEBYTECODE'] = '1'
         self.env.pop('HHAI_SIM_UV_CACHE_DIR', None)  # only explicit --uv-cache-dir is authoritative
         self.gitconfig = self.workdir / 'isolated-gitconfig'
         self.stubbed = False
@@ -400,25 +426,68 @@ class Sim:
 
     # -- set-up -------------------------------------------------------------------------------------
     def source_refs(self):
+        if self.verify_source_bytes:
+            try:
+                return self.source_bytes()
+            except OSError:
+                raise SimError('SOURCE_UNREADABLE') from None
+        return self.source_metadata()
+
+    def source_bytes(self):
+        """Supplement lstat with exact Git/index/tracked bytes; ignored paths are inspected by metadata only."""
+        source = Path(self.source)
+        gitdir = source / '.git'
+        for args, expected in ((('--show-toplevel',), source), (('--absolute-git-dir',), gitdir),
+                               (('--path-format=absolute', '--git-common-dir'), gitdir)):
+            found = self.git('--no-optional-locks', '-C', source, 'rev-parse', *args, cwd=str(self.workdir),
+                             code='SOURCE_UNREADABLE')
+            _require(_same_path(found, expected), 'SOURCE_UNREADABLE')
+        _require(gitdir.is_dir() and not _link_or_reparse(gitdir.lstat()), 'SOURCE_UNREADABLE')
+        metadata = self.source_metadata()
+        rc, raw = self.sh(['git', '--no-optional-locks', '-c', 'core.fsmonitor=false', '-C', self.source, 'ls-files', '-z'],
+                          cwd=str(self.workdir), merge=False)
+        _require(rc == 0, 'SOURCE_UNREADABLE')
+        tracked = {source / name for name in os.fsdecode(raw).split('\0') if name}
+        exact = tracked | {gitdir / name for name in ('HEAD', 'index', 'FETCH_HEAD', 'packed-refs')}
+        exact.update(_source_paths(gitdir / 'refs'))
+        entries = []
+        for path in sorted(exact):
+            _require(all(not _link_or_reparse(parent.lstat()) for parent in path.parents
+                         if parent != source and source in parent.parents and parent.exists()), 'SOURCE_UNREADABLE')
+            try:
+                st = path.lstat()
+            except FileNotFoundError:
+                entries.append((path.relative_to(source).as_posix(), 'ABSENT'))
+                continue
+            if _link_or_reparse(st):
+                _require(path in tracked, 'SOURCE_UNREADABLE')
+                value = 'LINK:' + os.readlink(path)
+            elif stat.S_ISREG(st.st_mode):
+                digest = hashlib.sha256()
+                with path.open('rb') as handle:
+                    for chunk in iter(lambda: handle.read(1024 * 1024), b''):
+                        digest.update(chunk)
+                value = digest.hexdigest()
+            else:
+                continue
+            entries.append((path.relative_to(source).as_posix(), value))
+        return metadata, tuple(entries)
+
+    def source_metadata(self):
         """Snapshot of the source: every ref with its object, plus the metadata of every path under the source
         directory (.git included) from Python lstat calls; no git command runs in the source's working tree."""
-        refs = self.git('-C', self.source, 'for-each-ref', '--format=%(refname) %(objectname)', cwd=str(self.workdir),
+        refs = self.git('--no-optional-locks', '-C', self.source, 'for-each-ref',
+                        '--format=%(refname) %(objectname) %(symref)', cwd=str(self.workdir),
                         code='SOURCE_UNREADABLE')
         entries = []
-
-        def unreadable(err):
-            raise SimError('SOURCE_UNREADABLE')
         try:
-            for root, dirs, files in os.walk(self.source, onerror=unreadable):
-                dirs.sort()
-                for name in sorted(dirs) + sorted(files):
-                    path = os.path.join(root, name)
-                    st = os.lstat(path)
-                    entries.append(' '.join((os.path.relpath(path, self.source), oct(st.st_mode), str(st.st_size),
-                                             str(st.st_mtime_ns), str(st.st_ctime_ns))))
+            for path in _source_paths(Path(self.source)):
+                st = path.lstat()
+                entries.append((path.relative_to(self.source).as_posix(), st.st_mode, st.st_size,
+                                st.st_mtime_ns, st.st_ctime_ns))
         except OSError:
-            raise SimError('SOURCE_UNREADABLE')
-        return refs + '\n--\n' + '\n'.join(entries)
+            raise SimError('SOURCE_UNREADABLE') from None
+        return refs, tuple(entries)
 
     def check_locations(self):
         """The work clone, its git directory and both origin URLs must be exactly the simulation's own paths."""
@@ -438,8 +507,12 @@ class Sim:
         heads = self.git('-C', self.bare, 'for-each-ref', '--format=%(refname)', 'refs/heads', cwd=str(self.workdir))
         for ref in heads.split():
             self.git('-C', self.bare, 'update-ref', '-d', ref, cwd=str(self.workdir))
+        if self.verify_source_bytes:
+            kind = self.git('-C', self.bare, 'cat-file', '-t', main_oid, cwd=str(self.workdir),
+                            code='BASE_NOT_IN_SOURCE')
+            _require(kind == 'commit', 'BASE_NOT_IN_SOURCE')
         self.git('-C', self.bare, 'update-ref', 'refs/heads/main', main_oid, cwd=str(self.workdir),
-                 code='BASE_NOT_IN_SOURCE')
+                 code='SIM_BASE_REF_WRITE_FAILED')
         for ref, oid in extra_refs:
             self.git('-C', self.bare, 'update-ref', ref, oid, cwd=str(self.workdir), code='CANDIDATE_NOT_IN_SOURCE')
         self.git('-C', self.bare, 'symbolic-ref', 'HEAD', 'refs/heads/main', cwd=str(self.workdir))
@@ -559,19 +632,23 @@ class Sim:
         raise SimError('NEGATIVE_STEP_NOT_REACHED')
 
     # -- production ---------------------------------------------------------------------------------
-    def production(self, prompt, resume_prompt=None, negative=None):
+    def production(self, prompt, resume_prompt=None, negative=None, adopt_source=False):
         task, data, spec, plan = read_prompt(prompt)
         _require(spec.get('kind') == 'production', 'PROMPT_KIND_MISMATCH')
         _require(negative in (None,) + PRODUCTION_NEGATIVES, 'NEGATIVE_INVALID')
         steps = production_steps(spec)
         adopt = spec['start']['mode'] == 'adopt'
-        _require(adopt == (resume_prompt is not None), 'RESUME_MISMATCH')
+        _require(adopt == (resume_prompt is not None or adopt_source)
+                 and not (adopt_source and resume_prompt is not None), 'RESUME_MISMATCH')
+        _require(not adopt_source or self.verify_source_bytes, 'ADOPT_SOURCE_NEEDS_SNAPSHOT')
         _require(negative != 'adopt' or adopt, 'NEGATIVE_NEEDS_ADOPT')
         base = spec['base_oid']
         self.make_origin(base)
         self.git('switch', '-q', '-c', START_BRANCH)
         self.install_hooks()
-        if adopt:
+        if adopt_source:
+            self.adopt_source(spec)
+        elif adopt:
             r_task, r_data, r_spec, _ = read_prompt(resume_prompt)
             _require(r_spec.get('kind') == 'production' and r_spec['base_oid'] == base, 'RESUME_PROMPT_INVALID')
             _require(r_spec['branch'] == spec['start']['start_branch'], 'RESUME_BRANCH_MISMATCH')
@@ -608,6 +685,22 @@ class Sim:
             self.out('BATCH_SIM POST_PUSH_BUNDLE NOT_TESTED')
         self.verify_production(spec, plan)
         self.check_source_unchanged()
+
+    def adopt_source(self, spec):
+        """Copy only this prompt's hash-bound adopt inputs, never another task's artifacts."""
+        branch = spec['start']['start_branch']
+        if branch != START_BRANCH:
+            self.git('switch', '-q', '-c', branch)
+        for path, expected in sorted(spec['start']['adopt_hashes'].items()):
+            try:
+                source = Path(batch_runner.author_target(self.source, path))
+                content = source.read_bytes()
+                _require(hashlib.sha256(content.replace(b'\r\n', b'\n')).hexdigest() == expected,
+                         'ADOPT_SOURCE_HASH_MISMATCH')
+                target = Path(batch_runner.author_target(self.work, path))
+                target.write_bytes(content)
+            except (batch_runner.Halt, OSError):
+                raise SimError('ADOPT_SOURCE_UNREADABLE') from None
 
     def no_commit(self, base):
         _require(self.git('rev-parse', 'HEAD') == base, 'NEGATIVE_COMMITTED')
@@ -720,9 +813,11 @@ def main(argv=None):
         p.add_argument('--locale', default='utf8', choices=sorted(LOCALES))
         p.add_argument('--negative', choices=sorted(negatives))
         p.add_argument('--git-profile', default='isolated', choices=GIT_PROFILES)
+        p.add_argument('--verify-source-bytes', action='store_true')
         p.add_argument('--uv-cache-dir', help='Explicit approved offline uv cache for disposable simulation only')
         if name == 'production':
             p.add_argument('--resume-prompt')
+            p.add_argument('--adopt-source', action='store_true')
     w = sub.add_parser('winemu')
     w.add_argument('--repo', required=True)
     w.add_argument('--git-profile', default='windows', choices=GIT_PROFILES)
@@ -733,14 +828,19 @@ def main(argv=None):
             winemu(args.repo, [a for a in args.pytest_args if a != '--'], git_profile=args.git_profile)
             mode = 'winemu git_profile=' + args.git_profile
         else:
-            sim = Sim(args.source, args.workdir, args.locale, git_profile=args.git_profile)
+            sim = Sim(args.source, args.workdir, args.locale, git_profile=args.git_profile,
+                      verify_source_bytes=args.verify_source_bytes)
             if args.uv_cache_dir:
                 _require(Path(args.uv_cache_dir).is_dir(), 'UV_SIM_CACHE_UNAVAILABLE')
                 sim.env['HHAI_SIM_UV_CACHE_DIR'] = str(Path(args.uv_cache_dir).resolve())
-            if args.cmd == 'production':
-                sim.production(args.prompt, args.resume_prompt, args.negative)
-            else:
-                sim.promotion(args.prompt, args.negative)
+            try:
+                if args.cmd == 'production':
+                    sim.production(args.prompt, args.resume_prompt, args.negative, args.adopt_source)
+                else:
+                    sim.promotion(args.prompt, args.negative)
+            finally:
+                if args.verify_source_bytes and hasattr(sim, 'source_before'):
+                    sim.check_source_unchanged()
             mode = (args.cmd + (' negative=' + args.negative if args.negative else '') + ' locale=' + args.locale
                     + (' git_profile=windows' if args.git_profile == 'windows' else ''))
         print('BATCH_SIM PASS ' + mode)
