@@ -78,7 +78,7 @@ PLACEHOLDERS = ('{TASK_ID}', '{BASE_OID}', '{BASE7}', '{BRANCH}', '{ALLOWED}')
 # State files take only declared text_ops (STATE_FILE_REQUIRES_TEXT_OPS); the ops in BATCH_SPEC_JSON are then the
 # change ledger that scripts/candidate_check.py replays from Base against the candidate commit.
 STATE_FILES = ('docs/AUDIT-LOG.md', 'docs/EXEC-LOG.md', 'docs/TASKBOARD.md', 'docs/refactor-backlog.md')
-RESERVED_BLOCKS = ('BATCH_SPEC_JSON', 'PLAN_JSON', 'ALLOWED_SCOPE_JSON', 'E24_EVIDENCE_JSON', 'MUST_READ_JSON')
+RESERVED_BLOCKS = ('BATCH_SPEC_JSON', 'PLAN_JSON', 'ALLOWED_SCOPE_JSON', 'E24_EVIDENCE_JSON', 'MUST_READ_JSON', 'AUDITOR_SELFCHECK_JSON')
 MUST_READ_TOKEN = '{MUST_READ}'
 CHECK_TIMEOUT = 300
 
@@ -100,6 +100,41 @@ def require_classifiable_branch(branch):
     """
     _require(isinstance(branch, str) and batch_runner.BRANCH_RE.fullmatch(branch) is not None
              and audit_packet.branch_classified(branch) is True, 'BRANCH_UNCLASSIFIABLE')
+
+
+def validate_auditor_selfcheck(value):
+    _require(isinstance(value, dict) and set(value) == {f'E{i}' for i in range(1, 28)},
+             'AUDITOR_SELFCHECK_INCOMPLETE')
+    for result in value.values():
+        _require(isinstance(result, str) and len(result) <= 400 and
+                 re.fullmatch(r'(?:PASS|N/A|APPLICABLE_PRE_EXEC_REVIEW) — [^\r\n]+', result),
+                 'AUDITOR_SELFCHECK_INVALID')
+
+
+def check_auditor_selfcheck(repo, spec, lines):
+    if (batch_runner.base_supports_native_preview(repo, spec['base_oid'])
+            or 'scripts/native_preview.py' in spec['authors']):
+        validate_auditor_selfcheck(batch_runner.block_json(lines, 'AUDITOR_SELFCHECK_JSON'))
+
+
+def production_runner_commands(task, steps, preview):
+    python = r'uv run --offline --no-sync --no-python-downloads --python .venv\Scripts\python.exe python '
+    bytecode_flag = '-B ' if preview else ''
+    return [f'{python}{bytecode_flag}scripts/batch_runner.py --task-id {task} {step}' for step in steps]
+
+
+def check_preview_contract(text, spec):
+    from validate_prompt_manifest import parse_execution_contract_block
+    if not spec.get('native_preview') and 'native_preview_external_write' not in text:
+        return
+    ok, _, contract = parse_execution_contract_block(text)
+    expected = 'TEMP_ISOLATED_NATIVE_PREVIEW' if spec.get('native_preview') else None
+    _require(ok and contract.get('native_preview_external_write') == expected, 'NATIVE_PREVIEW_CONTRACT_MISMATCH')
+    if spec.get('native_preview'):
+        head = text.split('<<<BEGIN BATCH_SPEC_JSON>>>', 1)[0]
+        lines = [line.strip() for line in head.splitlines() if 'scripts/batch_runner.py --task-id' in line]
+        expected_commands = production_runner_commands(spec['task_id'], batch_runner.derive_steps(spec) + ['timing'], True)
+        _require(lines == expected_commands, 'NATIVE_PREVIEW_COMMANDS_MISMATCH')
 
 
 def sha256_text(text):
@@ -373,6 +408,11 @@ def build(repo, definition_path):
             spec['runner_update'] = True
         if d.get('bundle_output'):
             spec['bundle_output'] = True
+        try:
+            if batch_runner.native_preview_required(allowed) and batch_runner.base_supports_native_preview(repo, base):
+                spec['native_preview'] = True
+        except batch_runner.Halt as h:
+            raise BuildError(str(h)) from None
         spec.update({'focused': d.get('focused'), 'start': start_spec(d.get('start'), set(authors)),
                      'authors': dict(sorted(authors.items())), 'ops': ops})
         machine = [block('BATCH_SPEC_JSON', json.dumps(spec, ensure_ascii=False, indent=1)), '\n',
@@ -451,6 +491,9 @@ def build(repo, definition_path):
         _require(contract.get('external_artifact_write', 'FORBIDDEN') == expected, 'BUNDLE_CONTRACT_MISMATCH')
     try:
         spec_loaded = batch_runner.load_spec(lines, task)
+        if kind == 'production':
+            check_preview_contract(text, spec_loaded)
+            check_auditor_selfcheck(repo, spec_loaded, lines)
     except batch_runner.Halt as h:
         raise BuildError('RUNNER_SPEC_REJECTED_' + str(h))
     try:
@@ -629,6 +672,9 @@ def check(repo, prompt_path, runner=subprocess.run):
             require_classifiable_branch(spec['branch'] if spec['kind'] == 'production' else spec['candidate_branch'])
         batch_runner.check_must_read(repo, spec, lines)
         if spec['kind'] == 'production':
+            batch_runner.verify_preview_binding(repo, spec)
+            check_preview_contract(data.decode('utf-8'), spec)
+            check_auditor_selfcheck(repo, spec, lines)
             changed_tests = sorted(p for p in spec['authors']
                                    if p.startswith('scripts/tests/') and p.endswith('.py'))
             if changed_tests:

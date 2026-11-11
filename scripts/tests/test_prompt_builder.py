@@ -82,6 +82,7 @@ def repo(tmp_path):
         target = root / rel
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes(('# fixture ' + rel + '\n').encode('utf-8'))
+    (root / "scripts" / "batch_runner.py").write_bytes(b"PRODUCTION_STEPS = ('preflight', 'setup', 'apply')\n")
     _git(str(root), "init", "-q")
     _git(str(root), "add", ".")
     _git(str(root), "commit", "-q", "-m", "base")

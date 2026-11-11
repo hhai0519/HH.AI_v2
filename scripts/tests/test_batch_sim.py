@@ -111,6 +111,8 @@ class Fake:
     def git(self, a, cwd):
         s = self.state
         wd = Path(cwd).parent if Path(cwd).name == "work" else Path(cwd)
+        if a[0] == "--no-optional-locks":
+            a = a[1:]
         if a[0] == "-C" and a[2] == "for-each-ref" and Path(a[1]).name == "src":
             refs = s["source_refs"]
             self.source_reads += 1
@@ -633,6 +635,7 @@ def _builder_repo(tmp_path):
     for rel in br.MUST_READ_KERNEL + br.MUST_READ_PRODUCTION:   # the runner's must-read closure (G4 slice 2)
         (root / rel).parent.mkdir(parents=True, exist_ok=True)
         _w(root / rel, "# " + rel + "\n")
+    _w(root / "scripts" / "batch_runner.py", b"PRODUCTION_STEPS = ('preflight', 'setup', 'apply')\n")
     _git_real(str(root), "init", "-q", "-b", "main")
     _git_real(str(root), "add", ".")
     _git_real(str(root), "commit", "-q", "-m", "base")
@@ -729,6 +732,18 @@ def test_unreadable_source_snapshot_is_a_failure(tmp_path, monkeypatch, broken):
         return real(path, *a, **k)
     monkeypatch.setattr(os, broken, failing)
     assert _code(sim.source_refs) == "SOURCE_UNREADABLE"
+
+
+def test_source_snapshot_stat_calls_go_through_os_lstat():
+    """Path.lstat() bypasses os.lstat on Python 3.11 to 3.13 (CI runs 3.11), so the injected failure above would
+    not be seen there; every lstat in batch_sim must be a call on the os module on every Python version."""
+    import ast
+
+    tree = ast.parse(Path(bs.__file__).read_text(encoding="utf-8"))
+    bad = [node.lineno for node in ast.walk(tree)
+           if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr == "lstat"
+           and not (isinstance(node.func.value, ast.Name) and node.func.value.id == "os")]
+    assert bad == []
 
 
 @pytest.mark.parametrize("line", ["S1 CONTROL_BINDING_DRIFT | step apply", "S1 TASK_ALREADY_HALTED apply", "S1 USAGE",

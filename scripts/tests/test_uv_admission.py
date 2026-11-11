@@ -173,7 +173,12 @@ def test_cli_uses_strict_uv_when_lock_present(uv_fixture, monkeypatch):
 
 def test_canonical_entry_has_no_sync_or_python_download():
     from scripts import production_template, prompt_builder, promotion_template
-    text=Path(production_template.__file__).read_text()
+    template=Path(production_template.__file__).read_text()
+    assert 'pb.production_runner_commands(' in template
+    commands = []
+    for preview in (False, True):
+        commands.extend(prompt_builder.production_runner_commands('UV-FIXTURE', ['preflight', 'setup'], preview))
+    text='\n'.join(commands)
     startup=Path(prompt_builder.__file__).read_text()
     promotion=Path(promotion_template.__file__).read_text()
     for s in (text,startup,promotion):
