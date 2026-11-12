@@ -126,6 +126,7 @@ def auto_production(repo, definition, out_dir):
     preview_scope = (
         ' 本批 native_preview 核准 runner 在 %TEMP% 自建隔離模擬、寫入並保留本批證據。'
         ' BASE_NOT_IN_SOURCE 時立即 S1，轉交既有輸出，禁止在 W2 fetch 或自行重跑。'
+        ' 對核准離線 uv 快取只允許 uv 寫入自己的中繼資料，其餘不得寫入（docs/ops/g5-native-preview.md）。'
         if preview else '')
     preview_contract = '\nnative_preview_external_write: TEMP_ISOLATED_NATIVE_PREVIEW' if preview else ''
     selfcheck = d.get('auditor_selfcheck')

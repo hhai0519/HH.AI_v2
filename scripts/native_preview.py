@@ -8,6 +8,7 @@ import shutil
 from pathlib import Path
 import tempfile
 import sys
+import tomllib
 
 sys.dont_write_bytecode = True
 import batch_runner as br
@@ -82,9 +83,33 @@ def cache_satisfies_lock(workspace, base, cache):
         raise PreviewError('NATIVE_PREVIEW_UV_CACHE_INCOMPLETE')
 
 
+def require_uv_version(workspace, base):
+    """N-2: the uv that will run the rehearsal is exactly the version the Base pyproject pins
+    (`tool.uv.required-version`, read from the Base blob; any spelling other than `==` plus the reported version
+    is a mismatch). Checked before the cache dry-run so a wrong uv stops here with its own code instead of
+    surfacing later as an unexplained sync or cache failure."""
+    uv = shutil.which('uv')
+    if uv is None:
+        raise PreviewError('NATIVE_PREVIEW_UV_VERSION_MISMATCH')
+    try:
+        blob = br.git_bytes(str(workspace), '--no-optional-locks', 'cat-file', 'blob', base + ':pyproject.toml')
+        required = tomllib.loads(blob.decode('utf-8'))['tool']['uv']['required-version']
+    except (br.Halt, UnicodeDecodeError, KeyError, TypeError, ValueError):
+        raise PreviewError('NATIVE_PREVIEW_UV_VERSION_MISMATCH') from None
+    env = {key: value for key, value in br.child_env().items()
+           if not key.startswith('UV_') and key not in ('VIRTUAL_ENV', 'PYTHONHOME')}
+    result = run_bounded([uv, '--version'], str(workspace), UV_CHECK_TIMEOUT, env=env, merge_stderr=True)
+    if result.launch_error or result.timed_out or result.returncode != 0:
+        raise PreviewError('NATIVE_PREVIEW_UV_VERSION_MISMATCH')
+    match = re.fullmatch(rb'uv (\d+\.\d+\.\d+)(?:\+\S+)?(?: \([^()\r\n]{1,80}\))?\r?\n?', result.stdout)
+    if match is None or '==' + match.group(1).decode('ascii') != required:
+        raise PreviewError('NATIVE_PREVIEW_UV_VERSION_MISMATCH')
+
+
 def require_uv_cache(workspace, base):
-    """Approved cache present, valid and sufficient for the Base lock. This code writes nothing there, but uv itself
-    adds its own metadata to the cache during a dry-run or sync (register N-1)."""
+    """Approved cache present, valid and sufficient for the Base lock. This code writes nothing there; uv itself adds
+    its own metadata to the cache during a dry-run or sync, which is the only write the contract allows there (N-1,
+    D-UVCACHE 甲). The simulated sync installs with UV_LINK_MODE=copy so no hardlink into the cache is created."""
     cache = approved_uv_cache(workspace)
     cache_satisfies_lock(workspace, base, cache)
     return cache
@@ -155,6 +180,7 @@ def run(batch):
     workspace = Path(batch.root).resolve()
     if temp == workspace or workspace in temp.parents:
         raise PreviewError('NATIVE_PREVIEW_TEMP_OVERLAP')
+    require_uv_version(workspace, spec['base_oid'])
     cache = require_uv_cache(workspace, spec['base_oid'])
     area = Path(tempfile.mkdtemp(prefix='hhai-g5-', dir=temp))
     batch.native_preview_evidence_dir = str(area)

@@ -24,7 +24,7 @@ def uv_fixture(tmp_path, monkeypatch):
     binary.write_bytes(b'fixture only\n')
     (p / '.python-version').write_text('.'.join(map(str, sys.version_info[:2])) + '\n')
     (p / 'uv.lock').write_text('fixture uv lock')
-    (p / 'pyproject.toml').write_text('[project]\nrequires-python=">=3.11"\n[tool.uv]\nrequired-version="==0.11.32"\n')
+    (p / 'pyproject.toml').write_text('[project]\nrequires-python=">=3.14"\n[tool.uv]\nrequired-version="==0.11.32"\n', newline='\n')
     (p / 'requirements.txt').write_text('pytest==9.1.1\ncolorama==0.4.6; sys_platform == "win32"\n')
     monkeypatch.setattr(rr.sys, 'executable', str(binary))
     monkeypatch.setattr(rr.sys, 'prefix', str(venv))
@@ -207,7 +207,7 @@ def test_repo_lock_packages_match_unchanged_pip_pins():
                                 for pin in rr._pin_set((repo / 'requirements.txt').read_text())
                                 if ';' in pin}
     assert rows == want
-    assert project['project']['requires-python'] == '>=3.11'
+    assert project['project']['requires-python'] == '>=3.14'
     assert project['tool']['uv']['required-version'] == '==0.11.32'
     assert (repo / '.python-version').read_text().strip() == '3.14'
 

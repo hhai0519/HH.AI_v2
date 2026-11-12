@@ -735,8 +735,8 @@ def test_unreadable_source_snapshot_is_a_failure(tmp_path, monkeypatch, broken):
 
 
 def test_source_snapshot_stat_calls_go_through_os_lstat():
-    """Path.lstat() bypasses os.lstat on Python 3.11 to 3.13 (CI runs 3.11), so the injected failure above would
-    not be seen there; every lstat in batch_sim must be a call on the os module on every Python version."""
+    """Path.lstat() bypasses os.lstat on Python 3.11 to 3.13 (CI ran 3.11 until D-CI-PY moved it to 3.14), so the
+    injected failure above would not be seen there; every lstat in batch_sim must be a call on the os module on every Python version."""
     import ast
 
     tree = ast.parse(Path(bs.__file__).read_text(encoding="utf-8"))

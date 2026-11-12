@@ -541,6 +541,9 @@ class Sim:
         env['UV_OFFLINE'] = '1'
         env['UV_PYTHON_DOWNLOADS'] = 'never'
         env['UV_NO_PROGRESS'] = '1'
+        # N-1: copy, never hardlink, from the approved cache into the disposable venv, so the cache's package files
+        # keep their link count; uv's own cache metadata is the only thing it may write there.
+        env['UV_LINK_MODE'] = 'copy'
         cache = self.env.get('HHAI_SIM_UV_CACHE_DIR')
         if cache:
             env['UV_CACHE_DIR'] = cache

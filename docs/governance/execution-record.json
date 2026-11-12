@@ -1,10 +1,11 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "B117-G5-WINDOWS-NATIVE-REHEARSAL-R4-261111",
-  "base_oid": "b3e6a016cb2a32ac42d6054793636952c44362cc",
+  "task_id": "B117-CI-PY314-UVCACHE-R3-261112",
+  "base_oid": "1408f6a553c83a57b67b498a256da861ec73ce19",
   "plan": {
     "allowed_paths": [
+      ".github/workflows/verify.yml",
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
@@ -12,21 +13,20 @@
       "docs/governance/execution-record.json",
       "docs/ops/g5-native-preview.md",
       "docs/refactor-backlog.md",
+      "pyproject.toml",
       "scripts/batch_runner.py",
       "scripts/batch_sim.py",
+      "scripts/check_consistency.py",
       "scripts/native_preview.py",
-      "scripts/native_preview_bootstrap.py",
       "scripts/production_template.py",
-      "scripts/prompt_builder.py",
-      "scripts/reply_check.py",
-      "scripts/tests/test_batch_runner.py",
       "scripts/tests/test_batch_sim.py",
+      "scripts/tests/test_check_consistency.py",
       "scripts/tests/test_native_preview.py",
-      "scripts/tests/test_prompt_builder.py",
       "scripts/tests/test_uv_admission.py",
-      "scripts/validate_prompt_manifest.py"
+      "uv.lock"
     ],
     "required_paths": [
+      ".github/workflows/verify.yml",
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
@@ -34,19 +34,17 @@
       "docs/governance/execution-record.json",
       "docs/ops/g5-native-preview.md",
       "docs/refactor-backlog.md",
+      "pyproject.toml",
       "scripts/batch_runner.py",
       "scripts/batch_sim.py",
+      "scripts/check_consistency.py",
       "scripts/native_preview.py",
-      "scripts/native_preview_bootstrap.py",
       "scripts/production_template.py",
-      "scripts/prompt_builder.py",
-      "scripts/reply_check.py",
-      "scripts/tests/test_batch_runner.py",
       "scripts/tests/test_batch_sim.py",
+      "scripts/tests/test_check_consistency.py",
       "scripts/tests/test_native_preview.py",
-      "scripts/tests/test_prompt_builder.py",
       "scripts/tests/test_uv_admission.py",
-      "scripts/validate_prompt_manifest.py"
+      "uv.lock"
     ],
     "max_plan_revisions": 3,
     "revision_count": 0,
@@ -54,6 +52,7 @@
   },
   "actual": {
     "changed_paths": [
+      ".github/workflows/verify.yml",
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
@@ -61,19 +60,17 @@
       "docs/governance/execution-record.json",
       "docs/ops/g5-native-preview.md",
       "docs/refactor-backlog.md",
+      "pyproject.toml",
       "scripts/batch_runner.py",
       "scripts/batch_sim.py",
+      "scripts/check_consistency.py",
       "scripts/native_preview.py",
-      "scripts/native_preview_bootstrap.py",
       "scripts/production_template.py",
-      "scripts/prompt_builder.py",
-      "scripts/reply_check.py",
-      "scripts/tests/test_batch_runner.py",
       "scripts/tests/test_batch_sim.py",
+      "scripts/tests/test_check_consistency.py",
       "scripts/tests/test_native_preview.py",
-      "scripts/tests/test_prompt_builder.py",
       "scripts/tests/test_uv_admission.py",
-      "scripts/validate_prompt_manifest.py"
+      "uv.lock"
     ]
   },
   "evidence": [

@@ -234,7 +234,7 @@ PREVIEW_STOP_CODES = frozenset({
     'NATIVE_PREVIEW_LOG_INVALID', 'NATIVE_PREVIEW_NONZERO', 'NATIVE_PREVIEW_SIM_IDENTITY',
     'NATIVE_PREVIEW_SOURCE_MODIFIED', 'NATIVE_PREVIEW_SOURCE_UNREADABLE',
     'NATIVE_PREVIEW_TEMP_OVERLAP', 'NATIVE_PREVIEW_TIMEOUT', 'NATIVE_PREVIEW_UV_CACHE_INCOMPLETE',
-    'NATIVE_PREVIEW_UV_CACHE_INVALID', 'NATIVE_PREVIEW_WINDOWS_REQUIRED',
+    'NATIVE_PREVIEW_UV_CACHE_INVALID', 'NATIVE_PREVIEW_UV_VERSION_MISMATCH', 'NATIVE_PREVIEW_WINDOWS_REQUIRED',
 })
 
 
@@ -931,6 +931,7 @@ class Batch:
         import native_preview
         try:
             if not native_preview.simulated_worktree(self.root, self.spec['base_oid']):
+                native_preview.require_uv_version(self.root, self.spec['base_oid'])
                 native_preview.require_uv_cache(self.root, self.spec['base_oid'])
         except native_preview.PreviewError as exc:
             raise Halt(preview_stop_code(exc)) from None

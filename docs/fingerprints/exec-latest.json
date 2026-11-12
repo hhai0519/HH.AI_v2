@@ -1,5 +1,5 @@
 {
-  "base_head": "b3e6a01",
+  "base_head": "1408f6a",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -231,7 +231,7 @@
         "# both test executions are in the SAME required job, fail-closed on either red."
       ],
       "lines": 114,
-      "sha256": "0a90d3462e3afc2bcb6a6c1c9103836ef38c65a90f430bd88127b01c41d92ca5"
+      "sha256": "e15fe1bbff9a20ea9aa012890be05db0922b73620a69c79dadd79825ad0862b9"
     },
     "AGENTS.md": {
       "fences": 2,
@@ -566,16 +566,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 397,
-      "sha256": "0461b70a4e305878cdf3c47eeff4036bf8d6c79a04ca636bea0d5f3111984a1a"
+      "lines": 398,
+      "sha256": "86dcd105c9bd46d6db61ded251fcec957dac50e6b2853127542b0adb6d45b706"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 372,
-      "sha256": "68ef3b3606cea9e988ff886fb7a4f005e19740fe89252d93be4f04b9bf8c811f"
+      "lines": 373,
+      "sha256": "3f1cdc92c13ae14aeedbb2fa00455c311d59d75f913eb4cc47bf850537aca946"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -617,8 +617,8 @@
         "## G. 舊 repo 未盤點區塊（2026-09-02 新發現）",
         "## 封存區"
       ],
-      "lines": 510,
-      "sha256": "0a7dc304691637e384072d87b0fd43395e95bda36b1189881112ba92a913a7cc"
+      "lines": 512,
+      "sha256": "683952a17cc546dcc816f8334f557a4dbc380826435788b4d3f17600e7b6ecc8"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1127,8 +1127,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6458,
-      "sha256": "f2ac1eb03c75331b44c83721b42ef35d61c791b6b9d3ca42e4811f7af75c1e42"
+      "lines": 6459,
+      "sha256": "889f02cf11a30b478dc7015cc68d839c414ff3c77f806c6189922f1699c4d2c8"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1179,8 +1179,8 @@
         "# Windows: os.replace needs DELETE access on both files; antivirus/indexer handles can deny it briefly.",
         "# Retry only that PermissionError, bounded (about 1.55 s total); any other failure is not retried."
       ],
-      "lines": 1814,
-      "sha256": "9efc11a3afe2dfe4f641da5a4f9ba53a830ee7574f71e2f1268b832778613ac9"
+      "lines": 1815,
+      "sha256": "2f2939b9fbfbfb67a5a71adb9d24307d6d103c6b10e73fd93892a57d66af7f41"
     },
     "scripts/batch_sim.py": {
       "fences": 0,
@@ -1189,8 +1189,8 @@
         "# Production negatives; the stop step and code depend on the batch's own step list (see production_negative).",
         "# Git for Windows installer defaults at system scope on the USER machine (B-123a; see the TASKBOARD B-123 row)."
       ],
-      "lines": 857,
-      "sha256": "0aea2144b84379531a5189bb4dffccfab2f0cf1f4ebf62371ebe2665f69a36de"
+      "lines": 860,
+      "sha256": "6f6625a0161a496e0408f9768260bb33c70a516d69d2624b613e72768bdfb784"
     },
     "scripts/bounded_process.py": {
       "fences": 0,
@@ -1285,8 +1285,8 @@
         "# owner 須為未完成之看板任務）。任何輸入缺失、畸形或讀取失敗一律判定失敗。",
         "# ---------------------------------------------------------------------------"
       ],
-      "lines": 3824,
-      "sha256": "f5bb2ae4b5fb08fa258e750b91787fbe92faff4e9bbc9bab00ad36aaa28ce783"
+      "lines": 3959,
+      "sha256": "e7f1f3fe7bc4d8bce2d95f762633c745af3752a87a18bb5e3e398b82a0badbaf"
     },
     "scripts/delivery_pack.py": {
       "fences": 0,
@@ -1399,8 +1399,8 @@
         "# The simulator next to this module: W2's own copy for the runner; the authored copy for the",
         "# one-time activation bootstrap, whose W2 still holds a Base simulator without these options."
       ],
-      "lines": 219,
-      "sha256": "40f4160bddb28bfad846d6145d9d75b602d0ce97d42fd074102d9bcd9d5b4fa9"
+      "lines": 245,
+      "sha256": "cd2701f290a4c36396e0808b452322651e8120d249b2bce9fb16074e14288cff"
     },
     "scripts/native_preview_bootstrap.py": {
       "fences": 0,
@@ -1413,8 +1413,8 @@
       "headings": [
         "# -*- coding: utf-8 -*-"
       ],
-      "lines": 238,
-      "sha256": "2a5fbab1d32e532e871fa02a9db1a212913367c59e83de533fa8a150bfc24e2f"
+      "lines": 239,
+      "sha256": "f43ee4c426edf9607d51cd4926ccfb77e9a9c3f3a63c0dd73155de7ff6d9d21d"
     },
     "scripts/promotion_template.py": {
       "fences": 0,
@@ -1638,7 +1638,7 @@
         "# --- second-opinion B01 (B123A R1): winemu must check the repository the tests actually run in --------------"
       ],
       "lines": 1122,
-      "sha256": "7e93c524e7ad097fec96b8338e350f7975cc75f5db22f46c6c5e1fde7f9092ef"
+      "sha256": "238001dfd07179135eb2f8078df26ba26f268e3af03f80c2c2d4677f517214b5"
     },
     "scripts/tests/test_bounded_process.py": {
       "fences": 0,
@@ -1793,6 +1793,9 @@
         "# CHECK 22 — CI 供應鏈可重現性守衛測試 (Canaries 1-9)",
         "# ---------------------------------------------------------------------------",
         "# ---------------------------------------------------------------------------",
+        "# CHECK 22 — D-CI-PY：Python 版本一致守衛（改任一處版本必須 FAIL）",
+        "# ---------------------------------------------------------------------------",
+        "# ---------------------------------------------------------------------------",
         "# CHECK 22 Fail-Closed Negative Controls & Pipeline Grammar (Controls B-L)",
         "# ---------------------------------------------------------------------------",
         "# ---------------------------------------------------------------------------",
@@ -1807,8 +1810,8 @@
         "# B-116 G4 F-C20-01: GFM rows may omit the trailing pipe; CHECK 20 must still count their cells",
         "# and must not stop scanning the rest of the table at such a row."
       ],
-      "lines": 2651,
-      "sha256": "c1f52eb5c123c312ff7ec1aa4dd74ffe1b9b2d56dad04b73fadefebef7fae0f1"
+      "lines": 2864,
+      "sha256": "26b0e28a1c33ac5792b501af59f331ccd81abcd884752f45147d83cbe1c5d435"
     },
     "scripts/tests/test_delivery_pack.py": {
       "fences": 0,
@@ -1954,9 +1957,11 @@
     },
     "scripts/tests/test_native_preview.py": {
       "fences": 0,
-      "headings": [],
-      "lines": 677,
-      "sha256": "3e361ddaf32ff9bc5a6b22ee3a6daadbf1a0a93c218e79d386666abae64eb3af"
+      "headings": [
+        "# --- N-2: the uv that runs the rehearsal is exactly the version the Base pyproject pins -------------------------"
+      ],
+      "lines": 844,
+      "sha256": "d0398d677fd706ae3e394c1259fda5ebbe4a7ed5b471500b022539a44c604632"
     },
     "scripts/tests/test_playwright_automation.py": {
       "fences": 0,
@@ -2193,7 +2198,7 @@
         "# -*- coding: utf-8 -*-"
       ],
       "lines": 290,
-      "sha256": "367ae18da0180529d37a6a4c94be36342551cf3ced078e8b038a6e4758183338"
+      "sha256": "b30c9900ede64845a180cbaa1d99c5adcb2613793884d93d0b8fcde63c141ce3"
     },
     "scripts/tests/test_validate_skills.py": {
       "fences": 0,
@@ -2314,7 +2319,7 @@
       "sha256": "6bfd57c05a09df3cde679ae53ac6ddd67bfb64cda4246584617d3cc67fb3b81c"
     }
   },
-  "generated_at": "2026-11-11T14:40:48Z",
+  "generated_at": "2026-11-12T06:52:05Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

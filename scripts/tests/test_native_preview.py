@@ -12,6 +12,15 @@ import batch_sim as sim
 import native_preview as preview
 
 
+_REAL_REQUIRE_UV_VERSION = preview.require_uv_version
+
+
+@pytest.fixture(autouse=True)
+def _uv_version_has_its_own_tests(monkeypatch):
+    """The lifecycle tests below stand in for uv; the uv version check (N-2) is exercised by its own tests."""
+    monkeypatch.setattr(preview, 'require_uv_version', lambda workspace, base: None)
+
+
 def git(repo, *args):
     cmd = ['git', '--no-optional-locks', '-C', str(repo), *args]
     env = {key: value for key, value in os.environ.items() if not key.upper().startswith('GIT_')}
@@ -675,3 +684,161 @@ def test_bootstrap_run_reports_and_records_the_simulation_python(tmp_path, monke
     assert receipt['sim_python_home'] == 'C:\\Python314' and receipt['sim_python_version_info'] == '3.14.7'
     with zipfile.ZipFile(work / 'bootstrap-evidence.zip') as archive:
         assert 'sim-pyvenv.cfg' in archive.namelist()
+
+
+# --- N-2: the uv that runs the rehearsal is exactly the version the Base pyproject pins -------------------------
+
+@pytest.fixture
+def pinned_source(source):
+    (source / 'pyproject.toml').write_bytes(b'[project]\nname = "fixture"\n[tool.uv]\nrequired-version = "==0.11.32"\n')
+    git(source, 'add', '.')
+    git(source, 'commit', '-qm', 'uv pin fixture')
+    return source
+
+
+def _fake_uv_version(monkeypatch, stdout=b'uv 0.11.32 (a1b2c3d4e 2026-11-01 x86_64-pc-windows-msvc)\r\n',
+                     returncode=0, timed_out=False, launch_error=None, seen=None, found=True):
+    from bounded_process import BoundedResult, KILL_NOT_NEEDED
+
+    monkeypatch.setattr(preview.shutil, 'which', lambda name: '/fixture/uv' if found else None)
+
+    def run(command, cwd, limit, **kwargs):
+        if seen is not None:
+            seen.update(command=command, cwd=cwd, limit=limit, env=kwargs['env'], merge=kwargs['merge_stderr'])
+        return BoundedResult(returncode, timed_out, launch_error, stdout, b'', KILL_NOT_NEEDED)
+
+    monkeypatch.setattr(preview, 'run_bounded', run)
+
+
+def test_uv_version_matching_the_base_pin_passes_and_runs_only_uv_version(pinned_source, monkeypatch):
+    seen = {}
+    monkeypatch.setenv('UV_CACHE_DIR', 'hostile')
+    monkeypatch.setenv('UV_INDEX_URL', 'https://example.invalid/simple')
+    _fake_uv_version(monkeypatch, seen=seen)
+    _REAL_REQUIRE_UV_VERSION(pinned_source, git(pinned_source, 'rev-parse', 'HEAD'))
+    assert seen['command'] == ['/fixture/uv', '--version']
+    assert seen['limit'] == preview.UV_CHECK_TIMEOUT and seen['merge'] is True
+    assert not any(key.startswith('UV_') for key in seen['env'])
+
+
+@pytest.mark.parametrize('stdout', [
+    b'uv 0.11.31 (x86_64-pc-windows-msvc)\n',
+    b'uv 0.11.33\n',
+    b'uv 0.12.32\n',
+    b'uv 1.11.32\n',
+    b'uv 0.11.32.1\n',
+    b'uv 0.11\n',
+    b'uv 0.11.32\nuv 0.11.32\n',
+    b'warning: something\nuv 0.11.32\n',
+    b'uvx 0.11.32\n',
+    b'',
+    b'\xff\xfe',
+])
+def test_uv_version_other_than_the_pin_or_unreadable_output_stops(pinned_source, monkeypatch, stdout):
+    _fake_uv_version(monkeypatch, stdout=stdout)
+    with pytest.raises(preview.PreviewError, match='^NATIVE_PREVIEW_UV_VERSION_MISMATCH$'):
+        _REAL_REQUIRE_UV_VERSION(pinned_source, git(pinned_source, 'rev-parse', 'HEAD'))
+
+
+@pytest.mark.parametrize('case', ['nonzero', 'timeout', 'launch', 'absent'])
+def test_uv_version_check_refuses_a_failed_or_missing_uv(pinned_source, monkeypatch, case):
+    _fake_uv_version(monkeypatch, returncode=2 if case == 'nonzero' else 0, timed_out=case == 'timeout',
+                     launch_error='OSError' if case == 'launch' else None, found=case != 'absent')
+    with pytest.raises(preview.PreviewError, match='^NATIVE_PREVIEW_UV_VERSION_MISMATCH$'):
+        _REAL_REQUIRE_UV_VERSION(pinned_source, git(pinned_source, 'rev-parse', 'HEAD'))
+
+
+@pytest.mark.parametrize('pyproject', [
+    None,
+    b'[project]\nname = "fixture"\n',
+    b'[tool.uv]\npackage = false\n',
+    b'[tool.uv]\nrequired-version = ">=0.11"\n',
+    b'[tool.uv]\nrequired-version = "0.11.32"\n',
+    b'[tool.uv]\nrequired-version = "==0.11"\n',
+    b'[tool.uv]\nrequired-version = 11\n',
+    b'[tool.uv\n',
+    b'\xff\xfe',
+])
+def test_uv_version_check_needs_an_exact_pin_in_the_base_pyproject(source, monkeypatch, pyproject):
+    if pyproject is not None:
+        (source / 'pyproject.toml').write_bytes(pyproject)
+        git(source, 'add', '.')
+        git(source, 'commit', '-qm', 'pyproject fixture')
+    _fake_uv_version(monkeypatch)
+    with pytest.raises(preview.PreviewError, match='^NATIVE_PREVIEW_UV_VERSION_MISMATCH$'):
+        _REAL_REQUIRE_UV_VERSION(source, git(source, 'rev-parse', 'HEAD'))
+
+
+def test_uv_version_is_read_from_the_base_blob_not_the_working_tree(pinned_source, monkeypatch):
+    base = git(pinned_source, 'rev-parse', 'HEAD')
+    (pinned_source / 'pyproject.toml').write_bytes(b'[tool.uv]\nrequired-version = "==9.9.9"\n')
+    _fake_uv_version(monkeypatch)
+    _REAL_REQUIRE_UV_VERSION(pinned_source, base)
+
+
+def test_preview_checks_uv_version_before_cache_and_before_any_temp_area(tmp_path, source, monkeypatch):
+    from types import SimpleNamespace
+
+    monkeypatch.delenv(preview.SIM_ROOT, raising=False)
+    monkeypatch.setattr(preview, 'os', SimpleNamespace(name='nt', environ=os.environ, path=os.path))
+    temp = tmp_path / 'temp'
+    temp.mkdir()
+    monkeypatch.setattr(preview.tempfile, 'gettempdir', lambda: str(temp))
+    order = []
+
+    def wrong_uv(workspace, base):
+        order.append('version')
+        raise preview.PreviewError('NATIVE_PREVIEW_UV_VERSION_MISMATCH')
+
+    monkeypatch.setattr(preview, 'require_uv_version', wrong_uv)
+    monkeypatch.setattr(preview, 'require_uv_cache', lambda *a: order.append('cache'))
+    monkeypatch.setattr(preview, 'run_bounded', lambda *a, **k: pytest.fail('simulator ran'))
+    batch = SimpleNamespace(root=str(source), task_id='FIXTURE', prompt_bytes=b'fixture',
+                            spec={'kind': 'production', 'native_preview': True,
+                                  'base_oid': git(source, 'rev-parse', 'HEAD'), 'start': {'mode': 'clean'}},
+                            write_new_artifact=lambda name, content: None)
+    with pytest.raises(preview.PreviewError, match='^NATIVE_PREVIEW_UV_VERSION_MISMATCH$'):
+        preview.run(batch)
+    assert order == ['version'] and not list(temp.iterdir())
+    assert not hasattr(batch, 'native_preview_evidence_dir')
+
+
+def test_runner_preflight_checks_uv_version_then_cache_and_reports_the_stop_code(tmp_path, monkeypatch):
+    seen = []
+    monkeypatch.setattr(preview, 'simulated_worktree', lambda root, base: False)
+    monkeypatch.setattr(preview, 'require_uv_version', lambda workspace, base: seen.append('version'))
+    monkeypatch.setattr(preview, 'require_uv_cache', lambda workspace, base: seen.append('cache'))
+    spec = {'kind': 'production', 'native_preview': True, 'base_oid': 'a' * 40}
+    br.Batch.step_preflight(_preflight_batch(tmp_path, monkeypatch, spec))
+    assert seen == ['version', 'cache']
+
+    def wrong(workspace, base):
+        raise preview.PreviewError('NATIVE_PREVIEW_UV_VERSION_MISMATCH')
+
+    seen.clear()
+    monkeypatch.setattr(preview, 'require_uv_version', wrong)
+    with pytest.raises(br.Halt) as info:
+        br.Batch.step_preflight(_preflight_batch(tmp_path, monkeypatch, spec))
+    assert str(info.value) == 'NATIVE_PREVIEW_UV_VERSION_MISMATCH' and seen == []
+
+
+def test_uv_version_mismatch_is_a_named_stop_code():
+    assert 'NATIVE_PREVIEW_UV_VERSION_MISMATCH' in br.PREVIEW_STOP_CODES
+    assert br.preview_stop_code(preview.PreviewError('NATIVE_PREVIEW_UV_VERSION_MISMATCH')) == 'NATIVE_PREVIEW_UV_VERSION_MISMATCH'
+
+
+def test_simulated_uv_sync_installs_by_copy_not_hardlink(tmp_path, monkeypatch):
+    """N-1: the approved cache's package files must not gain hardlinks from the disposable venv."""
+    monkeypatch.setenv('UV_LINK_MODE', 'hardlink')
+    rehearsal = sim.Sim(str(tmp_path / 'source'), str(tmp_path / 'wd'), out=lambda line: None)
+    work = Path(rehearsal.work)
+    bin_dir = work / '.venv' / ('Scripts' if os.name == 'nt' else 'bin')
+    bin_dir.mkdir(parents=True)
+    (bin_dir / ('python.exe' if os.name == 'nt' else 'python')).write_bytes(b'test')
+    (work / '.python-version').write_bytes(b'3.14\n')
+    monkeypatch.setattr(sim.shutil, 'which', lambda name: '/test/uv' if name == 'uv' else None)
+    seen = []
+    rehearsal.env['HHAI_SIM_UV_CACHE_DIR'] = str(tmp_path / 'approved')
+    rehearsal.run_cmd = lambda args, cwd, env, timeout, merge=True: (seen.append(env.copy()), (0, b''))[1]
+    rehearsal.prepare_uv_simulation()
+    assert seen[0]['UV_LINK_MODE'] == 'copy' and seen[0]['UV_CACHE_DIR'] == str(tmp_path / 'approved')

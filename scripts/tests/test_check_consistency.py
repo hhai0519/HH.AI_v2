@@ -1804,7 +1804,7 @@ def test_check_21_tracked_secret_fail_and_no_secret_in_output(tmp_path):
 # CHECK 22 — CI 供應鏈可重現性守衛測試 (Canaries 1-9)
 # ---------------------------------------------------------------------------
 
-def _setup_check_22_env(tmp_path, workflow_content=None, req_content=None):
+def _setup_check_22_env(tmp_path, workflow_content=None, req_content=None, pin="3.14", pyproject_py=None, lock_py=None):
     wf_dir = tmp_path / ".github" / "workflows"
     wf_dir.mkdir(parents=True, exist_ok=True)
     wf_file = wf_dir / "verify.yml"
@@ -1824,8 +1824,24 @@ def _setup_check_22_env(tmp_path, workflow_content=None, req_content=None):
             "      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262\n"
             "      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020\n"
             "      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065\n"
+            "        with:\n"
+            "          python-version: \"3.14\"\n"
+            "  gateway-windows:\n"
+            "    runs-on: windows-latest\n"
+            "    steps:\n"
+            "      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262\n"
+            "      - name: Set up Python\n"
+            "        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065\n"
+            "        with:\n"
+            "          python-version: \"3.14\"\n"
         )
-    wf_file.write_text(workflow_content, encoding="utf-8")
+    wf_file.write_text(workflow_content, encoding="utf-8", newline="\n")
+    if pin is not None:
+        (tmp_path / ".python-version").write_text(pin + "\n", encoding="utf-8", newline="\n")
+    (tmp_path / "pyproject.toml").write_text(
+        '[project]\nname = "x"\nrequires-python = "%s"\n' % (pyproject_py or ">=3.14"), encoding="utf-8", newline="\n")
+    (tmp_path / "uv.lock").write_text(
+        'version = 1\nrequires-python = "%s"\n' % (lock_py or ">=3.14"), encoding="utf-8", newline="\n")
 
     req_file = tmp_path / "requirements.txt"
     if req_content is None:
@@ -1835,7 +1851,12 @@ def _setup_check_22_env(tmp_path, workflow_content=None, req_content=None):
             "playwright==1.63.0\n"
             "colorama==0.4.6; sys_platform == 'win32'\n"
         )
-    req_file.write_text(req_content, encoding="utf-8")
+    req_file.write_text(req_content, encoding="utf-8", newline="\n")
+
+
+def _pipeline_fails(fails):
+    """Pipeline-grammar controls use minimal workflows without setup-python; version parity has its own tests."""
+    return [f for f in fails if "[PY-PARITY]" not in f]
 
 
 def test_check_22_canary_1_exact_pass(tmp_path):
@@ -1947,6 +1968,198 @@ def test_check_22_canary_9_windows_marker_pass(tmp_path):
 
 
 # ---------------------------------------------------------------------------
+# CHECK 22 — D-CI-PY：Python 版本一致守衛（改任一處版本必須 FAIL）
+# ---------------------------------------------------------------------------
+
+def _parity_fails(fails):
+    return [f for f in fails if "[PY-PARITY]" in f]
+
+
+def _edit(tmp_path, rel, old, new, count=1):
+    path = tmp_path / rel
+    text = path.read_text(encoding="utf-8")
+    assert text.count(old) == count, (rel, old)
+    path.write_text(text.replace(old, new), encoding="utf-8", newline="\n")
+
+
+def test_check_22_py_parity_consistent_pass(tmp_path):
+    _setup_check_22_env(tmp_path)
+    fails, infos = check_22_ci_supply_chain(str(tmp_path))
+    assert fails == []
+    assert any("Python 版本一致" in i and "3.14" in i for i in infos)
+
+
+@pytest.mark.parametrize("mutant", [
+    "verify_job_version", "gateway_job_version", "python_version_file", "pyproject_bound", "lock_bound",
+])
+def test_check_22_py_parity_each_single_version_change_fails(tmp_path, mutant):
+    """Guard mutants: changing any ONE of the five version places makes the check FAIL."""
+    _setup_check_22_env(tmp_path)
+    wf = ".github/workflows/verify.yml"
+    if mutant == "verify_job_version":
+        text = (tmp_path / wf).read_text(encoding="utf-8")
+        first = text.index('python-version: "3.14"')
+        (tmp_path / wf).write_text(text[:first] + 'python-version: "3.11"' + text[first + len('python-version: "3.14"'):],
+                                   encoding="utf-8", newline="\n")
+    elif mutant == "gateway_job_version":
+        text = (tmp_path / wf).read_text(encoding="utf-8")
+        last = text.rindex('python-version: "3.14"')
+        (tmp_path / wf).write_text(text[:last] + 'python-version: "3.13"' + text[last + len('python-version: "3.14"'):],
+                                   encoding="utf-8", newline="\n")
+    elif mutant == "python_version_file":
+        (tmp_path / ".python-version").write_text("3.15\n", encoding="utf-8", newline="\n")
+    elif mutant == "pyproject_bound":
+        _edit(tmp_path, "pyproject.toml", ">=3.14", ">=3.11")
+    else:
+        _edit(tmp_path, "uv.lock", ">=3.14", ">=3.11")
+    fails, _ = check_22_ci_supply_chain(str(tmp_path))
+    assert _parity_fails(fails), mutant
+
+
+@pytest.mark.parametrize("rel,old,new", [
+    ("pyproject.toml", ">=3.14", ">=3.14,<3.16"),
+    ("pyproject.toml", ">=3.14", "~=3.14"),
+    ("pyproject.toml", ">=3.14", ">=3.14.0"),
+    ("uv.lock", ">=3.14", ">=3"),
+    (".python-version", "3.14", "3.14.7"),
+    (".github/workflows/verify.yml", '"3.14"', "${{ matrix.py }}"),
+    (".github/workflows/verify.yml", '"3.14"', '""'),
+    (".github/workflows/verify.yml", '"3.14"', '"3.140"'),
+])
+def test_check_22_py_parity_malformed_or_non_equal_values_fail(tmp_path, rel, old, new):
+    _setup_check_22_env(tmp_path)
+    path = tmp_path / rel
+    text = path.read_text(encoding="utf-8")
+    path.write_text(text.replace(old, new, 1), encoding="utf-8", newline="\n")
+    fails, _ = check_22_ci_supply_chain(str(tmp_path))
+    assert _parity_fails(fails), (rel, old, new)
+
+
+@pytest.mark.parametrize("rel", [".python-version", "pyproject.toml", "uv.lock", ".github/workflows/verify.yml"])
+def test_check_22_py_parity_missing_file_is_not_skipped(tmp_path, rel):
+    _setup_check_22_env(tmp_path)
+    (tmp_path / rel).unlink()
+    fails, _ = check_22_ci_supply_chain(str(tmp_path))
+    assert any("[PY-PARITY]" in f for f in fails)
+
+
+def test_check_22_py_parity_required_job_without_setup_python_fails(tmp_path):
+    _setup_check_22_env(tmp_path)
+    text = (tmp_path / ".github/workflows/verify.yml").read_text(encoding="utf-8")
+    tail = text.rindex("      - name: Set up Python\n")
+    (tmp_path / ".github/workflows/verify.yml").write_text(text[:tail], encoding="utf-8", newline="\n")
+    fails, _ = check_22_ci_supply_chain(str(tmp_path))
+    assert any("[PY-PARITY]" in f and "gateway-windows" in f and "沒有 actions/setup-python" in f for f in fails)
+
+
+def test_check_22_py_parity_extra_job_with_other_version_fails(tmp_path):
+    _setup_check_22_env(tmp_path)
+    path = tmp_path / ".github/workflows/verify.yml"
+    path.write_text(path.read_text(encoding="utf-8") +
+                    "  extra:\n    runs-on: ubuntu-latest\n    steps:\n"
+                    "      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065\n"
+                    "        with:\n          python-version: '3.11'\n", encoding="utf-8", newline="\n")
+    fails, _ = check_22_ci_supply_chain(str(tmp_path))
+    assert any("[PY-PARITY]" in f and "extra" in f for f in fails)
+
+
+_OTHER_WORKFLOW = ("name: Other\non: [push]\njobs:\n  lint:\n    runs-on: ubuntu-latest\n    steps:\n"
+                   "      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065\n"
+                   "        with:\n          python-version: {version}\n")
+
+
+@pytest.mark.parametrize("name", ["other.yml", "release.yaml"])
+def test_check_22_py_parity_other_workflow_file_with_other_version_fails(tmp_path, name):
+    """All workflow files in .github/workflows are scanned, not only verify.yml."""
+    _setup_check_22_env(tmp_path)
+    (tmp_path / ".github/workflows" / name).write_text(_OTHER_WORKFLOW.format(version="'3.11'"),
+                                                       encoding="utf-8", newline="\n")
+    fails, _ = check_22_ci_supply_chain(str(tmp_path))
+    assert any("[PY-PARITY]" in f and f.startswith(".github/workflows/" + name + ":") and "lint" in f
+               for f in fails), fails
+
+
+def test_check_22_py_parity_other_workflow_file_with_equal_version_passes(tmp_path):
+    _setup_check_22_env(tmp_path)
+    (tmp_path / ".github/workflows/other.yml").write_text(_OTHER_WORKFLOW.format(version='"3.14"'),
+                                                         encoding="utf-8", newline="\n")
+    fails, _ = check_22_ci_supply_chain(str(tmp_path))
+    assert fails == []
+
+
+def test_check_22_py_parity_other_workflow_file_without_version_fails(tmp_path):
+    _setup_check_22_env(tmp_path)
+    text = _OTHER_WORKFLOW.format(version='"3.14"').replace("python-version", "python-version-file")
+    (tmp_path / ".github/workflows/other.yml").write_text(text, encoding="utf-8", newline="\n")
+    fails, _ = check_22_ci_supply_chain(str(tmp_path))
+    assert any("[PY-PARITY]" in f and "other.yml" in f for f in fails), fails
+
+
+def test_check_22_py_parity_unreadable_other_workflow_file_fails(tmp_path):
+    _setup_check_22_env(tmp_path)
+    (tmp_path / ".github/workflows/broken.yml").write_bytes(b"jobs:\n  x: \xff\xfe\n")
+    fails, _ = check_22_ci_supply_chain(str(tmp_path))
+    assert any("[PY-PARITY]" in f and "broken.yml" in f and "無法讀取" in f for f in fails), fails
+
+
+def test_check_22_py_parity_non_workflow_files_are_not_scanned(tmp_path):
+    _setup_check_22_env(tmp_path)
+    (tmp_path / ".github/workflows/notes.txt").write_text(_OTHER_WORKFLOW.format(version="'3.11'"),
+                                                          encoding="utf-8", newline="\n")
+    fails, _ = check_22_ci_supply_chain(str(tmp_path))
+    assert fails == []
+
+
+_INDENT4_WORKFLOW = ("name: Other\non: [push]\njobs:\n    lint:\n        runs-on: ubuntu-latest\n        steps:\n"
+                     "            - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065\n"
+                     "              with:\n                  python-version: {version}\n")
+
+
+@pytest.mark.parametrize("name,text", [
+    ("other.yml", _OTHER_WORKFLOW.replace("uses: actions/setup-python@", 'uses: "actions/setup-python@')
+     .replace("4022e16d87065\n", '4022e16d87065"\n').format(version="'3.11'")),
+    ("other.yml", _OTHER_WORKFLOW.replace("uses: actions/setup-python@", "uses: 'actions/setup-python@")
+     .replace("4022e16d87065\n", "4022e16d87065'\n").format(version="'3.11'")),
+    ("other.yml", _OTHER_WORKFLOW.replace("actions/setup-python", "Actions/Setup-Python").format(version="'3.11'")),
+    ("other.yml", _INDENT4_WORKFLOW.format(version="'3.11'")),
+    ("other.yml", _INDENT4_WORKFLOW.format(version='"3.14"')),
+    ("Other.YML", _OTHER_WORKFLOW.format(version="'3.11'")),
+], ids=["double-quoted-uses", "single-quoted-uses", "case-variant-uses", "indent4-other-version",
+        "indent4-equal-version", "upper-case-extension"])
+def test_check_22_py_parity_valid_yaml_variants_are_not_skipped(tmp_path, name, text):
+    """Quoted or case-variant uses, non-2-space job indentation and upper-case extensions never pass silently."""
+    _setup_check_22_env(tmp_path)
+    (tmp_path / ".github/workflows" / name).write_text(text, encoding="utf-8", newline="\n")
+    fails, _ = check_22_ci_supply_chain(str(tmp_path))
+    assert any("[PY-PARITY]" in f and f.startswith(".github/workflows/" + name + ":") for f in fails), fails
+
+
+def test_check_22_py_parity_quoted_case_variant_uses_with_equal_version_and_comment_mention_pass(tmp_path):
+    _setup_check_22_env(tmp_path)
+    text = (_OTHER_WORKFLOW.replace("uses: actions/setup-python@", 'uses: "Actions/Setup-Python@')
+            .replace("4022e16d87065\n", '4022e16d87065"\n').format(version='"3.14"'))
+    text = text.replace("    steps:\n", "    steps:\n      # actions/setup-python@v5 is pinned below\n")
+    (tmp_path / ".github/workflows/other.yml").write_text(text, encoding="utf-8", newline="\n")
+    fails, _ = check_22_ci_supply_chain(str(tmp_path))
+    assert fails == []
+
+
+def test_check_22_py_parity_unquoted_and_commented_equal_values_pass(tmp_path):
+    _setup_check_22_env(tmp_path)
+    path = tmp_path / ".github/workflows/verify.yml"
+    path.write_text(path.read_text(encoding="utf-8").replace('"3.14"', "3.14 # pinned"), encoding="utf-8", newline="\n")
+    fails, _ = check_22_ci_supply_chain(str(tmp_path))
+    assert fails == []
+
+
+def test_check_22_current_repo_python_parity_all_five_places_agree():
+    repo = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+    fails, infos = check_22_ci_supply_chain(repo)
+    assert fails == []
+    assert any("Python 版本一致" in i for i in infos)
+
+
+# ---------------------------------------------------------------------------
 # CHECK 22 Fail-Closed Negative Controls & Pipeline Grammar (Controls B-L)
 # ---------------------------------------------------------------------------
 
@@ -1986,7 +2199,7 @@ def test_check_22_control_c_direct_verify_all_pass(tmp_path):
     )
     _setup_check_22_env(tmp_path, workflow_content=wf)
     fails, infos = check_22_ci_supply_chain(str(tmp_path))
-    assert len(fails) == 0
+    assert _pipeline_fails(fails) == []
 
 
 def test_check_22_control_d_required_gate_continue_on_error_fail(tmp_path):
@@ -2050,7 +2263,7 @@ def test_check_22_control_f_diagnostic_if_failure_pass(tmp_path):
     )
     _setup_check_22_env(tmp_path, workflow_content=wf)
     fails, infos = check_22_ci_supply_chain(str(tmp_path))
-    assert len(fails) == 0
+    assert _pipeline_fails(fails) == []
 
 
 def test_check_22_control_g_run_pipe_block_marker_pass(tmp_path):
@@ -2071,7 +2284,7 @@ def test_check_22_control_g_run_pipe_block_marker_pass(tmp_path):
     )
     _setup_check_22_env(tmp_path, workflow_content=wf)
     fails, infos = check_22_ci_supply_chain(str(tmp_path))
-    assert len(fails) == 0
+    assert _pipeline_fails(fails) == []
 
 
 def test_check_22_control_h_run_gt_block_marker_pass(tmp_path):
@@ -2091,7 +2304,7 @@ def test_check_22_control_h_run_gt_block_marker_pass(tmp_path):
     )
     _setup_check_22_env(tmp_path, workflow_content=wf)
     fails, infos = check_22_ci_supply_chain(str(tmp_path))
-    assert len(fails) == 0
+    assert _pipeline_fails(fails) == []
 
 
 def test_check_22_control_i_quoted_pipe_pass(tmp_path):
@@ -2112,7 +2325,7 @@ def test_check_22_control_i_quoted_pipe_pass(tmp_path):
     )
     _setup_check_22_env(tmp_path, workflow_content=wf)
     fails, infos = check_22_ci_supply_chain(str(tmp_path))
-    assert len(fails) == 0
+    assert _pipeline_fails(fails) == []
 
 
 def test_check_22_control_j_expression_or_not_pipeline_pass(tmp_path):
@@ -2133,7 +2346,7 @@ def test_check_22_control_j_expression_or_not_pipeline_pass(tmp_path):
     )
     _setup_check_22_env(tmp_path, workflow_content=wf)
     fails, infos = check_22_ci_supply_chain(str(tmp_path))
-    assert len(fails) == 0
+    assert _pipeline_fails(fails) == []
 
 
 def test_check_22_control_k_pipeline_with_shell_bash_pass(tmp_path):
@@ -2155,7 +2368,7 @@ def test_check_22_control_k_pipeline_with_shell_bash_pass(tmp_path):
     )
     _setup_check_22_env(tmp_path, workflow_content=wf)
     fails, infos = check_22_ci_supply_chain(str(tmp_path))
-    assert len(fails) == 0
+    assert _pipeline_fails(fails) == []
 
 
 def test_check_22_control_l_pipeline_with_set_pipefail_pass(tmp_path):
@@ -2178,7 +2391,7 @@ def test_check_22_control_l_pipeline_with_set_pipefail_pass(tmp_path):
     )
     _setup_check_22_env(tmp_path, workflow_content=wf)
     fails, infos = check_22_ci_supply_chain(str(tmp_path))
-    assert len(fails) == 0
+    assert _pipeline_fails(fails) == []
 
 
 def test_check_22_current_repo_workflow_pass():

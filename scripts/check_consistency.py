@@ -2858,6 +2858,137 @@ def _parse_workflow_jobs_and_steps(wf_content: str) -> dict:
     return jobs
 
 
+def _python_version_parity(root_dir):
+    """D-CI-PY：CI、.python-version、pyproject 與 uv.lock 的 Python 版本必須同一個 major.minor。
+
+    verify.yml 的 verify 與 gateway-windows 兩個必要 job 各須有 actions/setup-python 且其 python-version
+    與 .python-version 完全相同；.github/workflows/ 下其他 .yml／.yaml workflow 的每個 setup-python 亦同。
+    pyproject.toml 的 requires-python 下限與 uv.lock 頂層 requires-python 亦同。任一缺檔、缺值、
+    格式不明、無法讀取或不一致即 FAIL（不得以缺檔略過）。
+    """
+    fails = []
+    infos = []
+
+    def read(rel):
+        try:
+            with open(os.path.join(root_dir, *rel.split("/")), "r", encoding="utf-8") as f:
+                return f.read()
+        except (OSError, UnicodeDecodeError):
+            return None
+
+    pin_text = read(".python-version")
+    pin = pin_text.strip() if pin_text is not None else None
+    if pin is None or re.fullmatch(r"\d+\.\d+", pin) is None:
+        fails.append(".python-version:1  [PY-PARITY] 缺少或格式不是 major.minor 的 Python 版本釘選")
+        return fails, infos
+
+    def lower_bound(text, rel):
+        found = re.findall(r'(?m)^requires-python\s*=\s*"([^"]*)"\s*$', text or "")
+        if len(found) != 1:
+            fails.append(f"{rel}:0  [PY-PARITY] requires-python 缺少或不唯一")
+            return None
+        match = re.fullmatch(r">=\s*(\d+\.\d+)", found[0].strip())
+        if match is None:
+            fails.append(f"{rel}:0  [PY-PARITY] requires-python 必須是 '>=major.minor' 單一下限 (實際為 '{found[0]}')")
+            return None
+        return match.group(1)
+
+    for rel in ("pyproject.toml", "uv.lock"):
+        bound = lower_bound(read(rel), rel)
+        if bound is not None and bound != pin:
+            fails.append(f"{rel}:0  [PY-PARITY] requires-python 下限 {bound} 與 .python-version {pin} 不一致")
+
+    def setup_python_steps(workflow):
+        seen = {}
+        job = None
+        step_indent = None
+        step_has_setup = False
+        step_line = 0
+        step_version = None
+        in_jobs = False
+
+        def close_step():
+            if job is not None and step_has_setup:
+                seen.setdefault(job, []).append((step_line, step_version))
+
+        for line_no, raw in enumerate(workflow.splitlines(), 1):
+            stripped = raw.strip()
+            if not stripped or stripped.startswith("#"):
+                continue
+            indent = len(raw) - len(raw.lstrip())
+            if raw.startswith("jobs:"):
+                in_jobs = True
+                continue
+            if not in_jobs:
+                continue
+            if step_indent is not None and (indent < step_indent or (indent == step_indent and stripped.startswith("- "))):
+                close_step()
+                step_indent = None
+                step_has_setup = False
+                step_version = None
+            if indent == 2 and stripped.endswith(":") and not stripped.startswith("-"):
+                job = stripped[:-1].strip()
+                continue
+            if job is None:
+                continue
+            if step_indent is None and stripped.startswith("- "):
+                step_indent = indent
+                step_line = line_no
+            if step_indent is not None:
+                if re.search(r"\buses:\s*[\"']?actions/setup-python@", stripped, re.IGNORECASE):
+                    step_has_setup = True
+                version = re.fullmatch(r"(?:- )?python-version:\s*[\"']?([^\"'#\s]*)[\"']?\s*(?:#.*)?", stripped)
+                if version is not None:
+                    step_version = version.group(1)
+        close_step()
+        return seen
+
+    def compare(rel, job_name, steps):
+        for line_no, version in steps:
+            if version != pin:
+                fails.append(f"{rel}:{line_no}  [PY-PARITY] job '{job_name}' 的 python-version "
+                             f"({version!r}) 與 .python-version ({pin}) 不一致")
+
+    # 掃描 .github/workflows/ 這一層的全部 workflow（GitHub 只執行該層的 .yml／.yaml）；verify.yml 為必要檔。
+    try:
+        names = sorted(name for name in os.listdir(os.path.join(root_dir, ".github", "workflows"))
+                       if name.lower().endswith((".yml", ".yaml")))
+    except OSError:
+        names = []
+    if "verify.yml" not in names:
+        fails.append(".github/workflows/verify.yml:0  [PY-PARITY] CI workflow 檔案不存在或無法讀取（Python 版本一致性無法驗證）")
+        return fails, infos
+    for name in names:
+        rel = ".github/workflows/" + name
+        workflow = read(rel)
+        if workflow is None:
+            fails.append(f"{rel}:0  [PY-PARITY] workflow 檔案無法讀取（Python 版本一致性無法驗證）")
+            continue
+        seen = setup_python_steps(workflow)
+        # 防漏網：未解析成 job 步驟的 setup-python（例如 job 縮排非 2 格）一律 FAIL，不得因解析不到而放行。
+        mentions = sum(1 for raw in workflow.splitlines()
+                       if not raw.strip().startswith("#") and re.search(r"actions/setup-python@", raw, re.IGNORECASE))
+        parsed = sum(len(steps) for steps in seen.values())
+        if mentions != parsed:
+            fails.append(f"{rel}:0  [PY-PARITY] {mentions} 處 actions/setup-python 只解析出 {parsed} 個 job 步驟"
+                         "（格式不支援，Python 版本一致性無法驗證）")
+        if name == "verify.yml":
+            for required in ("verify", "gateway-windows"):
+                steps = seen.get(required, [])
+                if not steps:
+                    fails.append(f"{rel}:0  [PY-PARITY] 必要 job '{required}' 沒有 actions/setup-python 步驟")
+                    continue
+                compare(rel, required, steps)
+            others = sorted(set(seen) - {"verify", "gateway-windows"})
+        else:
+            others = sorted(seen)
+        for other in others:
+            compare(rel, other, seen[other])
+    if not fails:
+        infos.append(f"Python 版本一致：.python-version、pyproject、uv.lock 與 workflow 全部為 {pin}")
+    return fails, infos
+
+
 def check_22_ci_supply_chain(root_dir=None):
     """CHECK 22 — CI 供應鏈可重現性與管道安全守衛 (CI Supply-Chain Reproducibility & Pipeline Guard)。"""
     if root_dir is None:
@@ -2988,6 +3119,10 @@ def check_22_ci_supply_chain(root_dir=None):
             infos.append(f"requirements.txt 共驗證 {active_deps} 項精確鎖定之相依套件")
         except Exception as e:
             fails.append(f"requirements.txt:0  檔案讀取失敗: {e}")
+
+    parity_fails, parity_infos = _python_version_parity(root_dir)
+    fails.extend(parity_fails)
+    infos.extend(parity_infos)
 
     return fails, infos
 
