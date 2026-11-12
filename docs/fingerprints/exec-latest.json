@@ -1,5 +1,5 @@
 {
-  "base_head": "1408f6a",
+  "base_head": "4e92ed4",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -566,16 +566,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 398,
-      "sha256": "86dcd105c9bd46d6db61ded251fcec957dac50e6b2853127542b0adb6d45b706"
+      "lines": 399,
+      "sha256": "01d98f241af93a9caceeb8586d04eaea2cd6a548bb99dc7a159603a4f263b8a5"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 373,
-      "sha256": "3f1cdc92c13ae14aeedbb2fa00455c311d59d75f913eb4cc47bf850537aca946"
+      "lines": 374,
+      "sha256": "fb2ea527dbddfe45ea73486d51141acb9005fe2e38b538b0d1d8a783b6e69d37"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -617,8 +617,8 @@
         "## G. 舊 repo 未盤點區塊（2026-09-02 新發現）",
         "## 封存區"
       ],
-      "lines": 512,
-      "sha256": "683952a17cc546dcc816f8334f557a4dbc380826435788b4d3f17600e7b6ecc8"
+      "lines": 515,
+      "sha256": "2aaaca29329664c14aaf7c754e34ebf828e7a3dc7a17bb46d4a8affbc0330fd2"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1127,8 +1127,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6459,
-      "sha256": "889f02cf11a30b478dc7015cc68d839c414ff3c77f806c6189922f1699c4d2c8"
+      "lines": 6460,
+      "sha256": "5babd9f11b8a8f34e2c0e8fd4619ee7132968818e9cc4ccc9d7a1dd669cbfb38"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1461,7 +1461,7 @@
         "# name -> (prefix, exact format, positions of commit SHAs, positions of file SHA-256)"
       ],
       "lines": 576,
-      "sha256": "786d2182af8bf65fba211318289310970b3e9cee254edfb536b9284c875f97a7"
+      "sha256": "6b6b4d36e3a913660f5722f4835c2eb15d008baf9867acdb590e4258e3563857"
     },
     "scripts/runtime_readiness.py": {
       "fences": 0,
@@ -2037,10 +2037,13 @@
         "# SO NB-1: runner lines printed before the dual fault (passed gates, the failed step's own",
         "# bounded child, promotion CI_RUN/MAIN_PROMOTED) stay legal and remain bound.",
         "# G3 CI_PENDING reply is format-valid but never proof of CI PASS.",
-        "# SO: the CLI result line is the self-check contract; PENDING must never print PASS or exit 0."
+        "# SO: the CLI result line is the self-check contract; PENDING must never print PASS or exit 0.",
+        "# ---- step names: every runner step name must be accepted by every reply line that carries one -----------------",
+        "# Defect B117-REPLY-STEPNAME-UNDERSCORE: the STATE, STEP_PASS, S1_PRIMARY and S1 line patterns once allowed only",
+        "# [a-z0-9] in a step name, so the real step \"native_preview\" made a correct Executor reply fail its own check."
       ],
-      "lines": 775,
-      "sha256": "eaf791746ef124f7fbd218d2a9103609e146db62aa3298e37767be9505e03190"
+      "lines": 885,
+      "sha256": "512b47b7385da7a9d841442104562a69fe6bb2c405d5e974980d5b6d47af66d7"
     },
     "scripts/tests/test_rule_loadability.py": {
       "fences": 0,
@@ -2319,7 +2322,7 @@
       "sha256": "6bfd57c05a09df3cde679ae53ac6ddd67bfb64cda4246584617d3cc67fb3b81c"
     }
   },
-  "generated_at": "2026-11-12T06:52:05Z",
+  "generated_at": "2026-11-12T12:39:34Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

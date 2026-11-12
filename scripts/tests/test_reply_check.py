@@ -773,3 +773,113 @@ def test_g3_f_s1_reply_warn_is_validated_without_a_handoff():
     forged = 'GATE_BUDGET_WARN stage=PRECOMMIT gate=4 elapsed=100.000 limit=3600 pct=87.7'
     assert _code(rc.check_spec, PROD_TASK, PROD_SPEC,
                  text.replace(bounded, forged + '\n' + bounded, 1)) == 'REPLY_GATE_BUDGET_WARN_MISMATCH'
+
+
+# ---- step names: every runner step name must be accepted by every reply line that carries one -----------------
+# Defect B117-REPLY-STEPNAME-UNDERSCORE: the STATE, STEP_PASS, S1_PRIMARY and S1 line patterns once allowed only
+# [a-z0-9] in a step name, so the real step "native_preview" made a correct Executor reply fail its own check.
+
+NP_BASE = '1408f6a553c83a57b67b498a256da861ec73ce19'
+NP_CAND = '4e92ed482800578d194084ea15b22a697b8e9d22'
+NP_BRANCH = 'batch/b117-ci-py314-uvcache-r3-261112'
+NP_TASK = 'B117-CI-PY314-UVCACHE-R3-261112'
+NP_SPEC = {'kind': 'production', 'base_oid': NP_BASE, 'branch': NP_BRANCH, 'e24': True, 'focused': None,
+           'bundle_output': False, 'native_preview': True}
+NP_STEPS = br.derive_steps(NP_SPEC)
+NP_REPLY = '\n'.join([
+    'EXECUTOR_REPLY_UNAVAILABLE REPLY_SELF_CHECK_FAILED',
+    'NATIVE_PREVIEW PASS',
+    'CI_RUN phase=candidate run_id=43174978799 attempt=1 event=push branch=' + NP_BRANCH + ' head_sha=' + NP_CAND
+    + ' verify=success gateway-windows=success',
+    'COMMIT ' + NP_CAND + ' | CI PASS | S1 NONE',
+    'TIMING start=2026-11-12T14:13:11.903020+08:00 end=2026-11-12T15:33:49.719072+08:00 elapsed_sec=4837.8 elapsed_min=80',
+    'STATE done=preflight,native_preview,setup,e24,apply,focused,generate,precommit,stage,commit,postcommit,push halted=None',
+    '以上是 Antigravity IDE Agent 的回覆。', ''])
+NP_REPLY = NP_REPLY.replace('apply,focused,generate', 'apply,generate')  # focused is null in NP_SPEC
+
+
+def _all_specs():
+    out = []
+    for preview in (False, True):
+        for e24 in (False, True):
+            for focused in (None, {'pytest_args': ['x'], 'limit_sec': 900}):
+                for bundle in (False, True):
+                    out.append({'kind': 'production', 'base_oid': BASE, 'branch': BRANCH, 'e24': e24, 'focused': focused,
+                                'bundle_output': bundle, 'native_preview': preview})
+    out.append(PROMO_SPEC)
+    return out
+
+
+def _all_step_names():
+    names = set(br.PRODUCTION_STEPS) | set(br.PROMOTION_STEPS)
+    for spec in _all_specs():
+        names |= set(br.derive_steps(spec))
+    return sorted(names)
+
+
+def _format(name):
+    return [c for c in rc.COMPILED if c[0] == name][0][2]
+
+
+def test_every_runner_step_name_is_accepted_by_every_line_that_carries_a_step():
+    names = _all_step_names()
+    assert 'native_preview' in names and 'preflight' in names and 'postmain' in names
+    for name in names:
+        assert _format('STEP_PASS').match('STEP_PASS ' + name), name
+        assert _format('S1_PRIMARY').match('S1_PRIMARY SOME_CODE | step ' + name), name
+        assert _format('S1').match('S1 SOME_CODE | step ' + name), name
+        assert _format('S1').match('S1 SOME_CODE ' + name + ':OTHER_CODE'), name
+    for spec in _all_specs():
+        steps = br.derive_steps(spec)
+        match = _format('STATE').match('STATE done=' + ','.join(steps) + ' halted=None')
+        assert match and match.group(1) == ','.join(steps), steps
+
+
+@pytest.mark.parametrize('bad', ['native-preview', 'Native_preview', 'native preview', 'native.preview', 'native_preview;x'])
+def test_step_name_pattern_still_rejects_illegal_characters(bad):
+    assert not _format('STEP_PASS').match('STEP_PASS ' + bad)
+    assert not _format('S1_PRIMARY').match('S1_PRIMARY SOME_CODE | step ' + bad)
+    assert not _format('S1').match('S1 SOME_CODE | step ' + bad)
+    assert not _format('S1').match('S1 SOME_CODE ' + bad + ':OTHER_CODE')
+    assert not _format('STATE').match('STATE done=preflight,' + bad + ' halted=None')
+
+
+def test_real_native_preview_production_reply_passes():
+    assert NP_STEPS[:2] == ['preflight', 'native_preview']
+    result = rc.check_spec(NP_TASK, NP_SPEC, NP_REPLY)
+    assert result[2] == 'COMMIT ' + NP_CAND
+
+
+NP_MUTATIONS = [
+    ('native_preview missing from state', lambda t: t.replace('preflight,native_preview,setup', 'preflight,setup'),
+     'REPLY_STATE_MISMATCH'),
+    ('native_preview hyphenated', lambda t: t.replace('native_preview', 'native-preview'), 'REPLY_LINE_MALFORMED'),
+    ('native_preview upper case', lambda t: t.replace('done=preflight,native_preview', 'done=preflight,Native_preview'),
+     'REPLY_LINE_MALFORMED'),
+    ('native_preview listed but not due', lambda t: t, 'REPLY_STATE_MISMATCH'),
+    ('native_preview halted but state says none', lambda t: t.replace('halted=None', 'halted=native_preview:X'),
+     'REPLY_STATE_MISMATCH'),
+]
+
+
+@pytest.mark.parametrize('name,edit,code', NP_MUTATIONS, ids=[m[0] for m in NP_MUTATIONS])
+def test_native_preview_reply_fails_closed(name, edit, code):
+    spec = dict(NP_SPEC, native_preview=False) if name == 'native_preview listed but not due' else NP_SPEC
+    assert _code(rc.check_spec, NP_TASK, spec, edit(NP_REPLY)) == code
+
+
+def test_s1_at_the_native_preview_step_is_classified_and_state_must_agree():
+    text = ('STEP_PASS preflight\nS1 NATIVE_PREVIEW_SOURCE_MODIFIED | step native_preview\n'
+            'S1_EVIDENCE_STATUS=UNAVAILABLE\nS1_FULL_CAPTURE_STATUS=UNAVAILABLE\n' + PRE
+            + 'STATE done=preflight halted=native_preview:NATIVE_PREVIEW_SOURCE_MODIFIED\n')
+    result = rc.check_spec(NP_TASK, NP_SPEC, text)
+    assert result[2] == 'S1 native_preview:NATIVE_PREVIEW_SOURCE_MODIFIED'
+    assert _code(rc.check_spec, NP_TASK, NP_SPEC,
+                 text.replace('halted=native_preview:', 'halted=setup:')) == 'REPLY_STATE_MISMATCH'
+    assert _code(rc.check_spec, NP_TASK, NP_SPEC,
+                 text.replace('step native_preview', 'step native-preview')) == 'REPLY_LINE_MALFORMED'
+    detail = 'S1_DETAIL NATIVE_PREVIEW_EVIDENCE_DIR=C:\\Users\\HH.AI_260806\\AppData\\Local\\Temp\\hhai-native-preview-x'
+    with_detail = text.replace('S1_EVIDENCE_STATUS', detail + '\nS1_EVIDENCE_STATUS', 1)
+    assert rc.check_spec(NP_TASK, NP_SPEC, with_detail)[2] == 'S1 native_preview:NATIVE_PREVIEW_SOURCE_MODIFIED'
+    assert _code(rc.check_spec, NP_TASK, NP_SPEC, with_detail.replace(detail, detail + '\n' + detail, 1)) \
+        == 'REPLY_S1_DETAIL_REPEATED'
