@@ -21,10 +21,28 @@ Checks (fail-closed, no content echo):
 Exit codes: 0 PASS; 2 USAGE; 3 SOURCE_MISSING; 4 SOURCE_INVALID;
 5 SOURCE_HASH_MISMATCH; 6 TARGET_EXISTS; 7 PATH_NOT_SAFE; 8 COPY_VERIFY_FAILED.
 The tool never deletes, overwrites or renames any file.
+
+When the target already exists the exit code stays 6 in every case (a repeated paste is never
+accepted, even with identical bytes), but the S1 line carries a read-only description of what is
+already there, so a repeated paste can be told apart from a real second execution:
+
+    S1 TARGET_EXISTS prompt=<SAME|DIFFERENT|UNREADABLE> control=NONE
+    S1 TARGET_EXISTS prompt=<...> control=PRESENT done=<steps|NONE> halted=<None|code> binding=<MATCH|MISMATCH>
+    S1 TARGET_EXISTS prompt=<...> control=UNREADABLE
+    S1 TARGET_EXISTS prompt=UNKNOWN control=UNKNOWN
+
+prompt= compares the existing target with the bytes that were just verified against the expected
+SHA-256. control= describes .git/<task-id>-control.json: NONE only when lstat reports that the path
+does not exist at the moment of the check (any other lstat error is UNREADABLE; NONE is a snapshot and
+does not prove that no other conversation is about to start); a record that cannot be read as a plain bounded file, is not valid JSON, repeats a key, names
+another task, or carries values outside the fixed character sets is UNREADABLE, never NONE.
+UNREADABLE and UNKNOWN must not be treated as "not started". Values copied from the control record
+are printed only after matching a fixed character set, so file content is never echoed.
 """
 
 import argparse
 import hashlib
+import json
 import os
 import re
 import stat
@@ -41,7 +59,11 @@ from scripts.governance_preflight import (  # noqa: E402
 )
 
 MAX_PROMPT_BYTES = 1024 * 1024
+MAX_CONTROL_BYTES = 1024 * 1024
+MAX_DONE_STEPS = 40
 SHA256_RE = re.compile(r"[0-9a-f]{64}")
+STEP_NAME_RE = re.compile(r"[a-z0-9_]{1,40}")
+HALTED_RE = re.compile(r"[A-Za-z0-9_:.\-]{1,120}")
 REPARSE_ATTR = getattr(stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0x400)
 
 EXIT_USAGE = 2
@@ -93,6 +115,82 @@ def sha256_hex(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
+def _reject_duplicate_keys(pairs):
+    seen = {}
+    for key, value in pairs:
+        if key in seen:
+            raise ValueError("duplicate key")
+        seen[key] = value
+    return seen
+
+
+def _read_plain_file(path: str, limit: int):
+    """Bounded read of a regular, non-link file. None when it cannot be read as exactly that."""
+    try:
+        st_result = os.lstat(path)
+        if is_link_or_reparse(st_result, path) or not stat.S_ISREG(st_result.st_mode) or st_result.st_size > limit:
+            return None
+        with open(path, "rb") as handle:
+            data = handle.read(limit + 1)
+    except OSError:
+        return None
+    if len(data) > limit:
+        return None
+    return data
+
+
+def _control_summary(parsed, task_id: str, expected: str):
+    """(done_text, halted_text, binding) from a parsed control record, or None when it is not trustworthy."""
+    if not isinstance(parsed, dict) or parsed.get("task_id") != task_id:
+        return None
+    done = parsed.get("done")
+    if not isinstance(done, list) or len(done) > MAX_DONE_STEPS:
+        return None
+    for name in done:
+        if not isinstance(name, str) or not STEP_NAME_RE.fullmatch(name):
+            return None
+    halted = parsed.get("halted")
+    if halted is None:
+        halted_text = "None"
+    elif isinstance(halted, str) and HALTED_RE.fullmatch(halted):
+        halted_text = halted
+    else:
+        return None
+    binding = "MATCH" if parsed.get("prompt_sha256") == expected else "MISMATCH"
+    return (",".join(done) if done else "NONE"), halted_text, binding
+
+
+def describe_existing_target(git_dir_abs: str, task_id: str, expected: str) -> str:
+    """Read-only S1 label for an already existing target; never writes, deletes or renames anything."""
+    try:
+        data = _read_plain_file(os.path.join(git_dir_abs, f"{task_id}-prompt.txt"), MAX_PROMPT_BYTES)
+        if data is None:
+            prompt = "UNREADABLE"
+        else:
+            prompt = "SAME" if sha256_hex(data) == expected else "DIFFERENT"
+        control_path = os.path.join(git_dir_abs, f"{task_id}-control.json")
+        try:
+            os.lstat(control_path)
+        except FileNotFoundError:
+            return f"TARGET_EXISTS prompt={prompt} control=NONE"
+        except OSError:
+            return f"TARGET_EXISTS prompt={prompt} control=UNREADABLE"
+        raw = _read_plain_file(control_path, MAX_CONTROL_BYTES)
+        parsed = None
+        if raw is not None:
+            try:
+                parsed = json.loads(raw.decode("utf-8"), object_pairs_hook=_reject_duplicate_keys)
+            except (ValueError, UnicodeError, RecursionError):
+                parsed = None
+        summary = _control_summary(parsed, task_id, expected)
+        if summary is None:
+            return f"TARGET_EXISTS prompt={prompt} control=UNREADABLE"
+        done_text, halted_text, binding = summary
+        return f"TARGET_EXISTS prompt={prompt} control=PRESENT done={done_text} halted={halted_text} binding={binding}"
+    except Exception:  # noqa: BLE001 - a description failure must never change the exit code or hide the S1
+        return "TARGET_EXISTS prompt=UNKNOWN control=UNKNOWN"
+
+
 def intake(task_id: str, source: str, expected_sha256: str, repo_root_arg: str) -> str:
     if not is_safe_task_id(task_id):
         raise IntakeError(EXIT_USAGE, "USAGE_INVALID_TASK_ID")
@@ -137,14 +235,14 @@ def intake(task_id: str, source: str, expected_sha256: str, repo_root_arg: str) 
 
     target = os.path.join(git_dir_abs, f"{task_id}-prompt.txt")
     if os.path.lexists(target):
-        raise IntakeError(EXIT_TARGET_EXISTS, "TARGET_EXISTS")
+        raise IntakeError(EXIT_TARGET_EXISTS, describe_existing_target(git_dir_abs, task_id, expected))
     try:
         with open(target, "xb") as handle:
             handle.write(data)
             handle.flush()
             os.fsync(handle.fileno())
     except FileExistsError:
-        raise IntakeError(EXIT_TARGET_EXISTS, "TARGET_EXISTS")
+        raise IntakeError(EXIT_TARGET_EXISTS, describe_existing_target(git_dir_abs, task_id, expected))
     except OSError:
         raise IntakeError(EXIT_COPY_VERIFY_FAILED, "COPY_VERIFY_FAILED")
 

@@ -1,5 +1,5 @@
 {
-  "base_head": "4e92ed4",
+  "base_head": "77d1eb0",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -566,16 +566,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 399,
-      "sha256": "01d98f241af93a9caceeb8586d04eaea2cd6a548bb99dc7a159603a4f263b8a5"
+      "lines": 400,
+      "sha256": "36b32a40929f5e12582257dacdfa55cd439aefe6bf65c4f9b8488551bbe90a9a"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 374,
-      "sha256": "fb2ea527dbddfe45ea73486d51141acb9005fe2e38b538b0d1d8a783b6e69d37"
+      "lines": 375,
+      "sha256": "28facf06d5de94e167905046d9172e5123959d818c6ceffa13434c9c56cdbfff"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -617,8 +617,8 @@
         "## G. 舊 repo 未盤點區塊（2026-09-02 新發現）",
         "## 封存區"
       ],
-      "lines": 515,
-      "sha256": "2aaaca29329664c14aaf7c754e34ebf828e7a3dc7a17bb46d4a8affbc0330fd2"
+      "lines": 517,
+      "sha256": "303b7fdd038278db4e6b3b71044342e8701cd80f60832cfbe178b71d906c7401"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1127,8 +1127,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6460,
-      "sha256": "5babd9f11b8a8f34e2c0e8fd4619ee7132968818e9cc4ccc9d7a1dd669cbfb38"
+      "lines": 6461,
+      "sha256": "e6efa79adaa3193da6972fabf4adbef5468f07f83b8d98789b246454029bf56a"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1439,8 +1439,8 @@
       "headings": [
         "# -*- coding: utf-8 -*-"
       ],
-      "lines": 184,
-      "sha256": "862ea4ecef25e8b2118967c1bd055adb7e06156f50eae30a8ecd30f0cfbc420d"
+      "lines": 282,
+      "sha256": "98b9f980a7dd6dda99a66c00d46521938f7969cdbd6cd638e427a0ed6948ee07"
     },
     "scripts/readonly_probe.py": {
       "fences": 0,
@@ -1993,10 +1993,16 @@
     "scripts/tests/test_prompt_intake.py": {
       "fences": 0,
       "headings": [
-        "# -*- coding: utf-8 -*-"
+        "# -*- coding: utf-8 -*-",
+        "# ---------------------------------------------------------------------------",
+        "# Existing target: read-only description (B-112 / G5 intake re-paste safety).",
+        "# Every case below keeps exit code 6, never changes a byte under .git, never echoes file content,",
+        "# and never reports an unreadable or untrusted record as \"not started\".",
+        "# ---------------------------------------------------------------------------",
+        "# Fault injection: a control record that cannot be trusted is UNREADABLE, never NONE and never PRESENT."
       ],
-      "lines": 169,
-      "sha256": "fb03a0f6dc560e26248dbe6140e9197b87477785d7f7b163d428e00c292a093d"
+      "lines": 405,
+      "sha256": "71afbcd42a76938924b0e368eda779d78ef05484f499aeecfe48027443d2482f"
     },
     "scripts/tests/test_prompt_manifest.py": {
       "fences": 0,
@@ -2322,7 +2328,7 @@
       "sha256": "6bfd57c05a09df3cde679ae53ac6ddd67bfb64cda4246584617d3cc67fb3b81c"
     }
   },
-  "generated_at": "2026-11-12T12:39:34Z",
+  "generated_at": "2026-11-12T16:28:45Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {
