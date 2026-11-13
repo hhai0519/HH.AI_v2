@@ -510,6 +510,10 @@ def execute(ns):
         validate_author_targets(work/'candclone', pj, prompt=prompt, synthetic=synthetic)
         rc,_=cmd(['git','-C',str(work/'candclone'),'apply','--check',str(patch)],work)
         require(rc==0,'PATCH_INVALID')
+        # Same whitespace rules as gate_runner's `git diff --check`, and it also sees new files
+        # (a plain diff --check cannot). Catch it here, not in the batch.
+        rc,_=cmd(['git','-C',str(work/'candclone'),'apply','--check','--whitespace=error',str(patch)],work,env=env)
+        require(rc==0,'PATCH_WHITESPACE')
         rc,_=cmd(['git','-C',str(work/'candclone'),'apply',str(patch)],work)
         require(rc==0,'PATCH_NONZERO')
         # A patch can introduce a link even when the pre-apply target was safe.

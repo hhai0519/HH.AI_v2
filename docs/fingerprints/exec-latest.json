@@ -1,5 +1,5 @@
 {
-  "base_head": "247939b",
+  "base_head": "004bf2f",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -566,16 +566,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 402,
-      "sha256": "a0beb93f18cccbf59a3989f29941cd166efdd5005ae4ea52fc582d1c27d3483c"
+      "lines": 403,
+      "sha256": "d0b1da2d30d0a6411ac9ce454c86df5b7155f1ff45bb45962dcfe660ca2dcb42"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 377,
-      "sha256": "6e1ee25e405f55946f812035d66f403450891c9989597cab96c6704ca763f1a5"
+      "lines": 378,
+      "sha256": "e625f3163de77872f5cd1e5bd4e957d7f433648336c55bcf56742c7d781efdbe"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -617,8 +617,8 @@
         "## G. 舊 repo 未盤點區塊（2026-09-02 新發現）",
         "## 封存區"
       ],
-      "lines": 521,
-      "sha256": "315b6a1fc9b463ea1e49fcc946edf7b896ba9def831fc379f29ce18ca48df22e"
+      "lines": 522,
+      "sha256": "b510c6b0d28134eb4833f07aed5b5a12a13d6cf1917ed89864cc26f8f1392362"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1127,8 +1127,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6463,
-      "sha256": "7b794ce84f7e586a70b37fa06a67fe1b5ebf30bfb6dc7ae2994d8127b7562ab0"
+      "lines": 6464,
+      "sha256": "70582b531750f9640ff34f0342059000604c4c2ae46e4367ecaa5de0fa7e546f"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1305,8 +1305,8 @@
         "# -*- coding: utf-8 -*-",
         "# Canonical tree-bounded runner; a timeout never leaves live pytest descendants by design."
       ],
-      "lines": 591,
-      "sha256": "a9c0561fd61cc63fbca7e7b290a0a491422d854f567badeadd586dee8239f3db"
+      "lines": 595,
+      "sha256": "036427fa83a20cfa100ab9d970db88b0edc0191b4596323212daf1ca9aee19c4"
     },
     "scripts/execution_record.py": {
       "fences": 0,
@@ -1414,7 +1414,7 @@
         "# -*- coding: utf-8 -*-"
       ],
       "lines": 239,
-      "sha256": "f43ee4c426edf9607d51cd4926ccfb77e9a9c3f3a63c0dd73155de7ff6d9d21d"
+      "sha256": "2d436120df2266cd18abe231489cb8117eec6e730fab066444e00cfffd9f4f12"
     },
     "scripts/promotion_template.py": {
       "fences": 0,
@@ -1434,8 +1434,8 @@
         "# description): the Executor stops, forwards the output verbatim and never repairs the situation itself. Whether a",
         "# new TASK_ID is issued or the USER handles the existing target is decided by the Macro Auditor and the USER."
       ],
-      "lines": 811,
-      "sha256": "a9f559642969047da4d8b897980dde17a84cd1962b3e2274c353548a5e9fa064"
+      "lines": 821,
+      "sha256": "3f88697121208eaa61d5c4703fa7a6879a78424b3b1a7682fbefa62f27ba32fa"
     },
     "scripts/prompt_intake.py": {
       "fences": 0,
@@ -1837,8 +1837,8 @@
         "# --- SO E27 reference tests: sixth-stage decision logic must be regression-tested in-repo. ---",
         "# B-115/G3 C3: runner-equivalent author target guards before git apply or generate."
       ],
-      "lines": 783,
-      "sha256": "8ad8139f22fe6f0009843028273f92f6d8d6140eee7ee868a5abfa22f0b57eb4"
+      "lines": 823,
+      "sha256": "34ffe7743a0f7377bb7ec68621fb9e704aa5eb96731bd58dc4b12bd4290704d1"
     },
     "scripts/tests/test_execution_record.py": {
       "fences": 0,
@@ -1963,8 +1963,8 @@
       "headings": [
         "# --- N-2: the uv that runs the rehearsal is exactly the version the Base pyproject pins -------------------------"
       ],
-      "lines": 844,
-      "sha256": "d0398d677fd706ae3e394c1259fda5ebbe4a7ed5b471500b022539a44c604632"
+      "lines": 920,
+      "sha256": "a1c88dba985b0b17bfec8b0c076d27ddbafb4fd421e0ea732c7469a44b5e1ecc"
     },
     "scripts/tests/test_playwright_automation.py": {
       "fences": 0,
@@ -2333,7 +2333,7 @@
       "sha256": "6bfd57c05a09df3cde679ae53ac6ddd67bfb64cda4246584617d3cc67fb3b81c"
     }
   },
-  "generated_at": "2026-11-13T10:28:27Z",
+  "generated_at": "2026-11-13T18:39:46Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

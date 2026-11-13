@@ -102,19 +102,29 @@ def require_classifiable_branch(branch):
              and audit_packet.branch_classified(branch) is True, 'BRANCH_UNCLASSIFIABLE')
 
 
-def validate_auditor_selfcheck(value):
+SELFCHECK_HASH_RE = re.compile(r'(?<![0-9A-Za-z])[0-9a-f]{7,64}(?![0-9A-Za-z])')
+
+
+def validate_auditor_selfcheck(value, base_oid=None):
     _require(isinstance(value, dict) and set(value) == {f'E{i}' for i in range(1, 28)},
              'AUDITOR_SELFCHECK_INCOMPLETE')
     for result in value.values():
         _require(isinstance(result, str) and len(result) <= 400 and
                  re.fullmatch(r'(?:PASS|N/A|APPLICABLE_PRE_EXEC_REVIEW) — [^\r\n]+', result),
                  'AUDITOR_SELFCHECK_INVALID')
+        if base_oid is not None:
+            # A hash that is not this batch's Base is a stale copy from an earlier definition.
+            # Tokens without a digit are ordinary words, never object ids.
+            for token in SELFCHECK_HASH_RE.findall(result):
+                _require(not any(ch.isdigit() for ch in token) or base_oid.startswith(token),
+                         'AUDITOR_SELFCHECK_STALE_HASH')
 
 
 def check_auditor_selfcheck(repo, spec, lines):
     if (batch_runner.base_supports_native_preview(repo, spec['base_oid'])
             or 'scripts/native_preview.py' in spec['authors']):
-        validate_auditor_selfcheck(batch_runner.block_json(lines, 'AUDITOR_SELFCHECK_JSON'))
+        validate_auditor_selfcheck(batch_runner.block_json(lines, 'AUDITOR_SELFCHECK_JSON'),
+                                   spec['base_oid'])
 
 
 def production_runner_commands(task, steps, preview):

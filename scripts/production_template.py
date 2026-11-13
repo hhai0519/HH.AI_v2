@@ -132,7 +132,7 @@ def auto_production(repo, definition, out_dir):
     selfcheck = d.get('auditor_selfcheck')
     declaration = ''
     if selfcheck is not None:
-        pb.validate_auditor_selfcheck(selfcheck)
+        pb.validate_auditor_selfcheck(selfcheck, base)
         declaration = ('\n審計官自檢聲明\n' +
                        pb.block('AUDITOR_SELFCHECK_JSON', json.dumps(selfcheck, ensure_ascii=False, indent=1)))
     # Both the prose and all machine data are built from one definition: never copy facts from old prompts.

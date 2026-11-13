@@ -588,6 +588,46 @@ def test_so_execute_lints_added_python_before_stages(tmp_path, capsys):
     assert not (work / 'draft-result.json').exists()
 
 
+@pytest.mark.parametrize('body', [b'# task\nprevious\nnew line  \n', b'# task\nprevious\nnew line\n\n'])
+def test_so_execute_rejects_whitespace_errors_before_apply(tmp_path, capsys, body):
+    source, patch, plan = _build_simulated_source(tmp_path)
+    (source / 'docs/TASKBOARD.md').write_bytes(body)
+    patch.write_bytes(subprocess.check_output(['git', '-C', str(source), 'diff', '--binary', '--', 'docs/TASKBOARD.md']))
+    subprocess.run(['git', '-C', str(source), 'checkout', '--', 'docs/TASKBOARD.md'], check=True)
+    work = tmp_path / 'work'
+    assert q2.main(['--source', str(source), '--patch', str(patch), '--plan', str(plan), '--workdir', str(work)]) == 1
+    assert 'DRAFT_PRECHECK FAIL PATCH_WHITESPACE' in capsys.readouterr().out
+    assert not (work / 'draft-result.json').exists()
+
+
+def test_so_execute_whitespace_check_sees_new_files(tmp_path, capsys):
+    source, patch, plan = _build_simulated_source(tmp_path)
+    (source / 'docs' / 'extra.md').write_bytes(b'trailing  \n')
+    subprocess.run(['git', '-C', str(source), 'add', '-N', 'docs/extra.md'], check=True)
+    patch.write_bytes(subprocess.check_output(['git', '-C', str(source), 'diff', '--binary']) + patch.read_bytes())
+    subprocess.run(['git', '-C', str(source), 'reset', '-q', '--', 'docs/extra.md'], check=True)
+    (source / 'docs' / 'extra.md').unlink()
+    p = json.loads(plan.read_bytes())
+    p['allowed_paths'] = sorted([*p['allowed_paths'], 'docs/extra.md'])
+    plan.write_bytes(json.dumps(p, sort_keys=True).encode() + b'\n')
+    work = tmp_path / 'work'
+    assert q2.main(['--source', str(source), '--patch', str(patch), '--plan', str(plan), '--workdir', str(work)]) == 1
+    assert 'DRAFT_PRECHECK FAIL PATCH_WHITESPACE' in capsys.readouterr().out
+
+
+def test_so_execute_whitespace_check_ignores_the_users_git_config(tmp_path, capsys, monkeypatch):
+    source, patch, plan = _build_simulated_source(tmp_path)
+    (source / 'docs/TASKBOARD.md').write_bytes(b'# task\nprevious\nnew line  \n')
+    patch.write_bytes(subprocess.check_output(['git', '-C', str(source), 'diff', '--binary', '--', 'docs/TASKBOARD.md']))
+    subprocess.run(['git', '-C', str(source), 'checkout', '--', 'docs/TASKBOARD.md'], check=True)
+    relaxed = tmp_path / 'relaxed-gitconfig'
+    relaxed.write_bytes(b'[core]\n\twhitespace = -trailing-space,-blank-at-eof\n')
+    monkeypatch.setenv('GIT_CONFIG_GLOBAL', str(relaxed))
+    work = tmp_path / 'work'
+    assert q2.main(['--source', str(source), '--patch', str(patch), '--plan', str(plan), '--workdir', str(work)]) == 1
+    assert 'DRAFT_PRECHECK FAIL PATCH_WHITESPACE' in capsys.readouterr().out
+
+
 def test_so_real_repo_source_requires_definition_and_prompt(tmp_path, capsys):
     source, patch, plan = _build_simulated_source(tmp_path)
     (source / 'scripts' / 'batch_sim.py').write_bytes(b'# marks a production source\n')

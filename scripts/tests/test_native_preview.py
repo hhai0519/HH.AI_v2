@@ -842,3 +842,79 @@ def test_simulated_uv_sync_installs_by_copy_not_hardlink(tmp_path, monkeypatch):
     rehearsal.run_cmd = lambda args, cwd, env, timeout, merge=True: (seen.append(env.copy()), (0, b''))[1]
     rehearsal.prepare_uv_simulation()
     assert seen[0]['UV_LINK_MODE'] == 'copy' and seen[0]['UV_CACHE_DIR'] == str(tmp_path / 'approved')
+
+
+def test_macro_declaration_rejects_hash_that_is_not_the_base():
+    import prompt_builder as builder
+
+    base = '004bf2fd1310fd89ae58c8b9434db290e73e6511'
+    declaration = {f'E{i}': 'PASS — verified fixture' for i in range(1, 28)}
+    declaration['E2'] = 'PASS — Base ' + base[:8] + ' matches; full ' + base
+    builder.validate_auditor_selfcheck(declaration, base)
+    declaration['E2'] = 'PASS — Base 051a8e16 matches'
+    with pytest.raises(builder.BuildError, match='^AUDITOR_SELFCHECK_STALE_HASH$'):
+        builder.validate_auditor_selfcheck(declaration, base)
+    builder.validate_auditor_selfcheck(declaration)  # no base: the structural check only
+
+
+def test_macro_declaration_hash_check_ignores_words_dates_and_counts():
+    import prompt_builder as builder
+
+    base = '004bf2fd1310fd89ae58c8b9434db290e73e6511'
+    declaration = {f'E{i}': 'PASS — verified fixture' for i in range(1, 28)}
+    declaration['E3'] = 'PASS — defaced decade 2026-11-13 2603 passed e24-evidence ' + base[:6]
+    builder.validate_auditor_selfcheck(declaration, base)
+    declaration['E3'] = 'PASS — 1234567 is not the base'
+    with pytest.raises(builder.BuildError, match='^AUDITOR_SELFCHECK_STALE_HASH$'):
+        builder.validate_auditor_selfcheck(declaration, base)
+
+
+def test_macro_declaration_hash_check_pins_prefix_and_length():
+    import prompt_builder as builder
+
+    base = '004bf2fd1310fd89ae58c8b9434db290e73e6511'
+    declaration = {f'E{i}': 'PASS — verified fixture' for i in range(1, 28)}
+    for stale in (base[8:16], 'a' * 63 + '1'):  # inside the Base but not a prefix; a 64-digit SHA-256
+        declaration['E2'] = 'PASS — ' + stale
+        with pytest.raises(builder.BuildError, match='^AUDITOR_SELFCHECK_STALE_HASH$'):
+            builder.validate_auditor_selfcheck(declaration, base)
+
+
+def test_prompt_check_applies_hash_rule_with_the_spec_base(monkeypatch):
+    import json
+    import prompt_builder as builder
+
+    base = '004bf2fd1310fd89ae58c8b9434db290e73e6511'
+    declaration = {f'E{i}': 'PASS — verified fixture' for i in range(1, 28)}
+    declaration['E2'] = 'PASS — Base 051a8e16 matches'
+    lines = ['<<<BEGIN AUDITOR_SELFCHECK_JSON>>>', json.dumps(declaration), '<<<END AUDITOR_SELFCHECK_JSON>>>']
+    monkeypatch.setattr(builder.batch_runner, 'base_supports_native_preview', lambda repo, oid: True)
+    with pytest.raises(builder.BuildError, match='^AUDITOR_SELFCHECK_STALE_HASH$'):
+        builder.check_auditor_selfcheck('unused', {'base_oid': base, 'authors': {}}, lines)
+
+
+def test_auto_production_applies_hash_rule_with_the_definition_base(tmp_path, source, monkeypatch):
+    import json
+    import production_template
+    import prompt_builder as builder
+
+    base = git(source, 'rev-parse', 'HEAD')
+    git(source, 'update-ref', 'refs/remotes/origin/main', base)
+    monkeypatch.setattr(builder.batch_runner, 'base_supports_native_preview', lambda repo, oid: False)
+    declaration = {f'E{i}': 'PASS — verified fixture' for i in range(1, 28)}
+    declaration['E2'] = 'PASS — Base 051a8e16 matches'
+    (tmp_path / 'final.py').write_bytes(b'VALUE = 2\n')
+    definition = {
+        'schema_version': 1, 'task_id': 'UNIT-PRODUCTION-261113', 'kind': 'production', 'base_oid': base,
+        'branch': 'batch/b115-production-s2-r1-261014', 'commit_message': 'unit', 'e24': False,
+        'bundle_output': False, 'code_files': {'scripts/tool.py': 'final.py'}, 'new_files': {}, 'text_ops': [],
+        'focused': None, 'auditor_selfcheck': declaration,
+        'production_prose': {'goal': '測試。', 'scope': ['測試。'], 'invariants': ['測試。'], 'stops': ['測試。'],
+                             'e27': 'APPLICABLE_PRE_EXEC_REVIEW', 'finding_disposition': 'EXISTING B-115',
+                             'backlog_disposition': 'UPDATE', 'taskboard_disposition': 'UPDATE',
+                             'audit_log_disposition': 'UPDATE'},
+    }
+    (tmp_path / 'def.json').write_bytes(json.dumps(definition, ensure_ascii=False).encode('utf-8'))
+    with pytest.raises(builder.BuildError, match='^AUDITOR_SELFCHECK_STALE_HASH$'):
+        production_template.auto_production(source, tmp_path / 'def.json', tmp_path / 'out')
+    assert not (tmp_path / 'out').exists()
