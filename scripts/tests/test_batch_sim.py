@@ -689,6 +689,90 @@ def test_source_working_tree_change_is_detected(tmp_path):
         assert _code(sim2.check_source_unchanged) == "SOURCE_MODIFIED"
 
 
+def _source_with_commit(tmp_path):
+    src = tmp_path / "src"
+    src.mkdir()
+    _git_real(str(src), "init", "-q", "-b", "main")
+    _w(src / "f.txt", b"x\n")
+    _git_real(str(src), "add", "f.txt")
+    _git_real(str(src), "commit", "-q", "-m", "base")
+    return src, _git_real(str(src), "rev-parse", "HEAD")
+
+
+def test_source_modification_lists_changed_paths_by_name_only(tmp_path):
+    src, base = _source_with_commit(tmp_path)
+    lines = []
+    sim = bs.Sim(str(src), str(tmp_path / "wd"), "utf8", out=lines.append)
+    sim.make_origin(base)
+    _w(src / "f.txt", b"SECRET-CONTENT\n")
+    _w(src / "untracked.txt", b"u\n")
+    _w(src / ".git" / "info" / "extra", b"e\n")
+    assert _code(sim.check_source_unchanged) == "SOURCE_MODIFIED"
+    assert lines == ["BATCH_SIM SOURCE_CHANGED .git/info",
+                     "BATCH_SIM SOURCE_CHANGED .git/info/extra",
+                     "BATCH_SIM SOURCE_CHANGED f.txt",
+                     "BATCH_SIM SOURCE_CHANGED untracked.txt"]
+    assert not any("SECRET-CONTENT" in line for line in lines)
+
+
+def test_source_modification_lists_changed_paths_in_exact_byte_mode(tmp_path):
+    src, base = _source_with_commit(tmp_path)
+    lines = []
+    sim = bs.Sim(str(src), str(tmp_path / "wd"), "utf8", out=lines.append, verify_source_bytes=True)
+    sim.make_origin(base)
+    _w(src / "f.txt", b"y\n")
+    assert _code(sim.check_source_unchanged) == "SOURCE_MODIFIED"
+    assert lines == ["BATCH_SIM SOURCE_CHANGED f.txt"]
+
+
+def test_source_modification_lists_deleted_path(tmp_path):
+    src, base = _source_with_commit(tmp_path)
+    lines = []
+    sim = bs.Sim(str(src), str(tmp_path / "wd"), "utf8", out=lines.append)
+    sim.make_origin(base)
+    (src / "f.txt").unlink()
+    assert _code(sim.check_source_unchanged) == "SOURCE_MODIFIED"
+    assert lines == ["BATCH_SIM SOURCE_CHANGED f.txt"]
+
+
+def test_repeated_source_check_lists_same_change_once(tmp_path):
+    src, base = _source_with_commit(tmp_path)
+    lines = []
+    sim = bs.Sim(str(src), str(tmp_path / "wd"), "utf8", out=lines.append, verify_source_bytes=True)
+    sim.make_origin(base)
+    _w(src / "f.txt", b"y\n")
+    assert _code(sim.check_source_unchanged) == "SOURCE_MODIFIED"
+    assert _code(sim.check_source_unchanged) == "SOURCE_MODIFIED"
+    assert lines == ["BATCH_SIM SOURCE_CHANGED f.txt"]
+    _w(src / "g.txt", b"g\n")
+    assert _code(sim.check_source_unchanged) == "SOURCE_MODIFIED"
+    assert lines == ["BATCH_SIM SOURCE_CHANGED f.txt", "BATCH_SIM SOURCE_CHANGED f.txt", "BATCH_SIM SOURCE_CHANGED g.txt"]
+
+
+def test_unchanged_source_prints_no_change_lines(tmp_path):
+    src, base = _source_with_commit(tmp_path)
+    lines = []
+    sim = bs.Sim(str(src), str(tmp_path / "wd"), "utf8", out=lines.append)
+    sim.make_origin(base)
+    sim.check_source_unchanged()
+    assert lines == []
+
+
+def test_source_changed_lines_report_refs_cap_and_escape_names():
+    before = ("refs/heads/main " + BASE, ())
+    after = ("refs/heads/main " + HEAD, ())
+    assert bs.source_changed_lines(before, after) == ["BATCH_SIM SOURCE_REFS_CHANGED"]
+    assert bs.SOURCE_CHANGED_LIMIT == 20
+    many = tuple((f"d/f{n:02d}.txt", 33188, 1, 1, 1) for n in range(bs.SOURCE_CHANGED_LIMIT + 5))
+    lines = bs.source_changed_lines((BASE, ()), (BASE, many))
+    assert len(lines) == bs.SOURCE_CHANGED_LIMIT + 1
+    assert lines[0] == "BATCH_SIM SOURCE_CHANGED d/f00.txt"
+    assert lines[-1] == "BATCH_SIM SOURCE_CHANGED_MORE 5"
+    odd = (("a\nBATCH_SIM PASS x\u4e2d.txt", 33188, 1, 1, 1),)
+    assert bs.source_changed_lines((BASE, ()), (BASE, odd)) == [
+        "BATCH_SIM SOURCE_CHANGED a\\nBATCH_SIM PASS x\\u4e2d.txt"]
+
+
 # --- second opinion on S3-R1 ---------------------------------------------------------------------------
 
 def test_source_snapshot_starts_no_command_configured_in_the_source(tmp_path):

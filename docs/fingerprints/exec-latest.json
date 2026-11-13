@@ -1,5 +1,5 @@
 {
-  "base_head": "051a8e1",
+  "base_head": "247939b",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -566,16 +566,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 401,
-      "sha256": "3e3505128947197361b0c1a1d87e07c0030de395d9cfd3ef44172f98537df0ad"
+      "lines": 402,
+      "sha256": "a0beb93f18cccbf59a3989f29941cd166efdd5005ae4ea52fc582d1c27d3483c"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 376,
-      "sha256": "4e12df4119f13568caa608aa24e3dda1375faa14f598c02bc59fdc26ca8e2a32"
+      "lines": 377,
+      "sha256": "6e1ee25e405f55946f812035d66f403450891c9989597cab96c6704ca763f1a5"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -617,8 +617,8 @@
         "## G. 舊 repo 未盤點區塊（2026-09-02 新發現）",
         "## 封存區"
       ],
-      "lines": 519,
-      "sha256": "eaf56609c62773af7417be4ce8426bb32988c0ad4a683f57d083f2204d6a5ca1"
+      "lines": 521,
+      "sha256": "315b6a1fc9b463ea1e49fcc946edf7b896ba9def831fc379f29ce18ca48df22e"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1127,8 +1127,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6462,
-      "sha256": "63cde27dabb670c6dfdc141a83bf6a2105ef4f4faa7d71a6f353249c5af40c4d"
+      "lines": 6463,
+      "sha256": "7b794ce84f7e586a70b37fa06a67fe1b5ebf30bfb6dc7ae2994d8127b7562ab0"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1189,8 +1189,8 @@
         "# Production negatives; the stop step and code depend on the batch's own step list (see production_negative).",
         "# Git for Windows installer defaults at system scope on the USER machine (B-123a; see the TASKBOARD B-123 row)."
       ],
-      "lines": 860,
-      "sha256": "6f6625a0161a496e0408f9768260bb33c70a516d69d2624b613e72768bdfb784"
+      "lines": 894,
+      "sha256": "cc725f97e1b38ad8f02dfe4eb830d6578898a266c49905a2dd9132db352a8495"
     },
     "scripts/bounded_process.py": {
       "fences": 0,
@@ -1640,8 +1640,8 @@
         "# --- B-123a: HOME/XDG isolation and Git profiles (three kinds of Git subprocess) ---------------------------",
         "# --- second-opinion B01 (B123A R1): winemu must check the repository the tests actually run in --------------"
       ],
-      "lines": 1122,
-      "sha256": "238001dfd07179135eb2f8078df26ba26f268e3af03f80c2c2d4677f517214b5"
+      "lines": 1206,
+      "sha256": "9755fa452e963b5b7a77e05c04b6b7b741f207178d2271b73f1c4d89ed60d52d"
     },
     "scripts/tests/test_bounded_process.py": {
       "fences": 0,
@@ -2333,7 +2333,7 @@
       "sha256": "6bfd57c05a09df3cde679ae53ac6ddd67bfb64cda4246584617d3cc67fb3b81c"
     }
   },
-  "generated_at": "2026-11-13T03:56:05Z",
+  "generated_at": "2026-11-13T10:28:27Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

@@ -86,7 +86,10 @@ symlink privilege on Windows, no FIFO outside POSIX). Native Windows evidence is
 
 Output: "BATCH_SIM STEP <name> rc=<n>" per step, the runner's S1 line when one appears (fixed vocabulary), then
 exactly one "BATCH_SIM PASS <mode>" or "BATCH_SIM FAIL <CODE>"; exit status 0 only on PASS. File contents and
-other runner output are never printed.
+other runner output are never printed. Before "BATCH_SIM FAIL SOURCE_MODIFIED" the simulator lists what changed in
+the source: "BATCH_SIM SOURCE_REFS_CHANGED" when a ref differs, then "BATCH_SIM SOURCE_CHANGED <path>" per changed
+path (names only, ASCII-escaped, at most SOURCE_CHANGED_LIMIT, sorted) and "BATCH_SIM SOURCE_CHANGED_MORE <n>" for the rest.
+A repeated check that finds the same changed snapshot (the --verify-source-bytes final check) does not list it again.
 """
 
 import argparse
@@ -389,6 +392,31 @@ def _source_paths(root):
         dirs.sort()
 
 
+SOURCE_CHANGED_LIMIT = 20
+
+
+def _snapshot_parts(snapshot):
+    """Flatten a source snapshot (metadata, or metadata plus exact bytes) into (refs, entries)."""
+    refs, entries = snapshot
+    if isinstance(refs, tuple):
+        inner_refs, inner_entries = _snapshot_parts(refs)
+        return inner_refs, inner_entries + tuple(entries)
+    return refs, tuple(entries)
+
+
+def source_changed_lines(before, after):
+    """Fixed-vocabulary lines naming what differs between two source snapshots: paths only, never contents."""
+    refs_before, entries_before = _snapshot_parts(before)
+    refs_after, entries_after = _snapshot_parts(after)
+    paths = sorted({entry[0] for entry in set(entries_before) ^ set(entries_after)})
+    lines = ['BATCH_SIM SOURCE_REFS_CHANGED'] if refs_before != refs_after else []
+    lines += ['BATCH_SIM SOURCE_CHANGED ' + path.encode('unicode_escape').decode('ascii')
+              for path in paths[:SOURCE_CHANGED_LIMIT]]
+    if len(paths) > SOURCE_CHANGED_LIMIT:
+        lines.append('BATCH_SIM SOURCE_CHANGED_MORE ' + str(len(paths) - SOURCE_CHANGED_LIMIT))
+    return lines
+
+
 class Sim:
     def __init__(self, source, workdir, locale='utf8', run=default_run, out=print, git_profile='isolated',
                  verify_source_bytes=False):
@@ -566,7 +594,13 @@ class Sim:
         self.env['HHAI_SIM_UV_CACHE_DIR'] = env.get('UV_CACHE_DIR', '')
 
     def check_source_unchanged(self):
-        _require(self.source_refs() == self.source_before, 'SOURCE_MODIFIED')
+        after = self.source_refs()
+        if after != self.source_before:
+            if after != getattr(self, 'source_reported', None):
+                for line in source_changed_lines(self.source_before, after):
+                    self.out(line)
+                self.source_reported = after
+            raise SimError('SOURCE_MODIFIED')
 
     def install_hooks(self):
         rc, _ = self.py('scripts/install_git_hooks.py', '--install')
