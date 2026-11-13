@@ -305,6 +305,29 @@ def test_startup_lines_bind_exact_bytes_and_paths(tmp_path, repo):
     assert lines[-1] == "Get-FileHash -Algorithm SHA256 -LiteralPath '" + src + "'"
 
 
+# G5 (B-117): the startup text pins what the Executor does when prompt_intake fails, including the read-only
+# S1 TARGET_EXISTS description; the wording is fixed here so any change to the rule is a reviewed change.
+STARTUP_FAILURE_EXPECTED = (
+    "命令失敗（任何非 0 退出碼，含 S1 TARGET_EXISTS）則停止並原樣回報輸出，不得重試或修改命令，"
+    "不得讀取 .git 內任何檔案，不得刪除、移動、改名或重建任何檔案，也不得執行任何其他命令；"
+    "回覆最後一行逐字為「以上是 Antigravity IDE Agent 的回覆。」")
+
+
+def test_startup_intake_failure_rule_is_fixed_and_forbids_repair(tmp_path, repo):
+    root, base = repo
+    out = tmp_path / "out"
+    pb.main(["build", "--repo", root, "--definition", _definition(tmp_path, base), "--out-dir", str(out)])
+    lines = pb.startup_lines(str(out / (TASK + "-prompt.txt")), "C:\\Users\\U\\Downloads", "C:\\W")
+    assert pb.STARTUP_INTAKE_FAILURE_RULE == STARTUP_FAILURE_EXPECTED
+    assert lines[4] == ("命令成功後，以 IDE 原生檢視工具從第一行讀到最後一行 .git/" + TASK
+                        + "-prompt.txt，並完全依其指示執行；" + STARTUP_FAILURE_EXPECTED)
+    # Exactly one failure rule, and the success instruction still comes first on the same line.
+    assert lines[4].count("命令失敗") == 1 and lines[4].index("命令成功後") == 0
+    for phrase in ("S1 TARGET_EXISTS", "不得重試或修改命令", "不得刪除、移動、改名或重建任何檔案",
+                   "也不得執行任何其他命令", "以上是 Antigravity IDE Agent 的回覆。"):
+        assert phrase in lines[4]
+
+
 @pytest.mark.parametrize("download,workspace", [
     ("C:\\Users\\U V\\Downloads", "C:\\W"),          # space
     ("C:\\Users\\$(calc)\\Downloads", "C:\\W"),      # subexpression

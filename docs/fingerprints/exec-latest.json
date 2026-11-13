@@ -1,5 +1,5 @@
 {
-  "base_head": "77d1eb0",
+  "base_head": "051a8e1",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -566,16 +566,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 400,
-      "sha256": "36b32a40929f5e12582257dacdfa55cd439aefe6bf65c4f9b8488551bbe90a9a"
+      "lines": 401,
+      "sha256": "3e3505128947197361b0c1a1d87e07c0030de395d9cfd3ef44172f98537df0ad"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 375,
-      "sha256": "28facf06d5de94e167905046d9172e5123959d818c6ceffa13434c9c56cdbfff"
+      "lines": 376,
+      "sha256": "4e12df4119f13568caa608aa24e3dda1375faa14f598c02bc59fdc26ca8e2a32"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -617,8 +617,8 @@
         "## G. 舊 repo 未盤點區塊（2026-09-02 新發現）",
         "## 封存區"
       ],
-      "lines": 517,
-      "sha256": "303b7fdd038278db4e6b3b71044342e8701cd80f60832cfbe178b71d906c7401"
+      "lines": 519,
+      "sha256": "eaf56609c62773af7417be4ce8426bb32988c0ad4a683f57d083f2204d6a5ca1"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1127,8 +1127,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6461,
-      "sha256": "e6efa79adaa3193da6972fabf4adbef5468f07f83b8d98789b246454029bf56a"
+      "lines": 6462,
+      "sha256": "63cde27dabb670c6dfdc141a83bf6a2105ef4f4faa7d71a6f353249c5af40c4d"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1429,10 +1429,13 @@
       "headings": [
         "# -*- coding: utf-8 -*-",
         "# State files take only declared text_ops (STATE_FILE_REQUIRES_TEXT_OPS); the ops in BATCH_SPEC_JSON are then the",
-        "# change ledger that scripts/candidate_check.py replays from Base against the candidate commit."
+        "# change ledger that scripts/candidate_check.py replays from Base against the candidate commit.",
+        "# Fixed startup rule for a failed intake (any non-zero exit, including S1 TARGET_EXISTS with its read-only",
+        "# description): the Executor stops, forwards the output verbatim and never repairs the situation itself. Whether a",
+        "# new TASK_ID is issued or the USER handles the existing target is decided by the Macro Auditor and the USER."
       ],
-      "lines": 801,
-      "sha256": "6f16ef5f3b731308f2368d0f7382c74ee635bea7dd987d39068eb703497f03d6"
+      "lines": 811,
+      "sha256": "a9f559642969047da4d8b897980dde17a84cd1962b3e2274c353548a5e9fa064"
     },
     "scripts/prompt_intake.py": {
       "fences": 0,
@@ -1977,6 +1980,8 @@
         "# -*- coding: utf-8 -*-",
         "# --- build -------------------------------------------------------------------------------------",
         "# --- outputs, start-up text and check -----------------------------------------------------------",
+        "# G5 (B-117): the startup text pins what the Executor does when prompt_intake fails, including the read-only",
+        "# S1 TARGET_EXISTS description; the wording is fixed here so any change to the rule is a reviewed change.",
         "# --- second-opinion fixes (R1–R4) ------------------------------------------------------------------",
         "# --- must-read closure (G4 slice 2) -------------------------------------------------------------",
         "# --- B-116 F1: reject branch names the audit packet cannot classify -----------------------------",
@@ -1987,8 +1992,8 @@
         "# The canonical builder/checker recognises READONLY without granting canonical production-runner rights.",
         "# B115/G3 CI-PENDING-REPLY: positive terminal handoff; no checker command for Executor."
       ],
-      "lines": 1402,
-      "sha256": "b742d167b2b4177a4b57b9ecbc842307c99aee9e71a4d68ec02493272139abcc"
+      "lines": 1425,
+      "sha256": "50062196f21cc828d14db4261c62ee6d1d38945bb1a5f6ed3d44213695da8a8e"
     },
     "scripts/tests/test_prompt_intake.py": {
       "fences": 0,
@@ -2328,7 +2333,7 @@
       "sha256": "6bfd57c05a09df3cde679ae53ac6ddd67bfb64cda4246584617d3cc67fb3b81c"
     }
   },
-  "generated_at": "2026-11-12T16:28:45Z",
+  "generated_at": "2026-11-13T03:56:05Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

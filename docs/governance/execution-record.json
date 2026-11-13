@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "B117-G5-INTAKE-EXISTING-R2-261112",
-  "base_oid": "77d1eb08edf9430edb726ab9a7838614da2a9fe4",
+  "task_id": "B117-G5-STARTUP-INTAKE-FAIL-R1-261113",
+  "base_oid": "051a8e16e905ac8080b0c2faed35fddca3b9ae68",
   "plan": {
     "allowed_paths": [
       "docs/AUDIT-LOG.md",
@@ -11,8 +11,8 @@
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
       "docs/refactor-backlog.md",
-      "scripts/prompt_intake.py",
-      "scripts/tests/test_prompt_intake.py"
+      "scripts/prompt_builder.py",
+      "scripts/tests/test_prompt_builder.py"
     ],
     "required_paths": [
       "docs/AUDIT-LOG.md",
@@ -21,8 +21,8 @@
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
       "docs/refactor-backlog.md",
-      "scripts/prompt_intake.py",
-      "scripts/tests/test_prompt_intake.py"
+      "scripts/prompt_builder.py",
+      "scripts/tests/test_prompt_builder.py"
     ],
     "max_plan_revisions": 3,
     "revision_count": 0,
@@ -36,8 +36,8 @@
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
       "docs/refactor-backlog.md",
-      "scripts/prompt_intake.py",
-      "scripts/tests/test_prompt_intake.py"
+      "scripts/prompt_builder.py",
+      "scripts/tests/test_prompt_builder.py"
     ]
   },
   "evidence": [

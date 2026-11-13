@@ -605,6 +605,16 @@ def ps_literal(text):
     return "'" + text.replace("'", "''") + "'"
 
 
+# Fixed startup rule for a failed intake (any non-zero exit, including S1 TARGET_EXISTS with its read-only
+# description): the Executor stops, forwards the output verbatim and never repairs the situation itself. Whether a
+# new TASK_ID is issued or the USER handles the existing target is decided by the Macro Auditor and the USER.
+STARTUP_INTAKE_FAILURE_RULE = (
+    '命令失敗（任何非 0 退出碼，含 S1 TARGET_EXISTS）則停止並原樣回報輸出，不得重試或修改命令，'
+    '不得讀取 .git 內任何檔案，不得刪除、移動、改名或重建任何檔案，也不得執行任何其他命令；'
+    '回覆最後一行逐字為「以上是 Antigravity IDE Agent 的回覆。」'
+)
+
+
 def startup_lines(prompt_path, download_dir, workspace):
     task, data = prompt_task(prompt_path)
     try:
@@ -622,7 +632,7 @@ def startup_lines(prompt_path, download_dir, workspace):
         '請執行 HH.AI_v2 批次 ' + task + '。作用中工作區須為 ' + workspace + '；在該 repo 根目錄只執行下列一行命令一次，一字不改：',
         'uv run --offline --no-sync --no-python-downloads --python .venv\\Scripts\\python.exe python scripts/prompt_intake.py --task-id ' + task + ' --source ' + source + ' --sha256 ' + sha,
         '命令成功後，以 IDE 原生檢視工具從第一行讀到最後一行 .git/' + task + '-prompt.txt，並完全依其指示執行；'
-        '命令失敗則停止並原樣回報輸出，不得重試或修改命令。',
+        + STARTUP_INTAKE_FAILURE_RULE,
         '---HASHCMD---',
         'Get-FileHash -Algorithm SHA256 -LiteralPath ' + ps_literal(source),
     ]
