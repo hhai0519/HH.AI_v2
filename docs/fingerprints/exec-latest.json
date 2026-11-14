@@ -1,5 +1,5 @@
 {
-  "base_head": "87734ab",
+  "base_head": "265450c",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -566,16 +566,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 404,
-      "sha256": "f697f57d2acf781fe8ee6ab586412309d6cc611e500262a49c9516c94bbe30da"
+      "lines": 405,
+      "sha256": "6e30889a3fb079272447cd1b993f47ab70f1a40ed22b4be817b480815f0d5dd0"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 379,
-      "sha256": "c156ac2c341b7e312f349f52f36621c5f470827fd416eb50726c74614c861808"
+      "lines": 380,
+      "sha256": "3281488375705362a2299c6b44c929a599ed88a8581df8c446f23126d578571a"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -617,8 +617,8 @@
         "## G. 舊 repo 未盤點區塊（2026-09-02 新發現）",
         "## 封存區"
       ],
-      "lines": 523,
-      "sha256": "16eb9da33c2eb04181814a2fa4d690340bc18e1c0b70ff4ad3540999111fdaac"
+      "lines": 524,
+      "sha256": "d9dfc2a24e57602f7c92afb033d20790a5048f51a322f4c2bf7851b384ec371f"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1127,8 +1127,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6465,
-      "sha256": "6ab6e96c758a00083fb663ab3a6409308f8b7031efe14cc5a42cd710c30b81cc"
+      "lines": 6466,
+      "sha256": "567362ab40a2cb1dd0fbbbf78913b47138d374872d6bd947ac8d168046f7cbe0"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1293,11 +1293,13 @@
       "headings": [
         "# -*- coding: utf-8 -*-",
         "# -- block 1 and its token allowlist --------------------------------------------------------------------",
+        "# -- pre-execution sequence of a native_preview production ------------------------------------------------",
+        "# Standing USER constraint: Antigravity IDE is opened only through this executable.",
         "# -- assembly (shared by build and verify-reply) ---------------------------------------------------------",
         "# -- verify-reply ---------------------------------------------------------------------------------------"
       ],
-      "lines": 356,
-      "sha256": "74b2c92b5ea21f451cc18e961ba453517e17087604fe477ece9285474f062704"
+      "lines": 462,
+      "sha256": "dd3fedc2c6f4a6d372b615c773320db17ce2f9aaed28fc30403802580faaa965"
     },
     "scripts/draft_precheck.py": {
       "fences": 0,
@@ -1824,10 +1826,12 @@
         "# ---- build -------------------------------------------------------------------------------------------------",
         "# ---- block 1 token allowlist (Q1 $LASTEXITCODE: block 1 runs no native command) ----------------------------",
         "# ---- verify-reply ------------------------------------------------------------------------------------------",
-        "# ---- block 1 in a real PowerShell (Windows PowerShell 5.1 on Windows) ----------------------------------------"
+        "# ---- block 1 in a real PowerShell (Windows PowerShell 5.1 on Windows) ----------------------------------------",
+        "# ---- pre-execution sequence of a native_preview production (PRESTART.txt) ------------------------------------",
+        "# The four blocks exactly as delivered and run before this tool generated them; only Base and workspace vary."
       ],
-      "lines": 365,
-      "sha256": "9c93a552159ca2ae5a14cefb154a31894cd6912ea9affe0bd038b7980e2574ef"
+      "lines": 624,
+      "sha256": "7f2e16bb20af111d9f3c3672faaa0c7f32a8a5106a72e2352a0acae1e007bd3d"
     },
     "scripts/tests/test_draft_precheck.py": {
       "fences": 0,
@@ -2334,7 +2338,7 @@
       "sha256": "6bfd57c05a09df3cde679ae53ac6ddd67bfb64cda4246584617d3cc67fb3b81c"
     }
   },
-  "generated_at": "2026-11-14T06:35:50Z",
+  "generated_at": "2026-11-14T11:42:57Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

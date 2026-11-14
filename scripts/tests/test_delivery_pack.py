@@ -363,3 +363,262 @@ def test_block1_stops_on_an_unreadable_zip_without_a_verdict_or_a_file(tmp_path,
     code, lines = _run_block(exe, dp.block1_text(str(dl), TASK + '-prompt.txt', zip_name, prompt_sha))
     assert code != 0 and not any(l.startswith(('PROMPT_', 'MISMATCH')) for l in lines), (code, lines)
     assert sorted(p.name for p in dl.iterdir()) == [zip_name]
+
+
+# ---- pre-execution sequence of a native_preview production (PRESTART.txt) ------------------------------------
+
+REAL_WS = 'C:\\Users\\HH.AI_260806\\Desktop\\HH.AI_v2_W2'
+REAL_BASE = '87734aba2619244032c65199686e9dbfe5fe2004'
+# The four blocks exactly as delivered and run before this tool generated them; only Base and workspace vary.
+PROVEN = {
+    'A': "& { $ErrorActionPreference='Stop'; if (-not ($PSVersionTable.PSVersion.Major -eq 5 -and $PSVersionTable.PSVersion.Minor -eq 1)) { throw 'POWERSHELL_51_REQUIRED' }; $p=@(Get-Process | Where-Object { $_.ProcessName -like '*Antigravity*' }); if ($p.Count -ne 0) { $p | ForEach-Object { 'STILL_RUNNING ' + $_.ProcessName + ' ' + $_.Id }; throw 'ANTIGRAVITY_NOT_CLOSED' }; 'ANTIGRAVITY_CLOSED' }",
+    'B': "& { $ErrorActionPreference='Stop'; if (-not ($PSVersionTable.PSVersion.Major -eq 5 -and $PSVersionTable.PSVersion.Minor -eq 1)) { throw 'POWERSHELL_51_REQUIRED' }; $ws='C:\\Users\\HH.AI_260806\\Desktop\\HH.AI_v2_W2'; $base='87734aba2619244032c65199686e9dbfe5fe2004'; $h=@(git -C $ws --no-optional-locks rev-parse HEAD); if ($LASTEXITCODE -ne 0) { throw 'W2_REVPARSE_FAILED' }; if ($h[0].Trim() -ne $base) { 'W2_HEAD=' + $h[0]; throw 'W2_HEAD_MISMATCH' }; $s=@(git -C $ws --no-optional-locks status --porcelain --untracked-files=all); if ($LASTEXITCODE -ne 0) { throw 'W2_STATUS_FAILED' }; if ($s.Count -ne 0) { $s | Select-Object -First 20; throw 'W2_NOT_CLEAN' }; 'W2_READY_AT_BASE' }",
+    'B-R': "& { $ErrorActionPreference='Stop'; if (-not ($PSVersionTable.PSVersion.Major -eq 5 -and $PSVersionTable.PSVersion.Minor -eq 1)) { throw 'POWERSHELL_51_REQUIRED' }; $ws='C:\\Users\\HH.AI_260806\\Desktop\\HH.AI_v2_W2'; $base='87734aba2619244032c65199686e9dbfe5fe2004'; git -C $ws --no-optional-locks cat-file -e ($base + '^{commit}'); if ($LASTEXITCODE -ne 0) { throw 'BASE_NOT_IN_W2' }; $s=@(git -C $ws --no-optional-locks status --porcelain --untracked-files=all); if ($LASTEXITCODE -ne 0) { throw 'W2_STATUS_FAILED' }; if ($s.Count -ne 0) { $s | Select-Object -First 20; throw 'W2_NOT_CLEAN' }; git -C $ws switch --detach $base; if ($LASTEXITCODE -ne 0) { throw 'W2_SWITCH_FAILED' }; 'W2_SWITCHED_TO_BASE_RERUN_B' }",
+    'C': "& { $ErrorActionPreference='Stop'; if (-not ($PSVersionTable.PSVersion.Major -eq 5 -and $PSVersionTable.PSVersion.Minor -eq 1)) { throw 'POWERSHELL_51_REQUIRED' }; $ws='C:\\Users\\HH.AI_260806\\Desktop\\HH.AI_v2_W2'; $py=Join-Path $ws '.venv\\Scripts\\python.exe'; if (-not (Test-Path -LiteralPath $py -PathType Leaf)) { throw 'W2_PYTHON_MISSING' }; $code='import os,sys,time;from pathlib import Path;sys.path.insert(0,os.path.join(sys.argv[1],''scripts''));import batch_sim as b;r=Path(sys.argv[1]);snap=lambda:tuple((p.relative_to(r).as_posix(),)+(lambda s:(s.st_mode,s.st_size,s.st_mtime_ns,s.st_ctime_ns))(os.lstat(p)) for p in b._source_paths(r));a=snap();time.sleep(int(sys.argv[2]));c=snap();print(''GIT_IDLE_OK'' if a==c else ''GIT_IDLE_CHANGED'');sys.exit(0 if a==c else 3)'; & $py -B -c $code $ws 210; if ($LASTEXITCODE -ne 0) { throw 'GIT_IDLE_CHECK_FAILED' } }",
+}
+OTHER_BASE = '0123456789abcdef0123456789abcdef01234567'
+
+
+def _native(monkeypatch, native=True, kind='production', base=OTHER_BASE):
+    real = dp.prompt_builder.batch_runner.load_spec
+
+    def fake(lines, task):
+        spec = dict(real(lines, task))
+        spec.update({'kind': kind, 'native_preview': native, 'base_oid': base})
+        return spec
+    monkeypatch.setattr(dp.prompt_builder.batch_runner, 'load_spec', fake)
+
+
+@pytest.fixture
+def native_pack(tmp_path, prompt, monkeypatch):
+    out = tmp_path / 'native'
+    _native(monkeypatch)
+    _build(prompt, out)
+    return out
+
+
+def _pre(pack):
+    return (pack / 'PRESTART.txt').read_bytes().decode('utf-8')[:-1].split('\n')
+
+
+def test_prestart_blocks_equal_the_proven_text_byte_for_byte():
+    assert dp.prestart_blocks(REAL_BASE, REAL_WS) == PROVEN
+
+
+def test_prestart_base_and_workspace_are_the_only_variable_parts():
+    other = dp.prestart_blocks(OTHER_BASE, 'C:\\Users\\U\\Desktop\\W')
+    for name, text in PROVEN.items():
+        expect = text.replace(REAL_BASE, OTHER_BASE).replace(REAL_WS, 'C:\\Users\\U\\Desktop\\W')
+        assert other[name] == expect, name
+    assert REAL_BASE not in dp.prestart_blocks(OTHER_BASE, REAL_WS)['A'] + dp.prestart_blocks(OTHER_BASE, REAL_WS)['C']
+    assert dp.prestart_blocks(OTHER_BASE, REAL_WS)['B'].count(OTHER_BASE) == 1
+    assert dp.prestart_blocks(OTHER_BASE, REAL_WS)['B-R'].count(OTHER_BASE) == 1
+
+
+@pytest.mark.parametrize('base', ['', 'abc', REAL_BASE.upper(), REAL_BASE[:39], REAL_BASE + '0', REAL_BASE[:39] + "'",
+                                  REAL_BASE[:39] + 'g', None])
+def test_prestart_rejects_a_base_that_is_not_a_full_lowercase_oid(base):
+    assert _code(dp.prestart_blocks, base, REAL_WS) == 'BASE_INVALID'
+
+
+@pytest.mark.parametrize('ws', ['Users\\U', "C:\\Users\\U'x", 'C:\\Users\\U V', 'C:/Users/U', 'C:\\Users\\$x'])
+def test_prestart_rejects_a_workspace_that_is_not_one_literal_token(ws):
+    assert _code(dp.prestart_blocks, REAL_BASE, ws) == 'WORKSPACE_INVALID'
+
+
+def test_prestart_lines_hold_the_whole_sequence_in_order():
+    text = '\n'.join(dp.prestart_lines(REAL_BASE, REAL_WS))
+    order = [PROVEN['A'], PROVEN['B'], 'W2_HEAD_MISMATCH', PROVEN['B-R'], 'Antigravity IDE.exe', 'git.autorefresh',
+             'git.autofetch', PROVEN['C'], '不要動分支選擇器', 'STEP_PASS']
+    at = [text.index(x) for x in order]
+    assert at == sorted(at) and len(set(at)) == len(at)
+    assert text.count('```powershell') == 4 and text.count('\n```\n') == 4
+    assert 'C:\\Users\\HH.AI_260806\\AppData\\Local\\Programs\\Antigravity IDE\\Antigravity IDE.exe' in text
+    assert '本批 Base：`' + REAL_BASE + '`' in text
+
+
+def test_a_production_without_native_preview_gets_no_prestart_file(tmp_path, prompt, monkeypatch):
+    out = tmp_path / 'plain-native-false'
+    _native(monkeypatch, native=False)
+    _build(prompt, out)
+    assert sorted(p.name for p in out.iterdir()) == sorted([TASK + '-prompt.txt', 'DELIVERY.txt',
+                                                             next(out.glob('*.zip')).name])
+
+
+@pytest.mark.parametrize('spec,expect', [
+    ({'kind': 'production', 'native_preview': True, 'base_oid': OTHER_BASE}, (True, OTHER_BASE)),
+    ({'kind': 'production', 'native_preview': False, 'base_oid': OTHER_BASE}, (False, OTHER_BASE)),
+    ({'kind': 'production', 'base_oid': OTHER_BASE}, (False, OTHER_BASE)),
+    ({'kind': 'production', 'native_preview': 1, 'base_oid': OTHER_BASE}, (False, OTHER_BASE)),
+    ({'kind': 'promotion', 'native_preview': True, 'base_oid': OTHER_BASE}, (False, OTHER_BASE)),
+    ({'kind': 'readonly', 'native_preview': True}, (False, None)),
+])
+def test_the_sequence_applies_only_to_a_production_declaring_native_preview_true(prompt, monkeypatch, spec, expect):
+    monkeypatch.setattr(dp.prompt_builder.batch_runner, 'load_spec', lambda lines, task: dict(spec))
+    assert dp.prestart_spec(str(prompt)) == expect
+
+
+def test_an_unreadable_spec_fails_the_build_closed(tmp_path, prompt, monkeypatch):
+    def boom(lines, task):
+        raise dp.prompt_builder.batch_runner.Halt('SPEC_X')
+    monkeypatch.setattr(dp.prompt_builder.batch_runner, 'load_spec', boom)
+    assert _code(dp.prestart_spec, str(prompt)) == 'PRESTART_SPEC_SPEC_X'
+
+
+def test_a_native_preview_production_gets_a_fourth_file_bound_to_the_prompt_base_and_workspace(native_pack):
+    names = sorted(p.name for p in native_pack.iterdir())
+    assert names == sorted([TASK + '-prompt.txt', 'DELIVERY.txt', 'PRESTART.txt', next(native_pack.glob('*.zip')).name])
+    assert _pre(native_pack) == dp.prestart_lines(OTHER_BASE, WS)
+    assert dp.rebuild_pack(str(native_pack))                              # the extra file is part of the rebuild
+
+
+def test_build_prints_the_prestart_hash_only_when_the_file_exists(tmp_path, prompt, monkeypatch, capsys):
+    _native(monkeypatch)
+    assert dp.main(['build', '--prompt', str(prompt), '--role-code', ROLE, '--download-dir', DL, '--workspace', WS,
+                    '--out-dir', str(tmp_path / 'cli1')]) == 0
+    out = capsys.readouterr().out
+    pre = (tmp_path / 'cli1' / 'PRESTART.txt').read_bytes()
+    assert 'PACK_PRESTART=PRESTART.txt sha256=' + hashlib.sha256(pre).hexdigest().upper() in out
+    _native(monkeypatch, native=False)
+    assert dp.main(['build', '--prompt', str(prompt), '--role-code', ROLE, '--download-dir', DL, '--workspace', WS,
+                    '--out-dir', str(tmp_path / 'cli2')]) == 0
+    assert 'PACK_PRESTART' not in capsys.readouterr().out
+
+
+def _native_reply(pack, mutate=None, **kw):
+    b1, b2, b3 = _blocks(pack)
+    pre = _pre(pack)
+    times = ['  - Executor 30 至 40 分鐘。依據：同類批實測。', '  - 審查官 25 至 45 分鐘。依據：候選 diff 與 raw log 審查。']
+    parts = {'b1': ['**區塊一**', '```powershell'] + b1 + ['```'], 'b2': ['**區塊二**', '```text'] + b2 + ['```'],
+             'pre': list(pre), 'b3': ['**區塊三**', '```text'] + b3 + ['```'], 'time': ['- **預估時間**：'] + times}
+    order = kw.get('order', ['b1', 'b2', 'pre', 'b3', 'time'])
+    if mutate:
+        mutate(parts)
+    lines = ['## 交付']
+    for k in order:
+        lines += parts[k]
+    return '\n'.join(lines + [kw.get('after', '')]) + '\n'
+
+
+def test_verify_reply_accepts_the_prestart_between_block1_and_block3_with_block2_on_either_side(native_pack):
+    assert dp.verify_reply(str(native_pack), _native_reply(native_pack)) is True
+    assert dp.verify_reply(str(native_pack), _native_reply(native_pack, order=['b1', 'pre', 'b2', 'b3', 'time'])) is True
+
+
+def _drop(parts):
+    del parts['pre'][3:6]
+
+
+def _alter_block(parts):
+    i = next(i for i, l in enumerate(parts['pre']) if "W2_READY_AT_BASE'" in l)
+    parts['pre'][i] = parts['pre'][i].replace("W2_READY_AT_BASE'", "W2_READY_AT_BASE.'")
+
+
+def _alter_prose(parts):
+    parts['pre'] = [l.replace('不要動分支選擇器', '可以動分支選擇器') for l in parts['pre']]
+
+
+def _split(parts):
+    parts['pre'] = parts['pre'][:10] + ['補充一行'] + parts['pre'][10:]
+
+
+def test_verify_reply_fails_closed_on_a_missing_altered_split_duplicated_or_misplaced_prestart(native_pack):
+    run = lambda text: _code(dp.verify_reply, str(native_pack), text)
+    assert run(_native_reply(native_pack, lambda p: p.update(pre=[]))) == 'REPLY_PRESTART_MISSING'
+    assert run(_native_reply(native_pack, _drop)) == 'REPLY_PRESTART_MISSING'
+    assert run(_native_reply(native_pack, _alter_block)) == 'REPLY_PRESTART_MISSING'
+    assert run(_native_reply(native_pack, _alter_prose)) == 'REPLY_PRESTART_MISSING'
+    assert run(_native_reply(native_pack, _split)) == 'REPLY_PRESTART_MISSING'
+    assert run(_native_reply(native_pack, after='\n'.join(_pre(native_pack)))) == 'REPLY_PRESTART_DUPLICATED'
+    assert run(_native_reply(native_pack, order=['pre', 'b1', 'b2', 'b3', 'time'])) == 'REPLY_PRESTART_ORDER'
+    assert run(_native_reply(native_pack, order=['b1', 'b2', 'b3', 'pre', 'time'])) == 'REPLY_PRESTART_ORDER'
+
+
+def test_verify_reply_rejects_a_copy_of_a_prestart_block_in_another_fence(native_pack):
+    block_b = next(l for l in _pre(native_pack) if "W2_READY_AT_BASE'" in l)
+    text = _native_reply(native_pack, after='```text\n' + block_b + '\n```')
+    assert _code(dp.verify_reply, str(native_pack), text) == 'REPLY_BLOCK_DUPLICATED'
+    text = _native_reply(native_pack, after='```text\n' + block_b + '\nRemove-Item x\n```')
+    assert _code(dp.verify_reply, str(native_pack), text) == 'REPLY_BLOCK_DUPLICATED'
+
+
+@pytest.mark.parametrize('marker', ["'ANTIGRAVITY_CLOSED'", "'W2_READY_AT_BASE'", "'W2_SWITCHED_TO_BASE_RERUN_B'",
+                                    "'GIT_IDLE_CHECK_FAILED'"])
+def test_verify_reply_rejects_a_copy_of_any_prestart_block_in_another_fence(native_pack, marker):
+    block = next(l for l in _pre(native_pack) if l.startswith('& {') and marker in l)
+    text = _native_reply(native_pack, after='```text\n' + block + '\n```')
+    assert _code(dp.verify_reply, str(native_pack), text) == 'REPLY_BLOCK_DUPLICATED'
+
+
+def test_block_c_idle_code_runs_against_this_repos_batch_sim_on_a_stable_tree(tmp_path):
+    # Block C imports batch_sim from the workspace and walks its tree; run the exact code in a copy of the scripts
+    # (never the live repo root, whose files other tests may touch) so a renamed _source_paths fails here.
+    scripts = Path(__file__).resolve().parents[1]
+    (tmp_path / 'scripts').mkdir()
+    for f in scripts.glob('*.py'):
+        shutil.copy2(f, tmp_path / 'scripts' / f.name)
+    r = subprocess.run([sys.executable, '-B', '-c', dp.IDLE_CODE, str(tmp_path), '0'], capture_output=True,
+                       text=True, encoding='utf-8', cwd=str(tmp_path))
+    assert (r.returncode, r.stdout) == (0, 'GIT_IDLE_OK\n')
+
+def test_a_pack_without_prestart_still_verifies_exactly_as_before(pack):
+    assert not (pack / 'PRESTART.txt').exists()
+    assert dp.verify_reply(str(pack), _reply(pack)) is True
+
+
+@pytest.mark.parametrize('name', ['missing', 'altered_base', 'altered_text', 'extra_bytes', 'planted_on_plain_pack'])
+def test_verify_reply_rejects_a_prestart_file_that_is_not_the_rebuild(tmp_path, prompt, monkeypatch, name):
+    if name == 'planted_on_plain_pack':
+        out = tmp_path / 'plain'
+        _build(prompt, out)
+        (out / 'PRESTART.txt').write_bytes(b'x\n')
+        assert _code(dp.verify_reply, str(out), _reply(out)) == 'PACK_FILE_SET_MISMATCH'
+        return
+    out = tmp_path / 'native2'
+    _native(monkeypatch)
+    _build(prompt, out)
+    reply = _native_reply(out)
+    p = out / 'PRESTART.txt'
+    if name == 'missing':
+        p.unlink()
+    elif name == 'altered_base':
+        p.write_bytes(p.read_bytes().replace(OTHER_BASE.encode(), REAL_BASE.encode()))
+    elif name == 'altered_text':
+        p.write_bytes(p.read_bytes().replace('一律停止'.encode(), '可以繼續'.encode()))
+    else:
+        p.write_bytes(p.read_bytes() + b'\n')
+    want = 'PACK_FILE_SET_MISMATCH' if name == 'missing' else 'PACK_REBUILD_MISMATCH'
+    assert _code(dp.verify_reply, str(out), reply) == want
+
+
+def test_verify_reply_cli_checks_the_prestart_without_printing_content(tmp_path, native_pack, capsys):
+    r = tmp_path / 'R.txt'
+    r.write_bytes(_native_reply(native_pack).encode('utf-8'))
+    assert dp.main(['verify-reply', '--pack-dir', str(native_pack), '--reply', str(r)]) == 0
+    assert capsys.readouterr().out.strip() == 'DELIVERY_REPLY PASS'
+    r.write_bytes(_native_reply(native_pack, lambda p: p.update(pre=[])).encode('utf-8'))
+    assert dp.main(['verify-reply', '--pack-dir', str(native_pack), '--reply', str(r)]) == 1
+    assert capsys.readouterr().out.strip() == 'DELIVERY_PACK FAIL REPLY_PRESTART_MISSING'
+
+
+def test_prestart_text_is_pinned_line_by_line():
+    fence = lambda text: ['```powershell', text, '```']
+    expect = (['**執行前固定順序**：以下步驟依序執行，每個區塊只執行一次；任一區塊不是預期輸出就停止並回報。',
+               '本批 Base：`' + REAL_BASE + '`（區塊 B 與 B-R 已代入）。',
+               '### 關閉 Antigravity IDE，再執行區塊 A（預期輸出 `ANTIGRAVITY_CLOSED`）'] + fence(PROVEN['A'])
+              + ['### 區塊 B（預期輸出 `W2_READY_AT_BASE`）'] + fence(PROVEN['B'])
+              + ['只有輸出 `W2_HEAD_MISMATCH`（並顯示 `W2_HEAD=…`）時，才執行下面的區塊 B-R（預期輸出 '
+                 '`W2_SWITCHED_TO_BASE_RERUN_B`），然後重跑區塊 B。其他錯誤（`W2_NOT_CLEAN`、`W2_STATUS_FAILED` 等）'
+                 '一律停止並回報，不要用 B-R。'] + fence(PROVEN['B-R'])
+              + ['### 開啟 IDE 並等待',
+                 '1. 只以 `C:\\Users\\HH.AI_260806\\AppData\\Local\\Programs\\Antigravity IDE\\Antigravity IDE.exe` 開啟 '
+                 'Antigravity IDE，開啟 `' + REAL_WS + '` 工作區。',
+                 '2. 確認使用者層級（不是工作區層級）的 Git 自動刷新（`git.autorefresh`）與自動 fetch（`git.autofetch`）仍為關閉。',
+                 '3. 等約 1 分鐘，再執行區塊 C。',
+                 '### 區塊 C（預期輸出 `GIT_IDLE_OK`，約 210 秒）'] + fence(PROVEN['C'])
+              + ['輸出 `GIT_IDLE_CHANGED` 或 `GIT_IDLE_CHECK_FAILED` 就停止並回報，不要啟動 Executor。',
+                 '### 新的 Agent 對話',
+                 '- 開新對話；**不要動分支選擇器**（runner 只檢查 HEAD＝Base 與工作區乾淨，不檢查分支）。',
+                 '- 貼上區塊三的文字，一字不改。之後每個 runner 步驟必須等到 IDE 顯示該命令已結束且 exit 0、'
+                 '輸出含 `STEP_PASS <步驟名>` 才算完成，期間不得呼叫下一步。'])
+    assert dp.prestart_lines(REAL_BASE, REAL_WS) == expect

@@ -11,12 +11,16 @@ into what the USER receives, so no delivery block is hand-written or hand-copied
                                         --download-dir <C:\\...> --workspace <C:\\...> --out-dir <new dir>
   python scripts/delivery_pack.py verify-reply --pack-dir <out dir> --reply <reply text file>
 
-build writes, create-only, into an empty or new --out-dir exactly three files:
+build writes, create-only, into an empty or new --out-dir three files, plus a fourth for a native_preview production:
   <TASK_ID>-prompt.txt                         the prompt bytes, unchanged (TXT backup)
   HHAI_<CODE>_<TASK_ID>_<YYMMDD-HHMM>.zip      the prompt plus SHA256SUMS.txt (primary file); the time is the
                                                Taiwan time (UTC+08:00) read from the clock at build time
   DELIVERY.txt                                 header (task, role, stamp, directories, file names and hashes),
                                                then block 1, block 2, block 3 and the hash command between markers
+  PRESTART.txt                                 only when the prompt is a production with native_preview true: the fixed
+                                               pre-execution sequence (blocks A, B, B-R and C, the IDE steps and the
+                                               new-chat rule), with the Base OID and the workspace taken from the prompt
+                                               and --workspace, never typed by hand
 
 Block 1 is one fixed PowerShell 5.1 template that never overwrites a file: it extracts only the prompt entry from
 the ZIP when the TXT is not already in the download directory, then prints PROMPT_READY only if the SHA-256 of the
@@ -27,14 +31,18 @@ parameters, keywords, type names, members and variables, and single-quoted liter
 leading "& {", dot-invocation, redirection, pipelines, double-quoted strings, here-strings, backticks, comments and
 every other token fail (PS_TOKEN_NOT_ALLOWED, PS_CALL_OPERATOR_FORBIDDEN, PS_CONSTRUCT_UNSUPPORTED).
 Block 3 is scripts/prompt_builder.py startup output, byte for byte.
+PRESTART.txt is a pinned template, not linted like block 1: its blocks run git and the workspace Python, so the
+tests compare every byte of each block against the text proven in use and only the Base OID and the workspace vary.
 
 verify-reply first rebuilds the whole package from the prompt in --pack-dir and the header of its DELIVERY.txt;
-the directory must hold exactly the three files and each must equal the rebuild byte for byte (PACK_*). It then
-checks the reply text the Macro is about to send:
+the directory must hold exactly the files of the rebuild (three, or four with PRESTART.txt) and each must equal the
+rebuild byte for byte (PACK_*). It then checks the reply text the Macro is about to send:
   - no carriage return and no HTML comment (nothing can be hidden from the rendered reply);
   - every fenced code block is closed; exactly one fenced block is block 1, exactly one is block 2 and exactly one
     is block 3, each with exactly the delivered lines and nothing else, in that order; no other fenced block repeats
     any delivered line;
+  - with PRESTART.txt, its lines appear once, as one contiguous run, after block 1 and before block 3, and no fenced
+    block outside that run repeats any line of its fenced blocks (REPLY_PRESTART_*);
   - outside fenced blocks, a line naming only Executor and a line naming only 審查官 each give "<A> 至 <B> 分鐘"
     with 0 < A <= B and a non-empty 依據 after it; a line naming both roles counts for neither.
 
@@ -65,6 +73,8 @@ MARKERS = ('---BLOCK1---', '---BLOCK2---', '---BLOCK3---', '---HASHCMD---', '---
 HEADER = ('PACK_SCHEMA', 'PACK_TASK', 'PACK_ROLE', 'PACK_STAMP', 'PACK_DOWNLOAD_DIR', 'PACK_WORKSPACE')
 SUMS_NAME = 'SHA256SUMS.txt'
 DELIVERY_NAME = 'DELIVERY.txt'
+PRESTART_NAME = 'PRESTART.txt'
+BASE_RE = re.compile(r'^[0-9a-f]{40}$')
 
 
 class PackError(Exception):
@@ -155,6 +165,80 @@ def block1_text(download_dir, prompt_name, zip_name, sha_upper):
     return text
 
 
+# -- pre-execution sequence of a native_preview production ------------------------------------------------
+
+# Standing USER constraint: Antigravity IDE is opened only through this executable.
+IDE_EXE = 'C:\\Users\\HH.AI_260806\\AppData\\Local\\Programs\\Antigravity IDE\\Antigravity IDE.exe'
+PS51_GUARD = ("if (-not ($PSVersionTable.PSVersion.Major -eq 5 -and $PSVersionTable.PSVersion.Minor -eq 1)) "
+              "{ throw 'POWERSHELL_51_REQUIRED' }; ")
+STATUS_CHECK = ("$s=@(git -C $ws --no-optional-locks status --porcelain --untracked-files=all); "
+                "if ($LASTEXITCODE -ne 0) { throw 'W2_STATUS_FAILED' }; "
+                "if ($s.Count -ne 0) { $s | Select-Object -First 20; throw 'W2_NOT_CLEAN' }; ")
+IDLE_CODE = ("import os,sys,time;from pathlib import Path;sys.path.insert(0,os.path.join(sys.argv[1],'scripts'));"
+             "import batch_sim as b;r=Path(sys.argv[1]);snap=lambda:tuple((p.relative_to(r).as_posix(),)+"
+             "(lambda s:(s.st_mode,s.st_size,s.st_mtime_ns,s.st_ctime_ns))(os.lstat(p)) for p in b._source_paths(r));"
+             "a=snap();time.sleep(int(sys.argv[2]));c=snap();print('GIT_IDLE_OK' if a==c else 'GIT_IDLE_CHANGED');"
+             "sys.exit(0 if a==c else 3)")
+
+
+def prestart_blocks(base_oid, workspace):
+    """Blocks A (IDE closed), B (workspace at Base and clean), B-R (switch to Base, only after W2_HEAD_MISMATCH)
+    and C (source tree idle for 210 s) as PowerShell 5.1 one-liners; only the Base OID and the workspace vary."""
+    _require(isinstance(base_oid, str) and BASE_RE.match(base_oid) is not None, 'BASE_INVALID')
+    ws = prompt_builder.windows_dir(workspace, 'WORKSPACE_INVALID')
+    lit = prompt_builder.ps_literal
+    head = "& { $ErrorActionPreference='Stop'; " + PS51_GUARD
+    a = (head + "$p=@(Get-Process | Where-Object { $_.ProcessName -like '*Antigravity*' }); if ($p.Count -ne 0) "
+         "{ $p | ForEach-Object { 'STILL_RUNNING ' + $_.ProcessName + ' ' + $_.Id }; throw 'ANTIGRAVITY_NOT_CLOSED' }; "
+         "'ANTIGRAVITY_CLOSED' }")
+    b = (head + "$ws=" + lit(ws) + "; $base=" + lit(base_oid) + "; $h=@(git -C $ws --no-optional-locks rev-parse HEAD); "
+         "if ($LASTEXITCODE -ne 0) { throw 'W2_REVPARSE_FAILED' }; "
+         "if ($h[0].Trim() -ne $base) { 'W2_HEAD=' + $h[0]; throw 'W2_HEAD_MISMATCH' }; "
+         + STATUS_CHECK + "'W2_READY_AT_BASE' }")
+    br = (head + "$ws=" + lit(ws) + "; $base=" + lit(base_oid) + "; git -C $ws --no-optional-locks cat-file -e "
+          "($base + '^{commit}'); if ($LASTEXITCODE -ne 0) { throw 'BASE_NOT_IN_W2' }; " + STATUS_CHECK
+          + "git -C $ws switch --detach $base; if ($LASTEXITCODE -ne 0) { throw 'W2_SWITCH_FAILED' }; "
+          "'W2_SWITCHED_TO_BASE_RERUN_B' }")
+    c = (head + "$ws=" + lit(ws) + "; $py=Join-Path $ws '.venv\\Scripts\\python.exe'; "
+         "if (-not (Test-Path -LiteralPath $py -PathType Leaf)) { throw 'W2_PYTHON_MISSING' }; $code=" + lit(IDLE_CODE)
+         + "; & $py -B -c $code $ws 210; if ($LASTEXITCODE -ne 0) { throw 'GIT_IDLE_CHECK_FAILED' } }")
+    return {'A': a, 'B': b, 'B-R': br, 'C': c}
+
+
+def prestart_lines(base_oid, workspace):
+    """The fixed reply segment between block 1 and block 3: every line is delivered verbatim by the Macro."""
+    blocks = prestart_blocks(base_oid, workspace)
+    ws = prompt_builder.windows_dir(workspace, 'WORKSPACE_INVALID')
+    fence = lambda text: ['```powershell', text, '```']
+    return (['**執行前固定順序**：以下步驟依序執行，每個區塊只執行一次；任一區塊不是預期輸出就停止並回報。',
+             '本批 Base：`' + base_oid + '`（區塊 B 與 B-R 已代入）。',
+             '### 關閉 Antigravity IDE，再執行區塊 A（預期輸出 `ANTIGRAVITY_CLOSED`）'] + fence(blocks['A'])
+            + ['### 區塊 B（預期輸出 `W2_READY_AT_BASE`）'] + fence(blocks['B'])
+            + ['只有輸出 `W2_HEAD_MISMATCH`（並顯示 `W2_HEAD=…`）時，才執行下面的區塊 B-R（預期輸出 '
+               '`W2_SWITCHED_TO_BASE_RERUN_B`），然後重跑區塊 B。其他錯誤（`W2_NOT_CLEAN`、`W2_STATUS_FAILED` 等）'
+               '一律停止並回報，不要用 B-R。'] + fence(blocks['B-R'])
+            + ['### 開啟 IDE 並等待',
+               '1. 只以 `' + IDE_EXE + '` 開啟 Antigravity IDE，開啟 `' + ws + '` 工作區。',
+               '2. 確認使用者層級（不是工作區層級）的 Git 自動刷新（`git.autorefresh`）與自動 fetch（`git.autofetch`）仍為關閉。',
+               '3. 等約 1 分鐘，再執行區塊 C。',
+               '### 區塊 C（預期輸出 `GIT_IDLE_OK`，約 210 秒）'] + fence(blocks['C'])
+            + ['輸出 `GIT_IDLE_CHANGED` 或 `GIT_IDLE_CHECK_FAILED` 就停止並回報，不要啟動 Executor。',
+               '### 新的 Agent 對話',
+               '- 開新對話；**不要動分支選擇器**（runner 只檢查 HEAD＝Base 與工作區乾淨，不檢查分支）。',
+               '- 貼上區塊三的文字，一字不改。之後每個 runner 步驟必須等到 IDE 顯示該命令已結束且 exit 0、'
+               '輸出含 `STEP_PASS <步驟名>` 才算完成，期間不得呼叫下一步。'])
+
+
+def prestart_spec(prompt_path):
+    """(needed, base OID): the sequence applies to a production that declares native_preview true."""
+    task, data = prompt_builder.prompt_task(prompt_path)
+    try:
+        spec = prompt_builder.batch_runner.load_spec(prompt_builder.batch_runner.prompt_lines(data), task)
+    except prompt_builder.batch_runner.Halt as h:
+        raise PackError('PRESTART_SPEC_' + str(h))
+    return spec.get('kind') == 'production' and spec.get('native_preview') is True, spec.get('base_oid')
+
+
 # -- assembly (shared by build and verify-reply) ---------------------------------------------------------
 
 def zip_bytes(prompt_name, data, stamp):
@@ -197,7 +281,11 @@ def assemble(prompt_path, role_code, download_dir, workspace, stamp):
              MARKERS[0], block1_text(dl, prompt_name, zip_name, prompt_sha),
              MARKERS[1], prompt_name + '  ' + prompt_sha, zip_name + '  ' + zip_sha,
              MARKERS[2]] + startup[2:5] + [MARKERS[3], startup[6], MARKERS[4]]
-    return {prompt_name: data, zip_name: zdata, DELIVERY_NAME: ('\n'.join(lines) + '\n').encode('utf-8')}
+    files = {prompt_name: data, zip_name: zdata, DELIVERY_NAME: ('\n'.join(lines) + '\n').encode('utf-8')}
+    needed, base_oid = prestart_spec(prompt_path)
+    if needed:
+        files[PRESTART_NAME] = ('\n'.join(prestart_lines(base_oid, ws)) + '\n').encode('utf-8')
+    return files
 
 
 def _write_new(path, data):
@@ -292,7 +380,11 @@ def _time_line_ok(line):
     return 0 < a <= b
 
 
-def verify_reply_blocks(blocks3, reply_text):
+def _runs(lines, run):
+    return [i for i in range(len(lines) - len(run) + 1) if lines[i:i + len(run)] == run]
+
+
+def verify_reply_blocks(blocks3, reply_text, prestart=None):
     b1, b2, b3 = blocks3
     _require('\r' not in reply_text, 'REPLY_CR')
     _require('<!--' not in reply_text, 'REPLY_HIDDEN_CONTENT')
@@ -305,8 +397,16 @@ def verify_reply_blocks(blocks3, reply_text):
         _require(len(hits) == 1, code + ('_MISSING' if not hits else '_DUPLICATED'))
         positions.append(hits[0])
     _require(positions == sorted(positions), 'REPLY_BLOCK_ORDER')
+    run_start, run_end = len(lines), len(lines)                  # an empty range when there is no PRESTART.txt
+    if prestart is not None:
+        hits = _runs(lines, prestart)
+        _require(len(hits) == 1, 'REPLY_PRESTART_' + ('MISSING' if not hits else 'DUPLICATED'))
+        run_start, run_end = hits[0], hits[0] + len(prestart)
+        _require(run_start > positions[0] + len(b1) + 1 and run_end <= positions[2], 'REPLY_PRESTART_ORDER')
+        for _, content in fenced_blocks(prestart)[0]:
+            delivered |= set(content)
     for start, content in blocks:
-        if start not in positions:
+        if start not in positions and not run_start <= start < run_end:
             _require(not (set(content) & delivered), 'REPLY_BLOCK_DUPLICATED')
     text_lines = [lines[i] for i in outside]
     for role, code in zip(ROLES, ('REPLY_TIME_EXECUTOR_MISSING', 'REPLY_TIME_AUDITOR_MISSING')):
@@ -316,7 +416,10 @@ def verify_reply_blocks(blocks3, reply_text):
 
 
 def verify_reply(pack_dir, reply_text):
-    return verify_reply_blocks(rebuild_pack(pack_dir), reply_text)
+    blocks3 = rebuild_pack(pack_dir)                 # the pack equals its rebuild, so PRESTART.txt is the template
+    path = Path(pack_dir) / PRESTART_NAME
+    prestart = path.read_bytes().decode('utf-8')[:-1].split('\n') if path.exists() else None
+    return verify_reply_blocks(blocks3, reply_text, prestart)
 
 
 def main(argv=None):
@@ -339,6 +442,9 @@ def main(argv=None):
             print('DELIVERY_PACK BUILT ' + str(path))
             print('PACK_PROMPT_SHA256=' + prompt_sha)
             print('PACK_ZIP=' + zip_name + ' sha256=' + zip_sha)
+            pre = Path(path).parent / PRESTART_NAME
+            if pre.exists():
+                print('PACK_PRESTART=' + PRESTART_NAME + ' sha256=' + hashlib.sha256(pre.read_bytes()).hexdigest().upper())
         else:
             try:
                 reply = Path(args.reply).read_bytes().decode('utf-8')
