@@ -13,7 +13,7 @@ Usage:
                               [--locale utf8|posix] [--resume-prompt <stopped batch prompt>]
                               [--negative runner|author|adopt] [--git-profile isolated|windows]
   python scripts/batch_sim.py promotion  --source <repo> --prompt <file> --workdir <empty dir>
-                              [--locale utf8|posix] [--negative drift|dirty|runner|prompt]
+                              [--locale utf8|posix] [--negative drift|dirty|runner|prompt|inprogress]
                               [--git-profile isolated|windows]
   python scripts/batch_sim.py winemu     --repo <repo> [--git-profile windows|isolated] -- <pytest arguments>
 
@@ -129,6 +129,7 @@ PROMOTION_NEGATIVES = {
     'dirty': ('verify', 'DIRTY_WORKTREE'),
     'runner': ('preflight', 'RUNNER_MODIFIED'),
     'prompt': ('verify', 'CONTROL_BINDING_DRIFT'),
+    'inprogress': ('promote', 'STEP_IN_PROGRESS'),
 }
 CI_STUB = ('import json, runpy, sys\n'
            'if sys.argv[1:2] == ["ci-status"]:\n'
@@ -786,6 +787,17 @@ class Sim:
                 with open(Path(self.work) / '.git' / (task + '-prompt.txt'), 'ab') as fh:
                     fh.write(b'\ninjected\n')
                 self.expect_stop(task, ('verify',), *PROMOTION_NEGATIVES['prompt'])
+            elif negative == 'inprogress':
+                # verify still running: its record exists without a completion marker, so promote must be
+                # refused as STEP_IN_PROGRESS and must leave control exactly as it was.
+                self.run_steps(task, ('preflight',))
+                control = Path(self.work) / '.git' / (task + '-control.json')
+                before = control.read_bytes() if control.is_file() else None
+                with open(Path(self.work) / '.git' / (task + '-step-verify.out'), 'x', encoding='utf-8',
+                          newline='') as fh:
+                    fh.write('BATCH_SIM running\n')
+                self.expect_stop(task, ('promote',), *PROMOTION_NEGATIVES['inprogress'])
+                _require((control.read_bytes() if control.is_file() else None) == before, 'NEGATIVE_CONTROL_CHANGED')
             elif negative:
                 self.expect_stop(task, PROMOTION_STEPS, *PROMOTION_NEGATIVES[negative])
             else:

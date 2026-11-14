@@ -2356,3 +2356,159 @@ def test_g3_f_prestep_halt_also_reports_timing_in_same_invocation(tmp_path, monk
     assert out.startswith('S1 WORKING_DIRECTORY_MISMATCH | step preflight\n')
     assert out.endswith('TIMING synthetic\n')
     assert calls == [(str(tmp_path), TASK)]
+
+
+# B117 R4 — a step that is still running (or was interrupted) is reported as such, never as a bare order error.
+IN_PROGRESS_STEPS = ['preflight', 'native_preview', 'setup']
+
+
+def _admission_harness(tmp_path, monkeypatch, control, steps=None, record=None):
+    """main() with a synthetic Batch: only the admission path runs; control is never written."""
+    steps = steps or IN_PROGRESS_STEPS
+    class Stub:
+        def __init__(self, *_args):
+            self.root = str(tmp_path)
+            self.task_id = TASK
+            self.prompt_bytes = b'synthetic prompt'
+            self.spec = {'kind': 'production'}
+        def artifact(self, name):
+            return '.git/' + TASK + '-' + name
+    (tmp_path / '.git').mkdir(exist_ok=True)
+    (tmp_path / 'scripts').mkdir(exist_ok=True)
+    _lf(tmp_path / 'scripts' / 'batch_runner.py', 'synthetic runner\n')
+    if record is not None:
+        _lf(tmp_path / '.git' / (TASK + '-step-native_preview.out'), record)
+    saved = []
+    monkeypatch.setattr(br, 'Batch', Stub)
+    monkeypatch.setattr(br, 'derive_steps', lambda _: steps)
+    monkeypatch.setattr(br, 'load_control', lambda _: dict(control, task_id=TASK, runner_sha256='fixed',
+                                                           prompt_sha256=br.sha256_bytes(b'synthetic prompt')))
+    monkeypatch.setattr(br, 'save_control', lambda batch, ctl: saved.append(dict(ctl)))
+    monkeypatch.setattr(br, 'accepted_runner_sha', lambda *a: 'fixed')
+    monkeypatch.setattr(br, 'timing', lambda root, task: 0)
+    monkeypatch.setattr(br.Path, 'cwd', lambda: tmp_path)
+    monkeypatch.setattr(br, '__file__', str(tmp_path / 'scripts' / 'batch_runner.py'))
+    return saved
+
+
+@pytest.mark.parametrize('record,expected', [
+    (None, 'STEP_ORDER_VIOLATION'),
+    ('', 'STEP_IN_PROGRESS'),
+    ('NATIVE_PREVIEW working\n', 'STEP_IN_PROGRESS'),
+    ('STEP_OUTPUT_COMPLETE step=native_preview result=0', 'STEP_IN_PROGRESS'),
+    ('STEP_OUTPUT_COMPLETE step=setup result=0\n', 'STEP_IN_PROGRESS'),
+    ('NATIVE_PREVIEW working\nSTEP_OUTPUT_COMPLETE step=native_preview result=0\npartial', 'STEP_IN_PROGRESS'),
+    ('S1 X | step native_preview\nSTEP_OUTPUT_COMPLETE step=native_preview result=1\n', 'STEP_ORDER_VIOLATION'),
+    ('STEP_PASS native_preview\nSTEP_OUTPUT_COMPLETE step=native_preview result=0\n', 'STEP_ORDER_VIOLATION'),
+])
+def test_admission_names_a_running_previous_step_and_never_writes_control(tmp_path, monkeypatch, capsys, record, expected):
+    control = {'done': ['preflight'], 'halted': None}
+    saved = _admission_harness(tmp_path, monkeypatch, control, record=record)
+    assert br.main(['--task-id', TASK, 'setup']) == 1
+    out = capsys.readouterr().out.splitlines()
+    assert out == ['S1 ' + expected + ' | step setup']
+    assert saved == []
+    assert not (tmp_path / '.git' / (TASK + '-step-setup.out')).exists()
+
+
+def test_admission_in_progress_applies_only_to_the_next_step_position(tmp_path, monkeypatch, capsys):
+    steps = IN_PROGRESS_STEPS
+    batch = type('B', (), {'root': str(tmp_path), 'artifact': lambda self, n: '.git/' + TASK + '-' + n})()
+    (tmp_path / '.git').mkdir()
+    _lf(tmp_path / '.git' / (TASK + '-step-native_preview.out'), 'running\n')
+    assert br.step_in_progress(batch, steps, {'done': ['preflight'], 'halted': None}) is True
+    assert br.step_in_progress(batch, steps, {'done': ['preflight'], 'halted': 'native_preview:X'}) is False
+    assert br.step_in_progress(batch, steps, {'done': [], 'halted': None}) is False
+    assert br.step_in_progress(batch, steps, {'done': ['native_preview'], 'halted': None}) is False
+    assert br.step_in_progress(batch, steps, {'done': steps, 'halted': None}) is False
+    assert br.step_in_progress(batch, steps, {'done': 'preflight', 'halted': None}) is False
+    assert br.step_in_progress(batch, steps, {'halted': None}) is False
+
+
+def test_admission_in_progress_only_replaces_the_order_violation(tmp_path, monkeypatch, capsys):
+    control = {'done': ['preflight'], 'halted': None}
+    saved = _admission_harness(tmp_path, monkeypatch, control, record='running\n')
+    monkeypatch.setattr(br, 'load_control', lambda _: dict(control, task_id=TASK, runner_sha256='other',
+                                                           prompt_sha256=br.sha256_bytes(b'synthetic prompt')))
+    assert br.main(['--task-id', TASK, 'setup']) == 1
+    assert capsys.readouterr().out.splitlines() == ['S1 CONTROL_BINDING_DRIFT | step setup']
+    assert saved == []
+
+
+def test_admission_with_an_unreadable_record_keeps_the_order_violation(tmp_path, monkeypatch, capsys):
+    control = {'done': ['preflight'], 'halted': None}
+    saved = _admission_harness(tmp_path, monkeypatch, control)
+    (tmp_path / '.git' / (TASK + '-step-native_preview.out')).mkdir()
+    assert br.main(['--task-id', TASK, 'setup']) == 1
+    assert capsys.readouterr().out.splitlines() == ['S1 STEP_ORDER_VIOLATION | step setup']
+    assert saved == []
+
+
+def test_admission_halted_task_keeps_its_lock_message_with_a_record_still_open(tmp_path, monkeypatch, capsys):
+    control = {'done': ['preflight'], 'halted': 'native_preview:NATIVE_PREVIEW_FAILED'}
+    saved = _admission_harness(tmp_path, monkeypatch, control, record='partial\n')
+    assert br.main(['--task-id', TASK, 'setup']) == 1
+    assert capsys.readouterr().out.splitlines() == ['S1 TASK_ALREADY_HALTED native_preview:NATIVE_PREVIEW_FAILED']
+    assert saved == []
+
+
+@pytest.mark.parametrize('record,expected,locks', [
+    ('', 'STEP_IN_PROGRESS', False),
+    ('running\n', 'STEP_IN_PROGRESS', False),
+    ('STEP_OUTPUT_COMPLETE step=native_preview result=0\npartial', 'STEP_IN_PROGRESS', False),
+    ('S1 X | step native_preview\nSTEP_OUTPUT_COMPLETE step=native_preview result=1\n',
+     'STEP_OUTPUT_ALREADY_EXISTS', True),
+])
+def test_admission_same_step_twice_never_writes_control_while_its_record_is_open(
+        tmp_path, monkeypatch, capsys, record, expected, locks):
+    # A running original step rewrites control when it ends, so a lock written by the duplicate call would be lost;
+    # its open record already blocks every later step. A completed record keeps the existing lock.
+    control = {'done': ['preflight'], 'halted': None}
+    saved = _admission_harness(tmp_path, monkeypatch, control, record=record)
+    assert br.main(['--task-id', TASK, 'native_preview']) == 1
+    assert capsys.readouterr().out.splitlines() == ['S1 ' + expected + ' | step native_preview']
+    assert bool(saved) == locks
+    if locks:
+        assert saved[0]['halted'] == 'native_preview:STEP_OUTPUT_ALREADY_EXISTS'
+
+
+def test_reply_assembly_names_a_step_that_has_not_completed(tmp_path):
+    (tmp_path / '.git').mkdir()
+    b = _g3_output_stub(tmp_path)
+    st = ['preflight', 'verify']
+    _lf((tmp_path / '.git' / (TASK + '-step-preflight.out')),
+        'STEP_PASS preflight\nSTEP_OUTPUT_COMPLETE step=preflight result=0\n')
+    p = tmp_path / '.git' / (TASK + '-step-verify.out')
+    pending = {'done': ['preflight'], 'halted': None}
+    for body in ('', 'partial\n', 'STEP_OUTPUT_COMPLETE step=verify result=1', 'STEP_OUTPUT_COMPLETE step=promote result=1\n'):
+        _lf(p, body)
+        assert halt_code(br._step_output_lines, b, st, pending) == 'REPLY_STEP_IN_PROGRESS'
+    # A complete record with result=1 is the "halted write failed" case and keeps its own handling.
+    _lf(p, 'S1 X | step verify\nSTEP_OUTPUT_COMPLETE step=verify result=1\n')
+    assert br._step_output_lines(b, st, pending) == ['STEP_PASS preflight', 'S1 X | step verify']
+    # A step that control reports as passed or halted never becomes "in progress".
+    _lf(p, 'partial\n')
+    assert halt_code(br._step_output_lines, b, st, {'done': st, 'halted': None}) == 'REPLY_STEP_OUTPUT_TRUNCATED'
+    assert halt_code(br._step_output_lines, b, st, {'done': ['preflight'], 'halted': 'verify:X'}) \
+           == 'REPLY_STEP_OUTPUT_TRUNCATED'
+    _lf(p, '')
+    assert halt_code(br._step_output_lines, b, st, {'done': ['preflight'], 'halted': 'verify:X'}) \
+           == 'REPLY_STEP_OUTPUT_INVALID'
+    assert not (tmp_path / '.git' / (TASK + '-step-verify.out')).read_bytes()
+
+
+def test_timing_reports_a_running_step_instead_of_an_invalid_record(tmp_path, monkeypatch, capsys):
+    (tmp_path / '.git').mkdir()
+    b = _g3_output_stub(tmp_path)
+    st = ['preflight', 'native_preview', 'setup']
+    _lf((tmp_path / '.git' / (TASK + '-step-preflight.out')),
+        'STEP_PASS preflight\nSTEP_OUTPUT_COMPLETE step=preflight result=0\n')
+    _lf((tmp_path / '.git' / (TASK + '-step-native_preview.out')), '')
+    control = {'task_id': TASK, 'done': ['preflight'], 'halted': None, 'prompt_sha256': br.sha256_bytes(b'prompt')}
+    t = 'TIMING start=2026-11-14T00:00:00+08:00 end=2026-11-14T00:00:02+08:00 elapsed_sec=2.0 elapsed_min=0'
+    s = 'STATE done=preflight halted=None'
+    monkeypatch.setattr(br, '_timing_lines', lambda root, task: (t, s, control))
+    monkeypatch.setattr(br, 'Batch', lambda root, task: b)
+    monkeypatch.setattr(br, 'derive_steps', lambda spec: st)
+    assert br.timing(str(tmp_path), TASK) == 0
+    assert capsys.readouterr().out.splitlines() == ['EXECUTOR_REPLY_UNAVAILABLE REPLY_STEP_IN_PROGRESS', t, s]

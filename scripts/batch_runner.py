@@ -1431,6 +1431,38 @@ def check_control(control, task_id, prompt_sha, runner_sha, steps, step):
     return 'OK'
 
 
+def step_record_complete(raw, step):
+    """True when a step record ends with its own completion marker on a finished line (any result)."""
+    lines = raw.split(b'\n')
+    return (len(lines) >= 2 and lines[-1] == b''
+            and lines[-2].startswith(b'STEP_OUTPUT_COMPLETE step=' + step.encode('ascii') + b' result='))
+
+
+def step_in_progress(batch, steps, control):
+    """True when the next step's task-local record exists but has no completion marker.
+
+    A record is created exclusively before the step body runs and is completed only when the step returns,
+    so an incomplete record means the step is still running or was interrupted. Control is not consulted
+    beyond the next-step position; an unreadable record is not decided (False), so the caller keeps its own code.
+    """
+    done = control.get('done')
+    if control.get('halted') or not isinstance(done, list) or done != steps[:len(done)] or len(done) >= len(steps):
+        return False
+    return step_record_open(batch, steps[len(done)])
+
+
+def step_record_open(batch, step):
+    """True when the step's task-local record exists, is readable and has no completion marker (unreadable: False)."""
+    path = Path(batch.root) / batch.artifact('step-' + step + '.out')
+    if not os.path.lexists(path):
+        return False
+    try:
+        raw = path.read_bytes()
+    except OSError:
+        return False
+    return not step_record_complete(raw, step)
+
+
 class _StepRecord:
     """Durable stdout tee for a single post-admission runner step (one task-local x file).
 
@@ -1567,6 +1599,9 @@ def _step_output_lines(batch, steps, control):
             raw = path.read_bytes()
         except OSError:
             raise Halt('REPLY_STEP_OUTPUT_UNREADABLE') from None
+        if not halted and step not in done and not step_record_complete(raw, step):
+            # The attempted next step has no completion marker yet: it is still running or was interrupted.
+            raise Halt('REPLY_STEP_IN_PROGRESS')
         if not raw or len(raw) > 1048576 or b'\r' in raw or b'\x00' in raw:
             raise Halt('REPLY_STEP_OUTPUT_INVALID')
         try:
@@ -1737,7 +1772,15 @@ def main(argv=None):
             control = {'task_id': task_id, 'prompt_sha256': prompt_sha, 'runner_sha256': runner_sha, 'done': [], 'halted': None}
             batch.write_new_artifact('control.json', json.dumps(control, indent=2) + chr(10))
         runner_sha = accepted_runner_sha(root, batch.spec, control, runner_sha)
-        if check_control(control, task_id, prompt_sha, runner_sha, steps, step) == 'HALTED':
+        try:
+            admitted = check_control(control, task_id, prompt_sha, runner_sha, steps, step)
+        except Halt as order:
+            # A step is still running (or was interrupted): say so instead of a bare order violation.
+            # Control is deliberately not written: the running step owns it and rewrites it when it ends.
+            if str(order) == 'STEP_ORDER_VIOLATION' and step_in_progress(batch, steps, control):
+                raise Halt('STEP_IN_PROGRESS') from None
+            raise
+        if admitted == 'HALTED':
             print('S1 TASK_ALREADY_HALTED ' + str(control['halted']))
             return 1
     except Halt as h:
@@ -1749,6 +1792,11 @@ def main(argv=None):
     try:
         record = _StepRecord(batch, step)
     except Halt as error:
+        if str(error) == 'STEP_OUTPUT_ALREADY_EXISTS' and step_record_open(batch, step):
+            # The same step is still running (or was interrupted): its open record already blocks every later
+            # step, and writing control here would race with the running step, which rewrites control when it ends.
+            report_halt(Halt('STEP_IN_PROGRESS'), step)
+            return _halt_with_timing(root, task_id)
         # No step may run without its durable record. This is not a prior step S1.
         control['halted'] = step + ':' + str(error)
         if save_control_or_s1(batch, control, step):

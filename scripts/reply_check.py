@@ -31,7 +31,7 @@ REPLY_LINE_NOT_EXPECTED; a missing or repeated line fails with REPLY_<LINE>_MISS
                       prefix of the steps) only for the runner's pre-execution codes: START_STATE_MISMATCH,
                       SHALLOW_CLONE, START_REMOTE_QUERY_INVALID, ORIGIN_MAIN_DRIFT, ARTIFACT_PATH_GUARD_FAILED and
                       ARTIFACT_ALREADY_EXISTS at preflight with nothing done; CONTROL_MISSING with nothing done;
-                      CONTROL_INVALID, CONTROL_BINDING_DRIFT, STEP_ORDER_VIOLATION, UNKNOWN_STEP,
+                      CONTROL_INVALID, CONTROL_BINDING_DRIFT, STEP_ORDER_VIOLATION, STEP_IN_PROGRESS, UNKNOWN_STEP,
                       WORKING_DIRECTORY_MISMATCH, PROMPT_UNREADABLE and SPEC_* at any point; no metadata, capture or
                       BOUNDED line. Any other S1 with halted=None fails (REPLY_STATE_MISMATCH).
   An S1 code is upper case, or UNEXPECTED_<Python exception name> as the runner prints it.
@@ -99,7 +99,7 @@ STAGES = {
 # Halts reported before the step body runs (control not written, or not updated): STATE keeps halted=None.
 PRECONTROL = {'START_STATE_MISMATCH', 'SHALLOW_CLONE', 'START_REMOTE_QUERY_INVALID', 'ORIGIN_MAIN_DRIFT',
               'ARTIFACT_PATH_GUARD_FAILED', 'ARTIFACT_ALREADY_EXISTS'}
-BEFORE_STEP = {'CONTROL_INVALID', 'CONTROL_BINDING_DRIFT', 'STEP_ORDER_VIOLATION', 'UNKNOWN_STEP',
+BEFORE_STEP = {'CONTROL_INVALID', 'CONTROL_BINDING_DRIFT', 'STEP_ORDER_VIOLATION', 'STEP_IN_PROGRESS', 'UNKNOWN_STEP',
                'WORKING_DIRECTORY_MISMATCH', 'PROMPT_UNREADABLE', 'NATIVE_PREVIEW_SPEC_MISMATCH',
                'NATIVE_PREVIEW_SPEC_INVALID', 'NATIVE_PREVIEW_BASE_STEPS_INVALID'}
 

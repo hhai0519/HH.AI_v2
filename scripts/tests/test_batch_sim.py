@@ -343,6 +343,28 @@ def test_promotion_negatives_require_main_exactly_unchanged(tmp_path, negative):
         assert _code(sim2.promotion, _prompt(tmp_path, kind="promotion"), negative=negative) == "NEGATIVE_MAIN_CHANGED"
 
 
+def test_inprogress_negative_runs_only_preflight_and_leaves_a_partial_verify_record(tmp_path):
+    stop = {(TASK, "promote"): (1, "S1 STEP_IN_PROGRESS | step promote")}
+    fake = Fake(tmp_path, steps=stop)
+    sim, _ = _sim(tmp_path, fake)
+    sim.promotion(_prompt(tmp_path, kind="promotion"), negative="inprogress")
+    assert fake.runner_steps() == ["preflight", "promote"]
+    record = tmp_path / "wd" / "work" / ".git" / (TASK + "-step-verify.out")
+    assert record.read_bytes() == b"BATCH_SIM running\n"
+
+
+def test_inprogress_negative_fails_when_control_is_changed_by_the_refusal(tmp_path):
+    class Writer(Fake):
+        def __call__(self, args, cwd, env, timeout, merge=True):
+            rc, out = super().__call__(args, cwd, env, timeout, merge)
+            if len(args) > 4 and args[1] == "scripts/batch_runner.py" and args[4] == "promote":
+                _w(Path(cwd) / ".git" / (TASK + "-control.json"), b"{}")
+            return rc, out
+    stop = {(TASK, "promote"): (1, "S1 STEP_IN_PROGRESS | step promote")}
+    sim, _ = _sim(tmp_path, Writer(tmp_path, steps=stop))
+    assert _code(sim.promotion, _prompt(tmp_path, kind="promotion"), negative="inprogress") == "NEGATIVE_CONTROL_CHANGED"
+
+
 def test_prompt_kind_and_name_are_checked(tmp_path):
     sim, _ = _sim(tmp_path, Fake(tmp_path))
     assert _code(sim.promotion, _prompt(tmp_path)) == "PROMPT_KIND_MISMATCH"

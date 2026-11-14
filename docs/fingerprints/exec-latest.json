@@ -1,5 +1,5 @@
 {
-  "base_head": "004bf2f",
+  "base_head": "87734ab",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -566,16 +566,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 403,
-      "sha256": "d0b1da2d30d0a6411ac9ce454c86df5b7155f1ff45bb45962dcfe660ca2dcb42"
+      "lines": 404,
+      "sha256": "f697f57d2acf781fe8ee6ab586412309d6cc611e500262a49c9516c94bbe30da"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 378,
-      "sha256": "e625f3163de77872f5cd1e5bd4e957d7f433648336c55bcf56742c7d781efdbe"
+      "lines": 379,
+      "sha256": "c156ac2c341b7e312f349f52f36621c5f470827fd416eb50726c74614c861808"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -617,8 +617,8 @@
         "## G. 舊 repo 未盤點區塊（2026-09-02 新發現）",
         "## 封存區"
       ],
-      "lines": 522,
-      "sha256": "b510c6b0d28134eb4833f07aed5b5a12a13d6cf1917ed89864cc26f8f1392362"
+      "lines": 523,
+      "sha256": "16eb9da33c2eb04181814a2fa4d690340bc18e1c0b70ff4ad3540999111fdaac"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1127,8 +1127,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6464,
-      "sha256": "70582b531750f9640ff34f0342059000604c4c2ae46e4367ecaa5de0fa7e546f"
+      "lines": 6465,
+      "sha256": "6ab6e96c758a00083fb663ab3a6409308f8b7031efe14cc5a42cd710c30b81cc"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1179,8 +1179,8 @@
         "# Windows: os.replace needs DELETE access on both files; antivirus/indexer handles can deny it briefly.",
         "# Retry only that PermissionError, bounded (about 1.55 s total); any other failure is not retried."
       ],
-      "lines": 1815,
-      "sha256": "2f2939b9fbfbfb67a5a71adb9d24307d6d103c6b10e73fd93892a57d66af7f41"
+      "lines": 1863,
+      "sha256": "1c7f104731f0b220ca3b552d3b044e1339c6207f9adb1f6e7802074cdb319351"
     },
     "scripts/batch_sim.py": {
       "fences": 0,
@@ -1189,8 +1189,8 @@
         "# Production negatives; the stop step and code depend on the batch's own step list (see production_negative).",
         "# Git for Windows installer defaults at system scope on the USER machine (B-123a; see the TASKBOARD B-123 row)."
       ],
-      "lines": 894,
-      "sha256": "cc725f97e1b38ad8f02dfe4eb830d6578898a266c49905a2dd9132db352a8495"
+      "lines": 906,
+      "sha256": "5d59c789ff0130f54c31b9a2fa189d981d75c9ac011af8d81c89f7898464c7ab"
     },
     "scripts/bounded_process.py": {
       "fences": 0,
@@ -1464,7 +1464,7 @@
         "# name -> (prefix, exact format, positions of commit SHAs, positions of file SHA-256)"
       ],
       "lines": 576,
-      "sha256": "6b6b4d36e3a913660f5722f4835c2eb15d008baf9867acdb590e4258e3563857"
+      "sha256": "50caf3c4f791bdfcebad2db6a6aa406ef6334b1e3b9020a1c277c5dccad70f8a"
     },
     "scripts/runtime_readiness.py": {
       "fences": 0,
@@ -1618,10 +1618,11 @@
         "# SO: D5 negatives that the author suite did not kill under mutation.",
         "# G3 F — keep the original S1 as authority; auto timing is terminal, not a new tool action.",
         "# G3 F (E27 second-opinion additions): each WARN guard and the pre-step S1 path",
-        "# has its own killing case; one guard cannot silently cover for another."
+        "# has its own killing case; one guard cannot silently cover for another.",
+        "# B117 R4 — a step that is still running (or was interrupted) is reported as such, never as a bare order error."
       ],
-      "lines": 2358,
-      "sha256": "2117934da10c271e867c0e7fda064b47b86e022174a355ecbc473e6f028547f3"
+      "lines": 2514,
+      "sha256": "80cc8e50cbe22ef4c8f055f3ff5774cacaaf65c35e5160b0a12fbe1b31f2f4f3"
     },
     "scripts/tests/test_batch_sim.py": {
       "fences": 0,
@@ -1640,8 +1641,8 @@
         "# --- B-123a: HOME/XDG isolation and Git profiles (three kinds of Git subprocess) ---------------------------",
         "# --- second-opinion B01 (B123A R1): winemu must check the repository the tests actually run in --------------"
       ],
-      "lines": 1206,
-      "sha256": "9755fa452e963b5b7a77e05c04b6b7b741f207178d2271b73f1c4d89ed60d52d"
+      "lines": 1228,
+      "sha256": "2577b86cbe225e047956466e743ec304363485d1bddcce681d46da3773bf6200"
     },
     "scripts/tests/test_bounded_process.py": {
       "fences": 0,
@@ -2053,8 +2054,8 @@
         "# Defect B117-REPLY-STEPNAME-UNDERSCORE: the STATE, STEP_PASS, S1_PRIMARY and S1 line patterns once allowed only",
         "# [a-z0-9] in a step name, so the real step \"native_preview\" made a correct Executor reply fail its own check."
       ],
-      "lines": 885,
-      "sha256": "512b47b7385da7a9d841442104562a69fe6bb2c405d5e974980d5b6d47af66d7"
+      "lines": 887,
+      "sha256": "76f80b27c33508110c87447a51a097e9222b3f4bcd6ba90ea515d64dcee85d06"
     },
     "scripts/tests/test_rule_loadability.py": {
       "fences": 0,
@@ -2333,7 +2334,7 @@
       "sha256": "6bfd57c05a09df3cde679ae53ac6ddd67bfb64cda4246584617d3cc67fb3b81c"
     }
   },
-  "generated_at": "2026-11-13T18:39:46Z",
+  "generated_at": "2026-11-14T06:35:50Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {
