@@ -248,14 +248,15 @@ def test_promotion_build(tmp_path, repo):
     (Path(root) / "docs" / "BOARD.md").write_bytes(b"# Board\ncandidate\n")
     _git(root, "commit", "-q", "-am", "candidate")
     cand = _git(root, "rev-parse", "HEAD").stdout.decode().strip()
-    defn = {"schema_version": 1, "task_id": TASK, "kind": "promotion", "base_oid": base, "candidate_oid": cand,
+    ptask = "PROMOTE-UNIT-BUILD-261009"
+    defn = {"schema_version": 1, "task_id": ptask, "kind": "promotion", "base_oid": base, "candidate_oid": cand,
             "candidate_branch": "batch/unit-build-261009", "prose_head": "head.txt", "prose_tail": "tail.txt"}
     _w(d / "def.json", json.dumps(defn))
     text, authors, authored = pb.build(root, str(d / "def.json"))
     lines = br.prompt_lines(text.encode())
-    spec = br.load_spec(lines, TASK)
+    spec = br.load_spec(lines, ptask)
     assert spec["kind"] == "promotion" and authors == {} and "allowed NONE" in text
-    assert "promote " + TASK + " batch/unit-build-261009" in text
+    assert "promote " + ptask + " batch/unit-build-261009" in text
     must = json.loads(br.extract_block(lines, "MUST_READ_JSON"))
     assert must["commit"] == cand and [f["path"] for f in must["files"]] == list(br.MUST_READ_KERNEL)
     br.check_must_read(root, spec, lines)
@@ -814,21 +815,24 @@ def test_f1_build_refuses_unclassifiable_branch_before_outputs(tmp_path, repo, b
 def test_f1_build_accepts_valid_revision_and_no_revision(tmp_path, repo):
     root, base = repo
     for branch in ("batch/unit-build-r1-261013", "batch/unit-build-261013"):
-        text, _, _ = pb.build(root, _definition(tmp_path, base, branch=branch))
-        assert br.load_spec(br.prompt_lines(text.encode()), TASK)["branch"] == branch
+        task = branch.removeprefix("batch/").upper()
+        text, _, _ = pb.build(root, _definition(tmp_path, base, branch=branch, task_id=task))
+        assert br.load_spec(br.prompt_lines(text.encode()), task)["branch"] == branch
 
 
 def test_f1_check_fails_before_owning_any_temporary_copy(tmp_path, repo):
     root, prompt = _built_prompt(tmp_path, repo)
-    data = prompt.read_bytes().replace(b"batch/unit-build-261009", b"batch/aud-gpt-261013-state-sync-r1")
-    prompt.write_bytes(data)
+    # A forged prompt whose task id and branch agree but carry no date: only the classifier can refuse it.
+    forged = prompt.with_name("UNIT-BUILD-FORGED-prompt.txt")
+    data = prompt.read_bytes().replace(b"UNIT-BUILD-261009", b"UNIT-BUILD-FORGED").replace(b"unit-build-261009", b"unit-build-forged")
+    forged.write_bytes(data)
 
     def must_not_run(*a, **kw):
         raise AssertionError("validator and preflight must not run after branch rejection")
 
-    assert _code(pb.check, root, str(prompt), must_not_run) == "BRANCH_UNCLASSIFIABLE"
-    assert not (Path(root) / ".git" / (TASK + "-prompt.txt")).exists()
-    assert _code(pb.startup_lines, str(prompt), "C:\\D", "C:\\W") == "BRANCH_UNCLASSIFIABLE"
+    assert _code(pb.check, root, str(forged), must_not_run) == "BRANCH_UNCLASSIFIABLE"
+    assert not (Path(root) / ".git" / "UNIT-BUILD-FORGED-prompt.txt").exists()
+    assert _code(pb.startup_lines, str(forged), "C:\\D", "C:\\W") == "BRANCH_UNCLASSIFIABLE"
 
 
 def test_f1_classifier_unknown_must_fail_closed(tmp_path, repo, monkeypatch):
@@ -869,12 +873,13 @@ def _f1_promotion_prompt(tmp_path, repo, branch):
     d.mkdir()
     _w(d / 'head.txt', '{TASK_ID} promotion {BRANCH}\n二、動手前必讀\n{MUST_READ}\n')
     _w(d / 'tail.txt', 'ready\n')
-    definition = {'schema_version': 1, 'task_id': TASK, 'kind': 'promotion',
+    task = br.promotion_task_for_branch(branch)
+    definition = {'schema_version': 1, 'task_id': task, 'kind': 'promotion',
                   'base_oid': base, 'candidate_oid': candidate_oid,
                   'candidate_branch': branch, 'prose_head': 'head.txt', 'prose_tail': 'tail.txt'}
     _w(d / 'def.json', json.dumps(definition))
     text, _, _ = pb.build(root, str(d / 'def.json'))
-    prompt = tmp_path / (TASK + '-prompt.txt')
+    prompt = tmp_path / (task + '-prompt.txt')
     prompt.write_bytes(text.encode('utf-8'))
     return root, prompt
 
@@ -887,21 +892,24 @@ def test_f1_promotion_check_and_startup_accept_valid_candidate_branch(tmp_path, 
         seen.append(a[0][1])
         return _Result(0)
 
-    assert pb.check(root, str(prompt), runner=fake) == TASK
+    task = 'PROMOTE-UNIT-PROMOTION-R2-261013'
+    assert pb.check(root, str(prompt), runner=fake) == task
     assert seen == ['scripts/validate_prompt_manifest.py', 'scripts/governance_preflight.py']
     lines = pb.startup_lines(str(prompt), 'C:\\D', 'C:\\W')
     assert any(line.startswith('SHA256_UPPER=') for line in lines)
     assert any('prompt_intake.py' in line for line in lines)
-    assert not (Path(root) / '.git' / (TASK + '-prompt.txt')).exists()
+    assert not (Path(root) / '.git' / (task + '-prompt.txt')).exists()
 
 
 def test_f1_promotion_check_and_startup_reject_bad_candidate_branch_without_side_effect(tmp_path, repo):
     root, prompt = _f1_promotion_prompt(tmp_path, repo, 'batch/unit-promotion-r2-261013')
-    prompt.write_bytes(prompt.read_bytes().replace(b'batch/unit-promotion-r2-261013',
-                                                   b'batch/aud-gpt-261013-state-sync-r1'))
+    # Task id and branch agree (so only the classifier can refuse): a revision after the date.
+    forged = prompt.with_name('PROMOTE-AUD-GPT-261013-STATE-SYNC-R1-prompt.txt')
+    forged.write_bytes(prompt.read_bytes().replace(b'batch/unit-promotion-r2-261013', b'batch/aud-gpt-261013-state-sync-r1')
+                       .replace(b'PROMOTE-UNIT-PROMOTION-R2-261013', b'PROMOTE-AUD-GPT-261013-STATE-SYNC-R1'))
     calls = []
-    assert _code(pb.check, root, str(prompt), lambda *a, **k: calls.append(a)) == 'BRANCH_UNCLASSIFIABLE'
-    assert _code(pb.startup_lines, str(prompt), 'C:\\D', 'C:\\W') == 'BRANCH_UNCLASSIFIABLE'
+    assert _code(pb.check, root, str(forged), lambda *a, **k: calls.append(a)) == 'BRANCH_UNCLASSIFIABLE'
+    assert _code(pb.startup_lines, str(forged), 'C:\\D', 'C:\\W') == 'BRANCH_UNCLASSIFIABLE'
     assert calls == []
     assert not (Path(root) / '.git' / (TASK + '-prompt.txt')).exists()
 
@@ -1063,7 +1071,7 @@ def _auto_production_definition(tmp_path, repo, **updates):
     _w(d / 'final.py', 'def a():\n    return 3\n\n\ndef b():\n    return 2\n')
     body = {
         'schema_version': 1, 'task_id': 'UNIT-PRODUCTION-261014', 'kind': 'production',
-        'base_oid': base, 'branch': 'batch/b115-production-s2-r1-261014',
+        'base_oid': base, 'branch': 'batch/unit-production-261014',
         'commit_message': 'autoproduction unit candidate', 'e24': False, 'bundle_output': False,
         'code_files': {'scripts/tool.py': 'final.py'},
         'new_files': {}, 'text_ops': [], 'focused': None,
@@ -1088,7 +1096,7 @@ def test_b115_auto_production_deterministic_and_canonical(tmp_path, repo):
     p2 = mod.auto_production(root, f, tmp_path / 'b')
     assert p1.read_bytes() == p2.read_bytes()
     text = p1.read_text('utf-8')
-    assert '目標：機械產生' in text and 'batch/b115-production-s2-r1-261014' in text
+    assert '目標：機械產生' in text and 'batch/unit-production-261014' in text
     assert '- scripts/tool.py' in text
     assert 'docs/governance/execution-record.json' in text
     assert 'preflight' in text and 'postcommit' in text

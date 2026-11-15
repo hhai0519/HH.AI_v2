@@ -197,7 +197,10 @@ def run(batch):
                  '--uv-cache-dir', str(cache), '--verify-source-bytes', *(['--adopt-source'] if spec['start']['mode'] == 'adopt' else [])],
                 str(workspace), PREVIEW_TIMEOUT, env=br.child_env(), merge_stderr=False, capture_path=str(log))
         finally:
-            if source_check.source_refs() != before:
+            after = source_check.source_refs()
+            if after != before:
+                for line in sim.source_changed_lines(before, after):
+                    print('NATIVE_PREVIEW ' + line[len('BATCH_SIM '):])
                 raise PreviewError('NATIVE_PREVIEW_SOURCE_MODIFIED')
     except sim.SimError:
         raise PreviewError('NATIVE_PREVIEW_SOURCE_UNREADABLE') from None

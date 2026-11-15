@@ -1,5 +1,5 @@
 {
-  "base_head": "265450c",
+  "base_head": "e854c3b",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -566,16 +566,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 405,
-      "sha256": "6e30889a3fb079272447cd1b993f47ab70f1a40ed22b4be817b480815f0d5dd0"
+      "lines": 409,
+      "sha256": "2fff8df9eed0fca076ba0c80e3bd4459ff8cb1d99c83ca87ed34ec77349a33f2"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 380,
-      "sha256": "3281488375705362a2299c6b44c929a599ed88a8581df8c446f23126d578571a"
+      "lines": 381,
+      "sha256": "6f4b16c61154cc9bca26d38314c417f678c10f0b3e1be80d9f8eb6d302fad284"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -617,8 +617,8 @@
         "## G. 舊 repo 未盤點區塊（2026-09-02 新發現）",
         "## 封存區"
       ],
-      "lines": 524,
-      "sha256": "d9dfc2a24e57602f7c92afb033d20790a5048f51a322f4c2bf7851b384ec371f"
+      "lines": 525,
+      "sha256": "629ed1b9682d649c2608eb25a9b0913cb9f4dd37e1fb7927c7959f9458478466"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1127,8 +1127,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6466,
-      "sha256": "567362ab40a2cb1dd0fbbbf78913b47138d374872d6bd947ac8d168046f7cbe0"
+      "lines": 6467,
+      "sha256": "b848424393c3e55fdb4906e1cf5750cfcab37d26d33091386a4cf980c7833f15"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1179,8 +1179,8 @@
         "# Windows: os.replace needs DELETE access on both files; antivirus/indexer handles can deny it briefly.",
         "# Retry only that PermissionError, bounded (about 1.55 s total); any other failure is not retried."
       ],
-      "lines": 1863,
-      "sha256": "1c7f104731f0b220ca3b552d3b044e1339c6207f9adb1f6e7802074cdb319351"
+      "lines": 1875,
+      "sha256": "e3aa757b09a98639d95a7784c37e60c7fad0d773def537abd0731fb274b2c257"
     },
     "scripts/batch_sim.py": {
       "fences": 0,
@@ -1189,8 +1189,8 @@
         "# Production negatives; the stop step and code depend on the batch's own step list (see production_negative).",
         "# Git for Windows installer defaults at system scope on the USER machine (B-123a; see the TASKBOARD B-123 row)."
       ],
-      "lines": 906,
-      "sha256": "5d59c789ff0130f54c31b9a2fa189d981d75c9ac011af8d81c89f7898464c7ab"
+      "lines": 938,
+      "sha256": "d6034120d4f7c55f57a62287b4b41ef565f3617f848318686ec341e3f6c75c2a"
     },
     "scripts/bounded_process.py": {
       "fences": 0,
@@ -1401,8 +1401,8 @@
         "# The simulator next to this module: W2's own copy for the runner; the authored copy for the",
         "# one-time activation bootstrap, whose W2 still holds a Base simulator without these options."
       ],
-      "lines": 245,
-      "sha256": "cd2701f290a4c36396e0808b452322651e8120d249b2bce9fb16074e14288cff"
+      "lines": 248,
+      "sha256": "3ec8254655c776f6184d1306726d19e7158399d395a4fe6f30433311ae90ed38"
     },
     "scripts/native_preview_bootstrap.py": {
       "fences": 0,
@@ -1423,8 +1423,8 @@
       "headings": [
         "# -*- coding: utf-8 -*-"
       ],
-      "lines": 170,
-      "sha256": "19d83899bbc62ee29638b65ce59c748bc8625220baccbff3cd896668f557f7fa"
+      "lines": 169,
+      "sha256": "f5408addddc73a41f5b54dfaa4465c81154c98342bb9863610ad4e0dc7e790e3"
     },
     "scripts/prompt_builder.py": {
       "fences": 0,
@@ -1579,8 +1579,8 @@
         "# -- command line ---------------------------------------------------------------------------------------------",
         "# -- second-opinion counterexamples (replacement objects, source-side settings, output path, slice naming) -------"
       ],
-      "lines": 803,
-      "sha256": "de8aa8a0c0c9dd8f03ae0f6236a8e4d9c8909ecf1953c312ed5fe01bf508af18"
+      "lines": 805,
+      "sha256": "13d7655a31eede099143ad97bf706a918ff2bd4ae31fdfa846816f7d180a2d58"
     },
     "scripts/tests/test_b119_ci_run.py": {
       "fences": 0,
@@ -1594,6 +1594,7 @@
         "# -*- coding: utf-8 -*-",
         "# --- blocks -----------------------------------------------------------------",
         "# --- spec -------------------------------------------------------------------",
+        "# --- branch and TASK_ID must correspond (the lowercase branch is not a free field) --------------------",
         "# --- control ------------------------------------------------------------------",
         "# --- author content ---------------------------------------------------------------",
         "# --- git output parsing --------------------------------------------------------------",
@@ -1623,8 +1624,8 @@
         "# has its own killing case; one guard cannot silently cover for another.",
         "# B117 R4 — a step that is still running (or was interrupted) is reported as such, never as a bare order error."
       ],
-      "lines": 2514,
-      "sha256": "80cc8e50cbe22ef4c8f055f3ff5774cacaaf65c35e5160b0a12fbe1b31f2f4f3"
+      "lines": 2557,
+      "sha256": "3f42ba0882ec9130d36331997cf5bdaf353e6d0f82822d682e94c144892828c9"
     },
     "scripts/tests/test_batch_sim.py": {
       "fences": 0,
@@ -1643,8 +1644,8 @@
         "# --- B-123a: HOME/XDG isolation and Git profiles (three kinds of Git subprocess) ---------------------------",
         "# --- second-opinion B01 (B123A R1): winemu must check the repository the tests actually run in --------------"
       ],
-      "lines": 1228,
-      "sha256": "2577b86cbe225e047956466e743ec304363485d1bddcce681d46da3773bf6200"
+      "lines": 1346,
+      "sha256": "93fd1ec18d4c0cc1ed6b90f984187fd1cb6eb1164de2f30f5d0d3ec553378dd3"
     },
     "scripts/tests/test_bounded_process.py": {
       "fences": 0,
@@ -1968,8 +1969,8 @@
       "headings": [
         "# --- N-2: the uv that runs the rehearsal is exactly the version the Base pyproject pins -------------------------"
       ],
-      "lines": 920,
-      "sha256": "a1c88dba985b0b17bfec8b0c076d27ddbafb4fd421e0ea732c7469a44b5e1ecc"
+      "lines": 940,
+      "sha256": "9ce4ae88e0ae109b50be42ed08ba5c2f3967885f020abfcace63450b63477fbb"
     },
     "scripts/tests/test_playwright_automation.py": {
       "fences": 0,
@@ -1997,8 +1998,8 @@
         "# The canonical builder/checker recognises READONLY without granting canonical production-runner rights.",
         "# B115/G3 CI-PENDING-REPLY: positive terminal handoff; no checker command for Executor."
       ],
-      "lines": 1425,
-      "sha256": "50062196f21cc828d14db4261c62ee6d1d38945bb1a5f6ed3d44213695da8a8e"
+      "lines": 1433,
+      "sha256": "0fffa720e172d1850284233a6331bc0fc9fd41bc513a6eaaf5c8a5f5b0b7ce0b"
     },
     "scripts/tests/test_prompt_intake.py": {
       "fences": 0,
@@ -2338,7 +2339,7 @@
       "sha256": "6bfd57c05a09df3cde679ae53ac6ddd67bfb64cda4246584617d3cc67fb3b81c"
     }
   },
-  "generated_at": "2026-11-14T11:42:57Z",
+  "generated_at": "2026-11-15T09:36:18Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

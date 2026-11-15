@@ -134,8 +134,7 @@ def auto_promotion(repo, candidate_oid, candidate_branch, out_dir):
     for path in changed:
         if path not in pb.batch_runner.GENERATED:
             pb.check_repo_path(path)  # generated canonical files are valid diff facts, never author ops
-    slug = candidate_branch.removeprefix('batch/').upper().replace('.', '-')
-    task = 'PROMOTE-' + slug
+    task = pb.batch_runner.promotion_task_for_branch(candidate_branch)
     pb._require(pb.batch_runner.TASK_RE.fullmatch(task) is not None, 'PROMOTION_TASK_INVALID')
     # write_outputs also writes authors.json and authored/*: never overwrite any existing output.
     pb._require(not out_dir.exists() or (out_dir.is_dir() and not any(out_dir.iterdir())),

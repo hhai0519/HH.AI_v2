@@ -109,8 +109,10 @@ class Fx:
         self.git("checkout", "-q", "main")
         return oid
 
-    def prompt(self, kind="production", focused=FOCUSED, authors=None, task=TASK, branch=BRANCH, base=None):
+    def prompt(self, kind="production", focused=FOCUSED, authors=None, task=None, branch=BRANCH, base=None):
         base = base or self.base
+        if task is None:  # the runner requires the branch to follow the task id (and the promotion id to follow the branch)
+            task = br.promotion_task_for_branch(branch) if kind == "promotion" else branch.removeprefix("batch/").upper()
         authors = FINAL if authors is None else authors
         spec = {"schema_version": 1, "task_id": task, "kind": kind, "base_oid": base, "branch": branch,
                 "commit_message": SUBJECT, "start": {"mode": "clean"}, "e24": False, "focused": focused,

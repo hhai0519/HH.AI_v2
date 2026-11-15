@@ -429,6 +429,16 @@ def author_target(root, path):
     return target
 
 
+def production_branch_for_task(task_id):
+    """The only valid branch of a production batch: batch/ plus the lowercase TASK_ID."""
+    return 'batch/' + task_id.lower()
+
+
+def promotion_task_for_branch(candidate_branch):
+    """The only valid TASK_ID of a promotion of candidate_branch (same rule as promotion_template.auto_promotion)."""
+    return 'PROMOTE-' + candidate_branch.removeprefix('batch/').upper().replace('.', '-')
+
+
 def load_spec(lines, task_id):
     """Parse and validate BATCH_SPEC_JSON together with its paired blocks."""
     spec = block_json(lines, 'BATCH_SPEC_JSON')
@@ -459,9 +469,11 @@ def load_spec(lines, task_id):
         _require(isinstance(spec.get('candidate_oid'), str) and OID_RE.match(spec['candidate_oid']), 'SPEC_CANDIDATE_INVALID')
         _require(spec['candidate_oid'] != spec['base_oid'], 'SPEC_CANDIDATE_INVALID')
         _require(isinstance(spec.get('candidate_branch'), str) and BRANCH_RE.match(spec['candidate_branch']), 'SPEC_BRANCH_INVALID')
+        _require(task_id == promotion_task_for_branch(spec['candidate_branch']), 'SPEC_BRANCH_TASK_MISMATCH')
         return spec
     _require(kind == 'production', 'SPEC_KIND_INVALID')
     _require(isinstance(spec.get('branch'), str) and BRANCH_RE.match(spec['branch']), 'SPEC_BRANCH_INVALID')
+    _require(spec['branch'] == production_branch_for_task(task_id), 'SPEC_BRANCH_TASK_MISMATCH')
     msg = spec.get('commit_message')
     _require(isinstance(msg, str) and msg.strip() == msg and msg and chr(10) not in msg and len(msg) <= 120, 'SPEC_MESSAGE_INVALID')
     _require(isinstance(spec.get('e24'), bool), 'SPEC_E24_INVALID')

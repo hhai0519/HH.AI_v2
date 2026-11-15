@@ -89,6 +89,11 @@ exactly one "BATCH_SIM PASS <mode>" or "BATCH_SIM FAIL <CODE>"; exit status 0 on
 other runner output are never printed. Before "BATCH_SIM FAIL SOURCE_MODIFIED" the simulator lists what changed in
 the source: "BATCH_SIM SOURCE_REFS_CHANGED" when a ref differs, then "BATCH_SIM SOURCE_CHANGED <path>" per changed
 path (names only, ASCII-escaped, at most SOURCE_CHANGED_LIMIT, sorted) and "BATCH_SIM SOURCE_CHANGED_MORE <n>" for the rest.
+For a path present in both snapshots with different lstat values it adds "BATCH_SIM SOURCE_CHANGED_FIELDS <field>=<before>-><after> ...
+<path>" (numbers only, ASCII, at most SOURCE_CHANGED_LIMIT lines). The source snapshot records a plain directory only as
+(path, 'DIR'): directory mode, size and times are not compared because on Windows they can read differently between two
+snapshots without any change (native_preview S1 of 2026-11-15); creating, deleting or retyping a path, a file's
+lstat values, every ref and (with --verify-source-bytes) the exact bytes are still compared.
 A repeated check that finds the same changed snapshot (the --verify-source-bytes final check) does not list it again.
 """
 
@@ -415,7 +420,28 @@ def source_changed_lines(before, after):
               for path in paths[:SOURCE_CHANGED_LIMIT]]
     if len(paths) > SOURCE_CHANGED_LIMIT:
         lines.append('BATCH_SIM SOURCE_CHANGED_MORE ' + str(len(paths) - SOURCE_CHANGED_LIMIT))
+    fields = _metadata_by_path(entries_before), _metadata_by_path(entries_after)
+    both = sorted(path for path in fields[0].keys() & fields[1].keys() if fields[0][path] != fields[1][path])
+    for path in both[:SOURCE_CHANGED_LIMIT]:
+        lines.append('BATCH_SIM SOURCE_CHANGED_FIELDS ' + _field_changes(fields[0][path], fields[1][path]) + ' '
+                     + path.encode('unicode_escape').decode('ascii'))
     return lines
+
+
+_METADATA_FIELDS = ('mode', 'size', 'mtime_ns', 'ctime_ns')
+
+
+def _metadata_by_path(entries):
+    """Metadata entries of a snapshot by path: (path, 'DIR') or (path, mode, size, mtime_ns, ctime_ns)."""
+    return {entry[0]: entry for entry in entries if len(entry) == 5 or (len(entry) == 2 and entry[1] == 'DIR')}
+
+
+def _field_changes(before, after):
+    """Names and numbers only: the differing lstat fields, or the type when a directory became a non-directory."""
+    if len(before) == 5 and len(after) == 5:
+        return ' '.join(name + '=' + str(old) + '->' + str(new)
+                        for name, old, new in zip(_METADATA_FIELDS, before[1:], after[1:]) if old != new)
+    return 'type=' + ('DIR' if len(before) == 2 else 'ENTRY') + '->' + ('DIR' if len(after) == 2 else 'ENTRY')
 
 
 class Sim:
@@ -504,7 +530,8 @@ class Sim:
 
     def source_metadata(self):
         """Snapshot of the source: every ref with its object, plus the metadata of every path under the source
-        directory (.git included) from Python lstat calls; no git command runs in the source's working tree."""
+        directory (.git included) from Python lstat calls, except that a plain directory is only (path, 'DIR');
+        no git command runs in the source's working tree."""
         refs = self.git('--no-optional-locks', '-C', self.source, 'for-each-ref',
                         '--format=%(refname) %(objectname) %(symref)', cwd=str(self.workdir),
                         code='SOURCE_UNREADABLE')
@@ -512,8 +539,13 @@ class Sim:
         try:
             for path in _source_paths(Path(self.source)):
                 st = os.lstat(path)
-                entries.append((path.relative_to(self.source).as_posix(), st.st_mode, st.st_size,
-                                st.st_mtime_ns, st.st_ctime_ns))
+                relative = path.relative_to(self.source).as_posix()
+                if stat.S_ISDIR(st.st_mode) and not _link_or_reparse(st):
+                    # A plain directory is its path and type only: its mode, size and times can read differently
+                    # between two snapshots on Windows with nothing changed (native_preview S1 of 2026-11-15).
+                    entries.append((relative, 'DIR'))
+                else:
+                    entries.append((relative, st.st_mode, st.st_size, st.st_mtime_ns, st.st_ctime_ns))
         except OSError:
             raise SimError('SOURCE_UNREADABLE') from None
         return refs, tuple(entries)

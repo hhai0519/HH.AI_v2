@@ -192,8 +192,10 @@ def test_setup_needs_existing_bound_simulator_log(tmp_path, monkeypatch):
     ('launch', 'NATIVE_PREVIEW_LAUNCH_FAILED'),
     ('missing_log', 'NATIVE_PREVIEW_LOG_INVALID'),
     ('source_change', 'NATIVE_PREVIEW_SOURCE_MODIFIED'),
+    ('file_time_change', 'NATIVE_PREVIEW_SOURCE_MODIFIED'),
+    ('directory_metadata_only', None),
 ])
-def test_preview_lifecycle_checks_source_on_every_exit(tmp_path, source, monkeypatch, failure, code):
+def test_preview_lifecycle_checks_source_on_every_exit(tmp_path, source, monkeypatch, capsys, failure, code):
     from types import SimpleNamespace
     from bounded_process import BoundedResult, KILL_NOT_NEEDED
 
@@ -212,6 +214,8 @@ def test_preview_lifecycle_checks_source_on_every_exit(tmp_path, source, monkeyp
     batch = SimpleNamespace(root=str(source), task_id='FIXTURE', spec=spec, prompt_bytes=b'fixture',
                             write_new_artifact=lambda name, content: receipts.update({name: content}))
 
+    old_mtime = []
+
     def simulate(command, cwd, limit, **kwargs):
         assert command[1] == '-B' and kwargs['env']['PYTHONDONTWRITEBYTECODE'] == '1'
         # Absolute, module-adjacent simulator: never the cwd-relative copy in the source workspace.
@@ -222,6 +226,13 @@ def test_preview_lifecycle_checks_source_on_every_exit(tmp_path, source, monkeyp
         assert command[command.index('--uv-cache-dir') + 1] == str(cache.resolve())
         if failure == 'source_change':
             (source / '__pycache__').mkdir()
+        if failure == 'file_time_change':
+            old_mtime.append(os.lstat(source / 'module.py').st_mtime_ns)
+            os.utime(source / 'module.py', ns=(1_000_000_000, 1_000_000_000))
+        if failure == 'directory_metadata_only':
+            # native_preview S1 of 2026-11-15: a plain directory's own lstat values are not a source change.
+            for directory in (source, source / '.git', source / '.git' / 'objects'):
+                os.utime(directory, ns=(1_000_000_000, 1_000_000_000))
         if failure != 'missing_log':
             Path(kwargs['capture_path']).write_bytes(output.encode('ascii'))
         return BoundedResult(0, failure == 'timeout', 'OSError' if failure == 'launch' else None,
@@ -233,6 +244,15 @@ def test_preview_lifecycle_checks_source_on_every_exit(tmp_path, source, monkeyp
             preview.run(batch)
         assert not receipts
         assert Path(batch.native_preview_evidence_dir).is_dir()
+        printed = capsys.readouterr().out.splitlines()
+        if failure == 'source_change':
+            assert printed == ['NATIVE_PREVIEW SOURCE_CHANGED __pycache__']
+        if failure == 'file_time_change':
+            assert printed[0] == 'NATIVE_PREVIEW SOURCE_CHANGED module.py'
+            assert printed[1].startswith('NATIVE_PREVIEW SOURCE_CHANGED_FIELDS ') and printed[1].endswith(' module.py')
+            # The direction is fixed: the value before the change, then the value after it.
+            assert ' mtime_ns=' + str(old_mtime[0]) + '->1000000000 ' in printed[1]
+            assert len(printed) == 2
     else:
         preview.run(batch)
         assert 'native-preview.json' in receipts

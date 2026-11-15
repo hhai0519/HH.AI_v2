@@ -159,12 +159,55 @@ def test_adopt_mode_requires_start_branch_and_matching_keep_hashes():
 
 
 def test_promotion_spec_and_steps():
-    spec = {"schema_version": 1, "task_id": TASK, "kind": "promotion", "base_oid": BASE,
+    ptask = "PROMOTE-UNIT-BATCH-261008"
+    spec = {"schema_version": 1, "task_id": ptask, "kind": "promotion", "base_oid": BASE,
             "candidate_oid": "c" * 40, "candidate_branch": "batch/unit-batch-261008"}
-    loaded = br.load_spec(lines_of(prompt({"BATCH_SPEC_JSON": spec})), TASK)
+    loaded = br.load_spec(lines_of(prompt({"BATCH_SPEC_JSON": spec})), ptask)
     assert br.derive_steps(loaded) == ["preflight", "verify", "promote", "postmain"]
     spec["candidate_oid"] = BASE
-    assert halt_code(br.load_spec, lines_of(prompt({"BATCH_SPEC_JSON": spec})), TASK) == "SPEC_CANDIDATE_INVALID"
+    assert halt_code(br.load_spec, lines_of(prompt({"BATCH_SPEC_JSON": spec})), ptask) == "SPEC_CANDIDATE_INVALID"
+
+
+# --- branch and TASK_ID must correspond (the lowercase branch is not a free field) --------------------
+
+@pytest.mark.parametrize("branch", [
+    "batch/unit-batch-r1-261008",   # revision number left behind after a rename
+    "batch/unit-batch-261009",      # date drift
+    "batch/other-batch-261008",     # different slice
+    "batch/unit-batch-261008-x",    # extra suffix
+])
+def test_production_branch_must_equal_batch_slash_lowercase_task_id(branch):
+    spec = production_spec(branch=branch)
+    assert halt_code(br.load_spec, lines_of(prompt(production_blocks(spec))), TASK) == "SPEC_BRANCH_TASK_MISMATCH"
+
+
+def test_production_branch_derivation_is_the_single_accepted_value():
+    assert br.production_branch_for_task(TASK) == "batch/unit-batch-261008"
+    spec = production_spec(branch=br.production_branch_for_task(TASK))
+    assert br.load_spec(lines_of(prompt(production_blocks(spec))), TASK)["branch"] == "batch/unit-batch-261008"
+
+
+@pytest.mark.parametrize("task,branch,ok", [
+    ("PROMOTE-UNIT-BATCH-261008", "batch/unit-batch-261008", True),
+    ("PROMOTE-UNIT-BATCH-R2-261008", "batch/unit-batch-r1-261008", False),   # production id renamed, branch not
+    ("PROMOTE-UNIT-BATCH-261008", "batch/unit-batch-261009", False),
+    ("UNIT-BATCH-261008", "batch/unit-batch-261008", False),                 # promotion without the PROMOTE- prefix
+    ("promote-unit-batch-261008", "batch/unit-batch-261008", False),         # the comparison is case-sensitive
+    ("PROMOTE-UNIT-BATCH-1-261008", "batch/unit-batch.1-261008", True),      # a dot in the branch maps to a dash
+])
+def test_promotion_task_id_must_follow_candidate_branch(task, branch, ok):
+    spec = {"schema_version": 1, "task_id": task, "kind": "promotion", "base_oid": BASE,
+            "candidate_oid": "c" * 40, "candidate_branch": branch}
+    lines = lines_of(prompt({"BATCH_SPEC_JSON": spec}))
+    if ok:
+        assert br.load_spec(lines, task)["candidate_branch"] == branch
+    else:
+        assert halt_code(br.load_spec, lines, task) == "SPEC_BRANCH_TASK_MISMATCH"
+
+
+def test_promotion_task_for_branch_derives_the_promotion_task_id():
+    assert br.promotion_task_for_branch("batch/b117-g5-x-r2-261114") == "PROMOTE-B117-G5-X-R2-261114"
+    assert br.promotion_task_for_branch("batch/a.b-261114") == "PROMOTE-A-B-261114"
 
 
 # --- control ------------------------------------------------------------------

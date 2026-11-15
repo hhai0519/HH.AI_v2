@@ -12,6 +12,7 @@ import hashlib
 import json
 import os
 import re
+import stat
 import subprocess
 import sys
 from pathlib import Path
@@ -721,6 +722,14 @@ def _source_with_commit(tmp_path):
     return src, _git_real(str(src), "rev-parse", "HEAD")
 
 
+def _changed_names(lines):
+    return [line for line in lines if line.startswith("BATCH_SIM SOURCE_CHANGED ")]
+
+
+def _fields_lines(lines):
+    return [line for line in lines if line.startswith("BATCH_SIM SOURCE_CHANGED_FIELDS ")]
+
+
 def test_source_modification_lists_changed_paths_by_name_only(tmp_path):
     src, base = _source_with_commit(tmp_path)
     lines = []
@@ -730,10 +739,12 @@ def test_source_modification_lists_changed_paths_by_name_only(tmp_path):
     _w(src / "untracked.txt", b"u\n")
     _w(src / ".git" / "info" / "extra", b"e\n")
     assert _code(sim.check_source_unchanged) == "SOURCE_MODIFIED"
-    assert lines == ["BATCH_SIM SOURCE_CHANGED .git/info",
-                     "BATCH_SIM SOURCE_CHANGED .git/info/extra",
-                     "BATCH_SIM SOURCE_CHANGED f.txt",
-                     "BATCH_SIM SOURCE_CHANGED untracked.txt"]
+    assert _changed_names(lines) == ["BATCH_SIM SOURCE_CHANGED .git/info/extra",
+                                     "BATCH_SIM SOURCE_CHANGED f.txt",
+                                     "BATCH_SIM SOURCE_CHANGED untracked.txt"]
+    fields = _fields_lines(lines)
+    assert len(fields) == 1 and fields[0].startswith("BATCH_SIM SOURCE_CHANGED_FIELDS size=2->15 ")
+    assert fields[0].endswith(" f.txt")
     assert not any("SECRET-CONTENT" in line for line in lines)
 
 
@@ -744,7 +755,8 @@ def test_source_modification_lists_changed_paths_in_exact_byte_mode(tmp_path):
     sim.make_origin(base)
     _w(src / "f.txt", b"y\n")
     assert _code(sim.check_source_unchanged) == "SOURCE_MODIFIED"
-    assert lines == ["BATCH_SIM SOURCE_CHANGED f.txt"]
+    assert _changed_names(lines) == ["BATCH_SIM SOURCE_CHANGED f.txt"]
+    assert len(_fields_lines(lines)) == 1
 
 
 def test_source_modification_lists_deleted_path(tmp_path):
@@ -765,10 +777,13 @@ def test_repeated_source_check_lists_same_change_once(tmp_path):
     _w(src / "f.txt", b"y\n")
     assert _code(sim.check_source_unchanged) == "SOURCE_MODIFIED"
     assert _code(sim.check_source_unchanged) == "SOURCE_MODIFIED"
-    assert lines == ["BATCH_SIM SOURCE_CHANGED f.txt"]
+    assert _changed_names(lines) == ["BATCH_SIM SOURCE_CHANGED f.txt"]
+    assert len(_fields_lines(lines)) == 1
     _w(src / "g.txt", b"g\n")
     assert _code(sim.check_source_unchanged) == "SOURCE_MODIFIED"
-    assert lines == ["BATCH_SIM SOURCE_CHANGED f.txt", "BATCH_SIM SOURCE_CHANGED f.txt", "BATCH_SIM SOURCE_CHANGED g.txt"]
+    assert _changed_names(lines) == ["BATCH_SIM SOURCE_CHANGED f.txt", "BATCH_SIM SOURCE_CHANGED f.txt",
+                                     "BATCH_SIM SOURCE_CHANGED g.txt"]
+    assert len(_fields_lines(lines)) == 2
 
 
 def test_unchanged_source_prints_no_change_lines(tmp_path):
@@ -793,6 +808,109 @@ def test_source_changed_lines_report_refs_cap_and_escape_names():
     odd = (("a\nBATCH_SIM PASS x\u4e2d.txt", 33188, 1, 1, 1),)
     assert bs.source_changed_lines((BASE, ()), (BASE, odd)) == [
         "BATCH_SIM SOURCE_CHANGED a\\nBATCH_SIM PASS x\\u4e2d.txt"]
+
+
+def test_source_directory_metadata_alone_is_not_a_modification(tmp_path):
+    # native_preview S1 of 2026-11-15: only a plain directory's own lstat values differ, nothing is added,
+    # removed or changed. A directory is its path and type only in the snapshot, so this is not a modification.
+    src, base = _source_with_commit(tmp_path)
+    (src / "sub").mkdir()
+    lines = []
+    sim = bs.Sim(str(src), str(tmp_path / "wd"), "utf8", out=lines.append)
+    sim.make_origin(base)
+    before = sim.source_metadata()
+    for directory in (src / "sub", src / ".git" / "objects", src / ".git"):
+        os.utime(directory, ns=(1_000_000_000, 1_000_000_000))
+    os.chmod(src / "sub", 0o700)
+    assert sim.source_metadata() == before
+    sim.check_source_unchanged()
+    assert lines == []
+    entries = dict((entry[0], entry[1:]) for entry in before[1])
+    assert entries["sub"] == ("DIR",) and entries[".git/objects"] == ("DIR",)
+    assert len(entries["f.txt"]) == 4
+
+
+def test_source_reparse_point_directory_keeps_full_metadata(tmp_path, monkeypatch):
+    # A Windows junction is a directory by mode but a reparse point: it is never reduced to (path, 'DIR').
+    src, base = _source_with_commit(tmp_path)
+    (src / "junction").mkdir()
+    sim = bs.Sim(str(src), str(tmp_path / "wd"), "utf8", out=lambda line: None)
+    real = bs._link_or_reparse
+    monkeypatch.setattr(bs, "_link_or_reparse", lambda st: real(st) or stat.S_ISDIR(st.st_mode))
+    entries = dict((entry[0], entry[1:]) for entry in sim.source_metadata()[1])
+    assert len(entries["junction"]) == 4 and entries["junction"][0] != "DIR"
+
+
+def test_source_empty_directory_added_or_removed_is_a_modification(tmp_path):
+    src, base = _source_with_commit(tmp_path)
+    (src / "gone").mkdir()
+    lines = []
+    sim = bs.Sim(str(src), str(tmp_path / "wd"), "utf8", out=lines.append)
+    sim.make_origin(base)
+    (src / "gone").rmdir()
+    assert _code(sim.check_source_unchanged) == "SOURCE_MODIFIED"
+    assert lines == ["BATCH_SIM SOURCE_CHANGED gone"]
+    lines.clear()
+    sim2 = bs.Sim(str(src), str(tmp_path / "wd2"), "utf8", out=lines.append)
+    sim2.make_origin(base)
+    (src / "fresh").mkdir()
+    assert _code(sim2.check_source_unchanged) == "SOURCE_MODIFIED"
+    assert lines == ["BATCH_SIM SOURCE_CHANGED fresh"]
+
+
+@pytest.mark.skipif(not hasattr(os, "symlink"), reason="needs symlinks")
+def test_source_directory_replaced_by_a_link_is_a_modification_with_type_change(tmp_path):
+    src, base = _source_with_commit(tmp_path)
+    (src / "sub").mkdir()
+    (tmp_path / "elsewhere").mkdir()
+    lines = []
+    sim = bs.Sim(str(src), str(tmp_path / "wd"), "utf8", out=lines.append)
+    sim.make_origin(base)
+    (src / "sub").rmdir()
+    try:
+        os.symlink(str(tmp_path / "elsewhere"), str(src / "sub"))
+    except OSError:
+        pytest.skip("symlink not permitted")
+    assert _code(sim.check_source_unchanged) == "SOURCE_MODIFIED"
+    assert _changed_names(lines) == ["BATCH_SIM SOURCE_CHANGED sub"]
+    assert _fields_lines(lines) == ["BATCH_SIM SOURCE_CHANGED_FIELDS type=DIR->ENTRY sub"]
+
+
+def test_source_file_time_only_change_reports_the_changed_fields(tmp_path):
+    src, base = _source_with_commit(tmp_path)
+    lines = []
+    sim = bs.Sim(str(src), str(tmp_path / "wd"), "utf8", out=lines.append)
+    sim.make_origin(base)
+    os.utime(src / "f.txt", ns=(1_000_000_000, 1_000_000_000))
+    assert _code(sim.check_source_unchanged) == "SOURCE_MODIFIED"
+    assert _changed_names(lines) == ["BATCH_SIM SOURCE_CHANGED f.txt"]
+    fields = _fields_lines(lines)
+    assert len(fields) == 1 and fields[0].endswith(" f.txt")
+    assert " mtime_ns=" in fields[0] and "->1000000000" in fields[0] and " size=" not in fields[0]
+
+
+def test_source_changed_fields_lines_are_numbers_only_capped_and_escaped():
+    one = ("d/f.txt", 33188, 5, 100, 200)
+    assert bs.source_changed_lines((BASE, (one,)), (BASE, (("d/f.txt", 33261, 5, 100, 250),))) == [
+        "BATCH_SIM SOURCE_CHANGED d/f.txt",
+        "BATCH_SIM SOURCE_CHANGED_FIELDS mode=33188->33261 ctime_ns=200->250 d/f.txt"]
+    assert bs.source_changed_lines((BASE, (("d", "DIR"),)), (BASE, (("d", "DIR"),))) == []
+    assert bs.source_changed_lines((BASE, (("d", "DIR"),)), (BASE, (("d", 16877, 4096, 1, 1),))) == [
+        "BATCH_SIM SOURCE_CHANGED d",
+        "BATCH_SIM SOURCE_CHANGED_FIELDS type=DIR->ENTRY d"]
+    before = tuple((f"d/f{n:02d}.txt", 33188, 1, 1, 1) for n in range(bs.SOURCE_CHANGED_LIMIT + 5))
+    after = tuple((f"d/f{n:02d}.txt", 33188, 2, 1, 1) for n in range(bs.SOURCE_CHANGED_LIMIT + 5))
+    lines = bs.source_changed_lines((BASE, before), (BASE, after))
+    fields = [line for line in lines if line.startswith("BATCH_SIM SOURCE_CHANGED_FIELDS ")]
+    assert len(fields) == bs.SOURCE_CHANGED_LIMIT
+    assert fields[0] == "BATCH_SIM SOURCE_CHANGED_FIELDS size=1->2 d/f00.txt"
+    odd = (("a\nBATCH_SIM PASS x\u4e2d.txt", 33188, 1, 1, 1),)
+    odd_after = (("a\nBATCH_SIM PASS x\u4e2d.txt", 33188, 2, 1, 1),)
+    assert bs.source_changed_lines((BASE, odd), (BASE, odd_after)) == [
+        "BATCH_SIM SOURCE_CHANGED a\\nBATCH_SIM PASS x\\u4e2d.txt",
+        "BATCH_SIM SOURCE_CHANGED_FIELDS size=1->2 a\\nBATCH_SIM PASS x\\u4e2d.txt"]
+    exact = bs.source_changed_lines((BASE, (("f.txt", "aa"),)), (BASE, (("f.txt", "bb"),)))
+    assert exact == ["BATCH_SIM SOURCE_CHANGED f.txt"]
 
 
 # --- second opinion on S3-R1 ---------------------------------------------------------------------------
