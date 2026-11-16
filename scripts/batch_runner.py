@@ -1773,6 +1773,235 @@ def _halt_with_timing(root, task_id):
     return 1
 
 
+# ---------------------------------------------------------------------------
+# G5-b: one command that runs every remaining step, and a read-only position check
+# ---------------------------------------------------------------------------
+
+RUN_LOCK = 'run.lock'
+# One byte far beyond any real end of file is locked, so a reader of the lock file is never blocked by it.
+RUN_LOCK_OFFSET = 1 << 20
+_IS_WINDOWS = os.name == 'nt'
+RUN_REFUSED_EXIT = 2
+RUN_ACTIVE_EXIT = 3
+RUN_UNRESOLVED_EXIT = 4
+
+
+def _lock_region(handle, lock):
+    """Take (lock=True) or drop an exclusive, non-blocking operating-system lock; False when it is not granted.
+
+    The operating system drops the lock when the owning process ends for any reason, so a crashed run never
+    leaves a stale lock behind and no process id or timestamp is ever trusted.
+    """
+    try:
+        if _IS_WINDOWS:
+            import msvcrt
+            handle.seek(RUN_LOCK_OFFSET)
+            msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK if lock else msvcrt.LK_UNLCK, 1)
+        else:
+            import fcntl
+            fcntl.flock(handle.fileno(), (fcntl.LOCK_EX | fcntl.LOCK_NB) if lock else fcntl.LOCK_UN)
+    except OSError:
+        return False
+    return True
+
+
+def _open_run_lock(batch):
+    rel = batch.artifact(RUN_LOCK)
+    flags = os.O_RDWR | os.O_CREAT | getattr(os, 'O_BINARY', 0) | getattr(os, 'O_NOFOLLOW', 0)
+    try:
+        return os.fdopen(os.open(Path(batch.root) / rel, flags, 0o600), 'r+b')
+    except OSError:
+        raise Halt('RUN_LOCK_OPEN_FAILED') from None
+
+
+def _probe_run_lock(batch):
+    """Read-only: 'FREE' (no lock file, or the lock is obtainable), 'HELD' by a running process, or 'UNKNOWN'."""
+    path = Path(batch.root) / batch.artifact(RUN_LOCK)
+    if not os.path.lexists(path):
+        return 'FREE'
+    try:
+        handle = open(path, 'r+b')
+    except OSError:
+        return 'UNKNOWN'
+    try:
+        if not _lock_region(handle, True):
+            return 'HELD'
+        _lock_region(handle, False)
+        return 'FREE'
+    finally:
+        handle.close()
+
+
+def _record_state(batch, step):
+    """'ABSENT', 'OPEN' (started, no completion marker) or 'COMPLETE' for a step's task-local record."""
+    path = Path(batch.root) / batch.artifact('step-' + step + '.out')
+    if not os.path.lexists(path):
+        return 'ABSENT'
+    try:
+        raw = path.read_bytes()
+    except OSError:
+        return 'OPEN'
+    return 'COMPLETE' if step_record_complete(raw, step) else 'OPEN'
+
+
+def _record_passed(batch, step):
+    """True only when a step's task-local record ends with its own result=0 completion marker."""
+    path = Path(batch.root) / batch.artifact('step-' + step + '.out')
+    try:
+        raw = path.read_bytes()
+    except OSError:
+        return False
+    return step_record_complete(raw, step) and raw.endswith(
+        b'STEP_OUTPUT_COMPLETE step=' + step.encode('ascii') + b' result=0\n')
+
+
+def _run_position(batch, steps, control):
+    """Read-only classification of where a task stands: (state, next_step).
+
+    NOT_STARTED and RESUMABLE are the only states from which a run may continue. INTERRUPTED means the next
+    step began and never finished, so it may have changed the work tree or the remote: it is never repeated
+    automatically. Every other state needs a person.
+    """
+    if control is None:
+        return 'NOT_STARTED', steps[0]
+    if (control.get('task_id') != batch.task_id
+            or control.get('prompt_sha256') != sha256_bytes(batch.prompt_bytes)):
+        return 'BINDING_DRIFT', None
+    if control.get('halted'):
+        return 'HALTED', None
+    done = control.get('done')
+    if not isinstance(done, list) or done != steps[:len(done)]:
+        return 'CONTROL_INCONSISTENT', None
+    if done and not _record_passed(batch, done[-1]):
+        # The last step in control has no result=0 completion marker: it ended in an S1 that did not lock the
+        # task (for example STEP_OUTPUT_WRITE_FAILED) or was stopped after control was written. Never continue.
+        return 'PREVIOUS_STEP_UNCONFIRMED', done[-1]
+    if len(done) == len(steps):
+        return 'COMPLETE', None
+    step = steps[len(done)]
+    record = _record_state(batch, step)
+    if record == 'OPEN':
+        return 'INTERRUPTED', step
+    if record == 'COMPLETE':
+        return 'CONTROL_INCONSISTENT', step
+    return 'RESUMABLE', step
+
+
+def resume_check(root, task_id):
+    """Print one fixed line that says whether and where a task can continue. Reads only; changes nothing."""
+    try:
+        batch = Batch(root, task_id)
+        steps = derive_steps(batch.spec)
+        if not steps:
+            raise Halt('UNKNOWN_STEP')
+        control = load_control(batch)
+        state, step = _run_position(batch, steps, control)
+        lock = _probe_run_lock(batch)
+    except Halt as h:
+        print('RESUME_CHECK STATE=UNAVAILABLE CODE=' + str(h))
+        return 1
+    except (OSError, UnicodeDecodeError):
+        print('RESUME_CHECK STATE=UNAVAILABLE CODE=PROMPT_UNREADABLE')
+        return 1
+    if lock != 'FREE':
+        state = 'RUNNING' if lock == 'HELD' else 'UNKNOWN_LOCK'
+    done = ','.join(control.get('done', [])) if isinstance(control, dict) and isinstance(control.get('done'), list) else ''
+    halted = control.get('halted') if isinstance(control, dict) else None
+    print('RESUME_CHECK STATE=' + state + ' NEXT=' + (step or 'none') + ' DONE=' + (done or 'none')
+          + ' HALTED=' + str(halted) + ' LOCK=' + lock)
+    return 0
+
+
+def _spawn_step(root, task_id, step):
+    """Run one step exactly as a person would, in its own process, with its output on this run's output."""
+    sys.stdout.flush()
+    sys.stderr.flush()
+    try:
+        return subprocess.run([PY, str(Path(root) / RUNNER_REL), '--task-id', task_id, step], cwd=root,
+                              stdin=subprocess.DEVNULL, env=child_env()).returncode
+    except OSError:
+        return 127
+
+
+def _run_loop(batch, steps, spawn):
+    root, task_id = batch.root, batch.task_id
+    started = False
+    spawned = set()
+    while True:
+        try:
+            control = load_control(batch)
+            state, step = _run_position(batch, steps, control)
+        except Halt as h:
+            print('RUN_STOPPED CODE=' + str(h))
+            return RUN_UNRESOLVED_EXIT
+        if not started:
+            print('RUN_START task=' + task_id + ' state=' + state + ' next=' + (step or 'none'), flush=True)
+            started = True
+        if state in ('COMPLETE', 'HALTED') and not spawned:
+            # timing is one-shot (its reply artifact is created exclusively) and the protocol forbids a second
+            # timing once TIMING or EXECUTOR_REPLY_UNAVAILABLE has appeared: a run that starts here only reports.
+            print('RUN_STOPPED STATE=' + state + ' HALTED=' + str(control.get('halted')) + ' CODE=REPLY_NOT_REPEATED',
+                  flush=True)
+            return RUN_UNRESOLVED_EXIT if state == 'COMPLETE' else 1
+        if state == 'COMPLETE':
+            rc = spawn(root, task_id, 'timing')
+            # timing exits 0 also for its EXECUTOR_REPLY_UNAVAILABLE fallback, so this line never claims PASS.
+            print('RUN_END STATE=COMPLETE TIMING_RC=' + str(rc), flush=True)
+            return rc
+        if state not in ('NOT_STARTED', 'RESUMABLE'):
+            print('RUN_STOPPED STATE=' + state + ' NEXT=' + (step or 'none'), flush=True)
+            return RUN_UNRESOLVED_EXIT
+        if step in spawned:
+            # Whatever control says, one run never starts the same step twice.
+            print('RUN_STOPPED STEP=' + step + ' CODE=STEP_REPEATED', flush=True)
+            return RUN_UNRESOLVED_EXIT
+        spawned.add(step)
+        rc = spawn(root, task_id, step)
+        if rc != 0:
+            # The step already printed its own S1 and, through the existing halt path, the reply or its fallback.
+            print('RUN_STOPPED STEP=' + step + ' RC=' + str(rc), flush=True)
+            return rc
+        try:
+            moved = load_control(batch)
+        except Halt:
+            moved = None
+        if not isinstance(moved, dict) or step not in (moved.get('done') or []):
+            print('RUN_STOPPED STEP=' + step + ' CODE=CONTROL_NOT_ADVANCED', flush=True)
+            spawn(root, task_id, 'timing')
+            return 1
+        print('RUN_STEP_DONE step=' + step, flush=True)
+
+
+def run_all(root, task_id, spawn=_spawn_step):
+    """Run every remaining step in order, once, under an exclusive lock; continue from control after an interruption."""
+    lock = None
+    try:
+        batch = Batch(root, task_id)
+        steps = derive_steps(batch.spec)
+        if not steps:
+            raise Halt('UNKNOWN_STEP')
+        lock = _open_run_lock(batch)
+    except Halt as h:
+        print('RUN_REFUSED CODE=' + str(h))
+        return RUN_REFUSED_EXIT
+    except (OSError, UnicodeDecodeError):
+        print('RUN_REFUSED CODE=PROMPT_UNREADABLE')
+        return RUN_REFUSED_EXIT
+    try:
+        if not _lock_region(lock, True):
+            print('RUN_REFUSED CODE=RUN_ALREADY_ACTIVE')
+            return RUN_ACTIVE_EXIT
+        try:
+            return _run_loop(batch, steps, spawn)
+        except KeyboardInterrupt:
+            print('RUN_INTERRUPTED', flush=True)
+            return 130
+        finally:
+            _lock_region(lock, False)
+    finally:
+        lock.close()
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description='Canonical fixed-step batch runner (B-107).')
     parser.add_argument('--task-id', required=True)
@@ -1792,6 +2021,10 @@ def main(argv=None):
             raise Halt('WORKING_DIRECTORY_MISMATCH')
         if step == 'timing':
             return timing(root, task_id)
+        if step == 'run':
+            return run_all(root, task_id)
+        if step == 'resume-check':
+            return resume_check(root, task_id)
         batch = Batch(root, task_id)
         steps = derive_steps(batch.spec)
         if step not in steps:

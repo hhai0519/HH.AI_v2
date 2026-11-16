@@ -1,5 +1,5 @@
 {
-  "base_head": "ba34802",
+  "base_head": "4378c57",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -566,16 +566,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 412,
-      "sha256": "3f2b02565f69df90fcdeb463a47a5975c7a62909691ce90089d7b1ad9dd21f9e"
+      "lines": 413,
+      "sha256": "0cd72e2c93de7ced3cd052eda1c5910f2aee59c8fcd45a6aaae6233d3887d6c6"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 383,
-      "sha256": "400f6b8b6909677e94e4f8cbef9c47ba9734aef56978a327895ffc5669c97ce0"
+      "lines": 384,
+      "sha256": "bac74db566bd8bb7b0a837f3171a10d4f8a226c47e9355d57941fab1f5db7650"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -617,8 +617,8 @@
         "## G. 舊 repo 未盤點區塊（2026-09-02 新發現）",
         "## 封存區"
       ],
-      "lines": 577,
-      "sha256": "b2e4cdb3eddb404cec20339f8f585e0021c01b43826b72540b94e2aef66a1976"
+      "lines": 578,
+      "sha256": "fde3d85d4f85b3bcc35717e876e2c2e059ff18ae93cacb487aaee758f9ddf18d"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1127,8 +1127,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6469,
-      "sha256": "f7c09f6f975cf83a57f2aeb5e2b0df08b5de6d0e22da8870aca7af4bc8656db6"
+      "lines": 6470,
+      "sha256": "bd82e8e02e8711228eb0c2a7b6d245df3e7b989ff142e467f7b4d1203e4f46b1"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1177,10 +1177,14 @@
         "# Control record and entry point",
         "# ---------------------------------------------------------------------------",
         "# Windows: os.replace needs DELETE access on both files; antivirus/indexer handles can deny it briefly.",
-        "# Retry only that PermissionError, bounded (about 1.55 s total); any other failure is not retried."
+        "# Retry only that PermissionError, bounded (about 1.55 s total); any other failure is not retried.",
+        "# ---------------------------------------------------------------------------",
+        "# G5-b: one command that runs every remaining step, and a read-only position check",
+        "# ---------------------------------------------------------------------------",
+        "# One byte far beyond any real end of file is locked, so a reader of the lock file is never blocked by it."
       ],
-      "lines": 1897,
-      "sha256": "93fcd8d310f2aa8d3618ad649b8ca1a9e089b09ea3975ea3755d70f27314b551"
+      "lines": 2130,
+      "sha256": "c6846fb150d6bc5dea054a97a9ce17aabab492d5dc08195b2312cf721bbba24f"
     },
     "scripts/batch_sim.py": {
       "fences": 0,
@@ -1631,10 +1635,13 @@
         "# G3 F — keep the original S1 as authority; auto timing is terminal, not a new tool action.",
         "# G3 F (E27 second-opinion additions): each WARN guard and the pre-step S1 path",
         "# has its own killing case; one guard cannot silently cover for another.",
-        "# B117 R4 — a step that is still running (or was interrupted) is reported as such, never as a bare order error."
+        "# B117 R4 — a step that is still running (or was interrupted) is reported as such, never as a bare order error.",
+        "# ---------------------------------------------------------------------------",
+        "# G5-b: one command that runs every remaining step, and the read-only position check",
+        "# ---------------------------------------------------------------------------"
       ],
-      "lines": 2648,
-      "sha256": "be26b4a6199003a77536092c963f2790dff8f3fadbe799cb1db9cc8e22a1652e"
+      "lines": 3055,
+      "sha256": "a28a900f619397e466dbe97b59b3e705855465c9ff0f1dd76bd1d7d296d2ddf1"
     },
     "scripts/tests/test_batch_sim.py": {
       "fences": 0,
@@ -2356,7 +2363,7 @@
       "sha256": "6bfd57c05a09df3cde679ae53ac6ddd67bfb64cda4246584617d3cc67fb3b81c"
     }
   },
-  "generated_at": "2026-11-16T05:54:50Z",
+  "generated_at": "2026-11-16T12:01:08Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

@@ -2646,3 +2646,410 @@ def test_rc2_timing_rechecks_control_after_a_truly_successful_assembly(tmp_path,
     out = capsys.readouterr().out.splitlines()
     assert out == ['EXECUTOR_REPLY_UNAVAILABLE REPLY_STEP_IN_PROGRESS', t, s]
     assert 'EXECUTOR_REPLY_BEGIN' not in out and len(calls) == 2
+
+
+# ---------------------------------------------------------------------------
+# G5-b: one command that runs every remaining step, and the read-only position check
+# ---------------------------------------------------------------------------
+
+RUN_STEPS = ['preflight', 'setup', 'apply', 'push']
+RUN_PROMPT = b'synthetic prompt'
+
+
+class _RunBatch:
+    def __init__(self, root):
+        self.root = str(root)
+        self.task_id = TASK
+        self.prompt_bytes = RUN_PROMPT
+        self.spec = {'kind': 'production'}
+        self.control_rel = '.git/' + TASK + '-control.json'
+
+    def artifact(self, name):
+        return '.git/' + TASK + '-' + name
+
+
+def _run_control(tmp_path, done, halted=None, **over):
+    ctl = {'task_id': TASK, 'prompt_sha256': br.sha256_bytes(RUN_PROMPT), 'runner_sha256': 'fixed',
+           'done': list(done), 'halted': halted}
+    ctl.update(over)
+    _lf(tmp_path / '.git' / (TASK + '-control.json'), json.dumps(ctl))
+    return ctl
+
+
+def _run_passed(tmp_path, done):
+    for step in done:  # a step in control has, like a real one, its passing record
+        _run_record(tmp_path, step, True)
+
+
+def _run_record(tmp_path, step, complete, result=0):
+    text = 'STEP_PASS ' + step + '\n' + (
+        'STEP_OUTPUT_COMPLETE step=' + step + ' result=' + str(result) + '\n' if complete else '')
+    _lf(tmp_path / '.git' / (TASK + '-step-' + step + '.out'), text)
+
+
+def _run_world(tmp_path, monkeypatch, done=None, halted=None):
+    (tmp_path / '.git').mkdir(exist_ok=True)
+    batch = _RunBatch(tmp_path)
+    monkeypatch.setattr(br, 'Batch', lambda root, task: batch)
+    monkeypatch.setattr(br, 'derive_steps', lambda spec: list(RUN_STEPS))
+    if done is not None:
+        _run_control(tmp_path, done, halted)
+        _run_passed(tmp_path, done)
+    return batch
+
+
+def _run_spawn(tmp_path, calls, fail_at=None, stall_at=None):
+    """Stands in for one step process: a passing step is appended to control, like the real step does."""
+    def spawn(root, task, step):
+        calls.append(step)
+        if step == 'timing':
+            return 0
+        if step == fail_at:
+            return 1
+        if step != stall_at:
+            ctl = json.loads((tmp_path / '.git' / (TASK + '-control.json')).read_text(encoding='utf-8')) \
+                if (tmp_path / '.git' / (TASK + '-control.json')).exists() else _run_control(tmp_path, [])
+            ctl['done'].append(step)
+            _run_record(tmp_path, step, True)
+            _run_control(tmp_path, ctl['done'])
+        return 0
+    return spawn
+
+
+def _snapshot(tmp_path):
+    return {str(p.relative_to(tmp_path)): (p.read_bytes(), p.stat().st_mtime_ns)
+            for p in sorted(tmp_path.rglob('*')) if p.is_file()}
+
+
+@pytest.mark.parametrize('case,expected', [
+    ('missing', ('NOT_STARTED', 'preflight')),
+    ('fresh', ('RESUMABLE', 'preflight')),
+    ('between', ('RESUMABLE', 'setup')),
+    ('open_record', ('INTERRUPTED', 'setup')),
+    ('complete_record_not_in_control', ('CONTROL_INCONSISTENT', 'setup')),
+    ('all_done', ('COMPLETE', None)),
+    ('halted', ('HALTED', None)),
+    ('other_task', ('BINDING_DRIFT', None)),
+    ('other_prompt', ('BINDING_DRIFT', None)),
+    ('not_a_prefix', ('CONTROL_INCONSISTENT', None)),
+])
+def test_g5b_run_position_classifies_every_state(tmp_path, monkeypatch, case, expected):
+    batch = _run_world(tmp_path, monkeypatch)
+    control = {
+        'missing': lambda: None,
+        'fresh': lambda: _run_control(tmp_path, []),
+        'between': lambda: _run_control(tmp_path, ['preflight']),
+        'open_record': lambda: _run_control(tmp_path, ['preflight']),
+        'complete_record_not_in_control': lambda: _run_control(tmp_path, ['preflight']),
+        'all_done': lambda: _run_control(tmp_path, RUN_STEPS),
+        'halted': lambda: _run_control(tmp_path, ['preflight'], halted='setup:X'),
+        'other_task': lambda: _run_control(tmp_path, [], task_id='OTHER-TASK'),
+        'other_prompt': lambda: _run_control(tmp_path, [], prompt_sha256='0' * 64),
+        'not_a_prefix': lambda: _run_control(tmp_path, ['setup']),
+    }[case]()  # only this case's control is written
+    if control is not None:
+        _run_passed(tmp_path, control['done'])
+    if case == 'open_record':
+        _run_record(tmp_path, 'setup', False)
+    if case == 'complete_record_not_in_control':
+        _run_record(tmp_path, 'setup', True)
+    assert br._run_position(batch, RUN_STEPS, control) == expected
+
+
+def test_g5b_run_executes_every_step_once_then_reports_and_frees_the_lock(tmp_path, monkeypatch, capsys):
+    batch = _run_world(tmp_path, monkeypatch)
+    calls = []
+    assert br.run_all(str(tmp_path), TASK, spawn=_run_spawn(tmp_path, calls)) == 0
+    assert calls == RUN_STEPS + ['timing']
+    out = capsys.readouterr().out.splitlines()
+    assert out[0] == 'RUN_START task=' + TASK + ' state=NOT_STARTED next=preflight'
+    assert out[-1] == 'RUN_END STATE=COMPLETE TIMING_RC=0'
+    assert [l for l in out if l.startswith('RUN_STEP_DONE')] == ['RUN_STEP_DONE step=' + s for s in RUN_STEPS]
+    assert br._probe_run_lock(batch) == 'FREE'
+
+
+def test_g5b_run_continues_after_the_last_completed_step_and_never_repeats_one(tmp_path, monkeypatch, capsys):
+    _run_world(tmp_path, monkeypatch, done=['preflight', 'setup'])
+    calls = []
+    assert br.run_all(str(tmp_path), TASK, spawn=_run_spawn(tmp_path, calls)) == 0
+    assert calls == ['apply', 'push', 'timing']
+    assert 'state=RESUMABLE next=apply' in capsys.readouterr().out
+
+
+def test_g5b_run_stops_at_the_first_failing_step_and_adds_no_second_reply(tmp_path, monkeypatch, capsys):
+    _run_world(tmp_path, monkeypatch)
+    calls = []
+    assert br.run_all(str(tmp_path), TASK, spawn=_run_spawn(tmp_path, calls, fail_at='apply')) == 1
+    assert calls == ['preflight', 'setup', 'apply']
+    assert 'RUN_STOPPED STEP=apply RC=1' in capsys.readouterr().out
+
+
+def test_g5b_run_does_not_trust_a_zero_exit_that_left_control_behind(tmp_path, monkeypatch, capsys):
+    _run_world(tmp_path, monkeypatch)
+    calls = []
+    assert br.run_all(str(tmp_path), TASK, spawn=_run_spawn(tmp_path, calls, stall_at='setup')) == 1
+    assert calls == ['preflight', 'setup', 'timing']
+    assert 'RUN_STOPPED STEP=setup CODE=CONTROL_NOT_ADVANCED' in capsys.readouterr().out
+
+
+def test_g5b_run_never_repeats_a_step_that_began_and_did_not_finish(tmp_path, monkeypatch, capsys):
+    _run_world(tmp_path, monkeypatch, done=['preflight'])
+    _run_record(tmp_path, 'setup', False)
+    calls = []
+    assert br.run_all(str(tmp_path), TASK, spawn=_run_spawn(tmp_path, calls)) == br.RUN_UNRESOLVED_EXIT
+    assert calls == []
+    assert 'RUN_STOPPED STATE=INTERRUPTED NEXT=setup' in capsys.readouterr().out
+
+
+def test_g5b_run_on_a_halted_task_only_reports(tmp_path, monkeypatch, capsys):
+    _run_world(tmp_path, monkeypatch, done=['preflight'], halted='setup:X')
+    calls = []
+    assert br.run_all(str(tmp_path), TASK, spawn=_run_spawn(tmp_path, calls)) == 1
+    # The halting step already printed its S1 and its one-shot reply; a second timing is forbidden.
+    assert calls == []
+    assert 'RUN_STOPPED STATE=HALTED HALTED=setup:X CODE=REPLY_NOT_REPEATED' in capsys.readouterr().out
+
+
+def test_g5b_a_run_started_on_a_complete_task_never_repeats_the_reply(tmp_path, monkeypatch, capsys):
+    _run_world(tmp_path, monkeypatch, done=RUN_STEPS)
+    calls = []
+    assert br.run_all(str(tmp_path), TASK, spawn=_run_spawn(tmp_path, calls)) == br.RUN_UNRESOLVED_EXIT
+    assert calls == []
+    assert capsys.readouterr().out.splitlines()[-1] == 'RUN_STOPPED STATE=COMPLETE HALTED=None CODE=REPLY_NOT_REPEATED'
+
+
+def test_g5b_second_run_is_refused_while_the_lock_is_held_and_touches_nothing(tmp_path, monkeypatch, capsys):
+    batch = _run_world(tmp_path, monkeypatch, done=['preflight'])
+    holder = br._open_run_lock(batch)
+    assert br._lock_region(holder, True)
+    before = _snapshot(tmp_path)
+    calls = []
+    assert br.run_all(str(tmp_path), TASK, spawn=_run_spawn(tmp_path, calls)) == br.RUN_ACTIVE_EXIT
+    assert calls == [] and _snapshot(tmp_path) == before
+    assert 'RUN_REFUSED CODE=RUN_ALREADY_ACTIVE' in capsys.readouterr().out
+    assert br._lock_region(holder, False)
+    holder.close()
+    assert br.run_all(str(tmp_path), TASK, spawn=_run_spawn(tmp_path, calls)) == 0
+
+
+_LOCK_HOLDER = (
+    "import sys\n"
+    "sys.path.insert(0, sys.argv[1])\n"
+    "import batch_runner as br\n"
+    "h = open(sys.argv[2], 'r+b')\n"
+    "print('LOCKED' if br._lock_region(h, True) else 'DENIED', flush=True)\n"
+    "sys.stdin.readline()\n"
+)
+
+
+def test_g5b_the_lock_is_a_real_operating_system_lock_held_by_another_process(tmp_path, monkeypatch, capsys):
+    batch = _run_world(tmp_path, monkeypatch, done=['preflight'])
+    br._open_run_lock(batch).close()
+    lock_path = str(tmp_path / '.git' / (TASK + '-' + br.RUN_LOCK))
+    holder = subprocess.Popen([sys.executable, '-c', _LOCK_HOLDER, SCRIPTS_DIR, lock_path], stdin=subprocess.PIPE,
+                              stdout=subprocess.PIPE, text=True)
+    try:
+        assert holder.stdout.readline().strip() == 'LOCKED'
+        assert br._probe_run_lock(batch) == 'HELD'
+        calls = []
+        assert br.run_all(str(tmp_path), TASK, spawn=_run_spawn(tmp_path, calls)) == br.RUN_ACTIVE_EXIT
+        assert calls == []
+    finally:
+        holder.stdin.close()
+        holder.wait(timeout=60)
+    # The process that held it is gone: the operating system dropped the lock, nothing stale is left to clear.
+    assert br._probe_run_lock(batch) == 'FREE'
+    assert br.run_all(str(tmp_path), TASK, spawn=_run_spawn(tmp_path, calls)) == 0
+
+
+@pytest.mark.parametrize('case,line', [
+    ('missing', 'RESUME_CHECK STATE=NOT_STARTED NEXT=preflight DONE=none HALTED=None LOCK=FREE'),
+    ('between', 'RESUME_CHECK STATE=RESUMABLE NEXT=setup DONE=preflight HALTED=None LOCK=FREE'),
+    ('open_record', 'RESUME_CHECK STATE=INTERRUPTED NEXT=setup DONE=preflight HALTED=None LOCK=FREE'),
+    ('all_done', 'RESUME_CHECK STATE=COMPLETE NEXT=none DONE=preflight,setup,apply,push HALTED=None LOCK=FREE'),
+    ('halted', 'RESUME_CHECK STATE=HALTED NEXT=none DONE=preflight HALTED=setup:X LOCK=FREE'),
+    ('running', 'RESUME_CHECK STATE=RUNNING NEXT=setup DONE=preflight HALTED=None LOCK=HELD'),
+])
+def test_g5b_resume_check_reports_the_position_and_changes_nothing(tmp_path, monkeypatch, capsys, case, line):
+    batch = _run_world(tmp_path, monkeypatch)
+    if case != 'missing':
+        done = {'between': ['preflight'], 'open_record': ['preflight'], 'running': ['preflight'],
+                'all_done': RUN_STEPS, 'halted': ['preflight']}[case]
+        _run_control(tmp_path, done, halted='setup:X' if case == 'halted' else None)
+        _run_passed(tmp_path, done)
+    if case == 'open_record':
+        _run_record(tmp_path, 'setup', False)
+    holder = None
+    if case == 'running':
+        holder = br._open_run_lock(batch)
+        assert br._lock_region(holder, True)
+    before = _snapshot(tmp_path)
+    assert br.resume_check(str(tmp_path), TASK) == 0
+    assert capsys.readouterr().out.splitlines() == [line]
+    assert _snapshot(tmp_path) == before
+    if holder:
+        br._lock_region(holder, False)
+        holder.close()
+
+
+def test_g5b_resume_check_never_creates_the_lock_file(tmp_path, monkeypatch, capsys):
+    _run_world(tmp_path, monkeypatch, done=['preflight'])
+    assert br.resume_check(str(tmp_path), TASK) == 0
+    assert not (tmp_path / '.git' / (TASK + '-' + br.RUN_LOCK)).exists()
+
+
+def test_g5b_resume_check_and_run_fail_closed_when_the_task_cannot_be_loaded(tmp_path, monkeypatch, capsys):
+    (tmp_path / '.git').mkdir()
+
+    def broken(root, task):
+        raise br.Halt('PROMPT_MISSING')
+    monkeypatch.setattr(br, 'Batch', broken)
+    assert br.resume_check(str(tmp_path), TASK) == 1
+    assert br.run_all(str(tmp_path), TASK, spawn=lambda *a: pytest.fail('no step may start')) == br.RUN_REFUSED_EXIT
+    assert capsys.readouterr().out.splitlines() == ['RESUME_CHECK STATE=UNAVAILABLE CODE=PROMPT_MISSING',
+                                                    'RUN_REFUSED CODE=PROMPT_MISSING']
+    assert list((tmp_path / '.git').iterdir()) == []
+
+
+def test_g5b_main_routes_run_and_resume_check_before_any_step_validation(tmp_path, monkeypatch):
+    (tmp_path / 'scripts').mkdir()
+    _lf(tmp_path / 'scripts' / 'batch_runner.py', 'synthetic runner\n')
+    monkeypatch.setattr(br.Path, 'cwd', lambda: tmp_path)
+    monkeypatch.setattr(br, '__file__', str(tmp_path / 'scripts' / 'batch_runner.py'))
+    monkeypatch.setattr(br, 'Batch', lambda *a: pytest.fail('main must not build a step batch for these commands'))
+    monkeypatch.setattr(br, 'run_all', lambda root, task: 7)
+    monkeypatch.setattr(br, 'resume_check', lambda root, task: 8)
+    assert br.main(['--task-id', TASK, 'run']) == 7
+    assert br.main(['--task-id', TASK, 'resume-check']) == 8
+    assert 'run' not in br.PRODUCTION_STEPS + br.PROMOTION_STEPS
+    assert 'resume-check' not in br.PRODUCTION_STEPS + br.PROMOTION_STEPS
+
+
+def test_g5b_spawn_step_runs_the_runner_file_with_the_same_python_and_the_task(tmp_path, monkeypatch):
+    seen = {}
+
+    def fake_run(cmd, **kw):
+        seen.update(cmd=cmd, kw=kw)
+        return subprocess.CompletedProcess(cmd, 5)
+    monkeypatch.setattr(br.subprocess, 'run', fake_run)
+    assert br._spawn_step(str(tmp_path), TASK, 'setup') == 5
+    assert seen['cmd'] == [br.PY, str(tmp_path / br.RUNNER_REL), '--task-id', TASK, 'setup']
+    assert seen['kw']['cwd'] == str(tmp_path) and seen['kw']['stdin'] == subprocess.DEVNULL
+    assert 'stdout' not in seen['kw'] and 'capture_output' not in seen['kw']  # the step's output stays on this output
+    assert seen['kw']['env'] == br.child_env()  # the same UTF-8 and no-bytecode settings as every other child
+
+    def refuses(cmd, **kw):
+        raise OSError('no launch')
+    monkeypatch.setattr(br.subprocess, 'run', refuses)
+    assert br._spawn_step(str(tmp_path), TASK, 'setup') == 127
+
+
+def test_g5b_windows_lock_uses_one_byte_far_beyond_the_end_of_the_file(monkeypatch):
+    calls = []
+
+    class FakeMsvcrt:
+        LK_NBLCK, LK_UNLCK = 'NBLCK', 'UNLCK'
+
+        @staticmethod
+        def locking(fd, mode, nbytes):
+            calls.append(('locking', fd, mode, nbytes))
+            if mode == 'NBLCK' and len(calls) > 3:
+                raise OSError('denied')
+
+    class Handle:
+        def seek(self, pos):
+            calls.append(('seek', pos))
+
+        def fileno(self):
+            return 9
+    monkeypatch.setitem(sys.modules, 'msvcrt', FakeMsvcrt)
+    monkeypatch.setattr(br, '_IS_WINDOWS', True)
+    assert br._lock_region(Handle(), True) is True
+    assert br._lock_region(Handle(), False) is True
+    assert calls == [('seek', br.RUN_LOCK_OFFSET), ('locking', 9, 'NBLCK', 1),
+                     ('seek', br.RUN_LOCK_OFFSET), ('locking', 9, 'UNLCK', 1)]
+    assert br._lock_region(Handle(), True) is False  # a refused lock is reported, not raised
+
+
+def test_g5b_one_run_never_starts_the_same_step_twice_whatever_control_says(tmp_path, monkeypatch, capsys):
+    # Belt and braces: even if the position were to point at a step again, the loop must stop, not spin.
+    _run_world(tmp_path, monkeypatch, done=['setup'])
+    monkeypatch.setattr(br, '_run_position', lambda batch, steps, control: ('RESUMABLE', 'setup'))
+    calls = []
+    assert br.run_all(str(tmp_path), TASK, spawn=_run_spawn(tmp_path, calls)) == br.RUN_UNRESOLVED_EXIT
+    assert calls == ['setup']
+    assert 'RUN_STOPPED STEP=setup CODE=STEP_REPEATED' in capsys.readouterr().out
+
+
+def test_g5b_an_unreadable_prompt_is_a_refusal_not_a_crash(tmp_path, monkeypatch, capsys):
+    (tmp_path / '.git').mkdir()
+
+    def unreadable(root, task):
+        raise OSError('prompt file cannot be read')
+    monkeypatch.setattr(br, 'Batch', unreadable)
+    assert br.resume_check(str(tmp_path), TASK) == 1
+    assert br.run_all(str(tmp_path), TASK, spawn=lambda *a: pytest.fail('no step may start')) == br.RUN_REFUSED_EXIT
+    assert capsys.readouterr().out.splitlines() == ['RESUME_CHECK STATE=UNAVAILABLE CODE=PROMPT_UNREADABLE',
+                                                    'RUN_REFUSED CODE=PROMPT_UNREADABLE']
+
+
+@pytest.mark.parametrize('record', ['missing', 'open', 'failed'])
+def test_g5b_run_never_continues_after_a_step_without_a_passing_record(tmp_path, monkeypatch, capsys, record):
+    # control already lists preflight, but its record is absent, has no marker, or ends with result=1
+    # (an S1 such as STEP_OUTPUT_WRITE_FAILED that did not lock the task): nothing may run.
+    batch = _run_world(tmp_path, monkeypatch, done=['preflight'])
+    rec = tmp_path / '.git' / (TASK + '-step-preflight.out')
+    if record == 'missing':
+        rec.unlink()
+    else:
+        _run_record(tmp_path, 'preflight', record == 'failed', result=1)
+    control = json.loads((tmp_path / '.git' / (TASK + '-control.json')).read_text(encoding='utf-8'))
+    assert br._run_position(batch, RUN_STEPS, control) == ('PREVIOUS_STEP_UNCONFIRMED', 'preflight')
+    calls = []
+    assert br.run_all(str(tmp_path), TASK, spawn=_run_spawn(tmp_path, calls)) == br.RUN_UNRESOLVED_EXIT
+    assert calls == []
+    assert 'RUN_STOPPED STATE=PREVIOUS_STEP_UNCONFIRMED NEXT=preflight' in capsys.readouterr().out
+
+
+def test_g5b_run_end_never_claims_pass_when_the_reply_is_unavailable(tmp_path, monkeypatch, capsys):
+    _run_world(tmp_path, monkeypatch, done=RUN_STEPS[:-1])
+    step_spawn = _run_spawn(tmp_path, [])
+
+    def spawn(root, task, step):
+        if step != 'timing':
+            return step_spawn(root, task, step)
+        print('EXECUTOR_REPLY_UNAVAILABLE REPLY_UNAVAILABLE')  # timing's fallback still exits 0
+        return 0
+    assert br.run_all(str(tmp_path), TASK, spawn=spawn) == 0
+    out = capsys.readouterr().out.splitlines()
+    assert out[-1] == 'RUN_END STATE=COMPLETE TIMING_RC=0'
+    assert not any('PASS' in line for line in out if line.startswith('RUN_'))
+
+
+def test_g5b_an_interrupted_run_reports_it_and_frees_the_lock(tmp_path, monkeypatch, capsys):
+    batch = _run_world(tmp_path, monkeypatch, done=['preflight'])
+
+    def spawn(root, task, step):
+        raise KeyboardInterrupt
+    assert br.run_all(str(tmp_path), TASK, spawn=spawn) == 130
+    assert capsys.readouterr().out.splitlines()[-1] == 'RUN_INTERRUPTED'
+    assert br._probe_run_lock(batch) == 'FREE'
+
+
+def test_g5b_an_unreadable_next_record_is_treated_as_begun_never_as_absent(tmp_path, monkeypatch):
+    batch = _run_world(tmp_path, monkeypatch, done=['preflight'])
+    (tmp_path / '.git' / (TASK + '-step-setup.out')).mkdir()  # exists, but cannot be read as a file
+    control = json.loads((tmp_path / '.git' / (TASK + '-control.json')).read_text(encoding='utf-8'))
+    assert br._run_position(batch, RUN_STEPS, control) == ('INTERRUPTED', 'setup')
+
+
+@pytest.mark.skipif(not hasattr(os, 'O_NOFOLLOW') or not hasattr(os, 'symlink'), reason='POSIX O_NOFOLLOW only')
+def test_g5b_the_lock_file_is_never_opened_through_a_symbolic_link(tmp_path, monkeypatch, capsys):
+    _run_world(tmp_path, monkeypatch, done=['preflight'])
+    target = tmp_path / 'elsewhere.txt'
+    _lf(target, 'untouched')
+    os.symlink(target, tmp_path / '.git' / (TASK + '-' + br.RUN_LOCK))
+    calls = []
+    assert br.run_all(str(tmp_path), TASK, spawn=_run_spawn(tmp_path, calls)) == br.RUN_REFUSED_EXIT
+    assert calls == [] and target.read_text(encoding='utf-8') == 'untouched'
+    assert 'RUN_REFUSED CODE=RUN_LOCK_OPEN_FAILED' in capsys.readouterr().out

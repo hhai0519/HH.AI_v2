@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "B117-G5A-RC2-DURATIONS-R2-261116",
-  "base_oid": "ba3480210c24da0723e7a192a009f93fa6d0c3da",
+  "task_id": "B117-G5B1-RUN-RESUME-R2-261116",
+  "base_oid": "4378c5713f49c9093da0837bf4a6fdc9ee8f6096",
   "plan": {
     "allowed_paths": [
       "docs/AUDIT-LOG.md",
@@ -12,10 +12,7 @@
       "docs/governance/execution-record.json",
       "docs/refactor-backlog.md",
       "scripts/batch_runner.py",
-      "scripts/gate_durations.py",
-      "scripts/gate_runner.py",
-      "scripts/tests/test_batch_runner.py",
-      "scripts/tests/test_gate_durations.py"
+      "scripts/tests/test_batch_runner.py"
     ],
     "required_paths": [
       "docs/AUDIT-LOG.md",
@@ -25,10 +22,7 @@
       "docs/governance/execution-record.json",
       "docs/refactor-backlog.md",
       "scripts/batch_runner.py",
-      "scripts/gate_durations.py",
-      "scripts/gate_runner.py",
-      "scripts/tests/test_batch_runner.py",
-      "scripts/tests/test_gate_durations.py"
+      "scripts/tests/test_batch_runner.py"
     ],
     "max_plan_revisions": 3,
     "revision_count": 0,
@@ -43,10 +37,7 @@
       "docs/governance/execution-record.json",
       "docs/refactor-backlog.md",
       "scripts/batch_runner.py",
-      "scripts/gate_durations.py",
-      "scripts/gate_runner.py",
-      "scripts/tests/test_batch_runner.py",
-      "scripts/tests/test_gate_durations.py"
+      "scripts/tests/test_batch_runner.py"
     ]
   },
   "evidence": [
