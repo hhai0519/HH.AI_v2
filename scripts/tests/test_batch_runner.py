@@ -2555,3 +2555,94 @@ def test_timing_reports_a_running_step_instead_of_an_invalid_record(tmp_path, mo
     monkeypatch.setattr(br, 'derive_steps', lambda spec: st)
     assert br.timing(str(tmp_path), TASK) == 0
     assert capsys.readouterr().out.splitlines() == ['EXECUTOR_REPLY_UNAVAILABLE REPLY_STEP_IN_PROGRESS', t, s]
+
+
+def test_rc2_pending_step_completed_after_control_read_is_control_stale(tmp_path):
+    # RC-2: a pending step whose record already ends with result=0 means control was read before the
+    # step wrote it. Never TRUNCATED, never PASS.
+    (tmp_path / '.git').mkdir()
+    b = _g3_output_stub(tmp_path)
+    st = ['preflight', 'stage', 'commit']
+    _lf((tmp_path / '.git' / (TASK + '-step-preflight.out')),
+        'STEP_PASS preflight\nSTEP_OUTPUT_COMPLETE step=preflight result=0\n')
+    _lf((tmp_path / '.git' / (TASK + '-step-stage.out')), 'STEP_PASS stage\nSTEP_OUTPUT_COMPLETE step=stage result=0\n')
+    pending = {'done': ['preflight'], 'halted': None}
+    assert halt_code(br._step_output_lines, b, st, pending) == 'REPLY_CONTROL_STALE'
+    # The same record is accepted once control lists the step as done (here the last step of the list).
+    assert br._step_output_lines(b, st[:2], {'done': st[:2], 'halted': None}) == ['STEP_PASS preflight', 'STEP_PASS stage']
+    # A pending record that ends with result=1 keeps the existing halted-write-failed handling.
+    _lf((tmp_path / '.git' / (TASK + '-step-stage.out')), 'S1 X | step stage\nSTEP_OUTPUT_COMPLETE step=stage result=1\n')
+    assert br._step_output_lines(b, st, pending) == ['STEP_PASS preflight', 'S1 X | step stage']
+
+
+def _rc2_timing(tmp_path, monkeypatch, snapshots):
+    (tmp_path / '.git').mkdir()
+    b = _g3_output_stub(tmp_path)
+    st = ['preflight', 'stage', 'commit']
+    _lf((tmp_path / '.git' / (TASK + '-step-preflight.out')),
+        'STEP_PASS preflight\nSTEP_OUTPUT_COMPLETE step=preflight result=0\n')
+    _lf((tmp_path / '.git' / (TASK + '-step-stage.out')), 'STEP_PASS stage\nSTEP_OUTPUT_COMPLETE step=stage result=0\n')
+    t = 'TIMING start=2026-11-16T00:00:00+08:00 end=2026-11-16T00:00:02+08:00 elapsed_sec=2.0 elapsed_min=0'
+    s = 'STATE done=preflight halted=None'
+    calls = []
+
+    def lines(root, task):
+        calls.append(task)
+        item = snapshots[min(len(calls), len(snapshots)) - 1]
+        if isinstance(item, Exception):
+            raise item
+        return t, s, item
+    monkeypatch.setattr(br, '_timing_lines', lines)
+    monkeypatch.setattr(br, 'Batch', lambda root, task: b)
+    monkeypatch.setattr(br, 'derive_steps', lambda spec: st)
+    return t, s, calls
+
+
+def _rc2_control(done):
+    return {'task_id': TASK, 'done': list(done), 'halted': None, 'prompt_sha256': br.sha256_bytes(b'prompt')}
+
+
+def test_rc2_timing_reports_running_step_when_control_changes_during_assembly(tmp_path, monkeypatch, capsys):
+    # The step finished between the control read and the record read: report it as running, not TRUNCATED.
+    t, s, calls = _rc2_timing(tmp_path, monkeypatch, [_rc2_control(['preflight']), _rc2_control(['preflight', 'stage'])])
+    assert br.timing(str(tmp_path), TASK) == 0
+    assert capsys.readouterr().out.splitlines() == ['EXECUTOR_REPLY_UNAVAILABLE REPLY_STEP_IN_PROGRESS', t, s]
+    assert len(calls) == 2
+
+
+def test_rc2_timing_keeps_control_stale_when_control_does_not_change(tmp_path, monkeypatch, capsys):
+    # A lost control write is not hidden as "running": the stale code stays visible.
+    t, s, _ = _rc2_timing(tmp_path, monkeypatch, [_rc2_control(['preflight'])])
+    assert br.timing(str(tmp_path), TASK) == 0
+    assert capsys.readouterr().out.splitlines() == ['EXECUTOR_REPLY_UNAVAILABLE REPLY_CONTROL_STALE', t, s]
+
+
+def test_rc2_timing_rechecks_control_after_a_successful_assembly(tmp_path, monkeypatch, capsys):
+    # Records are consistent with the first snapshot, but control moved before the reply was emitted.
+    t, s, _ = _rc2_timing(tmp_path, monkeypatch, [_rc2_control(['preflight', 'stage']),
+                                                   _rc2_control(['preflight', 'stage', 'commit'])])
+    assert br.timing(str(tmp_path), TASK) == 0
+    assert capsys.readouterr().out.splitlines() == ['EXECUTOR_REPLY_UNAVAILABLE REPLY_STEP_IN_PROGRESS', t, s]
+
+
+def test_rc2_timing_control_reread_failure_fails_closed(tmp_path, monkeypatch, capsys):
+    # Fault injection: the second control read fails; the reply degrades to the manual fallback.
+    t, s, _ = _rc2_timing(tmp_path, monkeypatch, [_rc2_control(['preflight', 'stage']), OSError('boom')])
+    assert br.timing(str(tmp_path), TASK) == 0
+    out = capsys.readouterr().out.splitlines()
+    assert out == ['EXECUTOR_REPLY_UNAVAILABLE REPLY_UNAVAILABLE', t, s]
+    assert 'EXECUTOR_REPLY_BEGIN' not in out
+
+
+def test_rc2_timing_rechecks_control_after_a_truly_successful_assembly(tmp_path, monkeypatch, capsys):
+    # SO regression: assembly really succeeds (all steps done and complete); control then changes before the
+    # reply is emitted. Kills the mutant that drops the post-success _require_control_unchanged call.
+    full = _rc2_control(['preflight', 'stage', 'commit'])
+    moved = dict(full, halted='commit:X')
+    t, s, calls = _rc2_timing(tmp_path, monkeypatch, [full, moved])
+    _lf((tmp_path / '.git' / (TASK + '-step-commit.out')), 'STEP_PASS commit\nSTEP_OUTPUT_COMPLETE step=commit result=0\n')
+    monkeypatch.setattr(br, '_self_check_reply', lambda batch, reply_text: 'PASS')
+    assert br.timing(str(tmp_path), TASK) == 0
+    out = capsys.readouterr().out.splitlines()
+    assert out == ['EXECUTOR_REPLY_UNAVAILABLE REPLY_STEP_IN_PROGRESS', t, s]
+    assert 'EXECUTOR_REPLY_BEGIN' not in out and len(calls) == 2

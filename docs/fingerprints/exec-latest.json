@@ -1,5 +1,5 @@
 {
-  "base_head": "9d13530",
+  "base_head": "ba34802",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -566,16 +566,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 411,
-      "sha256": "168d650ca0d6bd053aa7f0ff4a82869033e5c6439648c3bf6877b1a947bb9d42"
+      "lines": 412,
+      "sha256": "3f2b02565f69df90fcdeb463a47a5975c7a62909691ce90089d7b1ad9dd21f9e"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 382,
-      "sha256": "4543f42e4141b919755d3da00cc39110281f699a8a6f698632f391737708e97d"
+      "lines": 383,
+      "sha256": "400f6b8b6909677e94e4f8cbef9c47ba9734aef56978a327895ffc5669c97ce0"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -617,8 +617,8 @@
         "## G. 舊 repo 未盤點區塊（2026-09-02 新發現）",
         "## 封存區"
       ],
-      "lines": 576,
-      "sha256": "d02e3ae9171669f9802a0c1d79c7e9783450659aa92249b3a4b5dd4c62f69a2f"
+      "lines": 577,
+      "sha256": "b2e4cdb3eddb404cec20339f8f585e0021c01b43826b72540b94e2aef66a1976"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1127,8 +1127,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6468,
-      "sha256": "df3cf60325707595e4a2eeb5a0ccb692443ff90cca59f470b666f68061d7dfe6"
+      "lines": 6469,
+      "sha256": "f7c09f6f975cf83a57f2aeb5e2b0df08b5de6d0e22da8870aca7af4bc8656db6"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1179,8 +1179,8 @@
         "# Windows: os.replace needs DELETE access on both files; antivirus/indexer handles can deny it briefly.",
         "# Retry only that PermissionError, bounded (about 1.55 s total); any other failure is not retried."
       ],
-      "lines": 1875,
-      "sha256": "e3aa757b09a98639d95a7784c37e60c7fad0d773def537abd0731fb274b2c257"
+      "lines": 1897,
+      "sha256": "93fcd8d310f2aa8d3618ad649b8ca1a9e089b09ea3975ea3755d70f27314b551"
     },
     "scripts/batch_sim.py": {
       "fences": 0,
@@ -1327,15 +1327,24 @@
       "lines": 274,
       "sha256": "c1796819a9d6b1539aea730ab118062300acfdf86a1740ab3c3709f7813cd6c3"
     },
+    "scripts/gate_durations.py": {
+      "fences": 0,
+      "headings": [
+        "# -*- coding: utf-8 -*-"
+      ],
+      "lines": 85,
+      "sha256": "4533073f1b8450bc93af556f62c65e8670d73374cf4705713c3bd3945293dc1e"
+    },
     "scripts/gate_runner.py": {
       "fences": 0,
       "headings": [
         "# -*- coding: utf-8 -*-",
         "# Positional budgets match the fixed STAGES gate sequences. A longer budget is",
-        "# reserved for Windows verify_all; no gate is skipped or downgraded."
+        "# reserved for Windows verify_all; no gate is skipped or downgraded.",
+        "# G5-a: runner-only per-test duration recording (scripts/gate_durations.py); CI never sets these."
       ],
-      "lines": 277,
-      "sha256": "763f1a2556ec48fc7d5a7ffff4e669ad1b185f40c656939b903b90c00f01094a"
+      "lines": 289,
+      "sha256": "d17526df9491ad28eb48ed5189d4d81e9d57fb4e072170fd2ff982bb045209b2"
     },
     "scripts/generate_rule_traceability.py": {
       "fences": 0,
@@ -1624,8 +1633,8 @@
         "# has its own killing case; one guard cannot silently cover for another.",
         "# B117 R4 — a step that is still running (or was interrupted) is reported as such, never as a bare order error."
       ],
-      "lines": 2557,
-      "sha256": "3f42ba0882ec9130d36331997cf5bdaf353e6d0f82822d682e94c144892828c9"
+      "lines": 2648,
+      "sha256": "be26b4a6199003a77536092c963f2790dff8f3fadbe799cb1db9cc8e22a1652e"
     },
     "scripts/tests/test_batch_sim.py": {
       "fences": 0,
@@ -1874,6 +1883,14 @@
       "headings": [],
       "lines": 119,
       "sha256": "113e2d181ef5675c8ac30ac6b31eb100f82eb138c0532c663b975f1b1dd55b82"
+    },
+    "scripts/tests/test_gate_durations.py": {
+      "fences": 0,
+      "headings": [
+        "# -*- coding: utf-8 -*-"
+      ],
+      "lines": 146,
+      "sha256": "08a9400f6ea83654de6b820d25a977859f2afa0851799247fcfc44bad5cdc232"
     },
     "scripts/tests/test_gate_runner.py": {
       "fences": 0,
@@ -2339,7 +2356,7 @@
       "sha256": "6bfd57c05a09df3cde679ae53ac6ddd67bfb64cda4246584617d3cc67fb3b81c"
     }
   },
-  "generated_at": "2026-11-16T01:38:01Z",
+  "generated_at": "2026-11-16T05:54:50Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

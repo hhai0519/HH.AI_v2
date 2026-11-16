@@ -76,6 +76,11 @@ GATE_BUDGET_WARN_PCT = 70
 OUTPUT_PREFIX = "> "
 
 
+# G5-a: runner-only per-test duration recording (scripts/gate_durations.py); CI never sets these.
+DURATIONS_ADDOPT = "-p scripts.gate_durations"
+DURATIONS_PREFIX_ENV = "HHAI_GATE_DURATIONS_PREFIX"
+
+
 def stage_timeouts(stage):
     values = GATE_TIMEOUTS[stage]
     if len(values) != len(STAGES[stage]) or any(type(v) is not int or v <= 0 for v in values):
@@ -134,7 +139,7 @@ def resolve_command(cmd):
     return list(cmd)
 
 
-def run_stage(root, stage, gates, log_path, timeout=None):
+def run_stage(root, stage, gates, log_path, timeout=None, durations_prefix=None):
     # timeout is an explicit test override; production always uses each gate's
     # positional budget. Keep the canonical local-gates.txt grammar unchanged.
     budgets = stage_timeouts(stage)
@@ -159,8 +164,15 @@ def run_stage(root, stage, gates, log_path, timeout=None):
         raw_path = log_path + f".{stage.lower()}-run{run_no}-gate{idx}.raw"
         append_lines(log_path, ["RAW_EVIDENCE_FILE: " + os.path.basename(raw_path)])
         limit = budgets[idx - 1]
+        gate_env = env
+        if durations_prefix is not None:
+            # G5-a: per-test durations are diagnostic evidence beside the raw sidecar; the plugin
+            # only observes reports and never changes a gate result (see scripts/gate_durations.py).
+            gate_env = dict(env)
+            gate_env["PYTEST_ADDOPTS"] = (env.get("PYTEST_ADDOPTS", "") + " " + DURATIONS_ADDOPT).strip()
+            gate_env[DURATIONS_PREFIX_ENV] = raw_path
         start = time.monotonic()
-        res = run_bounded(resolve_command(cmd), cwd=root, timeout=limit, env=env,
+        res = run_bounded(resolve_command(cmd), cwd=root, timeout=limit, env=gate_env,
                           merge_stderr=True, capture_path=raw_path)
         elapsed = max(0.0, time.monotonic() - start)
         output = res.stdout.decode("utf-8", errors="replace")
@@ -262,7 +274,7 @@ def main(argv=None):
     log_path = os.path.join(root, ".git", f"{args.task_id}-local-gates.txt")
     gates = STAGES[args.stage]
     if args.action == "run":
-        code = run_stage(root, args.stage, gates, log_path)
+        code = run_stage(root, args.stage, gates, log_path, durations_prefix=log_path)
         print(f"GATE_RUNNER {'PASS' if code == 0 else 'FAIL'} stage={args.stage}")
         return code
     ok, detail = verify_stage(read_log_lines(log_path), args.stage, gates)

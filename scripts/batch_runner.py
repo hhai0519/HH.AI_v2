@@ -1614,6 +1614,12 @@ def _step_output_lines(batch, steps, control):
         if not halted and step not in done and not step_record_complete(raw, step):
             # The attempted next step has no completion marker yet: it is still running or was interrupted.
             raise Halt('REPLY_STEP_IN_PROGRESS')
+        if not halted and step not in done and raw.endswith(
+                ('STEP_OUTPUT_COMPLETE step=' + step + ' result=0\n').encode('ascii')):
+            # RC-2: the attempted step passed after control was read. The control snapshot is stale;
+            # this is never a truncated record and never a PASS. timing() re-reads control to tell a
+            # step that just finished (REPLY_STEP_IN_PROGRESS) from a lost control write.
+            raise Halt('REPLY_CONTROL_STALE')
         if not raw or len(raw) > 1048576 or b'\r' in raw or b'\x00' in raw:
             raise Halt('REPLY_STEP_OUTPUT_INVALID')
         try:
@@ -1667,6 +1673,17 @@ def _self_check_reply(batch, reply_text):
     return 'S1' if halted_reply else result[0]
 
 
+def _require_control_unchanged(root, task_id, control):
+    """RC-2: control must not change while the reply is assembled from step records.
+
+    A step that ends during assembly rewrites control after its record is complete; the reply is then
+    reported as still running, never as a truncated or stale record. Any re-read failure propagates and
+    degrades to the manual fallback.
+    """
+    if _timing_lines(root, task_id)[2] != control:
+        raise Halt('REPLY_STEP_IN_PROGRESS')
+
+
 def timing(root, task_id):
     """One-shot, task-bound response; missing old-runner evidence is never guessed."""
     try:
@@ -1681,7 +1698,12 @@ def timing(root, task_id):
         steps = derive_steps(batch.spec)
         if control.get('prompt_sha256') != sha256_bytes(batch.prompt_bytes):
             raise Halt('REPLY_CONTROL_BINDING_DRIFT')
-        output = _step_output_lines(batch, steps, control)
+        try:
+            output = _step_output_lines(batch, steps, control)
+        except Halt:
+            _require_control_unchanged(root, task_id, control)
+            raise
+        _require_control_unchanged(root, task_id, control)
         reply_text = '\n'.join(output + [tim, state]) + '\n'
         status = _self_check_reply(batch, reply_text)
     except Exception as exc:  # noqa: BLE001 - any reply failure degrades to the manual fallback
