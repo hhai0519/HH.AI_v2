@@ -369,12 +369,11 @@ def test_block1_stops_on_an_unreadable_zip_without_a_verdict_or_a_file(tmp_path,
 
 REAL_WS = 'C:\\Users\\HH.AI_260806\\Desktop\\HH.AI_v2_W2'
 REAL_BASE = '87734aba2619244032c65199686e9dbfe5fe2004'
-# The four blocks exactly as delivered and run before this tool generated them; only Base and workspace vary.
+# The three blocks exactly as delivered (the fourth, block C, is now part of the runner's run command) and run before this tool generated them; only Base and workspace vary.
 PROVEN = {
     'A': "& { $ErrorActionPreference='Stop'; if (-not ($PSVersionTable.PSVersion.Major -eq 5 -and $PSVersionTable.PSVersion.Minor -eq 1)) { throw 'POWERSHELL_51_REQUIRED' }; $p=@(Get-Process | Where-Object { $_.ProcessName -like '*Antigravity*' }); if ($p.Count -ne 0) { $p | ForEach-Object { 'STILL_RUNNING ' + $_.ProcessName + ' ' + $_.Id }; throw 'ANTIGRAVITY_NOT_CLOSED' }; 'ANTIGRAVITY_CLOSED' }",
     'B': "& { $ErrorActionPreference='Stop'; if (-not ($PSVersionTable.PSVersion.Major -eq 5 -and $PSVersionTable.PSVersion.Minor -eq 1)) { throw 'POWERSHELL_51_REQUIRED' }; $ws='C:\\Users\\HH.AI_260806\\Desktop\\HH.AI_v2_W2'; $base='87734aba2619244032c65199686e9dbfe5fe2004'; $h=@(git -C $ws --no-optional-locks rev-parse HEAD); if ($LASTEXITCODE -ne 0) { throw 'W2_REVPARSE_FAILED' }; if ($h[0].Trim() -ne $base) { 'W2_HEAD=' + $h[0]; throw 'W2_HEAD_MISMATCH' }; $s=@(git -C $ws --no-optional-locks status --porcelain --untracked-files=all); if ($LASTEXITCODE -ne 0) { throw 'W2_STATUS_FAILED' }; if ($s.Count -ne 0) { $s | Select-Object -First 20; throw 'W2_NOT_CLEAN' }; 'W2_READY_AT_BASE' }",
     'B-R': "& { $ErrorActionPreference='Stop'; if (-not ($PSVersionTable.PSVersion.Major -eq 5 -and $PSVersionTable.PSVersion.Minor -eq 1)) { throw 'POWERSHELL_51_REQUIRED' }; $ws='C:\\Users\\HH.AI_260806\\Desktop\\HH.AI_v2_W2'; $base='87734aba2619244032c65199686e9dbfe5fe2004'; git -C $ws --no-optional-locks cat-file -e ($base + '^{commit}'); if ($LASTEXITCODE -ne 0) { throw 'BASE_NOT_IN_W2' }; $s=@(git -C $ws --no-optional-locks status --porcelain --untracked-files=all); if ($LASTEXITCODE -ne 0) { throw 'W2_STATUS_FAILED' }; if ($s.Count -ne 0) { $s | Select-Object -First 20; throw 'W2_NOT_CLEAN' }; git -C $ws switch --detach $base; if ($LASTEXITCODE -ne 0) { throw 'W2_SWITCH_FAILED' }; 'W2_SWITCHED_TO_BASE_RERUN_B' }",
-    'C': "& { $ErrorActionPreference='Stop'; if (-not ($PSVersionTable.PSVersion.Major -eq 5 -and $PSVersionTable.PSVersion.Minor -eq 1)) { throw 'POWERSHELL_51_REQUIRED' }; $ws='C:\\Users\\HH.AI_260806\\Desktop\\HH.AI_v2_W2'; $py=Join-Path $ws '.venv\\Scripts\\python.exe'; if (-not (Test-Path -LiteralPath $py -PathType Leaf)) { throw 'W2_PYTHON_MISSING' }; $code='import os,sys,time;from pathlib import Path;sys.path.insert(0,os.path.join(sys.argv[1],''scripts''));import batch_sim as b;r=Path(sys.argv[1]);snap=lambda:tuple((p.relative_to(r).as_posix(),)+(lambda s:(s.st_mode,s.st_size,s.st_mtime_ns,s.st_ctime_ns))(os.lstat(p)) for p in b._source_paths(r));a=snap();time.sleep(int(sys.argv[2]));c=snap();print(''GIT_IDLE_OK'' if a==c else ''GIT_IDLE_CHANGED'');sys.exit(0 if a==c else 3)'; & $py -B -c $code $ws 210; if ($LASTEXITCODE -ne 0) { throw 'GIT_IDLE_CHECK_FAILED' } }",
 }
 OTHER_BASE = '0123456789abcdef0123456789abcdef01234567'
 
@@ -410,7 +409,8 @@ def test_prestart_base_and_workspace_are_the_only_variable_parts():
     for name, text in PROVEN.items():
         expect = text.replace(REAL_BASE, OTHER_BASE).replace(REAL_WS, 'C:\\Users\\U\\Desktop\\W')
         assert other[name] == expect, name
-    assert REAL_BASE not in dp.prestart_blocks(OTHER_BASE, REAL_WS)['A'] + dp.prestart_blocks(OTHER_BASE, REAL_WS)['C']
+    assert REAL_BASE not in dp.prestart_blocks(OTHER_BASE, REAL_WS)['A']
+    assert set(dp.prestart_blocks(OTHER_BASE, REAL_WS)) == {'A', 'B', 'B-R'}
     assert dp.prestart_blocks(OTHER_BASE, REAL_WS)['B'].count(OTHER_BASE) == 1
     assert dp.prestart_blocks(OTHER_BASE, REAL_WS)['B-R'].count(OTHER_BASE) == 1
 
@@ -429,10 +429,11 @@ def test_prestart_rejects_a_workspace_that_is_not_one_literal_token(ws):
 def test_prestart_lines_hold_the_whole_sequence_in_order():
     text = '\n'.join(dp.prestart_lines(REAL_BASE, REAL_WS))
     order = [PROVEN['A'], PROVEN['B'], 'W2_HEAD_MISMATCH', PROVEN['B-R'], 'Antigravity IDE.exe', 'git.autorefresh',
-             'git.autofetch', PROVEN['C'], '不要動分支選擇器', 'STEP_PASS']
+             'git.autofetch', '不要動分支選擇器', 'RUN_END']
     at = [text.index(x) for x in order]
     assert at == sorted(at) and len(set(at)) == len(at)
-    assert text.count('```powershell') == 4 and text.count('\n```\n') == 4
+    assert text.count('```powershell') == 3 and text.count('\n```\n') == 3
+    assert '區塊 C' in text and 'GIT_IDLE' not in text and 'IDLE' not in text.replace('區塊 C', '')
     assert 'C:\\Users\\HH.AI_260806\\AppData\\Local\\Programs\\Antigravity IDE\\Antigravity IDE.exe' in text
     assert '本批 Base：`' + REAL_BASE + '`' in text
 
@@ -542,24 +543,12 @@ def test_verify_reply_rejects_a_copy_of_a_prestart_block_in_another_fence(native
     assert _code(dp.verify_reply, str(native_pack), text) == 'REPLY_BLOCK_DUPLICATED'
 
 
-@pytest.mark.parametrize('marker', ["'ANTIGRAVITY_CLOSED'", "'W2_READY_AT_BASE'", "'W2_SWITCHED_TO_BASE_RERUN_B'",
-                                    "'GIT_IDLE_CHECK_FAILED'"])
+@pytest.mark.parametrize('marker', ["'ANTIGRAVITY_CLOSED'", "'W2_READY_AT_BASE'", "'W2_SWITCHED_TO_BASE_RERUN_B'"])
 def test_verify_reply_rejects_a_copy_of_any_prestart_block_in_another_fence(native_pack, marker):
     block = next(l for l in _pre(native_pack) if l.startswith('& {') and marker in l)
     text = _native_reply(native_pack, after='```text\n' + block + '\n```')
     assert _code(dp.verify_reply, str(native_pack), text) == 'REPLY_BLOCK_DUPLICATED'
 
-
-def test_block_c_idle_code_runs_against_this_repos_batch_sim_on_a_stable_tree(tmp_path):
-    # Block C imports batch_sim from the workspace and walks its tree; run the exact code in a copy of the scripts
-    # (never the live repo root, whose files other tests may touch) so a renamed _source_paths fails here.
-    scripts = Path(__file__).resolve().parents[1]
-    (tmp_path / 'scripts').mkdir()
-    for f in scripts.glob('*.py'):
-        shutil.copy2(f, tmp_path / 'scripts' / f.name)
-    r = subprocess.run([sys.executable, '-B', '-c', dp.IDLE_CODE, str(tmp_path), '0'], capture_output=True,
-                       text=True, encoding='utf-8', cwd=str(tmp_path))
-    assert (r.returncode, r.stdout) == (0, 'GIT_IDLE_OK\n')
 
 def test_a_pack_without_prestart_still_verifies_exactly_as_before(pack):
     assert not (pack / 'PRESTART.txt').exists()
@@ -614,11 +603,10 @@ def test_prestart_text_is_pinned_line_by_line():
                  '1. 只以 `C:\\Users\\HH.AI_260806\\AppData\\Local\\Programs\\Antigravity IDE\\Antigravity IDE.exe` 開啟 '
                  'Antigravity IDE，開啟 `' + REAL_WS + '` 工作區。',
                  '2. 確認使用者層級（不是工作區層級）的 Git 自動刷新（`git.autorefresh`）與自動 fetch（`git.autofetch`）仍為關閉。',
-                 '3. 等約 1 分鐘，再執行區塊 C。',
-                 '### 區塊 C（預期輸出 `GIT_IDLE_OK`，約 210 秒）'] + fence(PROVEN['C'])
-              + ['輸出 `GIT_IDLE_CHANGED` 或 `GIT_IDLE_CHECK_FAILED` 就停止並回報，不要啟動 Executor。',
+                 '3. 等約 1 分鐘讓 IDE 安定。Git 閒置檢查（原區塊 C）已併入 Executor 的 run 命令，由 runner 自己執行並回報；'
+                 'Executor 啟動後約 4 分鐘內（閒置檢查期間）不要在 IDE 存檔、切換分支、開啟原始檔控制面板或執行任何 git 命令。',
                  '### 新的 Agent 對話',
                  '- 開新對話；**不要動分支選擇器**（runner 只檢查 HEAD＝Base 與工作區乾淨，不檢查分支）。',
-                 '- 貼上區塊三的文字，一字不改。之後每個 runner 步驟必須等到 IDE 顯示該命令已結束且 exit 0、'
-                 '輸出含 `STEP_PASS <步驟名>` 才算完成，期間不得呼叫下一步。'])
+                 '- 貼上區塊三的文字，一字不改。Executor 只會執行提示詞列出的 run 命令；它必須等到該命令真正結束，'
+                 '並依其印出的固定行（`RUN_END` 或 `RUN_STOPPED`…）判斷，不看 exit code。'])
     assert dp.prestart_lines(REAL_BASE, REAL_WS) == expect

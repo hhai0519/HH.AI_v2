@@ -15,6 +15,7 @@ import re
 import stat
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 import pytest
@@ -46,8 +47,11 @@ FULL_STEPS = ["preflight", "setup", "e24", "apply", "focused", "generate", "prec
 LEAN_STEPS = [s for s in FULL_STEPS if s not in ("e24", "focused")]
 
 
+RUN_LINE = "python scripts/batch_runner.py --task-id %s run\n"
+
+
 def _prompt(tmp_path, task=TASK, kind="production", start=None, name=None, e24=True, focused=True, authored=None,
-            runner_update=False):
+            runner_update=False, via_run=False, bundle=False):
     if kind == "production":
         authored = AUTHORED if authored is None else authored
         spec = {"schema_version": 1, "task_id": task, "kind": "production", "base_oid": BASE,
@@ -57,12 +61,15 @@ def _prompt(tmp_path, task=TASK, kind="production", start=None, name=None, e24=T
                             for p, b in authored.items()}, "ops": []}
         if runner_update:
             spec["runner_update"] = True
+        if bundle:
+            spec["bundle_output"] = True
         plan = {"task_id": task, "base_oid": BASE, "allowed_paths": sorted(list(authored) + list(br.GENERATED))}
-        text = "head\n" + _block("BATCH_SPEC_JSON", json.dumps(spec)) + _block("PLAN_JSON", json.dumps(plan))
+        head = "head\n" + (RUN_LINE % task if via_run else "")
+        text = head + _block("BATCH_SPEC_JSON", json.dumps(spec)) + _block("PLAN_JSON", json.dumps(plan))
     else:
         spec = {"schema_version": 1, "task_id": task, "kind": "promotion", "base_oid": BASE,
                 "candidate_oid": CAND, "candidate_branch": "batch/sim-unit-261010"}
-        text = "head\n" + _block("BATCH_SPEC_JSON", json.dumps(spec))
+        text = "head\n" + (RUN_LINE % task if via_run else "") + _block("BATCH_SPEC_JSON", json.dumps(spec))
     path = tmp_path / "prompts" / ((name or task) + "-prompt.txt")
     _w(path, text)
     return str(path)
@@ -82,6 +89,8 @@ class Fake:
                           source_refs=["refs/heads/main " + BASE], wrong_location=None, skip_flag_stuck=False)
         self.source_reads = 0
         self.state.update(over)
+        self.run_plan = []          # per `run` invocation: (steps to perform, how it ends: 'END' or a stop code)
+        self.run_invocations = 0
 
     def __call__(self, args, cwd, env, timeout, merge=True):
         args = list(args)
@@ -91,6 +100,8 @@ class Fake:
             a = args[1 + n:] if tuple(args[1:1 + n]) == bs.SIM_IDENTITY else args[1:]
             return self.git(a, cwd)
         script = args[1]
+        if script == ".git/batch-sim-run.py" or (script == "scripts/batch_runner.py" and args[4] == "run"):
+            return self.run_all(args, cwd, env, timeout)
         if script == "scripts/batch_runner.py":
             task, step = args[3], args[4]
             vp = Path(cwd) / "scripts" / "verification_primitives.py"
@@ -108,6 +119,34 @@ class Fake:
         if script == "scripts/execution_record.py":
             return self.state["er"], b""
         return 0, b""
+
+    def run_all(self, args, cwd, env, timeout):
+        """Stands in for one `run`: the planned steps through the ordinary step stand-in; through the wrapper it
+        pauses before push until the simulation has put the CI stand-in in place, as the real wrapper does."""
+        wrapper = args[1] == ".git/batch-sim-run.py"
+        task = args[2] if wrapper else args[3]
+        entry = self.run_plan[self.run_invocations]
+        steps, stop = entry[0], entry[1]
+        stop_rc = entry[2] if len(entry) > 2 else br.RUN_RUNNER_UPDATED_EXIT  # optional: a stop with another exit code
+        self.run_invocations += 1
+        out = ["RUN_START task=" + task]
+        for step in steps:
+            if wrapper and step == "push":
+                _w(Path(cwd) / ".git" / "batch-sim-before-push", b"x")
+                for _ in range(500):
+                    if (Path(cwd) / ".git" / "batch-sim-ci-ready").exists():
+                        break
+                    time.sleep(0.01)
+                else:
+                    return 125, b""
+            rc, text = self(["python", "scripts/batch_runner.py", "--task-id", task, step], cwd, env, timeout)
+            out.append(text.decode("utf-8"))
+            if rc != 0:
+                return rc, "\n".join(out + ["RUN_STOPPED STEP=" + step + " RC=" + str(rc)]).encode("utf-8")
+            out.append("RUN_STEP_DONE step=" + step)
+        if stop == "END":
+            return 0, "\n".join(out + ["RUN_END STATE=COMPLETE TIMING_RC=0"]).encode("utf-8")
+        return stop_rc, "\n".join(out + ["RUN_STOPPED CODE=" + stop + " NEXT=none"]).encode("utf-8")
 
     def git(self, a, cwd):
         s = self.state
@@ -1344,3 +1383,119 @@ def test_b123b_w8_structured_winemu_returns_rc_without_weakening_public_cli(tmp_
     rc,_ = bs.winemu_collect(str(repo), ['-q', 'test_r2_shape.py'], str(xml), run=fake)
     assert rc == 1 and xml.is_file()
     assert _code(bs.winemu, str(repo), ['-q','test_r2_shape.py'], run=lambda *a:(1,b'1 failed in 0.01s\n')) == 'WINEMU_TESTS_FAILED'
+
+
+# --- G5-b2: a prompt that offers the single run command is rehearsed with that command ---------------
+
+def _stepline(steps):
+    return ["BATCH_SIM STEP " + s + " rc=0" for s in steps]
+
+
+def test_g5b2_a_run_prompt_is_rehearsed_with_one_run_and_the_stand_in_only_around_push(tmp_path):
+    fake = Fake(tmp_path)
+    fake.run_plan = [(FULL_STEPS + ["push"], "END")]
+    sim, lines = _sim(tmp_path, fake)
+    path = _prompt(tmp_path, via_run=True)
+    sim.production(path)
+    assert fake.runner_steps() == FULL_STEPS + ["push"] and fake.run_invocations == 1
+    assert [c[0][1] for c in fake.calls if c[0][1] == ".git/batch-sim-run.py"] == [".git/batch-sim-run.py"]
+    assert fake.stub_seen["push"] is True and not any(v for k, v in fake.stub_seen.items() if k != "push")
+    assert (tmp_path / "wd" / "work" / "scripts" / "verification_primitives.py").read_bytes() == b"REAL\n"
+    assert (tmp_path / "wd" / "work" / ".git" / "batch-sim-run.py").read_bytes() == bs.RUN_WRAPPER.encode("utf-8")
+    assert lines == _stepline(FULL_STEPS + ["push"]) + ["BATCH_SIM RUN rc=0 stop=END"]
+    spec = bs.read_prompt(path)[2]
+    assert lines == bs.expected_production_log(spec, True)
+
+
+def test_g5b2_a_runner_update_batch_is_run_a_second_time_after_its_stop(tmp_path):
+    fake = Fake(tmp_path)
+    cut = FULL_STEPS.index("apply") + 1
+    fake.run_plan = [(FULL_STEPS[:cut], "RUNNER_UPDATED"), (FULL_STEPS[cut:] + ["push"], "END")]
+    sim, lines = _sim(tmp_path, fake)
+    path = _prompt(tmp_path, via_run=True, runner_update=True)
+    sim.production(path)
+    assert fake.runner_steps() == FULL_STEPS + ["push"] and fake.run_invocations == 2
+    assert lines == (_stepline(FULL_STEPS[:cut]) + ["BATCH_SIM RUN rc=5 stop=RUNNER_UPDATED"]
+                     + _stepline(FULL_STEPS[cut:] + ["push"]) + ["BATCH_SIM RUN rc=0 stop=END"])
+    assert lines == bs.expected_production_log(bs.read_prompt(path)[2], True)
+    assert fake.stub_seen["push"] is True
+
+
+def test_g5b2_a_runner_stop_in_a_batch_that_does_not_update_the_runner_fails_the_rehearsal(tmp_path):
+    fake = Fake(tmp_path)
+    fake.run_plan = [(FULL_STEPS[:4], "RUNNER_UPDATED")]
+    sim, lines = _sim(tmp_path, fake)
+    assert _code(sim.production, _prompt(tmp_path, via_run=True)) == "STEP_FAILED_RUN"
+    assert lines[-1] == "BATCH_SIM RUN rc=5 stop=RUNNER_UPDATED" and fake.run_invocations == 1
+
+
+def test_g5b2_a_second_runner_stop_is_not_accepted(tmp_path):
+    fake = Fake(tmp_path)
+    cut = FULL_STEPS.index("apply") + 1
+    fake.run_plan = [(FULL_STEPS[:cut], "RUNNER_UPDATED"), (["focused"], "RUNNER_UPDATED")]
+    sim, _ = _sim(tmp_path, fake)
+    assert _code(sim.production, _prompt(tmp_path, via_run=True, runner_update=True)) == "STEP_FAILED_RUN"
+
+
+def test_g5b2_a_failing_step_inside_run_is_reported_with_its_s1_code(tmp_path):
+    fake = Fake(tmp_path, steps={(TASK, "focused"): (1, "noise secret-looking text\nS1 FOCUSED_NONZERO | step focused\n")})
+    fake.run_plan = [(FULL_STEPS + ["push"], "END")]
+    sim, lines = _sim(tmp_path, fake)
+    assert _code(sim.production, _prompt(tmp_path, via_run=True)) == "STEP_FAILED_FOCUSED_FOCUSED_NONZERO"
+    assert lines[-2:] == ["BATCH_SIM S1 FOCUSED_NONZERO", "BATCH_SIM RUN rc=1 stop=STEP_FAILED"]
+    assert not any("secret" in line for line in lines)
+    assert (tmp_path / "wd" / "work" / "scripts" / "verification_primitives.py").read_bytes() == b"REAL\n"
+
+
+def test_g5b2_a_bundle_batch_is_rehearsed_step_by_step_and_says_so(tmp_path):
+    fake = Fake(tmp_path)
+    sim, lines = _sim(tmp_path, fake)
+    path = _prompt(tmp_path, via_run=True, bundle=True)
+    sim.production(path)
+    assert fake.run_invocations == 0 and fake.runner_steps() == FULL_STEPS + ["push"]
+    assert lines[-2:] == ["BATCH_SIM RUN NOT_TESTED", "BATCH_SIM POST_PUSH_BUNDLE NOT_TESTED"]
+    assert lines == bs.expected_production_log(bs.read_prompt(path)[2], True)
+
+
+def test_g5b2_a_run_promotion_uses_the_command_line_run_inside_the_stand_in(tmp_path):
+    fake = Fake(tmp_path)
+    fake.run_plan = [(list(bs.PROMOTION_STEPS), "END")]
+    sim, lines = _sim(tmp_path, fake)
+    sim.promotion(_prompt(tmp_path, kind="promotion", via_run=True))
+    assert fake.runner_steps() == ["run"] + list(bs.PROMOTION_STEPS) and fake.run_invocations == 1
+    assert all(fake.stub_seen[s] for s in bs.PROMOTION_STEPS)
+    assert lines[-1] == "BATCH_SIM RUN rc=0 stop=END"
+
+
+def test_g5b2_only_a_prompt_that_lists_its_own_run_command_is_rehearsed_with_run():
+    head = b"x\npython scripts/batch_runner.py --task-id T-1 run\n<<<BEGIN BATCH_SPEC_JSON>>>\n"
+    assert bs.prompt_uses_run("T-1", head) is True
+    assert bs.prompt_uses_run("T-2", head) is False
+    assert bs.prompt_uses_run("T-1", b"x\npython scripts/batch_runner.py --task-id T-1 preflight\n<<<BEGIN BATCH_SPEC_JSON>>>\n") is False
+    # a mention after the machine blocks never counts
+    assert bs.prompt_uses_run("T-1", b"x\n<<<BEGIN BATCH_SPEC_JSON>>>\nscripts/batch_runner.py --task-id T-1 run\n") is False
+    assert bs.prompt_uses_run("T-1", b"\xff\xfe") is False
+
+
+def test_g5b2_the_expected_rehearsal_log_follows_the_batch_kind():
+    plain = {"kind": "production", "native_preview": True, "e24": False, "focused": None}
+    steps = list(bs.production_steps(plain)) + ["push"]
+    assert bs.expected_production_log(plain, False) == _stepline(steps)
+    assert bs.expected_production_log(plain, True) == _stepline(steps) + ["BATCH_SIM RUN rc=0 stop=END"]
+    update = dict(plain, runner_update=True)
+    log = bs.expected_production_log(update, True)
+    assert log.count("BATCH_SIM RUN rc=5 stop=RUNNER_UPDATED") == 1
+    assert log[log.index("BATCH_SIM STEP apply rc=0") + 1] == "BATCH_SIM RUN rc=5 stop=RUNNER_UPDATED"
+    bundle = dict(plain, bundle_output=True)
+    assert bs.expected_production_log(bundle, False)[-1] == "BATCH_SIM POST_PUSH_BUNDLE NOT_TESTED"
+    assert bs.expected_production_log(bundle, True)[-2:] == ["BATCH_SIM RUN NOT_TESTED", "BATCH_SIM POST_PUSH_BUNDLE NOT_TESTED"]
+
+
+def test_g5b2_a_runner_stop_line_with_another_exit_code_is_a_failure_not_a_second_run(tmp_path):
+    # Only the documented pair (the RUNNER_UPDATED line and exit code 5) allows the second run.
+    fake = Fake(tmp_path)
+    cut = FULL_STEPS.index("apply") + 1
+    fake.run_plan = [(FULL_STEPS[:cut], "RUNNER_UPDATED", 1), (FULL_STEPS[cut:] + ["push"], "END")]
+    sim, lines = _sim(tmp_path, fake)
+    assert _code(sim.production, _prompt(tmp_path, via_run=True, runner_update=True)) == "STEP_FAILED_RUN"
+    assert fake.run_invocations == 1 and lines[-1] == "BATCH_SIM RUN rc=1 stop=RUNNER_UPDATED"

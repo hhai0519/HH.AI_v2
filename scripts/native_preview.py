@@ -148,7 +148,7 @@ def simulated_worktree(root, base):
     return True
 
 
-def checked_simulation_output(stdout, returncode, spec):
+def checked_simulation_output(stdout, returncode, spec, via_run=False):
     """Require the complete canonical trace with exactly one successful terminal marker."""
     try:
         lines = stdout.decode('utf-8').splitlines()
@@ -160,10 +160,7 @@ def checked_simulation_output(stdout, returncode, spec):
         if lines[-1:] == ['BATCH_SIM FAIL SOURCE_MODIFIED']:
             raise PreviewError('NATIVE_PREVIEW_SOURCE_MODIFIED')
         raise PreviewError('NATIVE_PREVIEW_NONZERO')
-    expected = ['BATCH_SIM STEP ' + step + ' rc=0'
-                for step in (*sim.production_steps(spec), 'push')]
-    if spec.get('bundle_output'):
-        expected.append('BATCH_SIM POST_PUSH_BUNDLE NOT_TESTED')
+    expected = sim.expected_production_log(spec, via_run)
     expected.append('BATCH_SIM PASS production locale=utf8 git_profile=windows')
     if lines != expected:
         raise PreviewError('NATIVE_PREVIEW_LOG_INVALID')
@@ -210,7 +207,7 @@ def run(batch):
         raise PreviewError('NATIVE_PREVIEW_TIMEOUT')
     if not log.is_file() or log.read_bytes() != result.stdout:
         raise PreviewError('NATIVE_PREVIEW_LOG_INVALID')
-    checked_simulation_output(result.stdout, result.returncode, spec)
+    checked_simulation_output(result.stdout, result.returncode, spec, sim.prompt_uses_run(batch.task_id, batch.prompt_bytes))
     batch.write_new_artifact('native-preview.json', json.dumps({
         'base_oid': spec['base_oid'],
         'prompt_sha256': hashlib.sha256(batch.prompt_bytes).hexdigest(),
@@ -241,7 +238,8 @@ def require_receipt(batch):
             if directory.resolve() == directory and log.resolve() == log and log.is_file():
                 output = log.read_bytes()
                 if br.sha256_bytes(output) == receipt['log_sha256']:
-                    checked_simulation_output(output, 0, batch.spec)
+                    checked_simulation_output(output, 0, batch.spec,
+                                              sim.prompt_uses_run(batch.task_id, batch.prompt_bytes))
                     return
     except (OSError, ValueError, KeyError, TypeError):
         pass

@@ -18,7 +18,7 @@ build writes, create-only, into an empty or new --out-dir three files, plus a fo
   DELIVERY.txt                                 header (task, role, stamp, directories, file names and hashes),
                                                then block 1, block 2, block 3 and the hash command between markers
   PRESTART.txt                                 only when the prompt is a production with native_preview true: the fixed
-                                               pre-execution sequence (blocks A, B, B-R and C, the IDE steps and the
+                                               pre-execution sequence (blocks A, B and B-R, the IDE steps and the
                                                new-chat rule), with the Base OID and the workspace taken from the prompt
                                                and --workspace, never typed by hand
 
@@ -174,16 +174,12 @@ PS51_GUARD = ("if (-not ($PSVersionTable.PSVersion.Major -eq 5 -and $PSVersionTa
 STATUS_CHECK = ("$s=@(git -C $ws --no-optional-locks status --porcelain --untracked-files=all); "
                 "if ($LASTEXITCODE -ne 0) { throw 'W2_STATUS_FAILED' }; "
                 "if ($s.Count -ne 0) { $s | Select-Object -First 20; throw 'W2_NOT_CLEAN' }; ")
-IDLE_CODE = ("import os,sys,time;from pathlib import Path;sys.path.insert(0,os.path.join(sys.argv[1],'scripts'));"
-             "import batch_sim as b;r=Path(sys.argv[1]);snap=lambda:tuple((p.relative_to(r).as_posix(),)+"
-             "(lambda s:(s.st_mode,s.st_size,s.st_mtime_ns,s.st_ctime_ns))(os.lstat(p)) for p in b._source_paths(r));"
-             "a=snap();time.sleep(int(sys.argv[2]));c=snap();print('GIT_IDLE_OK' if a==c else 'GIT_IDLE_CHANGED');"
-             "sys.exit(0 if a==c else 3)")
 
 
 def prestart_blocks(base_oid, workspace):
-    """Blocks A (IDE closed), B (workspace at Base and clean), B-R (switch to Base, only after W2_HEAD_MISMATCH)
-    and C (source tree idle for 210 s) as PowerShell 5.1 one-liners; only the Base OID and the workspace vary."""
+    """Blocks A (IDE closed), B (workspace at Base and clean) and B-R (switch to Base, only after W2_HEAD_MISMATCH)
+    as PowerShell 5.1 one-liners; only the Base OID and the workspace vary. The 210 s idle check of the source tree
+    (formerly block C) now runs inside the runner's own run command."""
     _require(isinstance(base_oid, str) and BASE_RE.match(base_oid) is not None, 'BASE_INVALID')
     ws = prompt_builder.windows_dir(workspace, 'WORKSPACE_INVALID')
     lit = prompt_builder.ps_literal
@@ -199,10 +195,7 @@ def prestart_blocks(base_oid, workspace):
           "($base + '^{commit}'); if ($LASTEXITCODE -ne 0) { throw 'BASE_NOT_IN_W2' }; " + STATUS_CHECK
           + "git -C $ws switch --detach $base; if ($LASTEXITCODE -ne 0) { throw 'W2_SWITCH_FAILED' }; "
           "'W2_SWITCHED_TO_BASE_RERUN_B' }")
-    c = (head + "$ws=" + lit(ws) + "; $py=Join-Path $ws '.venv\\Scripts\\python.exe'; "
-         "if (-not (Test-Path -LiteralPath $py -PathType Leaf)) { throw 'W2_PYTHON_MISSING' }; $code=" + lit(IDLE_CODE)
-         + "; & $py -B -c $code $ws 210; if ($LASTEXITCODE -ne 0) { throw 'GIT_IDLE_CHECK_FAILED' } }")
-    return {'A': a, 'B': b, 'B-R': br, 'C': c}
+    return {'A': a, 'B': b, 'B-R': br}
 
 
 def prestart_lines(base_oid, workspace):
@@ -220,13 +213,12 @@ def prestart_lines(base_oid, workspace):
             + ['### 開啟 IDE 並等待',
                '1. 只以 `' + IDE_EXE + '` 開啟 Antigravity IDE，開啟 `' + ws + '` 工作區。',
                '2. 確認使用者層級（不是工作區層級）的 Git 自動刷新（`git.autorefresh`）與自動 fetch（`git.autofetch`）仍為關閉。',
-               '3. 等約 1 分鐘，再執行區塊 C。',
-               '### 區塊 C（預期輸出 `GIT_IDLE_OK`，約 210 秒）'] + fence(blocks['C'])
-            + ['輸出 `GIT_IDLE_CHANGED` 或 `GIT_IDLE_CHECK_FAILED` 就停止並回報，不要啟動 Executor。',
+               '3. 等約 1 分鐘讓 IDE 安定。Git 閒置檢查（原區塊 C）已併入 Executor 的 run 命令，由 runner 自己執行並回報；'
+               'Executor 啟動後約 4 分鐘內（閒置檢查期間）不要在 IDE 存檔、切換分支、開啟原始檔控制面板或執行任何 git 命令。',
                '### 新的 Agent 對話',
                '- 開新對話；**不要動分支選擇器**（runner 只檢查 HEAD＝Base 與工作區乾淨，不檢查分支）。',
-               '- 貼上區塊三的文字，一字不改。之後每個 runner 步驟必須等到 IDE 顯示該命令已結束且 exit 0、'
-               '輸出含 `STEP_PASS <步驟名>` 才算完成，期間不得呼叫下一步。'])
+               '- 貼上區塊三的文字，一字不改。Executor 只會執行提示詞列出的 run 命令；它必須等到該命令真正結束，'
+               '並依其印出的固定行（`RUN_END` 或 `RUN_STOPPED`…）判斷，不看 exit code。'])
 
 
 def prestart_spec(prompt_path):

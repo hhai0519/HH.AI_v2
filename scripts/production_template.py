@@ -119,10 +119,8 @@ def auto_production(repo, definition, out_dir):
     # Use the runner's own step derivation; do not maintain a second e24/focused decision.
     preview = (pb.batch_runner.native_preview_required(changed)
                and pb.batch_runner.base_supports_native_preview(repo, base))
-    steps = pb.batch_runner.derive_steps({'kind': 'production', 'e24': d.get('e24') is True,
-                                          'native_preview': preview,
-                                          'focused': d.get('focused'), 'bundle_output': d.get('bundle_output', False)}) + ['timing']
-    cmds = '\n'.join(pb.production_runner_commands('{TASK_ID}', steps, preview))
+    cmds = '\n'.join(pb.production_runner_commands('{TASK_ID}', pb.RUN_COMMAND_STEPS, preview))
+    protocol = '\n'.join(pb.run_protocol_text('production', d.get('runner_update') is True, preview))
     preview_scope = (
         ' 本批 native_preview 核准 runner 在 %TEMP% 自建隔離模擬、寫入並保留本批證據。'
         ' BASE_NOT_IN_SOURCE 時立即 S1，轉交既有輸出，禁止在 W2 fetch 或自行重跑。'
@@ -155,20 +153,21 @@ Allowed and required tracked mutation paths 均為 {{ALLOWED}}。本批不授權
 E24={'REQUIRED' if d.get('e24') is True else 'NONE'}；E27={prose['e27']}。E27 結論不取代 Macro 最終提示詞授權；不得擅自引用任何第二意見 PASS。
 
 三、失敗停止與開始前就緒
-每個 runner 命令只執行一次、按順序，必須觀察真正結束且 exit 0 才能前進；背景執行中、排隊中或 PENDING 不等於成功。任何非零、超時、歧義、來源或工作區不符立即 S1 STOP，不自行重跑、提高 timeout、修改 gate、修改提示詞、reset、rebase、amend、stash、force push、hook bypass、刪除檔案或自行修補。S1 STOP 立即停止後續 production 步驟：新版 runner 在同一失敗命令內自動輸出 timing／回覆；若已出現 TIMING 或 EXECUTOR_REPLY_UNAVAILABLE，不得再執行 timing 或其他工具。首批 runner_update 的 apply 階段（含）以前仍可能由舊 runner 回報 S1 而無 timing，此過渡情況才准執行第五節 timing 一次；此後立即轉交並結束。成功路徑照第五節順序於最後執行 timing 一次。原 Executor 對話必須已停止且無 Queued 指令；IDE 作用中工作區必須為使用者指定的正式 workspace。Mutation 之前 fresh reread 所有規則與本批作者程式，驗證 Base、clean worktree、branch、scope、操作步驟及所有機械契約；發現規格衝突或缺件先停止。特別停止條件：
+runner 命令只依第五節的條件執行，必須觀察命令真正結束；背景執行中、排隊中或 PENDING 不等於結束；結果只看命令印出的固定行，不以 exit code 判斷。任何 S1、RUN_STOPPED、RUN_REFUSED、超時、歧義、來源或工作區不符立即 STOP，不自行重跑、提高 timeout、修改 gate、修改提示詞、reset、rebase、amend、stash、force push、hook bypass、刪除檔案或自行修補。S1 STOP 立即停止後續 production 步驟：runner 在同一命令內自動輸出 timing／回覆；若已出現 TIMING 或 EXECUTOR_REPLY_UNAVAILABLE，不得再執行 timing 或其他工具。成功路徑的 timing 由 run 在最後自動執行，Executor 不單獨執行。原 Executor 對話必須已停止且無 Queued 指令；IDE 作用中工作區必須為使用者指定的正式 workspace。Mutation 之前 fresh reread 所有規則與本批作者程式，驗證 Base、clean worktree、branch、scope、操作步驟及所有機械契約；發現規格衝突或缺件先停止。特別停止條件：
 {stops}
 
 四、動手前必讀（使用 IDE 原生檢視逐檔讀到最後一行）
 {{MUST_READ}}
 若 IDE 原生讀取不可行，立即 S1 NATIVE_VIEW_UNAVAILABLE，禁止以 terminal 或 Python 替代。
 
-五、唯一 canonical runner 操作順序（各命令一次）
+五、唯一 canonical runner 操作（只准執行下列兩個命令，條件見其後）
 {cmds}
+{protocol}
 
 六、Executor 固定回覆與唯一終點
-完成 timing 後，若 runner 印出 EXECUTOR_REPLY_BEGIN／EXECUTOR_REPLY_END 且 REPLY_SELF_CHECK=PASS，僅逐字複製兩個 marker 之間的行，並立即結束本次執行；不得額外執行任何工具、讀檔、自我驗證或寫檔。格式通過只證明可轉交，不代表 CI PASS；CI PENDING 僅可稱未查證，不得合成或更改 CI_RUN。
-若 runner 印出 EXECUTOR_REPLY_UNAVAILABLE，或舊 runner 在 apply 前就發生 S1、沒有產生此區塊，則回退到本節下列原有人工逐字轉交規則，不得為補回覆再執行額外命令；僅回報原始 runner 已輸出的內容與不可用代碼。
-原有回覆規則：成功時逐字轉交已有的 CI_RUN candidate、COMMIT、TIMING、STATE；若有 bundle，還須逐字轉交 BUNDLE_FILE=、ORIGIN_MAIN=、HANDOFF_TO_AUDITOR=、HANDOFF_CARD_SHA256=、HANDOFF_CARD_JSON= 或 BUNDLE FAILED <CODE>。若 CI 是 PENDING，不得自行宣稱 PASS。S1 時只逐字轉交已出現的 S1、S1_PRIMARY、S1_DETAIL、S1_EVIDENCE、S1_FULL_CAPTURE、BOUNDED、TIMING、STATE 相關行，不能補造不存在的證據，不捏造 CI Run／job ID 或 PASS。
+run 結束（或停止）後，若 runner 印出 EXECUTOR_REPLY_BEGIN／EXECUTOR_REPLY_END 且 REPLY_SELF_CHECK=PASS，僅逐字複製兩個 marker 之間的行，並立即結束本次執行；不得額外執行任何工具、讀檔、自我驗證或寫檔。格式通過只證明可轉交，不代表 CI PASS；CI PENDING 僅可稱未查證，不得合成或更改 CI_RUN。
+若 runner 印出 EXECUTOR_REPLY_UNAVAILABLE，或沒有產生此區塊，則回退到本節下列原有人工逐字轉交規則，不得為補回覆再執行額外命令；僅回報原始 runner 已輸出的內容與不可用代碼。
+原有回覆規則：成功時逐字轉交已有的 CI_RUN candidate、COMMIT、TIMING、STATE，以及已出現的 RUN_START、RUN_END、RUN_STOPPED、RESUME_CHECK 行；若有 bundle，還須逐字轉交 BUNDLE_FILE=、ORIGIN_MAIN=、HANDOFF_TO_AUDITOR=、HANDOFF_CARD_SHA256=、HANDOFF_CARD_JSON= 或 BUNDLE FAILED <CODE>。若 CI 是 PENDING，不得自行宣稱 PASS。S1 時只逐字轉交已出現的 S1、S1_PRIMARY、S1_DETAIL、S1_EVIDENCE、S1_FULL_CAPTURE、BOUNDED、TIMING、STATE 相關行，不能補造不存在的證據，不捏造 CI Run／job ID 或 PASS。
 回覆最後一行逐字為「以上是 Antigravity IDE Agent 的回覆。」
 
 七、machine blocks（全部由 canonical builder 產生，不可修改）

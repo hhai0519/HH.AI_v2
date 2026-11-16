@@ -108,6 +108,8 @@ import sys
 import shutil
 import stat
 import tempfile
+import threading
+import time
 from pathlib import Path
 
 sys.dont_write_bytecode = True
@@ -120,6 +122,34 @@ finally:
 
 PROMOTION_STEPS = ('preflight', 'verify', 'promote', 'postmain')
 STEP_TIMEOUT = 3600
+RUN_TIMEOUT = 7200
+# The simulated `run` is started through this small program so that the CI stand-in can be put in place exactly
+# when the run is about to start push and not earlier (the gates before it test the real file): it pauses there
+# until the simulation answers. Everything else is the runner's own `run`, with its own lock, order and control.
+RUN_WRAPPER = '''import sys
+import time
+from pathlib import Path
+
+root = Path.cwd()
+sys.path.insert(0, str(root / 'scripts'))
+import batch_runner as br
+
+git = root / '.git'
+
+
+def spawn(run_root, task, step):
+    if step == 'push':
+        (git / 'batch-sim-before-push').write_bytes(b'x')
+        end = time.time() + 120
+        while not (git / 'batch-sim-ci-ready').exists():
+            if time.time() > end:
+                return 125
+            time.sleep(0.01)
+    return br._spawn_step(run_root, task, step)
+
+
+sys.exit(br.run_all(str(root), sys.argv[1], spawn=spawn))
+'''
 GIT_TIMEOUT = 600
 START_BRANCH = 'batch/sim-start'
 SIM_IDENTITY = ('-c', 'user.name=HH.AI', '-c', 'user.email=sim@example.invalid')
@@ -184,6 +214,30 @@ def known_s1(code, known=None):
             return code
     return S1_UNLISTED
 PYTEST_TOTALS = re.compile(r'^\d+ [a-z]+(, \d+ [a-z]+)* in [0-9.]+s( \([0-9:]+\))?$')
+
+
+def prompt_uses_run(task, data):
+    """True when the prompt's own command list (the text before its machine blocks) offers the single run command:
+    the simulation then rehearses exactly that; an older, step-by-step prompt is rehearsed step by step."""
+    head = data.split(b'<<<BEGIN BATCH_SPEC_JSON>>>', 1)[0].decode('utf-8', 'replace')
+    return any(line.strip().endswith('scripts/batch_runner.py --task-id ' + task + ' run')
+               for line in head.splitlines())
+
+
+def expected_production_log(spec, via_run):
+    """The exact lines of a passing production rehearsal before its PASS line (native_preview checks them)."""
+    steps = list(production_steps(spec)) + ['push']
+    lines = ['BATCH_SIM STEP ' + s + ' rc=0' for s in steps]
+    if via_run and spec.get('bundle_output') is True:
+        return lines + ['BATCH_SIM RUN NOT_TESTED', 'BATCH_SIM POST_PUSH_BUNDLE NOT_TESTED']
+    if via_run:
+        if spec.get('runner_update') is True:
+            cut = steps.index('apply') + 1
+            lines = lines[:cut] + ['BATCH_SIM RUN rc=%d stop=RUNNER_UPDATED' % batch_runner.RUN_RUNNER_UPDATED_EXIT] + lines[cut:]
+        lines.append('BATCH_SIM RUN rc=0 stop=END')
+    if spec.get('bundle_output') is True:
+        lines.append('BATCH_SIM POST_PUSH_BUNDLE NOT_TESTED')
+    return lines
 
 
 def production_steps(spec):
@@ -686,6 +740,76 @@ class Sim:
                 break
         return rc, s1
 
+    def run_command(self, task, handshake):
+        """Start `run` as the Executor does and return (exit code, output). With handshake the CI stand-in is
+        entered when the run pauses before push and left when the run ends, on every exit."""
+        git_dir = Path(self.work) / '.git'
+        if handshake:
+            for name in ('batch-sim-before-push', 'batch-sim-ci-ready'):
+                (git_dir / name).unlink(missing_ok=True)
+            (git_dir / 'batch-sim-run.py').write_bytes(RUN_WRAPPER.encode('utf-8'))
+            args = ('.git/batch-sim-run.py', task)
+        else:
+            args = ('scripts/batch_runner.py', '--task-id', task, 'run')
+        result = {}
+
+        def target():
+            try:
+                result['r'] = self.py(*args, timeout=RUN_TIMEOUT)
+            except BaseException as exc:  # noqa: BLE001 - re-raised in the calling thread
+                result['e'] = exc
+        thread = threading.Thread(target=target, daemon=True)
+        thread.start()
+        stack = contextlib.ExitStack()
+        try:
+            if handshake:
+                while thread.is_alive() and not (git_dir / 'batch-sim-before-push').exists():
+                    time.sleep(0.01)
+                if (git_dir / 'batch-sim-before-push').exists():
+                    stack.enter_context(self.ci_stand_in())
+                    (git_dir / 'batch-sim-ci-ready').write_bytes(b'x')
+        finally:
+            thread.join()
+            stack.close()
+        if 'e' in result:
+            raise result['e']
+        return result['r']
+
+    def report_run(self, task, rc, out):
+        """Print what one `run` did in the stepwise vocabulary; return (stop, step, S1 code)."""
+        lines = out.decode('utf-8', 'replace').splitlines()
+        for line in lines:
+            if line.startswith('RUN_STEP_DONE step='):
+                self.out('BATCH_SIM STEP ' + line.split('=', 1)[1].strip() + ' rc=0')
+        stop, step = 'NONE', None
+        if any(line.startswith('RUN_END STATE=COMPLETE') for line in lines):
+            stop = 'END'
+        for line in lines:
+            m = re.match(r'RUN_STOPPED (?:STEP=([a-z_]+) )?(?:RC=\d+|CODE=([A-Z_]+))', line)
+            if m and stop == 'NONE':
+                stop, step = m.group(2) or 'STEP_FAILED', m.group(1)
+        s1 = None
+        for line in lines:
+            if line.startswith('S1 '):
+                s1 = known_s1((line.split(' | ')[0].split()[1:] or [''])[0])
+                self.out('BATCH_SIM S1 ' + s1)
+                break
+        self.out('BATCH_SIM RUN rc=' + str(rc) + ' stop=' + stop)
+        return stop, step, s1
+
+    def run_through(self, task, spec, handshake):
+        """Run the single command until it ends; a batch that updates the runner is run once more, as the prompt says."""
+        update = spec.get('runner_update') is True
+        for attempt in (1, 2):
+            rc, out = self.run_command(task, handshake)
+            stop, step, s1 = self.report_run(task, rc, out)
+            if rc == 0 and stop == 'END' and s1 is None:
+                return
+            if not (update and attempt == 1 and stop == 'RUNNER_UPDATED'
+                    and rc == batch_runner.RUN_RUNNER_UPDATED_EXIT):
+                raise SimError('STEP_FAILED_' + (step or 'RUN').upper() + ('_' + s1 if s1 else ''))
+        raise SimError('STEP_FAILED_RUN')
+
     def run_steps(self, task, steps):
         for name in steps:
             rc, s1 = self.step(task, name)
@@ -746,9 +870,15 @@ class Sim:
             stop_step, code = production_negative(spec, negative)
             self.expect_stop(task, (stop_step,), stop_step, code)
             return self.no_commit(base)
-        self.run_steps(task, steps)
-        with self.ci_stand_in():
-            self.run_steps(task, ('push',))
+        if prompt_uses_run(task, data) and spec.get('bundle_output') is not True:
+            self.run_through(task, spec, True)
+        else:
+            self.run_steps(task, steps)
+            with self.ci_stand_in():
+                self.run_steps(task, ('push',))
+            if prompt_uses_run(task, data):
+                # The run command would also write the bundle into the real Downloads directory: not rehearsed.
+                self.out('BATCH_SIM RUN NOT_TESTED')
         if spec.get('bundle_output') is True:
             # Simulates only the pre-push/post-commit pipeline and local CI stand-in.
             # Never run the real bundle helper against host Downloads during rehearsal.
@@ -832,6 +962,8 @@ class Sim:
                 _require((control.read_bytes() if control.is_file() else None) == before, 'NEGATIVE_CONTROL_CHANGED')
             elif negative:
                 self.expect_stop(task, PROMOTION_STEPS, *PROMOTION_NEGATIVES[negative])
+            elif prompt_uses_run(task, data):
+                self.run_through(task, spec, False)
             else:
                 self.run_steps(task, PROMOTION_STEPS)
         main = self.git('-C', self.bare, 'rev-parse', 'refs/heads/main', cwd=str(self.workdir))

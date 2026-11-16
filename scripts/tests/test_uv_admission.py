@@ -180,7 +180,11 @@ def test_canonical_entry_has_no_sync_or_python_download():
         commands.extend(prompt_builder.production_runner_commands('UV-FIXTURE', ['preflight', 'setup'], preview))
     text='\n'.join(commands)
     startup=Path(prompt_builder.__file__).read_text()
-    promotion=Path(promotion_template.__file__).read_text()
+    promotion_source=Path(promotion_template.__file__).read_text()
+    assert 'pb.production_runner_commands(' in promotion_source  # the promotion prompt takes its commands from the builder
+    promotion='\n'.join(prompt_builder.production_runner_commands('UV-FIXTURE', prompt_builder.RUN_COMMAND_STEPS, False))
+    for source in (template, promotion_source):  # no template may carry its own sync or locked command text
+        assert 'uv sync' not in source and 'uv run --locked' not in source
     for s in (text,startup,promotion):
         assert 'uv run --offline --no-sync --no-python-downloads --python .venv' in s
         assert 'uv sync' not in s  # preparation must be separately authorized

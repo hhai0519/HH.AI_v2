@@ -938,3 +938,24 @@ def test_auto_production_applies_hash_rule_with_the_definition_base(tmp_path, so
     with pytest.raises(builder.BuildError, match='^AUDITOR_SELFCHECK_STALE_HASH$'):
         production_template.auto_production(source, tmp_path / 'def.json', tmp_path / 'out')
     assert not (tmp_path / 'out').exists()
+
+
+def test_g5b2_the_preview_log_of_a_run_prompt_is_the_run_trace_and_never_the_stepwise_one():
+    spec = {'kind': 'production', 'native_preview': True, 'e24': False, 'focused': None}
+    marker = b'BATCH_SIM PASS production locale=utf8 git_profile=windows\n'
+    steps = (*sim.production_steps(spec), 'push')
+    stepwise = b''.join(f'BATCH_SIM STEP {step} rc=0\n'.encode('ascii') for step in steps) + marker
+    via_run = b''.join(f'BATCH_SIM STEP {step} rc=0\n'.encode('ascii') for step in steps) \
+        + b'BATCH_SIM RUN rc=0 stop=END\n' + marker
+    preview.checked_simulation_output(via_run, 0, spec, True)
+    preview.checked_simulation_output(stepwise, 0, spec)
+    for output, flag in ((stepwise, True), (via_run, False)):
+        with pytest.raises(preview.PreviewError, match='NATIVE_PREVIEW_LOG_INVALID'):
+            preview.checked_simulation_output(output, 0, spec, flag)
+    update = dict(spec, runner_update=True)
+    cut = steps.index('apply') + 1
+    trace = [f'BATCH_SIM STEP {step} rc=0' for step in steps]
+    trace = trace[:cut] + ['BATCH_SIM RUN rc=5 stop=RUNNER_UPDATED'] + trace[cut:] + ['BATCH_SIM RUN rc=0 stop=END']
+    preview.checked_simulation_output(('\n'.join(trace) + '\n').encode('ascii') + marker, 0, update, True)
+    with pytest.raises(preview.PreviewError, match='NATIVE_PREVIEW_LOG_INVALID'):
+        preview.checked_simulation_output(via_run, 0, update, True)

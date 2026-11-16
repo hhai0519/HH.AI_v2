@@ -948,7 +948,12 @@ def test_b115_auto_promotion_deterministic_and_runner_accepted(tmp_path, repo):
     assert '成功只逐字複製 runner 的 MAIN、TIMING、STATE 三行' not in text
     assert text.count('CI_RUN phase=candidate') == 1
     assert text.count('CI_RUN phase=postmain') == 1
-    assert '每個命令只執行一次' in text
+    assert '只准執行下列兩個命令' in text
+    assert text.count('scripts/batch_runner.py --task-id') == 2
+    assert text.count(' run\n') == 1 and text.count(' resume-check\n') == 1
+    assert not any(' ' + step + '\n' in text for step in ('preflight', 'verify', 'promote', 'postmain', 'timing'))
+    assert 'RUN_END STATE=COMPLETE' in text and '不看 exit code' in text
+    assert '2. 本批不更新 runner' in text
     assert 'scripts/batch_runner.py 已更新' not in text
     spec = br.load_spec(br.prompt_lines(a.read_bytes()), a.name.removesuffix('-prompt.txt'))
     assert spec['candidate_oid'] == candidate and spec['base_oid'] == base
@@ -1099,7 +1104,8 @@ def test_b115_auto_production_deterministic_and_canonical(tmp_path, repo):
     assert '目標：機械產生' in text and 'batch/unit-production-261014' in text
     assert '- scripts/tool.py' in text
     assert 'docs/governance/execution-record.json' in text
-    assert 'preflight' in text and 'postcommit' in text
+    assert text.count('scripts/batch_runner.py --task-id') == 2
+    assert text.count(' run\n') == 1 and text.count(' resume-check\n') == 1
     assert 'BEGIN_HHAI_EXECUTION_CONTRACT' in text and 'main_advancement: FORBIDDEN' in text
     assert 'E27=APPLICABLE_PRE_EXEC_REVIEW' in text
     spec = br.load_spec(br.prompt_lines(p1.read_bytes()), d['task_id'])
@@ -1175,10 +1181,12 @@ def test_auto_production_r2_all_steps_and_executor_safety(tmp_path, repo):
     d['e24_evidence'] = 'e24.json'
     _w(f, json.dumps(d, ensure_ascii=False, indent=2) + '\n')
     text = mod.auto_production(root, f, tmp_path / 'generated').read_text('utf-8')
+    for step in ('run', 'resume-check'):
+        assert 'python scripts/batch_runner.py --task-id ' + d['task_id'] + ' ' + step + '\n' in text
     for step in ('preflight','setup','e24','apply','focused','generate','precommit','stage','commit','postcommit','push','timing'):
-        assert 'python scripts/batch_runner.py --task-id '+d['task_id']+' '+step in text
+        assert '--task-id ' + d['task_id'] + ' ' + step + '\n' not in text
     assert '- scripts/added.py' in text and '- docs/BOARD.md' in text
-    for signal in ('背景執行中、排隊中或 PENDING 不等於成功','每個 runner 命令只執行一次',
+    for signal in ('背景執行中、排隊中或 PENDING 不等於結束','結果只看命令印出的固定行',
                    '不捏造 CI Run／job ID 或 PASS', 'E24=REQUIRED', 'main_advancement: FORBIDDEN'):
         assert signal in text
     assert 'B-115 repo-owned production prose' not in text
@@ -1287,7 +1295,8 @@ def test_b118_auto_production_bundle_enabled_contract_steps_and_reply(tmp_path, 
     assert spec['bundle_output'] is True
     assert br.derive_steps(spec)[-1] == 'bundle'
     assert 'external_artifact_write: DOWNLOADS_BUNDLE_AFTER_PUSH' in text
-    assert 'python scripts/batch_runner.py --task-id ' + d['task_id'] + ' bundle' in text
+    assert '--task-id ' + d['task_id'] + ' bundle' not in text  # the single run command includes the bundle step
+    assert 'python scripts/batch_runner.py --task-id ' + d['task_id'] + ' run\n' in text
     assert 'BUNDLE_FILE=、ORIGIN_MAIN=' in text and 'BUNDLE FAILED <CODE>' in text
 
 
@@ -1394,9 +1403,9 @@ def test_g3_auto_production_reply_terminal_contract(tmp_path, repo):
     assert 'CI PENDING' in text and '不捏造 CI Run／job ID 或 PASS' in text
     assert 'reply_check.py --prompt' not in text
     assert 'EXECUTOR_REPLY_UNAVAILABLE' in text  # self-hosting pre-apply fallback
-    assert '新版 runner 在同一失敗命令內自動輸出 timing' in text
-    assert '首批 runner_update 的 apply 階段（含）以前' in text
-    assert '成功路徑照第五節順序' in text
+    assert 'runner 在同一命令內自動輸出 timing' in text
+    assert '成功路徑的 timing 由 run 在最後自動執行' in text
+    assert '首批 runner_update 的 apply 階段（含）以前' not in text
 
 
 def test_g3_auto_promotion_reply_terminal_contract(tmp_path, repo):
@@ -1405,8 +1414,9 @@ def test_g3_auto_promotion_reply_terminal_contract(tmp_path, repo):
     assert 'EXECUTOR_REPLY_BEGIN' in text and 'EXECUTOR_REPLY_END' in text
     assert 'REPLY_SELF_CHECK=PASS' in text and '立即' in text
     assert 'CI PENDING' in text and '不得補造 PASS' in text
-    assert '新版 runner 在同一失敗命令內自動輸出 timing' in text
-    assert '僅舊 runner 未輸出 timing' in text
+    assert 'runner 在同一命令內自動輸出 timing' in text
+    assert '成功路徑的 timing 由 run 在最後自動執行' in text
+    assert '僅舊 runner 未輸出 timing' not in text
     assert 'reply_check.py --prompt' not in text
 
 
@@ -1431,3 +1441,50 @@ def test_so_check_rejects_changed_test_without_canonical_focused(tmp_path, repo)
           "scripts/tests/test_new_x.py": {"file": "new.py", "block": "NEW_TEST_X_PY"}}
     pb.main(["build", "--repo", root, "--definition", _definition(tmp_path, base, new_files=nf), "--out-dir", str(out)])
     assert _code(pb.check, root, str(out / (TASK + "-prompt.txt")), lambda *a, **k: _Result(0)) == "CHECK_FOCUSED_MISSING"
+
+
+# G5-b2: the Executor is only ever told to run the single command (and the read-only check); one text for both kinds.
+def test_g5b2_run_protocol_text_is_one_fixed_table_with_conditional_rows():
+    plain = pb.run_protocol_text('production')
+    assert plain == pb.run_protocol_text('production', False, False)
+    update = pb.run_protocol_text('production', runner_update=True)
+    preview = pb.run_protocol_text('production', preview=True)
+    promo = pb.run_protocol_text('promotion')
+    assert any('RUN_IDLE_CHECK seconds=210' in line for line in preview)
+    assert not any('RUN_IDLE_CHECK' in line for line in plain + update + promo)
+    assert any(line.startswith('2. 印出 `RUN_STOPPED CODE=RUNNER_UPDATED') for line in update)
+    assert any(line.startswith('2. 本批不更新 runner') for line in plain + promo)
+    assert [line[:2] for line in plain if line[0].isdigit()] == ['1.', '2.', '3.', '4.', '5.']
+    assert plain[0].startswith('啟動第一個命令之前，若 IDE 顯示額度或權限不足') and all(plain[0] == p[0] for p in (update, preview, promo))
+    assert any('第六節' in line for line in plain) and not any('第六節' in line for line in promo)
+    assert any('第五節' in line for line in promo)
+    assert all('scripts/batch_runner.py' not in line for line in plain + update + preview + promo)
+    # only a state that can continue may be run again; a running or interrupted batch is never touched
+    resume = [line for line in plain if line.startswith('5.')][0]
+    assert '`NOT_STARTED` 或 `RESUMABLE` → 再執行一次第一個命令' in resume
+    assert '`RUNNING`' in resume and '`INTERRUPTED`' in resume and '立即停止並回報原始輸出' in resume
+    # every rerun is bounded: an Executor never loops on the single command
+    assert '（這種情形只准一次）' in resume
+    second = [line for line in update if line.startswith('2.')][0]
+    assert '（這種情形只准一次）' in second and 'exit code 為 5，不是失敗' in second
+    assert sum('再執行一次第一個命令' in line for line in update) == 2
+    assert any('對 run 本身以本表為準' in line for line in plain)
+    # an IDE that keeps showing a finished command as running: one read-only check after about four hours, never a kill
+    assert '約 4 小時' in resume and '不得中止它' in resume
+
+
+def test_g5b2_commands_are_exactly_run_then_resume_check_and_preview_is_checked_against_them(monkeypatch):
+    import validate_prompt_manifest as vpm
+    commands = pb.production_runner_commands('T-1', pb.RUN_COMMAND_STEPS, True)
+    assert pb.RUN_COMMAND_STEPS == ['run', 'resume-check']
+    assert [c.rsplit(' ', 1)[1] for c in commands] == ['run', 'resume-check']
+    assert all('python -B scripts/batch_runner.py --task-id T-1 ' in c for c in commands)
+    monkeypatch.setattr(vpm, 'parse_execution_contract_block',
+                        lambda text: (True, None, {'native_preview_external_write': 'TEMP_ISOLATED_NATIVE_PREVIEW'}))
+    spec = {'task_id': 'T-1', 'native_preview': True}
+    tail = '\n<<<BEGIN BATCH_SPEC_JSON>>>\n'
+    pb.check_preview_contract('\n'.join(commands) + tail, spec)
+    old = pb.production_runner_commands('T-1', ['preflight', 'native_preview', 'timing'], True)
+    for wrong in (old, commands[:1], commands[::-1], commands + commands[:1]):
+        with pytest.raises(pb.BuildError, match='NATIVE_PREVIEW_COMMANDS_MISMATCH'):
+            pb.check_preview_contract('\n'.join(wrong) + tail, spec)

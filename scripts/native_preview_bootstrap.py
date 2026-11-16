@@ -180,7 +180,7 @@ def run(args):
         output = log.read_bytes()
         if digest(output) != native_receipt['log_sha256']:
             raise preview.PreviewError('BOOTSTRAP_LOG_HASH_MISMATCH')
-        preview.checked_simulation_output(output, 0, spec)
+        preview.checked_simulation_output(output, 0, spec, sim.prompt_uses_run(spec['task_id'], data))
         with (work / 'batch-sim.log').open('xb') as handle:
             handle.write(output)
         sim_home, sim_version = sim_python_info(native_area)

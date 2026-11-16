@@ -1,5 +1,5 @@
 {
-  "base_head": "4378c57",
+  "base_head": "ee08e0b",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -566,16 +566,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 413,
-      "sha256": "0cd72e2c93de7ced3cd052eda1c5910f2aee59c8fcd45a6aaae6233d3887d6c6"
+      "lines": 414,
+      "sha256": "26b0324733ddb1530d64b9c5e4ecf53a8f9a8b80fe0e82de09551f7b87c4851f"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 384,
-      "sha256": "bac74db566bd8bb7b0a837f3171a10d4f8a226c47e9355d57941fab1f5db7650"
+      "lines": 385,
+      "sha256": "5776c64bdbd4ede7c9c3870c3549a29c38b35baca38d9fea657d3532d28c94a7"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -617,8 +617,8 @@
         "## G. 舊 repo 未盤點區塊（2026-09-02 新發現）",
         "## 封存區"
       ],
-      "lines": 578,
-      "sha256": "fde3d85d4f85b3bcc35717e876e2c2e059ff18ae93cacb487aaee758f9ddf18d"
+      "lines": 579,
+      "sha256": "c0749c441c1508b5f6488311bc37242852955b20a9d22cdbca97623bc03d6f35"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1127,8 +1127,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6470,
-      "sha256": "bd82e8e02e8711228eb0c2a7b6d245df3e7b989ff142e467f7b4d1203e4f46b1"
+      "lines": 6471,
+      "sha256": "12b46c706c5376b1d197f61e47bb6a01ba777060c473d77136afcf5a2ea7effd"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1181,20 +1181,25 @@
         "# ---------------------------------------------------------------------------",
         "# G5-b: one command that runs every remaining step, and a read-only position check",
         "# ---------------------------------------------------------------------------",
-        "# One byte far beyond any real end of file is locked, so a reader of the lock file is never blocked by it."
+        "# One byte far beyond any real end of file is locked, so a reader of the lock file is never blocked by it.",
+        "# The work tree must show no file change for this long before a native_preview batch may start (formerly the",
+        "# hand-run PRESTART block C): an IDE or another tool that still writes into the tree makes the run unsafe."
       ],
-      "lines": 2130,
-      "sha256": "c6846fb150d6bc5dea054a97a9ce17aabab492d5dc08195b2312cf721bbba24f"
+      "lines": 2201,
+      "sha256": "96276928f5016f801a2d2b52fb1ee4be6825787c885b734d291422eeaae229cf"
     },
     "scripts/batch_sim.py": {
       "fences": 0,
       "headings": [
         "# -*- coding: utf-8 -*-",
+        "# The simulated `run` is started through this small program so that the CI stand-in can be put in place exactly",
+        "# when the run is about to start push and not earlier (the gates before it test the real file): it pauses there",
+        "# until the simulation answers. Everything else is the runner's own `run`, with its own lock, order and control.",
         "# Production negatives; the stop step and code depend on the batch's own step list (see production_negative).",
         "# Git for Windows installer defaults at system scope on the USER machine (B-123a; see the TASKBOARD B-123 row)."
       ],
-      "lines": 938,
-      "sha256": "d6034120d4f7c55f57a62287b4b41ef565f3617f848318686ec341e3f6c75c2a"
+      "lines": 1070,
+      "sha256": "f4e147e9d657301d5b1d5f459e949b9a49cbad7d6b42402a18dbd441065932ab"
     },
     "scripts/bounded_process.py": {
       "fences": 0,
@@ -1302,8 +1307,8 @@
         "# -- assembly (shared by build and verify-reply) ---------------------------------------------------------",
         "# -- verify-reply ---------------------------------------------------------------------------------------"
       ],
-      "lines": 462,
-      "sha256": "dd3fedc2c6f4a6d372b615c773320db17ce2f9aaed28fc30403802580faaa965"
+      "lines": 454,
+      "sha256": "5f3a9ab48ebe31e9efac596c603ad27d7bc7bd4adb33106a29cf21e5737ceb2f"
     },
     "scripts/draft_precheck.py": {
       "fences": 0,
@@ -1414,30 +1419,30 @@
         "# The simulator next to this module: W2's own copy for the runner; the authored copy for the",
         "# one-time activation bootstrap, whose W2 still holds a Base simulator without these options."
       ],
-      "lines": 248,
-      "sha256": "3ec8254655c776f6184d1306726d19e7158399d395a4fe6f30433311ae90ed38"
+      "lines": 246,
+      "sha256": "fe67b2202d7199f686bc346a69392b34ff36ab53b66d0ef102c4653834b2ed9b"
     },
     "scripts/native_preview_bootstrap.py": {
       "fences": 0,
       "headings": [],
       "lines": 265,
-      "sha256": "a638b0393a980836a61a5dd2a074041983abfa5ba26121ef44155f03ba01e6e2"
+      "sha256": "bb35b565f5431bea141bd6fc66a8af353b71176170e18cf9009dc412fca278bf"
     },
     "scripts/production_template.py": {
       "fences": 0,
       "headings": [
         "# -*- coding: utf-8 -*-"
       ],
-      "lines": 239,
-      "sha256": "2d436120df2266cd18abe231489cb8117eec6e730fab066444e00cfffd9f4f12"
+      "lines": 238,
+      "sha256": "9120fc6d5672548fc6c968e5d09841dc54fe688e113f99129772d737aa4bb954"
     },
     "scripts/promotion_template.py": {
       "fences": 0,
       "headings": [
         "# -*- coding: utf-8 -*-"
       ],
-      "lines": 169,
-      "sha256": "f5408addddc73a41f5b54dfaa4465c81154c98342bb9863610ad4e0dc7e790e3"
+      "lines": 168,
+      "sha256": "88b14a6ce793dc4804c79f89fe137479a31086b259fe94b07b4e8a58c99a71df"
     },
     "scripts/prompt_builder.py": {
       "fences": 0,
@@ -1445,12 +1450,14 @@
         "# -*- coding: utf-8 -*-",
         "# State files take only declared text_ops (STATE_FILE_REQUIRES_TEXT_OPS); the ops in BATCH_SPEC_JSON are then the",
         "# change ledger that scripts/candidate_check.py replays from Base against the candidate commit.",
+        "# What an Executor is ever told to run: the single command that does the whole batch, and the read-only check that",
+        "# says where a stopped batch stands. Single steps are never offered (G5-b2).",
         "# Fixed startup rule for a failed intake (any non-zero exit, including S1 TARGET_EXISTS with its read-only",
         "# description): the Executor stops, forwards the output verbatim and never repairs the situation itself. Whether a",
         "# new TASK_ID is issued or the USER handles the existing target is decided by the Macro Auditor and the USER."
       ],
-      "lines": 821,
-      "sha256": "3f88697121208eaa61d5c4703fa7a6879a78424b3b1a7682fbefa62f27ba32fa"
+      "lines": 855,
+      "sha256": "69022b709e5fc7fc8f6e26c95e1c6c0b566970496f89a94f697dd0fc612b547f"
     },
     "scripts/prompt_intake.py": {
       "fences": 0,
@@ -1638,10 +1645,13 @@
         "# B117 R4 — a step that is still running (or was interrupted) is reported as such, never as a bare order error.",
         "# ---------------------------------------------------------------------------",
         "# G5-b: one command that runs every remaining step, and the read-only position check",
+        "# ---------------------------------------------------------------------------",
+        "# ---------------------------------------------------------------------------",
+        "# G5-b2: a runner update stops the run once; the 210 s idle check of a native_preview batch is part of run",
         "# ---------------------------------------------------------------------------"
       ],
-      "lines": 3055,
-      "sha256": "a28a900f619397e466dbe97b59b3e705855465c9ff0f1dd76bd1d7d296d2ddf1"
+      "lines": 3241,
+      "sha256": "58a5c496be07c8b9b62d675fb54836a9db7692aefc6393be52f6939bebcb274e"
     },
     "scripts/tests/test_batch_sim.py": {
       "fences": 0,
@@ -1658,10 +1668,11 @@
         "# --- independent expectations for every e24 x focused combination (second opinion on S3) ----------",
         "# --- second opinion on S3-R1 ---------------------------------------------------------------------------",
         "# --- B-123a: HOME/XDG isolation and Git profiles (three kinds of Git subprocess) ---------------------------",
-        "# --- second-opinion B01 (B123A R1): winemu must check the repository the tests actually run in --------------"
+        "# --- second-opinion B01 (B123A R1): winemu must check the repository the tests actually run in --------------",
+        "# --- G5-b2: a prompt that offers the single run command is rehearsed with that command ---------------"
       ],
-      "lines": 1346,
-      "sha256": "93fd1ec18d4c0cc1ed6b90f984187fd1cb6eb1164de2f30f5d0d3ec553378dd3"
+      "lines": 1501,
+      "sha256": "37fb476bd3d8a96be4f9156499f263e070138e9529d30cecf46de370c1451587"
     },
     "scripts/tests/test_bounded_process.py": {
       "fences": 0,
@@ -1845,10 +1856,10 @@
         "# ---- verify-reply ------------------------------------------------------------------------------------------",
         "# ---- block 1 in a real PowerShell (Windows PowerShell 5.1 on Windows) ----------------------------------------",
         "# ---- pre-execution sequence of a native_preview production (PRESTART.txt) ------------------------------------",
-        "# The four blocks exactly as delivered and run before this tool generated them; only Base and workspace vary."
+        "# The three blocks exactly as delivered (the fourth, block C, is now part of the runner's run command) and run before this tool generated them; only Base and workspace vary."
       ],
-      "lines": 624,
-      "sha256": "7f2e16bb20af111d9f3c3672faaa0c7f32a8a5106a72e2352a0acae1e007bd3d"
+      "lines": 612,
+      "sha256": "4868a734a9c29523772c32b13d447b6ff7b0df741100f8157c19895f70f1a544"
     },
     "scripts/tests/test_draft_precheck.py": {
       "fences": 0,
@@ -1993,8 +2004,8 @@
       "headings": [
         "# --- N-2: the uv that runs the rehearsal is exactly the version the Base pyproject pins -------------------------"
       ],
-      "lines": 940,
-      "sha256": "9ce4ae88e0ae109b50be42ed08ba5c2f3967885f020abfcace63450b63477fbb"
+      "lines": 961,
+      "sha256": "156849963202f512076bcae4d6922e49ad38ba8dd1f6025c2ab600f5cb63fe63"
     },
     "scripts/tests/test_playwright_automation.py": {
       "fences": 0,
@@ -2020,10 +2031,11 @@
         "# B-115 S2 R2: independent E27 coverage after identifying base-only E24 replay failure.",
         "# B-118 first-activation negative tests: new auto-production must explicitly decide output.",
         "# The canonical builder/checker recognises READONLY without granting canonical production-runner rights.",
-        "# B115/G3 CI-PENDING-REPLY: positive terminal handoff; no checker command for Executor."
+        "# B115/G3 CI-PENDING-REPLY: positive terminal handoff; no checker command for Executor.",
+        "# G5-b2: the Executor is only ever told to run the single command (and the read-only check); one text for both kinds."
       ],
-      "lines": 1433,
-      "sha256": "0fffa720e172d1850284233a6331bc0fc9fd41bc513a6eaaf5c8a5f5b0b7ce0b"
+      "lines": 1490,
+      "sha256": "ff2236d854379fb64d0aea0021331fdc76e1f765330dbbfcb0ffb3694566759b"
     },
     "scripts/tests/test_prompt_intake.py": {
       "fences": 0,
@@ -2081,10 +2093,11 @@
         "# SO: the CLI result line is the self-check contract; PENDING must never print PASS or exit 0.",
         "# ---- step names: every runner step name must be accepted by every reply line that carries one -----------------",
         "# Defect B117-REPLY-STEPNAME-UNDERSCORE: the STATE, STEP_PASS, S1_PRIMARY and S1 line patterns once allowed only",
-        "# [a-z0-9] in a step name, so the real step \"native_preview\" made a correct Executor reply fail its own check."
+        "# [a-z0-9] in a step name, so the real step \"native_preview\" made a correct Executor reply fail its own check.",
+        "# G5-b2: a whole pasted `run` output holds the runner's own RUN_* lines, which are prose to this checker."
       ],
-      "lines": 887,
-      "sha256": "76f80b27c33508110c87447a51a097e9222b3f4bcd6ba90ea515d64dcee85d06"
+      "lines": 925,
+      "sha256": "c04364268c710b845131749796560fdf454b1ead60dfe04d0f66ee4a7e3035bc"
     },
     "scripts/tests/test_rule_loadability.py": {
       "fences": 0,
@@ -2241,8 +2254,8 @@
       "headings": [
         "# -*- coding: utf-8 -*-"
       ],
-      "lines": 290,
-      "sha256": "b30c9900ede64845a180cbaa1d99c5adcb2613793884d93d0b8fcde63c141ce3"
+      "lines": 294,
+      "sha256": "9748152d165ee5ea5f6824f6cea74e32400c8b3d7d8711436e7df915049352ce"
     },
     "scripts/tests/test_validate_skills.py": {
       "fences": 0,
@@ -2363,7 +2376,7 @@
       "sha256": "6bfd57c05a09df3cde679ae53ac6ddd67bfb64cda4246584617d3cc67fb3b81c"
     }
   },
-  "generated_at": "2026-11-16T12:01:08Z",
+  "generated_at": "2026-11-16T17:44:19Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

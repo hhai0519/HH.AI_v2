@@ -3053,3 +3053,189 @@ def test_g5b_the_lock_file_is_never_opened_through_a_symbolic_link(tmp_path, mon
     assert br.run_all(str(tmp_path), TASK, spawn=_run_spawn(tmp_path, calls)) == br.RUN_REFUSED_EXIT
     assert calls == [] and target.read_text(encoding='utf-8') == 'untouched'
     assert 'RUN_REFUSED CODE=RUN_LOCK_OPEN_FAILED' in capsys.readouterr().out
+
+
+# ---------------------------------------------------------------------------
+# G5-b2: a runner update stops the run once; the 210 s idle check of a native_preview batch is part of run
+# ---------------------------------------------------------------------------
+
+def _run_spec(tmp_path, monkeypatch, **spec):
+    batch = _run_world(tmp_path, monkeypatch)
+    batch.spec = dict({'kind': 'production'}, **spec)
+    return batch
+
+
+def test_g5b2_run_stops_once_after_the_step_that_replaced_the_runner(tmp_path, monkeypatch, capsys):
+    _run_spec(tmp_path, monkeypatch, runner_update=True)
+    digest = {'value': 'old'}
+    monkeypatch.setattr(br, '_runner_digest', lambda root: digest['value'])
+    calls = []
+    step_spawn = _run_spawn(tmp_path, calls)
+
+    def spawn(root, task, step):
+        rc = step_spawn(root, task, step)
+        if step == 'setup':
+            digest['value'] = 'new'  # the step wrote the declared successor of the runner
+        return rc
+    assert br.run_all(str(tmp_path), TASK, spawn=spawn) == br.RUN_RUNNER_UPDATED_EXIT
+    assert calls == ['preflight', 'setup']
+    assert capsys.readouterr().out.splitlines()[-1] == 'RUN_STOPPED CODE=RUNNER_UPDATED NEXT=apply'
+    calls.clear()
+    assert br.run_all(str(tmp_path), TASK, spawn=spawn) == 0  # the same command, now with the new runner
+    assert calls == ['apply', 'push', 'timing']
+    out = capsys.readouterr().out.splitlines()
+    assert out[0] == 'RUN_START task=' + TASK + ' state=RESUMABLE next=apply'
+    assert out[-1] == 'RUN_END STATE=COMPLETE TIMING_RC=0'
+
+
+def test_g5b2_the_real_runner_digest_follows_the_runner_file_content_and_path(tmp_path):
+    runner = tmp_path / br.RUNNER_REL
+    runner.parent.mkdir(parents=True)
+    runner.write_bytes(b'one')
+    other = tmp_path / 'scripts' / 'other.py'
+    other.write_bytes(b'one')
+    first = br._runner_digest(str(tmp_path))
+    assert first == br.sha256_bytes(b'one')
+    other.write_bytes(b'two')
+    assert br._runner_digest(str(tmp_path)) == first  # only the runner file itself is watched
+    runner.write_bytes(b'two')
+    assert br._runner_digest(str(tmp_path)) == br.sha256_bytes(b'two') != first
+
+
+def test_g5b2_a_real_rewrite_of_the_runner_file_stops_the_run_with_the_real_digest(tmp_path, monkeypatch, capsys):
+    _run_spec(tmp_path, monkeypatch, runner_update=True)
+    runner = tmp_path / br.RUNNER_REL
+    runner.parent.mkdir(parents=True, exist_ok=True)
+    runner.write_bytes(b'old runner')
+    calls = []
+    step_spawn = _run_spawn(tmp_path, calls)
+
+    def spawn(root, task, step):
+        rc = step_spawn(root, task, step)
+        if step == 'setup':
+            runner.write_bytes(b'new runner')
+        return rc
+    assert br.run_all(str(tmp_path), TASK, spawn=spawn) == br.RUN_RUNNER_UPDATED_EXIT
+    assert calls == ['preflight', 'setup']
+    assert 'RUN_STOPPED CODE=RUNNER_UPDATED NEXT=apply' in capsys.readouterr().out
+
+
+def test_g5b2_the_run_exit_codes_and_the_idle_seconds_are_the_documented_numbers():
+    # docs/ops/g5-run-protocol.md names these numbers; a reader of that file must find the same ones here.
+    assert (br.RUN_REFUSED_EXIT, br.RUN_ACTIVE_EXIT, br.RUN_UNRESOLVED_EXIT, br.RUN_RUNNER_UPDATED_EXIT,
+            br.RUN_IDLE_EXIT) == (2, 3, 4, 5, 6)
+    assert br.IDLE_SECONDS == 210
+
+
+def test_g5b2_a_batch_without_a_runner_update_never_reads_the_runner_file(tmp_path, monkeypatch):
+    _run_spec(tmp_path, monkeypatch)
+    monkeypatch.setattr(br, '_runner_digest', lambda root: pytest.fail('the runner file is not watched'))
+    calls = []
+    assert br.run_all(str(tmp_path), TASK, spawn=_run_spawn(tmp_path, calls)) == 0
+    assert calls == RUN_STEPS + ['timing']
+
+
+def test_g5b2_an_unreadable_runner_file_stops_before_any_step(tmp_path, monkeypatch, capsys):
+    _run_spec(tmp_path, monkeypatch, runner_update=True)
+
+    def unreadable(root):
+        raise OSError('gone')
+    monkeypatch.setattr(br, '_runner_digest', unreadable)
+    assert br.run_all(str(tmp_path), TASK, spawn=lambda *a: pytest.fail('no step may start')) == br.RUN_UNRESOLVED_EXIT
+    assert 'RUN_STOPPED CODE=RUNNER_UNREADABLE' in capsys.readouterr().out
+
+
+def test_g5b2_a_native_preview_run_waits_for_an_idle_tree_before_the_first_step(tmp_path, monkeypatch, capsys):
+    _run_spec(tmp_path, monkeypatch, native_preview=True, base_oid='0' * 40)
+    calls = []
+    assert br.run_all(str(tmp_path), TASK, spawn=_run_spawn(tmp_path, calls), idle=lambda batch: 'GIT_IDLE_OK') == 0
+    out = capsys.readouterr().out.splitlines()
+    assert out[:3] == ['RUN_START task=' + TASK + ' state=NOT_STARTED next=preflight', 'RUN_IDLE_CHECK seconds=210',
+                       'GIT_IDLE_OK']
+    assert calls == RUN_STEPS + ['timing']
+
+
+@pytest.mark.parametrize('verdict', ['GIT_IDLE_CHANGED', 'GIT_IDLE_CHECK_FAILED'])
+def test_g5b2_a_busy_tree_stops_the_run_before_any_step_or_control_file(tmp_path, monkeypatch, capsys, verdict):
+    _run_spec(tmp_path, monkeypatch, native_preview=True, base_oid='0' * 40)
+    assert br.run_all(str(tmp_path), TASK, spawn=lambda *a: pytest.fail('no step may start'),
+                      idle=lambda batch: verdict) == br.RUN_IDLE_EXIT
+    out = capsys.readouterr().out.splitlines()
+    assert out[-2:] == [verdict, 'RUN_STOPPED CODE=' + verdict]
+    assert not (tmp_path / '.git' / (TASK + '-control.json')).exists()
+
+
+def test_g5b2_the_idle_check_is_only_for_a_run_that_starts_from_nothing(tmp_path, monkeypatch):
+    _run_world(tmp_path, monkeypatch, done=['preflight'])
+    br_batch = br.Batch(str(tmp_path), TASK)
+    br_batch.spec = {'kind': 'production', 'native_preview': True, 'base_oid': '0' * 40}
+    calls = []
+    assert br.run_all(str(tmp_path), TASK, spawn=_run_spawn(tmp_path, calls),
+                      idle=lambda batch: pytest.fail('a resumed run does not wait again')) == 0
+    assert calls == RUN_STEPS[1:] + ['timing']
+
+
+def test_g5b2_a_simulated_worktree_and_other_batches_never_wait(tmp_path, monkeypatch):
+    import native_preview
+    batch = _run_spec(tmp_path, monkeypatch, native_preview=True, base_oid='0' * 40)
+    monkeypatch.setattr(native_preview, 'simulated_worktree', lambda root, base: True)
+    assert br._idle_check_required(batch) is False
+    for spec in ({'kind': 'production'}, {'kind': 'production', 'native_preview': False}, {'kind': 'promotion'}):
+        batch.spec = spec
+        assert br._idle_check_required(batch) is False
+
+
+def test_g5b2_the_idle_check_compares_two_snapshots_a_full_wait_apart(tmp_path):
+    waits = []
+    snaps = iter([('a',), ('a',), ('a',), ('b',)])
+    batch = _RunBatch(tmp_path)
+    assert br._git_idle_check(batch, sleep=waits.append, snapshot=lambda b: next(snaps)) == 'GIT_IDLE_OK'
+    assert br._git_idle_check(batch, sleep=waits.append, snapshot=lambda b: next(snaps)) == 'GIT_IDLE_CHANGED'
+    assert waits == [210, 210]
+
+    def broken(b):
+        raise OSError('unreadable')
+    assert br._git_idle_check(batch, sleep=waits.append, snapshot=broken) == 'GIT_IDLE_CHECK_FAILED'
+
+
+def test_g5b2_the_idle_snapshot_ignores_only_this_tasks_own_artifacts(tmp_path):
+    (tmp_path / '.git').mkdir()
+    tracked = tmp_path / 'tracked.txt'
+    _lf(tracked, 'one')
+    _lf(tmp_path / '.git' / 'index', 'index')
+    _lf(tmp_path / '.git' / (TASK + '-run.lock'), '')
+    batch = _RunBatch(tmp_path)
+    names = [entry[0] for entry in br._idle_snapshot(batch)]
+    assert 'tracked.txt' in names and '.git/index' in names
+    assert not any(name.startswith('.git/' + TASK + '-') for name in names)
+    before = br._idle_snapshot(batch)
+    assert br._idle_snapshot(batch) == before
+    _lf(tracked, 'two!')  # any other file: a change
+    assert br._idle_snapshot(batch) != before
+
+
+def test_g5b2_an_unprovable_simulation_hint_still_waits(tmp_path, monkeypatch):
+    # A leftover simulation hint in the real work tree makes simulated_worktree raise: the run must still wait.
+    import native_preview
+    batch = _run_spec(tmp_path, monkeypatch, native_preview=True, base_oid='0' * 40)
+
+    def unproven(root, base):
+        raise native_preview.PreviewError('NATIVE_PREVIEW_SIM_IDENTITY')
+    monkeypatch.setattr(native_preview, 'simulated_worktree', unproven)
+    assert br._idle_check_required(batch) is True
+
+
+def test_g5b2_a_runner_file_that_cannot_be_read_after_a_step_stops_the_run(tmp_path, monkeypatch, capsys):
+    _run_spec(tmp_path, monkeypatch, runner_update=True)
+    reads = {'n': 0}
+
+    def digest(root):
+        reads['n'] += 1
+        if reads['n'] > 1:
+            raise OSError('gone')  # readable when the run starts, not after the first step
+        return 'old'
+    monkeypatch.setattr(br, '_runner_digest', digest)
+    calls = []
+    assert br.run_all(str(tmp_path), TASK, spawn=_run_spawn(tmp_path, calls)) == br.RUN_RUNNER_UPDATED_EXIT
+    assert calls == ['preflight']
+    assert capsys.readouterr().out.splitlines()[-1] == 'RUN_STOPPED CODE=RUNNER_UPDATED NEXT=setup'

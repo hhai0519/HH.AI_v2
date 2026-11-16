@@ -127,10 +127,44 @@ def check_auditor_selfcheck(repo, spec, lines):
                                    spec['base_oid'])
 
 
+# What an Executor is ever told to run: the single command that does the whole batch, and the read-only check that
+# says where a stopped batch stands. Single steps are never offered (G5-b2).
+RUN_COMMAND_STEPS = ['run', 'resume-check']
+
+
 def production_runner_commands(task, steps, preview):
     python = r'uv run --offline --no-sync --no-python-downloads --python .venv\Scripts\python.exe python '
     bytecode_flag = '-B ' if preview else ''
     return [f'{python}{bytecode_flag}scripts/batch_runner.py --task-id {task} {step}' for step in steps]
+
+
+def run_protocol_text(kind, runner_update=False, preview=False):
+    """The fixed operating text under the command list of a production or promotion prompt (one source for both)."""
+    lines = ['啟動第一個命令之前，若 IDE 顯示額度或權限不足以完成一次命令與回覆，不要啟動，直接回報（此時尚未修改任何檔案）；啟動後不得為省額度而中途停止或另行補救，一律依下表處理。',
+             '第一個命令 run 依序完成本批所有剩餘步驟（含最後的 timing 與回覆），每個步驟只會執行一次；不得自行拆開、'
+             '重跑或單獨執行任何步驟或 timing。第二個命令 resume-check 只讀、不改任何檔案，僅限下列第 5 項使用。']
+    if preview:
+        lines.append('run 開始時會印出 `RUN_IDLE_CHECK seconds=210`，等約 210 秒確認工作區沒有檔案變動（取代原人工閒置檢查），'
+                     '期間不要操作 IDE；`GIT_IDLE_OK` 才會繼續，`GIT_IDLE_CHANGED` 或 `GIT_IDLE_CHECK_FAILED` 表示已停止，依第 3 項處理。')
+    lines.append('只看命令印出的固定行，不看 exit code（`RUN_REFUSED` 與 `S1 USAGE` 的 exit code 都可能是 2）；規則檔中「確認 exit code 0'
+                 '才算完成」的一般要求由 run 在每個步驟內部執行，對 run 本身以本表為準：')
+    lines.append('1. 印出 `RUN_END STATE=COMPLETE`：已結束，照第六節回覆。' if kind == 'production' else
+                 '1. 印出 `RUN_END STATE=COMPLETE`：已結束，照第五節回覆。')
+    reply = '第六節' if kind == 'production' else '第五節'
+    if runner_update:
+        lines.append('2. 印出 `RUN_STOPPED CODE=RUNNER_UPDATED NEXT=…`：本批已更新 runner，這是正常停點（exit code 為 5，不是失敗）；'
+                     '再執行一次第一個命令（這種情形只准一次），然後依本表重新判斷。')
+    else:
+        lines.append('2. 本批不更新 runner，不會出現 `RUNNER_UPDATED`；若出現，依第 3 項處理。')
+    lines.append('3. 印出其他任何 `RUN_STOPPED`、`RUN_REFUSED`、`RUN_INTERRUPTED` 或 `S1` 行：立即停止，照' + reply +
+                 '回覆，不重跑，也不執行 resume-check 以外的任何補救。')
+    lines.append('4. 以上以外的輸出一律不是結束；不得把背景執行中、排隊中或 PENDING 當成完成。')
+    lines.append('5. 命令在沒有印出第 1 至 3 項任何一行就結束或被中斷（逾時、斷線、視窗關閉），或已執行約 4 小時仍沒有印出其中任何一行'
+                 '（IDE 可能把已結束的命令一直顯示為執行中）：只執行一次 resume-check，'
+                 '依 `RESUME_CHECK STATE=` 處理：`NOT_STARTED` 或 `RESUMABLE` → 再執行一次第一個命令（這種情形只准一次），'
+                 '然後依本表重新判斷；`RUNNING`（run 仍在執行；不得中止它）、`INTERRUPTED`（有步驟開始卻沒結束，可能已改動工作區或遠端）'
+                 '及其他任何狀態 → 立即停止並回報原始輸出，不得自行處理。')
+    return lines
 
 
 def check_preview_contract(text, spec):
@@ -143,7 +177,7 @@ def check_preview_contract(text, spec):
     if spec.get('native_preview'):
         head = text.split('<<<BEGIN BATCH_SPEC_JSON>>>', 1)[0]
         lines = [line.strip() for line in head.splitlines() if 'scripts/batch_runner.py --task-id' in line]
-        expected_commands = production_runner_commands(spec['task_id'], batch_runner.derive_steps(spec) + ['timing'], True)
+        expected_commands = production_runner_commands(spec['task_id'], RUN_COMMAND_STEPS, True)
         _require(lines == expected_commands, 'NATIVE_PREVIEW_COMMANDS_MISMATCH')
 
 

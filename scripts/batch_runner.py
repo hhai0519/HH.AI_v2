@@ -1784,6 +1784,11 @@ _IS_WINDOWS = os.name == 'nt'
 RUN_REFUSED_EXIT = 2
 RUN_ACTIVE_EXIT = 3
 RUN_UNRESOLVED_EXIT = 4
+RUN_RUNNER_UPDATED_EXIT = 5
+RUN_IDLE_EXIT = 6
+# The work tree must show no file change for this long before a native_preview batch may start (formerly the
+# hand-run PRESTART block C): an IDE or another tool that still writes into the tree makes the run unsafe.
+IDLE_SECONDS = 210
 
 
 def _lock_region(handle, lock):
@@ -1923,10 +1928,59 @@ def _spawn_step(root, task_id, step):
         return 127
 
 
-def _run_loop(batch, steps, spawn):
+def _idle_snapshot(batch):
+    """Metadata of every file and directory of the work tree, except this task's own artifacts under .git."""
+    import batch_sim
+    root = Path(batch.root)
+    own = '.git/' + batch.task_id + '-'
+    entries = []
+    for path in batch_sim._source_paths(root):
+        rel = path.relative_to(root).as_posix()
+        if not rel.startswith(own):
+            st = os.lstat(path)
+            entries.append((rel, st.st_mode, st.st_size, st.st_mtime_ns, st.st_ctime_ns))
+    return tuple(entries)
+
+
+def _idle_check_required(batch):
+    """Only a real native_preview production waits: a simulation has no IDE and must not sleep."""
+    spec = batch.spec
+    if spec.get('kind') != 'production' or spec.get('native_preview') is not True:
+        return False
+    import native_preview
+    try:
+        return not native_preview.simulated_worktree(batch.root, spec['base_oid'])
+    except native_preview.PreviewError:
+        return True
+
+
+def _git_idle_check(batch, sleep=time.sleep, snapshot=_idle_snapshot, seconds=IDLE_SECONDS):
+    """One fixed line: GIT_IDLE_OK, GIT_IDLE_CHANGED or GIT_IDLE_CHECK_FAILED (the tokens of the old block C)."""
+    try:
+        before = snapshot(batch)
+        sleep(seconds)
+        after = snapshot(batch)
+    except (OSError, ImportError):
+        return 'GIT_IDLE_CHECK_FAILED'
+    return 'GIT_IDLE_OK' if before == after else 'GIT_IDLE_CHANGED'
+
+
+def _runner_digest(root):
+    return sha256_bytes((Path(root) / RUNNER_REL).read_bytes())
+
+
+def _run_loop(batch, steps, spawn, idle=_git_idle_check):
     root, task_id = batch.root, batch.task_id
     started = False
     spawned = set()
+    # A batch that updates this very file runs its later steps with the new runner; this process still holds
+    # the old code, so it stops after the step that replaced the file and the same command is run once more.
+    watch = batch.spec.get('kind') == 'production' and batch.spec.get('runner_update') is True
+    try:
+        runner_before = _runner_digest(root) if watch else None
+    except OSError:
+        print('RUN_STOPPED CODE=RUNNER_UNREADABLE', flush=True)
+        return RUN_UNRESOLVED_EXIT
     while True:
         try:
             control = load_control(batch)
@@ -1951,6 +2005,13 @@ def _run_loop(batch, steps, spawn):
         if state not in ('NOT_STARTED', 'RESUMABLE'):
             print('RUN_STOPPED STATE=' + state + ' NEXT=' + (step or 'none'), flush=True)
             return RUN_UNRESOLVED_EXIT
+        if state == 'NOT_STARTED' and not spawned and _idle_check_required(batch):
+            print('RUN_IDLE_CHECK seconds=' + str(IDLE_SECONDS), flush=True)
+            verdict = idle(batch)
+            print(verdict, flush=True)
+            if verdict != 'GIT_IDLE_OK':
+                print('RUN_STOPPED CODE=' + verdict, flush=True)
+                return RUN_IDLE_EXIT
         if step in spawned:
             # Whatever control says, one run never starts the same step twice.
             print('RUN_STOPPED STEP=' + step + ' CODE=STEP_REPEATED', flush=True)
@@ -1970,9 +2031,19 @@ def _run_loop(batch, steps, spawn):
             spawn(root, task_id, 'timing')
             return 1
         print('RUN_STEP_DONE step=' + step, flush=True)
+        if watch:
+            try:
+                changed = _runner_digest(root) != runner_before
+            except OSError:
+                changed = True
+            if changed:
+                after = steps.index(step) + 1
+                print('RUN_STOPPED CODE=RUNNER_UPDATED NEXT=' + (steps[after] if after < len(steps) else 'none'),
+                      flush=True)
+                return RUN_RUNNER_UPDATED_EXIT
 
 
-def run_all(root, task_id, spawn=_spawn_step):
+def run_all(root, task_id, spawn=_spawn_step, idle=_git_idle_check):
     """Run every remaining step in order, once, under an exclusive lock; continue from control after an interruption."""
     lock = None
     try:
@@ -1992,7 +2063,7 @@ def run_all(root, task_id, spawn=_spawn_step):
             print('RUN_REFUSED CODE=RUN_ALREADY_ACTIVE')
             return RUN_ACTIVE_EXIT
         try:
-            return _run_loop(batch, steps, spawn)
+            return _run_loop(batch, steps, spawn, idle)
         except KeyboardInterrupt:
             print('RUN_INTERRUPTED', flush=True)
             return 130

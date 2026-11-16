@@ -885,3 +885,41 @@ def test_s1_at_the_native_preview_step_is_classified_and_state_must_agree():
     assert rc.check_spec(NP_TASK, NP_SPEC, with_detail)[2] == 'S1 native_preview:NATIVE_PREVIEW_SOURCE_MODIFIED'
     assert _code(rc.check_spec, NP_TASK, NP_SPEC, with_detail.replace(detail, detail + '\n' + detail, 1)) \
         == 'REPLY_S1_DETAIL_REPEATED'
+
+
+# G5-b2: a whole pasted `run` output holds the runner's own RUN_* lines, which are prose to this checker.
+def _run_lines(task, stop='RUN_END STATE=COMPLETE TIMING_RC=0'):
+    return ['Ran command: `python scripts/batch_runner.py --task-id ' + task + ' run`',
+            'RUN_START task=' + task + ' state=NOT_STARTED next=preflight',
+            'RUN_IDLE_CHECK seconds=210', 'GIT_IDLE_OK', 'RUN_STEP_DONE step=preflight',
+            'RUN_STOPPED CODE=RUNNER_UPDATED NEXT=focused',
+            'RESUME_CHECK STATE=RESUMABLE NEXT=focused DONE=preflight,setup,e24,apply HALTED=None LOCK=FREE',
+            'RUN_START task=' + task + ' state=RESUMABLE next=focused', 'RUN_STEP_DONE step=push', stop]
+
+
+def _wrapped(reply, task, **kw):
+    return '\n'.join(_run_lines(task, **kw)[:-1]) + '\n' + reply.rstrip('\n') + '\n' + _run_lines(task, **kw)[-1] + '\n'
+
+
+def test_g5b2_run_lines_in_a_pasted_production_reply_change_nothing():
+    plain = rc.check_spec(PROD_TASK, PROD_SPEC, PROD_REPLY)
+    assert rc.check_spec(PROD_TASK, PROD_SPEC, _wrapped(PROD_REPLY, PROD_TASK)) == plain
+
+
+def test_g5b2_run_lines_in_a_pasted_promotion_reply_change_nothing():
+    plain = rc.check_spec(PROMO_TASK, PROMO_SPEC, PROMO_REPLY)
+    assert rc.check_spec(PROMO_TASK, PROMO_SPEC, _wrapped(PROMO_REPLY, PROMO_TASK)) == plain
+
+
+@pytest.mark.parametrize('stop', ['RUN_STOPPED STEP=focused RC=1', 'RUN_REFUSED CODE=RUN_ALREADY_ACTIVE',
+                                  'RUN_STOPPED STATE=COMPLETE HALTED=None CODE=REPLY_NOT_REPEATED', 'RUN_INTERRUPTED'])
+def test_g5b2_run_stop_lines_in_a_pasted_s1_reply_change_nothing(stop):
+    text, _ = s1_reply('focused', 'FOCUSED_NONZERO')
+    assert rc.check_spec(PROD_TASK, PROD_SPEC, _wrapped(text, PROD_TASK, stop=stop)) == \
+        rc.check_spec(PROD_TASK, PROD_SPEC, text)
+
+
+def test_g5b2_run_lines_never_stand_in_for_a_missing_runner_line():
+    broken = PROD_REPLY.replace('COMMIT ' + CAND + ' | CI PASS | S1 NONE\n', '')
+    assert _code(rc.check_spec, PROD_TASK, PROD_SPEC, _wrapped(broken, PROD_TASK)) == _code(
+        rc.check_spec, PROD_TASK, PROD_SPEC, broken)
