@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "B117-G5-BRANCH-MATCH-R4-261115",
-  "base_oid": "e854c3b6bbc78c26fd7af63e260e73d84d2009b6",
+  "task_id": "B117-STATE-HANDOVER-R1-261115",
+  "base_oid": "9d13530ca5858a662c4cc1d0e00b991cde126392",
   "plan": {
     "allowed_paths": [
       "docs/AUDIT-LOG.md",
@@ -10,17 +10,7 @@
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/ops/g5-native-preview.md",
-      "docs/refactor-backlog.md",
-      "scripts/batch_runner.py",
-      "scripts/batch_sim.py",
-      "scripts/native_preview.py",
-      "scripts/promotion_template.py",
-      "scripts/tests/test_audit_packet.py",
-      "scripts/tests/test_batch_runner.py",
-      "scripts/tests/test_batch_sim.py",
-      "scripts/tests/test_native_preview.py",
-      "scripts/tests/test_prompt_builder.py"
+      "docs/refactor-backlog.md"
     ],
     "required_paths": [
       "docs/AUDIT-LOG.md",
@@ -28,17 +18,7 @@
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/ops/g5-native-preview.md",
-      "docs/refactor-backlog.md",
-      "scripts/batch_runner.py",
-      "scripts/batch_sim.py",
-      "scripts/native_preview.py",
-      "scripts/promotion_template.py",
-      "scripts/tests/test_audit_packet.py",
-      "scripts/tests/test_batch_runner.py",
-      "scripts/tests/test_batch_sim.py",
-      "scripts/tests/test_native_preview.py",
-      "scripts/tests/test_prompt_builder.py"
+      "docs/refactor-backlog.md"
     ],
     "max_plan_revisions": 3,
     "revision_count": 0,
@@ -51,17 +31,7 @@
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/ops/g5-native-preview.md",
-      "docs/refactor-backlog.md",
-      "scripts/batch_runner.py",
-      "scripts/batch_sim.py",
-      "scripts/native_preview.py",
-      "scripts/promotion_template.py",
-      "scripts/tests/test_audit_packet.py",
-      "scripts/tests/test_batch_runner.py",
-      "scripts/tests/test_batch_sim.py",
-      "scripts/tests/test_native_preview.py",
-      "scripts/tests/test_prompt_builder.py"
+      "docs/refactor-backlog.md"
     ]
   },
   "evidence": [
