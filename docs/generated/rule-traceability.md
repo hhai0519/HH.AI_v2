@@ -176,8 +176,8 @@
 | .agents/rules/role-boundaries.md | 177 | ## 7. 什麼時候該停下來回報，什麼時候該自己處理 | FILE | `docs/TASKBOARD.md` | docs/TASKBOARD.md | RESOLVED |
 | .agents/rules/role-boundaries.md | 177 | ## 7. 什麼時候該停下來回報，什麼時候該自己處理 | TASK | B-91 | docs/TASKBOARD.md | RESOLVED |
 | .agents/rules/role-boundaries.md | 181 | ## 7. 什麼時候該停下來回報，什麼時候該自己處理 | CHECK | CHECK 17 | scripts/check_consistency.py | RESOLVED |
-| .agents/rules/role-boundaries.md | 199 | ## 8. 個人工作資料與日誌邊界（Personal Work Data Boundary — D-U2） | TASK | C-08 | docs/TASKBOARD.md | RESOLVED |
-| .agents/rules/role-boundaries.md | 199 | ## 8. 個人工作資料與日誌邊界（Personal Work Data Boundary — D-U2） | TASK | E-05 | docs/TASKBOARD.md | RESOLVED |
+| .agents/rules/role-boundaries.md | 204 | ## 8. 個人工作資料與日誌邊界（Personal Work Data Boundary — D-U2） | TASK | C-08 | docs/TASKBOARD.md | RESOLVED |
+| .agents/rules/role-boundaries.md | 204 | ## 8. 個人工作資料與日誌邊界（Personal Work Data Boundary — D-U2） | TASK | E-05 | docs/TASKBOARD.md | RESOLVED |
 | .agents/rules/secret-output-safety.md | 6 | # 機敏資訊與輸出安全守衛規則 (Secret Output Safety Guardrails) | ADR | docs/adr/0016-credential-leak-defense-gap.md | docs/adr/0016-credential-leak-defense-gap.md | RESOLVED |
 | .agents/rules/secret-output-safety.md | 6 | # 機敏資訊與輸出安全守衛規則 (Secret Output Safety Guardrails) | TASK | B-98 | docs/TASKBOARD.md | RESOLVED |
 | .agents/rules/secret-output-safety.md | 52 | ## SECRET-3 — 禁止輸出之表面 (Forbidden Output Surfaces) | FILE | `docs/EXEC-LOG.md` | docs/EXEC-LOG.md | RESOLVED |
@@ -288,6 +288,7 @@
 | .claude/rules/auditor-protocol.md | 216 | ### 7.1 證據必須落地成檔案 | SECTION | §3.2 | PRINCIPLES.md#§3.2 | RESOLVED |
 | .claude/rules/auditor-protocol.md | 222 | ## 8. 額度紀律 | FILE | `PRINCIPLES.md` | PRINCIPLES.md | RESOLVED |
 | .claude/rules/auditor-protocol.md | 222 | ## 8. 額度紀律 | SECTION | §0.5 | PRINCIPLES.md#§0.5 | RESOLVED |
+| .claude/rules/auditor-protocol.md | 226 | ### 8.1 每輪開頭標示建議能力／推理級別 | SECTION | §13.8 | .claude/rules/auditor-protocol.md#§13.8 | RESOLVED |
 | .claude/rules/auditor-protocol.md | 268 | ### 9.1 正常交接 | SECTION | §8.2 | .claude/rules/auditor-protocol.md#§8.2 | RESOLVED |
 | .claude/rules/auditor-protocol.md | 268 | ### 9.1 正常交接 | SECTION | §9.5 | .claude/rules/auditor-protocol.md#§9.5 | RESOLVED |
 | .claude/rules/auditor-protocol.md | 271 | ### 9.1 正常交接 | FILE | `docs/refactor-backlog.md` | docs/refactor-backlog.md | RESOLVED |
@@ -359,89 +360,96 @@
 | .claude/rules/auditor-protocol.md | 498 | ### 11.5 審計狀態之單一事實來源（Audit State SSOT） | SECTION | §5.1 | docs/refactor-backlog.md#§5.1 | RESOLVED |
 | .claude/rules/auditor-protocol.md | 502 | ### 11.6 [已退役／不需執行] 歷史 `audited-*` tag 之留痕保存（RETIRED / NOT REQUIRED） | FILE | `docs/archive/claude-control-plane/auditor-protocol-pre-slim-76b5e9.md` | docs/archive/claude-control-plane/auditor-protocol-pre-slim-76b5e9.md | RESOLVED |
 | .claude/rules/auditor-protocol.md | 518 | ### 12.1 風險分級宏觀審計核心原則 (D-U6) | FILE | `SOP/SOP_14_Rigorous_Verification_and_Audit_Protocol.md` | SOP/SOP_14_Rigorous_Verification_and_Audit_Protocol.md | RESOLVED |
+| .claude/rules/auditor-protocol.md | 535 | ## 13. 審查官運作契約補充（B-117 G7-a） | TASK | B-117 | docs/TASKBOARD.md | RESOLVED |
+| .claude/rules/auditor-protocol.md | 537 | ## 13. 審查官運作契約補充（B-117 G7-a） | TASK | B-117 | docs/TASKBOARD.md | RESOLVED |
+| .claude/rules/auditor-protocol.md | 543 | ### 13.1 過渡期權威 | ADR | docs/adr/0021-qualification-based-macro-auditor-role.md | docs/adr/0021-qualification-based-macro-auditor-role.md | RESOLVED |
+| .claude/rules/auditor-protocol.md | 560 | ### 13.4 Executor 預演與 bundle 產出 | TASK | B-118 | docs/TASKBOARD.md | RESOLVED |
+| .claude/rules/auditor-protocol.md | 582 | ### 13.7 審查官與第二意見的交接 | SECTION | §9.4 | .claude/rules/auditor-protocol.md#§9.4 | RESOLVED |
+| .claude/rules/auditor-protocol.md | 588 | ### 13.8 回覆第一行為產出時間 | SECTION | §8.1 | .claude/rules/auditor-protocol.md#§8.1 | RESOLVED |
 | .claude/rules/auditor-selftest.md | 7 | # 宏觀審計官自檢清單 | FILE | `.claude/rules/auditor-protocol.md` | .claude/rules/auditor-protocol.md | RESOLVED |
 | .claude/rules/auditor-selftest.md | 30 | ## A. 載入與資格確認（做完開場動作後立刻自答） | FILE | `docs/TASKBOARD.md` | docs/TASKBOARD.md | RESOLVED |
-| .claude/rules/auditor-selftest.md | 31 | ## A. 載入與資格確認（做完開場動作後立刻自答） | ADR | ADR-0021 | docs/adr/0021-qualification-based-macro-auditor-role.md | RESOLVED |
-| .claude/rules/auditor-selftest.md | 31 | ## A. 載入與資格確認（做完開場動作後立刻自答） | FILE | `PRINCIPLES.md` | PRINCIPLES.md | RESOLVED |
-| .claude/rules/auditor-selftest.md | 31 | ## A. 載入與資格確認（做完開場動作後立刻自答） | SECTION | §0 | PRINCIPLES.md#§0 | RESOLVED |
-| .claude/rules/auditor-selftest.md | 34 | ## A. 載入與資格確認（做完開場動作後立刻自答） | SECTION | §5.1 | docs/refactor-backlog.md#§5.1 | RESOLVED |
-| .claude/rules/auditor-selftest.md | 35 | ## A. 載入與資格確認（做完開場動作後立刻自答） | SECTION | §5.3 | .claude/rules/auditor-protocol.md#§5.3 | RESOLVED |
-| .claude/rules/auditor-selftest.md | 35 | ## A. 載入與資格確認（做完開場動作後立刻自答） | SECTION | §5.3 | .claude/rules/auditor-protocol.md#§5.3 | RESOLVED |
-| .claude/rules/auditor-selftest.md | 36 | ## A. 載入與資格確認（做完開場動作後立刻自答） | SECTION | §5.4 | .claude/rules/auditor-protocol.md#§5.4 | RESOLVED |
-| .claude/rules/auditor-selftest.md | 36 | ## A. 載入與資格確認（做完開場動作後立刻自答） | SECTION | §5.4 | .claude/rules/auditor-protocol.md#§5.4 | RESOLVED |
-| .claude/rules/auditor-selftest.md | 36 | ## A. 載入與資格確認（做完開場動作後立刻自答） | SECTION | §5.4 | .claude/rules/auditor-protocol.md#§5.4 | RESOLVED |
-| .claude/rules/auditor-selftest.md | 37 | ## A. 載入與資格確認（做完開場動作後立刻自答） | SECTION | §5 | .claude/rules/auditor-protocol.md#§5 | RESOLVED |
-| .claude/rules/auditor-selftest.md | 46 | ## B. 定位（確認「現在在哪」） | SECTION | §5.1 | docs/refactor-backlog.md#§5.1 | RESOLVED |
-| .claude/rules/auditor-selftest.md | 48 | ## B. 定位（確認「現在在哪」） | FILE | `docs/TASKBOARD.md` | docs/TASKBOARD.md | RESOLVED |
-| .claude/rules/auditor-selftest.md | 48 | ## B. 定位（確認「現在在哪」） | SECTION | §5.2 | docs/refactor-backlog.md#§5.2 | RESOLVED |
-| .claude/rules/auditor-selftest.md | 48 | ## B. 定位（確認「現在在哪」） | SECTION | §5.4 | docs/refactor-backlog.md#§5.4 | RESOLVED |
-| .claude/rules/auditor-selftest.md | 50 | ## B. 定位（確認「現在在哪」） | FILE | `docs/TASKBOARD.md` | docs/TASKBOARD.md | RESOLVED |
-| .claude/rules/auditor-selftest.md | 50 | ## B. 定位（確認「現在在哪」） | SECTION | §5.4 | .claude/rules/auditor-protocol.md#§5.4 | RESOLVED |
-| .claude/rules/auditor-selftest.md | 60 | ## C. 範圍（確認「該做什麼、不該做什麼」） | SECTION | §5.1 | docs/refactor-backlog.md#§5.1 | RESOLVED |
-| .claude/rules/auditor-selftest.md | 61 | ## C. 範圍（確認「該做什麼、不該做什麼」） | FILE | `docs/TASKBOARD.md` | docs/TASKBOARD.md | RESOLVED |
+| .claude/rules/auditor-selftest.md | 32 | ## A. 載入與資格確認（做完開場動作後立刻自答） | ADR | ADR-0021 | docs/adr/0021-qualification-based-macro-auditor-role.md | RESOLVED |
+| .claude/rules/auditor-selftest.md | 32 | ## A. 載入與資格確認（做完開場動作後立刻自答） | FILE | `PRINCIPLES.md` | PRINCIPLES.md | RESOLVED |
+| .claude/rules/auditor-selftest.md | 32 | ## A. 載入與資格確認（做完開場動作後立刻自答） | SECTION | §0 | PRINCIPLES.md#§0 | RESOLVED |
+| .claude/rules/auditor-selftest.md | 35 | ## A. 載入與資格確認（做完開場動作後立刻自答） | SECTION | §5.1 | docs/refactor-backlog.md#§5.1 | RESOLVED |
+| .claude/rules/auditor-selftest.md | 36 | ## A. 載入與資格確認（做完開場動作後立刻自答） | SECTION | §5.3 | .claude/rules/auditor-protocol.md#§5.3 | RESOLVED |
+| .claude/rules/auditor-selftest.md | 36 | ## A. 載入與資格確認（做完開場動作後立刻自答） | SECTION | §5.3 | .claude/rules/auditor-protocol.md#§5.3 | RESOLVED |
+| .claude/rules/auditor-selftest.md | 37 | ## A. 載入與資格確認（做完開場動作後立刻自答） | SECTION | §5.4 | .claude/rules/auditor-protocol.md#§5.4 | RESOLVED |
+| .claude/rules/auditor-selftest.md | 37 | ## A. 載入與資格確認（做完開場動作後立刻自答） | SECTION | §5.4 | .claude/rules/auditor-protocol.md#§5.4 | RESOLVED |
+| .claude/rules/auditor-selftest.md | 37 | ## A. 載入與資格確認（做完開場動作後立刻自答） | SECTION | §5.4 | .claude/rules/auditor-protocol.md#§5.4 | RESOLVED |
+| .claude/rules/auditor-selftest.md | 38 | ## A. 載入與資格確認（做完開場動作後立刻自答） | SECTION | §5 | .claude/rules/auditor-protocol.md#§5 | RESOLVED |
+| .claude/rules/auditor-selftest.md | 47 | ## B. 定位（確認「現在在哪」） | SECTION | §5.1 | docs/refactor-backlog.md#§5.1 | RESOLVED |
+| .claude/rules/auditor-selftest.md | 49 | ## B. 定位（確認「現在在哪」） | FILE | `docs/TASKBOARD.md` | docs/TASKBOARD.md | RESOLVED |
+| .claude/rules/auditor-selftest.md | 49 | ## B. 定位（確認「現在在哪」） | SECTION | §5.2 | docs/refactor-backlog.md#§5.2 | RESOLVED |
+| .claude/rules/auditor-selftest.md | 49 | ## B. 定位（確認「現在在哪」） | SECTION | §5.4 | docs/refactor-backlog.md#§5.4 | RESOLVED |
+| .claude/rules/auditor-selftest.md | 51 | ## B. 定位（確認「現在在哪」） | FILE | `docs/TASKBOARD.md` | docs/TASKBOARD.md | RESOLVED |
+| .claude/rules/auditor-selftest.md | 51 | ## B. 定位（確認「現在在哪」） | SECTION | §5.4 | .claude/rules/auditor-protocol.md#§5.4 | RESOLVED |
 | .claude/rules/auditor-selftest.md | 61 | ## C. 範圍（確認「該做什麼、不該做什麼」） | SECTION | §5.1 | docs/refactor-backlog.md#§5.1 | RESOLVED |
-| .claude/rules/auditor-selftest.md | 63 | ## C. 範圍（確認「該做什麼、不該做什麼」） | FILE | `docs/EXEC-LOG.md` | docs/EXEC-LOG.md | RESOLVED |
-| .claude/rules/auditor-selftest.md | 63 | ## C. 範圍（確認「該做什麼、不該做什麼」） | FILE | `docs/TASKBOARD.md` | docs/TASKBOARD.md | RESOLVED |
-| .claude/rules/auditor-selftest.md | 64 | ## C. 範圍（確認「該做什麼、不該做什麼」） | SECTION | §5.3 | .claude/rules/auditor-protocol.md#§5.3 | RESOLVED |
-| .claude/rules/auditor-selftest.md | 66 | ## C. 範圍（確認「該做什麼、不該做什麼」） | SECTION | §5.3 | .claude/rules/auditor-protocol.md#§5.3 | RESOLVED |
+| .claude/rules/auditor-selftest.md | 62 | ## C. 範圍（確認「該做什麼、不該做什麼」） | FILE | `docs/TASKBOARD.md` | docs/TASKBOARD.md | RESOLVED |
+| .claude/rules/auditor-selftest.md | 62 | ## C. 範圍（確認「該做什麼、不該做什麼」） | SECTION | §5.1 | docs/refactor-backlog.md#§5.1 | RESOLVED |
+| .claude/rules/auditor-selftest.md | 64 | ## C. 範圍（確認「該做什麼、不該做什麼」） | FILE | `docs/EXEC-LOG.md` | docs/EXEC-LOG.md | RESOLVED |
+| .claude/rules/auditor-selftest.md | 64 | ## C. 範圍（確認「該做什麼、不該做什麼」） | FILE | `docs/TASKBOARD.md` | docs/TASKBOARD.md | RESOLVED |
+| .claude/rules/auditor-selftest.md | 65 | ## C. 範圍（確認「該做什麼、不該做什麼」） | SECTION | §5.3 | .claude/rules/auditor-protocol.md#§5.3 | RESOLVED |
 | .claude/rules/auditor-selftest.md | 67 | ## C. 範圍（確認「該做什麼、不該做什麼」） | SECTION | §5.3 | .claude/rules/auditor-protocol.md#§5.3 | RESOLVED |
-| .claude/rules/auditor-selftest.md | 77 | ## D. 身分（每一輪都適用，不只接手時） | FILE | `PRINCIPLES.md` | PRINCIPLES.md | RESOLVED |
-| .claude/rules/auditor-selftest.md | 77 | ## D. 身分（每一輪都適用，不只接手時） | SECTION | §0.1 | PRINCIPLES.md#§0.1 | RESOLVED |
-| .claude/rules/auditor-selftest.md | 77 | ## D. 身分（每一輪都適用，不只接手時） | SECTION | §8.4 | .claude/rules/auditor-protocol.md#§8.4 | RESOLVED |
-| .claude/rules/auditor-selftest.md | 82 | ## D. 身分（每一輪都適用，不只接手時） | FILE | `docs/TASKBOARD.md` | docs/TASKBOARD.md | RESOLVED |
-| .claude/rules/auditor-selftest.md | 97 | ## E. 交付（產出提示詞之前） | SECTION | §6.1 | .claude/rules/auditor-protocol.md#§6.1 | RESOLVED |
+| .claude/rules/auditor-selftest.md | 68 | ## C. 範圍（確認「該做什麼、不該做什麼」） | SECTION | §5.3 | .claude/rules/auditor-protocol.md#§5.3 | RESOLVED |
+| .claude/rules/auditor-selftest.md | 78 | ## D. 身分（每一輪都適用，不只接手時） | FILE | `PRINCIPLES.md` | PRINCIPLES.md | RESOLVED |
+| .claude/rules/auditor-selftest.md | 78 | ## D. 身分（每一輪都適用，不只接手時） | SECTION | §0.1 | PRINCIPLES.md#§0.1 | RESOLVED |
+| .claude/rules/auditor-selftest.md | 78 | ## D. 身分（每一輪都適用，不只接手時） | SECTION | §8.4 | .claude/rules/auditor-protocol.md#§8.4 | RESOLVED |
+| .claude/rules/auditor-selftest.md | 83 | ## D. 身分（每一輪都適用，不只接手時） | FILE | `docs/TASKBOARD.md` | docs/TASKBOARD.md | RESOLVED |
 | .claude/rules/auditor-selftest.md | 98 | ## E. 交付（產出提示詞之前） | SECTION | §6.1 | .claude/rules/auditor-protocol.md#§6.1 | RESOLVED |
 | .claude/rules/auditor-selftest.md | 99 | ## E. 交付（產出提示詞之前） | SECTION | §6.1 | .claude/rules/auditor-protocol.md#§6.1 | RESOLVED |
 | .claude/rules/auditor-selftest.md | 100 | ## E. 交付（產出提示詞之前） | SECTION | §6.1 | .claude/rules/auditor-protocol.md#§6.1 | RESOLVED |
 | .claude/rules/auditor-selftest.md | 101 | ## E. 交付（產出提示詞之前） | SECTION | §6.1 | .claude/rules/auditor-protocol.md#§6.1 | RESOLVED |
 | .claude/rules/auditor-selftest.md | 102 | ## E. 交付（產出提示詞之前） | SECTION | §6.1 | .claude/rules/auditor-protocol.md#§6.1 | RESOLVED |
 | .claude/rules/auditor-selftest.md | 103 | ## E. 交付（產出提示詞之前） | SECTION | §6.1 | .claude/rules/auditor-protocol.md#§6.1 | RESOLVED |
-| .claude/rules/auditor-selftest.md | 104 | ## E. 交付（產出提示詞之前） | FILE | `docs/AUDIT-LOG.md` | docs/AUDIT-LOG.md | RESOLVED |
-| .claude/rules/auditor-selftest.md | 104 | ## E. 交付（產出提示詞之前） | FILE | `docs/TASKBOARD.md` | docs/TASKBOARD.md | RESOLVED |
 | .claude/rules/auditor-selftest.md | 104 | ## E. 交付（產出提示詞之前） | SECTION | §6.1 | .claude/rules/auditor-protocol.md#§6.1 | RESOLVED |
+| .claude/rules/auditor-selftest.md | 105 | ## E. 交付（產出提示詞之前） | FILE | `docs/AUDIT-LOG.md` | docs/AUDIT-LOG.md | RESOLVED |
+| .claude/rules/auditor-selftest.md | 105 | ## E. 交付（產出提示詞之前） | FILE | `docs/TASKBOARD.md` | docs/TASKBOARD.md | RESOLVED |
 | .claude/rules/auditor-selftest.md | 105 | ## E. 交付（產出提示詞之前） | SECTION | §6.1 | .claude/rules/auditor-protocol.md#§6.1 | RESOLVED |
-| .claude/rules/auditor-selftest.md | 106 | ## E. 交付（產出提示詞之前） | SECTION | §6.2 | .claude/rules/auditor-protocol.md#§6.2 | RESOLVED |
-| .claude/rules/auditor-selftest.md | 107 | ## E. 交付（產出提示詞之前） | SECTION | §6.1 | .claude/rules/auditor-protocol.md#§6.1 | RESOLVED |
-| .claude/rules/auditor-selftest.md | 107 | ## E. 交付（產出提示詞之前） | SECTION | §6.6 | .claude/rules/auditor-protocol.md#§6.6 | RESOLVED |
-| .claude/rules/auditor-selftest.md | 108 | ## E. 交付（產出提示詞之前） | FILE | `[`.agents/rules/role-boundaries.md §9`](../../.agents/rules/role-boundaries.md#9-上下文遺失恢復任務產物紀律與證據分工權威-context_loss_recovery_rule)` | .agents/rules/role-boundaries.md#9-上下文遺失恢復任務產物紀律與證據分工權威-context_loss_recovery_rule | RESOLVED |
-| .claude/rules/auditor-selftest.md | 108 | ## E. 交付（產出提示詞之前） | SECTION | §6.1 | .agents/rules/role-boundaries.md#§6.1 | RESOLVED |
-| .claude/rules/auditor-selftest.md | 108 | ## E. 交付（產出提示詞之前） | SECTION | §9 | .agents/rules/role-boundaries.md#§9 | RESOLVED |
-| .claude/rules/auditor-selftest.md | 109 | ## E. 交付（產出提示詞之前） | SECTION | §5.1 | docs/refactor-backlog.md#§5.1 | RESOLVED |
-| .claude/rules/auditor-selftest.md | 109 | ## E. 交付（產出提示詞之前） | SECTION | §6.1 | .claude/rules/auditor-protocol.md#§6.1 | RESOLVED |
-| .claude/rules/auditor-selftest.md | 110 | ## E. 交付（產出提示詞之前） | FILE | `[`.agents/rules/role-boundaries.md §9`](../../.agents/rules/role-boundaries.md#9-上下文遺失恢復任務產物紀律與證據分工權威-context_loss_recovery_rule)` | .agents/rules/role-boundaries.md#9-上下文遺失恢復任務產物紀律與證據分工權威-context_loss_recovery_rule | RESOLVED |
-| .claude/rules/auditor-selftest.md | 110 | ## E. 交付（產出提示詞之前） | FILE | `scripts/validate_prompt_manifest.py` | scripts/validate_prompt_manifest.py | RESOLVED |
-| .claude/rules/auditor-selftest.md | 110 | ## E. 交付（產出提示詞之前） | SECTION | §6.1 | .agents/rules/role-boundaries.md#§6.1 | RESOLVED |
-| .claude/rules/auditor-selftest.md | 110 | ## E. 交付（產出提示詞之前） | SECTION | §9 | .agents/rules/role-boundaries.md#§9 | RESOLVED |
-| .claude/rules/auditor-selftest.md | 111 | ## E. 交付（產出提示詞之前） | SECTION | §6.1 | .claude/rules/auditor-protocol.md#§6.1 | RESOLVED |
-| .claude/rules/auditor-selftest.md | 112 | ## E. 交付（產出提示詞之前） | CHECK | CHECK 10 | scripts/check_consistency.py | RESOLVED |
+| .claude/rules/auditor-selftest.md | 106 | ## E. 交付（產出提示詞之前） | SECTION | §6.1 | .claude/rules/auditor-protocol.md#§6.1 | RESOLVED |
+| .claude/rules/auditor-selftest.md | 107 | ## E. 交付（產出提示詞之前） | SECTION | §6.2 | .claude/rules/auditor-protocol.md#§6.2 | RESOLVED |
+| .claude/rules/auditor-selftest.md | 108 | ## E. 交付（產出提示詞之前） | SECTION | §6.1 | .claude/rules/auditor-protocol.md#§6.1 | RESOLVED |
+| .claude/rules/auditor-selftest.md | 108 | ## E. 交付（產出提示詞之前） | SECTION | §6.6 | .claude/rules/auditor-protocol.md#§6.6 | RESOLVED |
+| .claude/rules/auditor-selftest.md | 109 | ## E. 交付（產出提示詞之前） | FILE | `[`.agents/rules/role-boundaries.md §9`](../../.agents/rules/role-boundaries.md#9-上下文遺失恢復任務產物紀律與證據分工權威-context_loss_recovery_rule)` | .agents/rules/role-boundaries.md#9-上下文遺失恢復任務產物紀律與證據分工權威-context_loss_recovery_rule | RESOLVED |
+| .claude/rules/auditor-selftest.md | 109 | ## E. 交付（產出提示詞之前） | SECTION | §6.1 | .agents/rules/role-boundaries.md#§6.1 | RESOLVED |
+| .claude/rules/auditor-selftest.md | 109 | ## E. 交付（產出提示詞之前） | SECTION | §9 | .agents/rules/role-boundaries.md#§9 | RESOLVED |
+| .claude/rules/auditor-selftest.md | 110 | ## E. 交付（產出提示詞之前） | SECTION | §5.1 | docs/refactor-backlog.md#§5.1 | RESOLVED |
+| .claude/rules/auditor-selftest.md | 110 | ## E. 交付（產出提示詞之前） | SECTION | §6.1 | .claude/rules/auditor-protocol.md#§6.1 | RESOLVED |
+| .claude/rules/auditor-selftest.md | 111 | ## E. 交付（產出提示詞之前） | FILE | `[`.agents/rules/role-boundaries.md §9`](../../.agents/rules/role-boundaries.md#9-上下文遺失恢復任務產物紀律與證據分工權威-context_loss_recovery_rule)` | .agents/rules/role-boundaries.md#9-上下文遺失恢復任務產物紀律與證據分工權威-context_loss_recovery_rule | RESOLVED |
+| .claude/rules/auditor-selftest.md | 111 | ## E. 交付（產出提示詞之前） | FILE | `scripts/validate_prompt_manifest.py` | scripts/validate_prompt_manifest.py | RESOLVED |
+| .claude/rules/auditor-selftest.md | 111 | ## E. 交付（產出提示詞之前） | SECTION | §6.1 | .agents/rules/role-boundaries.md#§6.1 | RESOLVED |
+| .claude/rules/auditor-selftest.md | 111 | ## E. 交付（產出提示詞之前） | SECTION | §9 | .agents/rules/role-boundaries.md#§9 | RESOLVED |
 | .claude/rules/auditor-selftest.md | 112 | ## E. 交付（產出提示詞之前） | SECTION | §6.1 | .claude/rules/auditor-protocol.md#§6.1 | RESOLVED |
+| .claude/rules/auditor-selftest.md | 113 | ## E. 交付（產出提示詞之前） | CHECK | CHECK 10 | scripts/check_consistency.py | RESOLVED |
 | .claude/rules/auditor-selftest.md | 113 | ## E. 交付（產出提示詞之前） | SECTION | §6.1 | .claude/rules/auditor-protocol.md#§6.1 | RESOLVED |
 | .claude/rules/auditor-selftest.md | 114 | ## E. 交付（產出提示詞之前） | SECTION | §6.1 | .claude/rules/auditor-protocol.md#§6.1 | RESOLVED |
-| .claude/rules/auditor-selftest.md | 115 | ## E. 交付（產出提示詞之前） | FILE | `PRINCIPLES.md` | PRINCIPLES.md | RESOLVED |
-| .claude/rules/auditor-selftest.md | 115 | ## E. 交付（產出提示詞之前） | SECTION | §2.9 | PRINCIPLES.md#§2.9 | RESOLVED |
 | .claude/rules/auditor-selftest.md | 115 | ## E. 交付（產出提示詞之前） | SECTION | §6.1 | .claude/rules/auditor-protocol.md#§6.1 | RESOLVED |
+| .claude/rules/auditor-selftest.md | 116 | ## E. 交付（產出提示詞之前） | FILE | `PRINCIPLES.md` | PRINCIPLES.md | RESOLVED |
+| .claude/rules/auditor-selftest.md | 116 | ## E. 交付（產出提示詞之前） | SECTION | §2.9 | PRINCIPLES.md#§2.9 | RESOLVED |
 | .claude/rules/auditor-selftest.md | 116 | ## E. 交付（產出提示詞之前） | SECTION | §6.1 | .claude/rules/auditor-protocol.md#§6.1 | RESOLVED |
-| .claude/rules/auditor-selftest.md | 118 | ## E. 交付（產出提示詞之前） | FILE | `PRINCIPLES.md` | PRINCIPLES.md | RESOLVED |
-| .claude/rules/auditor-selftest.md | 118 | ## E. 交付（產出提示詞之前） | SECTION | §2.10 | PRINCIPLES.md#§2.10 | RESOLVED |
-| .claude/rules/auditor-selftest.md | 118 | ## E. 交付（產出提示詞之前） | SECTION | §6.1 | .claude/rules/auditor-protocol.md#§6.1 | RESOLVED |
-| .claude/rules/auditor-selftest.md | 119 | ## E. 交付（產出提示詞之前） | SECTION | §5.1 | docs/refactor-backlog.md#§5.1 | RESOLVED |
+| .claude/rules/auditor-selftest.md | 117 | ## E. 交付（產出提示詞之前） | SECTION | §6.1 | .claude/rules/auditor-protocol.md#§6.1 | RESOLVED |
+| .claude/rules/auditor-selftest.md | 119 | ## E. 交付（產出提示詞之前） | FILE | `PRINCIPLES.md` | PRINCIPLES.md | RESOLVED |
+| .claude/rules/auditor-selftest.md | 119 | ## E. 交付（產出提示詞之前） | SECTION | §2.10 | PRINCIPLES.md#§2.10 | RESOLVED |
 | .claude/rules/auditor-selftest.md | 119 | ## E. 交付（產出提示詞之前） | SECTION | §6.1 | .claude/rules/auditor-protocol.md#§6.1 | RESOLVED |
+| .claude/rules/auditor-selftest.md | 120 | ## E. 交付（產出提示詞之前） | SECTION | §5.1 | docs/refactor-backlog.md#§5.1 | RESOLVED |
 | .claude/rules/auditor-selftest.md | 120 | ## E. 交付（產出提示詞之前） | SECTION | §6.1 | .claude/rules/auditor-protocol.md#§6.1 | RESOLVED |
-| .claude/rules/auditor-selftest.md | 121 | ## E. 交付（產出提示詞之前） | FILE | `scripts/impact_scan.py` | scripts/impact_scan.py | RESOLVED |
 | .claude/rules/auditor-selftest.md | 121 | ## E. 交付（產出提示詞之前） | SECTION | §6.1 | .claude/rules/auditor-protocol.md#§6.1 | RESOLVED |
+| .claude/rules/auditor-selftest.md | 122 | ## E. 交付（產出提示詞之前） | FILE | `scripts/impact_scan.py` | scripts/impact_scan.py | RESOLVED |
 | .claude/rules/auditor-selftest.md | 122 | ## E. 交付（產出提示詞之前） | SECTION | §6.1 | .claude/rules/auditor-protocol.md#§6.1 | RESOLVED |
-| .claude/rules/auditor-selftest.md | 122 | ## E. 交付（產出提示詞之前） | TASK | B-104 | docs/TASKBOARD.md | RESOLVED |
-| .claude/rules/auditor-selftest.md | 123 | ## E. 交付（產出提示詞之前） | CHECK | CHECK 26 | scripts/check_consistency.py | RESOLVED |
-| .claude/rules/auditor-selftest.md | 123 | ## E. 交付（產出提示詞之前） | FILE | `docs/governance/execution-record.json` | docs/governance/execution-record.json | RESOLVED |
 | .claude/rules/auditor-selftest.md | 123 | ## E. 交付（產出提示詞之前） | SECTION | §6.1 | .claude/rules/auditor-protocol.md#§6.1 | RESOLVED |
+| .claude/rules/auditor-selftest.md | 123 | ## E. 交付（產出提示詞之前） | TASK | B-104 | docs/TASKBOARD.md | RESOLVED |
+| .claude/rules/auditor-selftest.md | 124 | ## E. 交付（產出提示詞之前） | CHECK | CHECK 26 | scripts/check_consistency.py | RESOLVED |
+| .claude/rules/auditor-selftest.md | 124 | ## E. 交付（產出提示詞之前） | FILE | `docs/governance/execution-record.json` | docs/governance/execution-record.json | RESOLVED |
 | .claude/rules/auditor-selftest.md | 124 | ## E. 交付（產出提示詞之前） | SECTION | §6.1 | .claude/rules/auditor-protocol.md#§6.1 | RESOLVED |
-| .claude/rules/auditor-selftest.md | 127 | ## E. 交付（產出提示詞之前） | SECTION | §6.1 | .claude/rules/auditor-protocol.md#§6.1 | RESOLVED |
-| .claude/rules/auditor-selftest.md | 129 | ## E. 交付（產出提示詞之前） | SECTION | §6.6 | .claude/rules/auditor-protocol.md#§6.6 | RESOLVED |
-| .claude/rules/auditor-selftest.md | 131 | ## E. 交付（產出提示詞之前） | SECTION | §6.1 | .claude/rules/auditor-protocol.md#§6.1 | RESOLVED |
-| .claude/rules/auditor-selftest.md | 137 | ## F. 額度（每一輪回覆的開頭與結尾） | SECTION | §8.1 | .claude/rules/auditor-protocol.md#§8.1 | RESOLVED |
-| .claude/rules/auditor-selftest.md | 138 | ## F. 額度（每一輪回覆的開頭與結尾） | SECTION | §8.2 | .claude/rules/auditor-protocol.md#§8.2 | RESOLVED |
-| .claude/rules/auditor-selftest.md | 139 | ## F. 額度（每一輪回覆的開頭與結尾） | SECTION | §9.1 | .claude/rules/auditor-protocol.md#§9.1 | RESOLVED |
+| .claude/rules/auditor-selftest.md | 125 | ## E. 交付（產出提示詞之前） | SECTION | §6.1 | .claude/rules/auditor-protocol.md#§6.1 | RESOLVED |
+| .claude/rules/auditor-selftest.md | 128 | ## E. 交付（產出提示詞之前） | SECTION | §6.1 | .claude/rules/auditor-protocol.md#§6.1 | RESOLVED |
+| .claude/rules/auditor-selftest.md | 130 | ## E. 交付（產出提示詞之前） | SECTION | §6.6 | .claude/rules/auditor-protocol.md#§6.6 | RESOLVED |
+| .claude/rules/auditor-selftest.md | 132 | ## E. 交付（產出提示詞之前） | SECTION | §6.1 | .claude/rules/auditor-protocol.md#§6.1 | RESOLVED |
+| .claude/rules/auditor-selftest.md | 138 | ## F. 額度（每一輪回覆的開頭與結尾） | SECTION | §13.8 | .claude/rules/auditor-protocol.md#§13.8 | RESOLVED |
+| .claude/rules/auditor-selftest.md | 138 | ## F. 額度（每一輪回覆的開頭與結尾） | SECTION | §8.1 | .claude/rules/auditor-protocol.md#§8.1 | RESOLVED |
+| .claude/rules/auditor-selftest.md | 139 | ## F. 額度（每一輪回覆的開頭與結尾） | SECTION | §8.2 | .claude/rules/auditor-protocol.md#§8.2 | RESOLVED |
 | .claude/rules/auditor-selftest.md | 140 | ## F. 額度（每一輪回覆的開頭與結尾） | SECTION | §9.1 | .claude/rules/auditor-protocol.md#§9.1 | RESOLVED |
+| .claude/rules/auditor-selftest.md | 141 | ## F. 額度（每一輪回覆的開頭與結尾） | SECTION | §9.1 | .claude/rules/auditor-protocol.md#§9.1 | RESOLVED |
 | AGENTS.md | 7 | # HH.AI 核心執行者架構規範 (Runtime Kernel & Global Router) | FILE | `[`skills/AGENTS.md`](./skills/AGENTS.md)` | skills/AGENTS.md | RESOLVED |
 | AGENTS.md | 7 | # HH.AI 核心執行者架構規範 (Runtime Kernel & Global Router) | FILE | `skills/AGENTS.md` | skills/AGENTS.md | RESOLVED |
 | AGENTS.md | 8 | # HH.AI 核心執行者架構規範 (Runtime Kernel & Global Router) | FILE | `MISSION.md` | MISSION.md | RESOLVED |

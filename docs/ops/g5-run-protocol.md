@@ -68,9 +68,11 @@
 
 ## 7. UNKNOWN 與備援
 
-- UNKNOWN：Antigravity IDE 對長達約兩小時的單一命令的行為（逾時、輸出擷取、是否在 IDE 逾時後殺掉行程）尚未實測。備援是第 3 節的 `resume-check` 加再執行一次 `run`：命令被中斷時，若 run 與其子步驟都被終止，`resume-check` 報 `INTERRUPTED`（步驟已開始）或 `RESUMABLE`（在兩個步驟之間）；前者需審查官處置，後者可續跑。審查官在第一個以 run 執行的真實批次完成後，依 Executor 回報的實際行為更新本節。
+- UNKNOWN：Antigravity IDE 對長達約兩小時的單一命令的行為（逾時、輸出擷取、是否在 IDE 逾時後殺掉行程）尚未實測（約 9 分鐘的 run 已有一次觀察，見下一項）。備援是第 3 節的 `resume-check` 加再執行一次 `run`：命令被中斷時，若 run 與其子步驟都被終止，`resume-check` 報 `INTERRUPTED`（步驟已開始）或 `RESUMABLE`（在兩個步驟之間）；前者需審查官處置，後者可續跑。審查官在第一個以 run 執行的真實批次完成後，依 Executor 回報的實際行為更新本節。
 - 已知的 IDE 問題（第二意見 N-4，Antigravity 論壇）：已結束的命令，`command_status` 可能一直顯示 RUNNING，終端機輸出也讀不到。處置見第 3 節：約 4 小時仍沒有印出任何固定行才執行一次 `resume-check`；`RUNNING` 就停止並回報，不得中止 run；`COMPLETE` 而回覆不在已擷取的輸出中時，由 USER 讀取 `executor-reply.txt`。本批預期 production 約 95 分鐘，遠低於 4 小時。
 - 第 4 關（PRECOMMIT）耗時約 38 至 53 分鐘（實測 2262 至 3176 秒），是 run 內最長的單一步驟，其逾時由 runner 自己的 bounded process 管理，與 IDE 的命令逾時無關。
+- 觀察（B117-G5B2-RUN-ONLY-R2-261116 之晉級批，2026-11-17）：Windows 原生第一次真實 `run` 是晉級批（非 native_preview，沒有第 5 節的閒置檢查）。runner 固定行（FACT，審查官以 reply_check 核對）：STEP_PASS preflight、verify、promote、postmain，`MAIN … | POST-MAIN CI PASS | S1 NONE`，`TIMING elapsed_sec=528.9`（約 8.8 分鐘）與 `STATE done=preflight,verify,promote,postmain halted=None`。Executor 自述（INFERENCE，經 USER 轉交，非 runner 輸出）：IDE 中途顯示命令在背景執行並列出已完成的步驟，之後正常等到命令結束。一次觀察的結論：約 9 分鐘的單一命令 run 在 IDE 可正常完成，沒有被判逾時或殺掉；這不保證更長的命令。
+- 仍為 UNKNOWN，待第一個以 `run` 執行的 production 批（B117-G7A-CONTRACT-STATE-R2-261117，只改文件；變更路徑含不在預演豁免清單的規則檔與文件，所以該批為 native_preview，預期約 1 至 2 小時）觀察：長命令在 IDE 的逾時、輸出擷取與第 3 節的 4 小時規則；第 5 節的 210 秒閒置檢查是否被 IDE 的 Git 整合干擾（`GIT_IDLE_CHANGED`）。USER 轉交該批 Executor 回覆時，一併說明 IDE 對長命令的表現（是否顯示背景執行、是否出現逾時或輸出遺失、是否需要執行 `resume-check`），審查官依此更新本節。
 
 ## 8. 測試與證據
 

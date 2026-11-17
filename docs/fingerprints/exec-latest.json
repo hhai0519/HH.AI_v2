@@ -1,5 +1,5 @@
 {
-  "base_head": "ee08e0b",
+  "base_head": "c7fdd34",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -102,8 +102,8 @@
         "### 9.4 守衛能力邊界與安全錯誤分類 (Guard Capability Boundary & Safe Diagnostics)",
         "### 9.5 遠端 Actions 證據分工權威 (Remote Actions Log Provenance Division)"
       ],
-      "lines": 247,
-      "sha256": "82e9cc59a87f48e48bf921ed1998e5e71601248b0346cbacf35b567ceced7aa3"
+      "lines": 252,
+      "sha256": "d9d41154d9528e7887eb1813781685e67a9e366ac8573c764c5ddc99db109e9b"
     },
     ".agents/rules/secret-output-safety.md": {
       "fences": 6,
@@ -204,10 +204,19 @@
         "### 11.6 [已退役／不需執行] 歷史 `audited-*` tag 之留痕保存（RETIRED / NOT REQUIRED）",
         "## 12. 風險分級宏觀審計與 Tier-M 微修復規範 (Risk-Tiered Macro Audit & Tier-M, D-U6)",
         "### 12.1 風險分級宏觀審計核心原則 (D-U6)",
-        "### 12.2 Tier-M 微修復分類規範 (Tier-M Micro Repair)"
+        "### 12.2 Tier-M 微修復分類規範 (Tier-M Micro Repair)",
+        "## 13. 審查官運作契約補充（B-117 G7-a）",
+        "### 13.1 過渡期權威",
+        "### 13.2 環境等級",
+        "### 13.3 等級與 bundle_output",
+        "### 13.4 Executor 預演與 bundle 產出",
+        "### 13.5 中斷型 S1 續跑",
+        "### 13.6 S1 之後不得讀取背景任務輸出",
+        "### 13.7 審查官與第二意見的交接",
+        "### 13.8 回覆第一行為產出時間"
       ],
-      "lines": 534,
-      "sha256": "ebd8fa420d0b9cb95efe809d76acd0730152e61ed7efa9192b9b858278426d57"
+      "lines": 589,
+      "sha256": "b9991a6f456e27316b0dc148cab4df98a60e94c89e9fd3e18a32e17433ed9535"
     },
     ".claude/rules/auditor-selftest.md": {
       "fences": 0,
@@ -221,8 +230,8 @@
         "## E. 交付（產出提示詞之前）",
         "## F. 額度（每一輪回覆的開頭與結尾）"
       ],
-      "lines": 140,
-      "sha256": "f491913b6f56fbd258e0f2b7b660ce7ad795e895077f93e7b70b80ac25b39576"
+      "lines": 141,
+      "sha256": "859398920a3fab032eced57ca4b941d8b0bfd1f1e30b29f70a8c92aa055d1e55"
     },
     ".github/workflows/verify.yml": {
       "fences": 0,
@@ -566,16 +575,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 414,
-      "sha256": "26b0324733ddb1530d64b9c5e4ecf53a8f9a8b80fe0e82de09551f7b87c4851f"
+      "lines": 415,
+      "sha256": "660b8d2ef493a00bc93ceed368308dfa8aa1f7a3f85bf774b8f15b24799b9705"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 385,
-      "sha256": "5776c64bdbd4ede7c9c3870c3549a29c38b35baca38d9fea657d3532d28c94a7"
+      "lines": 386,
+      "sha256": "b1ea01b1635580ffb16e87eabb150d799712cd34548f6b04a30c8aecb4b3ea09"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -617,8 +626,8 @@
         "## G. 舊 repo 未盤點區塊（2026-09-02 新發現）",
         "## 封存區"
       ],
-      "lines": 579,
-      "sha256": "c0749c441c1508b5f6488311bc37242852955b20a9d22cdbca97623bc03d6f35"
+      "lines": 580,
+      "sha256": "b1c925cae2bdb3cb81f005b6568030268e1a3e84c65d481412328d75e2a95ca9"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1127,8 +1136,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6471,
-      "sha256": "12b46c706c5376b1d197f61e47bb6a01ba777060c473d77136afcf5a2ea7effd"
+      "lines": 6472,
+      "sha256": "7eef0b6cf426c2654650ec84bdaae3f08d36d2b1fa52e796a99787285979f4a3"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -2376,7 +2385,7 @@
       "sha256": "6bfd57c05a09df3cde679ae53ac6ddd67bfb64cda4246584617d3cc67fb3b81c"
     }
   },
-  "generated_at": "2026-11-16T17:44:19Z",
+  "generated_at": "2026-11-17T05:44:56Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

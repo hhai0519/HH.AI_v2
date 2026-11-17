@@ -223,7 +223,7 @@ Macro Auditor 負責 disposition 語意裁決，執行者以 production scanner 
 
 ### 8.1 每輪開頭標示建議能力／推理級別
 
-每一則回覆的第一行標示建議能力／推理級別（capability / reasoning tier）與理由：
+每一則回覆標示建議能力／推理級別（capability / reasoning tier）與理由，位置為第二行；第一行為產出時間（見本檔 §13.8）：
 `[建議推理級別：Standard Tier / High Capability｜本輪為例行核對 + 提示詞產出]`
 
 | 級別 (Capability / Reasoning Tier) | 適用情境 (Application Scenario) |
@@ -532,3 +532,58 @@ revert 後必須同批完成三件事：
    8. 存在確定性反例或回歸測試（deterministic counterexample or regression test exists）。
    9. 無範圍擴張（no scope expansion）。
 4. **當前基準證據與禁止手動改寫**：若既有證據之 `base_oid` 不等於當前 base，Tier-M **不具備**證據重用資格（NOT eligible for evidence replay）；必須重新產出全新 discovery artifact 並取得 Macro disposition，方得界定生產範圍。Tier-M 嚴禁手動改寫 `base_oid`。
+## 13. 審查官運作契約補充（B-117 G7-a）
+
+> 本節把原本只存在於 docs/TASKBOARD.md 紀錄與交接線索的運作約定寫入協定。事實來源為 docs/TASKBOARD.md 的 B-117 紀錄（9d13530c 批、G5-b2 批、G7-a 批）、docs/AUDIT-LOG.md 與 USER 的常設決定。USER 提供之角色文件不在 repo 內，本節不複述其內容；與 USER 現行文件或 USER 明確指示不一致時，以 USER 為準，並在下一批狀態紀錄登錄矛盾處。本節不新增任何每批必做的提示詞要素，因此不改動提示詞必備要素清單與自檢清單的 E 節。
+
+### 13.1 過渡期權威
+
+1. 審查官只由 USER 任命。USER 任命之後、repo 登錄之前稱為過渡期；新任審查官在過渡期依 USER 的任命與 docs/TASKBOARD.md 既有的常設決定裁決，但不繼承前任的任何裁決，一律以 repo 與原始證據重審。
+2. 前任或新任在過渡期作出、尚未寫入 repo 的裁決（例如 pending range 的 Macro PASS），在寫入 docs/AUDIT-LOG.md 與 docs/refactor-backlog.md 的 checkpoint 之前，對 repo 而言只是 pending：checkpoint 不前推，docs/TASKBOARD.md 的 NEXT_WORK 不依該裁決推進。
+3. 過渡期內，本檔之交接成功判準（第 9.4 節第 1 項）與自檢清單之 A2 所稱「符合看板記載」，以 USER 於對話中的明確任命視同成立（USER 常設決定 2026-11-15）；新任在裁決與提示詞中註明依過渡期權威。docs/adr/0021-qualification-based-macro-auditor-role.md 第 2 點之 F 項有相同字面要求，其補充說明另列待辦，不在本批範圍。
+4. 過渡期在第一份會修改狀態檔的批次晉級進 main 並完成 post-main 查證時結束（看板在進 main 之後才指向新任）。該批必須逐項寫入過渡期內的裁決與交接線索處置（見 13.7）。
+
+### 13.2 環境等級
+
+1. 等級 A：審查官自己的環境可以直接 full clone（非 shallow）GitHub 倉庫、可讀 GitHub Actions 原始日誌、工具以非 root 帳號執行、runtime_readiness 通過、沒有平台注入輸出。A1 為 FULL_CLONE。
+2. 等級 B：審查官能取得完整 clone（直接取得，或由 USER 以 bundle 提供）與 GitHub 證據，但第 1 點之其餘項目至少一項不成立。A1 的 FULL_CLONE 仍須在審查官自己的環境以該 clone 成立，不得以 Executor 端 clone 代替。看板 2026-11-11 任命紀錄所稱的 B 級（直接 clone、不需 bundle）屬此類，其餘何項不成立該紀錄未載（UNKNOWN）。等級 B 的完整程序以 USER 角色文件為準（UNKNOWN：該文件不在 repo）。無法取得完整 clone 或 GitHub 證據的環境不得擔任審查官。
+3. 等級由審查官在接任後第一則回覆自行判定，登錄於 docs/TASKBOARD.md 的 ACTIVE_MACRO_AUDITOR 列；環境改變時，下一份狀態批更新該列。判定依據是實測，不是自我宣稱。
+
+### 13.3 等級與 bundle_output
+
+1. USER 常設決定（2026-11-15）：production 定義的 bundle_output，等級 A 為 false，等級 B 為 true；任命新任審查官時預設附最新 bundle，新任回報等級 A 後不再附。
+2. bundle_output 為 true 時，production 提示詞的 Execution Contract 之 external_artifact_write 為 DOWNLOADS_BUNDLE_AFTER_PUSH；為 false 時為 FORBIDDEN。這個對應已由 prompt_builder.py 機械檢查。
+3. 等級與 bundle_output 一致與否，現行沒有機械檢查（待辦（九），觸發：G3 D 開工）。落地前，審查官在每次交付 production 提示詞時自行核對看板的等級與定義的 bundle_output，並在交付說明中寫出兩者的值。這是明確標示的非機械化項目。
+
+### 13.4 Executor 預演與 bundle 產出
+
+1. native_preview（Executor 在本機以 canonical runner 預演，見 docs/ops/g5-native-preview.md）與 bundle 產出（B-118，candidate push 之後產出 bundle）是兩個獨立開關，分別由定義的 native_preview 與 bundle_output 決定，不得互相推論。
+2. 等級 A 且 bundle_output 為 false 時，Executor 不產出 bundle，審查官自行從 GitHub 取得 candidate；Executor 的預演仍依 native_preview 宣告進行。
+3. docs/ops/g5-run-protocol.md 第 5 節之 210 秒閒置檢查只在 native_preview 為 true 的 production 出現；其與 bundle 無關。
+
+### 13.5 中斷型 S1 續跑
+
+1. 適用範圍：S1 由 runner 在准入階段拒絕，沒有寫入任何狀態（STEP_IN_PROGRESS 屬此類，STATE 的 halted 維持 None），且批次內容本身沒有錯誤。其他 S1 不適用，一律由審查官判定是否改號重出。
+2. USER 常設決定（2026-11-15）：此類 S1 可由中斷恢復，從可證明的下一步續跑，沿用原 TASK_ID；每個 TASK_ID 只准續跑一次，再發生即改號重出。本點只計中斷型 S1 的續跑；docs/ops/g5-run-protocol.md 第 3 節 Executor 在命令中斷後依 resume-check 再執行一次 run（限一次）與 RUNNER_UPDATED 之後的再執行，屬 run 協定的正常流程，不計入本點次數（審查官解讀，USER 常設決定未明言；USER 另有意見以 USER 為準）。同一 TASK_ID 兩者都發生時，審查官在紀錄中並列說明。
+3. 續跑前必須以唯讀守衛核對 control、步驟紀錄、index 與工作樹、遠端分支與 main 全部一致。run 形式的批次，resume-check 只涵蓋 control、步驟紀錄與 run 鎖（scripts/batch_runner.py 之 resume_check 只讀這三項）；index 與工作樹、遠端分支與 main 由審查官當次提供的唯讀命令核對，四項全部相符才交付續跑文字，人工處置依 docs/ops/g5-run-protocol.md。逐步形式的批次全部依審查官當次提供的唯讀命令。resume-check 納入這四項屬機械化待辦，在落地之前這是明確標示的非機械化項目。
+4. 續跑的同時必須完成根因判定與根除方向，並在同一份狀態紀錄登錄；只續跑而不登錄根因不算處置完成。
+5. 續跑與沿用 TASK_ID 的決定，由審查官寫入該批結案的狀態紀錄，並標明所依 USER 常設決定的日期（2026-11-15）。
+
+### 13.6 S1 之後不得讀取背景任務輸出
+
+1. Executor 在 S1 停止之後，不得以 IDE 的背景任務檢視讀取自己其他命令的輸出再加註到回覆；回覆只含 runner 已印出的固定行與提示詞規定的區塊。
+2. 理由：IDE 對已結束命令的狀態與輸出可能不可靠（見 docs/ops/g5-run-protocol.md 第 7 節），加註的內容無法由審查官驗證，且會把 INFERENCE 混入證據。
+3. 此規則的 Executor 面向文字在 .agents/rules/role-boundaries.md 之 S1 段落。審查官收到違反此規則的回覆時，只採用固定行，加註部分不作為證據，並在紀錄中標明。
+
+### 13.7 審查官與第二意見的交接
+
+1. 審查官或第二意見更換時一律交接，由交出者產出交接線索檔，內容為線索而非權威；權威只有 repo、Git 與 GitHub Actions。
+2. 新任必須逐項核實線索，不採信線索中的裁決，並在第一份會修改狀態檔的批次逐項處置線索：登錄、關閉或寫明不採用的理由。
+3. 新任的第一則回覆依本檔 §9.4 辦理；第二意見接任審查官時，另須在首輪揭露自己複核過且未結束的事項，並以原始證據重新審查。
+4. 交接線索檔不寫入 Project（USER 常設規定），由 USER 在角色之間轉交；內容經核實後才以狀態紀錄的形式進 repo。
+
+### 13.8 回覆第一行為產出時間
+
+1. 審查官每則回覆的第一行為產出時間，由 USER 提供的 files_ready.py --stamp 取得（該工具不在 repo，用法以 USER 角色文件為準），不得手寫；時間以台灣時間（UTC+8）標示。
+2. 本檔 §8.1 的建議推理級別標示順延為第二行，內容與理由不變。兩者並存時以第一行為產出時間為準。
+3. 本項為回覆格式，不是提示詞要素，也沒有機械檢查；是否遵守由 USER 與第二意見在審查時核對。

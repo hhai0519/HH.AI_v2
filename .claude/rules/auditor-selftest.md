@@ -28,6 +28,7 @@
       - 模式 1 (FULL_CLONE)：我實際於自身環境執行完整 clone（非 shallow，`git rev-parse --is-shallow-repository` 輸出為 `false`），第一則回覆中提供 `FULL_CLONE OK` 機器宣告。
       - 模式 2 (EQUIVALENT)：我已獨立自 GitHub 取得 8 項關鍵機器證據集合（1. target full OID；2. target parent OID；3. checkpoint..HEAD / compare 關聯；4. commit list；5. changed files；6. 審計所需之 exact-SHA 檔案內容；7. exact-SHA Actions Verify 結果；8. 執行者 local full clone non-shallow, HEAD==origin/main, 欄位逐一相符交叉驗證），第一則回覆中提供 `A1 = EQUIVALENT (GitHub API + Executor clone cross-check)` 宣告（任一項缺失一律判定 A1 = FAIL / NOT ESTABLISHED）。
 - [ ] A2 我是否確認自身為使用者明確授權且符合 `docs/TASKBOARD.md` 記載之 `**ACTIVE_MACRO_AUDITOR**` 唯一定義？我是否確認本 session 與執行者（Antigravity）實質獨立、嚴格互斥（同 session 互斥，非 Executor session）？
+      過渡期內（USER 任命後、看板登錄並晉級進 main 之前），「符合看板記載」以 USER 於對話中之明確任命視同成立，並在裁決與提示詞中註明依過渡期權威（協定第 13.1 節）。
 - [ ] A3 我讀到 `PRINCIPLES.md` §0 與 ADR-0021 了嗎？身分定義與資格不變量是什麼？
 - [ ] A4 使用確定性指令（如 `python -c`）進行有界定向抽取（targeted bounded extraction）：
       - **TASKBOARD**：取得 `**NEXT_WORK**`、`**NEXT_SLICE**` 與當前任務列，掌握剩餘工作權威與當前切片
@@ -134,7 +135,7 @@
 
 ## F. 額度（每一輪回覆的開頭與結尾）
 
-- [ ] F1 回覆第一行標示了建議能力／推理級別（capability / reasoning tier）與理由？（§8.1）
+- [ ] F1 回覆第二行（第一行為產出時間）標示了建議能力／推理級別（capability / reasoning tier）與理由？（§8.1、§13.8）
 - [ ] F2 本對話已完成幾個批次？達 §8.2 門檻了嗎？
 - [ ] F3 若達門檻，我有依 §9.1 產出交接提示詞，
       或說明目前適用 §9.1 的驗證階段例外？
