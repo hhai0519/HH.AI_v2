@@ -16,6 +16,7 @@
 | 某份 **SOP** 去了哪裡 | `SOP/README.md`「已淘汰與已轉換的 SOP 去向紀錄」 |
 | 某個 **ADR 的規範內容**被搬到哪 | 該 ADR 末尾的「分層搬移」紀錄；原則見 `PRINCIPLES.md` §1、§3.3 |
 | 某個**任務**做完後去哪了 | `docs/TASKBOARD.md` 封存區；規則見 `.claude/rules/auditor-protocol.md` §10.4 |
+| 已封存的**任務看板列**（B-117 G7-b 起） | `docs/archive/TASKBOARD-ARCHIVE-README.md`；清單 `docs/archive/TASKBOARD-ARCHIVE-MANIFEST.json`；規則見 `.claude/rules/auditor-protocol.md` 第 10.4 節 |
 | 某個 **Jules 分支**為什麼沒合併 | `docs/refactor-backlog.md`「三之二、Jules 自動化修正分支處理狀態」 |
 | 舊 repo 的某個檔案**為什麼不遷移** | `docs/refactor-backlog.md` §二 E、F 節 |
 | 某個**決定**當初為什麼那樣做 | `docs/adr/`；重構過程的判斷見 `docs/refactor-backlog.md` 編號項目 |
@@ -34,6 +35,7 @@
 | **SOP** | 淘汰與轉換的去向紀錄由 `SOP/README.md` 擁有；重大架構淨化歷史快照保存於 `docs/archive/sop/`（快照為歷史留痕，不具現行權威；現行 SOP 總索引由 `SOP/README.md` 擁有，不建立第二索引） | `SOP/README.md`、`PRINCIPLES.md` §1 | 一般淘汰由 `SOP/README.md` 紀錄；重大淨化歷史快照見 `docs/archive/sop/` |
 | **ADR** | 只追加不改寫；規範搬走時原地留指向、檔尾追加搬移紀錄 | `PRINCIPLES.md` §3.3、範本見 `docs/adr/0018-vendored-external-assets.md` | ADR 原檔保留 |
 | **任務** | 五態流轉，`可封存` 需使用者確認後移入封存區 | `.claude/rules/auditor-protocol.md` §10.3、§10.4 | `docs/TASKBOARD.md` 封存區 |
+| **任務看板列** | 已完成或可封存、有 Macro PASS 且為 checkpoint 祖先的證據（或 USER 一次性確認之舊列）、無進行中列引用、未被 USER 保留；逐字移出、不刪除，CHECK 29 逐位元組核對 | `.claude/rules/auditor-protocol.md` 第 10.4 節 | `docs/archive/`（TASKBOARD-ARCHIVE-編號.md） |
 | **分支** | 不採用的分支保留在遠端，不刪除 | `docs/refactor-backlog.md` 三之二 | GitHub 遠端分支 |
 | **專案文件** | 歷史專案文件／Superseded Project Documents：active 文件在重大架構重整前保存不可變歷史快照（immutable historical snapshot）。快照為歷史證據，不具備現行權威；現行事實必須回到權威來源，歸檔區不得成為第二現行狀態 SSOT | `PRINCIPLES.md` §1（Router 與歷史留痕分工） | `docs/archive/handover/` |
 | **S5 靜態原文快照** | 原始文件保留原位，僅一次新增三個靜態檔並釘選歷史 SHA／blob；無跨批機械不可變守衛；日後增檔須 USER 決定或容量政策 | `docs/archive/RETENTION-S5-README.md` | `docs/archive/`（`RETENTION-S5-*` 三檔） |

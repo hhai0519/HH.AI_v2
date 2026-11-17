@@ -332,40 +332,45 @@
 | .claude/rules/auditor-protocol.md | 368 | ## 10. 任務板維護 | SECTION | §5.4 | docs/refactor-backlog.md#§5.4 | RESOLVED |
 | .claude/rules/auditor-protocol.md | 379 | ### 10.1 新項目必須當輪登錄（Material Finding 處置契約） | FILE | `docs/TASKBOARD.md` | docs/TASKBOARD.md | RESOLVED |
 | .claude/rules/auditor-protocol.md | 392 | ### 10.1 新項目必須當輪登錄（Material Finding 處置契約） | FILE | `docs/TASKBOARD.md` | docs/TASKBOARD.md | RESOLVED |
-| .claude/rules/auditor-protocol.md | 420 | ### 10.5 每批次結束時更新 | SECTION | §6.1 | .claude/rules/auditor-protocol.md#§6.1 | RESOLVED |
-| .claude/rules/auditor-protocol.md | 422 | ### 10.5 每批次結束時更新 | SECTION | §10.1 | .claude/rules/auditor-protocol.md#§10.1 | RESOLVED |
-| .claude/rules/auditor-protocol.md | 423 | ### 10.5 每批次結束時更新 | SECTION | §10.4 | .claude/rules/auditor-protocol.md#§10.4 | RESOLVED |
-| .claude/rules/auditor-protocol.md | 429 | ### 10.6 「最後更新」是可驗證的攔截點 | CHECK | CHECK 8 | scripts/check_consistency.py | RESOLVED |
-| .claude/rules/auditor-protocol.md | 429 | ### 10.6 「最後更新」是可驗證的攔截點 | SECTION | §5.1 | docs/refactor-backlog.md#§5.1 | RESOLVED |
-| .claude/rules/auditor-protocol.md | 434 | ### 10.7 NEXT_WORK 指標權威與生命週期 | FILE | `docs/TASKBOARD.md` | docs/TASKBOARD.md | RESOLVED |
-| .claude/rules/auditor-protocol.md | 448 | ## 11. 錯誤處置與回滾 | FILE | `.agents/rules/git-and-reporting.md` | .agents/rules/git-and-reporting.md | RESOLVED |
-| .claude/rules/auditor-protocol.md | 473 | ### 11.2 執行 revert 的完整程序 | SECTION | §5.1 | docs/refactor-backlog.md#§5.1 | RESOLVED |
-| .claude/rules/auditor-protocol.md | 474 | ### 11.2 執行 revert 的完整程序 | FILE | `docs/TASKBOARD.md` | docs/TASKBOARD.md | RESOLVED |
-| .claude/rules/auditor-protocol.md | 475 | ### 11.2 執行 revert 的完整程序 | FILE | `docs/refactor-backlog.md` | docs/refactor-backlog.md | RESOLVED |
-| .claude/rules/auditor-protocol.md | 481 | ### 11.3 已審核標記之退役（Retired Historical Audit Markers） | FILE | `docs/AUDIT-LOG.md` | docs/AUDIT-LOG.md | RESOLVED |
-| .claude/rules/auditor-protocol.md | 481 | ### 11.3 已審核標記之退役（Retired Historical Audit Markers） | FILE | `docs/refactor-backlog.md` | docs/refactor-backlog.md | RESOLVED |
-| .claude/rules/auditor-protocol.md | 481 | ### 11.3 已審核標記之退役（Retired Historical Audit Markers） | SECTION | §5.1 | docs/refactor-backlog.md#§5.1 | RESOLVED |
-| .claude/rules/auditor-protocol.md | 485 | ### 11.4 [已退役／歷史記錄] 早期打 tag 判準（Historical Rationale） | CHECK | CHECK 18 | scripts/check_consistency.py | RESOLVED |
-| .claude/rules/auditor-protocol.md | 485 | ### 11.4 [已退役／歷史記錄] 早期打 tag 判準（Historical Rationale） | FILE | `docs/archive/claude-control-plane/auditor-protocol-pre-slim-76b5e9.md` | docs/archive/claude-control-plane/auditor-protocol-pre-slim-76b5e9.md | RESOLVED |
-| .claude/rules/auditor-protocol.md | 489 | ### 11.5 審計狀態之單一事實來源（Audit State SSOT） | FILE | `docs/AUDIT-LOG.md` | docs/AUDIT-LOG.md | RESOLVED |
-| .claude/rules/auditor-protocol.md | 489 | ### 11.5 審計狀態之單一事實來源（Audit State SSOT） | FILE | `docs/refactor-backlog.md` | docs/refactor-backlog.md | RESOLVED |
-| .claude/rules/auditor-protocol.md | 489 | ### 11.5 審計狀態之單一事實來源（Audit State SSOT） | SECTION | §5.1 | docs/refactor-backlog.md#§5.1 | RESOLVED |
-| .claude/rules/auditor-protocol.md | 493 | ### 11.5 審計狀態之單一事實來源（Audit State SSOT） | FILE | `docs/AUDIT-LOG.md` | docs/AUDIT-LOG.md | RESOLVED |
-| .claude/rules/auditor-protocol.md | 494 | ### 11.5 審計狀態之單一事實來源（Audit State SSOT） | FILE | `docs/AUDIT-LOG.md` | docs/AUDIT-LOG.md | RESOLVED |
-| .claude/rules/auditor-protocol.md | 495 | ### 11.5 審計狀態之單一事實來源（Audit State SSOT） | FILE | `docs/AUDIT-LOG.md` | docs/AUDIT-LOG.md | RESOLVED |
-| .claude/rules/auditor-protocol.md | 495 | ### 11.5 審計狀態之單一事實來源（Audit State SSOT） | SECTION | §5.1 | docs/refactor-backlog.md#§5.1 | RESOLVED |
+| .claude/rules/auditor-protocol.md | 416 | ### 10.4 封存不是刪除 | CHECK | CHECK 29 | scripts/check_consistency.py | RESOLVED |
+| .claude/rules/auditor-protocol.md | 416 | ### 10.4 封存不是刪除 | FILE | `docs/archive/TASKBOARD-ARCHIVE-MANIFEST.json` | docs/archive/TASKBOARD-ARCHIVE-MANIFEST.json | RESOLVED |
+| .claude/rules/auditor-protocol.md | 416 | ### 10.4 封存不是刪除 | FILE | `scripts/taskboard_archive.py` | scripts/taskboard_archive.py | RESOLVED |
+| .claude/rules/auditor-protocol.md | 419 | ### 10.4 封存不是刪除 | TASK | B-122 | docs/TASKBOARD.md | RESOLVED |
+| .claude/rules/auditor-protocol.md | 423 | ### 10.4 封存不是刪除 | CHECK | CHECK 29 | scripts/check_consistency.py | RESOLVED |
+| .claude/rules/auditor-protocol.md | 427 | ### 10.5 每批次結束時更新 | SECTION | §6.1 | .claude/rules/auditor-protocol.md#§6.1 | RESOLVED |
+| .claude/rules/auditor-protocol.md | 429 | ### 10.5 每批次結束時更新 | SECTION | §10.1 | .claude/rules/auditor-protocol.md#§10.1 | RESOLVED |
+| .claude/rules/auditor-protocol.md | 430 | ### 10.5 每批次結束時更新 | SECTION | §10.4 | .claude/rules/auditor-protocol.md#§10.4 | RESOLVED |
+| .claude/rules/auditor-protocol.md | 436 | ### 10.6 「最後更新」是可驗證的攔截點 | CHECK | CHECK 8 | scripts/check_consistency.py | RESOLVED |
+| .claude/rules/auditor-protocol.md | 436 | ### 10.6 「最後更新」是可驗證的攔截點 | SECTION | §5.1 | docs/refactor-backlog.md#§5.1 | RESOLVED |
+| .claude/rules/auditor-protocol.md | 441 | ### 10.7 NEXT_WORK 指標權威與生命週期 | FILE | `docs/TASKBOARD.md` | docs/TASKBOARD.md | RESOLVED |
+| .claude/rules/auditor-protocol.md | 455 | ## 11. 錯誤處置與回滾 | FILE | `.agents/rules/git-and-reporting.md` | .agents/rules/git-and-reporting.md | RESOLVED |
+| .claude/rules/auditor-protocol.md | 480 | ### 11.2 執行 revert 的完整程序 | SECTION | §5.1 | docs/refactor-backlog.md#§5.1 | RESOLVED |
+| .claude/rules/auditor-protocol.md | 481 | ### 11.2 執行 revert 的完整程序 | FILE | `docs/TASKBOARD.md` | docs/TASKBOARD.md | RESOLVED |
+| .claude/rules/auditor-protocol.md | 482 | ### 11.2 執行 revert 的完整程序 | FILE | `docs/refactor-backlog.md` | docs/refactor-backlog.md | RESOLVED |
+| .claude/rules/auditor-protocol.md | 488 | ### 11.3 已審核標記之退役（Retired Historical Audit Markers） | FILE | `docs/AUDIT-LOG.md` | docs/AUDIT-LOG.md | RESOLVED |
+| .claude/rules/auditor-protocol.md | 488 | ### 11.3 已審核標記之退役（Retired Historical Audit Markers） | FILE | `docs/refactor-backlog.md` | docs/refactor-backlog.md | RESOLVED |
+| .claude/rules/auditor-protocol.md | 488 | ### 11.3 已審核標記之退役（Retired Historical Audit Markers） | SECTION | §5.1 | docs/refactor-backlog.md#§5.1 | RESOLVED |
+| .claude/rules/auditor-protocol.md | 492 | ### 11.4 [已退役／歷史記錄] 早期打 tag 判準（Historical Rationale） | CHECK | CHECK 18 | scripts/check_consistency.py | RESOLVED |
+| .claude/rules/auditor-protocol.md | 492 | ### 11.4 [已退役／歷史記錄] 早期打 tag 判準（Historical Rationale） | FILE | `docs/archive/claude-control-plane/auditor-protocol-pre-slim-76b5e9.md` | docs/archive/claude-control-plane/auditor-protocol-pre-slim-76b5e9.md | RESOLVED |
 | .claude/rules/auditor-protocol.md | 496 | ### 11.5 審計狀態之單一事實來源（Audit State SSOT） | FILE | `docs/AUDIT-LOG.md` | docs/AUDIT-LOG.md | RESOLVED |
+| .claude/rules/auditor-protocol.md | 496 | ### 11.5 審計狀態之單一事實來源（Audit State SSOT） | FILE | `docs/refactor-backlog.md` | docs/refactor-backlog.md | RESOLVED |
 | .claude/rules/auditor-protocol.md | 496 | ### 11.5 審計狀態之單一事實來源（Audit State SSOT） | SECTION | §5.1 | docs/refactor-backlog.md#§5.1 | RESOLVED |
-| .claude/rules/auditor-protocol.md | 498 | ### 11.5 審計狀態之單一事實來源（Audit State SSOT） | FILE | `docs/AUDIT-LOG.md` | docs/AUDIT-LOG.md | RESOLVED |
-| .claude/rules/auditor-protocol.md | 498 | ### 11.5 審計狀態之單一事實來源（Audit State SSOT） | SECTION | §5.1 | docs/refactor-backlog.md#§5.1 | RESOLVED |
-| .claude/rules/auditor-protocol.md | 502 | ### 11.6 [已退役／不需執行] 歷史 `audited-*` tag 之留痕保存（RETIRED / NOT REQUIRED） | FILE | `docs/archive/claude-control-plane/auditor-protocol-pre-slim-76b5e9.md` | docs/archive/claude-control-plane/auditor-protocol-pre-slim-76b5e9.md | RESOLVED |
-| .claude/rules/auditor-protocol.md | 518 | ### 12.1 風險分級宏觀審計核心原則 (D-U6) | FILE | `SOP/SOP_14_Rigorous_Verification_and_Audit_Protocol.md` | SOP/SOP_14_Rigorous_Verification_and_Audit_Protocol.md | RESOLVED |
-| .claude/rules/auditor-protocol.md | 535 | ## 13. 審查官運作契約補充（B-117 G7-a） | TASK | B-117 | docs/TASKBOARD.md | RESOLVED |
-| .claude/rules/auditor-protocol.md | 537 | ## 13. 審查官運作契約補充（B-117 G7-a） | TASK | B-117 | docs/TASKBOARD.md | RESOLVED |
-| .claude/rules/auditor-protocol.md | 543 | ### 13.1 過渡期權威 | ADR | docs/adr/0021-qualification-based-macro-auditor-role.md | docs/adr/0021-qualification-based-macro-auditor-role.md | RESOLVED |
-| .claude/rules/auditor-protocol.md | 560 | ### 13.4 Executor 預演與 bundle 產出 | TASK | B-118 | docs/TASKBOARD.md | RESOLVED |
-| .claude/rules/auditor-protocol.md | 582 | ### 13.7 審查官與第二意見的交接 | SECTION | §9.4 | .claude/rules/auditor-protocol.md#§9.4 | RESOLVED |
-| .claude/rules/auditor-protocol.md | 588 | ### 13.8 回覆第一行為產出時間 | SECTION | §8.1 | .claude/rules/auditor-protocol.md#§8.1 | RESOLVED |
+| .claude/rules/auditor-protocol.md | 500 | ### 11.5 審計狀態之單一事實來源（Audit State SSOT） | FILE | `docs/AUDIT-LOG.md` | docs/AUDIT-LOG.md | RESOLVED |
+| .claude/rules/auditor-protocol.md | 501 | ### 11.5 審計狀態之單一事實來源（Audit State SSOT） | FILE | `docs/AUDIT-LOG.md` | docs/AUDIT-LOG.md | RESOLVED |
+| .claude/rules/auditor-protocol.md | 502 | ### 11.5 審計狀態之單一事實來源（Audit State SSOT） | FILE | `docs/AUDIT-LOG.md` | docs/AUDIT-LOG.md | RESOLVED |
+| .claude/rules/auditor-protocol.md | 502 | ### 11.5 審計狀態之單一事實來源（Audit State SSOT） | SECTION | §5.1 | docs/refactor-backlog.md#§5.1 | RESOLVED |
+| .claude/rules/auditor-protocol.md | 503 | ### 11.5 審計狀態之單一事實來源（Audit State SSOT） | FILE | `docs/AUDIT-LOG.md` | docs/AUDIT-LOG.md | RESOLVED |
+| .claude/rules/auditor-protocol.md | 503 | ### 11.5 審計狀態之單一事實來源（Audit State SSOT） | SECTION | §5.1 | docs/refactor-backlog.md#§5.1 | RESOLVED |
+| .claude/rules/auditor-protocol.md | 505 | ### 11.5 審計狀態之單一事實來源（Audit State SSOT） | FILE | `docs/AUDIT-LOG.md` | docs/AUDIT-LOG.md | RESOLVED |
+| .claude/rules/auditor-protocol.md | 505 | ### 11.5 審計狀態之單一事實來源（Audit State SSOT） | SECTION | §5.1 | docs/refactor-backlog.md#§5.1 | RESOLVED |
+| .claude/rules/auditor-protocol.md | 509 | ### 11.6 [已退役／不需執行] 歷史 `audited-*` tag 之留痕保存（RETIRED / NOT REQUIRED） | FILE | `docs/archive/claude-control-plane/auditor-protocol-pre-slim-76b5e9.md` | docs/archive/claude-control-plane/auditor-protocol-pre-slim-76b5e9.md | RESOLVED |
+| .claude/rules/auditor-protocol.md | 525 | ### 12.1 風險分級宏觀審計核心原則 (D-U6) | FILE | `SOP/SOP_14_Rigorous_Verification_and_Audit_Protocol.md` | SOP/SOP_14_Rigorous_Verification_and_Audit_Protocol.md | RESOLVED |
+| .claude/rules/auditor-protocol.md | 542 | ## 13. 審查官運作契約補充（B-117 G7-a） | TASK | B-117 | docs/TASKBOARD.md | RESOLVED |
+| .claude/rules/auditor-protocol.md | 544 | ## 13. 審查官運作契約補充（B-117 G7-a） | TASK | B-117 | docs/TASKBOARD.md | RESOLVED |
+| .claude/rules/auditor-protocol.md | 550 | ### 13.1 過渡期權威 | ADR | docs/adr/0021-qualification-based-macro-auditor-role.md | docs/adr/0021-qualification-based-macro-auditor-role.md | RESOLVED |
+| .claude/rules/auditor-protocol.md | 567 | ### 13.4 Executor 預演與 bundle 產出 | TASK | B-118 | docs/TASKBOARD.md | RESOLVED |
+| .claude/rules/auditor-protocol.md | 589 | ### 13.7 審查官與第二意見的交接 | SECTION | §9.4 | .claude/rules/auditor-protocol.md#§9.4 | RESOLVED |
+| .claude/rules/auditor-protocol.md | 595 | ### 13.8 回覆第一行為產出時間 | SECTION | §8.1 | .claude/rules/auditor-protocol.md#§8.1 | RESOLVED |
 | .claude/rules/auditor-selftest.md | 7 | # 宏觀審計官自檢清單 | FILE | `.claude/rules/auditor-protocol.md` | .claude/rules/auditor-protocol.md | RESOLVED |
 | .claude/rules/auditor-selftest.md | 30 | ## A. 載入與資格確認（做完開場動作後立刻自答） | FILE | `docs/TASKBOARD.md` | docs/TASKBOARD.md | RESOLVED |
 | .claude/rules/auditor-selftest.md | 32 | ## A. 載入與資格確認（做完開場動作後立刻自答） | ADR | ADR-0021 | docs/adr/0021-qualification-based-macro-auditor-role.md | RESOLVED |

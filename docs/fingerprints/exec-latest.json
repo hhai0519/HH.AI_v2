@@ -1,5 +1,5 @@
 {
-  "base_head": "c7fdd34",
+  "base_head": "7571108",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -215,8 +215,8 @@
         "### 13.7 審查官與第二意見的交接",
         "### 13.8 回覆第一行為產出時間"
       ],
-      "lines": 589,
-      "sha256": "b9991a6f456e27316b0dc148cab4df98a60e94c89e9fd3e18a32e17433ed9535"
+      "lines": 596,
+      "sha256": "8daeb60c0248dca6d6139c57a37264942b7bac0d34b4894fcac52c5a974f8e3f"
     },
     ".claude/rules/auditor-selftest.md": {
       "fences": 0,
@@ -565,8 +565,8 @@
         "## 三、共通原則",
         "## 四、已知缺口"
       ],
-      "lines": 72,
-      "sha256": "10483e175aa026787883c4c2698d4a979819125ded1651b1219f31432ae5a207"
+      "lines": 74,
+      "sha256": "b8d3d878c86a594372f07d910212d5601f881d79a7be65dcc69d2816d99b2242"
     },
     "docs/AUDIT-LOG.md": {
       "fences": 0,
@@ -575,16 +575,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 415,
-      "sha256": "660b8d2ef493a00bc93ceed368308dfa8aa1f7a3f85bf774b8f15b24799b9705"
+      "lines": 416,
+      "sha256": "fe0b9995350db3d82c09176e61e00b98bfe405a9bc3ebf00a7ee9276ee550ae6"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 386,
-      "sha256": "b1ea01b1635580ffb16e87eabb150d799712cd34548f6b04a30c8aecb4b3ea09"
+      "lines": 387,
+      "sha256": "097ca8cb41d4e4273a586de54d8086372b02d211cec801827ed68a6609ccbf05"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -626,8 +626,8 @@
         "## G. 舊 repo 未盤點區塊（2026-09-02 新發現）",
         "## 封存區"
       ],
-      "lines": 580,
-      "sha256": "b1c925cae2bdb3cb81f005b6568030268e1a3e84c65d481412328d75e2a95ca9"
+      "lines": 545,
+      "sha256": "f749089c4ce07f4305458dcecd9ad190c740d7dc23dbd657a5b9f4c493d7fe1e"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1136,8 +1136,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6472,
-      "sha256": "7eef0b6cf426c2654650ec84bdaae3f08d36d2b1fa52e796a99787285979f4a3"
+      "lines": 6473,
+      "sha256": "71344f4fcd548ed0a9f5e92ac68712007f3796e20babd4debc37ff606e801611"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1303,8 +1303,8 @@
         "# owner 須為未完成之看板任務）。任何輸入缺失、畸形或讀取失敗一律判定失敗。",
         "# ---------------------------------------------------------------------------"
       ],
-      "lines": 3959,
-      "sha256": "e7f1f3fe7bc4d8bce2d95f762633c745af3752a87a18bb5e3e398b82a0badbaf"
+      "lines": 3995,
+      "sha256": "9c54d9fdfff2a4bbd0a47bbf47d7f8ae97fe565861178d36fd7943a434f725e0"
     },
     "scripts/delivery_pack.py": {
       "fences": 0,
@@ -1587,6 +1587,14 @@
       "lines": 395,
       "sha256": "7078ff0a889867db580bcb95b9ac5136cd404fefe1671beb8f8a2d63a9622480"
     },
+    "scripts/taskboard_archive.py": {
+      "fences": 0,
+      "headings": [
+        "# 第一個封存檔（USER 一次性確認）寫成後即固定：批次、位元組與筆數釘在這裡，之後改封存檔或清單都會 FAIL。"
+      ],
+      "lines": 536,
+      "sha256": "7c779a3f6fae86f083d77ef5481de6a29dda4948a04e95ec99a121583d56d238"
+    },
     "scripts/tests/test_anchor.py": {
       "fences": 0,
       "headings": [],
@@ -1853,8 +1861,8 @@
         "# B-116 G4 F-C20-01: GFM rows may omit the trailing pipe; CHECK 20 must still count their cells",
         "# and must not stop scanning the rest of the table at such a row."
       ],
-      "lines": 2864,
-      "sha256": "26b0e28a1c33ac5792b501af59f331ccd81abcd884752f45147d83cbe1c5d435"
+      "lines": 2866,
+      "sha256": "3b9d69ca5b4555a2af6b1d23cd2d17c59ee2627a542e77bb2918c2c048448c94"
     },
     "scripts/tests/test_delivery_pack.py": {
       "fences": 0,
@@ -2258,6 +2266,12 @@
       "lines": 583,
       "sha256": "ddec4d1047fadc8fa544473f68df6b6f2552a3b09aa29194cb9b51e0d497f5eb"
     },
+    "scripts/tests/test_taskboard_archive.py": {
+      "fences": 0,
+      "headings": [],
+      "lines": 527,
+      "sha256": "5ec187c08f8df7335ca6c38b2ebd8923826e307c787370333c9cde9100eaeae2"
+    },
     "scripts/tests/test_uv_admission.py": {
       "fences": 0,
       "headings": [
@@ -2338,7 +2352,7 @@
         "# ==========================================================================="
       ],
       "lines": 747,
-      "sha256": "48b4565db7ac58d826a971a030d18c1c56e5beefff0820f37d6b9a4c34080883"
+      "sha256": "ea8fc8abf7945dafdfb1585cddc742a0621e9750dc6b414d4f1c224fab782633"
     },
     "scripts/tests/test_verify_all.py": {
       "fences": 0,
@@ -2385,7 +2399,7 @@
       "sha256": "6bfd57c05a09df3cde679ae53ac6ddd67bfb64cda4246584617d3cc67fb3b81c"
     }
   },
-  "generated_at": "2026-11-17T05:44:56Z",
+  "generated_at": "2026-11-17T11:41:59Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

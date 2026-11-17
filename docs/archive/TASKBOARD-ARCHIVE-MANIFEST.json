@@ -1,0 +1,410 @@
+{
+ "schema_version": 1,
+ "user_keep": [],
+ "archives": [
+  {
+   "file": "docs/archive/TASKBOARD-ARCHIVE-0001.md",
+   "batch": "B117-G7B1-ARCHIVE-MECHANISM-R2-261117",
+   "checkpoint_oid": "7571108385961462fcceef8fd3593b150ab85d7e",
+   "file_sha256": "c0d538caee3aba8e995b3ea1b9bf0bbdee32781a78c5dbadbb48d30089e6b5d1",
+   "entries": [
+    {
+     "id": "B-06",
+     "section": "B. 重構主線",
+     "source_line": 282,
+     "status_at_archive": "可封存",
+     "basis": "USER_CONFIRMED_LEGACY",
+     "evidence_commit": null,
+     "user_decision": "USER-2026-11-17-G7B-D1",
+     "row_sha256": "91330cb7a8b769357896a6bcbe9c9291c322feb9877c1eabee9f1673b5a24564",
+     "row_bytes": 207
+    },
+    {
+     "id": "B-10",
+     "section": "B. 重構主線",
+     "source_line": 286,
+     "status_at_archive": "可封存",
+     "basis": "USER_CONFIRMED_LEGACY",
+     "evidence_commit": null,
+     "user_decision": "USER-2026-11-17-G7B-D1",
+     "row_sha256": "373ffb90b935bffd658a6236130d7735017e752819d1ebe19f7942d05fe25e5b",
+     "row_bytes": 313
+    },
+    {
+     "id": "B-12",
+     "section": "B. 重構主線",
+     "source_line": 288,
+     "status_at_archive": "可封存",
+     "basis": "USER_CONFIRMED_LEGACY",
+     "evidence_commit": null,
+     "user_decision": "USER-2026-11-17-G7B-D1",
+     "row_sha256": "7d96bfefbd2c573bcdcf7f7dc57d5a03d9e5076129a1edf24d5a5b516fd5bb12",
+     "row_bytes": 283
+    },
+    {
+     "id": "B-16",
+     "section": "B. 重構主線",
+     "source_line": 292,
+     "status_at_archive": "可封存",
+     "basis": "USER_CONFIRMED_LEGACY",
+     "evidence_commit": null,
+     "user_decision": "USER-2026-11-17-G7B-D1",
+     "row_sha256": "4d989227febc8fb61efa2f5efc665b0260e1d67a59335c110655f467e89f85a8",
+     "row_bytes": 946
+    },
+    {
+     "id": "B-17",
+     "section": "B. 重構主線",
+     "source_line": 293,
+     "status_at_archive": "可封存",
+     "basis": "USER_CONFIRMED_LEGACY",
+     "evidence_commit": null,
+     "user_decision": "USER-2026-11-17-G7B-D1",
+     "row_sha256": "b8d1cc60ff16920d754889a38489dad6d23f12470d19872ed896c9d968a7e680",
+     "row_bytes": 517
+    },
+    {
+     "id": "B-21",
+     "section": "B. 重構主線",
+     "source_line": 297,
+     "status_at_archive": "可封存",
+     "basis": "USER_CONFIRMED_LEGACY",
+     "evidence_commit": null,
+     "user_decision": "USER-2026-11-17-G7B-D1",
+     "row_sha256": "6fd6ff4839c23dee796f4187d52c21825549b866d488562cdaf32de71c444b38",
+     "row_bytes": 129
+    },
+    {
+     "id": "B-26",
+     "section": "B. 重構主線",
+     "source_line": 302,
+     "status_at_archive": "可封存",
+     "basis": "USER_CONFIRMED_LEGACY",
+     "evidence_commit": null,
+     "user_decision": "USER-2026-11-17-G7B-D1",
+     "row_sha256": "eb13971805ea0838a64c3424b904fc4d4a8a451349a3b160350536961051748f",
+     "row_bytes": 140
+    },
+    {
+     "id": "B-35",
+     "section": "B. 重構主線",
+     "source_line": 311,
+     "status_at_archive": "可封存",
+     "basis": "USER_CONFIRMED_LEGACY",
+     "evidence_commit": null,
+     "user_decision": "USER-2026-11-17-G7B-D1",
+     "row_sha256": "9bc17a5f01b2284ccf451519bce22d3c34b7563a142726a5cf6dcc44812a86cc",
+     "row_bytes": 210
+    },
+    {
+     "id": "B-38",
+     "section": "B. 重構主線",
+     "source_line": 314,
+     "status_at_archive": "可封存",
+     "basis": "USER_CONFIRMED_LEGACY",
+     "evidence_commit": null,
+     "user_decision": "USER-2026-11-17-G7B-D1",
+     "row_sha256": "a506efa1e91e7ea8e2745e1c896a61abab701b31a33a1512a65d3f83e93ec9c0",
+     "row_bytes": 199
+    },
+    {
+     "id": "B-39",
+     "section": "B. 重構主線",
+     "source_line": 315,
+     "status_at_archive": "可封存",
+     "basis": "USER_CONFIRMED_LEGACY",
+     "evidence_commit": null,
+     "user_decision": "USER-2026-11-17-G7B-D1",
+     "row_sha256": "4956cddc4b3ad7ce3264068cdd63556e74cc49621d8c12fbd54f925b1cfb411a",
+     "row_bytes": 194
+    },
+    {
+     "id": "B-48",
+     "section": "B. 重構主線",
+     "source_line": 324,
+     "status_at_archive": "可封存",
+     "basis": "USER_CONFIRMED_LEGACY",
+     "evidence_commit": null,
+     "user_decision": "USER-2026-11-17-G7B-D1",
+     "row_sha256": "21356073793aed1b2a4eb4402f7dd21bab9c91913ca6730a6ed37d26592ac93b",
+     "row_bytes": 200
+    },
+    {
+     "id": "B-49",
+     "section": "B. 重構主線",
+     "source_line": 325,
+     "status_at_archive": "可封存",
+     "basis": "USER_CONFIRMED_LEGACY",
+     "evidence_commit": null,
+     "user_decision": "USER-2026-11-17-G7B-D1",
+     "row_sha256": "bbeba6dcb61243007a4ae1bdbfd8d6cf857bde95015751765ef62329f333ffb2",
+     "row_bytes": 164
+    },
+    {
+     "id": "B-55",
+     "section": "B. 重構主線",
+     "source_line": 331,
+     "status_at_archive": "可封存",
+     "basis": "USER_CONFIRMED_LEGACY",
+     "evidence_commit": null,
+     "user_decision": "USER-2026-11-17-G7B-D1",
+     "row_sha256": "e2fba0ed4d587125beb87e8a251437c5da40f8b2c36aa637ffb9f39cb6175a10",
+     "row_bytes": 454
+    },
+    {
+     "id": "B-57",
+     "section": "B. 重構主線",
+     "source_line": 333,
+     "status_at_archive": "可封存",
+     "basis": "USER_CONFIRMED_LEGACY",
+     "evidence_commit": null,
+     "user_decision": "USER-2026-11-17-G7B-D1",
+     "row_sha256": "bdb02d1278406636fb512554955b9f5a5fd7bb885429921230f3a8e2ce420d62",
+     "row_bytes": 261
+    },
+    {
+     "id": "B-71",
+     "section": "B. 重構主線",
+     "source_line": 347,
+     "status_at_archive": "可封存",
+     "basis": "USER_CONFIRMED_LEGACY",
+     "evidence_commit": null,
+     "user_decision": "USER-2026-11-17-G7B-D1",
+     "row_sha256": "ae517e9543597b4ee0852d36dc09d7bebf0a4c792dedd05d33c4096d98a9394c",
+     "row_bytes": 250
+    },
+    {
+     "id": "B-76",
+     "section": "B. 重構主線",
+     "source_line": 352,
+     "status_at_archive": "可封存",
+     "basis": "USER_CONFIRMED_LEGACY",
+     "evidence_commit": null,
+     "user_decision": "USER-2026-11-17-G7B-D1",
+     "row_sha256": "0a1cbe3f756d3fe6b11435b4cb4ffd93ceded61d8b6825b3309d3a68df1cbfab",
+     "row_bytes": 186
+    },
+    {
+     "id": "B-80",
+     "section": "B. 重構主線",
+     "source_line": 356,
+     "status_at_archive": "可封存",
+     "basis": "USER_CONFIRMED_LEGACY",
+     "evidence_commit": null,
+     "user_decision": "USER-2026-11-17-G7B-D1",
+     "row_sha256": "3857f59ac45d1180bda75246432f33f8fa224ee5dd5584e8754cc9c3f74721e1",
+     "row_bytes": 278
+    },
+    {
+     "id": "B-81",
+     "section": "B. 重構主線",
+     "source_line": 357,
+     "status_at_archive": "可封存",
+     "basis": "USER_CONFIRMED_LEGACY",
+     "evidence_commit": null,
+     "user_decision": "USER-2026-11-17-G7B-D1",
+     "row_sha256": "12f5a110d39cec3a66f7345bb04ad20864c13d23473e79464e77fde2874f0396",
+     "row_bytes": 200
+    },
+    {
+     "id": "B-83",
+     "section": "B. 重構主線",
+     "source_line": 359,
+     "status_at_archive": "可封存",
+     "basis": "USER_CONFIRMED_LEGACY",
+     "evidence_commit": null,
+     "user_decision": "USER-2026-11-17-G7B-D1",
+     "row_sha256": "d20815b7e14fd6821f807178729293f34a0016a476a5cc1db8e51dc9e6e0cd86",
+     "row_bytes": 234
+    },
+    {
+     "id": "B-84",
+     "section": "B. 重構主線",
+     "source_line": 360,
+     "status_at_archive": "可封存",
+     "basis": "USER_CONFIRMED_LEGACY",
+     "evidence_commit": null,
+     "user_decision": "USER-2026-11-17-G7B-D1",
+     "row_sha256": "1ba0d5b63a488faa78e08421d104f67f99fc79996a8b63785a0df82194fa1b61",
+     "row_bytes": 179
+    },
+    {
+     "id": "B-87",
+     "section": "B. 重構主線",
+     "source_line": 363,
+     "status_at_archive": "可封存",
+     "basis": "USER_CONFIRMED_LEGACY",
+     "evidence_commit": null,
+     "user_decision": "USER-2026-11-17-G7B-D1",
+     "row_sha256": "59bb1646ff9ab2118f573b32774d37074737936768c2511f836f250018b526b3",
+     "row_bytes": 400
+    },
+    {
+     "id": "B-91",
+     "section": "B. 重構主線",
+     "source_line": 367,
+     "status_at_archive": "可封存",
+     "basis": "USER_CONFIRMED_LEGACY",
+     "evidence_commit": null,
+     "user_decision": "USER-2026-11-17-G7B-D1",
+     "row_sha256": "bebd91812bd7cab0b6c665efaaac2c107238c05673159b12a6404cdfa699bb3d",
+     "row_bytes": 519
+    },
+    {
+     "id": "B-105",
+     "section": "B. 重構主線",
+     "source_line": 381,
+     "status_at_archive": "可封存",
+     "basis": "USER_CONFIRMED_LEGACY",
+     "evidence_commit": null,
+     "user_decision": "USER-2026-11-17-G7B-D1",
+     "row_sha256": "a51af79027417e7c70ceb13d8ad2f443301dac6b8f672d803a6b808d0263019b",
+     "row_bytes": 315
+    },
+    {
+     "id": "D-03",
+     "section": "D. 驗證階段（§9.5）",
+     "source_line": 430,
+     "status_at_archive": "可封存",
+     "basis": "USER_CONFIRMED_LEGACY",
+     "evidence_commit": null,
+     "user_decision": "USER-2026-11-17-G7B-D1",
+     "row_sha256": "394a9fc5109c49098e850d7dcfb3908f3898be669a948ddcc53286049c0bf7f2",
+     "row_bytes": 189
+    },
+    {
+     "id": "E-02",
+     "section": "E. 舊 repo 遷移主線（`refactor-backlog.md` §二 A–F）",
+     "source_line": 441,
+     "status_at_archive": "可封存",
+     "basis": "USER_CONFIRMED_LEGACY",
+     "evidence_commit": null,
+     "user_decision": "USER-2026-11-17-G7B-D1",
+     "row_sha256": "355e06b42458db1f6a6f369ddbbc97452bb6a484b2a697f9173bf15630d87a35",
+     "row_bytes": 287
+    },
+    {
+     "id": "F-02",
+     "section": "F. 追蹤項（`refactor-backlog.md` 三、各點）",
+     "source_line": 557,
+     "status_at_archive": "可封存",
+     "basis": "USER_CONFIRMED_LEGACY",
+     "evidence_commit": null,
+     "user_decision": "USER-2026-11-17-G7B-D1",
+     "row_sha256": "f7cc9466c8e19cbae36e32db4b6582bc61182173822e417c45b7d3d911c81551",
+     "row_bytes": 193
+    },
+    {
+     "id": "F-04",
+     "section": "F. 追蹤項（`refactor-backlog.md` 三、各點）",
+     "source_line": 559,
+     "status_at_archive": "可封存",
+     "basis": "USER_CONFIRMED_LEGACY",
+     "evidence_commit": null,
+     "user_decision": "USER-2026-11-17-G7B-D1",
+     "row_sha256": "731e14441b74d73579e606588e29bd68a060d4c20c7d693efd4eff6f97ba3990",
+     "row_bytes": 141
+    },
+    {
+     "id": "G-01",
+     "section": "G. 舊 repo 未盤點區塊（2026-09-02 新發現）",
+     "source_line": 571,
+     "status_at_archive": "可封存",
+     "basis": "USER_CONFIRMED_LEGACY",
+     "evidence_commit": null,
+     "user_decision": "USER-2026-11-17-G7B-D1",
+     "row_sha256": "9edc417c40782a52e4ca5b3d0e5063205be8430fe0895001248ea256597d566e",
+     "row_bytes": 225
+    },
+    {
+     "id": "G-02",
+     "section": "G. 舊 repo 未盤點區塊（2026-09-02 新發現）",
+     "source_line": 572,
+     "status_at_archive": "可封存",
+     "basis": "USER_CONFIRMED_LEGACY",
+     "evidence_commit": null,
+     "user_decision": "USER-2026-11-17-G7B-D1",
+     "row_sha256": "3889caf3d99fd7c30b75f8941acd633c391fec38d14ae5c1786ec0e3639662aa",
+     "row_bytes": 227
+    },
+    {
+     "id": "G-03",
+     "section": "G. 舊 repo 未盤點區塊（2026-09-02 新發現）",
+     "source_line": 573,
+     "status_at_archive": "可封存",
+     "basis": "USER_CONFIRMED_LEGACY",
+     "evidence_commit": null,
+     "user_decision": "USER-2026-11-17-G7B-D1",
+     "row_sha256": "58ca3029085df869a97aae5a8805e7b215a40be431646898454675e22964ec34",
+     "row_bytes": 242
+    },
+    {
+     "id": "G-04",
+     "section": "G. 舊 repo 未盤點區塊（2026-09-02 新發現）",
+     "source_line": 574,
+     "status_at_archive": "可封存",
+     "basis": "USER_CONFIRMED_LEGACY",
+     "evidence_commit": null,
+     "user_decision": "USER-2026-11-17-G7B-D1",
+     "row_sha256": "6fec7a1b73c7eabd4e886ac43899c32deb88bf7c21e1972d8324f2ed478256bd",
+     "row_bytes": 233
+    },
+    {
+     "id": "B-30",
+     "section": "B. 重構主線",
+     "source_line": 306,
+     "status_at_archive": "已完成",
+     "basis": "MACRO_PASS_ANCESTOR",
+     "evidence_commit": "f73a076d5ef4184735a6586a7069c66a6ba54bcc",
+     "user_decision": null,
+     "row_sha256": "0a3381e5bd2ef32034aa0da9d7f62e0aa7a45916bd71d6457ed4c07f41e8c327",
+     "row_bytes": 347
+    },
+    {
+     "id": "B-33",
+     "section": "B. 重構主線",
+     "source_line": 309,
+     "status_at_archive": "已完成",
+     "basis": "MACRO_PASS_ANCESTOR",
+     "evidence_commit": "f73a076d5ef4184735a6586a7069c66a6ba54bcc",
+     "user_decision": null,
+     "row_sha256": "bffdaa39740f84fdeeebe63d48fb2342bd179115d65b9b2a9251f6b9a0532e7a",
+     "row_bytes": 339
+    },
+    {
+     "id": "B-113",
+     "section": "B. 重構主線",
+     "source_line": 389,
+     "status_at_archive": "已完成",
+     "basis": "MACRO_PASS_ANCESTOR",
+     "evidence_commit": "103ef21358cb1f4d97cadaea6d1685d81a19c59c",
+     "user_decision": null,
+     "row_sha256": "13f49279808beaf151b9b705ed1db9bc001b570189f6440b7d25f5aba05fc7ee",
+     "row_bytes": 1740
+    },
+    {
+     "id": "B-122",
+     "section": "B. 重構主線",
+     "source_line": 396,
+     "status_at_archive": "已完成",
+     "basis": "MACRO_PASS_ANCESTOR",
+     "evidence_commit": "e1e6824e87c1be1bba18f39fc37579cb8aa69faa",
+     "user_decision": null,
+     "row_sha256": "948bcae7f06cc02ad8f8fbd2ee16a1a7b3590e69b93073e7322a0771bd7f2194",
+     "row_bytes": 1615
+    },
+    {
+     "id": "B-128",
+     "section": "B. 重構主線",
+     "source_line": 404,
+     "status_at_archive": "已完成",
+     "basis": "MACRO_PASS_ANCESTOR",
+     "evidence_commit": "77d1eb08edf9430edb726ab9a7838614da2a9fe4",
+     "user_decision": null,
+     "row_sha256": "89b903624788aba3af98f64c4a84e4ad6ec3fccbbcabef0e70b15d4535c0fa23",
+     "row_bytes": 939
+    }
+   ]
+  }
+ ]
+}

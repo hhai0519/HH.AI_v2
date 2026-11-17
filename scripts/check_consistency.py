@@ -30,6 +30,7 @@
   CHECK 26 — M2 計畫與執行重放暨證據完整性守衛 (M2 Plan-vs-Actual / Evidence Integrity Replay Guard)
   CHECK 27 — 受管金鑰持久存放指引守衛 (Managed Secret Storage Guidance Guard)
   CHECK 28 — 受保護歷史與 §5.1 帳本錨定守衛 (Protected History / Ledger Anchor Guard)
+  CHECK 29 — 任務看板封存守衛 (TASKBOARD Archive Guard)
 
 本腳本的檢查項來自 2026-08-29 的一次全庫實測掃描，每一項都曾實際命中過真實缺陷，不是憑空設計。
 新增檢查項時，必須先確認該檢查在當前 repo 的誤報率，誤報多的檢查會讓人習慣忽略輸出。
@@ -57,7 +58,7 @@ def run_checks(argv=None):
     as_if_committed = "--as-if-committed" in argv
     if as_if_committed:
         print("[MODE] 啟用 --as-if-committed 本地 commit 拓撲預演模式")
-    total_checks = 28
+    total_checks = 29
     passed = 0
     failed = 0
 
@@ -545,6 +546,22 @@ def run_checks(argv=None):
     else:
         print(f"  [FAIL] {len(c28_fails)} 命中")
         for fail in c28_fails:
+            print(f"    {fail}")
+        failed += 1
+
+    # ---------------------------------------------------------
+    # CHECK 29: 任務看板封存守衛
+    # ---------------------------------------------------------
+    print("\nCHECK 29: 任務看板封存守衛")
+    c29_fails, c29_infos = check_29_taskboard_archive_guard(repo_root)
+    for info in c29_infos:
+        print(f"  [INFO] {info}")
+    if len(c29_fails) == 0:
+        print("  [PASS] 0 命中")
+        passed += 1
+    else:
+        print(f"  [FAIL] {len(c29_fails)} 命中")
+        for fail in c29_fails:
             print(f"    {fail}")
         failed += 1
 
@@ -3893,9 +3910,28 @@ def check_28_history_anchor_guard(root_dir=None, as_if_committed=False):
     return check_repo(root_dir, as_if_committed=as_if_committed, exec_log_rule=exec_log_rule)
 
 
+def check_29_taskboard_archive_guard(root_dir=None):
+    """
+    CHECK 29 — 任務看板封存守衛（B-117 G7-b1）。
+
+    委由 scripts/taskboard_archive.py 判定：docs/archive/TASKBOARD-ARCHIVE-MANIFEST.json 與封存檔逐位元組一致、
+    每列原文的 SHA-256 不變、已封存的 ID 不得仍在看板、封存依據（Macro PASS 且為 checkpoint 祖先，
+    或 USER 2026-11-17 確認之固定舊列清單）、USER 保留清單、看板封存區與 ARCHIVE-INDEX 雙向可達。
+    讀不到、格式不符或 git 回答不出來一律 FAIL。
+    """
+    if root_dir is None:
+        root_dir = repo_root
+    try:
+        from scripts.taskboard_archive import check
+    except ImportError:
+        import taskboard_archive
+        check = taskboard_archive.check
+    return check(root_dir)
+
+
 def verify_check_consistency_inventory(file_content: str) -> tuple[bool, str, dict]:
     """
-    Validates complete, consistent, and duplicate-free inventory (1..28)
+    Validates complete, consistent, and duplicate-free inventory (1..29)
     across docstring and run_checks(). Supports both 'CHECK N -' and 'CHECK N:' punctuations.
     """
     # 1. Parse docstring inventory
@@ -3934,9 +3970,9 @@ def verify_check_consistency_inventory(file_content: str) -> tuple[bool, str, di
         seen_rc_ids.add(cid)
         run_checks_ids.append(cid)
 
-    expected_ids = list(range(1, 29))
-    if total_checks != 28:
-        return False, f"total_checks must be 28 (got {total_checks})", {}
+    expected_ids = list(range(1, 30))
+    if total_checks != 29:
+        return False, f"total_checks must be 29 (got {total_checks})", {}
 
     if docstring_ids != expected_ids:
         missing = set(expected_ids) - set(docstring_ids)

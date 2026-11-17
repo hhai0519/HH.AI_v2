@@ -413,7 +413,14 @@ E1 必須排在 E2 之前且用拋棄式對話。
 
 ### 10.4 封存不是刪除
 
-標記 `可封存` 的項目，經使用者確認後移到 `TASKBOARD.md` 末尾的「封存區」，保留全文可查。
+封存的列移到 `docs/archive/` 內名為 TASKBOARD-ARCHIVE-編號.md 的檔案（執行者之 runner 不建立新目錄，所以放在既有的 `docs/archive/`），逐字保留、原文 SHA-256 不變，不刪除。一個封存檔由一個批次一次寫成，之後不改；清單在 `docs/archive/TASKBOARD-ARCHIVE-MANIFEST.json`，由 CHECK 29（`scripts/taskboard_archive.py`）核對。封存條件（USER 2026-11-16 決定）：
+
+1. 狀態是「已完成」或「可封存」；
+2. 列內出現的完整 40 位 commit 在 AUDIT-LOG 有「核對通過」列，該列文字須點名本列 ID（B-122 或 B122 皆可；只是被引用或另一批次之核對通過不算），且 commit 是 refactor-backlog 第 5.1 節 checkpoint 的祖先（`MACRO_PASS_ANCESTOR`）；
+3. 沒有「待辦」「進行中」「待裁決」或 OPEN 的表格列引用該 ID；
+4. 不在 manifest 的 `user_keep`（USER 標記保留）內。
+
+USER 2026-11-17 確認第一次封存的 31 個舊「可封存」列沒有 commit，以 `USER_CONFIRMED_LEGACY` 一次性封存；這份 ID 清單固定在工具內，第一個封存檔的批次、SHA-256 與筆數也固定在工具內，`USER_CONFIRMED_LEGACY` 只能出現在第一個封存檔，之後新的封存一律要第 2 點的證據。條件 3、4 與 USER 確認在 plan 與 apply 當下判定；CHECK 29 事後核對清單、原文位元組、封存依據與指向。封存前先用 `python scripts/taskboard_archive.py plan --repo .` 列出判定，清單給 USER 看過才用 `apply` 執行。`可封存` 仍須 USER 確認才移動（見第 10.3 節）。
 
 ### 10.5 每批次結束時更新
 
