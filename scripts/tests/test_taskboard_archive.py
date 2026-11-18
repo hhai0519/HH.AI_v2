@@ -120,6 +120,38 @@ def test_plan_reports_eligible_and_holds(repo):
     assert "B-05" not in lines  # 待辦列本身不是封存對象
 
 
+def test_plan_prints_the_context_of_each_active_reference(repo):
+    code, out = run(["plan", "--repo", str(repo["root"])])
+    assert code == 0
+    refs = [l for l in out.splitlines() if l.startswith("REF_CONTEXT ")]
+    assert len(refs) == 1  # 只有 B-02 被進行中列 B-05 引用
+    assert refs[0].startswith("REF_CONTEXT B-02<-B-05 line=") and "引用 B-02" in refs[0]
+    assert not any(l.startswith("REF_CONTEXT B-01") for l in out.splitlines())
+
+
+def test_plan_reference_context_is_cut_to_30_characters_each_side(repo):
+    root = repo["root"]
+    left, right = "甲" * 45, "乙" * 45
+    write(root, "docs/TASKBOARD.md", read(root, "docs/TASKBOARD.md").replace("| B-05 | 待辦 | 引用 B-02 |", "| B-05 | 待辦 | %s B-02 %s |" % (left, right)))
+    _, out = run(["plan", "--repo", str(root)])
+    ref = [l for l in out.splitlines() if l.startswith("REF_CONTEXT B-02<-B-05")][0]
+    assert ref.endswith("…" + "甲" * 29 + " B-02 " + "乙" * 29 + "…")
+    assert "甲" * 31 not in ref and "乙" * 31 not in ref
+
+
+def test_plan_prints_no_context_for_references_from_rows_that_are_not_active(repo):
+    root = repo["root"]
+    write(root, "docs/TASKBOARD.md", read(root, "docs/TASKBOARD.md").replace("| B-06 | 可封存 | 舊列六 |", "| B-06 | 可封存 | 舊列六 |\n| B-07 | 已完成 | 提到 B-01 但已完成 |"))
+    _, out = run(["plan", "--repo", str(root)])
+    assert not any(l.startswith("REF_CONTEXT B-01<-") for l in out.splitlines())
+    assert "ELIGIBLE USER_CONFIRMED_LEGACY" in [l for l in out.splitlines() if l.startswith("PLAN B-01")][0]
+
+
+def test_ref_context_returns_empty_when_the_row_is_not_named():
+    assert ta.ref_context("沒有任何列編號", "B-02") == ""
+    assert ta.ref_context("B-020 與 XB-02 不算", "B-02") == ""
+
+
 def test_plan_holds_user_keep_and_ambiguous_ids(repo):
     root = repo["root"]
     write(root, "docs/archive/TASKBOARD-ARCHIVE-MANIFEST.json", '{"schema_version": 1, "user_keep": ["B-01"], "archives": []}\n')

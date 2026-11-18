@@ -405,6 +405,135 @@
      "row_bytes": 939
     }
    ]
+  },
+  {
+   "file": "docs/archive/TASKBOARD-ARCHIVE-0002.md",
+   "batch": "B117-G7B2-ARCHIVE-CHECK30-261118",
+   "checkpoint_oid": "012e66cfd03ec087f01cf7009c96d9d3fafb385f",
+   "file_sha256": "aff507d268d03be0e623d56b1e2ace6fdbab63a4344fa7ea45fc6b8b2e00a4c4",
+   "entries": [
+    {
+     "id": "TG-MVP-01A",
+     "section": "E. 舊 repo 遷移主線（`refactor-backlog.md` §二 A–F）",
+     "source_line": 463,
+     "status_at_archive": "已完成",
+     "basis": "MACRO_PASS_ANCESTOR",
+     "evidence_commit": "1f98818af8ed38df2b3401685deee159e11a2080",
+     "user_decision": null,
+     "row_sha256": "f9976737c865526f9138cd2ac8aef30279eb5175a802b9105afc91301a04f0dc",
+     "row_bytes": 633
+    },
+    {
+     "id": "TG-MVP-03",
+     "section": "E. 舊 repo 遷移主線（`refactor-backlog.md` §二 A–F）",
+     "source_line": 466,
+     "status_at_archive": "已完成",
+     "basis": "MACRO_PASS_ANCESTOR",
+     "evidence_commit": "4db5d498fa035e14c8628540ce269627aa038ea1",
+     "user_decision": null,
+     "row_sha256": "8cea91f641995aeba5586efe3800f755c5f90d39acfe379f2a9f99404dccd062",
+     "row_bytes": 577
+    },
+    {
+     "id": "TG-MVP-04",
+     "section": "E. 舊 repo 遷移主線（`refactor-backlog.md` §二 A–F）",
+     "source_line": 467,
+     "status_at_archive": "已完成",
+     "basis": "MACRO_PASS_ANCESTOR",
+     "evidence_commit": "18867eb5af7c4b90df8946c22977350bf7ec5086",
+     "user_decision": null,
+     "row_sha256": "6e453253111faf158f6d7456b11c2c7f3e2afd6340897f454dd619e5cc66d9e3",
+     "row_bytes": 614
+    },
+    {
+     "id": "TG-MVP-06",
+     "section": "E. 舊 repo 遷移主線（`refactor-backlog.md` §二 A–F）",
+     "source_line": 469,
+     "status_at_archive": "已完成",
+     "basis": "MACRO_PASS_ANCESTOR",
+     "evidence_commit": "e60fedb6fbaade0ec725d28fc83f1e47cfb13943",
+     "user_decision": null,
+     "row_sha256": "4e52e8917f9646abb843e768b13c4d6b5edb87c4f0738f400fcebe142696f7bb",
+     "row_bytes": 564
+    },
+    {
+     "id": "TG-MVP-07",
+     "section": "E. 舊 repo 遷移主線（`refactor-backlog.md` §二 A–F）",
+     "source_line": 471,
+     "status_at_archive": "已完成",
+     "basis": "MACRO_PASS_ANCESTOR",
+     "evidence_commit": "f73a076d5ef4184735a6586a7069c66a6ba54bcc",
+     "user_decision": null,
+     "row_sha256": "df9e733a996253eed0936e41315313c7ed2fff9b7160d304cdd01428d8efe909",
+     "row_bytes": 579
+    },
+    {
+     "id": "TG-MVP-07A",
+     "section": "E. 舊 repo 遷移主線（`refactor-backlog.md` §二 A–F）",
+     "source_line": 472,
+     "status_at_archive": "已完成",
+     "basis": "MACRO_PASS_ANCESTOR",
+     "evidence_commit": "6fc880947af0a65f356857f92aed606da5404505",
+     "user_decision": null,
+     "row_sha256": "9aebef483b47680e8e00434843fe5b18a6be47ca6aedd5c03ee8877096800582",
+     "row_bytes": 821
+    },
+    {
+     "id": "TG-MVP-08",
+     "section": "E. 舊 repo 遷移主線（`refactor-backlog.md` §二 A–F）",
+     "source_line": 473,
+     "status_at_archive": "已完成",
+     "basis": "MACRO_PASS_ANCESTOR",
+     "evidence_commit": "bcc59d976dd5510108bcd15917a91249fdf35411",
+     "user_decision": null,
+     "row_sha256": "8519c58870cacfabfe2602f2cc71a53bab6865293e1f5c8e9a7ad3f1b4d7e95a",
+     "row_bytes": 775
+    },
+    {
+     "id": "TG-MVP-09",
+     "section": "E. 舊 repo 遷移主線（`refactor-backlog.md` §二 A–F）",
+     "source_line": 474,
+     "status_at_archive": "已完成",
+     "basis": "MACRO_PASS_ANCESTOR",
+     "evidence_commit": "2e34380663fade80f3a39d4fdb6dacde8a26d9a1",
+     "user_decision": null,
+     "row_sha256": "f0bb4c5ec128ca800daa6cf1be7b6d6119e7bc1db90ba8d5abc9f9973848dcb8",
+     "row_bytes": 1384
+    },
+    {
+     "id": "TG-MVP-09A",
+     "section": "E. 舊 repo 遷移主線（`refactor-backlog.md` §二 A–F）",
+     "source_line": 475,
+     "status_at_archive": "已完成",
+     "basis": "MACRO_PASS_ANCESTOR",
+     "evidence_commit": "c6cd9c9986f5834b9777197c7c0012c08d85a3bb",
+     "user_decision": null,
+     "row_sha256": "58b83dda67ea24ab1fb032fde1795abd4fc1610ff4266e8121f6491a90e94556",
+     "row_bytes": 1152
+    },
+    {
+     "id": "TG-MVP-10",
+     "section": "E. 舊 repo 遷移主線（`refactor-backlog.md` §二 A–F）",
+     "source_line": 476,
+     "status_at_archive": "已完成",
+     "basis": "MACRO_PASS_ANCESTOR",
+     "evidence_commit": "fde3121c93fe1e25f6802cff2f48a51a253c383c",
+     "user_decision": null,
+     "row_sha256": "a86e1ed3cb2d01aac82ab54fe2ec8399ba02715d25062b92cb57fe3f6d272faf",
+     "row_bytes": 957
+    },
+    {
+     "id": "TG-MVP-11",
+     "section": "E. 舊 repo 遷移主線（`refactor-backlog.md` §二 A–F）",
+     "source_line": 477,
+     "status_at_archive": "已完成",
+     "basis": "MACRO_PASS_ANCESTOR",
+     "evidence_commit": "3d94bc2ccd26870b133d1dca217bb03e1c4cf767",
+     "user_decision": null,
+     "row_sha256": "81095374d811fb11288b38fb39e9fe6b410f49e3a0fdd40dd239d1076732cf61",
+     "row_bytes": 1297
+    }
+   ]
   }
  ]
 }

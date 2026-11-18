@@ -1,5 +1,5 @@
 {
-  "base_head": "710cf3b",
+  "base_head": "012e66c",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -575,16 +575,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 418,
-      "sha256": "908e1ffa6f767f9de64c1ba8d1a76f91f14ef1d7219d50ca4a6c8f7fcda86517"
+      "lines": 419,
+      "sha256": "ae3af3d95262a521309784123a3028d0dbd4031117d51ce754950b337944f41f"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 388,
-      "sha256": "80215d8fe9467168372e7da0d3c7e341edab3c0e6fcd76f26e30e9ec90649d7d"
+      "lines": 389,
+      "sha256": "03100512f0653c5e1e1efaefc0a81e37cb5dcd590dfe7161f55bd11fd70f9b38"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -626,8 +626,8 @@
         "## G. 舊 repo 未盤點區塊（2026-09-02 新發現）",
         "## 封存區"
       ],
-      "lines": 546,
-      "sha256": "2d7dd6608ee26217a8008c7442ea354d775f5c8037cf5ad895197c6dfc22070a"
+      "lines": 536,
+      "sha256": "2098066f807841e66b2176eaab65e42977704273293bb9264d75e7170c1a1716"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1136,8 +1136,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6474,
-      "sha256": "f31d14b8ae970a5cb000d8668ac2379a194e1b0d2421acba98e03daec8395ff6"
+      "lines": 6475,
+      "sha256": "f52cd606fb32fe509ca03860d7b91396fd50b35287f113518a34a60068cc4cfa"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1303,8 +1303,8 @@
         "# owner 須為未完成之看板任務）。任何輸入缺失、畸形或讀取失敗一律判定失敗。",
         "# ---------------------------------------------------------------------------"
       ],
-      "lines": 3995,
-      "sha256": "9c54d9fdfff2a4bbd0a47bbf47d7f8ae97fe565861178d36fd7943a434f725e0"
+      "lines": 4047,
+      "sha256": "bdba5f4c14358b31d4c8a4723d6066d59293066b444b53e563c949e1581442af"
     },
     "scripts/delivery_pack.py": {
       "fences": 0,
@@ -1599,8 +1599,8 @@
       "headings": [
         "# 第一個封存檔（USER 一次性確認）寫成後即固定：批次、位元組與筆數釘在這裡，之後改封存檔或清單都會 FAIL。"
       ],
-      "lines": 536,
-      "sha256": "7c779a3f6fae86f083d77ef5481de6a29dda4948a04e95ec99a121583d56d238"
+      "lines": 554,
+      "sha256": "04e663af686853337c187e1446ffb71e7980037d22ce05a11432b88bcbf3360c"
     },
     "scripts/tests/test_anchor.py": {
       "fences": 0,
@@ -1866,10 +1866,13 @@
         "# CHECK 26 Tests: M2 Plan-vs-Actual / Evidence Integrity Replay Guard",
         "# ---------------------------------------------------------------------------",
         "# B-116 G4 F-C20-01: GFM rows may omit the trailing pipe; CHECK 20 must still count their cells",
-        "# and must not stop scanning the rest of the table at such a row."
+        "# and must not stop scanning the rest of the table at such a row.",
+        "# ---------------------------------------------------------------------------",
+        "# CHECK 30 Tests: TASKBOARD single-line markers (B-117 G7-b2)",
+        "# ---------------------------------------------------------------------------"
       ],
-      "lines": 2866,
-      "sha256": "3b9d69ca5b4555a2af6b1d23cd2d17c59ee2627a542e77bb2918c2c048448c94"
+      "lines": 2944,
+      "sha256": "69e12264dccd23d93c7ed2217cdb39ea59277583c5cc1559ed40607dd4c97763"
     },
     "scripts/tests/test_delivery_pack.py": {
       "fences": 0,
@@ -2277,8 +2280,8 @@
     "scripts/tests/test_taskboard_archive.py": {
       "fences": 0,
       "headings": [],
-      "lines": 527,
-      "sha256": "5ec187c08f8df7335ca6c38b2ebd8923826e307c787370333c9cde9100eaeae2"
+      "lines": 559,
+      "sha256": "a65ca8804bce15f53af2d688e127af5da5032ad7d2aac7368723a71cb9b398df"
     },
     "scripts/tests/test_uv_admission.py": {
       "fences": 0,
@@ -2360,7 +2363,7 @@
         "# ==========================================================================="
       ],
       "lines": 747,
-      "sha256": "ea8fc8abf7945dafdfb1585cddc742a0621e9750dc6b414d4f1c224fab782633"
+      "sha256": "3af70431123896dd523226860789654777ffd7ddcda3acd3d01e272543fad05a"
     },
     "scripts/tests/test_verify_all.py": {
       "fences": 0,
@@ -2408,7 +2411,7 @@
       "sha256": "fbc9ad85cb78f44be63864171bf49dfd7605b07f6b030d7ef9c85f810fa11f19"
     }
   },
-  "generated_at": "2026-11-18T01:03:40Z",
+  "generated_at": "2026-11-18T04:11:48Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

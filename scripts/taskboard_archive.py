@@ -120,6 +120,17 @@ def ref_pattern(row_id):
     return re.compile(r'(?<![A-Za-z0-9-])' + re.escape(row_id) + r'(?![0-9A-Za-z])')
 
 
+REF_CONTEXT_WIDTH = 30
+
+
+def ref_context(text, row_id, width=REF_CONTEXT_WIDTH):
+    """被引用處（第一個命中）前後各 width 個字元，供審查官判斷是不是真的引用。"""
+    match = ref_pattern(row_id).search(text)
+    if not match:
+        return ''
+    return text[max(0, match.start() - width):min(len(text), match.end() + width)]
+
+
 def git(root, *args):
     try:
         proc = subprocess.run(['git', '-C', root] + list(args), capture_output=True, timeout=60)
@@ -448,6 +459,13 @@ def plan(root, out):
         row = item['row']
         state = 'HOLD ' + ' '.join(item['holds']) if item['holds'] else 'ELIGIBLE ' + item['basis']
         out.write('PLAN %s line=%d bytes=%d %s\n' % (row['id'], row['line'], len(row['text'].encode('utf-8')), state))
+    rows = parse_rows(taskboard)
+    for item in items:
+        row = item['row']
+        pattern = ref_pattern(row['id'])
+        for other in rows:
+            if is_active(other['status']) and pattern.search(other['text']):  # 本列狀態必為已完成或可封存，不會是自己
+                out.write('REF_CONTEXT %s<-%s line=%d …%s…\n' % (row['id'], other['id'], other['line'], ref_context(other['text'], row['id'])))
     return 0
 
 

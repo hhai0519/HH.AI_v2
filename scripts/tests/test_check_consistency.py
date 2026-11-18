@@ -29,6 +29,7 @@ from check_consistency import (
     check_24_active_state_projection_guard,
     check_25_mechanical_governance_v1_guard,
     check_26_plan_actual_evidence_integrity,
+    check_30_taskboard_single_line_markers,
     parse_macro_audit_verdict,
 )
 
@@ -1545,7 +1546,7 @@ def test_integration_run_checks_includes_19_and_20():
 
 def verify_check_consistency_inventory(file_content: str) -> tuple[bool, str, dict]:
     """
-    Validates complete, consistent, and duplicate-free inventory (1..29)
+    Validates complete, consistent, and duplicate-free inventory (1..30)
     across docstring and run_checks(). Supports both 'CHECK N -' and 'CHECK N:' punctuations.
     """
     # 1. Parse docstring inventory
@@ -1584,9 +1585,9 @@ def verify_check_consistency_inventory(file_content: str) -> tuple[bool, str, di
         seen_rc_ids.add(cid)
         run_checks_ids.append(cid)
 
-    expected_ids = list(range(1, 30))
-    if total_checks != 29:
-        return False, f"total_checks must be 29 (got {total_checks})", {}
+    expected_ids = list(range(1, 31))
+    if total_checks != 30:
+        return False, f"total_checks must be 30 (got {total_checks})", {}
 
     if docstring_ids != expected_ids:
         missing = set(expected_ids) - set(docstring_ids)
@@ -1605,12 +1606,12 @@ def verify_check_consistency_inventory(file_content: str) -> tuple[bool, str, di
     }
 
 
-def test_integration_run_checks_includes_29_and_total_checks_is_29():
-    """Verify run_checks includes up to CHECK 29 and total_checks is 29."""
+def test_integration_run_checks_includes_30_and_total_checks_is_30():
+    """Verify run_checks includes up to CHECK 30 and total_checks is 30."""
     import check_consistency
     import inspect
     source = inspect.getsource(check_consistency.run_checks)
-    assert "total_checks = 29" in source
+    assert "total_checks = 30" in source
     assert "check_21_secret_leak_guard" in source
     assert "CHECK 21: 機密防護與輸出安全守衛" in source
     assert "check_22_ci_supply_chain" in source
@@ -1629,19 +1630,21 @@ def test_integration_run_checks_includes_29_and_total_checks_is_29():
     assert "CHECK 28: 受保護歷史與 §5.1 帳本錨定守衛" in source
     assert "check_29_taskboard_archive_guard" in source
     assert "CHECK 29: 任務看板封存守衛" in source
+    assert "check_30_taskboard_single_line_markers" in source
+    assert "CHECK 30: 任務看板指標單行守衛" in source
 
 
-def test_full_checker_inventory_consistency_1_to_29():
-    """Full checker inventory consistency: docstring, run_checks, and active representation match 1..29."""
+def test_full_checker_inventory_consistency_1_to_30():
+    """Full checker inventory consistency: docstring, run_checks, and active representation match 1..30."""
     cc_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "check_consistency.py"))
     with open(cc_path, "r", encoding="utf-8") as f:
         content = f.read()
 
     ok, err, metadata = verify_check_consistency_inventory(content)
     assert ok is True, f"Full checker inventory verification failed: {err}"
-    assert metadata["total_checks"] == 29
-    assert metadata["docstring_ids"] == list(range(1, 30))
-    assert metadata["run_checks_ids"] == list(range(1, 30))
+    assert metadata["total_checks"] == 30
+    assert metadata["docstring_ids"] == list(range(1, 31))
+    assert metadata["run_checks_ids"] == list(range(1, 31))
 
 
 def test_full_checker_inventory_negative_controls():
@@ -2864,3 +2867,78 @@ def test_b116_c20_single_pipe_line_is_not_a_row_for_check20_and_check26(tmp_path
         "| def | d | T2-261030：next | ok | none\n",
         encoding="utf-8", newline="\n")
     assert cc._c26_latest_exec_task_id(str(tmp_path)) == ("T2-261030", None)
+
+
+# ---------------------------------------------------------------------------
+# CHECK 30 Tests: TASKBOARD single-line markers (B-117 G7-b2)
+# ---------------------------------------------------------------------------
+
+_C30_GOOD = [
+    "# 看板",
+    "**NEXT_WORK**：B-117",
+    "**NEXT_SLICE**：G7-b2 某切片",
+    "**最後更新**：2026-11-18；某批",
+    "| ID | 狀態 | 項目 | 備註 |",
+]
+
+
+def _c30_run(tmp_path, lines):
+    docs = tmp_path / "docs"
+    docs.mkdir(parents=True, exist_ok=True)
+    (docs / "TASKBOARD.md").write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
+    return check_30_taskboard_single_line_markers(str(tmp_path))
+
+
+def test_check_30_pass_three_markers_exactly_once(tmp_path):
+    fails, infos = _c30_run(tmp_path, _C30_GOOD)
+    assert fails == []
+    assert len(infos) == 3
+
+
+@pytest.mark.parametrize("marker", ["NEXT_WORK", "NEXT_SLICE", "最後更新"])
+def test_check_30_fail_when_marker_is_missing(tmp_path, marker):
+    lines = [l for l in _C30_GOOD if "**" + marker + "**" not in l]
+    fails, _ = _c30_run(tmp_path, lines)
+    assert len(fails) == 1 and "缺少『" + marker + "』" in fails[0]
+
+
+@pytest.mark.parametrize("marker", ["NEXT_WORK", "NEXT_SLICE", "最後更新"])
+def test_check_30_fail_when_marker_is_duplicated(tmp_path, marker):
+    dup = "**" + marker + "**：第二行"
+    fails, _ = _c30_run(tmp_path, _C30_GOOD + ["", dup])
+    assert len(fails) == 1 and "恰一行，找到 2 行" in fails[0] and marker in fails[0]
+
+
+@pytest.mark.parametrize("prefix", ["- ", "* ", "> ", "  "])
+def test_check_30_counts_prefixed_duplicates(tmp_path, prefix):
+    fails, _ = _c30_run(tmp_path, _C30_GOOD + [prefix + "**NEXT_SLICE**：藏在清單裡的第二行"])
+    assert len(fails) == 1 and "NEXT_SLICE" in fails[0]
+
+
+def test_check_30_fail_when_payload_is_blank_or_on_next_line(tmp_path):
+    lines = [l if "**NEXT_SLICE**" not in l else "**NEXT_SLICE**：" for l in _C30_GOOD]
+    fails, _ = _c30_run(tmp_path, lines + ["G7-b2 內容換到下一行"])
+    assert len(fails) == 1 and "不為空白" in fails[0]
+
+
+def test_check_30_ignores_marker_text_inside_a_longer_line(tmp_path):
+    quoted = "| B-1 | 待辦 | 說明文字含 **NEXT_SLICE**：與 **最後更新**： 字樣 | — |"
+    fails, infos = _c30_run(tmp_path, _C30_GOOD + [quoted])
+    assert fails == [] and len(infos) == 3
+
+
+def test_check_30_fail_closed_when_taskboard_is_missing_or_not_utf8(tmp_path):
+    fails, _ = check_30_taskboard_single_line_markers(str(tmp_path))
+    assert len(fails) == 1 and "讀取失敗" in fails[0]
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "TASKBOARD.md").write_bytes(b"\xff\xfe\x00bad")
+    fails, _ = check_30_taskboard_single_line_markers(str(tmp_path))
+    assert len(fails) == 1 and "讀取失敗" in fails[0]
+
+
+def test_check_30_real_taskboard_passes():
+    root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+    fails, infos = check_30_taskboard_single_line_markers(root)
+    assert fails == [], fails
+    assert len(infos) == 3
