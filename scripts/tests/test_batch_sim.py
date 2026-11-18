@@ -416,10 +416,18 @@ def test_prompt_kind_and_name_are_checked(tmp_path):
 
 # --- command execution and CLI -------------------------------------------------------------------
 
-def test_default_run_never_raises_and_reports_timeout_and_launch_failure(tmp_path):
-    rc, _ = bs.default_run([sys.executable, "-c", "import time; time.sleep(5)"], str(tmp_path), dict(os.environ), 0.5)
-    assert rc == 124
-    rc, _ = bs.default_run([str(tmp_path / "missing-exe")], str(tmp_path), dict(os.environ), 5)
+@pytest.mark.parametrize('kill_status, expected', [('TREE_SIGNALLED', 124), ('TREE_KILL_FAILED', 125)])
+def test_default_run_maps_a_timeout_to_124_only_when_the_tree_kill_is_confirmed(monkeypatch, tmp_path, kill_status, expected):
+    # Deterministic mapping; the real Windows process-tree timeout is test_default_run_timeout_terminates_descendants
+    # (10 s, the same allowance as the G3 F R3 guard). A 0.5 s real timeout races the venv launcher on Windows.
+    import bounded_process as bp
+    fake = bp.BoundedResult(None, True, None, b"", b"", kill_status)
+    monkeypatch.setattr(bs.bounded_process, "run_bounded", lambda *a, **k: fake)
+    assert bs.default_run(["x"], str(tmp_path), {}, 10) == (expected, b"")
+
+
+def test_default_run_never_raises_and_reports_launch_failure(tmp_path):
+    rc, _ = bs.default_run([str(tmp_path / "missing-exe")], str(tmp_path), dict(os.environ), 10)
     assert rc == 127
     rc, out = bs.default_run([sys.executable, "-c", "import sys; sys.stderr.write('e'); print('o')"],
                              str(tmp_path), dict(os.environ), 30, False)

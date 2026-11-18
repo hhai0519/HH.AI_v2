@@ -420,7 +420,7 @@ E1 必須排在 E2 之前且用拋棄式對話。
 3. 沒有「待辦」「進行中」「待裁決」或 OPEN 的表格列引用該 ID；
 4. 不在 manifest 的 `user_keep`（USER 標記保留）內。
 
-USER 2026-11-17 確認第一次封存的 31 個舊「可封存」列沒有 commit，以 `USER_CONFIRMED_LEGACY` 一次性封存；這份 ID 清單固定在工具內，第一個封存檔的批次、SHA-256 與筆數也固定在工具內，`USER_CONFIRMED_LEGACY` 只能出現在第一個封存檔，之後新的封存一律要第 2 點的證據。條件 3、4 與 USER 確認在 plan 與 apply 當下判定；CHECK 29 事後核對清單、原文位元組、封存依據與指向。封存前先用 `python scripts/taskboard_archive.py plan --repo .` 列出判定，清單給 USER 看過才用 `apply` 執行。`可封存` 仍須 USER 確認才移動（見第 10.3 節）。
+USER 2026-11-17 確認第一次封存的 31 個舊「可封存」列沒有 commit，以 `USER_CONFIRMED_LEGACY` 一次性封存；這份 ID 清單固定在工具內，第一個封存檔的批次、SHA-256 與筆數也固定在工具內，`USER_CONFIRMED_LEGACY` 只能出現在第一個封存檔，之後新的封存一律要第 2 點的證據。條件 3、4 與 USER 確認在 plan 與 apply 當下判定；CHECK 29 事後核對清單、原文位元組、封存依據與指向。封存前先用 `python scripts/taskboard_archive.py plan --repo .` 列出判定，清單給 USER 看過才用 `apply` 執行。`可封存` 仍須 USER 確認才移動（見第 10.3 節）。批次紀錄另有封存規則（B-117 G7-b3a／b3a2）：看板「批次紀錄」只留最新幾則（看板上限 6 則，超過即 CHECK 29 FAIL），較舊的整則（含續行）由 `scripts/taskboard_archive.py` 的 records-plan（唯讀；先逐行複核多行單元）與 records-apply（--keep 必填；多行單元須以 --allow-multiline 逐一點名）逐字搬到 docs/archive/ 內名為 TASKBOARD-RECORDS-編號.md 的封存檔，清單在 manifest 的 record_archives。CHECK 29 以 git 在封存當時 checkpoint 的看板逐行核對原文，並要求 checkpoint 看板上的每則批次紀錄仍在看板上或已封存、record_archives 相對 checkpoint 只增不減。多行單元內若有仍有效的 USER 決定，搬前須以原文寫回看板現行處並註明原出處。
 
 ### 10.5 每批次結束時更新
 

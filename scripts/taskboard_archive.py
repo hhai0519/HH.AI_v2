@@ -27,6 +27,10 @@ USER_CONFIRMED_LEGACY 只能出現在第一個封存檔。
   - 搬的是「最舊的 take 則」，保留的是「最新的 keep 則」，封存檔內維持看板順序（新→舊）；
   - 封存檔由本工具確定性產生（UTF-8、LF、看板順序），CHECK 29 用 git 在 checkpoint_oid 的看板逐行核對原文，
     不信任提示詞或作者端的檔案。
+  - 多行單元（續行內可能有仍有效的 USER 決定或指向）預設拒絕搬移，須用 --allow-multiline TASK_ID 逐一點名，
+    records-plan 先逐行印出其前 40 個字元供人工複核。
+  - 只增不減：checkpoint 看板上的每一則批次紀錄，必須仍在看板上或已在某個批次紀錄封存檔；
+    manifest 的 record_archives 相對於 checkpoint 的 manifest 只能在尾端追加；看板批次紀錄上限 6 則。
   keep 的算法：保留的是套用本工具當下看板上的既有紀錄數，不含該批自己新增的那一則。
 
 命令列（唯讀者標 ◎）：
@@ -34,9 +38,9 @@ USER_CONFIRMED_LEGACY 只能出現在第一個封存檔。
   python scripts/taskboard_archive.py check --repo <repo>                        ◎ CHECK 29 同一判定
   python scripts/taskboard_archive.py apply --repo <repo> --task-id <TASK> --checkpoint-oid <oid>
                                             --entry <ID>[:<evidence-oid>] ...    寫入工作區（不 commit）
-  python scripts/taskboard_archive.py records-plan  --repo <repo> [--keep N]     ◎ 盤點數字與每則的保留／搬移判定
+  python scripts/taskboard_archive.py records-plan  --repo <repo> --keep N        ◎ 盤點數字與每則的保留／搬移判定
   python scripts/taskboard_archive.py records-apply --repo <repo> --task-id <TASK> --checkpoint-oid <oid>
-                                            --keep N --take M                    寫入工作區（不 commit）
+                                            --keep N --take M [--allow-multiline TASK_ID ...]  寫入工作區（不 commit）
 
 fail-closed：manifest、封存檔、AUDIT-LOG、checkpoint 讀不到或格式不符，git 回答不出來，
 一律 FAIL；不適用的只有「沒有任何需要 git 的條目」。
@@ -92,7 +96,9 @@ ENTRY_KEYS = ('id', 'section', 'source_line', 'status_at_archive', 'basis', 'evi
 
 # 批次紀錄封存（G7-b3a）
 RECORDS_PREFIX = ARCHIVE_DIR_REL + '/TASKBOARD-RECORDS-'
-RECORD_ARCHIVES_MIN = 1  # 已寫成的批次紀錄封存檔不得移除；測試以 0 表示「尚未寫成」
+RECORD_ARCHIVES_MIN = 2  # 已寫成的批次紀錄封存檔不得移除（下限；實際只增不減由 checkpoint 的 manifest 比對）；測試以 0 表示「尚未寫成」
+RECORDS_ON_BOARD_MAX = 6  # 看板上批次紀錄的上限：超過就必須在同批 records-apply 搬走較舊的
+MULTILINE_PREVIEW = 40  # records-plan 對多行單元逐行印出的字元數
 RECORD_ARCHIVE_KEYS = ('file', 'batch', 'checkpoint_oid', 'file_sha256', 'keep', 'entries')
 RECORD_ENTRY_KEYS = ('task_id', 'source_line', 'line_count', 'unit_sha256', 'unit_bytes')
 RECORD_BIG_BYTES = 3072  # 盤點「超過 3,072 位元組」的門檻（盤點數字由工具印出，不人工計數）
@@ -648,11 +654,12 @@ def check_records(root, manifest, taskboard, backlog_text):
         fails.append('%s record_archives 少於 %d 個：已寫成的批次紀錄封存檔不得移除' % (MANIFEST_REL, RECORD_ARCHIVES_MIN))
     board_units = record_units(taskboard)
     board_ids = [u['task_id'] for u in board_units]
-    board_first = {u['lines'][0] for u in board_units}
     if archives and not board_units:
         fails.append('%s 批次紀錄區至少要保留 1 則（C7 要求新紀錄緊接舊首筆之前）' % TASKBOARD_REL)
     if len(set(board_ids)) != len(board_ids):
         fails.append('%s 批次紀錄的 TASK_ID 重複' % TASKBOARD_REL)
+    if len(board_ids) > RECORDS_ON_BOARD_MAX:
+        fails.append('%s 批次紀錄 %d 則，超過上限 %d 則：須在同批以 records-apply 搬走較舊的' % (TASKBOARD_REL, len(board_ids), RECORDS_ON_BOARD_MAX))
     seen, checkpoint, board_at = set(), None, {}
     for position, archive in enumerate(archives, 1):
         where = '%s record_archives[%d]' % (MANIFEST_REL, position - 1)
@@ -703,7 +710,7 @@ def check_records(root, manifest, taskboard, backlog_text):
             if entry['source_line'] <= last_line:
                 fails.append('%s %s：清單必須依看板原順序（source_line 遞增）' % (where, tid))
             last_line = entry['source_line']
-            if tid in board_ids or lines[0] in board_first:
+            if tid in board_ids:
                 fails.append('%s %s：看板仍有同一則批次紀錄（封存必須是移動）' % (where, tid))
         if not fields_ok:
             continue
@@ -728,7 +735,36 @@ def check_records(root, manifest, taskboard, backlog_text):
                     fails.append('%s %s：與 git 在 checkpoint %s 的看板原文不一致' % (where, entry['task_id'], oid[:7]))
         except Fail as exc:
             fails.append('%s' % exc)
+    if archives:
+        fails.extend(check_records_append_only(root, archives, board_ids, seen, backlog_text))
     return fails, len(archives), total
+
+
+def check_records_append_only(root, archives, board_ids, archived_ids, backlog_text):
+    """只增不減（fail-closed）：以 git 在 §5.1 checkpoint 的看板與 manifest 為準。
+    1. checkpoint 看板上的每一則批次紀錄，必須仍在看板上或已在某個批次紀錄封存檔；
+    2. checkpoint 的 manifest 的 record_archives（缺鍵視為空陣列）必須是目前清單的前綴。"""
+    fails = []
+    try:
+        checkpoint = read_checkpoint(backlog_text)
+        if resolve_commit(root, checkpoint) != checkpoint:
+            raise Fail('checkpoint %s 無法解析' % checkpoint[:7])
+        old_ids = [u['task_id'] for u in record_units(git_blob_text(root, checkpoint, TASKBOARD_REL))]
+        for tid in old_ids:
+            if tid not in board_ids and tid not in archived_ids:
+                fails.append('%s：checkpoint %s 的看板有此批次紀錄，目前既不在看板上也不在任何批次紀錄封存檔（紀錄消失）' % (tid, checkpoint[:7]))
+        try:
+            old_manifest = json.loads(git_blob_text(root, checkpoint, MANIFEST_REL))
+        except ValueError:
+            raise Fail('checkpoint %s 的 %s 不是合法 JSON' % (checkpoint[:7], MANIFEST_REL))
+        old_archives = old_manifest.get('record_archives', []) if isinstance(old_manifest, dict) else None
+        if not isinstance(old_archives, list):
+            raise Fail('checkpoint %s 的 %s record_archives 不是陣列' % (checkpoint[:7], MANIFEST_REL))
+        if archives[:len(old_archives)] != old_archives or len(archives) < len(old_archives):
+            fails.append('%s record_archives 不是 checkpoint %s 清單的追加（只增不減：不得刪除、改寫或重排既有封存檔）' % (MANIFEST_REL, checkpoint[:7]))
+    except Fail as exc:
+        fails.append('%s' % exc)
+    return fails
 
 
 def records_plan(root, out, keep):
@@ -750,11 +786,14 @@ def records_plan(root, out, keep):
         if state == 'MOVE':
             moved += size
         out.write('RECORD %d %s line=%d lines=%d bytes=%d %s\n' % (number, unit['task_id'], unit['start'], len(unit['lines']), size, state))
+        if len(unit['lines']) > 1:
+            for offset, line in enumerate(unit['lines'], 1):
+                out.write('  MULTILINE %s L%d/%d %s\n' % (unit['task_id'], offset, len(unit['lines']), line[:MULTILINE_PREVIEW]))
     out.write('RECORDS_SUMMARY keep=%d movable=%d movable_bytes=%d\n' % (keep, max(0, count - keep), moved))
     return 0
 
 
-def records_apply(root, task_id, checkpoint_oid, keep, take, out):
+def records_apply(root, task_id, checkpoint_oid, keep, take, out, allow_multiline=()):
     try:
         if keep < 1:
             raise Fail('--keep 必須 ≥ 1（看板永遠至少留 1 則批次紀錄）')
@@ -781,6 +820,16 @@ def records_apply(root, task_id, checkpoint_oid, keep, take, out):
         if take > movable:
             raise Fail('--take %d 超過可搬的 %d 則' % (take, movable))
         moved = units[len(units) - take:]
+        multi = [u['task_id'] for u in moved if len(u['lines']) > 1]
+        allowed = list(allow_multiline)
+        if len(set(allowed)) != len(allowed):
+            raise Fail('--allow-multiline 點名重複')
+        for name in allowed:
+            if name not in multi:
+                raise Fail('--allow-multiline %s 不是本次要搬的多行單元' % name)
+        for name in multi:
+            if name not in allowed:
+                raise Fail('%s 是多行單元（%d 行），須先以 records-plan 複核續行，再用 --allow-multiline %s 點名' % (name, len(next(u for u in moved if u['task_id'] == name)['lines']), name))
         for unit in moved:
             if FENCE_END in unit_text(unit['lines']):
                 raise Fail('%s：原文含四個反引號，無法安全封存' % unit['task_id'])
@@ -829,11 +878,12 @@ def main(argv=None, out=None):
             item.add_argument('--checkpoint-oid', default='')
             item.add_argument('--entry', action='append', default=[])
         if name in ('records-plan', 'records-apply'):
-            item.add_argument('--keep', type=int, default=3)
+            item.add_argument('--keep', type=int, required=True)
         if name == 'records-apply':
             item.add_argument('--task-id', default='')
             item.add_argument('--checkpoint-oid', default='')
             item.add_argument('--take', type=int, default=0)
+            item.add_argument('--allow-multiline', action='append', default=[])
     args = parser.parse_args(argv)
     root = os.path.abspath(args.repo)
     if args.cmd == 'plan':
@@ -841,7 +891,7 @@ def main(argv=None, out=None):
     if args.cmd == 'records-plan':
         return records_plan(root, out, args.keep)
     if args.cmd == 'records-apply':
-        return records_apply(root, args.task_id, args.checkpoint_oid, args.keep, args.take, out)
+        return records_apply(root, args.task_id, args.checkpoint_oid, args.keep, args.take, out, args.allow_multiline)
     if args.cmd == 'apply':
         return apply(root, args.task_id, args.checkpoint_oid, args.entry, out)
     fails, infos = check(root)

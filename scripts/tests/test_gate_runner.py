@@ -278,6 +278,12 @@ def test_g3_f_warn_after_failed_gate_and_multiple_gates(tmp_path, monkeypatch, c
 
 # G3 F R3 — prevent recurrence of short Windows process-tree termination deadlines.
 _TREE_LAUNCHERS = {'run_stage': 4, 'run_bounded': 2, 'run_bounded_text': 1}  # name -> positional index of timeout
+# G7-b3a2 (S1 2026-11-18, B117-G7B3A2-RECORDS-MOVE2-261118): the same recurrence through wrappers that ENCODE the
+# tree-kill status as an exit code (124 = TREE_SIGNALLED, 125 = kill not confirmed) and tests that assert 124.
+_ENCODED_WRAPPERS = {'default_run': 3, 'cmd': None}  # name -> positional index of timeout (None: keyword only)
+_ENCODED_WRAPPER_REGISTRY = {('audit_packet.py', 'default_run'), ('batch_sim.py', 'default_run'),
+                             ('draft_precheck.py', 'cmd')}  # product functions that map KILL_TREE_SIGNALLED to 124
+_TIMEOUT_POSITION = {**_TREE_LAUNCHERS, **_ENCODED_WRAPPERS}
 
 
 def _launcher_name(func):
@@ -288,31 +294,100 @@ def _launcher_timeout(call):
     keywords = [kw.value for kw in call.keywords if kw.arg == 'timeout']
     if len(keywords) == 1:
         return keywords[0]
-    position = _TREE_LAUNCHERS[_launcher_name(call.func)]
-    return call.args[position] if not keywords and len(call.args) > position else None
+    position = _TIMEOUT_POSITION[_launcher_name(call.func)]
+    return call.args[position] if position is not None and not keywords and len(call.args) > position else None
+
+
+def _claims_encoded_124(fn):
+    """True when the function asserts that a timeout ended with exit code 124 (tree kill confirmed): `rc == 124`,
+    `124 == rc`, or a membership set that holds 124 but not 125."""
+    for node in ast.walk(fn):
+        if not isinstance(node, ast.Compare):
+            continue
+        operands = [node.left, *node.comparators]
+        if any(isinstance(op, ast.Eq) for op in node.ops) and \
+                any(isinstance(o, ast.Constant) and o.value == 124 for o in operands):
+            return True
+        for container in node.comparators:
+            if isinstance(container, (ast.Tuple, ast.List, ast.Set)):
+                values = [e.value for e in container.elts if isinstance(e, ast.Constant)]
+                if 124 in values and 125 not in values:
+                    return True
+    return False
+
+
+def _encoded_status_functions(source, filename):
+    """(filename, function) for every function that reads the tree-kill status, i.e. may turn it into a value; a read outside
+    any function is reported as (filename, '<module>'). A read is the attribute or bare name KILL_TREE_SIGNALLED (also under
+    an `import ... as` alias) or any string constant holding TREE_SIGNALLED (also covers getattr(..., 'KILL_TREE_SIGNALLED'))."""
+    tree = ast.parse(source, filename=filename)
+    names = {'KILL_TREE_SIGNALLED'}
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ImportFrom):
+            names |= {a.asname for a in node.names if a.name == 'KILL_TREE_SIGNALLED' and a.asname}
+
+    def reads(n):
+        return ((isinstance(n, ast.Attribute) and n.attr in names) or (isinstance(n, ast.Name) and n.id in names)
+                or (isinstance(n, ast.Constant) and isinstance(n.value, str) and 'TREE_SIGNALLED' in n.value))
+
+    def outside_functions(node):
+        for child in ast.iter_child_nodes(node):
+            if not isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                yield child
+                yield from outside_functions(child)
+
+    found = {(filename, fn.name) for fn in ast.walk(tree) if isinstance(fn, (ast.FunctionDef, ast.AsyncFunctionDef))
+             and any(reads(n) for n in ast.walk(fn))}
+    if any(reads(n) for n in outside_functions(tree)):
+        found.add((filename, '<module>'))
+    return found
+
+
+def _unregistered_encoded_wrappers(scripts_dir):
+    """Product modules (bounded_process.py defines the status and is the only exclusion) whose functions read
+    KILL_TREE_SIGNALLED but are not in _ENCODED_WRAPPER_REGISTRY; a new one must be registered with its timeout position."""
+    found = set()
+    for path in sorted(Path(scripts_dir).glob('*.py')):
+        if path.name != 'bounded_process.py':
+            found |= _encoded_status_functions(path.read_text(encoding='utf-8'), path.name)
+    return sorted(found - _ENCODED_WRAPPER_REGISTRY)
 
 
 def _tree_signal_timeout_violations(source, filename):
     """Tests that start a real process tree and claim TREE_SIGNALLED need an explicit >=10 s deadline.
 
     AST, not regex. A claim is any 'TREE_SIGNALLED' string in the test (assert, pytest.raises match,
-    variable) or KILL_TREE_SIGNALLED. Launchers: run_stage/run_bounded/run_bounded_text, timeout given
-    by keyword or position. Fail closed on launcher aliases and on any unregistered helper that
-    forwards its own timeout parameter to a launcher (it could hide a short deadline).
+    variable), KILL_TREE_SIGNALLED, or (G7-b3a2) an assertion that a timeout returned exit code 124
+    (_claims_encoded_124). Launchers: run_stage/run_bounded/run_bounded_text plus the wrappers that encode the
+    kill status as an exit code (_ENCODED_WRAPPERS); timeout given by keyword or position. Fail closed on
+    launcher aliases and on any unregistered helper that forwards its own timeout parameter to a launcher
+    (it could hide a short deadline); a helper that forwards its timeout to an encoded wrapper is accepted as a `run=` test
+    double but rejected (forwarded_deadline) when a claiming test calls it. A call inside a claiming test whose timeout is not a literal >=10 fails,
+    including a launch-failure call in the same test (split it into its own test).
     """
     tree = ast.parse(source, filename=filename)
     failures = []
     for node in ast.walk(tree):
         if isinstance(node, ast.ImportFrom):
             failures += [f'{filename}:{node.lineno}:launcher_alias:{a.asname}' for a in node.names
-                         if a.name in _TREE_LAUNCHERS and a.asname and a.asname != a.name]
+                         if a.name in _TIMEOUT_POSITION and a.asname and a.asname != a.name]
         if isinstance(node, ast.Assign) and isinstance(node.value, (ast.Name, ast.Attribute)) \
-                and _launcher_name(node.value) in _TREE_LAUNCHERS:
+                and _launcher_name(node.value) in _TIMEOUT_POSITION:
             failures.append(f'{filename}:{node.lineno}:launcher_alias_assign')
+    # helpers that forward their own timeout parameter to an encoded wrapper: legitimate as `run=` test doubles, but a claiming
+    # test that CALLS one hides its deadline from this guard
+    forwarders = set()
+    for fn in ast.walk(tree):
+        if isinstance(fn, (ast.FunctionDef, ast.AsyncFunctionDef)) and not fn.name.startswith('test_') and fn.name not in _TIMEOUT_POSITION:
+            params = {a.arg for a in fn.args.args + fn.args.kwonlyargs}
+            if any(isinstance(c, ast.Call) and _launcher_name(c.func) in _ENCODED_WRAPPERS
+                   and isinstance(_launcher_timeout(c), ast.Name) and _launcher_timeout(c).id in params for c in ast.walk(fn)):
+                forwarders.add(fn.name)
     for fn in ast.walk(tree):
         if not isinstance(fn, (ast.FunctionDef, ast.AsyncFunctionDef)):
             continue
         calls = [c for c in ast.walk(fn) if isinstance(c, ast.Call) and _launcher_name(c.func) in _TREE_LAUNCHERS]
+        wrapper_calls = [c for c in ast.walk(fn) if isinstance(c, ast.Call) and _launcher_name(c.func) in _ENCODED_WRAPPERS]
         if not fn.name.startswith('test_'):
             params = {a.arg for a in fn.args.args + fn.args.kwonlyargs}
             for call in calls:
@@ -322,9 +397,11 @@ def _tree_signal_timeout_violations(source, filename):
             continue
         claims = any((isinstance(n, ast.Constant) and isinstance(n.value, str) and 'TREE_SIGNALLED' in n.value)
                      or (isinstance(n, ast.Attribute) and n.attr == 'KILL_TREE_SIGNALLED') for n in ast.walk(fn))
-        if not claims:
+        if not (claims or _claims_encoded_124(fn)):
             continue
-        for call in calls:
+        failures += [f'{filename}:{c.lineno}:{fn.name}:forwarded_deadline' for c in ast.walk(fn)
+                     if isinstance(c, ast.Call) and _launcher_name(c.func) in forwarders]
+        for call in calls + wrapper_calls:
             value = _launcher_timeout(call)
             if not (isinstance(value, ast.Constant) and type(value.value) in (int, float) and value.value >= 10):
                 failures.append(f'{filename}:{call.lineno}:{fn.name}:timeout_lt_10_or_unproven')
@@ -361,6 +438,100 @@ def test_g3_f_r3_tree_signal_deadline_guard_mutations():
     assert any(':launcher_alias:rb' in v for v in _tree_signal_timeout_violations(alias, 'alias.py'))
     wrapper = "def _go(t):\n    return gate_runner.run_stage(1, 2, 3, 4, timeout=t)\n" + specimen
     assert any('unregistered_launcher_wrapper' in v for v in _tree_signal_timeout_violations(wrapper, 'wrap.py'))
+
+
+# G7-b3a2: negative controls use the real S1 writing (test_batch_sim.py, 2026-11-18, 0.5 s deadline and `assert rc == 124`).
+_S1_WRITING = ("def test_real(tmp_path):\n"
+               "    rc, _ = bs.default_run([sys.executable, '-c', 'import time; time.sleep(5)'], str(tmp_path), dict(os.environ), 0.5)\n"
+               "    assert rc == 124\n")
+
+
+def test_g7_b3a2_encoded_exit_code_guard_catches_the_real_s1_writing_and_its_variants():
+    guard = _tree_signal_timeout_violations
+    found = guard(_S1_WRITING, 's1.py')
+    assert len(found) == 1 and ':test_real:timeout_lt_10_or_unproven' in found[0]
+    assert guard(_S1_WRITING.replace('0.5)', '10)'), 'ok10.py') == []
+    assert len(guard(_S1_WRITING.replace('assert rc == 124', 'assert 124 == rc'), 'reversed.py')) == 1
+    assert len(guard(_S1_WRITING.replace('assert rc == 124', 'assert rc == 124.0'), 'float124.py')) == 1
+    assert len(guard(_S1_WRITING.replace('assert rc == 124', 'assert rc in (124,)'), 'only124.py')) == 1
+    assert len(guard(_S1_WRITING.replace('assert rc == 124', 'assert rc in [124, 126]'), 'list.py')) == 1
+    assert len(guard(_S1_WRITING.replace('assert rc == 124', 'assert rc in {124}'), 'set.py')) == 1
+    assert guard(_S1_WRITING.replace('assert rc == 124', 'assert rc in (124, 125)'), 'tolerant.py') == []
+    assert guard(_S1_WRITING.replace('assert rc == 124', 'assert rc == 0'), 'noclaim.py') == []
+    assert len(guard(_S1_WRITING.replace('0.5)', 't)'), 'variable.py')) == 1
+    assert len(guard(_S1_WRITING.replace(', dict(os.environ), 0.5)', ', dict(os.environ))'), 'missing.py')) == 1
+    assert len(guard(_S1_WRITING.replace('bs.default_run', 'ap.default_run'), 'other_module.py')) == 1
+    # the launch-failure call that shared the S1 test is flagged too (fail closed) until it has its own test
+    both = _S1_WRITING.replace('0.5)', '10)') + "    rc, _ = bs.default_run(['missing-exe'], str(tmp_path), dict(os.environ), 5)\n"
+    assert len(guard(both, 'both.py')) == 1
+    assert guard(both.replace('assert rc == 124', 'assert rc == 127'), 'launch_only.py') == []
+    # aliases, assignments and forwarding helpers of the encoded wrappers are as fail-closed as those of run_bounded
+    assert any(':launcher_alias:dr' in v for v in guard('from batch_sim import default_run as dr\n' + _S1_WRITING, 'alias_import.py'))
+    assert any(':launcher_alias_assign' in v for v in guard('run = bs.default_run\n' + _S1_WRITING, 'alias_assign.py'))
+    helper = "def _run(tmp_path, t):\n    return bs.default_run(['x'], str(tmp_path), {}, t)\n"
+    via_helper = "def test_real(tmp_path):\n    rc, _ = _run(tmp_path, 0.5)\n    assert rc == 124\n"
+    assert any(':forwarded_deadline' in v for v in guard(helper + via_helper, 'helper.py'))
+    kw_helper = "def _cmd(tmp_path, t):\n    return dp.cmd(['x'], tmp_path, timeout=t)\n"
+    assert any(':forwarded_deadline' in v for v in guard(kw_helper + via_helper.replace('_run(', '_cmd('), 'kw_helper.py'))
+    # a forwarding helper used as a `run=` test double, never called by a claiming test, stays accepted
+    assert guard(helper + "def test_x(tmp_path):\n    assert 1 == 1\n", 'stub_helper.py') == []
+
+
+def test_g7_b3a2_encoded_wrapper_guard_covers_keyword_only_cmd_and_string_claims():
+    guard = _tree_signal_timeout_violations
+    cmd_test = ("def test_cmd(tmp_path):\n"
+                "    rc, _ = dp.cmd([sys.executable, '-c', 'import time; time.sleep(5)'], tmp_path, timeout=2)\n"
+                "    assert rc == 124\n")
+    assert len(guard(cmd_test, 'cmd2.py')) == 1
+    assert guard(cmd_test.replace('timeout=2', 'timeout=10'), 'cmd10.py') == []
+    assert len(guard(cmd_test.replace(', timeout=2', ''), 'cmdmissing.py')) == 1  # keyword-only: no timeout is unproven
+    string_claim = ("def test_string(tmp_path):\n"
+                    "    rc, _ = ap.default_run(['x'], str(tmp_path), None, 1)\n"
+                    "    assert 'TREE_SIGNALLED' in repr(rc)\n")
+    assert len(guard(string_claim, 'string.py')) == 1
+    assert guard(string_claim.replace(', None, 1)', ', None, 10)'), 'string10.py') == []
+    # a mocked mapping test is accepted only because its timeout literal is >=10 (the guard cannot know the call is mocked)
+    fake = ("def test_mapping(monkeypatch, tmp_path):\n"
+            "    fake = bp.BoundedResult(None, True, None, b'', b'', 'TREE_SIGNALLED')\n"
+            "    monkeypatch.setattr(bs.bounded_process, 'run_bounded', lambda *a, **k: fake)\n"
+            "    assert bs.default_run(['x'], str(tmp_path), {}, 10) == (124, b'')\n")
+    assert guard(fake, 'fake.py') == []
+
+
+def test_g7_b3a2_product_wrappers_that_encode_the_kill_status_are_registered(tmp_path):
+    scripts_dir = Path(__file__).resolve().parent.parent
+    assert _unregistered_encoded_wrappers(scripts_dir) == [], 'register the new wrapper in _ENCODED_WRAPPER_REGISTRY and _ENCODED_WRAPPERS'
+    assert {name for _, name in _ENCODED_WRAPPER_REGISTRY} == set(_ENCODED_WRAPPERS)
+    present = set()
+    for path in scripts_dir.glob('*.py'):
+        present |= _encoded_status_functions(path.read_text(encoding='utf-8'), path.name)
+    assert _ENCODED_WRAPPER_REGISTRY <= present, 'a registered wrapper no longer exists or no longer maps the kill status'
+    mapper = "def run_it(r):\n    return 124 if r.kill_status == bounded_process.KILL_TREE_SIGNALLED else 125\n"
+    (tmp_path / 'new_tool.py').write_text(mapper, encoding='utf-8', newline='\n')
+    bare = "from bounded_process import KILL_TREE_SIGNALLED\n\n\ndef bare_run(status):\n    return 124 if status == KILL_TREE_SIGNALLED else 125\n"
+    (tmp_path / 'bare_tool.py').write_text(bare, encoding='utf-8', newline='\n')
+    (tmp_path / 'bounded_process.py').write_text(mapper, encoding='utf-8', newline='\n')          # the defining module is the only exclusion
+    (tmp_path / 'batch_sim.py').write_text(mapper.replace('run_it', 'default_run'), encoding='utf-8', newline='\n')
+    assert _unregistered_encoded_wrappers(tmp_path) == [('bare_tool.py', 'bare_run'), ('new_tool.py', 'run_it')]
+    (tmp_path / 'batch_sim.py').write_text(mapper.replace('run_it', 'renamed_run'), encoding='utf-8', newline='\n')
+    assert _unregistered_encoded_wrappers(tmp_path) == [('bare_tool.py', 'bare_run'), ('batch_sim.py', 'renamed_run'),
+                                                        ('new_tool.py', 'run_it')]
+    # G7-b3a2 R3: the writings the first draft missed (import alias, string literal, getattr, module level)
+    samples = {
+        'alias_tool.py': "from bounded_process import KILL_TREE_SIGNALLED as K\n\n\ndef run_it(s):\n    return 124 if s == K else 125\n",
+        'string_tool.py': "def run_it(r):\n    return 124 if r.kill_status == 'TREE_SIGNALLED' else 125\n",
+        'getattr_tool.py': "def run_it(r):\n    return 124 if r.kill_status == getattr(bp, 'KILL_TREE_SIGNALLED') else 125\n",
+        'module_tool.py': "OK = bp.KILL_TREE_SIGNALLED\n\n\ndef run_it(r):\n    return 124 if r.kill_status == OK else 125\n",
+        'lambda_tool.py': "run_it = lambda r: 124 if r.kill_status == bp.KILL_TREE_SIGNALLED else 125\n",
+    }
+    expected = {'alias_tool.py': 'run_it', 'string_tool.py': 'run_it', 'getattr_tool.py': 'run_it', 'module_tool.py': '<module>', 'lambda_tool.py': '<module>'}
+    for name, text in samples.items():
+        sample_dir = tmp_path / ('d_' + name[:-3]); sample_dir.mkdir()
+        (sample_dir / name).write_text(text, encoding='utf-8', newline='\n')
+        assert (name, expected[name]) in _unregistered_encoded_wrappers(sample_dir), name
+    clean_dir = tmp_path / 'clean'; clean_dir.mkdir()
+    (clean_dir / 'clean.py').write_text('def f(r):\n    return r.kill_status\n', encoding='utf-8', newline='\n')
+    assert _unregistered_encoded_wrappers(clean_dir) == []
 
 
 # -- X batch: native preview quick mode (PRECOMMIT gate 4 collect-only, simulation area only) ---------------------

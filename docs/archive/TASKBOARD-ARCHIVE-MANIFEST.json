@@ -734,6 +734,169 @@
      "unit_bytes": 3130
     }
    ]
+  },
+  {
+   "file": "docs/archive/TASKBOARD-RECORDS-0002.md",
+   "batch": "B117-G7B3A2-RECORDS-MOVE2-261118",
+   "checkpoint_oid": "855f7d911bbc3ab1417a27ddc9c9e677a16f5881",
+   "file_sha256": "d2d3c0ba771b0f8c760cd970bab475a167729ee65b995971a2c8fb2ac6589f89",
+   "keep": 2,
+   "entries": [
+    {
+     "task_id": "B117-XPREVIEW-QUICK-R2-261118",
+     "source_line": 123,
+     "line_count": 1,
+     "unit_sha256": "707e9fbe9b302bea80b42f4c45a9b8846fe00f11bf74c2f67769a601f02bc0c6",
+     "unit_bytes": 5604
+    },
+    {
+     "task_id": "B117-G7B1-ARCHIVE-MECHANISM-R2-261117",
+     "source_line": 124,
+     "line_count": 1,
+     "unit_sha256": "5f5b53ce2d322ab0c0c92a084cbc5782dcef1e4d829ecc02522e8ccaa9a4524c",
+     "unit_bytes": 16849
+    },
+    {
+     "task_id": "B117-G7A-CONTRACT-STATE-R2-261117",
+     "source_line": 125,
+     "line_count": 1,
+     "unit_sha256": "71bb03df0177e44c9b025b0aa478186ac1e2a3342829736f7740ef605582000d",
+     "unit_bytes": 9905
+    },
+    {
+     "task_id": "B117-G5B2-RUN-ONLY-R2-261116",
+     "source_line": 126,
+     "line_count": 1,
+     "unit_sha256": "553f2c8afa623bee7a75b0e4847659b5f8bd9e29987f23c4c55e5c73499e9233",
+     "unit_bytes": 9312
+    },
+    {
+     "task_id": "B117-G5B1-RUN-RESUME-R2-261116",
+     "source_line": 127,
+     "line_count": 1,
+     "unit_sha256": "72f038538b557c6d2a4b38e6e9e35bfc4efd8267f2b82beadf769432813c27e7",
+     "unit_bytes": 16960
+    },
+    {
+     "task_id": "B117-G5A-RC2-DURATIONS-R2-261116",
+     "source_line": 128,
+     "line_count": 1,
+     "unit_sha256": "a1ea79d475fe72cd6de78563e28a1c6330c16dbd704d90f97bbc0311ef8d7855",
+     "unit_bytes": 7947
+    },
+    {
+     "task_id": "B117-STATE-HANDOVER-R1-261115",
+     "source_line": 129,
+     "line_count": 1,
+     "unit_sha256": "73339ca7ea6e512db9de8be89ffbe6a89b07f7d9aec3ceb5886764ac396ebfd0",
+     "unit_bytes": 10552
+    },
+    {
+     "task_id": "B117-G5-BRANCH-MATCH-R4-261115",
+     "source_line": 130,
+     "line_count": 1,
+     "unit_sha256": "c04faa2283a04856cdd658800655829749aad3fe3bfa41c480f0c2833cc589fb",
+     "unit_bytes": 15621
+    },
+    {
+     "task_id": "B117-G5-DELIVERY-PRESTART-R2-261114",
+     "source_line": 131,
+     "line_count": 1,
+     "unit_sha256": "f72553c972acb84e578b63308924d4b008d731f44639f62e93f8e0e7af4e43dd",
+     "unit_bytes": 8101
+    },
+    {
+     "task_id": "B117-G5-STEP-INPROGRESS-R1-261114",
+     "source_line": 132,
+     "line_count": 1,
+     "unit_sha256": "20cd225a3e920a28d1f8ad60bda8cc3df323067fc781a661dc525b2d24c665f4",
+     "unit_bytes": 5440
+    },
+    {
+     "task_id": "B117-G5-AUTHOR-GUARDS-R3-261114",
+     "source_line": 133,
+     "line_count": 1,
+     "unit_sha256": "d3c179bea131fd2b3be6ca2f416f7f5276460c5c5b5d5d02e5be56a3123e4c9e",
+     "unit_bytes": 6938
+    },
+    {
+     "task_id": "B117-G5-SIM-SOURCE-PATHS-R3-261113",
+     "source_line": 134,
+     "line_count": 1,
+     "unit_sha256": "8a6245da1b1fa2943275961e67a0396ef30258e25f072aad3b8ba7694634d1ae",
+     "unit_bytes": 2941
+    },
+    {
+     "task_id": "B117-G5-STARTUP-INTAKE-FAIL-R1-261113",
+     "source_line": 136,
+     "line_count": 1,
+     "unit_sha256": "2c3f578d4d50273a84ddda5c007461e543f6cdbda3188e25fa135e355e0962b8",
+     "unit_bytes": 2690
+    },
+    {
+     "task_id": "B117-G5-INTAKE-EXISTING-R2-261112",
+     "source_line": 138,
+     "line_count": 1,
+     "unit_sha256": "0f845f655bd6de5a2c89560e9deebf2ea642f73639146bd3270b38aea0819012",
+     "unit_bytes": 5270
+    },
+    {
+     "task_id": "B117-REPLY-STEPNAME-R1-261112",
+     "source_line": 140,
+     "line_count": 1,
+     "unit_sha256": "e543da3e272119b531b0fbc921ab7a6a76ac6780942f0d110c4a313921cebf51",
+     "unit_bytes": 4759
+    },
+    {
+     "task_id": "B117-CI-PY314-UVCACHE-R3-261112",
+     "source_line": 142,
+     "line_count": 1,
+     "unit_sha256": "c9c63a77fd6a0df855f548ba76ba7e62447802795d33afbf37b4955ec9210540",
+     "unit_bytes": 7402
+    },
+    {
+     "task_id": "B117-G5-WINDOWS-NATIVE-REHEARSAL-R4-261111",
+     "source_line": 144,
+     "line_count": 1,
+     "unit_sha256": "0f5fc548172509230d37f4644ea28dc20144179822972de35141a1716cfee528",
+     "unit_bytes": 7195
+    },
+    {
+     "task_id": "B116-AUD-GPT6-F-R4-STATE-SYNC-R2-261110",
+     "source_line": 145,
+     "line_count": 1,
+     "unit_sha256": "f02aa2e1a9d467423e9c32dfed1db3f90231c94835cba2da0afd7f89951a748d",
+     "unit_bytes": 999
+    },
+    {
+     "task_id": "B115-G3-F-S1-TIMING-GATE-WARN-R4-261110",
+     "source_line": 146,
+     "line_count": 1,
+     "unit_sha256": "d605f0614d2ccced1b0bf7b59a6390e33a0c3ce2da9b1e335c6353d14b6f8b62",
+     "unit_bytes": 3620
+    },
+    {
+     "task_id": "B115-G3-C3-AUTHOR-TARGET-R2-261110",
+     "source_line": 147,
+     "line_count": 1,
+     "unit_sha256": "23f58e2d7008700ef4a24b07501033b996b47423778478fa537d44905b82303a",
+     "unit_bytes": 834
+    },
+    {
+     "task_id": "B115-G3-CI-POLL-RETRY-R2-261109",
+     "source_line": 148,
+     "line_count": 3,
+     "unit_sha256": "75b9ddc769fa2947c22920a6df63d03c83425c0efdae04eb1209bae7602506cd",
+     "unit_bytes": 2741
+    },
+    {
+     "task_id": "B123B-G6-WINEMU-LITE-R2-261109",
+     "source_line": 152,
+     "line_count": 13,
+     "unit_sha256": "df88a9a6438163aa8d6a64e4c39b9ff3298c22ef800dd6f9a2a788e63a1e5853",
+     "unit_bytes": 2342
+    }
+   ]
   }
  ]
 }

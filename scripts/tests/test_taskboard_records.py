@@ -85,9 +85,15 @@ def run(args):
     return code, out.getvalue()
 
 
-def apply_args(repo, keep, take, task=TASK):
-    return ["records-apply", "--repo", str(repo["root"]), "--task-id", task, "--checkpoint-oid", repo["c1"],
+def apply_args(repo, keep, take, task=TASK, allow="auto"):
+    """allow="auto"：fixture 的第 3 則是多行單元，搬得到它（take ≥ 3）時一律點名；其餘情況不點名。"""
+    if allow == "auto":
+        allow = [tid(3)] if take >= 3 else []
+    args = ["records-apply", "--repo", str(repo["root"]), "--task-id", task, "--checkpoint-oid", repo["c1"],
             "--keep", str(keep), "--take", str(take)]
+    for name in allow:
+        args += ["--allow-multiline", name]
+    return args
 
 
 def apply_ok(repo, keep=2, take=2):
@@ -130,7 +136,7 @@ def test_inventory_numbers_are_printed_by_the_tool(repo):
 def test_inventory_counts_units_over_the_byte_threshold(tmp_path, monkeypatch):
     board = make_board([rec(1, 1200) + "\n", rec(2, 1100) + "\n", rec(3, 1) + "\n"])  # 每個中文字 3 位元組：3600、3300、小
     out = build_repo(tmp_path, monkeypatch, board)
-    code, text = run(["records-plan", "--repo", str(out["root"])])
+    code, text = run(["records-plan", "--repo", str(out["root"]), "--keep", "1"])
     assert code == 0 and "over_3072=2" in text
 
 
@@ -165,7 +171,8 @@ def test_apply_is_deterministic_same_inputs_same_bytes(tmp_path, monkeypatch):
     shas = []
     for name in ("a", "b"):
         out = build_repo(tmp_path, monkeypatch, make_board(parts), name)
-        code, text = run(["records-apply", "--repo", str(out["root"]), "--task-id", TASK, "--checkpoint-oid", out["c1"], "--keep", "1", "--take", "3"])
+        code, text = run(["records-apply", "--repo", str(out["root"]), "--task-id", TASK, "--checkpoint-oid", out["c1"], "--keep", "1", "--take", "3",
+                           "--allow-multiline", tid(3)])
         assert code == 0, text
         shas.append((read(out["root"], "docs/archive/TASKBOARD-RECORDS-0001.md").encode("utf-8"),
                      read(out["root"], "docs/archive/TASKBOARD-ARCHIVE-MANIFEST.json"),
@@ -217,7 +224,8 @@ def test_apply_refuses_a_changed_board_or_unresolvable_checkpoint(repo):
 
 def test_apply_refuses_fence_text_and_duplicate_task_ids(tmp_path, monkeypatch):
     out = build_repo(tmp_path, monkeypatch, make_board([rec(1) + "\n", rec(2) + "\n````\n", rec(3) + "\n"]))
-    code, text = run(["records-apply", "--repo", str(out["root"]), "--task-id", TASK, "--checkpoint-oid", out["c1"], "--keep", "1", "--take", "2"])
+    code, text = run(["records-apply", "--repo", str(out["root"]), "--task-id", TASK, "--checkpoint-oid", out["c1"], "--keep", "1", "--take", "2",
+                     "--allow-multiline", tid(2)])
     assert code == 1 and "四個反引號" in text
     out = build_repo(tmp_path, monkeypatch, make_board([rec(1) + "\n", rec(1) + "\n", rec(2) + "\n"]), "dup")
     code, text = run(["records-apply", "--repo", str(out["root"]), "--task-id", TASK, "--checkpoint-oid", out["c1"], "--keep", "1", "--take", "1"])
@@ -391,7 +399,7 @@ def test_check_without_git_is_fail_closed_for_record_archives(repo, monkeypatch)
 
 
 def test_cli_exit_codes_and_check_29_entry_point(repo):
-    code, out = run(["records-plan", "--repo", str(repo["root"])])
+    code, out = run(["records-plan", "--repo", str(repo["root"]), "--keep", "2"])
     assert code == 0 and "RECORDS_INVENTORY" in out
     code, out = run(apply_args(repo, 2, 2))
     assert code == 0 and "TASKBOARD_RECORDS APPLY PASS entries=2 file=docs/archive/TASKBOARD-RECORDS-0001.md file_sha256=" in out
@@ -423,7 +431,8 @@ def test_c7_accepts_a_new_record_after_archiving_at_each_boundary(repo):
     for keep, take in ((1, 4), (3, 2), (4, 1)):
         base_files = {"docs/TASKBOARD.md": base_board}
         out = build_repo(repo["root"].parent, repo["mp"], base_board, "c7_%d" % keep)
-        code, text = run(["records-apply", "--repo", str(out["root"]), "--task-id", TASK, "--checkpoint-oid", out["c1"], "--keep", str(keep), "--take", str(take)])
+        extra = ["--allow-multiline", tid(3)] if take >= 3 else []
+        code, text = run(["records-apply", "--repo", str(out["root"]), "--task-id", TASK, "--checkpoint-oid", out["c1"], "--keep", str(keep), "--take", str(take)] + extra)
         assert code == 0, text
         board = read(out["root"], "docs/TASKBOARD.md")
         first = ta.record_units(board)[0]
@@ -564,3 +573,147 @@ def test_negative_archive_file_name_out_of_sequence_even_when_the_manifest_agree
     manifest["record_archives"][0]["file"] = new
     write(repo["root"], MANIFEST, ta.dump_manifest(manifest))
     assert any("file 必須是 docs/archive/TASKBOARD-RECORDS-0001.md" in f for f in fails_of(repo))
+
+
+# ---- G7-b3a2：O1 紀錄消失、O2 多行單元點名、O4 只增不減、看板上限、--keep 必填 ----
+
+def second_apply(repo, keep=2, take=1):
+    """第一次（keep=3,take=1）提交後，以新 commit 為 checkpoint 做第二次；回傳第二次之前的 checkpoint。"""
+    apply_ok(repo, keep=3, take=1)
+    git(repo["root"], "add", "-A")
+    git(repo["root"], "commit", "-q", "-m", "first records archive")
+    c2 = git(repo["root"], "rev-parse", "HEAD")
+    write(repo["root"], "docs/refactor-backlog.md", "上次核對通過的 HEAD：%s\n" % c2)
+    code, out = run(["records-apply", "--repo", str(repo["root"]), "--task-id", TASK + "-2", "--checkpoint-oid", c2,
+                     "--keep", str(keep), "--take", str(take)])
+    assert code == 0, out
+    repo["mp"].setattr(ta, "RECORD_ARCHIVES_MIN", 2)
+    return c2
+
+
+def test_o1_a_record_deleted_without_archiving_is_a_fail(repo):
+    apply_ok(repo)
+    assert fails_of(repo) == []
+    text = read(repo["root"], "docs/TASKBOARD.md")
+    unit = ta.record_units(text)[1]  # 保留的第 2 則：不封存就刪掉
+    write(repo["root"], "docs/TASKBOARD.md", text.replace(ta.unit_text(unit["lines"]) + "\n", "", 1))
+    assert any("紀錄消失" in f and unit["task_id"] in f for f in fails_of(repo))
+
+
+def test_o1_a_record_in_an_archive_or_on_the_board_is_not_reported(repo):
+    apply_ok(repo, keep=2, take=3)
+    assert not any("紀錄消失" in f for f in fails_of(repo))
+
+
+def test_o1_check_is_fail_closed_when_the_checkpoint_board_cannot_be_read(repo):
+    apply_ok(repo)
+    write(repo["root"], "docs/refactor-backlog.md", "上次核對通過的 HEAD：%s\n" % ("b" * 40))
+    assert fails_of(repo) != []
+
+
+def test_o4_record_archives_only_grow_a_rewritten_first_archive_is_a_fail(repo):
+    second_apply(repo)
+    assert fails_of(repo) == []
+    manifest = json.loads(read(repo["root"], MANIFEST))
+    assert len(manifest["record_archives"]) == 2
+
+    def edit(archive):
+        archive["batch"] = archive["batch"] + "-X"  # 自洽重產（SHA 與內容一致）但改寫了既有封存檔
+    rewrite_archive(repo, edit)
+    got = fails_of(repo)
+    assert any("追加" in f for f in got)
+    assert not any("與 git 在 checkpoint" in f for f in got)  # 其餘核對都過：只有只增不減擋得住
+
+
+def test_o4_a_shorter_record_archives_list_than_the_checkpoint_is_a_fail(repo):
+    c2 = second_apply(repo)
+    git(repo["root"], "add", "-A")
+    git(repo["root"], "commit", "-q", "-m", "second records archive")
+    c3 = git(repo["root"], "rev-parse", "HEAD")
+    write(repo["root"], "docs/refactor-backlog.md", "上次核對通過的 HEAD：%s\n" % c3)
+    assert fails_of(repo) == []
+    manifest = json.loads(read(repo["root"], MANIFEST))
+    manifest["record_archives"] = manifest["record_archives"][:1]
+    write(repo["root"], MANIFEST, ta.dump_manifest(manifest))
+    got = fails_of(repo)
+    assert any("追加" in f for f in got)
+    assert c2 != c3
+
+
+def test_o4_a_missing_key_at_the_checkpoint_counts_as_an_empty_list(repo):
+    apply_ok(repo)  # checkpoint c1 的 manifest 沒有 record_archives 鍵
+    assert "record_archives" not in json.loads(git(repo["root"], "show", "%s:%s" % (repo["c1"], MANIFEST)))
+    assert fails_of(repo) == []
+
+
+def test_o4_the_checkpoint_manifest_that_is_not_json_is_a_fail(repo):
+    apply_ok(repo)
+    good = read(repo["root"], MANIFEST)
+    write(repo["root"], MANIFEST, "{ not json")
+    git(repo["root"], "add", "-A")
+    git(repo["root"], "commit", "-q", "-m", "bad manifest at checkpoint")
+    c = git(repo["root"], "rev-parse", "HEAD")
+    write(repo["root"], MANIFEST, good)
+    write(repo["root"], "docs/refactor-backlog.md", "上次核對通過的 HEAD：%s\n" % c)
+    assert any("不是合法 JSON" in f for f in fails_of(repo))
+
+
+def test_floor_is_two_in_the_real_constant():
+    import importlib
+    fresh = importlib.reload(ta)
+    assert fresh.RECORD_ARCHIVES_MIN == 2 and fresh.RECORDS_ON_BOARD_MAX == 6
+
+
+def test_ceiling_seven_records_on_the_board_is_a_fail_and_six_passes(tmp_path, monkeypatch):
+    six = build_repo(tmp_path, monkeypatch, make_board([rec(n) + "\n" for n in range(1, 7)]), "six")
+    assert not any("超過上限" in f for f in ta.check(str(six["root"]))[0])
+    seven = build_repo(tmp_path, monkeypatch, make_board([rec(n) + "\n" for n in range(1, 8)]), "seven")
+    assert any("超過上限 6 則" in f for f in ta.check(str(seven["root"]))[0])
+
+
+def test_o2_multi_line_unit_is_refused_without_naming_and_files_are_untouched(repo):
+    before = {rel: read(repo["root"], rel) for rel in ("docs/TASKBOARD.md", MANIFEST)}
+    code, out = run(apply_args(repo, 2, 3, allow=[]))
+    assert code == 1 and "多行單元" in out and tid(3) in out and "--allow-multiline" in out
+    assert {rel: read(repo["root"], rel) for rel in before} == before
+    assert not os.path.exists(os.path.join(str(repo["root"]), "docs", "archive", "TASKBOARD-RECORDS-0001.md"))
+
+
+def test_o2_naming_makes_the_same_move_succeed(repo):
+    code, out = run(apply_args(repo, 2, 3, allow=[tid(3)]))
+    assert code == 0, out
+
+
+@pytest.mark.parametrize("allow", [
+    ["B117-NOPE-R1-261118"],        # 不存在
+    ["B117-T1-R1-261119"],          # 存在但不搬（保留中）
+    [tid(4)],                       # 搬，但是單行
+    [tid(3), tid(3)],               # 點名重複
+])
+def test_o2_bad_names_are_refused(repo, allow):
+    code, out = run(apply_args(repo, 2, 3, allow=allow))
+    assert code == 1 and "APPLY FAIL" in out
+    assert not os.path.exists(os.path.join(str(repo["root"]), "docs", "archive", "TASKBOARD-RECORDS-0001.md"))
+
+
+def test_o2_naming_a_multi_line_unit_that_is_kept_is_refused(repo):
+    code, out = run(apply_args(repo, 2, 2, allow=[tid(3)]))  # take=2 只搬第 4、5 則；第 3 則是多行但不在搬移範圍
+    assert code == 1 and "不是本次要搬的多行單元" in out
+
+
+def test_o2_records_plan_prints_the_first_40_chars_of_every_line_of_multi_line_units(tmp_path, monkeypatch):
+    long_line = "續" * 60
+    out = build_repo(tmp_path, monkeypatch, make_board([rec(1) + "\n", rec(2) + "\n" + long_line + "\n短續行\n", rec(3) + "\n"]), "mlplan")
+    code, text = run(["records-plan", "--repo", str(out["root"]), "--keep", "1"])
+    assert code == 0
+    lines = [l for l in text.splitlines() if l.startswith("  MULTILINE ")]
+    assert len(lines) == 3 and all(l.split()[2].startswith("L") for l in lines)
+    assert ("續" * 40) in lines[1] and ("續" * 41) not in lines[1] and "短續行" in lines[2]
+    assert "MULTILINE %s" % tid(1) not in text  # 單行單元不印
+
+
+def test_keep_is_required_for_both_records_commands(repo):
+    with pytest.raises(SystemExit):
+        run(["records-plan", "--repo", str(repo["root"])])
+    with pytest.raises(SystemExit):
+        run(["records-apply", "--repo", str(repo["root"]), "--task-id", TASK, "--checkpoint-oid", repo["c1"], "--take", "1"])
