@@ -53,6 +53,7 @@ def repo(tmp_path, monkeypatch):
     monkeypatch.setattr(ta, "LEGACY_BATCH", TASK)
     monkeypatch.setattr(ta, "FIRST_ARCHIVE_ENTRIES", 3)
     monkeypatch.setattr(ta, "FIRST_ARCHIVE_SHA256", None)  # 尚未寫成；apply_ok 之後才釘定
+    monkeypatch.setattr(ta, "RECORD_ARCHIVES_MIN", 0)  # 本檔測看板列封存；批次紀錄封存見 test_taskboard_records.py
     root = tmp_path / "repo"
     root.mkdir()
     git(root, "init", "-q")

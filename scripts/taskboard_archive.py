@@ -20,11 +20,23 @@
 第一個封存檔（含全部 USER_CONFIRMED_LEGACY 條目）寫成後固定：批次、SHA-256 與筆數釘在本檔常數，
 USER_CONFIRMED_LEGACY 只能出現在第一個封存檔。
 
+批次紀錄封存（B-117 G7-b3a）：看板的「批次紀錄」（行首符合 history_guard.C7_RECORD 的行）只留最新的 N 則，
+較舊的整則（紀錄行與緊接其後、到空白行或下一則紀錄之前的續行，稱為一個單元）逐字移到
+`docs/archive/TASKBOARD-RECORDS-NNNN.md`，清單在 manifest 的 `record_archives`。規則在任何時點都成立：
+  - 看板永遠至少留 1 則（保留數 < 1 一律拒絕；C7 要求新紀錄緊接舊首筆之前，舊首筆不可被搬走）；
+  - 搬的是「最舊的 take 則」，保留的是「最新的 keep 則」，封存檔內維持看板順序（新→舊）；
+  - 封存檔由本工具確定性產生（UTF-8、LF、看板順序），CHECK 29 用 git 在 checkpoint_oid 的看板逐行核對原文，
+    不信任提示詞或作者端的檔案。
+  keep 的算法：保留的是套用本工具當下看板上的既有紀錄數，不含該批自己新增的那一則。
+
 命令列（唯讀者標 ◎）：
   python scripts/taskboard_archive.py plan  --repo <repo>                        ◎ 列出每一列的判定
   python scripts/taskboard_archive.py check --repo <repo>                        ◎ CHECK 29 同一判定
   python scripts/taskboard_archive.py apply --repo <repo> --task-id <TASK> --checkpoint-oid <oid>
                                             --entry <ID>[:<evidence-oid>] ...    寫入工作區（不 commit）
+  python scripts/taskboard_archive.py records-plan  --repo <repo> [--keep N]     ◎ 盤點數字與每則的保留／搬移判定
+  python scripts/taskboard_archive.py records-apply --repo <repo> --task-id <TASK> --checkpoint-oid <oid>
+                                            --keep N --take M                    寫入工作區（不 commit）
 
 fail-closed：manifest、封存檔、AUDIT-LOG、checkpoint 讀不到或格式不符，git 回答不出來，
 一律 FAIL；不適用的只有「沒有任何需要 git 的條目」。
@@ -37,6 +49,11 @@ import os
 import re
 import subprocess
 import sys
+
+try:
+    from scripts.history_guard import C7_RECORD  # 批次紀錄的判定與 C7 守衛共用同一個正規式，不複製
+except ImportError:
+    from history_guard import C7_RECORD
 
 TASKBOARD_REL = 'docs/TASKBOARD.md'
 ARCHIVE_DIR_REL = 'docs/archive'
@@ -72,6 +89,13 @@ FENCE = '````text'
 FENCE_END = '````'
 ENTRY_KEYS = ('id', 'section', 'source_line', 'status_at_archive', 'basis', 'evidence_commit',
               'user_decision', 'row_sha256', 'row_bytes')
+
+# 批次紀錄封存（G7-b3a）
+RECORDS_PREFIX = ARCHIVE_DIR_REL + '/TASKBOARD-RECORDS-'
+RECORD_ARCHIVES_MIN = 1  # 已寫成的批次紀錄封存檔不得移除；測試以 0 表示「尚未寫成」
+RECORD_ARCHIVE_KEYS = ('file', 'batch', 'checkpoint_oid', 'file_sha256', 'keep', 'entries')
+RECORD_ENTRY_KEYS = ('task_id', 'source_line', 'line_count', 'unit_sha256', 'unit_bytes')
+RECORD_BIG_BYTES = 3072  # 盤點「超過 3,072 位元組」的門檻（盤點數字由工具印出，不人工計數）
 
 
 class Fail(Exception):
@@ -404,6 +428,8 @@ def _check(root):
                         fails.append('%s %s：%s' % (where, entry['id'], reason))
             except Fail as exc:
                 fails.append('%s' % exc)
+    record_fails, record_archives, record_total = check_records(root, manifest, taskboard, backlog_text)
+    fails.extend(record_fails)
     section = taskboard.split('\n## 封存區', 1)
     if len(section) != 2 or ARCHIVE_PREFIX not in section[1]:
         fails.append('%s 的「## 封存區」必須指向 %s*' % (TASKBOARD_REL, ARCHIVE_PREFIX))
@@ -411,7 +437,7 @@ def _check(root):
         fails.append('%s 必須指向 %s*' % (ARCHIVE_INDEX_REL, ARCHIVE_PREFIX))
     if not os.path.isfile(os.path.join(root, *README_REL.split('/'))):
         fails.append('%s 不存在' % README_REL)
-    infos.append('封存檔 %d 個、封存列 %d 列、USER 保留 %d 列' % (len(manifest['archives']), total, len(keep)))
+    infos.append('封存檔 %d 個、封存列 %d 列、USER 保留 %d 列；批次紀錄封存檔 %d 個、封存 %d 則' % (len(manifest['archives']), total, len(keep), record_archives, record_total))
     return fails, infos
 
 
@@ -524,21 +550,298 @@ def apply(root, task_id, checkpoint_oid, entry_args, out):
     return 0
 
 
+def record_units(text):
+    """批次紀錄單元：[{task_id, start（1 起算）, lines}]，依看板順序。
+    單元 = 紀錄行 + 其後的續行，止於空白行（僅空白字元也算）或下一則紀錄行之前。"""
+    lines = text.split('\n')
+    starts = [i for i, line in enumerate(lines) if C7_RECORD.match(line)]
+    units = []
+    for position, start in enumerate(starts):
+        limit = starts[position + 1] if position + 1 < len(starts) else len(lines)
+        end = start + 1
+        while end < limit and lines[end].strip() != '':
+            end += 1
+        units.append({'task_id': C7_RECORD.match(lines[start]).group(1), 'start': start + 1, 'lines': lines[start:end]})
+    return units
+
+
+def unit_text(lines):
+    return '\n'.join(lines)
+
+
+def unit_bytes(lines):
+    return len(unit_text(lines).encode('utf-8'))
+
+
+def record_inventory(units):
+    """盤點數字。回傳 (筆數, 總位元組, 超過門檻的筆數, 最大位元組, 最大者的 task_id)。"""
+    sizes = [(unit_bytes(u['lines']), u['task_id']) for u in units]
+    biggest = max(sizes) if sizes else (0, '')
+    return len(sizes), sum(s for s, _ in sizes), sum(1 for s, _ in sizes if s > RECORD_BIG_BYTES), biggest[0], biggest[1]
+
+
+def render_records_archive(number, archive, units_by_id):
+    lines = [
+        '# 任務看板批次紀錄封存 %04d' % number, '',
+        '> 本檔由 `scripts/taskboard_archive.py records-apply` 產生，寫成後不得修改。清單與每則的 SHA-256 在 `TASKBOARD-ARCHIVE-MANIFEST.json` 的 `record_archives`，由 CHECK 29 逐位元組核對，並以 git 在封存當時 checkpoint 的 `docs/TASKBOARD.md` 逐行比對原文。',
+        '> 封存不是刪除：下列各則是封存當時 `docs/TASKBOARD.md` 批次紀錄的原文（含續行），逐字保留。',
+        '> 封存批次：%s；封存當時 checkpoint：`%s`；看板保留數：%d' % (archive['batch'], archive['checkpoint_oid'], archive['keep']), '',
+        '## 封存紀錄', '']
+    for entry in archive['entries']:
+        lines += ['### ' + entry['task_id'], '',
+                  '- 原位置：`%s` 第 %d 行起，共 %d 行（封存前）' % (TASKBOARD_REL, entry['source_line'], entry['line_count']), '',
+                  FENCE, unit_text(units_by_id[entry['task_id']]), FENCE_END, '']
+    return '\n'.join(lines).rstrip('\n') + '\n'
+
+
+def parse_records_archive(text):
+    """封存檔內每個圍欄的內容（行列表）。圍欄內可有多行；結構不符就 Fail。"""
+    lines = text.split('\n')
+    units, index = [], 0
+    while index < len(lines):
+        if lines[index] == FENCE:
+            end = index + 1
+            while end < len(lines) and lines[end] != FENCE_END:
+                end += 1
+            if end >= len(lines) or end == index + 1:
+                raise Fail('批次紀錄封存檔圍欄結構錯誤（第 %d 行）' % (index + 1))
+            units.append(lines[index + 1:end])
+            index = end
+        index += 1
+    return units
+
+
+def git_blob_text(root, oid, rel):
+    """git 在某 commit 的檔案原文（不 strip）。回答不出來就 Fail。"""
+    try:
+        proc = subprocess.run(['git', '-C', root, 'cat-file', 'blob', '%s:%s' % (oid, rel)], capture_output=True, timeout=60)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise Fail('git 無法執行（%s）' % type(exc).__name__)
+    if proc.returncode != 0:
+        raise Fail('git 讀不到 %s:%s' % (oid[:7], rel))
+    try:
+        return proc.stdout.decode('utf-8')
+    except UnicodeDecodeError:
+        raise Fail('%s:%s 不是合法 UTF-8' % (oid[:7], rel))
+
+
+def check_record_entry_fields(entry, where, fails):
+    if not isinstance(entry, dict) or sorted(entry) != sorted(RECORD_ENTRY_KEYS):
+        fails.append('%s 欄位必須恰為 %s' % (where, '、'.join(RECORD_ENTRY_KEYS)))
+        return False
+    good = (_is_text(entry['task_id']) and _is_int(entry['source_line']) and entry['source_line'] >= 1
+            and _is_int(entry['line_count']) and entry['line_count'] >= 1
+            and isinstance(entry['unit_sha256'], str) and SHA256_RE.match(entry['unit_sha256'])
+            and _is_int(entry['unit_bytes']))
+    if not good:
+        fails.append('%s 欄位型別不符' % where)
+    return bool(good)
+
+
+def check_records(root, manifest, taskboard, backlog_text):
+    """CHECK 29 的批次紀錄部分。回傳 (fails, 批次紀錄封存檔數, 封存則數)。"""
+    fails, total = [], 0
+    archives = manifest.get('record_archives', [])
+    if not isinstance(archives, list):
+        return ['%s record_archives 必須是陣列' % MANIFEST_REL], 0, 0
+    if len(archives) < RECORD_ARCHIVES_MIN:
+        fails.append('%s record_archives 少於 %d 個：已寫成的批次紀錄封存檔不得移除' % (MANIFEST_REL, RECORD_ARCHIVES_MIN))
+    board_units = record_units(taskboard)
+    board_ids = [u['task_id'] for u in board_units]
+    board_first = {u['lines'][0] for u in board_units}
+    if archives and not board_units:
+        fails.append('%s 批次紀錄區至少要保留 1 則（C7 要求新紀錄緊接舊首筆之前）' % TASKBOARD_REL)
+    if len(set(board_ids)) != len(board_ids):
+        fails.append('%s 批次紀錄的 TASK_ID 重複' % TASKBOARD_REL)
+    seen, checkpoint, board_at = set(), None, {}
+    for position, archive in enumerate(archives, 1):
+        where = '%s record_archives[%d]' % (MANIFEST_REL, position - 1)
+        if not isinstance(archive, dict) or sorted(archive) != sorted(RECORD_ARCHIVE_KEYS):
+            fails.append('%s 欄位必須恰為 %s' % (where, '、'.join(RECORD_ARCHIVE_KEYS)))
+            continue
+        expected_rel = '%s%04d.md' % (RECORDS_PREFIX, position)
+        if archive['file'] != expected_rel:
+            fails.append('%s file 必須是 %s' % (where, expected_rel))
+            continue
+        if (not isinstance(archive['checkpoint_oid'], str) or not OID_RE.match(archive['checkpoint_oid'])
+                or not _is_text(archive['batch']) or not isinstance(archive['file_sha256'], str)
+                or not SHA256_RE.match(archive['file_sha256']) or not _is_int(archive['keep']) or archive['keep'] < 1):
+            fails.append('%s batch、checkpoint_oid、file_sha256 或 keep（須 ≥ 1）格式不符' % where)
+            continue
+        entries = archive['entries']
+        if not isinstance(entries, list) or not entries:
+            fails.append('%s entries 必須是非空陣列' % where)
+            continue
+        try:
+            text = read_text(root, archive['file'])
+            file_units = parse_records_archive(text)
+        except Fail as exc:
+            fails.append('%s' % exc)
+            continue
+        if sha256_text(text) != archive['file_sha256']:
+            fails.append('%s file_sha256 與封存檔不符' % where)
+        if len(file_units) != len(entries):
+            fails.append('%s 封存檔則數 %d 與清單 %d 不符' % (where, len(file_units), len(entries)))
+            continue
+        units_by_id, fields_ok, last_line = {}, True, 0
+        for entry, lines in zip(entries, file_units):
+            if not check_record_entry_fields(entry, where + ' entry', fails):
+                fields_ok = False
+                continue
+            tid = entry['task_id']
+            total += 1
+            if tid in seen:
+                fails.append('%s 重複封存 %s' % (where, tid))
+            seen.add(tid)
+            units_by_id[tid] = lines
+            match = C7_RECORD.match(lines[0])
+            if not match or match.group(1) != tid:
+                fails.append('%s %s：封存單元的首行不是該 TASK_ID 的批次紀錄' % (where, tid))
+            if (sha256_text(unit_text(lines)) != entry['unit_sha256'] or unit_bytes(lines) != entry['unit_bytes']
+                    or len(lines) != entry['line_count']):
+                fails.append('%s %s：原文與清單的 SHA-256、位元組數或行數不符' % (where, tid))
+            if entry['source_line'] <= last_line:
+                fails.append('%s %s：清單必須依看板原順序（source_line 遞增）' % (where, tid))
+            last_line = entry['source_line']
+            if tid in board_ids or lines[0] in board_first:
+                fails.append('%s %s：看板仍有同一則批次紀錄（封存必須是移動）' % (where, tid))
+        if not fields_ok:
+            continue
+        if render_records_archive(position, archive, units_by_id) != text:
+            fails.append('%s 封存檔內容與清單重新產生的結果不一致' % where)
+        try:
+            if checkpoint is None:
+                checkpoint = read_checkpoint(backlog_text)
+                if resolve_commit(root, checkpoint) != checkpoint:
+                    raise Fail('checkpoint %s 無法解析' % checkpoint[:7])
+            oid = archive['checkpoint_oid']
+            if resolve_commit(root, oid) != oid or not is_ancestor(root, oid, checkpoint):
+                fails.append('%s checkpoint_oid 無法解析或不是目前 checkpoint 的祖先（或等於）' % where)
+                continue
+            if oid not in board_at:
+                board_at[oid] = git_blob_text(root, oid, TASKBOARD_REL).split('\n')
+            old_lines = board_at[oid]
+            for entry in entries:
+                lines = units_by_id[entry['task_id']]
+                start = entry['source_line'] - 1
+                if old_lines[start:start + len(lines)] != lines:
+                    fails.append('%s %s：與 git 在 checkpoint %s 的看板原文不一致' % (where, entry['task_id'], oid[:7]))
+        except Fail as exc:
+            fails.append('%s' % exc)
+    return fails, len(archives), total
+
+
+def records_plan(root, out, keep):
+    try:
+        if keep < 1:
+            raise Fail('--keep 必須 ≥ 1（看板永遠至少留 1 則批次紀錄）')
+        units = record_units(read_text(root, TASKBOARD_REL))
+        count, total, big, biggest, biggest_id = record_inventory(units)
+        board_bytes = len(read_text(root, TASKBOARD_REL).encode('utf-8'))
+    except Exception as exc:
+        out.write('TASKBOARD_RECORDS PLAN FAIL %s\n' % (exc if isinstance(exc, Fail) else type(exc).__name__))
+        return 1
+    out.write('RECORDS_INVENTORY count=%d total_bytes=%d over_%d=%d max_bytes=%d max_task=%s board_bytes=%d\n'
+              % (count, total, RECORD_BIG_BYTES, big, biggest, biggest_id, board_bytes))
+    moved = 0
+    for number, unit in enumerate(units, 1):
+        state = 'KEEP' if number <= keep else 'MOVE'
+        size = unit_bytes(unit['lines'])
+        if state == 'MOVE':
+            moved += size
+        out.write('RECORD %d %s line=%d lines=%d bytes=%d %s\n' % (number, unit['task_id'], unit['start'], len(unit['lines']), size, state))
+    out.write('RECORDS_SUMMARY keep=%d movable=%d movable_bytes=%d\n' % (keep, max(0, count - keep), moved))
+    return 0
+
+
+def records_apply(root, task_id, checkpoint_oid, keep, take, out):
+    try:
+        if keep < 1:
+            raise Fail('--keep 必須 ≥ 1（看板永遠至少留 1 則批次紀錄）')
+        if take < 1:
+            raise Fail('--take 必須 ≥ 1')
+        if not task_id:
+            raise Fail('--task-id 為必填')
+        manifest = load_manifest(root)
+        taskboard = read_text(root, TASKBOARD_REL)
+        checkpoint = read_checkpoint(read_text(root, BACKLOG_REL))
+        if not OID_RE.match(checkpoint_oid) or resolve_commit(root, checkpoint_oid) != checkpoint_oid:
+            raise Fail('--checkpoint-oid 必須是可解析的完整 commit')
+        if checkpoint_oid != checkpoint and not is_ancestor(root, checkpoint_oid, checkpoint):
+            raise Fail('--checkpoint-oid 必須等於或是 §5.1 checkpoint 的祖先')
+        if git_blob_text(root, checkpoint_oid, TASKBOARD_REL) != taskboard:
+            raise Fail('工作區的看板與 checkpoint 的看板不同：records-apply 只能在未改動看板的工作區執行')
+        units = record_units(taskboard)
+        ids = [u['task_id'] for u in units]
+        if len(set(ids)) != len(ids):
+            raise Fail('看板批次紀錄的 TASK_ID 重複')
+        movable = len(units) - keep
+        if movable < 1:
+            raise Fail('看板批次紀錄 %d 則，保留 %d 則後沒有可搬的紀錄' % (len(units), keep))
+        if take > movable:
+            raise Fail('--take %d 超過可搬的 %d 則' % (take, movable))
+        moved = units[len(units) - take:]
+        for unit in moved:
+            if FENCE_END in unit_text(unit['lines']):
+                raise Fail('%s：原文含四個反引號，無法安全封存' % unit['task_id'])
+        archives = manifest.setdefault('record_archives', [])
+        if not isinstance(archives, list):
+            raise Fail('record_archives 必須是陣列')
+        number = len(archives) + 1
+        entries = [{'task_id': u['task_id'], 'source_line': u['start'], 'line_count': len(u['lines']),
+                    'unit_sha256': sha256_text(unit_text(u['lines'])), 'unit_bytes': unit_bytes(u['lines'])} for u in moved]
+        archive = {'file': '%s%04d.md' % (RECORDS_PREFIX, number), 'batch': task_id, 'checkpoint_oid': checkpoint_oid,
+                   'file_sha256': '', 'keep': keep, 'entries': entries}
+        text = render_records_archive(number, archive, {u['task_id']: u['lines'] for u in moved})
+        archive['file_sha256'] = sha256_text(text)
+        archives.append(archive)
+        lines = taskboard.split('\n')
+        for unit in sorted(moved, key=lambda u: u['start'], reverse=True):
+            first = unit['start'] - 1
+            last = first + len(unit['lines'])
+            # 前後都是空白行時多移走一個，不留連續兩個空白行；只有一側是空白行時保留它，
+            # 不讓前後的內容因為搬走而黏在一起（例如標題接在紀錄行之後）。
+            if first > 0 and lines[first - 1].strip() == '' and last < len(lines) and lines[last].strip() == '':
+                last += 1
+            del lines[first:last]
+        with open(os.path.join(root, *archive['file'].split('/')), 'wb') as handle:
+            handle.write(text.encode('utf-8'))
+        with open(os.path.join(root, *MANIFEST_REL.split('/')), 'wb') as handle:
+            handle.write(dump_manifest(manifest).encode('utf-8'))
+        with open(os.path.join(root, *TASKBOARD_REL.split('/')), 'wb') as handle:
+            handle.write('\n'.join(lines).encode('utf-8'))
+    except Exception as exc:
+        out.write('TASKBOARD_RECORDS APPLY FAIL %s\n' % (exc if isinstance(exc, (Fail, OSError)) else type(exc).__name__))
+        return 1
+    out.write('TASKBOARD_RECORDS APPLY PASS entries=%d file=%s file_sha256=%s\n' % (len(entries), archive['file'], archive['file_sha256']))
+    return 0
+
+
 def main(argv=None, out=None):
     out = out or sys.stdout
     parser = argparse.ArgumentParser(description='任務看板封存工具')
     sub = parser.add_subparsers(dest='cmd', required=True)
-    for name in ('plan', 'check', 'apply'):
+    for name in ('plan', 'check', 'apply', 'records-plan', 'records-apply'):
         item = sub.add_parser(name)
         item.add_argument('--repo', required=True)
         if name == 'apply':
             item.add_argument('--task-id', default='')
             item.add_argument('--checkpoint-oid', default='')
             item.add_argument('--entry', action='append', default=[])
+        if name in ('records-plan', 'records-apply'):
+            item.add_argument('--keep', type=int, default=3)
+        if name == 'records-apply':
+            item.add_argument('--task-id', default='')
+            item.add_argument('--checkpoint-oid', default='')
+            item.add_argument('--take', type=int, default=0)
     args = parser.parse_args(argv)
     root = os.path.abspath(args.repo)
     if args.cmd == 'plan':
         return plan(root, out)
+    if args.cmd == 'records-plan':
+        return records_plan(root, out, args.keep)
+    if args.cmd == 'records-apply':
+        return records_apply(root, args.task_id, args.checkpoint_oid, args.keep, args.take, out)
     if args.cmd == 'apply':
         return apply(root, args.task_id, args.checkpoint_oid, args.entry, out)
     fails, infos = check(root)

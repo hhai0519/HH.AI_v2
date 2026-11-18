@@ -2927,6 +2927,17 @@ def test_check_30_ignores_marker_text_inside_a_longer_line(tmp_path):
     assert fails == [] and len(infos) == 3
 
 
+def test_check_30_accepts_half_width_colon_and_counts_it_as_a_duplicate(tmp_path):
+    """第二意見 O1（B117-G7B2）：全形與半形冒號都算標記；半形冒號的第二行同樣被計為重複。"""
+    half = [l.replace("：", ":", 1) if "**NEXT_SLICE**" in l else l for l in _C30_GOOD]
+    fails, infos = _c30_run(tmp_path, half)
+    assert fails == [] and len(infos) == 3
+    fails, _ = _c30_run(tmp_path, _C30_GOOD + ["**NEXT_SLICE**:半形冒號的第二行"])
+    assert len(fails) == 1 and "恰一行，找到 2 行" in fails[0]
+    fails, _ = _c30_run(tmp_path, [l for l in _C30_GOOD if "**NEXT_SLICE**" not in l] + ["**NEXT_SLICE**:"])
+    assert len(fails) == 1 and "不為空白" in fails[0]
+
+
 def test_check_30_fail_closed_when_taskboard_is_missing_or_not_utf8(tmp_path):
     fails, _ = check_30_taskboard_single_line_markers(str(tmp_path))
     assert len(fails) == 1 and "讀取失敗" in fails[0]

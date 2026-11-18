@@ -1,5 +1,5 @@
 {
-  "base_head": "012e66c",
+  "base_head": "aef60b9",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -575,16 +575,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 419,
-      "sha256": "ae3af3d95262a521309784123a3028d0dbd4031117d51ce754950b337944f41f"
+      "lines": 420,
+      "sha256": "901e4832d68dd86b4229fa11bc23620794fe94732584ddc6820d2eb5fcf2ba0a"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 389,
-      "sha256": "03100512f0653c5e1e1efaefc0a81e37cb5dcd590dfe7161f55bd11fd70f9b38"
+      "lines": 390,
+      "sha256": "68f9f9c597cb65ab2e531184c49672e54235f6d7f96c21a18bc2bab2dec55978"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -626,8 +626,8 @@
         "## G. 舊 repo 未盤點區塊（2026-09-02 新發現）",
         "## 封存區"
       ],
-      "lines": 536,
-      "sha256": "2098066f807841e66b2176eaab65e42977704273293bb9264d75e7170c1a1716"
+      "lines": 492,
+      "sha256": "5334b044fb7c0ea64fe57cad424936c3bf0be8a536d620cca3eae68e9857e9a4"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1136,8 +1136,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6475,
-      "sha256": "f52cd606fb32fe509ca03860d7b91396fd50b35287f113518a34a60068cc4cfa"
+      "lines": 6476,
+      "sha256": "2fac7aab4116da9bfd582629fddb5b292f4e24cf46b3ab796666c246acbdd8f4"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1597,10 +1597,11 @@
     "scripts/taskboard_archive.py": {
       "fences": 0,
       "headings": [
-        "# 第一個封存檔（USER 一次性確認）寫成後即固定：批次、位元組與筆數釘在這裡，之後改封存檔或清單都會 FAIL。"
+        "# 第一個封存檔（USER 一次性確認）寫成後即固定：批次、位元組與筆數釘在這裡，之後改封存檔或清單都會 FAIL。",
+        "# 批次紀錄封存（G7-b3a）"
       ],
-      "lines": 554,
-      "sha256": "04e663af686853337c187e1446ffb71e7980037d22ce05a11432b88bcbf3360c"
+      "lines": 857,
+      "sha256": "9d1323bde2ec3113f615a8bc2e9c9305e9c0ef6d42ee685597fbb136a9954a72"
     },
     "scripts/tests/test_anchor.py": {
       "fences": 0,
@@ -1871,8 +1872,8 @@
         "# CHECK 30 Tests: TASKBOARD single-line markers (B-117 G7-b2)",
         "# ---------------------------------------------------------------------------"
       ],
-      "lines": 2944,
-      "sha256": "69e12264dccd23d93c7ed2217cdb39ea59277583c5cc1559ed40607dd4c97763"
+      "lines": 2955,
+      "sha256": "f411bae25065118dab2107b2f997d1d9a90f9e22471af11ede7aa9a98fab8adf"
     },
     "scripts/tests/test_delivery_pack.py": {
       "fences": 0,
@@ -2280,8 +2281,16 @@
     "scripts/tests/test_taskboard_archive.py": {
       "fences": 0,
       "headings": [],
-      "lines": 559,
-      "sha256": "a65ca8804bce15f53af2d688e127af5da5032ad7d2aac7368723a71cb9b398df"
+      "lines": 560,
+      "sha256": "bde3b8fcc9949af76834861cbf1c22b397ba69bbb1663eaec0cef4bb1c223b8a"
+    },
+    "scripts/tests/test_taskboard_records.py": {
+      "fences": 0,
+      "headings": [
+        "# 固定 commit 時間：兩個內容相同的測試 repo 才會得到相同的 commit id（封存檔標頭含 checkpoint），確定性測試不隨秒數飄動"
+      ],
+      "lines": 566,
+      "sha256": "c146eaa135a6cb6e45e21fb1f6a75227e7dc9d6c7da2a8ebef8812e1ed189ab3"
     },
     "scripts/tests/test_uv_admission.py": {
       "fences": 0,
@@ -2411,7 +2420,7 @@
       "sha256": "fbc9ad85cb78f44be63864171bf49dfd7605b07f6b030d7ef9c85f810fa11f19"
     }
   },
-  "generated_at": "2026-11-18T04:11:48Z",
+  "generated_at": "2026-11-18T07:12:02Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

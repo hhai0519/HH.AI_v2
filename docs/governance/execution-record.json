@@ -1,40 +1,38 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "B117-G7B2-ARCHIVE-CHECK30-261118",
-  "base_oid": "012e66cfd03ec087f01cf7009c96d9d3fafb385f",
+  "task_id": "B117-G7B3A-RECORDS-ARCHIVE-261118",
+  "base_oid": "aef60b97dd5c00d1c6070049d5ecf3dc5148908b",
   "plan": {
     "allowed_paths": [
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
-      "docs/archive/TASKBOARD-ARCHIVE-0002.md",
       "docs/archive/TASKBOARD-ARCHIVE-MANIFEST.json",
+      "docs/archive/TASKBOARD-ARCHIVE-README.md",
+      "docs/archive/TASKBOARD-RECORDS-0001.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/ops/q2-draft-precheck.md",
       "docs/refactor-backlog.md",
-      "scripts/check_consistency.py",
       "scripts/taskboard_archive.py",
       "scripts/tests/test_check_consistency.py",
       "scripts/tests/test_taskboard_archive.py",
-      "scripts/tests/test_verifier_fail_closed.py"
+      "scripts/tests/test_taskboard_records.py"
     ],
     "required_paths": [
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
-      "docs/archive/TASKBOARD-ARCHIVE-0002.md",
       "docs/archive/TASKBOARD-ARCHIVE-MANIFEST.json",
+      "docs/archive/TASKBOARD-ARCHIVE-README.md",
+      "docs/archive/TASKBOARD-RECORDS-0001.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/ops/q2-draft-precheck.md",
       "docs/refactor-backlog.md",
-      "scripts/check_consistency.py",
       "scripts/taskboard_archive.py",
       "scripts/tests/test_check_consistency.py",
       "scripts/tests/test_taskboard_archive.py",
-      "scripts/tests/test_verifier_fail_closed.py"
+      "scripts/tests/test_taskboard_records.py"
     ],
     "max_plan_revisions": 3,
     "revision_count": 0,
@@ -45,17 +43,16 @@
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
-      "docs/archive/TASKBOARD-ARCHIVE-0002.md",
       "docs/archive/TASKBOARD-ARCHIVE-MANIFEST.json",
+      "docs/archive/TASKBOARD-ARCHIVE-README.md",
+      "docs/archive/TASKBOARD-RECORDS-0001.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/ops/q2-draft-precheck.md",
       "docs/refactor-backlog.md",
-      "scripts/check_consistency.py",
       "scripts/taskboard_archive.py",
       "scripts/tests/test_check_consistency.py",
       "scripts/tests/test_taskboard_archive.py",
-      "scripts/tests/test_verifier_fail_closed.py"
+      "scripts/tests/test_taskboard_records.py"
     ]
   },
   "evidence": [
