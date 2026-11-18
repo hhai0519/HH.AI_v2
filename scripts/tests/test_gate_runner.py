@@ -361,3 +361,192 @@ def test_g3_f_r3_tree_signal_deadline_guard_mutations():
     assert any(':launcher_alias:rb' in v for v in _tree_signal_timeout_violations(alias, 'alias.py'))
     wrapper = "def _go(t):\n    return gate_runner.run_stage(1, 2, 3, 4, timeout=t)\n" + specimen
     assert any('unregistered_launcher_wrapper' in v for v in _tree_signal_timeout_violations(wrapper, 'wrap.py'))
+
+
+# -- X batch: native preview quick mode (PRECOMMIT gate 4 collect-only, simulation area only) ---------------------
+import hashlib  # noqa: E402
+import json  # noqa: E402
+
+
+def _git(*args, cwd=None):
+    env = {k: v for k, v in os.environ.items() if not k.upper().startswith("GIT_")}
+    env.update(GIT_CONFIG_NOSYSTEM="1", GIT_CONFIG_GLOBAL=os.devnull)
+    return subprocess.run(["git", *args], cwd=cwd, env=env, check=True, capture_output=True, timeout=60)
+
+
+def make_area(tmp_path, monkeypatch, task="T-QUICK", prompt=b"prompt bytes", **marker_overrides):
+    """A simulation area as batch_sim lays it out: <area>/work (git, origin = <area>/origin.git), marker, env."""
+    area = tmp_path / "area"
+    work = area / "work"
+    bare = area / "origin.git"
+    work.mkdir(parents=True)
+    _git("init", "-q", "--bare", str(bare))
+    _git("init", "-q", str(work))
+    _git("remote", "add", "origin", str(bare), cwd=str(work))
+    (area / "isolated-gitconfig").write_bytes(b"")
+    (work / ".git" / f"{task}-prompt.txt").write_bytes(prompt)
+    marker = {"mode": "quick_gate4", "prompt_sha256": hashlib.sha256(prompt).hexdigest(), "task_id": task}
+    marker.update(marker_overrides)
+    (area / gate_runner.PREVIEW_QUICK_MARKER).write_text(json.dumps(marker), encoding="utf-8", newline="\n")
+    monkeypatch.setenv(gate_runner.PREVIEW_ROOT_ENV, str(area))
+    monkeypatch.setenv("GIT_CONFIG_GLOBAL", str(area / "isolated-gitconfig"))
+    return area, work
+
+
+def test_x_quick_gate4_is_active_only_in_a_bound_simulation_area(tmp_path, monkeypatch):
+    area, work = make_area(tmp_path, monkeypatch)
+    assert gate_runner.quick_gate4_active(str(work), "T-QUICK") is True
+
+
+def test_x_quick_gate4_never_applies_without_the_area_the_work_tree_or_the_marker(tmp_path, monkeypatch):
+    area, work = make_area(tmp_path, monkeypatch)
+    # environment variable alone, or an area hint that is not this work tree: the full gate runs
+    other = tmp_path / "real-workspace"
+    other.mkdir()
+    assert gate_runner.quick_gate4_active(str(other), "T-QUICK") is False
+    monkeypatch.delenv(gate_runner.PREVIEW_ROOT_ENV)
+    assert gate_runner.quick_gate4_active(str(work), "T-QUICK") is False
+    monkeypatch.setenv(gate_runner.PREVIEW_ROOT_ENV, str(area))
+    (area / gate_runner.PREVIEW_QUICK_MARKER).unlink()
+    assert gate_runner.quick_gate4_active(str(work), "T-QUICK") is False
+
+
+@pytest.mark.parametrize("case", ["task", "prompt", "mode", "extra_key", "missing_key", "not_json", "not_object",
+                                  "other_prompt_file", "no_prompt_file", "git_config", "no_bare", "other_origin"])
+def test_x_a_marker_that_fails_any_binding_stops_instead_of_weakening_the_gate(tmp_path, monkeypatch, case):
+    area, work = make_area(tmp_path, monkeypatch)
+    marker = area / gate_runner.PREVIEW_QUICK_MARKER
+    good = json.loads(marker.read_text(encoding="utf-8"))
+    if case == "task":
+        marker.write_text(json.dumps({**good, "task_id": "T-OTHER"}), encoding="utf-8", newline="\n")
+    elif case == "prompt":
+        marker.write_text(json.dumps({**good, "prompt_sha256": "0" * 64}), encoding="utf-8", newline="\n")
+    elif case == "mode":
+        marker.write_text(json.dumps({**good, "mode": "full"}), encoding="utf-8", newline="\n")
+    elif case == "extra_key":
+        marker.write_text(json.dumps({**good, "skip": True}), encoding="utf-8", newline="\n")
+    elif case == "missing_key":
+        marker.write_text(json.dumps({k: v for k, v in good.items() if k != "mode"}), encoding="utf-8", newline="\n")
+    elif case == "not_json":
+        marker.write_bytes(b"\xff not json")
+    elif case == "not_object":
+        marker.write_text("[]", encoding="utf-8", newline="\n")
+    elif case == "other_prompt_file":
+        (work / ".git" / "T-QUICK-prompt.txt").write_bytes(b"another prompt")
+    elif case == "no_prompt_file":
+        (work / ".git" / "T-QUICK-prompt.txt").unlink()
+    elif case == "git_config":
+        monkeypatch.setenv("GIT_CONFIG_GLOBAL", str(tmp_path / "elsewhere"))
+    elif case == "no_bare":
+        (area / "origin.git" / "HEAD").unlink()
+        for child in sorted((area / "origin.git").rglob("*"), reverse=True):
+            child.rmdir() if child.is_dir() else child.unlink()
+        (area / "origin.git").rmdir()
+    elif case == "other_origin":
+        _git("remote", "set-url", "origin", str(tmp_path / "somewhere-else.git"), cwd=str(work))
+    with pytest.raises(gate_runner.PreviewQuickInvalid):
+        gate_runner.quick_gate4_active(str(work), "T-QUICK")
+
+
+def test_x_a_marker_that_is_a_link_or_not_a_regular_file_is_an_identity_failure(tmp_path, monkeypatch):
+    area, work = make_area(tmp_path, monkeypatch)
+    marker = area / gate_runner.PREVIEW_QUICK_MARKER
+    real_islink = os.path.islink
+    monkeypatch.setattr(gate_runner.os.path, "islink", lambda p: True if str(p) == str(marker) else real_islink(p))
+    with pytest.raises(gate_runner.PreviewQuickInvalid, match="IDENTITY"):
+        gate_runner.quick_gate4_active(str(work), "T-QUICK")
+    monkeypatch.setattr(gate_runner.os.path, "islink", real_islink)
+    marker.unlink()
+    marker.mkdir()
+    with pytest.raises(gate_runner.PreviewQuickInvalid, match="IDENTITY"):
+        gate_runner.quick_gate4_active(str(work), "T-QUICK")
+
+
+def test_x_a_second_origin_url_is_refused(tmp_path, monkeypatch):
+    area, work = make_area(tmp_path, monkeypatch)
+    _git("remote", "set-url", "--add", "origin", str(tmp_path / "second.git"), cwd=str(work))
+    with pytest.raises(gate_runner.PreviewQuickInvalid):
+        gate_runner.quick_gate4_active(str(work), "T-QUICK")
+
+
+def test_x_stage_gates_replace_only_precommit_gate_4_and_never_the_canonical_table(tmp_path):
+    before = [list(g) for g in gate_runner.STAGES["PRECOMMIT"]]
+    full = gate_runner.stage_gates("PRECOMMIT", False)
+    quick = gate_runner.stage_gates("PRECOMMIT", True)
+    assert full == before and gate_runner.STAGES["PRECOMMIT"] == before
+    assert [i for i, (a, b) in enumerate(zip(full, quick)) if a != b] == [3]
+    assert quick[3] == [PY, "scripts/verify_all.py", "--gate4-collect-only"]
+    for stage in ("STAGED", "POSTCOMMIT"):
+        with pytest.raises(ValueError, match="QUICK_GATE4_NOT_APPLICABLE"):
+            gate_runner.stage_gates(stage, True)
+        assert gate_runner.stage_gates(stage, False) == [list(g) for g in gate_runner.STAGES[stage]]
+
+
+def test_x_a_quick_log_never_verifies_as_the_full_gate_run_and_the_reverse(tmp_path):
+    full = gate_runner.stage_gates("PRECOMMIT", False)
+    quick = gate_runner.stage_gates("PRECOMMIT", True)
+    # Same positions and exit codes, different command text in the headers: log what each run would record.
+    log = tmp_path / "quick.txt"
+    lines = [gate_runner.run_header("PRECOMMIT", 1)]
+    for idx, cmd in enumerate(quick, 1):
+        lines += [gate_runner.gate_header("PRECOMMIT", 1, idx, cmd), "EXIT_CODE: 0"]
+    lines.append(gate_runner.complete_marker("PRECOMMIT", 1))
+    log.write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
+    assert gate_runner.verify_stage(read(log), "PRECOMMIT", quick) == (True, "RUN_1")
+    ok, detail = gate_runner.verify_stage(read(log), "PRECOMMIT", full)
+    assert not ok and detail == "GATE_4_MISSING"
+
+
+def _main_in_area(tmp_path, monkeypatch, capsys, action):
+    area, work = make_area(tmp_path, monkeypatch)
+    monkeypatch.setattr(gate_runner, "verify_current_task_prompt", lambda *a, **k: (True, "", "", []))
+    monkeypatch.setattr(gate_runner, "verify_task_artifact_path", lambda *a, **k: (True, ""))
+    seen = {}
+
+    def fake_run_stage(root, stage, gates, log_path, timeout=None, durations_prefix=None):
+        seen["gates"] = gates
+        return 0
+
+    monkeypatch.setattr(gate_runner, "run_stage", fake_run_stage)
+    code = gate_runner.main([action, "--task-id", "T-QUICK", "--stage", "PRECOMMIT", "--repo-root", str(work)])
+    return code, seen, capsys.readouterr().out
+
+
+def test_x_main_runs_gate_4_collect_only_in_the_area_and_says_so(tmp_path, monkeypatch, capsys):
+    code, seen, out = _main_in_area(tmp_path, monkeypatch, capsys, "run")
+    assert code == 0
+    assert seen["gates"][3] == [PY, "scripts/verify_all.py", "--gate4-collect-only"]
+    assert "GATE_RUNNER PREVIEW_QUICK gate4=collect_only" in out
+
+
+def test_x_main_outside_an_area_runs_the_canonical_gates(tmp_path, monkeypatch, capsys):
+    area, work = make_area(tmp_path, monkeypatch)
+    monkeypatch.delenv(gate_runner.PREVIEW_ROOT_ENV)
+    monkeypatch.setattr(gate_runner, "verify_current_task_prompt", lambda *a, **k: (True, "", "", []))
+    monkeypatch.setattr(gate_runner, "verify_task_artifact_path", lambda *a, **k: (True, ""))
+    seen = {}
+    monkeypatch.setattr(gate_runner, "run_stage", lambda root, stage, gates, log, **k: seen.update(gates=gates) or 0)
+    assert gate_runner.main(["run", "--task-id", "T-QUICK", "--stage", "PRECOMMIT", "--repo-root", str(work)]) == 0
+    assert seen["gates"] == [list(g) for g in gate_runner.STAGES["PRECOMMIT"]]
+    assert "PREVIEW_QUICK" not in capsys.readouterr().out
+
+
+def test_x_main_stops_with_s1_when_the_marker_does_not_bind(tmp_path, monkeypatch, capsys):
+    area, work = make_area(tmp_path, monkeypatch, prompt_sha256="0" * 64)
+    monkeypatch.setattr(gate_runner, "verify_current_task_prompt", lambda *a, **k: (True, "", "", []))
+    monkeypatch.setattr(gate_runner, "verify_task_artifact_path", lambda *a, **k: (True, ""))
+    ran = []
+    monkeypatch.setattr(gate_runner, "run_stage", lambda *a, **k: ran.append(1) or 0)
+    assert gate_runner.main(["run", "--task-id", "T-QUICK", "--stage", "PRECOMMIT", "--repo-root", str(work)]) == 1
+    assert not ran and "S1 PREVIEW_QUICK_INVALID MARKER_BINDING" in capsys.readouterr().out
+
+
+def test_x_the_marker_does_not_change_the_other_stages(tmp_path, monkeypatch, capsys):
+    area, work = make_area(tmp_path, monkeypatch)
+    monkeypatch.setattr(gate_runner, "verify_current_task_prompt", lambda *a, **k: (True, "", "", []))
+    monkeypatch.setattr(gate_runner, "verify_task_artifact_path", lambda *a, **k: (True, ""))
+    seen = {}
+    monkeypatch.setattr(gate_runner, "run_stage", lambda root, stage, gates, log, **k: seen.update(gates=gates) or 0)
+    for stage in ("STAGED", "POSTCOMMIT"):
+        assert gate_runner.main(["run", "--task-id", "T-QUICK", "--stage", stage, "--repo-root", str(work)]) == 0
+        assert seen["gates"] == [list(g) for g in gate_runner.STAGES[stage]]

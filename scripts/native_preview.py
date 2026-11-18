@@ -148,6 +148,12 @@ def simulated_worktree(root, base):
     return True
 
 
+# The rehearsal is the quick mode: PRECOMMIT gate 4 only collects the tests; the full gate 4 runs once, in the real
+# precommit step (X batch, USER 2026-11-17). The terminal marker names the mode, so a full-mode log is not accepted.
+PASS_MARKER = 'BATCH_SIM PASS production locale=utf8 git_profile=windows quick_gate4=collect_only'
+PREVIEW_MODE = 'quick_gate4'
+
+
 def checked_simulation_output(stdout, returncode, spec, via_run=False):
     """Require the complete canonical trace with exactly one successful terminal marker."""
     try:
@@ -161,7 +167,7 @@ def checked_simulation_output(stdout, returncode, spec, via_run=False):
             raise PreviewError('NATIVE_PREVIEW_SOURCE_MODIFIED')
         raise PreviewError('NATIVE_PREVIEW_NONZERO')
     expected = sim.expected_production_log(spec, via_run)
-    expected.append('BATCH_SIM PASS production locale=utf8 git_profile=windows')
+    expected.append(PASS_MARKER)
     if lines != expected:
         raise PreviewError('NATIVE_PREVIEW_LOG_INVALID')
 
@@ -191,7 +197,7 @@ def run(batch):
             result = run_bounded(
                 [sys.executable, '-B', str(SIMULATOR), 'production', '--source', str(workspace),
                  '--workdir', str(area / 'sim'), '--prompt', str(prompt), '--git-profile', 'windows',
-                 '--uv-cache-dir', str(cache), '--verify-source-bytes', *(['--adopt-source'] if spec['start']['mode'] == 'adopt' else [])],
+                 '--uv-cache-dir', str(cache), '--quick-gate4', '--verify-source-bytes', *(['--adopt-source'] if spec['start']['mode'] == 'adopt' else [])],
                 str(workspace), PREVIEW_TIMEOUT, env=br.child_env(), merge_stderr=False, capture_path=str(log))
         finally:
             after = source_check.source_refs()
@@ -214,6 +220,7 @@ def run(batch):
         'log_sha256': hashlib.sha256(result.stdout).hexdigest(),
         'temp_name': area.name,
         'task_id': batch.task_id,
+        'mode': PREVIEW_MODE,
         'source_snapshot_sha256': hashlib.sha256(repr(before).encode('utf-8')).hexdigest(),
         'status': 'PASS',
     }, sort_keys=True) + '\n')
@@ -230,6 +237,7 @@ def require_receipt(batch):
                 and receipt['task_id'] == batch.task_id
                 and receipt['prompt_sha256'] == br.sha256_bytes(batch.prompt_bytes)
                 and receipt['status'] == 'PASS'
+                and receipt['mode'] == PREVIEW_MODE
                 and br.SHA256_RE.fullmatch(receipt['log_sha256'])
                 and br.SHA256_RE.fullmatch(receipt['source_snapshot_sha256'])
                 and re.fullmatch(r'hhai-g5-[a-z0-9_]{8}', receipt['temp_name'])):

@@ -30,7 +30,10 @@ deleted.
 """
 
 import argparse
+import hashlib
+import json
 import os
+import subprocess
 import sys
 import time
 
@@ -64,6 +67,22 @@ STAGES = {
         ["git", "diff", "--check"],
     ],
 }
+# Native preview quick mode (X batch). Only a disposable batch simulation (scripts/batch_sim.py production
+# --quick-gate4, started by scripts/native_preview.py) may replace PRECOMMIT gate 4 (verify_all.py) by
+# `verify_all.py --gate4-collect-only`: gates 1, 2, 3 and 5 of verify_all still run, gate 4 only collects. The real
+# workspace never qualifies: the work tree must be <area>/work of a simulation area whose isolated git
+# configuration, bare origin and prompt-bound marker all match. An environment variable alone never selects it.
+PREVIEW_ROOT_ENV = "HHAI_BATCH_SIM_ROOT"
+PREVIEW_QUICK_MARKER = "preview-quick.json"
+PREVIEW_QUICK_MODE = "quick_gate4"
+QUICK_GATE4_ARG = "--gate4-collect-only"
+PREVIEW_QUICK_KEYS = ("mode", "prompt_sha256", "task_id")
+
+
+class PreviewQuickInvalid(Exception):
+    """The simulation area claims quick mode but its identity, marker or prompt binding does not hold."""
+
+
 # Positional budgets match the fixed STAGES gate sequences. A longer budget is
 # reserved for Windows verify_all; no gate is skipped or downgraded.
 GATE_TIMEOUTS = {
@@ -87,6 +106,62 @@ def stage_timeouts(stage):
         raise ValueError("INVALID_GATE_BUDGET")
     return values
 
+
+
+def _same_dir(left, right):
+    return os.path.normcase(os.path.realpath(left)) == os.path.normcase(os.path.realpath(right))
+
+
+def quick_gate4_active(root, task_id):
+    """True only inside a batch simulation that asked for the preview quick mode; False in every other place
+    (no area hint, or this work tree is not <area>/work). A simulation area that carries the marker but fails any
+    identity or binding check raises PreviewQuickInvalid: the gate then stops instead of running a weaker gate."""
+    hint = os.environ.get(PREVIEW_ROOT_ENV)
+    if not hint:
+        return False
+    area = os.path.realpath(hint)
+    if not _same_dir(root, os.path.join(area, "work")):
+        return False
+    marker = os.path.join(area, PREVIEW_QUICK_MARKER)
+    if not os.path.lexists(marker):
+        return False
+    bare = os.path.join(area, "origin.git")
+    try:
+        if (os.path.islink(marker) or not os.path.isfile(marker)
+                or os.environ.get("GIT_CONFIG_GLOBAL") != os.path.join(area, "isolated-gitconfig")
+                or not os.path.isdir(bare)):
+            raise PreviewQuickInvalid("IDENTITY")
+        with open(marker, "rb") as handle:
+            data = json.loads(handle.read().decode("utf-8"))
+        with open(os.path.join(root, ".git", task_id + "-prompt.txt"), "rb") as handle:
+            prompt_sha = hashlib.sha256(handle.read()).hexdigest()
+    except (OSError, ValueError):
+        raise PreviewQuickInvalid("MARKER_UNREADABLE") from None
+    if (not isinstance(data, dict) or tuple(sorted(data)) != PREVIEW_QUICK_KEYS
+            or data["mode"] != PREVIEW_QUICK_MODE or data["task_id"] != task_id
+            or data["prompt_sha256"] != prompt_sha):
+        raise PreviewQuickInvalid("MARKER_BINDING")
+    try:
+        origin = subprocess.run(["git", "-C", root, "remote", "get-url", "--all", "origin"],
+                                stdin=subprocess.DEVNULL, capture_output=True, timeout=60)
+    except (OSError, subprocess.SubprocessError):
+        raise PreviewQuickInvalid("ORIGIN_UNREADABLE") from None
+    lines = origin.stdout.decode("utf-8", "replace").splitlines()
+    if origin.returncode != 0 or len(lines) != 1 or not _same_dir(lines[0], bare):
+        raise PreviewQuickInvalid("ORIGIN_MISMATCH")
+    return True
+
+
+def stage_gates(stage, quick=False):
+    """The canonical gate commands of a stage; quick is only meaningful for PRECOMMIT, whose gate 4 becomes the
+    collect-only variant. Run headers carry the command text, so a quick log can never verify as a full one."""
+    gates = [list(cmd) for cmd in STAGES[stage]]
+    if quick:
+        full = [PY, "scripts/verify_all.py"]
+        if stage != "PRECOMMIT" or full not in gates:
+            raise ValueError("QUICK_GATE4_NOT_APPLICABLE")
+        gates[gates.index(full)] = full + [QUICK_GATE4_ARG]
+    return gates
 
 
 def display(cmd):
@@ -272,7 +347,14 @@ def main(argv=None):
         print(err_art)
         return 1
     log_path = os.path.join(root, ".git", f"{args.task_id}-local-gates.txt")
-    gates = STAGES[args.stage]
+    try:
+        quick = args.stage == "PRECOMMIT" and quick_gate4_active(root, args.task_id)
+    except PreviewQuickInvalid as exc:
+        print(f"S1 PREVIEW_QUICK_INVALID {exc}")
+        return 1
+    gates = stage_gates(args.stage, quick)
+    if quick:
+        print("GATE_RUNNER PREVIEW_QUICK gate4=collect_only", flush=True)
     if args.action == "run":
         code = run_stage(root, args.stage, gates, log_path, durations_prefix=log_path)
         print(f"GATE_RUNNER {'PASS' if code == 0 else 'FAIL'} stage={args.stage}")

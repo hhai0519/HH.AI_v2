@@ -73,3 +73,33 @@ def test_r3_unit_test_durations_and_stdout_flush(monkeypatch, capsys):
     monkeypatch.setattr(verify_all.subprocess, 'run', lambda *a, **kw: SimpleNamespace(returncode=0))
     assert original(gate, {}, verify_all.REPO_ROOT) == 0
     assert '[GATE] Running unit_tests:' in capsys.readouterr().out
+
+
+# X batch: preview quick mode of gate 4.
+def test_x_quick_mode_only_changes_gate_4_and_never_prints_the_full_pass_line(monkeypatch, capsys):
+    full = {g["name"]: g["cmd"] for g in verify_all.GATES}
+    quick = {g["name"]: g["cmd"] for g in verify_all.quick_gates()}
+    assert [n for n in full if full[n] != quick[n]] == ["unit_tests"]
+    assert quick["unit_tests"][-2:] == ["--collect-only", "-qq"] and "--collect-only" not in " ".join(full["unit_tests"])
+    seen = []
+    monkeypatch.setattr(verify_all, "run_gate", lambda gate, env, cwd: seen.append((gate["name"], gate["cmd"])) or 0)
+    assert verify_all.main(["--gate4-collect-only"]) == 0
+    out = capsys.readouterr().out
+    assert seen == [(g["name"], g["cmd"]) for g in verify_all.quick_gates()]  # main really runs the collect-only gate 4
+    assert "PREVIEW QUICK GATES PASSED" in out and "ALL 5 GATES PASSED" not in out
+
+
+def test_x_default_mode_is_unchanged_and_the_canonical_gate_table_is_never_mutated(monkeypatch, capsys):
+    before = [(g["name"], list(g["cmd"])) for g in verify_all.GATES]
+    verify_all.quick_gates()
+    monkeypatch.setattr(verify_all, "run_gate", lambda gate, env, cwd: 0)
+    assert verify_all.main([]) == 0
+    assert "ALL 5 GATES PASSED" in capsys.readouterr().out
+    assert [(g["name"], list(g["cmd"])) for g in verify_all.GATES] == before
+
+
+def test_x_a_failing_quick_gate_fails_the_run(monkeypatch, capsys):
+    monkeypatch.setattr(verify_all, "run_gate", lambda gate, env, cwd: 2 if gate["name"] == "unit_tests" else 0)
+    assert verify_all.main(["--gate4-collect-only"]) == 1
+    out = capsys.readouterr().out
+    assert "FAILED gates (1): unit_tests" in out and "PREVIEW QUICK GATES PASSED" not in out

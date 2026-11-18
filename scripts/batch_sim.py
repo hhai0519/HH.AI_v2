@@ -79,6 +79,17 @@ show that no code under test ran before the detection point. Resuming a stopped 
 supported (RESUME_RUNNER_UPDATE_UNSUPPORTED); the author negative needs an author file other than the runner
 (NEGATIVE_AUTHOR_UNAVAILABLE).
 
+Native preview quick mode (production --quick-gate4, started only by scripts/native_preview.py): the simulation writes
+<workdir>/preview-quick.json (mode, task id, SHA-256 of the prompt) and ends with "BATCH_SIM PASS production ...
+quick_gate4=collect_only". scripts/gate_runner.py then runs PRECOMMIT gate 4 as `verify_all.py --gate4-collect-only`
+(the other four verify_all gates and every other step run in full) only when the work tree is <workdir>/work, the
+isolated git configuration and bare origin match and the marker binds this task and prompt; a marker that fails
+the check stops the gate (S1 PREVIEW_QUICK_INVALID). Without the flag nothing changes: the auditor's own
+simulation always runs the full gate 4. Before PASS the simulation checks that the PRECOMMIT log agrees with the
+mode it claims: with the flag the marker must exist and gate 4 must have run only as the collect-only command
+(QUICK_GATE4_MARKER_MISSING, QUICK_GATE4_NOT_APPLIED); without it gate 4 must never have run collect-only
+(QUICK_GATE4_UNREQUESTED).
+
 Platform contract (B-115): the simulator and the tools it checks run on CPython 3.10+ on Linux (auditor) and Windows
 (USER); every authored file and fixture is UTF-8 with LF only and is written as bytes; "posix" locale runs the runner
 under LC_ALL=POSIX, PYTHONUTF8=0 as a non-UTF-8 proxy; a test may skip only for a documented capability gap (no
@@ -117,6 +128,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 try:
     import batch_runner  # noqa: E402 - the runner's own prompt parser is the reference
     import bounded_process  # noqa: E402 - shared bounded-execution primitive (kills the whole process tree)
+    import gate_runner  # noqa: E402 - the one definition of the preview quick-mode marker
 finally:
     sys.path.pop(0)
 
@@ -500,7 +512,7 @@ def _field_changes(before, after):
 
 class Sim:
     def __init__(self, source, workdir, locale='utf8', run=default_run, out=print, git_profile='isolated',
-                 verify_source_bytes=False):
+                 verify_source_bytes=False, quick_gate4=False):
         _require(locale in LOCALES, 'LOCALE_INVALID')
         _require(git_profile in GIT_PROFILES, 'GIT_PROFILE_INVALID')
         self.source = str(Path(source).resolve())
@@ -510,6 +522,8 @@ class Sim:
         self.downloads = self.workdir / 'downloads'
         self.git_profile = git_profile
         self.verify_source_bytes = verify_source_bytes
+        # Native preview quick mode: PRECOMMIT gate 4 only collects (see gate_runner.quick_gate4_active); production only.
+        self.quick_gate4 = quick_gate4
         # Git and home isolation; see isolated_env and the module documentation (Isolation, Git profiles).
         self.env = isolated_env(self.workdir, LOCALES[locale], git_profile)
         self.env['HHAI_BATCH_SIM_ROOT'] = str(self.workdir)
@@ -840,6 +854,8 @@ class Sim:
         self.make_origin(base)
         self.git('switch', '-q', '-c', START_BRANCH)
         self.install_hooks()
+        if self.quick_gate4:
+            self.write_quick_marker(task, data)
         if adopt_source:
             self.adopt_source(spec)
         elif adopt:
@@ -879,12 +895,36 @@ class Sim:
             if prompt_uses_run(task, data):
                 # The run command would also write the bundle into the real Downloads directory: not rehearsed.
                 self.out('BATCH_SIM RUN NOT_TESTED')
+        self.verify_gate4_mode(task)
         if spec.get('bundle_output') is True:
             # Simulates only the pre-push/post-commit pipeline and local CI stand-in.
             # Never run the real bundle helper against host Downloads during rehearsal.
             self.out('BATCH_SIM POST_PUSH_BUNDLE NOT_TESTED')
         self.verify_production(spec, plan)
         self.check_source_unchanged()
+
+    def write_quick_marker(self, task, data):
+        """The prompt-bound statement that this simulation area may run PRECOMMIT gate 4 as collect-only."""
+        marker = {'mode': gate_runner.PREVIEW_QUICK_MODE, 'prompt_sha256': hashlib.sha256(data).hexdigest(),
+                  'task_id': task}
+        (self.workdir / gate_runner.PREVIEW_QUICK_MARKER).write_bytes(
+            (json.dumps(marker, sort_keys=True) + '\n').encode('utf-8'))
+
+    def verify_gate4_mode(self, task):
+        """The PASS line names the gate 4 mode, so the PRECOMMIT log must show that mode and no other: quick mode needs
+        the marker and only collect-only gate 4 runs; a full simulation must never have run gate 4 collect-only."""
+        lines = gate_runner.read_log_lines(str(Path(self.work) / '.git' / (task + '-local-gates.txt')))
+        full = [gate_runner.PY, 'scripts/verify_all.py']
+        heads = [line for line in lines if line.startswith('=== PRECOMMIT RUN ') and ' GATE ' in line]
+        ran_full = any(line.endswith(': ' + gate_runner.display(full) + ' ===') for line in heads)
+        ran_quick = any(line.endswith(': ' + gate_runner.display(full + [gate_runner.QUICK_GATE4_ARG]) + ' ===')
+                        for line in heads)
+        if self.quick_gate4:
+            marker = self.workdir / gate_runner.PREVIEW_QUICK_MARKER
+            _require(marker.is_file() and not marker.is_symlink(), 'QUICK_GATE4_MARKER_MISSING')
+            _require(ran_quick and not ran_full, 'QUICK_GATE4_NOT_APPLIED')
+        else:
+            _require(not ran_quick, 'QUICK_GATE4_UNREQUESTED')
 
     def adopt_source(self, spec):
         """Copy only this prompt's hash-bound adopt inputs, never another task's artifacts."""
@@ -1031,6 +1071,8 @@ def main(argv=None):
         if name == 'production':
             p.add_argument('--resume-prompt')
             p.add_argument('--adopt-source', action='store_true')
+            p.add_argument('--quick-gate4', action='store_true',
+                           help='native preview only: PRECOMMIT gate 4 collects the tests instead of running them')
     w = sub.add_parser('winemu')
     w.add_argument('--repo', required=True)
     w.add_argument('--git-profile', default='windows', choices=GIT_PROFILES)
@@ -1042,7 +1084,8 @@ def main(argv=None):
             mode = 'winemu git_profile=' + args.git_profile
         else:
             sim = Sim(args.source, args.workdir, args.locale, git_profile=args.git_profile,
-                      verify_source_bytes=args.verify_source_bytes)
+                      verify_source_bytes=args.verify_source_bytes,
+                      quick_gate4=args.cmd == 'production' and args.quick_gate4)
             if args.uv_cache_dir:
                 _require(Path(args.uv_cache_dir).is_dir(), 'UV_SIM_CACHE_UNAVAILABLE')
                 sim.env['HHAI_SIM_UV_CACHE_DIR'] = str(Path(args.uv_cache_dir).resolve())
@@ -1055,7 +1098,8 @@ def main(argv=None):
                 if args.verify_source_bytes and hasattr(sim, 'source_before'):
                     sim.check_source_unchanged()
             mode = (args.cmd + (' negative=' + args.negative if args.negative else '') + ' locale=' + args.locale
-                    + (' git_profile=windows' if args.git_profile == 'windows' else ''))
+                    + (' git_profile=windows' if args.git_profile == 'windows' else '')
+                    + (' quick_gate4=collect_only' if sim.quick_gate4 else ''))
         print('BATCH_SIM PASS ' + mode)
     except SimError as e:
         print('BATCH_SIM FAIL ' + str(e))

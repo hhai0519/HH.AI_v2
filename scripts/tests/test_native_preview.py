@@ -1,4 +1,5 @@
 """G5 source and rehearsal controls, using real Git and synthetic runner results."""
+import json
 import os
 from pathlib import Path
 import subprocess
@@ -135,7 +136,7 @@ def test_source_python_uses_no_bytecode(tmp_path, source):
 
 def test_preview_rejects_forged_pass_missing_step_and_nonzero():
     spec = {'kind': 'production', 'native_preview': True, 'e24': False, 'focused': None}
-    marker = b'BATCH_SIM PASS production locale=utf8 git_profile=windows\n'
+    marker = b'BATCH_SIM PASS production locale=utf8 git_profile=windows quick_gate4=collect_only\n'
     output = b''.join(f'BATCH_SIM STEP {step} rc=0\n'.encode('ascii')
                       for step in (*sim.production_steps(spec), 'push')) + marker
     preview.checked_simulation_output(output, 0, spec)
@@ -156,7 +157,7 @@ def test_setup_needs_existing_bound_simulator_log(tmp_path, monkeypatch):
     monkeypatch.setattr(preview.tempfile, 'gettempdir', lambda: str(tmp_path))
     spec = {'kind': 'production', 'native_preview': True, 'e24': False, 'focused': None, 'base_oid': 'a' * 40}
     output = ''.join(f'BATCH_SIM STEP {step} rc=0\n' for step in (*sim.production_steps(spec), 'push'))
-    output += 'BATCH_SIM PASS production locale=utf8 git_profile=windows\n'
+    output += 'BATCH_SIM PASS production locale=utf8 git_profile=windows quick_gate4=collect_only\n'
     directory = tmp_path / 'hhai-g5-abcdefgh'
     directory.mkdir()
     log = directory / 'batch-sim.log'
@@ -166,7 +167,7 @@ def test_setup_needs_existing_bound_simulator_log(tmp_path, monkeypatch):
     (tmp_path / 'native-preview.json').write_bytes(json.dumps({
         'base_oid': spec['base_oid'], 'task_id': batch.task_id, 'prompt_sha256': br.sha256_bytes(batch.prompt_bytes),
         'status': 'PASS', 'log_sha256': br.sha256_bytes(log.read_bytes()),
-        'source_snapshot_sha256': 'b' * 64, 'temp_name': directory.name,
+        'source_snapshot_sha256': 'b' * 64, 'temp_name': directory.name, 'mode': preview.PREVIEW_MODE,
     }).encode('ascii'))
     preview.require_receipt(batch)
     other = SimpleNamespace(**{**vars(batch), 'prompt_bytes': b'other prompt'})
@@ -209,7 +210,7 @@ def test_preview_lifecycle_checks_source_on_every_exit(tmp_path, source, monkeyp
     spec = {'kind': 'production', 'native_preview': True, 'e24': False, 'focused': None,
             'base_oid': git(source, 'rev-parse', 'HEAD'), 'start': {'mode': 'clean'}}
     output = ''.join(f'BATCH_SIM STEP {step} rc=0\n' for step in (*sim.production_steps(spec), 'push'))
-    output += 'BATCH_SIM PASS production locale=utf8 git_profile=windows\n'
+    output += 'BATCH_SIM PASS production locale=utf8 git_profile=windows quick_gate4=collect_only\n'
     receipts = {}
     batch = SimpleNamespace(root=str(source), task_id='FIXTURE', spec=spec, prompt_bytes=b'fixture',
                             write_new_artifact=lambda name, content: receipts.update({name: content}))
@@ -223,6 +224,7 @@ def test_preview_lifecycle_checks_source_on_every_exit(tmp_path, source, monkeyp
         assert Path(command[2]).is_absolute()
         # The approved cache reaches the simulator explicitly; its own default is never the source.
         assert command.count('--uv-cache-dir') == 1
+        assert command.count('--quick-gate4') == 1 and command.index('--quick-gate4') > command.index('production')
         assert command[command.index('--uv-cache-dir') + 1] == str(cache.resolve())
         if failure == 'source_change':
             (source / '__pycache__').mkdir()
@@ -256,6 +258,7 @@ def test_preview_lifecycle_checks_source_on_every_exit(tmp_path, source, monkeyp
     else:
         preview.run(batch)
         assert 'native-preview.json' in receipts
+        assert json.loads(receipts['native-preview.json'])['mode'] == 'quick_gate4'
         assert Path(batch.native_preview_evidence_dir).is_dir()
 
 
@@ -942,7 +945,7 @@ def test_auto_production_applies_hash_rule_with_the_definition_base(tmp_path, so
 
 def test_g5b2_the_preview_log_of_a_run_prompt_is_the_run_trace_and_never_the_stepwise_one():
     spec = {'kind': 'production', 'native_preview': True, 'e24': False, 'focused': None}
-    marker = b'BATCH_SIM PASS production locale=utf8 git_profile=windows\n'
+    marker = b'BATCH_SIM PASS production locale=utf8 git_profile=windows quick_gate4=collect_only\n'
     steps = (*sim.production_steps(spec), 'push')
     stepwise = b''.join(f'BATCH_SIM STEP {step} rc=0\n'.encode('ascii') for step in steps) + marker
     via_run = b''.join(f'BATCH_SIM STEP {step} rc=0\n'.encode('ascii') for step in steps) \
@@ -959,3 +962,100 @@ def test_g5b2_the_preview_log_of_a_run_prompt_is_the_run_trace_and_never_the_ste
     preview.checked_simulation_output(('\n'.join(trace) + '\n').encode('ascii') + marker, 0, update, True)
     with pytest.raises(preview.PreviewError, match='NATIVE_PREVIEW_LOG_INVALID'):
         preview.checked_simulation_output(via_run, 0, update, True)
+
+
+def test_x_preview_accepts_only_the_quick_mode_trace_and_receipt(tmp_path, monkeypatch):
+    """承諾：預演只接受 quick_gate4 軌跡；完整模式的結尾行、缺 mode 或 mode 不同的收據一律無效。"""
+    from types import SimpleNamespace
+
+    monkeypatch.delenv(preview.SIM_ROOT, raising=False)
+    monkeypatch.setattr(preview.tempfile, 'gettempdir', lambda: str(tmp_path))
+    spec = {'kind': 'production', 'native_preview': True, 'e24': False, 'focused': None, 'base_oid': 'a' * 40}
+    body = ''.join(f'BATCH_SIM STEP {step} rc=0\n' for step in (*sim.production_steps(spec), 'push'))
+    full_end = 'BATCH_SIM PASS production locale=utf8 git_profile=windows\n'
+    for ending in (full_end, preview.PASS_MARKER.replace(' quick_gate4=collect_only', ' quick_gate4=full') + '\n'):
+        with pytest.raises(preview.PreviewError, match='NATIVE_PREVIEW_LOG_INVALID'):
+            preview.checked_simulation_output((body + ending).encode('ascii'), 0, spec)
+    preview.checked_simulation_output((body + preview.PASS_MARKER + '\n').encode('ascii'), 0, spec)
+    directory = tmp_path / 'hhai-g5-abcdefgh'
+    directory.mkdir()
+    log = directory / 'batch-sim.log'
+    log.write_bytes((body + preview.PASS_MARKER + '\n').encode('ascii'))
+    batch = SimpleNamespace(root=str(tmp_path), task_id='FIXTURE', spec=spec, prompt_bytes=b'fixture',
+                            artifact=lambda suffix: suffix)
+    receipt = {'base_oid': spec['base_oid'], 'task_id': batch.task_id,
+               'prompt_sha256': br.sha256_bytes(batch.prompt_bytes), 'status': 'PASS',
+               'log_sha256': br.sha256_bytes(log.read_bytes()), 'source_snapshot_sha256': 'b' * 64,
+               'temp_name': directory.name, 'mode': 'quick_gate4'}
+    path = tmp_path / 'native-preview.json'
+    path.write_bytes(json.dumps(receipt).encode('ascii'))
+    preview.require_receipt(batch)
+    for bad in ({**receipt, 'mode': 'full'}, {k: v for k, v in receipt.items() if k != 'mode'}):
+        path.write_bytes(json.dumps(bad).encode('ascii'))
+        with pytest.raises(preview.PreviewError, match='NATIVE_PREVIEW_RECEIPT_INVALID'):
+            preview.require_receipt(batch)
+
+
+def test_x_the_simulator_marks_quick_mode_only_when_asked_and_binds_the_prompt(tmp_path):
+    """承諾：batch_sim 只在 --quick-gate4 時寫標記檔，標記綁定 task 與提示詞 SHA-256；模式字樣只在該旗標出現。"""
+    import gate_runner
+
+    source = tmp_path / 'source'
+    source.mkdir()
+    full = sim.Sim(source, tmp_path / 'a')
+    quick = sim.Sim(source, tmp_path / 'b', quick_gate4=True)
+    assert full.quick_gate4 is False and quick.quick_gate4 is True
+    quick.write_quick_marker('T-1', b'prompt bytes')
+    data = json.loads((tmp_path / 'b' / gate_runner.PREVIEW_QUICK_MARKER).read_bytes())
+    assert data == {'mode': 'quick_gate4', 'task_id': 'T-1', 'prompt_sha256': br.sha256_bytes(b'prompt bytes')}
+    assert not (tmp_path / 'a' / gate_runner.PREVIEW_QUICK_MARKER).exists()
+    source_text = Path(sim.__file__).read_text(encoding='utf-8')
+    assert source_text.count("p.add_argument('--quick-gate4'") == 1
+    assert "quick_gate4=args.cmd == 'production' and args.quick_gate4" in source_text
+
+
+@pytest.mark.parametrize('quick, marker, gate4, error', [
+    (True, True, 'quick', None),
+    (True, False, 'quick', 'QUICK_GATE4_MARKER_MISSING'),
+    (True, 'link', 'quick', 'QUICK_GATE4_MARKER_MISSING'),
+    (True, True, 'quick_other_stage_full', None),
+    (True, True, 'full', 'QUICK_GATE4_NOT_APPLIED'),
+    (True, True, 'both', 'QUICK_GATE4_NOT_APPLIED'),
+    (True, True, 'none', 'QUICK_GATE4_NOT_APPLIED'),
+    (False, False, 'full', None),
+    (False, False, 'quick', 'QUICK_GATE4_UNREQUESTED'),
+])
+def test_x_the_simulator_passes_only_when_the_gate_4_log_matches_the_mode_it_claims(tmp_path, monkeypatch, quick,
+                                                                                     marker, gate4, error):
+    """承諾：快速模式結尾前核對標記檔存在且 PRECOMMIT 第 4 關只以收集模式執行；完整模式不得出現收集模式之第 4 關。
+    沒寫入標記檔時第 4 關會照完整執行，此核對使模擬 FAIL，而不是照樣宣稱 quick_gate4=collect_only。"""
+    import gate_runner
+
+    source = tmp_path / 'source'
+    source.mkdir()
+    s = sim.Sim(source, tmp_path / 'area', quick_gate4=quick)
+    gitdir = Path(s.work) / '.git'
+    gitdir.mkdir(parents=True)
+    full = [gate_runner.PY, 'scripts/verify_all.py']
+    cmds = {'quick': [full + [gate_runner.QUICK_GATE4_ARG]], 'full': [full],
+            'both': [full + [gate_runner.QUICK_GATE4_ARG], full], 'none': [],
+            'quick_other_stage_full': [full + [gate_runner.QUICK_GATE4_ARG]]}[gate4]
+    lines = [gate_runner.run_header('PRECOMMIT', 1)]
+    lines += [gate_runner.gate_header('PRECOMMIT', 1, 4, cmd) for cmd in cmds]
+    lines.append(gate_runner.complete_marker('PRECOMMIT', 1))
+    if gate4 == 'quick_other_stage_full':  # only PRECOMMIT gate headers decide the mode
+        lines.append(gate_runner.gate_header('POSTCOMMIT', 1, 1, full))
+    (gitdir / 'T-1-local-gates.txt').write_bytes(('\n'.join(lines) + '\n').encode('utf-8'))
+    if marker:
+        s.write_quick_marker('T-1', b'prompt bytes')
+    if marker == 'link':  # a link that resolves to a regular file is still not the marker the simulator wrote
+        link = s.workdir / gate_runner.PREVIEW_QUICK_MARKER
+        real_is_symlink = Path.is_symlink
+        monkeypatch.setattr(Path, 'is_symlink', lambda self: True if self == link else real_is_symlink(self))
+    if error is None:
+        s.verify_gate4_mode('T-1')
+    else:
+        with pytest.raises(sim.SimError, match='^' + error + '$'):
+            s.verify_gate4_mode('T-1')
+    source_text = Path(sim.__file__).read_text(encoding='utf-8')
+    assert source_text.count('        self.verify_gate4_mode(task)\n        if spec.get(\'bundle_output\') is True:') == 1

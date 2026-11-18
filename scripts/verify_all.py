@@ -51,6 +51,18 @@ GATES = [
 ]
 
 
+def quick_gates():
+    """Preview quick variant (scripts/gate_runner.py stage_gates): same five gates, but gate 4 only collects the
+    test suite (import and collection errors still fail); never a substitute for the full gate 4."""
+    gates = [dict(gate) for gate in GATES]
+    for gate in gates:
+        if gate["name"] == "unit_tests":
+            gate["cmd"] = [sys.executable, "-m", "pytest", os.path.join(REPO_ROOT, "scripts", "tests"),
+                           "--collect-only", "-qq"]
+            gate["desc"] = "Scripts 單元測試套件（預演快速檢查：只收集不執行）"
+    return gates
+
+
 def run_gate(gate, env, cwd):
     print(f"\n[GATE] Running {gate['name']}: {gate['desc']}", flush=True)
     proc = subprocess.run(gate["cmd"], env=env, cwd=cwd)
@@ -60,7 +72,10 @@ def run_gate(gate, env, cwd):
 def main(argv=None):
     parser = argparse.ArgumentParser(description="Canonical Verification Runner")
     parser.add_argument("--fail-fast", action="store_true", help="任一閘門失敗時立即停止")
+    parser.add_argument("--gate4-collect-only", action="store_true",
+                        help="只供原生預演模擬使用：第 4 關只收集不執行；不輸出 ALL 5 GATES PASSED")
     args = parser.parse_args(argv)
+    gates = quick_gates() if args.gate4_collect_only else GATES
 
     env = dict(os.environ)
     env["PYTHONUTF8"] = "1"
@@ -68,7 +83,7 @@ def main(argv=None):
     env["PYTHONUNBUFFERED"] = "1"
 
     failed = []
-    for gate in GATES:
+    for gate in gates:
         rc = run_gate(gate, env, REPO_ROOT)
         if rc != 0:
             print(f"[FAIL] Gate {gate['name']} exited with code {rc}", flush=True)
@@ -84,6 +99,9 @@ def main(argv=None):
     if failed:
         print(f"FAILED gates ({len(failed)}): {', '.join(failed)}")
         return 1
+    elif args.gate4_collect_only:
+        print(f"PREVIEW QUICK GATES PASSED ({len(gates)} gates; gate 4 collected only, not a full verification)")
+        return 0
     else:
         print(f"ALL {len(GATES)} GATES PASSED")
         return 0

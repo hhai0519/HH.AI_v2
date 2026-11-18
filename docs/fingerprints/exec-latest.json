@@ -1,5 +1,5 @@
 {
-  "base_head": "7571108",
+  "base_head": "710cf3b",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -575,16 +575,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 416,
-      "sha256": "fe0b9995350db3d82c09176e61e00b98bfe405a9bc3ebf00a7ee9276ee550ae6"
+      "lines": 418,
+      "sha256": "908e1ffa6f767f9de64c1ba8d1a76f91f14ef1d7219d50ca4a6c8f7fcda86517"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 387,
-      "sha256": "097ca8cb41d4e4273a586de54d8086372b02d211cec801827ed68a6609ccbf05"
+      "lines": 388,
+      "sha256": "80215d8fe9467168372e7da0d3c7e341edab3c0e6fcd76f26e30e9ec90649d7d"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -626,8 +626,8 @@
         "## G. 舊 repo 未盤點區塊（2026-09-02 新發現）",
         "## 封存區"
       ],
-      "lines": 545,
-      "sha256": "f749089c4ce07f4305458dcecd9ad190c740d7dc23dbd657a5b9f4c493d7fe1e"
+      "lines": 546,
+      "sha256": "2d7dd6608ee26217a8008c7442ea354d775f5c8037cf5ad895197c6dfc22070a"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1136,8 +1136,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6473,
-      "sha256": "71344f4fcd548ed0a9f5e92ac68712007f3796e20babd4debc37ff606e801611"
+      "lines": 6474,
+      "sha256": "f31d14b8ae970a5cb000d8668ac2379a194e1b0d2421acba98e03daec8395ff6"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1207,8 +1207,8 @@
         "# Production negatives; the stop step and code depend on the batch's own step list (see production_negative).",
         "# Git for Windows installer defaults at system scope on the USER machine (B-123a; see the TASKBOARD B-123 row)."
       ],
-      "lines": 1070,
-      "sha256": "f4e147e9d657301d5b1d5f459e949b9a49cbad7d6b42402a18dbd441065932ab"
+      "lines": 1114,
+      "sha256": "82160a00a4af3af4142ae6855704f7b3f996bea3af421942c0f61e3be370d2e9"
     },
     "scripts/bounded_process.py": {
       "fences": 0,
@@ -1357,12 +1357,17 @@
       "fences": 0,
       "headings": [
         "# -*- coding: utf-8 -*-",
+        "# Native preview quick mode (X batch). Only a disposable batch simulation (scripts/batch_sim.py production",
+        "# --quick-gate4, started by scripts/native_preview.py) may replace PRECOMMIT gate 4 (verify_all.py) by",
+        "# `verify_all.py --gate4-collect-only`: gates 1, 2, 3 and 5 of verify_all still run, gate 4 only collects. The real",
+        "# workspace never qualifies: the work tree must be <area>/work of a simulation area whose isolated git",
+        "# configuration, bare origin and prompt-bound marker all match. An environment variable alone never selects it.",
         "# Positional budgets match the fixed STAGES gate sequences. A longer budget is",
         "# reserved for Windows verify_all; no gate is skipped or downgraded.",
         "# G5-a: runner-only per-test duration recording (scripts/gate_durations.py); CI never sets these."
       ],
-      "lines": 289,
-      "sha256": "d17526df9491ad28eb48ed5189d4d81e9d57fb4e072170fd2ff982bb045209b2"
+      "lines": 371,
+      "sha256": "522e35d72aa4cf99fa366b9d2fe1166ac5513997a8ff2e10bb1928198087cf75"
     },
     "scripts/generate_rule_traceability.py": {
       "fences": 0,
@@ -1426,10 +1431,12 @@
         "# Per-stage limits inside batch_sim still apply. This also bounds the entire tree.",
         "# `uv sync --dry-run` only reads the cache; it still bounds an unexpectedly slow uv.",
         "# The simulator next to this module: W2's own copy for the runner; the authored copy for the",
-        "# one-time activation bootstrap, whose W2 still holds a Base simulator without these options."
+        "# one-time activation bootstrap, whose W2 still holds a Base simulator without these options.",
+        "# The rehearsal is the quick mode: PRECOMMIT gate 4 only collects the tests; the full gate 4 runs once, in the real",
+        "# precommit step (X batch, USER 2026-11-17). The terminal marker names the mode, so a full-mode log is not accepted."
       ],
-      "lines": 246,
-      "sha256": "fe67b2202d7199f686bc346a69392b34ff36ab53b66d0ef102c4653834b2ed9b"
+      "lines": 254,
+      "sha256": "1ec4c6cb61e8af44eca240764ef3a11f1abfb309c3ad2c0997dcdb0e0209a095"
     },
     "scripts/native_preview_bootstrap.py": {
       "fences": 0,
@@ -1932,10 +1939,11 @@
       "headings": [
         "# -*- coding: utf-8 -*-",
         "# B117 R3 — byte-stable local gate transcript, bounded budgets and exit protocol.",
-        "# G3 F R3 — prevent recurrence of short Windows process-tree termination deadlines."
+        "# G3 F R3 — prevent recurrence of short Windows process-tree termination deadlines.",
+        "# -- X batch: native preview quick mode (PRECOMMIT gate 4 collect-only, simulation area only) ---------------------"
       ],
-      "lines": 363,
-      "sha256": "9819af6460ddb04fed012548eee7a496f98c5d02f0ef1a5d498c599070792b75"
+      "lines": 552,
+      "sha256": "2e09cee98f53d240a9322ca574fed1ac5632193d6fc9d90f13efc570d4faeea4"
     },
     "scripts/tests/test_governance_preflight.py": {
       "fences": 0,
@@ -2021,8 +2029,8 @@
       "headings": [
         "# --- N-2: the uv that runs the rehearsal is exactly the version the Base pyproject pins -------------------------"
       ],
-      "lines": 961,
-      "sha256": "156849963202f512076bcae4d6922e49ad38ba8dd1f6025c2ab600f5cb63fe63"
+      "lines": 1061,
+      "sha256": "0dc0c87d871ddbfa659ec7e8dc8ea22fcdb53cbca5f0edef8d4b1cabeb643989"
     },
     "scripts/tests/test_playwright_automation.py": {
       "fences": 0,
@@ -2357,10 +2365,11 @@
     "scripts/tests/test_verify_all.py": {
       "fences": 0,
       "headings": [
-        "# B117 R3 — stdout visibility and slow-test diagnostics for Windows."
+        "# B117 R3 — stdout visibility and slow-test diagnostics for Windows.",
+        "# X batch: preview quick mode of gate 4."
       ],
-      "lines": 75,
-      "sha256": "f4136fc4c7e77640207155158c0f05ae21768036ca35aafbf2dcfd9fc0966c5c"
+      "lines": 105,
+      "sha256": "933fc67b7b419a87b0029e15a30577a88693a1461e0f7bc942cb7fc6b3463947"
     },
     "scripts/validate_prompt_manifest.py": {
       "fences": 0,
@@ -2395,11 +2404,11 @@
       "headings": [
         "# -*- coding: utf-8 -*-"
       ],
-      "lines": 93,
-      "sha256": "6bfd57c05a09df3cde679ae53ac6ddd67bfb64cda4246584617d3cc67fb3b81c"
+      "lines": 111,
+      "sha256": "fbc9ad85cb78f44be63864171bf49dfd7605b07f6b030d7ef9c85f810fa11f19"
     }
   },
-  "generated_at": "2026-11-17T11:41:59Z",
+  "generated_at": "2026-11-18T01:03:40Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {
