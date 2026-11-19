@@ -558,3 +558,74 @@ def test_real_repo_check_29_passes():
     fails, infos = check_29_taskboard_archive_guard(repo_root)
     assert fails == []
     assert any("封存列" in i for i in infos)
+
+
+# --- G7-b3b1：看板列與清單的只增不減（checkpoint 看板上的列不得消失；archives 只追加；user_keep 不減） ---------
+
+MANIFEST = "docs/archive/TASKBOARD-ARCHIVE-MANIFEST.json"
+
+
+def commit_as_checkpoint(repo, message):
+    git(repo["root"], "add", "-A")
+    git(repo["root"], "commit", "-q", "-m", message)
+    c = git(repo["root"], "rev-parse", "HEAD")
+    write(repo["root"], "docs/refactor-backlog.md", "上次核對通過的 HEAD：%s\n" % c)
+    return c
+
+
+def test_g7b3b1_a_row_removed_without_archiving_is_a_fail(repo):
+    text = read(repo["root"], "docs/TASKBOARD.md")
+    write(repo["root"], "docs/TASKBOARD.md", text.replace("| B-04 | 已完成 | 沒有證據也不是舊列 |\n", ""))
+    got = fails_of(repo)
+    assert any("列消失" in f and "B-04" in f for f in got), got
+
+
+def test_g7b3b1_archived_rows_and_rows_with_loose_spacing_are_not_reported(repo):
+    apply_ok(repo)
+    text = read(repo["root"], "docs/TASKBOARD.md")
+    write(repo["root"], "docs/TASKBOARD.md", text.replace("| B-04 | 已完成 |", "|  B-04  | 已完成 |"))
+    assert not any("列消失" in f for f in fails_of(repo))
+
+
+def test_g7b3b1_header_row_id_is_tracked_like_any_other_row(repo):
+    # 表頭「| ID | 狀態 |」符合列的格式；整張表被刪掉時也會被擋下（真實看板的表頭寫法）
+    text = read(repo["root"], "docs/TASKBOARD.md")
+    write(repo["root"], "docs/TASKBOARD.md", text.replace("| ID | 狀態 | 標題 |\n", ""))
+    assert any("列消失" in f and "ID：" in f for f in fails_of(repo))
+
+
+def test_g7b3b1_archives_list_must_extend_the_checkpoint_list(repo):
+    apply_ok(repo)
+    commit_as_checkpoint(repo, "first archive")
+    assert fails_of(repo) == []
+    manifest = json.loads(read(repo["root"], MANIFEST))
+    manifest["archives"][0]["batch"] = manifest["archives"][0]["batch"] + "-X"
+    write(repo["root"], MANIFEST, ta.dump_manifest(manifest))
+    got = fails_of(repo)
+    assert any("archives 不是 checkpoint" in f for f in got), got
+
+
+def test_g7b3b1_user_keep_can_grow_but_not_shrink(repo):
+    manifest = json.loads(read(repo["root"], MANIFEST))
+    manifest["user_keep"] = ["B-05"]
+    write(repo["root"], MANIFEST, ta.dump_manifest(manifest))
+    commit_as_checkpoint(repo, "user keep")
+    manifest["user_keep"] = ["B-05", "B-04"]
+    write(repo["root"], MANIFEST, ta.dump_manifest(manifest))
+    assert not any("user_keep 少了" in f for f in fails_of(repo))
+    manifest["user_keep"] = ["B-04"]
+    write(repo["root"], MANIFEST, ta.dump_manifest(manifest))
+    assert any("user_keep 少了 B-05" in f for f in fails_of(repo))
+
+
+@pytest.mark.parametrize("bad", [
+    '{"schema_version": 1, "archives": []}',
+    '{"schema_version": 1, "user_keep": []}',
+    '{"schema_version": 1, "user_keep": {}, "archives": []}',
+])
+def test_g7b3b1_checkpoint_manifest_without_both_arrays_is_a_fail(repo, bad):
+    good = read(repo["root"], MANIFEST)
+    write(repo["root"], MANIFEST, bad)
+    commit_as_checkpoint(repo, "bad manifest at checkpoint")
+    write(repo["root"], MANIFEST, good)
+    assert any("缺少 archives 或 user_keep 陣列" in f for f in fails_of(repo))

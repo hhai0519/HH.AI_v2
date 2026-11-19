@@ -1,5 +1,5 @@
 {
-  "base_head": "855f7d9",
+  "base_head": "5dc5105",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -216,7 +216,7 @@
         "### 13.8 回覆第一行為產出時間"
       ],
       "lines": 596,
-      "sha256": "4da1d4339ce688341b7b3f6ab31ef08bb9526cc8823a42ab341d3153fe9ecc3f"
+      "sha256": "7c6f3e494d11bfb5898a1e8781b501d264cb40c0aeebd1620b0fad5818390a88"
     },
     ".claude/rules/auditor-selftest.md": {
       "fences": 0,
@@ -575,16 +575,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 421,
-      "sha256": "9e2071c564463cb09ee391f2014143850194e5c4e6ea01b5a68f90d16dba22d7"
+      "lines": 422,
+      "sha256": "145b8925012acc3b6fa09ca4119dedf35d1f6ce6038b6afa767749fb9bd862a1"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 391,
-      "sha256": "0f7eea8de20a89e9451994a5b390ef678bb4a28bf53a3a796d215c0507fdc5b5"
+      "lines": 392,
+      "sha256": "540fa36904d26654b655577045f98c3abb0cfbb7ea73cec355344f1864ffe0c8"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -626,8 +626,8 @@
         "## G. 舊 repo 未盤點區塊（2026-09-02 新發現）",
         "## 封存區"
       ],
-      "lines": 454,
-      "sha256": "7adca949fa216cc688027ab8ddc975a070004b3ac2079ec972a1785b5a61b84d"
+      "lines": 455,
+      "sha256": "d2be1bab5befa8a244403bbad7ed2e5099529ea6887b1507f0767a0c55a36660"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1136,8 +1136,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6477,
-      "sha256": "87dfd8eb7b8e18b0bb23734876f67cc22e78efd1829adfb825bcc833cd4a45fa"
+      "lines": 6478,
+      "sha256": "6016ffe1106ec8052168e3779988ed8a14d81ac2b9ecaf1926906f27890b2d6a"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1600,8 +1600,8 @@
         "# 第一個封存檔（USER 一次性確認）寫成後即固定：批次、位元組與筆數釘在這裡，之後改封存檔或清單都會 FAIL。",
         "# 批次紀錄封存（G7-b3a）"
       ],
-      "lines": 907,
-      "sha256": "a8220d9a55d4d8cbb122bff2005b13c68b3d7800d347dce609eca61fb1815c17"
+      "lines": 967,
+      "sha256": "da06b38db26eee4a55aa58e9cdbbbb34009770456241c79817bd4ba91770bd13"
     },
     "scripts/tests/test_anchor.py": {
       "fences": 0,
@@ -2283,18 +2283,21 @@
     },
     "scripts/tests/test_taskboard_archive.py": {
       "fences": 0,
-      "headings": [],
-      "lines": 560,
-      "sha256": "bde3b8fcc9949af76834861cbf1c22b397ba69bbb1663eaec0cef4bb1c223b8a"
+      "headings": [
+        "# --- G7-b3b1：看板列與清單的只增不減（checkpoint 看板上的列不得消失；archives 只追加；user_keep 不減） ---------"
+      ],
+      "lines": 631,
+      "sha256": "40c586a66282503e4fcffeb5badad28979428643dea1e30b5e3a942e6cac5eba"
     },
     "scripts/tests/test_taskboard_records.py": {
       "fences": 0,
       "headings": [
         "# 固定 commit 時間：兩個內容相同的測試 repo 才會得到相同的 commit id（封存檔標頭含 checkpoint），確定性測試不隨秒數飄動",
-        "# ---- G7-b3a2：O1 紀錄消失、O2 多行單元點名、O4 只增不減、看板上限、--keep 必填 ----"
+        "# ---- G7-b3a2：O1 紀錄消失、O2 多行單元點名、O4 只增不減、看板上限、--keep 必填 ----",
+        "# --- G7-b3b1：舊紀錄不得改寫、新紀錄只能在最前面、records-plan 逐行位元組與剩餘空間、非陣列訊息 ---------"
       ],
-      "lines": 719,
-      "sha256": "c68525ce41e5e6866af846589e78e024e88e0e06f7dcfba11a953c002a39b83c"
+      "lines": 809,
+      "sha256": "6fee4db7e7be003b3ade0ecd4b5697480e7a37a91f2f2f87bb9b3324ce3f4ecc"
     },
     "scripts/tests/test_uv_admission.py": {
       "fences": 0,
@@ -2424,7 +2427,7 @@
       "sha256": "fbc9ad85cb78f44be63864171bf49dfd7605b07f6b030d7ef9c85f810fa11f19"
     }
   },
-  "generated_at": "2026-11-18T13:32:14Z",
+  "generated_at": "2026-11-19T10:40:29Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

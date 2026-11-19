@@ -717,3 +717,93 @@ def test_keep_is_required_for_both_records_commands(repo):
         run(["records-plan", "--repo", str(repo["root"])])
     with pytest.raises(SystemExit):
         run(["records-apply", "--repo", str(repo["root"]), "--task-id", TASK, "--checkpoint-oid", repo["c1"], "--take", "1"])
+
+
+# --- G7-b3b1：舊紀錄不得改寫、新紀錄只能在最前面、records-plan 逐行位元組與剩餘空間、非陣列訊息 ---------
+
+NEW = "**新批（2026-11-21；本批 B117-TNEW-R1-261121）**：新紀錄"
+NEW2 = "**再新批（2026-11-22；本批 B117-TNEW2-R1-261122）**：更新的紀錄"
+
+
+def test_g7b3b1_new_record_at_the_top_passes(repo):
+    mutate(repo, "docs/TASKBOARD.md", rec(1, 40), NEW + "\n\n" + rec(1, 40))
+    assert fails_of(repo) == []
+
+
+def test_g7b3b1_two_new_records_at_the_top_pass_when_the_checkpoint_lags(repo):
+    # checkpoint 落後兩批（例如前一批未通過、修復批又加一則）時，兩則新紀錄都在最前面仍合法
+    apply_ok(repo, keep=2, take=2)  # 先搬走兩則，看板加兩則新紀錄後仍在 6 則上限內
+    mutate(repo, "docs/TASKBOARD.md", rec(1, 40), NEW2 + "\n\n" + NEW + "\n\n" + rec(1, 40))
+    assert fails_of(repo) == []
+
+
+@pytest.mark.parametrize("anchor", ["between", "bottom"])
+def test_g7b3b1_new_record_below_an_old_record_is_a_fail(repo, anchor):
+    if anchor == "between":
+        mutate(repo, "docs/TASKBOARD.md", rec(2, 20), NEW + "\n\n" + rec(2, 20))
+    else:
+        mutate(repo, "docs/TASKBOARD.md", rec(5, 5), rec(5, 5) + "\n\n" + NEW)
+    got = fails_of(repo)
+    assert any("只能排在最前面" in f and "B117-TNEW-R1-261121" in f for f in got), got
+
+
+@pytest.mark.parametrize("old,new", [
+    (rec(1, 40), rec(1, 40) + "改"),                       # 紀錄行尾多一個字
+    (rec(2, 20), rec(2, 20).replace("**：", "**:")),       # 全形冒號改半形（C7 仍認得這一則）
+    ("續行乙", "續行丙"),                                   # 只改多行單元的續行
+    (rec(3, 10) + "\n續行甲", rec(3, 10) + "\n續行甲 "),    # 續行尾端多一個空白
+])
+def test_g7b3b1_an_old_record_kept_on_the_board_must_be_byte_identical(repo, old, new):
+    mutate(repo, "docs/TASKBOARD.md", old, new)
+    got = fails_of(repo)
+    assert any("不得改寫" in f for f in got), got
+
+
+def test_g7b3b1_rewrite_check_also_holds_after_records_apply(repo):
+    apply_ok(repo, keep=2, take=2)
+    assert fails_of(repo) == []
+    mutate(repo, "docs/TASKBOARD.md", rec(2, 20), rec(2, 19))
+    got = fails_of(repo)
+    assert any("不得改寫" in f and tid(2) in f for f in got), got
+
+
+def test_g7b3b1_records_plan_prints_the_utf8_bytes_of_every_multi_line_line(tmp_path, monkeypatch):
+    long_line = "續" * 60
+    out = build_repo(tmp_path, monkeypatch, make_board([rec(1) + "\n", rec(2) + "\n" + long_line + "\nab\n", rec(3) + "\n"]), "mlbytes")
+    code, text = run(["records-plan", "--repo", str(out["root"]), "--keep", "1"])
+    assert code == 0
+    lines = [l for l in text.splitlines() if l.startswith("  MULTILINE ")]
+    expected = [len(rec(2).encode("utf-8")), 180, 2]
+    assert [int(l.split()[3][len("bytes="):]) for l in lines] == expected
+    assert all(l.split()[3].startswith("bytes=") for l in lines)
+
+
+@pytest.mark.parametrize("count,room", [(5, 1), (6, 0), (7, -1)])
+def test_g7b3b1_records_plan_prints_the_room_left_under_the_ceiling(tmp_path, monkeypatch, count, room):
+    out = build_repo(tmp_path, monkeypatch, make_board([rec(n) + "\n" for n in range(1, count + 1)]), "room%d" % count)
+    code, text = run(["records-plan", "--repo", str(out["root"]), "--keep", "1"])
+    assert code == 0
+    assert text.splitlines()[-1].endswith(" on_board=%d max=6 room=%d" % (count, room))
+
+
+def test_g7b3b1_current_record_archives_that_is_not_a_list_has_its_own_message(repo):
+    manifest = json.loads(read(repo["root"], MANIFEST))
+    manifest["record_archives"] = {}
+    write(repo["root"], MANIFEST, json.dumps(manifest))
+    assert "docs/archive/TASKBOARD-ARCHIVE-MANIFEST.json record_archives 必須是陣列" in fails_of(repo)
+
+
+@pytest.mark.parametrize("bad,needle", [
+    ('[]', "不是 JSON 物件"),
+    ('{"schema_version": 1, "user_keep": [], "archives": [], "record_archives": {}}', "record_archives 不是陣列"),
+])
+def test_g7b3b1_checkpoint_manifest_shape_errors_are_fails_with_their_own_message(repo, bad, needle):
+    good = read(repo["root"], MANIFEST)
+    write(repo["root"], MANIFEST, bad)
+    git(repo["root"], "add", "-A")
+    git(repo["root"], "commit", "-q", "-m", "bad manifest shape at checkpoint")
+    c = git(repo["root"], "rev-parse", "HEAD")
+    write(repo["root"], MANIFEST, good)
+    write(repo["root"], "docs/refactor-backlog.md", "上次核對通過的 HEAD：%s\n" % c)
+    got = fails_of(repo)
+    assert any(needle in f for f in got), got

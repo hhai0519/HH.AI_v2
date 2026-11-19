@@ -341,6 +341,7 @@
 | .claude/rules/auditor-protocol.md | 423 | ### 10.4 封存不是刪除 | CHECK | CHECK 29 | scripts/check_consistency.py | RESOLVED |
 | .claude/rules/auditor-protocol.md | 423 | ### 10.4 封存不是刪除 | FILE | `scripts/taskboard_archive.py` | scripts/taskboard_archive.py | RESOLVED |
 | .claude/rules/auditor-protocol.md | 423 | ### 10.4 封存不是刪除 | TASK | B-117 | docs/TASKBOARD.md | RESOLVED |
+| .claude/rules/auditor-protocol.md | 423 | ### 10.4 封存不是刪除 | TASK | B-117 | docs/TASKBOARD.md | RESOLVED |
 | .claude/rules/auditor-protocol.md | 427 | ### 10.5 每批次結束時更新 | SECTION | §6.1 | .claude/rules/auditor-protocol.md#§6.1 | RESOLVED |
 | .claude/rules/auditor-protocol.md | 429 | ### 10.5 每批次結束時更新 | SECTION | §10.1 | .claude/rules/auditor-protocol.md#§10.1 | RESOLVED |
 | .claude/rules/auditor-protocol.md | 430 | ### 10.5 每批次結束時更新 | SECTION | §10.4 | .claude/rules/auditor-protocol.md#§10.4 | RESOLVED |

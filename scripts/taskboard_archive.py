@@ -31,7 +31,17 @@ USER_CONFIRMED_LEGACY 只能出現在第一個封存檔。
     records-plan 先逐行印出其前 40 個字元供人工複核。
   - 只增不減：checkpoint 看板上的每一則批次紀錄，必須仍在看板上或已在某個批次紀錄封存檔；
     manifest 的 record_archives 相對於 checkpoint 的 manifest 只能在尾端追加；看板批次紀錄上限 6 則。
+  - 不得改寫（G7-b3b1）：checkpoint 看板上的批次紀錄若仍留在看板，整個單元必須與 checkpoint 逐字相同；
+    checkpoint 看板上沒有的紀錄（新紀錄）只能連續排在看板批次紀錄的最前面（最新在前）。
   keep 的算法：保留的是套用本工具當下看板上的既有紀錄數，不含該批自己新增的那一則。
+
+看板列與清單的只增不減（G7-b3b1，CHECK 29 一併判定）：checkpoint 看板上的每一個表格列 ID，必須仍在看板上或
+已在某個看板列封存檔；manifest 的 archives 相對於 checkpoint 的 manifest 只能在尾端追加，user_keep 只增不減。
+
+比對基準一律是 git 在 refactor-backlog 第 5.1 節 checkpoint 的檔案。checkpoint 不倒退不由本檔檢查，而依賴
+check_consistency 的「上次核對通過的 HEAD … 已過期」判定（checkpoint 必須等於 AUDIT-LOG 中最晚、且是 HEAD
+祖先的核對通過 commit）與 CHECK 28（AUDIT-LOG 只准新增，核對通過列不能被刪改）；兩者任一失效，本檔的只增不減
+比對就可能以較舊的 checkpoint 為基準而放行。
 
 命令列（唯讀者標 ◎）：
   python scripts/taskboard_archive.py plan  --repo <repo>                        ◎ 列出每一列的判定
@@ -43,7 +53,7 @@ USER_CONFIRMED_LEGACY 只能出現在第一個封存檔。
                                             --keep N --take M [--allow-multiline TASK_ID ...]  寫入工作區（不 commit）
 
 fail-closed：manifest、封存檔、AUDIT-LOG、checkpoint 讀不到或格式不符，git 回答不出來，
-一律 FAIL；不適用的只有「沒有任何需要 git 的條目」。
+一律 FAIL；只增不減的比對每次都需要 git，沒有不適用的情形。
 """
 
 import argparse
@@ -434,6 +444,7 @@ def _check(root):
                         fails.append('%s %s：%s' % (where, entry['id'], reason))
             except Fail as exc:
                 fails.append('%s' % exc)
+    fails.extend(check_rows_append_only(root, manifest, taskboard, seen_ids, backlog_text))
     record_fails, record_archives, record_total = check_records(root, manifest, taskboard, backlog_text)
     fails.extend(record_fails)
     section = taskboard.split('\n## 封存區', 1)
@@ -735,33 +746,79 @@ def check_records(root, manifest, taskboard, backlog_text):
                     fails.append('%s %s：與 git 在 checkpoint %s 的看板原文不一致' % (where, entry['task_id'], oid[:7]))
         except Fail as exc:
             fails.append('%s' % exc)
-    if archives:
-        fails.extend(check_records_append_only(root, archives, board_ids, seen, backlog_text))
+    fails.extend(check_records_append_only(root, archives, board_units, seen, backlog_text))
     return fails, len(archives), total
 
 
-def check_records_append_only(root, archives, board_ids, archived_ids, backlog_text):
-    """只增不減（fail-closed）：以 git 在 §5.1 checkpoint 的看板與 manifest 為準。
-    1. checkpoint 看板上的每一則批次紀錄，必須仍在看板上或已在某個批次紀錄封存檔；
-    2. checkpoint 的 manifest 的 record_archives（缺鍵視為空陣列）必須是目前清單的前綴。"""
+def checkpoint_state(root, backlog_text):
+    """git 在 §5.1 checkpoint 的 (checkpoint, 看板原文, manifest 物件)。讀不到、不是合法 JSON 或不是物件就 Fail。"""
+    checkpoint = read_checkpoint(backlog_text)
+    if resolve_commit(root, checkpoint) != checkpoint:
+        raise Fail('checkpoint %s 無法解析' % checkpoint[:7])
+    old_board = git_blob_text(root, checkpoint, TASKBOARD_REL)
+    try:
+        old_manifest = json.loads(git_blob_text(root, checkpoint, MANIFEST_REL))
+    except ValueError:
+        raise Fail('checkpoint %s 的 %s 不是合法 JSON' % (checkpoint[:7], MANIFEST_REL))
+    if not isinstance(old_manifest, dict):
+        raise Fail('checkpoint %s 的 %s 不是 JSON 物件' % (checkpoint[:7], MANIFEST_REL))
+    return checkpoint, old_board, old_manifest
+
+
+def check_rows_append_only(root, manifest, taskboard, archived_ids, backlog_text):
+    """看板列與清單的只增不減（fail-closed，G7-b3b1）：以 git 在 §5.1 checkpoint 的看板與 manifest 為準。
+    1. checkpoint 看板上的每一個表格列 ID，必須仍在看板上或已在某個看板列封存檔；
+    2. checkpoint 的 manifest 的 archives 必須是目前清單的前綴；
+    3. checkpoint 的 manifest 的 user_keep 每一個 ID 仍在目前的 user_keep。"""
     fails = []
     try:
-        checkpoint = read_checkpoint(backlog_text)
-        if resolve_commit(root, checkpoint) != checkpoint:
-            raise Fail('checkpoint %s 無法解析' % checkpoint[:7])
-        old_ids = [u['task_id'] for u in record_units(git_blob_text(root, checkpoint, TASKBOARD_REL))]
-        for tid in old_ids:
+        checkpoint, old_board, old_manifest = checkpoint_state(root, backlog_text)
+        short = checkpoint[:7]
+        for row_id in sorted({row['id'] for row in parse_rows(old_board)}):
+            if not on_board(taskboard, row_id) and row_id not in archived_ids:
+                fails.append('%s：checkpoint %s 的看板有此列，目前既不在看板上也不在任何看板列封存檔（列消失）' % (row_id, short))
+        old_archives, old_keep = old_manifest.get('archives'), old_manifest.get('user_keep')
+        if not isinstance(old_archives, list) or not isinstance(old_keep, list):
+            raise Fail('checkpoint %s 的 %s 缺少 archives 或 user_keep 陣列' % (short, MANIFEST_REL))
+        archives, keep = manifest['archives'], manifest['user_keep']
+        if len(archives) < len(old_archives) or archives[:len(old_archives)] != old_archives:
+            fails.append('%s archives 不是 checkpoint %s 清單的追加（只增不減：不得刪除、改寫或重排既有封存檔）' % (MANIFEST_REL, short))
+        for row_id in old_keep:
+            if row_id not in keep:
+                fails.append('%s user_keep 少了 %s：USER 標記保留只增不減（checkpoint %s）' % (MANIFEST_REL, row_id, short))
+    except Fail as exc:
+        fails.append('%s' % exc)
+    return fails
+
+
+def check_records_append_only(root, archives, board_units, archived_ids, backlog_text):
+    """批次紀錄的只增不減與不得改寫（fail-closed）：以 git 在 §5.1 checkpoint 的看板與 manifest 為準。
+    1. checkpoint 看板上的每一則批次紀錄，必須仍在看板上或已在某個批次紀錄封存檔；
+    2. checkpoint 的 manifest 的 record_archives（缺鍵視為空陣列）必須是目前清單的前綴；
+    3. 仍留在看板的舊紀錄，整個單元必須與 checkpoint 看板逐字相同（G7-b3b1）；
+    4. checkpoint 看板上沒有的新紀錄只能連續排在最前面（G7-b3b1）。"""
+    fails = []
+    board_ids = [u['task_id'] for u in board_units]
+    try:
+        checkpoint, old_board, old_manifest = checkpoint_state(root, backlog_text)
+        short = checkpoint[:7]
+        old_units = {u['task_id']: u['lines'] for u in record_units(old_board)}
+        for tid in old_units:
             if tid not in board_ids and tid not in archived_ids:
-                fails.append('%s：checkpoint %s 的看板有此批次紀錄，目前既不在看板上也不在任何批次紀錄封存檔（紀錄消失）' % (tid, checkpoint[:7]))
-        try:
-            old_manifest = json.loads(git_blob_text(root, checkpoint, MANIFEST_REL))
-        except ValueError:
-            raise Fail('checkpoint %s 的 %s 不是合法 JSON' % (checkpoint[:7], MANIFEST_REL))
-        old_archives = old_manifest.get('record_archives', []) if isinstance(old_manifest, dict) else None
+                fails.append('%s：checkpoint %s 的看板有此批次紀錄，目前既不在看板上也不在任何批次紀錄封存檔（紀錄消失）' % (tid, short))
+        seen_old = False
+        for unit in board_units:
+            if unit['task_id'] in old_units:
+                seen_old = True
+                if unit['lines'] != old_units[unit['task_id']]:
+                    fails.append('%s：留在看板的舊批次紀錄必須與 checkpoint %s 逐字相同（不得改寫）' % (unit['task_id'], short))
+            elif seen_old:
+                fails.append('%s：checkpoint %s 之後新增的批次紀錄只能排在最前面（最新在前），不得夾在舊紀錄之間或之後' % (unit['task_id'], short))
+        old_archives = old_manifest.get('record_archives', [])
         if not isinstance(old_archives, list):
-            raise Fail('checkpoint %s 的 %s record_archives 不是陣列' % (checkpoint[:7], MANIFEST_REL))
-        if archives[:len(old_archives)] != old_archives or len(archives) < len(old_archives):
-            fails.append('%s record_archives 不是 checkpoint %s 清單的追加（只增不減：不得刪除、改寫或重排既有封存檔）' % (MANIFEST_REL, checkpoint[:7]))
+            raise Fail('checkpoint %s 的 %s record_archives 不是陣列' % (short, MANIFEST_REL))
+        if len(archives) < len(old_archives) or archives[:len(old_archives)] != old_archives:
+            fails.append('%s record_archives 不是 checkpoint %s 清單的追加（只增不減：不得刪除、改寫或重排既有封存檔）' % (MANIFEST_REL, short))
     except Fail as exc:
         fails.append('%s' % exc)
     return fails
@@ -788,8 +845,11 @@ def records_plan(root, out, keep):
         out.write('RECORD %d %s line=%d lines=%d bytes=%d %s\n' % (number, unit['task_id'], unit['start'], len(unit['lines']), size, state))
         if len(unit['lines']) > 1:
             for offset, line in enumerate(unit['lines'], 1):
-                out.write('  MULTILINE %s L%d/%d %s\n' % (unit['task_id'], offset, len(unit['lines']), line[:MULTILINE_PREVIEW]))
-    out.write('RECORDS_SUMMARY keep=%d movable=%d movable_bytes=%d\n' % (keep, max(0, count - keep), moved))
+                out.write('  MULTILINE %s L%d/%d bytes=%d %s\n' % (unit['task_id'], offset, len(unit['lines']),
+                                                                   len(line.encode('utf-8')), line[:MULTILINE_PREVIEW]))
+    # room：距看板批次紀錄上限（RECORDS_ON_BOARD_MAX）的剩餘則數；負數表示已超過，必須在同批 records-apply 搬走
+    out.write('RECORDS_SUMMARY keep=%d movable=%d movable_bytes=%d on_board=%d max=%d room=%d\n'
+              % (keep, max(0, count - keep), moved, count, RECORDS_ON_BOARD_MAX, RECORDS_ON_BOARD_MAX - count))
     return 0
 
 
