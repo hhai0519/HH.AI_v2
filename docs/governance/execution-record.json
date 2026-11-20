@@ -1,26 +1,30 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "B117-G6-FIXED-WAIT-261120",
-  "base_oid": "7395fccfda68acee67684ee001342d99e8ad43c1",
+  "task_id": "B117-G7B3B3-TODO-LEDGER-261120",
+  "base_oid": "da9fdbde3dc0bc6ea587324efeb5286e5e7fa80d",
   "plan": {
     "allowed_paths": [
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
+      "docs/TODO-LEDGER.md",
+      "docs/archive/TASKBOARD-ARCHIVE-MANIFEST.json",
+      "docs/archive/TASKBOARD-RECORDS-0004.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md",
-      "runtime/channel-gateway/tests/gateway-runtime-owner.test.js"
+      "docs/refactor-backlog.md"
     ],
     "required_paths": [
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
+      "docs/TODO-LEDGER.md",
+      "docs/archive/TASKBOARD-ARCHIVE-MANIFEST.json",
+      "docs/archive/TASKBOARD-RECORDS-0004.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md",
-      "runtime/channel-gateway/tests/gateway-runtime-owner.test.js"
+      "docs/refactor-backlog.md"
     ],
     "max_plan_revisions": 3,
     "revision_count": 0,
@@ -31,10 +35,12 @@
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
+      "docs/TODO-LEDGER.md",
+      "docs/archive/TASKBOARD-ARCHIVE-MANIFEST.json",
+      "docs/archive/TASKBOARD-RECORDS-0004.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md",
-      "runtime/channel-gateway/tests/gateway-runtime-owner.test.js"
+      "docs/refactor-backlog.md"
     ]
   },
   "evidence": [

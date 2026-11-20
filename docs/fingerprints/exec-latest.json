@@ -1,5 +1,5 @@
 {
-  "base_head": "7395fcc",
+  "base_head": "da9fdbd",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -576,16 +576,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 426,
-      "sha256": "b6ccfaeffac98983b482642e33b3bc7fbf5f7c3f1f99139dc671fe861506ab7f"
+      "lines": 427,
+      "sha256": "42d9ee241e951954d78a73b307baf970336ceca3ebbbb9db823a3fe525ff577d"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 396,
-      "sha256": "1181f34fd9792b5e40b0d09136a3d357f5c9d01eedafede03906cc9b98b3aceb"
+      "lines": 397,
+      "sha256": "4a8f982da34977c1630bfd1b065f292931715edb665d113af76eb7c1237d1f4d"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -628,7 +628,20 @@
         "## 封存區"
       ],
       "lines": 459,
-      "sha256": "3bad872c742ce59b66272b7a127042cbddb42fcc22e5b86cbfcba0cd3b4cd668"
+      "sha256": "9ad2628f7efb7da63f4db5febfaa8338f3e66767e3c9e63fadbd03d0a7884265"
+    },
+    "docs/TODO-LEDGER.md": {
+      "fences": 0,
+      "headings": [
+        "# 待辦清冊（TODO-LEDGER）",
+        "## 一、規則",
+        "## 二、處置定義",
+        "## 三、統計（B117-G7B3B3-TODO-LEDGER-261120，Base da9fdbde）",
+        "## 四、盤點範圍與方法",
+        "## 五、清冊"
+      ],
+      "lines": 137,
+      "sha256": "1a7ce077e8a7eeb8249877951ae16f4e11d2d6ea7a52223539452efa103b4a78"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1137,8 +1150,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6482,
-      "sha256": "4d2ce4f0f95d877db4852df5296c47a2973f56a2120d39a06877e58da51043f2"
+      "lines": 6483,
+      "sha256": "ab42a643539b6d2878ceca95d44c51f5669ff5dd5e6ea64939a7a89a981f3485"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -2431,7 +2444,7 @@
       "sha256": "fbc9ad85cb78f44be63864171bf49dfd7605b07f6b030d7ef9c85f810fa11f19"
     }
   },
-  "generated_at": "2026-11-20T13:21:08Z",
+  "generated_at": "2026-11-20T15:17:18Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

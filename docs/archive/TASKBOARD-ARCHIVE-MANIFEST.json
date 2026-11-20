@@ -920,6 +920,22 @@
      "unit_bytes": 4083
     }
    ]
+  },
+  {
+   "file": "docs/archive/TASKBOARD-RECORDS-0004.md",
+   "batch": "B117-G7B3B3-TODO-LEDGER-261120",
+   "checkpoint_oid": "da9fdbde3dc0bc6ea587324efeb5286e5e7fa80d",
+   "file_sha256": "b75ba754108c1cfcafe40d30e050aca35dc3caa7e0a5e592234614dde653ba1f",
+   "keep": 5,
+   "entries": [
+    {
+     "task_id": "B117-G7B3A2-RECORDS-MOVE2-R3-261118",
+     "source_line": 131,
+     "line_count": 1,
+     "unit_sha256": "445fbc837e8dfaf56212a31875cfb7f8de7757247e55f57ca846b5b66901a3e6",
+     "unit_bytes": 15953
+    }
+   ]
   }
  ]
 }
