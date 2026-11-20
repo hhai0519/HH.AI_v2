@@ -936,6 +936,22 @@
      "unit_bytes": 15953
     }
    ]
+  },
+  {
+   "file": "docs/archive/TASKBOARD-RECORDS-0005.md",
+   "batch": "B117-TAKEOVER-STATE-261121",
+   "checkpoint_oid": "2137065f8828fb5ef1e5f5f27c4947393f74c205",
+   "file_sha256": "42c1f3290f2325633911d34a0eac756456ee600ee4816da9de4d80271ec5c281",
+   "keep": 5,
+   "entries": [
+    {
+     "task_id": "B117-G7B3B1-TAKEOVER-ARCHIVE-R2-261119",
+     "source_line": 131,
+     "line_count": 1,
+     "unit_sha256": "df833b4a2d29040aee395368eea41349dabb6e3958288bf41b5b0f7c5b4b47d9",
+     "unit_bytes": 2992
+    }
+   ]
   }
  ]
 }

@@ -31,6 +31,8 @@
 | RECORDS-0002 內 G5-DELIVERY-PRESTART 紀錄無「新增」標記之待辦 | 2 | 結案 0、承接 1、開放 1 |
 | RECORDS-0001 之無標籤待辦（4 組，群組級） | 4 | 結案 0、承接 4、開放 0 |
 
+本檔累計（B117-TAKEOVER-STATE-261121，Base 2137065f8828fb5ef1e5f5f27c4947393f74c205）：94 項（結案 24、承接 41、開放 29）；上表為 B117-G7B3B3-TODO-LEDGER-261120 建立時之統計，TD-085 至 TD-094 由 B117-TAKEOVER-STATE-261121 加入（補編 6 項：結案 1、承接 5；新增 4 項：開放 4）。
+
 ## 四、盤點範圍與方法
 
 三種計數方法的範圍與判定規則不同，數字不能互相對照；本檔把三種都列出，不以其中一種取代另一種。
@@ -42,7 +44,7 @@
 已知限制：
 
 - RECORDS-0001（27 則紀錄）沒有全形括號標籤；其待辦以「類別待辦」「前向收斂（owner）」寫成，本檔只列 4 組（TD-001 至 TD-004），群組內逐項是否仍有對應文字未核實（UNKNOWN）。
-- 看板上仍留 5 則批次紀錄（B117-G6-FIXED-WAIT-261120、B117-R1INT1-WAIT-261120、B117-G7B3B2-ONE-LINER-R3-261120、B117-BACKUP-TEST-CLOCK-R2-261120、B117-G7B3B1-TAKEOVER-ARCHIVE-R2-261119）之待辦不在本批盤點：它們尚在看板，待搬移時依本檔規則補編 TD 編號（G7B3B1 紀錄之 b3b1-一至六皆寫「登錄於 G3、G6、G7 列」，由各列承接）。本批自己的紀錄沒有新增待辦（b3b3-2、b3b3-3 為 NEXT_SLICE 排程項）。
+- 看板上仍留 5 則批次紀錄（B117-G6-FIXED-WAIT-261120、B117-R1INT1-WAIT-261120、B117-G7B3B2-ONE-LINER-R3-261120、B117-BACKUP-TEST-CLOCK-R2-261120、B117-G7B3B1-TAKEOVER-ARCHIVE-R2-261119）之待辦不在本批盤點：它們尚在看板，待搬移時依本檔規則補編 TD 編號（G7B3B1 紀錄之 b3b1-一至六皆寫「登錄於 G3、G6、G7 列」，由各列承接）。其中 B117-G7B3B1-TAKEOVER-ARCHIVE-R2-261119 一則已由 B117-TAKEOVER-STATE-261121 搬入 docs/archive/TASKBOARD-RECORDS-0005.md，其 b3b1-一至六補編為 TD-085 至 TD-090。本批自己的紀錄沒有新增待辦（b3b3-2、b3b3-3 為 NEXT_SLICE 排程項）。
 - 「承接」只核對承接位置存在且文字相符，不代表該位置的工作已排定時程。
 
 ## 五、清冊
@@ -133,5 +135,15 @@
 | TD-082 | B117-G7B3A2-RECORDS-MOVE2-R3-261118 | b3a2-七 | W2 之 .git 現存 49 份歷來各批 PRECOMMIT 第 4 關原始紀錄，本測試之歷史結果未逐份核對（UNKNOWN） | 開放 | 觸發：G6 lint 或 D1／D9 需要歷史失敗率時。owner：G6 |
 | TD-083 | B117-G7B3A2-RECORDS-MOVE2-R3-261118 | b3a2-八 | G7-b3b 之後之 xdist 試驗 | 承接 | NEXT_SLICE 排程（二）本機第 4 關有界 pytest-xdist 試驗（FACT） |
 | TD-084 | B117-G7B3A2-RECORDS-MOVE2-R3-261118 | b3a2-九、（三） | 審查工具批登錄 EXECUTOR-START.txt（delivery_pack 另輸出，避免區塊 3 手抄錯誤；同紀錄第十點（三）建議） | 開放 | 看板現只在 B117-G7B3A2-RECORDS-MOVE2-R3-261118 紀錄登錄此建議，該紀錄本批搬入封存檔，不是承接位置，故列開放。owner：審查工具批；觸發：該批作者化 |
+| TD-085 | B117-G7B3B1-TAKEOVER-ARCHIVE-R2-261119 | b3b1-一 | 封存批次紀錄帶走之待辦一次盤點 | 結案 | b3b3-1（B117-G7B3B3-TODO-LEDGER-261120）完成本檔（TD-001 至 TD-084），Macro PASS 與 POST-MAIN VERIFIED（FACT：AUDIT-LOG 該列） |
+| TD-086 | B117-G7B3B1-TAKEOVER-ARCHIVE-R2-261119 | b3b1-二 | G6 守衛殘餘寫法（helper 內寫死短期限、lambda 與 *a, **k 轉傳、兩層 helper、字串串接拼出 TREE_SIGNALLED）與 TREE_SIGNALLED 字串允許清單 | 承接 | G6 列（b3b1-二）（FACT：G6 列現行文字） |
+| TD-087 | B117-G7B3B1-TAKEOVER-ARCHIVE-R2-261119 | b3b1-三 | TASK_ID 格式：production 為「名稱-R<n>-<YYMMDD>」、promotion 為 PROMOTE- 加同名，由 prompt_builder 與 delivery_pack 拒絕不符者 | 承接 | G3 列（b3b1-三），排審查工具批第一批（FACT：G3 列現行文字） |
+| TD-088 | B117-G7B3B1-TAKEOVER-ARCHIVE-R2-261119 | b3b1-四 | 每批回覆固定附 PRECOMMIT 第 4 關秒數（現只在超過 70% 才印），併（b2-二） | 承接 | G6 列（b3b1-四）（FACT：G6 列現行文字） |
+| TD-089 | B117-G7B3B1-TAKEOVER-ARCHIVE-R2-261119 | b3b1-五 | *_HEAD_DRIFT 停止時一併輸出預期與實際 40 碼 HEAD | 承接 | G3 列（b3b1-五），排審查工具批（FACT：G3 列現行文字） |
+| TD-090 | B117-G7B3B1-TAKEOVER-ARCHIVE-R2-261119 | b3b1-六 | S1 根因登記檔是否進 repo | 承接 | G7 列（b3b1-六）；USER 2026-11-20 D8「S1 登記檔移入 repo：同意」，排 β 批（FACT：D1 至 D9 決定行） |
+| TD-091 | B117-TAKEOVER-STATE-261121 | （無；本批新增） | Defender 對 runtime/channel-gateway/bin 之 windows-credential-manager-access.ps1 與 windows-credential-manager-read.ps1 出現「NOT trusted」與「low-fidelity detection」警告（b3b3-1 第 4 關量測之 PerfHints，見於 hhai-candidate-check-* 暫存複本與 AMSI 掃描；兩支腳本未簽章）；現只警告、未阻擋，若升級為封鎖或隔離，第 4 關會出現非確定性失敗，Windows 上執行 gateway 亦可能受影響 | 開放 | owner：G6；評估 S1 蒐證一併擷取 Defender 偵測與事件紀錄、兩支腳本加 Authenticode 簽章之可行性；是否實作由 USER 另行決定（D6（四）只登錄）。觸發：任一 S1 或 CI 失敗涉及這兩支腳本或 Defender；複查日 2026-11-29。資料來源：USER 本機錄製、第二意見分析（非權威） |
+| TD-092 | B117-TAKEOVER-STATE-261121 | （無；本批新增） | 把審查官端「批次定義產生腳本」收進 repo，做成只改測試之修復批與只改狀態之批兩個範本（前任線索：第二意見建議，前任同意方向） | 開放 | owner：β 批（D4 機械化）；觸發：β 批作者化；凍結期間只登錄（D6（四）） |
+| TD-093 | B117-TAKEOVER-STATE-261121 | （無；本批新增） | gateway-windows 每次耗時不同：KNOWN_FOLDER_BRIDGE_MS 在近期 Run 為 194 至 290 毫秒、job 總秒數 120 至 137 秒，Windows 變慢原因 UNKNOWN；目前只作觀察 | 開放 | owner：G6；觸發：（四）降低版 G6 之 Windows CI 試驗作者化時一併評估，或 gateway-windows 因逾時失敗時 |
+| TD-094 | B117-TAKEOVER-STATE-261121 | （無；本批新增） | 回覆第二行之矛盾：協定第 8.1、13.8 節規定第二行為建議推理級別；USER 現行角色文件規定第二行為「本輪基準」。依協定第 13 節前言，現行以 USER 文件為準，推理級別順延為第三行 | 開放 | owner：G7-c（USER 決定收攏）；觸發：G7-c 作者化時把 USER 決定寫入協定並改第 8.1、13.8 節 |
 
 註：多項待辦以「G5-c」為觸發，但 `docs/TASKBOARD.md` 現行文字沒有「G5-c」這個切片（FACT：全檔 0 次出現）；其觸發因此無從滿足。這些項目（TD-017、TD-018、TD-020、TD-044、TD-047 之 (2)）現在的 owner 是 G5 列（OPEN），是否另立 G5-c 或併入其他切片，由後續排程決定。

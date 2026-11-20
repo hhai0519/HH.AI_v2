@@ -1,5 +1,5 @@
 {
-  "base_head": "da9fdbd",
+  "base_head": "2137065",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -576,16 +576,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 427,
-      "sha256": "42d9ee241e951954d78a73b307baf970336ceca3ebbbb9db823a3fe525ff577d"
+      "lines": 428,
+      "sha256": "2b055925c31a5ac31b53749a65ce187348605db2e503028dab45e1c5b188e451"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 397,
-      "sha256": "4a8f982da34977c1630bfd1b065f292931715edb665d113af76eb7c1237d1f4d"
+      "lines": 398,
+      "sha256": "ac892b053b9db6af998db938def70c1c8db1f797acd7bf09ce6c87c1d26fe91f"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -628,7 +628,7 @@
         "## 封存區"
       ],
       "lines": 459,
-      "sha256": "9ad2628f7efb7da63f4db5febfaa8338f3e66767e3c9e63fadbd03d0a7884265"
+      "sha256": "60a862d5622a74b56ae4758349821f147d9d1ac3f2c84a43a9a3f0286d03851e"
     },
     "docs/TODO-LEDGER.md": {
       "fences": 0,
@@ -640,8 +640,8 @@
         "## 四、盤點範圍與方法",
         "## 五、清冊"
       ],
-      "lines": 137,
-      "sha256": "1a7ce077e8a7eeb8249877951ae16f4e11d2d6ea7a52223539452efa103b4a78"
+      "lines": 149,
+      "sha256": "30547a4cc677b4d334ab291737898d92737f596ef31f85aa70400c75c50afb53"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1150,8 +1150,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6483,
-      "sha256": "ab42a643539b6d2878ceca95d44c51f5669ff5dd5e6ea64939a7a89a981f3485"
+      "lines": 6484,
+      "sha256": "21589bda2aa4e4a9437916c15032b09343e5eff3b33f5d5c4fdb7a80fdbea369"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -2444,7 +2444,7 @@
       "sha256": "fbc9ad85cb78f44be63864171bf49dfd7605b07f6b030d7ef9c85f810fa11f19"
     }
   },
-  "generated_at": "2026-11-20T15:17:18Z",
+  "generated_at": "2026-11-20T17:33:42Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

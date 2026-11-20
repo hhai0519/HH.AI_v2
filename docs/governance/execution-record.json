@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "B117-G7B3B3-TODO-LEDGER-261120",
-  "base_oid": "da9fdbde3dc0bc6ea587324efeb5286e5e7fa80d",
+  "task_id": "B117-TAKEOVER-STATE-261121",
+  "base_oid": "2137065f8828fb5ef1e5f5f27c4947393f74c205",
   "plan": {
     "allowed_paths": [
       "docs/AUDIT-LOG.md",
@@ -10,7 +10,7 @@
       "docs/TASKBOARD.md",
       "docs/TODO-LEDGER.md",
       "docs/archive/TASKBOARD-ARCHIVE-MANIFEST.json",
-      "docs/archive/TASKBOARD-RECORDS-0004.md",
+      "docs/archive/TASKBOARD-RECORDS-0005.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
       "docs/refactor-backlog.md"
@@ -21,7 +21,7 @@
       "docs/TASKBOARD.md",
       "docs/TODO-LEDGER.md",
       "docs/archive/TASKBOARD-ARCHIVE-MANIFEST.json",
-      "docs/archive/TASKBOARD-RECORDS-0004.md",
+      "docs/archive/TASKBOARD-RECORDS-0005.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
       "docs/refactor-backlog.md"
@@ -37,7 +37,7 @@
       "docs/TASKBOARD.md",
       "docs/TODO-LEDGER.md",
       "docs/archive/TASKBOARD-ARCHIVE-MANIFEST.json",
-      "docs/archive/TASKBOARD-RECORDS-0004.md",
+      "docs/archive/TASKBOARD-RECORDS-0005.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
       "docs/refactor-backlog.md"
