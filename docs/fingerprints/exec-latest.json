@@ -1,5 +1,5 @@
 {
-  "base_head": "f1531fa",
+  "base_head": "c3eb1fe",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -195,6 +195,7 @@
         "### 10.5 每批次結束時更新",
         "### 10.6 「最後更新」是可驗證的攔截點",
         "### 10.7 NEXT_WORK 指標權威與生命週期",
+        "### 10.8 每批「一句話」（B-117 G7-b3b2；USER 2026-11-18 要求）",
         "## 11. 錯誤處置與回滾",
         "### 11.1 判斷順序",
         "### 11.2 執行 revert 的完整程序",
@@ -215,8 +216,8 @@
         "### 13.7 審查官與第二意見的交接",
         "### 13.8 回覆第一行為產出時間"
       ],
-      "lines": 596,
-      "sha256": "7c6f3e494d11bfb5898a1e8781b501d264cb40c0aeebd1620b0fad5818390a88"
+      "lines": 603,
+      "sha256": "762b1baa57a3b380c901aa74b5da02bfe23e9a902e044ac93addcd3a697f79f9"
     },
     ".claude/rules/auditor-selftest.md": {
       "fences": 0,
@@ -575,16 +576,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 423,
-      "sha256": "baec06497cdfa23cc93ead448820caf420ad4a80727a5a65a8c6e473a0895ac5"
+      "lines": 424,
+      "sha256": "9ade55193b02199562c7b19fcd0590e1f340df8cbcb30b27537f30c04d3e6086"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 393,
-      "sha256": "f2b2aa01d107b095299b6184f9809467aef7d7f5e534ea96e5aa74c60fafb5e7"
+      "lines": 394,
+      "sha256": "eafcdddded13e940a890d50208441e7971d663542875fa2ff8ab07fa1242c267"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -626,8 +627,8 @@
         "## G. 舊 repo 未盤點區塊（2026-09-02 新發現）",
         "## 封存區"
       ],
-      "lines": 456,
-      "sha256": "e9784fff24e3fff6ae564cebff884e6ce7377abeafbcc1c7538d688d11b040f9"
+      "lines": 457,
+      "sha256": "1534a164b1d7a27af66986fd80ceeabf0494e83be3ec6ef81954b8ad7653dbbf"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1136,8 +1137,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6479,
-      "sha256": "e74e5832d3beea18653d965c0ed05b799ec58513dc253df3ea67f1dda5695f5a"
+      "lines": 6480,
+      "sha256": "f0be8f758cd94f662824d6371c4a0d7e7c12fccffbc6fca8bf388fd9179aa027"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1303,8 +1304,8 @@
         "# owner 須為未完成之看板任務）。任何輸入缺失、畸形或讀取失敗一律判定失敗。",
         "# ---------------------------------------------------------------------------"
       ],
-      "lines": 4047,
-      "sha256": "bdba5f4c14358b31d4c8a4723d6066d59293066b444b53e563c949e1581442af"
+      "lines": 4063,
+      "sha256": "8aa1bb46036e0528c6d258b54fcce06ff1be089f447e9c5d243b37962f2e3460"
     },
     "scripts/delivery_pack.py": {
       "fences": 0,
@@ -1472,8 +1473,8 @@
         "# description): the Executor stops, forwards the output verbatim and never repairs the situation itself. Whether a",
         "# new TASK_ID is issued or the USER handles the existing target is decided by the Macro Auditor and the USER."
       ],
-      "lines": 855,
-      "sha256": "69022b709e5fc7fc8f6e26c95e1c6c0b566970496f89a94f697dd0fc612b547f"
+      "lines": 873,
+      "sha256": "26b5cc83b374afb7f0d6ff4de4421c40c62d7456e49e5927de642fcf87ca6377"
     },
     "scripts/prompt_intake.py": {
       "fences": 0,
@@ -1600,8 +1601,8 @@
         "# 第一個封存檔（USER 一次性確認）寫成後即固定：批次、位元組與筆數釘在這裡，之後改封存檔或清單都會 FAIL。",
         "# 批次紀錄封存（G7-b3a）"
       ],
-      "lines": 967,
-      "sha256": "da06b38db26eee4a55aa58e9cdbbbb34009770456241c79817bd4ba91770bd13"
+      "lines": 1083,
+      "sha256": "2558f70f9ca3503ef85a442ba00817b865459a4e8067129c61b071f117b35f73"
     },
     "scripts/tests/test_anchor.py": {
       "fences": 0,
@@ -1697,7 +1698,7 @@
         "# --- G5-b2: a prompt that offers the single run command is rehearsed with that command ---------------"
       ],
       "lines": 1509,
-      "sha256": "8db1c23fe215ab73990a5e492b0c2c05876ed13745e90af94dd78657cc551a32"
+      "sha256": "c9f80fffc73c188e159d9812da36c8bdee781bb0b92fe89eea1c7a7a5d448b3f"
     },
     "scripts/tests/test_bounded_process.py": {
       "fences": 0,
@@ -1872,8 +1873,8 @@
         "# CHECK 30 Tests: TASKBOARD single-line markers (B-117 G7-b2)",
         "# ---------------------------------------------------------------------------"
       ],
-      "lines": 2955,
-      "sha256": "f411bae25065118dab2107b2f997d1d9a90f9e22471af11ede7aa9a98fab8adf"
+      "lines": 3020,
+      "sha256": "36a906088b767019730d8efb353d1a56ccb41be7c72bf5f183c378811f136382"
     },
     "scripts/tests/test_delivery_pack.py": {
       "fences": 0,
@@ -2037,7 +2038,7 @@
         "# --- N-2: the uv that runs the rehearsal is exactly the version the Base pyproject pins -------------------------"
       ],
       "lines": 1061,
-      "sha256": "0dc0c87d871ddbfa659ec7e8dc8ea22fcdb53cbca5f0edef8d4b1cabeb643989"
+      "sha256": "751eef3b4aa5fd3ff9ec349c8ba36678c36ee4c8983aca6e70a3e45d363b447e"
     },
     "scripts/tests/test_playwright_automation.py": {
       "fences": 0,
@@ -2064,10 +2065,11 @@
         "# B-118 first-activation negative tests: new auto-production must explicitly decide output.",
         "# The canonical builder/checker recognises READONLY without granting canonical production-runner rights.",
         "# B115/G3 CI-PENDING-REPLY: positive terminal handoff; no checker command for Executor.",
-        "# G5-b2: the Executor is only ever told to run the single command (and the read-only check); one text for both kinds."
+        "# G5-b2: the Executor is only ever told to run the single command (and the read-only check); one text for both kinds.",
+        "# --- G7-b3b2：每批「一句話」由工具寫入，不靠手寫 ------------------------------------------------------------"
       ],
-      "lines": 1490,
-      "sha256": "ff2236d854379fb64d0aea0021331fdc76e1f765330dbbfcb0ffb3694566759b"
+      "lines": 1576,
+      "sha256": "fad15e5e13e4da063f947d30bfa51cf9e3e82cf3ad63a91bbc06035cc1f74d59"
     },
     "scripts/tests/test_prompt_intake.py": {
       "fences": 0,
@@ -2294,10 +2296,12 @@
       "headings": [
         "# 固定 commit 時間：兩個內容相同的測試 repo 才會得到相同的 commit id（封存檔標頭含 checkpoint），確定性測試不隨秒數飄動",
         "# ---- G7-b3a2：O1 紀錄消失、O2 多行單元點名、O4 只增不減、看板上限、--keep 必填 ----",
-        "# --- G7-b3b1：舊紀錄不得改寫、新紀錄只能在最前面、records-plan 逐行位元組與剩餘空間、非陣列訊息 ---------"
+        "# --- G7-b3b1：舊紀錄不得改寫、新紀錄只能在最前面、records-plan 逐行位元組與剩餘空間、非陣列訊息 ---------",
+        "# --- G7-b3b2：每批「一句話」（看板最新一則批次紀錄；錨點之後才生效） ------------------------------------------",
+        "# --- EXEC-LOG 列 -----------------------------------------------------------------------------------------"
       ],
-      "lines": 809,
-      "sha256": "6fee4db7e7be003b3ade0ecd4b5697480e7a37a91f2f2f87bb9b3324ce3f4ecc"
+      "lines": 1011,
+      "sha256": "597e72b653ef43cdcfaf00cc5073841ff10668ecf19f5a73bc9c15ecb9be50b1"
     },
     "scripts/tests/test_uv_admission.py": {
       "fences": 0,
@@ -2427,7 +2431,7 @@
       "sha256": "fbc9ad85cb78f44be63864171bf49dfd7605b07f6b030d7ef9c85f810fa11f19"
     }
   },
-  "generated_at": "2026-11-20T03:10:41Z",
+  "generated_at": "2026-11-20T05:47:37Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

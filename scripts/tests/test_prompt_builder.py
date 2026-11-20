@@ -101,7 +101,7 @@ def _definition(tmp_path, base, **over):
                                    "results": [{"query_id": "q1", "matched_paths": ["scripts/tool.py", "docs/OTHER.md", "docs/archive/old.md"]}]}))
     defn = {
         "schema_version": 1, "task_id": TASK, "kind": "production", "base_oid": base,
-        "branch": "batch/unit-build-261009", "commit_message": "Unit: build", "e24": True, "focused": None,
+        "branch": "batch/unit-build-261009", "commit_message": "Unit: build", "one_liner": "單元測試用的一句話說明文字", "e24": True, "focused": None,
         "code_files": {"scripts/tool.py": "tool.py"},
         "new_files": {"scripts/new_tool.py": {"file": "new.py", "block": "NEW_TOOL_PY"}},
         "text_ops": [
@@ -1077,7 +1077,7 @@ def _auto_production_definition(tmp_path, repo, **updates):
     body = {
         'schema_version': 1, 'task_id': 'UNIT-PRODUCTION-261014', 'kind': 'production',
         'base_oid': base, 'branch': 'batch/unit-production-261014',
-        'commit_message': 'autoproduction unit candidate', 'e24': False, 'bundle_output': False,
+        'commit_message': 'autoproduction unit candidate', 'one_liner': '自動產生測試用的一句話說明文字', 'e24': False, 'bundle_output': False,
         'code_files': {'scripts/tool.py': 'final.py'},
         'new_files': {}, 'text_ops': [], 'focused': None,
         'production_prose': {
@@ -1488,3 +1488,89 @@ def test_g5b2_commands_are_exactly_run_then_resume_check_and_preview_is_checked_
     for wrong in (old, commands[:1], commands[::-1], commands + commands[:1]):
         with pytest.raises(pb.BuildError, match='NATIVE_PREVIEW_COMMANDS_MISMATCH'):
             pb.check_preview_contract('\n'.join(wrong) + tail, spec)
+
+
+# --- G7-b3b2：每批「一句話」由工具寫入，不靠手寫 ------------------------------------------------------------
+
+ONE_LINER_TEXT = "單元測試用的一句話說明文字"
+ONE_LINER_LEAD = "一句話：" + ONE_LINER_TEXT + "。"
+
+
+@pytest.mark.parametrize("over", [
+    {"one_liner": None}, {"one_liner": ""}, {"one_liner": 7}, {"one_liner": "短"}, {"one_liner": "字" * 61},
+    {"one_liner": "含句號的一句話說明文字。"}, {"one_liner": "含 B117-G7B3B2-ONE-261119 的說明文字"},
+    {"one_liner": "含 5dc5105188 的一句話說明文字"}, {"one_liner": "改了 scripts/x.py 的一句話說明"},
+    {"one_liner": "含大括號{TASK_ID}的一句話說明"}, {"one_liner": "兩行\n的一句話說明文字"},
+])
+def test_one_liner_must_be_present_and_valid_for_production(tmp_path, repo, over):
+    root, base = repo
+    assert _code(pb.build, root, _definition(tmp_path, base, **over)) == "ONE_LINER_INVALID"
+
+
+def test_one_liner_missing_key_is_rejected(tmp_path, repo):
+    root, base = repo
+    d = _definition(tmp_path, base)
+    raw = json.loads(Path(d).read_bytes().decode("utf-8"))
+    del raw["one_liner"]
+    _w(d, json.dumps(raw, ensure_ascii=False))
+    assert _code(pb.build, root, d) == "ONE_LINER_INVALID"
+
+
+def test_one_liner_placeholder_expands_in_prose_and_text_ops(tmp_path, repo):
+    root, base = repo
+    d = _definition(tmp_path, base)
+    raw = json.loads(Path(d).read_bytes().decode("utf-8"))
+    raw["text_ops"].append({"path": "docs/BOARD.md", "type": "insert_after_line", "prefix": "| X-3 |", "text": "| X-4 | {ONE_LINER} |"})
+    _w(Path(d).parent / "tail.txt", "scope {ALLOWED}\nrecord {SO}\n{ONE_LINER}\n")
+    _w(d, json.dumps(raw, ensure_ascii=False))
+    text, _, authored = pb.build(root, d)
+    assert "| X-4 | " + ONE_LINER_LEAD + " |\n" in authored["docs/BOARD.md"]
+    assert "\n" + ONE_LINER_LEAD + "\n" in text
+
+
+def _state_repo(root, with_board=True):
+    """在 fixture repo 補上看板與 EXEC-LOG（含錨點之前的一列）並 commit，回傳新的 Base。"""
+    board = ("# 任務看板\n\n**NEXT_SLICE**：old\n\n"
+             "**舊批（2026-11-18；本批 B117-OLD-R1-261118）**：舊批紀錄。\n")
+    _w(Path(root) / "docs" / "TASKBOARD.md", board)
+    base0 = _git(root, "rev-parse", "HEAD").stdout.decode().strip()
+    _w(Path(root) / "docs" / "EXEC-LOG.md",
+       "| 批次 commit | 日期 | 說明 |\n|---|---|---|\n" + f"| {base0} | 2026-11-18 | B117-OLD-R1-261118：舊列。 |\n")
+    _git(root, "add", "-A")
+    _git(root, "commit", "-q", "-m", "state")
+    return _git(root, "rev-parse", "HEAD").stdout.decode().strip(), base0
+
+
+def _state_definition(tmp_path, root, board_text, log_text):
+    base, base0 = _state_repo(root)
+    d = _definition(tmp_path, base)
+    raw = json.loads(Path(d).read_bytes().decode("utf-8"))
+    raw["text_ops"] += [
+        {"path": "docs/TASKBOARD.md", "type": "insert_after_line", "prefix": "**NEXT_SLICE**：", "text": "\n" + board_text},
+        {"path": "docs/EXEC-LOG.md", "type": "insert_after_line", "prefix": f"| {base0} |", "text": log_text.replace("{BASE}", base)},
+    ]
+    _w(d, json.dumps(raw, ensure_ascii=False))
+    return d
+
+
+GOOD_BOARD = "**本批（2026-11-19；本批 {TASK_ID}）**：{ONE_LINER}一、說明。"
+GOOD_LOG = "| {BASE} | 2026-11-19 | {TASK_ID}：{ONE_LINER}說明。 |"
+
+
+def test_state_rows_written_with_the_placeholder_are_accepted(tmp_path, repo):
+    root, _ = repo
+    d = _state_definition(tmp_path, root, GOOD_BOARD, GOOD_LOG)
+    _, _, authored = pb.build(root, d)
+    assert ("：" + ONE_LINER_LEAD + "一、說明。") in authored["docs/TASKBOARD.md"]
+    assert (TASK + "：" + ONE_LINER_LEAD + "說明。 |") in authored["docs/EXEC-LOG.md"]
+
+
+@pytest.mark.parametrize("board,log,code", [
+    ("**本批（2026-11-19；本批 {TASK_ID}）**：手寫的一句話說明文字。一、說明。", GOOD_LOG, "ONE_LINER_BOARD_RECORD"),
+    ("**本批（2026-11-19；本批 {TASK_ID}）**：一句話：別的說明文字也很長很長。一、說明。", GOOD_LOG, "ONE_LINER_BOARD_RECORD"),
+    (GOOD_BOARD, "| {BASE} | 2026-11-19 | {TASK_ID}：手寫的說明文字。 |", "ONE_LINER_EXEC_LOG_ROW"),
+    (GOOD_BOARD, "| {BASE} | 2026-11-19 | {TASK_ID}：一句話：別的說明文字也很長很長。說明。 |", "ONE_LINER_EXEC_LOG_ROW"),
+])
+def test_state_rows_that_do_not_carry_the_tool_written_sentence_are_rejected(tmp_path, repo, board, log, code):
+    root, _ = repo
+    assert _code(pb.build, root, _state_definition(tmp_path, root, board, log)) == code

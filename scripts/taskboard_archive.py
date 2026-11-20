@@ -35,6 +35,12 @@ USER_CONFIRMED_LEGACY 只能出現在第一個封存檔。
     checkpoint 看板上沒有的紀錄（新紀錄）只能連續排在看板批次紀錄的最前面（最新在前）。
   keep 的算法：保留的是套用本工具當下看板上的既有紀錄數，不含該批自己新增的那一則。
 
+每批「一句話」（G7-b3b2，USER 2026-11-18 要求；CHECK 29 與 CHECK 26 一併判定）：自 ONE_LINER_ANCHOR 之後，看板最新一則批次紀錄與
+EXEC-LOG 的新列，說明都必須以「一句話：……。」開頭；句子 8 至 60 個字元（不含句號），單句、不含 TASK_ID、SHA、檔案路徑、
+換行與直線符號。句子由 definition.json 的 one_liner 欄位經 prompt_builder 的 {ONE_LINER} 展開寫入，不靠手寫；舊紀錄與舊列不追溯。
+生效判定：ONE_LINER_ANCHOR 所指的紀錄仍在看板或已在批次紀錄封存檔（CHECK 29），或其 EXEC-LOG 列存在（CHECK 26）；
+兩處的錨點都受只增不減保護（CHECK 29 紀錄不得消失、CHECK 28 EXEC-LOG 只准新增），故不能靠刪錨點關掉檢查。
+
 看板列與清單的只增不減（G7-b3b1，CHECK 29 一併判定）：checkpoint 看板上的每一個表格列 ID，必須仍在看板上或
 已在某個看板列封存檔；manifest 的 archives 相對於 checkpoint 的 manifest 只能在尾端追加，user_keep 只增不減。
 
@@ -112,6 +118,16 @@ MULTILINE_PREVIEW = 40  # records-plan 對多行單元逐行印出的字元數
 RECORD_ARCHIVE_KEYS = ('file', 'batch', 'checkpoint_oid', 'file_sha256', 'keep', 'entries')
 RECORD_ENTRY_KEYS = ('task_id', 'source_line', 'line_count', 'unit_sha256', 'unit_bytes')
 RECORD_BIG_BYTES = 3072  # 盤點「超過 3,072 位元組」的門檻（盤點數字由工具印出，不人工計數）
+ONE_LINER_PREFIX = '一句話：'
+ONE_LINER_ANCHOR = 'B117-G7B3B1-TAKEOVER-ARCHIVE-R2-261119'  # 此批起的紀錄與 EXEC-LOG 列才受「一句話」規則管（它自己已符合）
+ONE_LINER_MIN = 8
+ONE_LINER_MAX = 60  # 句子字元數上限，不含句號
+ONE_LINER_FORBIDDEN_CHARS = ('。', '\n', '\r', '\t', '|', '{', '}')
+ONE_LINER_TASK_ID_RE = re.compile(r'[A-Z][A-Z0-9]*(?:-[A-Z0-9]+){2,}')
+ONE_LINER_SHA_RE = re.compile(r'(?<![0-9A-Za-z])[0-9a-fA-F]{7,64}(?![0-9A-Za-z])')
+ONE_LINER_PATH_RE = re.compile(r'[/\\]|\.(?:md|py|json|txt|ya?ml|zip|js|ts|ps1)(?![0-9A-Za-z])', re.I)
+EXEC_LOG_REL = 'docs/EXEC-LOG.md'
+EXEC_LOG_CELL_RE = re.compile(r'([A-Z][A-Z0-9]*(?:-[A-Z0-9]+)+)：(.*)', re.S)
 
 
 class Fail(Exception):
@@ -597,6 +613,105 @@ def record_inventory(units):
     return len(sizes), sum(s for s, _ in sizes), sum(1 for s, _ in sizes if s > RECORD_BIG_BYTES), biggest[0], biggest[1]
 
 
+def one_liner_sentence_problem(sentence):
+    """句子本身（不含「一句話：」與句號）的問題；沒有問題回傳 None。"""
+    if not isinstance(sentence, str):
+        return '一句話必須是字串'
+    if sentence != sentence.strip():
+        return '一句話前後不得有空白'
+    if len(sentence) < ONE_LINER_MIN:
+        return '一句話只有 %d 個字元，少於下限 %d' % (len(sentence), ONE_LINER_MIN)
+    if len(sentence) > ONE_LINER_MAX:
+        return '一句話 %d 個字元，超過上限 %d' % (len(sentence), ONE_LINER_MAX)
+    for ch in ONE_LINER_FORBIDDEN_CHARS:
+        if ch in sentence:
+            return '一句話必須是單句、單行，不得含 %r' % ch
+    if ONE_LINER_TASK_ID_RE.search(sentence):
+        return '一句話不得含 TASK_ID'
+    if ONE_LINER_SHA_RE.search(sentence):
+        return '一句話不得含 SHA'
+    if ONE_LINER_PATH_RE.search(sentence):
+        return '一句話不得含檔案路徑或檔名'
+    return None
+
+
+def one_liner_lead_problem(text):
+    """從批次紀錄「：」之後、或 EXEC-LOG 的「TASK_ID：」之後算起的文字；須以「一句話：……。」開頭。"""
+    if not text.startswith(ONE_LINER_PREFIX):
+        return '須以「%s」開頭' % ONE_LINER_PREFIX
+    body = text[len(ONE_LINER_PREFIX):]
+    end = body.find('。')
+    if end < 0:
+        return '一句話沒有以「。」結尾'
+    return one_liner_sentence_problem(body[:end])
+
+
+def board_one_liner_problems(board_units, anchor_seen):
+    """看板最新一則批次紀錄的「一句話」問題。anchor_seen 為假時規則尚未生效。"""
+    if not anchor_seen or not board_units:
+        return []
+    first = board_units[0]['lines'][0]
+    problem = one_liner_lead_problem(first[C7_RECORD.match(first).end():])
+    if problem:
+        return ['%s 最新一則批次紀錄 %s：%s' % (TASKBOARD_REL, board_units[0]['task_id'], problem)]
+    return []
+
+
+def table_cells(line):
+    """GFM 表格列的儲存格（去前後空白）；與 check_consistency 的 _c20_table_cells 同一套規則（反斜線跳脫的直線不分欄、結尾直線可省略），非表格列回 None。
+
+    EXEC-LOG 的一句話檢查、CHECK 26 的最新列 TASK_ID 判定與 prompt_builder 的 EXEC-LOG 列檢查必須用同一種切法；
+    儲存格前後空白（兩個空格、Tab、沒有空格）不得讓該列逃過檢查（第二意見 B1）。
+    """
+    s = line.strip()
+    if not s.startswith('|') or len(s) < 2:
+        return None
+    end = len(s) - 1 if (len(s) >= 2 and s[-1] == '|' and s[-2] != '\\') else len(s)
+    cells, token = [], []
+    for i in range(1, end):
+        c = s[i]
+        if c == '|':
+            n = 0
+            j = i - 1
+            while j >= 0 and s[j] == '\\':
+                n += 1
+                j -= 1
+            if n == 0:
+                cells.append(''.join(token).strip())
+                token = []
+                continue
+        token.append(c)
+    cells.append(''.join(token).strip())
+    return cells
+
+
+def exec_log_rows(text):
+    """EXEC-LOG 內「第三欄（去前後空白後）以 TASK_ID＋全形冒號開頭」的列：[(行號, TASK_ID, 冒號之後的文字)]。"""
+    rows = []
+    for number, line in enumerate(text.split('\n'), 1):
+        cells = table_cells(line)
+        if cells is None or len(cells) < 3:
+            continue
+        match = EXEC_LOG_CELL_RE.fullmatch(cells[2])
+        if match:
+            rows.append((number, match.group(1), match.group(2)))
+    return rows
+
+
+def exec_log_one_liner_problems(text):
+    """EXEC-LOG 中錨點之後每一列的「一句話」問題；錨點列不存在表示規則尚未生效。"""
+    rows = exec_log_rows(text)
+    ids = [tid for _, tid, _ in rows]
+    if ONE_LINER_ANCHOR not in ids:
+        return []
+    problems = []
+    for number, tid, rest in rows[ids.index(ONE_LINER_ANCHOR) + 1:]:
+        problem = one_liner_lead_problem(rest)
+        if problem:
+            problems.append('%s:%d %s：%s' % (EXEC_LOG_REL, number, tid, problem))
+    return problems
+
+
 def render_records_archive(number, archive, units_by_id):
     lines = [
         '# 任務看板批次紀錄封存 %04d' % number, '',
@@ -747,6 +862,7 @@ def check_records(root, manifest, taskboard, backlog_text):
         except Fail as exc:
             fails.append('%s' % exc)
     fails.extend(check_records_append_only(root, archives, board_units, seen, backlog_text))
+    fails.extend(board_one_liner_problems(board_units, ONE_LINER_ANCHOR in board_ids or ONE_LINER_ANCHOR in seen))
     return fails, len(archives), total
 
 

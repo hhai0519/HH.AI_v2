@@ -807,3 +807,205 @@ def test_g7b3b1_checkpoint_manifest_shape_errors_are_fails_with_their_own_messag
     write(repo["root"], "docs/refactor-backlog.md", "上次核對通過的 HEAD：%s\n" % c)
     got = fails_of(repo)
     assert any(needle in f for f in got), got
+
+
+# --- G7-b3b2：每批「一句話」（看板最新一則批次紀錄；錨點之後才生效） ------------------------------------------
+
+GOOD_SENTENCE = "封存檢查也擋下看板列與舊紀錄被刪改，並完成審查官交接"
+
+
+def anchor_board(lead, anchor=None, extra=()):
+    """最新一則（第一則）為錨點批的紀錄，其後接兩則舊紀錄；lead 為紀錄「：」之後的開頭文字。"""
+    anchor = anchor or ta.ONE_LINER_ANCHOR
+    first = "**錨點批（2026-11-19；本批 %s）**：%s後文。" % (anchor, lead)
+    return make_board([first + "\n", rec(2, 20) + "\n", rec(3, 10) + "\n"] + list(extra))
+
+
+def anchor_repo(tmp_path, monkeypatch, lead, **kw):
+    board = anchor_board(lead, **kw)
+    out = build_repo(tmp_path, monkeypatch, board)
+    out["mp"] = monkeypatch
+    return out
+
+
+@pytest.mark.parametrize("sentence,needle", [
+    ("短", "少於下限"),
+    ("字" * 61, "超過上限"),
+    ("含 B117-G7B3B2-ONE-LINER-261119 的一句話說明", "TASK_ID"),
+    ("含 5dc5105188 的一句話說明文字", "SHA"),
+    ("改了 scripts/prompt_builder.py 的一句話", "檔案路徑"),
+    ("改了 definition.json 的一句話說明", "檔案路徑"),
+    ("第一句話很長很長。第二句", "單句"),
+    ("兩行\n的一句話說明文字", "單句"),
+    ("含直線|的一句話說明文字", "單句"),
+    ("含大括號{TASK_ID}的一句話", "單句"),
+    (" 前面有空白的一句話說明文字", "空白"),
+])
+def test_one_liner_sentence_problems(sentence, needle):
+    got = ta.one_liner_sentence_problem(sentence)
+    assert got and needle in got, got
+
+
+def test_one_liner_sentence_boundaries_and_accepted_shapes():
+    assert (ta.ONE_LINER_MIN, ta.ONE_LINER_MAX) == (8, 60)  # USER 2026-11-18：一句話 60 字元內；下限 8 為審查官定
+    assert ta.one_liner_sentence_problem('字' * 7) and not ta.one_liner_sentence_problem('字' * 8)
+    assert not ta.one_liner_sentence_problem('字' * 60) and ta.one_liner_sentence_problem('字' * 61)
+    assert ta.one_liner_sentence_problem("字" * ta.ONE_LINER_MIN) is None
+    assert ta.one_liner_sentence_problem("字" * ta.ONE_LINER_MAX) is None
+    assert "少於下限" in ta.one_liner_sentence_problem("字" * (ta.ONE_LINER_MIN - 1))
+    assert "超過上限" in ta.one_liner_sentence_problem("字" * (ta.ONE_LINER_MAX + 1))
+    assert ta.one_liner_sentence_problem(GOOD_SENTENCE) is None
+    assert ta.one_liner_sentence_problem("看板列 B-125 的封存依據補上了 CHECK 29") is None  # 列 ID 與 CHECK 編號不是 TASK_ID
+    assert "字串" in ta.one_liner_sentence_problem(None)
+
+
+@pytest.mark.parametrize("text,needle", [
+    ("", "須以"),
+    ("一句話:" + GOOD_SENTENCE + "。", "須以"),        # 半形冒號
+    (" 一句話：" + GOOD_SENTENCE + "。", "須以"),       # 前置空白
+    ("一句話：" + GOOD_SENTENCE, "結尾"),
+    ("一句話：短。", "少於下限"),
+])
+def test_one_liner_lead_problems(text, needle):
+    got = ta.one_liner_lead_problem(text)
+    assert got and needle in got, got
+
+
+def test_one_liner_lead_accepts_the_sentence_followed_by_more_text():
+    assert ta.one_liner_lead_problem("一句話：" + GOOD_SENTENCE + "。一、其餘內容。") is None
+
+
+def test_board_one_liner_is_not_required_before_the_anchor_exists(tmp_path, monkeypatch):
+    # 沒有錨點批的紀錄（也不在封存檔）：規則尚未生效，既有無「一句話」之紀錄不受影響
+    repo = anchor_repo(tmp_path, monkeypatch, "沒有一句話。", anchor="B117-OTHER-R1-261119")
+    assert not any("一句話" in f for f in fails_of(repo))
+
+
+def test_board_one_liner_ok_when_the_newest_record_has_it(tmp_path, monkeypatch):
+    repo = anchor_repo(tmp_path, monkeypatch, "一句話：" + GOOD_SENTENCE + "。")
+    assert fails_of(repo) == []
+
+
+@pytest.mark.parametrize("lead,needle", [
+    ("沒有一句話。", "須以"),
+    ("一句話：" + "字" * 61 + "。", "超過上限"),
+    ("一句話：含 B117-G7B3B2-X-261119 的一句話說明。", "TASK_ID"),
+])
+def test_negative_board_newest_record_without_a_valid_one_liner(tmp_path, monkeypatch, lead, needle):
+    repo = anchor_repo(tmp_path, monkeypatch, lead)
+    got = [f for f in fails_of(repo) if "最新一則批次紀錄" in f]
+    assert len(got) == 1 and needle in got[0] and ta.ONE_LINER_ANCHOR in got[0], got
+
+
+def test_negative_newer_record_on_top_of_the_anchor_needs_its_own_one_liner(tmp_path, monkeypatch):
+    # 錨點批之後的下一批：新紀錄排在最前面，錨點批的紀錄留在第二則；檢查的是最前面那一則
+    board = make_board(["**下一批（2026-11-20；本批 B117-NEXT-R1-261120）**：沒有一句話。\n",
+                        "**錨點批（2026-11-19；本批 %s）**：一句話：%s。後文。\n" % (ta.ONE_LINER_ANCHOR, GOOD_SENTENCE),
+                        rec(2, 20) + "\n"])
+    repo = build_repo(tmp_path, monkeypatch, board)
+    repo["mp"] = monkeypatch
+    got = [f for f in fails_of(repo) if "最新一則批次紀錄" in f]
+    assert len(got) == 1 and "B117-NEXT-R1-261120" in got[0], got
+    mutate(repo, "docs/TASKBOARD.md", "：沒有一句話。", "：一句話：" + GOOD_SENTENCE + "。")
+    assert not any("最新一則批次紀錄" in f for f in fails_of(repo))
+
+
+def test_anchor_in_a_record_archive_keeps_the_rule_in_force(tmp_path, monkeypatch):
+    # 錨點批的紀錄被搬進批次紀錄封存檔後，規則仍然生效（不能靠搬走錨點關掉檢查）
+    board = make_board(["**下一批（2026-11-20；本批 B117-NEXT-R1-261120）**：一句話：%s。\n" % GOOD_SENTENCE,
+                        "**錨點批（2026-11-19；本批 %s）**：一句話：%s。\n" % (ta.ONE_LINER_ANCHOR, GOOD_SENTENCE),
+                        rec(2, 20) + "\n", rec(3, 10) + "\n"])
+    repo = build_repo(tmp_path, monkeypatch, board)
+    repo["mp"] = monkeypatch
+    code, out = run(apply_args(repo, keep=1, take=3, allow=[]))
+    assert code == 0, out
+    repo["mp"].setattr(ta, "RECORD_ARCHIVES_MIN", 1)
+    assert ta.ONE_LINER_ANCHOR in read(repo["root"], "docs/archive/TASKBOARD-RECORDS-0001.md")
+    assert ta.ONE_LINER_ANCHOR not in read(repo["root"], "docs/TASKBOARD.md")
+    assert fails_of(repo) == []
+    mutate(repo, "docs/TASKBOARD.md", "：一句話：%s。" % GOOD_SENTENCE, "：沒有一句話。")
+    assert any("最新一則批次紀錄" in f for f in fails_of(repo))
+
+
+# --- EXEC-LOG 列 -----------------------------------------------------------------------------------------
+
+def exec_log(*descs, anchor_rest=None):
+    """五欄的 EXEC-LOG 表；anchor_rest 為錨點列在 TASK_ID：之後的文字（None 表示沒有錨點列）。"""
+    head = "| 批次 commit | 日期 | 執行者 | 批次名稱 | 檢查與證據 |\n|---|---|---|---|---|\n"
+    rows = ["| %s | 2026-11-18 | B117-OLD-R1-261118：舊列沒有一句話。 | x | y |" % ("a" * 40)]
+    if anchor_rest is not None:
+        rows.append("| %s | 2026-11-19 | %s：%s | x | y |" % ("b" * 40, ta.ONE_LINER_ANCHOR, anchor_rest))
+    for number, desc in enumerate(descs, 1):
+        rows.append("| %s | 2026-11-2%d | B117-NEXT%d-R1-26112%d：%s | x | y |" % ("c" * 40, number, number, number, desc))
+    return head + "\n".join(rows) + "\n"
+
+
+def test_exec_log_rows_reads_only_rows_with_a_task_id_in_the_third_column():
+    text = exec_log("一句話：" + GOOD_SENTENCE + "。後文。", anchor_rest="一句話：" + GOOD_SENTENCE + "。")
+    rows = ta.exec_log_rows(text)
+    assert [tid_ for _, tid_, _ in rows] == ["B117-OLD-R1-261118", ta.ONE_LINER_ANCHOR, "B117-NEXT1-R1-261121"]
+    assert ta.exec_log_rows("| a | b | 沒有 TASK_ID 的列 | c |\n| 批次 commit | 日期 | 執行者 |\n") == []
+
+
+def test_exec_log_rule_is_not_in_force_without_the_anchor_row():
+    assert ta.exec_log_one_liner_problems(exec_log("沒有一句話。")) == []
+
+
+def test_exec_log_rows_after_the_anchor_need_a_one_liner_and_the_anchor_and_older_rows_do_not():
+    ok = exec_log("一句話：" + GOOD_SENTENCE + "。後文。", anchor_rest="沒有一句話（錨點列本身不查）。")
+    assert ta.exec_log_one_liner_problems(ok) == []
+    bad = exec_log("一句話：" + GOOD_SENTENCE + "。", "後來的列沒有一句話。", anchor_rest="x")
+    got = ta.exec_log_one_liner_problems(bad)
+    assert len(got) == 1 and "B117-NEXT2-R1-261122" in got[0] and "docs/EXEC-LOG.md:" in got[0], got
+
+
+@pytest.mark.parametrize("cell", [
+    "  B117-NEXT1-R1-261121：沒有一句話。",
+    "\tB117-NEXT1-R1-261121：沒有一句話。",
+    "B117-NEXT1-R1-261121：沒有一句話。",
+])
+def test_exec_log_row_with_irregular_cell_spacing_is_still_checked(cell):
+    """CHECK 26 的最新列解析會去掉儲存格前後空白；一句話檢查不得因空白不同而略過該列（第二意見 B1）。"""
+    text = exec_log(anchor_rest="x") + "| %s | 2026-11-21 |%s | x | y |\n" % ("c" * 40, cell)
+    got = ta.exec_log_one_liner_problems(text)
+    assert len(got) == 1 and "B117-NEXT1-R1-261121" in got[0], got
+
+
+@pytest.mark.parametrize("cell", [
+    "  B117-NEXT1-R1-261121：一句話：" + GOOD_SENTENCE + "。後文。",
+    "\tB117-NEXT1-R1-261121：一句話：" + GOOD_SENTENCE + "。後文。",
+    "B117-NEXT1-R1-261121：一句話：" + GOOD_SENTENCE + "。後文。",
+])
+def test_exec_log_row_with_irregular_cell_spacing_and_a_good_one_liner_passes(cell):
+    text = exec_log(anchor_rest="x") + "| %s | 2026-11-21 |%s | x | y |\n" % ("c" * 40, cell)
+    assert ta.exec_log_one_liner_problems(text) == []
+
+
+@pytest.mark.parametrize("line", [
+    "| a | b | c | d | e |",
+    "|a|b|c|",
+    "|  a  |\tb\t| c",
+    "| a \\| x | b | c |",
+    "  | a | b | c |  ",
+    "| a | b | c \\|",
+    "||",
+    "| |",
+    "|",
+    "不是表格列 | a | b",
+    "",
+])
+def test_table_cells_matches_check_consistency_cell_parser(line):
+    """exec_log_rows 與 CHECK 26 最新列必須是同一種切法。"""
+    import check_consistency as cc
+    assert ta.table_cells(line) == cc._c20_table_cells(line)
+
+
+@pytest.mark.parametrize("desc,needle", [
+    ("一句話:" + GOOD_SENTENCE + "。", "須以"),
+    ("一句話：" + GOOD_SENTENCE, "結尾"),
+    ("一句話：" + "字" * 61 + "。", "超過上限"),
+    ("一句話：改了 docs/TASKBOARD.md 的說明文字。", "檔案路徑"),
+])
+def test_exec_log_negative_shapes(desc, needle):
+    got = ta.exec_log_one_liner_problems(exec_log(desc, anchor_rest="x"))
+    assert len(got) == 1 and needle in got[0], got

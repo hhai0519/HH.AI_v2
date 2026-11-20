@@ -3635,6 +3635,7 @@ def check_26_plan_actual_evidence_integrity(root_dir=None, as_if_committed=False
     A. docs/governance/execution-record.json exists
     B. Calls execution_record.verify_execution_record_file(as_if_committed=as_if_committed)
     C. Validates all plan-vs-actual invariants, fresh Git diff replay, REG-11/12/13
+    D. G7-b3b2：EXEC-LOG 錨點批之後的新列說明須以「一句話：……。」開頭（不新增 CHECK 編號）
     """
     if root_dir is None:
         root_dir = repo_root
@@ -3669,6 +3670,21 @@ def check_26_plan_actual_evidence_integrity(root_dir=None, as_if_committed=False
                      f"不等於 execution-record.json task_id={record_task_id}")
     else:
         infos.append(f"EXEC-LOG 最新 TASK_ID 與 execution-record.json 一致：{latest_task_id}")
+
+    # G7-b3b2：錨點批之後的 EXEC-LOG 新列，說明須以「一句話：……。」開頭（規則與驗證器在 taskboard_archive；
+    # 舊列不追溯；錨點列不存在表示規則尚未生效，錨點列受 CHECK 28 只增不減保護）。
+    try:
+        from scripts import taskboard_archive as _c26_ta
+    except ImportError:
+        import taskboard_archive as _c26_ta
+    try:
+        with open(os.path.join(root_dir, "docs", "EXEC-LOG.md"), "rb") as fh:
+            one_liner_problems = _c26_ta.exec_log_one_liner_problems(fh.read().decode("utf-8"))
+    except (OSError, UnicodeError) as exc:
+        one_liner_problems = [f"docs/EXEC-LOG.md:0  一句話檢查無法讀取: {type(exc).__name__}"]
+    fails.extend(one_liner_problems)
+    if not one_liner_problems:
+        infos.append("EXEC-LOG 錨點批之後的新列皆以「一句話：」開頭")
 
     ok, msg = verify_execution_record_file(rec_rel, repo_root=root_dir, as_if_committed=as_if_committed)
     if not ok:

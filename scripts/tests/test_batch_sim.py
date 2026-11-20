@@ -724,7 +724,7 @@ def test_real_runner_specs_built_by_prompt_builder_follow_the_written_steps(tmp_
     _w(d / "e24.json", json.dumps({"schema_version": 1, "base_oid": base, "mode": "REQUIRED", "queries": [],
                                    "results": [{"query_id": "q1", "matched_paths": ["docs/BOARD.md"]}]}))
     defn = {"schema_version": 1, "task_id": TASK, "kind": "production", "base_oid": base,
-            "branch": "batch/sim-unit-261010", "commit_message": "Unit: sim", "e24": e24,
+            "branch": "batch/sim-unit-261010", "commit_message": "Unit: sim", "one_liner": "模擬測試用的一句話說明文字", "e24": e24,
             "focused": {"pytest_args": ["-q"], "limit_sec": 60} if focused else None,
             "text_ops": [{"path": "docs/BOARD.md", "type": "replace_line", "prefix": "**NEXT_SLICE**：", "new": "**NEXT_SLICE**：new"}],
             "prose_head": "head.txt", "prose_tail": "tail.txt"}

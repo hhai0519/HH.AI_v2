@@ -450,6 +450,13 @@ TASKBOARD 不擁有 Git HEAD / checkpoint / pending range 之事實（由 Git HE
 
 ---
 
+### 10.8 每批「一句話」（B-117 G7-b3b2；USER 2026-11-18 要求）
+
+1. 每個 production 批次的 definition.json 必填 `one_liner`：用白話說這批解決了什麼；8 至 60 個字元（不含句號）、單句單行、不含 TASK_ID、SHA、檔案路徑與大括號。缺漏或不合，`scripts/prompt_builder.py` 即拒絕（`ONE_LINER_INVALID`）。本規則由 prompt_builder 與 CHECK 26／29 機械強制，故不另列入第 6.1 節與自檢清單 E 節（第 5.7 節之本意，規則要在執行路徑上，已由工具滿足）。
+2. 句子由工具寫入，不靠手寫：該批的看板批次紀錄（「**…（日期；本批 TASK_ID）**：」之後）與 EXEC-LOG 新列（「TASK_ID：」之後）一律以占位符 `{ONE_LINER}` 開頭，展開為「一句話：……。」。該批的紀錄是看板最新一則、或 EXEC-LOG 有該 TASK_ID 的列時，prompt_builder 要求它們以展開結果開頭（`ONE_LINER_BOARD_RECORD`、`ONE_LINER_EXEC_LOG_ROW`）。
+3. CHECK 29 核對看板最新一則批次紀錄，CHECK 26 核對 EXEC-LOG 中錨點之後的每一列（以第三欄去前後空白後的內容判列，與 CHECK 26 最新列 TASK_ID 判定同一種儲存格切法，儲存格空白不同不得略過），兩者共用 `scripts/taskboard_archive.py` 的驗證器，不新增 CHECK 編號。生效起點為該檔的 `ONE_LINER_ANCHOR`（B117-G7B3B1-TAKEOVER-ARCHIVE-R2-261119，該批本身已符合）；舊紀錄與舊列不追溯。錨點的紀錄仍在看板或批次紀錄封存檔、或其 EXEC-LOG 列存在時規則即生效，兩處皆受只增不減保護（CHECK 29 紀錄不得消失、CHECK 28 EXEC-LOG 只准新增），不能靠刪錨點關掉檢查。
+4. 工具只驗形式（長度、單句、不含識別字串）。句子是否真的白話說出「解決了什麼」，由審查官在 Macro 審查時判定；只是檔名清單、術語堆疊或與批次內容不符者退回。
+
 ## 11. 錯誤處置與回滾
 
 本專案禁止 `git push --force` 與 `--amend`（見 `.agents/rules/git-and-reporting.md`）。回捲唯一合法方式為 `git revert`——追加反向 commit，不改寫歷史。

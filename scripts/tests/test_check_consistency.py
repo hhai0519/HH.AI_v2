@@ -1534,6 +1534,71 @@ def test_b116_c26_record_mismatch_guards_against_r2_d3(tmp_path, monkeypatch):
     assert fails == []
 
 
+def _c26_one_liner_fixture(tmp_path, monkeypatch, newest_desc, with_anchor=True):
+    """最新列的 TASK_ID 與 execution-record.json 一致；錨點列與一個舊列在它之前。"""
+    import check_consistency as cc
+    from scripts import execution_record, taskboard_archive as ta
+    d = tmp_path / "docs"
+    (d / "governance").mkdir(parents=True)
+    rows = ["| 5dc5105 | 2026-11-18 | B117-OLD-R1-261118：舊列沒有一句話。 | 通過 | no |"]
+    if with_anchor:
+        rows.append("| 5dc5105 | 2026-11-19 | %s：舊式說明（錨點列本身不查）。 | 通過 | no |" % ta.ONE_LINER_ANCHOR)
+    rows.append("| 本批 | 2026-11-20 | B117-NEWEST-R1-261120：%s | 通過 | no |" % newest_desc)
+    (d / "EXEC-LOG.md").write_text(
+        "| 批次 commit | 日期 | 檢查範圍 | 結果 | 攔截紀錄 |\n|---|---|---|---|---|\n" + "\n".join(rows) + "\n",
+        encoding="utf-8", newline="\n")
+    (d / "governance" / "execution-record.json").write_text(json.dumps({"task_id": "B117-NEWEST-R1-261120"}), encoding="utf-8", newline="\n")
+    monkeypatch.setattr(execution_record, "verify_execution_record_file", lambda *args, **kwargs: (True, "OK"))
+    return cc
+
+
+def test_g7b3b2_c26_newest_exec_log_row_needs_a_one_liner_after_the_anchor(tmp_path, monkeypatch):
+    cc = _c26_one_liner_fixture(tmp_path, monkeypatch, "一句話：這一批把每批要解決什麼寫成一句白話。其餘說明。")
+    fails, infos = cc.check_26_plan_actual_evidence_integrity(str(tmp_path))
+    assert fails == [] and any("一句話" in i for i in infos), (fails, infos)
+
+
+@pytest.mark.parametrize("desc,needle", [
+    ("沒有一句話的說明。", "須以"),
+    ("一句話：這一批把每批要解決什麼寫成一句白話但沒有句號", "結尾"),
+    ("一句話：" + "字" * 61 + "。", "超過上限"),
+    ("一句話：這一批改了 scripts/check_consistency.py 檔案。", "檔案路徑"),
+])
+def test_g7b3b2_c26_negative_newest_row_without_a_valid_one_liner(tmp_path, monkeypatch, desc, needle):
+    cc = _c26_one_liner_fixture(tmp_path, monkeypatch, desc)
+    fails, _ = cc.check_26_plan_actual_evidence_integrity(str(tmp_path))
+    hits = [f for f in fails if "B117-NEWEST-R1-261120" in f]
+    assert len(hits) == 1 and needle in hits[0] and "docs/EXEC-LOG.md:" in hits[0], fails
+
+
+@pytest.mark.parametrize("cell_head", ["  ", "\t", ""])
+def test_g7b3b2_c26_newest_row_with_irregular_cell_spacing_still_needs_a_one_liner(tmp_path, monkeypatch, cell_head):
+    """第二意見 B1：第三欄前後空白不同，CHECK 26 的最新列判定接受該列，一句話檢查也必須照樣作用。"""
+    cc = _c26_one_liner_fixture(tmp_path, monkeypatch, "沒有一句話的說明。")
+    path = tmp_path / "docs" / "EXEC-LOG.md"
+    text = path.read_text(encoding="utf-8")
+    old = "| 本批 | 2026-11-20 | B117-NEWEST-R1-261120："
+    assert old in text
+    path.write_text(text.replace(old, "| 本批 | 2026-11-20 |" + cell_head + "B117-NEWEST-R1-261120："), encoding="utf-8", newline="\n")
+    fails, _ = cc.check_26_plan_actual_evidence_integrity(str(tmp_path))
+    hits = [f for f in fails if "B117-NEWEST-R1-261120" in f]
+    assert len(hits) == 1 and "須以" in hits[0], fails
+
+
+def test_g7b3b2_c26_rule_is_not_in_force_without_the_anchor_row(tmp_path, monkeypatch):
+    cc = _c26_one_liner_fixture(tmp_path, monkeypatch, "沒有一句話的說明。", with_anchor=False)
+    fails, _ = cc.check_26_plan_actual_evidence_integrity(str(tmp_path))
+    assert fails == []
+
+
+def test_g7b3b2_c26_unreadable_exec_log_is_a_fail_line(tmp_path, monkeypatch):
+    cc = _c26_one_liner_fixture(tmp_path, monkeypatch, "一句話：這一批把每批要解決什麼寫成一句白話。")
+    (tmp_path / "docs" / "EXEC-LOG.md").write_bytes(b"\xff\xfe not utf-8")
+    monkeypatch.setattr(cc, "_c26_latest_exec_task_id", lambda root: ("B117-NEWEST-R1-261120", None))
+    fails, _ = cc.check_26_plan_actual_evidence_integrity(str(tmp_path))
+    assert any("一句話檢查無法讀取" in f for f in fails), fails
+
+
 def test_integration_run_checks_includes_19_and_20():
     import check_consistency
     import inspect

@@ -1,26 +1,44 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "B117-BACKUP-TEST-CLOCK-R2-261120",
-  "base_oid": "f1531fa2b9a4dc585ed5c6a2c85c18f7b9159db7",
+  "task_id": "B117-G7B3B2-ONE-LINER-R3-261120",
+  "base_oid": "c3eb1fe575b86a363f81a8a45d8a6fbbfb600554",
   "plan": {
     "allowed_paths": [
+      ".claude/rules/auditor-protocol.md",
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
+      "docs/generated/rule-traceability.md",
       "docs/governance/execution-record.json",
       "docs/refactor-backlog.md",
-      "runtime/channel-gateway/tests/backup-runtime-owner.test.js"
+      "scripts/check_consistency.py",
+      "scripts/prompt_builder.py",
+      "scripts/taskboard_archive.py",
+      "scripts/tests/test_batch_sim.py",
+      "scripts/tests/test_check_consistency.py",
+      "scripts/tests/test_native_preview.py",
+      "scripts/tests/test_prompt_builder.py",
+      "scripts/tests/test_taskboard_records.py"
     ],
     "required_paths": [
+      ".claude/rules/auditor-protocol.md",
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
+      "docs/generated/rule-traceability.md",
       "docs/governance/execution-record.json",
       "docs/refactor-backlog.md",
-      "runtime/channel-gateway/tests/backup-runtime-owner.test.js"
+      "scripts/check_consistency.py",
+      "scripts/prompt_builder.py",
+      "scripts/taskboard_archive.py",
+      "scripts/tests/test_batch_sim.py",
+      "scripts/tests/test_check_consistency.py",
+      "scripts/tests/test_native_preview.py",
+      "scripts/tests/test_prompt_builder.py",
+      "scripts/tests/test_taskboard_records.py"
     ],
     "max_plan_revisions": 3,
     "revision_count": 0,
@@ -28,13 +46,22 @@
   },
   "actual": {
     "changed_paths": [
+      ".claude/rules/auditor-protocol.md",
       "docs/AUDIT-LOG.md",
       "docs/EXEC-LOG.md",
       "docs/TASKBOARD.md",
       "docs/fingerprints/exec-latest.json",
+      "docs/generated/rule-traceability.md",
       "docs/governance/execution-record.json",
       "docs/refactor-backlog.md",
-      "runtime/channel-gateway/tests/backup-runtime-owner.test.js"
+      "scripts/check_consistency.py",
+      "scripts/prompt_builder.py",
+      "scripts/taskboard_archive.py",
+      "scripts/tests/test_batch_sim.py",
+      "scripts/tests/test_check_consistency.py",
+      "scripts/tests/test_native_preview.py",
+      "scripts/tests/test_prompt_builder.py",
+      "scripts/tests/test_taskboard_records.py"
     ]
   },
   "evidence": [

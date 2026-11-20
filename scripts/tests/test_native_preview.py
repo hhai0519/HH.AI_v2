@@ -929,7 +929,7 @@ def test_auto_production_applies_hash_rule_with_the_definition_base(tmp_path, so
     (tmp_path / 'final.py').write_bytes(b'VALUE = 2\n')
     definition = {
         'schema_version': 1, 'task_id': 'UNIT-PRODUCTION-261113', 'kind': 'production', 'base_oid': base,
-        'branch': 'batch/b115-production-s2-r1-261014', 'commit_message': 'unit', 'e24': False,
+        'branch': 'batch/b115-production-s2-r1-261014', 'commit_message': 'unit', 'one_liner': '預覽測試用的一句話說明文字', 'e24': False,
         'bundle_output': False, 'code_files': {'scripts/tool.py': 'final.py'}, 'new_files': {}, 'text_ops': [],
         'focused': None, 'auditor_selfcheck': declaration,
         'production_prose': {'goal': '測試。', 'scope': ['測試。'], 'invariants': ['測試。'], 'stops': ['測試。'],

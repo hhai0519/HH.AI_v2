@@ -17,7 +17,9 @@ Usage:
 Definition (all paths relative to the definition file):
   task_id, kind ("production" | "promotion" | "readonly"), base_oid, (prose_head and prose_tail for production/promotion),
   substitutions {TOKEN: file}           optional; each TOKEN must occur in the prose exactly once
-  production: branch, commit_message, e24 (bool), runner_update (bool, optional), focused (object|null),
+  production: branch, commit_message, one_liner (string, required: this batch's one plain sentence of what it solves,
+    8 to 60 characters, no full stop, no TASK_ID, SHA or file path; taskboard_archive.one_liner_sentence_problem),
+    e24 (bool), runner_update (bool, optional), focused (object|null),
     start (optional) {mode: "adopt", start_branch, adopt_hashes {repo_path: sha256}} resumes from the verified
                                          worktree of a stopped batch; omitted means a clean start
     code_files {repo_path: file}        full final text; ops are derived against the Base blob. Not allowed for
@@ -28,7 +30,8 @@ Definition (all paths relative to the definition file):
                                          insert_after_line {prefix,text}; prefixes must match one line
     e24_evidence (file, when e24), verify_only [paths], historical [paths or prefixes ending in '/']
   promotion: candidate_oid, candidate_branch
-  Placeholders {TASK_ID} {BASE_OID} {BASE7} {BRANCH} {ALLOWED} are expanded in prose and text_ops (never in
+  Placeholders {TASK_ID} {BASE_OID} {BASE7} {BRANCH} {ALLOWED} {ONE_LINER} ({ONE_LINER} is production only and expands
+  to "一句話：<one_liner>。") are expanded in prose and text_ops (never in
   code_files or new_files, which are carried verbatim).
   {MUST_READ} must occur exactly once in the prose, inside its single formal must-read section: it becomes the
   numbered list of the prompt file followed by the runner-derived must-read closure (batch_runner.must_read_lines
@@ -40,6 +43,9 @@ Guarantees (fail closed with "PROMPT_BUILDER FAIL <CODE>" and exit 1):
   declared final text of every code file; author hashes are LF SHA-256 of that result.
 - The assembled prompt is parsed with batch_runner.load_spec (the runner's validator), every machine block
   occurs exactly once, no carriage return, no placeholder or substitution token is left.
+- The one-liner is written by the tool, never by hand: when a production batch authors the board or EXEC-LOG, this
+  batch's board record (if it is the newest one) and EXEC-LOG row must start with the expanded {ONE_LINER}
+  (ONE_LINER_BOARD_RECORD, ONE_LINER_EXEC_LOG_ROW); a missing or invalid one_liner is ONE_LINER_INVALID.
 - Every E24 hit outside the allowed scope needs an explicit VERIFY_ONLY or HISTORICAL disposition.
 - The same inputs always produce the same bytes.
 - The must-read list and MUST_READ_JSON come from batch_runner.derive_must_read at the binding commit and are
@@ -71,10 +77,11 @@ try:
     import batch_runner  # noqa: E402 - the runner's own parser and op algorithm are the reference
     import audit_packet  # noqa: E402 - share the exact sibling classification contract
     import check16_preflight  # noqa: E402 - reuse CHECK 16 on a disposable prospective commit
+    import taskboard_archive  # noqa: E402 - the one-liner rules are shared with CHECK 29 and CHECK 26
 finally:
     sys.path.pop(0)
 
-PLACEHOLDERS = ('{TASK_ID}', '{BASE_OID}', '{BASE7}', '{BRANCH}', '{ALLOWED}')
+PLACEHOLDERS = ('{TASK_ID}', '{BASE_OID}', '{BASE7}', '{BRANCH}', '{ALLOWED}', '{ONE_LINER}')
 # State files take only declared text_ops (STATE_FILE_REQUIRES_TEXT_OPS); the ops in BATCH_SPEC_JSON are then the
 # change ledger that scripts/candidate_check.py replays from Base against the candidate commit.
 STATE_FILES = ('docs/AUDIT-LOG.md', 'docs/EXEC-LOG.md', 'docs/TASKBOARD.md', 'docs/refactor-backlog.md')
@@ -394,6 +401,8 @@ def build(repo, definition_path):
 
     authors, authored, ops, extra_blocks = {}, {}, [], []
     if kind == 'production':
+        _require(taskboard_archive.one_liner_sentence_problem(d.get('one_liner')) is None, 'ONE_LINER_INVALID')
+        values['{ONE_LINER}'] = taskboard_archive.ONE_LINER_PREFIX + d['one_liner'] + '。'
         code_files, new_files = d.get('code_files') or {}, d.get('new_files') or {}
         op_paths = {op.get('path') for op in d.get('text_ops') or []}
         for path in list(code_files) + list(new_files) + sorted(op_paths, key=str):
@@ -418,6 +427,15 @@ def build(repo, definition_path):
             o = text_op(texts, op, values)
             ops.append(o)
             texts[o['path']] = texts[o['path']].replace(o['old'], o['new'])
+        lead = values['{ONE_LINER}']
+        board = texts.get('docs/TASKBOARD.md')
+        units = taskboard_archive.record_units(board) if board is not None else []
+        if units and units[0]['task_id'] == task:
+            first = units[0]['lines'][0]
+            _require(first[taskboard_archive.C7_RECORD.match(first).end():].startswith(lead), 'ONE_LINER_BOARD_RECORD')
+        if 'docs/EXEC-LOG.md' in texts:
+            _require(all(rest.startswith(lead) for _, tid, rest in taskboard_archive.exec_log_rows(texts['docs/EXEC-LOG.md'])
+                         if tid == task), 'ONE_LINER_EXEC_LOG_ROW')
         # Reference application: replay all ops on the Base blobs with the runner's own algorithm.
         replay = {p: base_blob(repo, base, p) for p in texts}
         replay = batch_runner.apply_ops(replay, ops) if ops else replay
