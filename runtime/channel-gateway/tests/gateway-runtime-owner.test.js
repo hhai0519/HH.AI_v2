@@ -171,6 +171,24 @@ function rhElapsedMs(startMs) {
   return Math.round(performance.now() - startMs);
 }
 
+// B117-R1INT1-WAIT-261120: poll a synchronous read until isDone(value) is true. The wait is bounded by elapsed time
+// on the monotonic clock (a liveness guard like RH_LIVENESS_BOUND_MS, not a performance budget), never by an iteration
+// count: a fixed count turns a slow runner into a false failure (Run 44689384303 attempt 1, R1-INT-1 saw PENDING
+// after about one second). It returns the last value read, whether isDone was reached and the elapsed milliseconds,
+// so a timeout failure can say what was last seen.
+async function rhPollUntil(read, isDone, boundMs = RH_LIVENESS_BOUND_MS, pollMs = 20) {
+  const startMs = performance.now();
+  let value = read();
+  while (!isDone(value)) {
+    if (performance.now() - startMs >= boundMs) {
+      return { done: false, value, elapsedMs: rhElapsedMs(startMs) };
+    }
+    await new Promise((resolve) => setTimeout(resolve, pollMs));
+    value = read();
+  }
+  return { done: true, value, elapsedMs: rhElapsedMs(startMs) };
+}
+
 function rhSpyArchiveMutations(repo) {
   const calls = [];
   for (const name of ['markArchiveCoordinationCompleted', 'markArchiveCoordinationFailed']) {
@@ -1796,6 +1814,33 @@ test('Section 21 counterexample: hung archive write does not block owner.stop(),
   }
 });
 
+test('R1-INT-1 wait helper: rhPollUntil is bounded by elapsed time and keeps waiting while the condition is still pending', async () => {
+  // Late success: the condition becomes true after about 150 ms and the helper must wait for it however slow the
+  // machine is (an iteration-count bound of 50 polls at 20 ms would also pass here, so this is the positive control).
+  let flag = false;
+  const timer = setTimeout(() => { flag = true; }, 150);
+  try {
+    const late = await rhPollUntil(() => flag, (value) => value === true);
+    assert.strictEqual(late.done, true);
+    assert.strictEqual(late.value, true);
+  } finally {
+    clearTimeout(timer);
+  }
+
+  // Never true: the helper stops at the elapsed-time bound, reports done false, the last value and at least the bound.
+  let reads = 0;
+  const never = await rhPollUntil(() => { reads += 1; return { status: 'PENDING' }; }, (value) => value.status === 'COMPLETED', 60, 5);
+  assert.strictEqual(never.done, false);
+  assert.deepStrictEqual(never.value, { status: 'PENDING' });
+  assert.ok(never.elapsedMs >= 60, `elapsed ${never.elapsedMs} ms is below the 60 ms bound`);
+  assert.ok(reads >= 2, 'the helper must read again after sleeping, not give up after the first read');
+
+  // Already true: no sleeping at all.
+  const first = await rhPollUntil(() => 1, (value) => value === 1, 60, 5);
+  assert.strictEqual(first.done, true);
+  assert.strictEqual(first.value, 1);
+});
+
 test('R1-INT-1 REAL ARCHIVE PRODUCTION PATH: real GatewayRuntimeOwner, ArchiveWorker, ArchiveFileWriter, and SqliteStateRepository', async () => {
   const fs = require('node:fs');
   const path = require('node:path');
@@ -1898,17 +1943,18 @@ test('R1-INT-1 REAL ARCHIVE PRODUCTION PATH: real GatewayRuntimeOwner, ArchiveWo
     });
     assert.ok(enqueueRes.commandId);
 
-    // 5. Real ArchiveWorker advances it to COMPLETED
-    let finalCoord = null;
-    for (let i = 0; i < 50; i++) {
-      finalCoord = repo.getArchiveCoordinationBySequence('tg_acc_r1', topicReal.topic_id, 1);
-      if (finalCoord && finalCoord.status === 'COMPLETED') {
-        break;
-      }
-      await new Promise((r) => setTimeout(r, 20));
-    }
-    assert.ok(finalCoord);
-    assert.strictEqual(finalCoord.status, 'COMPLETED');
+    // 5. Real ArchiveWorker advances it to COMPLETED (bounded by elapsed time, not by an iteration count)
+    const archiveWait = await rhPollUntil(
+      () => repo.getArchiveCoordinationBySequence('tg_acc_r1', topicReal.topic_id, 1),
+      (coord) => Boolean(coord) && coord.status === 'COMPLETED',
+    );
+    const finalCoord = archiveWait.value;
+    assert.ok(finalCoord, `R1-INT-1: no archive coordination row after ${archiveWait.elapsedMs} ms`);
+    assert.strictEqual(
+      finalCoord.status,
+      'COMPLETED',
+      `R1-INT-1: archive coordination last status ${finalCoord.status} after ${archiveWait.elapsedMs} ms (liveness bound ${RH_LIVENESS_BOUND_MS} ms)`,
+    );
     assert.strictEqual(finalCoord.content_snapshot, null); // Cleared on completion!
 
     // 6. ArchiveFileWriter.readArchiveEntry using real repository returns expected canonical archive

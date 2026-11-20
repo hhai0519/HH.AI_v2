@@ -897,6 +897,29 @@
      "unit_bytes": 2342
     }
    ]
+  },
+  {
+   "file": "docs/archive/TASKBOARD-RECORDS-0003.md",
+   "batch": "B117-R1INT1-WAIT-R1-261120",
+   "checkpoint_oid": "5567ef9e503108e5c283c5d24759cb918803301f",
+   "file_sha256": "39add4daa6c0c33a9216d49ff723b2f1dc1267a799df1746a75f5bc2a73dac9c",
+   "keep": 4,
+   "entries": [
+    {
+     "task_id": "B117-G7B3A-RECORDS-ARCHIVE-261118",
+     "source_line": 128,
+     "line_count": 1,
+     "unit_sha256": "cb21cd7d6bea2316f9b6a007bd9af88c5ef0d6b8249c754f8a1a52d07109825a",
+     "unit_bytes": 6533
+    },
+    {
+     "task_id": "B117-G7B2-ARCHIVE-CHECK30-261118",
+     "source_line": 129,
+     "line_count": 1,
+     "unit_sha256": "97d559d0f8cdd5698c0128f03db42bab3fdfb82169be2f9b971fec35354dc60c",
+     "unit_bytes": 4083
+    }
+   ]
   }
  ]
 }
