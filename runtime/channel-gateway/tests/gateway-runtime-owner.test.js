@@ -700,9 +700,15 @@ test('GatewayRuntimeOwner signal handling triggers stop and removes listeners', 
   // Emit SIGINT
   processEmitter.emit('SIGINT');
 
-  // Wait brief tick for async stop to complete
-  await new Promise((resolve) => setTimeout(resolve, 50));
-
+  // B117-G6-FIXED-WAIT-261120: STOPPED is the last step of stop() (after the outbound, worker and backup stops and the
+  // signal-handler removal), so waiting for it is waiting for the whole stop. The wait is bounded by elapsed time, not by a
+  // fixed sleep, so a slow runner cannot turn a late stop into a false failure.
+  const stopWait = await rhPollUntil(() => owner.status, (status) => status === OWNER_STATUS.STOPPED);
+  assert.strictEqual(
+    stopWait.done,
+    true,
+    `signal-triggered stop: last status ${stopWait.value} after ${stopWait.elapsedMs} ms (liveness bound ${RH_LIVENESS_BOUND_MS} ms)`,
+  );
   assert.strictEqual(owner.status, OWNER_STATUS.STOPPED);
   assert.strictEqual(workerStopped, true);
   assert.strictEqual(outboundStopped, true);
@@ -1227,7 +1233,17 @@ test('production-wiring: GatewayRuntimeOwner wires TelegramOutboundAdapter.deliv
     assert.ok(owner.outboxWorker);
     assert.strictEqual(owner.outboxWorker.hasActiveTimer, true);
 
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    // B117-G6-FIXED-WAIT-261120: wait for the observable end state (one delivery recorded and the command persisted as
+    // accepted), bounded by elapsed time, instead of a fixed 50 ms sleep.
+    const deliveryWait = await rhPollUntil(
+      () => ({ deliveries: fakeOutbound.deliveries.length, status: repo.getOutboxCommand(cmdId).status }),
+      (seen) => seen.deliveries >= 1 && seen.status === 'ACCEPTED_BY_PLATFORM',
+    );
+    assert.strictEqual(
+      deliveryWait.done,
+      true,
+      `executor wiring: last seen deliveries=${deliveryWait.value.deliveries} status=${deliveryWait.value.status} after ${deliveryWait.elapsedMs} ms (liveness bound ${RH_LIVENESS_BOUND_MS} ms)`,
+    );
 
     assert.strictEqual(fakeOutbound.deliveries.length, 1);
     assert.strictEqual(fakeOutbound.deliveries[0].command_id, cmdId);
