@@ -1,5 +1,5 @@
 {
-  "base_head": "2137065",
+  "base_head": "f6528bd",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -576,16 +576,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 428,
-      "sha256": "2b055925c31a5ac31b53749a65ce187348605db2e503028dab45e1c5b188e451"
+      "lines": 429,
+      "sha256": "3e080385e881f635d8e8f6f8b004ec793ce167c0100cf83267b4b5330292f33b"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 398,
-      "sha256": "ac892b053b9db6af998db938def70c1c8db1f797acd7bf09ce6c87c1d26fe91f"
+      "lines": 399,
+      "sha256": "059cf0cfdb1b320254fba1898c0ecc21fcf5a55f052b6b6768118222faf98e0a"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -628,7 +628,7 @@
         "## 封存區"
       ],
       "lines": 459,
-      "sha256": "60a862d5622a74b56ae4758349821f147d9d1ac3f2c84a43a9a3f0286d03851e"
+      "sha256": "6b1b2019cfbde521accf09ba4273dbb04b2e9276252bc93183cd6a5171aaa164"
     },
     "docs/TODO-LEDGER.md": {
       "fences": 0,
@@ -640,8 +640,8 @@
         "## 四、盤點範圍與方法",
         "## 五、清冊"
       ],
-      "lines": 149,
-      "sha256": "30547a4cc677b4d334ab291737898d92737f596ef31f85aa70400c75c50afb53"
+      "lines": 159,
+      "sha256": "7ef7446cf99abe97e3ba9bf288ae9fad58297feb1efa05178fc8045aee8f4bc0"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1150,8 +1150,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6484,
-      "sha256": "21589bda2aa4e4a9437916c15032b09343e5eff3b33f5d5c4fdb7a80fdbea369"
+      "lines": 6485,
+      "sha256": "837b345eec31d1693b1df86855425442c60f4e5ef7df418781bfc857de84c793"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1358,6 +1358,15 @@
       ],
       "lines": 274,
       "sha256": "c1796819a9d6b1539aea730ab118062300acfdf86a1740ab3c3709f7813cd6c3"
+    },
+    "scripts/gate4_groups.py": {
+      "fences": 0,
+      "headings": [
+        "# -*- coding: utf-8 -*-",
+        "# Test files whose tests depend on real time limits, process-tree kills or Node child processes: they run alone."
+      ],
+      "lines": 368,
+      "sha256": "9344f1478dc6a1877eb84cf07f11badfabf1b897c8aa84ced3d738e0fd87b2fc"
     },
     "scripts/gate_durations.py": {
       "fences": 0,
@@ -1944,6 +1953,22 @@
       "lines": 119,
       "sha256": "113e2d181ef5675c8ac30ac6b31eb100f82eb138c0532c663b975f1b1dd55b82"
     },
+    "scripts/tests/test_gate4_groups.py": {
+      "fences": 0,
+      "headings": [
+        "# ---- C1 -----------------------------------------------------------------------------------------------------------",
+        "# ---- C2 -----------------------------------------------------------------------------------------------------------",
+        "# ---- C3 -----------------------------------------------------------------------------------------------------------",
+        "# ---- C4 -----------------------------------------------------------------------------------------------------------",
+        "# ---- C5 / C6 / C7 ---------------------------------------------------------------------------------------------------",
+        "# ---- C8 -----------------------------------------------------------------------------------------------------------",
+        "# ---- C9 -----------------------------------------------------------------------------------------------------------",
+        "# ---- C10: real processes -------------------------------------------------------------------------------------------",
+        "# ---- C11 ----------------------------------------------------------------------------------------------------------"
+      ],
+      "lines": 455,
+      "sha256": "cc5e4605eacc049d72f02c5470d4754b7f7cf68861f83ad5fd123fb106e25ae6"
+    },
     "scripts/tests/test_gate_durations.py": {
       "fences": 0,
       "headings": [
@@ -2440,11 +2465,11 @@
       "headings": [
         "# -*- coding: utf-8 -*-"
       ],
-      "lines": 111,
-      "sha256": "fbc9ad85cb78f44be63864171bf49dfd7605b07f6b030d7ef9c85f810fa11f19"
+      "lines": 121,
+      "sha256": "2cfbb77ca8d1b99b4b8dc713ec15d32fb39f4d6b04fa207f01f65f975c6cbd5f"
     }
   },
-  "generated_at": "2026-11-20T17:33:42Z",
+  "generated_at": "2026-11-21T12:06:05Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

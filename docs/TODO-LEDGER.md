@@ -31,7 +31,7 @@
 | RECORDS-0002 內 G5-DELIVERY-PRESTART 紀錄無「新增」標記之待辦 | 2 | 結案 0、承接 1、開放 1 |
 | RECORDS-0001 之無標籤待辦（4 組，群組級） | 4 | 結案 0、承接 4、開放 0 |
 
-本檔累計（B117-TAKEOVER-STATE-261121，Base 2137065f8828fb5ef1e5f5f27c4947393f74c205）：94 項（結案 24、承接 41、開放 29）；上表為 B117-G7B3B3-TODO-LEDGER-261120 建立時之統計，TD-085 至 TD-094 由 B117-TAKEOVER-STATE-261121 加入（補編 6 項：結案 1、承接 5；新增 4 項：開放 4）。
+本檔累計（B117-D9-GATE4-GROUPS-R2-261121，Base f6528bd24a1dae4135291e0ca0a6e181d9adecd9）：104 項（結案 25、承接 45、開放 34）；上表為 B117-G7B3B3-TODO-LEDGER-261120 建立時之統計，TD-085 至 TD-094 由 B117-TAKEOVER-STATE-261121 加入（補編 6 項：結案 1、承接 5；新增 4 項：開放 4），TD-095、TD-096 由 B117-D9-GATE4-GROUPS-R2-261121 補編（承接 2），TD-097 至 TD-104 由 B117-D9-GATE4-GROUPS-R2-261121 新增（開放 5、結案 1、承接 2）；TD-019、TD-048、TD-079、TD-083 只改依據欄（改由 D9 承接）。
 
 ## 四、盤點範圍與方法
 
@@ -69,7 +69,7 @@
 | TD-016 | B117-STATE-HANDOVER-R1-261115 | （二） | RC-2 回覆組裝競態（REPLY_STEP_OUTPUT_TRUNCATED／REPLY_STEP_OUTPUT_MISSING） | 結案 | G5-a（B117-G5A-RC2-DURATIONS-R2-261116）第四點（甲）根除，附帶之 REPLY_STEP_OUTPUT_MISSING 移入 G5-b2；scripts/batch_runner.py 有 REPLY_CONTROL_STALE 與 REPLY_STEP_IN_PROGRESS、EXECUTOR_REPLY_UNAVAILABLE（FACT）；REPLY_STEP_OUTPUT_MISSING 隨單一命令消失屬 INFERENCE（G5-b2 紀錄第五點已標示） |
 | TD-017 | B117-STATE-HANDOVER-R1-261115 | （三） | RC-3 IDE 使用者層級 Git 自動刷新與自動 fetch 設定由工具讀取實值判定 | 開放 | 現況只請 USER 目視確認（FACT：scripts/delivery_pack.py PRESTART 文字）。owner：G5；原觸發「G5-c」在現行看板無此切片（見第五節註） |
 | TD-018 | B117-STATE-HANDOVER-R1-261115 | （四） | RC-4 USER 端 PowerShell 合併為 repo 內 USER 端工具（區塊 C 移入 preflight） | 開放 | 區塊 C 已併入 run（FACT）；區塊 A、B、B-R 仍為手貼 PowerShell。owner：G5；原觸發「G5-c」見第五節註 |
-| TD-019 | B117-STATE-HANDOVER-R1-261115 | （五） | RC-5 去除 focused 與第 4 關之零損失重疊（第 4 關預算選 A） | 開放 | G5-a 紀錄第三點（USER 2026-11-16「先量再砍」）把觸發改為「累積兩批第 4 關耗時資料後依資料另開切片」；量測外掛 scripts/gate_durations.py 已落地（FACT），去重切片尚未另開（INFERENCE：無對應紀錄）。owner：第 4 關降載（D1、D9）評估時併入判定 |
+| TD-019 | B117-STATE-HANDOVER-R1-261115 | （五） | RC-5 去除 focused 與第 4 關之零損失重疊（第 4 關預算選 A） | 開放 | G5-a 紀錄第三點（USER 2026-11-16「先量再砍」）把觸發改為「累積兩批第 4 關耗時資料後依資料另開切片」；量測外掛 scripts/gate_durations.py 已落地（FACT），去重切片尚未另開（INFERENCE：無對應紀錄）。owner：第 4 關降載（D1、D9）評估時併入判定；USER 2026-11-21 15:31 定案（第二意見轉述）：由 D9 第 2 批承接（runner 拿掉 W2 上的 focused 步驟，預演中的 focused 保留；適用 E27 與 D-SO） |
 | TD-020 | B117-STATE-HANDOVER-R1-261115 | （六） | RC-6 TIMING 另輸出各步耗時與總運算時間，EXEC-LOG 與看板改用運算時間 | 開放 | 現行 TIMING 只輸出起訖與總耗時（FACT：scripts/batch_runner.py _timing_lines）；G5-a 只落地第 4 關逐測試耗時量測，未做各步耗時與運算時間。owner：G5；原觸發「G5-c」見第五節註 |
 | TD-021 | B117-STATE-HANDOVER-R1-261115 | （七） | 自檢聲明交叉比對機械化（可由程式判定之項目進 runner preflight） | 承接 | NEXT_SLICE 排程（五）「自檢聲明交叉比對機械化與 B-111」（FACT） |
 | TD-022 | B117-STATE-HANDOVER-R1-261115 | （八） | 額度不足時 runner 在任何修改前停止並列出重置時間 | 開放 | 現況只在提示詞文字要求 Executor 自行判斷（FACT：scripts/prompt_builder.py 啟動前額度文字）；runner 無對應機制。owner：G5 |
@@ -98,7 +98,7 @@
 | TD-045 | B117-G7A-CONTRACT-STATE-R2-261117 | （二） | ADR-0021 第 2 點 F 項之過渡期補充說明或新 ADR（第二意見 B-2） | 開放 | 觸發：合併切片之接任重驗與 repo 接任段落配合修改開工時（TD-035）。owner：審查工具批 |
 | TD-046 | B117-G7A-CONTRACT-STATE-R2-261117 | （三） | 預演改為快速檢查（X 案；E27） | 結案 | B117-XPREVIEW-QUICK-R2-261118 落地（NEXT_SLICE 載「X 案批已完成」；scripts/tests/test_native_preview.py 有 test_x_* 測試；FACT） |
 | TD-047 | B117-G7A-CONTRACT-STATE-R2-261117 | （四） | git 子行程次數降低評估：(1) Windows 改直呼 mingw64 git.exe；(2) 必讀檔改單次 git cat-file --batch；(3) 測試共用 fixture | 開放 | 三小項均未見落地（INFERENCE）；(1) 須 USER 先量測；(2) 原觸發 G5-c（見第五節註）；(3) 同 TD-041。owner：USER 排程 |
-| TD-048 | B117-G7A-CONTRACT-STATE-R2-261117 | （五） | 平行測試參考（xdist -n 2 --dist loadfile；runner 設 PYTEST_DISABLE_PLUGIN_AUTOLOAD=1，外掛須以 -p 明確載入；觸發 G6 開工） | 承接 | NEXT_SLICE 排程（四）降低版 G6 與本機第 4 關 xdist 試驗、D9（FACT） |
+| TD-048 | B117-G7A-CONTRACT-STATE-R2-261117 | （五） | 平行測試參考（xdist -n 2 --dist loadfile；runner 設 PYTEST_DISABLE_PLUGIN_AUTOLOAD=1，外掛須以 -p 明確載入；觸發 G6 開工） | 承接 | NEXT_SLICE 排程（四）降低版 G6 與本機第 4 關 xdist 試驗、D9（FACT）；USER 2026-11-21 15:31 定案（第二意見轉述）：改由 D9 第 1 批以自建分組執行承接，不採 pytest-xdist（FACT：本批看板 NEXT_SLICE 與 D1 至 D9 決定行） |
 | TD-049 | B117-G7A-CONTRACT-STATE-R2-261117 | （六） | 合併切片補充：同 SHA post-main 固定結果、CI workflow 規則檢查細項、提示詞模板殘留句（第二意見 O-2） | 承接 | NEXT_SLICE 排程（三）第二批含前兩者（FACT）；「提示詞模板殘留句（O-2）」未見明文列入，作者化該批時須納入 |
 | TD-050 | B117-G7A-CONTRACT-STATE-R2-261117 | （七） | 14 個在 Linux 略過、CI 之 Windows job 不執行之測試（test_bundle_after_push 5、test_delivery_pack 9），目前只在 Executor 之 Windows 第 4 關執行 | 承接 | B-117 列「規劃 Windows CI 至少執行 scripts/tests/test_bundle_after_push.py…維持 OPEN」與 NEXT_SLICE 排程（四）降低版 G6（Windows CI 執行全部 scripts/tests）（FACT） |
 | TD-051 | B117-G7B1-ARCHIVE-MECHANISM-R2-261117 | b1-一 | 11 列交 USER 看清單（交前以當時規則重新判定） | 結案 | G7-b2 第二次封存 11 列已完成（FACT：G7 列） |
@@ -129,11 +129,11 @@
 | TD-076 | B117-G7B3A2-RECORDS-MOVE2-R3-261118 | b3a2-三 | 第 4 關秒數 3051.516 秒續追（b2-二） | 承接 | 同 TD-066 |
 | TD-077 | B117-G7B3A2-RECORDS-MOVE2-R3-261118 | b3a2-四 | G7-c 收攏 USER 決定時須含本批寫回之 POSTRUN 方案甲 | 承接 | G7 列 G7-c「含 B117-G7B3A2-RECORDS-MOVE2-R3-261118 寫回之 POSTRUN 方案甲」（FACT） |
 | TD-078 | B117-G7B3A2-RECORDS-MOVE2-R3-261118 | （一） | 2026-11-18 USER 要求每批須有「一句話：解決了什麼」且機械化（於 G7-b3b 實作） | 結案 | G7-b3b2（B117-G7B3B2-ONE-LINER-R3-261120）落地：prompt_builder 之 one_liner 與 CHECK 29、CHECK 26 之一句話檢查（FACT：Macro PASS 與 POST-MAIN VERIFIED） |
-| TD-079 | B117-G7B3A2-RECORDS-MOVE2-R3-261118 | （二） | Defender 設定不變；本機第 4 關有界 pytest-xdist 試驗改排在 G7-b3b 之後（經第二意見轉達之使用者確認） | 承接 | NEXT_SLICE 排程（二）本機第 4 關有界 pytest-xdist 試驗；D1「不改任何設定」（FACT：NEXT_SLICE 與 D1 至 D9 決定行） |
+| TD-079 | B117-G7B3A2-RECORDS-MOVE2-R3-261118 | （二） | Defender 設定不變；本機第 4 關有界 pytest-xdist 試驗改排在 G7-b3b 之後（經第二意見轉達之使用者確認） | 承接 | NEXT_SLICE 排程（二）本機第 4 關有界 pytest-xdist 試驗；D1「不改任何設定」（FACT：NEXT_SLICE 與 D1 至 D9 決定行）；USER 2026-11-21 15:31 定案（第二意見轉述）：改由 D9 第 1 批以自建分組執行承接，不採 pytest-xdist（FACT：本批看板 NEXT_SLICE 與 D1 至 D9 決定行） |
 | TD-080 | B117-G7B3A2-RECORDS-MOVE2-R3-261118 | b3a2-五 | G7-b3b 範圍見 NEXT_SLICE（要項 1 至 3） | 結案 | 指標：同 TD-071 |
 | TD-081 | B117-G7B3A2-RECORDS-MOVE2-R3-261118 | b3a2-六 | G6 類別待辦已登錄於 G6 列（短期限真實進程樹逾時測試） | 承接 | G6 列現行文字（FACT） |
 | TD-082 | B117-G7B3A2-RECORDS-MOVE2-R3-261118 | b3a2-七 | W2 之 .git 現存 49 份歷來各批 PRECOMMIT 第 4 關原始紀錄，本測試之歷史結果未逐份核對（UNKNOWN） | 開放 | 觸發：G6 lint 或 D1／D9 需要歷史失敗率時。owner：G6 |
-| TD-083 | B117-G7B3A2-RECORDS-MOVE2-R3-261118 | b3a2-八 | G7-b3b 之後之 xdist 試驗 | 承接 | NEXT_SLICE 排程（二）本機第 4 關有界 pytest-xdist 試驗（FACT） |
+| TD-083 | B117-G7B3A2-RECORDS-MOVE2-R3-261118 | b3a2-八 | G7-b3b 之後之 xdist 試驗 | 承接 | NEXT_SLICE 排程（二）本機第 4 關有界 pytest-xdist 試驗（FACT）；USER 2026-11-21 15:31 定案（第二意見轉述）：改由 D9 第 1 批以自建分組執行承接，不採 pytest-xdist（FACT：本批看板 NEXT_SLICE 與 D1 至 D9 決定行） |
 | TD-084 | B117-G7B3A2-RECORDS-MOVE2-R3-261118 | b3a2-九、（三） | 審查工具批登錄 EXECUTOR-START.txt（delivery_pack 另輸出，避免區塊 3 手抄錯誤；同紀錄第十點（三）建議） | 開放 | 看板現只在 B117-G7B3A2-RECORDS-MOVE2-R3-261118 紀錄登錄此建議，該紀錄本批搬入封存檔，不是承接位置，故列開放。owner：審查工具批；觸發：該批作者化 |
 | TD-085 | B117-G7B3B1-TAKEOVER-ARCHIVE-R2-261119 | b3b1-一 | 封存批次紀錄帶走之待辦一次盤點 | 結案 | b3b3-1（B117-G7B3B3-TODO-LEDGER-261120）完成本檔（TD-001 至 TD-084），Macro PASS 與 POST-MAIN VERIFIED（FACT：AUDIT-LOG 該列） |
 | TD-086 | B117-G7B3B1-TAKEOVER-ARCHIVE-R2-261119 | b3b1-二 | G6 守衛殘餘寫法（helper 內寫死短期限、lambda 與 *a, **k 轉傳、兩層 helper、字串串接拼出 TREE_SIGNALLED）與 TREE_SIGNALLED 字串允許清單 | 承接 | G6 列（b3b1-二）（FACT：G6 列現行文字） |
@@ -145,5 +145,15 @@
 | TD-092 | B117-TAKEOVER-STATE-261121 | （無；本批新增） | 把審查官端「批次定義產生腳本」收進 repo，做成只改測試之修復批與只改狀態之批兩個範本（前任線索：第二意見建議，前任同意方向） | 開放 | owner：β 批（D4 機械化）；觸發：β 批作者化；凍結期間只登錄（D6（四）） |
 | TD-093 | B117-TAKEOVER-STATE-261121 | （無；本批新增） | gateway-windows 每次耗時不同：KNOWN_FOLDER_BRIDGE_MS 在近期 Run 為 194 至 290 毫秒、job 總秒數 120 至 137 秒，Windows 變慢原因 UNKNOWN；目前只作觀察 | 開放 | owner：G6；觸發：（四）降低版 G6 之 Windows CI 試驗作者化時一併評估，或 gateway-windows 因逾時失敗時 |
 | TD-094 | B117-TAKEOVER-STATE-261121 | （無；本批新增） | 回覆第二行之矛盾：協定第 8.1、13.8 節規定第二行為建議推理級別；USER 現行角色文件規定第二行為「本輪基準」。依協定第 13 節前言，現行以 USER 文件為準，推理級別順延為第三行 | 開放 | owner：G7-c（USER 決定收攏）；觸發：G7-c 作者化時把 USER 決定寫入協定並改第 8.1、13.8 節 |
+| TD-095 | B117-BACKUP-TEST-CLOCK-R2-261120 | g6-clock-1 | channel-gateway 備份排程之同毫秒比較式：backup-scheduler.js 之 `mtimeMs > nowMs` 在 now 等於 floor(mtime) 時，把剛建好的備份當成未來檔略過，使 owner 啟動時多建一份備份（具名待辦；production 不改，日後另批並依 D-SO 辦理） | 承接 | G6 列（g6-clock-1）（FACT：G6 列現行文字） |
+| TD-096 | B117-BACKUP-TEST-CLOCK-R2-261120 | 五（類別待辦） | Windows 原生第 4 關之非確定性失敗，同類第二次（前一次為 B117-G7B3A2-RECORDS-MOVE2-261118 之 124／125 殺樹競態） | 承接 | G6 列（類別處置由 G6 作者化時完成）（FACT：G6 列現行文字） |
+| TD-097 | B117-D9-GATE4-GROUPS-R2-261121 | 第二意見定案 3.3 節第 1 點 | 最重 4 個測試檔改用共用樣板倉庫：把這些測試檔之 git 倉庫建立改為共用樣板，縮短第 4 關（暫不做，具名待辦） | 開放 | owner：D9 後續；觸發：D9 第 1 批之後 USER 本機第 4 關仍超過 20 分鐘（秒數為 USER_PROVIDED）；複查日 2026-12-15 |
+| TD-098 | B117-D9-GATE4-GROUPS-R2-261121 | 第二意見定案 3.3 節第 2 點 | verify_all 內部與第 2、3 關重複之檢查（約 15 秒）不做：效益太小，為了一條程式分支不值得 | 結案 | 決定不做，理由：USER 2026-11-21 15:31 定案（第二意見轉述，USER 逐字確認）：約 15 秒之效益不值得多一條程式分支；不實作，僅記錄理由（結案證據：本列與 B117-D9-GATE4-GROUPS-R2-261121 批次紀錄） |
+| TD-099 | B117-D9-GATE4-GROUPS-R2-261121 | Executor 回覆觀察（S1 事故第九節核對） | Executor 執行中先送出一則以固定署名結尾之訊息，容易被誤當成完結回覆；提示詞範本須規定中途訊息不得使用固定署名行 | 開放 | owner：β 批（D4 機械化，與 TD-092 範本一併）；觸發：提示詞範本修訂；複查日 2026-12-15 |
+| TD-100 | B117-D9-GATE4-GROUPS-R2-261121 | 第二意見定案第 5 節（α） | α 批範圍擴充：D2 失敗清單，並於逾時時印出完成測試數與最後一個測試名稱（S1 蒐證）；設計輸入：失敗清單解析須支援 D9 分組輸出（多段 short test summary、各組輸出前之 GATE4_GROUP 標頭、最後一行 GATE4_GROUPS_RESULT）（第二意見 D-SO 觀察 O3） | 承接 | 看板 NEXT_SLICE 之 α 批（D2＋D3）列（FACT：本批寫入） |
+| TD-101 | B117-D9-GATE4-GROUPS-R2-261121 | 第二意見定案第 5 節（β） | β 批範圍擴充：S1 追蹤改造：登記檔進 repo（D8）；登記檔只記事故事實與類別，修正項目只放清冊；加類別欄位與同類次數自動計算並由 Dashboard 與 draft_precheck 提醒；runner 印 S1 行時自動產生登記草稿，commit 即確認 | 承接 | 看板 NEXT_SLICE 之 β 批（D8＋S1 追蹤改造）列（FACT：本批寫入） |
+| TD-102 | B117-D9-GATE4-GROUPS-R2-261121 | 第二意見定案 3.1 節第 3 點 | 分組耗時表之校準：本批耗時表取自 B117-TAKEOVER-STATE-261121 之 Windows 逐測試耗時（USER_PROVIDED）；本批第 4 關取得新的 gate_durations 紀錄後，以 scripts/gate4_groups.py calibrate 重新產生耗時表，由下一個寫狀態批提交 | 開放 | owner：下一個寫狀態批（b3b3-3 重發批）；觸發：本批第 4 關之 gate_durations 紀錄可得；複查日 2026-12-15 |
+| TD-103 | B117-D9-GATE4-GROUPS-R2-261121 | USER 2026-11-21 轉交（交付檔放置） | 交付檔放置與轉交檔案之機械化：delivery_pack 收編放置前判定、放置、「使用者下一步」第 1、2 點與轉交檔案段（依 D6（四）只登錄不實作） | 開放 | owner：G3（USER 建議）；觸發：G3 作者化；複查日 2026-12-15 |
+| TD-104 | B117-D9-GATE4-GROUPS-R2-261121 | 第二意見 D-SO 觀察 O1、O2 | 分組執行診斷改進：第一段（怕擠清單）也印 GATE4_PROGRESS 進度行；內部期限改為從 verify_all 開始時起算而非 run_grouped 起算；總數核對由全體加總改為逐檔核對以利定位 | 開放 | owner：α 批（診斷輸出，與 TD-100 一併）；觸發：α 批作者化；複查日 2026-12-15 |
 
 註：多項待辦以「G5-c」為觸發，但 `docs/TASKBOARD.md` 現行文字沒有「G5-c」這個切片（FACT：全檔 0 次出現）；其觸發因此無從滿足。這些項目（TD-017、TD-018、TD-020、TD-044、TD-047 之 (2)）現在的 owner 是 G5 列（OPEN），是否另立 G5-c 或併入其他切片，由後續排程決定。

@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "B117-TAKEOVER-STATE-261121",
-  "base_oid": "2137065f8828fb5ef1e5f5f27c4947393f74c205",
+  "task_id": "B117-D9-GATE4-GROUPS-R2-261121",
+  "base_oid": "f6528bd24a1dae4135291e0ca0a6e181d9adecd9",
   "plan": {
     "allowed_paths": [
       "docs/AUDIT-LOG.md",
@@ -10,10 +10,14 @@
       "docs/TASKBOARD.md",
       "docs/TODO-LEDGER.md",
       "docs/archive/TASKBOARD-ARCHIVE-MANIFEST.json",
-      "docs/archive/TASKBOARD-RECORDS-0005.md",
+      "docs/archive/TASKBOARD-RECORDS-0006.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md"
+      "docs/refactor-backlog.md",
+      "scripts/gate4_groups.py",
+      "scripts/gate4_timings.json",
+      "scripts/tests/test_gate4_groups.py",
+      "scripts/verify_all.py"
     ],
     "required_paths": [
       "docs/AUDIT-LOG.md",
@@ -21,10 +25,14 @@
       "docs/TASKBOARD.md",
       "docs/TODO-LEDGER.md",
       "docs/archive/TASKBOARD-ARCHIVE-MANIFEST.json",
-      "docs/archive/TASKBOARD-RECORDS-0005.md",
+      "docs/archive/TASKBOARD-RECORDS-0006.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md"
+      "docs/refactor-backlog.md",
+      "scripts/gate4_groups.py",
+      "scripts/gate4_timings.json",
+      "scripts/tests/test_gate4_groups.py",
+      "scripts/verify_all.py"
     ],
     "max_plan_revisions": 3,
     "revision_count": 0,
@@ -37,10 +45,14 @@
       "docs/TASKBOARD.md",
       "docs/TODO-LEDGER.md",
       "docs/archive/TASKBOARD-ARCHIVE-MANIFEST.json",
-      "docs/archive/TASKBOARD-RECORDS-0005.md",
+      "docs/archive/TASKBOARD-RECORDS-0006.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/refactor-backlog.md"
+      "docs/refactor-backlog.md",
+      "scripts/gate4_groups.py",
+      "scripts/gate4_timings.json",
+      "scripts/tests/test_gate4_groups.py",
+      "scripts/verify_all.py"
     ]
   },
   "evidence": [

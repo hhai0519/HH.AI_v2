@@ -952,6 +952,22 @@
      "unit_bytes": 2992
     }
    ]
+  },
+  {
+   "file": "docs/archive/TASKBOARD-RECORDS-0006.md",
+   "batch": "B117-D9-GATE4-GROUPS-R2-261121",
+   "checkpoint_oid": "f6528bd24a1dae4135291e0ca0a6e181d9adecd9",
+   "file_sha256": "43ec2dec0e6157fd91834a6b2ad88d916e849d805311e14a45f561aa241f3c6f",
+   "keep": 5,
+   "entries": [
+    {
+     "task_id": "B117-BACKUP-TEST-CLOCK-R2-261120",
+     "source_line": 131,
+     "line_count": 1,
+     "unit_sha256": "6b89c4c674f7fed8a795a8f92737ba7486eabafb1550d52ab176b55a9c6fc858",
+     "unit_bytes": 5946
+    }
+   ]
   }
  ]
 }

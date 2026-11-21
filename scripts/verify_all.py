@@ -20,6 +20,9 @@ import sys
 import subprocess
 import argparse
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import gate4_groups  # noqa: E402
+
 REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
 GATES = [
@@ -65,6 +68,13 @@ def quick_gates():
 
 def run_gate(gate, env, cwd):
     print(f"\n[GATE] Running {gate['name']}: {gate['desc']}", flush=True)
+    if gate["name"] == "unit_tests" and gate4_groups.requested(env, gate["cmd"]):
+        # D9 batch 1: only the local runner gate (HHAI_GATE_DURATIONS_PREFIX is set by it alone) runs the same
+        # tests in concurrent groups; None means grouping does not apply (fewer than 2 groups) and the
+        # sequential command below runs. CI never sets the variable, so CI stays sequential.
+        rc = gate4_groups.run_grouped(gate["cmd"], env, cwd)
+        if rc is not None:
+            return rc
     proc = subprocess.run(gate["cmd"], env=env, cwd=cwd)
     return proc.returncode
 
