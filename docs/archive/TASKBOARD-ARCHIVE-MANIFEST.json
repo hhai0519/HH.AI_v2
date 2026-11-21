@@ -968,6 +968,22 @@
      "unit_bytes": 5946
     }
    ]
+  },
+  {
+   "file": "docs/archive/TASKBOARD-RECORDS-0007.md",
+   "batch": "B117-G7B3B3-LEDGER-CHECK-R3-261121",
+   "checkpoint_oid": "608c1e61ef3e2c4f156e6eb2181c9155e3fdd069",
+   "file_sha256": "afaa30fbe174b4e21fb44d733a009f0bff030e8f3a4c20ed5cc9346b69747827",
+   "keep": 5,
+   "entries": [
+    {
+     "task_id": "B117-G7B3B2-ONE-LINER-R3-261120",
+     "source_line": 131,
+     "line_count": 1,
+     "unit_sha256": "50937596282c35bbd56c645998956014c9bca3809ef3a27b3ba47f78d6bf3b14",
+     "unit_bytes": 3551
+    }
+   ]
   }
  ]
 }

@@ -1,5 +1,5 @@
 {
-  "base_head": "f6528bd",
+  "base_head": "608c1e6",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -576,16 +576,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 429,
-      "sha256": "3e080385e881f635d8e8f6f8b004ec793ce167c0100cf83267b4b5330292f33b"
+      "lines": 430,
+      "sha256": "9a9897334a9517fc4a463c25495d6cc6f7140256d364f8cad85f701028ca25e0"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 399,
-      "sha256": "059cf0cfdb1b320254fba1898c0ecc21fcf5a55f052b6b6768118222faf98e0a"
+      "lines": 400,
+      "sha256": "f1ef23bf35d292496eb9aee79d98a520fd9fe3efdde1b86b3a7c705fcae4792c"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -628,7 +628,7 @@
         "## 封存區"
       ],
       "lines": 459,
-      "sha256": "6b1b2019cfbde521accf09ba4273dbb04b2e9276252bc93183cd6a5171aaa164"
+      "sha256": "2808347075d2d23deb13542ccfff4ffb017dd6b2476f3468f1bdaf829d6c1103"
     },
     "docs/TODO-LEDGER.md": {
       "fences": 0,
@@ -640,8 +640,8 @@
         "## 四、盤點範圍與方法",
         "## 五、清冊"
       ],
-      "lines": 159,
-      "sha256": "7ef7446cf99abe97e3ba9bf288ae9fad58297feb1efa05178fc8045aee8f4bc0"
+      "lines": 163,
+      "sha256": "e919bb545dc42fd2abff8a6604a9e76968afb506f301c3720bf20974c43969e6"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1150,8 +1150,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6485,
-      "sha256": "837b345eec31d1693b1df86855425442c60f4e5ef7df418781bfc857de84c793"
+      "lines": 6486,
+      "sha256": "373558486912715edee9c892bda55e350850ab71ad12d093da37516af815aa29"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1623,8 +1623,8 @@
         "# 第一個封存檔（USER 一次性確認）寫成後即固定：批次、位元組與筆數釘在這裡，之後改封存檔或清單都會 FAIL。",
         "# 批次紀錄封存（G7-b3a）"
       ],
-      "lines": 1083,
-      "sha256": "2558f70f9ca3503ef85a442ba00817b865459a4e8067129c61b071f117b35f73"
+      "lines": 1269,
+      "sha256": "af6266bd85632d3887ef949421a98932c832bfe9442048e9008ae49c1f639f57"
     },
     "scripts/tests/test_anchor.py": {
       "fences": 0,
@@ -2341,6 +2341,21 @@
       "lines": 1011,
       "sha256": "597e72b653ef43cdcfaf00cc5073841ff10668ecf19f5a73bc9c15ecb9be50b1"
     },
+    "scripts/tests/test_todo_ledger_check.py": {
+      "fences": 0,
+      "headings": [
+        "# 看板：tid(1)、tid(2) 較新（受管），tid(3) 是錨點，tid(4)、tid(5) 較舊（舊紀錄）",
+        "# ---- 基準：全部合規時 CHECK 29 通過 ----------------------------------------------------------------",
+        "# ---- 清冊格式（承諾 C1）------------------------------------------------------------------------------",
+        "# ---- 清冊只增不減（承諾 C2）---------------------------------------------------------------------------",
+        "# ---- 新增待辦宣告對帳（承諾 C3）-----------------------------------------------------------------------",
+        "# ---- records-apply 搬移前對帳（承諾 C4）---------------------------------------------------------------",
+        "# ---- 證據探針的故障注入反例（E27 b）：探針失敗、無法判定時結果必為失敗 --------------------------------",
+        "# ---- 真實清冊守門：repo 內的 docs/TODO-LEDGER.md 本身必須合規 ------------------------------------------"
+      ],
+      "lines": 447,
+      "sha256": "2ba116001b4ee7fe160e9fd8702001be650956f9926194857c892cc9fc821078"
+    },
     "scripts/tests/test_uv_admission.py": {
       "fences": 0,
       "headings": [
@@ -2469,7 +2484,7 @@
       "sha256": "2cfbb77ca8d1b99b4b8dc713ec15d32fb39f4d6b04fa207f01f65f975c6cbd5f"
     }
   },
-  "generated_at": "2026-11-21T12:06:05Z",
+  "generated_at": "2026-11-21T13:49:19Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

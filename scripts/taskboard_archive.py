@@ -41,6 +41,19 @@ EXEC-LOG 的新列，說明都必須以「一句話：……。」開頭；句�
 生效判定：ONE_LINER_ANCHOR 所指的紀錄仍在看板或已在批次紀錄封存檔（CHECK 29），或其 EXEC-LOG 列存在（CHECK 26）；
 兩處的錨點都受只增不減保護（CHECK 29 紀錄不得消失、CHECK 28 EXEC-LOG 只准新增），故不能靠刪錨點關掉檢查。
 
+待辦清冊（G7-b3b3-3，CHECK 29 一併判定；規則全文在 docs/TODO-LEDGER.md 第一節）：自 LEDGER_ANCHOR 之後的批次紀錄才受管，
+錨點不在看板也不在批次紀錄封存檔時規則尚未生效（錨點本身受上述只增不減保護，不能靠刪錨點關掉檢查）。生效後：
+  - 清冊格式：TD 編號依序無缺號、處置只有結案／承接／開放、各欄非空；checkpoint 之後新增的「開放」列，依據欄須寫 owner；
+  - 清冊只增不減：checkpoint 清冊的每一列仍在，來源、原標籤、事項不得改；處置只能維持或改為結案；已結案之列逐字不變；
+  - 新增待辦宣告：受管的批次紀錄須恰有一句「新增待辦：無。」或「新增待辦：TD-nnn、TD-nnn。」，所列編號必須恰等於清冊中
+    來源為該紀錄 TASK_ID 的列（雙向對帳；漏列、多列、編號不存在、重複都 FAIL）。工具只核對這個宣告，不判讀自由文字，
+    因此「紀錄內文另有待辦卻宣告為無」仍須審查官判讀（本檔不宣稱能偵測）；
+  - records-apply 搬移前對帳：受管的紀錄須通過上述宣告核對；錨點之前（含錨點）的舊紀錄須在清冊有來源為它的列，
+    確認沒有待辦時以 --no-new-todos TASK_ID 逐則點名（點名的紀錄在清冊不得已有列）。
+    對「未結案編號即拒絕」的解讀：被搬走的紀錄所帶的待辦必須全部已有清冊編號（未登錄即拒絕），不因編號尚未結案而拒絕：
+    清冊的「承接」「開放」正是為了讓待辦在紀錄被搬走後仍有去處，若未結案即拒絕，帶開放待辦的紀錄將永遠無法搬走，
+    看板 6 則上限會卡死。使用順序：先把清冊列寫好，再執行 records-apply。
+
 看板列與清單的只增不減（G7-b3b1，CHECK 29 一併判定）：checkpoint 看板上的每一個表格列 ID，必須仍在看板上或
 已在某個看板列封存檔；manifest 的 archives 相對於 checkpoint 的 manifest 只能在尾端追加，user_keep 只增不減。
 
@@ -56,7 +69,8 @@ check_consistency 的「上次核對通過的 HEAD … 已過期」判定（chec
                                             --entry <ID>[:<evidence-oid>] ...    寫入工作區（不 commit）
   python scripts/taskboard_archive.py records-plan  --repo <repo> --keep N        ◎ 盤點數字與每則的保留／搬移判定
   python scripts/taskboard_archive.py records-apply --repo <repo> --task-id <TASK> --checkpoint-oid <oid>
-                                            --keep N --take M [--allow-multiline TASK_ID ...]  寫入工作區（不 commit）
+                                            --keep N --take M [--allow-multiline TASK_ID ...]
+                                            [--no-new-todos TASK_ID ...]  寫入工作區（不 commit）
 
 fail-closed：manifest、封存檔、AUDIT-LOG、checkpoint 讀不到或格式不符，git 回答不出來，
 一律 FAIL；只增不減的比對每次都需要 git，沒有不適用的情形。
@@ -126,6 +140,15 @@ ONE_LINER_FORBIDDEN_CHARS = ('。', '\n', '\r', '\t', '|', '{', '}')
 ONE_LINER_TASK_ID_RE = re.compile(r'[A-Z][A-Z0-9]*(?:-[A-Z0-9]+){2,}')
 ONE_LINER_SHA_RE = re.compile(r'(?<![0-9A-Za-z])[0-9a-fA-F]{7,64}(?![0-9A-Za-z])')
 ONE_LINER_PATH_RE = re.compile(r'[/\\]|\.(?:md|py|json|txt|ya?ml|zip|js|ts|ps1)(?![0-9A-Za-z])', re.I)
+LEDGER_REL = 'docs/TODO-LEDGER.md'
+LEDGER_ANCHOR = 'B117-TAKEOVER-STATE-261121'  # 此批之後的批次紀錄才受「新增待辦」宣告規則管；清冊規則的生效錨點
+LEDGER_DISPOSITIONS = ('結案', '承接', '開放')
+LEDGER_CELLS = 6  # 編號、來源批次紀錄、原標籤、事項、處置、依據或去處
+LEDGER_ROW_RE = re.compile(r'^\| (TD-[0-9]{3}) \|')
+LEDGER_ROW_CANDIDATE_RE = re.compile(r'^\s*\|\s*TD')  # 格式變體（管線後無空格、行首有空白）也視為清冊列，交由 LEDGER_ROW_RE 判定，不得被靜默略過
+TD_ID_RE = re.compile(r'^TD-[0-9]{3}$')
+TODO_CLAUSE_RE = re.compile(r'新增待辦：([^。\n]*)。')
+TODO_NONE = '無'
 EXEC_LOG_REL = 'docs/EXEC-LOG.md'
 EXEC_LOG_CELL_RE = re.compile(r'([A-Z][A-Z0-9]*(?:-[A-Z0-9]+)+)：(.*)', re.S)
 
@@ -863,6 +886,7 @@ def check_records(root, manifest, taskboard, backlog_text):
             fails.append('%s' % exc)
     fails.extend(check_records_append_only(root, archives, board_units, seen, backlog_text))
     fails.extend(board_one_liner_problems(board_units, ONE_LINER_ANCHOR in board_ids or ONE_LINER_ANCHOR in seen))
+    fails.extend(check_ledger(root, board_units, seen, backlog_text))
     return fails, len(archives), total
 
 
@@ -940,6 +964,166 @@ def check_records_append_only(root, archives, board_units, archived_ids, backlog
     return fails
 
 
+def parse_ledger(text):
+    """清冊表格列。回傳 (rows, problems)：rows 為 [{id, source, label, item, disposition, basis, line}]。
+    行首（允許前置空白）為管線加 TD 的行一律視為清冊列候選；不符「| TD-nnn |」開頭、「 |」結尾或欄數不是 6 者進 problems，不進 rows，不得靜默略過。"""
+    rows, problems = [], []
+    for number, line in enumerate(text.split('\n'), 1):
+        if not LEDGER_ROW_CANDIDATE_RE.match(line):
+            continue
+        if not LEDGER_ROW_RE.match(line) or not line.endswith(' |'):
+            problems.append('%s 第 %d 行：清冊列須以「| TD-nnn |」開頭並以「 |」結尾' % (LEDGER_REL, number))
+            continue
+        cells = [cell.strip() for cell in line[1:-1].split('|')]
+        if len(cells) != LEDGER_CELLS:
+            problems.append('%s 第 %d 行（%s）：欄數 %d，須恰為 %d' % (LEDGER_REL, number, cells[0], len(cells), LEDGER_CELLS))
+            continue
+        rows.append({'id': cells[0], 'source': cells[1], 'label': cells[2], 'item': cells[3],
+                     'disposition': cells[4], 'basis': cells[5], 'line': number})
+    return rows, problems
+
+
+def ledger_format_problems(rows, old_ids=None):
+    """清冊格式。old_ids 為 checkpoint 清冊的編號集合；給了才對「新列」要求開放列寫 owner（舊列不追溯）。"""
+    problems = []
+    for position, row in enumerate(rows, 1):
+        expected = 'TD-%03d' % position
+        if row['id'] != expected:
+            problems.append('%s 第 %d 行：編號須依序無缺號、不重複，這裡應為 %s 卻是 %s' % (LEDGER_REL, row['line'], expected, row['id']))
+            break
+        for key in ('source', 'label', 'item', 'basis'):
+            if not row[key]:
+                problems.append('%s %s：欄位 %s 不得為空' % (LEDGER_REL, row['id'], key))
+        if row['disposition'] not in LEDGER_DISPOSITIONS:
+            problems.append('%s %s：處置須為 %s 之一，現為「%s」' % (LEDGER_REL, row['id'], '、'.join(LEDGER_DISPOSITIONS), row['disposition']))
+        elif old_ids is not None and row['id'] not in old_ids and row['disposition'] == '開放' and 'owner' not in row['basis']:
+            problems.append('%s %s：新增的「開放」列，依據欄須寫 owner 與觸發條件或複查日' % (LEDGER_REL, row['id']))
+    return problems
+
+
+def ledger_append_problems(rows, old_rows):
+    """清冊只增不減：checkpoint 清冊的每一列仍在；來源、原標籤、事項不得改；處置只能維持或改為結案；已結案逐字不變。"""
+    problems, current = [], {row['id']: row for row in rows}
+    for old in old_rows:
+        row = current.get(old['id'])
+        if row is None:
+            problems.append('%s %s：checkpoint 清冊有此列，目前消失（清冊只增不減）' % (LEDGER_REL, old['id']))
+            continue
+        for key in ('source', 'label', 'item'):
+            if row[key] != old[key]:
+                problems.append('%s %s：欄位 %s 不得改寫' % (LEDGER_REL, old['id'], key))
+        if old['disposition'] == '結案':
+            if row != dict(old, line=row['line']):
+                problems.append('%s %s：已結案之列須逐字不變' % (LEDGER_REL, old['id']))
+        elif row['disposition'] != old['disposition'] and row['disposition'] != '結案':
+            problems.append('%s %s：處置只能維持或改為結案（%s → %s）' % (LEDGER_REL, old['id'], old['disposition'], row['disposition']))
+    return problems
+
+
+def todo_declaration_problems(unit, rows):
+    """受管批次紀錄的「新增待辦」宣告核對：恰一句，所列編號恰等於清冊中來源為該紀錄的列。"""
+    task = unit['task_id']
+    clauses = TODO_CLAUSE_RE.findall(unit_text(unit['lines']))
+    if len(clauses) != 1:
+        return ['%s %s：批次紀錄須恰有一句「新增待辦：無。」或「新增待辦：TD-nnn、TD-nnn。」，找到 %d 句' % (TASKBOARD_REL, task, len(clauses))]
+    body = clauses[0]
+    declared = [] if body == TODO_NONE else body.split('、')
+    problems = []
+    bad = [item for item in declared if not TD_ID_RE.match(item)]
+    if bad:
+        return ['%s %s：新增待辦宣告的編號格式不符（須為 TD-nnn，以「、」分隔）：%s' % (TASKBOARD_REL, task, '、'.join(bad))]
+    if len(set(declared)) != len(declared):
+        problems.append('%s %s：新增待辦宣告的編號重複' % (TASKBOARD_REL, task))
+    known = {row['id'] for row in rows}
+    missing = sorted(set(declared) - known)
+    if missing:
+        problems.append('%s %s：宣告的編號在清冊不存在：%s' % (TASKBOARD_REL, task, '、'.join(missing)))
+    owned = sorted(row['id'] for row in rows if row['source'] == task)
+    if sorted(set(declared) & known) != owned:
+        problems.append('%s %s：宣告與清冊不一致：宣告 %s，清冊中來源為此紀錄的列 %s' % (
+            TASKBOARD_REL, task, '、'.join(sorted(set(declared) & known)) or TODO_NONE, '、'.join(owned) or TODO_NONE))
+    return problems
+
+
+def todo_subject_units(board_units, archived_ids):
+    """(受管的紀錄單元, 規則是否生效)：錨點在看板上則其前面（較新）的紀錄受管；錨點已封存則看板上全部受管；
+    兩處都找不到則規則尚未生效。"""
+    ids = [unit['task_id'] for unit in board_units]
+    if LEDGER_ANCHOR in ids:
+        return board_units[:ids.index(LEDGER_ANCHOR)], True
+    if LEDGER_ANCHOR in archived_ids:
+        return list(board_units), True
+    return [], False
+
+
+def check_ledger(root, board_units, archived_ids, backlog_text):
+    """CHECK 29 的清冊部分（fail-closed）：以 git 在 §5.1 checkpoint 的清冊為準。規則未生效時回傳空陣列。"""
+    subjects, active = todo_subject_units(board_units, archived_ids)
+    if not active:
+        return []
+    try:
+        rows, problems = parse_ledger(read_text(root, LEDGER_REL))
+        checkpoint = read_checkpoint(backlog_text)
+        if resolve_commit(root, checkpoint) != checkpoint:
+            raise Fail('checkpoint %s 無法解析' % checkpoint[:7])
+        old_rows, old_problems = parse_ledger(git_blob_text(root, checkpoint, LEDGER_REL))
+    except Fail as exc:
+        return ['%s' % exc]
+    fails = list(problems)
+    if old_problems:
+        fails.append('checkpoint %s 的 %s 格式不符，無法作為只增不減的基準' % (checkpoint[:7], LEDGER_REL))
+        return fails
+    fails.extend(ledger_format_problems(rows, {row['id'] for row in old_rows}))
+    fails.extend(ledger_append_problems(rows, old_rows))
+    for unit in subjects:
+        fails.extend(todo_declaration_problems(unit, rows))
+    return fails
+
+
+def archived_record_ids(manifest):
+    archives = manifest.get('record_archives', [])
+    if not isinstance(archives, list):
+        raise Fail('record_archives 必須是陣列')
+    ids = set()
+    for archive in archives:
+        entries = archive.get('entries') if isinstance(archive, dict) else None
+        if not isinstance(entries, list) or not all(isinstance(e, dict) and _is_text(e.get('task_id')) for e in entries):
+            raise Fail('record_archives 的 entries 格式不符')
+        ids.update(e['task_id'] for e in entries)
+    return ids
+
+
+def records_todo_gate(root, manifest, units, moved, no_new_todos):
+    """records-apply 搬移前的清冊對帳；不符就 Fail。規則未生效時只拒絕多餘的 --no-new-todos。"""
+    named = list(no_new_todos)
+    if len(set(named)) != len(named):
+        raise Fail('--no-new-todos 點名重複')
+    subjects, active = todo_subject_units(units, archived_record_ids(manifest))
+    if not active:
+        if named:
+            raise Fail('--no-new-todos 只在清冊規則生效後使用（錨點 %s 尚未在看板或封存檔）' % LEDGER_ANCHOR)
+        return
+    rows, problems = parse_ledger(read_text(root, LEDGER_REL))
+    problems = problems + ledger_format_problems(rows)
+    if problems:
+        raise Fail('清冊格式不符，不得搬移批次紀錄：%s' % problems[0])
+    subject_ids = {unit['task_id'] for unit in subjects}
+    moved_ids = {unit['task_id'] for unit in moved}
+    for name in named:
+        if name not in moved_ids or name in subject_ids:
+            raise Fail('--no-new-todos %s 不是本次要搬的舊紀錄（錨點之前或錨點本身）' % name)
+        if any(row['source'] == name for row in rows):
+            raise Fail('--no-new-todos %s：清冊已有來源為它的列，不得再聲明沒有待辦' % name)
+    for unit in moved:
+        task = unit['task_id']
+        if task in subject_ids:
+            found = todo_declaration_problems(unit, rows)
+            if found:
+                raise Fail(found[0])
+        elif task not in named and not any(row['source'] == task for row in rows):
+            raise Fail('%s：清冊沒有來源為它的列；請先把它帶走的待辦編 TD 號寫進 %s，確認沒有待辦時以 --no-new-todos %s 點名' % (task, LEDGER_REL, task))
+
+
 def records_plan(root, out, keep):
     try:
         if keep < 1:
@@ -969,7 +1153,7 @@ def records_plan(root, out, keep):
     return 0
 
 
-def records_apply(root, task_id, checkpoint_oid, keep, take, out, allow_multiline=()):
+def records_apply(root, task_id, checkpoint_oid, keep, take, out, allow_multiline=(), no_new_todos=()):
     try:
         if keep < 1:
             raise Fail('--keep 必須 ≥ 1（看板永遠至少留 1 則批次紀錄）')
@@ -1006,6 +1190,7 @@ def records_apply(root, task_id, checkpoint_oid, keep, take, out, allow_multilin
         for name in multi:
             if name not in allowed:
                 raise Fail('%s 是多行單元（%d 行），須先以 records-plan 複核續行，再用 --allow-multiline %s 點名' % (name, len(next(u for u in moved if u['task_id'] == name)['lines']), name))
+        records_todo_gate(root, manifest, units, moved, no_new_todos)
         for unit in moved:
             if FENCE_END in unit_text(unit['lines']):
                 raise Fail('%s：原文含四個反引號，無法安全封存' % unit['task_id'])
@@ -1060,6 +1245,7 @@ def main(argv=None, out=None):
             item.add_argument('--checkpoint-oid', default='')
             item.add_argument('--take', type=int, default=0)
             item.add_argument('--allow-multiline', action='append', default=[])
+            item.add_argument('--no-new-todos', action='append', default=[])
     args = parser.parse_args(argv)
     root = os.path.abspath(args.repo)
     if args.cmd == 'plan':
@@ -1067,7 +1253,7 @@ def main(argv=None, out=None):
     if args.cmd == 'records-plan':
         return records_plan(root, out, args.keep)
     if args.cmd == 'records-apply':
-        return records_apply(root, args.task_id, args.checkpoint_oid, args.keep, args.take, out, args.allow_multiline)
+        return records_apply(root, args.task_id, args.checkpoint_oid, args.keep, args.take, out, args.allow_multiline, args.no_new_todos)
     if args.cmd == 'apply':
         return apply(root, args.task_id, args.checkpoint_oid, args.entry, out)
     fails, infos = check(root)
