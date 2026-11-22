@@ -1000,6 +1000,22 @@
      "unit_bytes": 6036
     }
    ]
+  },
+  {
+   "file": "docs/archive/TASKBOARD-RECORDS-0009.md",
+   "batch": "B117-ALPHA1-GATE-DIAG-R3-261122",
+   "checkpoint_oid": "9cb34eb306e71c8f4f93538d3bc7ab462e45e205",
+   "file_sha256": "63dce5c7c8b0182bf18306cbf654b4906b6e36acacb3e22c15cc2727451a0799",
+   "keep": 5,
+   "entries": [
+    {
+     "task_id": "B117-G6-FIXED-WAIT-261120",
+     "source_line": 131,
+     "line_count": 1,
+     "unit_sha256": "3e5ca515382ab460e4d1c8b88fb568c4781206fd1d5f858ea8a90ba90baf6648",
+     "unit_bytes": 4987
+    }
+   ]
   }
  ]
 }

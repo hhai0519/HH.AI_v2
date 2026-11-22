@@ -42,10 +42,13 @@ def collect_text(ids, declared=None):
     return '\n'.join(ids) + '\n\n%d tests collected in 0.10s\n' % n
 
 
-def write_junit(path, tests, failures=0, errors=0, skipped=0):
+def write_junit(path, tests, failures=0, errors=0, skipped=0, cases=()):
+    """JUnit file: suite counts as given, one test case per entry of `cases` (a module path such as scripts/tests/x.py)."""
     root = ET.Element('testsuites')
-    ET.SubElement(root, 'testsuite', name='pytest', tests=str(tests), failures=str(failures), errors=str(errors),
-                  skipped=str(skipped))
+    suite = ET.SubElement(root, 'testsuite', name='pytest', tests=str(tests), failures=str(failures), errors=str(errors),
+                          skipped=str(skipped))
+    for i, case in enumerate(cases):
+        ET.SubElement(suite, 'testcase', classname=case[:-3].replace('/', '.'), name='test_%d' % i)
     ET.ElementTree(root).write(path)
 
 
@@ -71,13 +74,15 @@ class FakeRunner:
         self.cmds[name] = list(cmd)
         files = [a for a in cmd if a.endswith('.py')]
         n_tests = sum(1 for i in self.ids if i.split('::')[0] in files)
+        own_cases = [i.split('::')[0] for i in self.ids if i.split('::')[0] in files]
         spec = dict(rc=0, tests=n_tests, failures=0, errors=0, skipped=0, timed_out=False, launch_error=None,
-                    junit=True, out=name + ' output\n', advance=0.0)
+                    junit=True, out=name + ' output\n', advance=0.0, cases=own_cases)
         spec.update(self.per_name.get(name, {}))
         if self.clock is not None:
             self.clock.now += spec['advance']
         if spec['junit']:
-            write_junit(cmd[cmd.index('--junitxml') + 1], spec['tests'], spec['failures'], spec['errors'], spec['skipped'])
+            write_junit(cmd[cmd.index('--junitxml') + 1], spec['tests'], spec['failures'], spec['errors'], spec['skipped'],
+                        spec['cases'])
         return SimpleNamespace(returncode=spec['rc'], timed_out=spec['timed_out'], launch_error=spec['launch_error'],
                                stdout=spec['out'].encode(), stderr=b'', kill_status='NOT_NEEDED')
 
@@ -329,7 +334,7 @@ def unit_gate():
 
 def test_verify_all_uses_the_grouped_result_for_the_local_gate_only(monkeypatch, capsys):
     seen = []
-    monkeypatch.setattr(verify_all.gate4_groups, 'run_grouped', lambda cmd, env, cwd: seen.append(cmd) or 7)
+    monkeypatch.setattr(verify_all.gate4_groups, 'run_grouped', lambda cmd, env, cwd, **kw: seen.append(cmd) or 7)
     monkeypatch.setattr(verify_all.subprocess, 'run', lambda *a, **kw: pytest.fail('sequential command ran'))
     assert verify_all.run_gate(unit_gate(), {g.LOCAL_GATE_ENV: 'x.raw'}, REPO_ROOT) == 7 and seen == [unit_gate()['cmd']]
     # a different gate never goes through the grouped path
@@ -453,3 +458,182 @@ def test_calibrate_command_prints_a_usable_table_and_fails_closed(tmp_path, caps
     assert g.main(['calibrate', str(path)]) == 0
     assert json.loads(capsys.readouterr().out)['files'] == {'scripts/tests/test_a.py': 1.0}
     assert g.main(['calibrate', str(tmp_path / 'missing.tsv')]) == 1
+
+
+# ---- C12 (alpha batch 1: TD-104 per-file count, TD-112 phase-1 heartbeat, deadline from the start, JSON record) -----
+#   C12a per-file JUnit count must equal the collected count of every file, not only the total
+#        test_perfile_*
+#   C12b phase 1 prints the same progress line as phase 2                          test_phase_one_*
+#   C12c the deadline counts from `started` (start of verify_all), not from the grouped start   test_started_*
+#   C12d a typed JSON record is written beside the raw output, only when the runner variable is set; write
+#        failure prints one fixed line and never changes the gate result           test_record_*
+#   C12e verify_all hands its start time to the grouped run                         test_verify_all_passes_*
+def raw_env(tmp_path):
+    return {g.LOCAL_GATE_ENV: str(tmp_path / 'task.raw')}
+
+
+def run_env(runner, tmp_path, env, **kw):
+    lines = []
+    kw.setdefault('timings_path', str(tmp_path / 'none.json'))
+    kw.setdefault('sequential', SEQ)
+    kw.setdefault('heartbeat_sec', 0)
+    rc = g.run_grouped(CMD, env, str(tmp_path), cpu_count=8, runner=runner, out=lines.append, tmp_parent=str(tmp_path), **kw)
+    return rc, '\n'.join(lines)
+
+
+def test_perfile_equal_total_but_wrong_files_fails_with_the_file_named(tmp_path):
+    ids = nodeids()
+    # g1 owns test_b and test_f: it reports all four cases under test_b, so every total still matches
+    runner = FakeRunner(ids, {'g1': dict(cases=['scripts/tests/test_b.py'] * 4)})
+    rc, text = run(runner, tmp_path)
+    assert rc == 1 and 'collected=16 counted=16' in text and 'reasons=FILE_COUNT_MISMATCH' in text
+    assert 'GATE4_FILE_MISMATCH file=scripts/tests/test_b.py expected=2 counted=4' in text
+    assert 'GATE4_FILE_MISMATCH file=scripts/tests/test_f.py expected=2 counted=0' in text
+
+
+def test_perfile_exact_counts_pass_and_print_no_mismatch_line(tmp_path):
+    rc, text = run(FakeRunner(nodeids()), tmp_path)
+    assert rc == 0 and 'GATE4_FILE_MISMATCH' not in text and 'FILE_COUNT_MISMATCH' not in text
+
+
+def test_perfile_unmapped_case_fails(tmp_path):
+    runner = FakeRunner(nodeids(), {'g1': dict(cases=['somewhere/else.py'] * 4, tests=4)})
+    rc, text = run(runner, tmp_path)
+    assert rc == 1 and 'FILE_COUNT_MISMATCH' in text
+
+
+def test_perfile_unmapped_case_fails_even_when_every_file_count_is_right(tmp_path):
+    own = ['scripts/tests/test_b.py'] * 2 + ['scripts/tests/test_f.py'] * 2
+    runner = FakeRunner(nodeids(), {'g1': dict(cases=own + ['somewhere/else.py'], tests=4)})
+    rc, text = run(runner, tmp_path)
+    assert rc == 1 and 'reasons=FILE_COUNT_MISMATCH' in text and 'GATE4_FILE_MISMATCH file=UNMAPPED expected=0 counted=1' in text
+    assert text.count('GATE4_FILE_MISMATCH') == 1
+
+
+def test_perfile_is_not_checked_again_for_a_process_without_a_record(tmp_path):
+    runner = FakeRunner(nodeids(), {'g1': dict(junit=False)})
+    rc, text = run(runner, tmp_path)
+    assert rc == 1 and 'g1:JUNIT_UNREADABLE' in text and 'FILE_COUNT_MISMATCH' not in text
+
+
+def test_perfile_lines_are_capped(tmp_path):
+    ids = ['scripts/tests/test_f%02d.py::test_0' % i for i in range(30)]
+    runner = FakeRunner(ids, {n: dict(cases=['scripts/tests/other.py']) for n in ('seq', 'g1', 'g2', 'g3', 'g4')})
+    rc, text = run(runner, tmp_path, sequential=())
+    assert rc == 1 and text.count('GATE4_FILE_MISMATCH file=') <= g.MAX_FILE_MISMATCH_LINES + 1
+
+
+def test_phase_one_prints_progress_while_the_sequential_process_runs(tmp_path):
+    import threading
+    release = threading.Event()
+    base = FakeRunner(nodeids())
+
+    def slow(cmd, cwd, timeout, env=None, merge_stderr=False, capture_path=None, **kw):
+        if '--basetemp' in cmd and os.path.basename(cmd[cmd.index('--basetemp') + 1]) == 'bt-seq':
+            release.wait(5)
+        return base(cmd, cwd, timeout, env=env, merge_stderr=merge_stderr, capture_path=capture_path)
+
+    lines = []
+
+    def out(text):
+        lines.append(text)
+        if text.startswith('GATE4_PROGRESS'):
+            release.set()
+
+    rc = g.run_grouped(CMD, {}, str(tmp_path), cpu_count=8, runner=slow, out=out, tmp_parent=str(tmp_path),
+                       timings_path=str(tmp_path / 'none.json'), sequential=SEQ, heartbeat_sec=0.05)
+    first = next(l for l in lines if l.startswith('GATE4_PROGRESS'))
+    assert rc == 0 and 'seq=' in first and 'g1=' not in first
+
+
+def test_started_deadline_counts_from_the_start_of_the_caller(tmp_path):
+    clock = Clock()
+    clock.now = 1000.0
+    runner = FakeRunner(nodeids(), clock=clock)
+    rc, _ = run(runner, tmp_path, deadline_sec=1200, clock=clock, started=0.0)
+    assert rc == 0
+    limits = [t for c, t in runner.calls]
+    assert limits[0] == pytest.approx(200.0) and all(t <= 200.0 + 1e-6 for t in limits)
+
+
+def test_started_none_means_now(tmp_path):
+    clock = Clock()
+    clock.now = 1000.0
+    runner = FakeRunner(nodeids(), clock=clock)
+    rc, _ = run(runner, tmp_path, deadline_sec=1200, clock=clock, started=None)
+    assert rc == 0 and max(t for c, t in runner.calls if '--collect-only' not in c) == pytest.approx(1200.0)
+
+
+def test_started_past_the_deadline_runs_no_test_process_and_fails(tmp_path):
+    clock = Clock()
+    clock.now = 5000.0
+    runner = FakeRunner(nodeids(), clock=clock)
+    rc, text = run(runner, tmp_path, deadline_sec=1200, clock=clock, started=0.0)
+    assert rc == 1 and 'TIMEOUT' in text
+    assert not any('--basetemp' in c and '--collect-only' not in c and 'bt-' in ' '.join(c) and t > 1 for c, t in runner.calls)
+
+
+def read_record(tmp_path):
+    return json.loads((tmp_path / 'task.raw.gate4-groups.json').read_text(encoding='utf-8'))
+
+
+def test_record_content_matches_the_result_line_and_group_lines(tmp_path):
+    rc, text = run_env(FakeRunner(nodeids()), tmp_path, raw_env(tmp_path))
+    rec = read_record(tmp_path)
+    assert rc == 0 and rec['schema_version'] == 1 and rec['status'] == 'PASS' and rec['reasons'] == []
+    assert (rec['collected'], rec['counted'], rec['passed'], rec['skipped'], rec['failures'], rec['errors']) == (16, 16, 16, 0, 0, 0)
+    assert [x['name'] for x in rec['groups']] == ['seq', 'g1', 'g2', 'g3', 'g4']
+    assert sum(x['tests'] for x in rec['groups']) == 16 and all(x['rc'] == 0 for x in rec['groups'])
+    assert 'GATE4_GROUPS_RESULT status=PASS' in text
+
+
+def test_record_of_a_failed_run_lists_the_reasons(tmp_path):
+    runner = FakeRunner(nodeids(), {'g2': dict(rc=1, failures=1)})
+    rc, _ = run_env(runner, tmp_path, raw_env(tmp_path))
+    rec = read_record(tmp_path)
+    assert rc == 1 and rec['status'] == 'FAIL' and 'g2:EXIT_1' in rec['reasons'] and rec['failures'] == 1
+    assert next(x for x in rec['groups'] if x['name'] == 'g2')['rc'] == 1
+
+
+def test_record_of_an_early_failure(tmp_path):
+    bad = SimpleNamespace(returncode=2, timed_out=False, launch_error=None, stdout=b'boom', stderr=b'', kill_status='NOT_NEEDED')
+    rc, _ = run_env(FakeRunner(nodeids(), collect_override=bad), tmp_path, raw_env(tmp_path))
+    rec = read_record(tmp_path)
+    assert rc == 1 and rec['status'] == 'FAIL' and rec['reasons'] == ['COLLECT_FAILED'] and rec['groups'] == []
+    runner = FakeRunner(nodeids(), collect_override=SimpleNamespace(returncode=0, timed_out=False, launch_error=None,
+                                                                    stdout=collect_text(nodeids(), declared=3).encode(), stderr=b'',
+                                                                    kill_status='NOT_NEEDED'))
+    rc, _ = run_env(runner, tmp_path, raw_env(tmp_path))
+    assert rc == 1 and read_record(tmp_path)['reasons'] == ['COLLECT_COUNT_MISMATCH']
+
+
+def test_record_is_not_written_without_the_runner_variable(tmp_path):
+    rc, text = run_env(FakeRunner(nodeids()), tmp_path, {})
+    assert rc == 0 and not list(tmp_path.glob('*.gate4-groups.json')) and 'RECORD_UNAVAILABLE' not in text
+
+
+def test_record_write_failure_prints_one_fixed_line_and_keeps_the_result(tmp_path):
+    env = {g.LOCAL_GATE_ENV: str(tmp_path / 'missing-dir' / 'task.raw')}
+    rc, text = run_env(FakeRunner(nodeids()), tmp_path, env)
+    assert rc == 0 and text.count('GATE4_GROUPS_RECORD_UNAVAILABLE') == 1 and 'GATE4_GROUPS_RESULT status=PASS' in text
+    rc, text = run_env(FakeRunner(nodeids(), {'g1': dict(rc=1)}), tmp_path, env)
+    assert rc == 1 and text.count('GATE4_GROUPS_RECORD_UNAVAILABLE') == 1
+
+
+def test_record_real_processes_end_to_end(tmp_path):
+    suite = make_suite(tmp_path)
+    lines = []
+    env = dict(os.environ, **raw_env(tmp_path))
+    env.pop('PYTEST_ADDOPTS', None)
+    rc = g.run_grouped([sys.executable, '-m', 'pytest', str(suite), '-q'], env, str(tmp_path), cpu_count=4, out=lines.append,
+                       tmp_parent=str(tmp_path), timings_path=str(tmp_path / 'none.json'), sequential=(), heartbeat_sec=0)
+    rec = read_record(tmp_path)
+    assert rc == 0 and (rec['collected'], rec['counted'], rec['passed'], rec['skipped']) == (8, 8, 4, 4)
+    assert len(rec['groups']) == 2 and not list(tmp_path.glob('*.tmp'))
+
+
+def test_verify_all_passes_its_start_time_to_the_grouped_run(monkeypatch):
+    seen = {}
+    monkeypatch.setattr(verify_all.gate4_groups, 'run_grouped', lambda cmd, env, cwd, **kw: seen.update(kw) or 0)
+    assert verify_all.run_gate(unit_gate(), {g.LOCAL_GATE_ENV: 'x.raw'}, REPO_ROOT) == 0
+    assert seen == {'started': verify_all.START} and isinstance(verify_all.START, float)

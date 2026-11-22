@@ -30,8 +30,17 @@ Contract (every item has a test in scripts/tests/test_gate4_groups.py):
    of tests collected (a missing or extra test is a FAIL). Nothing is skipped or downgraded.
 5. The whole gate has an internal deadline (3300 seconds) below the runner's limit (3600 seconds) so that a
    too-slow run fails cleanly with per-group progress in the raw output instead of being killed by the runner.
-6. Output order is fixed: plan lines, a progress line every two minutes while groups run, then phase 1 and the
-   groups in index order, each with a header line and its complete pytest output, then one result line.
+   The deadline counts from the start of scripts/verify_all.py (the process the runner limits), not from the start of
+   the grouped run (alpha batch 1, TD-104).
+6. Output order is fixed: plan lines, a progress line every two minutes while phase 1 and then the groups run (phase 1
+   prints one too; alpha batch 1, TD-104), then phase 1 and the groups in index order, each with a header line and
+   its complete pytest output, then one result line.
+7. The test count is checked per test file as well as in total: the JUnit test cases of every process are mapped to
+   their test file and compared with the collected count of each file (alpha batch 1, TD-104). A mismatch adds the
+   reason FILE_COUNT_MISMATCH and one GATE4_FILE_MISMATCH line per file (raw output only).
+8. Beside the raw output the gate writes one JSON record (<raw>.gate4-groups.json, schema_version 1) with the result
+   fields and the per-group lines; scripts/gate_report.py turns it into the fixed GATE4_GROUPS_RESULT and GATE4_GROUP
+   lines of an Executor reply (alpha batch 1, TD-112). The record is diagnostic data, never acceptance evidence.
 
   python scripts/gate4_groups.py calibrate TSV [TSV ...]   print a timing table from runner duration records
 """
@@ -59,6 +68,8 @@ LOCAL_GATE_ENV = 'HHAI_GATE_DURATIONS_PREFIX'
 MAX_GROUPS = 4
 DEADLINE_SEC = 3300
 COLLECT_TIMEOUT_SEC = 900
+RECORD_SUFFIX = '.gate4-groups.json'
+MAX_FILE_MISMATCH_LINES = 20
 HEARTBEAT_SEC = 120
 DEFAULT_WEIGHT = 1.0
 # Test files whose tests depend on real time limits, process-tree kills or Node child processes: they run alone.
@@ -68,6 +79,7 @@ SEQUENTIAL_FILES = (
     'scripts/tests/test_bounded_process.py',
     'scripts/tests/test_c9_s1_capture_guard.py',
     'scripts/tests/test_channel_gateway_core.py',
+    'scripts/tests/test_gate_report.py',
     'scripts/tests/test_gate_runner.py',
     'scripts/tests/test_s1_full_capture.py',
 )
@@ -179,6 +191,47 @@ def read_junit(path):
     return tuple(total)
 
 
+def classname_file(classname, files):
+    """The test file a JUnit classname belongs to (module path with dots, optional class parts), or None."""
+    for name in files:
+        stem = name[:-3].replace('/', '.') if name.endswith('.py') else name.replace('/', '.')
+        if classname == stem or classname.startswith(stem + '.'):
+            return name
+    return None
+
+
+def read_junit_files(path, files):
+    """({file: test case count}, unmapped test case count) over the JUnit file of one process."""
+    try:
+        root = ET.parse(path).getroot()
+    except (OSError, ET.ParseError) as exc:
+        raise ValueError('JUNIT_UNREADABLE') from exc
+    counts, unmapped = {}, 0
+    for case in root.iter('testcase'):
+        name = classname_file(case.attrib.get('classname', ''), files)
+        if name is None:
+            unmapped += 1
+        else:
+            counts[name] = counts.get(name, 0) + 1
+    return counts, unmapped
+
+
+def write_record(path, record):
+    """Write the JSON record beside the raw output (temp file, then replace); True when written."""
+    tmp = path + '.tmp'
+    try:
+        with open(tmp, 'w', encoding='utf-8', newline='\n') as handle:
+            handle.write(json.dumps(record, ensure_ascii=True, sort_keys=True) + '\n')
+        os.replace(tmp, path)
+        return True
+    except OSError:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        return False
+
+
 def _tail_progress(path):
     try:
         with open(path, 'rb') as handle:
@@ -197,14 +250,17 @@ def _decode(data):
 
 def run_grouped(cmd, env, cwd, *, cpu_count=None, timings_path=TIMINGS_FILE, sequential=SEQUENTIAL_FILES,
                 runner=run_bounded, deadline_sec=DEADLINE_SEC, heartbeat_sec=HEARTBEAT_SEC, collect_timeout=COLLECT_TIMEOUT_SEC,
-                clock=time.monotonic, out=None, tmp_parent=None):
-    """Return None when grouping does not apply (the caller runs the sequential command), else 0 or 1."""
+                clock=time.monotonic, out=None, tmp_parent=None, started=None):
+    """Return None when grouping does not apply (the caller runs the sequential command), else 0 or 1.
+
+    started is the clock value the deadline counts from (the start of verify_all, TD-104); None means now.
+    """
     out = out or (lambda text: print(text, flush=True))
     n = group_count(os.cpu_count() if cpu_count is None else cpu_count)
     if n < 2:
         out('GATE4_GROUPS mode=SEQUENTIAL reason=GROUP_COUNT_BELOW_2 groups=%d' % n)
         return None
-    started = clock()
+    started = clock() if started is None else started
     prefix, target, extra = list(cmd[:3]), cmd[3], list(cmd[4:])
     root = tempfile.mkdtemp(prefix='hhai-gate4-', dir=tmp_parent)
     try:
@@ -214,8 +270,28 @@ def run_grouped(cmd, env, cwd, *, cpu_count=None, timings_path=TIMINGS_FILE, seq
         shutil.rmtree(root, ignore_errors=True)
 
 
+def _record_path(env):
+    prefix = (env or {}).get(LOCAL_GATE_ENV)
+    return (prefix + RECORD_SUFFIX) if prefix else None
+
+
+def _save_record(record_path, record, out):
+    if record_path is None:
+        return
+    if not write_record(record_path, record):
+        out('GATE4_GROUPS_RECORD_UNAVAILABLE')
+
+
+def _early_record(status_reason):
+    return {'schema_version': 1, 'status': 'FAIL', 'collected': 0, 'counted': 0, 'passed': 0, 'skipped': 0,
+            'failures': 0, 'errors': 0, 'phase1_sec': 0.0, 'groups_sec': 0.0, 'total_sec': 0.0,
+            'reasons': [status_reason], 'groups': []}
+
+
 def _run(prefix, target, extra, env, cwd, n, started, root, timings_path, sequential, runner, deadline_sec,
          heartbeat_sec, collect_timeout, clock, out):
+    record_path = _record_path(env)
+
     def remaining():
         return deadline_sec - (clock() - started)
 
@@ -227,14 +303,20 @@ def _run(prefix, target, extra, env, cwd, n, started, root, timings_path, sequen
         out('GATE4_GROUPS_RESULT status=FAIL reasons=COLLECT_FAILED rc=%s timed_out=%s launch_error=%s'
             % (cres.returncode, cres.timed_out, cres.launch_error))
         out(ctext)
+        _save_record(record_path, _early_record('COLLECT_FAILED'), out)
         return 1
     nodeids, declared = parse_collect(ctext)
     if not nodeids or (declared is not None and declared != len(nodeids)):
         out('GATE4_GROUPS_RESULT status=FAIL reasons=COLLECT_COUNT_MISMATCH listed=%d declared=%s'
             % (len(nodeids), declared))
+        _save_record(record_path, _early_record('COLLECT_COUNT_MISMATCH'), out)
         return 1
     collected = len(nodeids)
     files = files_of(nodeids)
+    expected = {}
+    for nid in nodeids:
+        name = NODEID.match(nid).group('file')
+        expected[name] = expected.get(name, 0) + 1
     timings, note = load_timings(timings_path)
     phase1, groups, loads = plan_groups(files, timings, n, sequential)
     out('GATE4_GROUPS mode=GROUPED groups=%d cpu_groups=%d collected=%d files=%d sequential_files=%d timings=%d(%s)'
@@ -260,38 +342,43 @@ def _run(prefix, target, extra, env, cwd, n, started, root, timings_path, sequen
         results[name] = dict(rc=res.returncode, timed_out=res.timed_out, launch_error=res.launch_error,
                              stdout=res.stdout, sec=clock() - t0, files=fl)
 
+    def run_phase(phase_jobs):
+        """Run the jobs of one phase at the same time; print a progress line every heartbeat while they run."""
+        if not phase_jobs:
+            return
+        all_done = threading.Event()
+        pending = [len(phase_jobs)]
+        lock = threading.Lock()
+
+        def launch_and_count(name, fl):
+            try:
+                launch(name, fl)
+            finally:
+                with lock:
+                    pending[0] -= 1
+                    if pending[0] == 0:
+                        all_done.set()
+
+        threads = [threading.Thread(target=launch_and_count, args=(name, fl), daemon=True) for name, fl in phase_jobs]
+        for thread in threads:
+            thread.start()
+        while not all_done.wait(timeout=heartbeat_sec or None):
+            out('GATE4_PROGRESS elapsed_sec=%.0f %s' % (clock() - started, ' '.join(
+                '%s=%s' % (name, ('done' if name in results else _tail_progress(os.path.join(root, name + '.out'))))
+                for name, _ in phase_jobs)))
+        for thread in threads:
+            thread.join()
+
     p1_start = clock()
-    for name, fl in jobs:
-        launch(name, fl)
+    run_phase(jobs)
     p1_sec = clock() - p1_start
     p2_start = clock()
-    all_done = threading.Event()
-    pending = [len(group_jobs)]
-    lock = threading.Lock()
-
-    def launch_and_count(name, fl):
-        try:
-            launch(name, fl)
-        finally:
-            with lock:
-                pending[0] -= 1
-                if pending[0] == 0:
-                    all_done.set()
-
-    if not group_jobs:
-        all_done.set()
-    threads = [threading.Thread(target=launch_and_count, args=(name, fl), daemon=True) for name, fl in group_jobs]
-    for t in threads:
-        t.start()
-    while not all_done.wait(timeout=heartbeat_sec or None):
-        out('GATE4_PROGRESS elapsed_sec=%.0f %s' % (clock() - started, ' '.join(
-            '%s=%s' % (name, ('done' if name in results else _tail_progress(os.path.join(root, name + '.out'))))
-            for name, _ in group_jobs)))
-    for t in threads:
-        t.join()
+    run_phase(group_jobs)
     p2_sec = clock() - p2_start
 
     reasons, tests_sum, failures_sum, errors_sum, skipped_sum = [], 0, 0, 0, 0
+    counted_files, unmapped_total = {}, 0
+    record_groups = []
     for name, fl in jobs + group_jobs:
         r = results.get(name)
         if r is None:
@@ -302,6 +389,13 @@ def _run(prefix, target, extra, env, cwd, n, started, root, timings_path, sequen
             counts = read_junit(os.path.join(root, name + '.xml'))
         except ValueError as exc:
             reasons.append('%s:%s' % (name, exc))
+        try:
+            by_file, unmapped = read_junit_files(os.path.join(root, name + '.xml'), fl)
+            for fname, number in by_file.items():
+                counted_files[fname] = counted_files.get(fname, 0) + number
+            unmapped_total += unmapped
+        except ValueError:
+            pass  # the unreadable record already added its reason above
         if r['launch_error']:
             reasons.append('%s:LAUNCH_ERROR' % name)
         if r['timed_out']:
@@ -317,16 +411,34 @@ def _run(prefix, target, extra, env, cwd, n, started, root, timings_path, sequen
                 reasons.append('%s:FAILED_TESTS' % name)
         out('GATE4_GROUP name=%s rc=%s sec=%.1f files=%d tests=%s' % (
             name, r['rc'], r['sec'], len(fl), counts[0] if counts else 'n/a'))
+        record_groups.append({'name': name, 'rc': r['rc'] if type(r['rc']) is int else None, 'sec': round(r['sec'], 1),
+                              'files': len(fl), 'tests': counts[0] if counts else None})
         text = _decode(r['stdout'])
         if text:
             out(text)
     if tests_sum != collected:
         reasons.append('COUNT_MISMATCH')
+    # Per-file check (TD-104): only when every process produced a readable record, so an unreadable or missing
+    # process is reported by its own reason and not by a second, derived one.
+    if not any(r_.endswith(('JUNIT_UNREADABLE', 'JUNIT_NO_SUITE', 'JUNIT_ATTRIBUTE', 'NO_RESULT')) for r_ in reasons):
+        mismatched = sorted(f for f in set(expected) | set(counted_files) if expected.get(f, 0) != counted_files.get(f, 0))
+        if mismatched or unmapped_total:
+            reasons.append('FILE_COUNT_MISMATCH')
+            for fname in mismatched[:MAX_FILE_MISMATCH_LINES]:
+                out('GATE4_FILE_MISMATCH file=%s expected=%d counted=%d' % (fname, expected.get(fname, 0), counted_files.get(fname, 0)))
+            if unmapped_total:
+                out('GATE4_FILE_MISMATCH file=UNMAPPED expected=0 counted=%d' % unmapped_total)
     status = 'PASS' if not reasons else 'FAIL'
+    total_sec = clock() - started
     out('GATE4_GROUPS_RESULT status=%s collected=%d counted=%d passed=%d skipped=%d failures=%d errors=%d '
         'phase1_sec=%.1f groups_sec=%.1f total_sec=%.1f reasons=%s' % (
             status, collected, tests_sum, tests_sum - failures_sum - errors_sum - skipped_sum, skipped_sum,
-            failures_sum, errors_sum, p1_sec, p2_sec, clock() - started, ','.join(reasons) if reasons else 'NONE'))
+            failures_sum, errors_sum, p1_sec, p2_sec, total_sec, ','.join(reasons) if reasons else 'NONE'))
+    _save_record(record_path, {
+        'schema_version': 1, 'status': status, 'collected': collected, 'counted': tests_sum,
+        'passed': tests_sum - failures_sum - errors_sum - skipped_sum, 'skipped': skipped_sum,
+        'failures': failures_sum, 'errors': errors_sum, 'phase1_sec': round(p1_sec, 1), 'groups_sec': round(p2_sec, 1),
+        'total_sec': round(total_sec, 1), 'reasons': reasons, 'groups': record_groups}, out)
     return 0 if status == 'PASS' else 1
 
 

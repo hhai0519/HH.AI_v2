@@ -19,6 +19,11 @@ import os
 import sys
 import subprocess
 import argparse
+import time
+
+# Start of this process on the monotonic clock: the grouped gate 4 counts its internal deadline from here, because
+# the runner's limit (3600 seconds) counts from the start of verify_all, not from the start of gate 4 (TD-104).
+START = time.monotonic()
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import gate4_groups  # noqa: E402
@@ -72,7 +77,7 @@ def run_gate(gate, env, cwd):
         # D9 batch 1: only the local runner gate (HHAI_GATE_DURATIONS_PREFIX is set by it alone) runs the same
         # tests in concurrent groups; None means grouping does not apply (fewer than 2 groups) and the
         # sequential command below runs. CI never sets the variable, so CI stays sequential.
-        rc = gate4_groups.run_grouped(gate["cmd"], env, cwd)
+        rc = gate4_groups.run_grouped(gate["cmd"], env, cwd, started=START)
         if rc is not None:
             return rc
     proc = subprocess.run(gate["cmd"], env=env, cwd=cwd)
