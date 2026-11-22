@@ -20,7 +20,8 @@ Usage:
 Production: origin main = the prompt's base_oid; the work clone starts on batch/sim-start (or, with
 --resume-prompt, first runs preflight..apply of the stopped batch, rebuilding its stop state for an adopt start).
 The steps are exactly the runner's own list for the spec (batch_runner.derive_steps: e24 only when the spec says
-so, focused only when it is not null), run in order up to postcommit; push runs with the GitHub CI query replaced by a fixed success stand-in
+so, focused only when it is not null; a spec flag "w2_focused": false drops focused from the runner's list on the
+workstation but not in this rehearsal, where the runner sees SIM_ROOT_ENV, see batch_runner.derive_steps), run in order up to postcommit; push runs with the GitHub CI query replaced by a fixed success stand-in
 inside the work clone only (the simulation has no GitHub access). Result checks: parent = base, changed paths =
 PLAN_JSON allowed paths, every author file at HEAD has the declared SHA-256 (LF), origin branch = HEAD,
 check_consistency and execution_record verify exit 0, clean worktree.
@@ -258,7 +259,7 @@ def production_steps(spec):
     A true batch may be rehearsed through its commit/CI stand-in without creating
     an artifact in the real Downloads directory. That post-push step is NOT TESTED.
     """
-    steps = batch_runner.derive_steps(spec)
+    steps = batch_runner.derive_steps(batch_runner.rehearsal_spec(spec))
     tail = ['push', 'bundle'] if spec.get('bundle_output') is True else ['push']
     expected_start = ['preflight', 'native_preview', 'setup'] if spec.get('native_preview') else ['preflight', 'setup']
     _require(steps[:len(expected_start)] == expected_start and 'apply' in steps
@@ -526,7 +527,7 @@ class Sim:
         self.quick_gate4 = quick_gate4
         # Git and home isolation; see isolated_env and the module documentation (Isolation, Git profiles).
         self.env = isolated_env(self.workdir, LOCALES[locale], git_profile)
-        self.env['HHAI_BATCH_SIM_ROOT'] = str(self.workdir)
+        self.env[batch_runner.SIM_ROOT_ENV] = str(self.workdir)
         self.env['PYTHONDONTWRITEBYTECODE'] = '1'
         self.env.pop('HHAI_SIM_UV_CACHE_DIR', None)  # only explicit --uv-cache-dir is authoritative
         self.gitconfig = self.workdir / 'isolated-gitconfig'

@@ -1,5 +1,5 @@
 {
-  "base_head": "608c1e6",
+  "base_head": "3788652",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -576,16 +576,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 430,
-      "sha256": "9a9897334a9517fc4a463c25495d6cc6f7140256d364f8cad85f701028ca25e0"
+      "lines": 431,
+      "sha256": "66d7999e6395579a4ba75a4dbc0166b93048db021ced540caa2c1bcb8886d971"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 400,
-      "sha256": "f1ef23bf35d292496eb9aee79d98a520fd9fe3efdde1b86b3a7c705fcae4792c"
+      "lines": 401,
+      "sha256": "6ce406a02fb621bea78899c0ae8184f15ea7228017668b703367397d653e9593"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -628,7 +628,7 @@
         "## 封存區"
       ],
       "lines": 459,
-      "sha256": "2808347075d2d23deb13542ccfff4ffb017dd6b2476f3468f1bdaf829d6c1103"
+      "sha256": "ac11ceadb8f4b117c3daf6ab32be61762441cf7131e65d50a2db0a60335e94d8"
     },
     "docs/TODO-LEDGER.md": {
       "fences": 0,
@@ -640,8 +640,8 @@
         "## 四、盤點範圍與方法",
         "## 五、清冊"
       ],
-      "lines": 163,
-      "sha256": "e919bb545dc42fd2abff8a6604a9e76968afb506f301c3720bf20974c43969e6"
+      "lines": 168,
+      "sha256": "fa6cb58a9516abaa84d66a1c62dadd9d90c2972568e7f35f5514f1e92b827a07"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1150,8 +1150,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6486,
-      "sha256": "373558486912715edee9c892bda55e350850ab71ad12d093da37516af815aa29"
+      "lines": 6487,
+      "sha256": "c09d66068f2fdaca0af31a119136e8f3eb52ebf3f961dc08cfbd07cfcf106004"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1179,6 +1179,11 @@
         "# COM0, LPT0, CONIN$ and CONOUT$ are added by project policy.",
         "# Failure classes: output text is matched but never printed. Order matters; the first match wins.",
         "# Bounded summaries are printed only when the last line has one of these fixed shapes.",
+        "# D9 batch 2 (TD-019): optional production-spec flags a runner declares. \"w2_focused\": false makes the runner on the",
+        "# user's workstation skip the focused step. Native preview and the batch simulator still rehearse it: the simulator",
+        "# marks every process it starts with SIM_ROOT_ENV (the variable gate_runner and native_preview already use to recognise",
+        "# a simulation), and derive_steps keeps the focused step whenever that variable is set. A spec may carry the flag only",
+        "# when its Base runner declares it here (verify_w2_focused_binding).",
         "# The outer bounded envelope must dominate every inner gate, including each",
         "# process-tree kill + reap grace. Pure derivation prevents silent drift.",
         "# Must-read closure (G4 slice 2). Changing these lists is a runner change (E27).",
@@ -1208,8 +1213,8 @@
         "# The work tree must show no file change for this long before a native_preview batch may start (formerly the",
         "# hand-run PRESTART block C): an IDE or another tool that still writes into the tree makes the run unsafe."
       ],
-      "lines": 2201,
-      "sha256": "96276928f5016f801a2d2b52fb1ee4be6825787c885b734d291422eeaae229cf"
+      "lines": 2250,
+      "sha256": "3ba4529bd5bdb945d5896850ecaf2c70ef5d86a68cc687c828185e3fd0d75d50"
     },
     "scripts/batch_sim.py": {
       "fences": 0,
@@ -1221,8 +1226,8 @@
         "# Production negatives; the stop step and code depend on the batch's own step list (see production_negative).",
         "# Git for Windows installer defaults at system scope on the USER machine (B-123a; see the TASKBOARD B-123 row)."
       ],
-      "lines": 1114,
-      "sha256": "82160a00a4af3af4142ae6855704f7b3f996bea3af421942c0f61e3be370d2e9"
+      "lines": 1115,
+      "sha256": "895ce56b8bf0c1818cad8f4015004e408d120c0ba2269386b873eb7329651b5d"
     },
     "scripts/bounded_process.py": {
       "fences": 0,
@@ -1495,8 +1500,8 @@
         "# description): the Executor stops, forwards the output verbatim and never repairs the situation itself. Whether a",
         "# new TASK_ID is issued or the USER handles the existing target is decided by the Macro Auditor and the USER."
       ],
-      "lines": 873,
-      "sha256": "26b5cc83b374afb7f0d6ff4de4421c40c62d7456e49e5927de642fcf87ca6377"
+      "lines": 876,
+      "sha256": "28dc46db79a3cb85bdde5be7cbec6998950b975c14d6bea4e6252b6723d4cd81"
     },
     "scripts/prompt_intake.py": {
       "fences": 0,
@@ -2447,6 +2452,28 @@
       "lines": 105,
       "sha256": "933fc67b7b419a87b0029e15a30577a88693a1461e0f7bc942cb7fc6b3463947"
     },
+    "scripts/tests/test_w2_focused.py": {
+      "fences": 0,
+      "headings": [
+        "# -*- coding: utf-8 -*-",
+        "# --- runner_declares_spec_flag ------------------------------------------------------------------------------------",
+        "# --- load_spec ----------------------------------------------------------------------------------------------------",
+        "# --- derive_steps and rehearsal_spec ------------------------------------------------------------------------------",
+        "# --- Base binding -------------------------------------------------------------------------------------------------",
+        "# --- reply_check follows the runner's step list -------------------------------------------------------------------",
+        "# --- the control state machine follows the same list --------------------------------------------------------------"
+      ],
+      "lines": 250,
+      "sha256": "ca58640e353025660670d9c1d251b536adeb9de41b9d8ba4445c1ec4acc45516"
+    },
+    "scripts/tests/test_w2_focused_callsites.py": {
+      "fences": 0,
+      "headings": [
+        "# -*- coding: utf-8 -*-"
+      ],
+      "lines": 69,
+      "sha256": "004a4d5aa44468e7683b538af947b30794f6be1003cc218bc0183e2f3a81cc2c"
+    },
     "scripts/validate_prompt_manifest.py": {
       "fences": 0,
       "headings": [
@@ -2484,7 +2511,7 @@
       "sha256": "2cfbb77ca8d1b99b4b8dc713ec15d32fb39f4d6b04fa207f01f65f975c6cbd5f"
     }
   },
-  "generated_at": "2026-11-21T13:49:19Z",
+  "generated_at": "2026-11-22T02:47:46Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

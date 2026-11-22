@@ -200,6 +200,13 @@ SUMMARY_SHAPES = (
 PRODUCTION_STEPS = ('preflight', 'native_preview', 'setup', 'e24', 'apply', 'focused', 'generate', 'precommit', 'stage', 'commit',
                     'postcommit', 'push', 'bundle')
 PROMOTION_STEPS = ('preflight', 'verify', 'promote', 'postmain')
+# D9 batch 2 (TD-019): optional production-spec flags a runner declares. "w2_focused": false makes the runner on the
+# user's workstation skip the focused step. Native preview and the batch simulator still rehearse it: the simulator
+# marks every process it starts with SIM_ROOT_ENV (the variable gate_runner and native_preview already use to recognise
+# a simulation), and derive_steps keeps the focused step whenever that variable is set. A spec may carry the flag only
+# when its Base runner declares it here (verify_w2_focused_binding).
+SPEC_FLAGS = ('w2_focused',)
+SIM_ROOT_ENV = 'HHAI_BATCH_SIM_ROOT'
 # The outer bounded envelope must dominate every inner gate, including each
 # process-tree kill + reap grace. Pure derivation prevents silent drift.
 GATE_MARGIN_SECONDS = 120
@@ -482,6 +489,9 @@ def load_spec(lines, task_id):
         _require(isinstance(focused, dict) and isinstance(focused.get('pytest_args'), list) and focused['pytest_args']
                  and all(isinstance(a, str) and a for a in focused['pytest_args'])
                  and isinstance(focused.get('limit_sec'), int) and 60 <= focused['limit_sec'] <= 3600, 'SPEC_FOCUSED_INVALID')
+    if 'w2_focused' in spec:
+        # Only false is meaningful (absent keeps the step), and it needs a focused selection to skip.
+        _require(spec['w2_focused'] is False and focused is not None, 'SPEC_W2_FOCUSED_INVALID')
     start = spec.get('start')
     _require(isinstance(start, dict) and start.get('mode') in ('clean', 'adopt'), 'SPEC_START_INVALID')
     authors = spec.get('authors')
@@ -659,6 +669,44 @@ def verify_preview_binding(root, spec):
     _require(spec.get('native_preview', False) == required, 'NATIVE_PREVIEW_SPEC_MISMATCH')
 
 
+def runner_declares_spec_flag(blob, flag):
+    """True when the runner source assigns SPEC_FLAGS as a literal tuple of strings containing the flag.
+
+    A runner without SPEC_FLAGS (older Base) declares nothing; a SPEC_FLAGS that is not such a literal is refused.
+    """
+    try:
+        for node in ast.parse(blob).body:
+            if (isinstance(node, ast.Assign) and len(node.targets) == 1
+                    and isinstance(node.targets[0], ast.Name) and node.targets[0].id == 'SPEC_FLAGS'):
+                flags = ast.literal_eval(node.value)
+                if isinstance(flags, tuple) and all(isinstance(f, str) for f in flags):
+                    return flag in flags
+                raise Halt('SPEC_FLAGS_BASE_INVALID')
+    except (SyntaxError, ValueError):
+        raise Halt('SPEC_FLAGS_BASE_INVALID') from None
+    return False
+
+
+def base_supports_w2_focused(root, base_oid):
+    return runner_declares_spec_flag(git_bytes(root, 'cat-file', 'blob', base_oid + ':' + RUNNER_REL), 'w2_focused')
+
+
+def w2_focused_required(root, spec):
+    """The flag is required exactly when the Base runner declares it and the batch has a focused selection."""
+    return spec.get('focused') is not None and base_supports_w2_focused(root, spec['base_oid'])
+
+
+def verify_w2_focused_binding(root, spec):
+    expected = w2_focused_required(root, spec)
+    _require(('w2_focused' in spec) == expected, 'W2_FOCUSED_SPEC_MISMATCH')
+
+
+def rehearsal_spec(spec):
+    """The spec as the simulator's own process lists its steps: the focused step is kept (its child processes get the
+    same result from SIM_ROOT_ENV)."""
+    return {k: v for k, v in spec.items() if k != 'w2_focused'}
+
+
 def derive_steps(spec):
     if spec['kind'] == 'readonly':
         return []  # No runner steps, no control artifact: explicit fail-closed non-executable kind.
@@ -669,7 +717,7 @@ def derive_steps(spec):
         steps.remove('native_preview')
     if not spec['e24']:
         steps.remove('e24')
-    if spec.get('focused') is None:
+    if spec.get('focused') is None or (spec.get('w2_focused') is False and SIM_ROOT_ENV not in os.environ):
         steps.remove('focused')
     if not spec.get('bundle_output', False):
         steps.remove('bundle')
@@ -806,6 +854,7 @@ class Batch:
         self.spec = load_spec(self.lines, task_id)
         if self.spec['kind'] == 'production':
             verify_preview_binding(root, self.spec)
+            verify_w2_focused_binding(root, self.spec)
 
     def artifact(self, suffix):
         rel = '.git/' + self.task_id + '-' + suffix

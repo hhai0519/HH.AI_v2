@@ -984,6 +984,22 @@
      "unit_bytes": 3551
     }
    ]
+  },
+  {
+   "file": "docs/archive/TASKBOARD-RECORDS-0008.md",
+   "batch": "B117-D9-W2-FOCUSED-SKIP-R2-261122",
+   "checkpoint_oid": "3788652ab4b5c3f0d2ef930e44f2268420840687",
+   "file_sha256": "0ba8703413a9c0700e6a261410891cb3250ceac3c304f27a4fc4dff50cee16bd",
+   "keep": 5,
+   "entries": [
+    {
+     "task_id": "B117-R1INT1-WAIT-261120",
+     "source_line": 131,
+     "line_count": 1,
+     "unit_sha256": "7d0898f56d976457d34edec297ae412dfc6f8235521c99e1554e566177d03e14",
+     "unit_bytes": 6036
+    }
+   ]
   }
  ]
 }

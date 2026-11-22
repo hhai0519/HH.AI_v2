@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "B117-G7B3B3-LEDGER-CHECK-R3-261121",
-  "base_oid": "608c1e61ef3e2c4f156e6eb2181c9155e3fdd069",
+  "task_id": "B117-D9-W2-FOCUSED-SKIP-R2-261122",
+  "base_oid": "3788652ab4b5c3f0d2ef930e44f2268420840687",
   "plan": {
     "allowed_paths": [
       "docs/AUDIT-LOG.md",
@@ -10,12 +10,15 @@
       "docs/TASKBOARD.md",
       "docs/TODO-LEDGER.md",
       "docs/archive/TASKBOARD-ARCHIVE-MANIFEST.json",
-      "docs/archive/TASKBOARD-RECORDS-0007.md",
+      "docs/archive/TASKBOARD-RECORDS-0008.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
       "docs/refactor-backlog.md",
-      "scripts/taskboard_archive.py",
-      "scripts/tests/test_todo_ledger_check.py"
+      "scripts/batch_runner.py",
+      "scripts/batch_sim.py",
+      "scripts/prompt_builder.py",
+      "scripts/tests/test_w2_focused.py",
+      "scripts/tests/test_w2_focused_callsites.py"
     ],
     "required_paths": [
       "docs/AUDIT-LOG.md",
@@ -23,12 +26,15 @@
       "docs/TASKBOARD.md",
       "docs/TODO-LEDGER.md",
       "docs/archive/TASKBOARD-ARCHIVE-MANIFEST.json",
-      "docs/archive/TASKBOARD-RECORDS-0007.md",
+      "docs/archive/TASKBOARD-RECORDS-0008.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
       "docs/refactor-backlog.md",
-      "scripts/taskboard_archive.py",
-      "scripts/tests/test_todo_ledger_check.py"
+      "scripts/batch_runner.py",
+      "scripts/batch_sim.py",
+      "scripts/prompt_builder.py",
+      "scripts/tests/test_w2_focused.py",
+      "scripts/tests/test_w2_focused_callsites.py"
     ],
     "max_plan_revisions": 3,
     "revision_count": 0,
@@ -41,12 +47,15 @@
       "docs/TASKBOARD.md",
       "docs/TODO-LEDGER.md",
       "docs/archive/TASKBOARD-ARCHIVE-MANIFEST.json",
-      "docs/archive/TASKBOARD-RECORDS-0007.md",
+      "docs/archive/TASKBOARD-RECORDS-0008.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
       "docs/refactor-backlog.md",
-      "scripts/taskboard_archive.py",
-      "scripts/tests/test_todo_ledger_check.py"
+      "scripts/batch_runner.py",
+      "scripts/batch_sim.py",
+      "scripts/prompt_builder.py",
+      "scripts/tests/test_w2_focused.py",
+      "scripts/tests/test_w2_focused_callsites.py"
     ]
   },
   "evidence": [

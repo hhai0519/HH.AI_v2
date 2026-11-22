@@ -475,6 +475,8 @@ def build(repo, definition_path):
                 spec['native_preview'] = True
         except batch_runner.Halt as h:
             raise BuildError(str(h)) from None
+        if d.get('focused') is not None and batch_runner.base_supports_w2_focused(repo, base):
+            spec['w2_focused'] = False
         spec.update({'focused': d.get('focused'), 'start': start_spec(d.get('start'), set(authors)),
                      'authors': dict(sorted(authors.items())), 'ops': ops})
         machine = [block('BATCH_SPEC_JSON', json.dumps(spec, ensure_ascii=False, indent=1)), '\n',
@@ -745,6 +747,7 @@ def check(repo, prompt_path, runner=subprocess.run):
         batch_runner.check_must_read(repo, spec, lines)
         if spec['kind'] == 'production':
             batch_runner.verify_preview_binding(repo, spec)
+            batch_runner.verify_w2_focused_binding(repo, spec)
             check_preview_contract(data.decode('utf-8'), spec)
             check_auditor_selfcheck(repo, spec, lines)
             changed_tests = sorted(p for p in spec['authors']
