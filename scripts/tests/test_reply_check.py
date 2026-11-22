@@ -13,6 +13,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import batch_runner as br  # noqa: E402
+import gate_report  # noqa: E402
 import reply_check as rc  # noqa: E402
 from test_prompt_builder import TASK as PB_TASK, _definition, repo  # noqa: E402,F401 - real-prompt fixture
 
@@ -64,7 +65,7 @@ PROMO_REPLY = '\n'.join([
 FIX_TASK = 'B119-G1-Q1-REPLY-S1-FIXTURE-261025'
 FIX_SPEC = {'kind': 'production', 'base_oid': CAND, 'branch': 'batch/b119-g1-q1-reply-s1-fixture-261025', 'e24': True,
             'focused': {'pytest_args': ['x'], 'limit_sec': 300}, 'bundle_output': True}
-REAL_S1_FOCUSED = 'Ran command: `python scripts/batch_runner.py --task-id B119-G1-Q1-REPLY-S1-FIXTURE-261025 preflight`\nSTEP_PASS preflight\nRan command: `python scripts/batch_runner.py --task-id B119-G1-Q1-REPLY-S1-FIXTURE-261025 setup`\nSTEP_PASS setup\nRan command: `python scripts/batch_runner.py --task-id B119-G1-Q1-REPLY-S1-FIXTURE-261025 e24`\nSTEP_PASS e24\nRan command: `python scripts/batch_runner.py --task-id B119-G1-Q1-REPLY-S1-FIXTURE-261025 apply`\nSTEP_PASS apply\nRan command: `python scripts/batch_runner.py --task-id B119-G1-Q1-REPLY-S1-FIXTURE-261025 focused`\nBOUNDED_EXIT FOCUSED code=5 | 73 deselected in 0.40s\nS1 FOCUSED_NONZERO | step focused\nS1_EVIDENCE_FILE=.git/B119-G1-Q1-REPLY-S1-FIXTURE-261025-s1-evidence.json sha256=4a6c830be1dec74b2e169505b8eb57084f83171cd28b1ff52e4fe770ea569c39\nS1_SHA256SUMS_FILE=.git/B119-G1-Q1-REPLY-S1-FIXTURE-261025-s1-SHA256SUMS.txt sha256=ab54efbf5147ef3399142a27a57dbda551f67d8c0821dfe8edfd11265c994349\nS1_EVIDENCE_JSON={"complete_capture":false,"files":[{"bytes":101056,"file":"B119-G1-Q1-REPLY-S1-FIXTURE-261025-prompt.txt","sha256":"5ea6d89708a6debce650cc120cf4593f5839cf34475e9c3c864dd366226af500"},{"bytes":337,"file":"B119-G1-Q1-REPLY-S1-FIXTURE-261025-control.json","sha256":"2fbd73cb134550ac652f1e4730281b90ebf8d4cfc2776d4e867d2fd0305803b7"},{"bytes":24,"file":"B119-G1-Q1-REPLY-S1-FIXTURE-261025-bounded-focused.txt","sha256":"7312791e7b36d9f9cb10979b0d094d34420f59d7d2a8baceac92cd6c97ab6104"}],"gate_records":"NOT_COLLECTED","git_snapshot":"NOT_COLLECTED","kind":"S1_METADATA_ONLY","next_step":"USER_FORWARD_METADATA_TO_ACTIVE_AUDITOR_KEEP_ORIGINAL_S1_EVIDENCE","s1_code":"FOCUSED_NONZERO","schema_version":1,"step":"focused","task_id":"B119-G1-Q1-REPLY-S1-FIXTURE-261025","unpublished_commit_bundle":"NOT_COLLECTED"}\nS1_FULL_CAPTURE_STATUS=INCOMPLETE_UNTRACKED_FILES\nRan command: `python scripts/batch_runner.py --task-id B119-G1-Q1-REPLY-S1-FIXTURE-261025 timing`\nTIMING start=2026-10-25T00:38:56.191279+08:00 end=2026-10-25T00:39:22.696514+08:00 elapsed_sec=26.5 elapsed_min=0\nSTATE done=preflight,setup,e24,apply halted=focused:FOCUSED_NONZERO\n'
+REAL_S1_FOCUSED = 'Ran command: `python scripts/batch_runner.py --task-id B119-G1-Q1-REPLY-S1-FIXTURE-261025 preflight`\nSTEP_PASS preflight\nRan command: `python scripts/batch_runner.py --task-id B119-G1-Q1-REPLY-S1-FIXTURE-261025 setup`\nSTEP_PASS setup\nRan command: `python scripts/batch_runner.py --task-id B119-G1-Q1-REPLY-S1-FIXTURE-261025 e24`\nSTEP_PASS e24\nRan command: `python scripts/batch_runner.py --task-id B119-G1-Q1-REPLY-S1-FIXTURE-261025 apply`\nSTEP_PASS apply\nRan command: `python scripts/batch_runner.py --task-id B119-G1-Q1-REPLY-S1-FIXTURE-261025 focused`\nBOUNDED_EXIT FOCUSED code=5 | 73 deselected in 0.40s\nS1 FOCUSED_NONZERO | step focused\nS1_FAILED_LIST kind=FAILED_LIST_UNAVAILABLE reason=NO_NAMES_FOUND\nS1_EVIDENCE_FILE=.git/B119-G1-Q1-REPLY-S1-FIXTURE-261025-s1-evidence.json sha256=4a6c830be1dec74b2e169505b8eb57084f83171cd28b1ff52e4fe770ea569c39\nS1_SHA256SUMS_FILE=.git/B119-G1-Q1-REPLY-S1-FIXTURE-261025-s1-SHA256SUMS.txt sha256=ab54efbf5147ef3399142a27a57dbda551f67d8c0821dfe8edfd11265c994349\nS1_EVIDENCE_JSON={"complete_capture":false,"files":[{"bytes":101056,"file":"B119-G1-Q1-REPLY-S1-FIXTURE-261025-prompt.txt","sha256":"5ea6d89708a6debce650cc120cf4593f5839cf34475e9c3c864dd366226af500"},{"bytes":337,"file":"B119-G1-Q1-REPLY-S1-FIXTURE-261025-control.json","sha256":"2fbd73cb134550ac652f1e4730281b90ebf8d4cfc2776d4e867d2fd0305803b7"},{"bytes":24,"file":"B119-G1-Q1-REPLY-S1-FIXTURE-261025-bounded-focused.txt","sha256":"7312791e7b36d9f9cb10979b0d094d34420f59d7d2a8baceac92cd6c97ab6104"}],"gate_records":"NOT_COLLECTED","git_snapshot":"NOT_COLLECTED","kind":"S1_METADATA_ONLY","next_step":"USER_FORWARD_METADATA_TO_ACTIVE_AUDITOR_KEEP_ORIGINAL_S1_EVIDENCE","s1_code":"FOCUSED_NONZERO","schema_version":1,"step":"focused","task_id":"B119-G1-Q1-REPLY-S1-FIXTURE-261025","unpublished_commit_bundle":"NOT_COLLECTED"}\nS1_FULL_CAPTURE_STATUS=INCOMPLETE_UNTRACKED_FILES\nRan command: `python scripts/batch_runner.py --task-id B119-G1-Q1-REPLY-S1-FIXTURE-261025 timing`\nTIMING start=2026-10-25T00:38:56.191279+08:00 end=2026-10-25T00:39:22.696514+08:00 elapsed_sec=26.5 elapsed_min=0\nSTATE done=preflight,setup,e24,apply halted=focused:FOCUSED_NONZERO\n'
 REAL_S1_PRECONTROL = 'Ran command: `python scripts/batch_runner.py --task-id B119-G1-Q1-REPLY-S1-FIXTURE-261025 preflight`\nS1 START_STATE_MISMATCH | step preflight\nRan command: `python scripts/batch_runner.py --task-id B119-G1-Q1-REPLY-S1-FIXTURE-261025 timing`\nTIMING start=2026-10-25T00:39:24.343492+08:00 end=2026-10-25T00:39:24.674398+08:00 elapsed_sec=0.3 elapsed_min=0\nSTATE done= halted=None\n'
 
 
@@ -256,15 +257,22 @@ def _capture(task, step, code, members, base=BASE, archive=None, omit=None):
     return data, lines
 
 
+def failed_list_line(step, code):
+    """The unavailable form the runner prints for a persisted S1 whose output names no failed test (alpha 1, D2)."""
+    reason = 'NO_NAMES_FOUND' if step in gate_report.TEST_STEPS or code in gate_report.CI_CODES else 'NOT_A_TEST_STEP'
+    return 'S1_FAILED_LIST kind=FAILED_LIST_UNAVAILABLE reason=' + reason
+
+
 def s1_reply(step, code, bounded=b'1 failed, 266 passed\n', listed=True, bounded_line=None, metadata=True,
              capture=False, already_halted=False, members_edit=None, card_base=BASE, zip_prompt=PROMPT_BYTES,
-             omit=None):
+             omit=None, failed_lines=None):
     task = PROD_TASK
     files = _files(task, step, code, bounded, listed)
     lines = ['Ran command: `python scripts/batch_runner.py --task-id ' + task + ' ' + step + '`']
     lines.append('S1 TASK_ALREADY_HALTED ' + step + ':' + code if already_halted else 'S1 ' + code + ' | step ' + step)
     data = None
     if not already_halted:
+        lines += [failed_list_line(step, code)] if failed_lines is None else failed_lines
         if bounded_line:
             lines.append(bounded_line)
         if metadata:
@@ -492,7 +500,7 @@ def test_s1_before_a_step_only_for_the_runner_pre_execution_codes(lines, expect,
 
 
 def test_s1_line_accepts_the_runner_unexpected_exception_code_only_in_its_form():
-    ok = 'S1 UNEXPECTED_RuntimeError | step setup\nS1_EVIDENCE_STATUS=UNAVAILABLE\nS1_FULL_CAPTURE_STATUS=UNAVAILABLE\n' + PRE \
+    ok = 'S1 UNEXPECTED_RuntimeError | step setup\nS1_FAILED_LIST kind=FAILED_LIST_UNAVAILABLE reason=NOT_A_TEST_STEP\nS1_EVIDENCE_STATUS=UNAVAILABLE\nS1_FULL_CAPTURE_STATUS=UNAVAILABLE\n' + PRE \
          + 'STATE done=preflight halted=setup:UNEXPECTED_RuntimeError\n'
     assert rc.check_spec(PROD_TASK, PROD_SPEC, ok)[2] == 'S1 setup:UNEXPECTED_RuntimeError'
     assert _code(rc.check_spec, PROD_TASK, PROD_SPEC, ok.replace('UNEXPECTED_RuntimeError', 'Unexpected_RuntimeError')) \
@@ -502,7 +510,7 @@ def test_s1_line_accepts_the_runner_unexpected_exception_code_only_in_its_form()
 def test_promotion_s1_accepts_earlier_consistent_lines_only():
     steps = br.derive_steps(PROMO_SPEC)
     text = '\n'.join([PROMO_REPLY.split('\n')[1], 'MAIN_PROMOTED ' + CAND, 'S1 POST_MAIN_CI_NOT_PASS | step postmain',
-                      'S1_EVIDENCE_STATUS=UNAVAILABLE', 'S1_FULL_CAPTURE_STATUS=UNAVAILABLE', PRE.strip(),
+                      'S1_FAILED_LIST kind=FAILED_LIST_UNAVAILABLE reason=NO_NAMES_FOUND', 'S1_EVIDENCE_STATUS=UNAVAILABLE', 'S1_FULL_CAPTURE_STATUS=UNAVAILABLE', PRE.strip(),
                       'STATE done=' + ','.join(steps[:3]) + ' halted=postmain:POST_MAIN_CI_NOT_PASS']) + '\n'
     assert rc.check_spec(PROMO_TASK, PROMO_SPEC, text)[3:] == ('N/A', 'NOT_A_BOUNDED_STEP')
     assert _code(rc.check_spec, PROMO_TASK, PROMO_SPEC, text.replace('MAIN_PROMOTED ' + CAND, 'MAIN_PROMOTED ' + BASE)) \
@@ -538,7 +546,8 @@ def test_cli_binds_the_prompt_and_reports_fixed_lines_and_exit_codes(tmp_path, r
     reply.write_bytes(('\n'.join(lines[1:]) + '\n').encode('utf-8'))
     assert rc.main(['--prompt', str(prompt), '--reply', str(reply)]) == 1
     assert capsys.readouterr().out.strip() == 'REPLY_CHECK FAIL REPLY_CI_RUN_CANDIDATE_MISSING'
-    s1 = ['S1 PRECOMMIT_NONZERO | step precommit', 'S1_EVIDENCE_STATUS=UNAVAILABLE', 'S1_FULL_CAPTURE_STATUS=UNAVAILABLE',
+    s1 = ['S1 PRECOMMIT_NONZERO | step precommit', 'S1_FAILED_LIST kind=FAILED_LIST_UNAVAILABLE reason=NO_NAMES_FOUND',
+          'S1_EVIDENCE_STATUS=UNAVAILABLE', 'S1_FULL_CAPTURE_STATUS=UNAVAILABLE',
           lines[2], 'STATE done=' + ','.join(steps[:steps.index('precommit')]) + ' halted=precommit:PRECOMMIT_NONZERO']
     reply.write_bytes(('\n'.join(s1) + '\n').encode('utf-8'))
     assert rc.main(['--prompt', str(prompt), '--reply', str(reply)]) == 2
@@ -872,7 +881,7 @@ def test_native_preview_reply_fails_closed(name, edit, code):
 
 def test_s1_at_the_native_preview_step_is_classified_and_state_must_agree():
     text = ('STEP_PASS preflight\nS1 NATIVE_PREVIEW_SOURCE_MODIFIED | step native_preview\n'
-            'S1_EVIDENCE_STATUS=UNAVAILABLE\nS1_FULL_CAPTURE_STATUS=UNAVAILABLE\n' + PRE
+            'S1_FAILED_LIST kind=FAILED_LIST_UNAVAILABLE reason=NOT_A_TEST_STEP\nS1_EVIDENCE_STATUS=UNAVAILABLE\nS1_FULL_CAPTURE_STATUS=UNAVAILABLE\n' + PRE
             + 'STATE done=preflight halted=native_preview:NATIVE_PREVIEW_SOURCE_MODIFIED\n')
     result = rc.check_spec(NP_TASK, NP_SPEC, text)
     assert result[2] == 'S1 native_preview:NATIVE_PREVIEW_SOURCE_MODIFIED'

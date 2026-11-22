@@ -12,6 +12,11 @@ own arguments, so the two pytest gates inside verify_all never overwrite each ot
 cannot be written is reported as one "GATE_DURATIONS_UNAVAILABLE <reason>" line; it is diagnostic
 data, never acceptance evidence. Both variables are removed from os.environ at configure time so that
 pytest processes started by the tests themselves never inherit the plugin.
+
+TD-100: each session also keeps "<prefix>.progress-<tag>.json" up to date while it runs (completed test count, the
+test running now and the last finished one), so a gate that is killed on timeout still says how far it got. The
+record is one small file held open and rewritten in place at every test start (no per-test open or rename).
+scripts/gate_report.py turns it into the fixed GATE_PROGRESS lines.
 """
 import hashlib
 import json
@@ -23,8 +28,13 @@ PREFIX_ENV = 'HHAI_GATE_DURATIONS_PREFIX'
 ADDOPT = '-p scripts.gate_durations'
 PHASES = ('setup', 'call', 'teardown')
 
+PROGRESS_INFIX = '.progress-'
+PROGRESS_WIDTH = 1024
+PROGRESS_MAX_NODEID = 300
+
 _prefix = None
 _rows = {}
+_progress = {'handle': None, 'completed': 0, 'running': None, 'last': None}
 
 
 def _scrub_environment():
@@ -40,10 +50,53 @@ def _scrub_environment():
     return prefix
 
 
+def _short(nodeid):
+    return nodeid if isinstance(nodeid, str) and len(nodeid) <= PROGRESS_MAX_NODEID else None
+
+
+def _write_progress():
+    """Rewrite the progress record in place; diagnostic data, so a write problem is ignored."""
+    handle = _progress['handle']
+    if handle is None:
+        return
+    text = json.dumps({'schema_version': 1, 'completed': _progress['completed'], 'running': _progress['running'],
+                       'last': _progress['last']}, ensure_ascii=True)
+    try:
+        handle.seek(0)
+        handle.write(text.ljust(PROGRESS_WIDTH))
+        handle.truncate()  # also flushes, so a killed run still leaves the record; it cuts any tail of an older, longer write
+    except (OSError, ValueError):
+        _progress['handle'] = None
+
+
+def _close_progress():
+    handle = _progress['handle']
+    _progress['handle'] = None
+    if handle is not None:
+        try:
+            handle.close()
+        except OSError:
+            pass
+
+
 def pytest_configure(config):
     global _prefix
     _prefix = _scrub_environment() or None
     _rows.clear()
+    _close_progress()
+    _progress.update(completed=0, running=None, last=None)
+    if _prefix:
+        path = _prefix + PROGRESS_INFIX + session_tag(config.invocation_params.args) + '.json'
+        try:
+            _progress['handle'] = open(path, 'w', encoding='utf-8', newline='')
+            _write_progress()
+        except OSError:
+            _progress['handle'] = None
+
+
+def pytest_runtest_logstart(nodeid, location):
+    _progress['running'] = _short(nodeid)
+    _write_progress()
 
 
 def pytest_runtest_logreport(report):
@@ -54,6 +107,10 @@ def pytest_runtest_logreport(report):
         row['outcome'] = report.outcome
     elif report.outcome == 'failed':
         row['outcome'] = 'error'
+    if report.when == 'teardown':
+        _progress['completed'] += 1
+        _progress['last'] = _short(report.nodeid)
+        _progress['running'] = None
 
 
 def session_tag(args):
@@ -71,6 +128,8 @@ def render(args, rows):
 
 
 def pytest_sessionfinish(session, exitstatus):
+    _write_progress()
+    _close_progress()
     if not _prefix:
         return
     args = session.config.invocation_params.args

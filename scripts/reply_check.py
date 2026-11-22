@@ -71,6 +71,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 try:
     import batch_runner  # noqa: E402 - spec parser and step list are the reference
+    import gate_report  # noqa: E402 - the fixed vocabulary of the alpha 1 diagnostic lines
     import prompt_builder  # noqa: E402 - prompt name and task binding
 finally:
     sys.path.pop(0)
@@ -103,6 +104,9 @@ BEFORE_STEP = {'CONTROL_INVALID', 'CONTROL_BINDING_DRIFT', 'STEP_ORDER_VIOLATION
                'WORKING_DIRECTORY_MISMATCH', 'PROMPT_UNREADABLE', 'NATIVE_PREVIEW_SPEC_MISMATCH',
                'NATIVE_PREVIEW_SPEC_INVALID', 'NATIVE_PREVIEW_BASE_STEPS_INVALID'}
 
+NODE = gate_report.NODE_TOKEN.pattern[1:-1]
+CI_CONCLUSION = '|'.join(gate_report.CI_CONCLUSIONS)
+
 # name -> (prefix, exact format, positions of commit SHAs, positions of file SHA-256)
 FORMATS = [
     ('CI_RUN', 'CI_RUN ', r'^CI_RUN phase=(candidate|postmain) run_id=([1-9][0-9]*) attempt=([1-9][0-9]*) '
@@ -129,16 +133,36 @@ FORMATS = [
     ('S1_FULL_CAPTURE_CARD', 'S1_FULL_CAPTURE_CARD=', r'^S1_FULL_CAPTURE_CARD=(\S+) sha256=(\S+)$', (), (2,)),
     ('S1_FULL_CAPTURE_JSON', 'S1_FULL_CAPTURE_JSON=', r'^S1_FULL_CAPTURE_JSON=(\{.*\})$', (), ()),
     ('S1_FULL_CAPTURE_STATUS', 'S1_FULL_CAPTURE_STATUS=', r'^S1_FULL_CAPTURE_STATUS=([A-Z][A-Z_]*)$', (), ()),
+    ('S1_FAILED_LIST', 'S1_FAILED_LIST ',
+     r'^S1_FAILED_LIST kind=(GATE_FAILED|CI_FAILED|FAILED_LIST_UNAVAILABLE)'
+     r'(?: count=([0-9]+) shown=([0-9]+)(?: unsafe=([1-9][0-9]*))?'
+     r'| reason=(NOT_A_TEST_STEP|NO_RAW_OUTPUT|NO_NAMES_FOUND|LIST_ERROR))$', (), ()),
+    ('S1_FAILED_ITEM', 'S1_FAILED_ITEM ',
+     r'^S1_FAILED_ITEM (?:job=(verify|gateway-windows) conclusion=(' + CI_CONCLUSION + r')|(' + NODE + r'))$', (), ()),
     ('S1', 'S1 ', r'^S1 (' + CODE + r')(?: \| step ([a-z0-9_]+)| ([a-z0-9_]+):(' + CODE + r'))?$', (), ()),
     ('GATE_BUDGET_WARN', 'GATE_BUDGET_WARN ',
      r'^GATE_BUDGET_WARN stage=(PRECOMMIT|STAGED|POSTCOMMIT) gate=([1-9][0-9]*) '
      r'elapsed=([0-9]+\.[0-9]{3}) limit=([1-9][0-9]*) pct=([0-9]+\.[0-9])$', (), ()),
+    ('GATE4_GROUPS_RESULT', 'GATE4_GROUPS_RESULT ',
+     r'^GATE4_GROUPS_RESULT status=(PASS|FAIL) collected=([0-9]+) counted=([0-9]+) passed=([0-9]+) skipped=([0-9]+) '
+     r'failures=([0-9]+) errors=([0-9]+) phase1_sec=([0-9]+\.[0-9]) groups_sec=([0-9]+\.[0-9]) total_sec=([0-9]+\.[0-9]) '
+     r'reasons=(NONE|[A-Za-z0-9_:]+(?:,[A-Za-z0-9_:]+)*)$', (), ()),
+    ('GATE4_GROUP', 'GATE4_GROUP ',
+     r'^GATE4_GROUP name=(seq|g[1-4]) rc=(None|-?[0-9]+) sec=([0-9]+\.[0-9]) files=([0-9]+) tests=([0-9]+|n/a)$', (), ()),
+    ('GATE_PROGRESS', 'GATE_PROGRESS ',
+     r'^GATE_PROGRESS stage=(PRECOMMIT|STAGED|POSTCOMMIT) run=([1-9][0-9]*) gate=([1-9][0-9]*) procs=([1-9][0-9]*) '
+     r'completed=([0-9]+)$', (), ()),
+    ('GATE_PROGRESS_PROC', 'GATE_PROGRESS_PROC ',
+     r'^GATE_PROGRESS_PROC idx=([1-9][0-9]*) completed=([0-9]+) running=(' + NODE + r'|none|' + gate_report.WITHHELD + r') last=(' + NODE + r'|none|' + gate_report.WITHHELD + r')$', (), ()),
     ('BOUNDED_EXIT', 'BOUNDED_EXIT ', r'^BOUNDED_EXIT ([A-Z]+) code=(-?[0-9]+) \| .*$', (), ()),
     ('BOUNDED_TIMEOUT', 'BOUNDED_TIMEOUT ', r'^BOUNDED_TIMEOUT ([A-Z]+) limit=[0-9]+s kill=\S+$', (), ()),
 ]
 COMPILED = [(n, p, re.compile(f), o, s) for n, p, f, o, s in FORMATS]
 METADATA = ('S1_EVIDENCE_FILE', 'S1_SHA256SUMS_FILE', 'S1_EVIDENCE_JSON')
 CAPTURE = ('S1_FULL_CAPTURE_FILE', 'S1_FULL_CAPTURE_CARD', 'S1_FULL_CAPTURE_JSON')
+# Alpha 1 lines a bounded gate step can leave in an S1 reply: the grouped gate 4 result and the timeout progress.
+GATE_LINE_RANGES = {'GATE4_GROUPS_RESULT': (0, 1), 'GATE4_GROUP': (0, len(gate_report.GROUP_NAMES)),
+                    'GATE_PROGRESS': (0, 1), 'GATE_PROGRESS_PROC': (0, gate_report.MAX_PROCS)}
 READY = ('BUNDLE_FILE', 'ORIGIN_MAIN', 'HANDOFF_TO_AUDITOR', 'HANDOFF_CARD_SHA256', 'HANDOFF_CARD_JSON')
 
 
@@ -267,6 +291,71 @@ def check_budget_warnings(found, steps, stopped=None):
                  'REPLY_GATE_BUDGET_WARN_MISMATCH')
 
 
+def check_failed_list(found, step, code):
+    """D2: a persisted S1 inside a step carries exactly one S1_FAILED_LIST, consistent with its items, step and code."""
+    lists = found['S1_FAILED_LIST']
+    _require(len(lists) == 1, 'REPLY_S1_FAILED_LIST_MISSING' if not lists else 'REPLY_S1_FAILED_LIST_REPEATED')
+    kind, count, shown, unsafe, reason = lists[0].groups()
+    items = found['S1_FAILED_ITEM']
+    ci_code = code in gate_report.CI_CODES
+    if kind == gate_report.KIND_NONE:
+        _require(not items, 'REPLY_S1_FAILED_LIST_INVALID')
+        _require(reason != 'NOT_A_TEST_STEP' or (step not in gate_report.TEST_STEPS and not ci_code),
+                 'REPLY_S1_FAILED_LIST_MISMATCH')
+        _require(not (ci_code and reason in ('NOT_A_TEST_STEP', 'NO_RAW_OUTPUT')), 'REPLY_S1_FAILED_LIST_MISMATCH')
+        return
+    total, listed, bad = int(count), int(shown), int(unsafe or 0)
+    names = [m.group(0) for m in items]
+    _require(total >= 1 and listed == len(items) <= gate_report.MAX_ITEMS and len(names) == len(set(names)),
+             'REPLY_S1_FAILED_LIST_INVALID')
+    if kind == gate_report.KIND_GATE:
+        # Every FAILED/ERROR row is counted: count = rows; unsafe = rows whose name cannot be shown; shown = distinct
+        # listed names (at most one per remaining row, at least one when a row can be shown), capped at MAX_ITEMS.
+        _require(listed + bad <= total and (total == bad or listed >= 1),
+                 'REPLY_S1_FAILED_LIST_INVALID')
+        _require(step in gate_report.TEST_STEPS and not ci_code and all(m.group(3) for m in items),
+                 'REPLY_S1_FAILED_LIST_MISMATCH')
+    else:
+        _require(unsafe is None and listed == min(total, gate_report.MAX_ITEMS), 'REPLY_S1_FAILED_LIST_INVALID')
+        _require(ci_code and total == listed <= len(gate_report.CI_JOBS) and all(m.group(1) for m in items),
+                 'REPLY_S1_FAILED_LIST_MISMATCH')
+
+
+def check_gate_lines(found, step=None, code=None):
+    """Alpha 1 (TD-112, TD-100): the grouped gate 4 lines and the timeout progress lines are consistent in themselves
+    and with the bounded lines of the reply. step and code are those of the S1 (None for a success reply)."""
+    stages = {m.group(1) for name in ('BOUNDED_EXIT', 'BOUNDED_TIMEOUT') for m in found[name]}
+    results, groups = found['GATE4_GROUPS_RESULT'], found['GATE4_GROUP']
+    _require(not groups or results, 'REPLY_GATE4_GROUP_WITHOUT_RESULT')
+    if results:
+        _require('PRECOMMIT' in stages, 'REPLY_GATE4_RESULT_UNBOUND')
+        status, collected, counted, passed, skipped, failures, errors = results[0].groups()[:7]
+        reasons = results[0].group(11)
+        collected, counted, passed, skipped, failures, errors = (int(x) for x in (collected, counted, passed, skipped, failures, errors))
+        _require(passed + skipped + failures + errors == counted, 'REPLY_GATE4_RESULT_ARITHMETIC')
+        _require((status == 'PASS') == (reasons == 'NONE'), 'REPLY_GATE4_RESULT_STATUS')
+        if status == 'PASS':
+            _require(collected > 0 and counted == collected and failures == 0 and errors == 0, 'REPLY_GATE4_RESULT_STATUS')
+        for m in found['BOUNDED_EXIT']:
+            if m.group(1) == 'PRECOMMIT' and m.group(2) == '0':
+                _require(status == 'PASS', 'REPLY_GATE4_RESULT_CONTRADICTS_EXIT')
+        names = [m.group(1) for m in groups]
+        _require(len(names) == len(set(names)), 'REPLY_GATE4_GROUP_REPEATED')
+        if groups and all(m.group(5) != 'n/a' for m in groups):
+            _require(sum(int(m.group(5)) for m in groups) == counted, 'REPLY_GATE4_GROUP_TOTAL_MISMATCH')
+        if status == 'PASS':
+            _require(all(m.group(2) == '0' for m in groups), 'REPLY_GATE4_GROUP_RC_MISMATCH')
+    progress, procs = found['GATE_PROGRESS'], found['GATE_PROGRESS_PROC']
+    _require(not procs or progress, 'REPLY_GATE_PROGRESS_WITHOUT_TOTAL')
+    if progress:
+        stage, _run, _gate, count, completed = progress[0].groups()
+        stage_step = {v[0]: k for k, v in STAGES.items()}.get(stage)
+        _require(step is not None and step == stage_step and code in (stage + '_GATE_TIMEOUT', stage + '_TIMEOUT'),
+                 'REPLY_GATE_PROGRESS_MISMATCH')
+        _require(len(procs) == int(count) and [int(m.group(1)) for m in procs] == list(range(1, int(count) + 1))
+                 and sum(int(m.group(2)) for m in procs) == int(completed), 'REPLY_GATE_PROGRESS_MISMATCH')
+
+
 def check_bundle(found, task, spec, head, pending=False):
     base = spec['base_oid']
     if found['BUNDLE_FAILED']:
@@ -309,6 +398,7 @@ def check_success(found, task, spec, steps):
     ranges = {'TIMING': (1, 1), 'STATE': (1, 1), 'STEP_PASS': (0, len(steps)),
               'CI_RUN_CANDIDATE': (0 if is_production and pending else 1, 0 if is_production and pending else 1)}
     if is_production:
+        ranges.update({'GATE4_GROUPS_RESULT': (0, 1), 'GATE4_GROUP': (0, len(gate_report.GROUP_NAMES))})
         ranges.update({'COMMIT': (1, 1), 'BOUNDED_EXIT': (0, len(STAGES)),
                        'GATE_BUDGET_WARN': (0, sum(len(batch_runner.stage_timeouts(s)) for s in ('PRECOMMIT', 'STAGED', 'POSTCOMMIT')))})
         if 'bundle' in steps:
@@ -324,6 +414,7 @@ def check_success(found, task, spec, steps):
         bundle = check_bundle(found, task, spec, head, pending=pending) if 'bundle' in steps else None
         check_bounded_lines(found, steps)
         check_budget_warnings(found, steps)
+        check_gate_lines(found)
         outcome = 'COMMIT'
     else:
         head = spec['candidate_oid']
@@ -377,9 +468,10 @@ def check_s1(found, task, spec, steps, capture_path, prompt_sha):
         cardinality(found, dict({'S1': (1, 1), 'S1_PRIMARY': (1, 1), 'TIMING': (1, 1), 'STATE': (1, 1),
                                  'S1_DETAIL': (0, 1 if code == 'ARTIFACT_PATH_GUARD_FAILED' else 0),
                                  'STEP_PASS': (0, len(steps)), 'BOUNDED_EXIT': (0, len(STAGES)),
-                                 'BOUNDED_TIMEOUT': (0, 1), 'GATE_BUDGET_WARN': (0, 10)}, **promo))
+                                 'BOUNDED_TIMEOUT': (0, 1), 'GATE_BUDGET_WARN': (0, 10), **GATE_LINE_RANGES}, **promo))
         check_bounded_lines(found, steps, step)
         check_budget_warnings(found, steps, step)
+        check_gate_lines(found, step, original.group(1))
         if found['CI_RUN_CANDIDATE']:
             check_ci(found, 'candidate', spec['candidate_branch'], spec['candidate_oid'])
         for p in found['MAIN_PROMOTED']:
@@ -395,7 +487,8 @@ def check_s1(found, task, spec, steps, capture_path, prompt_sha):
     if halted == step + ':' + code:                                       # halt persisted inside the step
         _require(step in steps and done == steps[:steps.index(step)], 'REPLY_STATE_MISMATCH')
         ranges = dict(base_ranges, BOUNDED_EXIT=(0, len(STAGES)), BOUNDED_TIMEOUT=(0, 1),
-                      GATE_BUDGET_WARN=(0, 10))
+                      GATE_BUDGET_WARN=(0, 10), S1_FAILED_LIST=(1, 1), S1_FAILED_ITEM=(0, gate_report.MAX_ITEMS),
+                      **GATE_LINE_RANGES)
         ranges.update({n: (1, 1) for n in METADATA} if not found['S1_EVIDENCE_STATUS'] else {'S1_EVIDENCE_STATUS': (1, 1)})
         ranges.update({n: (1, 1) for n in CAPTURE} if not found['S1_FULL_CAPTURE_STATUS'] else
                       {'S1_FULL_CAPTURE_STATUS': (1, 1)})
@@ -404,6 +497,9 @@ def check_s1(found, task, spec, steps, capture_path, prompt_sha):
         cardinality(found, ranges)
         check_bounded_lines(found, steps, step)
         check_budget_warnings(found, steps, step)
+        if not already:
+            check_failed_list(found, step, code)
+            check_gate_lines(found, step, code)
         persisted = True
     else:                                                                # stopped before the step body ran
         _require(halted == 'None' and not already, 'REPLY_STATE_MISMATCH')

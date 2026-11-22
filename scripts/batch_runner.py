@@ -117,6 +117,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 try:
     from bounded_process import run_bounded, KILL_GRACE_SECONDS  # noqa: E402 - shared bounded primitive
     from gate_runner import GATE_TIMEOUT_EXIT_CODE, STAGES as CANONICAL_GATES, stage_timeouts  # noqa: E402
+    import gate_report  # noqa: E402 - fixed-shape S1 failed list, timeout progress and gate 4 group lines (alpha 1)
+    import gate4_groups  # noqa: E402 - OUTPUT_FORM: the one pytest output form scripts/gate_report.py reads (alpha 1 R4)
     from validate_prompt_manifest import extract_must_read_section  # noqa: E402 - the validator's section rule
     from bundle_after_push import create_bundle, BundleFailure, preflight_remote_refs  # noqa: E402
     from s1_evidence import create_metadata, EvidenceError  # noqa: E402
@@ -852,6 +854,7 @@ class Batch:
         self.prompt_bytes = (Path(root) / self.prompt_rel).read_bytes()
         self.lines = prompt_lines(self.prompt_bytes)
         self.spec = load_spec(self.lines, task_id)
+        self.ci_jobs = None  # jobs object of the last ci-status payload that did not prove PASS (alpha 1, D2)
         if self.spec['kind'] == 'production':
             verify_preview_binding(root, self.spec)
             verify_w2_focused_binding(root, self.spec)
@@ -884,6 +887,9 @@ class Batch:
             raise Halt(stage + '_LAUNCH_FAILED')
         if res.timed_out:
             print('BOUNDED_TIMEOUT ' + stage + ' limit=' + str(limit) + 's kill=' + res.kill_status)
+            if gate_timeout:
+                for line in gate_report.gate_lines(self.root, self.task_id, stage, True):
+                    print(line)
             raise Halt(stage + '_TIMEOUT')
         code = res.returncode
         tail = [l for l in res.stdout.decode('utf-8', 'replace').splitlines() if l.strip()]
@@ -891,6 +897,10 @@ class Batch:
             for warning in checked_budget_warnings(res.stdout.decode('utf-8', 'replace'), stage):
                 print(warning)
         print('BOUNDED_EXIT ' + stage + ' code=' + str(code) + ' | ' + bounded_summary(tail))
+        if gate_timeout:
+            # Alpha 1: fixed-shape lines from the gate's own records (grouped gate 4 result, timeout progress).
+            for line in gate_report.gate_lines(self.root, self.task_id, stage, code == GATE_TIMEOUT_EXIT_CODE):
+                print(line)
         if code != 0:
             if gate_timeout and code == GATE_TIMEOUT_EXIT_CODE:
                 raise Halt(stage + '_GATE_TIMEOUT')
@@ -942,6 +952,9 @@ class Batch:
             raise Halt('CI_STATUS_IDENTITY_DRIFT')
         if payload.get('required_jobs') != ['verify', 'gateway-windows']:
             raise Halt('CI_STATUS_JOBS_INVALID')
+        # Alpha 1 (D2): the jobs object of a payload that did not prove PASS names the failed jobs; the S1 failed list
+        # reads it (scripts/gate_report.py validates job names and conclusions before anything is printed).
+        self.ci_jobs = payload.get('jobs')
         if cp.returncode != 0:
             # PENDING/UNABLE (2) must never be elevated to PASS; invalid success content (1) cannot pass.
             if payload.get('status') == 'PASS':
@@ -1088,7 +1101,11 @@ class Batch:
         spec = self.spec
         expect_scope(self.root, spec, 'FOCUSED', exact=False)
         verify_hashes(self.root, final_hashes(spec), 'FOCUSED_AUTHOR_DRIFT')
-        self.bounded('FOCUSED', ['-m', 'pytest'] + spec['focused']['pytest_args'], spec['focused']['limit_sec'])
+        # One output form whatever CI, BUILD_NUMBER, -vv, PY_COLORS or FORCE_COLOR say: scripts/gate_report.py reads
+        # this record (OUTPUT_FORM, scripts/gate4_groups.py).
+        pytest_args = spec['focused']['pytest_args']
+        self.bounded('FOCUSED', ['-m', 'pytest'] + gate4_groups.output_form_args(pytest_args) + pytest_args,
+                     spec['focused']['limit_sec'])
         expect_scope(self.root, spec, 'FOCUSED', exact=False)
         verify_hashes(self.root, final_hashes(spec), 'FOCUSED_AUTHOR_DRIFT')
 
@@ -1779,6 +1796,19 @@ def report_halt(h, step):
         print('S1_DETAIL ' + h.detail)
 
 
+def report_failed_list(batch, step, code):
+    """D2: the one S1 failed list of a persisted S1 inside a step (GATE_FAILED, CI_FAILED or FAILED_LIST_UNAVAILABLE).
+
+    Diagnostics only: any problem prints the fixed unavailable form, never replaces or hides the S1 line.
+    """
+    try:
+        lines = gate_report.failed_list_lines(batch.root, batch.task_id, step, code, getattr(batch, 'ci_jobs', None))
+    except Exception:  # noqa: BLE001
+        lines = ['S1_FAILED_LIST kind=FAILED_LIST_UNAVAILABLE reason=LIST_ERROR']
+    for line in lines:
+        print(line)
+
+
 def report_s1_metadata(batch, step, h):
     """Best-effort metadata after persisted halted control; never overrides original S1."""
     if batch is None:
@@ -2219,6 +2249,7 @@ def _execute_step(batch, step, control):
             print('S1_PRIMARY ' + str(h) + ' | step ' + step)
             return 1
         report_halt(h, step)
+        report_failed_list(batch, step, str(h))
         report_s1_metadata(batch, step, h)
         if step == 'native_preview':
             print('S1_FULL_CAPTURE_STATUS=INCOMPLETE_NO_UNPUBLISHED_COMMIT')
@@ -2232,6 +2263,7 @@ def _execute_step(batch, step, control):
             return 1
         print('S1 UNEXPECTED_' + type(ex).__name__ + ' | step ' + step)
         failure = Halt('UNEXPECTED_' + type(ex).__name__)
+        report_failed_list(batch, step, str(failure))
         report_s1_metadata(batch, step, failure)
         if step == 'native_preview':
             print('S1_FULL_CAPTURE_STATUS=INCOMPLETE_NO_UNPUBLISHED_COMMIT')
