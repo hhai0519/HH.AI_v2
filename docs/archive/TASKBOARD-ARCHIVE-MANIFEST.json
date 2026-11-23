@@ -1016,6 +1016,22 @@
      "unit_bytes": 4987
     }
    ]
+  },
+  {
+   "file": "docs/archive/TASKBOARD-RECORDS-0010.md",
+   "batch": "B117-ALPHA2-FAST-PRECHECK-R2-261123",
+   "checkpoint_oid": "3ee29c8a6abd041eaa3a76d1ee9e45d56aee49ae",
+   "file_sha256": "df9be781a7cb35b1c1f05fff00fc0ea14982f8676a94125eabc757611ed56754",
+   "keep": 5,
+   "entries": [
+    {
+     "task_id": "B117-G7B3B3-TODO-LEDGER-261120",
+     "source_line": 131,
+     "line_count": 1,
+     "unit_sha256": "f7a67ff8a7314a8bcb2b0d4a0bb064ab20f4b912633fa7ff85fff5e27f1a5dcc",
+     "unit_bytes": 2956
+    }
+   ]
   }
  ]
 }

@@ -821,3 +821,191 @@ def test_c3_keep_target_symlink_rejected_same_as_runner(tmp_path,monkeypatch):
     with pytest.raises(q2.DraftError,match='AUTHOR_TARGET_AUTHOR_PATH_UNSAFE_TARGET'):
         q2.validate_author_targets(tmp_path,_c3_plan(*spec['authors']),prompt=prompt)
     assert (tmp_path/'docs'/'real.md').read_bytes()==b'original'
+# --- TD-055 & TD-028 regression tests (alpha 2) ---
+
+def test_td055_fingerprint_includes_taskboard_archive(tmp_path):
+    assert 'taskboard_archive.py' in q2.FINGERPRINT_TOOLS
+    source = tmp_path / 'repo'
+    source.mkdir()
+    subprocess.run(['git', 'init', '-q', str(source)], check=True)
+    subprocess.run(['git', '-C', str(source), 'config', 'user.name', 'Q2'], check=True)
+    subprocess.run(['git', '-C', str(source), 'config', 'user.email', 'q2@example.test'], check=True)
+    (source / 'x').write_bytes(b'\n')
+    subprocess.run(['git', '-C', str(source), 'add', '.'], check=True)
+    subprocess.run(['git', '-C', str(source), 'commit', '-qm', 'base'], check=True)
+    scripts_dir = tmp_path / 'scripts'
+    scripts_dir.mkdir()
+    for name in q2.FINGERPRINT_TOOLS:
+        (scripts_dir / name).write_bytes(b'# ' + name.encode('utf-8') + b'\n')
+    patch = tmp_path / 'x.patch'
+    patch.write_bytes(b'patch')
+    plan = tmp_path / 'plan.json'
+    plan.write_bytes(b'{}')
+    before = q2.fingerprint(source, patch, plan, scripts_dir, tmp_path / 'w')
+    (scripts_dir / 'taskboard_archive.py').write_bytes(b'# mutated taskboard_archive\n')
+    after = q2.fingerprint(source, patch, plan, scripts_dir, tmp_path / 'w')
+    assert before['TOOL_SHA256'] != after['TOOL_SHA256']
+    assert before['CACHE_KEY_SHA256'] != after['CACHE_KEY_SHA256']
+
+
+def _pure_state_stage6_setup(tmp_path, monkeypatch, *, allowed_paths=None, spec_focused=None):
+    w = tmp_path / 'w'
+    for side in ('baseclone', 'candclone'):
+        (w / side / 'docs').mkdir(parents=True)
+    paths = list(allowed_paths) if allowed_paths is not None else ['docs/TASKBOARD.md', *q2.GENERATED]
+    d = {
+        'task_id': 'T-PURE',
+        'base_oid': _W_BASE,
+        'kind': 'production',
+        'code_files': {},
+        'new_files': {},
+        'focused': None,
+    }
+    (w / 'def.json').write_bytes(json.dumps(d).encode('utf-8'))
+    (w / 'plan.json').write_bytes(json.dumps({
+        'task_id': 'T-PURE',
+        'allowed_paths': paths,
+        'required_paths': paths,
+    }).encode('utf-8'))
+    (w / 'prompt.txt').write_bytes(b'pure state prompt\n')
+    spec = {
+        'kind': 'production',
+        'base_oid': _W_BASE,
+        'task_id': 'T-PURE',
+        'focused': spec_focused,
+        'authors': {'docs/TASKBOARD.md': {'source': {'kind': 'ops'}}},
+    }
+    monkeypatch.setattr(q2.batch_runner, 'prompt_lines', lambda b: [])
+    monkeypatch.setattr(q2.batch_runner, 'load_spec', lambda lines, task: spec)
+    calls = []
+
+    def fake(repo, args, junit_path, timeout):
+        calls.append(repo)
+        raise AssertionError('winemu_collect must not be called for pure-state focused=None')
+
+    monkeypatch.setattr(q2.batch_sim, 'winemu_collect', fake)
+    return w, calls
+
+
+def test_td028_pure_state_focused_none_returns_not_applicable(tmp_path, monkeypatch):
+    w, calls = _pure_state_stage6_setup(
+        tmp_path, monkeypatch,
+        allowed_paths=['docs/TASKBOARD.md', 'docs/notes.txt', *q2.GENERATED],
+    )
+    r = q2.winemu_stage(w, w / 'def.json', w / 'prompt.txt', w / 'plan.json', _W_BASE, timeout=60)
+    assert r['STATUS'] == 'NOT_APPLICABLE_NO_FOCUSED'
+    assert r['REASON'] == 'PURE_STATE_OR_DOCS_NO_CODE_TESTS'
+    assert r['EXTRA_FAIL_IDS'] == []
+    assert r['PYTEST_ARGS'] == []
+    assert calls == []
+
+
+@pytest.mark.parametrize('bad_path', [
+    'scripts/tool.py',
+    'scripts/data.json',
+    'runtime/channel-gateway/a.js',
+    '.github/workflows/verify.yml',
+    'docs/helper.py',
+    'shared/atomicFs.js',
+    '.githooks/pre-commit',
+    '.gitattributes',
+    'pyproject.toml',
+    'uv.lock',
+    'requirements.txt',
+    '.nvmrc',
+    'skills/execution/playwright-automation/run.js',
+    'docs/ops/tool.ps1',
+    'README.md',
+])
+def test_td028_code_or_runtime_path_with_focused_none_fails_closed(tmp_path, monkeypatch, bad_path):
+    w, calls = _pure_state_stage6_setup(tmp_path, monkeypatch, allowed_paths=[bad_path, *q2.GENERATED])
+    with pytest.raises(q2.DraftError, match='WINEMU_FOCUSED_REQUIRED_FOR_CODE'):
+        q2.winemu_stage(w, w / 'def.json', w / 'prompt.txt', w / 'plan.json', _W_BASE, timeout=60)
+    assert calls == []
+
+
+def test_td028_pure_state_spec_focused_non_none_fails_drift(tmp_path, monkeypatch):
+    w, calls = _pure_state_stage6_setup(
+        tmp_path, monkeypatch,
+        spec_focused={'pytest_args': ['-q', '-rs', _OLD], 'limit_sec': 1800},
+    )
+    with pytest.raises(q2.DraftError, match='WINEMU_FOCUSED_DRIFT'):
+        q2.winemu_stage(w, w / 'def.json', w / 'prompt.txt', w / 'plan.json', _W_BASE, timeout=60)
+    assert calls == []
+
+
+def test_td028_execute_records_stage6_not_applicable(tmp_path, monkeypatch, capsys):
+    source, patch, plan = _build_simulated_source(tmp_path)
+    (source / 'scripts' / 'batch_sim.py').write_bytes(b'# production marker\n')
+    subprocess.run(['git', '-C', str(source), 'add', '.'], check=True)
+    subprocess.run(['git', '-C', str(source), 'commit', '-qm', 'real marker'], check=True)
+    base = subprocess.check_output(['git', '-C', str(source), 'rev-parse', 'HEAD'], text=True).strip()
+    (source / 'docs' / 'TASKBOARD.md').write_bytes(b'# task\nprevious\nupdated\n')
+    patch.write_bytes(subprocess.check_output(['git', '-C', str(source), 'diff', '--binary', '--', 'docs/TASKBOARD.md']))
+    subprocess.run(['git', '-C', str(source), 'checkout', '--', 'docs/TASKBOARD.md'], check=True)
+    pj = {'task_id': 'B117-PURE-TEST-261123', 'base_oid': base,
+          'allowed_paths': ['docs/TASKBOARD.md', *q2.GENERATED],
+          'required_paths': ['docs/TASKBOARD.md', *q2.GENERATED]}
+    plan.write_bytes((json.dumps(pj, sort_keys=True) + '\n').encode('utf-8'))
+    d = {'task_id': 'B117-PURE-TEST-261123', 'base_oid': base, 'kind': 'production',
+         'code_files': {}, 'new_files': {}, 'focused': None}
+    def_path = tmp_path / 'definition.json'
+    def_path.write_bytes(json.dumps(d).encode('utf-8'))
+    prompt_path = tmp_path / 'prompt.txt'
+    prompt_path.write_bytes(b'pure state prompt\n')
+    spec = {'kind': 'production', 'base_oid': base, 'task_id': 'B117-PURE-TEST-261123',
+            'focused': None, 'authors': {'docs/TASKBOARD.md': {'source': {'kind': 'ops'}}}}
+    monkeypatch.setattr(q2.batch_runner, 'prompt_lines', lambda b: [])
+    monkeypatch.setattr(q2.batch_runner, 'load_spec', lambda lines, task: spec)
+    work = tmp_path / 'work'
+    rc = q2.main(['--source', str(source), '--patch', str(patch), '--plan', str(plan),
+                  '--definition', str(def_path), '--prompt', str(prompt_path), '--workdir', str(work)])
+    assert rc == 0
+    out = capsys.readouterr().out
+    assert 'DRAFT_PRECHECK STEP winemu_base_diff NOT_APPLICABLE_NO_FOCUSED' in out
+    assert 'DRAFT_PRECHECK RESULT SIX_STEPS_PASS' in out
+    result = json.loads((work / 'draft-result.json').read_bytes())
+    assert result['STAGE6'] == 'NOT_APPLICABLE'
+    assert result['completed'][-1]['details']['STATUS'] == 'NOT_APPLICABLE_NO_FOCUSED'
+
+
+def test_td028_validate_focused_binding_rejects_incomplete_changed_tests(tmp_path, monkeypatch):
+    w = tmp_path / 'w_incomplete'
+    cand_tests = w / 'candclone' / 'scripts' / 'tests'
+    cand_tests.mkdir(parents=True)
+    for rel_name in ('test_a.py', 'test_x.py'):
+        (cand_tests / rel_name).write_bytes(b'def test_one():\n    assert True\n')
+    d = {
+        'task_id': 'T-INCOMPLETE',
+        'base_oid': _W_BASE,
+        'kind': 'production',
+        'code_files': {'scripts/tests/test_a.py': 'a'},
+        'new_files': {},
+        'focused': None,
+    }
+    (w / 'def.json').write_bytes(json.dumps(d).encode('utf-8'))
+    allowed = ['scripts/tests/test_a.py', 'scripts/tests/test_x.py', *q2.GENERATED]
+    (w / 'plan.json').write_bytes(json.dumps({
+        'task_id': 'T-INCOMPLETE',
+        'allowed_paths': allowed,
+        'required_paths': allowed,
+    }).encode('utf-8'))
+    (w / 'prompt.txt').write_bytes(b'incomplete focused prompt\n')
+    import production_template
+    spec = {
+        'kind': 'production',
+        'base_oid': _W_BASE,
+        'task_id': 'T-INCOMPLETE',
+        'focused': production_template.canonical_focused(d),
+        'authors': {'scripts/tests/test_a.py': {'source': {'kind': 'ops'}}},
+    }
+    monkeypatch.setattr(q2.batch_runner, 'prompt_lines', lambda b: [])
+    monkeypatch.setattr(q2.batch_runner, 'load_spec', lambda lines, task: spec)
+    calls = []
+    monkeypatch.setattr(q2.batch_sim, 'winemu_collect', lambda *a, **kw: calls.append(a))
+
+    with pytest.raises(q2.DraftError, match='WINEMU_FOCUSED_INCOMPLETE'):
+        q2.validate_focused_binding(w, w / 'def.json', w / 'prompt.txt', w / 'plan.json', _W_BASE)
+    with pytest.raises(q2.DraftError, match='WINEMU_FOCUSED_INCOMPLETE'):
+        q2.winemu_stage(w, w / 'def.json', w / 'prompt.txt', w / 'plan.json', _W_BASE, timeout=60)
+    assert calls == []

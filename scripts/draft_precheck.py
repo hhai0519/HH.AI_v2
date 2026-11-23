@@ -30,6 +30,13 @@ import batch_runner
 import production_template
 
 STAGES = ('generate', 'as_if', 'base_diff_verify_all', 'traceability', 'check20', 'winemu_base_diff')
+FAST_STAGES = ('generate', 'as_if', 'traceability', 'check20', 'fast_validate')
+FAST_SKIPPED_FULL_STAGES = ('base_diff_verify_all', 'winemu_base_diff')
+FINGERPRINT_TOOLS = (
+    'draft_precheck.py', 'check_consistency.py', 'execution_record.py', 'fingerprint.py',
+    'verify_all.py', 'generate_rule_traceability.py', 'impact_scan.py', 'history_guard.py',
+    'batch_sim.py', 'production_template.py', 'prompt_builder.py', 'taskboard_archive.py',
+)
 GENERATED = ('docs/fingerprints/exec-latest.json', 'docs/governance/execution-record.json')
 STATUS = ('docs/AUDIT-LOG.md', 'docs/EXEC-LOG.md', 'docs/TASKBOARD.md', 'docs/refactor-backlog.md')
 HEX40 = re.compile(r'^[0-9a-f]{40}$')
@@ -138,9 +145,7 @@ def fail_ids(log_bytes):
     return sorted(set(FAIL_ID.findall(text)))
 
 def fingerprint(source, patch, plan, scripts_dir, workspace, *, definition=None, prompt=None):
-    tools = [scripts_dir / name for name in ('draft_precheck.py','check_consistency.py',
-             'execution_record.py','fingerprint.py','verify_all.py','generate_rule_traceability.py','impact_scan.py',
-             'history_guard.py','batch_sim.py','production_template.py','prompt_builder.py')]
+    tools = [scripts_dir / name for name in FINGERPRINT_TOOLS]
     tool_h=sha(json.dumps({p.name:sha_file(p) for p in tools},sort_keys=True).encode('utf8'))
     env_data={'os':platform.platform(),'python':sys.version, 'python_executable':sys.executable,
               'uid':getattr(os,'getuid',lambda:None)(), 'cwd_path_bytes':len(str(workspace).encode()),
@@ -386,8 +391,23 @@ def focused_test_paths(args):
     return paths
 
 
-def winemu_stage(work, definition, prompt, plan, base, *, timeout):
-    """Sixth stage: one canonical source, two isolated Windows-profile pytest runs."""
+# Allowlist (fail closed): only state documents under docs/ may go without a focused test set; any other path,
+# e.g. shared/*.js, .githooks/*, .gitattributes, pyproject.toml, uv.lock, .nvmrc or skills/**, may run as code.
+PURE_STATE_PREFIX = 'docs/'
+PURE_STATE_SUFFIXES = ('.md', '.json', '.txt')
+
+
+def _is_code_or_runtime_path(path):
+    return not (path.startswith(PURE_STATE_PREFIX) and path.endswith(PURE_STATE_SUFFIXES))
+
+
+def validate_focused_binding(work, definition, prompt, plan, base):
+    """Bind definition, prompt spec, and plan for Stage 6 winemu and --fast collect.
+
+    Returns None for pure-state/docs batches (every allowed_paths entry starts with PURE_STATE_PREFIX 'docs/'
+    and ends with PURE_STATE_SUFFIXES ('.md', '.json', '.txt'), and canonical_focused is None).
+    Fails closed (WINEMU_FOCUSED_REQUIRED_FOR_CODE) when any non-allowlisted path omits focused.
+    """
     d = json.loads(definition.read_bytes())
     pj = json.loads(plan.read_bytes())
     require(d.get('task_id') == pj.get('task_id') and d.get('base_oid') == base and
@@ -397,11 +417,36 @@ def winemu_stage(work, definition, prompt, plan, base, *, timeout):
     require(spec['kind'] == 'production' and spec['base_oid'] == base and
             spec['task_id'] == pj['task_id'], 'WINEMU_PROMPT_MISMATCH')
     expected = production_template.canonical_focused(d)
+    if expected is None:
+        require(spec.get('focused') is None, 'WINEMU_FOCUSED_DRIFT')
+        require(not any(_is_code_or_runtime_path(p) for p in pj['allowed_paths']),
+                'WINEMU_FOCUSED_REQUIRED_FOR_CODE')
+        return None
     require(expected == spec.get('focused') and isinstance(expected, dict), 'WINEMU_FOCUSED_DRIFT')
     args = expected['pytest_args']
     paths = focused_test_paths(args)
     changed_tests = {p for p in pj['allowed_paths'] if p.startswith('scripts/tests/') and p.endswith('.py')}
     require(changed_tests.issubset(paths), 'WINEMU_FOCUSED_INCOMPLETE')
+    for rel in paths:
+        require((work / 'candclone' / rel).is_file(), 'WINEMU_CAND_TARGET_MISSING')
+    return {'d': d, 'pj': pj, 'spec': spec, 'expected': expected,
+            'args': args, 'paths': paths, 'changed_tests': changed_tests}
+
+
+def winemu_stage(work, definition, prompt, plan, base, *, timeout):
+    """Sixth stage: one canonical source, two isolated Windows-profile pytest runs."""
+    binding = validate_focused_binding(work, definition, prompt, plan, base)
+    if binding is None:
+        return {
+            'STATUS': 'NOT_APPLICABLE_NO_FOCUSED',
+            'REASON': 'PURE_STATE_OR_DOCS_NO_CODE_TESTS',
+            'DEFINITION_SHA256': sha_file(definition),
+            'PROMPT_SHA256': sha_file(prompt),
+            'PYTEST_ARGS': [],
+            'EXTRA_FAIL_IDS': [],
+        }
+    d, pj, spec = binding['d'], binding['pj'], binding['spec']
+    args, paths, changed_tests = binding['args'], binding['paths'], binding['changed_tests']
     base_args = []
     excluded = []
     for arg in args:
@@ -457,139 +502,284 @@ def winemu_stage(work, definition, prompt, plan, base, *, timeout):
     return {'STATUS': 'PASS', **details}
 
 
-def execute(ns):
-    source=Path(ns.source).resolve(); patch=Path(ns.patch).resolve(); plan=Path(ns.plan).resolve(); work=Path(ns.workdir).resolve()
-    definition=Path(ns.definition).resolve() if ns.definition else None
-    prompt=Path(ns.prompt).resolve() if ns.prompt else None
-    require(source.is_dir() and (source/'.git').exists() and patch.is_file() and plan.is_file(), 'INPUT_MISSING')
+def _collected_by_file(stdout_bytes, expected_paths):
+    counts = {p: 0 for p in expected_paths}
+    total = 0
+    for raw_line in stdout_bytes.decode('utf-8', 'replace').splitlines():
+        line = raw_line.strip()
+        if '::' not in line:
+            continue
+        rel = line.split('::', 1)[0].replace('\\', '/')
+        if rel in counts:
+            counts[rel] += 1
+            total += 1
+    return total, counts
+
+
+def fast_validate_stage(work, definition, prompt, plan, base, *, synthetic, timeout):
+    """Fast-mode check: skills + focused binding + pytest collection (never replaces verify_all)."""
+    if synthetic:
+        return {'STATUS': 'SYNTHETIC_MINI_REPO_ONLY'}
+    cand = work / 'candclone'
+    rc, _ = cmd([sys.executable, 'scripts/validate_skills.py'], cand,
+                timeout=timeout, log=work / 'fast_validate-skills.log')
+    require(rc == 0, 'FAST_VALIDATE_SKILLS_NONZERO')
+    binding = validate_focused_binding(work, definition, prompt, plan, base)
+    if binding is None:
+        return {
+            'STATUS': 'NOT_APPLICABLE_NO_FOCUSED',
+            'SKILLS': 'PASS',
+            'COLLECT': 'NOT_APPLICABLE_NO_FOCUSED',
+            'DEFINITION_SHA256': sha_file(definition),
+            'PROMPT_SHA256': sha_file(prompt),
+            'PYTEST_ARGS': [],
+            'COLLECTED_BY_FILE': {},
+        }
+    paths = binding['paths']
+    env = {k: v for k, v in os.environ.items() if k != 'PYTEST_ADDOPTS'}
+    rc, out = cmd([sys.executable, '-m', 'pytest', '-p', 'no:cacheprovider', '--color=no',
+                   '--collect-only', '-q', *paths],
+                  cand, timeout=timeout, log=work / 'fast_validate-collect.log', env=env)
+    require(rc == 0, 'FAST_COLLECT_NONZERO')
+    total, counts = _collected_by_file(out, paths)
+    require(total > 0 and all(counts[p] > 0 for p in paths), 'FAST_COLLECT_EMPTY')
+    return {
+        'STATUS': 'PASS',
+        'SKILLS': 'PASS',
+        'COLLECT': 'PASS',
+        'COLLECTED_TOTAL': total,
+        'COLLECTED_BY_FILE': counts,
+        'DEFINITION_SHA256': sha_file(definition),
+        'PROMPT_SHA256': sha_file(prompt),
+        'PYTEST_ARGS': binding['args'],
+    }
+
+
+def _validate_inputs(ns):
+    source = Path(ns.source).resolve()
+    patch = Path(ns.patch).resolve()
+    plan = Path(ns.plan).resolve()
+    work = Path(ns.workdir).resolve()
+    definition = Path(ns.definition).resolve() if ns.definition else None
+    prompt = Path(ns.prompt).resolve() if ns.prompt else None
+    require(source.is_dir() and (source / '.git').exists() and patch.is_file() and plan.is_file(),
+            'INPUT_MISSING')
     # Production sources must supply both bound canonical files. Minimal unit fixtures are isolated below.
-    synthetic = not (source/'scripts'/'batch_sim.py').is_file()
-    require(synthetic or (definition is not None and prompt is not None and definition.is_file() and prompt.is_file()),
-            'WINEMU_BINDING_REQUIRED')
-    require(not any(source == p or source in p.parents for p in (patch,plan,work)), 'SOURCE_OVERLAP')
+    synthetic = not (source / 'scripts' / 'batch_sim.py').is_file()
+    require(synthetic or (definition is not None and prompt is not None and
+                          definition.is_file() and prompt.is_file()), 'WINEMU_BINDING_REQUIRED')
+    require(not any(source == p or source in p.parents for p in (patch, plan, work)), 'SOURCE_OVERLAP')
     require(not (work == source or work in source.parents or source in work.parents), 'WORKDIR_OVERLAP')
-    base=git(source,'rev-parse','HEAD')
+    base = git(source, 'rev-parse', 'HEAD')
     require(HEX40.fullmatch(base) is not None, 'BASE_OID_INVALID')
-    require(git(source,'rev-parse','--is-shallow-repository')=='false','SHALLOW_BASE')
-    require(not git(source,'status','--porcelain=v1','--untracked-files=all'),'BASE_DIRTY')
-    pj=json.loads(plan.read_bytes())
-    allowed=validate_plan(pj,base)
-    require(patch.stat().st_size <= 20*1024*1024, 'PATCH_OVERSIZED')
-    hashes=fingerprint(source,patch,plan,Path(__file__).resolve().parent,work,definition=definition,prompt=prompt)
-    journal=work/'draft-state.json'
-    if ns.resume:
-        require(journal.is_file(),'RESUME_STATE_MISSING')
-        state=json.loads(journal.read_bytes())
-        require(state.get('HASHES')==hashes,'RESUME_FINGERPRINT_CHANGED_NEW_WORKDIR_REQUIRED')
-        require([e['stage'] for e in state['completed']]==list(STAGES[:len(state['completed'])]),'RESUME_STATE_ORDER')
-        require((work/'candclone'/'.git').exists(),'RESUME_CLONE_MISSING')
-        assert_baseclone(work/'baseclone', base, state.get('BASECLONE_TREE_OID'))
-        require(candidate_digest(work) == state.get('CANDIDATE_DIFF_SHA256'), 'RESUME_CANDIDATE_DRIFT')
-        require(sha_file(work/'plan.json')==hashes['PLAN_SHA256'],'RESUME_PLAN_DRIFT')
-        for p,digest in state.get('GENERATED_SHA256',{}).items():
-            require(sha_file(work/'candclone'/p)==digest,'RESUME_GENERATED_DRIFT')
-        for info in state['completed']:
-            for log_name,digest in info.get('LOGS',{}).items():
-                require(sha_file(work/log_name)==digest,'RESUME_LOG_DRIFT')
-    else:
-        require(not work.exists() or (work.is_dir() and not any(work.iterdir())), 'WORKDIR_NOT_EMPTY')
-        work.mkdir(parents=True,exist_ok=True)
-        # Clone names have identical length (9 chars) to preserve long-path test parity.
-        # --no-local ensures objects are not shared; --template= avoids external hooks.
-        env={k:v for k,v in os.environ.items() if not k.upper().startswith('GIT_')}
-        env['GIT_CONFIG_NOSYSTEM']='1'
-        (work/'gitconfig').write_bytes(b'')
-        env['GIT_CONFIG_GLOBAL']=str(work/'gitconfig')
-        for name in ('baseclone','candclone'):
-            rc,_=cmd(['git','clone','-q','--no-local','--template=',str(source),str(work/name)],work,timeout=300,env=env)
-            require(rc==0,'CLONE_NONZERO')
-            require(git(work/name,'rev-parse','HEAD')==base,'CLONE_HEAD_DRIFT')
-        (work/'plan.json').write_bytes(plan.read_bytes())
-        assert_baseclone(work/'baseclone', base)
-        # C3: the runner's path guard precedes git apply and every generator.
-        validate_author_targets(work/'candclone', pj, prompt=prompt, synthetic=synthetic)
-        rc,_=cmd(['git','-C',str(work/'candclone'),'apply','--check',str(patch)],work)
-        require(rc==0,'PATCH_INVALID')
-        # Same whitespace rules as gate_runner's `git diff --check`, and it also sees new files
-        # (a plain diff --check cannot). Catch it here, not in the batch.
-        rc,_=cmd(['git','-C',str(work/'candclone'),'apply','--check','--whitespace=error',str(patch)],work,env=env)
-        require(rc==0,'PATCH_WHITESPACE')
-        rc,_=cmd(['git','-C',str(work/'candclone'),'apply',str(patch)],work)
-        require(rc==0,'PATCH_NONZERO')
-        # A patch can introduce a link even when the pre-apply target was safe.
-        # Recheck the exact runner targets before generators read the result.
-        validate_author_targets(work/'candclone', pj, prompt=prompt, synthetic=synthetic)
-        bad=lint_added_sha_labels(patch.read_bytes())
-        require(not bad,'SHA_FORMAT_LINT_FAILED')
-        changes=set(git(work/'candclone','diff','--name-only').splitlines())
-        changes.update(git(work/'candclone','ls-files','--others','--exclude-standard').splitlines())
-        require(changes.issubset(allowed) and changes and set(pj['required_paths'])-set(GENERATED)<=changes,'AUTHOR_SCOPE_MISMATCH')
-        require(not lint_python_newlines(work/'baseclone',work/'candclone',changes), 'NEWLINE_DIFF_LINT_FAILED')
-        state={'schema_version':1,'HASHES':hashes,'completed':[],'GENERATED_SHA256':{},
-               'CANDIDATE_DIFF_SHA256':candidate_digest(work),
-               'BASECLONE_TREE_OID':git(work/'baseclone','rev-parse','HEAD^{tree}')}
-        atomic_json(journal,state)
-    result_dir=work
-    for stage in STAGES[len(state['completed']):]:
-        if stage=='base_diff_verify_all':
-            assert_baseclone(work/'baseclone', base, state.get('BASECLONE_TREE_OID'))
-            logs={}
-            codes={}
-            for name in ('baseclone','candclone'):
-                logfile=work/(stage+'-'+name+'.log')
-                rc,_=cmd([sys.executable,'scripts/verify_all.py'],work/name,timeout=ns.timeout,log=logfile)
-                codes[name]=rc;logs[name]=parse_gate(logfile)
-            outcome=classify_base_candidate(codes['baseclone'],codes['candclone'],logs['baseclone'],logs['candclone'])
-            extra=sorted(set(logs['candclone']['FAIL_IDS'])-set(logs['baseclone']['FAIL_IDS']))
-            details={'STATUS':outcome,'BASE_RC':codes['baseclone'],'CAND_RC':codes['candclone'],
-                     'BASE_FAIL_IDS':logs['baseclone']['FAIL_IDS'],'CANDIDATE_FAIL_IDS':logs['candclone']['FAIL_IDS'],
-                     'EXTRA_FAIL_IDS':extra,'BASE_FAILED_GATES':logs['baseclone']['FAILED_GATES'],
-                     'CANDIDATE_FAILED_GATES':logs['candclone']['FAILED_GATES'],'BASE_LOG_SHA256':logs['baseclone']['LOG_SHA256'],
-                     'CANDIDATE_LOG_SHA256':logs['candclone']['LOG_SHA256']}
-        elif stage=='winemu_base_diff':
-            if synthetic:
-                details={'STATUS':'SYNTHETIC_MINI_REPO_ONLY'}  # Unit fixture, never a production clone.
-            else:
-                details=winemu_stage(work,definition,prompt,plan,base,timeout=ns.timeout)
+    require(git(source, 'rev-parse', '--is-shallow-repository') == 'false', 'SHALLOW_BASE')
+    require(not git(source, 'status', '--porcelain=v1', '--untracked-files=all'), 'BASE_DIRTY')
+    pj = json.loads(plan.read_bytes())
+    allowed = validate_plan(pj, base)
+    require(patch.stat().st_size <= 20 * 1024 * 1024, 'PATCH_OVERSIZED')
+    hashes = fingerprint(source, patch, plan, Path(__file__).resolve().parent, work,
+                         definition=definition, prompt=prompt)
+    return source, patch, plan, work, definition, prompt, synthetic, base, pj, allowed, hashes
+
+
+def _prepare_clones(source, patch, plan, work, definition, prompt, *, base, pj, allowed,
+                    synthetic, clone_names):
+    require(not work.exists() or (work.is_dir() and not any(work.iterdir())), 'WORKDIR_NOT_EMPTY')
+    work.mkdir(parents=True, exist_ok=True)
+    # Clone names have identical length (9 chars) to preserve long-path test parity.
+    # --no-local ensures objects are not shared; --template= avoids external hooks.
+    env = {k: v for k, v in os.environ.items() if not k.upper().startswith('GIT_')}
+    env['GIT_CONFIG_NOSYSTEM'] = '1'
+    (work / 'gitconfig').write_bytes(b'')
+    env['GIT_CONFIG_GLOBAL'] = str(work / 'gitconfig')
+    for name in clone_names:
+        rc, _ = cmd(['git', 'clone', '-q', '--no-local', '--template=', str(source), str(work / name)],
+                    work, timeout=300, env=env)
+        require(rc == 0, 'CLONE_NONZERO')
+        require(git(work / name, 'rev-parse', 'HEAD') == base, 'CLONE_HEAD_DRIFT')
+    (work / 'plan.json').write_bytes(plan.read_bytes())
+    if 'baseclone' in clone_names:
+        assert_baseclone(work / 'baseclone', base)
+    cand = work / 'candclone'
+    # C3: the runner's path guard precedes git apply and every generator.
+    validate_author_targets(cand, pj, prompt=prompt, synthetic=synthetic)
+    rc, _ = cmd(['git', '-C', str(cand), 'apply', '--check', str(patch)], work)
+    require(rc == 0, 'PATCH_INVALID')
+    # Same whitespace rules as gate_runner's `git diff --check`, and it also sees new files
+    # (a plain diff --check cannot). Catch it here, not in the batch.
+    rc, _ = cmd(['git', '-C', str(cand), 'apply', '--check', '--whitespace=error', str(patch)], work, env=env)
+    require(rc == 0, 'PATCH_WHITESPACE')
+    rc, _ = cmd(['git', '-C', str(cand), 'apply', str(patch)], work)
+    require(rc == 0, 'PATCH_NONZERO')
+    # A patch can introduce a link even when the pre-apply target was safe.
+    # Recheck the exact runner targets before generators read the result.
+    validate_author_targets(cand, pj, prompt=prompt, synthetic=synthetic)
+    bad = lint_added_sha_labels(patch.read_bytes())
+    require(not bad, 'SHA_FORMAT_LINT_FAILED')
+    changes = set(git(cand, 'diff', '--name-only').splitlines())
+    changes.update(git(cand, 'ls-files', '--others', '--exclude-standard').splitlines())
+    require(changes.issubset(allowed) and changes and set(pj['required_paths']) - set(GENERATED) <= changes,
+            'AUTHOR_SCOPE_MISMATCH')
+    newline_base = (work / 'baseclone') if 'baseclone' in clone_names else source
+    require(not lint_python_newlines(newline_base, cand, changes), 'NEWLINE_DIFF_LINT_FAILED')
+
+
+def execute_fast(ns):
+    started = time.monotonic()
+    require(not ns.resume, 'FAST_RESUME_NOT_ALLOWED')
+    source, patch, plan, work, definition, prompt, synthetic, base, pj, allowed, hashes = _validate_inputs(ns)
+    _prepare_clones(source, patch, plan, work, definition, prompt,
+                    base=base, pj=pj, allowed=allowed, synthetic=synthetic, clone_names=('candclone',))
+    completed = []
+    generated_sha = {}
+    for stage in FAST_STAGES:
+        if stage == 'fast_validate':
+            details = fast_validate_stage(work, definition, prompt, plan, base,
+                                          synthetic=synthetic, timeout=ns.timeout)
         else:
-            details=verify_stage(work/'candclone',stage,result_dir,timeout=ns.timeout)
-        if stage=='generate':
-            state['GENERATED_SHA256']=details['GENERATED_SHA256']
-        state['CANDIDATE_DIFF_SHA256']=candidate_digest(work)
-        written={p.name:sha_file(p) for p in sorted(work.glob(stage+'-*.log'))}
-        state['completed'].append({'stage':stage,'details':details,'LOGS':written})
-        atomic_json(journal,state)
-        print('DRAFT_PRECHECK STEP '+stage+' '+details.get('STATUS','PASS'),flush=True)
-    require(state['completed'][-1]['details']['STATUS'] in ('PASS','SYNTHETIC_MINI_REPO_ONLY'),
-            'WINEMU_STAGE_NOT_PASS')
-    state['STAGE6']='SYNTHETIC' if synthetic else 'REAL'
-    state['overall']='SIX_STEPS_PASS' if state['completed'][2]['details']['STATUS']=='VERIFY_ALL_PASS' else 'BASE_EQUIVALENT_NONZERO'
-    atomic_json(journal,state)
-    require(git(source,'rev-parse','HEAD')==base and not git(source,'status','--porcelain=v1','--untracked-files=all'), 'SOURCE_MODIFIED')
-    final=work/'draft-result.json'
-    atomic_json(final,state)
-    print('DRAFT_PRECHECK RESULT '+state['overall'])
-    for key in ('BASE_OID','AUTHOR_SHA256','PLAN_SHA256','TOOL_SHA256','ENV_SHA256','CACHE_KEY_SHA256'):
-        print(key+'='+hashes[key])
-    print('RESULT_JSON_SHA256='+sha_file(final))
+            details = verify_stage(work / 'candclone', stage, work, timeout=ns.timeout)
+        if stage == 'generate':
+            generated_sha = details['GENERATED_SHA256']
+        written = {p.name: sha_file(p) for p in sorted(work.glob(stage + '-*.log'))}
+        completed.append({'stage': stage, 'details': details, 'LOGS': written})
+        print('FAST_PRECHECK STEP ' + stage + ' ' + details.get('STATUS', 'PASS'), flush=True)
+    fast_status = completed[-1]['details']['STATUS']
+    require(fast_status in ('PASS', 'SYNTHETIC_MINI_REPO_ONLY', 'NOT_APPLICABLE_NO_FOCUSED'),
+            'FAST_VALIDATE_NOT_PASS')
+    require(git(source, 'rev-parse', 'HEAD') == base and
+            not git(source, 'status', '--porcelain=v1', '--untracked-files=all'), 'SOURCE_MODIFIED')
+    elapsed_sec = round(time.monotonic() - started, 3)
+    fast_result = {
+        'schema_version': 1,
+        'mode': 'FAST_ONLY_NOT_FULL_PRECHECK',
+        'replaces_full_precheck': False,
+        'overall': 'FAST_PRECHECK_PASS',
+        'skipped_full_stages': list(FAST_SKIPPED_FULL_STAGES),
+        'FAST_VALIDATE': ('SYNTHETIC' if synthetic else
+                          ('NOT_APPLICABLE' if fast_status == 'NOT_APPLICABLE_NO_FOCUSED' else 'REAL')),
+        'HASHES': hashes,
+        'GENERATED_SHA256': generated_sha,
+        'CANDIDATE_DIFF_SHA256': candidate_digest(work),
+        'elapsed_sec': elapsed_sec,
+        'completed': completed,
+    }
+    final = work / 'fast-result.json'
+    atomic_json(final, fast_result)
+    print('FAST_PRECHECK PASS')
+    for key in ('BASE_OID', 'AUTHOR_SHA256', 'PLAN_SHA256', 'TOOL_SHA256', 'ENV_SHA256', 'CACHE_KEY_SHA256'):
+        print(key + '=' + hashes[key])
+    print('FAST_RESULT_JSON_SHA256=' + sha_file(final))
+    print('FAST_ELAPSED_SEC=' + f'{elapsed_sec:.3f}')
     return 0
 
+
+def execute(ns):
+    if getattr(ns, 'fast', False):
+        return execute_fast(ns)
+    source, patch, plan, work, definition, prompt, synthetic, base, pj, allowed, hashes = _validate_inputs(ns)
+    journal = work / 'draft-state.json'
+    if ns.resume:
+        require(journal.is_file(), 'RESUME_STATE_MISSING')
+        state = json.loads(journal.read_bytes())
+        require(state.get('HASHES') == hashes, 'RESUME_FINGERPRINT_CHANGED_NEW_WORKDIR_REQUIRED')
+        require([e['stage'] for e in state['completed']] == list(STAGES[:len(state['completed'])]),
+                'RESUME_STATE_ORDER')
+        require((work / 'candclone' / '.git').exists(), 'RESUME_CLONE_MISSING')
+        assert_baseclone(work / 'baseclone', base, state.get('BASECLONE_TREE_OID'))
+        require(candidate_digest(work) == state.get('CANDIDATE_DIFF_SHA256'), 'RESUME_CANDIDATE_DRIFT')
+        require(sha_file(work / 'plan.json') == hashes['PLAN_SHA256'], 'RESUME_PLAN_DRIFT')
+        for p, digest in state.get('GENERATED_SHA256', {}).items():
+            require(sha_file(work / 'candclone' / p) == digest, 'RESUME_GENERATED_DRIFT')
+        for info in state['completed']:
+            for log_name, digest in info.get('LOGS', {}).items():
+                require(sha_file(work / log_name) == digest, 'RESUME_LOG_DRIFT')
+    else:
+        _prepare_clones(source, patch, plan, work, definition, prompt,
+                        base=base, pj=pj, allowed=allowed, synthetic=synthetic,
+                        clone_names=('baseclone','candclone'))
+        state = {'schema_version': 1, 'HASHES': hashes, 'completed': [], 'GENERATED_SHA256': {},
+                 'CANDIDATE_DIFF_SHA256': candidate_digest(work),
+                 'BASECLONE_TREE_OID': git(work / 'baseclone', 'rev-parse', 'HEAD^{tree}')}
+        atomic_json(journal, state)
+    result_dir = work
+    for stage in STAGES[len(state['completed']):]:
+        if stage == 'base_diff_verify_all':
+            assert_baseclone(work / 'baseclone', base, state.get('BASECLONE_TREE_OID'))
+            logs = {}
+            codes = {}
+            for name in ('baseclone', 'candclone'):
+                logfile = work / (stage + '-' + name + '.log')
+                rc, _ = cmd([sys.executable, 'scripts/verify_all.py'], work / name,
+                            timeout=ns.timeout, log=logfile)
+                codes[name] = rc
+                logs[name] = parse_gate(logfile)
+            outcome = classify_base_candidate(codes['baseclone'], codes['candclone'],
+                                              logs['baseclone'], logs['candclone'])
+            extra = sorted(set(logs['candclone']['FAIL_IDS']) - set(logs['baseclone']['FAIL_IDS']))
+            details = {'STATUS': outcome, 'BASE_RC': codes['baseclone'], 'CAND_RC': codes['candclone'],
+                       'BASE_FAIL_IDS': logs['baseclone']['FAIL_IDS'],
+                       'CANDIDATE_FAIL_IDS': logs['candclone']['FAIL_IDS'],
+                       'EXTRA_FAIL_IDS': extra,
+                       'BASE_FAILED_GATES': logs['baseclone']['FAILED_GATES'],
+                       'CANDIDATE_FAILED_GATES': logs['candclone']['FAILED_GATES'],
+                       'BASE_LOG_SHA256': logs['baseclone']['LOG_SHA256'],
+                       'CANDIDATE_LOG_SHA256': logs['candclone']['LOG_SHA256']}
+        elif stage == 'winemu_base_diff':
+            if synthetic:
+                details = {'STATUS': 'SYNTHETIC_MINI_REPO_ONLY'}  # Unit fixture, never a production clone.
+            else:
+                details = winemu_stage(work, definition, prompt, plan, base, timeout=ns.timeout)
+        else:
+            details = verify_stage(work / 'candclone', stage, result_dir, timeout=ns.timeout)
+        if stage == 'generate':
+            state['GENERATED_SHA256'] = details['GENERATED_SHA256']
+        state['CANDIDATE_DIFF_SHA256'] = candidate_digest(work)
+        written = {p.name: sha_file(p) for p in sorted(work.glob(stage + '-*.log'))}
+        state['completed'].append({'stage': stage, 'details': details, 'LOGS': written})
+        atomic_json(journal, state)
+        print('DRAFT_PRECHECK STEP ' + stage + ' ' + details.get('STATUS', 'PASS'), flush=True)
+    stage6_status = state['completed'][-1]['details']['STATUS']
+    require(stage6_status in ('PASS', 'SYNTHETIC_MINI_REPO_ONLY', 'NOT_APPLICABLE_NO_FOCUSED'),
+            'WINEMU_STAGE_NOT_PASS')
+    if synthetic:
+        state['STAGE6'] = 'SYNTHETIC'
+    elif stage6_status == 'NOT_APPLICABLE_NO_FOCUSED':
+        state['STAGE6'] = 'NOT_APPLICABLE'
+    else:
+        state['STAGE6'] = 'REAL'
+    state['overall'] = ('SIX_STEPS_PASS' if state['completed'][2]['details']['STATUS'] == 'VERIFY_ALL_PASS'
+                        else 'BASE_EQUIVALENT_NONZERO')
+    atomic_json(journal, state)
+    require(git(source, 'rev-parse', 'HEAD') == base and
+            not git(source, 'status', '--porcelain=v1', '--untracked-files=all'), 'SOURCE_MODIFIED')
+    final = work / 'draft-result.json'
+    atomic_json(final, state)
+    print('DRAFT_PRECHECK RESULT ' + state['overall'])
+    for key in ('BASE_OID', 'AUTHOR_SHA256', 'PLAN_SHA256', 'TOOL_SHA256', 'ENV_SHA256', 'CACHE_KEY_SHA256'):
+        print(key + '=' + hashes[key])
+    print('RESULT_JSON_SHA256=' + sha_file(final))
+    return 0
+
+
 def main(argv=None):
-    p=argparse.ArgumentParser(description='Q2 five-step auditor-only draft precheck; never commits or pushes')
-    p.add_argument('--source',required=True)
-    p.add_argument('--patch',required=True)
-    p.add_argument('--plan',required=True)
-    p.add_argument('--workdir',required=True)
-    p.add_argument('--resume',action='store_true')
+    p = argparse.ArgumentParser(description='Q2 auditor-only draft precheck; never commits or pushes')
+    p.add_argument('--source', required=True)
+    p.add_argument('--patch', required=True)
+    p.add_argument('--plan', required=True)
+    p.add_argument('--workdir', required=True)
+    p.add_argument('--resume', action='store_true')
+    p.add_argument('--fast', action='store_true')
     p.add_argument('--definition')
     p.add_argument('--prompt')
-    p.add_argument('--timeout',type=int,default=1800)
-    args=p.parse_args(argv)
+    p.add_argument('--timeout', type=int, default=1800)
+    args = p.parse_args(argv)
     try:
         return execute(args)
     except (DraftError, OSError, ValueError, UnicodeError, json.JSONDecodeError) as e:
-        print('DRAFT_PRECHECK FAIL '+(str(e) if isinstance(e,DraftError) else type(e).__name__))
+        prefix = 'FAST_PRECHECK FAIL ' if args.fast else 'DRAFT_PRECHECK FAIL '
+        print(prefix + (str(e) if isinstance(e, DraftError) else type(e).__name__))
         return 1
 
-if __name__=='__main__':
+
+if __name__ == '__main__':
     sys.exit(main())

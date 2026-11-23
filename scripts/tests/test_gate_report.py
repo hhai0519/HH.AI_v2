@@ -607,7 +607,8 @@ def test_end_to_end_grouped_run_the_listed_count_equals_failures_plus_errors(tmp
     env[gate4_groups.LOCAL_GATE_ENV] = str(tmp_path / 'T-local-gates.txt.precommit-run1-gate4.raw')
     lines = []
     rc = gate4_groups.run_grouped([sys.executable, '-m', 'pytest', str(tests), '-q'], env, str(tmp_path), cpu_count=8,
-                                  timings_path=str(tmp_path / 'none.json'), sequential=(), out=lines.append)
+                                  timings_path=str(tmp_path / 'none.json'), sequential=(), out=lines.append,
+                                  tmp_parent=str(tmp_path))
     text = '\n'.join(lines)
     assert rc == 1
     result = next(l for l in lines if l.startswith('GATE4_GROUPS_RESULT'))

@@ -1,5 +1,5 @@
 {
-  "base_head": "9cb34eb",
+  "base_head": "3ee29c8",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -576,16 +576,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 432,
-      "sha256": "46a79a9eda77ac824aeba726677d2387a590ce44e6a2892398dfe78aa8a23010"
+      "lines": 433,
+      "sha256": "58cb01a71e38fb4511e8c6f07b0ee5e0b085da4153703c32352864601c8dd657"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 402,
-      "sha256": "b5b6fd1e8ed2fc40719394a142ce53a0cdb51520f7df073d4886b6270d2a0c21"
+      "lines": 403,
+      "sha256": "3fce5f520b6df39d6e0b2d13937af0316bd1d0cd5077c25e4e775c80aaec7754"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -628,7 +628,7 @@
         "## 封存區"
       ],
       "lines": 459,
-      "sha256": "18bc1a4786c0782a7134a1d6da92b67f13d4b567e3d9a45399d07c004a9132e7"
+      "sha256": "5f24416bbadce42747ed4054012cc92ecc7c1554e046c194c53935314a484801"
     },
     "docs/TODO-LEDGER.md": {
       "fences": 0,
@@ -640,8 +640,8 @@
         "## 四、盤點範圍與方法",
         "## 五、清冊"
       ],
-      "lines": 179,
-      "sha256": "b1c6ff7e3e03fc11e9e0780992d7487af0baaba217a30ff0c4672233c201c725"
+      "lines": 184,
+      "sha256": "61779cd8f98c1a04af773f695d28c9f9197c958e78729dd0f8f42fb1c545d986"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1150,8 +1150,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6488,
-      "sha256": "cf903b901dd2b1ac95b3f25abda84bcde3c79025a95516ac4168ecae87435265"
+      "lines": 6489,
+      "sha256": "e4a7d0d9983fe2cd71257bd78251ee9e9844798ed115b01d0aa37173e087a4e8"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1342,10 +1342,12 @@
       "fences": 0,
       "headings": [
         "# -*- coding: utf-8 -*-",
-        "# Canonical tree-bounded runner; a timeout never leaves live pytest descendants by design."
+        "# Canonical tree-bounded runner; a timeout never leaves live pytest descendants by design.",
+        "# Allowlist (fail closed): only state documents under docs/ may go without a focused test set; any other path,",
+        "# e.g. shared/*.js, .githooks/*, .gitattributes, pyproject.toml, uv.lock, .nvmrc or skills/**, may run as code."
       ],
-      "lines": 595,
-      "sha256": "036427fa83a20cfa100ab9d970db88b0edc0191b4596323212daf1ca9aee19c4"
+      "lines": 785,
+      "sha256": "76fe0ebf01bf518380e1ef4afaf74594d9efe371c7d9e24cb1e555fd928ab3f1"
     },
     "scripts/execution_record.py": {
       "fences": 0,
@@ -1963,10 +1965,19 @@
         "# 2026-10-17 E27 B1-B4 / N1 focused negative controls.",
         "# B-123b-lite sixth-stage / changed-line regression contract, including C-1/C-2.",
         "# --- SO E27 reference tests: sixth-stage decision logic must be regression-tested in-repo. ---",
-        "# B-115/G3 C3: runner-equivalent author target guards before git apply or generate."
+        "# B-115/G3 C3: runner-equivalent author target guards before git apply or generate.",
+        "# --- TD-055 & TD-028 regression tests (alpha 2) ---"
       ],
-      "lines": 823,
-      "sha256": "34ffe7743a0f7377bb7ec68621fb9e704aa5eb96731bd58dc4b12bd4290704d1"
+      "lines": 1011,
+      "sha256": "62df75b4f868c77018f52b1cc2e5a55e41cd8182372ad029ea99778b8c177f52"
+    },
+    "scripts/tests/test_draft_precheck_fast.py": {
+      "fences": 0,
+      "headings": [
+        "# -*- coding: utf-8 -*-"
+      ],
+      "lines": 446,
+      "sha256": "0b9c1d11e817c8b1f81d64aebe6916881f4ede45b37262be8e1d96d21ffba0cf"
     },
     "scripts/tests/test_execution_record.py": {
       "fences": 0,
@@ -2018,8 +2029,8 @@
         "#        failure prints one fixed line and never changes the gate result           test_record_*",
         "#   C12e verify_all hands its start time to the grouped run                         test_verify_all_passes_*"
       ],
-      "lines": 640,
-      "sha256": "c2bc4744842da4b4c049a0414b25d64deaa70989f52658d099fa023605bba93d"
+      "lines": 692,
+      "sha256": "e99306e412b81a59c0368fdca995f6606161a16eeaa348988f1564b416925bd1"
     },
     "scripts/tests/test_gate_durations.py": {
       "fences": 0,
@@ -2035,8 +2046,8 @@
         "# -*- coding: utf-8 -*-",
         "# Variables that change how pytest prints; every test starts without them and adds exactly the form under test."
       ],
-      "lines": 165,
-      "sha256": "f62ff97de03afdb92708ec0bffd68fee0ae436ece075b92300caa01a7a152e06"
+      "lines": 166,
+      "sha256": "aef7cd10b0dd2e9f85b808f9fa7317aa068b848320adfa4884b7c2a6dab1cab0"
     },
     "scripts/tests/test_gate_report.py": {
       "fences": 0,
@@ -2050,8 +2061,8 @@
         "# ---- R10 ----------------------------------------------------------------------------------------------------------",
         "# ---- R11: B1 / N1 of the alpha 1 second opinion (every FAILED/ERROR row counted, reduced names, progress kept) ----------"
       ],
-      "lines": 623,
-      "sha256": "110b2a27a33d0aadb0fb9e438465674d57a75d6aad8334d7f5f359fa339cc593"
+      "lines": 624,
+      "sha256": "566f249f3aeb0c0ae82f0516eef748f90022e0f3d1ee864a03e77906a66c85ce"
     },
     "scripts/tests/test_gate_report_windows_form.py": {
       "fences": 0,
@@ -2592,7 +2603,7 @@
       "sha256": "8597e282fed71298b01430659fae7cdfedf4a20f8be0267d662f8f1da8ff23e8"
     }
   },
-  "generated_at": "2026-11-22T16:25:37Z",
+  "generated_at": "2026-11-23T12:54:11Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

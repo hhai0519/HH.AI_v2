@@ -83,7 +83,8 @@ def run_grouped_sample(tmp_path, extra_env, extra_args):
     env[gate4_groups.LOCAL_GATE_ENV] = str(tmp_path / 'T-local-gates.txt.precommit-run1-gate4.raw')
     lines = []
     rc = gate4_groups.run_grouped([sys.executable, '-m', 'pytest', str(tests), '-q'] + extra_args, env, str(tmp_path),
-                                  cpu_count=8, timings_path=str(tmp_path / 'none.json'), sequential=(), out=lines.append)
+                                  cpu_count=8, timings_path=str(tmp_path / 'none.json'), sequential=(), out=lines.append,
+                                  tmp_parent=str(tmp_path))
     return rc, lines
 
 

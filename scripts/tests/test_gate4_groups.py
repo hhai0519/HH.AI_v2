@@ -13,6 +13,7 @@ Commitment -> test table (E27):
   C10 real processes end to end (pass, failing group, missing JUnit)               test_real_*
   C11 calibration of the timing table                                              test_calibrate_*
 """
+import ast
 import json
 import os
 import re
@@ -638,3 +639,54 @@ def test_verify_all_passes_its_start_time_to_the_grouped_run(monkeypatch):
     monkeypatch.setattr(verify_all.gate4_groups, 'run_grouped', lambda cmd, env, cwd, **kw: seen.update(kw) or 0)
     assert verify_all.run_gate(unit_gate(), {g.LOCAL_GATE_ENV: 'x.raw'}, REPO_ROOT) == 0
     assert seen == {'started': verify_all.START} and isinstance(verify_all.START, float)
+def _run_grouped_missing_tmp_parent(source_text, filename='<mem>'):
+    """Return AST call sites to run_grouped(...) lacking an explicit non-None tmp_parent=."""
+    tree = ast.parse(source_text, filename=filename)
+    bad = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        func = node.func
+        name = func.attr if isinstance(func, ast.Attribute) else (func.id if isinstance(func, ast.Name) else None)
+        if name != 'run_grouped':
+            continue
+        kws = [kw for kw in node.keywords if kw.arg == 'tmp_parent']
+        if len(kws) != 1 or (isinstance(kws[0].value, ast.Constant) and kws[0].value.value is None):
+            bad.append((filename, node.lineno))
+    return bad
+
+
+def test_all_repo_test_calls_to_run_grouped_pass_explicit_tmp_parent():
+    """TD-125 mechanical regression guard: every run_grouped() call in scripts/tests must pass tmp_parent."""
+    tests_dir = os.path.join(REPO_ROOT, 'scripts', 'tests')
+    violations = []
+    seen_files = set()
+    total_calls = 0
+    for entry in sorted(os.listdir(tests_dir)):
+        if not entry.endswith('.py'):
+            continue
+        full = os.path.join(tests_dir, entry)
+        with open(full, 'r', encoding='utf-8') as fh:
+            content = fh.read()
+        tree = ast.parse(content, filename=entry)
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Call):
+                func = node.func
+                name = func.attr if isinstance(func, ast.Attribute) else (func.id if isinstance(func, ast.Name) else None)
+                if name == 'run_grouped':
+                    seen_files.add(entry)
+                    total_calls += 1
+        violations.extend(_run_grouped_missing_tmp_parent(content, entry))
+    assert len(seen_files) >= 3 and total_calls >= 8
+    assert violations == []
+
+
+def test_run_grouped_tmp_parent_guard_catches_missing_and_none_calls():
+    bad_attr = 'gate4_groups.run_grouped(cmd, env, cwd, out=lines.append)\n'
+    bad_direct = 'run_grouped(cmd, env, cwd)\n'
+    bad_none = 'gate4_groups.run_grouped(cmd, env, cwd, tmp_parent=None)\n'
+    good = 'gate4_groups.run_grouped(cmd, env, cwd, tmp_parent=str(tmp_path))\n'
+    assert _run_grouped_missing_tmp_parent(bad_attr, 'a.py') == [('a.py', 1)]
+    assert _run_grouped_missing_tmp_parent(bad_direct, 'b.py') == [('b.py', 1)]
+    assert _run_grouped_missing_tmp_parent(bad_none, 'c.py') == [('c.py', 1)]
+    assert _run_grouped_missing_tmp_parent(good, 'd.py') == []
