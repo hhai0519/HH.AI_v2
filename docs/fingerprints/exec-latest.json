@@ -1,5 +1,5 @@
 {
-  "base_head": "3ee29c8",
+  "base_head": "753df1e",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -576,16 +576,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 433,
-      "sha256": "58cb01a71e38fb4511e8c6f07b0ee5e0b085da4153703c32352864601c8dd657"
+      "lines": 434,
+      "sha256": "4c3d516d569cf90f02219c4766b0edf9aba5812f41c48a43b7938d1606474cb6"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 403,
-      "sha256": "3fce5f520b6df39d6e0b2d13937af0316bd1d0cd5077c25e4e775c80aaec7754"
+      "lines": 404,
+      "sha256": "d425f6b82b2d8899b86e483d1af5b147bf8c65ae5600bd80ec79ca81c4c32e3c"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -628,7 +628,7 @@
         "## 封存區"
       ],
       "lines": 459,
-      "sha256": "5f24416bbadce42747ed4054012cc92ecc7c1554e046c194c53935314a484801"
+      "sha256": "1af8af293cc371c2a19556af892ff173683c2280db15b16a0ea2cf672ce2c19e"
     },
     "docs/TODO-LEDGER.md": {
       "fences": 0,
@@ -640,8 +640,8 @@
         "## 四、盤點範圍與方法",
         "## 五、清冊"
       ],
-      "lines": 184,
-      "sha256": "61779cd8f98c1a04af773f695d28c9f9197c958e78729dd0f8f42fb1c545d986"
+      "lines": 185,
+      "sha256": "3a7b9664cbab1e56c655642ab7f2f66e243b6b5e2ea531efe535641cd4888149"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1150,8 +1150,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6489,
-      "sha256": "e4a7d0d9983fe2cd71257bd78251ee9e9844798ed115b01d0aa37173e087a4e8"
+      "lines": 6490,
+      "sha256": "2cd1d58d4484a8aeeb95b295169ec518e43b0ad7d6c12d09dae967f3da04cba8"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1322,8 +1322,8 @@
         "# owner 須為未完成之看板任務）。任何輸入缺失、畸形或讀取失敗一律判定失敗。",
         "# ---------------------------------------------------------------------------"
       ],
-      "lines": 4063,
-      "sha256": "8aa1bb46036e0528c6d258b54fcce06ff1be089f447e9c5d243b37962f2e3460"
+      "lines": 4100,
+      "sha256": "6e0d3a34118e1a29312f85b09913618649d7c166cf24b523da7791d53512f53c"
     },
     "scripts/delivery_pack.py": {
       "fences": 0,
@@ -1346,8 +1346,8 @@
         "# Allowlist (fail closed): only state documents under docs/ may go without a focused test set; any other path,",
         "# e.g. shared/*.js, .githooks/*, .gitattributes, pyproject.toml, uv.lock, .nvmrc or skills/**, may run as code."
       ],
-      "lines": 785,
-      "sha256": "76fe0ebf01bf518380e1ef4afaf74594d9efe371c7d9e24cb1e555fd928ab3f1"
+      "lines": 832,
+      "sha256": "1380a765ab368137aa2ba6fbf2622eb12f526109d50fb0bf08ba00544af339d5"
     },
     "scripts/execution_record.py": {
       "fences": 0,
@@ -1594,6 +1594,14 @@
       ],
       "lines": 527,
       "sha256": "5a9de50ed82b02bfced3d853c71c0333a6b7fe20b5ae17ff848595bdc019f97d"
+    },
+    "scripts/s1_registry.py": {
+      "fences": 0,
+      "headings": [
+        "# -*- coding: utf-8 -*-"
+      ],
+      "lines": 580,
+      "sha256": "a82a611200eea5f1dd0eb159a7066ef560e7fb65e79332168cb324c8d90f094b"
     },
     "scripts/secret_presence.py": {
       "fences": 0,
@@ -1939,10 +1947,13 @@
         "# and must not stop scanning the rest of the table at such a row.",
         "# ---------------------------------------------------------------------------",
         "# CHECK 30 Tests: TASKBOARD single-line markers (B-117 G7-b2)",
+        "# ---------------------------------------------------------------------------",
+        "# ---------------------------------------------------------------------------",
+        "# CHECK 31 Tests: S1 Root-Cause Registry Guard (B-117 D8 / TD-101)",
         "# ---------------------------------------------------------------------------"
       ],
-      "lines": 3020,
-      "sha256": "36a906088b767019730d8efb353d1a56ccb41be7c72bf5f183c378811f136382"
+      "lines": 3040,
+      "sha256": "76a641f140f4ba3f83582adea127cb40494819fee43f25328072cbd9fde5cb27"
     },
     "scripts/tests/test_delivery_pack.py": {
       "fences": 0,
@@ -1966,10 +1977,11 @@
         "# B-123b-lite sixth-stage / changed-line regression contract, including C-1/C-2.",
         "# --- SO E27 reference tests: sixth-stage decision logic must be regression-tested in-repo. ---",
         "# B-115/G3 C3: runner-equivalent author target guards before git apply or generate.",
-        "# --- TD-055 & TD-028 regression tests (alpha 2) ---"
+        "# --- TD-055 & TD-028 regression tests (alpha 2) ---",
+        "# --- Beta 1 (D8 / TD-101): FINGERPRINT_TOOLS s1_registry & S1_REGISTRY_SUMMARY ---"
       ],
-      "lines": 1011,
-      "sha256": "62df75b4f868c77018f52b1cc2e5a55e41cd8182372ad029ea99778b8c177f52"
+      "lines": 1051,
+      "sha256": "f1e1a7f801d53e99fb5834859a2bddee630f13c842628d028c871e270f56d3cf"
     },
     "scripts/tests/test_draft_precheck_fast.py": {
       "fences": 0,
@@ -2321,6 +2333,14 @@
       "lines": 469,
       "sha256": "c45099dcde423947d9d082cb1783462b9467c47619ea47a0927c223dbda187dd"
     },
+    "scripts/tests/test_s1_registry.py": {
+      "fences": 0,
+      "headings": [
+        "# -*- coding: utf-8 -*-"
+      ],
+      "lines": 408,
+      "sha256": "5fd47b229640370592ac67021a0c9803ecdb258e03adb777268b6c2cca31828e"
+    },
     "scripts/tests/test_secret_detection_matrix.py": {
       "fences": 0,
       "headings": [
@@ -2531,7 +2551,7 @@
         "# ==========================================================================="
       ],
       "lines": 747,
-      "sha256": "3af70431123896dd523226860789654777ffd7ddcda3acd3d01e272543fad05a"
+      "sha256": "32139e5560dbde96913afb58a4bf9df8efa1c33b6641e4f310f601c5ca849a68"
     },
     "scripts/tests/test_verify_all.py": {
       "fences": 0,
@@ -2603,7 +2623,7 @@
       "sha256": "8597e282fed71298b01430659fae7cdfedf4a20f8be0267d662f8f1da8ff23e8"
     }
   },
-  "generated_at": "2026-11-23T12:54:11Z",
+  "generated_at": "2026-11-24T00:04:34Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

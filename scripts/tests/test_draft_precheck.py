@@ -1009,3 +1009,43 @@ def test_td028_validate_focused_binding_rejects_incomplete_changed_tests(tmp_pat
     with pytest.raises(q2.DraftError, match='WINEMU_FOCUSED_INCOMPLETE'):
         q2.winemu_stage(w, w / 'def.json', w / 'prompt.txt', w / 'plan.json', _W_BASE, timeout=60)
     assert calls == []
+
+# --- Beta 1 (D8 / TD-101): FINGERPRINT_TOOLS s1_registry & S1_REGISTRY_SUMMARY ---
+
+def test_beta1_fingerprint_includes_s1_registry(tmp_path):
+    assert 's1_registry.py' in q2.FINGERPRINT_TOOLS
+    source = tmp_path / 'repo'
+    source.mkdir()
+    subprocess.run(['git', 'init', '-q', str(source)], check=True)
+    subprocess.run(['git', '-C', str(source), 'config', 'user.name', 'Q2'], check=True)
+    subprocess.run(['git', '-C', str(source), 'config', 'user.email', 'q2@example.test'], check=True)
+    (source / 'x').write_bytes(b'\n')
+    subprocess.run(['git', '-C', str(source), 'add', '.'], check=True)
+    subprocess.run(['git', '-C', str(source), 'commit', '-qm', 'base'], check=True)
+    scripts_dir = tmp_path / 'scripts'
+    scripts_dir.mkdir()
+    for name in q2.FINGERPRINT_TOOLS:
+        (scripts_dir / name).write_bytes(b'# ' + name.encode('utf-8') + b'\n')
+    patch = tmp_path / 'x.patch'
+    patch.write_bytes(b'patch')
+    plan = tmp_path / 'plan.json'
+    plan.write_bytes(b'{}')
+    before = q2.fingerprint(source, patch, plan, scripts_dir, tmp_path / 'w')
+    (scripts_dir / 's1_registry.py').write_bytes(b'# mutated s1_registry\n')
+    after = q2.fingerprint(source, patch, plan, scripts_dir, tmp_path / 'w')
+    assert before['TOOL_SHA256'] != after['TOOL_SHA256']
+    assert before['CACHE_KEY_SHA256'] != after['CACHE_KEY_SHA256']
+
+
+def test_beta1_s1_registry_summary_printed_when_present_and_omitted_when_absent(tmp_path):
+    empty_repo = tmp_path / 'no_reg'
+    empty_repo.mkdir()
+    assert q2._collect_s1_registry_summary(empty_repo) is None
+
+    cand_reg = Path(__file__).resolve().parents[2] / 'docs' / 'governance' / 's1-registry.json'
+    if cand_reg.is_file():
+        res = q2._collect_s1_registry_summary(Path(__file__).resolve().parents[2])
+        assert res is not None
+        data, lines = res
+        assert data['total'] == 25
+        assert any(l.startswith('S1_REGISTRY_SUMMARY total=25') for l in lines)

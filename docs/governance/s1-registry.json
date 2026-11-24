@@ -1,0 +1,880 @@
+{
+  "schema": 2,
+  "updated": "2026-11-23",
+  "about": "S1 根因登記檔（schema 2，D8／TD-101 移入 repo；B117-BETA1-S1-REGISTRY-R2-261124）。格式、A 至 F 根因分類優先序、雙源切換與 CHECK 31 規範見 docs/ops/d8-s1-registry.md。status：fixed（填 fixedIn 與 fixedCommit）、planned（填 plannedIn）、unplanned（填 followUp）、accepted（填 reason）。confirmed=false 表示尚待審查官確認（搬移時維持原值，不因 commit 一併轉為 true）；既有 21 筆 confirmed=false 之補分類由審查官依原文判定。既有修正相關欄位暫留本檔以維持 Dashboard 相容切換，新增後續追蹤亦應以選用欄位 todoIds 對應 docs/TODO-LEDGER.md。",
+  "classes": {
+    "precedence": [
+      "A",
+      "B",
+      "D",
+      "C",
+      "E",
+      "F"
+    ],
+    "rule": "依根因機制而非發生平台分類（例如 Windows 上發生之牆鐘或行程樹競態仍歸 A 類、而非 C 類）。若一項 S1 同時符合多類定義，依優先序 A → B → D → C → E → F 取最高優先單一類別。UNCLASSIFIED 僅供自動產生之暫定草稿使用，不計入 A 至 F 同類統計，須由審查官補分類。",
+    "definitions": {
+      "A": {
+        "label": "測試時序、牆鐘與競態",
+        "description": "固定睡眠等待、過短逾時門檻、工作執行緒／行程樹結束競態或牆鐘／mtime 毫秒邊界誤差。"
+      },
+      "B": {
+        "label": "第 4 關總時間預算與負載",
+        "description": "第 4 關整體 verify_all 超出單閘門或 runner 總時間上限。"
+      },
+      "D": {
+        "label": "工具輸出形式隨環境變數改變",
+        "description": "CI、BUILD_NUMBER、FORCE_COLOR、PY_COLORS、詳細度或 PYTEST_ADDOPTS 改變工具終端輸出形式而使解析截斷或漏列。"
+      },
+      "C": {
+        "label": "Windows 與跨平台環境、換行、編碼與路徑差異",
+        "description": "Windows 文字模式 CRLF、stderr 換行警告、cp950 編碼、PATH／Python 版本／symlink 權限、Git 路徑轉義或反斜線路徑分隔差異。"
+      },
+      "E": {
+        "label": "流程准入、步驟順序與狀態同步節奏",
+        "description": "控制檔重入、precontrol／native_preview 與 STEP_IN_PROGRESS 步驟時序或前置檢查漏欄。"
+      },
+      "F": {
+        "label": "外部網路、平台基礎設施或未明根因",
+        "description": "CI runner 下載或平台基礎設施異常，或現有證據不足以判定機制之未明根因。"
+      },
+      "UNCLASSIFIED": {
+        "label": "暫定未分類草稿",
+        "description": "僅供自動草稿暫存尚未分類之原因；不計入 A 至 F 同類統計，摘要會另行列出並提醒補分類。"
+      }
+    }
+  },
+  "causes": [
+    {
+      "id": "S1C-001",
+      "title": "Windows 上 0.5 秒真實逾時的測試遇 taskkill 競態回 125 而非 124，提交前驗證失敗（同類第二次）",
+      "tasks": [
+        "B117-G7B3A2-RECORDS-MOVE2-261118"
+      ],
+      "status": "fixed",
+      "class": "A",
+      "fixedIn": "B117-G7B3A2-RECORDS-MOVE2-R3-261118",
+      "fixedCommit": "5dc5105",
+      "fixedBy": {
+        "B117-G7B3A2-RECORDS-MOVE2-261118": "B117-G7B3A2-RECORDS-MOVE2-R3-261118（5dc5105）"
+      },
+      "watch": [
+        "precommit:PRECOMMIT_NONZERO"
+      ],
+      "followUp": {
+        "plannedIn": "G6（看板 G6 列之短期限真實進程樹逾時測試類別待辦；批次紀錄（b3a2-六））",
+        "note": "測試修正與測試端守衛已落地；Windows 測試 lint 尚未落地，守衛殘餘寫法（helper 寫死短期限、lambda、*a/**k 轉傳、兩層 helper、字串串接）尚未擋"
+      },
+      "evidence": "看板批次紀錄 B117-G7B3A2-RECORDS-MOVE2-R3-261118 第八、九點（失敗測試、124／125 根因、證據雜湊、保全 ref）；commit 5dc5105",
+      "plannedIn": null,
+      "by": "第二意見 2026-11-19（逐筆對照 repo 原文與 git 歷史重新核對）",
+      "verified": {
+        "by": "第二意見",
+        "date": "2026-11-19",
+        "basis": "repo main 5dc5105188ccd2601a6eac4b1dfbf56c282b7309 之看板、封存紀錄、AUDIT-LOG、EXEC-LOG 原文與 git 歷史"
+      },
+      "confirmed": false,
+      "distinctFrom": [
+        "S1C-006",
+        "S1C-007",
+        "S1C-008"
+      ],
+      "distinctBy": "第二意見 2026-11-20 依兩者登記標題判定：機制不同，只是同一個關卡代碼；待審查官確認",
+      "todoIds": [
+        "TD-081",
+        "TD-096"
+      ]
+    },
+    {
+      "id": "S1C-002",
+      "title": "測試以 write_text 寫夾具，Windows 文字模式產生 CRLF，與工具或 runner 的 LF 契約不一致",
+      "tasks": [
+        "B115-PROMPT-BUILDER-S1-R1-261009",
+        "B118-F5-REF-PREFLIGHT-R3-261016",
+        "B119-G1-C9-GOV012-REPAIR-R1-261021",
+        "B115-G3-CI-PENDING-REPLY-R2-261108"
+      ],
+      "status": "planned",
+      "class": "C",
+      "plannedIn": "B-123（G6）：寫檔一律位元組或明定 newline 之 repo 檢查（負例含 write_text 與 open 文字寫入）、Windows CI 跑 scripts/tests（B-123b）",
+      "fixedBy": {
+        "B115-PROMPT-BUILDER-S1-R1-261009": "B115-PROMPT-BUILDER-S1-R3-261009（44c46c9）",
+        "B118-F5-REF-PREFLIGHT-R3-261016": "B118-F5-REF-PREFLIGHT-R5-261016（7f7878d）",
+        "B119-G1-C9-GOV012-REPAIR-R1-261021": "B119-G1-C9-GOV012-REPAIR-R4-261023（f3e3e68）",
+        "B115-G3-CI-PENDING-REPLY-R2-261108": "B115-G3-CI-PENDING-REPLY-R4-261108（e2a9ac4）"
+      },
+      "watch": [
+        "focused:FOCUSED_NONZERO",
+        "precommit:PRECOMMIT_NONZERO"
+      ],
+      "followUp": {
+        "plannedIn": "B-123（G6）",
+        "note": "每次都在下一版修正該測試；部分緩解：B123B-G6-WINEMU-LITE-R2-261109（ffba639）的交付前模擬會檢查換行，之後未再發生；repo 端攔截檢查尚未落地"
+      },
+      "evidence": "看板 B-115、B-118、B-123 列；B-115/G3 R2 S1 前向事故登錄（2026-11-08）；封存紀錄 RECORDS-0001（GOV012 R1：DEFINITION_CRLF）",
+      "fixedIn": null,
+      "by": "第二意見 2026-11-19（逐筆對照 repo 原文與 git 歷史重新核對）",
+      "verified": {
+        "by": "第二意見",
+        "date": "2026-11-19",
+        "basis": "repo main 5dc5105188ccd2601a6eac4b1dfbf56c282b7309 之看板、封存紀錄、AUDIT-LOG、EXEC-LOG 原文與 git 歷史"
+      },
+      "confirmed": false,
+      "distinctFrom": [
+        "S1C-005",
+        "S1C-006",
+        "S1C-007"
+      ],
+      "distinctBy": "第二意見 2026-11-20 依兩者登記標題判定：機制不同，只是同一個關卡代碼；待審查官確認",
+      "todoIds": [
+        "TD-004"
+      ]
+    },
+    {
+      "id": "S1C-003",
+      "title": "runner 把 git 的 stderr（換行轉換警告）併入要解析的輸出，被當成路徑",
+      "tasks": [
+        "SEC02-INC2-EXACT-REPAIR-R2-261008"
+      ],
+      "status": "fixed",
+      "class": "C",
+      "fixedIn": "B107-RUNNER-S1-261008",
+      "fixedCommit": "1951dc6",
+      "fixedBy": {
+        "SEC02-INC2-EXACT-REPAIR-R2-261008": "SEC02-INC2-EXACT-REPAIR-R3-261008（2c3a3c1）"
+      },
+      "watch": [
+        "generate:ACTUAL_SCOPE_MISMATCH"
+      ],
+      "evidence": "看板 SEC-02 列第（2）點；EXEC-LOG SEC02 R3 列；canonical runner 1951dc6 起「stdout 與 stderr 分開，只解析 stdout」（現行 scripts/batch_runner.py run()）",
+      "plannedIn": null,
+      "by": "第二意見 2026-11-19（逐筆對照 repo 原文與 git 歷史重新核對）",
+      "verified": {
+        "by": "第二意見",
+        "date": "2026-11-19",
+        "basis": "repo main 5dc5105188ccd2601a6eac4b1dfbf56c282b7309 之看板、封存紀錄、AUDIT-LOG、EXEC-LOG 原文與 git 歷史"
+      },
+      "confirmed": false
+    },
+    {
+      "id": "S1C-004",
+      "title": "Windows 專屬：測試依賴主機環境（符號連結權限 WinError 1314、唯讀物件、Git 系統與全域設定）",
+      "tasks": [
+        "B115-B119-READONLY-CONTRACT-R7-261021",
+        "B119-G1-C9-S1-RECOVERY-TOOL-R2-261024",
+        "B116-B115-T1-CHANGE-LEDGER-R2-261025",
+        "B123A-SIM-GIT-PROFILE-R2-261030"
+      ],
+      "status": "planned",
+      "class": "C",
+      "plannedIn": "B-123b（G6）：Windows CI 執行 scripts/tests；排程（四）降低版 G6",
+      "fixedBy": {
+        "B115-B119-READONLY-CONTRACT-R7-261021": "B115-B119-READONLY-CONTRACT-R8-261021（e9a9e02）",
+        "B119-G1-C9-S1-RECOVERY-TOOL-R2-261024": "B119-G1-C9-S1-RECOVERY-TOOL-R3-261024（8320b0d）",
+        "B116-B115-T1-CHANGE-LEDGER-R2-261025": "B116-B115-T1-CHANGE-LEDGER-R3-261025（7936e0b）",
+        "B123A-SIM-GIT-PROFILE-R2-261030": "B123A-SIM-GIT-PROFILE-R4-261030（1948045）"
+      },
+      "watch": [
+        "focused:FOCUSED_NONZERO"
+      ],
+      "followUp": {
+        "plannedIn": "B-123b（G6）",
+        "note": "每次都在下一版修正；已落地 B-123a（B123A-SIM-GIT-PROFILE-R4，審查官端模擬隔離 Git 設定）與 B123B-G6-WINEMU-LITE；Windows CI 跑 scripts/tests 尚未落地"
+      },
+      "evidence": "看板 B-123 列（同類第一到第五例）；封存紀錄 RECORDS-0001（R7、RECOVERY-TOOL R2、CHANGE-LEDGER R2）",
+      "fixedIn": null,
+      "by": "第二意見 2026-11-19（逐筆對照 repo 原文與 git 歷史重新核對）",
+      "verified": {
+        "by": "第二意見",
+        "date": "2026-11-19",
+        "basis": "repo main 5dc5105188ccd2601a6eac4b1dfbf56c282b7309 之看板、封存紀錄、AUDIT-LOG、EXEC-LOG 原文與 git 歷史"
+      },
+      "confirmed": false,
+      "distinctFrom": [
+        "S1C-005"
+      ],
+      "distinctBy": "第二意見 2026-11-20 依兩者登記標題判定：機制不同，只是同一個關卡代碼；待審查官確認",
+      "todoIds": [
+        "TD-050"
+      ]
+    },
+    {
+      "id": "S1C-005",
+      "title": "focused 子程序沒有設 PYTHONUTF8，Windows cp950 與 UTF-8 子程序交換文字失敗",
+      "tasks": [
+        "B107-SCOPED-RULES-S5-261009"
+      ],
+      "status": "fixed",
+      "class": "C",
+      "fixedIn": "B107-RUNNER-UPDATE-S6-R1-261009",
+      "fixedCommit": "1f09c6d",
+      "fixedBy": {
+        "B107-SCOPED-RULES-S5-261009": "B107-SCOPED-RULES-S5-R2-261009（dfe88d6；測試固定 UTF-8）"
+      },
+      "watch": [
+        "focused:FOCUSED_NONZERO"
+      ],
+      "evidence": "看板 B-107 列（根因為 runner focused 子程序只設 PYTHONIOENCODING）；1f09c6d 起 runner child_env 另設 PYTHONUTF8=1（現行 scripts/batch_runner.py child_env()）",
+      "plannedIn": null,
+      "by": "第二意見 2026-11-19（逐筆對照 repo 原文與 git 歷史重新核對）",
+      "verified": {
+        "by": "第二意見",
+        "date": "2026-11-19",
+        "basis": "repo main 5dc5105188ccd2601a6eac4b1dfbf56c282b7309 之看板、封存紀錄、AUDIT-LOG、EXEC-LOG 原文與 git 歷史"
+      },
+      "confirmed": false
+    },
+    {
+      "id": "S1C-006",
+      "title": "Executor 終端機實際用 Python 3.15 且沒有 pytest，不是預期的執行環境",
+      "tasks": [
+        "B116-AUD-TAKEOVER-STATE-R1-261030",
+        "B116-AUD-GPT6-POSTMAIN-STATE-R2-261031"
+      ],
+      "status": "fixed",
+      "class": "C",
+      "fixedIn": "B117-G5-RUNTIME-ADMISSION-R3-261101",
+      "fixedCommit": "0a66895",
+      "fixedBy": {
+        "B116-AUD-TAKEOVER-STATE-R1-261030": "B116-AUD-TAKEOVER-STATE-R2-261030",
+        "B116-AUD-GPT6-POSTMAIN-STATE-R2-261031": "B116-AUD-GPT6-POSTMAIN-STATE-R3-261101"
+      },
+      "watch": [
+        "precommit:PRECOMMIT_NONZERO"
+      ],
+      "evidence": "看板 G5 列 F-AUD-01；封存紀錄 RECORDS-0001（R2：sys.executable 為 C:\\Python315 且缺 pytest）；0a66895「fail-closed production runtime admission before task control」（scripts/runtime_readiness.py）",
+      "plannedIn": null,
+      "by": "第二意見 2026-11-19（逐筆對照 repo 原文與 git 歷史重新核對）",
+      "verified": {
+        "by": "第二意見",
+        "date": "2026-11-19",
+        "basis": "repo main 5dc5105188ccd2601a6eac4b1dfbf56c282b7309 之看板、封存紀錄、AUDIT-LOG、EXEC-LOG 原文與 git 歷史"
+      },
+      "confirmed": false
+    },
+    {
+      "id": "S1C-007",
+      "title": "第 4 關 verify_all 超過單閘門時限 1800 秒（TIMEOUT／TREE_KILL）",
+      "tasks": [
+        "B117-G5-SAVECONTROL-ATOMIC-R2-261107"
+      ],
+      "status": "fixed",
+      "fixedIn": "B117-G5-SAVECONTROL-ATOMIC-R3-261107",
+      "fixedCommit": "56d40e3",
+      "fixedBy": {
+        "B117-G5-SAVECONTROL-ATOMIC-R2-261107": "B117-G5-SAVECONTROL-ATOMIC-R3-261107（56d40e3）"
+      },
+      "watch": [
+        "precommit:PRECOMMIT_NONZERO"
+      ],
+      "followUp": {
+        "plannedIn": "本機第 4 關 xdist 試驗（G7-b3b 之後）；（b2-二）第二門檻與最慢測試清單",
+        "note": "上限改為 3600 秒並有 70% 預警；近期 3051–3122 秒（約 85–87%），觸發線 3240 秒"
+      },
+      "evidence": "封存紀錄 RECORDS-0001「G5 R3 閘門逾時 S1 根除與 D-2 合批」；56d40e3 bounded gate budgets",
+      "plannedIn": null,
+      "by": "第二意見 2026-11-19（逐筆對照 repo 原文與 git 歷史重新核對）",
+      "verified": {
+        "by": "第二意見",
+        "date": "2026-11-19",
+        "basis": "repo main 5dc5105188ccd2601a6eac4b1dfbf56c282b7309 之看板、封存紀錄、AUDIT-LOG、EXEC-LOG 原文與 git 歷史"
+      },
+      "confirmed": false,
+      "distinctFrom": [
+        "S1C-006"
+      ],
+      "distinctBy": "第二意見 2026-11-20 依兩者登記標題判定：機制不同，只是同一個關卡代碼；待審查官確認",
+      "class": "B",
+      "todoIds": [
+        "TD-048",
+        "TD-079",
+        "TD-083"
+      ]
+    },
+    {
+      "id": "S1C-008",
+      "title": "Python 的 Windows 進程樹逾時測試期限太短（test_timeout_is_failure），提交前驗證偶發失敗（同類第一次）",
+      "tasks": [
+        "B115-G3-F-S1-TIMING-GATE-WARN-R2-261110"
+      ],
+      "status": "fixed",
+      "class": "A",
+      "fixedIn": "B115-G3-F-S1-TIMING-GATE-WARN-R4-261110",
+      "fixedCommit": "239c909",
+      "fixedBy": {
+        "B115-G3-F-S1-TIMING-GATE-WARN-R2-261110": "B115-G3-F-S1-TIMING-GATE-WARN-R4-261110（239c909）"
+      },
+      "watch": [
+        "precommit:PRECOMMIT_NONZERO"
+      ],
+      "followUp": {
+        "plannedIn": "G6（同 S1C-001）",
+        "note": "R4 改為 10 秒並加 AST 期限守衛；同類第二次即 S1C-001"
+      },
+      "evidence": "refactor-backlog「F R2 S1 前向事故」；239c909「stabilize two Windows tree timeout tests and close launcher guard gaps」",
+      "plannedIn": null,
+      "by": "第二意見 2026-11-19（逐筆對照 repo 原文與 git 歷史重新核對）",
+      "verified": {
+        "by": "第二意見",
+        "date": "2026-11-19",
+        "basis": "repo main 5dc5105188ccd2601a6eac4b1dfbf56c282b7309 之看板、封存紀錄、AUDIT-LOG、EXEC-LOG 原文與 git 歷史"
+      },
+      "confirmed": false,
+      "distinctFrom": [
+        "S1C-006",
+        "S1C-007"
+      ],
+      "distinctBy": "第二意見 2026-11-20 依兩者登記標題判定：機制不同，只是同一個關卡代碼；待審查官確認",
+      "todoIds": [
+        "TD-081",
+        "TD-086"
+      ]
+    },
+    {
+      "id": "S1C-009",
+      "title": "B-100 R-H：關閉測試以固定 1000 ms 上限斷言 owner.stop，GitHub Windows runner 實測 1639 ms 失敗",
+      "tasks": [
+        "B107-G4-S2-MUST-READ-R1-261010"
+      ],
+      "status": "fixed",
+      "class": "A",
+      "fixedIn": "B100-RH-ORDERING-R1-261011",
+      "fixedCommit": "22bc0d7",
+      "fixedBy": {
+        "B107-G4-S2-MUST-READ-R1-261010": "同 SHA 依 D-R4 單次重跑後晉級；根因修正於 B100-RH-ORDERING-R1-261011（22bc0d7）"
+      },
+      "watch": [
+        "push:CANDIDATE_CI_NOT_PASS"
+      ],
+      "evidence": "看板 B-107 列（Candidate Run 38054987247 attempt 1 唯一失敗）；22bc0d7「shutdown counterexamples assert event order instead of wall-clock bounds (B-100 R-H)」",
+      "plannedIn": null,
+      "by": "第二意見 2026-11-19（逐筆對照 repo 原文與 git 歷史重新核對）",
+      "verified": {
+        "by": "第二意見",
+        "date": "2026-11-19",
+        "basis": "repo main 5dc5105188ccd2601a6eac4b1dfbf56c282b7309 之看板、封存紀錄、AUDIT-LOG、EXEC-LOG 原文與 git 歷史"
+      },
+      "confirmed": false
+    },
+    {
+      "id": "S1C-010",
+      "title": "CI 用 Python 3.11、本機與審查官用 3.14：Path.lstat 行為不同，monkeypatch 在 3.11 換不到",
+      "tasks": [
+        "B117-G5-WINDOWS-NATIVE-REHEARSAL-R3-261111"
+      ],
+      "status": "fixed",
+      "class": "C",
+      "fixedIn": "B117-CI-PY314-UVCACHE-R3-261112",
+      "fixedCommit": "4e92ed4",
+      "fixedBy": {
+        "B117-G5-WINDOWS-NATIVE-REHEARSAL-R3-261111": "B117-G5-WINDOWS-NATIVE-REHEARSAL-R4-261111（1408f6a；改回 os.lstat 並加測試）"
+      },
+      "watch": [
+        "push:CANDIDATE_CI_NOT_PASS"
+      ],
+      "evidence": "封存紀錄 RECORDS-0002 G5 段（USER 決定 D-CI-PY 甲）；4e92ed4「align CI on Python 3.14」，CI 與專案 Python 版本不一致即 FAIL",
+      "plannedIn": null,
+      "by": "第二意見 2026-11-19（逐筆對照 repo 原文與 git 歷史重新核對）",
+      "verified": {
+        "by": "第二意見",
+        "date": "2026-11-19",
+        "basis": "repo main 5dc5105188ccd2601a6eac4b1dfbf56c282b7309 之看板、封存紀錄、AUDIT-LOG、EXEC-LOG 原文與 git 歷史"
+      },
+      "confirmed": false,
+      "distinctFrom": [
+        "S1C-009",
+        "S1C-020"
+      ],
+      "distinctBy": "第二意見 2026-11-20 依兩者登記標題判定：機制不同，只是同一個關卡代碼；待審查官確認"
+    },
+    {
+      "id": "S1C-011",
+      "title": "native_preview 來源快照把資料夾自身的時間與大小納入比對，Windows 上誤報 SOURCE_MODIFIED",
+      "tasks": [
+        "B117-G5-BRANCH-MATCH-R2-261115"
+      ],
+      "status": "fixed",
+      "class": "C",
+      "fixedIn": "B117-G5-BRANCH-MATCH-R4-261115",
+      "fixedCommit": "9d13530",
+      "fixedBy": {
+        "B117-G5-BRANCH-MATCH-R2-261115": "B117-G5-BRANCH-MATCH-R4-261115（9d13530）"
+      },
+      "watch": [
+        "native_preview:NATIVE_PREVIEW_SOURCE_MODIFIED"
+      ],
+      "evidence": "AUDIT-LOG「INCIDENT-S1 native_preview 目錄 metadata 誤報」列；9d13530「source snapshot ignores plain directory metadata」",
+      "plannedIn": null,
+      "by": "第二意見 2026-11-19（逐筆對照 repo 原文與 git 歷史重新核對）",
+      "verified": {
+        "by": "第二意見",
+        "date": "2026-11-19",
+        "basis": "repo main 5dc5105188ccd2601a6eac4b1dfbf56c282b7309 之看板、封存紀錄、AUDIT-LOG、EXEC-LOG 原文與 git 歷史"
+      },
+      "confirmed": false
+    },
+    {
+      "id": "S1C-012",
+      "title": "Executor 在上一步還沒結束時就呼叫下一步（setup 准入 STEP_ORDER_VIOLATION）",
+      "tasks": [
+        "B117-G5-AUTHOR-GUARDS-R1-261113"
+      ],
+      "status": "fixed",
+      "class": "E",
+      "fixedIn": "B117-G5B2-RUN-ONLY-R2-261116",
+      "fixedCommit": "c7fdd34",
+      "fixedBy": {
+        "B117-G5-AUTHOR-GUARDS-R1-261113": "B117-G5-AUTHOR-GUARDS-R3-261114（87734ab）"
+      },
+      "watch": [
+        "setup:STEP_ORDER_VIOLATION"
+      ],
+      "evidence": "AUDIT-LOG「INCIDENT-S1 commit 准入 STEP_IN_PROGRESS」（同類第二次）；265450c 先加診斷，c7fdd34 起 Executor 只執行一個 run 命令，不再逐步呼叫",
+      "plannedIn": null,
+      "by": "第二意見 2026-11-19（逐筆對照 repo 原文與 git 歷史重新核對）",
+      "verified": {
+        "by": "第二意見",
+        "date": "2026-11-19",
+        "basis": "repo main 5dc5105188ccd2601a6eac4b1dfbf56c282b7309 之看板、封存紀錄、AUDIT-LOG、EXEC-LOG 原文與 git 歷史"
+      },
+      "confirmed": false,
+      "todoIds": [
+        "TD-005",
+        "TD-007",
+        "TD-015"
+      ]
+    },
+    {
+      "id": "S1C-013",
+      "title": "提交後完整驗證時 Windows 的 T12 本機 API 測試遇晚到的 socket 錯誤（傳輸競態）",
+      "tasks": [
+        "B119-N7N8-POSTMAIN-STATE-R1-261018"
+      ],
+      "status": "fixed",
+      "class": "A",
+      "fixedIn": "B119-POSTMAIN-STATE-R3-T12-261018",
+      "fixedCommit": "a8afa9f",
+      "fixedBy": {
+        "B119-N7N8-POSTMAIN-STATE-R1-261018": "B119-POSTMAIN-STATE-R3-T12-261018（a8afa9f；R1 永不重跑）"
+      },
+      "watch": [
+        "postcommit:POSTCOMMIT_NONZERO"
+      ],
+      "evidence": "看板 B-119 列「2026-10-18 S1 前向紀錄」；AUDIT-LOG N7／N8 列；a8afa9f「fix Windows T12 late socket errors」",
+      "plannedIn": null,
+      "by": "第二意見 2026-11-19（逐筆對照 repo 原文與 git 歷史重新核對）",
+      "verified": {
+        "by": "第二意見",
+        "date": "2026-11-19",
+        "basis": "repo main 5dc5105188ccd2601a6eac4b1dfbf56c282b7309 之看板、封存紀錄、AUDIT-LOG、EXEC-LOG 原文與 git 歷史"
+      },
+      "confirmed": false,
+      "distinctFrom": [
+        "S1C-014"
+      ],
+      "distinctBy": "第二意見 2026-11-20 依兩者登記標題判定：機制不同，只是同一個關卡代碼；待審查官確認"
+    },
+    {
+      "id": "S1C-014",
+      "title": "提交後 CHECK 16：EXEC-LOG 最後一列與 HEAD 相隔 2 個 commit",
+      "tasks": [
+        "DOC-TABLE-REPAIR-R1-261013"
+      ],
+      "status": "fixed",
+      "class": "E",
+      "fixedIn": "B116-CHECK16-PREGUARD-R1-261014",
+      "fixedCommit": "682fe86",
+      "fixedBy": {
+        "DOC-TABLE-REPAIR-R1-261013": "DOC-TABLE-REPAIR-R2-261013（8795c62）"
+      },
+      "watch": [
+        "postcommit:POSTCOMMIT_NONZERO"
+      ],
+      "evidence": "EXEC-LOG DOC-TABLE-REPAIR-R2 列；682fe86「CHECK16 prospective pre-commit guard」：提交前先以 CHECK 16 邏輯預查",
+      "plannedIn": null,
+      "by": "第二意見 2026-11-19（逐筆對照 repo 原文與 git 歷史重新核對）",
+      "verified": {
+        "by": "第二意見",
+        "date": "2026-11-19",
+        "basis": "repo main 5dc5105188ccd2601a6eac4b1dfbf56c282b7309 之看板、封存紀錄、AUDIT-LOG、EXEC-LOG 原文與 git 歷史"
+      },
+      "confirmed": false
+    },
+    {
+      "id": "S1C-015",
+      "title": "前一批的作者檔還沒還原就起跑，runner 依設計拒絕（SETUP_DIRTY）",
+      "tasks": [
+        "B107-SCOPED-RULES-S5-R1-261009"
+      ],
+      "status": "accepted",
+      "class": "E",
+      "reason": "runner 在任何修改前正確擋下；之後以 S1 恢復工具（B119-G1-C9-S1-RECOVERY-TOOL-R3，8320b0d）、回 Base 前守衛（B119-G1-C9-PREBASE-GUARD-R1，eedc84d）與「工作區回 Base」單一區塊預防，10/09 之後未再發生",
+      "watch": [
+        "setup:SETUP_DIRTY"
+      ],
+      "evidence": "EXEC-LOG B107-SCOPED-RULES-S5 列（R1 SETUP_DIRTY，前批作者檔尚未還原）",
+      "fixedIn": null,
+      "plannedIn": null,
+      "by": "第二意見 2026-11-19（逐筆對照 repo 原文與 git 歷史重新核對）",
+      "verified": {
+        "by": "第二意見",
+        "date": "2026-11-19",
+        "basis": "repo main 5dc5105188ccd2601a6eac4b1dfbf56c282b7309 之看板、封存紀錄、AUDIT-LOG、EXEC-LOG 原文與 git 歷史"
+      },
+      "confirmed": false
+    },
+    {
+      "id": "S1C-016",
+      "title": "審查官未先核對已執行狀態就以同一 TASK_ID 重新定稿，作廢版提示詞被執行（preflight 必讀區塊無效）",
+      "tasks": [
+        "B107-G4-S2-MUST-READ-R2-261010"
+      ],
+      "status": "planned",
+      "class": "E",
+      "plannedIn": "審查工具批：G3 D 交付唯一性（同 TASK_ID 不同 SHA 拒絕；看板排程（三））；B-112",
+      "watch": [
+        "preflight:MUST_READ_BLOCK_INVALID"
+      ],
+      "followUp": {
+        "plannedIn": "看板排程（三）審查工具批",
+        "note": "過渡規則已在 repo：位元組改變即換新 TASK_ID（refactor-backlog §5.3 第 21 項）；機械拒絕尚未落地"
+      },
+      "evidence": "看板 B-107 列（2026-10-10 G4 切片 2）與 B-112 列；AUDIT-LOG 流程事故列",
+      "fixedIn": null,
+      "by": "第二意見 2026-11-19（逐筆對照 repo 原文與 git 歷史重新核對）",
+      "verified": {
+        "by": "第二意見",
+        "date": "2026-11-19",
+        "basis": "repo main 5dc5105188ccd2601a6eac4b1dfbf56c282b7309 之看板、封存紀錄、AUDIT-LOG、EXEC-LOG 原文與 git 歷史"
+      },
+      "confirmed": false
+    },
+    {
+      "id": "S1C-017",
+      "title": "晉級批 verify 步驟 git fetch 失敗（FETCH_FAILED）；當時 runner 不輸出失敗分類，原因無法判定",
+      "tasks": [
+        "PROMOTE-B107-ASSURANCE-S3-261009"
+      ],
+      "status": "unplanned",
+      "class": "F",
+      "outcomes": {
+        "PROMOTE-B107-ASSURANCE-S3-261009": "改以 PROMOTE-B107-ASSURANCE-S3-R1 重出並推送；同 SHA 已在 main（972acd8）"
+      },
+      "watch": [
+        "verify:FETCH_FAILED"
+      ],
+      "followUp": {
+        "plannedIn": "持續追蹤（未排程）",
+        "note": "根因 UNKNOWN、之後未再發生；1f09c6d 起 runner 失敗時輸出 exit 與固定分類（classify_failure），再發生即可判定"
+      },
+      "evidence": "看板 B-107 列（遠端未變更，原因 UNKNOWN）；AUDIT-LOG 972acd82 列",
+      "fixedIn": null,
+      "plannedIn": null,
+      "by": "第二意見 2026-11-19（逐筆對照 repo 原文與 git 歷史重新核對）",
+      "verified": {
+        "by": "第二意見",
+        "date": "2026-11-19",
+        "basis": "repo main 5dc5105188ccd2601a6eac4b1dfbf56c282b7309 之看板、封存紀錄、AUDIT-LOG、EXEC-LOG 原文與 git 歷史"
+      },
+      "confirmed": false
+    },
+    {
+      "id": "S1C-018",
+      "title": "起跑時工作區仍停在前一個未晉級的候選（864e4b98），起點與提示詞不同（SETUP_HEAD_DRIFT）",
+      "tasks": [
+        "B118-F5-REF-PREFLIGHT-R1-261015"
+      ],
+      "status": "accepted",
+      "class": "E",
+      "reason": "runner 在建立分支前正確擋下、未修改任何檔案；之後以「前一候選未晉級時必附工作區回 Base 守衛區塊」（通用版第九節）與回 Base 前守衛（B119-G1-C9-PREBASE-GUARD-R1，eedc84d）預防，10/16 之後未再發生",
+      "watch": [
+        "setup:SETUP_HEAD_DRIFT"
+      ],
+      "followUp": {
+        "plannedIn": "建議（未排程）",
+        "note": "*_HEAD_DRIFT 停止時輸出預期與實際 HEAD，讓同類停止直接看得出原因"
+      },
+      "evidence": "EXEC-LOG B118-F5-REF-PREFLIGHT-R5 列（R1 時工作區為未晉級 R3 true 候選 864e4b98）",
+      "fixedIn": null,
+      "plannedIn": null,
+      "by": "第二意見 2026-11-19（逐筆對照 repo 原文與 git 歷史重新核對）",
+      "verified": {
+        "by": "第二意見",
+        "date": "2026-11-19",
+        "basis": "repo main 5dc5105188ccd2601a6eac4b1dfbf56c282b7309 之看板、封存紀錄、AUDIT-LOG、EXEC-LOG 原文與 git 歷史"
+      },
+      "confirmed": false
+    },
+    {
+      "id": "S1C-019",
+      "title": "N1 R2 提交前驗證第 4 關失敗，根因 UNKNOWN（保全 ref 74622086，原工作區凍結）",
+      "tasks": [
+        "B116-G4-N1-TRANSITION-AUTH-R2-261026"
+      ],
+      "status": "planned",
+      "class": "F",
+      "plannedIn": "B-124（待 USER 裁決：凍結工作區保留到何時、是否取證）",
+      "watch": [
+        "precommit:PRECOMMIT_NONZERO"
+      ],
+      "followUp": {
+        "plannedIn": "B-124",
+        "note": "N1 切片未完成；根因需讀凍結工作區的原始紀錄才能判定"
+      },
+      "evidence": "看板 B-124 列（待裁決）",
+      "fixedIn": null,
+      "by": "第二意見 2026-11-19（逐筆對照 repo 原文與 git 歷史重新核對）",
+      "verified": {
+        "by": "第二意見",
+        "date": "2026-11-19",
+        "basis": "repo main 5dc5105188ccd2601a6eac4b1dfbf56c282b7309 之看板、封存紀錄、AUDIT-LOG、EXEC-LOG 原文與 git 歷史"
+      },
+      "confirmed": false
+    },
+    {
+      "id": "S1C-020",
+      "title": "gateway 的 Node 測試在 GitHub Windows runner 超過每測試 5000 ms 上限（原生 bridge 測試、Hot-Switch 測試）",
+      "tasks": [
+        "PROMOTE-B107-ASSURANCE-S3-R1-261009",
+        "B123A-SIM-GIT-PROFILE-R3-261030"
+      ],
+      "status": "fixed",
+      "class": "A",
+      "fixedIn": "B123A-SIM-GIT-PROFILE-R4-261030",
+      "fixedCommit": "1948045",
+      "fixedBy": {
+        "PROMOTE-B107-ASSURANCE-S3-R1-261009": "B107-NATIVE-TIMING-S4-261009（45a2c80；原生 bridge 測試改用共用時間預算）",
+        "B123A-SIM-GIT-PROFILE-R3-261030": "B123A-SIM-GIT-PROFILE-R4-261030（1948045；Hot-Switch 改 TEST_TIMEOUT_MS＝30000）"
+      },
+      "outcomes": {
+        "PROMOTE-B107-ASSURANCE-S3-R1-261009": "post-main 依 D-R4 重跑 attempt 2 成功，同 SHA 已在 main（972acd8，AUDIT-LOG）"
+      },
+      "watch": [
+        "postmain:POST_MAIN_CI_NOT_PASS",
+        "push:CANDIDATE_CI_NOT_PASS"
+      ],
+      "followUp": {
+        "plannedIn": "B-123b（G6）",
+        "note": "其餘 gateway 測試的每測試逾時盤點尚未完成（看板 G6 第六例）"
+      },
+      "evidence": "AUDIT-LOG 972acd82 列（windows-credential-manager-access.test.js 5000 ms）；看板 B-123 列（Hot-Switch 5813 ms＞5000 ms）；45a2c80、1948045",
+      "plannedIn": null,
+      "by": "第二意見 2026-11-19（逐筆對照 repo 原文與 git 歷史重新核對）",
+      "verified": {
+        "by": "第二意見",
+        "date": "2026-11-19",
+        "basis": "repo main 5dc5105188ccd2601a6eac4b1dfbf56c282b7309 之看板、封存紀錄、AUDIT-LOG、EXEC-LOG 原文與 git 歷史"
+      },
+      "confirmed": false,
+      "distinctFrom": [
+        "S1C-009"
+      ],
+      "distinctBy": "第二意見 2026-11-20 依兩者登記標題判定：機制不同，只是同一個關卡代碼；待審查官確認"
+    },
+    {
+      "id": "S1C-021",
+      "title": "Windows 原生第 4 關：備份 owner 測試第 15 項以牆鐘比對剛寫入備份的 mtime（小數毫秒）與 Date.now()（整數毫秒），同一毫秒時新備份被當成未來檔略過而重建，得 2 份（Windows 第 4 關非確定性失敗，同類第二次）",
+      "tasks": [
+        "B117-G7B3B2-ONE-LINER-R2-261119"
+      ],
+      "status": "planned",
+      "class": "A",
+      "plannedIn": "g6-clock-1（看板 G6 列具名待辦：backup-scheduler.js 同毫秒比較式，候選修正 Math.floor(mtimeMs) > nowMs，另批依 D-SO）",
+      "watch": [
+        "precommit:PRECOMMIT_NONZERO"
+      ],
+      "followUp": {
+        "plannedIn": "G6（Windows 第 4 關非確定性失敗類別待辦，第三次起須先處理類別再出新批；具名待辦 g6-clock-1）",
+        "note": "測試已不依賴牆鐘（c3eb1fe）；production 在 now 比備份 mtime 早不到 1 毫秒時仍會多建一份，待 g6-clock-1 完成並 POST-MAIN VERIFIED 後才改為 fixed，屆時填 fixedIn 與 fixedCommit；同類第一次為 S1C-001"
+      },
+      "evidence": "USER 執行唯讀區塊讀取 W2 .git 之 B117-G7B3B2-ONE-LINER-R2-261119-local-gates.txt：PRECOMMIT 第 1～3 關 0、第 4 關 1 failed／3043 passed／50 skipped（1831.95 秒），唯一失敗 test_channel_gateway_core.py::test_channel_gateway_individual_test_file[backup-runtime-owner.test.js]；s1-evidence.json sha256 08d6e687f653bcb37f2a0c25c8c239d700882baf7616fa3281a5e99110359a58；第二意見與審查官均於 Linux 以注入時鐘決定性重現",
+      "fixedIn": null,
+      "by": "第二意見 2026-11-20 登記；審查官 AUD-CLAUDE-261119 於 2026-11-20 12:37 回覆確認數值（測試部分記 c3eb1fe、status 維持 planned）",
+      "confirmed": true,
+      "fixedBy": {
+        "B117-G7B3B2-ONE-LINER-R2-261119": "B117-BACKUP-TEST-CLOCK-R2-261120（c3eb1fe；只修測試：第 15 項改注入時鐘，使本次 S1 不再偶發；production 同毫秒缺口未修，見 g6-clock-1）"
+      },
+      "verified": {
+        "by": "第二意見",
+        "date": "2026-11-20",
+        "basis": "repo main c3eb1fe575b86a363f81a8a45d8a6fbbfb600554 之看板 G6 列（g6-clock-1、Windows 第 4 關非確定性失敗類別待辦）、批次紀錄與 EXEC-LOG 原文；post-main Run 44674365333 success"
+      },
+      "distinctFrom": [
+        "S1C-001",
+        "S1C-006",
+        "S1C-007",
+        "S1C-008"
+      ],
+      "distinctBy": "第二意見 2026-11-20 依兩者登記標題判定：機制不同，只是同一個關卡代碼；待審查官確認",
+      "todoIds": [
+        "TD-095",
+        "TD-096"
+      ]
+    },
+    {
+      "id": "S1C-022",
+      "title": "gateway 合併執行（node --test 多檔平行）中 R1-INT-1 以固定 50 次×20 ms（約 1 秒）輪詢等待真實 ArchiveWorker 完成；GitHub Windows runner 檔案操作變慢時 worker 未及完成即斷言（PENDING 而非 COMPLETED），post-main CI 紅燈（固定牆鐘上限的 gateway 測試，同類第三次：S1C-009、S1C-020）",
+      "tasks": [
+        "PROMOTE-B117-G7B3B2-ONE-LINER-R3-261120"
+      ],
+      "status": "fixed",
+      "class": "A",
+      "watch": [
+        "postmain:POST_MAIN_CI_NOT_PASS",
+        "push:CANDIDATE_CI_NOT_PASS"
+      ],
+      "followUp": {
+        "plannedIn": "G6（Windows 測試 lint：禁止固定牆鐘上限；本事故為第七例、類別第三次）",
+        "note": "同類寫法仍有 gateway-runtime-owner.test.js 第 686、1212 行（固定睡眠後斷言已發生），待 G6 小批或 lint 處理；ArchiveWorker 吞例外沒有計數已登 G6 觀察項"
+      },
+      "evidence": "Run 44689384303 attempt 1 gateway-windows（job 136131289643）：1 failed／60 passed，唯一失敗 test_channel_gateway_combined_node_test_runner 之子測試 #237 R1-INT-1（10270 ms，actual PENDING），同 job 單檔執行通過；attempt 2 成功。第二意見於 Linux 以檔案操作注入延遲決定性重現：每次 60 ms 或 150 ms 時合併執行 631 項恰好只有 #237 失敗；改期限式等待後 150 ms 下 630 通過、0 失敗；期限改回 1 秒即再失敗",
+      "fixedIn": "B117-R1INT1-WAIT-261120",
+      "by": "第二意見 2026-11-20 登記；審查官 AUD-CLAUDE-261119 於 16:35 確認欄位、18:05 宣告 POST-MAIN VERIFIED 並提供 fixedCommit，同意 distinctFrom [\"S1C-009\",\"S1C-020\"]",
+      "confirmed": true,
+      "verified": {
+        "by": "第二意見",
+        "date": "2026-11-20",
+        "basis": "git fetch：main 7395fccf，唯一 parent 5567ef9e，7 個作者檔與提示詞宣告逐位元組相同；post-main Run 44713974338 push、attempt 1、success"
+      },
+      "distinctFrom": [
+        "S1C-009",
+        "S1C-020"
+      ],
+      "distinctBy": "第二意見 2026-11-20 依兩者登記標題判定；審查官 AUD-CLAUDE-261119 2026-11-20 18:05 同意",
+      "outcomes": {
+        "PROMOTE-B117-G7B3B2-ONE-LINER-R3-261120": "main 已是 5567ef9e；Run 44689384303 attempt 1 紅燈，USER 同 SHA 重跑 attempt 2 成功，審查官 2026-11-20 15:11 宣告 POST-MAIN VERIFIED（附註：repository code defect NOT ESTABLISHED）"
+      },
+      "fixedCommit": "7395fccfda68acee67684ee001342d99e8ad43c1",
+      "fixedBy": {
+        "PROMOTE-B117-G7B3B2-ONE-LINER-R3-261120": "B117-R1INT1-WAIT-261120（7395fccf；只改測試：R1-INT-1 改為以經過時間計、上限 30 秒的等待；候選 Run 44711544682 與 post-main Run 44713974338 皆 attempt 1 success）"
+      },
+      "todoIds": [
+        "TD-109",
+        "TD-111",
+        "TD-118"
+      ]
+    },
+    {
+      "id": "S1C-023",
+      "title": "Windows 第 4 關 verify_all 超過 3600 秒總上限（TIMEOUT），跑到 93.6%（2939／3140 項、零失敗）時被終止；推測（INFERENCE）為整批全程使用電池（USER 陳述）加上 Defender 掃描負擔，使第 4 關約慢 2 倍；Kernel-Power 105（13:19:12）之原因 UNKNOWN",
+      "tasks": [
+        "B117-G7B3B3-LEDGER-CHECK-R2-261121"
+      ],
+      "status": "planned",
+      "plannedIn": "D9 第 1 批 B117-D9-GATE4-GROUPS-R2-261121（已進 main 608c1e61ef3e2c4f156e6eb2181c9155e3fdd069，POST-MAIN VERIFIED；第 4 關分組平行：怕擠清單依序＋其餘 N=min(4,cpu/2) 組同時跑，不引入 pytest-xdist）→ b3b3-3 重發 B117-G7B3B3-LEDGER-CHECK-R3-261121（已進 main 3788652a）→ D9 第 2 批 B117-D9-W2-FOCUSED-SKIP-261122（拿掉 W2 重複 focused，承接 TD-019；2026-11-22 第二意見執行前複核中）；耗時表校準為 TD-102、分組結果不在回覆為 TD-112；USER 2026-11-21 15:31 定案（方案交第二意見決定）",
+      "watch": [
+        "precommit:PRECOMMIT_GATE_TIMEOUT"
+      ],
+      "followUp": {
+        "plannedIn": "D9 第 1 批 POST-MAIN VERIFIED 後，以電池模式之實測第 4 關耗時判定是否結案",
+        "note": "根因依據：USER 確認 12:07–13:34 未插電、無其他重負載、未錄 Defender；USER 唯讀環境檔：電源計畫平衡、MsMpEng 開機後累計 CPU 5108 秒（全機第一，System 的 4.4 倍）、13:19:12 有一筆 Kernel-Power 105；第 4 關 raw：完成 2939／3140 項、0 失敗，同進度 TAKEOVER 批只需 1776 秒。本批內容無問題（Linux 實測無增時）；治理凍結依 D6（二）歸零；14:50 依 USER 界線修訂根除方式（不採「沒插電即拒絕」）；14:59 USER 裁決根除方向為 D9 與去除重複執行；15:31 定案方案見 HHAI_SO_S1-D9-PLAN-FINAL_261121-1532.md；2026-11-22 第二意見依 Dashboard runner 紀錄（overview.json SHA-256 295bb20f…）：D9 第 1 批第 4 關 937.735 秒、b3b3-3 重發批 1043.018 秒（皆零 S1；D9 前兩批為 1831.528、1819.912 秒）；兩批執行時是否用電池為 UNKNOWN，故尚不結案，待 USER 說明其中一批之電源狀態或下一個用電池執行之批之實測值；2026-11-22 11:07 USER 陳述：D9 第 2 批 B117-D9-W2-FOCUSED-SKIP-R2-261122 全程插電執行，Dashboard runner 紀錄第 4 關 858.249 秒（零失敗、push 等候 CI 中，第二意見 11:08 讀取）；此為插電樣本，不能證明電池情境已根除，結案仍待一批用電池執行之第 4 關實測值（D9 第 1 批與 b3b3-3 重發批之電源狀態仍 UNKNOWN）；2026-11-22 11:52 USER 陳述：2026-11-21 15:00 起電腦一直插電，故 D9 第 1 批（937.735 秒）、b3b3-3 重發批（1043.018 秒）與 D9 第 2 批 R2（858.249 秒）皆為插電樣本；電池情境仍待實測。Dashboard v10.24 起監看程式自動記錄每批電源狀態（USER 2026-11-22 決定），下一個用電池執行之批會自動留下紀錄，屆時據以判定是否結案；2026-11-23 第二意見：R5 production 批（00:12–00:55）第 4 關分組 993.7 秒（phase1 439.0、groups 536.7），Dashboard 電源紀錄該時段全程插電（100%）；仍為插電樣本，電池情境待實測"
+      },
+      "evidence": "Executor 回覆原文：GATE_BUDGET_WARN stage=PRECOMMIT gate=4 elapsed=3600.288 limit=3600；BOUNDED_EXIT PRECOMMIT code=86；S1 PRECOMMIT_GATE_TIMEOUT；focused 482 passed in 613.23s；全程 5223.7 秒；S1_FULL_CAPTURE_STATUS=INCOMPLETE_UNTRACKED_FILES。Dashboard runner 紀錄：第 3 關 60.056 秒（近 30 批 6.9–34.9 秒）；第 4 關近 30 批 1523–3176 秒。USER 14:42 提供：未插電、無重負載、未錄 Defender；HHAI_USER_S1-ENV_261121.txt 與 W2 閘門紀錄複本（HHAI_USER_GATELOG_*）",
+      "by": "第二意見 2026-11-21 登記，14:4x 依 USER 證據更新根因；待審查官確認；17:2x 依審查官 AUD-CLAUDE-261121 意見修正標題（INFERENCE、UNKNOWN 標示）、distinctBy 與暫定類別欄位",
+      "verified": {
+        "by": "第二意見",
+        "date": "2026-11-21",
+        "basis": "Executor 回覆原文；Dashboard runner 紀錄；Linux 實測；USER 環境檔與 W2 閘門紀錄複本（第 4 關 raw 進度與 TAKEOVER 批逐測試耗時）"
+      },
+      "confirmed": false,
+      "distinctFrom": [
+        "S1C-007"
+      ],
+      "distinctBy": "第二意見 2026-11-21：同類（B 第 4 關時間預算）第二次，但機制不同：S1C-007 為預算 1800 秒低於正常耗時，本次為執行期間整機變慢；審查官 AUD-CLAUDE-261121 2026-11-21 17:06 同意保留 distinctFrom 並註明同類第二次",
+      "class": "B",
+      "todoIds": [
+        "TD-019",
+        "TD-097",
+        "TD-102",
+        "TD-112",
+        "TD-117"
+      ]
+    },
+    {
+      "id": "S1C-024",
+      "title": "α-1 新增之真 pytest 端到端測試 test_end_to_end_gate_runner_sidecar_gives_the_failed_names 在 Windows 預演之 focused 失敗：樣本測試放在 repo 外（tmp_path），pytest 以 config.cwd_relative_nodeid／bestrelpath 印出相對於呼叫目錄之路徑，Windows 上路徑用反斜線，gate_report.node_ok 不接受反斜線，3 列全計為 unsafe（count=3 shown=0 unsafe=3），測試預期 shown=3 而失敗（INFERENCE：機制由 pytest 9.1.1 原始碼與 Linux 重現之 ../../ 形式推得，Windows 原始 raw 未讀到）",
+      "tasks": [
+        "B117-ALPHA1-GATE-DIAG-R2-261122"
+      ],
+      "status": "fixed",
+      "plannedIn": "B117-ALPHA1-GATE-DIAG-R3-261122（R3 未進 main，內容由 B117-ALPHA1-GATE-DIAG-R5-261122 沿用（R4 作廢）；α-1 重發：gate_report.summary_name 把名稱路徑部分之反斜線正規化為 /，新增 scripts/tests/test_gate_report_windows_form.py 7 項字面 Windows 形式測試；流程缺口登錄 TD-121；第二意見 D-SO 第三輪複核中）",
+      "watch": [
+        "native_preview:NATIVE_PREVIEW_NONZERO"
+      ],
+      "evidence": "Executor 回覆：STEP_PASS preflight；S1 NATIVE_PREVIEW_NONZERO | step native_preview；S1_DETAIL NATIVE_PREVIEW_EVIDENCE_DIR=C:\\Users\\HH.AI_260806\\AppData\\Local\\Temp\\hhai-g5-2vmcx3ol；全程 503.6 秒。證據夾 batch-sim.log：RUNNER_UPDATED 後 S1 FOCUSED_NONZERO；sim\\work\\.git 之 bounded-focused.txt：1 failed, 944 passed, 15 skipped in 94.89s，唯一失敗 scripts\\tests\\test_gate_report.py:460 之 assert 'S1_FAILED_LIST kind=GATE_FAILED count=3 shown=0 unsafe=3' == '…count=3 shown=3'。Dashboard 電源紀錄：全程插電。",
+      "by": "第二意見 2026-11-22 15:5x 登記（USER 提供 Executor 回覆，第二意見唯讀證據夾），待審查官確認；審查官 AUD-CLAUDE-261121 於 2026-11-22 16:41 回覆確認為真實 S1（獨立重現：第二意見 Windows 形式測試於 R2 位元組 2 failed／1 passed，套用修正後相關 459 passed），第二意見 16:5x 改 confirmed=true；2026-11-23 10:3x 第二意見依審查官 AUD-GEMINI-261123 之 POST-MAIN VERIFIED 改 fixed 並附 fixedCommit",
+      "confirmed": true,
+      "verified": {
+        "by": "審查官 AUD-GEMINI-261123（新任，依過渡期權威）",
+        "date": "2026-11-23",
+        "basis": "審查官 02:36 回覆：Macro PASS（ACCEPT ALL）／POST-MAIN VERIFIED；main 3ee29c8a 唯一 parent 9cb34eb3，20/20 作者檔一致；candidate Run 45045604198 與 post-main Run 45047983057 之 verify、gateway-windows 原始日誌親讀通過；Base 與候選雙版 reply_check PASS。第二意見另以 GitHub 讀取兩 run 皆 success、20 個作者檔逐檔相同"
+      },
+      "distinctFrom": [
+        "S1C-011"
+      ],
+      "distinctBy": "第二意見 2026-11-22：同為「Windows 專屬差異、Linux 模擬看不到」一類，但 S1C-011 為預演來源快照比對誤報（工具），本次為測試在 Windows 路徑分隔下之預期錯誤（新測試與解析規則）；機制不同",
+      "class": "C",
+      "followUp": {
+        "plannedIn": "已修正；同類（輸出形式隨環境改變）待辦 TD-121、TD-122 與 TD-125（Windows %TEMP% 並行，α-2）",
+        "note": "2026-11-22 19:3x 第二意見：R3（B117-ALPHA1-GATE-DIAG-R3-261122）之 native_preview 已 PASS（Windows 路徑修正生效，FACT：Executor 回覆 postcommit 前全部 STEP_PASS），但 R3 於候選 CI 另生 S1C-025，未進 main；狀態維持 planned，待 α-1 重發批 POST-MAIN VERIFIED 後改 fixed；2026-11-23 01:2x 第二意見：B117-ALPHA1-GATE-DIAG-R5-261122 已同 SHA 晉級，main＝3ee29c8a6abd041eaa3a76d1ee9e45d56aee49ae（唯一 parent 9cb34eb3；20 個作者檔與 D-SO 第五輪複核之位元組逐檔相同），candidate Run 45045604198 與 post-main Run 45047983057（run_number 564、push、attempt 1）皆 success（Executor 晉級回覆原文；第二意見以 GitHub 讀取 post-main run 確認）；待審查官宣告 POST-MAIN VERIFIED 後改 fixed 並附 fixedCommit；2026-11-23 審查官 AUD-GEMINI-261123 宣告 POST-MAIN VERIFIED，改 fixed"
+      },
+      "fixedIn": "B117-ALPHA1-GATE-DIAG-R5-261122",
+      "fixedCommit": "3ee29c8a6abd041eaa3a76d1ee9e45d56aee49ae",
+      "fixedBy": {
+        "B117-ALPHA1-GATE-DIAG-R2-261122": "B117-ALPHA1-GATE-DIAG-R5-261122（3ee29c8a；gate_report.summary_name 正規化 Windows 反斜線；candidate Run 45045604198 與 post-main Run 45047983057 皆 attempt 1 success）"
+      },
+      "todoIds": [
+        "TD-121",
+        "TD-122",
+        "TD-125",
+        "TD-126",
+        "TD-127"
+      ]
+    },
+    {
+      "id": "S1C-025",
+      "title": "α-1 R3 候選 CI（GitHub Actions，CI=true）第 4 關唯一失敗 test_end_to_end_grouped_run_the_listed_count_equals_failures_plus_errors（rows 1／failures 4）：設定 CI 或 BUILD_NUMBER（或 verbosity 2）時 pytest 短摘要印出完整多行訊息，續行（縮排、空白或任意文字）使 gate_report 的區段在第一列後即結束，只數到 1 列；本機（未設 CI）全部通過，故提交前各層檢查皆未出現",
+      "tasks": [
+        "B117-ALPHA1-GATE-DIAG-R3-261122"
+      ],
+      "status": "fixed",
+      "plannedIn": "B117-ALPHA1-GATE-DIAG-R5-261122（α-1 重發：沿用 R3 全部內容；本機產生 gate_report 所讀輸出之 pytest 一律帶輸出形式旗標組 --force-short-summary、--color=no、-rfE（分組子程序、本機循序閘門、focused；CI 指令不變）；新增 CI、BUILD_NUMBER、verbosity 2、顏色與 PYTEST_ADDOPTS -r 形式端到端測試；TD-121 擴充；清單列數與閘門結果對照另登 TD-122。R4 經第二意見 D-SO 第四輪 NON_BLOCKING 2 後作廢，未交 Executor）",
+      "watch": [
+        "push:CANDIDATE_CI_NOT_PASS"
+      ],
+      "evidence": "Run 45016131551（run_number 562、push、attempt 1、branch batch/b117-alpha1-gate-diag-r3-261122、head f186d1e8）failure；verify job 137188717474：1 failed, 3445 passed, 16 skipped，FAILED scripts/tests/test_gate_report.py::test_end_to_end_grouped_run_the_listed_count_equals_failures_plus_errors - assert (4 == 4 and 1 == 4)（第 614 行）。Executor 回覆：postcommit 前全部 STEP_PASS（第 4 關分組 PASS，collected=counted=3462）；S1 CANDIDATE_CI_NOT_PASS | step push；S1_FULL_CAPTURE complete_capture=true；全程 2274.8 秒；main 仍為 9cb34eb。Dashboard 電源紀錄：插電。",
+      "by": "第二意見 2026-11-22 19:3x 登記（USER 提供 Executor 回覆；CI 日誌由第二意見唯讀 GitHub 取得），待審查官確認；審查官 AUD-CLAUDE-261121 於 2026-11-22 19:53 在 f186d1e8 獨立重現成立（CI 未設通過、CI=true 失敗、斷言與 GitHub 日誌相同），裁決 confirmed=true、plannedIn R4，並另探測到 PY_COLORS／FORCE_COLOR 使清單 0 列（第二意見 19:5x 以同一端到端測試複驗成立，加 --color=no 即通過）；2026-11-22 23:5x 第二意見依審查官 R5 請求把 plannedIn 由 R4 改為 R5（R4 作廢）；2026-11-23 10:3x 第二意見依審查官 AUD-GEMINI-261123 之 POST-MAIN VERIFIED 改 fixed 並附 fixedCommit",
+      "confirmed": true,
+      "verified": {
+        "by": "審查官 AUD-GEMINI-261123（新任，依過渡期權威）",
+        "date": "2026-11-23",
+        "basis": "審查官 02:36 回覆：Macro PASS（ACCEPT ALL）／POST-MAIN VERIFIED；main 3ee29c8a 唯一 parent 9cb34eb3，20/20 作者檔一致；candidate Run 45045604198 與 post-main Run 45047983057 之 verify、gateway-windows 原始日誌親讀通過；Base 與候選雙版 reply_check PASS。第二意見另以 GitHub 讀取兩 run 皆 success、20 個作者檔逐檔相同"
+      },
+      "distinctFrom": [
+        "S1C-009",
+        "S1C-010",
+        "S1C-020",
+        "S1C-022",
+        "S1C-024"
+      ],
+      "distinctBy": "第二意見 2026-11-22：S1C-009／S1C-020／S1C-022 同 watch（push:CANDIDATE_CI_NOT_PASS）但為 Windows runner 固定牆鐘或時間上限；S1C-010 為 CI 與本機 Python 版本差異（3.11 vs 3.14）；S1C-024 同為 α-1 解析輸出形式問題但為 Windows 路徑分隔（native_preview）；本次為 CI 環境變數（CI=true）改變 pytest 短摘要形式，機制不同（與 S1C-010 同屬「CI 與本機環境差異」大類）",
+      "class": "D",
+      "followUp": {
+        "plannedIn": "已修正；同類（輸出形式隨環境改變）待辦 TD-121、TD-122 與 TD-125（Windows %TEMP% 並行，α-2）",
+        "note": "2026-11-23 01:2x 第二意見：B117-ALPHA1-GATE-DIAG-R5-261122 已同 SHA 晉級，main＝3ee29c8a6abd041eaa3a76d1ee9e45d56aee49ae（唯一 parent 9cb34eb3；20 個作者檔與 D-SO 第五輪複核之位元組逐檔相同），candidate Run 45045604198 與 post-main Run 45047983057（run_number 564、push、attempt 1）皆 success（Executor 晉級回覆原文；第二意見以 GitHub 讀取 post-main run 確認）；待審查官宣告 POST-MAIN VERIFIED 後改 fixed 並附 fixedCommit；2026-11-23 審查官 AUD-GEMINI-261123 宣告 POST-MAIN VERIFIED，改 fixed"
+      },
+      "fixedIn": "B117-ALPHA1-GATE-DIAG-R5-261122",
+      "fixedCommit": "3ee29c8a6abd041eaa3a76d1ee9e45d56aee49ae",
+      "fixedBy": {
+        "B117-ALPHA1-GATE-DIAG-R3-261122": "B117-ALPHA1-GATE-DIAG-R5-261122（3ee29c8a；本機產生端 pytest 一律帶 --force-short-summary、--color=no、-rfE；candidate Run 45045604198 與 post-main Run 45047983057 皆 attempt 1 success）"
+      },
+      "todoIds": [
+        "TD-121",
+        "TD-122",
+        "TD-123",
+        "TD-125",
+        "TD-126",
+        "TD-127"
+      ]
+    }
+  ]
+}

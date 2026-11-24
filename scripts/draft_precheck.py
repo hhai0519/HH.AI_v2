@@ -36,6 +36,7 @@ FINGERPRINT_TOOLS = (
     'draft_precheck.py', 'check_consistency.py', 'execution_record.py', 'fingerprint.py',
     'verify_all.py', 'generate_rule_traceability.py', 'impact_scan.py', 'history_guard.py',
     'batch_sim.py', 'production_template.py', 'prompt_builder.py', 'taskboard_archive.py',
+    's1_registry.py',
 )
 GENERATED = ('docs/fingerprints/exec-latest.json', 'docs/governance/execution-record.json')
 STATUS = ('docs/AUDIT-LOG.md', 'docs/EXEC-LOG.md', 'docs/TASKBOARD.md', 'docs/refactor-backlog.md')
@@ -516,6 +517,40 @@ def _collected_by_file(stdout_bytes, expected_paths):
     return total, counts
 
 
+def _collect_s1_registry_summary(cand_repo):
+    """Read-only S1 registry class summary and non-blocking >7d reminders when registry exists."""
+    reg_path = cand_repo / 'docs' / 'governance' / 's1-registry.json'
+    if not reg_path.is_file():
+        return None
+    cand_script = cand_repo / 'scripts' / 's1_registry.py'
+    tool_script = cand_script if cand_script.is_file() else (Path(__file__).resolve().parent / 's1_registry.py')
+    if not tool_script.is_file():
+        return {'status': 'UNAVAILABLE', 'reason': 'TOOL_MISSING'}, ['S1_REGISTRY_SUMMARY status=UNAVAILABLE']
+    rc, out = cmd([sys.executable, str(tool_script), 'summary', '--repo', str(cand_repo), '--json'], cand_repo, timeout=60)
+    if rc != 0:
+        return {'status': 'UNAVAILABLE', 'rc': rc}, ['S1_REGISTRY_SUMMARY status=UNAVAILABLE']
+    try:
+        data = json.loads(out.decode('utf-8'))
+        classes = data['by_class']
+        cls_str = ','.join(f'{k}:{classes[k]["causes"]}' for k in ('A', 'B', 'C', 'D', 'E', 'F'))
+        rec_str = ','.join(data.get('recurring_classes') or []) or 'NONE'
+        lines = [
+            f'S1_REGISTRY_SUMMARY total={data["total"]} confirmed={data["confirmed_true"]}/{data["total"]} '
+            f'classes={cls_str} unclassified={data["unclassified"]["count"]} recurring={rec_str} '
+            f'class_changes={len(data.get("class_changes") or [])} stale_7d={len(data.get("stale_unfixed_7d") or [])}'
+        ]
+        for item in data.get('class_changes') or []:
+            lines.append(f'S1_CLASS_CHANGE id={item["id"]} from={item["from"]} to={item["to"]}')
+        for item in data.get('stale_unfixed_7d') or []:
+            lines.append(
+                f'S1_STALE_7D id={item["id"]} status={item["status"]} '
+                f'verified={item["verified_date"]} age_days={item["age_days"]}'
+            )
+        return data, lines
+    except (KeyError, TypeError, ValueError, UnicodeDecodeError):
+        return {'status': 'UNAVAILABLE', 'reason': 'PARSE_ERROR'}, ['S1_REGISTRY_SUMMARY status=UNAVAILABLE']
+
+
 def fast_validate_stage(work, definition, prompt, plan, base, *, synthetic, timeout):
     """Fast-mode check: skills + focused binding + pytest collection (never replaces verify_all)."""
     if synthetic:
@@ -663,9 +698,15 @@ def execute_fast(ns):
         'elapsed_sec': elapsed_sec,
         'completed': completed,
     }
+    s1_info = _collect_s1_registry_summary(work / 'candclone')
+    if s1_info is not None:
+        fast_result['S1_REGISTRY_SUMMARY'] = s1_info[0]
     final = work / 'fast-result.json'
     atomic_json(final, fast_result)
     print('FAST_PRECHECK PASS')
+    if s1_info is not None:
+        for s1_line in s1_info[1]:
+            print(s1_line)
     for key in ('BASE_OID', 'AUTHOR_SHA256', 'PLAN_SHA256', 'TOOL_SHA256', 'ENV_SHA256', 'CACHE_KEY_SHA256'):
         print(key + '=' + hashes[key])
     print('FAST_RESULT_JSON_SHA256=' + sha_file(final))
@@ -752,9 +793,15 @@ def execute(ns):
     atomic_json(journal, state)
     require(git(source, 'rev-parse', 'HEAD') == base and
             not git(source, 'status', '--porcelain=v1', '--untracked-files=all'), 'SOURCE_MODIFIED')
+    s1_info = _collect_s1_registry_summary(work / 'candclone')
+    if s1_info is not None:
+        state['S1_REGISTRY_SUMMARY'] = s1_info[0]
     final = work / 'draft-result.json'
     atomic_json(final, state)
     print('DRAFT_PRECHECK RESULT ' + state['overall'])
+    if s1_info is not None:
+        for s1_line in s1_info[1]:
+            print(s1_line)
     for key in ('BASE_OID', 'AUTHOR_SHA256', 'PLAN_SHA256', 'TOOL_SHA256', 'ENV_SHA256', 'CACHE_KEY_SHA256'):
         print(key + '=' + hashes[key])
     print('RESULT_JSON_SHA256=' + sha_file(final))

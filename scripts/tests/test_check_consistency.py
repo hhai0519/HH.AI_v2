@@ -30,6 +30,7 @@ from check_consistency import (
     check_25_mechanical_governance_v1_guard,
     check_26_plan_actual_evidence_integrity,
     check_30_taskboard_single_line_markers,
+    check_31_s1_registry_guard,
     parse_macro_audit_verdict,
 )
 
@@ -1611,7 +1612,7 @@ def test_integration_run_checks_includes_19_and_20():
 
 def verify_check_consistency_inventory(file_content: str) -> tuple[bool, str, dict]:
     """
-    Validates complete, consistent, and duplicate-free inventory (1..30)
+    Validates complete, consistent, and duplicate-free inventory (1..31)
     across docstring and run_checks(). Supports both 'CHECK N -' and 'CHECK N:' punctuations.
     """
     # 1. Parse docstring inventory
@@ -1650,9 +1651,9 @@ def verify_check_consistency_inventory(file_content: str) -> tuple[bool, str, di
         seen_rc_ids.add(cid)
         run_checks_ids.append(cid)
 
-    expected_ids = list(range(1, 31))
-    if total_checks != 30:
-        return False, f"total_checks must be 30 (got {total_checks})", {}
+    expected_ids = list(range(1, 32))
+    if total_checks != 31:
+        return False, f"total_checks must be 31 (got {total_checks})", {}
 
     if docstring_ids != expected_ids:
         missing = set(expected_ids) - set(docstring_ids)
@@ -1671,12 +1672,12 @@ def verify_check_consistency_inventory(file_content: str) -> tuple[bool, str, di
     }
 
 
-def test_integration_run_checks_includes_30_and_total_checks_is_30():
-    """Verify run_checks includes up to CHECK 30 and total_checks is 30."""
+def test_integration_run_checks_includes_31_and_total_checks_is_31():
+    """Verify run_checks includes up to CHECK 31 and total_checks is 31."""
     import check_consistency
     import inspect
     source = inspect.getsource(check_consistency.run_checks)
-    assert "total_checks = 30" in source
+    assert "total_checks = 31" in source
     assert "check_21_secret_leak_guard" in source
     assert "CHECK 21: 機密防護與輸出安全守衛" in source
     assert "check_22_ci_supply_chain" in source
@@ -1697,19 +1698,21 @@ def test_integration_run_checks_includes_30_and_total_checks_is_30():
     assert "CHECK 29: 任務看板封存守衛" in source
     assert "check_30_taskboard_single_line_markers" in source
     assert "CHECK 30: 任務看板指標單行守衛" in source
+    assert "check_31_s1_registry_guard" in source
+    assert "CHECK 31: S1 根因登記檔守衛" in source
 
 
-def test_full_checker_inventory_consistency_1_to_30():
-    """Full checker inventory consistency: docstring, run_checks, and active representation match 1..30."""
+def test_full_checker_inventory_consistency_1_to_31():
+    """Full checker inventory consistency: docstring, run_checks, and active representation match 1..31."""
     cc_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "check_consistency.py"))
     with open(cc_path, "r", encoding="utf-8") as f:
         content = f.read()
 
     ok, err, metadata = verify_check_consistency_inventory(content)
     assert ok is True, f"Full checker inventory verification failed: {err}"
-    assert metadata["total_checks"] == 30
-    assert metadata["docstring_ids"] == list(range(1, 31))
-    assert metadata["run_checks_ids"] == list(range(1, 31))
+    assert metadata["total_checks"] == 31
+    assert metadata["docstring_ids"] == list(range(1, 32))
+    assert metadata["run_checks_ids"] == list(range(1, 32))
 
 
 def test_full_checker_inventory_negative_controls():
@@ -3018,3 +3021,20 @@ def test_check_30_real_taskboard_passes():
     fails, infos = check_30_taskboard_single_line_markers(root)
     assert fails == [], fails
     assert len(infos) == 3
+
+# ---------------------------------------------------------------------------
+# CHECK 31 Tests: S1 Root-Cause Registry Guard (B-117 D8 / TD-101)
+# ---------------------------------------------------------------------------
+
+def test_check_31_fail_closed_when_registry_missing(tmp_path):
+    fails, _ = check_31_s1_registry_guard(str(tmp_path))
+    assert len(fails) == 1 and "無法讀取" in fails[0]
+
+
+def test_check_31_real_repo_passes():
+    root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+    if not os.path.isfile(os.path.join(root, "docs", "governance", "s1-registry.json")):
+        pytest.skip("docs/governance/s1-registry.json not present in Base prior to apply")
+    fails, infos = check_31_s1_registry_guard(root)
+    assert fails == [], fails
+    assert any("causes=25" in i for i in infos)

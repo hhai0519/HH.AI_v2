@@ -32,6 +32,7 @@
   CHECK 28 — 受保護歷史與 §5.1 帳本錨定守衛 (Protected History / Ledger Anchor Guard)
   CHECK 29 — 任務看板封存守衛 (TASKBOARD Archive Guard)
   CHECK 30 — 任務看板指標單行守衛 (TASKBOARD Single-Line Marker Guard)
+  CHECK 31 — S1 根因登記檔守衛 (S1 Root-Cause Registry Guard)
 
 本腳本的檢查項來自 2026-08-29 的一次全庫實測掃描，每一項都曾實際命中過真實缺陷，不是憑空設計。
 新增檢查項時，必須先確認該檢查在當前 repo 的誤報率，誤報多的檢查會讓人習慣忽略輸出。
@@ -59,7 +60,7 @@ def run_checks(argv=None):
     as_if_committed = "--as-if-committed" in argv
     if as_if_committed:
         print("[MODE] 啟用 --as-if-committed 本地 commit 拓撲預演模式")
-    total_checks = 30
+    total_checks = 31
     passed = 0
     failed = 0
 
@@ -579,6 +580,22 @@ def run_checks(argv=None):
     else:
         print(f"  [FAIL] {len(c30_fails)} 命中")
         for fail in c30_fails:
+            print(f"    {fail}")
+        failed += 1
+
+    # ---------------------------------------------------------
+    # CHECK 31: S1 根因登記檔守衛
+    # ---------------------------------------------------------
+    print("\nCHECK 31: S1 根因登記檔守衛")
+    c31_fails, c31_infos = check_31_s1_registry_guard(repo_root)
+    for info in c31_infos:
+        print(f"  [INFO] {info}")
+    if len(c31_fails) == 0:
+        print("  [PASS] 0 命中")
+        passed += 1
+    else:
+        print(f"  [FAIL] {len(c31_fails)} 命中")
+        for fail in c31_fails:
             print(f"    {fail}")
         failed += 1
 
@@ -3997,9 +4014,29 @@ def check_30_taskboard_single_line_markers(root_dir=None):
     return fails, infos
 
 
+def check_31_s1_registry_guard(root_dir=None):
+    """
+    CHECK 31 — S1 根因登記檔守衛（B-117 D8／TD-101）。
+
+    委由 scripts/s1_registry.py 驗證 docs/governance/s1-registry.json：
+    UTF-8／無 BOM／LF、schema 2 與類列舉（A–F／UNCLASSIFIED）、狀態必要欄位、
+    todoIds 對照 docs/TODO-LEDGER.md 存在性，以及相對於 refactor-backlog §5.1
+    checkpoint 之只增不減（不刪 S1C、不撤回 tasks、confirmed 不得 true→false）。
+    讀不到、格式不符或 git 無法解析一律 fail-closed；不在 CI 以日曆時間判失敗。
+    """
+    if root_dir is None:
+        root_dir = repo_root
+    try:
+        from scripts.s1_registry import check
+    except ImportError:
+        import s1_registry
+        check = s1_registry.check
+    return check(root_dir)
+
+
 def verify_check_consistency_inventory(file_content: str) -> tuple[bool, str, dict]:
     """
-    Validates complete, consistent, and duplicate-free inventory (1..30)
+    Validates complete, consistent, and duplicate-free inventory (1..31)
     across docstring and run_checks(). Supports both 'CHECK N -' and 'CHECK N:' punctuations.
     """
     # 1. Parse docstring inventory
@@ -4038,9 +4075,9 @@ def verify_check_consistency_inventory(file_content: str) -> tuple[bool, str, di
         seen_rc_ids.add(cid)
         run_checks_ids.append(cid)
 
-    expected_ids = list(range(1, 31))
-    if total_checks != 30:
-        return False, f"total_checks must be 30 (got {total_checks})", {}
+    expected_ids = list(range(1, 32))
+    if total_checks != 31:
+        return False, f"total_checks must be 31 (got {total_checks})", {}
 
     if docstring_ids != expected_ids:
         missing = set(expected_ids) - set(docstring_ids)
