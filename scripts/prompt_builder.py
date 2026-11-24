@@ -355,7 +355,8 @@ def readonly_fixed_prose(task, base):
             '只執行一次，必須等進程退出；保留 C9_READONLY_JSON 原始單行、實際 exit code。'
             '不准人工拼接其他命令，不准修改任何檔案。\n\n'
             '五、回覆：TASK_ID、固定原始 JSON、exit code、是否 S1 HOLD；'
-            '最後一行為「以上是 Antigravity IDE Agent 的回覆。」\n\n'
+            '僅最終完結回覆最後一行為「以上是 Antigravity IDE Agent 的回覆。」；'
+            '執行中途若先回報啟動、背景執行中或等待進度，嚴禁使用該固定署名行。\n\n'
             '六、機械規格（builder 固定產生）\n')
     tail = (f'\n七、固定法定契約（READ_ONLY，no mutation）\n'
             'BEGIN_HHAI_PROMPT_MANIFEST\n'

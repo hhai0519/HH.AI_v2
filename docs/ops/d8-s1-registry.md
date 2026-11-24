@@ -39,3 +39,28 @@
 3. **工具命令列（唯讀）**：
    - `python scripts/s1_registry.py check --repo <repo>`：執行與 CHECK 31 相同之完整驗證。
    - `python scripts/s1_registry.py summary --repo <repo> [--as-of YYYY-MM-DD] [--json]`：輸出各類分布（`UNCLASSIFIED` 另計）、高頻重複類別、相較 checkpoint 之 `class_changes` 變更清單與非阻擋之 7 天未重核提醒。
+   - `python scripts/s1_registry.py reverse-verify --repo <repo> --fix-task <TASK_ID> [--regression-test <NODEID> ...] [--not-injectable --reason <TEXT> | --injection-method <TEXT> --old-cmd <JSON_ARGV> --new-cmd <JSON_ARGV> --mutant-cmd <JSON_ARGV>] [--timeout 300] [--out <PATH>] [--json]`：執行或登錄 D4 反向驗證，於驗證前先透過 AST 確認所有 `regressionTests` nodeid 存在於目標倉庫且為無 BOM／LF 合法 Python。
+
+## 五、D4 反向驗證（`reverseVerification`）契約（β-2 擴充）
+
+由 `B117-BETA2-D4-CAP-S1DRAFT-R4-261124` 新增於 `CAUSE_ALLOWED_KEYS` 與 CHECK 31：
+
+1. **可注入模式（`injectable: true`，恰含下列 10 個欄位）**：
+   - `fixTask`（`str`，`^[A-Za-z0-9_-]+$`）：對應修正批次之 `TASK_ID`。
+   - `injectable`（`bool`，必須為 `true`）。
+   - `injectionMethod`（非空 `str`）：失敗或故障注入方法說明。
+   - `oldResult`（固定字面 `"FAIL"`）、`newResult`（固定字面 `"PASS"`）、`mutantResult`（固定字面 `"FAIL"`）。
+   - `oldOutputSha256`、`newOutputSha256`、`mutantOutputSha256`（皆為 64 碼小寫 hex `str`）：由 `reverse-verify` 以 `bounded_process.run_bounded(..., merge_stderr=True)` 擷取原始輸出位元組計算。
+   - `regressionTests`（非空不重複 `list[str]`）：pytest nodeid（`path.py::fn` 或 `path.py::Cls::meth`）；CHECK 31 檢查路徑安全、無 symlink、UTF-8／無 BOM／LF 與 AST 符號存在性。
+2. **不可注入模式（`injectable: false`，必填前 4 欄，`regressionTests` 選用）**：
+   - `fixTask`（`str`）、`injectable`（`false`）、`status`（固定字面 `"not_injectable"`）、`notInjectableReason`（非空 `str`）、選用 `regressionTests`（不重複 `list[str]`，若存在亦經 AST 驗證）。
+3. **「修正事件」轉 `fixed` 強制與只增不減守衛（`B2`／`N2`）**：
+   - 定義「修正事件」為：以 checkpoint 為基準，本版 `status == "fixed"` 且符合下列任一項：(a) 新增原因；(b) 前版非 `fixed`（例如 `planned` 轉 `fixed` 或重新開啟後再修正）；(c) 前版雖為 `fixed` 但 `fixedIn` 與本版不同（同批復發再修正，例如 `S1C-020` 模式）。
+   - **修正事件強制驗證（`B2`）**：凡屬「修正事件」皆必須附帶合法 `reverseVerification`（`injectable` 或 `not_injectable`），且 `reverseVerification.fixTask` 必須等於該原因之 `fixedIn`；於 checkpoint 原即為 `fixed` 且 `fixedIn` 未變更之歷史原因（例如既已入庫且未復發改碼之原因）不追溯。
+   - **只增不減不可變鎖定（`N2`）**：既有 `reverseVerification` 不得刪除、`injectable: true` 不得降級為 `false`、既有 `regressionTests` 必須維持為新版之子集合（只准追加、不得縮減，全程適用）；非「修正事件」（包含 `fixedIn` 未變更之 `fixed → fixed` 及重新開啟等非 `fixed` 狀態）時，已記錄之 `fixTask` 與三個輸出 SHA-256（`oldOutputSha256`／`newOutputSha256`／`mutantOutputSha256`）不得變更；僅於屬前述「修正事件」（前版非 `fixed` 轉為 `fixed`，或維持 `fixed` 但 `fixedIn` 改變）時，依 B2 視為新一輪驗證，可並須換為 `fixTask` 等於新 `fixedIn` 之合法 `reverseVerification`。
+
+## 六、runner S1 自動草稿契約（`scripts/s1_draft.py`／TD-101，β-2 擴充）
+
+1. **只寫 `.git/` 未追蹤工作檔**：`batch_runner._execute_step` 於原 S1 落盤且印完 `S1_FULL_CAPTURE` 後，呼叫 `report_s1_draft`（委由 `s1_draft.create_s1_draft` 複用 `s1_evidence._create_once` 與 `_guarded_bytes`）寫入 `.git/<TASK_ID>-s1-draft.json`（create-once `O_EXCL`，拒絕覆寫或 symlink），絕不改動受追蹤檔案（含 `docs/governance/s1-registry.json`）。
+2. **標準輸出與 `reply_check`**：成功寫入印 `S1_DRAFT_FILE=.git/<TASK_ID>-s1-draft.json sha256=<64-hex> bytes=<n>`；任何次要異常只印 `S1_DRAFT_STATUS=UNAVAILABLE`，絕不掩蓋原 S1。`reply_check.py` 只在步驟內已落盤 halted 回覆放行該兩者之一（0 或 1 筆），於成功或步驟前中止一律禁止。
+3. **草稿 JSON 結構（`schema: 2` 候選）**：`schema=2`、`kind="S1_REGISTRY_DRAFT"`、`candidateOnly=true`、`id=null`、`title=null`、`status=null`（保留至審查官寫狀態批正式編 `S1C-nnn` 並補必填欄位，避免與 Dashboard 暫記撞號）、`tasks=[TASK_ID]`、`watch=["<step>:<CODE>"]`、`class="UNCLASSIFIED"`、`confirmed=false`、`by="runner"`、`verified={"by":"runner","date":"YYYY-MM-DD","basis":...}`、`evidence` 與 `evidenceDetail`。

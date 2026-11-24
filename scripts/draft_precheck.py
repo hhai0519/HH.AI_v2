@@ -36,7 +36,7 @@ FINGERPRINT_TOOLS = (
     'draft_precheck.py', 'check_consistency.py', 'execution_record.py', 'fingerprint.py',
     'verify_all.py', 'generate_rule_traceability.py', 'impact_scan.py', 'history_guard.py',
     'batch_sim.py', 'production_template.py', 'prompt_builder.py', 'taskboard_archive.py',
-    's1_registry.py',
+    's1_registry.py', 's1_draft.py', 'cap_count.py',
 )
 GENERATED = ('docs/fingerprints/exec-latest.json', 'docs/governance/execution-record.json')
 STATUS = ('docs/AUDIT-LOG.md', 'docs/EXEC-LOG.md', 'docs/TASKBOARD.md', 'docs/refactor-backlog.md')
@@ -551,6 +551,34 @@ def _collect_s1_registry_summary(cand_repo):
         return {'status': 'UNAVAILABLE', 'reason': 'PARSE_ERROR'}, ['S1_REGISTRY_SUMMARY status=UNAVAILABLE']
 
 
+def _collect_cap_count_summary(cand_repo):
+    """Read-only TD-008 D6 & cap condition (2) counter summary when docs and tool exist."""
+    if not (cand_repo / 'docs' / 'TASKBOARD.md').is_file() or not (cand_repo / 'docs' / 'AUDIT-LOG.md').is_file():
+        return None
+    cand_script = cand_repo / 'scripts' / 'cap_count.py'
+    tool_script = cand_script if cand_script.is_file() else (Path(__file__).resolve().parent / 'cap_count.py')
+    if not tool_script.is_file():
+        return None
+    rc, out = cmd([sys.executable, str(tool_script), '--repo', str(cand_repo), '--json'], cand_repo, timeout=60)
+    if rc != 0:
+        return {'status': 'UNAVAILABLE', 'rc': rc}, ['CAP_COUNT_SUMMARY status=UNAVAILABLE']
+    try:
+        data = json.loads(out.decode('utf-8'))
+        d6 = data['d6']
+        cap2 = data['cap2']
+        lines = [
+            f'CAP_COUNT_D6 source={d6["source"]} count={d6["count"]} target={d6["target"]} '
+            f'declared={d6["declared"]} match={"YES" if d6["match"] else "NO"} '
+            f'last_reset={d6["last_reset"]} start_after={d6["start_after"]}',
+            f'CAP_COUNT_CAP2 source={cap2["source"]} count={cap2["count"]} target={cap2["target"]} '
+            f'anchor={cap2["anchor_oid"]} product_batches={cap2["product_batches_total"]} '
+            f'resets={len(cap2["resets_applied"])}',
+        ]
+        return data, lines
+    except (KeyError, TypeError, ValueError, UnicodeDecodeError):
+        return {'status': 'UNAVAILABLE', 'reason': 'PARSE_ERROR'}, ['CAP_COUNT_SUMMARY status=UNAVAILABLE']
+
+
 def fast_validate_stage(work, definition, prompt, plan, base, *, synthetic, timeout):
     """Fast-mode check: skills + focused binding + pytest collection (never replaces verify_all)."""
     if synthetic:
@@ -701,12 +729,18 @@ def execute_fast(ns):
     s1_info = _collect_s1_registry_summary(work / 'candclone')
     if s1_info is not None:
         fast_result['S1_REGISTRY_SUMMARY'] = s1_info[0]
+    cap_info = _collect_cap_count_summary(work / 'candclone')
+    if cap_info is not None:
+        fast_result['CAP_COUNT_SUMMARY'] = cap_info[0]
     final = work / 'fast-result.json'
     atomic_json(final, fast_result)
     print('FAST_PRECHECK PASS')
     if s1_info is not None:
         for s1_line in s1_info[1]:
             print(s1_line)
+    if cap_info is not None:
+        for cap_line in cap_info[1]:
+            print(cap_line)
     for key in ('BASE_OID', 'AUTHOR_SHA256', 'PLAN_SHA256', 'TOOL_SHA256', 'ENV_SHA256', 'CACHE_KEY_SHA256'):
         print(key + '=' + hashes[key])
     print('FAST_RESULT_JSON_SHA256=' + sha_file(final))
@@ -796,12 +830,18 @@ def execute(ns):
     s1_info = _collect_s1_registry_summary(work / 'candclone')
     if s1_info is not None:
         state['S1_REGISTRY_SUMMARY'] = s1_info[0]
+    cap_info = _collect_cap_count_summary(work / 'candclone')
+    if cap_info is not None:
+        state['CAP_COUNT_SUMMARY'] = cap_info[0]
     final = work / 'draft-result.json'
     atomic_json(final, state)
     print('DRAFT_PRECHECK RESULT ' + state['overall'])
     if s1_info is not None:
         for s1_line in s1_info[1]:
             print(s1_line)
+    if cap_info is not None:
+        for cap_line in cap_info[1]:
+            print(cap_line)
     for key in ('BASE_OID', 'AUTHOR_SHA256', 'PLAN_SHA256', 'TOOL_SHA256', 'ENV_SHA256', 'CACHE_KEY_SHA256'):
         print(key + '=' + hashes[key])
     print('RESULT_JSON_SHA256=' + sha_file(final))

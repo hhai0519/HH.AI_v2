@@ -133,6 +133,8 @@ FORMATS = [
     ('S1_FULL_CAPTURE_CARD', 'S1_FULL_CAPTURE_CARD=', r'^S1_FULL_CAPTURE_CARD=(\S+) sha256=(\S+)$', (), (2,)),
     ('S1_FULL_CAPTURE_JSON', 'S1_FULL_CAPTURE_JSON=', r'^S1_FULL_CAPTURE_JSON=(\{.*\})$', (), ()),
     ('S1_FULL_CAPTURE_STATUS', 'S1_FULL_CAPTURE_STATUS=', r'^S1_FULL_CAPTURE_STATUS=([A-Z][A-Z_]*)$', (), ()),
+    ('S1_DRAFT_FILE', 'S1_DRAFT_FILE=', r'^S1_DRAFT_FILE=(\S+) sha256=(\S+) bytes=([1-9][0-9]*)$', (), (2,)),
+    ('S1_DRAFT_STATUS', 'S1_DRAFT_STATUS=', r'^S1_DRAFT_STATUS=(UNAVAILABLE)$', (), ()),
     ('S1_FAILED_LIST', 'S1_FAILED_LIST ',
      r'^S1_FAILED_LIST kind=(GATE_FAILED|CI_FAILED|FAILED_LIST_UNAVAILABLE)'
      r'(?: count=([0-9]+) shown=([0-9]+)(?: unsafe=([1-9][0-9]*))?'
@@ -443,6 +445,14 @@ def s1_line(found):
     return m.group(2), m.group(1), False
 
 
+def check_s1_draft(found, task):
+    """Verify optional runner S1 draft output lines when present on a persisted S1."""
+    _require(not (found['S1_DRAFT_FILE'] and found['S1_DRAFT_STATUS']), 'REPLY_S1_DRAFT_CONFLICT')
+    if found['S1_DRAFT_FILE']:
+        _require(one(found, 'S1_DRAFT_FILE').group(1) == '.git/' + task + '-s1-draft.json',
+                 'REPLY_S1_DRAFT_FILE_MISMATCH')
+
+
 def check_s1(found, task, spec, steps, capture_path, prompt_sha):
     _require(len(found['S1']) == 1, 'REPLY_S1_MISSING' if not found['S1'] else 'REPLY_S1_REPEATED')
     step, code, already = s1_line(found)
@@ -492,6 +502,7 @@ def check_s1(found, task, spec, steps, capture_path, prompt_sha):
         ranges.update({n: (1, 1) for n in METADATA} if not found['S1_EVIDENCE_STATUS'] else {'S1_EVIDENCE_STATUS': (1, 1)})
         ranges.update({n: (1, 1) for n in CAPTURE} if not found['S1_FULL_CAPTURE_STATUS'] else
                       {'S1_FULL_CAPTURE_STATUS': (1, 1)})
+        ranges.update({'S1_DRAFT_FILE': (0, 1), 'S1_DRAFT_STATUS': (0, 1)})
         if already:                                                      # the halted task printed nothing else
             ranges = dict(base_ranges)
         cardinality(found, ranges)
@@ -500,6 +511,7 @@ def check_s1(found, task, spec, steps, capture_path, prompt_sha):
         if not already:
             check_failed_list(found, step, code)
             check_gate_lines(found, step, code)
+            check_s1_draft(found, task)
         persisted = True
     else:                                                                # stopped before the step body ran
         _require(halted == 'None' and not already, 'REPLY_STATE_MISMATCH')

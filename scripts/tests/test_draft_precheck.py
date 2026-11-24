@@ -1049,3 +1049,43 @@ def test_beta1_s1_registry_summary_printed_when_present_and_omitted_when_absent(
         data, lines = res
         assert data['total'] == 25
         assert any(l.startswith('S1_REGISTRY_SUMMARY total=25') for l in lines)
+
+
+# --- Beta 2 (TD-008 / TD-101): FINGERPRINT_TOOLS & CAP_COUNT_SUMMARY ---
+
+def test_beta2_fingerprint_and_cap_count_summary(tmp_path):
+    for tool in ('s1_draft.py', 'cap_count.py'):
+        assert tool in q2.FINGERPRINT_TOOLS
+    source = tmp_path / 'repo'
+    source.mkdir()
+    subprocess.run(['git', 'init', '-q', str(source)], check=True)
+    subprocess.run(['git', '-C', str(source), 'config', 'user.name', 'Q2'], check=True)
+    subprocess.run(['git', '-C', str(source), 'config', 'user.email', 'q2@example.test'], check=True)
+    (source / 'x').write_bytes(b'\n')
+    subprocess.run(['git', '-C', str(source), 'add', '.'], check=True)
+    subprocess.run(['git', '-C', str(source), 'commit', '-qm', 'base'], check=True)
+    scripts_dir = tmp_path / 'scripts'
+    scripts_dir.mkdir()
+    for name in q2.FINGERPRINT_TOOLS:
+        (scripts_dir / name).write_bytes(b'# ' + name.encode('utf-8') + b'\n')
+    patch = tmp_path / 'x.patch'
+    patch.write_bytes(b'patch')
+    plan = tmp_path / 'plan.json'
+    plan.write_bytes(b'{}')
+    base_fp = q2.fingerprint(source, patch, plan, scripts_dir, tmp_path / 'w')
+    for target in ('s1_draft.py', 'cap_count.py'):
+        (scripts_dir / target).write_bytes(b'# mutated ' + target.encode('utf-8') + b'\n')
+        mut_fp = q2.fingerprint(source, patch, plan, scripts_dir, tmp_path / 'w2')
+        assert mut_fp['TOOL_SHA256'] != base_fp['TOOL_SHA256']
+        assert mut_fp['CACHE_KEY_SHA256'] != base_fp['CACHE_KEY_SHA256']
+        (scripts_dir / target).write_bytes(b'# ' + target.encode('utf-8') + b'\n')
+
+    assert q2._collect_cap_count_summary(tmp_path / 'missing') is None
+    real_repo = Path(__file__).resolve().parents[2]
+    if (real_repo / '.git').exists() and (real_repo / 'docs' / 'TASKBOARD.md').is_file():
+        res = q2._collect_cap_count_summary(real_repo)
+        assert res is not None
+        data, lines = res
+        assert data['d6']['source'] == 'repo'
+        assert any(line.startswith('CAP_COUNT_D6 source=repo ') for line in lines)
+        assert any(line.startswith('CAP_COUNT_CAP2 source=repo ') for line in lines)

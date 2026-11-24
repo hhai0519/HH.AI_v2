@@ -1574,3 +1574,22 @@ def test_state_rows_written_with_the_placeholder_are_accepted(tmp_path, repo):
 def test_state_rows_that_do_not_carry_the_tool_written_sentence_are_rejected(tmp_path, repo, board, log, code):
     root, _ = repo
     assert _code(pb.build, root, _state_definition(tmp_path, root, board, log)) == code
+
+
+# --- Beta 2 (TD-099): mid-run status replies forbidden from using final fixed signature line ---
+
+def test_td099_forbids_midrun_final_signature_production_and_readonly(tmp_path, repo):
+    mod, root, _d, f = _auto_production_definition(tmp_path, repo)
+    prod_text = mod.auto_production(root, f, tmp_path / 'prod_out').read_text('utf-8')
+    assert '僅最終完結回覆最後一行逐字為「以上是 Antigravity IDE Agent 的回覆。」；執行中途若先回報啟動、背景執行中或等待進度，嚴禁使用該固定署名行。' in prod_text
+    assert '、S1_DRAFT、' in prod_text
+
+    head, _ = pb.readonly_fixed_prose('READONLY-' + TASK, _git(root, 'rev-parse', 'HEAD').stdout.decode().strip())
+    assert '僅最終完結回覆最後一行為「以上是 Antigravity IDE Agent 的回覆。」；執行中途若先回報啟動、背景執行中或等待進度，嚴禁使用該固定署名行。' in head
+
+
+def test_td099_forbids_midrun_final_signature_promotion(tmp_path, repo):
+    pm, root, _, branch, oid = _auto_promotion_fixture(tmp_path, repo)
+    promo_path = pm.auto_promotion(root, oid, branch, tmp_path / 'promo_out')
+    promo_text = promo_path.read_text('utf-8')
+    assert '僅最終完結回覆最後一行逐字為「以上是 Antigravity IDE Agent 的回覆。」；執行中途若先回報啟動、背景執行中或等待進度，嚴禁使用該固定署名行。' in promo_text

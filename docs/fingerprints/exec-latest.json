@@ -1,5 +1,5 @@
 {
-  "base_head": "753df1e",
+  "base_head": "4a40142",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -576,16 +576,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 434,
-      "sha256": "4c3d516d569cf90f02219c4766b0edf9aba5812f41c48a43b7938d1606474cb6"
+      "lines": 435,
+      "sha256": "7aa5badac4ad3fe8a8b12a263d4cf892fa1ddd51ad9fe8b7082ff845b2686dd3"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 404,
-      "sha256": "d425f6b82b2d8899b86e483d1af5b147bf8c65ae5600bd80ec79ca81c4c32e3c"
+      "lines": 405,
+      "sha256": "a590c56df0b3a7c21124c3afc17b278212b20866eb0af08dff8a42b15079bc77"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -628,7 +628,7 @@
         "## 封存區"
       ],
       "lines": 459,
-      "sha256": "1af8af293cc371c2a19556af892ff173683c2280db15b16a0ea2cf672ce2c19e"
+      "sha256": "fded1a745c508e1af61e287b5369eaf11cfe5340ab42213a108f49b9bc5b7fc1"
     },
     "docs/TODO-LEDGER.md": {
       "fences": 0,
@@ -640,8 +640,8 @@
         "## 四、盤點範圍與方法",
         "## 五、清冊"
       ],
-      "lines": 185,
-      "sha256": "3a7b9664cbab1e56c655642ab7f2f66e243b6b5e2ea531efe535641cd4888149"
+      "lines": 186,
+      "sha256": "66c6b8bd9f9a452859337a59f94eb0899a958bb43700e60f4bf54bd58ef656a9"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1150,8 +1150,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6490,
-      "sha256": "2cd1d58d4484a8aeeb95b295169ec518e43b0ad7d6c12d09dae967f3da04cba8"
+      "lines": 6491,
+      "sha256": "e3e2269bbb5f971bc773030f77617d74452d0038f42342ad0d62e37113f10dcd"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1213,8 +1213,8 @@
         "# The work tree must show no file change for this long before a native_preview batch may start (formerly the",
         "# hand-run PRESTART block C): an IDE or another tool that still writes into the tree makes the run unsafe."
       ],
-      "lines": 2282,
-      "sha256": "9579c5051c54009cb4b4840baaea456196e580b6d67ab975d7b9468b1a30d2e3"
+      "lines": 2300,
+      "sha256": "0861e4cd412a94e236e008820377c5a0063255960e0d0a61b1f38b7bf3395073"
     },
     "scripts/batch_sim.py": {
       "fences": 0,
@@ -1296,6 +1296,14 @@
       "lines": 194,
       "sha256": "b1daf7344480180c3eff6084ed49589ef4164492f6e8e0966166b2507ed3fa95"
     },
+    "scripts/cap_count.py": {
+      "fences": 0,
+      "headings": [
+        "# -*- coding: utf-8 -*-"
+      ],
+      "lines": 717,
+      "sha256": "00f4c32303cac0f3584f689b64040f779fd79889a7d61f6965cb1d0b3a320397"
+    },
     "scripts/check16_preflight.py": {
       "fences": 0,
       "headings": [
@@ -1346,8 +1354,8 @@
         "# Allowlist (fail closed): only state documents under docs/ may go without a focused test set; any other path,",
         "# e.g. shared/*.js, .githooks/*, .gitattributes, pyproject.toml, uv.lock, .nvmrc or skills/**, may run as code."
       ],
-      "lines": 832,
-      "sha256": "1380a765ab368137aa2ba6fbf2622eb12f526109d50fb0bf08ba00544af339d5"
+      "lines": 872,
+      "sha256": "539e572f900974c9086be1b0347625b6d87b74d586eaa5306afa009a6419fd8d"
     },
     "scripts/execution_record.py": {
       "fences": 0,
@@ -1498,7 +1506,7 @@
         "# -*- coding: utf-8 -*-"
       ],
       "lines": 238,
-      "sha256": "9120fc6d5672548fc6c968e5d09841dc54fe688e113f99129772d737aa4bb954"
+      "sha256": "1232e2f073627e460135d3d01729fd48970cc470b1e23367135a1a9272ed7700"
     },
     "scripts/promotion_template.py": {
       "fences": 0,
@@ -1506,7 +1514,7 @@
         "# -*- coding: utf-8 -*-"
       ],
       "lines": 168,
-      "sha256": "88b14a6ce793dc4804c79f89fe137479a31086b259fe94b07b4e8a58c99a71df"
+      "sha256": "075d93523d29c9c5904afe56474350ccc602938837c06b33505d15b312395577"
     },
     "scripts/prompt_builder.py": {
       "fences": 0,
@@ -1520,8 +1528,8 @@
         "# description): the Executor stops, forwards the output verbatim and never repairs the situation itself. Whether a",
         "# new TASK_ID is issued or the USER handles the existing target is decided by the Macro Auditor and the USER."
       ],
-      "lines": 876,
-      "sha256": "28dc46db79a3cb85bdde5be7cbec6998950b975c14d6bea4e6252b6723d4cd81"
+      "lines": 877,
+      "sha256": "10bb77c0c24e8dbef3cbe6480b50419b1dec3f827ecd30eeeac1240d14cb35c9"
     },
     "scripts/prompt_intake.py": {
       "fences": 0,
@@ -1550,8 +1558,8 @@
         "# name -> (prefix, exact format, positions of commit SHAs, positions of file SHA-256)",
         "# Alpha 1 lines a bounded gate step can leave in an S1 reply: the grouped gate 4 result and the timeout progress."
       ],
-      "lines": 672,
-      "sha256": "196a7a0d7c2181e7e7d4b2af1c163f5447a074d0be0f1bf43b45ceffbfc34d70"
+      "lines": 684,
+      "sha256": "563084c025985355c3fa5e3bd24ee856cf1a9141752bb92489d0b138534a8973"
     },
     "scripts/runtime_readiness.py": {
       "fences": 0,
@@ -1566,6 +1574,14 @@
       ],
       "lines": 286,
       "sha256": "cd5021c86c6779a3cdc3d24e055e2e9469e74f9085394750ac80c2f1ce55d6b4"
+    },
+    "scripts/s1_draft.py": {
+      "fences": 0,
+      "headings": [
+        "# -*- coding: utf-8 -*-"
+      ],
+      "lines": 196,
+      "sha256": "0221c8bfeb5c324d9cf7bbc2faacd0b2b0d719e1ec575a4983446928c5950ff1"
     },
     "scripts/s1_evidence.py": {
       "fences": 0,
@@ -1600,8 +1616,8 @@
       "headings": [
         "# -*- coding: utf-8 -*-"
       ],
-      "lines": 580,
-      "sha256": "a82a611200eea5f1dd0eb159a7066ef560e7fb65e79332168cb324c8d90f094b"
+      "lines": 989,
+      "sha256": "590d85c881b5ad7aa14ebf9b139cb54adbb7fd7d67ebbf047c4b6723863dd9a5"
     },
     "scripts/secret_presence.py": {
       "fences": 0,
@@ -1848,6 +1864,14 @@
       "lines": 386,
       "sha256": "468011f3cbc00556d88cd5d58481b3347aa97e0ad3459aea21eb1ef7f046990a"
     },
+    "scripts/tests/test_cap_count.py": {
+      "fences": 0,
+      "headings": [
+        "# -*- coding: utf-8 -*-"
+      ],
+      "lines": 505,
+      "sha256": "743811fcd4523c44568f196e05300ec51f82a61088b6383851e841d7792a36d4"
+    },
     "scripts/tests/test_channel_gateway_core.py": {
       "fences": 0,
       "headings": [
@@ -1978,10 +2002,11 @@
         "# --- SO E27 reference tests: sixth-stage decision logic must be regression-tested in-repo. ---",
         "# B-115/G3 C3: runner-equivalent author target guards before git apply or generate.",
         "# --- TD-055 & TD-028 regression tests (alpha 2) ---",
-        "# --- Beta 1 (D8 / TD-101): FINGERPRINT_TOOLS s1_registry & S1_REGISTRY_SUMMARY ---"
+        "# --- Beta 1 (D8 / TD-101): FINGERPRINT_TOOLS s1_registry & S1_REGISTRY_SUMMARY ---",
+        "# --- Beta 2 (TD-008 / TD-101): FINGERPRINT_TOOLS & CAP_COUNT_SUMMARY ---"
       ],
-      "lines": 1051,
-      "sha256": "f1e1a7f801d53e99fb5834859a2bddee630f13c842628d028c871e270f56d3cf"
+      "lines": 1091,
+      "sha256": "4ea8760827162bac8ab993868356a7889e47ad248e172507470f1a5f56050125"
     },
     "scripts/tests/test_draft_precheck_fast.py": {
       "fences": 0,
@@ -2211,10 +2236,11 @@
         "# The canonical builder/checker recognises READONLY without granting canonical production-runner rights.",
         "# B115/G3 CI-PENDING-REPLY: positive terminal handoff; no checker command for Executor.",
         "# G5-b2: the Executor is only ever told to run the single command (and the read-only check); one text for both kinds.",
-        "# --- G7-b3b2：每批「一句話」由工具寫入，不靠手寫 ------------------------------------------------------------"
+        "# --- G7-b3b2：每批「一句話」由工具寫入，不靠手寫 ------------------------------------------------------------",
+        "# --- Beta 2 (TD-099): mid-run status replies forbidden from using final fixed signature line ---"
       ],
-      "lines": 1576,
-      "sha256": "fad15e5e13e4da063f947d30bfa51cf9e3e82cf3ad63a91bbc06035cc1f74d59"
+      "lines": 1595,
+      "sha256": "959d4b75c41b409897f82646337d0ce4aa47bc4d1a5e9eaf836160822e22d103"
     },
     "scripts/tests/test_prompt_intake.py": {
       "fences": 0,
@@ -2307,6 +2333,14 @@
       "lines": 184,
       "sha256": "d9534acd8880dc52ef4e4e70bc00e2e497199fbdb7d0ff15fd839e5445e6fd25"
     },
+    "scripts/tests/test_s1_draft.py": {
+      "fences": 0,
+      "headings": [
+        "# -*- coding: utf-8 -*-"
+      ],
+      "lines": 328,
+      "sha256": "4f437ba564ef0ecc516d5076e8e34787747ad4781422b68f9e06fece2134313a"
+    },
     "scripts/tests/test_s1_evidence.py": {
       "fences": 0,
       "headings": [
@@ -2336,10 +2370,11 @@
     "scripts/tests/test_s1_registry.py": {
       "fences": 0,
       "headings": [
-        "# -*- coding: utf-8 -*-"
+        "# -*- coding: utf-8 -*-",
+        "# --- Beta 2 (D4): reverseVerification schema, AST nodeid check, monotonic guard & CLI ---"
       ],
-      "lines": 408,
-      "sha256": "5fd47b229640370592ac67021a0c9803ecdb258e03adb777268b6c2cca31828e"
+      "lines": 1068,
+      "sha256": "fced59d0c4084d937fac1d69dd41c2d962aa28ce6e9a916d6db9556fa9e59925"
     },
     "scripts/tests/test_secret_detection_matrix.py": {
       "fences": 0,
@@ -2623,7 +2658,7 @@
       "sha256": "8597e282fed71298b01430659fae7cdfedf4a20f8be0267d662f8f1da8ff23e8"
     }
   },
-  "generated_at": "2026-11-24T00:04:34Z",
+  "generated_at": "2026-11-24T13:46:55Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

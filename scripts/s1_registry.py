@@ -22,10 +22,13 @@ Design guarantees (fail-closed):
 """
 
 import argparse
+import ast
 import datetime
+import hashlib
 import json
 import os
 import re
+import stat
 import subprocess
 import sys
 
@@ -53,6 +56,7 @@ CAUSE_ALLOWED_KEYS = {
     'id', 'title', 'tasks', 'status', 'class', 'watch', 'evidence', 'by',
     'verified', 'confirmed', 'fixedIn', 'fixedCommit', 'fixedBy', 'plannedIn',
     'reason', 'followUp', 'distinctFrom', 'distinctBy', 'outcomes', 'todoIds',
+    'reverseVerification',
 }
 
 CAUSE_ID_RE = re.compile(r'^S1C-([0-9]{3,})$')
@@ -63,6 +67,18 @@ TD_ID_RE = re.compile(r'^TD-[0-9]{3}$')
 LEDGER_ROW_RE = re.compile(r'^\| (TD-[0-9]{3}) \|')
 CHECKPOINT_RE = re.compile(r'^上次核對通過的 HEAD：([0-9a-f]{40})\s*$', re.M)
 OID_RE = re.compile(r'^[0-9a-f]{40}$')
+TASK_ID_RE = re.compile(r'^[A-Za-z0-9_-]+$')
+SHA256_RE = re.compile(r'^[0-9a-f]{64}$')
+NODEID_RE = re.compile(r'^[A-Za-z0-9_./-]+\.py::[A-Za-z_][A-Za-z0-9_]*(?:::[A-Za-z_][A-Za-z0-9_]*)?$')
+RV_INJECTABLE_KEYS = {
+    'fixTask', 'injectable', 'injectionMethod',
+    'oldResult', 'oldOutputSha256',
+    'newResult', 'newOutputSha256',
+    'mutantResult', 'mutantOutputSha256',
+    'regressionTests',
+}
+RV_NONINJECTABLE_KEYS = {'fixTask', 'injectable', 'status', 'notInjectableReason', 'regressionTests'}
+RV_NONINJECTABLE_REQUIRED = {'fixTask', 'injectable', 'status', 'notInjectableReason'}
 
 
 class RegistryError(Exception):
@@ -173,7 +189,134 @@ def read_checkpoint_registry(root: str, checkpoint_oid: str):
     return doc, f'PRESENT_AT_{checkpoint_oid[:7]}'
 
 
-def validate_doc(doc: dict, ledger_ids: set) -> list:
+def verify_regression_nodeid(root_dir: str, nodeid: str):
+    """Verify nodeid syntax, safe repo-relative path, LF UTF-8 syntax, and AST symbol."""
+    if not isinstance(nodeid, str) or not NODEID_RE.match(nodeid):
+        return f'regressionTests nodeid 格式無效：{nodeid!r}'
+    parts = nodeid.split('::')
+    rel = parts[0]
+    if rel.startswith('/') or '\\' in rel or rel in ('', '.', '..'):
+        return f'regressionTests 路徑不安全：{rel!r}'
+    segs = rel.split('/')
+    if any(s in ('', '.', '..') for s in segs):
+        return f'regressionTests 路徑含不安全區段：{rel!r}'
+
+    root_real = os.path.realpath(root_dir)
+    cur = root_dir
+    reparse_flag = getattr(stat, 'FILE_ATTRIBUTE_REPARSE_POINT', 0)
+    for seg in segs:
+        cur = os.path.join(cur, seg)
+        try:
+            st = os.lstat(cur)
+        except OSError as exc:
+            return f'找不到測試檔案 {rel}（{type(exc).__name__}）'
+        is_reparse = bool(reparse_flag and (getattr(st, 'st_file_attributes', 0) & reparse_flag))
+        if stat.S_ISLNK(st.st_mode) or is_reparse:
+            return f'測試路徑不得為 symlink：{rel}'
+    if not stat.S_ISREG(st.st_mode):
+        return f'測試路徑非一般檔案：{rel}'
+    if os.path.commonpath([root_real, os.path.realpath(cur)]) != root_real:
+        return f'測試路徑越界：{rel}'
+
+    try:
+        with open(cur, 'rb') as handle:
+            raw = handle.read()
+    except OSError as exc:
+        return f'無法讀取測試檔案 {rel}（{type(exc).__name__}）'
+    if raw.startswith(b'\xef\xbb\xbf'):
+        return f'測試檔案含 UTF-8 BOM：{rel}'
+    if b'\r' in raw:
+        return f'測試檔案含 CR（必須是 LF）：{rel}'
+    try:
+        src = raw.decode('utf-8', 'strict')
+        tree = ast.parse(src, filename=rel)
+    except (UnicodeDecodeError, SyntaxError, ValueError) as exc:
+        return f'測試檔案解析失敗 {rel}：{type(exc).__name__}'
+
+    fn_types = (ast.FunctionDef, ast.AsyncFunctionDef)
+    if len(parts) == 2:
+        fn_name = parts[1]
+        if not any(isinstance(n, fn_types) and n.name == fn_name for n in tree.body):
+            return f'於 {rel} AST 找不到頂層函式 {fn_name}'
+    else:
+        cls_name, meth_name = parts[1], parts[2]
+        cls_node = next((n for n in tree.body if isinstance(n, ast.ClassDef) and n.name == cls_name), None)
+        if cls_node is None:
+            return f'於 {rel} AST 找不到類別 {cls_name}'
+        if not any(isinstance(m, fn_types) and m.name == meth_name for m in cls_node.body):
+            return f'於 {rel}::{cls_name} AST 找不到方法 {meth_name}'
+    return None
+
+
+def _validate_regression_tests(cid: str, tests, *, required: bool, root_dir: str | None) -> list:
+    fails = []
+    if not isinstance(tests, list) or not all(isinstance(x, str) for x in tests):
+        return [f'{cid} reverseVerification.regressionTests 必須為 nodeid 字串陣列']
+    if required and not tests:
+        return [f'{cid} reverseVerification.regressionTests 於 injectable=true 時不得為空']
+    if len(set(tests)) != len(tests):
+        fails.append(f'{cid} reverseVerification.regressionTests 不得重複')
+    for nid in tests:
+        if not NODEID_RE.match(nid):
+            fails.append(f'{cid} reverseVerification.regressionTests 格式無效：{nid!r}')
+        elif root_dir is not None:
+            err = verify_regression_nodeid(root_dir, nid)
+            if err is not None:
+                fails.append(f'{cid} reverseVerification：{err}')
+    return fails
+
+
+def validate_reverse_verification(cid: str, rv, root_dir: str | None = None) -> list:
+    """Validate D4 reverseVerification block (injectable or not_injectable)."""
+    if not isinstance(rv, dict):
+        return [f'{cid} reverseVerification 必須為 JSON object']
+    fails = []
+    fix_task = rv.get('fixTask')
+    if not isinstance(fix_task, str) or not TASK_ID_RE.match(fix_task):
+        fails.append(f'{cid} reverseVerification.fixTask 格式無效（實為 {fix_task!r}）')
+    inj = rv.get('injectable')
+    if type(inj) is not bool:
+        fails.append(f'{cid} reverseVerification.injectable 必須為布林值（實為 {inj!r}）')
+        return fails
+
+    if inj is True:
+        missing = sorted(RV_INJECTABLE_KEYS - set(rv.keys()))
+        extra = sorted(set(rv.keys()) - RV_INJECTABLE_KEYS)
+        if missing:
+            fails.append(f'{cid} reverseVerification 缺少欄位：{", ".join(missing)}')
+        if extra:
+            fails.append(f'{cid} reverseVerification 含未定義欄位：{", ".join(extra)}')
+        if not _is_nonempty_str(rv.get('injectionMethod')):
+            fails.append(f'{cid} reverseVerification.injectionMethod 不得為空')
+        if rv.get('oldResult') != 'FAIL':
+            fails.append(f'{cid} reverseVerification.oldResult 必須為 "FAIL"（實為 {rv.get("oldResult")!r}）')
+        if rv.get('newResult') != 'PASS':
+            fails.append(f'{cid} reverseVerification.newResult 必須為 "PASS"（實為 {rv.get("newResult")!r}）')
+        if rv.get('mutantResult') != 'FAIL':
+            fails.append(f'{cid} reverseVerification.mutantResult 必須為 "FAIL"（實為 {rv.get("mutantResult")!r}）')
+        for sha_key in ('oldOutputSha256', 'newOutputSha256', 'mutantOutputSha256'):
+            sval = rv.get(sha_key)
+            if not isinstance(sval, str) or not SHA256_RE.match(sval):
+                fails.append(f'{cid} reverseVerification.{sha_key} 必須為 64 碼小寫 hex')
+        if 'regressionTests' in rv:
+            fails.extend(_validate_regression_tests(cid, rv['regressionTests'], required=True, root_dir=root_dir))
+    else:
+        missing = sorted(RV_NONINJECTABLE_REQUIRED - set(rv.keys()))
+        extra = sorted(set(rv.keys()) - RV_NONINJECTABLE_KEYS)
+        if missing:
+            fails.append(f'{cid} reverseVerification 缺少欄位：{", ".join(missing)}')
+        if extra:
+            fails.append(f'{cid} reverseVerification 含未定義欄位：{", ".join(extra)}')
+        if rv.get('status') != 'not_injectable':
+            fails.append(f'{cid} reverseVerification.status 於 injectable=false 時必須為 "not_injectable"')
+        if not _is_nonempty_str(rv.get('notInjectableReason')):
+            fails.append(f'{cid} reverseVerification.notInjectableReason 不得為空')
+        if 'regressionTests' in rv:
+            fails.extend(_validate_regression_tests(cid, rv['regressionTests'], required=False, root_dir=root_dir))
+    return fails
+
+
+def validate_doc(doc: dict, ledger_ids: set, root_dir: str | None = None) -> list:
     """Validate schema: 2 registry dict; returns list of failure messages."""
     fails = []
     if not isinstance(doc, dict):
@@ -365,20 +508,21 @@ def validate_doc(doc: dict, ledger_ids: set) -> list:
                 if missing_tds:
                     fails.append(f'{cid} todoIds 於 {LEDGER_REL} 找不到編號：{", ".join(missing_tds)}')
 
+        if 'reverseVerification' in c:
+            fails.extend(validate_reverse_verification(cid, c['reverseVerification'], root_dir=root_dir))
+
     return fails
 
 
 def check_monotonic(prior_doc: dict, current_doc: dict) -> list:
-    """Enforce no deleted causes, no retracted tasks, and no confirmed true -> false."""
+    """Enforce monotonic growth, D4 mandatory reverseVerification on fixed transitions, and N2 immutability."""
     fails = []
-    cur_by_id = {
-        c['id']: c
-        for c in current_doc.get('causes', [])
-        if isinstance(c, dict) and isinstance(c.get('id'), str)
-    }
-    for pc in prior_doc.get('causes', []):
-        if not isinstance(pc, dict) or not isinstance(pc.get('id'), str):
-            continue
+    cur_causes = [c for c in current_doc.get('causes', []) if isinstance(c, dict) and isinstance(c.get('id'), str)]
+    prior_causes = [pc for pc in prior_doc.get('causes', []) if isinstance(pc, dict) and isinstance(pc.get('id'), str)]
+    cur_by_id = {c['id']: c for c in cur_causes}
+    prior_by_id = {pc['id']: pc for pc in prior_causes}
+
+    for pc in prior_causes:
         cid = pc['id']
         cc = cur_by_id.get(cid)
         if cc is None:
@@ -391,6 +535,63 @@ def check_monotonic(prior_doc: dict, current_doc: dict) -> list:
             fails.append(f'{REGISTRY_REL} {cid}：tasks 不得撤回既有 TASK_ID：{", ".join(retracted)}')
         if pc.get('confirmed') is True and cc.get('confirmed') is not True:
             fails.append(f'{REGISTRY_REL} {cid}：confirmed 不得由 true 退回為 {cc.get("confirmed")!r}')
+        prior_rv = pc.get('reverseVerification')
+        cur_rv = cc.get('reverseVerification')
+        if prior_rv is not None:
+            if cur_rv is None:
+                fails.append(f'{REGISTRY_REL} {cid}：reverseVerification 已建立，不得刪除或撤回（只增不減）')
+            elif (
+                isinstance(prior_rv, dict)
+                and isinstance(cur_rv, dict)
+                and prior_rv.get('injectable') is True
+                and cur_rv.get('injectable') is not True
+            ):
+                fails.append(
+                    f'{REGISTRY_REL} {cid}：reverseVerification.injectable 不得由 true 退回為 {cur_rv.get("injectable")!r}'
+                )
+            if isinstance(prior_rv, dict) and isinstance(cur_rv, dict):
+                prior_tests = prior_rv.get('regressionTests')
+                if isinstance(prior_tests, list) and prior_tests:
+                    cur_tests = cur_rv.get('regressionTests') if isinstance(cur_rv.get('regressionTests'), list) else []
+                    removed_tests = sorted(set(prior_tests) - set(cur_tests))
+                    if removed_tests:
+                        fails.append(
+                            f'{REGISTRY_REL} {cid}：reverseVerification.regressionTests 不得縮減既有項目：{", ".join(removed_tests)}'
+                        )
+            re_fixing = cc.get('status') == 'fixed' and (pc.get('status') != 'fixed' or pc.get('fixedIn') != cc.get('fixedIn'))
+            if isinstance(prior_rv, dict) and isinstance(cur_rv, dict) and not re_fixing:
+                prior_ft = prior_rv.get('fixTask')
+                if _is_nonempty_str(prior_ft) and cur_rv.get('fixTask') != prior_ft:
+                    fails.append(
+                        f'{REGISTRY_REL} {cid}：reverseVerification.fixTask 已建立為 {prior_ft!r}，不得變更為 {cur_rv.get("fixTask")!r}'
+                    )
+                for sha_key in ('oldOutputSha256', 'newOutputSha256', 'mutantOutputSha256'):
+                    prior_sha = prior_rv.get(sha_key)
+                    if _is_nonempty_str(prior_sha) and cur_rv.get(sha_key) != prior_sha:
+                        fails.append(
+                            f'{REGISTRY_REL} {cid}：reverseVerification.{sha_key} 已記錄，不得變更（若需重驗請新增欄位或另立紀錄）'
+                        )
+
+    # B2: Any fix event (new cause as fixed, non-fixed -> fixed, or fixed -> fixed with changed fixedIn)
+    # must carry reverseVerification with fixTask == fixedIn.
+    for cc in cur_causes:
+        cid = cc['id']
+        if cc.get('status') != 'fixed':
+            continue
+        pc = prior_by_id.get(cid)
+        if pc is not None and pc.get('status') == 'fixed' and pc.get('fixedIn') == cc.get('fixedIn'):
+            continue
+        cur_rv = cc.get('reverseVerification')
+        if not isinstance(cur_rv, dict):
+            fails.append(f'{REGISTRY_REL} {cid}：依 D4 規則，由非 fixed、新增原因或 fixedIn 變更轉為新一輪 fixed 時必須附帶合法 reverseVerification')
+            continue
+        fixed_in = cc.get('fixedIn')
+        fix_task = cur_rv.get('fixTask')
+        if not _is_nonempty_str(fixed_in) or fix_task != fixed_in:
+            fails.append(
+                f'{REGISTRY_REL} {cid}：reverseVerification.fixTask（{fix_task!r}）必須等於 fixedIn（{fixed_in!r}）'
+            )
+
     return fails
 
 
@@ -404,7 +605,7 @@ def check(root_dir: str) -> tuple:
     except RegistryError as exc:
         return [str(exc)], infos
 
-    fails.extend(validate_doc(doc, ledger_ids))
+    fails.extend(validate_doc(doc, ledger_ids, root_dir=root_dir))
 
     try:
         checkpoint_oid = read_checkpoint_oid(root_dir)
@@ -436,7 +637,7 @@ def summary(root_dir: str, as_of: str = None, compare_checkpoint: bool = True) -
     and non-blocking >7d stale unfixed verification warnings."""
     doc = parse_json_lf(root_dir, REGISTRY_REL)
     ledger_ids = load_ledger_td_ids(root_dir)
-    schema_fails = validate_doc(doc, ledger_ids)
+    schema_fails = validate_doc(doc, ledger_ids, root_dir=root_dir)
     if schema_fails:
         raise RegistryError(schema_fails[0])
 
@@ -536,8 +737,168 @@ def format_summary_lines(data: dict) -> list:
     return lines
 
 
+def _parse_cmd_argv(raw: str, label: str) -> list:
+    if not isinstance(raw, str) or not raw.strip():
+        raise RegistryError(f'{label}_MISSING')
+    try:
+        argv = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise RegistryError(f'{label}_INVALID_JSON') from exc
+    if not isinstance(argv, list) or not argv or not all(isinstance(x, str) and x for x in argv):
+        raise RegistryError(f'{label}_INVALID_ARGV')
+    return argv
+
+
+def _run_bounded_rv_cmd(root_dir: str, argv: list, timeout: int, label: str) -> tuple:
+    scripts_dir = os.path.dirname(os.path.abspath(__file__))
+    added = False
+    if scripts_dir not in sys.path:
+        sys.path.insert(0, scripts_dir)
+        added = True
+    try:
+        from bounded_process import run_bounded
+    finally:
+        if added and sys.path and sys.path[0] == scripts_dir:
+            sys.path.pop(0)
+
+    res = run_bounded(argv, root_dir, timeout, merge_stderr=True)
+    if getattr(res, 'launch_error', None):
+        raise RegistryError(f'{label}_LAUNCH_ERROR')
+    if getattr(res, 'timed_out', False):
+        raise RegistryError(f'{label}_TIMEOUT')
+    out_raw = res.stdout
+    if isinstance(out_raw, str):
+        out_bytes = out_raw.encode('utf-8', 'replace')
+    elif isinstance(out_raw, (bytes, bytearray)):
+        out_bytes = bytes(out_raw)
+    else:
+        out_bytes = b''
+    return res.returncode, hashlib.sha256(out_bytes).hexdigest()
+
+
+def _create_once_json_lf(out_path: str, payload: dict) -> None:
+    if not os.path.isabs(out_path):
+        out_abs = os.path.abspath(out_path)
+    else:
+        out_abs = out_path
+    parent = os.path.dirname(out_abs)
+    if parent:
+        os.makedirs(parent, exist_ok=True)
+    reparse_flag = getattr(stat, 'FILE_ATTRIBUTE_REPARSE_POINT', 0)
+    try:
+        st = os.lstat(out_abs)
+        is_reparse = bool(reparse_flag and (getattr(st, 'st_file_attributes', 0) & reparse_flag))
+        if stat.S_ISLNK(st.st_mode) or is_reparse:
+            raise RegistryError('OUT_SYMLINK_UNSAFE')
+        raise RegistryError('OUT_EXISTS')
+    except FileNotFoundError:
+        pass
+    except RegistryError:
+        raise
+    except OSError as exc:
+        raise RegistryError('OUT_STAT_FAILED') from exc
+
+    raw = (json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + '\n').encode('utf-8')
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | getattr(os, 'O_BINARY', 0)
+    try:
+        fd = os.open(out_abs, flags, 0o600)
+        with os.fdopen(fd, 'wb') as handle:
+            handle.write(raw)
+            handle.flush()
+            os.fsync(handle.fileno())
+    except FileExistsError as exc:
+        raise RegistryError('OUT_EXISTS') from exc
+    except OSError as exc:
+        raise RegistryError('OUT_WRITE_FAILED') from exc
+
+
+def reverse_verify(
+    root_dir: str,
+    *,
+    fix_task: str,
+    regression_tests: list,
+    not_injectable: bool = False,
+    reason: str | None = None,
+    injection_method: str | None = None,
+    old_cmd: str | None = None,
+    new_cmd: str | None = None,
+    mutant_cmd: str | None = None,
+    timeout: int = 300,
+    out_path: str | None = None,
+) -> dict:
+    """Execute or record D4 reverse verification mechanically and fail closed."""
+    if not os.path.isdir(root_dir):
+        raise RegistryError('REPO_MISSING')
+    if not isinstance(fix_task, str) or not TASK_ID_RE.match(fix_task):
+        raise RegistryError('FIX_TASK_INVALID')
+    if type(timeout) is not int or timeout < 1:
+        raise RegistryError('TIMEOUT_INVALID')
+
+    tests = list(regression_tests or [])
+    if len(set(tests)) != len(tests):
+        raise RegistryError('REGRESSION_TESTS_DUPLICATE')
+    for nid in tests:
+        err = verify_regression_nodeid(root_dir, nid)
+        if err is not None:
+            raise RegistryError('AST_NODEID_INVALID')
+
+    if not_injectable:
+        if any(x is not None for x in (injection_method, old_cmd, new_cmd, mutant_cmd)):
+            raise RegistryError('CONFLICTING_MODE_FLAGS')
+        if not _is_nonempty_str(reason):
+            raise RegistryError('REASON_REQUIRED')
+        rv = {
+            'fixTask': fix_task,
+            'injectable': False,
+            'status': 'not_injectable',
+            'notInjectableReason': reason,
+        }
+        if tests:
+            rv['regressionTests'] = tests
+    else:
+        if reason is not None:
+            raise RegistryError('CONFLICTING_MODE_FLAGS')
+        if not tests:
+            raise RegistryError('REGRESSION_TESTS_REQUIRED')
+        if not _is_nonempty_str(injection_method):
+            raise RegistryError('INJECTION_METHOD_REQUIRED')
+        old_argv = _parse_cmd_argv(old_cmd, 'OLD_CMD')
+        new_argv = _parse_cmd_argv(new_cmd, 'NEW_CMD')
+        mut_argv = _parse_cmd_argv(mutant_cmd, 'MUTANT_CMD')
+
+        old_rc, old_sha = _run_bounded_rv_cmd(root_dir, old_argv, timeout, 'OLD_CMD')
+        if old_rc == 0:
+            raise RegistryError('OLD_DID_NOT_FAIL')
+        new_rc, new_sha = _run_bounded_rv_cmd(root_dir, new_argv, timeout, 'NEW_CMD')
+        if new_rc != 0:
+            raise RegistryError('NEW_FAILED')
+        mut_rc, mut_sha = _run_bounded_rv_cmd(root_dir, mut_argv, timeout, 'MUTANT_CMD')
+        if mut_rc == 0:
+            raise RegistryError('MUTANT_SURVIVED')
+
+        rv = {
+            'fixTask': fix_task,
+            'injectable': True,
+            'injectionMethod': injection_method,
+            'oldResult': 'FAIL',
+            'oldOutputSha256': old_sha,
+            'newResult': 'PASS',
+            'newOutputSha256': new_sha,
+            'mutantResult': 'FAIL',
+            'mutantOutputSha256': mut_sha,
+            'regressionTests': tests,
+        }
+
+    fails = validate_reverse_verification('CLI', rv, root_dir=root_dir)
+    if fails:
+        raise RegistryError('VALIDATION_FAILED')
+    if out_path is not None:
+        _create_once_json_lf(out_path, rv)
+    return rv
+
+
 def main(argv=None) -> int:
-    parser = argparse.ArgumentParser(description='D8 S1 root-cause registry checker and summary')
+    parser = argparse.ArgumentParser(description='D8 S1 root-cause registry checker, summary, and D4 reverse-verify')
     sub = parser.add_subparsers(dest='cmd', required=True)
 
     p_check = sub.add_parser('check', help='validate S1 registry (same as CHECK 31)')
@@ -548,6 +909,20 @@ def main(argv=None) -> int:
     p_sum.add_argument('--as-of', default=None)
     p_sum.add_argument('--no-checkpoint', action='store_true')
     p_sum.add_argument('--json', action='store_true')
+
+    p_rv = sub.add_parser('reverse-verify', help='run bounded D4 old/new/mutant verification and emit schema-2 block')
+    p_rv.add_argument('--repo', default='.')
+    p_rv.add_argument('--fix-task', required=True)
+    p_rv.add_argument('--regression-test', action='append', default=[])
+    p_rv.add_argument('--not-injectable', action='store_true')
+    p_rv.add_argument('--reason', default=None)
+    p_rv.add_argument('--injection-method', default=None)
+    p_rv.add_argument('--old-cmd', default=None)
+    p_rv.add_argument('--new-cmd', default=None)
+    p_rv.add_argument('--mutant-cmd', default=None)
+    p_rv.add_argument('--timeout', type=int, default=300)
+    p_rv.add_argument('--json', action='store_true')
+    p_rv.add_argument('--out', default=None)
 
     args = parser.parse_args(argv)
     root = os.path.abspath(args.repo)
@@ -561,6 +936,40 @@ def main(argv=None) -> int:
                 print(f'  {fail}')
             return 1
         print('S1_REGISTRY CHECK PASS')
+        return 0
+
+    if args.cmd == 'reverse-verify':
+        try:
+            rv = reverse_verify(
+                root,
+                fix_task=args.fix_task,
+                regression_tests=args.regression_test,
+                not_injectable=args.not_injectable,
+                reason=args.reason,
+                injection_method=args.injection_method,
+                old_cmd=args.old_cmd,
+                new_cmd=args.new_cmd,
+                mutant_cmd=args.mutant_cmd,
+                timeout=args.timeout,
+                out_path=args.out,
+            )
+        except RegistryError as exc:
+            print(f'S1_REVERSE_VERIFY FAIL {exc}')
+            return 1
+        if args.json:
+            print(json.dumps(rv, ensure_ascii=False, sort_keys=True))
+        elif rv['injectable']:
+            print(
+                f'S1_REVERSE_VERIFY PASS fix_task={rv["fixTask"]} injectable=true '
+                f'old={rv["oldResult"]} new={rv["newResult"]} mutant={rv["mutantResult"]} '
+                f'old_sha={rv["oldOutputSha256"]} new_sha={rv["newOutputSha256"]} '
+                f'mutant_sha={rv["mutantOutputSha256"]} tests={len(rv["regressionTests"])}'
+            )
+        else:
+            print(
+                f'S1_REVERSE_VERIFY PASS fix_task={rv["fixTask"]} injectable=false '
+                f'status={rv["status"]} tests={len(rv.get("regressionTests", []))}'
+            )
         return 0
 
     try:

@@ -2,7 +2,9 @@
 """B-117 beta-1 (D8 / TD-101): positive and negative controls for scripts/s1_registry.py and CHECK 31."""
 import copy
 import json
+import os
 from pathlib import Path
+import stat
 import subprocess
 import sys
 
@@ -124,9 +126,12 @@ def test_bootstrap_when_checkpoint_lacks_registry_passes_with_info(tmp_path):
 def test_monotonic_allows_append_task_addition_and_confirm_promotion(tmp_path):
     base_doc = _make_doc()
     repo, _ = _git_init_repo(tmp_path, commit_registry=True, initial_doc=base_doc)
+    _sample_rv_test_file(repo)
     new_doc = copy.deepcopy(base_doc)
     new_doc['causes'][0]['tasks'].append('B117-SAMPLE-R2-261121')
     new_doc['causes'][0]['confirmed'] = True
+    rv2 = _valid_injectable_rv(['scripts/tests/test_sample_rv.py::test_alpha'])
+    rv2['fixTask'] = 'B117-TWO-FIX-261123'
     new_doc['causes'].append({
         'id': 'S1C-002',
         'title': 'Fixed sample two',
@@ -141,6 +146,7 @@ def test_monotonic_allows_append_task_addition_and_confirm_promotion(tmp_path):
         'verified': {'by': 'AUD-TEST', 'date': '2026-11-22', 'basis': 'main'},
         'confirmed': True,
         'todoIds': ['TD-002'],
+        'reverseVerification': rv2,
     })
     _write_doc(repo, new_doc)
     fails, infos = reg.check(str(repo))
@@ -360,6 +366,12 @@ def test_summary_excludes_unclassified_tracks_class_changes_and_deterministic_7d
         'by': 'AUD',
         'verified': {'by': 'AUD', 'date': '2026-10-01', 'basis': 'main'},
         'confirmed': True,
+        'reverseVerification': {
+            'fixTask': 'B117-FIX',
+            'injectable': False,
+            'status': 'not_injectable',
+            'notInjectableReason': 'legacy summary test fixture',
+        },
     })
     cur_doc['causes'].append({
         'id': 'S1C-003',
@@ -406,3 +418,651 @@ def test_cli_check_and_summary_outputs(tmp_path, capsys):
     out_sum = capsys.readouterr().out
     assert 'S1_REGISTRY_SUMMARY total=1 confirmed=0/1' in out_sum
     assert 'S1_STALE_7D id=S1C-001 status=planned verified=2026-11-15 age_days=8' in out_sum
+
+
+# --- Beta 2 (D4): reverseVerification schema, AST nodeid check, monotonic guard & CLI ---
+
+def _sample_rv_test_file(repo: Path, rel: str = 'scripts/tests/test_sample_rv.py') -> Path:
+    p = repo / rel
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_bytes(
+        (
+            '# -*- coding: utf-8 -*-\n'
+            'def test_alpha():\n'
+            '    assert True\n\n'
+            'class TestSuite:\n'
+            '    def test_beta(self):\n'
+            '        assert True\n'
+        ).encode('utf-8')
+    )
+    return p
+
+
+def _valid_injectable_rv(nodeids=None):
+    return {
+        'fixTask': 'B117-BETA2-FIX-261124',
+        'injectable': True,
+        'injectionMethod': 'env delay injection',
+        'oldResult': 'FAIL',
+        'oldOutputSha256': 'a' * 64,
+        'newResult': 'PASS',
+        'newOutputSha256': 'b' * 64,
+        'mutantResult': 'FAIL',
+        'mutantOutputSha256': 'c' * 64,
+        'regressionTests': nodeids or ['scripts/tests/test_sample_rv.py::test_alpha'],
+    }
+
+
+def test_d4_reverse_verification_injectable_and_not_injectable_valid(tmp_path):
+    doc = _make_doc()
+    doc['causes'][0]['reverseVerification'] = _valid_injectable_rv([
+        'scripts/tests/test_sample_rv.py::test_alpha',
+        'scripts/tests/test_sample_rv.py::TestSuite::test_beta',
+    ])
+    doc['causes'].append({
+        'id': 'S1C-002',
+        'title': 'Not injectable sample',
+        'tasks': ['B117-NOTINJ-261124'],
+        'status': 'planned',
+        'class': 'F',
+        'plannedIn': 'B-117',
+        'watch': ['ci:TIMEOUT'],
+        'evidence': 'external runner',
+        'by': 'AUD',
+        'verified': {'by': 'AUD', 'date': '2026-11-24', 'basis': 'main'},
+        'confirmed': False,
+        'reverseVerification': {
+            'fixTask': 'B117-NOTINJ-261124',
+            'injectable': False,
+            'status': 'not_injectable',
+            'notInjectableReason': 'external platform runner failure',
+        },
+    })
+    repo, _ = _git_init_repo(tmp_path, commit_registry=False, initial_doc=doc)
+    _sample_rv_test_file(repo)
+    fails, _ = reg.check(str(repo))
+    assert fails == [], fails
+
+
+def test_d4_reverse_verification_rejects_invalid_fields_and_missing_ast_nodeids(tmp_path):
+    base_doc = _make_doc()
+    repo, _ = _git_init_repo(tmp_path, commit_registry=False, initial_doc=base_doc)
+    _sample_rv_test_file(repo)
+
+    bad_variants = [
+        {**_valid_injectable_rv(), 'oldResult': 'PASS'},
+        {**_valid_injectable_rv(), 'newResult': 'FAIL'},
+        {**_valid_injectable_rv(), 'mutantResult': 'PASS'},
+        {**_valid_injectable_rv(), 'oldOutputSha256': 'a' * 63},
+        {**_valid_injectable_rv(), 'extraField': 1},
+        {**_valid_injectable_rv(), 'regressionTests': []},
+        {**_valid_injectable_rv(), 'regressionTests': ['scripts/tests/test_sample_rv.py::test_alpha', 'scripts/tests/test_sample_rv.py::test_alpha']},
+        {**_valid_injectable_rv(), 'regressionTests': ['scripts/tests/test_sample_rv.py::missing_fn']},
+        {**_valid_injectable_rv(), 'regressionTests': ['scripts/tests/test_sample_rv.py::TestSuite::missing_meth']},
+        {**_valid_injectable_rv(), 'regressionTests': ['scripts/tests/nonexistent.py::test_alpha']},
+        {'fixTask': 'B117-X-261124', 'injectable': False, 'status': 'wrong', 'notInjectableReason': 'why'},
+        {'fixTask': 'B117-X-261124', 'injectable': False, 'status': 'not_injectable', 'notInjectableReason': ''},
+    ]
+    for rv in bad_variants:
+        d = copy.deepcopy(base_doc)
+        d['causes'][0]['reverseVerification'] = rv
+        _write_doc(repo, d)
+        fails, _ = reg.check(str(repo))
+        assert fails, f'expected failure for {rv!r}'
+
+    # Direct validate_doc check ensures duplicate regressionTests message fires cleanly (catches S11)
+    d_dup = copy.deepcopy(base_doc)
+    d_dup['causes'][0]['reverseVerification'] = _valid_injectable_rv([
+        'scripts/tests/test_sample_rv.py::test_alpha',
+        'scripts/tests/test_sample_rv.py::test_alpha',
+    ])
+    dup_fails = reg.validate_doc(d_dup, {'TD-001', 'TD-002'}, root_dir=str(repo))
+    assert any('不得重複' in f for f in dup_fails), dup_fails
+
+    # BOM / CR / syntax error in referenced regression test file also fails closed (BOM msg catches S7)
+    bad_file = repo / 'scripts' / 'tests' / 'test_bad_rv.py'
+    bad_file.write_bytes(b'\xef\xbb\xbfdef test_ok():\n    pass\n')
+    d_bom = copy.deepcopy(base_doc)
+    d_bom['causes'][0]['reverseVerification'] = _valid_injectable_rv(['scripts/tests/test_bad_rv.py::test_ok'])
+    _write_doc(repo, d_bom)
+    bom_fails, _ = reg.check(str(repo))
+    assert any('UTF-8 BOM' in f for f in bom_fails), bom_fails
+
+    bad_file.write_bytes(b'def test_ok():\r\n    pass\r\n')
+    assert any('CRLF' in f or 'CR' in f for f in reg.check(str(repo))[0])
+
+    bad_file.write_bytes(b'def broken(:\n    pass\n')
+    assert any('解析失敗' in f for f in reg.check(str(repo))[0])
+
+
+def test_d4_reverse_verification_rejects_symlink_test_path(tmp_path, monkeypatch):
+    repo, _ = _git_init_repo(tmp_path, commit_registry=False, initial_doc=_make_doc())
+    _sample_rv_test_file(repo)
+
+    # First exercise deterministic lstat symlink guard across Windows and POSIX (catches S6)
+    orig_lstat = os.lstat
+
+    def fake_lstat(path):
+        if str(path).replace('\\', '/').endswith('scripts/tests/test_sample_rv.py'):
+            return type('_SymStat', (), {'st_mode': stat.S_IFLNK | 0o777, 'st_file_attributes': 0})()
+        return orig_lstat(path)
+
+    monkeypatch.setattr(reg.os, 'lstat', fake_lstat)
+    doc = _make_doc()
+    doc['causes'][0]['reverseVerification'] = _valid_injectable_rv(['scripts/tests/test_sample_rv.py::test_alpha'])
+    _write_doc(repo, doc)
+    sym_fails, _ = reg.check(str(repo))
+    assert any('symlink' in f for f in sym_fails), sym_fails
+    monkeypatch.undo()
+
+    # Also test real OS symlink when platform grants privilege
+    real_target = repo / 'real_target.py'
+    real_target.write_bytes(b'def test_alpha():\n    pass\n')
+    link_path = repo / 'scripts' / 'tests' / 'test_link_rv.py'
+    try:
+        os.symlink(str(real_target), str(link_path))
+    except OSError:
+        return
+    doc2 = _make_doc()
+    doc2['causes'][0]['reverseVerification'] = _valid_injectable_rv(['scripts/tests/test_link_rv.py::test_alpha'])
+    _write_doc(repo, doc2)
+    real_sym_fails, _ = reg.check(str(repo))
+    assert any('symlink' in f for f in real_sym_fails), real_sym_fails
+
+
+def test_d4_reverse_verification_monotonic_forbids_deletion_or_downgrade():
+    prior = _make_doc()
+    prior['causes'][0]['reverseVerification'] = _valid_injectable_rv()
+
+    deleted = copy.deepcopy(prior)
+    del deleted['causes'][0]['reverseVerification']
+    assert any('reverseVerification' in f for f in reg.check_monotonic(prior, deleted))
+
+    downgraded = copy.deepcopy(prior)
+    downgraded['causes'][0]['reverseVerification'] = {
+        'fixTask': 'B117-BETA2-FIX-261124',
+        'injectable': False,
+        'status': 'not_injectable',
+        'notInjectableReason': 'downgraded',
+    }
+    assert any('injectable' in f for f in reg.check_monotonic(prior, downgraded))
+
+
+def test_d4_cli_reverse_verify_modes_create_once_and_fail_closed(tmp_path, capsys):
+    repo = tmp_path / 'rvrepo'
+    _sample_rv_test_file(repo)
+    out_file = tmp_path / 'rv.json'
+
+    old_cmd = json.dumps([sys.executable, '-c', 'print("OLD_SECRET_MARKER"); raise SystemExit(1)'])
+    new_cmd = json.dumps([sys.executable, '-c', 'print("NEW_SECRET_MARKER")'])
+    mut_cmd = json.dumps([sys.executable, '-c', 'import sys; sys.stderr.write("MUT_ERR\\n"); raise SystemExit(2)'])
+
+    rc = reg.main([
+        'reverse-verify',
+        '--repo', str(repo),
+        '--fix-task', 'B117-BETA2-FIX-261124',
+        '--regression-test', 'scripts/tests/test_sample_rv.py::test_alpha',
+        '--injection-method', 'deterministic fault',
+        '--old-cmd', old_cmd,
+        '--new-cmd', new_cmd,
+        '--mutant-cmd', mut_cmd,
+        '--out', str(out_file),
+    ])
+    stdout = capsys.readouterr().out
+    assert rc == 0
+    assert 'S1_REVERSE_VERIFY PASS fix_task=B117-BETA2-FIX-261124 injectable=true' in stdout
+    # Raw child stdout/stderr must never echo to terminal
+    for secret in ('OLD_SECRET_MARKER', 'NEW_SECRET_MARKER', 'MUT_ERR'):
+        assert secret not in stdout
+
+    saved = out_file.read_bytes()
+    assert not saved.startswith(b'\xef\xbb\xbf') and b'\r' not in saved
+    parsed = json.loads(saved.decode('utf-8'))
+    assert parsed['oldResult'] == 'FAIL' and parsed['newResult'] == 'PASS' and parsed['mutantResult'] == 'FAIL'
+
+    # Create-once refuses overwriting existing --out file
+    assert reg.main([
+        'reverse-verify', '--repo', str(repo), '--fix-task', 'B117-BETA2-FIX-261124',
+        '--not-injectable', '--reason', 'cannot inject', '--out', str(out_file),
+    ]) == 1
+    assert 'OUT_EXISTS' in capsys.readouterr().out
+
+    # --not-injectable --json works cleanly
+    assert reg.main([
+        'reverse-verify', '--repo', str(repo), '--fix-task', 'B117-BETA2-FIX-261124',
+        '--not-injectable', '--reason', 'platform ci flake', '--json',
+    ]) == 0
+    ni = json.loads(capsys.readouterr().out)
+    assert ni['status'] == 'not_injectable' and ni['injectable'] is False
+
+    # Surviving mutant fails closed
+    rc_mut = reg.main([
+        'reverse-verify', '--repo', str(repo), '--fix-task', 'B117-BETA2-FIX-261124',
+        '--regression-test', 'scripts/tests/test_sample_rv.py::test_alpha',
+        '--injection-method', 'fault',
+        '--old-cmd', old_cmd, '--new-cmd', new_cmd, '--mutant-cmd', new_cmd,
+    ])
+    assert rc_mut == 1
+    assert 'MUTANT_SURVIVED' in capsys.readouterr().out
+
+    # Non-existent nodeid fails before executing commands
+    rc_ast = reg.main([
+        'reverse-verify', '--repo', str(repo), '--fix-task', 'B117-BETA2-FIX-261124',
+        '--regression-test', 'scripts/tests/test_sample_rv.py::does_not_exist',
+        '--injection-method', 'fault',
+        '--old-cmd', new_cmd, '--new-cmd', new_cmd, '--mutant-cmd', new_cmd,
+    ])
+    assert rc_ast == 1
+    assert 'AST_NODEID_INVALID' in capsys.readouterr().out
+
+    # Passing old_cmd fails closed with OLD_DID_NOT_FAIL and never writes --out (catches S9)
+    old_pass_out = tmp_path / 'rv_old_pass.json'
+    rc_old_pass = reg.main([
+        'reverse-verify', '--repo', str(repo), '--fix-task', 'B117-BETA2-FIX-261124',
+        '--regression-test', 'scripts/tests/test_sample_rv.py::test_alpha',
+        '--injection-method', 'fault',
+        '--old-cmd', new_cmd, '--new-cmd', new_cmd, '--mutant-cmd', mut_cmd,
+        '--out', str(old_pass_out),
+    ])
+    assert rc_old_pass == 1
+    assert 'OLD_DID_NOT_FAIL' in capsys.readouterr().out
+    assert not old_pass_out.exists()
+
+
+def test_d4_transition_to_fixed_requires_reverse_verification_and_fix_task_match(tmp_path):
+    # Base doc with S1C-001 planned and historical S1C-002 already fixed without RV
+    base_doc = _make_doc()
+    base_doc['causes'].append({
+        'id': 'S1C-002',
+        'title': 'Historical fixed cause',
+        'tasks': ['B117-HIST-261110'],
+        'status': 'fixed',
+        'class': 'C',
+        'fixedIn': 'B117-HIST-FIX-261111',
+        'fixedCommit': '1234567abcdef',
+        'watch': ['precommit:GATE4'],
+        'evidence': 'hist',
+        'by': 'AUD-TEST',
+        'verified': {'by': 'AUD-TEST', 'date': '2026-11-11', 'basis': 'main'},
+        'confirmed': True,
+    })
+    repo, _ = _git_init_repo(tmp_path, commit_registry=True, initial_doc=base_doc)
+    _sample_rv_test_file(repo)
+
+    # Exempt historical fixed cause remains allowed without RV when unchanged
+    _write_doc(repo, base_doc)
+    assert reg.check(str(repo))[0] == []
+
+    # Transitioning S1C-001 planned -> fixed WITHOUT reverseVerification must FAIL (B2)
+    no_rv = copy.deepcopy(base_doc)
+    no_rv['causes'][0]['status'] = 'fixed'
+    no_rv['causes'][0]['fixedIn'] = 'B117-FAKE-FIX-261125'
+    no_rv['causes'][0]['fixedCommit'] = 'a' * 40
+    _write_doc(repo, no_rv)
+    fails_no_rv, _ = reg.check(str(repo))
+    assert any('必須附帶合法 reverseVerification' in f for f in fails_no_rv), fails_no_rv
+
+    # Transitioning planned -> fixed WITH mismatched fixTask != fixedIn must FAIL
+    bad_ft = copy.deepcopy(no_rv)
+    bad_ft['causes'][0]['reverseVerification'] = _valid_injectable_rv()  # fixTask='B117-BETA2-FIX-261124'
+    _write_doc(repo, bad_ft)
+    fails_ft, _ = reg.check(str(repo))
+    assert any('fixTask' in f and 'fixedIn' in f for f in fails_ft), fails_ft
+
+    # Adding new fixed cause without RV must ALSO FAIL
+    added_no_rv = copy.deepcopy(base_doc)
+    added_no_rv['causes'].append({
+        'id': 'S1C-003',
+        'title': 'Added fixed without RV',
+        'tasks': ['B117-NEW-261124'],
+        'status': 'fixed',
+        'class': 'A',
+        'fixedIn': 'B117-NEW-FIX-261124',
+        'fixedCommit': 'b' * 40,
+        'watch': ['precommit:PRECOMMIT_NONZERO'],
+        'evidence': 'new',
+        'by': 'AUD-TEST',
+        'verified': {'by': 'AUD-TEST', 'date': '2026-11-24', 'basis': 'main'},
+        'confirmed': True,
+    })
+    _write_doc(repo, added_no_rv)
+    fails_add, _ = reg.check(str(repo))
+    assert any('S1C-003' in f and '必須附帶合法 reverseVerification' in f for f in fails_add), fails_add
+
+    # Both injectable and not_injectable with fixTask == fixedIn PASS
+    ok_inj = copy.deepcopy(no_rv)
+    rv_ok = _valid_injectable_rv(['scripts/tests/test_sample_rv.py::test_alpha'])
+    rv_ok['fixTask'] = 'B117-FAKE-FIX-261125'
+    ok_inj['causes'][0]['reverseVerification'] = rv_ok
+    _write_doc(repo, ok_inj)
+    assert reg.check(str(repo))[0] == []
+
+    ok_ni = copy.deepcopy(no_rv)
+    ok_ni['causes'][0]['reverseVerification'] = {
+        'fixTask': 'B117-FAKE-FIX-261125',
+        'injectable': False,
+        'status': 'not_injectable',
+        'notInjectableReason': 'external ci outage',
+    }
+    _write_doc(repo, ok_ni)
+    assert reg.check(str(repo))[0] == []
+
+
+def test_d4_reverse_verification_monotonic_locks_fix_task_tests_and_shas():
+    prior = _make_doc()
+    prior['causes'][0]['status'] = 'fixed'
+    prior['causes'][0]['fixedIn'] = 'B117-BETA2-FIX-261124'
+    prior['causes'][0]['fixedCommit'] = 'a' * 40
+    prior['causes'][0].pop('plannedIn', None)
+    prior['causes'][0]['reverseVerification'] = _valid_injectable_rv([
+        'scripts/tests/test_sample_rv.py::test_alpha',
+        'scripts/tests/test_sample_rv.py::TestSuite::test_beta',
+    ])
+
+    # Superset regressionTests is allowed
+    expanded = copy.deepcopy(prior)
+    expanded['causes'][0]['reverseVerification']['regressionTests'].append('scripts/tests/test_sample_rv.py::test_gamma')
+    assert reg.check_monotonic(prior, expanded) == []
+
+    # Shrinking regressionTests is blocked (N2)
+    shrunk = copy.deepcopy(prior)
+    shrunk['causes'][0]['reverseVerification']['regressionTests'] = ['scripts/tests/test_sample_rv.py::test_alpha']
+    assert any('regressionTests 不得縮減' in f for f in reg.check_monotonic(prior, shrunk))
+
+    # Changing fixTask when remaining fixed is blocked (N2)
+    changed_ft = copy.deepcopy(prior)
+    changed_ft['causes'][0]['reverseVerification']['fixTask'] = 'B117-OTHER-FIX-261125'
+    assert any('reverseVerification.fixTask' in f and '不得變更' in f for f in reg.check_monotonic(prior, changed_ft))
+
+    # Changing fixTask or SHAs when reopening (fixed -> planned) is also blocked
+    reopened_bad_ft = copy.deepcopy(prior)
+    reopened_bad_ft['causes'][0]['status'] = 'planned'
+    reopened_bad_ft['causes'][0]['plannedIn'] = 'B117-REOPEN-261125'
+    reopened_bad_ft['causes'][0].pop('fixedIn', None)
+    reopened_bad_ft['causes'][0].pop('fixedCommit', None)
+    reopened_bad_ft['causes'][0]['reverseVerification']['fixTask'] = 'B117-OTHER-FIX-261125'
+    assert any('reverseVerification.fixTask' in f and '不得變更' in f for f in reg.check_monotonic(prior, reopened_bad_ft))
+
+    # Changing any of the 3 output SHAs when remaining fixed or reopening is blocked (N2)
+    for sha_k in ('oldOutputSha256', 'newOutputSha256', 'mutantOutputSha256'):
+        changed_sha = copy.deepcopy(prior)
+        changed_sha['causes'][0]['reverseVerification'][sha_k] = 'f' * 64
+        assert any(sha_k in f and '不得變更' in f for f in reg.check_monotonic(prior, changed_sha)), sha_k
+        reopened_bad_sha = copy.deepcopy(prior)
+        reopened_bad_sha['causes'][0]['status'] = 'planned'
+        reopened_bad_sha['causes'][0]['plannedIn'] = 'B117-REOPEN-261125'
+        reopened_bad_sha['causes'][0].pop('fixedIn', None)
+        reopened_bad_sha['causes'][0].pop('fixedCommit', None)
+        reopened_bad_sha['causes'][0]['reverseVerification'][sha_k] = 'f' * 64
+        assert any(sha_k in f and '不得變更' in f for f in reg.check_monotonic(prior, reopened_bad_sha)), sha_k
+
+
+def test_d4_reopened_cause_refix_allows_new_rv_and_enforces_b2_and_regression_subset():
+    base_doc = _make_doc()
+    s1 = copy.deepcopy(base_doc)
+    c1 = s1['causes'][0]
+    c1['status'] = 'fixed'
+    c1['fixedIn'] = 'B117-FIX-X-R1-261125'
+    c1['fixedCommit'] = 'a' * 40
+    c1.pop('plannedIn', None)
+    rv_x = _valid_injectable_rv(['scripts/tests/test_sample_rv.py::test_alpha'])
+    rv_x['fixTask'] = 'B117-FIX-X-R1-261125'
+    c1['reverseVerification'] = rv_x
+    assert reg.check_monotonic(base_doc, s1) == []
+
+    # Reopen (fixed -> planned) preserving RV passes
+    s2 = copy.deepcopy(s1)
+    c2 = s2['causes'][0]
+    c2['status'] = 'planned'
+    c2['plannedIn'] = 'B117-FIX-Y'
+    c2.pop('fixedIn', None)
+    c2.pop('fixedCommit', None)
+    assert reg.check_monotonic(s1, s2) == []
+
+    # Re-fix in Y while keeping stale fixTask=X is rejected by B2 (fixTask == fixedIn)
+    s3_stale = copy.deepcopy(s2)
+    c3_stale = s3_stale['causes'][0]
+    c3_stale['status'] = 'fixed'
+    c3_stale['fixedIn'] = 'B117-FIX-Y-R1-261128'
+    c3_stale['fixedCommit'] = 'b' * 40
+    c3_stale.pop('plannedIn', None)
+    fails_stale = reg.check_monotonic(s2, s3_stale)
+    assert any('fixTask' in f and 'fixedIn' in f for f in fails_stale), fails_stale
+
+    # Re-fix in Y with updated fixTask=Y, updated 3 SHAs, and superset regressionTests passes
+    s3_ok = copy.deepcopy(s3_stale)
+    s3_ok['causes'][0]['reverseVerification'] = {
+        'fixTask': 'B117-FIX-Y-R1-261128',
+        'injectable': True,
+        'injectionMethod': 'new fault injection',
+        'oldResult': 'FAIL',
+        'oldOutputSha256': 'd' * 64,
+        'newResult': 'PASS',
+        'newOutputSha256': 'e' * 64,
+        'mutantResult': 'FAIL',
+        'mutantOutputSha256': 'f' * 64,
+        'regressionTests': [
+            'scripts/tests/test_sample_rv.py::test_alpha',
+            'scripts/tests/test_sample_rv.py::TestSuite::test_beta',
+        ],
+    }
+    assert reg.check_monotonic(s2, s3_ok) == []
+
+    # Re-fix in Y cannot shrink prior regressionTests, downgrade injectable, or delete RV
+    s3_shrunk = copy.deepcopy(s3_ok)
+    s3_shrunk['causes'][0]['reverseVerification']['regressionTests'] = [
+        'scripts/tests/test_sample_rv.py::TestSuite::test_beta',
+    ]
+    assert any('regressionTests 不得縮減' in f for f in reg.check_monotonic(s2, s3_shrunk))
+
+    s3_downgraded = copy.deepcopy(s3_ok)
+    s3_downgraded['causes'][0]['reverseVerification'] = {
+        'fixTask': 'B117-FIX-Y-R1-261128',
+        'injectable': False,
+        'status': 'not_injectable',
+        'notInjectableReason': 'downgraded during refix',
+    }
+    assert any('injectable' in f for f in reg.check_monotonic(s2, s3_downgraded))
+
+    s3_deleted = copy.deepcopy(s3_ok)
+    del s3_deleted['causes'][0]['reverseVerification']
+    assert any('reverseVerification 已建立' in f for f in reg.check_monotonic(s2, s3_deleted))
+
+    # Not-injectable -> reopen -> re-fix in Y also matches SO's so_reopen_conflict workflow
+    ni_1 = copy.deepcopy(base_doc)
+    ni_1['causes'][0]['status'] = 'fixed'
+    ni_1['causes'][0]['fixedIn'] = 'B117-FIX-X-R1-261125'
+    ni_1['causes'][0]['fixedCommit'] = 'a' * 40
+    ni_1['causes'][0].pop('plannedIn', None)
+    ni_1['causes'][0]['reverseVerification'] = {
+        'fixTask': 'B117-FIX-X-R1-261125',
+        'injectable': False,
+        'status': 'not_injectable',
+        'notInjectableReason': 'demo',
+    }
+    ni_2 = copy.deepcopy(ni_1)
+    ni_2['causes'][0]['status'] = 'planned'
+    ni_2['causes'][0]['plannedIn'] = 'B117-FIX-Y'
+    ni_2['causes'][0].pop('fixedIn', None)
+    ni_2['causes'][0].pop('fixedCommit', None)
+    assert reg.check_monotonic(ni_1, ni_2) == []
+
+    ni_3_ok = copy.deepcopy(ni_2)
+    ni_3_ok['causes'][0]['status'] = 'fixed'
+    ni_3_ok['causes'][0]['fixedIn'] = 'B117-FIX-Y-R1-261128'
+    ni_3_ok['causes'][0]['fixedCommit'] = 'b' * 40
+    ni_3_ok['causes'][0].pop('plannedIn', None)
+    ni_3_ok['causes'][0]['reverseVerification']['fixTask'] = 'B117-FIX-Y-R1-261128'
+    assert reg.check_monotonic(ni_2, ni_3_ok) == []
+
+    ni_3_stale = copy.deepcopy(ni_3_ok)
+    ni_3_stale['causes'][0]['reverseVerification']['fixTask'] = 'B117-FIX-X-R1-261125'
+    assert any('fixTask' in f and 'fixedIn' in f for f in reg.check_monotonic(ni_2, ni_3_stale))
+
+
+def test_d4_inbatch_refix_stale_fix_task_rejected():
+    base_doc = _make_doc()
+    prior_inj = copy.deepcopy(base_doc)
+    c0 = prior_inj['causes'][0]
+    c0['status'] = 'fixed'
+    c0['fixedIn'] = 'B117-FIX-X-R1-261125'
+    c0['fixedCommit'] = 'a' * 40
+    c0.pop('plannedIn', None)
+    rv_x = _valid_injectable_rv(['scripts/tests/test_sample_rv.py::test_alpha'])
+    rv_x['fixTask'] = 'B117-FIX-X-R1-261125'
+    c0['reverseVerification'] = rv_x
+
+    cur_inj_stale = copy.deepcopy(prior_inj)
+    cur_inj_stale['causes'][0]['fixedIn'] = 'B117-FIX-Z-R1-261129'
+    cur_inj_stale['causes'][0]['fixedCommit'] = 'c' * 40
+    fails_inj = reg.check_monotonic(prior_inj, cur_inj_stale)
+    assert any('fixTask' in f and 'fixedIn' in f for f in fails_inj), fails_inj
+
+    prior_ni = copy.deepcopy(prior_inj)
+    prior_ni['causes'][0]['reverseVerification'] = {
+        'fixTask': 'B117-FIX-X-R1-261125',
+        'injectable': False,
+        'status': 'not_injectable',
+        'notInjectableReason': 'demo X',
+    }
+    cur_ni_stale = copy.deepcopy(prior_ni)
+    cur_ni_stale['causes'][0]['fixedIn'] = 'B117-FIX-Z-R1-261129'
+    cur_ni_stale['causes'][0]['fixedCommit'] = 'c' * 40
+    fails_ni = reg.check_monotonic(prior_ni, cur_ni_stale)
+    assert any('fixTask' in f and 'fixedIn' in f for f in fails_ni), fails_ni
+
+
+def test_d4_inbatch_refix_new_rv_with_superset_tests_passes_and_keeps_guards():
+    base_doc = _make_doc()
+    prior_inj = copy.deepcopy(base_doc)
+    c0 = prior_inj['causes'][0]
+    c0['status'] = 'fixed'
+    c0['fixedIn'] = 'B117-FIX-X-R1-261125'
+    c0['fixedCommit'] = 'a' * 40
+    c0.pop('plannedIn', None)
+    rv_x = _valid_injectable_rv(['scripts/tests/test_sample_rv.py::test_alpha'])
+    rv_x['fixTask'] = 'B117-FIX-X-R1-261125'
+    c0['reverseVerification'] = rv_x
+
+    cur_ok = copy.deepcopy(prior_inj)
+    cur_ok['causes'][0]['fixedIn'] = 'B117-FIX-Z-R1-261129'
+    cur_ok['causes'][0]['fixedCommit'] = 'c' * 40
+    cur_ok['causes'][0]['reverseVerification'] = {
+        'fixTask': 'B117-FIX-Z-R1-261129',
+        'injectable': True,
+        'injectionMethod': 'in-batch refix fault injection',
+        'oldResult': 'FAIL',
+        'oldOutputSha256': 'd' * 64,
+        'newResult': 'PASS',
+        'newOutputSha256': 'e' * 64,
+        'mutantResult': 'FAIL',
+        'mutantOutputSha256': 'f' * 64,
+        'regressionTests': [
+            'scripts/tests/test_sample_rv.py::test_alpha',
+            'scripts/tests/test_sample_rv.py::TestSuite::test_beta',
+        ],
+    }
+    assert reg.check_monotonic(prior_inj, cur_ok) == []
+
+    prior_ni = copy.deepcopy(prior_inj)
+    prior_ni['causes'][0]['reverseVerification'] = {
+        'fixTask': 'B117-FIX-X-R1-261125',
+        'injectable': False,
+        'status': 'not_injectable',
+        'notInjectableReason': 'demo X',
+    }
+    cur_ni_ok = copy.deepcopy(prior_ni)
+    cur_ni_ok['causes'][0]['fixedIn'] = 'B117-FIX-Z-R1-261129'
+    cur_ni_ok['causes'][0]['fixedCommit'] = 'c' * 40
+    cur_ni_ok['causes'][0]['reverseVerification'] = {
+        'fixTask': 'B117-FIX-Z-R1-261129',
+        'injectable': False,
+        'status': 'not_injectable',
+        'notInjectableReason': 'demo Z',
+    }
+    assert reg.check_monotonic(prior_ni, cur_ni_ok) == []
+
+    cur_shrunk = copy.deepcopy(cur_ok)
+    cur_shrunk['causes'][0]['reverseVerification']['regressionTests'] = [
+        'scripts/tests/test_sample_rv.py::TestSuite::test_beta',
+    ]
+    assert any('regressionTests 不得縮減' in f for f in reg.check_monotonic(prior_inj, cur_shrunk))
+
+    cur_downgraded = copy.deepcopy(cur_ok)
+    cur_downgraded['causes'][0]['reverseVerification'] = {
+        'fixTask': 'B117-FIX-Z-R1-261129',
+        'injectable': False,
+        'status': 'not_injectable',
+        'notInjectableReason': 'downgraded on in-batch refix',
+    }
+    assert any('injectable' in f for f in reg.check_monotonic(prior_inj, cur_downgraded))
+
+    cur_deleted = copy.deepcopy(cur_ok)
+    del cur_deleted['causes'][0]['reverseVerification']
+    assert any('reverseVerification 已建立' in f for f in reg.check_monotonic(prior_inj, cur_deleted))
+
+
+def test_d4_inbatch_refix_historical_fixed_without_rv_requires_rv():
+    base_doc = _make_doc()
+    prior_hist = copy.deepcopy(base_doc)
+    c0 = prior_hist['causes'][0]
+    c0['status'] = 'fixed'
+    c0['fixedIn'] = 'B117-FIX-X-R1-261125'
+    c0['fixedCommit'] = 'a' * 40
+    c0.pop('plannedIn', None)
+    c0.pop('reverseVerification', None)
+
+    same_hist = copy.deepcopy(prior_hist)
+    assert reg.check_monotonic(prior_hist, same_hist) == []
+
+    cur_no_rv = copy.deepcopy(prior_hist)
+    cur_no_rv['causes'][0]['fixedIn'] = 'B117-FIX-Z-R1-261129'
+    cur_no_rv['causes'][0]['fixedCommit'] = 'c' * 40
+    fails_no_rv = reg.check_monotonic(prior_hist, cur_no_rv)
+    assert any('必須附帶合法 reverseVerification' in f for f in fails_no_rv), fails_no_rv
+
+    cur_bad_ft = copy.deepcopy(cur_no_rv)
+    rv_bad = _valid_injectable_rv(['scripts/tests/test_sample_rv.py::test_alpha'])
+    rv_bad['fixTask'] = 'B117-FIX-X-R1-261125'
+    cur_bad_ft['causes'][0]['reverseVerification'] = rv_bad
+    fails_bad_ft = reg.check_monotonic(prior_hist, cur_bad_ft)
+    assert any('fixTask' in f and 'fixedIn' in f for f in fails_bad_ft), fails_bad_ft
+
+    cur_ok_inj = copy.deepcopy(cur_no_rv)
+    rv_z = _valid_injectable_rv(['scripts/tests/test_sample_rv.py::test_alpha'])
+    rv_z['fixTask'] = 'B117-FIX-Z-R1-261129'
+    cur_ok_inj['causes'][0]['reverseVerification'] = rv_z
+    assert reg.check_monotonic(prior_hist, cur_ok_inj) == []
+
+    cur_ok_ni = copy.deepcopy(cur_no_rv)
+    cur_ok_ni['causes'][0]['reverseVerification'] = {
+        'fixTask': 'B117-FIX-Z-R1-261129',
+        'injectable': False,
+        'status': 'not_injectable',
+        'notInjectableReason': 'historical refix non-injectable',
+    }
+    assert reg.check_monotonic(prior_hist, cur_ok_ni) == []
+
+
+def test_d4_same_fixed_in_fixed_to_fixed_still_locks_fix_task_and_shas():
+    base_doc = _make_doc()
+    prior = copy.deepcopy(base_doc)
+    c0 = prior['causes'][0]
+    c0['status'] = 'fixed'
+    c0['fixedIn'] = 'B117-FIX-X-R1-261125'
+    c0['fixedCommit'] = 'a' * 40
+    c0.pop('plannedIn', None)
+    rv_x = _valid_injectable_rv(['scripts/tests/test_sample_rv.py::test_alpha'])
+    rv_x['fixTask'] = 'B117-FIX-X-R1-261125'
+    c0['reverseVerification'] = rv_x
+
+    bad_ft = copy.deepcopy(prior)
+    bad_ft['causes'][0]['reverseVerification']['fixTask'] = 'B117-FIX-Z-R1-261129'
+    fails_ft = reg.check_monotonic(prior, bad_ft)
+    assert any('reverseVerification.fixTask' in f and '不得變更' in f for f in fails_ft), fails_ft
+
+    for sha_k in ('oldOutputSha256', 'newOutputSha256', 'mutantOutputSha256'):
+        bad_sha = copy.deepcopy(prior)
+        bad_sha['causes'][0]['reverseVerification'][sha_k] = 'f' * 64
+        fails_sha = reg.check_monotonic(prior, bad_sha)
+        assert any(sha_k in f and '不得變更' in f for f in fails_sha), (sha_k, fails_sha)

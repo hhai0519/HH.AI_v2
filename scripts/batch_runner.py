@@ -123,6 +123,7 @@ try:
     from bundle_after_push import create_bundle, BundleFailure, preflight_remote_refs  # noqa: E402
     from s1_evidence import create_metadata, EvidenceError  # noqa: E402
     from s1_full_capture import create_full_capture, FullCaptureError  # noqa: E402
+    from s1_draft import create_s1_draft, DraftError  # noqa: E402
 finally:
     sys.path.pop(0)
 
@@ -1842,6 +1843,33 @@ def report_s1_full_capture(batch, step, h):
         print('S1_FULL_CAPTURE_STATUS=UNAVAILABLE')
 
 
+def report_s1_draft(batch, step, h):
+    """Best-effort schema-2 candidate draft under .git/; failure never overrides S1."""
+    if batch is None:
+        return
+    try:
+        prefix = '.git/' + batch.task_id + '-'
+        def validate_current_artifact(rel):
+            if not rel.startswith(prefix) or batch.artifact(rel[len(prefix):]) != rel:
+                raise DraftError('S1_DRAFT_ARTIFACT_BINDING_MISMATCH')
+        for line in create_s1_draft(batch.root, batch.task_id, step, str(h),
+                                    validate_artifact=validate_current_artifact):
+            print(line)
+    except Exception:  # noqa: BLE001 - original S1 already persisted; diagnostics cannot override it
+        print('S1_DRAFT_STATUS=UNAVAILABLE')
+
+
+def _report_persisted_s1_diagnostics(batch, step, h):
+    """Emit all best-effort S1 diagnostics after control halt persistence succeeds."""
+    report_failed_list(batch, step, str(h))
+    report_s1_metadata(batch, step, h)
+    if step == 'native_preview':
+        print('S1_FULL_CAPTURE_STATUS=INCOMPLETE_NO_UNPUBLISHED_COMMIT')
+    else:
+        report_s1_full_capture(batch, step, h)
+    report_s1_draft(batch, step, h)
+
+
 def _halt_with_timing(root, task_id):
     """S1 terminal reporter in this invocation; no duplicate/manual timing.
 
@@ -2249,12 +2277,7 @@ def _execute_step(batch, step, control):
             print('S1_PRIMARY ' + str(h) + ' | step ' + step)
             return 1
         report_halt(h, step)
-        report_failed_list(batch, step, str(h))
-        report_s1_metadata(batch, step, h)
-        if step == 'native_preview':
-            print('S1_FULL_CAPTURE_STATUS=INCOMPLETE_NO_UNPUBLISHED_COMMIT')
-        else:
-            report_s1_full_capture(batch, step, h)
+        _report_persisted_s1_diagnostics(batch, step, h)
         return 1
     except Exception as ex:  # noqa: BLE001 - any unexpected failure locks the task with a fixed code
         control['halted'] = step + ':UNEXPECTED_' + type(ex).__name__
@@ -2263,12 +2286,7 @@ def _execute_step(batch, step, control):
             return 1
         print('S1 UNEXPECTED_' + type(ex).__name__ + ' | step ' + step)
         failure = Halt('UNEXPECTED_' + type(ex).__name__)
-        report_failed_list(batch, step, str(failure))
-        report_s1_metadata(batch, step, failure)
-        if step == 'native_preview':
-            print('S1_FULL_CAPTURE_STATUS=INCOMPLETE_NO_UNPUBLISHED_COMMIT')
-        else:
-            report_s1_full_capture(batch, step, failure)
+        _report_persisted_s1_diagnostics(batch, step, failure)
         return 1
     control['done'].append(step)
     if not save_control_or_s1(batch, control, step):

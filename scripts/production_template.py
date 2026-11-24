@@ -167,8 +167,8 @@ runner 命令只依第五節的條件執行，必須觀察命令真正結束；�
 六、Executor 固定回覆與唯一終點
 run 結束（或停止）後，若 runner 印出 EXECUTOR_REPLY_BEGIN／EXECUTOR_REPLY_END 且 REPLY_SELF_CHECK=PASS，僅逐字複製兩個 marker 之間的行，並立即結束本次執行；不得額外執行任何工具、讀檔、自我驗證或寫檔。格式通過只證明可轉交，不代表 CI PASS；CI PENDING 僅可稱未查證，不得合成或更改 CI_RUN。
 若 runner 印出 EXECUTOR_REPLY_UNAVAILABLE，或沒有產生此區塊，則回退到本節下列原有人工逐字轉交規則，不得為補回覆再執行額外命令；僅回報原始 runner 已輸出的內容與不可用代碼。
-原有回覆規則：成功時逐字轉交已有的 CI_RUN candidate、COMMIT、TIMING、STATE，以及已出現的 RUN_START、RUN_END、RUN_STOPPED、RESUME_CHECK 行；若有 bundle，還須逐字轉交 BUNDLE_FILE=、ORIGIN_MAIN=、HANDOFF_TO_AUDITOR=、HANDOFF_CARD_SHA256=、HANDOFF_CARD_JSON= 或 BUNDLE FAILED <CODE>。若 CI 是 PENDING，不得自行宣稱 PASS。S1 時只逐字轉交已出現的 S1、S1_PRIMARY、S1_DETAIL、S1_EVIDENCE、S1_FULL_CAPTURE、BOUNDED、TIMING、STATE 相關行，不能補造不存在的證據，不捏造 CI Run／job ID 或 PASS。
-回覆最後一行逐字為「以上是 Antigravity IDE Agent 的回覆。」
+原有回覆規則：成功時逐字轉交已有的 CI_RUN candidate、COMMIT、TIMING、STATE，以及已出現的 RUN_START、RUN_END、RUN_STOPPED、RESUME_CHECK 行；若有 bundle，還須逐字轉交 BUNDLE_FILE=、ORIGIN_MAIN=、HANDOFF_TO_AUDITOR=、HANDOFF_CARD_SHA256=、HANDOFF_CARD_JSON= 或 BUNDLE FAILED <CODE>。若 CI 是 PENDING，不得自行宣稱 PASS。S1 時只逐字轉交已出現的 S1、S1_PRIMARY、S1_DETAIL、S1_EVIDENCE、S1_FULL_CAPTURE、S1_DRAFT、BOUNDED、TIMING、STATE 相關行，不能補造不存在的證據，不捏造 CI Run／job ID 或 PASS。
+僅最終完結回覆最後一行逐字為「以上是 Antigravity IDE Agent 的回覆。」；執行中途若先回報啟動、背景執行中或等待進度，嚴禁使用該固定署名行。
 
 七、machine blocks（全部由 canonical builder 產生，不可修改）
 '''
