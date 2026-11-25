@@ -59,6 +59,10 @@
    - **修正事件強制驗證（`B2`）**：凡屬「修正事件」皆必須附帶合法 `reverseVerification`（`injectable` 或 `not_injectable`），且 `reverseVerification.fixTask` 必須等於該原因之 `fixedIn`；於 checkpoint 原即為 `fixed` 且 `fixedIn` 未變更之歷史原因（例如既已入庫且未復發改碼之原因）不追溯。
    - **只增不減不可變鎖定（`N2`）**：既有 `reverseVerification` 不得刪除、`injectable: true` 不得降級為 `false`、既有 `regressionTests` 必須維持為新版之子集合（只准追加、不得縮減，全程適用）；非「修正事件」（包含 `fixedIn` 未變更之 `fixed → fixed` 及重新開啟等非 `fixed` 狀態）時，已記錄之 `fixTask` 與三個輸出 SHA-256（`oldOutputSha256`／`newOutputSha256`／`mutantOutputSha256`）不得變更；僅於屬前述「修正事件」（前版非 `fixed` 轉為 `fixed`，或維持 `fixed` 但 `fixedIn` 改變）時，依 B2 視為新一輪驗證，可並須換為 `fixTask` 等於新 `fixedIn` 之合法 `reverseVerification`。
 
+4. **52 列狀態轉移窮舉矩陣與規格前置要求（`TD-133`）**：
+   - `scripts/tests/test_s1_registry_transitions.py` 以 `itertools.product` 窮舉 `PRIORS × CUR_STATUSES × CUR_RVS` 全部 52 個合法狀態轉移組合（0 mismatches）並涵蓋 6 個關鍵回歸情境，機械鎖定前述 D4／`N2` `check_monotonic` 規則。
+   - 日後任何修改狀態轉移規則之驗證器批，開工寫程式前須先送 `SPEC_TABLES`（規格表）給第二意見短複核（見 `docs/ops/q2-draft-precheck.md`），並於該批同步更新規格表與窮舉測試。
+
 ## 六、runner S1 自動草稿契約（`scripts/s1_draft.py`／TD-101，β-2 擴充）
 
 1. **只寫 `.git/` 未追蹤工作檔**：`batch_runner._execute_step` 於原 S1 落盤且印完 `S1_FULL_CAPTURE` 後，呼叫 `report_s1_draft`（委由 `s1_draft.create_s1_draft` 複用 `s1_evidence._create_once` 與 `_guarded_bytes`）寫入 `.git/<TASK_ID>-s1-draft.json`（create-once `O_EXCL`，拒絕覆寫或 symlink），絕不改動受追蹤檔案（含 `docs/governance/s1-registry.json`）。
