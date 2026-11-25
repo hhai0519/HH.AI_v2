@@ -1115,6 +1115,22 @@
      "unit_bytes": 4621
     }
    ]
+  },
+  {
+   "file": "docs/archive/TASKBOARD-RECORDS-0015.md",
+   "batch": "B117-TD134-DIFF-AST-MUTATE-R2-261125",
+   "checkpoint_oid": "646f146e4726bd645d736ea86ad218d9ab16bd34",
+   "file_sha256": "99891a1ccaa81ad1446a26e448c145d6d4524a07f389583dc74dd7d4f2e96055",
+   "keep": 5,
+   "entries": [
+    {
+     "task_id": "B117-ALPHA1-GATE-DIAG-R5-261122",
+     "source_line": 131,
+     "line_count": 1,
+     "unit_sha256": "3496bbe66f2012378a15ddc6c401e50db1d9e4f44cdb8f1e257f1f3b1eb79f57",
+     "unit_bytes": 19381
+    }
+   ]
   }
  ]
 }

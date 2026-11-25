@@ -36,7 +36,7 @@ FINGERPRINT_TOOLS = (
     'draft_precheck.py', 'check_consistency.py', 'execution_record.py', 'fingerprint.py',
     'verify_all.py', 'generate_rule_traceability.py', 'impact_scan.py', 'history_guard.py',
     'batch_sim.py', 'production_template.py', 'prompt_builder.py', 'taskboard_archive.py',
-    's1_registry.py', 's1_draft.py', 'cap_count.py',
+    's1_registry.py', 's1_draft.py', 'cap_count.py', 'diff_ast_mutate.py',
 )
 GENERATED = ('docs/fingerprints/exec-latest.json', 'docs/governance/execution-record.json')
 STATUS = ('docs/AUDIT-LOG.md', 'docs/EXEC-LOG.md', 'docs/TASKBOARD.md', 'docs/refactor-backlog.md')

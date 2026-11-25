@@ -1,5 +1,5 @@
 {
-  "base_head": "6a5e857",
+  "base_head": "646f146",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -576,16 +576,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 437,
-      "sha256": "031c414341a550459c22a3eaa4cb1bc69919e89dace3f46cade46cd39fdc208e"
+      "lines": 438,
+      "sha256": "c869fc175f75ff61e3bccfe6c9ae37b60b660033ee14bd742be338151c095b7e"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 407,
-      "sha256": "75ed3708a00a2abebab5295438000880123d3626716f5e5a2b468e2eab8a7421"
+      "lines": 408,
+      "sha256": "762dd19266bdc58d7736309ab5b50c2e1cb405fcd8daf8a7ff017b5ce9a40d68"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -628,7 +628,7 @@
         "## 封存區"
       ],
       "lines": 473,
-      "sha256": "5ff55c804f7d5fc70ea09d3c5d6c01320d9af7dd60f8bc3a9fb7ea43e7b4ec6e"
+      "sha256": "e465c9bfce3663c38fdc944843a7ccd61600db3258cd2499dbaa7a5b778f8dae"
     },
     "docs/TODO-LEDGER.md": {
       "fences": 0,
@@ -641,7 +641,7 @@
         "## 五、清冊"
       ],
       "lines": 196,
-      "sha256": "ed0cbefcf6fac2c8f9ac09681ae1ee2a19f12511f5f420951baec181f40697c2"
+      "sha256": "7d6bd5242825b69cdec4f83d4ddee37ae8d3b47584a2a2d699f03880e3389f16"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1150,8 +1150,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6494,
-      "sha256": "85e5ba872970175431119dd5fc82678ed1ed454998789a428f72c3c981004e4c"
+      "lines": 6495,
+      "sha256": "c113b2aeda2bfb6aff0a00ec458084fd80eabe7a6bdce7e4d215a8020c572d7d"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1346,6 +1346,14 @@
       "lines": 454,
       "sha256": "5f3a9ab48ebe31e9efac596c603ad27d7bc7bd4adb33106a29cf21e5737ceb2f"
     },
+    "scripts/diff_ast_mutate.py": {
+      "fences": 0,
+      "headings": [
+        "# -*- coding: utf-8 -*-"
+      ],
+      "lines": 1662,
+      "sha256": "d0c45494bd0bf01f7b6525814ce811311123c59550fae3d0d37274e22f004710"
+    },
     "scripts/draft_precheck.py": {
       "fences": 0,
       "headings": [
@@ -1355,7 +1363,7 @@
         "# e.g. shared/*.js, .githooks/*, .gitattributes, pyproject.toml, uv.lock, .nvmrc or skills/**, may run as code."
       ],
       "lines": 923,
-      "sha256": "0178e72ad049e154f85728c116296c52c6785a953ff49b4681841a5a391e308a"
+      "sha256": "2166bf5c606131d7fb919b8b92021e813710f7fda0d81e14b500892d5a4f1f0f"
     },
     "scripts/execution_record.py": {
       "fences": 0,
@@ -2023,6 +2031,19 @@
       "lines": 612,
       "sha256": "4868a734a9c29523772c32b13d447b6ff7b0df741100f8157c19895f70f1a544"
     },
+    "scripts/tests/test_diff_ast_mutate.py": {
+      "fences": 0,
+      "headings": [
+        "# -*- coding: utf-8 -*-",
+        "# --- Fast Fail-Closed Exit-2 & JSON Schema v1 Contract Tests (placed first for -x) ---",
+        "# --- All 14 Operators & Noise Filters ---",
+        "# --- End-to-End Subprocess Controls & Windows Form ---",
+        "# --- Second Opinion Suggestion #5: 4 Required Negative Controls ---",
+        "# --- --test-map Routing & Fallback ---"
+      ],
+      "lines": 830,
+      "sha256": "d807cc09bb7179763199c3a2a55eb8479dbb13760e6a956883dbb6af5254bb94"
+    },
     "scripts/tests/test_draft_precheck.py": {
       "fences": 0,
       "headings": [
@@ -2034,10 +2055,11 @@
         "# --- TD-055 & TD-028 regression tests (alpha 2) ---",
         "# --- Beta 1 (D8 / TD-101): FINGERPRINT_TOOLS s1_registry & S1_REGISTRY_SUMMARY ---",
         "# --- Beta 2 (TD-008 / TD-101): FINGERPRINT_TOOLS & CAP_COUNT_SUMMARY ---",
-        "# --- G7-b3b3-2 (TD-107): Non-blocking TODO_LEDGER_REVIEW summary ---"
+        "# --- G7-b3b3-2 (TD-107): Non-blocking TODO_LEDGER_REVIEW summary ---",
+        "# --- TD-134: FINGERPRINT_TOOLS diff_ast_mutate.py ---"
       ],
-      "lines": 1138,
-      "sha256": "d27799003bf5188ae878c20a8009ec6f932aabf43275bcfaba8e0e08cda18ef0"
+      "lines": 1165,
+      "sha256": "3501de84da304d52fff69b169a8a7b0b8c6056639515363a72d07a344dfa4afc"
     },
     "scripts/tests/test_draft_precheck_fast.py": {
       "fences": 0,
@@ -2412,8 +2434,8 @@
       "headings": [
         "# -*- coding: utf-8 -*-"
       ],
-      "lines": 191,
-      "sha256": "20841874b039b31e15ad503c303d5e5caa576e1589c20ddbf39404f49bc09af8"
+      "lines": 202,
+      "sha256": "b91831a2b98606fe14be3d2aa3562a4a508cfbaf159eb3c484ec02494277a650"
     },
     "scripts/tests/test_secret_detection_matrix.py": {
       "fences": 0,
@@ -2697,7 +2719,7 @@
       "sha256": "8597e282fed71298b01430659fae7cdfedf4a20f8be0267d662f8f1da8ff23e8"
     }
   },
-  "generated_at": "2026-11-25T08:37:07Z",
+  "generated_at": "2026-11-25T13:04:47Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

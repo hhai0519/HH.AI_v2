@@ -19,8 +19,21 @@ T1_NODE = 'scripts/tests/test_s1_registry.py::test_d4_inbatch_refix_stale_fix_ta
 T2_NODE = 'scripts/tests/test_s1_registry.py::test_d4_same_fixed_in_fixed_to_fixed_still_locks_fix_task_and_shas'
 
 
+SYNTHETIC_PLANNED_CID = 'S1C-999'
+
+
 def _load_repo_registry() -> dict:
     return json.loads((REPO_ROOT / 'docs' / 'governance' / 's1-registry.json').read_bytes().decode('utf-8'))
+
+
+def _make_base_doc() -> tuple[dict, str]:
+    base_doc = _load_repo_registry()
+    template = copy.deepcopy(base_doc['causes'][0])
+    template['id'] = SYNTHETIC_PLANNED_CID
+    template['title'] = 'Synthetic planned cause for TD-133 exhaustive transition matrix'
+    _set_state(template, 'planned', None, None)
+    base_doc['causes'].append(template)
+    return base_doc, SYNTHETIC_PLANNED_CID
 
 
 def _rv(fix_task: str, sha_char: str, tests: list[str]) -> dict:
@@ -120,8 +133,7 @@ def _expected_spec(prior_state, prior_rv, cur_status: str, cur_fixed_in: str | N
 
 
 def _all_cases() -> list[tuple[str, str, str | None, str]]:
-    base_doc = _load_repo_registry()
-    target_cid = next(c for c in base_doc['causes'] if c['status'] == 'planned')['id']
+    base_doc, target_cid = _make_base_doc()
     cases = []
     for prior_key, (cur_status, cur_fixed_in), rv_key in itertools.product(PRIORS, CUR_STATUSES, CUR_RVS):
         built = _build_pair(base_doc, target_cid, prior_key, cur_status, cur_fixed_in, rv_key)
@@ -140,8 +152,7 @@ def test_matrix_case_count_is_exact_52() -> None:
 
 @pytest.mark.parametrize('prior_key,cur_status,cur_fixed_in,rv_key', _ALL_CASES, ids=_CASE_IDS)
 def test_s1_registry_check_monotonic_transition_matrix(prior_key: str, cur_status: str, cur_fixed_in: str | None, rv_key: str) -> None:
-    base_doc = _load_repo_registry()
-    target_cid = next(c for c in base_doc['causes'] if c['status'] == 'planned')['id']
+    base_doc, target_cid = _make_base_doc()
     built = _build_pair(base_doc, target_cid, prior_key, cur_status, cur_fixed_in, rv_key)
     assert built is not None
     prior_doc, cur_doc, prior_state, prior_rv, cur_rv = built
@@ -154,8 +165,7 @@ def test_s1_registry_check_monotonic_transition_matrix(prior_key: str, cur_statu
 
 
 def test_matrix_covers_key_regression_scenarios() -> None:
-    base_doc = _load_repo_registry()
-    target_cid = next(c for c in base_doc['causes'] if c['status'] == 'planned')['id']
+    base_doc, target_cid = _make_base_doc()
     key_scenarios = [
         # beta-2 R3 B1: in-batch refix with stale fixTask=X must FAIL
         ('fixedX+RVx', 'fixed', Z_TASK, 'newSHA_sameTask', False),
@@ -182,9 +192,10 @@ def test_matrix_covers_key_regression_scenarios() -> None:
 
 
 def test_spec_uses_real_repo_registry_cause_and_existing_nodes() -> None:
-    base_doc = _load_repo_registry()
-    planned_causes = [c for c in base_doc['causes'] if c['status'] == 'planned']
-    assert len(planned_causes) >= 1
+    base_doc, target_cid = _make_base_doc()
+    assert target_cid == SYNTHETIC_PLANNED_CID
+    assert len(base_doc['causes']) >= 2
+    assert any(c['id'] == SYNTHETIC_PLANNED_CID and c['status'] == 'planned' for c in base_doc['causes'])
     reg_test_src = (REPO_ROOT / 'scripts' / 'tests' / 'test_s1_registry.py').read_bytes().decode('utf-8')
     for node in (T1_NODE, T2_NODE):
         fn_name = node.split('::')[-1]

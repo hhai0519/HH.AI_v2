@@ -1,6 +1,6 @@
 # Q2 審查官草稿預查（含 α-2 快速模式與純狀態處置）
 
-> 本工具僅供 Auditor 使用。Q2 R3 已於 2026-10-17 通過 exact-SHA Macro 審查，α-2（`B117-ALPHA2-FAST-PRECHECK-R2-261123`）新增 `--fast` 快速預查模式（D3／TD-115）、純狀態 `focused: null` 明確不適用（TD-028）與工具指紋納入 `taskboard_archive.py`（TD-055）；β-1（`B117-BETA1-S1-REGISTRY-R2-261124`）將 `s1_registry.py` 納入工具指紋清冊並於存在 `docs/governance/s1-registry.json` 時輸出 `S1_REGISTRY_SUMMARY` 摘要提醒；β-2（`B117-BETA2-D4-CAP-S1DRAFT-R4-261124`）將 `s1_draft.py` 與 `cap_count.py` 納入工具指紋清冊並於存在 `docs/TASKBOARD.md` 與 `docs/AUDIT-LOG.md` 時輸出非阻擋 `CAP_COUNT_D6`／`CAP_COUNT_CAP2` 摘要與寫入 `CAP_COUNT_SUMMARY`；b3b3-2（`B117-G7B3B3-ROWLEN-LEDGER-R3-261125`）於存在 `docs/TODO-LEDGER.md` 與 `scripts/taskboard_archive.py` 時新增非阻擋 `TODO_LEDGER_REVIEW`（及逾期／近期到期／缺日期提示）摘要與寫入 `TODO_LEDGER_REVIEW` 欄位；原始 `9191cb4` 文件逐位元組快照見 `docs/archive/RETENTION-S5-Q2-DRAFT-PRE-9191cb4.md`；本工具不得以此替代 Windows 原生驗證、GitHub CI、Macro verdict 或 canonical runner 的 MINISIM。
+> 本工具僅供 Auditor 使用。Q2 R3 已於 2026-10-17 通過 exact-SHA Macro 審查，α-2（`B117-ALPHA2-FAST-PRECHECK-R2-261123`）新增 `--fast` 快速預查模式（D3／TD-115）、純狀態 `focused: null` 明確不適用（TD-028）與工具指紋納入 `taskboard_archive.py`（TD-055）；β-1（`B117-BETA1-S1-REGISTRY-R2-261124`）將 `s1_registry.py` 納入工具指紋清冊並於存在 `docs/governance/s1-registry.json` 時輸出 `S1_REGISTRY_SUMMARY` 摘要提醒；β-2（`B117-BETA2-D4-CAP-S1DRAFT-R4-261124`）將 `s1_draft.py` 與 `cap_count.py` 納入工具指紋清冊並於存在 `docs/TASKBOARD.md` 與 `docs/AUDIT-LOG.md` 時輸出非阻擋 `CAP_COUNT_D6`／`CAP_COUNT_CAP2` 摘要與寫入 `CAP_COUNT_SUMMARY`；b3b3-2（`B117-G7B3B3-ROWLEN-LEDGER-R3-261125`）於存在 `docs/TODO-LEDGER.md` 與 `scripts/taskboard_archive.py` 時新增非阻擋 `TODO_LEDGER_REVIEW`（及逾期／近期到期／缺日期提示）摘要與寫入 `TODO_LEDGER_REVIEW` 欄位；`TD-134`（`B117-TD134-DIFF-AST-MUTATE-R2-261125`）將差異行確定性 AST 突變工具 `diff_ast_mutate.py` 納入 `FINGERPRINT_TOOLS`（詳見 `docs/ops/td134-diff-ast-mutate.md`）；原始 `9191cb4` 文件逐位元組快照見 `docs/archive/RETENTION-S5-Q2-DRAFT-PRE-9191cb4.md`；本工具不得以此替代 Windows 原生驗證、GitHub CI、Macro verdict 或 canonical runner 的 MINISIM。
 
 ```text
 python scripts/draft_precheck.py --fast --source <exact-clean-full-base-clone> --patch <reviewed-author.patch> --plan <exact-plan.json> --definition <canonical-definition.json> --prompt <canonical-prompt.txt> --workdir <new-empty-disposable-directory>
@@ -24,7 +24,7 @@ python scripts/draft_precheck.py --source <same-base> --patch <same-patch> --pla
 
 完成本命令後仍需另外使用 canonical `batch_sim.py production` 或 runner MINISIM 驗證 stage／commit／postcommit；兩者不互相替代。
 
-續跑重用條件：Base 完整 Git commit、原作者 patch SHA256、plan SHA256、工具組 SHA256（`FINGERPRINT_TOOLS`，含 `taskboard_archive.py`、`s1_registry.py`、`s1_draft.py` 與 `cap_count.py`）、OS／Python／Git／Node／路徑長度／UID 指紋、候選 Git diff、生成檔 SHA、已完成階段日誌 SHA **全部相同**。任一不同，立即 `RESUME_*` STOP，不沿用舊結果；使用新空工作目錄重跑。未完成階段從頭執行，不偽稱已完成。
+續跑重用條件：Base 完整 Git commit、原作者 patch SHA256、plan SHA256、工具組 SHA256（`FINGERPRINT_TOOLS`，含 `taskboard_archive.py`、`s1_registry.py`、`s1_draft.py`、`cap_count.py` 與 `diff_ast_mutate.py`）、OS／Python／Git／Node／路徑長度／UID 指紋、候選 Git diff、生成檔 SHA、已完成階段日誌 SHA **全部相同**。任一不同，立即 `RESUME_*` STOP，不沿用舊結果；使用新空工作目錄重跑。未完成階段從頭執行，不偽稱已完成。
 
 Gate 4 非零只有在 Base 和候選返回碼一致、失敗 gate 類別完全相同、候選未新增 test failure ID 且 Base 本來存在明確失敗 ID 才標 `BASE_EQUIVALENT_NONZERO`，**不是 verify_all PASS**。無法辨識失敗 ID、測試逾時／啟動失敗（124/125/127）、非 pytest 閘門失敗、無完整 ALL 5 GATES PASSED 標記、工具或依賴漂移一律停機。只有 unit_tests 或 webapp_tests 的單一 pytest 閘門且具有真實 node ID 時才可比對等價；多閘門無法逐一歸屬者亦拒絕。
 
@@ -40,7 +40,7 @@ SHA 格式 lint：只掃作者 patch **新增的四份狀態文件行**；`SHA25
 
 依 USER 2026-11-25 澄清之目標導向準則（降低審查官額度、機械化推進、不放寬驗收）與第二意見宏觀建議（P0 第 1、2 點），自 2026-11-25 起適用兩項流程規定：
 
-1. **預查順序改為「快→複核→完整」（P0 第 1 點）**：審查官作者化後先執行 `scripts/draft_precheck.py --fast`、相關測試與突變檢查，即送第二意見進行 D-SO 複核；待第二意見回報 `BLOCKING 0 / NON_BLOCKING 0` 後，審查官才對同一份未變動作者位元組執行完整六步預查（`SIX_STEPS_PASS`），通過後交付 Executor。完整六步預查仍為交付 Executor 之必要條件，不放寬任何驗收；`docs/refactor-backlog.md` §5.3 第 21 項之條件式交付同步更新為「SO 0/0 → 審查官完整 6 步 PASS → 交付」。
+1. **預查順序改為「快→複核→完整」（P0 第 1 點）**：審查官作者化後先執行 `scripts/draft_precheck.py --fast`、相關測試與 `scripts/diff_ast_mutate.py` 差異行突變檢查（詳見 `docs/ops/td134-diff-ast-mutate.md`），即送第二意見進行 D-SO 複核；待第二意見回報 `BLOCKING 0 / NON_BLOCKING 0` 後，審查官才對同一份未變動作者位元組執行完整六步預查（`SIX_STEPS_PASS`），通過後交付 Executor。完整六步預查仍為交付 Executor 之必要條件，不放寬任何驗收；`docs/refactor-backlog.md` §5.3 第 21 項之條件式交付同步更新為「SO 0/0 → 審查官完整 6 步 PASS → 交付」。
 2. **驗證器類批作者化前先送規格表 `SPEC_TABLES`（P0 第 2 點）**：凡涉及驗證器規則、狀態轉移或結構拆解之批次，作者化寫程式前先送決策表／狀態轉移表（`SPEC_TABLES`）給第二意見做一次短複核，確認無設計層缺口後才寫程式；若修改狀態轉移規則，須依 `TD-133` 於當批檢附規格表與確定性 `itertools` 窮舉測試。
 
 後續待辦（E27 N2–N6，NON_BLOCKING／NOT IMPLEMENTED）：N2 E24 衍生來源直接取用 `generate_rule_traceability.SCAN_SCOPE_PATTERNS`；N3 workdir 排他鎖；N4 環境指紋加 pytest／套件版本；N5 canonical MINISIM 可選 `--minisim` 階段；N6 CHECK20 `_c20_column_failures` 公開穩定 API。以上不得在本批報作已完成。
