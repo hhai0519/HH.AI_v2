@@ -1,0 +1,15 @@
+# 任務看板批次紀錄封存 0013
+
+> 本檔由 `scripts/taskboard_archive.py records-apply` 產生，寫成後不得修改。清單與每則的 SHA-256 在 `TASKBOARD-ARCHIVE-MANIFEST.json` 的 `record_archives`，由 CHECK 29 逐位元組核對，並以 git 在封存當時 checkpoint 的 `docs/TASKBOARD.md` 逐行比對原文。
+> 封存不是刪除：下列各則是封存當時 `docs/TASKBOARD.md` 批次紀錄的原文（含續行），逐字保留。
+> 封存批次：B117-G7B3B3-ROWLEN-LEDGER-R3-261125；封存當時 checkpoint：`0a14e5569938372362817821aee5d946946fc374`；看板保留數：5
+
+## 封存紀錄
+
+### B117-G7B3B3-LEDGER-CHECK-R3-261121
+
+- 原位置：`docs/TASKBOARD.md` 第 131 行起，共 1 行（封存前）
+
+````text
+**B-117／G7-b3b3 第 3 批（清冊機械檢查，重發）與 D9 第 1 批結案登錄批（2026-11-21；本批 B117-G7B3B3-LEDGER-CHECK-R3-261121）**：一句話：讓清冊規則由工具把關：新待辦要有編號，搬走紀錄前先對帳。一、前一批 B117-D9-GATE4-GROUPS-R2-261121（608c1e61ef3e2c4f156e6eb2181c9155e3fdd069）Macro PASS（ACCEPT ALL）與 POST-MAIN VERIFIED，依據見 AUDIT-LOG 該列；治理凍結連續無 S1 批數由 0 更新為 1。D9 第 1 批之 Windows 第 4 關分組實測耗時為 UNKNOWN：Executor 回覆不含 GATE4 逐組行，審查官未取得 gate_durations 紀錄；Executor 全批 2083.1 秒（含預演、focused、提交與等候候選 CI，FACT），由此推得第 4 關不超過約 1442 秒（INFERENCE：push 時刻 20:22:40 減起點 19:58:38，上限，不是實測；對照 B117-TAKEOVER-STATE-261121 循序 1819.912 秒為 USER_PROVIDED）。D1 量測是否已錄製及其結果尚未提供，UNKNOWN，不在本批登錄；TD-102（耗時表校準）因此不在本批完成，owner 由本批改為 D9 第 2 批，理由寫在該列。二、本批變更（程式批，scripts/taskboard_archive.py 之 CHECK 29 與 records-apply；新增 scripts/tests/test_todo_ledger_check.py 共 46 項測試）：（1）清冊格式與只增不減（以 §5.1 checkpoint 之清冊為準）；（2）受管批次紀錄（自 B117-TAKEOVER-STATE-261121 之後）須恰有一句新增待辦宣告（宣告無，或列出 TD 編號），所列編號須恰等於清冊中來源為該紀錄 TASK_ID 的列（雙向對帳；紀錄內文不得再引用宣告句原文，否則被計為多句）；（3）records-apply 搬移前對帳，舊紀錄須在清冊有來源為它的列，確認沒有待辦時以 --no-new-todos 點名；（4）行首管線加 TD 的行（含管線後無空格、行首有空白之變體）一律進格式判定，不得被靜默略過。三、解讀決定（USER 原則同意，第二意見執行前複核同意）：範圍文字「records-apply 遇未結案編號即拒絕」，本批實作為「未登錄編號即拒絕」，不因編號尚未結案而拒絕：承接與開放的列正是為了讓待辦在紀錄被搬走後仍有去處，若未結案即拒絕，帶開放待辦的紀錄將永遠無法搬走，看板 6 則上限會卡死。工具限制（FACT）：只核對宣告句與清冊對帳，不判讀自由文字，詳見 TD-105。四、重發說明：第一次 B117-G7B3B3-LEDGER-CHECK-R2-261121 於 USER 本機第 4 關逾時（3600.288 秒，PRECOMMIT_GATE_TIMEOUT）出 S1，事故紀錄與歸零已由 B117-D9-GATE4-GROUPS-R2-261121 登錄，工作區已保全並回 Base。本批作者位元組與第一次相同：scripts/taskboard_archive.py 之 SHA-256 為 af6266bd85632d3887ef949421a98932c832bfe9442048e9008ae49c1f639f57、scripts/tests/test_todo_ledger_check.py 為 2ba116001b4ee7fe160e9fd8702001be650956f9926194857c892cc9fc821078（FACT：與第一次之作者檔雜湊相同）；狀態檔依新 Base（D9 第 1 批晉級後之 main）重做，TD 編號順延為 TD-105 至 TD-108（原 TD-097 至 TD-100），原 TD-101（交付檔放置機械化）已由 B117-D9-GATE4-GROUPS-R2-261121 登錄為 TD-103，不重複登錄；原 TD-095、TD-096 補編亦已由 B117-D9-GATE4-GROUPS-R2-261121 完成。第二意見執行前複核（D-SO）之沿革：第一版（B117-G7B3B3-LEDGER-CHECK-261121，未執行）已複核，BLOCKING 0、NON_BLOCKING 1，N1（清冊列格式變體被靜默略過）採納並加測試，因作者位元組改變，改號為 B117-G7B3B3-LEDGER-CHECK-R2-261121，該版未再送複核（INFERENCE 風險：N1 修正與 M11 測試未經第二意見二次複核）；本批與 B117-G7B3B3-LEDGER-CHECK-R2-261121 之作者程式位元組相同，不再送第二意見，改以審查官於本批之預查、突變注入結果與審查本批時之重跑為憑。五、第二意見前一輪觀察：11 月 S1 統計（USER_PROVIDED：55 個 TASK_ID 系列中 8 個出現 S1，停止步驟 precommit 5、候選 CI 1、post-main CI 1、native_preview 1）作為 α 批 D2 之範圍與負例參考，不另登錄。六、同批以 records-plan（keep 5）與新工具 records-apply 搬移最舊 1 則（B117-G7B3B2-ONE-LINER-R3-261120，單行）至 docs/archive/TASKBOARD-RECORDS-0007.md，看板維持 6 則；該則紀錄之待辦標籤已由 B117-G7B3B3-TODO-LEDGER-261120 盤點寫入清冊，故以 --no-new-todos 點名。七、新增待辦：TD-105、TD-106、TD-107、TD-108。八、E24 REQUIRED；E27 適用（程式批；承諾對測試與故障注入反例見提示詞）；D-SO 沿革見第四點；native_preview；bundle_output false。
+````

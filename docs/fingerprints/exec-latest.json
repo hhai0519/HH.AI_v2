@@ -1,5 +1,5 @@
 {
-  "base_head": "4a40142",
+  "base_head": "0a14e55",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -576,16 +576,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 435,
-      "sha256": "7aa5badac4ad3fe8a8b12a263d4cf892fa1ddd51ad9fe8b7082ff845b2686dd3"
+      "lines": 436,
+      "sha256": "dd2b9ebff207c4df3a1c6ea404da2375896f1e1d0d636bbdc64ed04847c0448f"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 405,
-      "sha256": "a590c56df0b3a7c21124c3afc17b278212b20866eb0af08dff8a42b15079bc77"
+      "lines": 406,
+      "sha256": "f27b687245ef092b381012e588111a2f62f389240742ad37cbdd51d5f22a1480"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -627,8 +627,8 @@
         "## G. 舊 repo 未盤點區塊（2026-09-02 新發現）",
         "## 封存區"
       ],
-      "lines": 459,
-      "sha256": "fded1a745c508e1af61e287b5369eaf11cfe5340ab42213a108f49b9bc5b7fc1"
+      "lines": 473,
+      "sha256": "a716e0074ddbb36565b7acbbdb8ea70ff04fbf238eb99b6bcbf0aa1e487eb34c"
     },
     "docs/TODO-LEDGER.md": {
       "fences": 0,
@@ -640,8 +640,8 @@
         "## 四、盤點範圍與方法",
         "## 五、清冊"
       ],
-      "lines": 186,
-      "sha256": "66c6b8bd9f9a452859337a59f94eb0899a958bb43700e60f4bf54bd58ef656a9"
+      "lines": 194,
+      "sha256": "096777e545d16219c387fbb5a162088fc430aca61a27852d1f6a9e459a5e15f6"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1150,8 +1150,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6491,
-      "sha256": "e3e2269bbb5f971bc773030f77617d74452d0038f42342ad0d62e37113f10dcd"
+      "lines": 6492,
+      "sha256": "988dae3e9644f4bbc49577ce48aa2e74438432369802be65f15691bb8e554b4b"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1330,8 +1330,8 @@
         "# owner 須為未完成之看板任務）。任何輸入缺失、畸形或讀取失敗一律判定失敗。",
         "# ---------------------------------------------------------------------------"
       ],
-      "lines": 4100,
-      "sha256": "6e0d3a34118e1a29312f85b09913618649d7c166cf24b523da7791d53512f53c"
+      "lines": 4136,
+      "sha256": "bc90db2a9fca4e208083e2406a6ce0595237065a73b633f081520eeff39bc4e4"
     },
     "scripts/delivery_pack.py": {
       "fences": 0,
@@ -1354,8 +1354,8 @@
         "# Allowlist (fail closed): only state documents under docs/ may go without a focused test set; any other path,",
         "# e.g. shared/*.js, .githooks/*, .gitattributes, pyproject.toml, uv.lock, .nvmrc or skills/**, may run as code."
       ],
-      "lines": 872,
-      "sha256": "539e572f900974c9086be1b0347625b6d87b74d586eaa5306afa009a6419fd8d"
+      "lines": 923,
+      "sha256": "0178e72ad049e154f85728c116296c52c6785a953ff49b4681841a5a391e308a"
     },
     "scripts/execution_record.py": {
       "fences": 0,
@@ -1671,10 +1671,11 @@
       "fences": 0,
       "headings": [
         "# 第一個封存檔（USER 一次性確認）寫成後即固定：批次、位元組與筆數釘在這裡，之後改封存檔或清單都會 FAIL。",
-        "# 批次紀錄封存（G7-b3a）"
+        "# 批次紀錄封存（G7-b3a）",
+        "# 清冊進階規則（b3b3-2：TD-106、TD-107、TD-108）與看板列長守衛（CHECK 32）"
       ],
-      "lines": 1269,
-      "sha256": "af6266bd85632d3887ef949421a98932c832bfe9442048e9008ae49c1f639f57"
+      "lines": 1837,
+      "sha256": "9e5849156dce576ef838a98c5fc294bf4d71415e2ef501639a890a38079ac53c"
     },
     "scripts/tests/test_alpha_reply_lines.py": {
       "fences": 0,
@@ -1725,6 +1726,32 @@
       "headings": [],
       "lines": 152,
       "sha256": "ef0611a26f27adf446b7f7d2d8942fd4756a7f33bf53f3ead15dddd75bd834af"
+    },
+    "scripts/tests/test_b3b3_2_guards.py": {
+      "fences": 0,
+      "headings": [
+        "# -*- coding: utf-8 -*-",
+        "# ---------------------------------------------------------------------------",
+        "# 1. Deterministic itertools exhaustive transition matrix: TD-107 x TD-108",
+        "# ---------------------------------------------------------------------------",
+        "# ---------------------------------------------------------------------------",
+        "# 2. TD-106 Inheritance Markers (Positive, Negative, and Boundary Controls)",
+        "# ---------------------------------------------------------------------------",
+        "# ---------------------------------------------------------------------------",
+        "# 3. TD-107 Review Dates, OWNER_RE, ledger-review CLI, and Zero Wall-Clock CI",
+        "# ---------------------------------------------------------------------------",
+        "# ---------------------------------------------------------------------------",
+        "# 3b. Verbatim split-row CLI, Concatenation Bijection & Fail-Closed Controls",
+        "# ---------------------------------------------------------------------------",
+        "# ---------------------------------------------------------------------------",
+        "# 4. CHECK 32 Decision Table + Non-ROW_RE Line Guard + Fail-Closed Controls",
+        "# ---------------------------------------------------------------------------",
+        "# ---------------------------------------------------------------------------",
+        "# 5. Real-Repo Candidate Verification Control (skipped safely prior to apply)",
+        "# ---------------------------------------------------------------------------"
+      ],
+      "lines": 768,
+      "sha256": "f54363da4778fe71b00f74da287229d1b54a7111ae3c6a5a667dd97ceef99c34"
     },
     "scripts/tests/test_batch_runner.py": {
       "fences": 0,
@@ -1974,10 +2001,13 @@
         "# ---------------------------------------------------------------------------",
         "# ---------------------------------------------------------------------------",
         "# CHECK 31 Tests: S1 Root-Cause Registry Guard (B-117 D8 / TD-101)",
+        "# ---------------------------------------------------------------------------",
+        "# ---------------------------------------------------------------------------",
+        "# CHECK 32 Tests: TASKBOARD Row-Length Guard (B-117 G7-b3b3-2)",
         "# ---------------------------------------------------------------------------"
       ],
-      "lines": 3040,
-      "sha256": "76a641f140f4ba3f83582adea127cb40494819fee43f25328072cbd9fde5cb27"
+      "lines": 3081,
+      "sha256": "930070339bf2a125f469a3a255432bd3e49064726d751e263519f1e75c6d0382"
     },
     "scripts/tests/test_delivery_pack.py": {
       "fences": 0,
@@ -2003,10 +2033,11 @@
         "# B-115/G3 C3: runner-equivalent author target guards before git apply or generate.",
         "# --- TD-055 & TD-028 regression tests (alpha 2) ---",
         "# --- Beta 1 (D8 / TD-101): FINGERPRINT_TOOLS s1_registry & S1_REGISTRY_SUMMARY ---",
-        "# --- Beta 2 (TD-008 / TD-101): FINGERPRINT_TOOLS & CAP_COUNT_SUMMARY ---"
+        "# --- Beta 2 (TD-008 / TD-101): FINGERPRINT_TOOLS & CAP_COUNT_SUMMARY ---",
+        "# --- G7-b3b3-2 (TD-107): Non-blocking TODO_LEDGER_REVIEW summary ---"
       ],
-      "lines": 1091,
-      "sha256": "4ea8760827162bac8ab993868356a7889e47ad248e172507470f1a5f56050125"
+      "lines": 1138,
+      "sha256": "d27799003bf5188ae878c20a8009ec6f932aabf43275bcfaba8e0e08cda18ef0"
     },
     "scripts/tests/test_draft_precheck_fast.py": {
       "fences": 0,
@@ -2586,7 +2617,7 @@
         "# ==========================================================================="
       ],
       "lines": 747,
-      "sha256": "32139e5560dbde96913afb58a4bf9df8efa1c33b6641e4f310f601c5ca849a68"
+      "sha256": "7e682a16563c6ae4be719e062a32dba047d455b9a05423647a7f53c0cf725ad1"
     },
     "scripts/tests/test_verify_all.py": {
       "fences": 0,
@@ -2658,7 +2689,7 @@
       "sha256": "8597e282fed71298b01430659fae7cdfedf4a20f8be0267d662f8f1da8ff23e8"
     }
   },
-  "generated_at": "2026-11-24T13:46:55Z",
+  "generated_at": "2026-11-25T05:26:09Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

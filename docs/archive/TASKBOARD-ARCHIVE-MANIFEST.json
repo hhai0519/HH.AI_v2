@@ -534,6 +534,25 @@
      "row_bytes": 1297
     }
    ]
+  },
+  {
+   "file": "docs/archive/TASKBOARD-ARCHIVE-0003.md",
+   "batch": "B117-G7B3B3-ROWLEN-LEDGER-R3-261125",
+   "checkpoint_oid": "0a14e5569938372362817821aee5d946946fc374",
+   "file_sha256": "4236881f28919c2d4031cfb7001fe5cf1e9c64a9bca30f4260c905288a62b92a",
+   "entries": [
+    {
+     "id": "B-107",
+     "section": "B. 重構主線",
+     "source_line": 292,
+     "status_at_archive": "已完成",
+     "basis": "MACRO_PASS_ANCESTOR",
+     "evidence_commit": "1a3d8bb4ecd967cf811ab70203da742de618afd1",
+     "user_decision": null,
+     "row_sha256": "04482f3498e219aba545ce1b4d77e48eb71b6c7baafabbf5f8ad75ccdd078776",
+     "row_bytes": 73256
+    }
+   ]
   }
  ],
  "record_archives": [
@@ -1062,6 +1081,22 @@
      "line_count": 1,
      "unit_sha256": "b240cbe6df39f58137ddb7c988bbf5dd7202d557a4aca4b0f514a5b552b69d7d",
      "unit_bytes": 4848
+    }
+   ]
+  },
+  {
+   "file": "docs/archive/TASKBOARD-RECORDS-0013.md",
+   "batch": "B117-G7B3B3-ROWLEN-LEDGER-R3-261125",
+   "checkpoint_oid": "0a14e5569938372362817821aee5d946946fc374",
+   "file_sha256": "948a91c5b7f7e917b4eab72803896c000401e017398fa54c5fc4288926d43748",
+   "keep": 5,
+   "entries": [
+    {
+     "task_id": "B117-G7B3B3-LEDGER-CHECK-R3-261121",
+     "source_line": 131,
+     "line_count": 1,
+     "unit_sha256": "09cb98d202f55625fd800730a98df8f1576772a5b4a041619012b7e0cd116f8a",
+     "unit_bytes": 4668
     }
    ]
   }

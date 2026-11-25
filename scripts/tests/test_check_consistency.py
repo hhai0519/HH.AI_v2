@@ -31,6 +31,7 @@ from check_consistency import (
     check_26_plan_actual_evidence_integrity,
     check_30_taskboard_single_line_markers,
     check_31_s1_registry_guard,
+    check_32_taskboard_row_length_guard,
     parse_macro_audit_verdict,
 )
 
@@ -1612,7 +1613,7 @@ def test_integration_run_checks_includes_19_and_20():
 
 def verify_check_consistency_inventory(file_content: str) -> tuple[bool, str, dict]:
     """
-    Validates complete, consistent, and duplicate-free inventory (1..31)
+    Validates complete, consistent, and duplicate-free inventory (1..32)
     across docstring and run_checks(). Supports both 'CHECK N -' and 'CHECK N:' punctuations.
     """
     # 1. Parse docstring inventory
@@ -1651,9 +1652,9 @@ def verify_check_consistency_inventory(file_content: str) -> tuple[bool, str, di
         seen_rc_ids.add(cid)
         run_checks_ids.append(cid)
 
-    expected_ids = list(range(1, 32))
-    if total_checks != 31:
-        return False, f"total_checks must be 31 (got {total_checks})", {}
+    expected_ids = list(range(1, 33))
+    if total_checks != 32:
+        return False, f"total_checks must be 32 (got {total_checks})", {}
 
     if docstring_ids != expected_ids:
         missing = set(expected_ids) - set(docstring_ids)
@@ -1672,12 +1673,12 @@ def verify_check_consistency_inventory(file_content: str) -> tuple[bool, str, di
     }
 
 
-def test_integration_run_checks_includes_31_and_total_checks_is_31():
-    """Verify run_checks includes up to CHECK 31 and total_checks is 31."""
+def test_integration_run_checks_includes_32_and_total_checks_is_32():
+    """Verify run_checks includes up to CHECK 32 and total_checks is 32."""
     import check_consistency
     import inspect
     source = inspect.getsource(check_consistency.run_checks)
-    assert "total_checks = 31" in source
+    assert "total_checks = 32" in source
     assert "check_21_secret_leak_guard" in source
     assert "CHECK 21: 機密防護與輸出安全守衛" in source
     assert "check_22_ci_supply_chain" in source
@@ -1700,19 +1701,21 @@ def test_integration_run_checks_includes_31_and_total_checks_is_31():
     assert "CHECK 30: 任務看板指標單行守衛" in source
     assert "check_31_s1_registry_guard" in source
     assert "CHECK 31: S1 根因登記檔守衛" in source
+    assert "check_32_taskboard_row_length_guard" in source
+    assert "CHECK 32: 任務看板列長守衛" in source
 
 
-def test_full_checker_inventory_consistency_1_to_31():
-    """Full checker inventory consistency: docstring, run_checks, and active representation match 1..31."""
+def test_full_checker_inventory_consistency_1_to_32():
+    """Full checker inventory consistency: docstring, run_checks, and active representation match 1..32."""
     cc_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "check_consistency.py"))
     with open(cc_path, "r", encoding="utf-8") as f:
         content = f.read()
 
     ok, err, metadata = verify_check_consistency_inventory(content)
     assert ok is True, f"Full checker inventory verification failed: {err}"
-    assert metadata["total_checks"] == 31
-    assert metadata["docstring_ids"] == list(range(1, 32))
-    assert metadata["run_checks_ids"] == list(range(1, 32))
+    assert metadata["total_checks"] == 32
+    assert metadata["docstring_ids"] == list(range(1, 33))
+    assert metadata["run_checks_ids"] == list(range(1, 33))
 
 
 def test_full_checker_inventory_negative_controls():
@@ -3038,3 +3041,41 @@ def test_check_31_real_repo_passes():
     fails, infos = check_31_s1_registry_guard(root)
     assert fails == [], fails
     assert any("causes=25" in i for i in infos)
+
+
+# ---------------------------------------------------------------------------
+# CHECK 32 Tests: TASKBOARD Row-Length Guard (B-117 G7-b3b3-2)
+# ---------------------------------------------------------------------------
+
+def test_check_32_fail_closed_when_missing(tmp_path):
+    fails, _ = check_32_taskboard_row_length_guard(str(tmp_path))
+    assert len(fails) == 1 and "無法讀取" in fails[0]
+
+
+def test_check_32_oversized_row_and_real_repo_control(tmp_path):
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+    subprocess.run(["git", "-C", str(tmp_path), "config", "user.name", "T"], check=True)
+    subprocess.run(["git", "-C", str(tmp_path), "config", "user.email", "t@example.test"], check=True)
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "TASKBOARD.md").write_bytes(b"| B-01 | \xe5\xbe\x85\xe8\xbe\xa6 | ok | |\n")
+    (docs / "refactor-backlog.md").write_bytes(b"")
+    subprocess.run(["git", "-C", str(tmp_path), "add", "."], check=True)
+    subprocess.run(["git", "-C", str(tmp_path), "commit", "-qm", "base"], check=True)
+    oid = subprocess.check_output(["git", "-C", str(tmp_path), "rev-parse", "HEAD"], text=True).strip()
+    (docs / "refactor-backlog.md").write_bytes(f"\u4e0a\u6b21\u6838\u5c0d\u901a\u904e\u7684 HEAD\uff1a{oid}\n".encode("utf-8"))
+
+    fails, infos = check_32_taskboard_row_length_guard(str(tmp_path))
+    assert fails == [], fails
+    assert any("2500" in i for i in infos)
+
+    (docs / "TASKBOARD.md").write_bytes(f"| B-01 | \xe5\xbe\x85\xe8\xbe\xa6 | {'x' * 2500} | |\n".encode("utf-8"))
+    fails_bad, _ = check_32_taskboard_row_length_guard(str(tmp_path))
+    assert any("超過上限 2500" in f for f in fails_bad), fails_bad
+
+    real_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+    if not os.path.isfile(os.path.join(real_root, "docs", "archive", "TASKBOARD-ARCHIVE-0003.md")):
+        pytest.skip("CHECK 32 archive control not yet applied prior to b3b3-2")
+    real_fails, real_infos = check_32_taskboard_row_length_guard(real_root)
+    assert real_fails == [], real_fails
+    assert any("過渡例外 9 列" in i for i in real_infos), real_infos

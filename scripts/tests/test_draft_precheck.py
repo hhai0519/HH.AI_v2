@@ -1089,3 +1089,50 @@ def test_beta2_fingerprint_and_cap_count_summary(tmp_path):
         assert data['d6']['source'] == 'repo'
         assert any(line.startswith('CAP_COUNT_D6 source=repo ') for line in lines)
         assert any(line.startswith('CAP_COUNT_CAP2 source=repo ') for line in lines)
+
+
+# --- G7-b3b3-2 (TD-107): Non-blocking TODO_LEDGER_REVIEW summary ---
+
+def test_b3b3_2_todo_ledger_review_summary_and_nonblocking(tmp_path, monkeypatch):
+    missing_repo = tmp_path / 'no_ledger'
+    missing_repo.mkdir()
+    assert q2._collect_todo_ledger_review(missing_repo) is None
+
+    cand = tmp_path / 'cand'
+    (cand / 'docs').mkdir(parents=True)
+    (cand / 'scripts').mkdir(parents=True)
+    scripts_src = Path(__file__).resolve().parents[1]
+    for name in ('taskboard_archive.py', 'history_guard.py'):
+        (cand / 'scripts' / name).write_bytes((scripts_src / name).read_bytes())
+
+    ledger_text = '\n'.join([
+        '# 待辦清冊',
+        '| 編號 | 來源批次紀錄 | 原標籤 | 事項 | 處置 | 依據或去處 |',
+        '|---|---|---|---|---|---|',
+        '| TD-001 | TASK-A | tag | rescheduled | 開放 | owner：G3；複查日 2020-01-01；複查日 2099-12-31 |',
+        '| TD-002 | TASK-A | tag | overdue | 開放 | owner：G3；複查日 2020-02-01 |',
+        '| TD-003 | TASK-A | tag | missing | 開放 | owner：G3；無日期 |',
+        '',
+    ])
+    (cand / 'docs' / 'TODO-LEDGER.md').write_bytes(ledger_text.encode('utf-8'))
+
+    res = q2._collect_todo_ledger_review(cand)
+    assert res is not None
+    data, lines = res
+    assert data['open_total'] == 3
+    assert [x['id'] for x in data['overdue']] == ['TD-002']
+    assert [x['id'] for x in data['missing_review_date']] == ['TD-003']
+    assert lines[0].startswith('TODO_LEDGER_REVIEW ')
+    assert 'open=3 overdue=1 due_soon=0 missing=1' in lines[0]
+    assert any(ln.startswith('TODO_LEDGER_OVERDUE id=TD-002 review_date=2020-02-01 ') for ln in lines)
+    assert any(ln == 'TODO_LEDGER_MISSING_DATE id=TD-003' for ln in lines)
+
+    monkeypatch.setattr(q2, 'cmd', lambda *a, **kw: (1, b'FAIL'))
+    fail_data, fail_lines = q2._collect_todo_ledger_review(cand)
+    assert fail_data['status'] == 'UNAVAILABLE'
+    assert fail_lines == ['TODO_LEDGER_REVIEW status=UNAVAILABLE']
+
+    monkeypatch.setattr(q2, 'cmd', lambda *a, **kw: (0, b'{bad json'))
+    bad_data, bad_lines = q2._collect_todo_ledger_review(cand)
+    assert bad_data == {'status': 'UNAVAILABLE', 'reason': 'PARSE_ERROR'}
+    assert bad_lines == ['TODO_LEDGER_REVIEW status=UNAVAILABLE']

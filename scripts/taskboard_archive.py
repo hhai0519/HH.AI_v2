@@ -54,6 +54,16 @@ EXEC-LOG 的新列，說明都必須以「一句話：……。」開頭；句�
     清冊的「承接」「開放」正是為了讓待辦在紀錄被搬走後仍有去處，若未結案即拒絕，帶開放待辦的紀錄將永遠無法搬走，
     看板 6 則上限會卡死。使用順序：先把清冊列寫好，再執行 records-apply。
 
+清冊進階規則與列長守衛（G7-b3b3-2；TD-106／TD-107／TD-108 與 CHECK 32）：
+  - 清冊進階規則於 LEDGER_V2_ANCHOR（B117-BETA2-D4-CAP-S1DRAFT-R4-261124）出現於看板或批次紀錄封存檔後生效（只增不減同法保護）：
+    * TD-106：所有「承接」列依據欄須含結構化「承接位置：ROW:<ID>[「<錨點>」]」或「承接位置：BOARD「<錨點>」」，
+      指向現行看板（不含批次紀錄與「## 封存區」）中存在且未結案／非可封存之目標；
+    * TD-107：所有「開放」列依據欄須含「owner：…」及至少一個合法且非遞減之「複查日 YYYY-MM-DD」（以最後一個為準）；
+      CHECK 29 僅驗格式與單調性，絕不於 CI 依日曆時間判失敗；到期提醒由唯讀工具 ledger-review（與 records-plan／draft_precheck）輸出；
+    * TD-108：維持「開放」之既有列，其依據欄僅得於尾端追加文字，不得改寫或刪除既有內容（改期須於尾端追加新「複查日 YYYY-MM-DD」）。
+  - CHECK 32（row-length-check / check_row_lengths）：看板所有表格列不得超過 ROW_MAX_CHARS（2,500 字元），
+    僅 ROW_LEN_LEGACY_CAPS 白名單內既有超長列得以 checkpoint 長度為上界只減不增。
+
 看板列與清單的只增不減（G7-b3b1，CHECK 29 一併判定）：checkpoint 看板上的每一個表格列 ID，必須仍在看板上或
 已在某個看板列封存檔；manifest 的 archives 相對於 checkpoint 的 manifest 只能在尾端追加，user_keep 只增不減。
 
@@ -65,8 +75,13 @@ check_consistency 的「上次核對通過的 HEAD … 已過期」判定（chec
 命令列（唯讀者標 ◎）：
   python scripts/taskboard_archive.py plan  --repo <repo>                        ◎ 列出每一列的判定
   python scripts/taskboard_archive.py check --repo <repo>                        ◎ CHECK 29 同一判定
+  python scripts/taskboard_archive.py row-length-check --repo <repo>             ◎ CHECK 32 同一判定
+  python scripts/taskboard_archive.py ledger-review --repo <repo> [--as-of YYYY-MM-DD] [--warn-days N] [--json]
+                                                                                 ◎ TD-107 開放列複查日唯讀到期提醒
   python scripts/taskboard_archive.py apply --repo <repo> --task-id <TASK> --checkpoint-oid <oid>
                                             --entry <ID>[:<evidence-oid>] ...    寫入工作區（不 commit）
+  python scripts/taskboard_archive.py split-row --repo <repo> --id <ID> [--max-chars 2500] [--apply]
+                                                                                 ◎ 機械逐字拆列（--apply 始寫入工作區）
   python scripts/taskboard_archive.py records-plan  --repo <repo> --keep N        ◎ 盤點數字與每則的保留／搬移判定
   python scripts/taskboard_archive.py records-apply --repo <repo> --task-id <TASK> --checkpoint-oid <oid>
                                             --keep N --take M [--allow-multiline TASK_ID ...]
@@ -77,6 +92,7 @@ fail-closed：manifest、封存檔、AUDIT-LOG、checkpoint 讀不到或格式�
 """
 
 import argparse
+import datetime
 import hashlib
 import json
 import os
@@ -151,6 +167,40 @@ TODO_CLAUSE_RE = re.compile(r'新增待辦：([^。\n]*)。')
 TODO_NONE = '無'
 EXEC_LOG_REL = 'docs/EXEC-LOG.md'
 EXEC_LOG_CELL_RE = re.compile(r'([A-Z][A-Z0-9]*(?:-[A-Z0-9]+)+)：(.*)', re.S)
+
+# 清冊進階規則（b3b3-2：TD-106、TD-107、TD-108）與看板列長守衛（CHECK 32）
+LEDGER_V2_ANCHOR = 'B117-BETA2-D4-CAP-S1DRAFT-R4-261124'
+INHERIT_MARKER_PREFIX = '承接位置：'
+INHERIT_MARKER_SCAN_RE = re.compile(r'承接位置([：:])?')
+INHERIT_ROW_RE = re.compile(
+    r'ROW:([A-Za-z][A-Za-z0-9]*(?:-[A-Za-z0-9]+)*)(?:「([^「」|\n]+)」)?(?=$|[；;，,。、\s\)）（])'
+)
+INHERIT_BOARD_RE = re.compile(r'BOARD「([^「」|\n]+)」(?=$|[；;，,。、\s\)）（])')
+INHERIT_ROW_MIN_ANCHOR = 2
+INHERIT_BOARD_MIN_ANCHOR = 4
+OWNER_RE = re.compile(r'(?<![A-Za-z0-9_])owner[：:]\s*([^\s；;，,。|]+)')
+REVIEW_DATE_RE = re.compile(r'複查日 ([0-9]{4})-([0-9]{2})-([0-9]{2})(?![0-9A-Za-z-])')
+REVIEW_DATE_CANDIDATE_RE = re.compile(r'複查日\s*[:：]?\s*[0-9][0-9A-Za-z/\-\.]*')
+HEADER_SEP_RE = re.compile(r'^\s*\|(?:\s*:?-+:?\s*\|)+\s*$')
+TAIWAN_TZ = datetime.timezone(datetime.timedelta(hours=8))
+REVIEW_WARN_DAYS_DEFAULT = 7
+ROW_MAX_CHARS = 2500
+ROW_LEN_LEGACY_CAPS = {
+    'G6': 5814,
+    'G5': 4790,
+    'G7': 2793,
+    'B-111': 3124,
+    'B-112': 3506,
+    'B-116': 3209,
+    'B-119': 2777,
+    'B-123': 3897,
+    'B-118': 3962,
+}
+SPLIT_CHILD_ID_TMPL = '%s-%d'
+SPLIT_INDEX_BODY_TMPL = (
+    '本長列已由 scripts/taskboard_archive.py split-row 機械逐字拆分為 %s-1 至 %s-%d'
+    '（共 %d 列，切分當時原文長度 %d 字元，原文 SHA-256：%s）；各段全文見下列子列。'
+)
 
 
 class Fail(Exception):
@@ -886,7 +936,7 @@ def check_records(root, manifest, taskboard, backlog_text):
             fails.append('%s' % exc)
     fails.extend(check_records_append_only(root, archives, board_units, seen, backlog_text))
     fails.extend(board_one_liner_problems(board_units, ONE_LINER_ANCHOR in board_ids or ONE_LINER_ANCHOR in seen))
-    fails.extend(check_ledger(root, board_units, seen, backlog_text))
+    fails.extend(check_ledger(root, board_units, seen, backlog_text, taskboard))
     return fails, len(archives), total
 
 
@@ -983,8 +1033,127 @@ def parse_ledger(text):
     return rows, problems
 
 
-def ledger_format_problems(rows, old_ids=None):
-    """清冊格式。old_ids 為 checkpoint 清冊的編號集合；給了才對「新列」要求開放列寫 owner（舊列不追溯）。"""
+def extract_review_dates(basis):
+    """解析依據欄中的所有「複查日 YYYY-MM-DD」。回傳 (dates, problems)。
+    改期採依據欄尾端追加新複查日、舊日期保留（以最後一個為準）；任何誤寫格式、無效日曆日期或新日期早於舊日期皆回傳問題。
+    """
+    dates, problems = [], []
+    if re.search(r'複查日\s*[:：]', basis):
+        problems.append('複查日須以單一半形空白接 YYYY-MM-DD（不可用冒號「：」或「:」）')
+    for match in REVIEW_DATE_CANDIDATE_RE.finditer(basis):
+        strict = REVIEW_DATE_RE.match(basis, match.start())
+        if not strict or strict.end() != match.end():
+            problems.append('複查日格式須為「複查日 YYYY-MM-DD」（單一半形空白與 ISO 日期），現為 %r' % match.group(0))
+            continue
+        try:
+            dt = datetime.date(int(strict.group(1)), int(strict.group(2)), int(strict.group(3)))
+        except ValueError:
+            problems.append('複查日 %r 不是合法日期' % strict.group(0))
+            continue
+        if dates and dt < dates[-1]:
+            problems.append('新複查日 %s 早於舊複查日 %s（TD-107／TD-108）' % (dt.isoformat(), dates[-1].isoformat()))
+        dates.append(dt)
+    return dates, problems
+
+
+def _table_data_rows(text):
+    """回傳 parse_rows(text) 中排除 Markdown 表頭列的資料列。"""
+    lines = text.split('\n')
+    return [
+        row for row in parse_rows(text)
+        if not (row['line'] < len(lines) and HEADER_SEP_RE.match(lines[row['line']]))
+    ]
+
+
+def live_board_text(taskboard):
+    """看板中去除「## 封存區」與所有批次紀錄單元（含續行）後之現行本文。"""
+    before_archive = re.split(r'(?m)^## 封存區[ \t]*$', taskboard, maxsplit=1)[0]
+    record_line_nos = set()
+    for unit in record_units(before_archive):
+        for offset in range(len(unit['lines'])):
+            record_line_nos.add(unit['start'] + offset)
+    kept = [
+        line for number, line in enumerate(before_archive.split('\n'), 1)
+        if number not in record_line_nos
+    ]
+    return '\n'.join(kept)
+
+
+def is_closed_or_archivable_status(status):
+    return status in ARCHIVABLE_STATUSES or status.startswith(('已完成', '可封存', 'CLOSED'))
+
+
+def parse_inherit_markers(basis):
+    """解析承接列依據欄的「承接位置：...」標記（TD-106）。回傳 (markers, problems)。"""
+    hits = list(INHERIT_MARKER_SCAN_RE.finditer(basis))
+    if not hits:
+        return [], ['缺少結構化「%s」標記（ROW:<ID>[「<錨點>」] 或 BOARD「<錨點>」）' % INHERIT_MARKER_PREFIX]
+    markers, problems = [], []
+    for hit in hits:
+        if hit.group(1) != '：':
+            problems.append('「承接位置」須使用全形冒號「：」（請寫 %s...）' % INHERIT_MARKER_PREFIX)
+            continue
+        pos = hit.end()
+        m_row = INHERIT_ROW_RE.match(basis, pos)
+        if m_row:
+            rid, anchor = m_row.group(1), m_row.group(2)
+            if anchor is not None and len(anchor.strip()) < INHERIT_ROW_MIN_ANCHOR:
+                problems.append('ROW:%s 的錨點過短（至少 %d 字元）' % (rid, INHERIT_ROW_MIN_ANCHOR))
+            else:
+                markers.append(('ROW', rid, anchor))
+            continue
+        m_board = INHERIT_BOARD_RE.match(basis, pos)
+        if m_board:
+            anchor = m_board.group(1)
+            if len(anchor.strip()) < INHERIT_BOARD_MIN_ANCHOR:
+                problems.append('BOARD 錨點過短（至少 %d 字元）' % INHERIT_BOARD_MIN_ANCHOR)
+            else:
+                markers.append(('BOARD', None, anchor))
+            continue
+        problems.append('承接位置標記格式不符：%r' % basis[hit.start():hit.start() + 32])
+    return markers, problems
+
+
+def ledger_inherit_problems(rows, taskboard):
+    """TD-106：驗證每個「承接」列之承接位置標記指向現行看板（不含批次紀錄與封存區）的未結案目標。"""
+    live_text = live_board_text(taskboard)
+    board_rows_by_id, dup_ids = {}, set()
+    for r in _table_data_rows(live_text):
+        if r['id'] in board_rows_by_id:
+            dup_ids.add(r['id'])
+        else:
+            board_rows_by_id[r['id']] = r
+    problems = []
+    for row in rows:
+        if row['disposition'] != '承接':
+            continue
+        markers, parse_probs = parse_inherit_markers(row['basis'])
+        for p in parse_probs:
+            problems.append('%s %s：%s' % (LEDGER_REL, row['id'], p))
+        for kind, rid, anchor in markers:
+            if kind == 'ROW':
+                if rid in dup_ids:
+                    problems.append('%s %s：承接目標 ROW:%s 在看板定義重複' % (LEDGER_REL, row['id'], rid))
+                    continue
+                target = board_rows_by_id.get(rid)
+                if target is None:
+                    problems.append('%s %s：承接目標 ROW:%s 不在現行看板（可能已封存或刪除）' % (LEDGER_REL, row['id'], rid))
+                    continue
+                if is_closed_or_archivable_status(target['status']):
+                    problems.append('%s %s：承接目標 ROW:%s 狀態為「%s」（已完成／可封存／CLOSED 列不得作現行承接目標）' % (
+                        LEDGER_REL, row['id'], rid, target['status']))
+                    continue
+                if anchor is not None and anchor not in target['text']:
+                    problems.append('%s %s：承接目標 ROW:%s 不含錨點「%s」' % (LEDGER_REL, row['id'], rid, anchor))
+            elif kind == 'BOARD':
+                if anchor not in live_text:
+                    problems.append('%s %s：承接目標 BOARD「%s」不在現行看板正文（不得僅存於批次紀錄或封存區）' % (
+                        LEDGER_REL, row['id'], anchor))
+    return problems
+
+
+def ledger_format_problems(rows, old_ids=None, v2_active=False):
+    """清冊格式。old_ids 為 checkpoint 清冊的編號集合；v2_active 啟用後對所有開放列要求 owner 與合法單調複查日。"""
     problems = []
     for position, row in enumerate(rows, 1):
         expected = 'TD-%03d' % position
@@ -996,13 +1165,23 @@ def ledger_format_problems(rows, old_ids=None):
                 problems.append('%s %s：欄位 %s 不得為空' % (LEDGER_REL, row['id'], key))
         if row['disposition'] not in LEDGER_DISPOSITIONS:
             problems.append('%s %s：處置須為 %s 之一，現為「%s」' % (LEDGER_REL, row['id'], '、'.join(LEDGER_DISPOSITIONS), row['disposition']))
+        elif v2_active and row['disposition'] == '開放':
+            if not OWNER_RE.search(row['basis']):
+                problems.append('%s %s：「開放」列依據欄須寫「owner：…」（TD-107／TD-108）' % (LEDGER_REL, row['id']))
+            dates, date_probs = extract_review_dates(row['basis'])
+            for dp in date_probs:
+                problems.append('%s %s：%s' % (LEDGER_REL, row['id'], dp))
+            if not dates and not date_probs:
+                problems.append('%s %s：「開放」列依據欄須至少含一個「複查日 YYYY-MM-DD」（TD-107）' % (LEDGER_REL, row['id']))
         elif old_ids is not None and row['id'] not in old_ids and row['disposition'] == '開放' and 'owner' not in row['basis']:
             problems.append('%s %s：新增的「開放」列，依據欄須寫 owner 與觸發條件或複查日' % (LEDGER_REL, row['id']))
     return problems
 
 
-def ledger_append_problems(rows, old_rows):
-    """清冊只增不減：checkpoint 清冊的每一列仍在；來源、原標籤、事項不得改；處置只能維持或改為結案；已結案逐字不變。"""
+def ledger_append_problems(rows, old_rows, v2_active=False):
+    """清冊只增不減：checkpoint 清冊的每一列仍在；來源、原標籤、事項不得改；處置只能維持或改為結案；已結案逐字不變；
+    v2_active 生效後（TD-108），維持「開放」之列依據欄僅得於尾端追加文字，不得改寫或刪除既有內容。
+    """
     problems, current = [], {row['id']: row for row in rows}
     for old in old_rows:
         row = current.get(old['id'])
@@ -1017,6 +1196,9 @@ def ledger_append_problems(rows, old_rows):
                 problems.append('%s %s：已結案之列須逐字不變' % (LEDGER_REL, old['id']))
         elif row['disposition'] != old['disposition'] and row['disposition'] != '結案':
             problems.append('%s %s：處置只能維持或改為結案（%s → %s）' % (LEDGER_REL, old['id'], old['disposition'], row['disposition']))
+        elif v2_active and old['disposition'] == '開放' and row['disposition'] == '開放':
+            if not row['basis'].startswith(old['basis']):
+                problems.append('%s %s：維持「開放」之列依據欄只准於尾端追加，不得改寫或刪除既有內容（TD-108）' % (LEDGER_REL, old['id']))
     return problems
 
 
@@ -1056,7 +1238,13 @@ def todo_subject_units(board_units, archived_ids):
     return [], False
 
 
-def check_ledger(root, board_units, archived_ids, backlog_text):
+def ledger_v2_active(board_units, archived_ids):
+    """TD-106／TD-107／TD-108 清冊進階規則是否已生效（LEDGER_V2_ANCHOR 在看板或紀錄封存檔）。"""
+    board_ids = {unit['task_id'] for unit in board_units}
+    return LEDGER_V2_ANCHOR in board_ids or LEDGER_V2_ANCHOR in archived_ids
+
+
+def check_ledger(root, board_units, archived_ids, backlog_text, taskboard=None):
     """CHECK 29 的清冊部分（fail-closed）：以 git 在 §5.1 checkpoint 的清冊為準。規則未生效時回傳空陣列。"""
     subjects, active = todo_subject_units(board_units, archived_ids)
     if not active:
@@ -1067,14 +1255,19 @@ def check_ledger(root, board_units, archived_ids, backlog_text):
         if resolve_commit(root, checkpoint) != checkpoint:
             raise Fail('checkpoint %s 無法解析' % checkpoint[:7])
         old_rows, old_problems = parse_ledger(git_blob_text(root, checkpoint, LEDGER_REL))
+        if taskboard is None:
+            taskboard = read_text(root, TASKBOARD_REL)
     except Fail as exc:
         return ['%s' % exc]
     fails = list(problems)
     if old_problems:
         fails.append('checkpoint %s 的 %s 格式不符，無法作為只增不減的基準' % (checkpoint[:7], LEDGER_REL))
         return fails
-    fails.extend(ledger_format_problems(rows, {row['id'] for row in old_rows}))
-    fails.extend(ledger_append_problems(rows, old_rows))
+    v2_active = ledger_v2_active(board_units, archived_ids)
+    fails.extend(ledger_format_problems(rows, {row['id'] for row in old_rows}, v2_active=v2_active))
+    fails.extend(ledger_append_problems(rows, old_rows, v2_active=v2_active))
+    if v2_active:
+        fails.extend(ledger_inherit_problems(rows, taskboard))
     for unit in subjects:
         fails.extend(todo_declaration_problems(unit, rows))
     return fails
@@ -1104,7 +1297,9 @@ def records_todo_gate(root, manifest, units, moved, no_new_todos):
             raise Fail('--no-new-todos 只在清冊規則生效後使用（錨點 %s 尚未在看板或封存檔）' % LEDGER_ANCHOR)
         return
     rows, problems = parse_ledger(read_text(root, LEDGER_REL))
-    problems = problems + ledger_format_problems(rows)
+    problems = problems + ledger_format_problems(
+        rows, v2_active=ledger_v2_active(units, archived_record_ids(manifest))
+    )
     if problems:
         raise Fail('清冊格式不符，不得搬移批次紀錄：%s' % problems[0])
     subject_ids = {unit['task_id'] for unit in subjects}
@@ -1150,6 +1345,339 @@ def records_plan(root, out, keep):
     # room：距看板批次紀錄上限（RECORDS_ON_BOARD_MAX）的剩餘則數；負數表示已超過，必須在同批 records-apply 搬走
     out.write('RECORDS_SUMMARY keep=%d movable=%d movable_bytes=%d on_board=%d max=%d room=%d\n'
               % (keep, max(0, count - keep), moved, count, RECORDS_ON_BOARD_MAX, RECORDS_ON_BOARD_MAX - count))
+    if os.path.isfile(os.path.join(root, *LEDGER_REL.split('/'))):
+        try:
+            rev = ledger_review_summary(root)
+            out.write('TODO_LEDGER_REVIEW as_of=%s open=%d overdue=%d due_soon=%d missing=%d\n' % (
+                rev['as_of'], rev['open_total'], len(rev['overdue']),
+                len(rev['due_soon']), len(rev['missing_review_date']),
+            ))
+        except Fail:
+            out.write('TODO_LEDGER_REVIEW status=UNAVAILABLE\n')
+    return 0
+
+
+def parse_as_of_date(as_of):
+    if as_of is None:
+        return datetime.datetime.now(TAIWAN_TZ).date()
+    if not isinstance(as_of, str):
+        raise Fail('--as-of 格式須為 YYYY-MM-DD')
+    match = re.fullmatch(r'([0-9]{4})-([0-9]{2})-([0-9]{2})', as_of)
+    if not match:
+        raise Fail('--as-of 格式須為 YYYY-MM-DD（現為 %r）' % as_of)
+    try:
+        return datetime.date(int(match.group(1)), int(match.group(2)), int(match.group(3)))
+    except ValueError:
+        raise Fail('--as-of 不是合法日期：%r' % as_of)
+
+
+def ledger_review_summary(root, as_of=None, warn_days=REVIEW_WARN_DAYS_DEFAULT):
+    """TD-107 開放列複查日唯讀到期提醒（作者端與 Dashboard 參考，不在 CI 依日曆判失敗）。"""
+    as_of_date = parse_as_of_date(as_of)
+    if not isinstance(warn_days, int) or isinstance(warn_days, bool) or warn_days < 0:
+        raise Fail('--warn-days 必須是非負整數')
+    rows, problems = parse_ledger(read_text(root, LEDGER_REL))
+    if problems:
+        raise Fail(problems[0])
+    open_total = 0
+    overdue, due_soon, missing_review_date, date_format_errors = [], [], [], []
+    for row in rows:
+        if row['disposition'] != '開放':
+            continue
+        open_total += 1
+        dates, date_probs = extract_review_dates(row['basis'])
+        for dp in date_probs:
+            date_format_errors.append({'id': row['id'], 'error': dp})
+        if not dates:
+            missing_review_date.append({'id': row['id']})
+            continue
+        effective = dates[-1]
+        delta = (effective - as_of_date).days
+        if delta < 0:
+            overdue.append({'id': row['id'], 'review_date': effective.isoformat(), 'days_overdue': -delta})
+        elif delta <= warn_days:
+            due_soon.append({'id': row['id'], 'review_date': effective.isoformat(), 'days_until': delta})
+    return {
+        'as_of': as_of_date.isoformat(),
+        'warn_days': warn_days,
+        'open_total': open_total,
+        'overdue': overdue,
+        'due_soon': due_soon,
+        'missing_review_date': missing_review_date,
+        'date_format_errors': date_format_errors,
+    }
+
+
+def _check_row_lengths(root):
+    fails, infos = [], []
+    if not isinstance(ROW_LEN_LEGACY_CAPS, dict):
+        return ['CHECK 32 ROW_LEN_LEGACY_CAPS 必須是字典'], infos
+    for key, val in ROW_LEN_LEGACY_CAPS.items():
+        if not isinstance(key, str) or not key or isinstance(val, bool) or not isinstance(val, int) or val <= ROW_MAX_CHARS:
+            return ['CHECK 32 過渡例外設定 %r=%r 無效（上界必須大於 %d）' % (key, val, ROW_MAX_CHARS)], infos
+    try:
+        taskboard = read_text(root, TASKBOARD_REL)
+        backlog_text = read_text(root, BACKLOG_REL)
+        checkpoint = read_checkpoint(backlog_text)
+        if resolve_commit(root, checkpoint) != checkpoint:
+            raise Fail('checkpoint %s 無法解析' % checkpoint[:7])
+        old_board = git_blob_text(root, checkpoint, TASKBOARD_REL)
+    except Fail as exc:
+        return ['%s' % exc], infos
+    rows = _table_data_rows(taskboard)
+    old_rows = _table_data_rows(old_board)
+    old_lengths = {}
+    for row in old_rows:
+        old_lengths.setdefault(row['id'], len(row['text']))
+    seen_ids = set()
+    legacy_used = 0
+    board_lines = taskboard.split('\n')
+    row_line_nos = {r['line'] for r in rows}
+    other_table_lines = [
+        (number, line) for number, line in enumerate(board_lines, 1)
+        if number not in row_line_nos
+        and line.lstrip().startswith('|')
+        and not HEADER_SEP_RE.match(line)
+        and not (number < len(board_lines) and HEADER_SEP_RE.match(board_lines[number]))
+    ]
+    max_len = max(
+        [len(r['text']) for r in rows] + [len(line) for _, line in other_table_lines],
+        default=0,
+    )
+    for row in rows:
+        rid = row['id']
+        if rid in seen_ids:
+            fails.append('%s 第 %d 行（%s）：表格列 ID 重複' % (TASKBOARD_REL, row['line'], rid))
+            continue
+        seen_ids.add(rid)
+        length = len(row['text'])
+        if rid not in ROW_LEN_LEGACY_CAPS:
+            if length > ROW_MAX_CHARS:
+                fails.append('%s 第 %d 行（%s）：列長 %d 字元，超過上限 %d 字元' % (
+                    TASKBOARD_REL, row['line'], rid, length, ROW_MAX_CHARS))
+        else:
+            if length > ROW_MAX_CHARS:
+                legacy_used += 1
+            static_cap = ROW_LEN_LEGACY_CAPS[rid]
+            if rid in old_lengths:
+                effective_cap = min(static_cap, max(ROW_MAX_CHARS, old_lengths[rid]))
+            else:
+                effective_cap = ROW_MAX_CHARS
+            if length > effective_cap:
+                fails.append('%s 第 %d 行（%s）：既有超長列長 %d 字元，超過允許上限 %d 字元（過渡上界 %d，只減不增）' % (
+                    TASKBOARD_REL, row['line'], rid, length, effective_cap, static_cap))
+    for number, line in other_table_lines:
+        if len(line) > ROW_MAX_CHARS:
+            fails.append('%s 第 %d 行：非標準編號表格列長 %d 字元，超過上限 %d 字元' % (
+                TASKBOARD_REL, number, len(line), ROW_MAX_CHARS))
+    infos.append('看板表格列 %d 列（上限 %d 字元，過渡例外 %d 列、最大列長 %d 字元）' % (
+        len(rows), ROW_MAX_CHARS, legacy_used, max_len))
+    return fails, infos
+
+
+def check_row_lengths(root):
+    """CHECK 32 的判定（fail-closed）。回傳 (fails, infos)。"""
+    try:
+        return _check_row_lengths(root)
+    except Exception as exc:
+        return ['CHECK 32 內部錯誤（%s）' % type(exc).__name__], []
+
+
+def parse_row_cells(line):
+    """解析標準四欄看板列，回傳 (id, status, title, body)。格式不符或含額外管線一律 Fail。"""
+    if not isinstance(line, str) or not ROW_RE.match(line) or not line.endswith(' |'):
+        raise Fail('非標準四欄看板列格式（須以「| ID |」開頭並以「 |」結尾）')
+    cells = [cell.strip() for cell in line[1:-1].split('|')]
+    if len(cells) != 4 or not cells[0]:
+        raise Fail('看板列欄數須恰為 4（實得 %d）' % len(cells))
+    return cells[0], cells[1], cells[2], cells[3]
+
+
+def split_row_chunks(body, budget):
+    """純機械逐字切分內文為每段 <= budget 字元之連續片段，優先於「。」「；」切分且避免段首段尾空白。"""
+    if not isinstance(body, str) or not body:
+        raise Fail('待拆分列內文不得為空')
+    if isinstance(budget, bool) or not isinstance(budget, int) or budget < 1:
+        raise Fail('單段可用字元預算必須為正整數（實得 %r）' % (budget,))
+    if '\n' in body or '\r' in body or '|' in body:
+        raise Fail('待拆分列內文不得含換行或管線字元')
+    chunks = []
+    pos = 0
+    n = len(body)
+    while pos < n:
+        if n - pos <= budget:
+            chunks.append(body[pos:])
+            break
+        win = body[pos:pos + budget]
+        best = -1
+        for sep in ('。', '；'):
+            idx = win.rfind(sep)
+            while idx >= 0:
+                end = pos + idx + 1
+                if end < n and body[end] not in (' ', '\t'):
+                    if end > best:
+                        best = end
+                    break
+                idx = win.rfind(sep, 0, idx)
+        if best < 0:
+            for sep in ('、', '）', ')'):
+                idx = win.rfind(sep)
+                while idx >= 0:
+                    end = pos + idx + 1
+                    if end < n and body[end] not in (' ', '\t'):
+                        if end > best:
+                            best = end
+                        break
+                    idx = win.rfind(sep, 0, idx)
+        if best < 0:
+            for cand in range(pos + budget, pos, -1):
+                if body[cand - 1] not in (' ', '\t') and body[cand] not in (' ', '\t'):
+                    best = cand
+                    break
+            if best < 0:
+                best = pos + budget
+        chunks.append(body[pos:best])
+        pos = best
+    if ''.join(chunks) != body or any(not ch or len(ch) > budget for ch in chunks):
+        raise Fail('拆列切分自我驗證失敗（串接與原文不符或超長）')
+    return chunks
+
+
+def split_row_lines(row, max_chars=ROW_MAX_CHARS):
+    """把單一超長看板列拆為主索引列與連續逐字子列，回傳 (parent_line, child_lines, meta)。"""
+    if isinstance(max_chars, bool) or not isinstance(max_chars, int) or max_chars <= 0:
+        raise Fail('--max-chars 必須是正整數（實得 %r）' % (max_chars,))
+    line = row['text']
+    rid, status, title, body = parse_row_cells(line)
+    if len(line) <= max_chars:
+        raise Fail('%s 列長 %d 未超過上限 %d，無需拆列' % (rid, len(line), max_chars))
+    n_est = max(2, (len(body) // max(1, max_chars - 200)) + 2)
+    for _ in range(10):
+        sample = '| %s | %s | %s（續段 %d/%d） |  |' % (
+            SPLIT_CHILD_ID_TMPL % (rid, n_est), status, title, n_est, n_est
+        )
+        budget = max_chars - len(sample)
+        if budget < 1:
+            raise Fail('%s 列前綴長度（%d）已無法容納於 %d 字元上限' % (rid, len(sample), max_chars))
+        chunks = split_row_chunks(body, budget)
+        n = len(chunks)
+        if len(str(n)) > len(str(n_est)):
+            n_est = n
+            continue
+        body_sha = sha256_text(body)
+        parent_body = SPLIT_INDEX_BODY_TMPL % (rid, rid, n, n, len(body), body_sha)
+        parent_line = '| %s | %s | %s | %s |' % (rid, status, title, parent_body)
+        child_lines = [
+            '| %s | %s | %s（續段 %d/%d） | %s |' % (
+                SPLIT_CHILD_ID_TMPL % (rid, idx), status, title, idx, n, chunk
+            )
+            for idx, chunk in enumerate(chunks, 1)
+        ]
+        if len(parent_line) > max_chars:
+            raise Fail('%s 主索引列長度 %d 超過上限 %d' % (rid, len(parent_line), max_chars))
+        if any(len(c) > max_chars for c in child_lines):
+            n_est = n
+            continue
+        reconstructed = ''.join(parse_row_cells(c)[3] for c in child_lines)
+        if reconstructed != body or sha256_text(reconstructed) != body_sha:
+            raise Fail('%s 拆列串接還原與原文不符' % rid)
+        meta = {
+            'id': rid,
+            'orig_len': len(line),
+            'orig_body_len': len(body),
+            'orig_body_sha256': body_sha,
+            'children': n,
+            'max_row_len': max(len(x) for x in [parent_line, *child_lines]),
+        }
+        return parent_line, child_lines, meta
+    raise Fail('%s 無法在 %d 字元上限內完成拆列' % (rid, max_chars))
+
+
+def verify_split_concat(taskboard_text, row_id, expected_body):
+    """驗證看板上 <row_id>-1..N 子列依序串接後與 expected_body 逐位元組相等。"""
+    problems = []
+    child_re = re.compile(r'^' + re.escape(row_id) + r'-([1-9][0-9]*)$')
+    found = []
+    seen = set()
+    for row in _table_data_rows(taskboard_text):
+        match = child_re.match(row['id'])
+        if not match:
+            continue
+        if row['id'] in seen:
+            problems.append('%s 子列重複：%s' % (row_id, row['id']))
+            continue
+        seen.add(row['id'])
+        found.append((int(match.group(1)), row))
+    if not found:
+        problems.append('找不到 %s 的任何子列' % row_id)
+        return False, '', [], problems
+    indices = [idx for idx, _ in found]
+    expected_indices = list(range(1, len(found) + 1))
+    if indices != expected_indices:
+        problems.append('%s 子列編號須連續 1..%d（實得 %s）' % (row_id, len(found), indices))
+        return False, '', [r['id'] for _, r in found], problems
+    bodies = []
+    child_ids = []
+    for _, row in found:
+        child_ids.append(row['id'])
+        try:
+            _, _, _, cell_body = parse_row_cells(row['text'])
+        except Fail as exc:
+            problems.append('%s 格式錯誤：%s' % (row['id'], exc))
+            return False, '', child_ids, problems
+        bodies.append(cell_body)
+    joined = ''.join(bodies)
+    if joined != expected_body or sha256_text(joined) != sha256_text(expected_body):
+        problems.append('%s 子列串接（%d 字元）與預期原文（%d 字元）不符' % (
+            row_id, len(joined), len(expected_body)))
+    return len(problems) == 0, joined, child_ids, problems
+
+
+def split_row(root, row_id, max_chars=ROW_MAX_CHARS, apply_write=False, out=None):
+    """CLI：機械逐字拆分超長看板列；預設預演，加 --apply 始寫入 docs/TASKBOARD.md。"""
+    out = out or sys.stdout
+    mode = 'APPLY' if apply_write else 'PLAN'
+    try:
+        if not isinstance(row_id, str) or not re.fullmatch(r'[A-Za-z][A-Za-z0-9]*(?:-[A-Za-z0-9]+)*', row_id):
+            raise Fail('--id 格式不符：%r' % (row_id,))
+        taskboard = read_text(root, TASKBOARD_REL)
+        rows = _table_data_rows(taskboard)
+        matches = [r for r in rows if r['id'] == row_id]
+        if len(matches) != 1:
+            raise Fail('%s 在 %s 必須恰好出現 1 列（實得 %d）' % (row_id, TASKBOARD_REL, len(matches)))
+        existing_child_re = re.compile(r'^' + re.escape(row_id) + r'-[0-9]+$')
+        collisions = [r['id'] for r in rows if existing_child_re.match(r['id'])]
+        if collisions:
+            raise Fail('%s 已存在子列 %s，拒絕覆寫或重複拆列' % (row_id, '、'.join(collisions)))
+        target = matches[0]
+        _, _, _, orig_body = parse_row_cells(target['text'])
+        parent_line, child_lines, meta = split_row_lines(target, max_chars=max_chars)
+        lines = taskboard.split('\n')
+        idx = target['line'] - 1
+        if idx < 0 or idx >= len(lines) or lines[idx] != target['text']:
+            raise Fail('%s 行號定位不一致（第 %d 行）' % (row_id, target['line']))
+        lines[idx:idx + 1] = [parent_line, *child_lines]
+        new_board = '\n'.join(lines)
+        ok, _, child_ids, probs = verify_split_concat(new_board, row_id, orig_body)
+        if not ok:
+            raise Fail(probs[0])
+        new_ids = [r['id'] for r in _table_data_rows(new_board)]
+        if len(new_ids) != len(set(new_ids)):
+            raise Fail('拆列後出現重複列 ID')
+        if apply_write:
+            with open(os.path.join(root, *TASKBOARD_REL.split('/')), 'wb') as handle:
+                handle.write(new_board.encode('utf-8'))
+    except Exception as exc:
+        out.write('TASKBOARD_SPLIT %s FAIL %s\n' % (mode, exc if isinstance(exc, (Fail, OSError)) else type(exc).__name__))
+        return 1
+    out.write(
+        'TASKBOARD_SPLIT %s PASS id=%s orig_len=%d orig_body_len=%d orig_body_sha256=%s children=%d max_row_len=%d\n'
+        % (mode, row_id, meta['orig_len'], meta['orig_body_len'], meta['orig_body_sha256'],
+           meta['children'], meta['max_row_len'])
+    )
+    for cid, cline in zip(child_ids, child_lines):
+        cbody_len = len(parse_row_cells(cline)[3])
+        out.write('SPLIT_CHILD %s len=%d body_len=%d\n' % (cid, len(cline), cbody_len))
     return 0
 
 
@@ -1231,9 +1759,17 @@ def main(argv=None, out=None):
     out = out or sys.stdout
     parser = argparse.ArgumentParser(description='任務看板封存工具')
     sub = parser.add_subparsers(dest='cmd', required=True)
-    for name in ('plan', 'check', 'apply', 'records-plan', 'records-apply'):
+    for name in ('plan', 'check', 'row-length-check', 'ledger-review', 'split-row', 'apply', 'records-plan', 'records-apply'):
         item = sub.add_parser(name)
         item.add_argument('--repo', required=True)
+        if name == 'split-row':
+            item.add_argument('--id', required=True)
+            item.add_argument('--max-chars', type=int, default=ROW_MAX_CHARS)
+            item.add_argument('--apply', action='store_true')
+        if name == 'ledger-review':
+            item.add_argument('--as-of', default=None)
+            item.add_argument('--warn-days', type=int, default=REVIEW_WARN_DAYS_DEFAULT)
+            item.add_argument('--json', action='store_true')
         if name == 'apply':
             item.add_argument('--task-id', default='')
             item.add_argument('--checkpoint-oid', default='')
@@ -1250,6 +1786,38 @@ def main(argv=None, out=None):
     root = os.path.abspath(args.repo)
     if args.cmd == 'plan':
         return plan(root, out)
+    if args.cmd == 'row-length-check':
+        fails, infos = check_row_lengths(root)
+        for info in infos:
+            out.write('INFO %s\n' % info)
+        for fail in fails:
+            out.write('FAIL %s\n' % fail)
+        out.write('TASKBOARD_ROW_LENGTH CHECK %s\n' % ('FAIL' if fails else 'PASS'))
+        return 1 if fails else 0
+    if args.cmd == 'ledger-review':
+        try:
+            summary = ledger_review_summary(root, as_of=args.as_of, warn_days=args.warn_days)
+        except Exception as exc:
+            out.write('TODO_LEDGER_REVIEW FAIL %s\n' % (exc if isinstance(exc, Fail) else type(exc).__name__))
+            return 1
+        if args.json:
+            out.write(json.dumps(summary, ensure_ascii=False, indent=2, sort_keys=True) + '\n')
+        else:
+            out.write('TODO_LEDGER_REVIEW as_of=%s open=%d overdue=%d due_soon=%d missing=%d\n' % (
+                summary['as_of'], summary['open_total'], len(summary['overdue']),
+                len(summary['due_soon']), len(summary['missing_review_date']),
+            ))
+            for item in summary['overdue']:
+                out.write('TODO_LEDGER_OVERDUE id=%s review_date=%s days_overdue=%d\n' % (
+                    item['id'], item['review_date'], item['days_overdue']))
+            for item in summary['due_soon']:
+                out.write('TODO_LEDGER_DUE_SOON id=%s review_date=%s days_until=%d\n' % (
+                    item['id'], item['review_date'], item['days_until']))
+            for item in summary['missing_review_date']:
+                out.write('TODO_LEDGER_MISSING_DATE id=%s\n' % item['id'])
+        return 0
+    if args.cmd == 'split-row':
+        return split_row(root, args.id, max_chars=args.max_chars, apply_write=args.apply, out=out)
     if args.cmd == 'records-plan':
         return records_plan(root, out, args.keep)
     if args.cmd == 'records-apply':

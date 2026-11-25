@@ -33,6 +33,7 @@
   CHECK 29 — 任務看板封存守衛 (TASKBOARD Archive Guard)
   CHECK 30 — 任務看板指標單行守衛 (TASKBOARD Single-Line Marker Guard)
   CHECK 31 — S1 根因登記檔守衛 (S1 Root-Cause Registry Guard)
+  CHECK 32 — 任務看板列長守衛 (TASKBOARD Row-Length Guard)
 
 本腳本的檢查項來自 2026-08-29 的一次全庫實測掃描，每一項都曾實際命中過真實缺陷，不是憑空設計。
 新增檢查項時，必須先確認該檢查在當前 repo 的誤報率，誤報多的檢查會讓人習慣忽略輸出。
@@ -60,7 +61,7 @@ def run_checks(argv=None):
     as_if_committed = "--as-if-committed" in argv
     if as_if_committed:
         print("[MODE] 啟用 --as-if-committed 本地 commit 拓撲預演模式")
-    total_checks = 31
+    total_checks = 32
     passed = 0
     failed = 0
 
@@ -596,6 +597,22 @@ def run_checks(argv=None):
     else:
         print(f"  [FAIL] {len(c31_fails)} 命中")
         for fail in c31_fails:
+            print(f"    {fail}")
+        failed += 1
+
+    # ---------------------------------------------------------
+    # CHECK 32: 任務看板列長守衛
+    # ---------------------------------------------------------
+    print("\nCHECK 32: 任務看板列長守衛")
+    c32_fails, c32_infos = check_32_taskboard_row_length_guard(repo_root)
+    for info in c32_infos:
+        print(f"  [INFO] {info}")
+    if len(c32_fails) == 0:
+        print("  [PASS] 0 命中")
+        passed += 1
+    else:
+        print(f"  [FAIL] {len(c32_fails)} 命中")
+        for fail in c32_fails:
             print(f"    {fail}")
         failed += 1
 
@@ -4034,9 +4051,28 @@ def check_31_s1_registry_guard(root_dir=None):
     return check(root_dir)
 
 
+def check_32_taskboard_row_length_guard(root_dir=None):
+    """
+    CHECK 32 — 任務看板列長守衛（B-117 G7-b3b3-2）。
+
+    委由 scripts/taskboard_archive.py 驗證 docs/TASKBOARD.md 所有表格列不超過
+    ROW_MAX_CHARS（2,500 字元），僅 ROW_LEN_LEGACY_CAPS 白名單內既有超長列得以
+    refactor-backlog §5.1 checkpoint 長度為上界只減不增。讀不到、格式不符或
+    git 無法解析 checkpoint 一律 fail-closed。
+    """
+    if root_dir is None:
+        root_dir = repo_root
+    try:
+        from scripts.taskboard_archive import check_row_lengths
+    except ImportError:
+        import taskboard_archive
+        check_row_lengths = taskboard_archive.check_row_lengths
+    return check_row_lengths(root_dir)
+
+
 def verify_check_consistency_inventory(file_content: str) -> tuple[bool, str, dict]:
     """
-    Validates complete, consistent, and duplicate-free inventory (1..31)
+    Validates complete, consistent, and duplicate-free inventory (1..32)
     across docstring and run_checks(). Supports both 'CHECK N -' and 'CHECK N:' punctuations.
     """
     # 1. Parse docstring inventory
@@ -4075,9 +4111,9 @@ def verify_check_consistency_inventory(file_content: str) -> tuple[bool, str, di
         seen_rc_ids.add(cid)
         run_checks_ids.append(cid)
 
-    expected_ids = list(range(1, 32))
-    if total_checks != 31:
-        return False, f"total_checks must be 31 (got {total_checks})", {}
+    expected_ids = list(range(1, 33))
+    if total_checks != 32:
+        return False, f"total_checks must be 32 (got {total_checks})", {}
 
     if docstring_ids != expected_ids:
         missing = set(expected_ids) - set(docstring_ids)

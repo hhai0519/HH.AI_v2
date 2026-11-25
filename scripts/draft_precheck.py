@@ -579,6 +579,45 @@ def _collect_cap_count_summary(cand_repo):
         return {'status': 'UNAVAILABLE', 'reason': 'PARSE_ERROR'}, ['CAP_COUNT_SUMMARY status=UNAVAILABLE']
 
 
+def _collect_todo_ledger_review(cand_repo):
+    """Read-only TD-107 TODO-LEDGER open-row review-date reminder (never blocks PASS)."""
+    if not (cand_repo / 'docs' / 'TODO-LEDGER.md').is_file():
+        return None
+    cand_script = cand_repo / 'scripts' / 'taskboard_archive.py'
+    tool_script = cand_script if cand_script.is_file() else (Path(__file__).resolve().parent / 'taskboard_archive.py')
+    if not tool_script.is_file():
+        return None
+    rc, out = cmd(
+        [sys.executable, str(tool_script), 'ledger-review', '--repo', str(cand_repo), '--json'],
+        cand_repo,
+        timeout=60,
+    )
+    if rc != 0:
+        return {'status': 'UNAVAILABLE', 'rc': rc}, ['TODO_LEDGER_REVIEW status=UNAVAILABLE']
+    try:
+        data = json.loads(out.decode('utf-8'))
+        lines = [
+            f'TODO_LEDGER_REVIEW as_of={data["as_of"]} open={data["open_total"]} '
+            f'overdue={len(data["overdue"])} due_soon={len(data["due_soon"])} '
+            f'missing={len(data["missing_review_date"])}'
+        ]
+        for item in data['overdue']:
+            lines.append(
+                f'TODO_LEDGER_OVERDUE id={item["id"]} review_date={item["review_date"]} '
+                f'days_overdue={item["days_overdue"]}'
+            )
+        for item in data['due_soon']:
+            lines.append(
+                f'TODO_LEDGER_DUE_SOON id={item["id"]} review_date={item["review_date"]} '
+                f'days_until={item["days_until"]}'
+            )
+        for item in data['missing_review_date']:
+            lines.append(f'TODO_LEDGER_MISSING_DATE id={item["id"]}')
+        return data, lines
+    except (KeyError, TypeError, ValueError, UnicodeDecodeError):
+        return {'status': 'UNAVAILABLE', 'reason': 'PARSE_ERROR'}, ['TODO_LEDGER_REVIEW status=UNAVAILABLE']
+
+
 def fast_validate_stage(work, definition, prompt, plan, base, *, synthetic, timeout):
     """Fast-mode check: skills + focused binding + pytest collection (never replaces verify_all)."""
     if synthetic:
@@ -732,6 +771,9 @@ def execute_fast(ns):
     cap_info = _collect_cap_count_summary(work / 'candclone')
     if cap_info is not None:
         fast_result['CAP_COUNT_SUMMARY'] = cap_info[0]
+    ledger_rev = _collect_todo_ledger_review(work / 'candclone')
+    if ledger_rev is not None:
+        fast_result['TODO_LEDGER_REVIEW'] = ledger_rev[0]
     final = work / 'fast-result.json'
     atomic_json(final, fast_result)
     print('FAST_PRECHECK PASS')
@@ -741,6 +783,9 @@ def execute_fast(ns):
     if cap_info is not None:
         for cap_line in cap_info[1]:
             print(cap_line)
+    if ledger_rev is not None:
+        for rev_line in ledger_rev[1]:
+            print(rev_line)
     for key in ('BASE_OID', 'AUTHOR_SHA256', 'PLAN_SHA256', 'TOOL_SHA256', 'ENV_SHA256', 'CACHE_KEY_SHA256'):
         print(key + '=' + hashes[key])
     print('FAST_RESULT_JSON_SHA256=' + sha_file(final))
@@ -833,6 +878,9 @@ def execute(ns):
     cap_info = _collect_cap_count_summary(work / 'candclone')
     if cap_info is not None:
         state['CAP_COUNT_SUMMARY'] = cap_info[0]
+    ledger_rev = _collect_todo_ledger_review(work / 'candclone')
+    if ledger_rev is not None:
+        state['TODO_LEDGER_REVIEW'] = ledger_rev[0]
     final = work / 'draft-result.json'
     atomic_json(final, state)
     print('DRAFT_PRECHECK RESULT ' + state['overall'])
@@ -842,6 +890,9 @@ def execute(ns):
     if cap_info is not None:
         for cap_line in cap_info[1]:
             print(cap_line)
+    if ledger_rev is not None:
+        for rev_line in ledger_rev[1]:
+            print(rev_line)
     for key in ('BASE_OID', 'AUTHOR_SHA256', 'PLAN_SHA256', 'TOOL_SHA256', 'ENV_SHA256', 'CACHE_KEY_SHA256'):
         print(key + '=' + hashes[key])
     print('RESULT_JSON_SHA256=' + sha_file(final))
