@@ -38,9 +38,10 @@ SHA 格式 lint：只掃作者 patch **新增的四份狀態文件行**；`SHA25
 
 ## 送件與預查順序（P0 流程與規格前置，2026-11-25 起適用）
 
-依 USER 2026-11-25 澄清之目標導向準則（降低審查官額度、機械化推進、不放寬驗收）與第二意見宏觀建議（P0 第 1、2 點），自 2026-11-25 起適用兩項流程規定：
+依 USER 2026-11-25 澄清之目標導向準則（降低審查官額度、機械化推進、不放寬驗收）與第二意見宏觀建議（P0 第 1、2 點），自 2026-11-25 起適用下列流程規定：
 
 1. **預查順序改為「快→複核→完整」（P0 第 1 點）**：審查官作者化後先執行 `scripts/draft_precheck.py --fast`、相關測試與 `scripts/diff_ast_mutate.py` 差異行突變檢查（詳見 `docs/ops/td134-diff-ast-mutate.md`），即送第二意見進行 D-SO 複核；待第二意見回報 `BLOCKING 0 / NON_BLOCKING 0` 後，審查官才對同一份未變動作者位元組執行完整六步預查（`SIX_STEPS_PASS`），通過後交付 Executor。完整六步預查仍為交付 Executor 之必要條件，不放寬任何驗收；`docs/refactor-backlog.md` §5.3 第 21 項之條件式交付同步更新為「SO 0/0 → 審查官完整 6 步 PASS → 交付」。
 2. **驗證器類批作者化前先送規格表 `SPEC_TABLES`（P0 第 2 點）**：凡涉及驗證器規則、狀態轉移或結構拆解之批次，作者化寫程式前先送決策表／狀態轉移表（`SPEC_TABLES`）給第二意見做一次短複核，確認無設計層缺口後才寫程式；若修改狀態轉移規則，須依 `TD-133` 於當批檢附規格表與確定性 `itertools` 窮舉測試。
+3. **改版閉環複核與使用者最終裁量權（USER 常設決定，2026-11-25）**：因執行前複核發現而換新 `TASK_ID` 改版重送（R2 以上）時，後續複核聚焦前輪發現之閉環驗證與回歸檢核，避免無止境新開討論輪次；且是否啟用第二意見或閉環複核，USER 保留最終裁量權（D-SO 任何情況下皆不成為不可取消之強制關卡；USER 明示某批不啟用時，依其決定辦理並於交付紀錄註明）。
 
 後續待辦（E27 N2–N6，NON_BLOCKING／NOT IMPLEMENTED）：N2 E24 衍生來源直接取用 `generate_rule_traceability.SCAN_SCOPE_PATTERNS`；N3 workdir 排他鎖；N4 環境指紋加 pytest／套件版本；N5 canonical MINISIM 可選 `--minisim` 階段；N6 CHECK20 `_c20_column_failures` 公開穩定 API。以上不得在本批報作已完成。
