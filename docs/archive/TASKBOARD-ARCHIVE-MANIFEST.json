@@ -1163,6 +1163,22 @@
      "unit_bytes": 4967
     }
    ]
+  },
+  {
+   "file": "docs/archive/TASKBOARD-RECORDS-0018.md",
+   "batch": "B117-TD136B-DSO-VERIFY-R2-261126",
+   "checkpoint_oid": "9d76f907bfa81e43c12feadabef82464a41d8e46",
+   "file_sha256": "58715259b012aa6a92c3b34a98f5c613d26954194c8b90fc478c07ad44a22cf3",
+   "keep": 5,
+   "entries": [
+    {
+     "task_id": "B117-BETA2-D4-CAP-S1DRAFT-R4-261124",
+     "source_line": 131,
+     "line_count": 1,
+     "unit_sha256": "6bbb43715fb5d1490bbce076ad0770aac5245166146b6bf76c4dc4c21aaa4782",
+     "unit_bytes": 5293
+    }
+   ]
   }
  ]
 }

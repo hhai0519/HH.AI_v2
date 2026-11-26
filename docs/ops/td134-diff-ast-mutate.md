@@ -133,6 +133,12 @@ python scripts/diff_ast_mutate.py --repo <repo> --patch author.patch --test-cmd 
 | `1` | 有未豁免之 `SURVIVED` 突變 | `MUTANTS_SURVIVED` |
 | `2` | Fail-Closed 錯誤 | `BASELINE_FAILED`、`MUTANT_CAP_EXCEEDED`、`ACCEPT_FILE_INVALID`、`ACCEPT_STALE_ENTRIES`、`TEST_MAP_INVALID`、`TEST_MAP_UNMAPPED`、`QUALNAME_UNMATCHED`、`TOTAL_TIMEOUT_EXCEEDED`、`MUTANT_SYNTAX_INVALID`、`RESTORE_FAILED`、`INVALID_ARGS`、`GIT_ERROR`、`PATCH_ERROR`、`TEST_LAUNCH_ERROR`、`TARGET_PARSE_ERROR` |
 
+### 退出碼 2（Fail-Closed）判定優先序（`diff_ast_mutate.py 1.1.0`）
+
+當執行期間同時滿足多個錯誤條件時，`execute_mutation_run` 依下列嚴格決定性順序回報最優先之 `reason`（由 `scripts/tests/test_diff_ast_mutate.py::test_n1_exit2_precedence_order` 表格驅動測試機械鎖定）：
+
+`INVALID_ARGS`（`--qualname` 空白或非字串）→ `ACCEPT_FILE_INVALID` → `TEST_MAP_INVALID` → `INVALID_ARGS`（缺 `--test-cmd`）→ `GIT_ERROR`／`PATCH_ERROR` → `TARGET_PARSE_ERROR` → `QUALNAME_UNMATCHED` → `ACCEPT_STALE_ENTRIES` → `TEST_MAP_UNMAPPED` → `MUTANT_CAP_EXCEEDED` → `MUTANT_SYNTAX_INVALID` → `BASELINE_FAILED` → 逐突變：`TOTAL_TIMEOUT_EXCEEDED` →（執行）→ `RESTORE_FAILED` → `TEST_LAUNCH_ERROR`。
+
 `--json-out` 產出之穩定 JSON Schema v1（`schema_version: 1`）：
 
 ```json

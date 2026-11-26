@@ -1163,3 +1163,29 @@ def test_td134_fingerprint_includes_diff_ast_mutate(tmp_path):
     mut_fp = q2.fingerprint(source, patch, plan, scripts_dir, tmp_path / 'w2')
     assert mut_fp['TOOL_SHA256'] != base_fp['TOOL_SHA256']
     assert mut_fp['CACHE_KEY_SHA256'] != base_fp['CACHE_KEY_SHA256']
+
+# --- TD-136b: FINGERPRINT_TOOLS dso_verify.py ---
+
+def test_td136b_fingerprint_includes_dso_verify(tmp_path):
+    assert 'dso_verify.py' in q2.FINGERPRINT_TOOLS
+    source = tmp_path / 'repo'
+    source.mkdir()
+    subprocess.run(['git', 'init', '-q', str(source)], check=True)
+    subprocess.run(['git', '-C', str(source), 'config', 'user.name', 'Q2'], check=True)
+    subprocess.run(['git', '-C', str(source), 'config', 'user.email', 'q2@example.test'], check=True)
+    (source / 'x').write_bytes(b'\n')
+    subprocess.run(['git', '-C', str(source), 'add', '.'], check=True)
+    subprocess.run(['git', '-C', str(source), 'commit', '-qm', 'base'], check=True)
+    scripts_dir = tmp_path / 'scripts'
+    scripts_dir.mkdir()
+    for name in q2.FINGERPRINT_TOOLS:
+        (scripts_dir / name).write_bytes(b'# ' + name.encode('utf-8') + b'\n')
+    patch = tmp_path / 'x.patch'
+    patch.write_bytes(b'patch')
+    plan = tmp_path / 'plan.json'
+    plan.write_bytes(b'{}')
+    base_fp = q2.fingerprint(source, patch, plan, scripts_dir, tmp_path / 'w')
+    (scripts_dir / 'dso_verify.py').write_bytes(b'# mutated dso_verify.py\n')
+    mut_fp = q2.fingerprint(source, patch, plan, scripts_dir, tmp_path / 'w2')
+    assert mut_fp['TOOL_SHA256'] != base_fp['TOOL_SHA256']
+    assert mut_fp['CACHE_KEY_SHA256'] != base_fp['CACHE_KEY_SHA256']

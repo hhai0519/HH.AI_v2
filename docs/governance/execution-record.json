@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "B117-TD136A-MUTATE-QUALNAME-R1-261126",
-  "base_oid": "0eb6958687a5b9b3b2cb88ae33c3322bade9eefe",
+  "task_id": "B117-TD136B-DSO-VERIFY-R2-261126",
+  "base_oid": "9d76f907bfa81e43c12feadabef82464a41d8e46",
   "plan": {
     "allowed_paths": [
       "docs/AUDIT-LOG.md",
@@ -10,14 +10,20 @@
       "docs/TASKBOARD.md",
       "docs/TODO-LEDGER.md",
       "docs/archive/TASKBOARD-ARCHIVE-MANIFEST.json",
-      "docs/archive/TASKBOARD-RECORDS-0017.md",
+      "docs/archive/TASKBOARD-RECORDS-0018.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
       "docs/governance/s1-registry.json",
+      "docs/ops/dso-verify.md",
+      "docs/ops/q2-draft-precheck.md",
       "docs/ops/td134-diff-ast-mutate.md",
       "docs/refactor-backlog.md",
-      "scripts/diff_ast_mutate.py",
-      "scripts/tests/test_diff_ast_mutate.py"
+      "scripts/draft_precheck.py",
+      "scripts/dso_verify.py",
+      "scripts/tests/test_diff_ast_mutate.py",
+      "scripts/tests/test_draft_precheck.py",
+      "scripts/tests/test_dso_verify.py",
+      "scripts/tests/test_s1_registry.py"
     ],
     "required_paths": [
       "docs/AUDIT-LOG.md",
@@ -25,14 +31,20 @@
       "docs/TASKBOARD.md",
       "docs/TODO-LEDGER.md",
       "docs/archive/TASKBOARD-ARCHIVE-MANIFEST.json",
-      "docs/archive/TASKBOARD-RECORDS-0017.md",
+      "docs/archive/TASKBOARD-RECORDS-0018.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
       "docs/governance/s1-registry.json",
+      "docs/ops/dso-verify.md",
+      "docs/ops/q2-draft-precheck.md",
       "docs/ops/td134-diff-ast-mutate.md",
       "docs/refactor-backlog.md",
-      "scripts/diff_ast_mutate.py",
-      "scripts/tests/test_diff_ast_mutate.py"
+      "scripts/draft_precheck.py",
+      "scripts/dso_verify.py",
+      "scripts/tests/test_diff_ast_mutate.py",
+      "scripts/tests/test_draft_precheck.py",
+      "scripts/tests/test_dso_verify.py",
+      "scripts/tests/test_s1_registry.py"
     ],
     "max_plan_revisions": 3,
     "revision_count": 0,
@@ -45,14 +57,20 @@
       "docs/TASKBOARD.md",
       "docs/TODO-LEDGER.md",
       "docs/archive/TASKBOARD-ARCHIVE-MANIFEST.json",
-      "docs/archive/TASKBOARD-RECORDS-0017.md",
+      "docs/archive/TASKBOARD-RECORDS-0018.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
       "docs/governance/s1-registry.json",
+      "docs/ops/dso-verify.md",
+      "docs/ops/q2-draft-precheck.md",
       "docs/ops/td134-diff-ast-mutate.md",
       "docs/refactor-backlog.md",
-      "scripts/diff_ast_mutate.py",
-      "scripts/tests/test_diff_ast_mutate.py"
+      "scripts/draft_precheck.py",
+      "scripts/dso_verify.py",
+      "scripts/tests/test_diff_ast_mutate.py",
+      "scripts/tests/test_draft_precheck.py",
+      "scripts/tests/test_dso_verify.py",
+      "scripts/tests/test_s1_registry.py"
     ]
   },
   "evidence": [

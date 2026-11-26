@@ -759,21 +759,21 @@
       "tasks": [
         "B117-G7B3B3-LEDGER-CHECK-R2-261121"
       ],
-      "status": "planned",
+      "status": "fixed",
       "plannedIn": "D9 第 1 批 B117-D9-GATE4-GROUPS-R2-261121（已進 main 608c1e61ef3e2c4f156e6eb2181c9155e3fdd069，POST-MAIN VERIFIED；第 4 關分組平行：怕擠清單依序＋其餘 N=min(4,cpu/2) 組同時跑，不引入 pytest-xdist）→ b3b3-3 重發 B117-G7B3B3-LEDGER-CHECK-R3-261121（已進 main 3788652a）→ D9 第 2 批 B117-D9-W2-FOCUSED-SKIP-261122（拿掉 W2 重複 focused，承接 TD-019；2026-11-22 第二意見執行前複核中）；耗時表校準為 TD-102、分組結果不在回覆為 TD-112；USER 2026-11-21 15:31 定案（方案交第二意見決定）",
       "watch": [
         "precommit:PRECOMMIT_GATE_TIMEOUT"
       ],
       "followUp": {
-        "plannedIn": "D9 第 1 批 POST-MAIN VERIFIED 後，以電池模式之實測第 4 關耗時判定是否結案",
-        "note": "根因依據：USER 確認 12:07–13:34 未插電、無其他重負載、未錄 Defender；USER 唯讀環境檔：電源計畫平衡、MsMpEng 開機後累計 CPU 5108 秒（全機第一，System 的 4.4 倍）、13:19:12 有一筆 Kernel-Power 105；第 4 關 raw：完成 2939／3140 項、0 失敗，同進度 TAKEOVER 批只需 1776 秒。本批內容無問題（Linux 實測無增時）；治理凍結依 D6（二）歸零；14:50 依 USER 界線修訂根除方式（不採「沒插電即拒絕」）；14:59 USER 裁決根除方向為 D9 與去除重複執行；15:31 定案方案見 HHAI_SO_S1-D9-PLAN-FINAL_261121-1532.md；2026-11-22 第二意見依 Dashboard runner 紀錄（overview.json SHA-256 295bb20f…）：D9 第 1 批第 4 關 937.735 秒、b3b3-3 重發批 1043.018 秒（皆零 S1；D9 前兩批為 1831.528、1819.912 秒）；兩批執行時是否用電池為 UNKNOWN，故尚不結案，待 USER 說明其中一批之電源狀態或下一個用電池執行之批之實測值；2026-11-22 11:07 USER 陳述：D9 第 2 批 B117-D9-W2-FOCUSED-SKIP-R2-261122 全程插電執行，Dashboard runner 紀錄第 4 關 858.249 秒（零失敗、push 等候 CI 中，第二意見 11:08 讀取）；此為插電樣本，不能證明電池情境已根除，結案仍待一批用電池執行之第 4 關實測值（D9 第 1 批與 b3b3-3 重發批之電源狀態仍 UNKNOWN）；2026-11-22 11:52 USER 陳述：2026-11-21 15:00 起電腦一直插電，故 D9 第 1 批（937.735 秒）、b3b3-3 重發批（1043.018 秒）與 D9 第 2 批 R2（858.249 秒）皆為插電樣本；電池情境仍待實測。Dashboard v10.24 起監看程式自動記錄每批電源狀態（USER 2026-11-22 決定），下一個用電池執行之批會自動留下紀錄，屆時據以判定是否結案；2026-11-23 第二意見：R5 production 批（00:12–00:55）第 4 關分組 993.7 秒（phase1 439.0、groups 536.7），Dashboard 電源紀錄該時段全程插電（100%）；仍為插電樣本，電池情境待實測；2026-11-26 B117-TD136A-MUTATE-QUALNAME-R1-261126 更正前批（B117-AUD-TAKEOVER-STATE-R1-261126）時刻與百分比並補記第 12 個第 4 關樣本：（一）前批 B117-TD134-DIFF-AST-MUTATE-R2-261125 誤記為 21:51:43–22:11:26／晉級 22:31:57–22:44:38／100%，正確來源時刻為 production 2026-11-25 20:55:39–21:37:20、PRECOMMIT 區段 21:04:51–21:24:34（ac 160.9 秒／battery 1018.7 秒／unknown 3.4 秒；第 4 關分組實測 1141.7 秒［Dashboard 1164.5 秒］在此區段內，來源：HHAI_AUD-GEMINI-261123_HANDOFF-CLUES_261125-2249.md 第 15–16 行、HHAI_SO_HANDOVER-CLUES_261125-2325.md 第 39–41 與 47 行及第二意見讀取 USER 本機 site/status/overview.json 與 power-log.json）、晉級 22:12:34–22:25:15（全程 ac 761 秒；所屬 ac 區段最低電量 76%，各批當下百分比 power-log 不記錄故刪除 100%）；（二）結案條件改依 USER 裁定（刪除無來源之 2400 秒門檻）：取得至少 1 批純電池第 4 關實測樣本後由 USER 裁定，或由 USER 裁定現有電池為主樣本（1141.7 秒）是否足以結案（改 fixed 並依 D4 填 not_injectable 與理由）；（三）第 12 個第 4 關樣本（B117-AUD-TAKEOVER-STATE-R1-261126，來源：第二意見讀取 USER 本機 site/status/power-log.json 與 overview.json）：PRECOMMIT 區段 2026-11-26 08:23:57.7–08:40:36.5（998.8 秒，第 4 關 total_sec=967.8 秒在此區段內，全程 ac），為插電樣本，本項維持 planned"
+        "plannedIn": "已結案於 B117-D9-GATE4-GROUPS-R2-261121（608c1e61ef3e2c4f156e6eb2181c9155e3fdd069）；2026-11-26 依 D-S1C023-261126=A 結案",
+        "note": "根因依據：USER 確認 12:07–13:34 未插電、無其他重負載、未錄 Defender；USER 唯讀環境檔：電源計畫平衡、MsMpEng 開機後累計 CPU 5108 秒（全機第一，System 的 4.4 倍）、13:19:12 有一筆 Kernel-Power 105；第 4 關 raw：完成 2939／3140 項、0 失敗，同進度 TAKEOVER 批只需 1776 秒。本批內容無問題（Linux 實測無增時）；治理凍結依 D6（二）歸零；14:50 依 USER 界線修訂根除方式（不採「沒插電即拒絕」）；14:59 USER 裁決根除方向為 D9 與去除重複執行；15:31 定案方案見 HHAI_SO_S1-D9-PLAN-FINAL_261121-1532.md；2026-11-22 第二意見依 Dashboard runner 紀錄（overview.json SHA-256 295bb20f…）：D9 第 1 批第 4 關 937.735 秒、b3b3-3 重發批 1043.018 秒（皆零 S1；D9 前兩批為 1831.528、1819.912 秒）；兩批執行時是否用電池為 UNKNOWN，故尚不結案，待 USER 說明其中一批之電源狀態或下一個用電池執行之批之實測值；2026-11-22 11:07 USER 陳述：D9 第 2 批 B117-D9-W2-FOCUSED-SKIP-R2-261122 全程插電執行，Dashboard runner 紀錄第 4 關 858.249 秒（零失敗、push 等候 CI 中，第二意見 11:08 讀取）；此為插電樣本，不能證明電池情境已根除，結案仍待一批用電池執行之第 4 關實測值（D9 第 1 批與 b3b3-3 重發批之電源狀態仍 UNKNOWN）；2026-11-22 11:52 USER 陳述：2026-11-21 15:00 起電腦一直插電，故 D9 第 1 批（937.735 秒）、b3b3-3 重發批（1043.018 秒）與 D9 第 2 批 R2（858.249 秒）皆為插電樣本；電池情境仍待實測。Dashboard v10.24 起監看程式自動記錄每批電源狀態（USER 2026-11-22 決定），下一個用電池執行之批會自動留下紀錄，屆時據以判定是否結案；2026-11-23 第二意見：R5 production 批（00:12–00:55）第 4 關分組 993.7 秒（phase1 439.0、groups 536.7），Dashboard 電源紀錄該時段全程插電（100%）；仍為插電樣本，電池情境待實測；2026-11-26 B117-TD136A-MUTATE-QUALNAME-R1-261126 更正前批（B117-AUD-TAKEOVER-STATE-R1-261126）時刻與百分比並補記第 12 個第 4 關樣本：（一）更正 B117-AUD-TAKEOVER-STATE-R1-261126 所寫入之 B117-TD134-DIFF-AST-MUTATE-R2-261125 時刻與百分比（原誤記為 21:51:43–22:11:26／晉級 22:31:57–22:44:38／100%），正確來源時刻為 production 2026-11-25 20:55:39–21:37:20、PRECOMMIT 區段 21:04:51–21:24:34（ac 160.9 秒／battery 1018.7 秒／unknown 3.4 秒；第 4 關分組實測 1141.7 秒［Dashboard 1164.5 秒］在此區段內，來源：HHAI_AUD-GEMINI-261123_HANDOFF-CLUES_261125-2249.md 第 15–16 行、HHAI_SO_HANDOVER-CLUES_261125-2325.md 第 39–41 與 47 行及第二意見讀取 USER 本機 site/status/overview.json 與 power-log.json）、晉級 22:12:34–22:25:15（全程 ac 761 秒；所屬 ac 區段最低電量 76%，各批當下百分比 power-log 不記錄故刪除 100%）；（二）結案條件改依 USER 裁定（刪除無來源之 2400 秒門檻）：取得至少 1 批純電池第 4 關實測樣本後由 USER 裁定，或由 USER 裁定現有電池為主樣本（1141.7 秒）是否足以結案（改 fixed 並依 D4 填 not_injectable 與理由）；（三）第 12 個第 4 關樣本（B117-AUD-TAKEOVER-STATE-R1-261126，來源：第二意見讀取 USER 本機 site/status/power-log.json 與 overview.json）：PRECOMMIT 區段 2026-11-26 08:23:57.7–08:40:36.5（998.8 秒，第 4 關 total_sec=967.8 秒在此區段內，全程 ac），為插電樣本，本項維持 planned；2026-11-26 B117-TD136B-DSO-VERIFY-R2-261126 依 USER 裁決 D-S1C023-261126=A 結案為 fixed（並記第 13 個第 4 關樣本）：B117-TD136A-MUTATE-QUALNAME-R1-261126 PRECOMMIT 區段（steps.generate 2026-11-26 15:27:43.850 至 steps.precommit 15:48:35.095，1251.2 秒）全程 battery 1251.2 秒（所屬電池區段 14:53:48.078–15:52:10.424，最低電量 66%；來源：USER 本機 Dashboard site/status/power-log.json segs［開始毫秒, 結束毫秒, 狀態, 該段最低電量%］與 overview.json 批次 steps 欄位，第二意見 2026-11-26 查核；當下百分比 power-log 不記錄），第 4 關分組實測 total_sec=1201.3 秒（phase1_sec=544.2／groups_sec=631.6，seq 544.2／g1 601.8／g2 589.7／g3 631.6／g4 584.7，collected=3702 counted=3702 passed=3651 skipped=51，零失敗，約為 3600 秒上限三分之一，為第 13 個第 4 關樣本及第 1 個完整純電池樣本）。USER 2026-11-26 裁決 D-S1C023-261126=A 以該第 13 個純電池樣本（D9 分組後）正式結案並依 D4 填 not_injectable"
       },
       "evidence": "Executor 回覆原文：GATE_BUDGET_WARN stage=PRECOMMIT gate=4 elapsed=3600.288 limit=3600；BOUNDED_EXIT PRECOMMIT code=86；S1 PRECOMMIT_GATE_TIMEOUT；focused 482 passed in 613.23s；全程 5223.7 秒；S1_FULL_CAPTURE_STATUS=INCOMPLETE_UNTRACKED_FILES。Dashboard runner 紀錄：第 3 關 60.056 秒（近 30 批 6.9–34.9 秒）；第 4 關近 30 批 1523–3176 秒。USER 14:42 提供：未插電、無重負載、未錄 Defender；HHAI_USER_S1-ENV_261121.txt 與 W2 閘門紀錄複本（HHAI_USER_GATELOG_*）",
       "by": "第二意見 2026-11-21 登記，14:4x 依 USER 證據更新根因；待審查官確認；17:2x 依審查官 AUD-CLAUDE-261121 意見修正標題（INFERENCE、UNKNOWN 標示）、distinctBy 與暫定類別欄位",
       "verified": {
-        "by": "第二意見",
-        "date": "2026-11-21",
-        "basis": "Executor 回覆原文；Dashboard runner 紀錄；Linux 實測；USER 環境檔與 W2 閘門紀錄複本（第 4 關 raw 進度與 TAKEOVER 批逐測試耗時）"
+        "by": "審查官 AUD-GEMINI-261125（依 USER 裁決 D-S1C023-261126=A）",
+        "date": "2026-11-26",
+        "basis": "D9 分組後第 13 個第 4 關樣本（B117-TD136A-MUTATE-QUALNAME-R1-261126，第 1 個完整純電池樣本）total_sec=1201.3 秒、零失敗（來源：USER 本機 Dashboard site/status/power-log.json segs 與 overview.json steps via 第二意見 2026-11-26）；USER 裁決 D-S1C023-261126=A"
       },
       "confirmed": false,
       "distinctFrom": [
@@ -787,7 +787,18 @@
         "TD-102",
         "TD-112",
         "TD-117"
-      ]
+      ],
+      "fixedIn": "B117-D9-GATE4-GROUPS-R2-261121",
+      "fixedCommit": "608c1e61ef3e2c4f156e6eb2181c9155e3fdd069",
+      "fixedBy": {
+        "B117-G7B3B3-LEDGER-CHECK-R2-261121": "B117-D9-GATE4-GROUPS-R2-261121（608c1e61ef3e2c4f156e6eb2181c9155e3fdd069；第 4 關分組平行；2026-11-26 依 USER 裁決 D-S1C023-261126=A 以第 13 個第 4 關樣本 B117-TD136A-MUTATE-QUALNAME-R1-261126 純電池 1201.3 秒、零失敗結案）"
+      },
+      "reverseVerification": {
+        "fixTask": "B117-D9-GATE4-GROUPS-R2-261121",
+        "injectable": false,
+        "status": "not_injectable",
+        "notInjectableReason": "電池與整機負載屬環境因素、無法於 repo 注入（依 USER 裁決 D-S1C023-261126=A，以第 13 個第 4 關樣本 B117-TD136A-MUTATE-QUALNAME-R1-261126 純電池 1201.3 秒、零失敗、約為 3600 秒上限三分之一［D9 分組後］結案；電源來源：USER 本機 Dashboard site/status/power-log.json segs［開始毫秒, 結束毫秒, 狀態, 該段最低電量%］與 overview.json 批次 steps 欄位）"
+      }
     },
     {
       "id": "S1C-024",

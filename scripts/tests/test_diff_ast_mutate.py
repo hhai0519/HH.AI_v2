@@ -1207,3 +1207,178 @@ def test_test_map_routing_and_unmapped_fail_closed(tmp_path: Path) -> None:
         "--work-parent", str(tmp_path),
     ])
     assert rc_def == 0
+
+# --- TD-136b (N1): Table-driven exit-2 precedence order lock matching diff_ast_mutate.py 1.1.0 ---
+
+_N1_PRECEDENCE_CASES = [
+    ("blank_qualname_vs_accept_invalid", "INVALID_ARGS"),
+    ("accept_invalid_vs_test_map_invalid", "ACCEPT_FILE_INVALID"),
+    ("test_map_invalid_vs_missing_test_cmd", "TEST_MAP_INVALID"),
+    ("missing_test_cmd_vs_git_error", "INVALID_ARGS"),
+    ("git_error_vs_target_parse_error", "GIT_ERROR"),
+    ("patch_error_vs_qualname_unmatched", "PATCH_ERROR"),
+    ("target_parse_vs_qualname_unmatched", "TARGET_PARSE_ERROR"),
+    ("qualname_unmatched_vs_accept_stale", "QUALNAME_UNMATCHED"),
+    ("accept_stale_vs_test_map_unmapped", "ACCEPT_STALE_ENTRIES"),
+    ("test_map_unmapped_vs_cap_exceeded", "TEST_MAP_UNMAPPED"),
+    ("cap_exceeded_vs_syntax_invalid", "MUTANT_CAP_EXCEEDED"),
+    ("syntax_invalid_vs_baseline_failed", "MUTANT_SYNTAX_INVALID"),
+    ("baseline_failed_vs_total_timeout", "BASELINE_FAILED"),
+    ("total_timeout_vs_restore_failed", "TOTAL_TIMEOUT_EXCEEDED"),
+    ("restore_failed_vs_test_launch_error", "RESTORE_FAILED"),
+]
+
+
+@pytest.mark.parametrize("case_name,expected_reason", _N1_PRECEDENCE_CASES)
+def test_n1_exit2_precedence_order(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, case_name: str, expected_reason: str) -> None:
+    """Lock the exact exit-2 reason precedence chain documented in docs/ops/td134-diff-ast-mutate.md."""
+    repo = tmp_path / f"repo_{case_name}"
+    ok_py = b"def f(x: int) -> int:\n    if x == 0:\n        return 1\n    return x\n"
+    bad_accept = tmp_path / "bad_accept.json"
+    bad_accept.write_bytes(b"{bad")
+    bad_tmap = tmp_path / "bad_tmap.json"
+    bad_tmap.write_bytes(b"{bad")
+    stale_accept = tmp_path / "stale_accept.json"
+    stale_accept.write_bytes((json.dumps({"schema_version": 1, "accepted": [{"id": "M-deadbeef00", "reason": "r", "batch": "b"}]}) + "\n").encode("utf-8"))
+    unmapped_tmap = tmp_path / "unmapped_tmap.json"
+    unmapped_tmap.write_bytes((json.dumps({"schema_version": 1, "map": {"scripts/other.py": ["scripts/tests/test_ok.py"]}}) + "\n").encode("utf-8"))
+
+    if case_name in ("blank_qualname_vs_accept_invalid", "accept_invalid_vs_test_map_invalid", "test_map_invalid_vs_missing_test_cmd", "missing_test_cmd_vs_git_error"):
+        kw: dict[str, object] = {"repo": repo, "scope_kind": "git_diff", "base_ref": "HEAD", "work_parent": tmp_path}
+        if case_name == "blank_qualname_vs_accept_invalid":
+            kw.update({"qualnames": ["   "], "accept_path": bad_accept})
+        elif case_name == "accept_invalid_vs_test_map_invalid":
+            kw.update({"accept_path": bad_accept, "test_map_path": bad_tmap})
+        elif case_name == "test_map_invalid_vs_missing_test_cmd":
+            kw.update({"test_map_path": bad_tmap, "test_cmd": None})
+        elif case_name == "missing_test_cmd_vs_git_error":
+            kw.update({"test_cmd": None, "base_ref": "refs/heads/no_such_ref"})
+        with pytest.raises(dam.ToolError) as ei:
+            dam.execute_mutation_run(**kw)  # type: ignore[arg-type]
+        assert ei.value.code == expected_reason
+        return
+
+    if case_name == "git_error_vs_target_parse_error":
+        _init_git_repo(repo, {"scripts/m.py": b"def broken(:"})
+        with pytest.raises(dam.ToolError) as ei:
+            dam.execute_mutation_run(
+                repo=repo, scope_kind="git_diff", base_ref="HEAD", target_ref="no_such_ref",
+                test_cmd="dummy", work_parent=tmp_path,
+            )
+        assert ei.value.code == expected_reason
+        return
+
+    if case_name == "patch_error_vs_qualname_unmatched":
+        _init_git_repo(repo, {"scripts/m.py": ok_py})
+        bad_patch = tmp_path / "missing.patch"
+        with pytest.raises(dam.ToolError) as ei:
+            dam.execute_mutation_run(
+                repo=repo, scope_kind="patch", patch_path=bad_patch,
+                qualnames=["nonexistent_fn"], test_cmd="dummy", work_parent=tmp_path,
+            )
+        assert ei.value.code == expected_reason
+        return
+
+    if case_name == "target_parse_vs_qualname_unmatched":
+        _init_git_repo(repo, {"scripts/m.py": b"def broken(:"})
+        with pytest.raises(dam.ToolError) as ei:
+            dam.execute_mutation_run(
+                repo=repo, scope_kind="files", explicit_files=["scripts/m.py"],
+                qualnames=["nonexistent_fn"], test_cmd="dummy", work_parent=tmp_path,
+            )
+        assert ei.value.code == expected_reason
+        return
+
+    _init_git_repo(repo, {"scripts/m.py": ok_py})
+    if case_name == "qualname_unmatched_vs_accept_stale":
+        rc, rep = dam.execute_mutation_run(
+            repo=repo, scope_kind="files", explicit_files=["scripts/m.py"],
+            qualnames=["nonexistent_fn"], accept_path=stale_accept, test_cmd="dummy", work_parent=tmp_path,
+        )
+        assert rc == 2 and rep["summary"]["reason"] == expected_reason
+        return
+
+    if case_name == "accept_stale_vs_test_map_unmapped":
+        rc, rep = dam.execute_mutation_run(
+            repo=repo, scope_kind="files", explicit_files=["scripts/m.py"],
+            accept_path=stale_accept, test_map_path=unmapped_tmap, test_cmd="dummy", work_parent=tmp_path,
+        )
+        assert rc == 2 and rep["summary"]["reason"] == expected_reason
+        return
+
+    if case_name == "test_map_unmapped_vs_cap_exceeded":
+        with pytest.raises(dam.ToolError) as ei:
+            dam.execute_mutation_run(
+                repo=repo, scope_kind="files", explicit_files=["scripts/m.py"],
+                test_map_path=unmapped_tmap, max_mutants=1, test_cmd="dummy", work_parent=tmp_path,
+            )
+        assert ei.value.code == expected_reason
+        return
+
+    if case_name == "cap_exceeded_vs_syntax_invalid":
+        monkeypatch.setattr(dam, "collect_mutants_for_file", lambda rel, b, fl: (
+            [dam.MutantCandidate("M-1", f"{rel}::f::OP#1", rel, "f", 1, 1, 0, "OP", "a", "b", 0, 1, b"x"),
+             dam.MutantCandidate("M-2", f"{rel}::f::OP#2", rel, "f", 2, 2, 0, "OP", "a", "b", 0, 1, b"y")],
+            0, 1,
+        ))
+        rc, rep = dam.execute_mutation_run(
+            repo=repo, scope_kind="files", explicit_files=["scripts/m.py"],
+            max_mutants=1, test_cmd="dummy", work_parent=tmp_path,
+        )
+        assert rc == 2 and rep["summary"]["reason"] == expected_reason
+        return
+
+    if case_name == "syntax_invalid_vs_baseline_failed":
+        monkeypatch.setattr(dam, "collect_mutants_for_file", lambda rel, b, fl: ([], 0, 1))
+        rc, rep = dam.execute_mutation_run(
+            repo=repo, scope_kind="files", explicit_files=["scripts/m.py"],
+            test_cmd="dummy", work_parent=tmp_path,
+        )
+        assert rc == 2 and rep["summary"]["reason"] == expected_reason
+        return
+
+    if case_name == "baseline_failed_vs_total_timeout":
+        iso_b = tmp_path / "iso_base_fail"
+        (iso_b / "scripts").mkdir(parents=True)
+        (iso_b / "scripts/m.py").write_bytes(ok_py)
+        monkeypatch.setattr(dam, "prepare_isolated_copy", lambda *a, **k: iso_b)
+        monkeypatch.setattr(dam.bounded_process, "run_bounded", lambda *a, **k: bounded_process.BoundedResult(1, False, None, b"", b"", bounded_process.KILL_NOT_NEEDED))
+        rc, rep = dam.execute_mutation_run(
+            repo=repo, scope_kind="files", explicit_files=["scripts/m.py"],
+            test_cmd="dummy", total_timeout=0.0, monotonic_fn=FakeClock([0.0, 1.0, 2.0, 999.0]), work_parent=tmp_path,
+        )
+        assert rc == 2 and rep["summary"]["reason"] == expected_reason
+        return
+
+    if case_name == "total_timeout_vs_restore_failed":
+        iso_t = tmp_path / "iso_tot_to"
+        (iso_t / "scripts").mkdir(parents=True)
+        (iso_t / "scripts/m.py").write_bytes(ok_py)
+        monkeypatch.setattr(dam, "prepare_isolated_copy", lambda *a, **k: iso_t)
+        monkeypatch.setattr(dam.bounded_process, "run_bounded", lambda *a, **k: bounded_process.BoundedResult(0, False, None, b"", b"", bounded_process.KILL_NOT_NEEDED))
+        rc, rep = dam.execute_mutation_run(
+            repo=repo, scope_kind="files", explicit_files=["scripts/m.py"],
+            test_cmd="dummy", total_timeout=1.0, monotonic_fn=FakeClock([0.0, 0.1, 0.2, 5.0]), work_parent=tmp_path,
+        )
+        assert rc == 2 and rep["summary"]["reason"] == expected_reason
+        return
+
+    # restore_failed_vs_test_launch_error: run_bounded returns launch_error AND restore fails -> RESTORE_FAILED wins
+    iso = tmp_path / "iso_restore"
+    (iso / "scripts").mkdir(parents=True)
+    (iso / "scripts/m.py").write_bytes(ok_py)
+    monkeypatch.setattr(dam, "prepare_isolated_copy", lambda *a, **k: iso)
+    seq = {"n": 0}
+    def _rb(*a, **k):
+        seq["n"] += 1
+        if seq["n"] == 1:
+            return bounded_process.BoundedResult(0, False, None, b"", b"", bounded_process.KILL_NOT_NEEDED)
+        return bounded_process.BoundedResult(None, False, "spawn failed", b"", b"", bounded_process.KILL_NOT_NEEDED)
+    monkeypatch.setattr(dam.bounded_process, "run_bounded", _rb)
+    monkeypatch.setattr(Path, "read_bytes", lambda self: b"corrupt" if self.name == "m.py" and seq["n"] >= 2 else ok_py)
+    with pytest.raises(dam.ToolError) as ei:
+        dam.execute_mutation_run(
+            repo=repo, scope_kind="files", explicit_files=["scripts/m.py"],
+            test_cmd="dummy", total_timeout=60.0, work_parent=tmp_path,
+        )
+    assert ei.value.code == expected_reason
