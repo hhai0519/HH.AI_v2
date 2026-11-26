@@ -29,6 +29,7 @@ import subprocess
 import sys
 import tempfile
 import time
+from collections.abc import Callable
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
@@ -39,13 +40,19 @@ if str(SCRIPT_DIR) not in sys.path:
 import bounded_process  # noqa: E402
 
 TOOL_NAME = "diff_ast_mutate.py"
-TOOL_VERSION = "1.0.0"
+TOOL_VERSION = "1.1.0"
 SCHEMA_VERSION = 1
 
 DEFAULT_MAX_MUTANTS = 120
 DEFAULT_PER_MUTANT_TIMEOUT = 60.0
 DEFAULT_TOTAL_TIMEOUT = 900.0
 DEFAULT_BASELINE_TIMEOUT = 120.0
+_DEFAULT_MONOTONIC: Callable[[], float] = time.monotonic
+
+
+def _matches_qualname(qualname: str, patterns: list[str]) -> bool:
+    """Return True if qualname matches any case-sensitive fnmatchcase glob pattern."""
+    return any(fnmatch.fnmatchcase(qualname, pat) for pat in patterns)
 
 HUNK_RE = re.compile(r"^@@\s+-\d+(?:,\d+)?\s+\+(\d+)(?:,(\d+))?\s+@@")
 DIFF_PLUS_RE = re.compile(r"^\+\+\+\s+(?:b/)?(.+)$")
@@ -1196,8 +1203,17 @@ def execute_mutation_run(
     baseline_timeout: float = DEFAULT_BASELINE_TIMEOUT,
     work_parent: Path | None = None,
     preserve_git: bool = True,
+    qualnames: list[str] | None = None,
+    monotonic_fn: Callable[[], float] | None = None,
 ) -> tuple[int, dict[str, Any]]:
     """Core orchestrator returning (exit_code, report_dict)."""
+    q_filters: list[str] = []
+    for raw_q in (qualnames or []):
+        if not isinstance(raw_q, str) or not raw_q.strip():
+            raise ToolError("INVALID_ARGS", "--qualname pattern must be non-empty")
+        q_filters.append(raw_q.strip())
+
+    clock = monotonic_fn if monotonic_fn is not None else _DEFAULT_MONOTONIC
     inc = list(include_globs or [])
     exc = list(exclude_globs or [])
     wp = work_parent or Path(tempfile.gettempdir())
@@ -1221,6 +1237,7 @@ def execute_mutation_run(
         exclude_globs=exc,
         include_untracked=include_untracked,
     )
+    scope_meta["qualname_filter"] = list(q_filters)
 
     all_mutants: list[MutantCandidate] = []
     skipped_nodes = 0
@@ -1231,41 +1248,66 @@ def execute_mutation_run(
         skipped_nodes += sk
         invalid_count += inv
 
-    # Resolve --test-map early so unmapped files fail closed before executing baseline
-    file_tests: dict[str, list[str]] = {}
-    if test_map_path is not None:
-        for rel in sorted({m.file for m in all_mutants}):
-            file_tests[rel] = resolve_tests_for_file(rel, test_map, test_default)
+    full_catalog_ids = {m.id for m in all_mutants}
+    if q_filters:
+        selected_mutants = [m for m in all_mutants if _matches_qualname(m.qualname, q_filters)]
+        if not selected_mutants:
+            return 2, _build_report(
+                tool_sha=tool_sha,
+                mode=("list" if list_only else "run"),
+                scope=scope_meta,
+                baseline={"executed": False, "rc": None, "elapsed_sec": 0.0, "timed_out": False, "cmd": []},
+                mutants_records=[],
+                skipped_nodes=skipped_nodes,
+                invalid_count=invalid_count,
+                stale_accepted=[],
+                unnecessary_accepted=[],
+                out_of_scope_accepted=[],
+                exit_code=2,
+                verdict="ERROR",
+                reason="QUALNAME_UNMATCHED",
+            )
+    else:
+        selected_mutants = all_mutants
 
-    catalog_ids = {m.id for m in all_mutants}
-    stale_accepted = sorted(mid for mid in accept_map if mid not in catalog_ids)
+    selected_ids = {m.id for m in selected_mutants}
+    stale_accepted = sorted(mid for mid in accept_map if mid not in full_catalog_ids)
+    out_of_scope_accepted = sorted(mid for mid in accept_map if mid in full_catalog_ids and mid not in selected_ids)
     if stale_accepted:
         return 2, _build_report(
             tool_sha=tool_sha,
             mode=("list" if list_only else "run"),
             scope=scope_meta,
             baseline={"executed": False, "rc": None, "elapsed_sec": 0.0, "timed_out": False, "cmd": []},
-            mutants_records=[_listed_record(m, accept_map) for m in all_mutants],
+            mutants_records=[_listed_record(m, accept_map) for m in selected_mutants],
             skipped_nodes=skipped_nodes,
             invalid_count=invalid_count,
             stale_accepted=stale_accepted,
             unnecessary_accepted=[],
+            out_of_scope_accepted=out_of_scope_accepted,
             exit_code=2,
             verdict="ERROR",
             reason="ACCEPT_STALE_ENTRIES",
         )
 
-    if len(all_mutants) > max_mutants:
+    # Resolve --test-map early so unmapped files fail closed before executing baseline
+    file_tests: dict[str, list[str]] = {}
+    if test_map_path is not None:
+        for rel in sorted({m.file for m in selected_mutants}):
+            file_tests[rel] = resolve_tests_for_file(rel, test_map, test_default)
+
+    if len(selected_mutants) > max_mutants:
         return 2, _build_report(
             tool_sha=tool_sha,
             mode=("list" if list_only else "run"),
             scope=scope_meta,
             baseline={"executed": False, "rc": None, "elapsed_sec": 0.0, "timed_out": False, "cmd": []},
-            mutants_records=[_listed_record(m, accept_map) for m in all_mutants],
+            mutants_records=[_listed_record(m, accept_map) for m in selected_mutants],
             skipped_nodes=skipped_nodes,
             invalid_count=invalid_count,
             stale_accepted=[],
             unnecessary_accepted=[],
+            out_of_scope_accepted=out_of_scope_accepted,
             exit_code=2,
             verdict="ERROR",
             reason="MUTANT_CAP_EXCEEDED",
@@ -1277,18 +1319,19 @@ def execute_mutation_run(
             mode=("list" if list_only else "run"),
             scope=scope_meta,
             baseline={"executed": False, "rc": None, "elapsed_sec": 0.0, "timed_out": False, "cmd": []},
-            mutants_records=[_listed_record(m, accept_map) for m in all_mutants],
+            mutants_records=[_listed_record(m, accept_map) for m in selected_mutants],
             skipped_nodes=skipped_nodes,
             invalid_count=invalid_count,
             stale_accepted=[],
             unnecessary_accepted=[],
+            out_of_scope_accepted=out_of_scope_accepted,
             exit_code=2,
             verdict="ERROR",
             reason="MUTANT_SYNTAX_INVALID",
         )
 
     if list_only:
-        records = [_listed_record(m, accept_map) for m in all_mutants]
+        records = [_listed_record(m, accept_map) for m in selected_mutants]
         return 0, _build_report(
             tool_sha=tool_sha,
             mode="list",
@@ -1299,12 +1342,13 @@ def execute_mutation_run(
             invalid_count=0,
             stale_accepted=[],
             unnecessary_accepted=[],
+            out_of_scope_accepted=out_of_scope_accepted,
             exit_code=0,
             verdict="PASS",
             reason="LIST_OK",
         )
 
-    if not all_mutants:
+    if not selected_mutants:
         return 0, _build_report(
             tool_sha=tool_sha,
             mode="run",
@@ -1315,6 +1359,7 @@ def execute_mutation_run(
             invalid_count=0,
             stale_accepted=[],
             unnecessary_accepted=[],
+            out_of_scope_accepted=out_of_scope_accepted,
             exit_code=0,
             verdict="PASS_NO_MUTANTS",
             reason="NO_MUTANTS",
@@ -1330,14 +1375,14 @@ def execute_mutation_run(
     )
     run_env = os.environ.copy()
     run_env["PYTHONDONTWRITEBYTECODE"] = "1"
-    run_start = time.monotonic()
+    run_start = clock()
     try:
-        orig_shas = {rel: _sha256_bytes((iso_dir / rel).read_bytes()) for rel in sorted({m.file for m in all_mutants})}
+        orig_shas = {rel: _sha256_bytes((iso_dir / rel).read_bytes()) for rel in sorted({m.file for m in selected_mutants})}
         base_tests = sorted({t for tl in file_tests.values() for t in tl}) if test_map_path is not None else None
         base_argv = _build_cmd_argv(cmd_template, base_tests)
-        t0 = time.monotonic()
+        t0 = clock()
         b_res = bounded_process.run_bounded(base_argv, str(iso_dir), baseline_timeout, env=run_env, merge_stderr=True)
-        b_elapsed = round(time.monotonic() - t0, 3)
+        b_elapsed = round(clock() - t0, 3)
         baseline_info = {
             "executed": True,
             "rc": b_res.returncode,
@@ -1346,7 +1391,7 @@ def execute_mutation_run(
             "cmd": base_argv,
         }
         if b_res.launch_error is not None or b_res.timed_out or b_res.returncode != 0:
-            records = [_listed_record(m, accept_map, status="NOT_RUN") for m in all_mutants]
+            records = [_listed_record(m, accept_map, status="NOT_RUN") for m in selected_mutants]
             return 2, _build_report(
                 tool_sha=tool_sha,
                 mode="run",
@@ -1357,6 +1402,7 @@ def execute_mutation_run(
                 invalid_count=0,
                 stale_accepted=[],
                 unnecessary_accepted=[],
+                out_of_scope_accepted=out_of_scope_accepted,
                 exit_code=2,
                 verdict="ERROR",
                 reason="BASELINE_FAILED",
@@ -1364,9 +1410,9 @@ def execute_mutation_run(
 
         records = []
         unnecessary_accepted: list[str] = []
-        for idx, m in enumerate(all_mutants):
-            if (time.monotonic() - run_start) > total_timeout:
-                for rem in all_mutants[idx:]:
+        for idx, m in enumerate(selected_mutants):
+            if (clock() - run_start) > total_timeout:
+                for rem in selected_mutants[idx:]:
                     records.append(_listed_record(rem, accept_map, status="NOT_RUN"))
                 return 2, _build_report(
                     tool_sha=tool_sha,
@@ -1378,6 +1424,7 @@ def execute_mutation_run(
                     invalid_count=0,
                     stale_accepted=[],
                     unnecessary_accepted=sorted(unnecessary_accepted),
+                    out_of_scope_accepted=out_of_scope_accepted,
                     exit_code=2,
                     verdict="ERROR",
                     reason="TOTAL_TIMEOUT_EXCEEDED",
@@ -1388,7 +1435,7 @@ def execute_mutation_run(
             mut_bytes = orig_bytes[:m.start_byte] + m.replacement_bytes + orig_bytes[m.end_byte:]
             m_tests = file_tests[m.file] if test_map_path is not None else None
             m_argv = _build_cmd_argv(cmd_template, m_tests)
-            m0 = time.monotonic()
+            m0 = clock()
             try:
                 target_path.write_bytes(mut_bytes)
                 m_res = bounded_process.run_bounded(m_argv, str(iso_dir), per_mutant_timeout, env=run_env, merge_stderr=True)
@@ -1396,7 +1443,7 @@ def execute_mutation_run(
                 target_path.write_bytes(orig_bytes)
                 if _sha256_bytes(target_path.read_bytes()) != orig_shas[m.file]:
                     raise ToolError("RESTORE_FAILED", f"failed to restore {m.file} in isolated copy")
-            m_elapsed = round(time.monotonic() - m0, 3)
+            m_elapsed = round(clock() - m0, 3)
 
             if m_res.launch_error is not None:
                 return 2, _build_report(
@@ -1409,6 +1456,7 @@ def execute_mutation_run(
                     invalid_count=0,
                     stale_accepted=[],
                     unnecessary_accepted=sorted(unnecessary_accepted),
+                    out_of_scope_accepted=out_of_scope_accepted,
                     exit_code=2,
                     verdict="ERROR",
                     reason="TEST_LAUNCH_ERROR",
@@ -1462,6 +1510,7 @@ def execute_mutation_run(
             invalid_count=0,
             stale_accepted=[],
             unnecessary_accepted=sorted(unnecessary_accepted),
+            out_of_scope_accepted=out_of_scope_accepted,
             exit_code=exit_code,
             verdict=verdict,
             reason=reason,
@@ -1507,6 +1556,7 @@ def _build_report(
     invalid_count: int,
     stale_accepted: list[str],
     unnecessary_accepted: list[str],
+    out_of_scope_accepted: list[str] | None = None,
     exit_code: int,
     verdict: str,
     reason: str,
@@ -1515,6 +1565,7 @@ def _build_report(
     caught_timeout = sum(1 for r in mutants_records if r["status"] == "CAUGHT_TIMEOUT")
     survived = sum(1 for r in mutants_records if r["status"] == "SURVIVED")
     accepted = sum(1 for r in mutants_records if r["status"] == "ACCEPTED")
+    oos = list(out_of_scope_accepted or [])
     return {
         "schema_version": SCHEMA_VERSION,
         "tool": TOOL_NAME,
@@ -1533,12 +1584,14 @@ def _build_report(
             "skipped_nodes": skipped_nodes,
             "stale_accepted_count": len(stale_accepted),
             "unnecessary_accepted_count": len(unnecessary_accepted),
+            "out_of_scope_accepted_count": len(oos),
             "exit_code": exit_code,
             "verdict": verdict,
             "reason": reason,
         },
         "stale_accepted": stale_accepted,
         "unnecessary_accepted": unnecessary_accepted,
+        "out_of_scope_accepted": oos,
         "mutants": mutants_records,
     }
 
@@ -1553,6 +1606,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     ap.add_argument("--target", help="Target git ref/commit when using --base (default: working tree)")
     ap.add_argument("--include-glob", action="append", default=[], help="Glob pattern(s) of Python files to include")
     ap.add_argument("--exclude-glob", action="append", default=[], help="Glob pattern(s) of Python files to exclude")
+    ap.add_argument("--qualname", action="append", default=[], help="Glob pattern(s) of qualnames to filter (case-sensitive)")
     ap.add_argument("--no-untracked", action="store_true", help="Do not include untracked .py files in working-tree diff")
     ap.add_argument("--list", action="store_true", dest="list_only", help="Dry-run: list mutants without running tests")
     ap.add_argument("--test-cmd", help="Test command template (supports {python} and {tests})")
@@ -1604,6 +1658,7 @@ def main(argv: list[str] | None = None) -> int:
             total_timeout=ns.total_timeout,
             baseline_timeout=ns.baseline_timeout,
             work_parent=Path(ns.work_parent).resolve() if ns.work_parent else None,
+            qualnames=ns.qualname,
         )
     except ToolError as exc:
         err_report = _build_report(
@@ -1655,6 +1710,8 @@ def main(argv: list[str] | None = None) -> int:
                 )
     if report["stale_accepted"]:
         print("STALE_ACCEPTED " + " ".join(report["stale_accepted"]))
+    if report.get("out_of_scope_accepted"):
+        print("OUT_OF_SCOPE_ACCEPTED " + " ".join(report["out_of_scope_accepted"]))
     return rc
 
 

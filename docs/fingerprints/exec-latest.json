@@ -1,5 +1,5 @@
 {
-  "base_head": "63547d6",
+  "base_head": "0eb6958",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -576,16 +576,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 439,
-      "sha256": "b391f2dff9833870fe218849d60a7bf9833123183291bf827b2e3ae50e9f0b20"
+      "lines": 440,
+      "sha256": "bca84e0c5e914af4248729e8adf663a05038a2c747008c10ad06fd43d262cd0f"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 409,
-      "sha256": "c846df68e035e79962a445041a56767bdcc6456a7e2a01a79e6ef0ac753ee911"
+      "lines": 410,
+      "sha256": "3164850eeeddbd1eef977b219c9676ce373701a5594a4cceabdece9f24deb547"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -628,7 +628,7 @@
         "## 封存區"
       ],
       "lines": 473,
-      "sha256": "15ed12494c87cce873090deb9d04f786b31d4288fdfe7be60c3011f0aed1273e"
+      "sha256": "c90cdc0e88b9ddf558163a2ff68939c13f0d8985eca049b185050d8a122bf754"
     },
     "docs/TODO-LEDGER.md": {
       "fences": 0,
@@ -641,7 +641,7 @@
         "## 五、清冊"
       ],
       "lines": 197,
-      "sha256": "e896326377d14e08429671ade5fa0eb1de294b910c697426c451510a96c47594"
+      "sha256": "498abacd9fc6cbdfe058824ee2cbf0fadf8d84c40b5c1bc836332a717634eea8"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1150,8 +1150,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6496,
-      "sha256": "d9eb2faa9b52cdecde3dd842ef6578c122bbae7679ea6d648b1d96b24374d4c6"
+      "lines": 6497,
+      "sha256": "62a29aefd9135aaeefd798c376e6a479ad5ba7ded0de3fb786a3266b125b6112"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1351,8 +1351,8 @@
       "headings": [
         "# -*- coding: utf-8 -*-"
       ],
-      "lines": 1662,
-      "sha256": "d0c45494bd0bf01f7b6525814ce811311123c59550fae3d0d37274e22f004710"
+      "lines": 1719,
+      "sha256": "9cf55166c0d87ed9d016d23919eb424c201344f7483bb4601c55c685fedac728"
     },
     "scripts/draft_precheck.py": {
       "fences": 0,
@@ -2036,13 +2036,14 @@
       "headings": [
         "# -*- coding: utf-8 -*-",
         "# --- Fast Fail-Closed Exit-2 & JSON Schema v1 Contract Tests (placed first for -x) ---",
+        "# --- TD-137 Module Clock & SO Non-Blocking Guard + TD-136a --qualname Filter Tests ---",
         "# --- All 14 Operators & Noise Filters ---",
         "# --- End-to-End Subprocess Controls & Windows Form ---",
         "# --- Second Opinion Suggestion #5: 4 Required Negative Controls ---",
         "# --- --test-map Routing & Fallback ---"
       ],
-      "lines": 830,
-      "sha256": "d807cc09bb7179763199c3a2a55eb8479dbb13760e6a956883dbb6af5254bb94"
+      "lines": 1209,
+      "sha256": "19602e8d658a00f960c276d92018d055d5cbb3eccbc97cefabe3cffe94316c79"
     },
     "scripts/tests/test_draft_precheck.py": {
       "fences": 0,
@@ -2719,7 +2720,7 @@
       "sha256": "8597e282fed71298b01430659fae7cdfedf4a20f8be0267d662f8f1da8ff23e8"
     }
   },
-  "generated_at": "2026-11-26T00:23:55Z",
+  "generated_at": "2026-11-26T07:27:38Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

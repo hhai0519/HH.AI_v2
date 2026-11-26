@@ -38,6 +38,28 @@ def _pytest_cmd(test_rel: str = "") -> str:
     return f"{{python}} -m pytest -p no:cacheprovider -q -x{extra}"
 
 
+class FakeClock:
+    """Deterministic monotonic clock for tests; never raises StopIteration past initial ticks."""
+
+    def __init__(self, ticks: list[float], *, tail_step: float = 0.0) -> None:
+        if not ticks:
+            raise ValueError("FakeClock requires at least one initial tick")
+        self._ticks = [float(t) for t in ticks]
+        self._tail_step = float(tail_step)
+        self._idx = 0
+        self.calls = 0
+
+    def __call__(self) -> float:
+        self.calls += 1
+        if self._idx < len(self._ticks):
+            val = self._ticks[self._idx]
+            self._idx += 1
+            return val
+        extra = self._idx - len(self._ticks) + 1
+        self._idx += 1
+        return self._ticks[-1] + extra * self._tail_step
+
+
 # --- Fast Fail-Closed Exit-2 & JSON Schema v1 Contract Tests (placed first for -x) ---
 
 def test_pure_stdlib_imports_only() -> None:
@@ -56,6 +78,358 @@ def test_pure_stdlib_imports_only() -> None:
     assert bad == [], f"Unexpected non-stdlib imports: {bad}"
 
 
+# --- TD-137 Module Clock & SO Non-Blocking Guard + TD-136a --qualname Filter Tests ---
+
+def test_td137_no_bare_time_monotonic_calls_in_diff_ast_mutate() -> None:
+    """Assert diff_ast_mutate.py binds time.monotonic once to _DEFAULT_MONOTONIC with 0 direct calls."""
+    dam_path = Path(dam.__file__).resolve()
+    src = dam_path.read_bytes().decode("utf-8")
+    tree = ast.parse(src)
+
+    bare_calls: list[int] = []
+    monotonic_attrs: list[int] = []
+    bound_targets: list[str] = []
+
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Call):
+            fn = node.func
+            if isinstance(fn, ast.Attribute) and isinstance(fn.value, ast.Name) and fn.value.id == "time" and fn.attr == "monotonic":
+                bare_calls.append(node.lineno)
+        if isinstance(node, ast.Attribute) and isinstance(node.value, ast.Name) and node.value.id == "time" and node.attr == "monotonic":
+            monotonic_attrs.append(node.lineno)
+        if isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
+            val = node.value
+            if isinstance(val, ast.Attribute) and isinstance(val.value, ast.Name) and val.value.id == "time" and val.attr == "monotonic":
+                bound_targets.append(node.target.id)
+        elif isinstance(node, ast.Assign) and len(node.targets) == 1 and isinstance(node.targets[0], ast.Name):
+            val = node.value
+            if isinstance(val, ast.Attribute) and isinstance(val.value, ast.Name) and val.value.id == "time" and val.attr == "monotonic":
+                bound_targets.append(node.targets[0].id)
+
+    assert bare_calls == [], f"Unexpected bare time.monotonic() calls at lines {bare_calls}"
+    assert len(monotonic_attrs) == 1, f"Expected single time.monotonic binding, saw lines {monotonic_attrs}"
+    assert bound_targets == ["_DEFAULT_MONOTONIC"], f"Unexpected binding targets: {bound_targets}"
+
+
+def test_td137_fake_clock_and_monotonic_fn_injection(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    clk0 = FakeClock([5.0, 6.0], tail_step=0.0)
+    assert [clk0() for _ in range(5)] == [5.0, 6.0, 6.0, 6.0, 6.0]
+    assert clk0.calls == 5
+
+    clk_step = FakeClock([10.0], tail_step=0.5)
+    assert [clk_step() for _ in range(4)] == [10.0, 10.5, 11.0, 11.5]
+
+    with pytest.raises(ValueError):
+        FakeClock([])
+
+    repo = tmp_path / "repo_clk"
+    (repo / "scripts").mkdir(parents=True, exist_ok=True)
+    c_src = b"def c(x: int) -> int:\n    if x == 0:\n        return 1\n    return x\n"
+    (repo / "scripts/c.py").write_bytes(c_src)
+
+    def _fake_clk_iso(*a, **kw) -> Path:
+        d = tmp_path / "iso_clk"
+        (d / "scripts").mkdir(parents=True, exist_ok=True)
+        (d / "scripts/c.py").write_bytes(c_src)
+        return d
+
+    # Default clock would not time out, but explicit monotonic_fn overrides _DEFAULT_MONOTONIC
+    monkeypatch.setattr(dam, "_DEFAULT_MONOTONIC", FakeClock([0.0], tail_step=0.0))
+    monkeypatch.setattr(dam, "prepare_isolated_copy", _fake_clk_iso)
+    monkeypatch.setattr(
+        dam.bounded_process,
+        "run_bounded",
+        lambda *a, **kw: bounded_process.BoundedResult(0, False, None, b"", b"", bounded_process.KILL_NOT_NEEDED),
+    )
+    injected = FakeClock([10.0, 10.1, 10.2, 20.0], tail_step=1.0)
+    rc, rep = dam.execute_mutation_run(
+        repo=repo,
+        scope_kind="files",
+        explicit_files=["scripts/c.py"],
+        test_cmd="dummy",
+        total_timeout=5.0,
+        work_parent=tmp_path,
+        monotonic_fn=injected,
+    )
+    assert rc == 2 and rep["summary"]["reason"] == "TOTAL_TIMEOUT_EXCEEDED"
+    assert injected.calls == 4
+
+    # Passing run via explicit monotonic_fn verifies subtraction & 3-decimal rounding for baseline/mutant elapsed_sec
+    step_calls = {"n": 0}
+
+    def _pass_base_catch_mut(*a, **kw):
+        step_calls["n"] += 1
+        rc_val = 0 if step_calls["n"] == 1 else 1
+        return bounded_process.BoundedResult(rc_val, False, None, b"", b"", bounded_process.KILL_NOT_NEEDED)
+
+    monkeypatch.setattr(dam.bounded_process, "run_bounded", _pass_base_catch_mut)
+    timing_clk = FakeClock([100.0, 100.0, 100.1234, 100.2, 100.2, 100.4567], tail_step=0.01)
+    rc_ok, rep_ok = dam.execute_mutation_run(
+        repo=repo,
+        scope_kind="files",
+        explicit_files=["scripts/c.py"],
+        test_cmd="dummy",
+        total_timeout=5.0,
+        work_parent=tmp_path,
+        monotonic_fn=timing_clk,
+    )
+    assert rc_ok == 0 and rep_ok["summary"]["verdict"] == "PASS"
+    assert rep_ok["baseline"]["elapsed_sec"] == 0.123
+    assert rep_ok["mutants"][0]["elapsed_sec"] == 0.257
+
+
+def test_td136a_matches_qualname_case_sensitive_and_globs() -> None:
+    assert dam._matches_qualname("keep_fn", ["keep_fn"]) is True
+    assert dam._matches_qualname("Keep_Fn", ["keep_fn"]) is False
+    assert dam._matches_qualname("Keep_Fn", ["keep_*"]) is False
+    assert dam._matches_qualname("keep_alpha", ["keep_*"]) is True
+    assert dam._matches_qualname("Box.value", ["Box.*"]) is True
+    assert dam._matches_qualname("Box.value", ["other", "Box.val?e"]) is True
+    assert dam._matches_qualname("other_fn", ["keep_*", "Box.*"]) is False
+
+
+def test_td136a_qualname_filter_stability_cap_and_test_map(tmp_path: Path) -> None:
+    repo = tmp_path / "repo_qn"
+    base = _init_git_repo(repo, {
+        "scripts/target.py": b"def keep_one(x: int) -> int:\n    return x\n",
+        "scripts/extra_unmapped.py": b"def extra_fn(y: int) -> int:\n    return y\n",
+        "scripts/tests/test_target.py": (
+            b"from scripts.target import keep_one\n"
+            b"def test_keep():\n"
+            b"    assert keep_one(0) == 1\n"
+            b"    assert keep_one(2) == 2\n"
+        ),
+    })
+    (repo / "scripts/target.py").write_bytes(
+        b"def skip_first(z: int) -> int:\n"
+        b"    if z == 0:\n"
+        b"        return 1\n"
+        b"    return z + 1\n\n"
+        b"def keep_one(x: int) -> int:\n"
+        b"    if x == 0:\n"
+        b"        return 1\n"
+        b"    return x\n\n"
+        b"class Box:\n"
+        b"    def Keep_Case(self, v: int) -> int:\n"
+        b"        return v + 1\n"
+        b"    def other_method(self, v: int) -> int:\n"
+        b"        return v + 2\n"
+    )
+    (repo / "scripts/extra_unmapped.py").write_bytes(
+        b"def extra_fn(y: int) -> int:\n"
+        b"    if y == 0:\n"
+        b"        return 1\n"
+        b"    return y\n"
+    )
+
+    full_p = tmp_path / "full.json"
+    assert dam.main(["--repo", str(repo), "--base", base, "--list", "--json-out", str(full_p)]) == 0
+    full_doc = json.loads(full_p.read_bytes())
+    assert full_doc["scope"]["qualname_filter"] == []
+    assert full_doc["summary"]["out_of_scope_accepted_count"] == 0
+    assert full_doc["out_of_scope_accepted"] == []
+    full_muts = full_doc["mutants"]
+    total_all = len(full_muts)
+    assert total_all >= 10
+
+    # Unfiltered with small cap fails with MUTANT_CAP_EXCEEDED
+    rc_cap, rep_cap = dam.execute_mutation_run(
+        repo=repo, scope_kind="git_diff", base_ref=base, list_only=True, max_mutants=4,
+    )
+    assert rc_cap == 2 and rep_cap["summary"]["reason"] == "MUTANT_CAP_EXCEEDED"
+
+    # Filtered with --qualname keep_one + Box.Keep_* filters BEFORE cap and BEFORE --test-map unmapped check
+    tmap_p = tmp_path / "tmap_qn.json"
+    tmap_p.write_bytes((json.dumps({
+        "schema_version": 1,
+        "map": {"scripts/target.py": ["scripts/tests/test_target.py"]},
+    }) + "\n").encode("utf-8"))
+
+    sub_p = tmp_path / "sub_list.json"
+    assert dam.main([
+        "--repo", str(repo), "--base", base, "--list",
+        "--qualname", "keep_one", "--qualname", "Box.Keep_*",
+        "--test-map", str(tmap_p), "--max-mutants", "8",
+        "--json-out", str(sub_p),
+    ]) == 0
+    sub_doc = json.loads(sub_p.read_bytes())
+    assert sub_doc["scope"]["qualname_filter"] == ["keep_one", "Box.Keep_*"]
+    sub_muts = sub_doc["mutants"]
+    assert 0 < len(sub_muts) <= 8
+    expected_pairs = [
+        (m["id"], m["display_id"])
+        for m in full_muts
+        if m["qualname"] in {"keep_one", "Box.Keep_Case"}
+    ]
+    assert [(m["id"], m["display_id"]) for m in sub_muts] == expected_pairs
+
+    # Filtered run on keep_one passes (exit 0) even with small max_mutants=5 and unmapped extra_unmapped.py
+    run_p = tmp_path / "sub_run.json"
+    rc_run = dam.main([
+        "--repo", str(repo), "--base", base,
+        "--qualname", "keep_one",
+        "--test-cmd", _pytest_cmd(),
+        "--test-map", str(tmap_p),
+        "--max-mutants", "5",
+        "--json-out", str(run_p),
+        "--work-parent", str(tmp_path),
+    ])
+    assert rc_run == 0
+    run_doc = json.loads(run_p.read_bytes())
+    assert run_doc["tool_version"] == "1.1.0"
+    assert run_doc["summary"]["verdict"] == "PASS" and run_doc["summary"]["total"] == 5 and run_doc["summary"]["caught"] == 5
+
+
+def test_td136a_qualname_fail_closed_invalid_and_unmatched(tmp_path: Path) -> None:
+    repo = tmp_path / "repo_qfail"
+    base = _init_git_repo(repo, {"scripts/mod.py": b"def alpha(x: int) -> int:\n    return x\n"})
+    (repo / "scripts/mod.py").write_bytes(b"def alpha(x: int) -> int:\n    if x == 0:\n        return 1\n    return x\n")
+
+    # 1. Empty, whitespace, or non-str --qualname -> INVALID_ARGS (exit 2) in CLI and API, list and run
+    for bad_q in ("", "   "):
+        err_p = tmp_path / f"bad_q_{len(bad_q)}.json"
+        assert dam.main(["--repo", str(repo), "--base", base, "--list", "--qualname", bad_q, "--json-out", str(err_p)]) == 2
+        assert json.loads(err_p.read_bytes())["summary"]["reason"] == "INVALID_ARGS"
+        with pytest.raises(dam.ToolError) as ei:
+            dam.execute_mutation_run(repo=repo, scope_kind="git_diff", base_ref=base, test_cmd="dummy", qualnames=[bad_q])
+        assert ei.value.code == "INVALID_ARGS"
+    with pytest.raises(dam.ToolError) as ei_non_str:
+        dam.execute_mutation_run(
+            repo=repo, scope_kind="git_diff", base_ref=base, test_cmd="dummy", qualnames=[123],  # type: ignore[list-item]
+        )
+    assert ei_non_str.value.code == "INVALID_ARGS"
+
+    # 2. Unmatched pattern (including case mismatch Alpha vs alpha) -> QUALNAME_UNMATCHED exit 2 (list & run)
+    for pat in ("does_not_exist", "Alpha"):
+        unm_list = tmp_path / f"unm_list_{pat}.json"
+        assert dam.main(["--repo", str(repo), "--base", base, "--list", "--qualname", pat, "--json-out", str(unm_list)]) == 2
+        d_ul = json.loads(unm_list.read_bytes())
+        assert d_ul["mode"] == "list"
+        assert d_ul["summary"]["exit_code"] == 2 and d_ul["summary"]["verdict"] == "ERROR"
+        assert d_ul["summary"]["reason"] == "QUALNAME_UNMATCHED" and d_ul["summary"]["total"] == 0
+        assert d_ul["baseline"]["executed"] is False and d_ul["baseline"]["timed_out"] is False
+        assert d_ul["baseline"]["elapsed_sec"] == 0.0
+        assert d_ul["stale_accepted"] == [] and d_ul["out_of_scope_accepted"] == []
+
+        unm_run = tmp_path / f"unm_run_{pat}.json"
+        assert dam.main([
+            "--repo", str(repo), "--base", base,
+            "--qualname", pat, "--test-cmd", "dummy", "--json-out", str(unm_run),
+        ]) == 2
+        d_ur = json.loads(unm_run.read_bytes())
+        assert d_ur["mode"] == "run"
+        assert d_ur["summary"]["exit_code"] == 2 and d_ur["summary"]["verdict"] == "ERROR"
+        assert d_ur["summary"]["reason"] == "QUALNAME_UNMATCHED"
+
+    # 3. 0-mutant diff + --qualname -> MUST fail-closed QUALNAME_UNMATCHED (exit 2), NOT PASS_NO_MUTANTS (SO N-B #2)
+    repo_empty = tmp_path / "repo_qempty"
+    base_e = _init_git_repo(repo_empty, {"scripts/clean.py": b"def clean() -> int:\n    return 1\n"})
+    (repo_empty / "scripts/clean.py").write_bytes(b"def clean() -> int:\n    # comment only\n    return 1\n")
+    unm_empty = tmp_path / "unm_empty.json"
+    assert dam.main([
+        "--repo", str(repo_empty), "--base", base_e,
+        "--qualname", "clean", "--test-cmd", "dummy", "--json-out", str(unm_empty),
+    ]) == 2
+    d_ue = json.loads(unm_empty.read_bytes())
+    assert d_ue["summary"]["verdict"] == "ERROR" and d_ue["summary"]["reason"] == "QUALNAME_UNMATCHED"
+
+
+def test_td136a_qualname_with_accept_out_of_scope_and_stale(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    repo = tmp_path / "repo_qacc"
+    base = _init_git_repo(repo, {
+        "scripts/qa.py": b"def f_a(x: int) -> int:\n    return x\n",
+        "scripts/tests/test_qa.py": b"from scripts.qa import f_a\ndef test_fa():\n    assert f_a(0) == 1\n    assert f_a(2) == 2\n",
+    })
+    (repo / "scripts/qa.py").write_bytes(
+        b"def f_a(x: int) -> int:\n"
+        b"    if x == 0:\n"
+        b"        return 1\n"
+        b"    return x\n\n"
+        b"def f_b(y: int) -> int:\n"
+        b"    if y == 0:\n"
+        b"        return 2\n"
+        b"    return y\n"
+    )
+    capsys.readouterr()
+    list_all = tmp_path / "all_qacc.json"
+    assert dam.main(["--repo", str(repo), "--base", base, "--list", "--json-out", str(list_all)]) == 0
+    assert "OUT_OF_SCOPE_ACCEPTED" not in capsys.readouterr().out
+    muts = json.loads(list_all.read_bytes())["mutants"]
+    mut_a = [m["id"] for m in muts if m["qualname"] == "f_a"]
+    mut_b = [m["id"] for m in muts if m["qualname"] == "f_b"]
+    assert mut_a and mut_b
+
+    # Accept ID belonging to f_b while filtering --qualname f_a -> in out_of_scope_accepted, rc=0
+    acc_oos = tmp_path / "acc_oos.json"
+    acc_oos.write_bytes(json.dumps({
+        "schema_version": 1,
+        "accepted": [{"id": mut_b[0], "reason": "Excluded slice exemption", "batch": "B117-TD136A"}],
+    }).encode("utf-8"))
+
+    capsys.readouterr()
+    list_sub = tmp_path / "sub_qacc.json"
+    assert dam.main([
+        "--repo", str(repo), "--base", base, "--list",
+        "--qualname", "f_a", "--accept", str(acc_oos), "--json-out", str(list_sub),
+    ]) == 0
+    out_list = capsys.readouterr().out
+    assert f"OUT_OF_SCOPE_ACCEPTED {mut_b[0]}" in out_list
+    d_ls = json.loads(list_sub.read_bytes())
+    assert d_ls["summary"]["out_of_scope_accepted_count"] == 1
+    assert d_ls["out_of_scope_accepted"] == [mut_b[0]]
+    assert d_ls["stale_accepted"] == []
+
+    # Mixed in-scope (f_a) + out-of-scope (f_b) -> only mut_b[0] is in out_of_scope_accepted, stale_accepted empty
+    acc_both = tmp_path / "acc_both.json"
+    acc_both.write_bytes(json.dumps({
+        "schema_version": 1,
+        "accepted": [
+            {"id": mut_a[0], "reason": "In-scope exemption", "batch": "B117-TD136A"},
+            {"id": mut_b[0], "reason": "Excluded slice exemption", "batch": "B117-TD136A"},
+        ],
+    }).encode("utf-8"))
+    list_both = tmp_path / "both_qacc.json"
+    assert dam.main([
+        "--repo", str(repo), "--base", base, "--list",
+        "--qualname", "f_a", "--accept", str(acc_both), "--json-out", str(list_both),
+    ]) == 0
+    d_lb = json.loads(list_both.read_bytes())
+    assert d_lb["out_of_scope_accepted"] == [mut_b[0]]
+    assert mut_a[0] not in d_lb["out_of_scope_accepted"]
+    assert d_lb["stale_accepted"] == []
+
+    run_sub = tmp_path / "run_qacc.json"
+    assert dam.main([
+        "--repo", str(repo), "--base", base,
+        "--qualname", "f_a", "--accept", str(acc_oos),
+        "--test-cmd", _pytest_cmd("scripts/tests/test_qa.py"),
+        "--json-out", str(run_sub), "--work-parent", str(tmp_path),
+    ]) == 0
+    d_rs = json.loads(run_sub.read_bytes())
+    assert d_rs["summary"]["out_of_scope_accepted_count"] == 1
+    assert d_rs["out_of_scope_accepted"] == [mut_b[0]]
+
+    # Mixed out-of-scope + nonexistent ID -> still fail-closed ACCEPT_STALE_ENTRIES (exit 2)
+    acc_mix = tmp_path / "acc_mix.json"
+    acc_mix.write_bytes(json.dumps({
+        "schema_version": 1,
+        "accepted": [
+            {"id": mut_b[0], "reason": "Excluded slice exemption", "batch": "B117-TD136A"},
+            {"id": "M-deadbeef99", "reason": "Truly gone", "batch": "B117-OLD"},
+        ],
+    }).encode("utf-8"))
+    stale_out = tmp_path / "stale_qacc.json"
+    assert dam.main([
+        "--repo", str(repo), "--base", base, "--list",
+        "--qualname", "f_a", "--accept", str(acc_mix), "--json-out", str(stale_out),
+    ]) == 2
+    d_st = json.loads(stale_out.read_bytes())
+    assert d_st["summary"]["reason"] == "ACCEPT_STALE_ENTRIES"
+    assert d_st["stale_accepted"] == ["M-deadbeef99"]
+    assert d_st["out_of_scope_accepted"] == [mut_b[0]]
+    assert d_st["summary"]["out_of_scope_accepted_count"] == 1
+
+
 def test_accept_file_invalid_variants_all_exit_2(tmp_path: Path) -> None:
     src = tmp_path / "m.py"
     src.write_bytes(b"def f(x: int) -> int:\n    return x + 1\n")
@@ -66,6 +440,11 @@ def test_accept_file_invalid_variants_all_exit_2(tmp_path: Path) -> None:
         b'{"schema_version": 1, "accepted": {}}\n',
         b'{"schema_version": 1, "accepted": ["not-an-object"]}\n',
         b'{"schema_version": 1, "accepted": [{"id": "M-1"}]}\n',
+        b'{"schema_version": 1, "accepted": [{"id": 123, "reason": "a", "batch": "B1"}]}\n',
+        b'{"schema_version": 1, "accepted": [{"id": "   ", "reason": "a", "batch": "B1"}]}\n',
+        b'{"schema_version": 1, "accepted": [{"id": "M-1", "reason": "   ", "batch": "B1"}]}\n',
+        b'{"schema_version": 1, "accepted": [{"id": "M-1", "reason": "a", "batch": 456}]}\n',
+        b'{"schema_version": 1, "accepted": [{"id": "M-1", "reason": "a", "batch": "   "}]}\n',
         b'{"schema_version": 1, "accepted": [{"id": "M-dup", "reason": "a", "batch": "B1"}, {"id": "M-dup", "reason": "b", "batch": "B2"}]}\n',
     ]
     for idx, payload in enumerate(bad_payloads):
@@ -271,9 +650,11 @@ def test_monkeypatched_timeouts_restore_launch_accept_and_summary_contract(tmp_p
     d_launch = json.loads(rep_launch.read_bytes())
     assert d_launch["summary"]["reason"] == "TEST_LAUNCH_ERROR" and d_launch["summary"]["caught"] == 0
 
-    # 3. TOTAL_TIMEOUT_EXCEEDED (> vs == boundary)
-    ticks = iter([100.0, 100.1, 100.2, 105.0])  # run_start=100, t0=100.1, b_end=100.2, mut0=105.0 (> 4.0)
-    monkeypatch.setattr(dam.time, "monotonic", lambda: next(ticks))
+    # 3. TOTAL_TIMEOUT_EXCEEDED (> vs == boundary) via module FakeClock (TD-137)
+    import time as _stdlib_time
+    real_monotonic = _stdlib_time.monotonic
+    monkeypatch.setattr(dam, "_DEFAULT_MONOTONIC", FakeClock([100.0, 100.1, 100.2, 105.0], tail_step=1.0))
+    assert dam.time.monotonic is real_monotonic
     monkeypatch.setattr(
         dam.bounded_process,
         "run_bounded",
@@ -289,8 +670,8 @@ def test_monkeypatched_timeouts_restore_launch_accept_and_summary_contract(tmp_p
     assert all(m["status"] == "NOT_RUN" for m in d_to["mutants"])
 
     # Exact boundary: elapsed == total_timeout (104.0 - 100.0 == 4.0) MUST NOT trip total timeout
-    eq_ticks = iter([100.0, 100.1, 100.2] + [104.0] * 40)
-    monkeypatch.setattr(dam.time, "monotonic", lambda: next(eq_ticks))
+    monkeypatch.setattr(dam, "_DEFAULT_MONOTONIC", FakeClock([100.0, 100.1, 100.2, 104.0], tail_step=0.0))
+    assert dam.time.monotonic is real_monotonic
     seq_i = {"i": 0}
 
     def all_caught_run(*a, **kw):
@@ -336,8 +717,7 @@ def test_monkeypatched_timeouts_restore_launch_accept_and_summary_contract(tmp_p
             return bounded_process.BoundedResult(1, False, None, b"", b"", bounded_process.KILL_NOT_NEEDED)
         return bounded_process.BoundedResult(0, False, None, b"", b"", bounded_process.KILL_NOT_NEEDED)
 
-    eq_ticks2 = iter([100.0 + i * 0.1 for i in range(40)])
-    monkeypatch.setattr(dam.time, "monotonic", lambda: next(eq_ticks2))
+    monkeypatch.setattr(dam, "_DEFAULT_MONOTONIC", FakeClock([100.0], tail_step=0.1))
     monkeypatch.setattr(dam.bounded_process, "run_bounded", mixed_run)
     rep_mix = tmp_path / "mix.json"
     rc_mix = dam.main([
@@ -365,8 +745,7 @@ def test_monkeypatched_timeouts_restore_launch_accept_and_summary_contract(tmp_p
         seq_fail["i"] += 1
         return bounded_process.BoundedResult(0, False, None, b"", b"", bounded_process.KILL_NOT_NEEDED)
 
-    eq_ticks3 = iter([100.0 + i * 0.1 for i in range(40)])
-    monkeypatch.setattr(dam.time, "monotonic", lambda: next(eq_ticks3))
+    monkeypatch.setattr(dam, "_DEFAULT_MONOTONIC", FakeClock([100.0], tail_step=0.1))
     monkeypatch.setattr(dam.bounded_process, "run_bounded", all_survived_run)
     rep_fail = tmp_path / "fail_sum.json"
     assert dam.main([

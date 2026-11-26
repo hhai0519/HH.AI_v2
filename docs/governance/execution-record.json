@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "B117-AUD-TAKEOVER-STATE-R1-261126",
-  "base_oid": "63547d6de5e51d9b26d07b1accbb886217e12d37",
+  "task_id": "B117-TD136A-MUTATE-QUALNAME-R1-261126",
+  "base_oid": "0eb6958687a5b9b3b2cb88ae33c3322bade9eefe",
   "plan": {
     "allowed_paths": [
       "docs/AUDIT-LOG.md",
@@ -10,12 +10,14 @@
       "docs/TASKBOARD.md",
       "docs/TODO-LEDGER.md",
       "docs/archive/TASKBOARD-ARCHIVE-MANIFEST.json",
-      "docs/archive/TASKBOARD-RECORDS-0016.md",
+      "docs/archive/TASKBOARD-RECORDS-0017.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
       "docs/governance/s1-registry.json",
-      "docs/ops/q2-draft-precheck.md",
-      "docs/refactor-backlog.md"
+      "docs/ops/td134-diff-ast-mutate.md",
+      "docs/refactor-backlog.md",
+      "scripts/diff_ast_mutate.py",
+      "scripts/tests/test_diff_ast_mutate.py"
     ],
     "required_paths": [
       "docs/AUDIT-LOG.md",
@@ -23,12 +25,14 @@
       "docs/TASKBOARD.md",
       "docs/TODO-LEDGER.md",
       "docs/archive/TASKBOARD-ARCHIVE-MANIFEST.json",
-      "docs/archive/TASKBOARD-RECORDS-0016.md",
+      "docs/archive/TASKBOARD-RECORDS-0017.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
       "docs/governance/s1-registry.json",
-      "docs/ops/q2-draft-precheck.md",
-      "docs/refactor-backlog.md"
+      "docs/ops/td134-diff-ast-mutate.md",
+      "docs/refactor-backlog.md",
+      "scripts/diff_ast_mutate.py",
+      "scripts/tests/test_diff_ast_mutate.py"
     ],
     "max_plan_revisions": 3,
     "revision_count": 0,
@@ -41,12 +45,14 @@
       "docs/TASKBOARD.md",
       "docs/TODO-LEDGER.md",
       "docs/archive/TASKBOARD-ARCHIVE-MANIFEST.json",
-      "docs/archive/TASKBOARD-RECORDS-0016.md",
+      "docs/archive/TASKBOARD-RECORDS-0017.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
       "docs/governance/s1-registry.json",
-      "docs/ops/q2-draft-precheck.md",
-      "docs/refactor-backlog.md"
+      "docs/ops/td134-diff-ast-mutate.md",
+      "docs/refactor-backlog.md",
+      "scripts/diff_ast_mutate.py",
+      "scripts/tests/test_diff_ast_mutate.py"
     ]
   },
   "evidence": [

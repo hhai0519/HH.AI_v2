@@ -1147,6 +1147,22 @@
      "unit_bytes": 5782
     }
    ]
+  },
+  {
+   "file": "docs/archive/TASKBOARD-RECORDS-0017.md",
+   "batch": "B117-TD136A-MUTATE-QUALNAME-R1-261126",
+   "checkpoint_oid": "0eb6958687a5b9b3b2cb88ae33c3322bade9eefe",
+   "file_sha256": "e3a98d67419c614bd5584591bd99bb84ba0d0f6860d184d6eccf5f96c19b8fdf",
+   "keep": 5,
+   "entries": [
+    {
+     "task_id": "B117-BETA1-S1-REGISTRY-R2-261124",
+     "source_line": 131,
+     "line_count": 1,
+     "unit_sha256": "b9086630118a388efc7f542433337f632281f5c7ab03864305739dbc75101aa6",
+     "unit_bytes": 4967
+    }
+   ]
   }
  ]
 }
