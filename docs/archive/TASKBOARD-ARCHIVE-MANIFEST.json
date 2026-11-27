@@ -1195,6 +1195,22 @@
      "unit_bytes": 4091
     }
    ]
+  },
+  {
+   "file": "docs/archive/TASKBOARD-RECORDS-0020.md",
+   "batch": "B117-TD140-CI-RATELIMIT-R1-261127",
+   "checkpoint_oid": "3b93b6c7b0d312b328cc778bcb029708691d0632",
+   "file_sha256": "810eb8bdac584401d9cb6fe885a51e878e3fb233cae0a0833a53ea90157e8767",
+   "keep": 5,
+   "entries": [
+    {
+     "task_id": "B117-POSTB3B3-STATE-MATRIX-R1-261125",
+     "source_line": 131,
+     "line_count": 1,
+     "unit_sha256": "4abc1549ce042da09b99034bac8a2a28d0a89192373591f4edbd10431c188ba2",
+     "unit_bytes": 2655
+    }
+   ]
   }
  ]
 }

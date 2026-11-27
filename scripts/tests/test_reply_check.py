@@ -75,6 +75,153 @@ def _code(fn, *a, **kw):
     return str(e.value)
 
 
+def test_td140_production_and_promotion_rate_limit_lines_accepted():
+    w1 = 'CI_RATE_LIMIT_WAIT until=2026-11-27T10:15:00+08:00 phase=candidate'
+    s1 = 'CI_RATE_LIMIT_SUMMARY phase=candidate waits=1 min_remaining=19'
+    prod_ok = PROD_REPLY.replace('CI_RUN phase=candidate', f'{w1}\n{s1}\nCI_RUN phase=candidate', 1)
+    assert rc.check_spec(PROD_TASK, PROD_SPEC, prod_ok)[2] == 'COMMIT ' + CAND
+
+    promo_both = (
+        PROMO_REPLY
+        .replace('CI_RUN phase=candidate', f'{w1}\n{s1}\nCI_RUN phase=candidate', 1)
+        .replace('CI_RUN phase=postmain',
+                 'CI_RATE_LIMIT_WAIT until=2026-11-27T10:35:00+08:00 phase=postmain\n'
+                 'CI_RATE_LIMIT_WAIT until=2026-11-27T10:45:00+08:00 phase=postmain\n'
+                 'CI_RATE_LIMIT_SUMMARY phase=postmain waits=2 min_remaining=unknown\n'
+                 'CI_RUN phase=postmain', 1)
+    )
+    assert rc.check_spec(PROMO_TASK, PROMO_SPEC, promo_both)[2] == 'MAIN ' + CAND
+
+    ten_waits = '\n'.join(f'CI_RATE_LIMIT_WAIT until=2026-11-27T10:{i:02d}:00+08:00 phase=candidate' for i in range(10))
+    prod_cap = PROD_REPLY.replace('CI_RUN phase=candidate',
+                                  ten_waits + '\nCI_RATE_LIMIT_SUMMARY phase=candidate waits=12 min_remaining=0\nCI_RUN phase=candidate', 1)
+    assert rc.check_spec(PROD_TASK, PROD_SPEC, prod_cap)[2] == 'COMMIT ' + CAND
+
+
+def test_td140_s1_ci_rate_limit_lines_phase_and_step_binding():
+    s1_push, _ = s1_reply('push', 'CANDIDATE_CI_NOT_PASS')
+    cand_lines = 'CI_RATE_LIMIT_WAIT until=2026-11-27T10:15:00+08:00 phase=candidate\nCI_RATE_LIMIT_SUMMARY phase=candidate waits=1 min_remaining=0\n'
+    post_lines = 'CI_RATE_LIMIT_WAIT until=2026-11-27T10:25:00+08:00 phase=postmain\nCI_RATE_LIMIT_SUMMARY phase=postmain waits=1 min_remaining=0\n'
+    s1_push_ok = s1_push.replace('S1 CANDIDATE_CI_NOT_PASS', cand_lines + 'S1 CANDIDATE_CI_NOT_PASS', 1)
+    assert rc.check_spec(PROD_TASK, PROD_SPEC, s1_push_ok)[2] == 'S1 push:CANDIDATE_CI_NOT_PASS'
+
+    # Pre-CI step (focused) must reject CI rate-limit lines
+    s1_foc, _ = s1_reply('focused', 'FOCUSED_NONZERO')
+    assert _code(rc.check_spec, PROD_TASK, PROD_SPEC,
+                 s1_foc.replace('S1 FOCUSED_NONZERO', cand_lines + 'S1 FOCUSED_NONZERO', 1)) == 'REPLY_LINE_NOT_EXPECTED'
+
+    promo_steps = br.derive_steps(PROMO_SPEC)
+    # Promotion S1 at verify allows candidate, rejects postmain, validates wait/summary consistency
+    promo_s1_verify = '\n'.join([
+        cand_lines.rstrip('\n'),
+        'S1 CANDIDATE_CI_NOT_PROVEN | step verify',
+        'S1_FAILED_LIST kind=FAILED_LIST_UNAVAILABLE reason=NO_NAMES_FOUND',
+        'S1_EVIDENCE_STATUS=UNAVAILABLE',
+        'S1_FULL_CAPTURE_STATUS=UNAVAILABLE',
+        PRE.strip(),
+        'STATE done=' + ','.join(promo_steps[:promo_steps.index('verify')]) + ' halted=verify:CANDIDATE_CI_NOT_PROVEN',
+    ]) + '\n'
+    assert rc.check_spec(PROMO_TASK, PROMO_SPEC, promo_s1_verify)[2] == 'S1 verify:CANDIDATE_CI_NOT_PROVEN'
+    assert _code(rc.check_spec, PROMO_TASK, PROMO_SPEC,
+                 promo_s1_verify.replace('phase=candidate', 'phase=postmain')) == 'REPLY_CI_RATE_LIMIT_PHASE_MISMATCH'
+    assert _code(rc.check_spec, PROMO_TASK, PROMO_SPEC,
+                 promo_s1_verify.replace('waits=1', 'waits=2')) == 'REPLY_CI_RATE_LIMIT_INCONSISTENT'
+
+    # Promotion S1 at postmain allows BOTH candidate and postmain, still catches inconsistent postmain lines
+    promo_s1_postmain = '\n'.join([
+        cand_lines.rstrip('\n'),
+        post_lines.rstrip('\n'),
+        'S1 POSTMAIN_CI_NOT_PASS | step postmain',
+        'S1_FAILED_LIST kind=FAILED_LIST_UNAVAILABLE reason=NO_NAMES_FOUND',
+        'S1_EVIDENCE_STATUS=UNAVAILABLE',
+        'S1_FULL_CAPTURE_STATUS=UNAVAILABLE',
+        PRE.strip(),
+        'STATE done=' + ','.join(promo_steps[:promo_steps.index('postmain')]) + ' halted=postmain:POSTMAIN_CI_NOT_PASS',
+    ]) + '\n'
+    assert rc.check_spec(PROMO_TASK, PROMO_SPEC, promo_s1_postmain)[2] == 'S1 postmain:POSTMAIN_CI_NOT_PASS'
+    assert _code(rc.check_spec, PROMO_TASK, PROMO_SPEC,
+                 promo_s1_postmain.replace('phase=postmain waits=1', 'phase=postmain waits=0')) == 'REPLY_CI_RATE_LIMIT_INCONSISTENT'
+
+    # S1_PRIMARY (secondary control save failure) with and without ci_phases
+    s1_prim_verify = '\n'.join([
+        cand_lines.rstrip('\n'),
+        'S1_PRIMARY CANDIDATE_CI_NOT_PROVEN | step verify',
+        'S1 CONTROL_SAVE_FAILED | step verify',
+        PRE.strip(),
+        'STATE done=' + ','.join(promo_steps[:promo_steps.index('verify')]) + ' halted=None',
+    ]) + '\n'
+    assert rc.check_spec(PROMO_TASK, PROMO_SPEC, s1_prim_verify)[2] == 'S1 verify:CANDIDATE_CI_NOT_PROVEN'
+    assert _code(rc.check_spec, PROMO_TASK, PROMO_SPEC,
+                 s1_prim_verify.replace('phase=candidate', 'phase=postmain')) == 'REPLY_CI_RATE_LIMIT_PHASE_MISMATCH'
+    assert _code(rc.check_spec, PROMO_TASK, PROMO_SPEC,
+                 s1_prim_verify.replace('waits=1', 'waits=3')) == 'REPLY_CI_RATE_LIMIT_INCONSISTENT'
+    s1_prim_pre = '\n'.join([
+        cand_lines.rstrip('\n'),
+        'S1_PRIMARY FOCUSED_NONZERO | step focused',
+        'S1 CONTROL_SAVE_FAILED | step focused',
+        PRE.strip(),
+        'STATE done=preflight,setup,e24,apply halted=None',
+    ]) + '\n'
+    assert _code(rc.check_spec, PROD_TASK, PROD_SPEC, s1_prim_pre) == 'REPLY_LINE_NOT_EXPECTED'
+
+    # HALT_BEFORE_STEP and TASK_ALREADY_HALTED with done_phases non-empty vs empty
+    s1_before_postmain = '\n'.join([
+        cand_lines.rstrip('\n'),
+        'S1 SPEC_MISMATCH | step postmain',
+        PRE.strip(),
+        'STATE done=' + ','.join(promo_steps[:promo_steps.index('postmain')]) + ' halted=None',
+    ]) + '\n'
+    assert rc.check_spec(PROMO_TASK, PROMO_SPEC, s1_before_postmain)[2:] == ('S1 postmain:SPEC_MISMATCH', 'N/A', 'HALT_BEFORE_STEP')
+    assert rc.check_spec(PROMO_TASK, PROMO_SPEC, s1_before_postmain.replace(cand_lines, ''))[2:] == (
+        'S1 postmain:SPEC_MISMATCH', 'N/A', 'HALT_BEFORE_STEP')
+    assert _code(rc.check_spec, PROMO_TASK, PROMO_SPEC,
+                 s1_before_postmain.replace('waits=1', 'waits=2')) == 'REPLY_CI_RATE_LIMIT_INCONSISTENT'
+    assert _code(rc.check_spec, PROMO_TASK, PROMO_SPEC,
+                 s1_before_postmain.replace('phase=candidate', 'phase=postmain')) == 'REPLY_CI_RATE_LIMIT_PHASE_MISMATCH'
+
+    s1_already_postmain = '\n'.join([
+        cand_lines.rstrip('\n'),
+        'S1 TASK_ALREADY_HALTED promote:PROMOTE_FAILED',
+        PRE.strip(),
+        'STATE done=' + ','.join(promo_steps[:promo_steps.index('promote')]) + ' halted=promote:PROMOTE_FAILED',
+    ]) + '\n'
+    assert rc.check_spec(PROMO_TASK, PROMO_SPEC, s1_already_postmain)[2:] == ('S1 promote:PROMOTE_FAILED', 'NOT_VERIFIED', 'EVIDENCE_NOT_IN_REPLY')
+
+
+@pytest.mark.parametrize('insert,expected', [
+    ('CI_RATE_LIMIT_WAIT until=2026-02-30T10:00:00+08:00 phase=candidate\n'
+     'CI_RATE_LIMIT_SUMMARY phase=candidate waits=1 min_remaining=0\n', 'REPLY_CI_RATE_LIMIT_TIME_INVALID'),
+    ('CI_RATE_LIMIT_WAIT until=2026-11-27T10:00:00+00:00 phase=candidate\n', 'REPLY_LINE_MALFORMED'),
+    ('CI_RATE_LIMIT_WAIT until=2026-11-27T10:00:00+08:00 phase=postmain\n', 'REPLY_CI_RATE_LIMIT_PHASE_MISMATCH'),
+    ('CI_RATE_LIMIT_SUMMARY phase=postmain waits=0 min_remaining=5\n', 'REPLY_CI_RATE_LIMIT_PHASE_MISMATCH'),
+    ('CI_RATE_LIMIT_SUMMARY phase=candidate waits=0 min_remaining=5\n'
+     'CI_RATE_LIMIT_SUMMARY phase=candidate waits=0 min_remaining=5\n', 'REPLY_CI_RATE_LIMIT_SUMMARY_REPEATED'),
+    ('\n'.join(f'CI_RATE_LIMIT_WAIT until=2026-11-27T10:{i:02d}:00+08:00 phase=candidate' for i in range(11)) + '\n'
+     'CI_RATE_LIMIT_SUMMARY phase=candidate waits=11 min_remaining=0\n', 'REPLY_CI_RATE_LIMIT_WAIT_REPEATED'),
+    ('CI_RATE_LIMIT_WAIT until=2026-11-27T10:00:00+08:00 phase=candidate\n', 'REPLY_CI_RATE_LIMIT_INCONSISTENT'),
+    ('CI_RATE_LIMIT_SUMMARY phase=candidate waits=2 min_remaining=0\n', 'REPLY_CI_RATE_LIMIT_INCONSISTENT'),
+    ('CI_RATE_LIMIT_WAIT until=2026-11-27T10:00:00+08:00 phase=candidate\n'
+     'CI_RATE_LIMIT_SUMMARY phase=candidate waits=0 min_remaining=0\n', 'REPLY_CI_RATE_LIMIT_INCONSISTENT'),
+    ('\n'.join(f'CI_RATE_LIMIT_WAIT until=2026-11-27T10:{i:02d}:00+08:00 phase=candidate' for i in range(9)) + '\n'
+     'CI_RATE_LIMIT_SUMMARY phase=candidate waits=12 min_remaining=0\n', 'REPLY_CI_RATE_LIMIT_INCONSISTENT'),
+])
+def test_td140_rate_limit_reply_mutations_rejected(insert, expected):
+    mutated = PROD_REPLY.replace('CI_RUN phase=candidate', insert + 'CI_RUN phase=candidate', 1)
+    assert _code(rc.check_spec, PROD_TASK, PROD_SPEC, mutated) == expected
+
+    # Promotion cardinality allows up to 2 summaries & 20 waits; per-phase caps (<=1 summary, <=10 waits) must still fire
+    assert _code(rc.check_spec, PROMO_TASK, PROMO_SPEC, PROMO_REPLY.replace(
+        'CI_RUN phase=candidate',
+        'CI_RATE_LIMIT_SUMMARY phase=candidate waits=0 min_remaining=5\n'
+        'CI_RATE_LIMIT_SUMMARY phase=candidate waits=0 min_remaining=5\nCI_RUN phase=candidate', 1,
+    )) == 'REPLY_CI_RATE_LIMIT_SUMMARY_REPEATED'
+    assert _code(rc.check_spec, PROMO_TASK, PROMO_SPEC, PROMO_REPLY.replace(
+        'CI_RUN phase=candidate',
+        '\n'.join(f'CI_RATE_LIMIT_WAIT until=2026-11-27T10:{i:02d}:00+08:00 phase=candidate' for i in range(11)) + '\n'
+        'CI_RATE_LIMIT_SUMMARY phase=candidate waits=11 min_remaining=0\nCI_RUN phase=candidate', 1,
+    )) == 'REPLY_CI_RATE_LIMIT_WAIT_REPEATED'
+
+
 def test_real_production_reply_passes_with_prose_ignored():
     assert rc.check_spec(PROD_TASK, PROD_SPEC, PROD_REPLY) == (PROD_TASK, 'production', 'COMMIT ' + CAND, 'N/A', 'NO_S1')
 

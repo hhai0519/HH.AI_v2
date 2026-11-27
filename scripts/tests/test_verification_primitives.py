@@ -32,6 +32,555 @@ def run_tool(*args: str, env: dict[str, str] | None = None) -> subprocess.Comple
     )
 
 
+def _td140_vp(name):
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(name, TOOL_PATH)
+    vp = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(vp)
+    return vp
+
+
+def _td140_args(**over):
+    import argparse
+    base = dict(api_base='https://api.github.com', repo='hhai0519/HH.AI_v2', head_sha='c' * 40,
+                branch='batch/so-g3', require_job=['verify', 'gateway-windows'], max_attempts=1,
+                interval_seconds=0, initial_delay_seconds=0, phase='candidate',
+                rate_limit_wait_budget=0, event='push', workflow_name='Verify', diagnostic_file=None)
+    base.update(over)
+    return argparse.Namespace(**base)
+
+
+def _td140_clock(monkeypatch, vp, get_cost=0.0, responses=None, base_epoch=100.0):
+    from types import SimpleNamespace
+    clock = SimpleNamespace(now=0.0, sleeps=[], gets=[])
+
+    def sleep(d):
+        assert d >= 0
+        clock.sleeps.append(d)
+        clock.now += d
+    monkeypatch.setattr(vp, 'time', SimpleNamespace(monotonic=lambda: clock.now, sleep=sleep,
+                                                    time=lambda: base_epoch + clock.now))
+
+    def fake_get(url, budget):
+        assert 0 < budget <= 30.0
+        clock.gets.append(url)
+        clock.now += get_cost
+        return responses(url) if callable(responses) else responses.pop(0)
+    monkeypatch.setattr(vp, '_ci_bounded_get', fake_get)
+    return clock
+
+
+def _td140_run(vp, args, capsys):
+    with pytest.raises(SystemExit) as caught:
+        vp.cmd_ci_status(args)
+    return caught.value.code, json.loads(capsys.readouterr().out.strip())
+
+
+def _td140_ok(obj, **extra):
+    import base64
+    res = {'kind': 'OK', 'body': base64.b64encode(json.dumps(obj).encode()).decode()}
+    res.update(extra)
+    return res
+
+
+def test_td140_helpers_formatting_parsing_and_min_remaining():
+    vp = _td140_vp('vp_td140_helpers')
+    # 1764209700 = 2025-11-27T02:15:00Z = 2025-11-27T10:15:00+08:00 (kills TAIPEI_TZ 8->9 & format)
+    assert vp._format_taipei_iso(1764209700.9) == '2025-11-27T10:15:00+08:00'
+    assert vp._parse_nonneg_ascii_int('0') == 0
+    assert vp._parse_nonneg_ascii_int('42') == 42
+    assert vp._parse_nonneg_ascii_int('١٢') is None
+    assert vp._parse_nonneg_ascii_int('abc') is None
+    assert vp._parse_nonneg_ascii_int('-1') is None
+
+    st = {'min_rate_limit_remaining': None}
+    vp._record_rate_limit_remaining(st, -1)
+    assert st['min_rate_limit_remaining'] is None
+    vp._record_rate_limit_remaining(st, True)
+    assert st['min_rate_limit_remaining'] is None
+    vp._record_rate_limit_remaining(st, 0)
+    assert st['min_rate_limit_remaining'] == 0
+    vp._record_rate_limit_remaining(st, '10')
+    assert st['min_rate_limit_remaining'] == 0
+
+
+def test_td140_http_worker_rate_limit_url_allowlist_and_200_headers(monkeypatch, capsys):
+    vp = _td140_vp('vp_td140_worker')
+    seen_headers = []
+    body_bytes = b'{"resources":{"core":{"remaining":37,"reset":1700001234}}}'
+
+    class FakeResp:
+        headers = {'X-RateLimit-Remaining': '37', 'X-RateLimit-Reset': '1700001234'}
+        def read(self, n):
+            return body_bytes[:n]
+        def __enter__(self):
+            return self
+        def __exit__(self, *a):
+            return False
+
+    def fake_urlopen(req, timeout=None):
+        seen_headers.append(dict(req.header_items()))
+        return FakeResp()
+
+    monkeypatch.setattr(vp.urllib.request, 'urlopen', fake_urlopen)
+    for ok_url in (
+        'https://api.github.com/repos/a/b/actions/runs',
+        'https://api.github.com/rate_limit',
+        'http://127.0.0.1:8080/rate_limit',
+    ):
+        vp._ci_http_worker(ok_url)
+        out = json.loads(capsys.readouterr().out.strip())
+        assert out['kind'] == 'OK' and out['remaining'] == '37' and out['reset'] == '1700001234'
+    assert all('Authorization' not in h for h in seen_headers)
+
+    # Exact CI_MAX_BYTES accepted; CI_MAX_BYTES + 1 rejected (read(CI_MAX_BYTES + 1) boundary)
+    body_bytes = b'x' * vp.CI_MAX_BYTES
+    vp._ci_http_worker('https://api.github.com/rate_limit')
+    assert json.loads(capsys.readouterr().out.strip())['kind'] == 'OK'
+    body_bytes = b'x' * (vp.CI_MAX_BYTES + 1)
+    vp._ci_http_worker('https://api.github.com/rate_limit')
+    assert json.loads(capsys.readouterr().out.strip()) == {'kind': 'INVALID'}
+
+    called_bad = []
+    monkeypatch.setattr(vp.urllib.request, 'urlopen', lambda *a, **k: called_bad.append(a))
+    for bad_url in (
+        'https://api.github.com/rate_limit/extra',
+        'https://api.github.com/rate_limit?foo=1',
+        'http://127.0.0.2:8080/rate_limit',
+        'https://evil.example/rate_limit',
+    ):
+        vp._ci_http_worker(bad_url)
+        assert json.loads(capsys.readouterr().out.strip()) == {'kind': 'INVALID'}
+    assert called_bad == []
+
+
+@pytest.mark.parametrize('bad_kwargs', [
+    {'require_job': []},
+    {'max_attempts': 0},
+    {'max_attempts': 61},
+    {'max_attempts': True},
+    {'initial_delay_seconds': -1},
+    {'initial_delay_seconds': 601},
+    {'initial_delay_seconds': True},
+    {'interval_seconds': -1},
+    {'interval_seconds': 121},
+    {'interval_seconds': True},
+    {'phase': 'invalid'},
+    {'rate_limit_wait_budget': -1},
+    {'rate_limit_wait_budget': 3661},
+    {'rate_limit_wait_budget': True},
+])
+def test_td140_ci_status_invalid_arguments_fail_closed(monkeypatch, capsys, bad_kwargs):
+    vp = _td140_vp('vp_td140_args')
+    clock = _td140_clock(monkeypatch, vp, responses=[])
+    rc, payload = _td140_run(vp, _td140_args(**bad_kwargs), capsys)
+    assert rc == 2 and payload['reason'] == 'INVALID_ARGUMENT' and clock.gets == []
+
+
+def test_td140_valid_boundary_arguments_accepted(monkeypatch, capsys):
+    vp = _td140_vp('vp_td140_bounds_ok')
+    sha, branch = 'c' * 40, 'batch/so-g3'
+    runs = {'workflow_runs': [{'id': 8809, 'name': 'Verify', 'head_sha': sha, 'head_branch': branch,
+                               'event': 'push', 'status': 'completed', 'conclusion': 'success', 'run_attempt': 1}]}
+    jobs = {'jobs': [{'name': j, 'status': 'completed', 'conclusion': 'success'} for j in ('verify', 'gateway-windows')]}
+    _td140_clock(monkeypatch, vp, responses=[_td140_ok(runs), _td140_ok(jobs)])
+    rc, payload = _td140_run(vp, _td140_args(max_attempts=60, interval_seconds=120,
+                                             initial_delay_seconds=600, rate_limit_wait_budget=0), capsys)
+    assert rc == 0 and payload['status'] == 'PASS'
+
+
+def test_td140_preflight_rate_limit_low_extends_budget_writes_diag_and_passes(tmp_path, monkeypatch, capsys):
+    import base64
+    vp = _td140_vp('vp_td140_preflight_ext')
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / '.git').mkdir()
+    diag_rel = '.git/TD140-PROBE-candidate-ci-diagnostic.json'
+    sha, branch = 'c' * 40, 'batch/so-g3'
+    rl_doc = {'resources': {'core': {'remaining': 5, 'reset': 1764209700 + 1000}}}
+    runs = {'workflow_runs': [{'id': 8801, 'name': 'Verify', 'head_sha': sha, 'head_branch': branch,
+                               'event': 'push', 'status': 'completed', 'conclusion': 'success', 'run_attempt': 1}]}
+    jobs = {'jobs': [{'name': j, 'status': 'completed', 'conclusion': 'success'} for j in ('verify', 'gateway-windows')]}
+    diag_snapshots = []
+
+    clock_state = {'now': 0.0, 'sleeps': [], 'gets': []}
+    def sleep(d):
+        assert d >= 0
+        if (tmp_path / diag_rel).is_file():
+            diag_snapshots.append(json.loads((tmp_path / diag_rel).read_text('utf-8')))
+        clock_state['sleeps'].append(d)
+        clock_state['now'] += d
+
+    monkeypatch.setattr(vp, 'time', type(sys)('fake_time'))
+    vp.time.monotonic = lambda: clock_state['now']
+    vp.time.sleep = sleep
+    vp.time.time = lambda: 1764209700.0 + clock_state['now']
+
+    replies = [
+        {'kind': 'OK', 'body': base64.b64encode(json.dumps(rl_doc).encode()).decode(), 'remaining': '5', 'reset': '1764210700'},
+        {'kind': 'OK', 'body': base64.b64encode(json.dumps(runs).encode()).decode(), 'remaining': '59', 'reset': '1764214300'},
+        {'kind': 'OK', 'body': base64.b64encode(json.dumps(jobs).encode()).decode(), 'remaining': '58', 'reset': '1764214300'},
+    ]
+    def fake_get(url, budget):
+        assert 0 < budget <= 30.0
+        clock_state['gets'].append(url)
+        return replies.pop(0)
+    monkeypatch.setattr(vp, '_ci_bounded_get', fake_get)
+
+    args = _td140_args(max_attempts=24, interval_seconds=60, initial_delay_seconds=360,
+                       phase='candidate', rate_limit_wait_budget=3660, diagnostic_file=diag_rel)
+    rc, payload = _td140_run(vp, args, capsys)
+    assert rc == 0 and payload['status'] == 'PASS'
+    assert clock_state['sleeps'] == [1005.0]
+    assert clock_state['gets'][0] == 'https://api.github.com/rate_limit'
+    assert payload['rate_limit_waits'] == 1
+    assert payload['min_rate_limit_remaining'] == 5
+    # Exact UTC+8 formatted time (+ wait_seconds, not minus): 1764210705 = 10:31:45+08:00
+    assert payload['rate_limit_wait_events'] == [{'until': '2025-11-27T10:31:45+08:00', 'phase': 'candidate'}]
+    assert len(diag_snapshots) == 1
+    assert diag_snapshots[0]['schema_version'] == 1
+    assert diag_snapshots[0]['attempts_used'] == 0
+    assert diag_snapshots[0]['status'] == 'WAITING_RATE_LIMIT'
+    assert diag_snapshots[0]['active_rate_limit_wait']['phase'] == 'candidate'
+    final_diag = json.loads((tmp_path / diag_rel).read_text('utf-8'))
+    assert final_diag['active_rate_limit_wait'] is None
+    assert final_diag['initial_delay_seconds'] == 360
+    assert final_diag['transport']['min_rate_limit_remaining'] == 5
+
+
+def test_td140_preflight_boundaries_and_max_bytes(monkeypatch, capsys):
+    import base64
+    vp = _td140_vp('vp_td140_preflight_bounds')
+    sha, branch = 'c' * 40, 'batch/so-g3'
+    runs = {'workflow_runs': [{'id': 8802, 'name': 'Verify', 'head_sha': sha, 'head_branch': branch,
+                               'event': 'push', 'status': 'completed', 'conclusion': 'success', 'run_attempt': 1}]}
+    jobs = {'jobs': [{'name': j, 'status': 'completed', 'conclusion': 'success'} for j in ('verify', 'gateway-windows')]}
+
+    # 1. Exact core_rem == 12 does NOT preflight-wait even with long reset (kills 12 -> 13)
+    c_eq12 = _td140_clock(monkeypatch, vp, responses=[
+        _td140_ok({'resources': {'core': {'remaining': 12, 'reset': 2000}}}, remaining='12', reset='2000'),
+        _td140_ok(runs, remaining='11', reset='2000'),
+        _td140_ok(jobs, remaining='10', reset='2000'),
+    ])
+    rc, p_eq12 = _td140_run(vp, _td140_args(max_attempts=1, interval_seconds=0, initial_delay_seconds=10,
+                                           phase='candidate', rate_limit_wait_budget=3660), capsys)
+    assert rc == 0 and c_eq12.sleeps == [10.0] and p_eq12['rate_limit_waits'] == 0
+
+    # 2. Header remaining captured even if JSON body has no core quota; exact len(rl_body) == CI_MAX_BYTES accepted
+    pad_prefix = '{"resources":{"core":{"remaining":3,"reset":2000}},"p":"'
+    pad_len = vp.CI_MAX_BYTES - len(pad_prefix) - 2
+    exact_json = (pad_prefix + ('a' * pad_len) + '"}').encode('utf-8')
+    assert len(exact_json) == vp.CI_MAX_BYTES
+    c_maxb = _td140_clock(monkeypatch, vp, responses=[
+        {'kind': 'OK', 'body': base64.b64encode(exact_json).decode(), 'remaining': '3', 'reset': '2000'},
+        _td140_ok(runs, remaining='59', reset='5000'),
+        _td140_ok(jobs, remaining='58', reset='5000'),
+    ])
+    rc, p_maxb = _td140_run(vp, _td140_args(max_attempts=1, interval_seconds=0, initial_delay_seconds=0,
+                                           phase='candidate', rate_limit_wait_budget=3660), capsys)
+    assert rc == 0 and c_maxb.sleeps == [1905.0] and p_maxb['rate_limit_waits'] == 1
+
+    # 3. Preflight OK header remaining=17 recorded when body has no core object
+    c_hdr = _td140_clock(monkeypatch, vp, responses=[
+        _td140_ok({}, remaining='17', reset='3000'),
+        _td140_ok(runs, remaining='25', reset='3000'),
+        _td140_ok(jobs, remaining='24', reset='3000'),
+    ])
+    rc, p_hdr = _td140_run(vp, _td140_args(max_attempts=1, interval_seconds=0, rate_limit_wait_budget=100), capsys)
+    assert rc == 0 and p_hdr['min_rate_limit_remaining'] == 17
+
+
+def test_td140_dynamic_rate_limit_extension_and_budget_exact_arithmetic(monkeypatch, capsys):
+    vp = _td140_vp('vp_td140_dyn_ext')
+    sha, branch = 'c' * 40, 'batch/so-g3'
+    runs = {'workflow_runs': [{'id': 8803, 'name': 'Verify', 'head_sha': sha, 'head_branch': branch,
+                               'event': 'push', 'status': 'completed', 'conclusion': 'success', 'run_attempt': 1}]}
+    jobs = {'jobs': [{'name': j, 'status': 'completed', 'conclusion': 'success'} for j in ('verify', 'gateway-windows')]}
+    rl_ok = {'resources': {'core': {'remaining': 15, 'reset': 2000}}}
+
+    # 1. Exact budget match (retry_after == budget = 2000) succeeds and consumes budget (-= not +=):
+    #    1st 429 consumes all 2000 budget; 2nd 429 needs 20s (> CI_TOTAL_BUDGET=10s) and fails with HTTP_ERROR!
+    c1 = _td140_clock(monkeypatch, vp, responses=[
+        _td140_ok(rl_ok, remaining='15', reset='2000'),
+        {'kind': 'HTTP', 'code': 429, 'remaining': '0', 'reset': None, 'retry_after': '2000'},
+        {'kind': 'HTTP', 'code': 429, 'remaining': '0', 'reset': None, 'retry_after': '20'},
+    ])
+    vp.CI_TOTAL_BUDGET = 10.0
+    rc, p1 = _td140_run(vp, _td140_args(max_attempts=1, interval_seconds=0, initial_delay_seconds=0,
+                                       phase='postmain', rate_limit_wait_budget=2000), capsys)
+    assert rc == 2 and p1['reason'] == 'HTTP_ERROR'
+    assert c1.sleeps == [2000.0] and p1['rate_limit_waits'] == 1
+
+    # 2. retry_after == 0 on 429 when budget=0.5s does NOT extend and breaks at deadline=0 -> sleeps=[], waits=0
+    vp.CI_TOTAL_BUDGET = 0.0
+    c2 = _td140_clock(monkeypatch, vp, responses=[
+        {'kind': 'HTTP', 'code': 429, 'remaining': '0', 'reset': None, 'retry_after': '0'},
+    ])
+    rc, p2 = _td140_run(vp, _td140_args(max_attempts=1, interval_seconds=0, rate_limit_wait_budget=0), capsys)
+    assert rc == 2 and c2.sleeps == [] and p2['rate_limit_waits'] == 0
+
+    # 3. TRANSPORT retry does NOT consume rate_limit_wait_budget or count as limited even when budget allows retry_delay
+    vp.CI_TOTAL_BUDGET = 1.0
+    c3 = _td140_clock(monkeypatch, vp, get_cost=0.95, responses=[
+        _td140_ok(rl_ok, remaining='15', reset='2000'),
+        {'kind': 'TRANSPORT', 'detail': 'timeout'},
+        _td140_ok(runs, remaining='14', reset='2000'),
+        _td140_ok(jobs, remaining='13', reset='2000'),
+    ])
+    rc, p3 = _td140_run(vp, _td140_args(max_attempts=1, interval_seconds=0, rate_limit_wait_budget=100), capsys)
+    assert rc == 2 and c3.sleeps == [] and p3['rate_limit_waits'] == 0
+
+
+def test_td140_point2_no_count_when_limit_break_without_sleep(monkeypatch, capsys):
+    vp = _td140_vp('vp_td140_point2')
+    vp.CI_TOTAL_BUDGET = 5.0
+    c1 = _td140_clock(monkeypatch, vp, responses=[
+        {'kind': 'HTTP', 'code': 403, 'retry_after': None, 'remaining': '0', 'reset': '111'},
+    ])
+    rc, p1 = _td140_run(vp, _td140_args(max_attempts=60, interval_seconds=0, phase='candidate'), capsys)
+    assert rc == 2 and c1.sleeps == [] and p1['rate_limit_waits'] == 0 and p1['rate_limit_wait_events'] == []
+
+    # Polling loop cap (max_attempts=1, interval=60 -> deadline uses 60 not 61): checks rate limit break at request_index==2
+    vp.CI_TOTAL_BUDGET = 1800.0
+    c2 = _td140_clock(monkeypatch, vp, responses=[
+        {'kind': 'HTTP', 'code': 503, 'retry_after': None, 'remaining': '20', 'reset': None},
+        {'kind': 'HTTP', 'code': 503, 'retry_after': None, 'remaining': '19', 'reset': None},
+        {'kind': 'HTTP', 'code': 403, 'retry_after': None, 'remaining': '0', 'reset': '120'},
+    ])
+    rc, p2 = _td140_run(vp, _td140_args(max_attempts=1, interval_seconds=0, phase='postmain'), capsys)
+    assert rc == 2 and len(c2.sleeps) == 2 and p2['rate_limit_waits'] == 0 and p2['rate_limit_wait_events'] == []
+    assert p2['min_rate_limit_remaining'] == 0
+
+
+def test_td140_remaining_cmd_ci_status_and_do_get_json_boundaries(tmp_path, monkeypatch, capsys):
+    import argparse
+    vp = _td140_vp('vp_td140_more')
+    sha, branch = 'c' * 40, 'batch/so-g3'
+    empty_runs = {'workflow_runs': []}
+    ok_runs = {'workflow_runs': [{'id': 8810, 'name': 'Verify', 'head_sha': sha, 'head_branch': branch,
+                                  'event': 'push', 'status': 'completed', 'conclusion': 'success', 'run_attempt': 1}]}
+    ok_jobs = {'jobs': [{'name': j, 'status': 'completed', 'conclusion': 'success'} for j in ('verify', 'gateway-windows')]}
+
+    # 1. Default max_attempts=30, interval_seconds=20 via omitted attrs; check diagnostic failures=0 & hard_deadline=True
+    (tmp_path / '.git').mkdir(exist_ok=True)
+    monkeypatch.chdir(tmp_path)
+    diag_rel = '.git/TD140-DEF-candidate-ci-diagnostic.json'
+    c_def = _td140_clock(monkeypatch, vp, responses=[_td140_ok(empty_runs, remaining='2') for _ in range(31)])
+    ns_def = argparse.Namespace(api_base='https://api.github.com', repo='hhai0519/HH.AI_v2', head_sha=sha,
+                                branch=branch, require_job=['verify', 'gateway-windows'],
+                                event='push', workflow_name='Verify', diagnostic_file=diag_rel)
+    rc_def, p_def = _td140_run(vp, ns_def, capsys)
+    assert rc_def == 2 and p_def['attempts_used'] == 30 and p_def['min_rate_limit_remaining'] == 2
+    assert c_def.sleeps == [20.0] * 29
+    diag_def = json.loads((tmp_path / diag_rel).read_text('utf-8'))
+    assert diag_def['transport']['failures'] == 0 and diag_def['transport']['hard_deadline'] is True
+
+    # 2. Deadline formula: 0 + 1*(0+60) = 60.0s (not 61.0!): 2 GETs (20.1s) + 0.1s sleep = 40.3s, 3rd GET 20.1s -> 60.4s >= 60.0s
+    #    Also captures exact remaining_budget = 60.0 - 40.3 = 19.7 (kills deadline - monotonic -> +)
+    budgets_seen = []
+    orig_clock = _td140_clock(monkeypatch, vp, get_cost=20.1, responses=[
+        {'kind': 'HTTP', 'code': 503, 'remaining': '20'}, _td140_ok(ok_runs), _td140_ok(ok_jobs)])
+    orig_get = vp._ci_bounded_get
+    def rec_get(url, budget):
+        budgets_seen.append(round(budget, 3))
+        return orig_get(url, budget)
+    monkeypatch.setattr(vp, '_ci_bounded_get', rec_get)
+    rc_60, _ = _td140_run(vp, _td140_args(max_attempts=1, interval_seconds=0, initial_delay_seconds=0), capsys)
+    assert rc_60 == 2 and budgets_seen[2] == pytest.approx(19.7) and orig_clock.sleeps == [0.1]
+
+    # remaining_budget <= 0 breaks without calling _ci_bounded_get; remaining_budget == 1.0 succeeds (kills 0 -> 1)
+    import base64
+    from types import SimpleNamespace
+    vp.CI_TOTAL_BUDGET = 10.0
+    m_state = {'n': 0, 'gets': 0}
+    def step_mono():
+        m_state['n'] += 1
+        return 0.0 if m_state['n'] <= 7 else 10.0
+    def step_get(url, budget):
+        m_state['gets'] += 1
+        return _td140_ok(ok_runs)
+    monkeypatch.setattr(vp, 'time', SimpleNamespace(monotonic=step_mono, sleep=lambda d: None, time=lambda: 100.0))
+    monkeypatch.setattr(vp, '_ci_bounded_get', step_get)
+    assert _td140_run(vp, _td140_args(initial_delay_seconds=0), capsys)[0] == 2 and m_state['gets'] == 1
+
+    vp.CI_TOTAL_BUDGET = 1.0
+    _td140_clock(monkeypatch, vp, responses=[_td140_ok(ok_runs), _td140_ok(ok_jobs)])
+    assert _td140_run(vp, _td140_args(initial_delay_seconds=0), capsys)[0] == 0
+    vp.CI_TOTAL_BUDGET = 1800.0
+
+    # Exact len(candidate_body) == CI_MAX_BYTES accepted in do_get_json (kills > -> >=)
+    max_runs_doc = dict(ok_runs, pad='')
+    prefix_bytes = json.dumps(max_runs_doc).encode('utf-8')
+    pad_need = vp.CI_MAX_BYTES - len(prefix_bytes)
+    exact_runs_body = json.dumps(dict(ok_runs, pad='a' * pad_need)).encode('utf-8')
+    assert len(exact_runs_body) == vp.CI_MAX_BYTES
+    _td140_clock(monkeypatch, vp, responses=[
+        {'kind': 'OK', 'body': base64.b64encode(exact_runs_body).decode()},
+        _td140_ok(ok_jobs),
+    ])
+    assert _td140_run(vp, _td140_args(), capsys)[0] == 0
+
+    # 3. do_get_json: INVALID breaks without retry; bad base64 rejected (validate=True); 404 w/ remaining=0 breaks
+    c_inv = _td140_clock(monkeypatch, vp, responses=[{'kind': 'INVALID'}])
+    assert _td140_run(vp, _td140_args(), capsys)[0] == 2 and len(c_inv.gets) == 1 and c_inv.sleeps == []
+    c_b64 = _td140_clock(monkeypatch, vp, responses=[
+        {'kind': 'OK', 'body': _td140_ok(ok_runs)['body'] + '!', 'remaining': '9'},
+        _td140_ok(ok_jobs, remaining='8'),
+    ])
+    assert _td140_run(vp, _td140_args(), capsys)[0] == 2 and len(c_b64.gets) == 1
+    c_404 = _td140_clock(monkeypatch, vp, responses=[
+        {'kind': 'HTTP', 'code': 404, 'remaining': '0', 'reset': None, 'retry_after': '5'}])
+    assert _td140_run(vp, _td140_args(), capsys)[0] == 2 and len(c_404.gets) == 1 and c_404.sleeps == []
+
+    # 4. TRANSPORT/500/504 with budget>0 must not mark limited or extend; tight CI_TOTAL_BUDGET=0.12 reaches L636 and rejects extend
+    c_tr = _td140_clock(monkeypatch, vp, responses=[
+        _td140_ok({}, remaining='50'),
+        {'kind': 'TRANSPORT', 'detail': 'reset'},
+        _td140_ok(ok_runs, remaining='49'),
+        _td140_ok(ok_jobs, remaining='48'),
+    ])
+    rc_tr, p_tr = _td140_run(vp, _td140_args(rate_limit_wait_budget=100), capsys)
+    assert rc_tr == 0 and c_tr.sleeps == [0.1] and p_tr['rate_limit_waits'] == 0
+
+    vp.CI_TOTAL_BUDGET = 0.12
+    c_tr2 = _td140_clock(monkeypatch, vp, get_cost=0.05, responses=[
+        _td140_ok({}, remaining='50'),
+        {'kind': 'TRANSPORT', 'detail': 'timeout'},
+        _td140_ok(ok_runs, remaining='49'),
+        _td140_ok(ok_jobs, remaining='48'),
+    ])
+    rc_tr2, _ = _td140_run(vp, _td140_args(rate_limit_wait_budget=10), capsys)
+    assert rc_tr2 == 2 and c_tr2.sleeps == []
+    vp.CI_TOTAL_BUDGET = 1800.0
+
+    # 4. Transient HTTP 500, 504 retry with rate_limit_wait_budget=100 without setting rate_limit_waits;
+    #    3 consecutive 503s record transport.failures==3 and stop without extra sleep
+    c_500 = _td140_clock(monkeypatch, vp, responses=[
+        _td140_ok({}, remaining='50'),
+        {'kind': 'HTTP', 'code': 500, 'remaining': '10'},
+        {'kind': 'HTTP', 'code': 504, 'remaining': '9'},
+        _td140_ok(ok_runs, remaining='8'),
+        _td140_ok(ok_jobs, remaining='7'),
+    ])
+    rc_500, p_500 = _td140_run(vp, _td140_args(rate_limit_wait_budget=100), capsys)
+    assert rc_500 == 0 and c_500.sleeps == [0.1, 0.2] and p_500['rate_limit_waits'] == 0 and p_500['min_rate_limit_remaining'] == 7
+
+    diag_k = '.git/TD140-K-candidate-ci-diagnostic.json'
+    c_k3 = _td140_clock(monkeypatch, vp, responses=[
+        {'kind': 'HTTP', 'code': 503, 'remaining': '10'},
+        {'kind': 'HTTP', 'code': 503, 'remaining': '9'},
+        {'kind': 'HTTP', 'code': 503, 'remaining': '8'},
+    ])
+    rc_k3, _ = _td140_run(vp, _td140_args(diagnostic_file=diag_k), capsys)
+    assert rc_k3 == 2 and len(c_k3.gets) == 3 and c_k3.sleeps == [0.1, 0.2]
+    assert json.loads((tmp_path / diag_k).read_text('utf-8'))['transport']['failures'] == 3
+
+    # 5. Exact equality boundary deadline - now == retry_delay (5.0 == 5.0) breaks without sleep
+    vp.CI_TOTAL_BUDGET = 5.0
+    c_eqd = _td140_clock(monkeypatch, vp, responses=[
+        {'kind': 'HTTP', 'code': 429, 'remaining': '0', 'retry_after': '5'},
+    ])
+    assert _td140_run(vp, _td140_args(rate_limit_wait_budget=0), capsys)[0] == 2 and c_eqd.sleeps == []
+    vp.CI_TOTAL_BUDGET = 1800.0
+
+    # 6. Preflight: budget=1 calls /rate_limit; bad base64 'e30=$' ignored; core.remaining=4 lowers min_remaining;
+    #    core_rem=0 triggers wait, reset_wait == budget (105 == 105) allowed; preflight consumes budget
+    c_pf0 = _td140_clock(monkeypatch, vp, responses=[
+        _td140_ok({'resources': {'core': {'remaining': 0, 'reset': 200}}}, remaining='20'),
+        {'kind': 'HTTP', 'code': 429, 'remaining': '0', 'retry_after': '50'},
+        _td140_ok(ok_runs, remaining='19'),
+        _td140_ok(ok_jobs, remaining='18'),
+    ])
+    # initial=0, reset_wait=(200+5)-100=105 == budget=105 -> preflight sleeps 105, remaining budget=0!
+    # 2nd request 429 retry_after=50 with CI_TOTAL_BUDGET=30 -> remaining deadline=30 < 50 & budget=0 -> HTTP_ERROR
+    vp.CI_TOTAL_BUDGET = 30.0
+    rc_pf0, p_pf0 = _td140_run(vp, _td140_args(max_attempts=1, interval_seconds=0, rate_limit_wait_budget=105), capsys)
+    assert rc_pf0 == 2 and c_pf0.sleeps == [105.0] and p_pf0['rate_limit_waits'] == 1 and p_pf0['min_rate_limit_remaining'] == 0
+    vp.CI_TOTAL_BUDGET = 1800.0
+
+    # budget=1 -> still queries /rate_limit; invalid base64 rejected (validate=True); over-budget reset_wait skipped
+    c_pf1 = _td140_clock(monkeypatch, vp, responses=[
+        {'kind': 'OK', 'body': _td140_ok({'resources': {'core': {'remaining': 0, 'reset': 2000}}})['body'] + '!', 'remaining': '11'},
+        _td140_ok(ok_runs, remaining='50'),
+        _td140_ok(ok_jobs, remaining='50'),
+    ])
+    rc_pf1, p_pf1 = _td140_run(vp, _td140_args(rate_limit_wait_budget=1), capsys)
+    assert rc_pf1 == 0 and c_pf1.gets[0].endswith('/rate_limit') and c_pf1.sleeps == [] and p_pf1['rate_limit_waits'] == 0
+    assert p_pf1['min_rate_limit_remaining'] == 11
+
+    c_pf_over = _td140_clock(monkeypatch, vp, responses=[
+        _td140_ok({'resources': {'core': {'remaining': 0, 'reset': 500}}}, remaining='20'),
+        _td140_ok(ok_runs, remaining='20'),
+        _td140_ok(ok_jobs, remaining='20'),
+    ])
+    rc_po, p_po = _td140_run(vp, _td140_args(initial_delay_seconds=0, rate_limit_wait_budget=100), capsys)
+    assert rc_po == 0 and c_pf_over.sleeps == [] and p_po['rate_limit_waits'] == 0
+
+    c_pf_eq = _td140_clock(monkeypatch, vp, responses=[
+        _td140_ok({'resources': {'core': {'remaining': 4, 'reset': 195}}}, remaining='20'),
+        _td140_ok(ok_runs, remaining='20'),
+        _td140_ok(ok_jobs, remaining='20'),
+    ])
+    rc_peq, p_peq = _td140_run(vp, _td140_args(initial_delay_seconds=100, rate_limit_wait_budget=500), capsys)
+    assert rc_peq == 0 and c_pf_eq.sleeps == [100.0] and p_peq['rate_limit_waits'] == 0 and p_peq['min_rate_limit_remaining'] == 4
+
+    # Invalid core_rem / core_reset types (base_epoch=2.0 -> reset=0 or True gives reset_wait > 0 unless filtered!); reset=1 valid
+    for bad_core in (
+        {'remaining': -1, 'reset': 2000},
+        {'remaining': True, 'reset': 2000},
+        {'remaining': 0, 'reset': 0},
+        {'remaining': 0, 'reset': True},
+    ):
+        c_bc = _td140_clock(monkeypatch, vp, base_epoch=2.0, responses=[
+            _td140_ok({'resources': {'core': bad_core}}, remaining='30'),
+            _td140_ok(ok_runs, remaining='30'),
+            _td140_ok(ok_jobs, remaining='30'),
+        ])
+        rc_bc, p_bc = _td140_run(vp, _td140_args(rate_limit_wait_budget=3000), capsys)
+        assert rc_bc == 0 and c_bc.sleeps == [] and p_bc['rate_limit_waits'] == 0
+
+    c_r1 = _td140_clock(monkeypatch, vp, base_epoch=2.0, responses=[
+        _td140_ok({'resources': {'core': {'remaining': 0, 'reset': 1}}}, remaining='30'),
+        _td140_ok(ok_runs, remaining='30'),
+        _td140_ok(ok_jobs, remaining='30'),
+    ])
+    rc_r1, p_r1 = _td140_run(vp, _td140_args(rate_limit_wait_budget=100), capsys)
+    assert rc_r1 == 0 and c_r1.sleeps == [4.0] and p_r1['rate_limit_waits'] == 1
+
+    # initial_delay capped by total_deadline - monotonic (start now=5.0 -> 15.0 - 5.0 = 10.0 vs 15.0 + 5.0 = 20.0)
+    vp.CI_TOTAL_BUDGET = 10.0
+    c_cap = _td140_clock(monkeypatch, vp, responses=[_td140_ok(ok_runs), _td140_ok(ok_jobs)])
+    c_cap.now = 5.0
+    rc_cap, _ = _td140_run(vp, _td140_args(initial_delay_seconds=50), capsys)
+    assert rc_cap == 2 and c_cap.sleeps == [10.0] and c_cap.gets == []
+    vp.CI_TOTAL_BUDGET = 1800.0
+
+    c_d1 = _td140_clock(monkeypatch, vp, responses=[_td140_ok(ok_runs), _td140_ok(ok_jobs)])
+    assert _td140_run(vp, _td140_args(initial_delay_seconds=1), capsys)[0] == 0 and c_d1.sleeps == [1.0]
+
+    vp.CI_TOTAL_BUDGET = 0.0
+    c_z = _td140_clock(monkeypatch, vp, responses=[_td140_ok(ok_runs)])
+    rc_z, p_z = _td140_run(vp, _td140_args(initial_delay_seconds=0), capsys)
+    assert rc_z == 2 and c_z.gets == [] and p_z['attempts_used'] == 0
+    vp.CI_TOTAL_BUDGET = 1800.0
+
+    c_http_pf = _td140_clock(monkeypatch, vp, responses=[
+        {'kind': 'HTTP', 'code': 403, 'remaining': '3'},
+        _td140_ok(ok_runs, remaining='30'),
+        _td140_ok(ok_jobs, remaining='30'),
+    ])
+    rc_hp, p_hp = _td140_run(vp, _td140_args(rate_limit_wait_budget=100), capsys)
+    assert rc_hp == 0 and p_hp['min_rate_limit_remaining'] == 3
+
+    # Attempt loop: max_attempts=2, first attempt empty, second succeeds after initial_delay + interval_seconds
+    c_att = _td140_clock(monkeypatch, vp, responses=[
+        _td140_ok(empty_runs, remaining='30'),
+        _td140_ok(ok_runs, remaining='29'),
+        _td140_ok(ok_jobs, remaining='28'),
+    ])
+    rc_att, p_att = _td140_run(vp, _td140_args(max_attempts=2, interval_seconds=5, initial_delay_seconds=10), capsys)
+    assert rc_att == 0 and p_att['attempts_used'] == 2 and c_att.sleeps == [10.0, 5.0]
+
+
 def test_t1_count_match(tmp_path: Path) -> None:
     target = tmp_path / "target.txt"
     needle = tmp_path / "needle.txt"

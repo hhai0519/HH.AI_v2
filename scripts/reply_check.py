@@ -65,7 +65,7 @@ import json
 import re
 import sys
 import zipfile
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -80,6 +80,7 @@ OID = re.compile(r'^[0-9a-f]{40}$')
 SHA256 = re.compile(r'^[0-9a-f]{64}$')
 CODE = r'(?:[A-Z][A-Z0-9_]*|UNEXPECTED_[A-Za-z_][A-Za-z0-9_]*)'
 NEXT_STEP = 'USER_FORWARD_BUNDLE_AND_HANDOFF_CARD_TO_ACTIVE_AUDITOR_FOR_INDEPENDENT_REVIEW'
+MAX_CI_RATE_LIMIT_WAITS = 10
 
 # Bounded steps: (stage, codes raised only before the bounded run, codes raised only after it started).
 # Taken from batch_runner Batch.step_focused/step_precommit/step_stage/step_postcommit, bounded() and gate();
@@ -111,6 +112,10 @@ CI_CONCLUSION = '|'.join(gate_report.CI_CONCLUSIONS)
 FORMATS = [
     ('CI_RUN', 'CI_RUN ', r'^CI_RUN phase=(candidate|postmain) run_id=([1-9][0-9]*) attempt=([1-9][0-9]*) '
                           r'event=push branch=(\S+) head_sha=(\S+) verify=success gateway-windows=success$', (5,), ()),
+    ('CI_RATE_LIMIT_WAIT', 'CI_RATE_LIMIT_WAIT ',
+     r'^CI_RATE_LIMIT_WAIT until=(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\+08:00) phase=(candidate|postmain)$', (), ()),
+    ('CI_RATE_LIMIT_SUMMARY', 'CI_RATE_LIMIT_SUMMARY ',
+     r'^CI_RATE_LIMIT_SUMMARY phase=(candidate|postmain) waits=([0-9]+) min_remaining=([0-9]+|unknown)$', (), ()),
     ('COMMIT', 'COMMIT ', r'^COMMIT (\S+) \| CI (PASS|PENDING) \| S1 NONE$', (1,), ()),
     ('MAIN_PROMOTED', 'MAIN_PROMOTED ', r'^MAIN_PROMOTED (\S+)$', (1,), ()),
     ('MAIN', 'MAIN ', r'^MAIN (\S+) \| POST-MAIN CI (PASS|PENDING) \| S1 NONE$', (1,), ()),
@@ -245,6 +250,40 @@ def check_timing(found):
 def check_ci(found, phase, branch, head):
     for m in found['CI_RUN_' + phase.upper()]:
         _require(m.group(4) == branch and m.group(5) == head, 'REPLY_CI_RUN_' + phase.upper() + '_MISMATCH')
+
+
+def _ci_phases_for_steps(kind, steps):
+    if kind == 'production':
+        return ('candidate',) if 'push' in steps else ()
+    phases = []
+    if 'verify' in steps:
+        phases.append('candidate')
+    if 'postmain' in steps:
+        phases.append('postmain')
+    return tuple(phases)
+
+
+def check_ci_rate_limit(found, allowed_phases):
+    """TD-140: Validate optional CI rate-limit wait and summary lines fail-closed per phase."""
+    for m in found['CI_RATE_LIMIT_WAIT']:
+        until, phase = m.group(1), m.group(2)
+        _require(phase in allowed_phases, 'REPLY_CI_RATE_LIMIT_PHASE_MISMATCH')
+        try:
+            datetime.fromisoformat(until)
+        except ValueError:
+            raise CheckError('REPLY_CI_RATE_LIMIT_TIME_INVALID')
+    for m in found['CI_RATE_LIMIT_SUMMARY']:
+        _require(m.group(1) in allowed_phases, 'REPLY_CI_RATE_LIMIT_PHASE_MISMATCH')
+    for phase in allowed_phases:
+        sums = [m for m in found['CI_RATE_LIMIT_SUMMARY'] if m.group(1) == phase]
+        waits_seen = sum(1 for m in found['CI_RATE_LIMIT_WAIT'] if m.group(2) == phase)
+        _require(len(sums) <= 1, 'REPLY_CI_RATE_LIMIT_SUMMARY_REPEATED')
+        _require(waits_seen <= MAX_CI_RATE_LIMIT_WAITS, 'REPLY_CI_RATE_LIMIT_WAIT_REPEATED')
+        if sums:
+            declared = int(sums[0].group(2))
+            _require(waits_seen == min(declared, MAX_CI_RATE_LIMIT_WAITS), 'REPLY_CI_RATE_LIMIT_INCONSISTENT')
+        else:
+            _require(waits_seen == 0, 'REPLY_CI_RATE_LIMIT_INCONSISTENT')
 
 
 def state(found):
@@ -402,17 +441,20 @@ def check_success(found, task, spec, steps):
     if is_production:
         ranges.update({'GATE4_GROUPS_RESULT': (0, 1), 'GATE4_GROUP': (0, len(gate_report.GROUP_NAMES))})
         ranges.update({'COMMIT': (1, 1), 'BOUNDED_EXIT': (0, len(STAGES)),
+                       'CI_RATE_LIMIT_WAIT': (0, MAX_CI_RATE_LIMIT_WAITS), 'CI_RATE_LIMIT_SUMMARY': (0, 1),
                        'GATE_BUDGET_WARN': (0, sum(len(batch_runner.stage_timeouts(s)) for s in ('PRECOMMIT', 'STAGED', 'POSTCOMMIT')))})
         if 'bundle' in steps:
             ranges.update({'BUNDLE_FAILED': (1, 1)} if found['BUNDLE_FAILED'] else {n: (1, 1) for n in READY})
     else:
         ranges.update({'MAIN': (1, 1), 'MAIN_PROMOTED': (0, 1),
+                       'CI_RATE_LIMIT_WAIT': (0, MAX_CI_RATE_LIMIT_WAITS * 2), 'CI_RATE_LIMIT_SUMMARY': (0, 2),
                        'CI_RUN_POSTMAIN': (0 if pending else 1, 0 if pending else 1)})
     cardinality(found, ranges)
     if is_production:
         head = m.group(1)
         if not pending:
             check_ci(found, 'candidate', spec['branch'], head)
+        check_ci_rate_limit(found, ('candidate',))
         bundle = check_bundle(found, task, spec, head, pending=pending) if 'bundle' in steps else None
         check_bounded_lines(found, steps)
         check_budget_warnings(found, steps)
@@ -426,6 +468,7 @@ def check_success(found, task, spec, steps):
         check_ci(found, 'candidate', spec['candidate_branch'], head)
         if not pending:
             check_ci(found, 'postmain', 'main', head)
+        check_ci_rate_limit(found, ('candidate', 'postmain'))
         bundle = None
         outcome = 'MAIN'
     check_timing(found)
@@ -473,15 +516,21 @@ def check_s1(found, task, spec, steps, capture_path, prompt_sha):
         done, halted, _ = state(found)
         _require(halted == 'None' and step in steps and done == steps[:steps.index(step)],
                  'REPLY_STATE_MISMATCH')
+        ci_phases = _ci_phases_for_steps(spec['kind'], done + [step])
+        ci_rl_ranges = ({'CI_RATE_LIMIT_WAIT': (0, MAX_CI_RATE_LIMIT_WAITS * len(ci_phases)),
+                         'CI_RATE_LIMIT_SUMMARY': (0, len(ci_phases))} if ci_phases else {})
         # Lines printed by earlier steps (passed gates, CI_RUN, MAIN_PROMOTED) and by the
         # failed step's own bounded child remain legal; each is bound exactly as on a persisted halt.
         cardinality(found, dict({'S1': (1, 1), 'S1_PRIMARY': (1, 1), 'TIMING': (1, 1), 'STATE': (1, 1),
                                  'S1_DETAIL': (0, 1 if code == 'ARTIFACT_PATH_GUARD_FAILED' else 0),
                                  'STEP_PASS': (0, len(steps)), 'BOUNDED_EXIT': (0, len(STAGES)),
-                                 'BOUNDED_TIMEOUT': (0, 1), 'GATE_BUDGET_WARN': (0, 10), **GATE_LINE_RANGES}, **promo))
+                                 'BOUNDED_TIMEOUT': (0, 1), 'GATE_BUDGET_WARN': (0, 10), **GATE_LINE_RANGES},
+                                **ci_rl_ranges, **promo))
         check_bounded_lines(found, steps, step)
         check_budget_warnings(found, steps, step)
         check_gate_lines(found, step, original.group(1))
+        if ci_phases:
+            check_ci_rate_limit(found, ci_phases)
         if found['CI_RUN_CANDIDATE']:
             check_ci(found, 'candidate', spec['candidate_branch'], spec['candidate_oid'])
         for p in found['MAIN_PROMOTED']:
@@ -492,22 +541,33 @@ def check_s1(found, task, spec, steps, capture_path, prompt_sha):
         return 'S1 ' + step + ':' + original.group(1), 'NOT_VERIFIED', 'SECONDARY_CONTROL_SAVE_FAILURE'
     done, halted, _ = state(found)
     _require(done == steps[:len(done)], 'REPLY_STATE_MISMATCH')
+    done_phases = _ci_phases_for_steps(spec['kind'], done)
+    done_rl_ranges = ({'CI_RATE_LIMIT_WAIT': (0, MAX_CI_RATE_LIMIT_WAITS * len(done_phases)),
+                       'CI_RATE_LIMIT_SUMMARY': (0, len(done_phases))} if done_phases else {})
     base_ranges = dict({'S1': (1, 1), 'S1_DETAIL': (0, 1), 'TIMING': (1, 1), 'STATE': (1, 1),
-                        'STEP_PASS': (0, len(steps))}, **promo)
+                        'STEP_PASS': (0, len(steps))}, **done_rl_ranges, **promo)
     if halted == step + ':' + code:                                       # halt persisted inside the step
         _require(step in steps and done == steps[:steps.index(step)], 'REPLY_STATE_MISMATCH')
-        ranges = dict(base_ranges, BOUNDED_EXIT=(0, len(STAGES)), BOUNDED_TIMEOUT=(0, 1),
+        ci_phases = _ci_phases_for_steps(spec['kind'], done + [step])
+        ci_rl_ranges = ({'CI_RATE_LIMIT_WAIT': (0, MAX_CI_RATE_LIMIT_WAITS * len(ci_phases)),
+                         'CI_RATE_LIMIT_SUMMARY': (0, len(ci_phases))} if ci_phases else {})
+        ranges = dict({'S1': (1, 1), 'S1_DETAIL': (0, 1), 'TIMING': (1, 1), 'STATE': (1, 1),
+                       'STEP_PASS': (0, len(steps))}, **promo,
+                      BOUNDED_EXIT=(0, len(STAGES)), BOUNDED_TIMEOUT=(0, 1),
                       GATE_BUDGET_WARN=(0, 10), S1_FAILED_LIST=(1, 1), S1_FAILED_ITEM=(0, gate_report.MAX_ITEMS),
-                      **GATE_LINE_RANGES)
+                      **ci_rl_ranges, **GATE_LINE_RANGES)
         ranges.update({n: (1, 1) for n in METADATA} if not found['S1_EVIDENCE_STATUS'] else {'S1_EVIDENCE_STATUS': (1, 1)})
         ranges.update({n: (1, 1) for n in CAPTURE} if not found['S1_FULL_CAPTURE_STATUS'] else
                       {'S1_FULL_CAPTURE_STATUS': (1, 1)})
         ranges.update({'S1_DRAFT_FILE': (0, 1), 'S1_DRAFT_STATUS': (0, 1)})
         if already:                                                      # the halted task printed nothing else
             ranges = dict(base_ranges)
+            ci_phases = done_phases
         cardinality(found, ranges)
         check_bounded_lines(found, steps, step)
         check_budget_warnings(found, steps, step)
+        if ci_phases:
+            check_ci_rate_limit(found, ci_phases)
         if not already:
             check_failed_list(found, step, code)
             check_gate_lines(found, step, code)
@@ -520,6 +580,8 @@ def check_s1(found, task, spec, steps, capture_path, prompt_sha):
                  code in BEFORE_STEP or code.startswith('SPEC_')
         _require(before and (step in steps or code == 'UNKNOWN_STEP'), 'REPLY_STATE_MISMATCH')
         cardinality(found, base_ranges)
+        if done_phases:
+            check_ci_rate_limit(found, done_phases)
         persisted = False
     if found['CI_RUN_CANDIDATE']:
         check_ci(found, 'candidate', spec['candidate_branch'], spec['candidate_oid'])

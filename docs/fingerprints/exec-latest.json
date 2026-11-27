@@ -1,5 +1,5 @@
 {
-  "base_head": "90a9595",
+  "base_head": "3b93b6c",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -576,16 +576,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 442,
-      "sha256": "4d1c357a87a156b1dbd2be77b17481b2afcfe246d8b304bf9464bb0c5c11c9f6"
+      "lines": 443,
+      "sha256": "1fb2a0ffe9999cca93b0a7a8fd9b9c4588ab041d06ff547c033b69d295cc190f"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 412,
-      "sha256": "7ec5cd85586a91f230f402e66603422ec9ef2b52d7cf4672becebbbc76cd8b1b"
+      "lines": 413,
+      "sha256": "2032d6a341eeb7fced670665c6920e27d14c44c52f8b20bec7390f57b06e7f82"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -628,7 +628,7 @@
         "## 封存區"
       ],
       "lines": 473,
-      "sha256": "9ddd24c275c3326c37ccb01b2066d0daf6714dcc70fe368b6fe7f1d120185603"
+      "sha256": "3e1ee7a5b0e70c0894eb85a966ebd17b15cb9997914c50a4b5df6d3f0442c949"
     },
     "docs/TODO-LEDGER.md": {
       "fences": 0,
@@ -640,8 +640,8 @@
         "## 四、盤點範圍與方法",
         "## 五、清冊"
       ],
-      "lines": 201,
-      "sha256": "7acfdc6df837be090de7b269ac24c9916164322031b079b4b6d3ab9013fd4466"
+      "lines": 203,
+      "sha256": "d8b7bd8ee6b7c31900f30b7d0f46d8c591e4a9e8c47dc70095a00c0dd38b08ff"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1150,8 +1150,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6500,
-      "sha256": "a713744ed155efd97383a53c252cf97f020fcfe993eb3f04ec7d1ce2a272089a"
+      "lines": 6501,
+      "sha256": "8ffbd4bdefecac45a867bb6800f0826f8bffba0a0c4aa0c3ff9978ce2ea1a827"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1213,8 +1213,8 @@
         "# The work tree must show no file change for this long before a native_preview batch may start (formerly the",
         "# hand-run PRESTART block C): an IDE or another tool that still writes into the tree makes the run unsafe."
       ],
-      "lines": 2300,
-      "sha256": "0861e4cd412a94e236e008820377c5a0063255960e0d0a61b1f38b7bf3395073"
+      "lines": 2351,
+      "sha256": "e2788ca5fba442c883ad2898daae80d5198fdc40f7eb6e557b05225c6b0695b8"
     },
     "scripts/batch_sim.py": {
       "fences": 0,
@@ -1522,7 +1522,7 @@
         "# -*- coding: utf-8 -*-"
       ],
       "lines": 238,
-      "sha256": "1232e2f073627e460135d3d01729fd48970cc470b1e23367135a1a9272ed7700"
+      "sha256": "71e3e7ef112e4e02c92a3dd837b91047257a1191fb0f6a86f9ba1d4f91e72747"
     },
     "scripts/promotion_template.py": {
       "fences": 0,
@@ -1530,7 +1530,7 @@
         "# -*- coding: utf-8 -*-"
       ],
       "lines": 168,
-      "sha256": "075d93523d29c9c5904afe56474350ccc602938837c06b33505d15b312395577"
+      "sha256": "4ffdb73b2909cbc93a4a1cf42a55c0b01b8e50c5e4d77b4e1b50bbf6007ed66d"
     },
     "scripts/prompt_builder.py": {
       "fences": 0,
@@ -1574,8 +1574,8 @@
         "# name -> (prefix, exact format, positions of commit SHAs, positions of file SHA-256)",
         "# Alpha 1 lines a bounded gate step can leave in an S1 reply: the grouped gate 4 result and the timeout progress."
       ],
-      "lines": 684,
-      "sha256": "563084c025985355c3fa5e3bd24ee856cf1a9141752bb92489d0b138534a8973"
+      "lines": 746,
+      "sha256": "f902faf373ef503a01676e3a187add5ddfbf79ec23518a1d4eb0db8b5d9511a3"
     },
     "scripts/runtime_readiness.py": {
       "fences": 0,
@@ -1740,8 +1740,8 @@
     "scripts/tests/test_b119_ci_run.py": {
       "fences": 0,
       "headings": [],
-      "lines": 152,
-      "sha256": "ef0611a26f27adf446b7f7d2d8942fd4756a7f33bf53f3ead15dddd75bd834af"
+      "lines": 304,
+      "sha256": "8d630dc2cd6ad42209a7a8d869ff5943dbf007d3fdc3ae10ea71569cfe4cbb85"
     },
     "scripts/tests/test_b3b3_2_guards.py": {
       "fences": 0,
@@ -2379,8 +2379,8 @@
         "# [a-z0-9] in a step name, so the real step \"native_preview\" made a correct Executor reply fail its own check.",
         "# G5-b2: a whole pasted `run` output holds the runner's own RUN_* lines, which are prose to this checker."
       ],
-      "lines": 934,
-      "sha256": "e348bcfca2dec70a2af0ea00b1c38fea85da794725778e7b29825d111b95a955"
+      "lines": 1081,
+      "sha256": "09c246017c53938105bd7afaa6d64c83c78d8ce1f1730e510165cecbe340275e"
     },
     "scripts/tests/test_rule_loadability.py": {
       "fences": 0,
@@ -2637,8 +2637,8 @@
       "headings": [
         "# --- SO E27 reference tests: wall clock, fail-closed branches and diagnostic hygiene. ---"
       ],
-      "lines": 1677,
-      "sha256": "5563ec03a6346c84f3c9f4cbc86030b30cf4f02a26c2e09c51be3473bcb335a2"
+      "lines": 2226,
+      "sha256": "661bdfd11a0efde7c30c096aed711877ab51ac9cc11bd69fd9aa1754278967ce"
     },
     "scripts/tests/test_verifier_fail_closed.py": {
       "fences": 0,
@@ -2730,8 +2730,8 @@
         "# G3: The parent, not urllib's per-socket timeout, enforces each GET wall clock.",
         "# A bounded child prevents indefinitely delayed DNS resolution or trickle bodies."
       ],
-      "lines": 839,
-      "sha256": "b6c5c349eb44188b56da79289946e77a1ed9f247f5039c01da931bd7eb2693e7"
+      "lines": 960,
+      "sha256": "aaa00e46357fa07208f493134f7dbd54561f678a51652e0aeb174e67f14a889b"
     },
     "scripts/verify_all.py": {
       "fences": 0,
@@ -2744,7 +2744,7 @@
       "sha256": "8597e282fed71298b01430659fae7cdfedf4a20f8be0267d662f8f1da8ff23e8"
     }
   },
-  "generated_at": "2026-11-27T00:26:16Z",
+  "generated_at": "2026-11-27T10:00:07Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

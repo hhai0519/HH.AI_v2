@@ -1,8 +1,8 @@
 {
   "schema_version": 1,
   "governance_version": "B109-M2",
-  "task_id": "B117-STATE-DECISIONS-S1-R1-261127",
-  "base_oid": "90a95955fe549795d6d6ab0c66b332d1dbe0743d",
+  "task_id": "B117-TD140-CI-RATELIMIT-R1-261127",
+  "base_oid": "3b93b6c7b0d312b328cc778bcb029708691d0632",
   "plan": {
     "allowed_paths": [
       "docs/AUDIT-LOG.md",
@@ -10,13 +10,18 @@
       "docs/TASKBOARD.md",
       "docs/TODO-LEDGER.md",
       "docs/archive/TASKBOARD-ARCHIVE-MANIFEST.json",
-      "docs/archive/TASKBOARD-RECORDS-0019.md",
+      "docs/archive/TASKBOARD-RECORDS-0020.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/governance/s1-registry.json",
-      "docs/ops/q2-draft-precheck.md",
       "docs/refactor-backlog.md",
-      "scripts/tests/test_s1_registry.py"
+      "scripts/batch_runner.py",
+      "scripts/production_template.py",
+      "scripts/promotion_template.py",
+      "scripts/reply_check.py",
+      "scripts/tests/test_b119_ci_run.py",
+      "scripts/tests/test_reply_check.py",
+      "scripts/tests/test_verification_primitives.py",
+      "scripts/verification_primitives.py"
     ],
     "required_paths": [
       "docs/AUDIT-LOG.md",
@@ -24,13 +29,18 @@
       "docs/TASKBOARD.md",
       "docs/TODO-LEDGER.md",
       "docs/archive/TASKBOARD-ARCHIVE-MANIFEST.json",
-      "docs/archive/TASKBOARD-RECORDS-0019.md",
+      "docs/archive/TASKBOARD-RECORDS-0020.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/governance/s1-registry.json",
-      "docs/ops/q2-draft-precheck.md",
       "docs/refactor-backlog.md",
-      "scripts/tests/test_s1_registry.py"
+      "scripts/batch_runner.py",
+      "scripts/production_template.py",
+      "scripts/promotion_template.py",
+      "scripts/reply_check.py",
+      "scripts/tests/test_b119_ci_run.py",
+      "scripts/tests/test_reply_check.py",
+      "scripts/tests/test_verification_primitives.py",
+      "scripts/verification_primitives.py"
     ],
     "max_plan_revisions": 3,
     "revision_count": 0,
@@ -43,13 +53,18 @@
       "docs/TASKBOARD.md",
       "docs/TODO-LEDGER.md",
       "docs/archive/TASKBOARD-ARCHIVE-MANIFEST.json",
-      "docs/archive/TASKBOARD-RECORDS-0019.md",
+      "docs/archive/TASKBOARD-RECORDS-0020.md",
       "docs/fingerprints/exec-latest.json",
       "docs/governance/execution-record.json",
-      "docs/governance/s1-registry.json",
-      "docs/ops/q2-draft-precheck.md",
       "docs/refactor-backlog.md",
-      "scripts/tests/test_s1_registry.py"
+      "scripts/batch_runner.py",
+      "scripts/production_template.py",
+      "scripts/promotion_template.py",
+      "scripts/reply_check.py",
+      "scripts/tests/test_b119_ci_run.py",
+      "scripts/tests/test_reply_check.py",
+      "scripts/tests/test_verification_primitives.py",
+      "scripts/verification_primitives.py"
     ]
   },
   "evidence": [

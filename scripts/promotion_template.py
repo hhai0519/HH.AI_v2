@@ -41,7 +41,7 @@ Allowed tracked mutation paths = NONE，Required tracked mutation paths = NONE�
 
 五、Executor 最小回覆與唯一終點
 run 結束（或停止）後，若 runner 印出 EXECUTOR_REPLY_BEGIN／EXECUTOR_REPLY_END 且 REPLY_SELF_CHECK=PASS，僅逐字複製兩個 marker 之間的行，隨即結束，不得繼續查閱程式、執行任何工具、自我驗證或新增刪改檔案。CI PENDING 即使格式符合，也不是 CI PASS。
-若沒有這個區塊或印出 EXECUTOR_REPLY_UNAVAILABLE，則回退到以下原有逐字轉交規則：成功時逐字轉交真正印出的 CI_RUN phase=candidate 及 CI_RUN phase=postmain（如有）、MAIN、TIMING、STATE，以及已出現的 RUN_START、RUN_END、RUN_STOPPED、RESUME_CHECK 行；S1 時逐字轉交真正已有的 CI_RUN（如有）、S1、S1_PRIMARY、S1_DETAIL、TIMING、STATE；任何 PENDING 不得補造 PASS。不得為了補全回覆再執行命令或讀取檔案。
+若沒有這個區塊或印出 EXECUTOR_REPLY_UNAVAILABLE，則回退到以下原有逐字轉交規則：成功時逐字轉交真正印出的 CI_RUN phase=candidate 及 CI_RUN phase=postmain（如有）、CI_RATE_LIMIT_WAIT、CI_RATE_LIMIT_SUMMARY（如有）、MAIN、TIMING、STATE，以及已出現的 RUN_START、RUN_END、RUN_STOPPED、RESUME_CHECK 行；S1 時逐字轉交真正已有的 CI_RUN、CI_RATE_LIMIT_WAIT、CI_RATE_LIMIT_SUMMARY（如有）、S1、S1_PRIMARY、S1_DETAIL、TIMING、STATE；任何 PENDING 不得補造 PASS。不得為了補全回覆再執行命令或讀取檔案。
 僅最終完結回覆最後一行逐字為「以上是 Antigravity IDE Agent 的回覆。」；執行中途若先回報啟動、背景執行中或等待進度，嚴禁使用該固定署名行。
 
 六、機器區塊（repo prompt_builder 產出，不得人工修改）

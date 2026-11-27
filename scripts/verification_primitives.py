@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import argparse
 import base64
+from datetime import datetime, timedelta, timezone
 import hashlib
 import json
 import os
@@ -334,12 +335,36 @@ CI_TRANSPORT_K = 3
 CI_GET_BUDGET = 28.0
 CI_TOTAL_BUDGET = 1800.0  # 30-minute wall-clock cap across all polls
 CI_MAX_BYTES = 1048576
+CI_MAX_INITIAL_DELAY = 600
+CI_MAX_INTERVAL = 120
+CI_MAX_RATE_LIMIT_WAIT_BUDGET = 3660
+CI_RATE_LIMIT_PREFLIGHT_MIN = 12
+CI_RATE_LIMIT_PREFLIGHT_PAD = 5.0
+TAIPEI_TZ = timezone(timedelta(hours=8))
+
+
+def _format_taipei_iso(epoch_seconds: float) -> str:
+    return datetime.fromtimestamp(epoch_seconds, tz=TAIPEI_TZ).replace(microsecond=0).isoformat()
+
+
+def _parse_nonneg_ascii_int(raw) -> int | None:
+    return int(raw) if isinstance(raw, str) and raw.isascii() and raw.isdigit() else None
+
+
+def _record_rate_limit_remaining(stats: dict, raw) -> None:
+    val = raw if type(raw) is int and raw >= 0 else _parse_nonneg_ascii_int(raw)
+    if val is None:
+        return
+    cur = stats.get('min_rate_limit_remaining')
+    stats['min_rate_limit_remaining'] = val if cur is None else min(cur, val)
 
 
 def _ci_http_worker(url: str) -> None:
     """Anonymous, one-shot GET; stdout is a bounded protocol, never secrets."""
     if not (re.match(r'^https://api\.github\.com/repos/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/actions/', url)
-            or re.match(r'^http://127\.0\.0\.1:[0-9]{1,5}/repos/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/actions/', url)):
+            or re.match(r'^http://127\.0\.0\.1:[0-9]{1,5}/repos/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/actions/', url)
+            or re.fullmatch(r'https://api\.github\.com/rate_limit', url)
+            or re.fullmatch(r'http://127\.0\.0\.1:[0-9]{1,5}/rate_limit', url)):
         print(json.dumps({'kind': 'INVALID'}))
         return
     req = urllib.request.Request(url, headers={
@@ -348,11 +373,15 @@ def _ci_http_worker(url: str) -> None:
     }, method='GET')
     try:
         with urllib.request.urlopen(req, timeout=CI_GET_BUDGET - 1) as response:
+            headers = response.headers
+            remaining = headers.get('X-RateLimit-Remaining') if headers else None
+            reset = headers.get('X-RateLimit-Reset') if headers else None
             body = response.read(CI_MAX_BYTES + 1)
             if len(body) > CI_MAX_BYTES:
                 print(json.dumps({'kind': 'INVALID'}))
                 return
-        print(json.dumps({'kind': 'OK', 'body': base64.b64encode(body).decode('ascii')}))
+        print(json.dumps({'kind': 'OK', 'body': base64.b64encode(body).decode('ascii'),
+                          'remaining': remaining, 'reset': reset}))
     except urllib.error.HTTPError as exc:
         headers = exc.headers
         print(json.dumps({'kind': 'HTTP', 'code': exc.code,
@@ -435,11 +464,23 @@ def cmd_ci_status(args: argparse.Namespace) -> None:
         emit_unable(command, "INVALID_ARGUMENT")
 
     max_attempts = getattr(args, "max_attempts", 30)
-    if not isinstance(max_attempts, int) or not (1 <= max_attempts <= 60):
+    if type(max_attempts) is not int or not (1 <= max_attempts <= 60):
         emit_unable(command, "INVALID_ARGUMENT")
 
     interval_seconds = getattr(args, "interval_seconds", 20)
-    if not isinstance(interval_seconds, int) or not (0 <= interval_seconds <= 60):
+    if type(interval_seconds) is not int or not (0 <= interval_seconds <= CI_MAX_INTERVAL):
+        emit_unable(command, "INVALID_ARGUMENT")
+
+    initial_delay_seconds = getattr(args, "initial_delay_seconds", 0)
+    if type(initial_delay_seconds) is not int or not (0 <= initial_delay_seconds <= CI_MAX_INITIAL_DELAY):
+        emit_unable(command, "INVALID_ARGUMENT")
+
+    phase = getattr(args, "phase", None)
+    if phase is not None and phase not in ('candidate', 'postmain'):
+        emit_unable(command, "INVALID_ARGUMENT")
+
+    rate_limit_wait_budget = getattr(args, "rate_limit_wait_budget", 0)
+    if type(rate_limit_wait_budget) is not int or not (0 <= rate_limit_wait_budget <= CI_MAX_RATE_LIMIT_WAIT_BUDGET):
         emit_unable(command, "INVALID_ARGUMENT")
 
     event = getattr(args, "event", "push")
@@ -447,11 +488,50 @@ def cmd_ci_status(args: argparse.Namespace) -> None:
     diagnostic_file = getattr(args, 'diagnostic_file', None)
     if diagnostic_file is not None and not re.fullmatch(r'\.git/[A-Za-z0-9_-]+-ci-diagnostic\.json', diagnostic_file):
         emit_unable(command, 'INVALID_DIAGNOSTIC_PATH')
-    # Never outlive the caller's subprocess timeout (batch_runner: attempts*(interval+60)+120, cap 1920).
-    total_deadline = time.monotonic() + min(CI_TOTAL_BUDGET, max_attempts * (interval_seconds + 60))
+    # Never outlive the caller's subprocess timeout (batch_runner: min(..., 1920) + rate_limit_wait_budget).
+    total_deadline = time.monotonic() + min(
+        CI_TOTAL_BUDGET,
+        initial_delay_seconds + max_attempts * (interval_seconds + 60),
+    )
+    rate_limit_budget_rem = float(rate_limit_wait_budget)
     transport_stats = {'failures': 0, 'retries': 0, 'rate_limit_waits': 0,
+                       'min_rate_limit_remaining': None,
                        'last_http_code': None, 'hard_deadline': True,
                        'max_consecutive_failures': CI_TRANSPORT_K}
+    rate_limit_wait_events: list[dict[str, str]] = []
+
+    def _build_diagnostic(
+        status: str,
+        reason: str | None,
+        attempts_used: int,
+        run_id: int | None,
+        active_wait: dict[str, str] | None = None,
+    ) -> dict:
+        return {
+            'schema_version': 1, 'command': 'ci-status', 'head_sha': head_sha,
+            'branch': branch, 'phase_event': event, 'status': status,
+            'reason': reason, 'attempts_used': attempts_used,
+            'run_id': run_id, 'initial_delay_seconds': initial_delay_seconds,
+            'transport': dict(transport_stats),
+            'rate_limit_wait_events': list(rate_limit_wait_events),
+            'active_rate_limit_wait': active_wait,
+        }
+
+    def _record_and_persist_wait(
+        wait_seconds: float,
+        current_attempts: int,
+        current_run_id: int | None,
+    ) -> None:
+        transport_stats['rate_limit_waits'] += 1
+        until_iso = _format_taipei_iso(time.time() + wait_seconds)
+        ev = {'until': until_iso, 'phase': phase if phase is not None else 'unspecified'}
+        if phase is not None:
+            rate_limit_wait_events.append(ev)
+        if diagnostic_file is not None:
+            _ci_persist_diagnostic(
+                diagnostic_file,
+                _build_diagnostic('WAITING_RATE_LIMIT', 'RATE_LIMIT_WAIT', current_attempts, current_run_id, active_wait=ev),
+            )
 
     def emit_result(
         status: str,
@@ -471,6 +551,9 @@ def cmd_ci_status(args: argparse.Namespace) -> None:
             "event": event,
             "head_sha": head_sha,
             "jobs": jobs,
+            "min_rate_limit_remaining": transport_stats['min_rate_limit_remaining'],
+            "rate_limit_wait_events": list(rate_limit_wait_events),
+            "rate_limit_waits": transport_stats['rate_limit_waits'],
             "repo": repo,
             "required_jobs": required_jobs,
             "run_attempt": run_attempt,
@@ -485,12 +568,7 @@ def cmd_ci_status(args: argparse.Namespace) -> None:
         if reason is not None:
             payload["reason"] = reason
         if diagnostic_file is not None:
-            diagnostic = {
-                'schema_version': 1, 'command': 'ci-status', 'head_sha': head_sha,
-                'branch': branch, 'phase_event': event, 'status': status,
-                'reason': reason, 'attempts_used': attempts_used,
-                'run_id': run_id, 'transport': dict(transport_stats),
-            }
+            diagnostic = _build_diagnostic(status, reason, attempts_used, run_id, active_wait=None)
             if not _ci_persist_diagnostic(diagnostic_file, diagnostic):
                 payload['status'] = 'VERIFICATION_TOOL_UNABLE_TO_COMPLETE'
                 payload['reason'] = 'DIAGNOSTIC_WRITE_FAILED'
@@ -501,12 +579,12 @@ def cmd_ci_status(args: argparse.Namespace) -> None:
 
     def do_get_json(url: str, current_attempts: int, current_run_id: int | None = None) -> dict:
         # Each individual HTTP child is bounded to 28 seconds. A verified
-        # GitHub rate-limit reset may exceed that per-GET envelope, but must
-        # still fit the shared 1800-second total wall-clock deadline.
+        # GitHub rate-limit reset may extend the shared deadline up to the
+        # remaining --rate-limit-wait-budget; otherwise it must fit total_deadline.
         # Identity and schema failures remain terminal regardless of K.
+        nonlocal total_deadline, rate_limit_budget_rem
         deadline = total_deadline
         body = None
-        failures = 0
         for request_index in range(CI_TRANSPORT_K):
             remaining_budget = min(CI_GET_BUDGET, deadline - time.monotonic())
             if remaining_budget <= 0:
@@ -519,6 +597,7 @@ def cmd_ci_status(args: argparse.Namespace) -> None:
                 break
             kind = result.get('kind')
             if kind == 'OK':
+                _record_rate_limit_remaining(transport_stats, result.get('remaining'))
                 try:
                     candidate_body = base64.b64decode(result['body'], validate=True)
                 except (ValueError, KeyError):
@@ -526,14 +605,13 @@ def cmd_ci_status(args: argparse.Namespace) -> None:
                 if len(candidate_body) > CI_MAX_BYTES:
                     break
                 body = candidate_body
-                failures = 0
                 break
-            if kind == 'INVALID':
-                break
+            limited = False
             retry_delay = 0.1 * (request_index + 1)
             if kind == 'HTTP':
                 code = result.get('code')
                 transport_stats['last_http_code'] = code
+                _record_rate_limit_remaining(transport_stats, result.get('remaining'))
                 limited = (code == 429 or (code == 403 and result.get('remaining') == '0'))
                 transient = code in (500, 502, 503, 504)
                 if not (transient or limited):
@@ -550,15 +628,19 @@ def cmd_ci_status(args: argparse.Namespace) -> None:
                     else:
                         # No server-supplied release time: stop, never hammer 429.
                         break
-                    transport_stats['rate_limit_waits'] += 1
             elif kind != 'TRANSPORT':
                 break
-            failures += 1
             transport_stats['failures'] += 1
-            if failures >= CI_TRANSPORT_K or request_index == CI_TRANSPORT_K - 1:
+            if request_index == CI_TRANSPORT_K - 1:
                 break
+            if limited and rate_limit_budget_rem >= retry_delay:
+                total_deadline += retry_delay
+                deadline = total_deadline
+                rate_limit_budget_rem -= retry_delay
             if deadline - time.monotonic() <= retry_delay:
                 break
+            if limited:
+                _record_and_persist_wait(retry_delay, current_attempts, current_run_id)
             transport_stats['retries'] += 1
             time.sleep(retry_delay)
         if body is None:
@@ -605,6 +687,39 @@ def cmd_ci_status(args: argparse.Namespace) -> None:
 
     attempts = 0
     selected_run = None
+
+    effective_initial_delay = float(initial_delay_seconds)
+    if rate_limit_budget_rem > 0:
+        rl_res = _ci_bounded_get(f"{api_base}/rate_limit", CI_GET_BUDGET)
+        if rl_res.get('kind') == 'OK':
+            _record_rate_limit_remaining(transport_stats, rl_res.get('remaining'))
+            try:
+                rl_body = base64.b64decode(rl_res['body'], validate=True)
+                rl_data = json.loads(rl_body.decode('utf-8')) if len(rl_body) <= CI_MAX_BYTES else None
+                core = rl_data['resources']['core']
+            except (ValueError, KeyError, TypeError, UnicodeError):
+                core = None
+            if isinstance(core, dict):
+                core_rem = core.get('remaining')
+                core_reset = core.get('reset')
+                _record_rate_limit_remaining(transport_stats, core_rem)
+                if type(core_rem) is int and core_rem >= 0 and type(core_reset) is int and core_reset > 0:
+                    reset_wait = (float(core_reset) + CI_RATE_LIMIT_PREFLIGHT_PAD) - time.time()
+                    if (
+                        core_rem < CI_RATE_LIMIT_PREFLIGHT_MIN
+                        and reset_wait > effective_initial_delay
+                        and reset_wait <= rate_limit_budget_rem
+                    ):
+                        total_deadline += reset_wait
+                        rate_limit_budget_rem -= reset_wait
+                        _record_and_persist_wait(reset_wait, current_attempts=0, current_run_id=None)
+                        time.sleep(reset_wait)
+                        effective_initial_delay = 0.0
+        elif rl_res.get('kind') == 'HTTP':
+            _record_rate_limit_remaining(transport_stats, rl_res.get('remaining'))
+    delay = min(effective_initial_delay, max(0.0, total_deadline - time.monotonic()))
+    if delay > 0:
+        time.sleep(delay)
 
     while attempts < max_attempts and time.monotonic() < total_deadline:
         attempts += 1
@@ -822,7 +937,13 @@ def main() -> None:
     parser_ci.add_argument("--event", default="push", help="Workflow event trigger (default: push)")
     parser_ci.add_argument("--workflow-name", default="Verify", help="Workflow name (default: Verify)")
     parser_ci.add_argument("--max-attempts", type=int, default=30, help="Maximum polling attempts (1-60, default: 30)")
-    parser_ci.add_argument("--interval-seconds", type=int, default=20, help="Polling interval in seconds (0-60, default: 20)")
+    parser_ci.add_argument("--interval-seconds", type=int, default=20, help="Polling interval in seconds (0-120, default: 20)")
+    parser_ci.add_argument("--initial-delay-seconds", type=int, default=0,
+                           help="Optional initial sleep before polling in seconds (0-600, default: 0)")
+    parser_ci.add_argument("--phase", choices=("candidate", "postmain"), default=None,
+                           help="Optional CI phase label recorded in rate_limit_wait_events")
+    parser_ci.add_argument("--rate-limit-wait-budget", type=int, default=0,
+                           help="Optional extra wall-clock budget in seconds for verified rate-limit waits (0-3660, default: 0)")
     parser_ci.add_argument("--api-base", default="https://api.github.com", help="API base URL (default: https://api.github.com)")
     parser_ci.add_argument('--diagnostic-file', default=None,
                            help='Optional task-local .git/<task>-ci-diagnostic.json output')

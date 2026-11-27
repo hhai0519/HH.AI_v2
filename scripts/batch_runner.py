@@ -132,6 +132,12 @@ RUNNER_REL = 'scripts/batch_runner.py'
 GENERATED = ('docs/fingerprints/exec-latest.json', 'docs/governance/execution-record.json')
 AUTH_REL = '.git/hhai-sensitive-push-auth.json'
 REPO = 'hhai0519/HH.AI_v2'
+CI_INITIAL_DELAY_SECONDS = 360
+CI_POLL_ATTEMPTS = 24
+CI_POLL_INTERVAL_SECONDS = 60
+CI_RATE_LIMIT_WAIT_BUDGET = 3660
+MAX_RATE_LIMIT_WAITS_DISPLAY = 10
+CI_RATE_LIMIT_UNTIL_RE = re.compile(r'^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\+08:00$')
 OID_RE = re.compile(r'^[0-9a-f]{40}$')
 SHA256_RE = re.compile(r'^[0-9a-f]{64}$')
 TASK_RE = re.compile(r'^[A-Za-z0-9_-]+$')
@@ -919,7 +925,36 @@ class Batch:
         out = git(self.root, 'ls-remote', 'origin', ref).split()
         return out[0] if out else ''
 
-    def ci_status(self, sha, branch, attempts, interval, phase):
+    def _format_ci_rate_limit_lines(self, payload, phase):
+        stats_keys = ('rate_limit_waits', 'min_rate_limit_remaining', 'rate_limit_wait_events')
+        present = [k for k in stats_keys if k in payload]
+        if not present:
+            return []
+        if len(present) != len(stats_keys):
+            raise Halt('CI_STATUS_STATS_INVALID')
+        waits = payload['rate_limit_waits']
+        min_rem = payload['min_rate_limit_remaining']
+        events = payload['rate_limit_wait_events']
+        if (type(waits) is not int
+                or not (min_rem is None or (type(min_rem) is int and min_rem >= 0))
+                or not isinstance(events, list) or len(events) != waits):
+            raise Halt('CI_STATUS_STATS_INVALID')
+        for ev in events:
+            if (not isinstance(ev, dict) or set(ev) != {'until', 'phase'}
+                    or ev['phase'] != phase or not isinstance(ev['until'], str)
+                    or CI_RATE_LIMIT_UNTIL_RE.match(ev['until']) is None):
+                raise Halt('CI_STATUS_STATS_INVALID')
+            try:
+                datetime.fromisoformat(ev['until'])
+            except ValueError:
+                raise Halt('CI_STATUS_STATS_INVALID') from None
+        lines = ['CI_RATE_LIMIT_WAIT until=' + ev['until'] + ' phase=' + phase
+                 for ev in events[:MAX_RATE_LIMIT_WAITS_DISPLAY]]
+        rem_text = 'unknown' if min_rem is None else str(min_rem)
+        lines.append('CI_RATE_LIMIT_SUMMARY phase=' + phase + ' waits=' + str(waits) + ' min_remaining=' + rem_text)
+        return lines
+
+    def ci_status(self, sha, branch, attempts, interval, phase, initial_delay=0, rate_limit_wait_budget=0):
         """Return (exit code, validated PASS payload); all ambiguous success evidence fails closed.
 
         A run-id printed here is only a locator for independent GitHub verification, never a Macro PASS.
@@ -931,11 +966,17 @@ class Batch:
                 '--head-sha', sha, '--branch', branch, '--require-job', 'verify',
                 '--require-job', 'gateway-windows', '--event', 'push', '--workflow-name', 'Verify',
                 '--max-attempts', str(attempts), '--interval-seconds', str(interval),
+                '--phase', phase,
                 '--diagnostic-file', '.git/' + self.task_id + '-' + phase + '-ci-diagnostic.json']
+        if initial_delay > 0:
+            args.extend(['--initial-delay-seconds', str(initial_delay)])
+        if rate_limit_wait_budget > 0:
+            args.extend(['--rate-limit-wait-budget', str(rate_limit_wait_budget)])
+        timeout = min(initial_delay + attempts * (interval + 60) + 120, 1920) + rate_limit_wait_budget
         try:
             cp = subprocess.run(args, cwd=self.root, stdin=subprocess.DEVNULL,
                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                timeout=min(attempts * (interval + 60) + 120, 1920), env=child_env())
+                                timeout=timeout, env=child_env())
         except subprocess.TimeoutExpired:
             raise Halt('CI_STATUS_TIMEOUT')
         except OSError:
@@ -960,6 +1001,8 @@ class Batch:
             # PENDING/UNABLE (2) must never be elevated to PASS; invalid success content (1) cannot pass.
             if payload.get('status') == 'PASS':
                 raise Halt('CI_STATUS_CONTRADICTION')
+            for line in self._format_ci_rate_limit_lines(payload, phase):
+                print(line)
             return cp.returncode, None
         if payload.get('status') != 'PASS' or payload.get('run_status') != 'completed' or payload.get('run_conclusion') != 'success':
             raise Halt('CI_STATUS_NOT_PASS')
@@ -972,8 +1015,11 @@ class Batch:
         if any(not isinstance(v, dict) or v.get('status') != 'completed' or v.get('conclusion') != 'success'
                for v in jobs.values()):
             raise Halt('CI_STATUS_JOBS_NOT_PASS')
+        rate_limit_lines = self._format_ci_rate_limit_lines(payload, phase)
         # Task-local evidence is never tracked or replayed across tasks.
         self.write_new_artifact(phase + '-ci.json', json.dumps(payload, sort_keys=True, ensure_ascii=True) + '\n')
+        for line in rate_limit_lines:
+            print(line)
         print('CI_RUN phase=' + phase + ' run_id=' + str(run_id) + ' attempt=' + str(attempt)
               + ' event=push branch=' + branch + ' head_sha=' + sha
               + ' verify=success gateway-windows=success')
@@ -1183,7 +1229,9 @@ class Batch:
         run(['git', 'push', 'origin', head + ':refs/heads/' + spec['branch']], 'PUSH_FAILED', root, 600)
         if self.remote_sha('refs/heads/' + spec['branch']) != head:
             raise Halt('PUSH_SHA_DRIFT')
-        code, _ = self.ci_status(head, spec['branch'], 60, 30, 'candidate')
+        code, _ = self.ci_status(head, spec['branch'], CI_POLL_ATTEMPTS, CI_POLL_INTERVAL_SECONDS,
+                                 'candidate', initial_delay=CI_INITIAL_DELAY_SECONDS,
+                                 rate_limit_wait_budget=CI_RATE_LIMIT_WAIT_BUDGET)
         if code == 2:
             print('COMMIT ' + head + ' | CI PENDING | S1 NONE')
             return
@@ -1307,7 +1355,8 @@ class Batch:
             raise Halt('NOT_FAST_FORWARD')
         if os.path.lexists(Path(root) / AUTH_REL):
             raise Halt('STALE_AUTH_PRESENT')
-        if self.ci_status(cand, branch, 3, 10, 'candidate')[0] != 0:
+        if self.ci_status(cand, branch, 3, 10, 'candidate', initial_delay=0,
+                          rate_limit_wait_budget=CI_RATE_LIMIT_WAIT_BUDGET)[0] != 0:
             raise Halt('CANDIDATE_CI_NOT_PROVEN')
 
     def step_promote(self):
@@ -1334,7 +1383,9 @@ class Batch:
         cand = self.spec['candidate_oid']
         if self.remote_sha('refs/heads/main') != cand:
             raise Halt('MAIN_SHA_MISMATCH')
-        code, _ = self.ci_status(cand, 'main', 60, 30, 'postmain')
+        code, _ = self.ci_status(cand, 'main', CI_POLL_ATTEMPTS, CI_POLL_INTERVAL_SECONDS,
+                                 'postmain', initial_delay=CI_INITIAL_DELAY_SECONDS,
+                                 rate_limit_wait_budget=CI_RATE_LIMIT_WAIT_BUDGET)
         if code == 2:
             print('MAIN ' + cand + ' | POST-MAIN CI PENDING | S1 NONE')
             return

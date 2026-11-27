@@ -41,6 +41,158 @@ def probe(monkeypatch, tmp_path, payload=None, code=0, stdout=None, phase='candi
     return b.ci_status(SHA, BRANCH, 3, 1, phase)
 
 
+def test_td140_rate_limit_lines_and_summary(monkeypatch, tmp_path, capsys):
+    ev = [
+        {'until': '2026-11-27T10:15:00+08:00', 'phase': 'candidate'},
+        {'until': '2026-11-27T10:25:00+08:00', 'phase': 'candidate'},
+    ]
+    d = dict(ci_payload(), rate_limit_waits=2, min_rate_limit_remaining=19, rate_limit_wait_events=ev)
+    rc, payload = probe(monkeypatch, tmp_path, payload=d, code=0, phase='candidate')
+    assert rc == 0 and payload['rate_limit_waits'] == 2
+    lines = capsys.readouterr().out.strip().splitlines()
+    assert lines == [
+        'CI_RATE_LIMIT_WAIT until=2026-11-27T10:15:00+08:00 phase=candidate',
+        'CI_RATE_LIMIT_WAIT until=2026-11-27T10:25:00+08:00 phase=candidate',
+        'CI_RATE_LIMIT_SUMMARY phase=candidate waits=2 min_remaining=19',
+        'CI_RUN phase=candidate run_id=39000000001 attempt=1 event=push branch=batch/b119-probe head_sha=' + SHA + ' verify=success gateway-windows=success',
+    ]
+
+
+def test_td140_zero_waits_and_zero_min_remaining_accepted(monkeypatch, tmp_path, capsys):
+    d = dict(ci_payload(), rate_limit_waits=0, min_rate_limit_remaining=0, rate_limit_wait_events=[])
+    rc, _ = probe(monkeypatch, tmp_path, payload=d, code=0, phase='candidate')
+    assert rc == 0
+    lines = capsys.readouterr().out.strip().splitlines()
+    assert lines[0] == 'CI_RATE_LIMIT_SUMMARY phase=candidate waits=0 min_remaining=0'
+
+
+def test_td140_rate_limit_cap_10_and_pending_emits_summary(monkeypatch, tmp_path, capsys):
+    ev12 = [{'until': f'2026-11-27T10:{i:02d}:00+08:00', 'phase': 'postmain'} for i in range(12)]
+    d = dict(ci_payload(), status='VERIFICATION_TOOL_UNABLE_TO_COMPLETE',
+             rate_limit_waits=12, min_rate_limit_remaining=None, rate_limit_wait_events=ev12)
+    rc, payload = probe(monkeypatch, tmp_path, payload=d, code=2, phase='postmain')
+    assert rc == 2 and payload is None
+    lines = capsys.readouterr().out.strip().splitlines()
+    assert len([x for x in lines if x.startswith('CI_RATE_LIMIT_WAIT ')]) == 10
+    assert lines[-1] == 'CI_RATE_LIMIT_SUMMARY phase=postmain waits=12 min_remaining=unknown'
+    assert not list(tmp_path.glob('*-ci.json'))
+
+
+@pytest.mark.parametrize('patch', [
+    {'rate_limit_waits': 0},
+    {'rate_limit_waits': True, 'min_rate_limit_remaining': 0,
+     'rate_limit_wait_events': [{'until': '2026-11-27T10:00:00+08:00', 'phase': 'candidate'}]},
+    {'rate_limit_waits': 0, 'min_rate_limit_remaining': True, 'rate_limit_wait_events': []},
+    {'rate_limit_waits': 0, 'min_rate_limit_remaining': -1, 'rate_limit_wait_events': []},
+    {'rate_limit_waits': 1, 'min_rate_limit_remaining': 0, 'rate_limit_wait_events': 'not-a-list'},
+    {'rate_limit_waits': 1, 'min_rate_limit_remaining': 0, 'rate_limit_wait_events': []},
+    {'rate_limit_waits': 1, 'min_rate_limit_remaining': 0, 'rate_limit_wait_events': [['until', 'phase']]},
+    {'rate_limit_waits': 1, 'min_rate_limit_remaining': 0, 'rate_limit_wait_events': [{'until': 123, 'phase': 'candidate'}]},
+    {'rate_limit_waits': 1, 'min_rate_limit_remaining': 0, 'rate_limit_wait_events': [{'until': '2026-11-27T10:00:00', 'phase': 'candidate'}]},
+    {'rate_limit_waits': 1, 'min_rate_limit_remaining': 0, 'rate_limit_wait_events': [{'until': '2026-11-27T10:00:00+08:00', 'phase': 'postmain'}]},
+    {'rate_limit_waits': 1, 'min_rate_limit_remaining': 0, 'rate_limit_wait_events': [{'until': '2026-02-30T10:00:00+08:00', 'phase': 'candidate'}]},
+    {'rate_limit_waits': 1, 'min_rate_limit_remaining': 0, 'rate_limit_wait_events': [{'until': '2026-11-27T10:00:00+08:00', 'phase': 'candidate', 'extra': 1}]},
+])
+def test_td140_invalid_rate_limit_stats_fail_closed(monkeypatch, tmp_path, patch):
+    d = dict(ci_payload(), **patch)
+    with pytest.raises(br.Halt, match='CI_STATUS_STATS_INVALID'):
+        probe(monkeypatch, tmp_path, payload=d, phase='candidate')
+    assert not list(tmp_path.glob('*-ci.json'))
+
+
+def test_td140_ci_status_jobs_and_artifact_json_format(monkeypatch, tmp_path):
+    for bad_jobs in (
+        {'verify': 'not-a-dict', 'gateway-windows': {'status': 'completed', 'conclusion': 'success'}},
+        {'verify': {'status': 'in_progress', 'conclusion': 'success'}, 'gateway-windows': {'status': 'completed', 'conclusion': 'success'}},
+    ):
+        d = dict(ci_payload(), jobs=bad_jobs)
+        with pytest.raises(br.Halt, match='CI_STATUS_JOBS_NOT_PASS'):
+            probe(monkeypatch, tmp_path, payload=d, phase='candidate')
+
+    rich = dict(ci_payload(), extra_note='中文')
+    rc, got = probe(monkeypatch, tmp_path, payload=rich, phase='candidate')
+    assert rc == 0 and got['extra_note'] == '中文'
+    raw_artifact = (tmp_path / 'candidate-ci.json').read_text(encoding='utf-8')
+    assert raw_artifact == json.dumps(rich, sort_keys=True, ensure_ascii=True) + '\n'
+    b = br.Batch.__new__(br.Batch)
+    with pytest.raises(br.Halt, match='CI_STATUS_STATS_INVALID'):
+        b._format_ci_rate_limit_lines({
+            'rate_limit_waits': 1,
+            'min_rate_limit_remaining': 0,
+            'rate_limit_wait_events': ({'until': '2026-11-27T10:00:00+08:00', 'phase': 'candidate'},),
+        }, 'candidate')
+
+
+def test_td140_ci_status_cmd_flags_and_timeout_formula(monkeypatch, tmp_path):
+    b = br.Batch.__new__(br.Batch)
+    b.root = str(tmp_path)
+    b.task_id = 'B117-TD140-FLAGS'
+    b.write_new_artifact = lambda suffix, content: str(tmp_path / suffix)
+    seen = []
+
+    def runner(args, **kwargs):
+        seen.append((args, kwargs['timeout']))
+        return subprocess.CompletedProcess(args, 0, json.dumps(ci_payload()).encode(), b'')
+
+    monkeypatch.setattr(br.subprocess, 'run', runner)
+    b.ci_status(SHA, BRANCH, 3, 1, 'candidate')
+    b.ci_status(SHA, BRANCH, 24, 60, 'postmain', initial_delay=360, rate_limit_wait_budget=3660)
+    b.ci_status(SHA, BRANCH, 3, 10, 'candidate', initial_delay=1, rate_limit_wait_budget=1)
+
+    cmd0, t0 = seen[0]
+    assert '--initial-delay-seconds' not in cmd0 and '--rate-limit-wait-budget' not in cmd0
+    assert t0 == 303  # min(0 + 3*(1+60) + 120, 1920) + 0
+    cmd1, t1 = seen[1]
+    assert cmd1[cmd1.index('--initial-delay-seconds') + 1] == '360'
+    assert cmd1[cmd1.index('--rate-limit-wait-budget') + 1] == '3660'
+    assert t1 == 5580  # 1920 + 3660
+    cmd2, t2 = seen[2]
+    assert cmd2[cmd2.index('--initial-delay-seconds') + 1] == '1'
+    assert cmd2[cmd2.index('--rate-limit-wait-budget') + 1] == '1'
+    assert t2 == 332  # 1 + 3*(10+60) + 120 + 1
+
+
+def test_td140_step_push_verify_postmain_call_args_and_timeouts(monkeypatch, tmp_path):
+    calls = []
+
+    def make_batch(kind):
+        b = br.Batch.__new__(br.Batch)
+        b.root = str(tmp_path)
+        b.task_id = 'B117-TD140-TEST'
+        b.spec = {'kind': 'production', 'base_oid': '1' * 40, 'branch': BRANCH} if kind == 'production' else {
+            'kind': 'promotion', 'base_oid': '1' * 40, 'candidate_oid': SHA, 'candidate_branch': BRANCH}
+        b.remote_sha = lambda ref: SHA if ref != 'refs/heads/main' else '1' * 40
+        def fake_ci_status(sha, branch, attempts, interval, phase, initial_delay=0, rate_limit_wait_budget=0):
+            calls.append((phase, attempts, interval, initial_delay, rate_limit_wait_budget,
+                          min(initial_delay + attempts * (interval + 60) + 120, 1920) + rate_limit_wait_budget))
+            return 0, ci_payload()
+        b.ci_status = fake_ci_status
+        return b
+
+    monkeypatch.setattr(br, 'git', lambda root, *a, **k: SHA if a[:2] == ('rev-parse', 'HEAD')
+                        else ('1' * 40 if 'HEAD~1' in a or 'origin/main' in a or 'cand~1' in str(a)
+                              else ('false' if '--is-shallow-repository' in a else BRANCH)))
+    monkeypatch.setattr(br, 'expect_head_clean', lambda *a, **k: None)
+    monkeypatch.setattr(br, 'status_lines', lambda *a, **k: [])
+    monkeypatch.setattr(br, 'returncode', lambda *a, **k: 0)
+    monkeypatch.setattr(br, 'run', lambda *a, **k: None)
+
+    make_batch('production').step_push()
+    p_verify = make_batch('promotion')
+    monkeypatch.setattr(br, 'git', lambda root, *a, **k: 'false' if '--is-shallow-repository' in a else (
+        SHA if a[:2] == ('rev-parse', 'HEAD') else (BRANCH if '--show-current' in a else '1' * 40)))
+    p_verify.step_verify()
+    p_verify.remote_sha = lambda ref: SHA
+    p_verify.step_postmain()
+
+    assert calls == [
+        ('candidate', 24, 60, 360, 3660, 5580),
+        ('candidate', 3, 10, 0, 3660, 3990),
+        ('postmain', 24, 60, 360, 3660, 5580),
+    ]
+    assert '--head-sha' in bs.CI_STUB and 'verification_primitives' in bs.CI_STUB
+
+
 def test_valid_candidate_and_artifact(monkeypatch, tmp_path, capsys):
     rc, payload = probe(monkeypatch, tmp_path)
     assert rc == 0 and payload['run_id'] == 39000000001
