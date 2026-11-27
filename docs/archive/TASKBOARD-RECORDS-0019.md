@@ -1,0 +1,15 @@
+# 任務看板批次紀錄封存 0019
+
+> 本檔由 `scripts/taskboard_archive.py records-apply` 產生，寫成後不得修改。清單與每則的 SHA-256 在 `TASKBOARD-ARCHIVE-MANIFEST.json` 的 `record_archives`，由 CHECK 29 逐位元組核對，並以 git 在封存當時 checkpoint 的 `docs/TASKBOARD.md` 逐行比對原文。
+> 封存不是刪除：下列各則是封存當時 `docs/TASKBOARD.md` 批次紀錄的原文（含續行），逐字保留。
+> 封存批次：B117-STATE-DECISIONS-S1-R1-261127；封存當時 checkpoint：`90a95955fe549795d6d6ab0c66b332d1dbe0743d`；看板保留數：5
+
+## 封存紀錄
+
+### B117-G7B3B3-ROWLEN-LEDGER-R3-261125
+
+- 原位置：`docs/TASKBOARD.md` 第 131 行起，共 1 行（封存前）
+
+````text
+**B-117／G7-b3b3 第 2 批（列長守衛 CHECK 32、機械逐字拆列、封存整理＋TD-106／TD-107／TD-108 與 β-2 結案登錄）（2026-11-25；本批 B117-G7B3B3-ROWLEN-LEDGER-R3-261125）**：一句話：補齊看板列長上限、機械逐字拆列與清冊承接複查日守衛，並封存歷史列。一、前一批 B117-BETA2-D4-CAP-S1DRAFT-R4-261124（0a14e5569938372362817821aee5d946946fc374，唯一 parent 4a401422871458271657bc4b96ac4b3a78ade2df）已完成獨立 Macro PASS（ACCEPT ALL）與 POST-MAIN VERIFIED（candidate Run 45410421705 與 post-main Run 45418865700 雙 job 各雙 Node 全過並親讀原始日誌；24/24 作者檔一致；第二意見 R3→R4 BLOCKING 0／NON_BLOCKING 0 與 POST-MAIN 共識一致；production 全程 2718.0 秒、第 4 關分組 1044.5 秒，同 SHA 晉級 735.8 秒）；治理凍結連續無 S1 批數由 3 更新為 4/20（起算仍為 B117-ALPHA1-GATE-DIAG-R3-261122（不含））。二、電源與 O1／O2 查證：TD-117（Dashboard power-log.json）顯示 β-2 production 21:30:23–22:15:41 與晉級 22:51:25–23:03:41 皆全程落於插電（ac）區段 19:59:58–23:19:30（最低電量 65%、覆蓋率 100%；D1／TD-097 第 8 個第 4 關插電樣本 1044.5 秒，仍無電池樣本 S1C-023）；O1 唯讀查核 W2 .git/PROMOTE-B117-BETA2-D4-CAP-S1DRAFT-R4-261124-executor-reply.txt（742 位元組，SHA-256 213acdf4b8dde90a99303dc15423634fe0867c467b5e559ddb608113b56b44ed）為小寫 batch/b117-beta2-d4-cap-s1draft-r4-261124 且 reply_check PASS，證實係 Executor 聊天轉抄大寫 -R4- 所致、非 runner 缺陷，已將暫行人工放行條件寫入 docs/ops/reply-check-override.md 並將長期機械化（含審查官回覆之 Executor 區塊）登錄為 TD-132。三、本批變更（USER 2026-11-20／2026-11-21 核准並豁免 D6 凍結，E24／E27／D-SO 適用，不擴張範圍）：（一）scripts/taskboard_archive.py 與 check_consistency.py 新增 CHECK 32（total_checks=32、row-length-check CLI），限定看板列上限 2,500 字元、9 列過渡例外 ROW_LEN_LEGACY_CAPS 只減不增（含逐字保留之 G7）；並於 taskboard_archive.py 新增 split-row CLI 與 verify_split_concat；（二）taskboard_archive.py 新增 LEDGER_V2_ANCHOR（B117-BETA2-D4-CAP-S1DRAFT-R4-261124）生效機制：TD-106 檢驗全部承接列之「承接位置：ROW:<ID>[「<錨點>」]／BOARD「<錨點>」」指向排除批次紀錄與封存區之現行看板未結案目標；TD-107 強制全部開放列含 owner 與合法非遞減「複查日 YYYY-MM-DD」（改期於尾端追加新日期、以最後一個為準；CI 不讀系統時鐘），並於唯讀 ledger-review CLI／records-plan／draft_precheck.py 輸出非阻擋 TODO_LEDGER_REVIEW 到期提醒；TD-108 強制維持開放列依據欄嚴格只准尾端追加；（三）僅整理 B-100（5 處）與 B-115（8 處）對歷史 G4 列之引用及 B-100 唯一短碼後，以 split-row --apply 機械逐字拆分 B-100（B-100-1 至 B-100-8）與 B-115（B-115-1 至 B-115-7）各列 <= 2,500 字元（串接與拆列前原文逐位元組相等），清理 B-112／B-114 之歷史引用後以 taskboard_archive apply 將已結案歷史 G4 列逐字封存於 docs/archive/TASKBOARD-ARCHIVE-0003.md，並於測試補齊 TD-107 逾期邊界與 split-row 四欄／串接守衛；（四）採納第二意見兩項宏觀建議但不擴大本批（嚴守 D6（四））：「規格表＋itertools 窮舉轉移矩陣（含 so_transition_matrix.py 52 列）」與「變更行 AST 確定性突變工具」分別登錄為 TD-133、TD-134（含本批於 test_b3b3_2_guards.py 自用 itertools 窮舉測試）。四、搬移與清冊：以 records-apply（keep 5）搬移最舊 1 則（B117-G7B3B3-LEDGER-CHECK-R3-261121）至 docs/archive/TASKBOARD-RECORDS-0013.md（看板維持 6 則）；清冊 TD-010、TD-013、TD-052、TD-106、TD-107、TD-108 結案，TD-097／TD-117 與全部開放列／承接列依新規補齊複查日或承接位置，累計 134 項（結案 49、承接 41、開放 44）。新增待辦：TD-132、TD-133、TD-134。
+````

@@ -104,15 +104,17 @@ def test_real_repo_registry_passes_check_and_summary():
     fails, infos = reg.check(str(REPO_ROOT))
     assert fails == [], fails
     assert any('causes=25' in info for info in infos)
-    data = reg.summary(str(REPO_ROOT), as_of='2026-11-23', compare_checkpoint=False)
+    data = reg.summary(str(REPO_ROOT), as_of='2026-11-27', compare_checkpoint=False)
     assert data['schema'] == 2
     assert data['total'] == 25
-    assert data['confirmed_true'] == 4
-    assert data['confirmed_false'] == 21
-    assert data['by_status'] == {'fixed': 17, 'planned': 5, 'unplanned': 1, 'accepted': 2}
+    assert data['confirmed_true'] == 25
+    assert data['confirmed_false'] == 0
+    assert data['by_status'] == {'fixed': 17, 'planned': 4, 'unplanned': 1, 'accepted': 3}
     reg_doc = json.loads(cand_reg.read_bytes().decode('utf-8'))
     s23 = next(c for c in reg_doc['causes'] if c['id'] == 'S1C-023')
     assert s23['status'] == 'fixed' and s23['reverseVerification']['status'] == 'not_injectable'
+    s19 = next(c for c in reg_doc['causes'] if c['id'] == 'S1C-019')
+    assert s19['status'] == 'accepted' and s19['confirmed'] is True and isinstance(s19.get('followUp'), dict)
     assert {k: v['causes'] for k, v in data['by_class'].items()} == {
         'A': 7, 'B': 2, 'C': 8, 'D': 1, 'E': 5, 'F': 2,
     }

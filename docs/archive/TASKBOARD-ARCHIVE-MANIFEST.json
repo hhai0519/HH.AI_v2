@@ -1179,6 +1179,22 @@
      "unit_bytes": 5293
     }
    ]
+  },
+  {
+   "file": "docs/archive/TASKBOARD-RECORDS-0019.md",
+   "batch": "B117-STATE-DECISIONS-S1-R1-261127",
+   "checkpoint_oid": "90a95955fe549795d6d6ab0c66b332d1dbe0743d",
+   "file_sha256": "4a5c7002bee37258cbb27c3f48568c64bddcbee319c36942a1a11bedc18309d8",
+   "keep": 5,
+   "entries": [
+    {
+     "task_id": "B117-G7B3B3-ROWLEN-LEDGER-R3-261125",
+     "source_line": 131,
+     "line_count": 1,
+     "unit_sha256": "19322461c279279eb931333ba764493c1928bc914a861c3b6c94164e19f6165c",
+     "unit_bytes": 4091
+    }
+   ]
   }
  ]
 }

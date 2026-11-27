@@ -1,5 +1,5 @@
 {
-  "base_head": "9d76f90",
+  "base_head": "90a9595",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -576,16 +576,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 441,
-      "sha256": "4d9040c779aadebcb81d1bc2056bda337f07c0fa7b87e6ce3745f27dd57151d3"
+      "lines": 442,
+      "sha256": "4d1c357a87a156b1dbd2be77b17481b2afcfe246d8b304bf9464bb0c5c11c9f6"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 411,
-      "sha256": "3abf87d84d8373f80f71af9b413094ad9c72d4af30eb4e2452e162905cd8e707"
+      "lines": 412,
+      "sha256": "7ec5cd85586a91f230f402e66603422ec9ef2b52d7cf4672becebbbc76cd8b1b"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -628,7 +628,7 @@
         "## 封存區"
       ],
       "lines": 473,
-      "sha256": "ff2f4215ce8ae90979585a982ae9d2df5ef84d57795f71ef178ca07bf86de777"
+      "sha256": "9ddd24c275c3326c37ccb01b2066d0daf6714dcc70fe368b6fe7f1d120185603"
     },
     "docs/TODO-LEDGER.md": {
       "fences": 0,
@@ -640,8 +640,8 @@
         "## 四、盤點範圍與方法",
         "## 五、清冊"
       ],
-      "lines": 197,
-      "sha256": "6f3f6529997ee177c2c1370705ba07bb7676a557fa6b404293ff17681d1988c6"
+      "lines": 201,
+      "sha256": "7acfdc6df837be090de7b269ac24c9916164322031b079b4b6d3ab9013fd4466"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1150,8 +1150,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6498,
-      "sha256": "0604b924d88400b302324b06370b45fce5964744960e92077d8091dd2bc8d6ef"
+      "lines": 6500,
+      "sha256": "a713744ed155efd97383a53c252cf97f020fcfe993eb3f04ec7d1ce2a272089a"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -2451,8 +2451,8 @@
         "# -*- coding: utf-8 -*-",
         "# --- Beta 2 (D4): reverseVerification schema, AST nodeid check, monotonic guard & CLI ---"
       ],
-      "lines": 1071,
-      "sha256": "18047ab46d7e5e8d6bfe80fc39adff028fa81077ef53773e4dccf0b618dfc224"
+      "lines": 1073,
+      "sha256": "af4dcb7618419f63c0316127ee5857a972bcc106933ead85170c2691b897fb9a"
     },
     "scripts/tests/test_s1_registry_transitions.py": {
       "fences": 0,
@@ -2744,7 +2744,7 @@
       "sha256": "8597e282fed71298b01430659fae7cdfedf4a20f8be0267d662f8f1da8ff23e8"
     }
   },
-  "generated_at": "2026-11-26T13:44:41Z",
+  "generated_at": "2026-11-27T00:26:16Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {

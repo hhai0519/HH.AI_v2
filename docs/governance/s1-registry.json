@@ -1,6 +1,6 @@
 {
   "schema": 2,
-  "updated": "2026-11-26",
+  "updated": "2026-11-27",
   "about": "S1 根因登記檔（schema 2，D8／TD-101 移入 repo；B117-BETA1-S1-REGISTRY-R2-261124）。格式、A 至 F 根因分類優先序、雙源切換與 CHECK 31 規範見 docs/ops/d8-s1-registry.md。status：fixed（填 fixedIn 與 fixedCommit）、planned（填 plannedIn）、unplanned（填 followUp）、accepted（填 reason）。confirmed=false 表示尚待審查官確認（搬移時維持原值，不因 commit 一併轉為 true）；既有 21 筆 confirmed=false 之補分類由審查官依原文判定。既有修正相關欄位暫留本檔以維持 Dashboard 相容切換，新增後續追蹤亦應以選用欄位 todoIds 對應 docs/TODO-LEDGER.md。",
   "classes": {
     "precedence": [
@@ -68,17 +68,17 @@
       "plannedIn": null,
       "by": "第二意見 2026-11-19（逐筆對照 repo 原文與 git 歷史重新核對）",
       "verified": {
-        "by": "第二意見",
-        "date": "2026-11-19",
-        "basis": "repo main 5dc5105188ccd2601a6eac4b1dfbf56c282b7309 之看板、封存紀錄、AUDIT-LOG、EXEC-LOG 原文與 git 歷史"
+        "by": "審查官 AUD-GEMINI-261125",
+        "date": "2026-11-27",
+        "basis": "repo main 90a95955fe549795d6d6ab0c66b332d1dbe0743d 之看板、封存紀錄、AUDIT-LOG、EXEC-LOG 與 git 歷史核對確認類別、狀態與 followUp 有效性"
       },
-      "confirmed": false,
+      "confirmed": true,
       "distinctFrom": [
         "S1C-006",
         "S1C-007",
         "S1C-008"
       ],
-      "distinctBy": "第二意見 2026-11-20 依兩者登記標題判定：機制不同，只是同一個關卡代碼；待審查官確認",
+      "distinctBy": "第二意見 2026-11-20 依兩者登記標題判定：機制不同，只是同一個關卡代碼；待審查官確認；審查官 AUD-GEMINI-261125 2026-11-27 確認",
       "todoIds": [
         "TD-081",
         "TD-096"
@@ -114,17 +114,17 @@
       "fixedIn": null,
       "by": "第二意見 2026-11-19（逐筆對照 repo 原文與 git 歷史重新核對）",
       "verified": {
-        "by": "第二意見",
-        "date": "2026-11-19",
-        "basis": "repo main 5dc5105188ccd2601a6eac4b1dfbf56c282b7309 之看板、封存紀錄、AUDIT-LOG、EXEC-LOG 原文與 git 歷史"
+        "by": "審查官 AUD-GEMINI-261125",
+        "date": "2026-11-27",
+        "basis": "repo main 90a95955fe549795d6d6ab0c66b332d1dbe0743d 之看板、封存紀錄、AUDIT-LOG、EXEC-LOG 與 git 歷史核對確認類別、狀態與 followUp 有效性"
       },
-      "confirmed": false,
+      "confirmed": true,
       "distinctFrom": [
         "S1C-005",
         "S1C-006",
         "S1C-007"
       ],
-      "distinctBy": "第二意見 2026-11-20 依兩者登記標題判定：機制不同，只是同一個關卡代碼；待審查官確認",
+      "distinctBy": "第二意見 2026-11-20 依兩者登記標題判定：機制不同，只是同一個關卡代碼；待審查官確認；審查官 AUD-GEMINI-261125 2026-11-27 確認",
       "todoIds": [
         "TD-004"
       ]
@@ -149,11 +149,11 @@
       "plannedIn": null,
       "by": "第二意見 2026-11-19（逐筆對照 repo 原文與 git 歷史重新核對）",
       "verified": {
-        "by": "第二意見",
-        "date": "2026-11-19",
-        "basis": "repo main 5dc5105188ccd2601a6eac4b1dfbf56c282b7309 之看板、封存紀錄、AUDIT-LOG、EXEC-LOG 原文與 git 歷史"
+        "by": "審查官 AUD-GEMINI-261125",
+        "date": "2026-11-27",
+        "basis": "repo main 90a95955fe549795d6d6ab0c66b332d1dbe0743d 之看板、封存紀錄、AUDIT-LOG、EXEC-LOG 與 git 歷史核對確認類別、狀態與 followUp 有效性"
       },
-      "confirmed": false
+      "confirmed": true
     },
     {
       "id": "S1C-004",
@@ -184,15 +184,15 @@
       "fixedIn": null,
       "by": "第二意見 2026-11-19（逐筆對照 repo 原文與 git 歷史重新核對）",
       "verified": {
-        "by": "第二意見",
-        "date": "2026-11-19",
-        "basis": "repo main 5dc5105188ccd2601a6eac4b1dfbf56c282b7309 之看板、封存紀錄、AUDIT-LOG、EXEC-LOG 原文與 git 歷史"
+        "by": "審查官 AUD-GEMINI-261125",
+        "date": "2026-11-27",
+        "basis": "repo main 90a95955fe549795d6d6ab0c66b332d1dbe0743d 之看板、封存紀錄、AUDIT-LOG、EXEC-LOG 與 git 歷史核對確認類別、狀態與 followUp 有效性"
       },
-      "confirmed": false,
+      "confirmed": true,
       "distinctFrom": [
         "S1C-005"
       ],
-      "distinctBy": "第二意見 2026-11-20 依兩者登記標題判定：機制不同，只是同一個關卡代碼；待審查官確認",
+      "distinctBy": "第二意見 2026-11-20 依兩者登記標題判定：機制不同，只是同一個關卡代碼；待審查官確認；審查官 AUD-GEMINI-261125 2026-11-27 確認",
       "todoIds": [
         "TD-050"
       ]
@@ -217,11 +217,11 @@
       "plannedIn": null,
       "by": "第二意見 2026-11-19（逐筆對照 repo 原文與 git 歷史重新核對）",
       "verified": {
-        "by": "第二意見",
-        "date": "2026-11-19",
-        "basis": "repo main 5dc5105188ccd2601a6eac4b1dfbf56c282b7309 之看板、封存紀錄、AUDIT-LOG、EXEC-LOG 原文與 git 歷史"
+        "by": "審查官 AUD-GEMINI-261125",
+        "date": "2026-11-27",
+        "basis": "repo main 90a95955fe549795d6d6ab0c66b332d1dbe0743d 之看板、封存紀錄、AUDIT-LOG、EXEC-LOG 與 git 歷史核對確認類別、狀態與 followUp 有效性"
       },
-      "confirmed": false
+      "confirmed": true
     },
     {
       "id": "S1C-006",
@@ -245,11 +245,11 @@
       "plannedIn": null,
       "by": "第二意見 2026-11-19（逐筆對照 repo 原文與 git 歷史重新核對）",
       "verified": {
-        "by": "第二意見",
-        "date": "2026-11-19",
-        "basis": "repo main 5dc5105188ccd2601a6eac4b1dfbf56c282b7309 之看板、封存紀錄、AUDIT-LOG、EXEC-LOG 原文與 git 歷史"
+        "by": "審查官 AUD-GEMINI-261125",
+        "date": "2026-11-27",
+        "basis": "repo main 90a95955fe549795d6d6ab0c66b332d1dbe0743d 之看板、封存紀錄、AUDIT-LOG、EXEC-LOG 與 git 歷史核對確認類別、狀態與 followUp 有效性"
       },
-      "confirmed": false
+      "confirmed": true
     },
     {
       "id": "S1C-007",
@@ -268,21 +268,21 @@
       ],
       "followUp": {
         "plannedIn": "本機第 4 關 xdist 試驗（G7-b3b 之後）；（b2-二）第二門檻與最慢測試清單",
-        "note": "上限改為 3600 秒並有 70% 預警；近期 3051–3122 秒（約 85–87%），觸發線 3240 秒"
+        "note": "上限改為 3600 秒並有 70% 預警；近期 3051–3122 秒（約 85–87%），觸發線 3240 秒；D9 分組後近 14 樣本為 858–1337.4 秒，第 14 樣本（插電 1337.4 秒）已觸發 TD-097"
       },
       "evidence": "封存紀錄 RECORDS-0001「G5 R3 閘門逾時 S1 根除與 D-2 合批」；56d40e3 bounded gate budgets",
       "plannedIn": null,
       "by": "第二意見 2026-11-19（逐筆對照 repo 原文與 git 歷史重新核對）",
       "verified": {
-        "by": "第二意見",
-        "date": "2026-11-19",
-        "basis": "repo main 5dc5105188ccd2601a6eac4b1dfbf56c282b7309 之看板、封存紀錄、AUDIT-LOG、EXEC-LOG 原文與 git 歷史"
+        "by": "審查官 AUD-GEMINI-261125",
+        "date": "2026-11-27",
+        "basis": "repo main 90a95955fe549795d6d6ab0c66b332d1dbe0743d 之看板、封存紀錄、AUDIT-LOG、EXEC-LOG 與 git 歷史核對確認類別、狀態與 followUp 有效性"
       },
-      "confirmed": false,
+      "confirmed": true,
       "distinctFrom": [
         "S1C-006"
       ],
-      "distinctBy": "第二意見 2026-11-20 依兩者登記標題判定：機制不同，只是同一個關卡代碼；待審查官確認",
+      "distinctBy": "第二意見 2026-11-20 依兩者登記標題判定：機制不同，只是同一個關卡代碼；待審查官確認；審查官 AUD-GEMINI-261125 2026-11-27 確認",
       "class": "B",
       "todoIds": [
         "TD-048",
@@ -314,16 +314,16 @@
       "plannedIn": null,
       "by": "第二意見 2026-11-19（逐筆對照 repo 原文與 git 歷史重新核對）",
       "verified": {
-        "by": "第二意見",
-        "date": "2026-11-19",
-        "basis": "repo main 5dc5105188ccd2601a6eac4b1dfbf56c282b7309 之看板、封存紀錄、AUDIT-LOG、EXEC-LOG 原文與 git 歷史"
+        "by": "審查官 AUD-GEMINI-261125",
+        "date": "2026-11-27",
+        "basis": "repo main 90a95955fe549795d6d6ab0c66b332d1dbe0743d 之看板、封存紀錄、AUDIT-LOG、EXEC-LOG 與 git 歷史核對確認類別、狀態與 followUp 有效性"
       },
-      "confirmed": false,
+      "confirmed": true,
       "distinctFrom": [
         "S1C-006",
         "S1C-007"
       ],
-      "distinctBy": "第二意見 2026-11-20 依兩者登記標題判定：機制不同，只是同一個關卡代碼；待審查官確認",
+      "distinctBy": "第二意見 2026-11-20 依兩者登記標題判定：機制不同，只是同一個關卡代碼；待審查官確認；審查官 AUD-GEMINI-261125 2026-11-27 確認",
       "todoIds": [
         "TD-081",
         "TD-086"
@@ -349,11 +349,11 @@
       "plannedIn": null,
       "by": "第二意見 2026-11-19（逐筆對照 repo 原文與 git 歷史重新核對）",
       "verified": {
-        "by": "第二意見",
-        "date": "2026-11-19",
-        "basis": "repo main 5dc5105188ccd2601a6eac4b1dfbf56c282b7309 之看板、封存紀錄、AUDIT-LOG、EXEC-LOG 原文與 git 歷史"
+        "by": "審查官 AUD-GEMINI-261125",
+        "date": "2026-11-27",
+        "basis": "repo main 90a95955fe549795d6d6ab0c66b332d1dbe0743d 之看板、封存紀錄、AUDIT-LOG、EXEC-LOG 與 git 歷史核對確認類別、狀態與 followUp 有效性"
       },
-      "confirmed": false
+      "confirmed": true
     },
     {
       "id": "S1C-010",
@@ -375,16 +375,16 @@
       "plannedIn": null,
       "by": "第二意見 2026-11-19（逐筆對照 repo 原文與 git 歷史重新核對）",
       "verified": {
-        "by": "第二意見",
-        "date": "2026-11-19",
-        "basis": "repo main 5dc5105188ccd2601a6eac4b1dfbf56c282b7309 之看板、封存紀錄、AUDIT-LOG、EXEC-LOG 原文與 git 歷史"
+        "by": "審查官 AUD-GEMINI-261125",
+        "date": "2026-11-27",
+        "basis": "repo main 90a95955fe549795d6d6ab0c66b332d1dbe0743d 之看板、封存紀錄、AUDIT-LOG、EXEC-LOG 與 git 歷史核對確認類別、狀態與 followUp 有效性"
       },
-      "confirmed": false,
+      "confirmed": true,
       "distinctFrom": [
         "S1C-009",
         "S1C-020"
       ],
-      "distinctBy": "第二意見 2026-11-20 依兩者登記標題判定：機制不同，只是同一個關卡代碼；待審查官確認"
+      "distinctBy": "第二意見 2026-11-20 依兩者登記標題判定：機制不同，只是同一個關卡代碼；待審查官確認；審查官 AUD-GEMINI-261125 2026-11-27 確認"
     },
     {
       "id": "S1C-011",
@@ -406,11 +406,11 @@
       "plannedIn": null,
       "by": "第二意見 2026-11-19（逐筆對照 repo 原文與 git 歷史重新核對）",
       "verified": {
-        "by": "第二意見",
-        "date": "2026-11-19",
-        "basis": "repo main 5dc5105188ccd2601a6eac4b1dfbf56c282b7309 之看板、封存紀錄、AUDIT-LOG、EXEC-LOG 原文與 git 歷史"
+        "by": "審查官 AUD-GEMINI-261125",
+        "date": "2026-11-27",
+        "basis": "repo main 90a95955fe549795d6d6ab0c66b332d1dbe0743d 之看板、封存紀錄、AUDIT-LOG、EXEC-LOG 與 git 歷史核對確認類別、狀態與 followUp 有效性"
       },
-      "confirmed": false
+      "confirmed": true
     },
     {
       "id": "S1C-012",
@@ -432,11 +432,11 @@
       "plannedIn": null,
       "by": "第二意見 2026-11-19（逐筆對照 repo 原文與 git 歷史重新核對）",
       "verified": {
-        "by": "第二意見",
-        "date": "2026-11-19",
-        "basis": "repo main 5dc5105188ccd2601a6eac4b1dfbf56c282b7309 之看板、封存紀錄、AUDIT-LOG、EXEC-LOG 原文與 git 歷史"
+        "by": "審查官 AUD-GEMINI-261125",
+        "date": "2026-11-27",
+        "basis": "repo main 90a95955fe549795d6d6ab0c66b332d1dbe0743d 之看板、封存紀錄、AUDIT-LOG、EXEC-LOG 與 git 歷史核對確認類別、狀態與 followUp 有效性"
       },
-      "confirmed": false,
+      "confirmed": true,
       "todoIds": [
         "TD-005",
         "TD-007",
@@ -463,15 +463,15 @@
       "plannedIn": null,
       "by": "第二意見 2026-11-19（逐筆對照 repo 原文與 git 歷史重新核對）",
       "verified": {
-        "by": "第二意見",
-        "date": "2026-11-19",
-        "basis": "repo main 5dc5105188ccd2601a6eac4b1dfbf56c282b7309 之看板、封存紀錄、AUDIT-LOG、EXEC-LOG 原文與 git 歷史"
+        "by": "審查官 AUD-GEMINI-261125",
+        "date": "2026-11-27",
+        "basis": "repo main 90a95955fe549795d6d6ab0c66b332d1dbe0743d 之看板、封存紀錄、AUDIT-LOG、EXEC-LOG 與 git 歷史核對確認類別、狀態與 followUp 有效性"
       },
-      "confirmed": false,
+      "confirmed": true,
       "distinctFrom": [
         "S1C-014"
       ],
-      "distinctBy": "第二意見 2026-11-20 依兩者登記標題判定：機制不同，只是同一個關卡代碼；待審查官確認"
+      "distinctBy": "第二意見 2026-11-20 依兩者登記標題判定：機制不同，只是同一個關卡代碼；待審查官確認；審查官 AUD-GEMINI-261125 2026-11-27 確認"
     },
     {
       "id": "S1C-014",
@@ -493,11 +493,11 @@
       "plannedIn": null,
       "by": "第二意見 2026-11-19（逐筆對照 repo 原文與 git 歷史重新核對）",
       "verified": {
-        "by": "第二意見",
-        "date": "2026-11-19",
-        "basis": "repo main 5dc5105188ccd2601a6eac4b1dfbf56c282b7309 之看板、封存紀錄、AUDIT-LOG、EXEC-LOG 原文與 git 歷史"
+        "by": "審查官 AUD-GEMINI-261125",
+        "date": "2026-11-27",
+        "basis": "repo main 90a95955fe549795d6d6ab0c66b332d1dbe0743d 之看板、封存紀錄、AUDIT-LOG、EXEC-LOG 與 git 歷史核對確認類別、狀態與 followUp 有效性"
       },
-      "confirmed": false
+      "confirmed": true
     },
     {
       "id": "S1C-015",
@@ -516,11 +516,11 @@
       "plannedIn": null,
       "by": "第二意見 2026-11-19（逐筆對照 repo 原文與 git 歷史重新核對）",
       "verified": {
-        "by": "第二意見",
-        "date": "2026-11-19",
-        "basis": "repo main 5dc5105188ccd2601a6eac4b1dfbf56c282b7309 之看板、封存紀錄、AUDIT-LOG、EXEC-LOG 原文與 git 歷史"
+        "by": "審查官 AUD-GEMINI-261125",
+        "date": "2026-11-27",
+        "basis": "repo main 90a95955fe549795d6d6ab0c66b332d1dbe0743d 之看板、封存紀錄、AUDIT-LOG、EXEC-LOG 與 git 歷史核對確認類別、狀態與 followUp 有效性"
       },
-      "confirmed": false
+      "confirmed": true
     },
     {
       "id": "S1C-016",
@@ -542,11 +542,11 @@
       "fixedIn": null,
       "by": "第二意見 2026-11-19（逐筆對照 repo 原文與 git 歷史重新核對）",
       "verified": {
-        "by": "第二意見",
-        "date": "2026-11-19",
-        "basis": "repo main 5dc5105188ccd2601a6eac4b1dfbf56c282b7309 之看板、封存紀錄、AUDIT-LOG、EXEC-LOG 原文與 git 歷史"
+        "by": "審查官 AUD-GEMINI-261125",
+        "date": "2026-11-27",
+        "basis": "repo main 90a95955fe549795d6d6ab0c66b332d1dbe0743d 之看板、封存紀錄、AUDIT-LOG、EXEC-LOG 與 git 歷史核對確認類別、狀態與 followUp 有效性"
       },
-      "confirmed": false
+      "confirmed": true
     },
     {
       "id": "S1C-017",
@@ -571,11 +571,11 @@
       "plannedIn": null,
       "by": "第二意見 2026-11-19（逐筆對照 repo 原文與 git 歷史重新核對）",
       "verified": {
-        "by": "第二意見",
-        "date": "2026-11-19",
-        "basis": "repo main 5dc5105188ccd2601a6eac4b1dfbf56c282b7309 之看板、封存紀錄、AUDIT-LOG、EXEC-LOG 原文與 git 歷史"
+        "by": "審查官 AUD-GEMINI-261125",
+        "date": "2026-11-27",
+        "basis": "repo main 90a95955fe549795d6d6ab0c66b332d1dbe0743d 之看板、封存紀錄、AUDIT-LOG、EXEC-LOG 與 git 歷史核對確認類別、狀態與 followUp 有效性"
       },
-      "confirmed": false
+      "confirmed": true
     },
     {
       "id": "S1C-018",
@@ -598,11 +598,14 @@
       "plannedIn": null,
       "by": "第二意見 2026-11-19（逐筆對照 repo 原文與 git 歷史重新核對）",
       "verified": {
-        "by": "第二意見",
-        "date": "2026-11-19",
-        "basis": "repo main 5dc5105188ccd2601a6eac4b1dfbf56c282b7309 之看板、封存紀錄、AUDIT-LOG、EXEC-LOG 原文與 git 歷史"
+        "by": "審查官 AUD-GEMINI-261125",
+        "date": "2026-11-27",
+        "basis": "repo main 90a95955fe549795d6d6ab0c66b332d1dbe0743d 之看板、封存紀錄、AUDIT-LOG、EXEC-LOG 與 git 歷史核對確認類別、狀態與 followUp 有效性"
       },
-      "confirmed": false
+      "confirmed": true,
+      "todoIds": [
+        "TD-089"
+      ]
     },
     {
       "id": "S1C-019",
@@ -610,25 +613,26 @@
       "tasks": [
         "B116-G4-N1-TRANSITION-AUTH-R2-261026"
       ],
-      "status": "planned",
+      "status": "accepted",
       "class": "F",
-      "plannedIn": "B-124（待 USER 裁決：凍結工作區保留到何時、是否取證）",
+      "plannedIn": null,
       "watch": [
         "precommit:PRECOMMIT_NONZERO"
       ],
       "followUp": {
-        "plannedIn": "B-124",
-        "note": "N1 切片未完成；根因需讀凍結工作區的原始紀錄才能判定"
+        "plannedIn": "治理封頂或換機時由 USER 單次決定（B-114／G8）",
+        "note": "HH.AI_v2 凍結區與 hhai-archive\\temp-20261101 唯讀保存、不刪除，至治理封頂或換機時由 USER 單次決定（USER 2026-11-27 D-B124-261126=A）"
       },
-      "evidence": "看板 B-124 列（待裁決）",
+      "evidence": "看板 B-124 列（待裁決）；USER 2026-11-27 D-B124-261126=A、D-G4N1-261126=A",
       "fixedIn": null,
       "by": "第二意見 2026-11-19（逐筆對照 repo 原文與 git 歷史重新核對）",
       "verified": {
-        "by": "第二意見",
-        "date": "2026-11-19",
-        "basis": "repo main 5dc5105188ccd2601a6eac4b1dfbf56c282b7309 之看板、封存紀錄、AUDIT-LOG、EXEC-LOG 原文與 git 歷史"
+        "by": "審查官 AUD-GEMINI-261125",
+        "date": "2026-11-27",
+        "basis": "repo main 90a95955fe549795d6d6ab0c66b332d1dbe0743d 之看板、封存紀錄、AUDIT-LOG、EXEC-LOG 與 git 歷史核對確認類別、狀態與 followUp 有效性；USER 2026-11-27 D-B124-261126=A／D-G4N1-261126=A"
       },
-      "confirmed": false
+      "confirmed": true,
+      "reason": "USER 2026-11-27 裁決 D-B124-261126=A：不追查 2026-10-26 舊根因並結案 B-124；N1 實質內容已由 TD-024／B117-G7A-CONTRACT-STATE-R2-261117 落地且 ADR-0021 餘項由 TD-045 承接（D-G4N1-261126=A），接受本次舊事故根因維持 UNKNOWN"
     },
     {
       "id": "S1C-020",
@@ -660,15 +664,15 @@
       "plannedIn": null,
       "by": "第二意見 2026-11-19（逐筆對照 repo 原文與 git 歷史重新核對）",
       "verified": {
-        "by": "第二意見",
-        "date": "2026-11-19",
-        "basis": "repo main 5dc5105188ccd2601a6eac4b1dfbf56c282b7309 之看板、封存紀錄、AUDIT-LOG、EXEC-LOG 原文與 git 歷史"
+        "by": "審查官 AUD-GEMINI-261125",
+        "date": "2026-11-27",
+        "basis": "repo main 90a95955fe549795d6d6ab0c66b332d1dbe0743d 之看板、封存紀錄、AUDIT-LOG、EXEC-LOG 與 git 歷史核對確認類別、狀態與 followUp 有效性"
       },
-      "confirmed": false,
+      "confirmed": true,
       "distinctFrom": [
         "S1C-009"
       ],
-      "distinctBy": "第二意見 2026-11-20 依兩者登記標題判定：機制不同，只是同一個關卡代碼；待審查官確認"
+      "distinctBy": "第二意見 2026-11-20 依兩者登記標題判定：機制不同，只是同一個關卡代碼；待審查官確認；審查官 AUD-GEMINI-261125 2026-11-27 確認"
     },
     {
       "id": "S1C-021",
@@ -694,9 +698,9 @@
         "B117-G7B3B2-ONE-LINER-R2-261119": "B117-BACKUP-TEST-CLOCK-R2-261120（c3eb1fe；只修測試：第 15 項改注入時鐘，使本次 S1 不再偶發；production 同毫秒缺口未修，見 g6-clock-1）"
       },
       "verified": {
-        "by": "第二意見",
-        "date": "2026-11-20",
-        "basis": "repo main c3eb1fe575b86a363f81a8a45d8a6fbbfb600554 之看板 G6 列（g6-clock-1、Windows 第 4 關非確定性失敗類別待辦）、批次紀錄與 EXEC-LOG 原文；post-main Run 44674365333 success"
+        "by": "審查官 AUD-GEMINI-261125",
+        "date": "2026-11-27",
+        "basis": "repo main 90a95955fe549795d6d6ab0c66b332d1dbe0743d 之看板、封存紀錄、AUDIT-LOG、EXEC-LOG 與 git 歷史核對確認類別、狀態與 followUp 有效性"
       },
       "distinctFrom": [
         "S1C-001",
@@ -704,7 +708,7 @@
         "S1C-007",
         "S1C-008"
       ],
-      "distinctBy": "第二意見 2026-11-20 依兩者登記標題判定：機制不同，只是同一個關卡代碼；待審查官確認",
+      "distinctBy": "第二意見 2026-11-20 依兩者登記標題判定：機制不同，只是同一個關卡代碼；待審查官確認；審查官 AUD-GEMINI-261125 2026-11-27 確認",
       "todoIds": [
         "TD-095",
         "TD-096"
@@ -731,9 +735,9 @@
       "by": "第二意見 2026-11-20 登記；審查官 AUD-CLAUDE-261119 於 16:35 確認欄位、18:05 宣告 POST-MAIN VERIFIED 並提供 fixedCommit，同意 distinctFrom [\"S1C-009\",\"S1C-020\"]",
       "confirmed": true,
       "verified": {
-        "by": "第二意見",
-        "date": "2026-11-20",
-        "basis": "git fetch：main 7395fccf，唯一 parent 5567ef9e，7 個作者檔與提示詞宣告逐位元組相同；post-main Run 44713974338 push、attempt 1、success"
+        "by": "審查官 AUD-GEMINI-261125",
+        "date": "2026-11-27",
+        "basis": "repo main 90a95955fe549795d6d6ab0c66b332d1dbe0743d 之看板、封存紀錄、AUDIT-LOG、EXEC-LOG 與 git 歷史核對確認類別、狀態與 followUp 有效性"
       },
       "distinctFrom": [
         "S1C-009",
@@ -771,11 +775,11 @@
       "evidence": "Executor 回覆原文：GATE_BUDGET_WARN stage=PRECOMMIT gate=4 elapsed=3600.288 limit=3600；BOUNDED_EXIT PRECOMMIT code=86；S1 PRECOMMIT_GATE_TIMEOUT；focused 482 passed in 613.23s；全程 5223.7 秒；S1_FULL_CAPTURE_STATUS=INCOMPLETE_UNTRACKED_FILES。Dashboard runner 紀錄：第 3 關 60.056 秒（近 30 批 6.9–34.9 秒）；第 4 關近 30 批 1523–3176 秒。USER 14:42 提供：未插電、無重負載、未錄 Defender；HHAI_USER_S1-ENV_261121.txt 與 W2 閘門紀錄複本（HHAI_USER_GATELOG_*）",
       "by": "第二意見 2026-11-21 登記，14:4x 依 USER 證據更新根因；待審查官確認；17:2x 依審查官 AUD-CLAUDE-261121 意見修正標題（INFERENCE、UNKNOWN 標示）、distinctBy 與暫定類別欄位",
       "verified": {
-        "by": "審查官 AUD-GEMINI-261125（依 USER 裁決 D-S1C023-261126=A）",
-        "date": "2026-11-26",
-        "basis": "D9 分組後第 13 個第 4 關樣本（B117-TD136A-MUTATE-QUALNAME-R1-261126，第 1 個完整純電池樣本）total_sec=1201.3 秒、零失敗（來源：USER 本機 Dashboard site/status/power-log.json segs 與 overview.json steps via 第二意見 2026-11-26）；USER 裁決 D-S1C023-261126=A"
+        "by": "審查官 AUD-GEMINI-261125",
+        "date": "2026-11-27",
+        "basis": "D9 分組後第 13 個第 4 關樣本（B117-TD136A-MUTATE-QUALNAME-R1-261126，第 1 個完整純電池樣本）total_sec=1201.3 秒、零失敗；USER 裁決 D-S1C023-261126=A；repo main 90a95955fe549795d6d6ab0c66b332d1dbe0743d 之看板、封存紀錄、AUDIT-LOG、EXEC-LOG 與 git 歷史核對確認類別、狀態與 followUp 有效性"
       },
-      "confirmed": false,
+      "confirmed": true,
       "distinctFrom": [
         "S1C-007"
       ],
