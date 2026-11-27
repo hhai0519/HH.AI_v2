@@ -109,12 +109,24 @@ def test_real_repo_registry_passes_check_and_summary():
     assert data['total'] == 25
     assert data['confirmed_true'] == 25
     assert data['confirmed_false'] == 0
-    assert data['by_status'] == {'fixed': 17, 'planned': 4, 'unplanned': 1, 'accepted': 3}
+    assert data['by_status'] == {'fixed': 17, 'planned': 4, 'unplanned': 0, 'accepted': 4}
     reg_doc = json.loads(cand_reg.read_bytes().decode('utf-8'))
+    assert '既有 21 筆 confirmed=false' not in reg_doc['about']
+    assert all('待審查官確認' not in (c.get('distinctBy') or '') for c in reg_doc['causes'])
+    bases_23 = [next(c for c in reg_doc['causes'] if c['id'] == f'S1C-{i:03d}')['verified']['basis'] for i in range(1, 24)]
+    assert len(set(bases_23)) == 23
     s23 = next(c for c in reg_doc['causes'] if c['id'] == 'S1C-023')
     assert s23['status'] == 'fixed' and s23['reverseVerification']['status'] == 'not_injectable'
     s19 = next(c for c in reg_doc['causes'] if c['id'] == 'S1C-019')
     assert s19['status'] == 'accepted' and s19['confirmed'] is True and isinstance(s19.get('followUp'), dict)
+    assert 'B116-G4-N1-TRANSITION-AUTH-R2-261026' in s19.get('outcomes', {})
+    s16 = next(c for c in reg_doc['causes'] if c['id'] == 'S1C-016')
+    assert s16.get('todoIds') == ['TD-001', 'TD-002']
+    s17 = next(c for c in reg_doc['causes'] if c['id'] == 'S1C-017')
+    assert s17['status'] == 'accepted' and isinstance(s17.get('reason'), str) and s17['reason'].strip()
+    assert isinstance(s17.get('watch'), list) and len(s17['watch']) >= 1 and isinstance(s17.get('followUp'), dict)
+    s13 = next(c for c in reg_doc['causes'] if c['id'] == 'S1C-013')
+    assert 'B119-N7N8-POSTMAIN-STATE-R1-261018' in s13.get('outcomes', {})
     assert {k: v['causes'] for k, v in data['by_class'].items()} == {
         'A': 7, 'B': 2, 'C': 8, 'D': 1, 'E': 5, 'F': 2,
     }

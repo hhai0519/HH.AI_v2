@@ -1211,6 +1211,22 @@
      "unit_bytes": 2655
     }
    ]
+  },
+  {
+   "file": "docs/archive/TASKBOARD-RECORDS-0021.md",
+   "batch": "B117-STATE-TD142-ORDER-R1-261127",
+   "checkpoint_oid": "6ed62c47697c953a5d74f8265b6076ed4d5bcc22",
+   "file_sha256": "c74314fb7ce6c2061c8abc3393c1e9fad76fe7af5daaf447ad57e80320d94461",
+   "keep": 5,
+   "entries": [
+    {
+     "task_id": "B117-TD134-DIFF-AST-MUTATE-R2-261125",
+     "source_line": 131,
+     "line_count": 1,
+     "unit_sha256": "5a2b37d12dfb949b1366df6492059327925dc8003ae2c9dd450142f2bd32f6f7",
+     "unit_bytes": 2701
+    }
+   ]
   }
  ]
 }
