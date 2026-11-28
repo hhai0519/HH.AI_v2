@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""TD-136b: Deterministic one-command D-SO review verifier (scripts/dso_verify.py).
+"""TD-136b/TD-139/TD-144a: Deterministic one-command D-SO review verifier (scripts/dso_verify.py).
 
 Read-only with respect to the caller repository; extracts D-SO evidence packs safely,
 rebuilds dual isolated Base/Patched worktrees, verifies author files/patch/manifest/
 prompt, scans added patch lines, checks explicit contract qualnames, runs fast
-precheck and diff_ast_mutate.py, and emits JSON Schema v1 with a platform-invariant
-whitelist canonical_sha256. Pure Python 3.14 stdlib + bounded_process.py only.
+precheck and sibling/Base diff_ast_mutate.py (never self-verifying with candidate code),
+and emits JSON Schema v1 with a platform-invariant whitelist canonical_sha256 plus
+content_canonical_sha256. Pure Python 3.14 stdlib + bounded_process.py only.
 """
 
 from __future__ import annotations
@@ -31,7 +32,7 @@ import bounded_process  # noqa: E402
 
 SCHEMA_VERSION = 1
 TOOL_NAME = "dso_verify.py"
-TOOL_VERSION = "1.0.0"
+TOOL_VERSION = "1.1.0"
 
 EXIT_VERIFIED = 0
 EXIT_BLOCKING = 1
@@ -40,6 +41,7 @@ EXIT_INCOMPLETE = 2
 MAX_ZIP_FILES = 200
 MAX_ZIP_SINGLE_BYTES = 10 * 1024 * 1024
 MAX_ZIP_TOTAL_BYTES = 50 * 1024 * 1024
+MAX_WORKERS_HARD_CAP = 8
 
 DEFAULT_STEP_TIMEOUTS: dict[str, float] = {
     "git_clone": 120.0,
@@ -66,15 +68,21 @@ _WINDOWS_RESERVED_STEMS: frozenset[str] = frozenset({
 CONTRACT_QUALNAMES_BY_FILE: dict[str, tuple[str, ...]] = {
     "scripts/dso_verify.py": (
         "validate_archive_entry_name",
+        "_dir_prefixes_for_casefold",
         "safe_extract_zip",
         "validate_contract_qualnames",
         "compute_canonical_sha256",
+        "compute_content_canonical_sha256",
         "scan_added_lines",
     ),
     "scripts/diff_ast_mutate.py": (
         "_matches_qualname",
+        "resolve_workers",
+        "discover_changed_qualnames",
+        "load_survived_from_file",
         "load_accept_file",
         "load_test_map",
+        "compute_cache_key",
         "execute_mutation_run",
         "_build_report",
     ),
@@ -212,6 +220,12 @@ def validate_archive_entry_name(name: str, *, allow_dir_trailing_slash: bool = F
     return trimmed if all(_is_safe_segment(seg) for seg in trimmed.split("/")) else None
 
 
+def _dir_prefixes_for_casefold(cf: str) -> list[str]:
+    """Return bounded non-empty ancestor directory prefixes for normalized POSIX casefolded path (TD-139)."""
+    parts = cf.split("/")
+    return ["/".join(parts[:depth]) for depth in range(1, len(parts))]
+
+
 def _check_member_mode_and_target(info: zipfile.ZipInfo, norm: str, dest_root: Path) -> Path:
     is_dir = info.is_dir()
     mode = (info.external_attr >> 16) & 0xFFFF
@@ -296,10 +310,7 @@ def safe_extract_zip(
             seen_casefold.add(cf)
             if not is_dir:
                 file_cfs.add(cf)
-            parent = cf.rpartition("/")[0]
-            while parent:
-                dir_prefix_cfs.add(parent)
-                parent = parent.rpartition("/")[0]
+            dir_prefix_cfs.update(_dir_prefixes_for_casefold(cf))
             target = _check_member_mode_and_target(info, norm, dest_root)
             plan.append((info, norm, is_dir, target))
 
@@ -540,6 +551,50 @@ def compute_canonical_sha256(report: dict[str, Any]) -> str:
     return _sha256_bytes(raw)
 
 
+def compute_content_canonical_sha256(report: dict[str, Any]) -> str:
+    """Compute packaging-invariant SHA-256 (same whitelist excluding inputs['pack_sha256'], 4a)."""
+    payload = compute_canonical_payload(report)
+    inputs = dict(payload.get("inputs") or {})
+    inputs.pop("pack_sha256", None)
+    payload["inputs"] = inputs
+    raw = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    return _sha256_bytes(raw)
+
+
+def _resolve_workers_arg(raw: str | int) -> str:
+    if isinstance(raw, bool):
+        raise DsoVerifyError("INVALID_ARGS", "--mutate-workers cannot be bool")
+    if isinstance(raw, int):
+        if raw < 1 or raw > MAX_WORKERS_HARD_CAP:
+            raise DsoVerifyError("INVALID_ARGS", f"--mutate-workers must be in 1..{MAX_WORKERS_HARD_CAP}")
+        return str(raw)
+    if not isinstance(raw, str):
+        raise DsoVerifyError("INVALID_ARGS", "--mutate-workers must be int or str")
+    txt = raw.strip()
+    if txt.lower() == "auto":
+        return "auto"
+    try:
+        val = int(txt)
+    except ValueError:
+        raise DsoVerifyError("INVALID_ARGS", f"invalid --mutate-workers: {raw!r}") from None
+    if val < 1 or val > MAX_WORKERS_HARD_CAP:
+        raise DsoVerifyError("INVALID_ARGS", f"--mutate-workers must be in 1..{MAX_WORKERS_HARD_CAP}")
+    return str(val)
+
+
+def _validate_mutate_cache_dir(cache_dir: Path, repo: Path, pack_path: Path) -> Path:
+    c = cache_dir.resolve()
+    r = repo.resolve()
+    p = pack_path.resolve()
+    if c.is_relative_to(r):
+        raise DsoVerifyError("INVALID_ARGS", f"--mutate-cache-dir must be outside --repo: {c}")
+    if pack_path.is_dir() and c.is_relative_to(p):
+        raise DsoVerifyError("INVALID_ARGS", f"--mutate-cache-dir must be outside --pack dir: {c}")
+    if c.exists() and not c.is_dir():
+        raise DsoVerifyError("INVALID_ARGS", f"--mutate-cache-dir exists and is not a directory: {c}")
+    return c
+
+
 def _validate_budgets(timeouts: dict[str, float], overall_budget: float) -> None:
     if overall_budget <= 0 or any(v <= 0 for v in timeouts.values()):
         raise DsoVerifyError("INVALID_TIMEOUT_BUDGET", "all timeouts and overall_budget must be > 0")
@@ -724,6 +779,8 @@ def verify_pack(
     overall_budget: float = DEFAULT_OVERALL_BUDGET_SEC,
     contract_map: dict[str, tuple[str, ...]] | None = None,
     monotonic_fn: Callable[[], float] | None = None,
+    mutate_workers: str | int = "1",
+    mutate_cache_dir: Path | None = None,
 ) -> tuple[int, dict[str, Any]]:
     """Run deterministic D-SO verification on a D-SO PACK.zip or unpacked directory."""
     clock = monotonic_fn if monotonic_fn is not None else _DEFAULT_MONOTONIC
@@ -738,6 +795,7 @@ def verify_pack(
     task_id = ""
     base_oid = ""
     q_filters: list[str] = []
+    pack_mode = "unknown"
     run_start = clock()
 
     def _finish(code: int | None = None, overall: str | None = None) -> tuple[int, dict[str, Any]]:
@@ -747,6 +805,7 @@ def verify_pack(
             "tool": TOOL_NAME,
             "tool_version": TOOL_VERSION,
             "tool_sha256": _sha256_bytes(Path(__file__).read_bytes()),
+            "pack_mode": pack_mode,
             "base_oid": base_oid,
             "task_id": task_id,
             "overall_status": c_status,
@@ -773,12 +832,19 @@ def verify_pack(
             "canonical_included_fields": list(CANONICAL_INCLUDED_FIELDS),
         }
         report["canonical_sha256"] = compute_canonical_sha256(report)
+        report["content_canonical_sha256"] = compute_content_canonical_sha256(report)
         return c_code, report
 
     try:
         _validate_budgets(timeouts, overall_budget)
         if max_mutants < 0:
             raise DsoVerifyError("INVALID_ARGS", "--max-mutants must be >= 0")
+        workers_arg = _resolve_workers_arg(mutate_workers)
+        resolved_cache = (
+            _validate_mutate_cache_dir(mutate_cache_dir, repo, pack_path)
+            if mutate_cache_dir is not None
+            else None
+        )
         if qualnames:
             for q in qualnames:
                 if not isinstance(q, str) or not q.strip():
@@ -803,13 +869,15 @@ def verify_pack(
         t0 = clock()
         pack_dir = iso_root / "pack"
         if pack_path.is_dir():
+            pack_mode = "dir"
             extracted_files = _copy_pack_dir(pack_path, pack_dir)
         elif pack_path.is_file():
+            pack_mode = "zip"
             inputs["pack_sha256"] = _sha256_bytes(pack_path.read_bytes())
             extracted_files = safe_extract_zip(pack_path, pack_dir)
         else:
             raise DsoVerifyError("UNSAFE_ARCHIVE", f"pack path missing: {pack_path.name}")
-        checks.append(_make_check("safe_archive", "PASS", "OK", clock() - t0, {"file_count": len(extracted_files)}))
+        checks.append(_make_check("safe_archive", "PASS", "OK", clock() - t0, {"file_count": len(extracted_files), "pack_mode": pack_mode}))
 
         # 2. Pack Integrity
         t0 = clock()
@@ -973,7 +1041,7 @@ def verify_pack(
         cq_verified = validate_contract_qualnames(work_patched, actual_changed, contract_map=contract_map)
         checks.append(_make_check("contract_qualnames", "PASS", "OK", clock() - t0, {"checked_files": cq_verified}))
 
-        # 9. Diff AST Mutation Verification
+        # 9. Diff AST Mutation Verification (M1: NEVER execute candidate work_patched/scripts/diff_ast_mutate.py!)
         t0 = clock()
         changed_non_test_py = [rel for rel in actual_changed if rel.endswith(".py") and not _is_test_rel(rel)]
         if not changed_non_test_py:
@@ -983,11 +1051,8 @@ def verify_pack(
             q_filters = _select_mutation_qualnames(changed_non_test_py, qualnames)
             defn_doc = _load_json_bytes(pack_dir / "definition.json", "definition.json")
             test_cmd = mutate_test_cmd or _derive_mutate_test_cmd(defn_doc, work_patched)
-            dam_script = (
-                work_patched / "scripts/diff_ast_mutate.py"
-                if "scripts/diff_ast_mutate.py" in actual_changed
-                else work_base / "scripts/diff_ast_mutate.py"
-            )
+            sibling_dam = Path(__file__).resolve().parent / "diff_ast_mutate.py"
+            dam_script = sibling_dam if sibling_dam.is_file() else (work_base / "scripts/diff_ast_mutate.py")
             mut_out = iso_root / "mutate-report.json"
             dam_cmd = [
                 sys.executable,
@@ -999,9 +1064,13 @@ def verify_pack(
                 "--baseline-timeout", str(timeouts["diff_ast_mutate_baseline"]),
                 "--per-mutant-timeout", str(timeouts["diff_ast_mutate_per_mutant"]),
                 "--total-timeout", str(min(timeouts["diff_ast_mutate_total"], rem_sec)),
+                "--workers", workers_arg,
                 "--json-out", str(mut_out),
                 "--work-parent", str(iso_root),
             ]
+            if resolved_cache is not None:
+                verifier_sha = _sha256_bytes(Path(__file__).read_bytes().replace(b"\r\n", b"\n"))
+                dam_cmd.extend(["--cache-dir", str(resolved_cache), "--caller-tool-sha256", verifier_sha])
             for q in q_filters:
                 dam_cmd.extend(["--qualname", q])
             if accept_path is not None:
@@ -1020,6 +1089,9 @@ def verify_pack(
             accepted_list = [m for m in m_doc.get("mutants", []) if m.get("status") == "ACCEPTED"]
             mutation_block = {
                 "summary": m_doc.get("summary", {}),
+                "full_run": m_doc.get("full_run"),
+                "workers": m_doc.get("workers"),
+                "cache": m_doc.get("cache"),
                 "mutants": m_doc.get("mutants", []),
                 "survived": survived_list,
                 "accepted": accepted_list,
@@ -1027,6 +1099,15 @@ def verify_pack(
                 "unnecessary_accepted": m_doc.get("unnecessary_accepted", []),
                 "out_of_scope_accepted": m_doc.get("out_of_scope_accepted", []),
             }
+            if m_doc.get("full_run") is not True or (m_doc.get("summary") or {}).get("full_run") is not True:
+                checks.append(_make_check(
+                    "diff_ast_mutate",
+                    "FAIL",
+                    "PARTIAL_MUTATION_RUN_FORBIDDEN",
+                    clock() - t0,
+                    {"full_run": m_doc.get("full_run")},
+                ))
+                return _finish()
             m_reason = str(m_doc.get("summary", {}).get("reason") or "MUTATE_ERROR")
             if m_res.returncode == 0:
                 checks.append(_make_check("diff_ast_mutate", "PASS", m_reason, clock() - t0, {"total": m_doc["summary"]["total"]}))
@@ -1048,7 +1129,7 @@ def verify_pack(
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
-    ap = argparse.ArgumentParser(description="One-command D-SO review verifier (TD-136b)")
+    ap = argparse.ArgumentParser(description="One-command D-SO review verifier (TD-136b/TD-139/TD-144a)")
     ap.add_argument("--repo", default=".", help="Read-only base repository path")
     ap.add_argument("--pack", required=True, help="Path to D-SO PACK.zip or unpacked directory")
     ap.add_argument("--work-parent", help="Directory for disposable isolated verification (default: TEMP)")
@@ -1058,6 +1139,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     ap.add_argument("--accept", help="Optional --accept JSON passed to diff_ast_mutate.py")
     ap.add_argument("--test-map", help="Optional --test-map JSON passed to diff_ast_mutate.py")
     ap.add_argument("--max-mutants", type=int, default=DEFAULT_MAX_MUTANTS)
+    ap.add_argument("--mutate-workers", default="1", help="Parallel worker count 1..8 or 'auto' (default: 1)")
+    ap.add_argument("--mutate-cache-dir", help="Optional external content-addressed mutation cache directory")
     ap.add_argument("--mutate-baseline-timeout", type=float, default=DEFAULT_STEP_TIMEOUTS["diff_ast_mutate_baseline"])
     ap.add_argument("--mutate-per-mutant-timeout", type=float, default=DEFAULT_STEP_TIMEOUTS["diff_ast_mutate_per_mutant"])
     ap.add_argument("--mutate-total-timeout", type=float, default=DEFAULT_STEP_TIMEOUTS["diff_ast_mutate_total"])
@@ -1085,6 +1168,8 @@ def main(argv: list[str] | None = None) -> int:
         max_mutants=ns.max_mutants,
         step_timeouts=timeouts,
         overall_budget=ns.overall_budget,
+        mutate_workers=ns.mutate_workers,
+        mutate_cache_dir=Path(ns.mutate_cache_dir) if ns.mutate_cache_dir else None,
     )
     if ns.json_out:
         out_p = Path(ns.json_out)

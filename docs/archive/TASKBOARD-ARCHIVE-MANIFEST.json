@@ -1227,6 +1227,22 @@
      "unit_bytes": 2701
     }
    ]
+  },
+  {
+   "file": "docs/archive/TASKBOARD-RECORDS-0022.md",
+   "batch": "B117-TD144A-TD139-PIPELINE-R2-261127",
+   "checkpoint_oid": "16cc185d77a886d7c674552ff6980fd25c74b3ee",
+   "file_sha256": "fa5b3bc72e9f1b0469e1af898beb4281dd95f52024f0794164beab8a774d1fca",
+   "keep": 5,
+   "entries": [
+    {
+     "task_id": "B117-AUD-TAKEOVER-STATE-R1-261126",
+     "source_line": 131,
+     "line_count": 1,
+     "unit_sha256": "03bd1f17b3b94db7f79ad78529a97a0c5786ad176bdf83383a9b188e64ad14a1",
+     "unit_bytes": 2770
+    }
+   ]
   }
  ]
 }

@@ -3,34 +3,41 @@
 """
 scripts/diff_ast_mutate.py
 
-Deterministic diff-line AST mutation testing tool (TD-134).
+Deterministic diff-line AST mutation testing tool (TD-134, TD-136a, TD-137, TD-144a).
 Pure Python 3.14 standard library + sibling bounded_process.run_bounded.
 
 Exit codes:
   0  PASS (or PASS_NO_MUTANTS, or --list dry-run succeeded)
   1  FAIL (one or more SURVIVED mutants remain after --accept exemptions)
   2  ERROR / FAIL-CLOSED (baseline failed, cap exceeded, stale/invalid accept file,
-     test-map error, timeout, syntax-invalid mutant, restore mismatch, git/patch/args error)
+     test-map error, timeout, syntax-invalid mutant, restore mismatch, git/patch/args error,
+     survived source invalid)
 """
 
 from __future__ import annotations
 
 import argparse
 import ast
+import copy
 import fnmatch
 import hashlib
+import importlib.metadata
 import json
+import locale
 import os
+import platform
+import queue
 import re
 import shlex
 import shutil
 import stat
-import subprocess
 import sys
 import tempfile
+import threading
 import time
 from collections.abc import Callable
-from dataclasses import asdict, dataclass
+from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -40,19 +47,24 @@ if str(SCRIPT_DIR) not in sys.path:
 import bounded_process  # noqa: E402
 
 TOOL_NAME = "diff_ast_mutate.py"
-TOOL_VERSION = "1.1.0"
+TOOL_VERSION = "1.2.0"
 SCHEMA_VERSION = 1
 
 DEFAULT_MAX_MUTANTS = 120
 DEFAULT_PER_MUTANT_TIMEOUT = 60.0
 DEFAULT_TOTAL_TIMEOUT = 900.0
 DEFAULT_BASELINE_TIMEOUT = 120.0
+MAX_WORKERS_HARD_CAP = 8
 _DEFAULT_MONOTONIC: Callable[[], float] = time.monotonic
+
+HEX64_RE = re.compile(r"^[0-9a-f]{64}$")
+LOCKFILE_NAMES: tuple[str, ...] = ("uv.lock", "requirements.txt", "pyproject.toml")
 
 
 def _matches_qualname(qualname: str, patterns: list[str]) -> bool:
     """Return True if qualname matches any case-sensitive fnmatchcase glob pattern."""
     return any(fnmatch.fnmatchcase(qualname, pat) for pat in patterns)
+
 
 HUNK_RE = re.compile(r"^@@\s+-\d+(?:,\d+)?\s+\+(\d+)(?:,(\d+))?\s+@@")
 DIFF_PLUS_RE = re.compile(r"^\+\+\+\s+(?:b/)?(.+)$")
@@ -162,6 +174,51 @@ def _posix_rel(path_str: str) -> str:
     return norm
 
 
+def resolve_workers(raw: str | int | None) -> int:
+    """Parse and bound --workers (<int|auto>); fail-closed INVALID_ARGS outside 1..8."""
+    if raw is None:
+        return 1
+    if isinstance(raw, bool):
+        raise ToolError("INVALID_ARGS", "--workers cannot be bool")
+    if isinstance(raw, int):
+        val = raw
+    elif isinstance(raw, str):
+        txt = raw.strip()
+        if txt.lower() == "auto":
+            cpus = os.cpu_count()
+            val = 1 if cpus is None else min(4, max(1, cpus // 2))
+        else:
+            try:
+                val = int(txt)
+            except ValueError:
+                raise ToolError("INVALID_ARGS", f"invalid --workers value: {raw!r}") from None
+    else:
+        raise ToolError("INVALID_ARGS", f"invalid --workers type: {type(raw).__name__}")
+    if val < 1 or val > MAX_WORKERS_HARD_CAP:
+        raise ToolError("INVALID_ARGS", f"--workers must be in 1..{MAX_WORKERS_HARD_CAP}, got {val}")
+    return val
+
+
+def discover_changed_qualnames(mutants: list[MutantCandidate]) -> tuple[list[str], dict[str, int]]:
+    """Return sorted unique qualnames and occurrence counts across full un-filtered mutant catalog."""
+    counts: dict[str, int] = {}
+    for m in mutants:
+        counts[m.qualname] = counts.get(m.qualname, 0) + 1
+    ordered = sorted(counts)
+    return ordered, {q: counts[q] for q in ordered}
+
+
+def validate_cache_dir(cache_dir: Path, repo: Path) -> Path:
+    """Validate --cache-dir is a directory (or creatable) strictly outside repo (M3)."""
+    c = cache_dir.resolve()
+    r = repo.resolve()
+    if c.is_relative_to(r):
+        raise ToolError("INVALID_ARGS", f"--cache-dir must be strictly outside --repo: {c}")
+    if c.exists() and not c.is_dir():
+        raise ToolError("INVALID_ARGS", f"--cache-dir exists and is not a directory: {c}")
+    return c
+
+
 def _is_default_excluded_test(rel: str) -> bool:
     parts = rel.split("/")
     name = parts[-1]
@@ -219,6 +276,37 @@ def parse_unified_diff(diff_text: str) -> dict[str, set[int]]:
             if count > 0:
                 file_lines[cur_file].update(range(start, start + count))
     return {k: v for k, v in file_lines.items() if v}
+
+
+def _parse_diff_touched_paths(diff_text: str) -> tuple[set[str], set[str]]:
+    """Return (non_deleted_paths, deleted_paths) referenced by unified diff headers."""
+    present: set[str] = set()
+    deleted: set[str] = set()
+    minus_path: str | None = None
+    for raw_line in diff_text.splitlines():
+        if raw_line.startswith("diff --git "):
+            minus_path = None
+        elif raw_line.startswith("--- "):
+            t = raw_line[4:].strip()
+            if t == "/dev/null":
+                minus_path = None
+            else:
+                if t.startswith('"') and t.endswith('"'):
+                    t = t[1:-1]
+                minus_path = _posix_rel(t[2:] if t.startswith("a/") else t)
+        elif raw_line.startswith("+++ "):
+            t = raw_line[4:].strip()
+            if t == "/dev/null":
+                if minus_path:
+                    deleted.add(minus_path)
+                    present.discard(minus_path)
+            else:
+                if t.startswith('"') and t.endswith('"'):
+                    t = t[1:-1]
+                rel = _posix_rel(t[2:] if t.startswith("b/") else t)
+                present.add(rel)
+                deleted.discard(rel)
+    return present, deleted
 
 
 def _line_offsets(raw_bytes: bytes) -> list[int]:
@@ -917,6 +1005,62 @@ def load_accept_file(path: Path | None) -> dict[str, tuple[str, str]]:
     return out
 
 
+def load_survived_from_file(
+    path: Path,
+    *,
+    expected_base_oid: str | None,
+    expected_scope_kind: str,
+    expected_changed_files: list[str],
+    expected_qualname_filter: list[str],
+    expected_tool_sha: str,
+    full_catalog_ids: set[str],
+) -> set[str]:
+    """Validate --only-survived-from report (S5 strict checks) and return survived mutant IDs."""
+    try:
+        doc = json.loads(path.read_bytes().decode("utf-8"))
+    except (OSError, UnicodeDecodeError, ValueError) as exc:
+        raise ToolError("SURVIVED_SOURCE_INVALID", f"cannot read {path}: {exc}") from None
+
+    if not isinstance(doc, dict) or doc.get("schema_version") != SCHEMA_VERSION or doc.get("tool") != TOOL_NAME:
+        raise ToolError("SURVIVED_SOURCE_INVALID", "unexpected schema_version or tool")
+    if doc.get("mode") != "run":
+        raise ToolError("SURVIVED_SOURCE_INVALID", f"source mode must be 'run', got {doc.get('mode')!r}")
+    if doc.get("tool_sha256") != expected_tool_sha:
+        raise ToolError("SURVIVED_SOURCE_INVALID", "source tool_sha256 does not match current tool")
+
+    src_scope = doc.get("scope")
+    if not isinstance(src_scope, dict):
+        raise ToolError("SURVIVED_SOURCE_INVALID", "source missing scope object")
+    if src_scope.get("kind") != expected_scope_kind:
+        raise ToolError("SURVIVED_SOURCE_INVALID", "source scope.kind mismatch")
+    if src_scope.get("base_oid") != expected_base_oid:
+        raise ToolError("SURVIVED_SOURCE_INVALID", "source scope.base_oid mismatch")
+    src_files = src_scope.get("changed_files")
+    src_qn = src_scope.get("qualname_filter")
+    if not isinstance(src_files, list) or sorted(src_files) != sorted(expected_changed_files):
+        raise ToolError("SURVIVED_SOURCE_INVALID", "source scope.changed_files mismatch")
+    if not isinstance(src_qn, list) or sorted(src_qn) != sorted(expected_qualname_filter):
+        raise ToolError("SURVIVED_SOURCE_INVALID", "source scope.qualname_filter mismatch")
+
+    raw_mutants = doc.get("mutants")
+    if not isinstance(raw_mutants, list):
+        raise ToolError("SURVIVED_SOURCE_INVALID", "source missing mutants list")
+
+    survived_ids: set[str] = set()
+    for entry in raw_mutants:
+        if not isinstance(entry, dict):
+            raise ToolError("SURVIVED_SOURCE_INVALID", "mutant entry must be an object")
+        mid = entry.get("id")
+        st = entry.get("status")
+        if not isinstance(mid, str) or not isinstance(st, str):
+            raise ToolError("SURVIVED_SOURCE_INVALID", "mutant entry missing string id or status")
+        if mid not in full_catalog_ids:
+            raise ToolError("SURVIVED_SOURCE_INVALID", f"unknown mutant id in source: {mid}")
+        if st == "SURVIVED":
+            survived_ids.add(mid)
+    return survived_ids
+
+
 def load_test_map(path: Path | None) -> tuple[dict[str, list[str]], list[str] | None]:
     """Validate and return (mapping, default_tests) from --test-map JSON file."""
     if path is None:
@@ -986,6 +1130,230 @@ def _build_cmd_argv(template: list[str], tests: list[str] | None) -> list[str]:
     return [*template, *tests]
 
 
+def _inject_pytest_basetemp(argv: list[str], basetemp_dir: Path) -> list[str]:
+    """Ensure parallel worker pytest runs do not share TEMP/pytest-of-* cache directories."""
+    if any(t == "--basetemp" or t.startswith("--basetemp=") for t in argv):
+        return list(argv)
+    for idx, tok in enumerate(argv):
+        base = os.path.basename(tok).lower()
+        if base in ("pytest", "pytest.exe") or (idx > 0 and argv[idx - 1] == "-m" and tok == "pytest"):
+            out = list(argv)
+            out[idx + 1:idx + 1] = ["--basetemp", str(basetemp_dir)]
+            return out
+    return list(argv)
+
+
+def _installed_packages_sha256() -> str:
+    """Hash sorted installed distribution names & versions (covers pytest & plugins, M3(a))."""
+    items: list[str] = []
+    for dist in importlib.metadata.distributions():
+        raw_name = ""
+        try:
+            raw_name = str(dist.metadata["Name"] or "")
+        except KeyError:
+            raw_name = ""
+        items.append(f"{raw_name.strip().lower()}=={dist.version}")
+    items.sort()
+    return _sha256_bytes("\n".join(items).encode("utf-8"))
+
+
+def _encoding_env_fingerprint() -> dict[str, Any]:
+    """Capture encoding/locale/hash-seed factors affecting test outcomes (M3(b))."""
+    return {
+        "PYTHONUTF8": os.environ.get("PYTHONUTF8"),
+        "PYTHONIOENCODING": os.environ.get("PYTHONIOENCODING"),
+        "PYTHONHASHSEED": os.environ.get("PYTHONHASHSEED"),
+        "PYTEST_ADDOPTS": os.environ.get("PYTEST_ADDOPTS"),
+        "preferred_encoding": locale.getpreferredencoding(False),
+        "filesystem_encoding": sys.getfilesystemencoding(),
+    }
+
+
+def compute_cache_key(
+    *,
+    base_oid: str | None,
+    scope_kind: str,
+    author_bytes: dict[str, bytes],
+    related_files_sha: dict[str, str],
+    qualnames: list[str],
+    test_map_bytes: bytes,
+    accept_bytes: bytes,
+    cmd_template: list[str],
+    max_mutants: int,
+    per_mutant_timeout: float,
+    include_globs: list[str],
+    exclude_globs: list[str],
+    tool_sha: str,
+    caller_tool_sha: str,
+    lockfiles_sha: dict[str, str],
+    installed_pkgs_sha: str,
+    encoding_env: dict[str, Any],
+) -> str:
+    """Compute full content-addressed cache key covering all inputs & M3 environment dimensions."""
+    norm_cmd = ["{python}" if tok == sys.executable else tok for tok in cmd_template]
+    author_hashes = {
+        rel: _sha256_bytes(author_bytes[rel].replace(b"\r\n", b"\n"))
+        for rel in sorted(author_bytes)
+    }
+    payload = {
+        "schema_version": SCHEMA_VERSION,
+        "scope_kind": scope_kind,
+        "base_oid": base_oid,
+        "author_files_lf_sha256": author_hashes,
+        "related_files_sha256": {k: related_files_sha[k] for k in sorted(related_files_sha)},
+        "qualnames": sorted(qualnames),
+        "test_map_lf_sha256": _sha256_bytes(test_map_bytes.replace(b"\r\n", b"\n")) if test_map_bytes else "",
+        "accept_lf_sha256": _sha256_bytes(accept_bytes.replace(b"\r\n", b"\n")) if accept_bytes else "",
+        "test_cmd": norm_cmd,
+        "max_mutants": max_mutants,
+        "per_mutant_timeout": float(per_mutant_timeout),
+        "include_globs": sorted(include_globs),
+        "exclude_globs": sorted(exclude_globs),
+        "tool_sha256": tool_sha,
+        "caller_tool_sha256": caller_tool_sha,
+        "python_version": platform.python_version(),
+        "sys_platform": sys.platform,
+        "lockfiles_sha256": {k: lockfiles_sha[k] for k in sorted(lockfiles_sha)},
+        "installed_packages_sha256": installed_pkgs_sha,
+        "encoding_env": encoding_env,
+    }
+    raw = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+    return _sha256_bytes(raw)
+
+
+def _conftest_candidates(test_rels: set[str]) -> set[str]:
+    out: set[str] = {"conftest.py"}
+    for rel in test_rels:
+        parts = _posix_rel(rel).split("/")
+        for depth in range(1, len(parts)):
+            out.add("/".join([*parts[:depth], "conftest.py"]))
+    return out
+
+
+def _collect_cache_context_hashes(
+    *,
+    repo: Path,
+    scope_kind: str,
+    target_ref: str | None,
+    overlay_bytes: dict[str, bytes],
+    deleted_paths: set[str],
+    touched_all_paths: set[str],
+    file_tests: dict[str, list[str]],
+    cmd_template: list[str],
+) -> tuple[dict[str, str], dict[str, str]]:
+    """Collect LF-normalized SHA-256 digests for related tests/conftest/other-py & lockfiles."""
+    git_env = _clean_git_env()
+
+    def _read_rel(rel: str) -> bytes | None:
+        norm = _posix_rel(rel)
+        if scope_kind == "patch":
+            if norm in deleted_paths:
+                return None
+            if norm in overlay_bytes:
+                return overlay_bytes[norm]
+            p = repo / norm
+            return p.read_bytes() if p.is_file() else None
+        if scope_kind == "git_diff" and target_ref is not None:
+            res = bounded_process.run_bounded(
+                ["git", "--no-optional-locks", "--no-replace-objects", "-C", str(repo), "show", f"{target_ref}:{norm}"],
+                str(repo),
+                30.0,
+                env=git_env,
+                merge_stderr=False,
+            )
+            if res.launch_error is None and not res.timed_out and res.returncode == 0:
+                return res.stdout
+            return None
+        p = repo / norm
+        return p.read_bytes() if p.is_file() else None
+
+    rel_paths: set[str] = set()
+    for tests in file_tests.values():
+        for t in tests:
+            rel_paths.add(_posix_rel(t))
+    for tok in cmd_template:
+        if tok.endswith(".py") and not tok.startswith("-"):
+            rel_paths.add(_posix_rel(tok))
+    for p in touched_all_paths:
+        if p.endswith(".py"):
+            rel_paths.add(p)
+    rel_paths |= _conftest_candidates(rel_paths)
+
+    related_sha: dict[str, str] = {}
+    for rel in sorted(rel_paths):
+        data = _read_rel(rel)
+        if data is not None:
+            related_sha[rel] = _sha256_bytes(data.replace(b"\r\n", b"\n"))
+
+    lock_sha: dict[str, str] = {}
+    for lfn in LOCKFILE_NAMES:
+        data = _read_rel(lfn)
+        if data is not None:
+            lock_sha[lfn] = _sha256_bytes(data.replace(b"\r\n", b"\n"))
+    return related_sha, lock_sha
+
+
+def _report_digest(report: dict[str, Any]) -> str:
+    raw = json.dumps(report, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+    return _sha256_bytes(raw)
+
+
+def _try_load_cache(cache_dir: Path, cache_key: str) -> tuple[int, dict[str, Any], str] | None:
+    """Load cache entry fail-closed; return None on any corruption or digest mismatch."""
+    cpath = cache_dir / f"{cache_key}.json"
+    try:
+        envelope = json.loads(cpath.read_bytes().decode("utf-8"))
+    except (OSError, UnicodeDecodeError, ValueError):
+        return None
+    if not isinstance(envelope, dict) or envelope.get("schema_version") != SCHEMA_VERSION:
+        return None
+    if envelope.get("cache_key") != cache_key:
+        return None
+    src_sha = envelope.get("source_report_sha256")
+    report = envelope.get("report")
+    if not isinstance(report, dict) or _report_digest(report) != src_sha:
+        return None
+    if report.get("full_run") is not True:
+        return None
+    summary = report.get("summary")
+    if not isinstance(summary, dict) or summary.get("exit_code") not in (0, 1):
+        return None
+    assert isinstance(src_sha, str)
+    out = copy.deepcopy(report)
+    out["cache"] = {
+        "enabled": True,
+        "hit": True,
+        "cache_key": cache_key,
+        "source_report_sha256": src_sha,
+    }
+    return int(summary["exit_code"]), out, src_sha
+
+
+def _store_cache(cache_dir: Path, cache_key: str, report: dict[str, Any]) -> str:
+    """Atomically store neutral report copy into cache_dir/<cache_key>.json and return src_sha."""
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    stored = copy.deepcopy(report)
+    stored.pop("cache", None)
+    src_sha = _report_digest(stored)
+    envelope = {
+        "schema_version": SCHEMA_VERSION,
+        "cache_key": cache_key,
+        "source_report_sha256": src_sha,
+        "report": stored,
+    }
+    payload = (json.dumps(envelope, ensure_ascii=False, indent=2, sort_keys=True) + "\n").encode("utf-8")
+    fd, tmp_name = tempfile.mkstemp(prefix="tmp-", suffix=".tmp", dir=str(cache_dir))
+    tmp_path = Path(tmp_name)
+    try:
+        with os.fdopen(fd, "wb") as f:
+            f.write(payload)
+        os.replace(tmp_path, cache_dir / f"{cache_key}.json")
+    except Exception:
+        tmp_path.unlink(missing_ok=True)
+        raise
+    return src_sha
+
+
 def prepare_isolated_copy(
     repo: Path,
     work_parent: Path,
@@ -1027,7 +1395,6 @@ def prepare_isolated_copy(
                 if p_res.launch_error or p_res.timed_out or p_res.returncode != 0:
                     raise ToolError("PATCH_ERROR", f"git apply failed: {p_res.stdout.decode('utf-8', errors='replace')}")
             else:
-                # Working-tree mirror: overlay modified + untracked files and remove deleted tracked files
                 mod_out = _run_git(repo, ["diff", "--name-only", "-z", "HEAD"]).split(b"\x00")
                 unt_out = _run_git(repo, ["ls-files", "--others", "--exclude-standard", "-z"]).split(b"\x00")
                 del_out = _run_git(repo, ["diff", "--name-only", "--diff-filter=D", "-z", "HEAD"]).split(b"\x00")
@@ -1069,9 +1436,10 @@ def _discover_scope(
     include_globs: list[str],
     exclude_globs: list[str],
     include_untracked: bool,
-) -> tuple[dict[str, set[int] | None], dict[str, bytes], dict[str, Any]]:
-    """Return (filtered_file_lines, file_bytes_map, scope_metadata)."""
+) -> tuple[dict[str, set[int] | None], dict[str, bytes], dict[str, Any], dict[str, Any]]:
+    """Return (filtered_file_lines, file_bytes_map, scope_metadata, cache_context_bundle)."""
     file_bytes: dict[str, bytes] = {}
+    has_git = (repo / ".git").exists()
     if scope_kind == "patch":
         assert patch_path is not None
         try:
@@ -1079,14 +1447,16 @@ def _discover_scope(
         except (OSError, UnicodeDecodeError) as exc:
             raise ToolError("PATCH_ERROR", f"cannot read patch {patch_path}: {exc}") from None
         raw_lines = parse_unified_diff(patch_text)
+        touched_all, deleted_paths = _parse_diff_touched_paths(patch_text)
         filtered = _filter_rel_paths(
             raw_lines, include_globs=include_globs, exclude_globs=exclude_globs, explicit_files=False
         )
-        # Apply patch in a tiny isolated clone only if needed to read patched bytes
+        overlay_bytes: dict[str, bytes] = {}
+        resolved_base_oid: str | None = None
         with tempfile.TemporaryDirectory(prefix="hhai-mutate-src-", dir=tempfile.gettempdir()) as td:
             src_clone = Path(td) / "src"
-            has_git = (repo / ".git").exists()
             if has_git:
+                resolved_base_oid = _run_git(repo, ["rev-parse", f"{base_ref or 'HEAD'}^{{commit}}"]).decode("utf-8").strip()
                 git_env = _clean_git_env()
                 res = bounded_process.run_bounded(
                     ["git", "--no-optional-locks", "-C", str(repo), "clone", "-q", "--no-local", "--template=", str(repo), str(src_clone)],
@@ -1106,21 +1476,28 @@ def _discover_scope(
                     fpath = src_clone / rel
                     if fpath.is_file():
                         file_bytes[rel] = fpath.read_bytes()
+                for rel in sorted(touched_all):
+                    fpath = src_clone / rel
+                    if fpath.is_file():
+                        overlay_bytes[rel] = fpath.read_bytes()
             else:
                 raise ToolError("GIT_ERROR", "--patch requires a git repository")
         meta = {
             "kind": "patch",
             "base": base_ref or "HEAD",
+            "base_oid": resolved_base_oid,
             "target": None,
             "patch": str(patch_path),
             "files": [],
             "include_glob": include_globs,
             "changed_files": sorted(file_bytes),
         }
-        return {k: filtered[k] for k in sorted(file_bytes)}, file_bytes, meta
+        ctx = {"overlay_bytes": overlay_bytes, "deleted_paths": deleted_paths, "touched_all": touched_all}
+        return {k: filtered[k] for k in sorted(file_bytes)}, file_bytes, meta, ctx
 
     if scope_kind == "files":
         assert explicit_files
+        resolved_base_oid = None
         raw_map: dict[str, set[int] | None] = {}
         for item in explicit_files:
             rel = _posix_rel(item)
@@ -1136,21 +1513,26 @@ def _discover_scope(
         meta = {
             "kind": "files",
             "base": None,
+            "base_oid": resolved_base_oid,
             "target": None,
             "patch": None,
             "files": sorted(filtered),
             "include_glob": include_globs,
             "changed_files": sorted(file_bytes),
         }
-        return filtered, file_bytes, meta
+        ctx = {"overlay_bytes": {}, "deleted_paths": set(), "touched_all": set(filtered)}
+        return filtered, file_bytes, meta, ctx
 
     # scope_kind == "git_diff"
     assert base_ref is not None
+    resolved_base_oid = _run_git(repo, ["rev-parse", f"{base_ref}^{{commit}}"]).decode("utf-8").strip()
     diff_args = ["diff", "-U0", "--no-color", "--no-ext-diff", base_ref]
     if target_ref is not None:
         diff_args.append(target_ref)
     diff_bytes = _run_git(repo, diff_args)
-    raw_lines = parse_unified_diff(diff_bytes.decode("utf-8", errors="replace"))
+    diff_text = diff_bytes.decode("utf-8", errors="replace")
+    raw_lines = parse_unified_diff(diff_text)
+    touched_all, deleted_paths = _parse_diff_touched_paths(diff_text)
     raw_map_g: dict[str, set[int] | None] = dict(raw_lines)
     if target_ref is None and include_untracked:
         unt = _run_git(repo, ["ls-files", "--others", "--exclude-standard", "-z"]).split(b"\x00")
@@ -1160,6 +1542,7 @@ def _discover_scope(
             rel = _posix_rel(bpath.decode("utf-8"))
             if rel.endswith(".py") and (repo / rel).is_file():
                 raw_map_g.setdefault(rel, None)
+                touched_all.add(rel)
     filtered = _filter_rel_paths(
         raw_map_g, include_globs=include_globs, exclude_globs=exclude_globs, explicit_files=False
     )
@@ -1173,13 +1556,59 @@ def _discover_scope(
     meta = {
         "kind": "git_diff",
         "base": base_ref,
+        "base_oid": resolved_base_oid,
         "target": target_ref,
         "patch": None,
         "files": [],
         "include_glob": include_globs,
         "changed_files": sorted(file_bytes),
     }
-    return {k: filtered[k] for k in sorted(file_bytes)}, file_bytes, meta
+    ctx = {"overlay_bytes": {}, "deleted_paths": deleted_paths, "touched_all": touched_all}
+    return {k: filtered[k] for k in sorted(file_bytes)}, file_bytes, meta, ctx
+
+
+def _mutant_record(
+    m: MutantCandidate,
+    m_res: bounded_process.BoundedResult,
+    m_elapsed: float,
+    accept_map: dict[str, tuple[str, str]],
+    unnecessary_accepted: list[str],
+    *,
+    retried_single_threaded: bool = False,
+) -> dict[str, Any]:
+    accept_entry = accept_map.get(m.id)
+    if m_res.timed_out:
+        status = "CAUGHT_TIMEOUT"
+        if accept_entry is not None:
+            unnecessary_accepted.append(m.id)
+    elif m_res.returncode != 0:
+        status = "CAUGHT"
+        if accept_entry is not None:
+            unnecessary_accepted.append(m.id)
+    elif accept_entry is not None:
+        status = "ACCEPTED"
+    else:
+        status = "SURVIVED"
+
+    rec: dict[str, Any] = {
+        "id": m.id,
+        "display_id": m.display_id,
+        "file": m.file,
+        "qualname": m.qualname,
+        "lineno": m.lineno,
+        "end_lineno": m.end_lineno,
+        "col_offset": m.col_offset,
+        "op": m.op,
+        "original": m.original,
+        "mutated": m.mutated,
+        "status": status,
+        "rc": m_res.returncode,
+        "elapsed_sec": m_elapsed,
+        "retried_single_threaded": retried_single_threaded,
+        "accept_reason": accept_entry[0] if status == "ACCEPTED" and accept_entry else None,
+        "accept_batch": accept_entry[1] if status == "ACCEPTED" and accept_entry else None,
+    }
+    return rec
 
 
 def execute_mutation_run(
@@ -1205,6 +1634,10 @@ def execute_mutation_run(
     preserve_git: bool = True,
     qualnames: list[str] | None = None,
     monotonic_fn: Callable[[], float] | None = None,
+    workers: int | str = 1,
+    only_survived_from: Path | None = None,
+    cache_dir: Path | None = None,
+    caller_tool_sha256: str | None = None,
 ) -> tuple[int, dict[str, Any]]:
     """Core orchestrator returning (exit_code, report_dict)."""
     q_filters: list[str] = []
@@ -1212,6 +1645,27 @@ def execute_mutation_run(
         if not isinstance(raw_q, str) or not raw_q.strip():
             raise ToolError("INVALID_ARGS", "--qualname pattern must be non-empty")
         q_filters.append(raw_q.strip())
+
+    resolved_workers = resolve_workers(workers)
+    caller_sha_norm = ""
+    if caller_tool_sha256 is not None:
+        caller_sha_norm = str(caller_tool_sha256).strip().lower()
+        if not HEX64_RE.fullmatch(caller_sha_norm):
+            raise ToolError("INVALID_ARGS", "--caller-tool-sha256 must be 64 lowercase/uppercase hex chars")
+
+    if only_survived_from is not None and list_only:
+        raise ToolError("INVALID_ARGS", "--only-survived-from cannot be combined with --list")
+    if only_survived_from is not None and cache_dir is not None:
+        raise ToolError("INVALID_ARGS", "--only-survived-from cannot be combined with --cache-dir")
+
+    resolved_cache_dir = validate_cache_dir(cache_dir, repo) if cache_dir is not None else None
+    full_run = only_survived_from is None
+    cache_meta_default: dict[str, Any] = {
+        "enabled": resolved_cache_dir is not None,
+        "hit": False,
+        "cache_key": None,
+        "source_report_sha256": None,
+    }
 
     clock = monotonic_fn if monotonic_fn is not None else _DEFAULT_MONOTONIC
     inc = list(include_globs or [])
@@ -1226,7 +1680,7 @@ def execute_mutation_run(
         raise ToolError("INVALID_ARGS", "--test-cmd is required unless --list is used")
     cmd_template = _split_cmd_template(test_cmd) if test_cmd else []
 
-    file_lines, file_bytes, scope_meta = _discover_scope(
+    file_lines, file_bytes, scope_meta, ctx_bundle = _discover_scope(
         repo,
         scope_kind=scope_kind,
         base_ref=base_ref,
@@ -1248,6 +1702,10 @@ def execute_mutation_run(
         skipped_nodes += sk
         invalid_count += inv
 
+    touched_qn, qn_counts = discover_changed_qualnames(all_mutants)
+    scope_meta["touched_qualnames"] = touched_qn
+    scope_meta["qualname_counts"] = qn_counts
+
     full_catalog_ids = {m.id for m in all_mutants}
     if q_filters:
         selected_mutants = [m for m in all_mutants if _matches_qualname(m.qualname, q_filters)]
@@ -1266,6 +1724,9 @@ def execute_mutation_run(
                 exit_code=2,
                 verdict="ERROR",
                 reason="QUALNAME_UNMATCHED",
+                full_run=full_run,
+                workers=resolved_workers,
+                cache=cache_meta_default,
             )
     else:
         selected_mutants = all_mutants
@@ -1288,6 +1749,9 @@ def execute_mutation_run(
             exit_code=2,
             verdict="ERROR",
             reason="ACCEPT_STALE_ENTRIES",
+            full_run=full_run,
+            workers=resolved_workers,
+            cache=cache_meta_default,
         )
 
     # Resolve --test-map early so unmapped files fail closed before executing baseline
@@ -1311,6 +1775,9 @@ def execute_mutation_run(
             exit_code=2,
             verdict="ERROR",
             reason="MUTANT_CAP_EXCEEDED",
+            full_run=full_run,
+            workers=resolved_workers,
+            cache=cache_meta_default,
         )
 
     if invalid_count > 0:
@@ -1328,6 +1795,9 @@ def execute_mutation_run(
             exit_code=2,
             verdict="ERROR",
             reason="MUTANT_SYNTAX_INVALID",
+            full_run=full_run,
+            workers=resolved_workers,
+            cache=cache_meta_default,
         )
 
     if list_only:
@@ -1346,7 +1816,22 @@ def execute_mutation_run(
             exit_code=0,
             verdict="PASS",
             reason="LIST_OK",
+            full_run=full_run,
+            workers=resolved_workers,
+            cache=cache_meta_default,
         )
+
+    if only_survived_from is not None:
+        survived_filter = load_survived_from_file(
+            only_survived_from,
+            expected_base_oid=scope_meta["base_oid"],
+            expected_scope_kind=scope_kind,
+            expected_changed_files=scope_meta["changed_files"],
+            expected_qualname_filter=q_filters,
+            expected_tool_sha=tool_sha,
+            full_catalog_ids=full_catalog_ids,
+        )
+        selected_mutants = [m for m in selected_mutants if m.id in survived_filter]
 
     if not selected_mutants:
         return 0, _build_report(
@@ -1363,25 +1848,230 @@ def execute_mutation_run(
             exit_code=0,
             verdict="PASS_NO_MUTANTS",
             reason="NO_MUTANTS",
+            full_run=full_run,
+            workers=resolved_workers,
+            cache=cache_meta_default,
         )
 
-    iso_dir = prepare_isolated_copy(
-        repo, wp,
-        scope_kind=scope_kind,
-        base_ref=base_ref,
-        target_ref=target_ref,
-        patch_path=patch_path,
-        preserve_git=preserve_git,
-    )
-    run_env = os.environ.copy()
-    run_env["PYTHONDONTWRITEBYTECODE"] = "1"
+    cache_key: str | None = None
+    if resolved_cache_dir is not None:
+        related_sha, lock_sha = _collect_cache_context_hashes(
+            repo=repo,
+            scope_kind=scope_kind,
+            target_ref=target_ref,
+            overlay_bytes=ctx_bundle["overlay_bytes"],
+            deleted_paths=ctx_bundle["deleted_paths"],
+            touched_all_paths=ctx_bundle["touched_all"],
+            file_tests=file_tests,
+            cmd_template=cmd_template,
+        )
+        tmap_bytes = test_map_path.read_bytes() if test_map_path is not None else b""
+        acc_bytes = accept_path.read_bytes() if accept_path is not None else b""
+        cache_key = compute_cache_key(
+            base_oid=scope_meta["base_oid"],
+            scope_kind=scope_kind,
+            author_bytes=file_bytes,
+            related_files_sha=related_sha,
+            qualnames=q_filters,
+            test_map_bytes=tmap_bytes,
+            accept_bytes=acc_bytes,
+            cmd_template=cmd_template,
+            max_mutants=max_mutants,
+            per_mutant_timeout=per_mutant_timeout,
+            include_globs=inc,
+            exclude_globs=exc,
+            tool_sha=tool_sha,
+            caller_tool_sha=caller_sha_norm,
+            lockfiles_sha=lock_sha,
+            installed_pkgs_sha=_installed_packages_sha256(),
+            encoding_env=_encoding_env_fingerprint(),
+        )
+        cache_meta_default = {
+            "enabled": True,
+            "hit": False,
+            "cache_key": cache_key,
+            "source_report_sha256": None,
+        }
+        cached = _try_load_cache(resolved_cache_dir, cache_key)
+        if cached is not None:
+            return cached[0], cached[1]
+
+    target_files_sorted = sorted({m.file for m in selected_mutants})
+    base_tests = sorted({t for tl in file_tests.values() for t in tl}) if test_map_path is not None else None
+    base_argv = _build_cmd_argv(cmd_template, base_tests)
+
+    # Sequential fast path (workers == 1 or 1 mutant) keeps identical clock() call counts
+    if resolved_workers == 1 or len(selected_mutants) == 1:
+        iso_dir = prepare_isolated_copy(
+            repo, wp,
+            scope_kind=scope_kind,
+            base_ref=base_ref,
+            target_ref=target_ref,
+            patch_path=patch_path,
+            preserve_git=preserve_git,
+        )
+        run_env = os.environ.copy()
+        run_env["PYTHONDONTWRITEBYTECODE"] = "1"
+        run_start = clock()
+        try:
+            orig_shas = {rel: _sha256_bytes((iso_dir / rel).read_bytes()) for rel in target_files_sorted}
+            t0 = clock()
+            b_res = bounded_process.run_bounded(base_argv, str(iso_dir), baseline_timeout, env=run_env, merge_stderr=True)
+            b_elapsed = round(clock() - t0, 3)
+            baseline_info = {
+                "executed": True,
+                "rc": b_res.returncode,
+                "elapsed_sec": b_elapsed,
+                "timed_out": b_res.timed_out,
+                "cmd": base_argv,
+            }
+            if b_res.launch_error is not None or b_res.timed_out or b_res.returncode != 0:
+                records = [_listed_record(m, accept_map, status="NOT_RUN") for m in selected_mutants]
+                return 2, _build_report(
+                    tool_sha=tool_sha,
+                    mode="run",
+                    scope=scope_meta,
+                    baseline=baseline_info,
+                    mutants_records=records,
+                    skipped_nodes=skipped_nodes,
+                    invalid_count=0,
+                    stale_accepted=[],
+                    unnecessary_accepted=[],
+                    out_of_scope_accepted=out_of_scope_accepted,
+                    exit_code=2,
+                    verdict="ERROR",
+                    reason="BASELINE_FAILED",
+                    full_run=full_run,
+                    workers=resolved_workers,
+                    cache=cache_meta_default,
+                )
+
+            records = []
+            unnecessary_accepted: list[str] = []
+            for idx, m in enumerate(selected_mutants):
+                if (clock() - run_start) > total_timeout:
+                    for rem in selected_mutants[idx:]:
+                        records.append(_listed_record(rem, accept_map, status="NOT_RUN"))
+                    return 2, _build_report(
+                        tool_sha=tool_sha,
+                        mode="run",
+                        scope=scope_meta,
+                        baseline=baseline_info,
+                        mutants_records=records,
+                        skipped_nodes=skipped_nodes,
+                        invalid_count=0,
+                        stale_accepted=[],
+                        unnecessary_accepted=sorted(unnecessary_accepted),
+                        out_of_scope_accepted=out_of_scope_accepted,
+                        exit_code=2,
+                        verdict="ERROR",
+                        reason="TOTAL_TIMEOUT_EXCEEDED",
+                        full_run=full_run,
+                        workers=resolved_workers,
+                        cache=cache_meta_default,
+                    )
+
+                target_path = iso_dir / m.file
+                orig_bytes = file_bytes[m.file]
+                mut_bytes = orig_bytes[:m.start_byte] + m.replacement_bytes + orig_bytes[m.end_byte:]
+                m_tests = file_tests[m.file] if test_map_path is not None else None
+                m_argv = _build_cmd_argv(cmd_template, m_tests)
+                m0 = clock()
+                try:
+                    target_path.write_bytes(mut_bytes)
+                    m_res = bounded_process.run_bounded(m_argv, str(iso_dir), per_mutant_timeout, env=run_env, merge_stderr=True)
+                finally:
+                    target_path.write_bytes(orig_bytes)
+                    if _sha256_bytes(target_path.read_bytes()) != orig_shas[m.file]:
+                        raise ToolError("RESTORE_FAILED", f"failed to restore {m.file} in isolated copy")
+                m_elapsed = round(clock() - m0, 3)
+
+                if m_res.launch_error is not None:
+                    return 2, _build_report(
+                        tool_sha=tool_sha,
+                        mode="run",
+                        scope=scope_meta,
+                        baseline=baseline_info,
+                        mutants_records=records,
+                        skipped_nodes=skipped_nodes,
+                        invalid_count=0,
+                        stale_accepted=[],
+                        unnecessary_accepted=sorted(unnecessary_accepted),
+                        out_of_scope_accepted=out_of_scope_accepted,
+                        exit_code=2,
+                        verdict="ERROR",
+                        reason="TEST_LAUNCH_ERROR",
+                        full_run=full_run,
+                        workers=resolved_workers,
+                        cache=cache_meta_default,
+                    )
+                records.append(_mutant_record(m, m_res, m_elapsed, accept_map, unnecessary_accepted))
+
+            survived_cnt = sum(1 for r in records if r["status"] == "SURVIVED")
+            exit_code = 1 if survived_cnt > 0 else 0
+            verdict = "FAIL" if survived_cnt > 0 else "PASS"
+            reason = "MUTANTS_SURVIVED" if survived_cnt > 0 else "OK"
+            rep = _build_report(
+                tool_sha=tool_sha,
+                mode="run",
+                scope=scope_meta,
+                baseline=baseline_info,
+                mutants_records=records,
+                skipped_nodes=skipped_nodes,
+                invalid_count=0,
+                stale_accepted=[],
+                unnecessary_accepted=sorted(unnecessary_accepted),
+                out_of_scope_accepted=out_of_scope_accepted,
+                exit_code=exit_code,
+                verdict=verdict,
+                reason=reason,
+                full_run=full_run,
+                workers=resolved_workers,
+                cache=cache_meta_default,
+            )
+            if cache_key is not None:
+                src_sha = _store_cache(resolved_cache_dir, cache_key, rep)  # type: ignore[arg-type]
+                rep["cache"] = {"enabled": True, "hit": False, "cache_key": cache_key, "source_report_sha256": src_sha}
+            return exit_code, rep
+        finally:
+            _force_rmtree(iso_dir)
+
+    # Parallel worker pool (workers > 1 and len(selected_mutants) > 1)
+    num_workers = min(resolved_workers, len(selected_mutants))
+    pool_root = Path(tempfile.mkdtemp(prefix="hhai-mutate-pool-", dir=str(wp)))
     run_start = clock()
+    state_lock = threading.Lock()
     try:
-        orig_shas = {rel: _sha256_bytes((iso_dir / rel).read_bytes()) for rel in sorted({m.file for m in selected_mutants})}
-        base_tests = sorted({t for tl in file_tests.values() for t in tl}) if test_map_path is not None else None
-        base_argv = _build_cmd_argv(cmd_template, base_tests)
+        work_dirs: list[Path] = []
+        tmp_dirs: list[Path] = []
+        slot_envs: list[dict[str, str]] = []
+
+        def _make_slot(idx: int) -> None:
+            t_dir = pool_root / f"tmp_w{idx}"
+            t_dir.mkdir(parents=True, exist_ok=True)
+            bt_dir = t_dir / "bt"
+            bt_dir.mkdir(parents=True, exist_ok=True)
+            w_dir = prepare_isolated_copy(
+                repo, pool_root,
+                scope_kind=scope_kind,
+                base_ref=base_ref,
+                target_ref=target_ref,
+                patch_path=patch_path,
+                preserve_git=preserve_git,
+            )
+            env_s = os.environ.copy()
+            env_s["TEMP"] = str(t_dir)
+            env_s["TMP"] = str(t_dir)
+            env_s["PYTHONDONTWRITEBYTECODE"] = "1"
+            work_dirs.append(w_dir)
+            tmp_dirs.append(t_dir)
+            slot_envs.append(env_s)
+
+        _make_slot(0)
+        orig_shas = {rel: _sha256_bytes((work_dirs[0] / rel).read_bytes()) for rel in target_files_sorted}
+        base_argv_w0 = _inject_pytest_basetemp(base_argv, tmp_dirs[0] / "bt")
         t0 = clock()
-        b_res = bounded_process.run_bounded(base_argv, str(iso_dir), baseline_timeout, env=run_env, merge_stderr=True)
+        b_res = bounded_process.run_bounded(base_argv_w0, str(work_dirs[0]), baseline_timeout, env=slot_envs[0], merge_stderr=True)
         b_elapsed = round(clock() - t0, 3)
         baseline_info = {
             "executed": True,
@@ -1406,101 +2096,215 @@ def execute_mutation_run(
                 exit_code=2,
                 verdict="ERROR",
                 reason="BASELINE_FAILED",
+                full_run=full_run,
+                workers=num_workers,
+                cache=cache_meta_default,
             )
 
-        records = []
-        unnecessary_accepted: list[str] = []
+        for slot_idx in range(1, num_workers):
+            _make_slot(slot_idx)
+
+        slot_queue: queue.Queue[int] = queue.Queue()
+        for slot_idx in range(num_workers):
+            slot_queue.put(slot_idx)
+
+        raw_results: list[tuple[bounded_process.BoundedResult, float] | None] = [None] * len(selected_mutants)
+        retried_flags: list[bool] = [False] * len(selected_mutants)
+        abort_errors: list[tuple[str, str]] = []
+        abort_event = threading.Event()
+
+        def _now_locked() -> float:
+            with state_lock:
+                return clock()
+
+        def _run_slot(idx: int, m: MutantCandidate) -> None:
+            if abort_event.is_set():
+                return
+            if (_now_locked() - run_start) > total_timeout:
+                with state_lock:
+                    abort_errors.append(("TOTAL_TIMEOUT_EXCEEDED", "total timeout exceeded"))
+                    abort_event.set()
+                return
+            slot_id = slot_queue.get()
+            try:
+                if abort_event.is_set():
+                    return
+                if (_now_locked() - run_start) > total_timeout:
+                    with state_lock:
+                        abort_errors.append(("TOTAL_TIMEOUT_EXCEEDED", "total timeout exceeded"))
+                        abort_event.set()
+                    return
+                w_dir = work_dirs[slot_id]
+                target_path = w_dir / m.file
+                orig_bytes = file_bytes[m.file]
+                mut_bytes = orig_bytes[:m.start_byte] + m.replacement_bytes + orig_bytes[m.end_byte:]
+                m_tests = file_tests[m.file] if test_map_path is not None else None
+                m_argv = _inject_pytest_basetemp(_build_cmd_argv(cmd_template, m_tests), tmp_dirs[slot_id] / "bt")
+                m0 = _now_locked()
+                restore_failed = False
+                try:
+                    target_path.write_bytes(mut_bytes)
+                    m_res = bounded_process.run_bounded(
+                        m_argv, str(w_dir), per_mutant_timeout, env=slot_envs[slot_id], merge_stderr=True
+                    )
+                finally:
+                    target_path.write_bytes(orig_bytes)
+                    if _sha256_bytes(target_path.read_bytes()) != orig_shas[m.file]:
+                        with state_lock:
+                            abort_errors.append(("RESTORE_FAILED", f"failed to restore {m.file} in worker {slot_id}"))
+                            abort_event.set()
+                        restore_failed = True
+                if restore_failed:
+                    return
+                m_elapsed = round(_now_locked() - m0, 3)
+                if m_res.launch_error is not None:
+                    with state_lock:
+                        abort_errors.append(("TEST_LAUNCH_ERROR", f"launch failed for {m.id}: {m_res.launch_error}"))
+                        abort_event.set()
+                    return
+                with state_lock:
+                    raw_results[idx] = (m_res, m_elapsed)
+            finally:
+                slot_queue.put(slot_id)
+
+        with ThreadPoolExecutor(max_workers=num_workers) as pool:
+            futs = [pool.submit(_run_slot, idx, m) for idx, m in enumerate(selected_mutants)]
+            for fut in futs:
+                fut.result()
+
+        # Check fatal pool errors in strict precedence: RESTORE_FAILED > TOTAL_TIMEOUT_EXCEEDED > TEST_LAUNCH_ERROR
+        if abort_errors:
+            codes = {c for c, _ in abort_errors}
+            if "RESTORE_FAILED" in codes:
+                detail = next(d for c, d in abort_errors if c == "RESTORE_FAILED")
+                raise ToolError("RESTORE_FAILED", detail)
+            reason_err = "TOTAL_TIMEOUT_EXCEEDED" if "TOTAL_TIMEOUT_EXCEEDED" in codes else "TEST_LAUNCH_ERROR"
+            partial_records: list[dict[str, Any]] = []
+            partial_unnec: list[str] = []
+            for idx, m in enumerate(selected_mutants):
+                item = raw_results[idx]
+                if item is None:
+                    if reason_err == "TOTAL_TIMEOUT_EXCEEDED":
+                        partial_records.append(_listed_record(m, accept_map, status="NOT_RUN"))
+                else:
+                    partial_records.append(_mutant_record(m, item[0], item[1], accept_map, partial_unnec))
+            return 2, _build_report(
+                tool_sha=tool_sha,
+                mode="run",
+                scope=scope_meta,
+                baseline=baseline_info,
+                mutants_records=partial_records,
+                skipped_nodes=skipped_nodes,
+                invalid_count=0,
+                stale_accepted=[],
+                unnecessary_accepted=sorted(partial_unnec),
+                out_of_scope_accepted=out_of_scope_accepted,
+                exit_code=2,
+                verdict="ERROR",
+                reason=reason_err,
+                full_run=full_run,
+                workers=num_workers,
+                cache=cache_meta_default,
+            )
+
+        # M2: Single-threaded recheck for any timed-out mutant after parallel pool exits,
+        # strictly keeping the SAME per_mutant_timeout (no 1.5x relaxation).
         for idx, m in enumerate(selected_mutants):
+            item = raw_results[idx]
+            assert item is not None
+            if not item[0].timed_out:
+                continue
             if (clock() - run_start) > total_timeout:
-                for rem in selected_mutants[idx:]:
-                    records.append(_listed_record(rem, accept_map, status="NOT_RUN"))
+                re_records: list[dict[str, Any]] = []
+                re_unnec: list[str] = []
+                for j, mj in enumerate(selected_mutants):
+                    rj = raw_results[j]
+                    if j < idx:
+                        assert rj is not None
+                        re_records.append(
+                            _mutant_record(mj, rj[0], rj[1], accept_map, re_unnec, retried_single_threaded=retried_flags[j])
+                        )
+                    else:
+                        re_records.append(_listed_record(mj, accept_map, status="NOT_RUN"))
                 return 2, _build_report(
                     tool_sha=tool_sha,
                     mode="run",
                     scope=scope_meta,
                     baseline=baseline_info,
-                    mutants_records=records,
+                    mutants_records=re_records,
                     skipped_nodes=skipped_nodes,
                     invalid_count=0,
                     stale_accepted=[],
-                    unnecessary_accepted=sorted(unnecessary_accepted),
+                    unnecessary_accepted=sorted(re_unnec),
                     out_of_scope_accepted=out_of_scope_accepted,
                     exit_code=2,
                     verdict="ERROR",
                     reason="TOTAL_TIMEOUT_EXCEEDED",
+                    full_run=full_run,
+                    workers=num_workers,
+                    cache=cache_meta_default,
                 )
 
-            target_path = iso_dir / m.file
+            target_path = work_dirs[0] / m.file
             orig_bytes = file_bytes[m.file]
             mut_bytes = orig_bytes[:m.start_byte] + m.replacement_bytes + orig_bytes[m.end_byte:]
             m_tests = file_tests[m.file] if test_map_path is not None else None
-            m_argv = _build_cmd_argv(cmd_template, m_tests)
-            m0 = clock()
+            m_argv = _inject_pytest_basetemp(_build_cmd_argv(cmd_template, m_tests), tmp_dirs[0] / "bt")
+            r0 = clock()
             try:
                 target_path.write_bytes(mut_bytes)
-                m_res = bounded_process.run_bounded(m_argv, str(iso_dir), per_mutant_timeout, env=run_env, merge_stderr=True)
+                r_res = bounded_process.run_bounded(
+                    m_argv, str(work_dirs[0]), per_mutant_timeout, env=slot_envs[0], merge_stderr=True
+                )
             finally:
                 target_path.write_bytes(orig_bytes)
                 if _sha256_bytes(target_path.read_bytes()) != orig_shas[m.file]:
-                    raise ToolError("RESTORE_FAILED", f"failed to restore {m.file} in isolated copy")
-            m_elapsed = round(clock() - m0, 3)
-
-            if m_res.launch_error is not None:
+                    raise ToolError("RESTORE_FAILED", f"failed to restore {m.file} during timeout recheck")
+            r_elapsed = round(clock() - r0, 3)
+            if r_res.launch_error is not None:
+                err_recs: list[dict[str, Any]] = []
+                err_unnec: list[str] = []
+                for j, mj in enumerate(selected_mutants[:idx]):
+                    rj = raw_results[j]
+                    assert rj is not None
+                    err_recs.append(
+                        _mutant_record(mj, rj[0], rj[1], accept_map, err_unnec, retried_single_threaded=retried_flags[j])
+                    )
                 return 2, _build_report(
                     tool_sha=tool_sha,
                     mode="run",
                     scope=scope_meta,
                     baseline=baseline_info,
-                    mutants_records=records,
+                    mutants_records=err_recs,
                     skipped_nodes=skipped_nodes,
                     invalid_count=0,
                     stale_accepted=[],
-                    unnecessary_accepted=sorted(unnecessary_accepted),
+                    unnecessary_accepted=sorted(err_unnec),
                     out_of_scope_accepted=out_of_scope_accepted,
                     exit_code=2,
                     verdict="ERROR",
                     reason="TEST_LAUNCH_ERROR",
+                    full_run=full_run,
+                    workers=num_workers,
+                    cache=cache_meta_default,
                 )
+            raw_results[idx] = (r_res, r_elapsed)
+            retried_flags[idx] = True
 
-            accept_entry = accept_map.get(m.id)
-            if m_res.timed_out:
-                status = "CAUGHT_TIMEOUT"
-                if accept_entry is not None:
-                    unnecessary_accepted.append(m.id)
-            elif m_res.returncode != 0:
-                status = "CAUGHT"
-                if accept_entry is not None:
-                    unnecessary_accepted.append(m.id)
-            elif accept_entry is not None:
-                status = "ACCEPTED"
-            else:
-                status = "SURVIVED"
-
+        records = []
+        unnecessary_accepted = []
+        for idx, m in enumerate(selected_mutants):
+            item = raw_results[idx]
+            assert item is not None
             records.append(
-                {
-                    "id": m.id,
-                    "display_id": m.display_id,
-                    "file": m.file,
-                    "qualname": m.qualname,
-                    "lineno": m.lineno,
-                    "end_lineno": m.end_lineno,
-                    "col_offset": m.col_offset,
-                    "op": m.op,
-                    "original": m.original,
-                    "mutated": m.mutated,
-                    "status": status,
-                    "rc": m_res.returncode,
-                    "elapsed_sec": m_elapsed,
-                    "accept_reason": accept_entry[0] if status == "ACCEPTED" and accept_entry else None,
-                    "accept_batch": accept_entry[1] if status == "ACCEPTED" and accept_entry else None,
-                }
+                _mutant_record(m, item[0], item[1], accept_map, unnecessary_accepted, retried_single_threaded=retried_flags[idx])
             )
 
         survived_cnt = sum(1 for r in records if r["status"] == "SURVIVED")
         exit_code = 1 if survived_cnt > 0 else 0
         verdict = "FAIL" if survived_cnt > 0 else "PASS"
         reason = "MUTANTS_SURVIVED" if survived_cnt > 0 else "OK"
-        return exit_code, _build_report(
+        rep = _build_report(
             tool_sha=tool_sha,
             mode="run",
             scope=scope_meta,
@@ -1514,9 +2318,16 @@ def execute_mutation_run(
             exit_code=exit_code,
             verdict=verdict,
             reason=reason,
+            full_run=full_run,
+            workers=num_workers,
+            cache=cache_meta_default,
         )
+        if cache_key is not None:
+            src_sha = _store_cache(resolved_cache_dir, cache_key, rep)  # type: ignore[arg-type]
+            rep["cache"] = {"enabled": True, "hit": False, "cache_key": cache_key, "source_report_sha256": src_sha}
+        return exit_code, rep
     finally:
-        _force_rmtree(iso_dir)
+        _force_rmtree(pool_root)
 
 
 def _listed_record(
@@ -1540,6 +2351,7 @@ def _listed_record(
         "status": status,
         "rc": None,
         "elapsed_sec": None,
+        "retried_single_threaded": False,
         "accept_reason": acc[0] if acc else None,
         "accept_batch": acc[1] if acc else None,
     }
@@ -1560,18 +2372,30 @@ def _build_report(
     exit_code: int,
     verdict: str,
     reason: str,
+    full_run: bool = True,
+    workers: int = 1,
+    cache: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     caught = sum(1 for r in mutants_records if r["status"] == "CAUGHT")
     caught_timeout = sum(1 for r in mutants_records if r["status"] == "CAUGHT_TIMEOUT")
     survived = sum(1 for r in mutants_records if r["status"] == "SURVIVED")
     accepted = sum(1 for r in mutants_records if r["status"] == "ACCEPTED")
     oos = list(out_of_scope_accepted or [])
+    cache_block = cache if cache is not None else {
+        "enabled": False,
+        "hit": False,
+        "cache_key": None,
+        "source_report_sha256": None,
+    }
     return {
         "schema_version": SCHEMA_VERSION,
         "tool": TOOL_NAME,
         "tool_version": TOOL_VERSION,
         "tool_sha256": tool_sha,
         "mode": mode,
+        "full_run": bool(full_run),
+        "workers": int(workers),
+        "cache": cache_block,
         "scope": scope,
         "baseline": baseline,
         "summary": {
@@ -1585,6 +2409,7 @@ def _build_report(
             "stale_accepted_count": len(stale_accepted),
             "unnecessary_accepted_count": len(unnecessary_accepted),
             "out_of_scope_accepted_count": len(oos),
+            "full_run": bool(full_run),
             "exit_code": exit_code,
             "verdict": verdict,
             "reason": reason,
@@ -1597,7 +2422,7 @@ def _build_report(
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
-    ap = argparse.ArgumentParser(description="Deterministic diff-line AST mutation tool (TD-134)")
+    ap = argparse.ArgumentParser(description="Deterministic diff-line AST mutation tool (TD-134/TD-144a)")
     ap.add_argument("--repo", default=".", help="Repository root path (default: .)")
     scope_grp = ap.add_mutually_exclusive_group()
     scope_grp.add_argument("--base", help="Base git ref/commit for diff scope")
@@ -1616,6 +2441,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     ap.add_argument("--per-mutant-timeout", type=float, default=DEFAULT_PER_MUTANT_TIMEOUT)
     ap.add_argument("--total-timeout", type=float, default=DEFAULT_TOTAL_TIMEOUT)
     ap.add_argument("--baseline-timeout", type=float, default=DEFAULT_BASELINE_TIMEOUT)
+    ap.add_argument("--workers", default="1", help="Parallel worker count 1..8 or 'auto' (default: 1)")
+    ap.add_argument("--only-survived-from", help="Dev-only rerun of SURVIVED mutant IDs from a prior report (sets full_run=false)")
+    ap.add_argument("--cache-dir", help="External content-addressed cache directory strictly outside --repo")
+    ap.add_argument("--caller-tool-sha256", help="Optional 64-hex caller verifier LF SHA-256 bound into cache key")
     ap.add_argument("--json-out", help="Write schema v1 JSON report to this path")
     ap.add_argument("--work-parent", help="Directory for disposable isolated copy (default: TEMP)")
     return ap.parse_args(argv)
@@ -1659,6 +2488,10 @@ def main(argv: list[str] | None = None) -> int:
             baseline_timeout=ns.baseline_timeout,
             work_parent=Path(ns.work_parent).resolve() if ns.work_parent else None,
             qualnames=ns.qualname,
+            workers=ns.workers,
+            only_survived_from=Path(ns.only_survived_from).resolve() if ns.only_survived_from else None,
+            cache_dir=Path(ns.cache_dir) if ns.cache_dir else None,
+            caller_tool_sha256=ns.caller_tool_sha256,
         )
     except ToolError as exc:
         err_report = _build_report(
@@ -1674,6 +2507,7 @@ def main(argv: list[str] | None = None) -> int:
             exit_code=2,
             verdict="ERROR",
             reason=exc.code,
+            full_run=(ns.only_survived_from is None),
         )
         if ns.json_out:
             out_p = Path(ns.json_out)
@@ -1689,10 +2523,15 @@ def main(argv: list[str] | None = None) -> int:
 
     s = report["summary"]
     label = "PASS" if rc == 0 else ("FAIL" if rc == 1 else "ERROR")
+    extras = ""
+    if not report.get("full_run", True):
+        extras += " full_run=false"
+    if (report.get("cache") or {}).get("hit"):
+        extras += " cache_hit=true"
     print(
         f"DIFF_AST_MUTATE {label} mode={report['mode']} total={s['total']} "
         f"caught={s['caught']} timeout={s['caught_timeout']} survived={s['survived']} "
-        f"accepted={s['accepted']} invalid={s['invalid']} reason={s['reason']}"
+        f"accepted={s['accepted']} invalid={s['invalid']} reason={s['reason']}{extras}"
     )
     if s["survived"] > 0:
         for m in report["mutants"]:

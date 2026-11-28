@@ -1,5 +1,5 @@
 {
-  "base_head": "6ed62c4",
+  "base_head": "16cc185",
   "files": {
     ".agents/rules/git-and-reporting.md": {
       "fences": 4,
@@ -576,16 +576,16 @@
         "## CI 歷史事故歸檔專區 (Historical CI Incidents Archive)",
         "### 事故清單與根因處置紀錄"
       ],
-      "lines": 444,
-      "sha256": "1a006c9cac31ffb3ddec4417b8ad2fc98a7f297d7ace5030dc551b08d3d9a252"
+      "lines": 445,
+      "sha256": "3d6e922d3e18410322b119ab3dcabcf1e8402228e8b3b67cc8240ba4ad86e626"
     },
     "docs/EXEC-LOG.md": {
       "fences": 0,
       "headings": [
         "# 執行者檢查紀錄"
       ],
-      "lines": 414,
-      "sha256": "c6a1d549497ac68271472a069514b8b33e5093d4d1c547ee38be5934527b8d57"
+      "lines": 415,
+      "sha256": "8448b755d59df454b79a48e5f033b5b9b30b307a83392c3b4bd0cae722569c74"
     },
     "docs/HANDOVER.md": {
       "fences": 0,
@@ -628,7 +628,7 @@
         "## 封存區"
       ],
       "lines": 473,
-      "sha256": "81d8a228a6508e0dae3388fe1b51f867553d5b757c560add59da546b2e398c5c"
+      "sha256": "1be60141d9b9947edb8d5fc57cc7d13b5ff60ea563d06796609451c66acd10b5"
     },
     "docs/TODO-LEDGER.md": {
       "fences": 0,
@@ -640,8 +640,8 @@
         "## 四、盤點範圍與方法",
         "## 五、清冊"
       ],
-      "lines": 205,
-      "sha256": "099dda6fb48a0d8bcb7dd838fa581568ef8b2e349373ead08e9d1566f81e0883"
+      "lines": 206,
+      "sha256": "8cf4269dba6d699808fe9e7edd2e3cf4d60f47e62e905260b207dc9038a1a7f4"
     },
     "docs/adr/0000-adr-template.md": {
       "fences": 0,
@@ -1150,8 +1150,8 @@
         "### 5.4 進行中／等待回報",
         "### RECON-01 歷史待辦需求機械對帳矩陣（RECON-01 Historical Pending Reconciliation Matrix）"
       ],
-      "lines": 6503,
-      "sha256": "0c09b346981f1554e6f0b3c93361fdf0412de12785aecd63e2c4cbdf852597ba"
+      "lines": 6504,
+      "sha256": "7f603c61c8277c1f0f07862d7f250c71262a7736360fca6b28c87940ad7cadda"
     },
     "scripts/anchor.py": {
       "fences": 0,
@@ -1351,8 +1351,8 @@
       "headings": [
         "# -*- coding: utf-8 -*-"
       ],
-      "lines": 1719,
-      "sha256": "9cf55166c0d87ed9d016d23919eb424c201344f7483bb4601c55c685fedac728"
+      "lines": 2558,
+      "sha256": "e32afbd5c692b52bd765d87ad5b835ec6eb8686bfb753eca751a1d9604ae2032"
     },
     "scripts/draft_precheck.py": {
       "fences": 0,
@@ -1370,8 +1370,8 @@
       "headings": [
         "# -*- coding: utf-8 -*-"
       ],
-      "lines": 1103,
-      "sha256": "4d50c084c348f2e62171143245e5983cebf0306470840100cb04f7427e91b8d7"
+      "lines": 1188,
+      "sha256": "89160219767e1613980aec6916d3a518c9f06dc585fd62a4d0762b27c6484187"
     },
     "scripts/execution_record.py": {
       "fences": 0,
@@ -2043,16 +2043,11 @@
       "fences": 0,
       "headings": [
         "# -*- coding: utf-8 -*-",
-        "# --- Fast Fail-Closed Exit-2 & JSON Schema v1 Contract Tests (placed first for -x) ---",
-        "# --- TD-137 Module Clock & SO Non-Blocking Guard + TD-136a --qualname Filter Tests ---",
-        "# --- All 14 Operators & Noise Filters ---",
-        "# --- End-to-End Subprocess Controls & Windows Form ---",
-        "# --- Second Opinion Suggestion #5: 4 Required Negative Controls ---",
-        "# --- --test-map Routing & Fallback ---",
+        "# --- Fast In-Memory Unit Tests for TD-144a / M2 / M3 / S5 (placed first for -x) ---",
         "# --- TD-136b (N1): Table-driven exit-2 precedence order lock matching diff_ast_mutate.py 1.1.0 ---"
       ],
-      "lines": 1384,
-      "sha256": "9622416263521299db0b12d07b0a1ffce2624d13e642cae825f385b71d615de9"
+      "lines": 2512,
+      "sha256": "7d7ffa4984a924edf0540f11cf67e5febe4bf1f033154d7c971fe3555449f4a1"
     },
     "scripts/tests/test_draft_precheck.py": {
       "fences": 0,
@@ -2084,6 +2079,7 @@
       "fences": 0,
       "headings": [
         "# -*- coding: utf-8 -*-",
+        "# --- Fast Unit Tests for TD-139 / 4a / M1 / M3 / M4 / S4 (placed first for -x) ---",
         "# --- Fast AST, Stdlib, Clock & Contract Guard Tests (placed first for -x) ---",
         "# --- Safe Archive Validation & Zip Extraction Contract Tests ---",
         "# --- Contract Qualnames Tests ---",
@@ -2091,8 +2087,8 @@
         "# --- Added-Lines Scan (S2) & TASKBOARD-RECORDS Fidelity Tests ---",
         "# --- Timeout Budget & End-to-End Pack Verification Tests ---"
       ],
-      "lines": 685,
-      "sha256": "8bcf069da2c99a20b63e04680a375e5d995888772117816e0f2519b6342132ba"
+      "lines": 1138,
+      "sha256": "fb04664787125550a0bba38b6e892a08bf825e7f3f925916ccb6f1aaa0f42a30"
     },
     "scripts/tests/test_execution_record.py": {
       "fences": 0,
@@ -2744,7 +2740,7 @@
       "sha256": "8597e282fed71298b01430659fae7cdfedf4a20f8be0267d662f8f1da8ff23e8"
     }
   },
-  "generated_at": "2026-11-27T12:44:30Z",
+  "generated_at": "2026-11-28T05:08:09Z",
   "schema_version": 1,
   "skills": {
     "by_bucket": {
